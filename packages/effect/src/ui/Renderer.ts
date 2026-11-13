@@ -188,6 +188,10 @@ export interface Hydration<Node> {
  * Read data is public: a read's success, error and args are in the state
  * even when no view renders them.
  *
+ * An instance whose Model or loader Schemas hold a `Schema.Redacted` is
+ * never in the state: it's deferred, so the client builds it and its
+ * subtree fresh, and the server logs a warning once per component.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5

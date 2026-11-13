@@ -69,7 +69,7 @@ const Card = Component.define({
     expect(loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
     return []
   },
-  head: (_model, loaded) => {
+  head: (_model, _props, loaded) => {
     expect(loaded.team).type.toBe<AsyncResult.AsyncResult<typeof Team.Type, never>>()
     return [Head.title("Card")]
   },

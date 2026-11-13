@@ -5,7 +5,7 @@ import { HtmlQuery } from "effect/ui/html/testing"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { Confirm } from "./fixtures/confirm.ts"
 import { Menu, MenuMessage } from "./fixtures/popover.ts"
-import { TodoApp, TodoAppMessage } from "./fixtures/todos.ts"
+import { TodoApp, TodoAppMessage, TodoItem } from "./fixtures/todos.ts"
 
 const el = (
   tag: string,
@@ -190,14 +190,19 @@ describe("HtmlQuery", () => {
   })
 
   describe("trees", () => {
-    it("a story's view value", () => {
+    it("a story's view value, field values included", () => {
       const story = Story.make(
         TodoApp,
         {},
         (s) => s.send(TodoAppMessage.make({ _tag: "Draft", value: "Read" }))
       )
-      const field = HtmlQuery.getByRole(story.root, "textbox", { name: "New todo" })
-      expect((field as { readonly props?: Record<string, unknown> }).props?.value).toBe("Read")
+      // `.value(text)` sets a property, so the attributes don't hold it.
+      const field = story.get(HtmlQuery.role("textbox", { name: "New todo" }))
+      expect(field.attrs?.value).toBeUndefined()
+      expect(HtmlQuery.value(field)).toBe("Read")
+      const item = Story.make(TodoItem, { todo: { id: "1", title: "Read", done: true } }, () => {})
+      expect(HtmlQuery.checked(item.get(HtmlQuery.role("checkbox", { name: "Read" })))).toBe(true)
+      expect(HtmlQuery.checked(item.get(HtmlQuery.role("button")))).toBeUndefined()
       expect(HtmlQuery.getByRole(story.root, "button", { name: "Clear done" })).toBeDefined()
       expect(story.all(Query.inside(Query.tag("form"), HtmlQuery.role("button")))).toHaveLength(1)
     })
@@ -209,8 +214,11 @@ describe("HtmlQuery", () => {
         root.send(TodoAppMessage.make({ _tag: "Add" }))
         yield* TestHost.settle
         const box = HtmlQuery.getByRole(root.container, "checkbox", { name: "Read", checked: false })
+        expect(HtmlQuery.checked(box)).toBe(false)
         Query.fire(box as TestHost.TestElement, "input", { value: "on", checked: true })
         yield* TestHost.settle
+        expect(HtmlQuery.checked(box)).toBe(true)
+        expect(HtmlQuery.value(root.get(HtmlQuery.role("textbox", { name: "New todo" })))).toBe("")
         expect(HtmlQuery.queryAllByRole(root.container, "checkbox", { checked: true })).toEqual([box])
         expect(root.all(HtmlQuery.role("listitem"))).toHaveLength(1)
       }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
@@ -237,6 +245,13 @@ describe("HtmlQuery", () => {
       const box = HtmlQuery.getByRole(container, "checkbox", { name: "Agree", checked: true }) as HTMLInputElement
       box.checked = false
       expect(HtmlQuery.queryAllByRole(container, "checkbox", { checked: true })).toEqual([])
+      expect(HtmlQuery.checked(box)).toBe(false)
+      const field = document.createElement("input")
+      field.setAttribute("value", "first")
+      expect(HtmlQuery.value(field)).toBe("first")
+      // The property wins over the attribute, as the user typed it.
+      field.value = "typed"
+      expect(HtmlQuery.value(field)).toBe("typed")
       expect(HtmlQuery.nameOf(container, HtmlQuery.getByRole(container, "table"))).toBe("Totals")
       expect(HtmlQuery.getByRole(container, "columnheader", { name: "Item" })).toBeDefined()
       expect(HtmlQuery.getByRole(container, "cell", { name: "3" })).toBeDefined()

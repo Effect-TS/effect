@@ -128,19 +128,23 @@ describe("Router", () => {
     expect(Router).type.not.toHaveProperty("Unblock")
   })
 
-  it("gives head only the Model", () => {
-    const PageDef = Component.define({
+  it("gives head the props, as subscriptions get them", () => {
+    const Page = Component.define({
       name: "Page",
       props: Schema.Struct({ title: Schema.String }),
       model: Schema.Struct({}),
       message: Schema.Never
-    })
-    expect(PageDef.make).type.not.toBeCallableWith({
+    }).make({
       init: () => ({}),
-      update: (model: {}) => model,
-      head: (_model: {}, props: { readonly title: string }) => [Head.title(props.title)],
-      view: (_: {}, h: any) => h.text("")
+      update: (model) => model,
+      head: (_model, props, loaded) => {
+        expect(props).type.toBe<{ readonly title: string }>()
+        expect(loaded).type.toBe<{}>()
+        return [Head.title(props.title)]
+      },
+      view: (_, h) => h.text("")
     })
+    expect<Component.Requirements<typeof Page>>().type.toBe<never>()
   })
 })
 

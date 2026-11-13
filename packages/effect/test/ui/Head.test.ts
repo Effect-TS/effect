@@ -164,4 +164,31 @@ describe("Head", () => {
       assert.strictEqual(root.head().title, undefined)
       assert.strictEqual(root.head().html.lang, undefined)
     }).pipe(Effect.provide(TestHost.layer())))
+
+  it.effect("head gets the props, and follows a props-only change", () =>
+    Effect.gen(function*() {
+      const Page = Component.define({
+        name: "Page",
+        props: Schema.Struct({ id: Schema.String }),
+        model: Schema.Null,
+        message: Schema.Never
+      })
+        .make({
+          init: () => null,
+          update: (model) => model,
+          head: (_model, props) => [Head.title(`Note ${props.id}`)],
+          view: (_, h) => h.text(h.props.id)
+        })
+      const App = Component.define({ name: "App", model: Schema.String, message: Schema.String }).make({
+        init: () => "a",
+        update: (_, id) => id,
+        view: (id, h) => h.child(Page, { key: "page", props: { id } })
+      })
+      const root = yield* TestHost.mount(App, {})
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, "Note a")
+      root.send("b")
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, "Note b")
+    }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
 })

@@ -42,6 +42,9 @@ describe("NoteEditor", () => {
     // plain payloads the view's handlers expect.
     Story.make(NoteEditor, { note }, (s) =>
       s.fire(body, "input", { value: edited.body })
+        // A field's value is a property, not an attribute: read it with
+        // `HtmlQuery.value`, and a checkbox with `HtmlQuery.checked`.
+        .check((story) => assert.strictEqual(HtmlQuery.value(story.get(body)), edited.body))
         // Nothing runs in a story, so Subscriptions are asserted by key.
         .subscriptions((keys) => assert.deepStrictEqual(keys, ["autosave:1"]))
         .fire(HtmlQuery.role("form", { name: "Edit note" }), "submit")

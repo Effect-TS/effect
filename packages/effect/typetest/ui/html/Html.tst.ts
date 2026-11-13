@@ -1,4 +1,4 @@
-import { Context, Effect, type Layer, Schema, type Scope } from "effect"
+import { Context, Effect, type Layer, Schema, type Scope, Stream } from "effect"
 import { Component, Renderer, Route, Router, type View } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
 import { HtmlQuery } from "effect/ui/html/testing"
@@ -258,6 +258,52 @@ describe("Html", () => {
     expect(Bare).type.toBe<Component.Component<"Bare", {}, null, Msg, never, Logger, Html.Elements>>()
   })
 
+  it("onMount may end with no message, and an input mount gets a typed Stream of changes", () => {
+    const Chart = Component.define({
+      name: "Chart",
+      model: Schema.Array(Schema.Number),
+      message: Schema.Never,
+      elements: Html
+    }).make({
+      init: (): ReadonlyArray<number> => [],
+      update: (points) => points,
+      view: (points, h) =>
+        h.div.onMount("hello", () => Effect.void).children(
+          h.canvas.onMount("chart", points, (node, changes) => {
+            expect(node).type.toBe<HTMLCanvasElement>()
+            expect(changes).type.toBe<Stream.Stream<ReadonlyArray<number>>>()
+            return Stream.runForEach(changes, () => Logger.use((logger) => logger.log("draw")))
+          })
+        )
+    })
+    expect(Chart).type.toBe<
+      Component.Component<"Chart", {}, ReadonlyArray<number>, never, never, Logger, Html.Elements>
+    >()
+    const div = new Html.Element<Msg>("div")
+    expect(div.onMount).type.toBeCallableWith("done", () => Effect.succeed(Msg.make({ _tag: "Mounted" })))
+    expect(div.onMount).type.not.toBeCallableWith("wrong", () => Effect.succeed("not a message"))
+    expect(div.onMount).type.not.toBeCallableWith("wrong", 1, () => Effect.succeed("not a message"))
+  })
+
+  it("View.Input keeps what a child requires", () => {
+    const PageDef = Component.define({ name: "Page", model: Schema.Null, message: Msg, elements: Html })
+    const ticker = {} as View.Node<Msg, Clock>
+    const plain = (..._children: ReadonlyArray<View.Input<Msg>>) => {}
+    expect(plain).type.toBeCallableWith("text", null)
+    expect(plain).type.not.toBeCallableWith(ticker)
+    const card = <const C extends ReadonlyArray<View.Input<Msg, any>>>(
+      h: Component.Helper<typeof PageDef>,
+      ...children: C
+    ) => h.section(...children)
+    const Page = PageDef.make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) => card(h, h.h1("Title"), ticker)
+    })
+    expect(Page).type.toBe<Component.Component<"Page", {}, null, Msg, never, Clock, Html.Elements>>()
+    expect<View.Requirements<any>>().type.toBe<any>()
+  })
+
   it("class takes string tokens and rejects true and numbers", () => {
     const button = new Html.Element<Msg>("button")
     const saving = false as boolean
@@ -300,6 +346,8 @@ describe("HtmlQuery", () => {
     expect(HtmlQuery.queryAllByRole(tree, "textbox")).type.toBe<ReadonlyArray<Query.Node>>()
     expect(HtmlQuery.getByRole(tree, "textbox") === tree.children[1]).type.toBe<boolean>()
     expect(HtmlQuery.nameOf(tree, tree.children[1]!)).type.toBe<string>()
+    expect(HtmlQuery.value(tree.children[1])).type.toBe<string | undefined>()
+    expect(HtmlQuery.checked(tree.children[1])).type.toBe<boolean | undefined>()
   })
 
   it("DOM queries return elements", () => {

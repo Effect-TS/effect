@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { Component } from "effect/ui"
+import type { View } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { HtmlStory } from "effect/ui/html/testing"
 import { Query, Story } from "effect/ui/testing"
@@ -38,5 +39,22 @@ describe("HtmlStory", () => {
         /HtmlStory\.drop: nothing at text "Plain" accepts "text\/plain"/
       )
     })
+  })
+
+  it("the view value holds an onMount input, for a story to check", () => {
+    const Chart = Component.define({
+      name: "Chart",
+      model: Schema.Array(Schema.Number),
+      message: Schema.Never,
+      elements: Html
+    }).make({
+      init: () => [1, 2],
+      update: (points) => points,
+      view: (points, h) => h.div.onMount("draw", points, () => Effect.void).children("chart")
+    })
+    const story = Story.make(Chart, {}, () => {})
+    const mount = (story.view() as View.Element<never, never>).mount
+    assert.strictEqual(mount?.name, "draw")
+    assert.deepStrictEqual(mount?.input, [1, 2])
   })
 })

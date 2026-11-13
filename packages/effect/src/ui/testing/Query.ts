@@ -31,6 +31,13 @@
 /**
  * The structural tree every query runs over.
  *
+ * **Details**
+ *
+ * `props` holds the typed values set with `.prop`, such as a field's
+ * `value` and `checked`, which aren't attributes. A story's view value and a
+ * `TestHost` tree both have them, and a vocabulary's readers, such as
+ * `HtmlQuery.value`, read them.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -38,6 +45,7 @@
 export interface Node {
   readonly tag?: string | undefined
   readonly attrs?: Readonly<Record<string, string | undefined>> | undefined
+  readonly props?: Readonly<Record<string, unknown>> | undefined
   readonly text?: string | undefined
   readonly children?: ReadonlyArray<Node> | undefined
 }

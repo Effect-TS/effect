@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Logger, Option, Redacted, Schema } from "effect"
 import { Loader } from "effect/reactivity"
 import { Component, Renderer } from "effect/ui"
+import * as loaders from "effect/ui/internal/loaders"
 import * as runtime from "effect/ui/internal/runtime"
 import * as services from "effect/ui/internal/services"
 import { TestHost } from "effect/ui/testing"
@@ -82,6 +83,33 @@ const Loaded = Component.define({
   view: (n, h) => h.text(String(n))
 })
 
+interface Tree {
+  readonly n: number
+  readonly children: ReadonlyArray<Tree>
+}
+const Tree: Schema.Codec<Tree> = Schema.Struct({ n: Schema.Number, children: Schema.Array(Schema.suspend(() => Tree)) })
+
+interface SecretTree {
+  readonly token: Redacted.Redacted<string>
+  readonly children: ReadonlyArray<SecretTree>
+}
+const SecretTree: Schema.Codec<SecretTree, unknown> = Schema.Struct({
+  token: Schema.Redacted(Schema.String),
+  children: Schema.Array(Schema.suspend(() => SecretTree))
+})
+
+/** The state an older build, without the Redacted check, would have written for `component`. */
+const legacyState = (component: Component.Any, model: unknown) => {
+  const bound = loaders.boundOf(component)!
+  const codec = Schema.toCodecJson(
+    Schema.Struct({
+      model: (component as Component.Component<any, any, any, any, any, any, any>).model,
+      loaded: bound.schema
+    })
+  )
+  return Schema.encodeUnknownSync(codec)({ model, loaded: bound.empty })
+}
+
 const Plain = Component.define({ name: "Plain", model: Schema.Number, message: Schema.Never }).make({
   init: () => 1,
   update: (n) => n,
@@ -148,9 +176,10 @@ describe("Redacted state", () => {
 
   it.effect("doesn't restore stored state for a component whose state holds a Redacted", () =>
     Effect.gen(function*() {
+      const loaded = legacyState(Loaded, 7)
       const history = historyHooks({
         "/Page/Secret[secret]": { token: "written-by-an-older-build", n: 7 },
-        "/Page/Loaded[loaded]": { model: 7, loaded: {} },
+        "/Page/Loaded[loaded]": loaded,
         "/Page/Plain[plain]": 7
       })
       const root = yield* mountWith(history.hooks)
@@ -158,7 +187,7 @@ describe("Redacted state", () => {
       // Only the plain component adopts its stored Model.
       assert.strictEqual(root.text(), "007")
       assert.isTrue(Option.isNone(runtime.stateCodecOf(Secret).decode({ token: "plain", n: 1 })))
-      assert.isTrue(Option.isNone(runtime.stateCodecOf(Loaded).decode({ model: 1, loaded: {} })))
+      assert.isTrue(Option.isNone(runtime.stateCodecOf(Loaded).decode(loaded)))
     }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
 
   it.effect("defers an instance whose state holds a Redacted on the server, and warns once per component", () =>
@@ -198,5 +227,22 @@ describe("Redacted state", () => {
       const paths = Object.fromEntries(Object.entries(rendered.state).filter(([key]) => key.startsWith("/")))
       assert.deepStrictEqual(Object.keys(paths), ["/LoaderPage", "/LoaderPage/Plain[plain]"])
       assert.notInclude(JSON.stringify(paths), "secret")
+    }))
+
+  it.effect("serialises a suspended or recursive Schema without a Redacted, and finds one behind a suspend", () =>
+    Effect.gen(function*() {
+      const Lazy = Component.define({ name: "Lazy", model: Schema.suspend(() => Schema.Number), message: Schema.Never })
+        .make({ init: () => 1, update: (n) => n, view: (n, h) => h.text(String(n)) })
+      const rendered = yield* Renderer.prerender(Lazy, {}).pipe(Effect.provide(Logger.layer([])))
+      assert.deepStrictEqual(rendered.state["~deferred"], [])
+      assert.strictEqual(rendered.state["/Lazy"], 1)
+      const component = (model: Schema.Codec<any, any>) =>
+        Component.define({ name: "Tree", model, message: Schema.Never }).make({
+          init: () => null as any,
+          update: (m) => m,
+          view: (_, h) => h.text("")
+        })
+      assert.isFalse(runtime.stateCodecOf(component(Tree)).redacted)
+      assert.isTrue(runtime.stateCodecOf(component(SecretTree)).redacted)
     }))
 })

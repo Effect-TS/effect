@@ -109,6 +109,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
+import type * as Stream from "../../Stream.ts"
 import * as Command from "../Command.ts"
 import * as Renderer from "../Renderer.ts"
 import * as View from "../View.ts"
@@ -525,9 +526,15 @@ export class VoidElement<
    */
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): VoidElement<Msg, R | R2, E, Node, Tag> {
-    return super.onMount(name, run) as any
+    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+  ): VoidElement<Msg, R | R2, E, Node, Tag>
+  override onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): VoidElement<Msg, R | R2, E, Node, Tag>
+  override onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return (super.onMount as any)(name, ...args)
   }
   /**
    * Sets the `id` attribute.
@@ -931,9 +938,15 @@ export class Element<
    */
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): Element<Msg, R | R2, E, Node, Tag> {
-    return super.onMount(name, run) as any
+    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+  ): Element<Msg, R | R2, E, Node, Tag>
+  override onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): Element<Msg, R | R2, E, Node, Tag>
+  override onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return (super.onMount as any)(name, ...args)
   }
   /**
    * Ends the chain with the element's children: nodes, builders, text,
@@ -942,7 +955,7 @@ export class Element<
    *
    * @since 4.1.5
    */
-  children<const C extends ReadonlyArray<View.Input<Msg>>>(
+  children<const C extends ReadonlyArray<View.Input<Msg, any>>>(
     ...inputs: C
   ): View.Element<Msg, R | View.Requirements<C[number]>> {
     return View.build(this, inputs)

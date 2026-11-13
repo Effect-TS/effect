@@ -17,6 +17,7 @@ import { holdsRedacted } from "../../internal/schemaRedact.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import * as PubSub from "../../PubSub.ts"
 import * as AsyncResult from "../../reactivity/AsyncResult.ts"
 import * as Loader from "../../reactivity/Loader.ts"
 import * as Scheduler from "../../Scheduler.ts"
@@ -115,15 +116,27 @@ interface RElement {
   readonly v: View.Element<any, any>
   readonly node: unknown
   readonly children: Array<Rendered>
-  readonly mountScope: Scope.Closeable | undefined
+  readonly mount: RunningMount | undefined
   /** The mounts of the element's owned layers, by owner and mount name. */
   readonly ownedMounts: ReadonlyArray<OwnedMount> | undefined
+}
+
+/** A started mount: its Scope, and for a mount given an input, the cell its `changes` Stream reads. */
+interface RunningMount {
+  readonly scope: Scope.Closeable
+  readonly input: MountInput | undefined
+}
+
+/** The latest input a mount was rendered with. The PubSub keeps one value for each reader. */
+interface MountInput {
+  value: unknown
+  readonly pubsub: PubSub.PubSub<unknown>
 }
 
 interface OwnedMount {
   readonly owner: View.Owner
   readonly name: string
-  readonly scope: Scope.Closeable | undefined
+  readonly running: RunningMount | undefined
 }
 
 /** One owner's handler for an event on an element that parts decorated. */
@@ -2973,17 +2986,31 @@ const setup = (
    * `inst` is whose mount it is: it gets the message, and the failure. The Scope is forked from
    * `under`, the instance rendering the element, so the mount ends with that instance too.
    */
-  const startMount = (inst: Instance, mount: View.Mount<any>, node: unknown, env: Env, under: Instance = inst) => {
+  const startMount = (
+    inst: Instance,
+    mount: View.Mount<any>,
+    node: unknown,
+    env: Env,
+    under: Instance = inst
+  ): RunningMount | undefined => {
     if (!host.runsMounts) return undefined
     const mountScope = Scope.forkUnsafe(under.scope, "sequential")
+    let input: MountInput | undefined
+    if ("input" in mount) {
+      input = { value: mount.input, pubsub: Effect.runSync(PubSub.sliding<unknown>({ capacity: 1, replay: 1 })) }
+      PubSub.publishUnsafe(input.pubsub, mount.input)
+      addFinalizer(mountScope, PubSub.shutdown(input.pubsub))
+    }
+    const changes = input === undefined ? Stream.empty : Stream.fromPubSub(input.pubsub)
     afterCommit(() =>
       whenReady(env, (envCtx) => {
         if (inst.closed || removedMounts.has(mountScope)) return
         const source: MessageLog.Source = { _tag: "Mount", name: mount.name }
         const fiber = forkNow(
           withCache(Context.add(Context.add(envCtx, Scope.Scope, mountScope), services.Refs, refsOf(inst))),
-          Effect.flatMap(Effect.suspend(() => mount.run(node)), (message) =>
-            Effect.sync(() => inst.dispatch(message, source)))
+          Effect.flatMap(Effect.suspend(() => mount.run(node, changes)), (message) =>
+            // A mount that ends with `undefined` sends nothing, and logs nothing.
+            message === undefined ? Effect.void : Effect.sync(() => inst.dispatch(message, source)))
         )
         interruptOnClose(mountScope, fiber)
         fiber.addObserver((exit) => {
@@ -2993,7 +3020,17 @@ const setup = (
         })
       })
     )
-    return mountScope
+    return { scope: mountScope, input }
+  }
+
+  /** A patch gives a running mount its element's new input, when it differs by `Equal`. */
+  const updateMountInput = (running: RunningMount | undefined, mount: View.Mount<any> | undefined) => {
+    const input = running?.input
+    if (input === undefined || mount === undefined || !("input" in mount)) return
+    if (Equal.equals(input.value, mount.input)) return
+    input.value = mount.input
+    // `publishUnsafe` drops a value when the buffer is full. `publish` slides it out, and never suspends.
+    Effect.runSync(PubSub.publish(input.pubsub, mount.input))
   }
 
   // -- owned layers ---------------------------------------------------------
@@ -3093,24 +3130,25 @@ const setup = (
       const mount = layer.mount
       if (mount === undefined) continue
       const kept = running?.find((entry) => entry.owner === layer.owner && entry.name === mount.name)
+      if (kept !== undefined) updateMountInput(kept.running, mount)
       out.push(
         kept ??
           {
             owner: layer.owner,
             name: mount.name,
-            scope: startMount(ownerInstance(inst, layer.owner), mount, node, env, inst)
+            running: startMount(ownerInstance(inst, layer.owner), mount, node, env, inst)
           }
       )
     }
     // The part is no longer applied to the element, which stays: its mount ends here.
-    if (running !== undefined) { for (const entry of running) if (!out.includes(entry)) stopMount(entry.scope) }
+    if (running !== undefined) { for (const entry of running) if (!out.includes(entry)) stopMount(entry.running) }
     return out.length === 0 ? undefined : out
   }
 
-  const stopMount = (scope: Scope.Closeable | undefined) => {
-    if (scope === undefined) return
-    removedMounts.add(scope)
-    closeScope(scope)
+  const stopMount = (running: RunningMount | undefined) => {
+    if (running === undefined) return
+    removedMounts.add(running.scope)
+    closeScope(running.scope)
   }
 
   // -- create ---------------------------------------------------------------
@@ -3216,7 +3254,7 @@ const setup = (
           v: view,
           node,
           children,
-          mountScope: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
+          mount: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
           ownedMounts: startOwnedMounts(inst, view, node, env)
         }
       }
@@ -3448,7 +3486,7 @@ const setup = (
           v: view,
           node,
           children,
-          mountScope: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
+          mount: view.mount !== undefined ? startMount(inst.author, view.mount, node, env, inst) : undefined,
           ownedMounts: startOwnedMounts(inst, view, node, env)
         }
       }
@@ -3562,14 +3600,15 @@ const setup = (
         }
         const children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
         patchProps(rendered.node, prev.props, element.props)
-        // A mount belongs to the element, not to one view run: it keeps running across patches.
-        // An owned layer's mount belongs to its part: it runs while the part is applied.
+        // A mount belongs to the element, not to one view run: it keeps running across patches, and
+        // gets each new input. An owned layer's mount belongs to its part: it runs while the part is applied.
+        updateMountInput(rendered.mount, element.mount)
         return {
           _tag: "Element",
           v: element,
           node: rendered.node,
           children,
-          mountScope: rendered.mountScope,
+          mount: rendered.mount,
           ownedMounts: element.owned === prev.owned
             ? rendered.ownedMounts
             : startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
@@ -3678,8 +3717,8 @@ const setup = (
         return closeAll(inst, rendered.inner)
       case "Element": {
         // The element's `onMount` work ends with it.
-        stopMount(rendered.mountScope)
-        if (rendered.ownedMounts !== undefined) { for (const entry of rendered.ownedMounts) stopMount(entry.scope) }
+        stopMount(rendered.mount)
+        if (rendered.ownedMounts !== undefined) { for (const entry of rendered.ownedMounts) stopMount(entry.running) }
         for (const child of rendered.children) closeAll(inst, child)
         return
       }

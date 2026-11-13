@@ -3,7 +3,7 @@
  * `label` that can, and a void `field` with a value, an input event and its
  * own node type for refs and mounts.
  */
-import type { Effect } from "effect"
+import type { Effect, Stream } from "effect"
 import { View } from "effect/ui"
 
 export interface TinyField {
@@ -22,9 +22,15 @@ export class TinyVoid<out Msg, out R = never, in out Handlers = Record<string, u
   }
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): TinyVoid<Msg, R | R2, Handlers, Node> {
-    return super.onMount(name, run) as any
+    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+  ): TinyVoid<Msg, R | R2, Handlers, Node>
+  override onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): TinyVoid<Msg, R | R2, Handlers, Node>
+  override onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return (super.onMount as any)(name, ...args)
   }
 }
 
@@ -33,11 +39,17 @@ export class TinyElement<out Msg, out R = never, in out Handlers = Record<string
 {
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): TinyElement<Msg, R | R2, Handlers, Node> {
-    return super.onMount(name, run) as any
+    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+  ): TinyElement<Msg, R | R2, Handlers, Node>
+  override onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): TinyElement<Msg, R | R2, Handlers, Node>
+  override onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return (super.onMount as any)(name, ...args)
   }
-  children<const C extends ReadonlyArray<View.Input<Msg>>>(
+  children<const C extends ReadonlyArray<View.Input<Msg, any>>>(
     ...inputs: C
   ): View.Element<Msg, R | View.Requirements<C[number]>> {
     return View.build(this, inputs)
