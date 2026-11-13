@@ -288,7 +288,13 @@ export const normalize = (raw: unknown): Option.Option<ChatInteraction.Interacti
       for (const input of inputs) {
         const value = input.value ?? input.values?.[0]
         if (typeof input.custom_id === "string" && value !== null && value !== undefined && value !== "") {
-          values[input.custom_id] = value
+          // An own property, so an id such as `__proto__` keeps its answer.
+          Object.defineProperty(values, input.custom_id, {
+            value,
+            enumerable: true,
+            writable: true,
+            configurable: true
+          })
         }
       }
     }

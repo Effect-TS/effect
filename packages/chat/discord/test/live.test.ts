@@ -10,11 +10,15 @@
  *   `DISCORD_LIVE_WEBHOOK_URL`, a webhook on the channel, stands in. Without
  *   either, those rules fail at `userPosts`.
  *
- * The outbound buttons and modals rules run here. Nothing can click a
- * button through the API, so the rules that need a click take the
- * `interactions` hook and run only over the stubbed REST in
- * `conformance.test.ts`. Discord refuses no small file on demand, so
- * `post/refusedFile` runs there too.
+ * Of the buttons rules, only the outbound ones run here: `actions/posts`,
+ * `actions/tooMany`, `actions/dataTooLarge`, the two
+ * `descriptor/measure*Actions` rules and the `unsupported/buttons` and
+ * `unsupported/selects` probes. The suite is given no `interactions` hook,
+ * since nothing can click a button through the API, so no rule here clicks,
+ * opens or submits a modal, or calls `DiscordChat.interaction` and its
+ * callbacks. Those rules, and `post/refusedFile`, which needs `refuseFiles`,
+ * run only over the stubbed REST in `conformance.test.ts`. Live evidence
+ * for them needs a person clicking in a test guild.
  */
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { describe, it } from "@effect/vitest"

@@ -97,6 +97,18 @@ describe("normalizeInteraction", () => {
       assert.isFalse("metadata" in some(submit("form", [])))
     }))
 
+  it.effect("a submit keeps an input whose id is __proto__ as its own field", () =>
+    Effect.gen(function*() {
+      const submitted = some(submit("form", [
+        { type: 18, component: { type: 4, custom_id: "__proto__", value: "answered" } },
+        { type: 18, component: { type: 4, custom_id: "name", value: "Tim" } }
+      ])) as ChatInteraction.ModalSubmitted
+      assert.isTrue(Object.hasOwn(submitted.values, "__proto__"))
+      assert.strictEqual(submitted.values["__proto__"], "answered")
+      assert.deepStrictEqual(Object.keys(submitted.values), ["__proto__", "name"])
+      yield* checkInteraction(submitted, { platform: "discord" })
+    }))
+
   it("anything not from an element the adapter built is None", () => {
     for (
       const raw of [
