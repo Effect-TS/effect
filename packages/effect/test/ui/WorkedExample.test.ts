@@ -45,11 +45,12 @@ const fetchesOf = (root: Root, read: string) => root.fetches().filter((fetch) =>
 const count = (text: string, part: string) => text.split(part).length - 1
 
 /** The list page and the detail page side by side. */
-const Both = Component.make({
+const Both = Component.define({
   name: "Both",
   model: Schema.Null,
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => null,
   update: (model) => model,
   view: (_, h) =>

@@ -11,10 +11,11 @@ describe("effect/ui/html/register", () => {
   })
 
   it("gives a component without `elements` the HTML tags", () => {
-    Component.make({
+    Component.define({
       name: "Greeting",
       model: Schema.Struct({}),
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_, h) => {

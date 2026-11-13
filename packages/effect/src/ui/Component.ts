@@ -9,6 +9,10 @@
  * down through props. A component's requirements, `R`, name the Commands and
  * feature services it uses, never what their implementations use.
  *
+ * A component is built in two steps: `define` takes its name and Schemas,
+ * and `make` on the definition takes `init`, `update` and `view`. A large
+ * component writes its update slices and view against the definition.
+ *
  * **Example** (A todo row that saves through a Command and reports to its parent)
  *
  * ```ts import.meta.vitest
@@ -25,12 +29,13 @@
  *   Effect.succeed(() => Effect.succeed(TodoItemMessage.make({ _tag: "Saved" })))
  * ) {}
  *
- * const TodoItem = Component.make({
+ * const TodoItem = Component.define({
  *   name: "TodoItem",
  *   props: Schema.Struct({ todo: Todo }),
  *   model: Schema.Struct({}),
  *   message: TodoItemMessage,
- *   events: TodoItemEvents,
+ *   events: TodoItemEvents
+ * }).make({
  *   init: ($) => $.set({}),
  *   update: (model, message, $) =>
  *     TodoItemMessage.match(message, {
@@ -209,16 +214,49 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
  * `$` in `update`: a step holding the current Model, plus the current props
  * and what the loaders hold.
  *
+ * **Details**
+ *
+ * `Cur` is the message being handled: the whole message type in an update
+ * function, and one tag's member in a slice for that tag. `$.combine` takes
+ * functions over it.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface Update<in out Model, in out Msg, in out Events, out Props, L = {}>
+export interface Update<in out Model, in out Msg, in out Events, out Props, L = {}, out Cur = Msg>
   extends Step<Model, Msg, Events, never, L>
 {
   readonly props: Props
   /** The loaders' results, as `h.loaded` shows them for the Model before this `update`. */
   readonly loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+  /**
+   * Runs update functions one after another, each with the message this
+   * `update` received.
+   *
+   * **Details**
+   *
+   * It takes functions over the message being handled. In a slice for one tag
+   * that is slices for the same tag, update functions over the whole message
+   * type, and functions written inline. In an update over the whole message
+   * type, a slice for one tag is rejected.
+   *
+   * It is a left fold. Each function gets the Model the previous one returned
+   * and a `$` holding that Model, so a Command it runs sees the earlier
+   * changes. The Commands, emitted events, `loadMore` and `reset` of every
+   * function are kept, in call order. `$.props` and `$.loaded` are the same
+   * for each, as they were when this `update` started. `R` is the union of
+   * the functions' requirements.
+   */
+  combine<
+    F extends ReadonlyArray<
+      (
+        model: Model,
+        msg: Cur,
+        $: Update<Model, Msg, Events, Props, L, Cur>
+      ) => Model | Step<Model, Msg, Events, any, L>
+    >
+  >(...updates: F): Step<Model, Msg, Events, StepRequirements<ReturnType<F[number]>>, L>
 }
 
 /**
@@ -275,8 +313,38 @@ const makeStep = (
   lists: ReadonlyArray<ListIssue>
 ): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted, lists })
 
-const makeUpdate = (model: unknown, props: unknown, loaded: unknown): Update<any, any, any, any> =>
-  Object.assign(Object.create(StepProto), { model, commands: [], emitted: [], lists: [], props, loaded })
+type AnyUpdate = (model: unknown, msg: unknown, $: Update<any, any, any, any>) => unknown
+
+const UpdateProto = {
+  ...StepProto,
+  combine(this: Update<any, any, any, any> & { readonly "~message": unknown }, ...updates: ReadonlyArray<AnyUpdate>) {
+    const msg = this["~message"]
+    let model = this.model
+    const commands: Array<Command.Command<any, any>> = [...this.commands]
+    const emitted = [...this.emitted]
+    const lists = [...this.lists]
+    for (const update of updates) {
+      const next = toNext(update(model, msg, makeUpdate(model, this.props, this.loaded, msg)))
+      model = next.model
+      commands.push(...next.commands)
+      emitted.push(...next.events)
+      if (next.lists !== undefined) lists.push(...next.lists)
+    }
+    return makeStep(model, commands, emitted, lists)
+  }
+}
+
+// `$` holds the message being handled, for `combine`.
+const makeUpdate = (model: unknown, props: unknown, loaded: unknown, message: unknown): Update<any, any, any, any> =>
+  Object.assign(Object.create(UpdateProto), {
+    model,
+    commands: [],
+    emitted: [],
+    lists: [],
+    props,
+    loaded,
+    "~message": message
+  })
 
 const makeInit = (props: unknown): Init<any, any, any, any> => ({
   props,
@@ -730,10 +798,158 @@ const Proto = {
   }
 }
 
+// The tags of a message union, and the member with one tag.
+type TagOf<Msg> = Msg extends { readonly _tag: infer T extends string } ? T : never
+type Tagged<Msg, T> = Extract<Msg, { readonly _tag: T }>
+
 /**
- * Defines a component.
+ * What `define` returns: a component's name, Schemas, loaders and
+ * vocabulary. `update` and `view` written in pieces are typed against it,
+ * and `make` finishes the component.
  *
  * **Details**
+ *
+ * `update` with a tag returns a slice for that tag. Without one, it returns
+ * an update function over the whole message type. Either fits the matching
+ * key of a record `update`, and `$.combine` takes either where the message
+ * fits. `view` returns the function it's given.
+ *
+ * `make` takes `init`, `update`, `view`, `subscriptions` and `head`, and
+ * reads `R` off what they return.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Definition<Name extends string, Props, Model, Msg, Events, V extends View.Elements, L> {
+  readonly name: Name
+  readonly props: Schema.Codec<Props, any>
+  readonly model: Schema.Codec<Model, any>
+  readonly message: Schema.Codec<Msg, any>
+  readonly events: Schema.Codec<Events, any>
+  readonly loaders: unknown
+  readonly elements: View.Vocabulary<V> | undefined
+  /**
+   * A slice for one tag: `msg` is that tag's member, and so is the message
+   * `$.combine` takes functions over. The slice returned takes any `$`, so
+   * an update function can call it by hand, and `$` is bound to the
+   * message it's given.
+   */
+  update<const Tag extends TagOf<Msg>, U extends Model | Step<Model, Msg, Events, any, L>>(
+    tag: Tag,
+    update: (model: Model, msg: Tagged<Msg, Tag>, $: Update<Model, Msg, Events, Props, L, Tagged<Msg, Tag>>) => U
+  ): (model: Model, msg: Tagged<Msg, Tag>, $: Update<Model, Msg, Events, Props, L>) => U
+  /** An update function over the whole message type. */
+  update<U extends Model | Step<Model, Msg, Events, any, L>>(
+    update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U
+  ): (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U
+  /** A view, to pass as `view` or call from another view. */
+  view<UV extends View.Content<Msg, any>>(
+    view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>) => UV
+  ): (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>) => UV
+  /** Finishes the component. */
+  make<
+    UI extends Model | InitStep<Model, Msg, Events, any> = Model,
+    U extends Model | Step<Model, Msg, Events, any, L> = Model,
+    // What each function of a record `update` returns, by tag.
+    UR extends { readonly [T in TagOf<Msg>]: Model | Step<Model, Msg, Events, any, L> } = {
+      readonly [T in TagOf<Msg>]: Model
+    },
+    UV extends View.Content<Msg, any> = View.Node<Msg>,
+    Sub extends Subscription.Subscription<Msg, any> = never
+  >(options: {
+    readonly init: ($: Init<Model, Msg, Events, Props>) => UI
+    readonly update:
+      | ((model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U)
+      | {
+        readonly [T in keyof UR]: (
+          model: Model,
+          msg: Tagged<Msg, T>,
+          $: Update<Model, Msg, Events, Props, L, Tagged<Msg, T>>
+        ) => UR[T]
+      }
+    readonly view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>) => UV
+    readonly subscriptions?:
+      | ((
+        model: Model,
+        props: Props,
+        loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+      ) => ReadonlyArray<Sub | false | null | undefined>)
+      | undefined
+    readonly head?:
+      | ((model: Model, loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }) => ReadonlyArray<Head.Entry>)
+      | undefined
+  }): Component<
+    Name,
+    Props,
+    Model,
+    Msg,
+    Events,
+    Exclude<
+      | StepRequirements<UI>
+      | StepRequirements<U>
+      | StepRequirements<UR[keyof UR]>
+      | View.Requirements<UV>
+      | Subscription.Requirements<Sub>
+      | LoaderServices<L>,
+      Command.FrameworkService
+    >,
+    V,
+    L
+  >
+}
+
+/**
+ * `h` in the view of a definition, for a view fragment written as a plain
+ * function that takes more than the Model.
+ *
+ * **Example** (A row fragment)
+ *
+ * ```ts import.meta.vitest
+ * import { Component } from "effect/ui"
+ * import { Schema } from "effect"
+ *
+ * const Note = Schema.Struct({ id: Schema.String, title: Schema.String })
+ *
+ * const NoteListDef = Component.define({
+ *   name: "NoteList",
+ *   model: Schema.Struct({ notes: Schema.Array(Note) }),
+ *   message: Schema.Never
+ * })
+ *
+ * const noteRow = (h: Component.Helper<typeof NoteListDef>, note: typeof Note.Type) =>
+ *   h.el("li", note.title).key(note.id)
+ *
+ * export const NoteList = NoteListDef.make({
+ *   init: () => ({ notes: [] }),
+ *   update: (model) => model,
+ *   view: (model, h) => h.el("ul", ...model.notes.map((note) => noteRow(h, note)))
+ * })
+ * ```
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type Helper<D> = D extends Definition<infer _N, infer P, infer _M, infer Msg, infer _E, infer V, infer L> ?
+  View.Helper<Msg, P> & View.Tags<V, Msg> & LoaderHelpers<L>
+  : never
+
+/**
+ * Defines a component, in two steps. `define` takes the name, the Schemas,
+ * `loaders` and `elements`, and `make` on the definition it returns takes
+ * `init`, `update`, `view`, `subscriptions` and `head`.
+ *
+ * **Details**
+ *
+ * The first step holds what nothing is inferred from, so update functions
+ * and views written outside the component are typed against the definition.
+ * Typing them against `typeof` the component would be circular, because the
+ * component's requirements are read off what `update` returns. `loaders`
+ * types `$.loaded` and `h.loaded`, and `elements` the tags on `h`, so both
+ * belong to the first step. A definition is named with a `Def` suffix and
+ * usually stays unexported. A component written in one piece chains the two
+ * steps.
  *
  * `init` and `update` get `$`, a step holding the current Model and props.
  * `view` gets `h`, bound to the component's message type and carrying the
@@ -777,6 +993,15 @@ const Proto = {
  * The entries live and die with the instance, and a slot's `fallback`
  * contributes none.
  *
+ * `update` is a function over the whole message type, or a record with a
+ * function for every `_tag` of the message, which gets that tag's member and
+ * a `$` for it. The record has no default key, so a component that wants a
+ * catch-all uses the function form. `Def.update(tag, f)` is a slice for one
+ * tag, and `Def.update(f)` an update function over the whole message type.
+ * `$.combine` runs update functions one after another. `Def.view(f)` is a
+ * view, and `Component.Helper` types `h` for a fragment that takes more
+ * than the Model.
+ *
  * **Example** (A counter)
  *
  * ```ts import.meta.vitest
@@ -785,11 +1010,12 @@ const Proto = {
  *
  * const CounterMessage = Schema.TaggedUnion({ Increment: {}, Decrement: {} })
  *
- * const Counter = Component.make({
+ * const Counter = Component.define({
  *   name: "Counter",
  *   props: Schema.Struct({ initial: Schema.Number }),
  *   model: Schema.Struct({ count: Schema.Number }),
- *   message: CounterMessage,
+ *   message: CounterMessage
+ * }).make({
  *   init: ($) => ({ count: $.props.initial }),
  *   update: (model, message) =>
  *     CounterMessage.match(message, {
@@ -827,7 +1053,7 @@ const Proto = {
  *   staleTime: "1 minute"
  * }, Effect.succeed(({ id }) => Effect.succeed({ title: `Team ${id}` }))) {}
  *
- * const UserPage = Component.make({
+ * const UserPage = Component.define({
  *   name: "UserPage",
  *   props: Schema.Struct({ id: Schema.String }),
  *   model: Schema.Struct({}),
@@ -840,7 +1066,8 @@ const Proto = {
  *       args: (_model, _props, loaded) =>
  *         AsyncResult.isSuccess(loaded.user) ? { id: loaded.user.value.teamId } : undefined
  *     }
- *   },
+ *   }
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_model, h) =>
@@ -853,11 +1080,45 @@ const Proto = {
  * })
  * ```
  *
+ * **Example** (A note page whose update is split into slices)
+ *
+ * ```ts import.meta.vitest
+ * import { Component } from "effect/ui"
+ * import { Schema } from "effect"
+ *
+ * const NotePageMessage = Schema.TaggedUnion({ Edited: { body: Schema.String }, SaveClicked: {} })
+ *
+ * const NotePageDef = Component.define({
+ *   name: "NotePage",
+ *   model: Schema.Struct({ body: Schema.String, edits: Schema.Number, error: Schema.NullOr(Schema.String) }),
+ *   message: NotePageMessage
+ * })
+ *
+ * // Over the whole message type, so `$.combine` takes them.
+ * const touch = NotePageDef.update((model) => ({ ...model, edits: model.edits + 1 }))
+ * const validate = NotePageDef.update((model) => ({ ...model, error: model.body === "" ? "Empty" : null }))
+ *
+ * // `msg` is the Edited message.
+ * const handleEdited = NotePageDef.update("Edited", (model, msg, $) =>
+ *   $.combine(() => ({ ...model, body: msg.body }), touch))
+ *
+ * const noteView = NotePageDef.view((model, h) => h.el("p", model.body))
+ *
+ * export const NotePage = NotePageDef.make({
+ *   init: () => ({ body: "", edits: 0, error: null }),
+ *   update: {
+ *     Edited: handleEdited,
+ *     SaveClicked: (_model, _msg, $) => $.combine(validate)
+ *   },
+ *   view: noteView
+ * })
+ * ```
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.5
  */
-export const make = <
+export const define = <
   const Name extends string,
   Model,
   Msg,
@@ -865,17 +1126,12 @@ export const make = <
   Events = never,
   S = {},
   M = {},
-  // The loaders as `Load` and `LoadMany` entries, by name. Nothing infers it, so it's always this default:
-  // the mapped types over it use `NoInfer`, or an annotated `loaded` argument would.
+  // The loaders as `Load` and `LoadMany` entries, by name. Nothing infers it, so it's always this default.
   L = {
     readonly [K in keyof S]: M[K & keyof M] extends Loader.Read.Any ? LoadMany<M[K & keyof M]>
       : S[K] extends Loader.Read.Any ? Load<S[K]>
       : never
   },
-  UI extends Model | InitStep<Model, Msg, Events, any> = Model,
-  U extends Model | Step<Model, Msg, Events, any, any> = Model,
-  UV extends View.Content<Msg, any> = View.Node<Msg>,
-  Sub extends Subscription.Subscription<Msg, any> = never,
   V extends View.Elements = View.Registered
 >(
   options: {
@@ -902,60 +1158,67 @@ export const make = <
         & { readonly [K in keyof M]: { readonly loadMany?: M[K] & KeyedRead<M[K]> } }
       )
       | undefined
-    readonly init: ($: Init<Model, Msg, Events, Props>) => UI
-    readonly update: (model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U
-    readonly view: (
-      model: Model,
-      h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>
-    ) => UV
-    readonly subscriptions?:
-      | ((
-        model: Model,
-        props: Props,
-        loaded: { readonly [K in keyof NoInfer<L>]: LoadedOf<NoInfer<L>[K]> }
-      ) => ReadonlyArray<Sub | false | null | undefined>)
-      | undefined
-    readonly head?:
-      | ((
-        model: Model,
-        loaded: { readonly [K in keyof NoInfer<L>]: LoadedOf<NoInfer<L>[K]> }
-      ) => ReadonlyArray<Head.Entry>)
-      | undefined
     readonly elements?: View.Vocabulary<V> | undefined
   }
-): Component<
-  Name,
-  Props,
-  Model,
-  Msg,
-  Events,
-  Exclude<
-    | StepRequirements<UI>
-    | StepRequirements<U>
-    | View.Requirements<UV>
-    | Subscription.Requirements<Sub>
-    | LoaderServices<L>,
-    Command.FrameworkService
-  >,
-  V,
-  L
-> => {
-  const bound = loaders.bind(options.name, options.loaders)
-  const open = (model: unknown, props: unknown, slots: Slots | undefined): any =>
-    bound === undefined ? {} : bound.context(model, props, slots).loaded
-  const subscriptions = options.subscriptions
-  const head = options.head
-  return Object.assign(Object.create(Proto), {
+): Definition<Name, Props, Model, Msg, Events, V, L> => {
+  const definition: Definition<Name, Props, Model, Msg, Events, V, L> = {
     name: options.name,
-    props: options.props ?? Schema.Struct({}),
+    props: options.props ?? (Schema.Struct({}) as any),
     model: options.model,
     message: options.message,
-    events: options.events ?? Schema.Never,
-    init: (props: Props) => toNext(options.init(makeInit(props))),
-    update: (model: Model, msg: Msg, props: Props, slots?: Slots) =>
-      toNext(options.update(model, msg, makeUpdate(model, props, open(model, props, slots)) as any)),
-    view: (model: Model, props: Props, running?: View.Running, slots?: Slots) => {
-      const h: any = View.makeHelper<Msg, Props, V>(props, options.elements ?? View.registeredElements(), running)
+    events: options.events ?? (Schema.Never as any),
+    loaders: options.loaders,
+    elements: options.elements,
+    // A slice is the function given, with `$` bound to the Model and message it's called with.
+    update: ((...args: ReadonlyArray<any>) => {
+      const update: AnyUpdate = args[args.length - 1]
+      return (model: unknown, msg: unknown, $: Update<any, any, any, any>) =>
+        update(model, msg, makeUpdate(model, $.props, $.loaded, msg))
+    }) as any,
+    view: (view) => view,
+    make: (rest) => finish(definition, rest as any) as any
+  }
+  return definition
+}
+
+const finish = (
+  definition: Definition<string, any, any, any, any, any, any>,
+  options: {
+    readonly init: ($: Init<any, any, any, any>) => unknown
+    readonly update: AnyUpdate | { readonly [tag: string]: AnyUpdate }
+    readonly view: (model: any, h: any) => View.Content<any, any>
+    readonly subscriptions?:
+      | ((
+        model: any,
+        props: any,
+        loaded: any
+      ) => ReadonlyArray<Subscription.Subscription<any, any> | false | null | undefined>)
+      | undefined
+    readonly head?: ((model: any, loaded: any) => ReadonlyArray<Head.Entry>) | undefined
+  }
+): Any => {
+  const bound = loaders.bind(definition.name, definition.loaders)
+  const open = (model: unknown, props: unknown, slots: Slots | undefined): any =>
+    bound === undefined ? {} : bound.context(model, props, slots).loaded
+  const update = options.update
+  // A record dispatches on the message's `_tag`.
+  const updateFn: AnyUpdate = typeof update === "function"
+    ? update
+    : (model, msg, $) => update[(msg as { readonly _tag: string })._tag](model, msg, $)
+  const subscriptions = options.subscriptions
+  const head = options.head
+  const elements = definition.elements
+  return Object.assign(Object.create(Proto), {
+    name: definition.name,
+    props: definition.props,
+    model: definition.model,
+    message: definition.message,
+    events: definition.events,
+    init: (props: unknown) => toNext(options.init(makeInit(props))),
+    update: (model: unknown, msg: unknown, props: unknown, slots?: Slots) =>
+      toNext(updateFn(model, msg, makeUpdate(model, props, open(model, props, slots), msg))),
+    view: (model: unknown, props: unknown, running?: View.Running, slots?: Slots) => {
+      const h: any = View.makeHelper(props, elements ?? View.registeredElements(), running)
       if (bound !== undefined) {
         const context = bound.context(model, props, slots)
         h.loaded = context.loaded
@@ -966,12 +1229,12 @@ export const make = <
     },
     subscriptions: subscriptions === undefined
       ? undefined
-      : (model: Model, props: Props, slots?: Slots) =>
-        subscriptions(model, props, open(model, props, slots)).filter((entry): entry is Sub => !!entry),
+      : (model: unknown, props: unknown, slots?: Slots) =>
+        subscriptions(model, props, open(model, props, slots)).filter((entry) => !!entry),
     head: head === undefined
       ? undefined
-      : (model: Model, props: Props, slots?: Slots) => head(model, open(model, props, slots)),
-    elements: () => options.elements ?? View.registeredElements(),
+      : (model: unknown, props: unknown, slots?: Slots) => head(model, open(model, props, slots)),
+    elements: () => elements ?? View.registeredElements(),
     layer: undefined,
     layerFailure: undefined,
     sharedLayer: undefined,
@@ -1202,11 +1465,12 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
  *   static readonly layer = Layer.succeed(EditorStore, { draft: "" })
  * }
  *
- * const Row = Component.make({
+ * const Row = Component.define({
  *   name: "Row",
  *   props: Schema.Struct({ id: Schema.String }),
  *   model: Schema.Struct({}),
- *   message: RowMessage,
+ *   message: RowMessage
+ * }).make({
  *   init: () => ({}),
  *   update: (model, message, $) =>
  *     RowMessage.match(message, {

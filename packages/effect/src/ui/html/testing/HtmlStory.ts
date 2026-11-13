@@ -19,11 +19,12 @@
  *
  * const Message = Schema.TaggedUnion({ Dropped: { id: Schema.String } })
  *
- * const Done = Component.make({
+ * const Done = Component.define({
  *   name: "Done",
  *   model: Schema.Array(Schema.String),
  *   message: Message,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: (): ReadonlyArray<string> => [],
  *   update: (ids, message) => [...ids, message.id],
  *   view: (ids, h) =>

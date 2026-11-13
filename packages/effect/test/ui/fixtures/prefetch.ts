@@ -29,12 +29,13 @@ export class GetNote extends Loader.Service<GetNote>()("GetNote", {
 }, Effect.succeed(({ id }) => Effect.succeed(`Note ${id}`))) {}
 
 const reader = <const Name extends string>(name: Name) =>
-  Component.make({
+  Component.define({
     name,
     props: Schema.Struct({ id: Schema.Number }),
     model: Schema.Struct({}),
     message: Schema.Never,
-    loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+    loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } }
+  }).make({
     init: () => ({}),
     update: (model) => model,
     view: (_, h) => h.el("p", name)
@@ -45,12 +46,13 @@ export const Detail = reader("Detail")
 export const Card = reader("Card")
 
 /** Reads `GetNote`, which the declarer can't see. */
-export const Note = Component.make({
+export const Note = Component.define({
   name: "Note",
   props: Schema.Struct({ id: Schema.Number }),
   model: Schema.Struct({}),
   message: Schema.Never,
-  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } },
+  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } }
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: (_, h) => h.el("p", "Note")
@@ -59,11 +61,12 @@ export const Note = Component.make({
 export class Badge extends Feature.Service<Badge>()("test/Badge", { props: Schema.Struct({}) }) {}
 
 /** Reads person 1, and shows a card for person 2, a feature, and a note with and without a `provide`. */
-export const Walked = Component.make({
+export const Walked = Component.define({
   name: "Walked",
   model: Schema.Struct({}),
   message: Schema.Never,
-  loaders: { person: { load: GetPerson, args: () => ({ id: 1 }) } },
+  loaders: { person: { load: GetPerson, args: () => ({ id: 1 }) } }
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: (_, h) =>
@@ -77,11 +80,12 @@ export const Walked = Component.make({
 })
 
 /** Reads person 3, then its view throws. */
-export const Broken = Component.make({
+export const Broken = Component.define({
   name: "Broken",
   model: Schema.Struct({}),
   message: Schema.Never,
-  loaders: { person: { load: GetPerson, args: () => ({ id: 3 }) } },
+  loaders: { person: { load: GetPerson, args: () => ({ id: 3 }) } }
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: () => {
@@ -92,10 +96,11 @@ export const Broken = Component.make({
 class Nothing extends Context.Service<Nothing, string>()("test/Nothing") {}
 
 /** A page whose provided Layer fails. */
-export const Failing = Component.make({
+export const Failing = Component.define({
   name: "Failing",
   model: Schema.Struct({}),
-  message: Schema.Never,
+  message: Schema.Never
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: (_, h) => h.el("p", "Failing")
@@ -106,11 +111,12 @@ export const probe = { location: (): string => "", seen: [] as Array<string> }
 
 const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: Routes } })
 
-export const App = Component.make({
+export const App = Component.define({
   name: "App",
   props: Schema.Struct({ route: Routes }),
   model: Schema.Struct({ route: Routes }),
-  message: AppMessage,
+  message: AppMessage
+}).make({
   init: ($) => ({ route: $.props.route }),
   update: (_, message) => ({ route: message.route }),
   subscriptions: (model) => [

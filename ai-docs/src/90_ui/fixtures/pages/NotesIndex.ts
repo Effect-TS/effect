@@ -16,14 +16,15 @@ export const NotesIndexMessage = Schema.TaggedUnion({
 // such as text or files, from landing on its targets.
 const NoteType = "application/x-note"
 
-export const NotesIndexNoDeps = Component.make({
+export const NotesIndexNoDeps = Component.define({
   name: "NotesIndex",
   // The Model holds only what the user did here. The notes live in the
   // `notes` loader's slot, which the runtime keeps beside the Model.
   model: Schema.Struct({ pinned: Schema.Array(Schema.String), over: Schema.Boolean }),
   message: NotesIndexMessage,
   // `ListNotes` takes no args, so this read is the same for every instance.
-  loaders: { notes: { load: ListNotes, args: () => ({}) } },
+  loaders: { notes: { load: ListNotes, args: () => ({}) } }
+}).make({
   init: () => ({ pinned: [], over: false }),
   update: (model, message) =>
     Match.valueTags(message, {

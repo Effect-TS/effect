@@ -553,7 +553,8 @@ are never provided there. The server and a test of the whole app swap the HTTP
 client, not the services.
 
 - **[Building a component with effect/ui](./ai-docs/src/90_ui/10_basics.ts)**:
-  Build a note editor from Schemas and pure functions. It saves through a
+  Build a note editor from Schemas and pure functions, with its update split
+  into slices on a `Component.define` definition. It saves through a
   `Command.Service` and autosaves with a Subscription. This is the browser
   entry module, which mounts it with `BrowserHost`. The editor is in
   `fixtures/notes/components/NoteEditor.ts`.

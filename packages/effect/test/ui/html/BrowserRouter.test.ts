@@ -15,12 +15,13 @@ const SearchRoute = Route.union({
 })
 
 /** A root that holds a route with an optional query. */
-const SearchApp = Component.make({
+const SearchApp = Component.define({
   name: "SearchApp",
   props: Schema.Struct({ route: SearchRoute }),
   model: SearchRoute,
   message: SearchRoute,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => $.props.route,
   update: (_, route) => route,
   subscriptions: (route) => [Router.subscription(SearchRoute, route, (next) => next)],
@@ -42,12 +43,13 @@ const ListMessage = Schema.TaggedUnion({ Typed: { value: Schema.String }, Next: 
 const patched = Command.map(() => ListMessage.make({ _tag: "Patched" }))
 
 /** A page whose search text and page number live in the query only. */
-const ListPage = Component.make({
+const ListPage = Component.define({
   name: "ListPage",
   props: Schema.Struct({ route: ListOnly }),
   model: Schema.Struct({}),
   message: ListMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => ({}),
   update: (model, message, $) =>
     ListMessage.match(message, {
@@ -74,12 +76,13 @@ const ListPage = Component.make({
 })
 
 /** Holds the route, and keys the list page by its path. */
-const ListApp = Component.make({
+const ListApp = Component.define({
   name: "ListApp",
   props: Schema.Struct({ route: ListRoute }),
   model: ListRoute,
   message: ListRoute,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => $.props.route,
   update: (_, route) => route,
   subscriptions: (route) => [Router.subscription(ListRoute, route, (next) => next)],
@@ -353,11 +356,12 @@ describe("BrowserRouter", { concurrent: false }, () => {
     Effect.gen(function*() {
       window.history.replaceState(null, "", "/")
       yield* Layer.build(BrowserRouter.layer({ routes: AppRoute }))
-      const Peek = Component.make({
+      const Peek = Component.define({
         name: "Peek",
         model: Schema.Number,
         message: Schema.Literal("Peek"),
-        elements: Html,
+        elements: Html
+      }).make({
         init: () => 0,
         update: (peeks) => peeks + 1,
         view: (_, h) => h.a.attr("href", "/people/1").onClick("Peek", { preventDefault: true }).children("Person 1")

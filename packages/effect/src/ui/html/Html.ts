@@ -56,11 +56,12 @@
  *
  * const NewTodo = Html.ref("NewTodo", "input")
  *
- * const Form = Component.make({
+ * const Form = Component.define({
  *   name: "Form",
  *   model: Schema.String,
  *   message: Message,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: () => "",
  *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
  *   view: (draft, h) =>
@@ -81,11 +82,12 @@
  *
  * const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Send: {} })
  *
- * const Composer = Component.make({
+ * const Composer = Component.define({
  *   name: "Composer",
  *   model: Schema.String,
  *   message: Message,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: () => "",
  *   update: (draft, message) => (message._tag === "Typed" ? message.value : ""),
  *   view: (draft, h) =>

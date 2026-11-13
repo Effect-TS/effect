@@ -12,7 +12,7 @@ export const NotePageMessage = Schema.TaggedUnion({
   EditorFailed: {}
 })
 
-export const NotePageNoDeps = Component.make({
+export const NotePageNoDeps = Component.define({
   name: "NotePage",
   props: Schema.Struct({ id: Schema.String }),
   // The Model holds no copy of the note. The runtime keeps each loader's
@@ -24,7 +24,8 @@ export const NotePageNoDeps = Component.make({
   // to disable it. The runtime watches the read at those args and writes
   // every change to the slot, which re-renders the page. No message or
   // `update` case is involved.
-  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } },
+  loaders: { note: { load: GetNote, args: (_model, props) => ({ id: props.id }) } }
+}).make({
   init: () => ({ notice: "" }),
   // `update` can read the slots too, as `$.loaded`.
   update: (model, message) =>

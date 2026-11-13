@@ -19,11 +19,12 @@ const Field = Html.ref("Field", "input")
 class Clock extends Context.Service<Clock, { readonly now: Effect.Effect<number> }>()("Clock") {}
 class Logger extends Context.Service<Logger, { readonly log: (line: string) => Effect.Effect<void> }>()("Logger") {}
 
-const Ticker = Component.make({
+const Ticker = Component.define({
   name: "Ticker",
   model: Schema.Number,
   message: Schema.Number,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => 0,
   update: (_, now) => now,
   view: (now, h) => h.time.onMount("tick", () => Clock.use((clock) => clock.now)).children(String(now))
@@ -47,11 +48,12 @@ describe("Html", () => {
 
   it("the module is a vocabulary", () => {
     expect(Html).type.toBeAssignableTo<View.Vocabulary<Html.Elements>>()
-    Component.make({
+    Component.define({
       name: "Tags",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -65,11 +67,12 @@ describe("Html", () => {
   })
 
   it("attributes come before children, in one place", () => {
-    Component.make({
+    Component.define({
       name: "Order",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (draft, h) => {
@@ -103,11 +106,12 @@ describe("Html", () => {
   })
 
   it("errors point at the offending child", () => {
-    Component.make({
+    Component.define({
       name: "Errors",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -119,11 +123,12 @@ describe("Html", () => {
   })
 
   it("events carry the tag's payloads", () => {
-    Component.make({
+    Component.define({
       name: "Events",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -149,11 +154,12 @@ describe("Html", () => {
   })
 
   it("controlled properties exist on the elements that have them", () => {
-    Component.make({
+    Component.define({
       name: "Controlled",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -185,11 +191,12 @@ describe("Html", () => {
 
   it("refs and onMount are typed by tag", () => {
     expect(Field).type.toBe<Renderer.Ref<HTMLInputElement>>()
-    Component.make({
+    Component.define({
       name: "Refs",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -206,11 +213,12 @@ describe("Html", () => {
   })
 
   it("requirements from onMount and from children reach the component", () => {
-    const Mounted = Component.make({
+    const Mounted = Component.define({
       name: "Mounted",
       model: Schema.Null,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_, h) =>
@@ -222,21 +230,23 @@ describe("Html", () => {
           .children(h.child(Ticker, { key: "ticker" }))
     })
     expect(Mounted).type.toBe<Component.Component<"Mounted", {}, null, Msg, never, Logger | Clock, Html.Elements>>()
-    const Shorthand = Component.make({
+    const Shorthand = Component.define({
       name: "Shorthand",
       model: Schema.Null,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_, h) => h.section(h.p("clock"), [h.child(Ticker, { key: "ticker" })])
     })
     expect(Shorthand).type.toBe<Component.Component<"Shorthand", {}, null, Msg, never, Clock, Html.Elements>>()
-    const Bare = Component.make({
+    const Bare = Component.define({
       name: "Bare",
       model: Schema.Null,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_, h) =>
@@ -263,11 +273,12 @@ describe("Html", () => {
   })
 
   it("ref Commands add nothing to a component's requirements", () => {
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.String,
       message: Msg,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => "",
       update: (_model, _, $) => $.run(Html.focus(Field, ({ found }) => Msg.make({ _tag: "Focused", found }))),
       view: (_, h) => h.input.ref(Field)
@@ -298,11 +309,12 @@ describe("HtmlQuery", () => {
 })
 
 describe("BrowserHost", () => {
-  const Counter = Component.make({
+  const Counter = Component.define({
     name: "Counter",
     model: Schema.Number,
     message: Msg,
-    elements: Html,
+    elements: Html
+  }).make({
     init: () => 0,
     update: (count) => count + 1,
     view: (count, h) => h.button.onClick(Msg.make({ _tag: "Mounted" })).children(String(count))
@@ -320,12 +332,13 @@ describe("BrowserHost", () => {
 
   it("mount and renderToHtml with Router.props need the Router", () => {
     const AppRoute = Route.union({ Home: Route.make("/"), NotFound: Route.make("/*") })
-    const App = Component.make({
+    const App = Component.define({
       name: "App",
       props: Schema.Struct({ route: AppRoute }),
       model: AppRoute,
       message: Schema.Never,
-      elements: Html,
+      elements: Html
+    }).make({
       init: ($) => $.props.route,
       update: (route) => route,
       view: (route, h) => h.h1(route._tag)
@@ -346,11 +359,12 @@ describe("BrowserHost", () => {
 
   it("mount rejects a root of another vocabulary", () => {
     const Native: View.Vocabulary<Native> = { name: "native", tags: {} }
-    const App = Component.make({
+    const App = Component.define({
       name: "App",
       model: Schema.Number,
       message: Msg,
-      elements: Native,
+      elements: Native
+    }).make({
       init: () => 0,
       update: (count) => count,
       view: (_, h) => h.view

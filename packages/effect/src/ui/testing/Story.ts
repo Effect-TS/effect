@@ -30,11 +30,12 @@
  *   Effect.succeed(() => Effect.succeed(Message.make({ _tag: "Saved" })))
  * ) {}
  *
- * const TodoItem = Component.make({
+ * const TodoItem = Component.define({
  *   name: "TodoItem",
  *   props: Schema.Struct({ id: Schema.String }),
  *   model: Schema.Struct({ saved: Schema.Boolean }),
- *   message: Message,
+ *   message: Message
+ * }).make({
  *   init: () => ({ saved: false }),
  *   update: (model, message, $) =>
  *     Message.match(message, {
@@ -271,10 +272,11 @@ type AnyComponent =
  * import { Story } from "effect/ui/testing"
  *
  * const Message = Schema.TaggedUnion({ Increment: {} })
- * const Counter = Component.make({
+ * const Counter = Component.define({
  *   name: "Counter",
  *   model: Schema.Struct({ count: Schema.Number }),
- *   message: Message,
+ *   message: Message
+ * }).make({
  *   init: () => ({ count: 0 }),
  *   update: (model) => ({ count: model.count + 1 }),
  *   view: (model, h) => h.el("button").on("click", Message.make({ _tag: "Increment" })).children(`+ ${model.count}`)
@@ -1621,10 +1623,11 @@ export const layerFailure = <C extends Component.Any>(
  * import { Component, Head } from "effect/ui"
  * import { Story } from "effect/ui/testing"
  *
- * const Person = Component.make({
+ * const Person = Component.define({
  *   name: "Person",
  *   model: Schema.Struct({ name: Schema.String }),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: () => ({ name: "Ada" }),
  *   update: (model) => model,
  *   head: (model) => [Head.title(model.name)],

@@ -21,10 +21,11 @@
  *
  * const Msg = Schema.TaggedUnion({ Increment: {} })
  *
- * const Counter = Component.make({
+ * const Counter = Component.define({
  *   name: "Counter",
  *   model: Schema.Number,
- *   message: Msg,
+ *   message: Msg
+ * }).make({
  *   init: () => 0,
  *   update: (count) => count + 1,
  *   view: (count, h) => h.el("button").on("click", Msg.make({ _tag: "Increment" })).children(String(count))
@@ -908,12 +909,13 @@ export const stub = <Self, Props, Events>(feature: Feature.Service<Self, Props, 
   const seen: Array<Props> = []
   const listeners = new Set<(events: Events) => void>()
   const Message = Schema.Struct({ events: feature.events })
-  const component = Component.make({
+  const component = Component.define({
     name,
     props: feature.props,
     model: Schema.Number,
     message: Message,
-    events: feature.events,
+    events: feature.events
+  }).make({
     init: () => 0,
     update: (count, message, $) => $.set(count + 1).emit(message.events),
     view: (_, h) => {

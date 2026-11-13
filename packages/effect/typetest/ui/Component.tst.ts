@@ -47,10 +47,11 @@ describe("Component", () => {
     })
 
     it("covers every update branch", () => {
-      const C = Component.make({
+      const C = Component.define({
         name: "C",
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: () => ({}),
         update: (model, message, $) =>
           Message.match(message, {
@@ -64,11 +65,12 @@ describe("Component", () => {
     })
 
     it("covers every init branch", () => {
-      const C = Component.make({
+      const C = Component.define({
         name: "C",
         props: Schema.Struct({ a: Schema.Boolean }),
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: ($) => $.props.a ? $.set({}).run(CA.make()) : $.set({}).run(CB.make()),
         update: (model) => model,
         view: (_, h) => h.el("div")
@@ -77,26 +79,29 @@ describe("Component", () => {
     })
 
     it("covers every view branch", () => {
-      const ChildA = Component.make({
+      const ChildA = Component.define({
         name: "ChildA",
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: () => ({}),
         update: (model, _, $) => $.set(model).run(CA.make()),
         view: (_, h) => h.el("div")
       })
-      const ChildB = Component.make({
+      const ChildB = Component.define({
         name: "ChildB",
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: () => ({}),
         update: (model, _, $) => $.set(model).run(CB.make()),
         view: (_, h) => h.el("div")
       })
-      const Parent = Component.make({
+      const Parent = Component.define({
         name: "Parent",
         model: Schema.Struct({ a: Schema.Boolean }),
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => ({ a: true }),
         update: (model) => model,
         view: (model, h) => model.a ? h.child(ChildA, { key: "a" }) : h.child(ChildB, { key: "b" })
@@ -111,10 +116,11 @@ describe("Component", () => {
         () => Effect.map(Scope.Scope, () => Message.make({ _tag: "Done" }))
       )
       expect(UsesScope()).type.toBe<Command.Issued<typeof Message.Type, never, typeof Message.Type, "Effect">>()
-      const C = Component.make({
+      const C = Component.define({
         name: "C",
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: ($) => $.set({}).run(UsesScope()),
         update: (model) => model,
         view: (_, h) => h.el("div")
@@ -215,10 +221,11 @@ describe("Component", () => {
     })
 
     it("surfaces only the feature service in the parent", () => {
-      const Parent = Component.make({
+      const Parent = Component.define({
         name: "Parent",
         model: Schema.Struct({}),
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => ({}),
         update: (model) => model,
         view: (_, h) =>

@@ -59,10 +59,11 @@ describe("Story", () => {
   })
 
   it("a component with no messages is a story, with its types kept", () => {
-    const Static = Component.make({
+    const Static = Component.define({
       name: "Static",
       model: Schema.Number,
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => 0,
       update: (model) => model,
       view: (model, h) => h.el("p", String(model))

@@ -39,7 +39,7 @@ const makeApp = () => {
   ) {}
 
   const ChatMessage = Schema.TaggedUnion({ Changed: {}, More: {}, Refresh: {} })
-  const Chat = Component.make({
+  const Chat = Component.define({
     name: "Chat",
     props: Schema.Struct({ room: Schema.String }),
     model: Schema.Struct({}),
@@ -51,7 +51,8 @@ const makeApp = () => {
         args: (_model, props) => props.room === "" ? undefined : { room: props.room },
         onChange: () => ChatMessage.make({ _tag: "Changed" })
       }
-    },
+    }
+  }).make({
     init: () => ({}),
     update: (model, message, $) =>
       ChatMessage.match(message, {
@@ -159,12 +160,13 @@ describe("Loaded lists", () => {
       )
     ) {}
     const CodesMessage = Schema.TaggedUnion({ More: {}, Look: {} })
-    const Codes = Component.make({
+    const Codes = Component.define({
       name: "Codes",
       model: Schema.String,
       message: CodesMessage,
       elements: Html,
-      loaders: { codes: { load: ListCodes, args: () => ({}) } },
+      loaders: { codes: { load: ListCodes, args: () => ({}) } }
+    }).make({
       init: () => "",
       update: (model, message, $) =>
         CodesMessage.match(message, {
@@ -387,12 +389,13 @@ describe("Loaded lists", () => {
     const app = makeApp()
     const ShellRoute = Route.union({ Home: Route.make("/"), Chat: Route.make("/chat") })
     const ShellMessage = Schema.TaggedUnion({ ChangedRoute: { route: ShellRoute }, Go: {}, Navigated: {} })
-    const Shell = Component.make({
+    const Shell = Component.define({
       name: "Shell",
       props: Schema.Struct({ route: ShellRoute }),
       model: ShellRoute,
       message: ShellMessage,
-      elements: Html,
+      elements: Html
+    }).make({
       init: ($) => $.props.route,
       update: (model, message, $) =>
         ShellMessage.match(message, {

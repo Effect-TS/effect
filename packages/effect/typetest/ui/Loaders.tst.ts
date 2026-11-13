@@ -26,7 +26,7 @@ const Message = Schema.TaggedUnion({
   Bump: {}
 })
 
-const Card = Component.make({
+const Card = Component.define({
   name: "Card",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({ n: Schema.Number }),
@@ -53,7 +53,8 @@ const Card = Component.make({
         return Message.make({ _tag: "TeamChanged", state: result._tag })
       }
     }
-  },
+  }
+}).make({
   init: () => ({ n: 0 }),
   update: (model, message, $) => {
     expect($.loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
@@ -123,11 +124,12 @@ describe("Component loaders", () => {
   })
 
   it("add their reads to the requirements, never what the fetchers use", () => {
-    const Named = Component.make({
+    const Named = Component.define({
       name: "Named",
       model: Schema.Struct({}),
       message: Schema.Never,
-      loaders: { name: { load: GetName, args: () => ({ id: "1" }) } },
+      loaders: { name: { load: GetName, args: () => ({ id: "1" }) } }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => h.text(AsyncResult.isSuccess(h.loaded.name) ? h.loaded.name.value : "")
@@ -139,7 +141,7 @@ describe("Component loaders", () => {
   })
 
   it("a loader's loaded doesn't have its own name", () => {
-    Component.make({
+    Component.define({
       name: "Self",
       model: Schema.Struct({}),
       message: Message,
@@ -153,7 +155,8 @@ describe("Component loaders", () => {
           load: GetTeam,
           args: (_model, _props, loaded) => AsyncResult.isSuccess(loaded.user) ? { id: "1" } : undefined
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -161,7 +164,7 @@ describe("Component loaders", () => {
   })
 
   it("type args and onChange by the read", () => {
-    Component.make({
+    Component.define({
       name: "Typed",
       props: Schema.Struct({ id: Schema.String }),
       model: Schema.Struct({}),
@@ -175,19 +178,21 @@ describe("Component loaders", () => {
           // @ts-expect-error not assignable
           onChange: (_result: AsyncResult.AsyncResult<string, never>) => Message.make({ _tag: "Bump" })
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
     })
-    Component.make({
+    Component.define({
       name: "OnChangeMessage",
       model: Schema.Struct({}),
       message: Message,
       loaders: {
         // @ts-expect-error not assignable
         user: { load: GetUser, args: () => ({ id: "1" }), onChange: () => "not a message" }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -197,7 +202,7 @@ describe("Component loaders", () => {
 
 describe("debounce", () => {
   it("is an entry option, and types the loader as a plain one, single or keyed", () => {
-    Component.make({
+    Component.define({
       name: "Debounced",
       props: Schema.Struct({ id: Schema.String }),
       model: Schema.Struct({}),
@@ -214,7 +219,8 @@ describe("debounce", () => {
         },
         // @ts-expect-error Type 'number' is not assignable to type 'string'
         team: { loadMany: GetTeam, debounce: "300 millis", args: () => [{ id: 1 }] }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -222,14 +228,15 @@ describe("debounce", () => {
   })
 
   it("takes a Duration input", () => {
-    Component.make({
+    Component.define({
       name: "BadDebounce",
       model: Schema.Struct({}),
       message: Message,
       loaders: {
         // @ts-expect-error not assignable
         user: { load: GetUser, debounce: "soon", args: () => ({ id: "1" }) }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -300,7 +307,7 @@ const ListMessage = Schema.TaggedUnion({
   Show: { ids: Schema.Array(Schema.String) }
 })
 
-const List = Component.make({
+const List = Component.define({
   name: "List",
   model: Schema.Struct({ ids: Schema.Array(Schema.String), changed: Schema.Number }),
   message: ListMessage,
@@ -315,7 +322,8 @@ const List = Component.make({
         return ListMessage.make({ _tag: "UsersChanged", changed: changes.length })
       }
     }
-  },
+  }
+}).make({
   init: () => ({ ids: [], changed: 0 }),
   update: (model, message, $) => {
     expect($.loaded.users).type.toBe<Component.KeyedLoaded<typeof GetUser>>()
@@ -358,7 +366,7 @@ describe("Keyed loaders", () => {
   })
 
   it("a keyed loader's loaded doesn't have its own name", () => {
-    Component.make({
+    Component.define({
       name: "SelfKeyed",
       model: Schema.Struct({}),
       message: Message,
@@ -375,7 +383,8 @@ describe("Keyed loaders", () => {
             return loaded.users.length > 0 ? { id: "1" } : undefined
           }
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -384,20 +393,13 @@ describe("Keyed loaders", () => {
 
   it("take an array of args from the loader, and an onChange of entries and changes", () => {
     const model = Schema.Struct({ ids: Schema.Array(Schema.String) })
-    const base = {
-      name: "Keyed",
-      model,
-      message: ListMessage,
-      init: () => ({ ids: [] }),
-      update: (m: typeof model.Type) => m,
-      view: () => null as never
-    }
-    Component.make({
+    const base = { name: "Keyed", model, message: ListMessage }
+    Component.define({
       ...base,
       // @ts-expect-error is missing the following properties from type 'readonly { readonly id: string; }[]'
       loaders: { users: { loadMany: GetUser, args: (m) => ({ id: m.ids[0] }) } }
     })
-    Component.make({
+    Component.define({
       ...base,
       loaders: {
         users: {
@@ -411,23 +413,25 @@ describe("Keyed loaders", () => {
   })
 
   it("keep a single and a keyed loader apart", () => {
-    Component.make({
+    Component.define({
       name: "SingleArray",
       model: Schema.Struct({}),
       message: Message,
       loaders: {
         // @ts-expect-error Property 'id' is missing
         user: { load: GetUser, args: () => [{ id: "1" }] }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
     })
-    const Keyed = Component.make({
+    const Keyed = Component.define({
       name: "Counts",
       model: Schema.Struct({}),
       message: Message,
-      loaders: { counts: { loadMany: GetCount, args: () => ["a", "b"] } },
+      loaders: { counts: { loadMany: GetCount, args: () => ["a", "b"] } }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: () => null as never
@@ -472,7 +476,7 @@ class ListMessages extends Loader.ListService<ListMessages>()("typetest/ListMess
 
 const ChatMessage = Schema.TaggedUnion({ Changed: { count: Schema.Number }, More: {}, Refresh: {} })
 
-const Chat = Component.make({
+const Chat = Component.define({
   name: "Chat",
   props: Schema.Struct({ room: Schema.String }),
   model: Schema.Struct({}),
@@ -493,7 +497,8 @@ const Chat = Component.make({
       }
     },
     user: { load: GetUser, args: () => ({ id: "1" }) }
-  },
+  }
+}).make({
   init: () => ({}),
   update: (model, message, $) => {
     expect($.loaded.messages).type.toBe<
@@ -528,7 +533,7 @@ describe("List loaders", () => {
   })
 
   it("take loadMore and reset for a list loader only, and not in init", () => {
-    Component.make({
+    Component.define({
       name: "Chat",
       props: Schema.Struct({ room: Schema.String }),
       model: Schema.Struct({}),
@@ -537,7 +542,8 @@ describe("List loaders", () => {
       loaders: {
         messages: { load: ListMessages, args: (_model, props) => ({ room: props.room }) },
         user: { load: GetUser, args: () => ({ id: "1" }) }
-      },
+      }
+    }).make({
       // @ts-expect-error Property 'loadMore' does not exist
       init: ($) => $.set({}).loadMore("messages"),
       update: (model, message, $) =>
@@ -551,11 +557,12 @@ describe("List loaders", () => {
         }),
       view: (_model, h) => h.p("")
     })
-    Component.make({
+    Component.define({
       name: "Reset",
       model: Schema.Struct({}),
       message: ChatMessage,
-      loaders: { messages: { load: ListMessages, args: () => ({ room: "r" }) } },
+      loaders: { messages: { load: ListMessages, args: () => ({ room: "r" }) } }
+    }).make({
       init: () => ({}),
       // @ts-expect-error Argument of type '"missing"' is not assignable to parameter of type '"messages"'
       update: (_model, _message, $) => $.reset("missing"),
@@ -564,26 +571,28 @@ describe("List loaders", () => {
   })
 
   it("keep a list read under load, and one of load and loadMany", () => {
-    Component.make({
+    Component.define({
       name: "ListMany",
       model: Schema.Struct({}),
       message: ChatMessage,
       loaders: {
         // @ts-expect-error a list read takes load, not loadMany
         messages: { loadMany: ListMessages, args: () => [{ room: "r" }] }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => h.text("")
     })
-    Component.make({
+    Component.define({
       name: "Both",
       model: Schema.Struct({}),
       message: ChatMessage,
       loaders: {
         // @ts-expect-error an entry takes one of load and loadMany
         user: { load: GetUser, loadMany: GetUser, args: () => [{ id: "1" }] }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => h.text("")

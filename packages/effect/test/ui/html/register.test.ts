@@ -14,10 +14,11 @@ describe("effect/ui/html/register", () => {
       yield* Effect.promise(() => import("effect/ui/html/register"))
       assert.strictEqual(View.registeredElements(), Html)
 
-      const Greeting = Component.make({
+      const Greeting = Component.define({
         name: "Greeting",
         model: Schema.Struct({}),
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => ({}),
         update: (model) => model,
         view: (_, h) => h.p("Hello")

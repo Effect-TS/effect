@@ -64,10 +64,11 @@ describe("Story", () => {
 
   describe("events", () => {
     const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Pressed: {} })
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.Struct({ value: Schema.String, presses: Schema.Number }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ value: "", presses: 0 }),
       update: (model, message) =>
         Message.match(message, {
@@ -118,10 +119,11 @@ describe("Story", () => {
 
     it("defaultPrevented reports a cancelled default until the next step that makes a record", () => {
       const Sent = Schema.TaggedUnion({ Send: {}, Submitted: {} })
-      const Composer = Component.make({
+      const Composer = Component.define({
         name: "Composer",
         model: Schema.Number,
-        message: Sent,
+        message: Sent
+      }).make({
         init: () => 0,
         update: (sent) => sent + 1,
         view: (_sent, h) =>
@@ -222,10 +224,11 @@ describe("Story", () => {
       Effect.succeed((): Effect.Effect<void, SaveFailed> => Effect.void)
     ) {}
     const Msg = Schema.TaggedUnion({ Save: {}, Saved: {}, Failed: { reason: Schema.String }, Stop: {} })
-    const Editor = Component.make({
+    const Editor = Component.define({
       name: "Editor",
       model: Schema.String,
-      message: Msg,
+      message: Msg
+    }).make({
       init: () => "idle",
       update: (_, message, $) =>
         Msg.match(message, {
@@ -371,10 +374,11 @@ describe("Story", () => {
       { args: { name: Schema.String } },
       ({ name }) => Effect.succeed(`https://cdn/${name}`)
     )
-    const Avatar = Component.make({
+    const Avatar = Component.define({
       name: "Avatar",
       model: Schema.Struct({ url: Schema.String }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ url: "" }),
       update: (_model, message, $) =>
         Message.match(message, {
@@ -408,10 +412,11 @@ describe("Story", () => {
       Go: {},
       Navigated: { outcome: Schema.Literals(["navigated", "blocked"]) }
     })
-    const Nav = Component.make({
+    const Nav = Component.define({
       name: "Nav",
       model: Schema.Struct({ outcome: Schema.String }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ outcome: "" }),
       update: (_model, message, $) =>
         Message.match(message, {
@@ -440,11 +445,12 @@ describe("Story", () => {
         Typed: { value: Schema.String },
         Patched: { outcome: Schema.Literals(["navigated", "blocked", "stale"]) }
       })
-      const Box = Component.make({
+      const Box = Component.define({
         name: "Box",
         props: Schema.Struct({ route: Routes }),
         model: Schema.Struct({ outcome: Schema.String }),
-        message: BoxMessage,
+        message: BoxMessage
+      }).make({
         init: () => ({ outcome: "" }),
         update: (_model, message, $) =>
           BoxMessage.match(message, {
@@ -469,10 +475,11 @@ describe("Story", () => {
 
   describe("view defects", () => {
     const Message = Schema.TaggedUnion({ Bump: {} })
-    const Broken = Component.make({
+    const Broken = Component.define({
       name: "Broken",
       model: Schema.Struct({ n: Schema.Number }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ n: 0 }),
       update: (model) => ({ n: model.n + 1 }),
       view: (model, h) => {
@@ -488,10 +495,11 @@ describe("Story", () => {
 
     it("fail initialisation when init's Model can't be rendered", () => {
       assert.throws(() => Story.make(Broken, {}, (s) => s.given({ n: 5 })), /view broke at 5/)
-      const AlwaysBroken = Component.make({
+      const AlwaysBroken = Component.define({
         name: "AlwaysBroken",
         model: Schema.Struct({}),
-        message: Message,
+        message: Message
+      }).make({
         init: () => ({}),
         update: (model) => model,
         view: () => {
@@ -573,7 +581,7 @@ describe("Story", () => {
 
     const TeamMessage = Schema.TaggedUnion({ UserChanged: {}, Bump: {} })
     const renders: Array<string> = []
-    const Team = Component.make({
+    const Team = Component.define({
       name: "Team",
       props: Schema.Struct({ id: Schema.String }),
       model: Schema.Struct({ changes: Schema.Number }),
@@ -593,7 +601,8 @@ describe("Story", () => {
         },
         others: { loadMany: users.GetUser, args: () => [{ id: "8" }, { id: "9" }] },
         list: { load: users.ListUsers, args: () => ({ page: 0 }) }
-      },
+      }
+    }).make({
       init: () => ({ changes: 0 }),
       update: (model) => ({ changes: model.changes + 1 }),
       view: (model, h) => {
@@ -664,7 +673,7 @@ describe("Story", () => {
 
     it("given prunes a keyed loader with no onChange message, and a later step's prune still sends it", () => {
       const Message = Schema.TaggedUnion({ FriendsChanged: {} })
-      const Pals = Component.make({
+      const Pals = Component.define({
         name: "Pals",
         props: Schema.Struct({ id: Schema.String }),
         model: Schema.Struct({ changes: Schema.Number }),
@@ -678,7 +687,8 @@ describe("Story", () => {
               AsyncResult.isSuccess(loaded.user) ? [{ id: loaded.user.value.email }] : [],
             onChange: () => Message.make({ _tag: "FriendsChanged" })
           }
-        },
+        }
+      }).make({
         init: () => ({ changes: 0 }),
         update: (model) => ({ changes: model.changes + 1 }),
         view: (model, h) =>
@@ -706,7 +716,7 @@ describe("Story", () => {
 
     it("given keeps a keyed result its loader returns again once the given results settle", () => {
       const Message = Schema.TaggedUnion({ FriendsChanged: {} })
-      const Circle = Component.make({
+      const Circle = Component.define({
         name: "Circle",
         props: Schema.Struct({}),
         model: Schema.Struct({ id: Schema.String, changes: Schema.Number }),
@@ -721,7 +731,8 @@ describe("Story", () => {
             onChange: () => Message.make({ _tag: "FriendsChanged" })
           },
           user: { load: users.GetUser, args: (model) => ({ id: model.id }) }
-        },
+        }
+      }).make({
         init: () => ({ id: "1", changes: 0 }),
         update: (model) => ({ ...model, changes: model.changes + 1 }),
         view: (model, h) =>

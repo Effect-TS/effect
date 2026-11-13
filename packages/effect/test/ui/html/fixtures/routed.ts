@@ -17,11 +17,12 @@ export const AppRoute = Route.union({
 })
 export type AppRoute = typeof AppRoute.Type
 
-export const Home = Component.make({
+export const Home = Component.define({
   name: "Home",
   model: Schema.Struct({}),
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => ({}),
   update: (model) => model,
   head: () => [Head.title("Home"), Head.meta({ name: "description", content: "Home page" })],
@@ -43,13 +44,14 @@ export class GetBio extends Loader.Service<GetBio>()("GetBio", {
   staleTime: "30 seconds"
 }, Effect.map(People, (people) => ({ id }) => people.bio(id))) {}
 
-export const Person = Component.make({
+export const Person = Component.define({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
   model: Schema.Struct({ id: Schema.Number }),
   message: Schema.Never,
   elements: Html,
-  loaders: { bio: { load: GetBio, args: (_model, props) => ({ id: props.id }) } },
+  loaders: { bio: { load: GetBio, args: (_model, props) => ({ id: props.id }) } }
+}).make({
   init: ($) => ({ id: $.props.id }),
   update: (model) => model,
   head: (model) => [
@@ -67,11 +69,12 @@ export const Person = Component.make({
 export class SlowData extends Context.Service<SlowData, string>()("test/SlowData") {}
 
 /** A page whose provided Layer takes a second of the TestClock to build. */
-export const Slow = Component.make({
+export const Slow = Component.define({
   name: "Slow",
   model: Schema.Struct({}),
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => ({}),
   update: (model) => model,
   head: () => [Head.title("Slow")],
@@ -80,12 +83,13 @@ export const Slow = Component.make({
 
 export const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute }, Block: {}, Filter: {} })
 
-export const App = Component.make({
+export const App = Component.define({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute, blocked: Schema.Boolean }),
   message: Message,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => ({ route: $.props.route, blocked: false }),
   update: (model, message) =>
     Message.match(message, {
