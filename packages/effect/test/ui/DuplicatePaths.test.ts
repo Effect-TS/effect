@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Schema } from "effect"
+import { AsyncResult } from "effect/reactivity"
 import { Component, type MessageLog } from "effect/ui"
 import { Story, TestHost } from "effect/ui/testing"
 
@@ -123,5 +124,91 @@ describe("duplicate child paths", () => {
       () => Story.start(makeList("siblings"), { keys: ["b", "b"] }),
       /\/List renders two children at Row\[b\]/
     )
+  })
+
+  describe("in a slot's fallback", () => {
+    const Broken = Component.define({ name: "Broken", model: Schema.Null, message: Schema.Never }).make({
+      init: () => {
+        throw new Error("broken")
+      },
+      update: (model) => model,
+      view: (_, h) => h.text("")
+    })
+
+    /** A `Row` per sibling key, then a `Broken` slot whose fallback shows a `Row` per fallback key, each under its own element. */
+    const Parent = Component.define({
+      name: "Parent",
+      props: Schema.Struct({ siblings: Schema.Array(Schema.String), fallbacks: Schema.Array(Schema.String) }),
+      model: Schema.Null,
+      message: Schema.Never
+    }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) =>
+        h.el(
+          "div",
+          h.props.siblings.map((key) => h.child(Row, { key, props: { label: key } })),
+          h.child(Broken, {
+            key: "b",
+            fallback: () =>
+              h.el("div", h.props.fallbacks.map((key) => h.el("p", h.child(Row, { key, props: { label: key } }))))
+          })
+        )
+    })
+
+    const Root = Component.define({
+      name: "Root",
+      props: Schema.Struct({ siblings: Schema.Array(Schema.String), fallbacks: Schema.Array(Schema.String) }),
+      model: Schema.Null,
+      message: Schema.Never
+    }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) => h.child(Parent, { key: "p", props: h.props, fallback: () => h.text("parent-failed") })
+    })
+
+    const cases = [
+      { name: "two children at one path", siblings: [], fallbacks: ["a", "a"], at: "Row[a]" },
+      { name: "a child at a sibling slot's path", siblings: ["a"], fallbacks: ["a"], at: "Row[a]" }
+    ]
+    for (const { at, fallbacks, name, siblings } of cases) {
+      it.effect(`fail the parent when the fallback renders ${name}`, () =>
+        provideHost(Effect.gen(function*() {
+          const root = yield* TestHost.mount(Root, { siblings, fallbacks })
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "parent-failed")
+          const failed = root.log().filter((entry): entry is MessageLog.Failed =>
+            entry._tag === "Failed" && entry.path === "/Root/Parent[p]"
+          )
+          assert.lengthOf(failed, 1)
+          assert.strictEqual(failed[0].source, "fallback")
+          assert.include(
+            Cause.pretty(failed[0].cause),
+            `/Root/Parent[p]: the fallback of Broken[b] renders a second child at ${at}`
+          )
+        })))
+    }
+
+    it.effect("mount the fallback's children when their paths are free", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Root, { siblings: ["a"], fallbacks: ["b", "c"] })
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "abc")
+      })))
+
+    it("fail Story.fallback the same way", () => {
+      const view = Story.start(Parent, { siblings: ["a"], fallbacks: ["a"] }).current.view()
+      assert.throws(
+        () => Story.fallback(view, "b", AsyncResult.failure(Cause.fail("broken"))),
+        /Story\.fallback: the fallback of Broken\[b\] renders a second child at Row\[a\]/
+      )
+      assert.isDefined(
+        Story.fallback(
+          Story.start(Parent, { siblings: ["a"], fallbacks: ["b"] }).current.view(),
+          "b",
+          AsyncResult.failure(Cause.fail("broken"))
+        )
+      )
+    })
   })
 })

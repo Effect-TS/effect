@@ -70,7 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
-import { checkChildPaths } from "../internal/paths.ts"
+import { checkChildPaths, checkFallbackPaths } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -1612,6 +1612,9 @@ const findChild = <Msg>(
  * What the slot with `key` shows for `result`: its `fallback` evaluated with an
  * `AsyncResult.Initial` or `AsyncResult.Failure`, or `undefined` without one.
  * A ref finds the slot rendered with it.
+ * Throws, as the runtime fails the parent, if the fallback renders two
+ * children at one path, or a child at the path or ref key of another slot of
+ * `view`.
  *
  * @stability experimental
  * @category queries
@@ -1622,8 +1625,12 @@ export const fallback = <Msg>(
   key: string | Component.Ref<any>,
   result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 ): View.Node<Msg, any> | undefined => {
-  const fallback = findChild(view, key, "fallback").fallback
-  return fallback === undefined ? undefined : View.toNode(fallback(result))
+  const slot = findChild(view, key, "fallback")
+  if (slot.fallback === undefined) return undefined
+  const node = View.toNode(slot.fallback(result))
+  // As the runtime does: the fallback's children share the parent's paths.
+  checkFallbackPaths("Story.fallback", view, slot, node)
+  return node
 }
 
 /**

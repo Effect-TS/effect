@@ -33,7 +33,7 @@ import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as loaders from "./loaders.ts"
-import { checkChildPaths, segment } from "./paths.ts"
+import { checkChildPaths, checkFallbackPaths, segment } from "./paths.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
@@ -233,6 +233,8 @@ export interface Instance {
   onEmit: (events: unknown) => unknown
   onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
   failure: Cause.Cause<unknown> | undefined
+  /** The view as of the last render: a slot's fallback is checked against its other slots' paths. */
+  tree: View.Node<any, any> | undefined
   rendered: Array<Rendered>
   closed: boolean
   /** Hydration: the provided Layer is still building, so the server's nodes wait, inert. */
@@ -1279,6 +1281,7 @@ const setup = (
       onEmit,
       onFailure,
       failure: undefined,
+      tree: undefined,
       rendered: [],
       closed: false,
       waiting: false,
@@ -1551,7 +1554,7 @@ const setup = (
       const tree = guard(inst, "view", () => {
         const tree = component.view(inst.model, inst.props, runningOf(inst), inst.slots)
         checkChildPaths(path, tree)
-        return tree
+        return inst.tree = tree
       })
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
@@ -2882,6 +2885,7 @@ const setup = (
     guard(inst, "view", () => {
       const tree = inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots)
       checkChildPaths(inst.path, tree)
+      inst.tree = tree
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
@@ -2937,7 +2941,7 @@ const setup = (
       return {
         _tag: "Slot",
         v: view,
-        inner: create(inst, View.toNode(view.fallback(unavailable(env))), settled(env)),
+        inner: create(inst, fallbackOf(inst, view, unavailable(env)), settled(env)),
         failure: undefined
       }
     }
@@ -2966,8 +2970,20 @@ const setup = (
     return { _tag: "Child", v: view, inst: child }
   }
 
-  const fallbackFor = (view: View.Child<any, any>, failure: Cause.Cause<unknown>): View.Node<any, any> =>
-    view.fallback !== undefined ? View.toNode(view.fallback(AsyncResult.failure(failure))) : emptyText
+  /** What the slot shows for `result`. Its children are `inst`'s, so their paths are checked against its view's. */
+  const fallbackOf = (
+    inst: Instance,
+    view: View.Child<any, any>,
+    result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
+  ): View.Node<any, any> => {
+    if (view.fallback === undefined) return emptyText
+    const node = View.toNode(view.fallback(result))
+    checkFallbackPaths(inst.path, inst.tree, view, node)
+    return node
+  }
+
+  const fallbackFor = (inst: Instance, view: View.Child<any, any>, failure: Cause.Cause<unknown>) =>
+    fallbackOf(inst, view, AsyncResult.failure(failure))
 
   const failedSlot = (
     inst: Instance,
@@ -2975,7 +2991,7 @@ const setup = (
     failure: Cause.Cause<unknown>,
     env: Env
   ): Rendered => {
-    const shown = guard(inst, "fallback", () => fallbackFor(view, failure)) ?? emptyText
+    const shown = guard(inst, "fallback", () => fallbackFor(inst, view, failure)) ?? emptyText
     return { _tag: "Slot", v: view, inner: create(inst, shown, settled(env)), failure }
   }
 
@@ -3195,7 +3211,7 @@ const setup = (
       case "Slot": {
         const child = view as View.Child<any, any>
         if (rendered.failure !== undefined) {
-          const shown = guard(inst, "fallback", () => fallbackFor(child, rendered.failure!)) ?? emptyText
+          const shown = guard(inst, "fallback", () => fallbackFor(inst, child, rendered.failure!)) ?? emptyText
           return {
             _tag: "Slot",
             v: child,
@@ -3208,7 +3224,7 @@ const setup = (
           destroy(inst, rendered.inner)
           return createChild(inst, child, env)
         }
-        const shown = View.toNode(child.fallback!(unavailable(env)))
+        const shown = fallbackOf(inst, child, unavailable(env))
         return {
           _tag: "Slot",
           v: child,
