@@ -704,6 +704,40 @@ export type HeadlessTypeId = typeof HeadlessTypeId
  * It keeps its own Model, `update`, Commands and Scope. It isn't a
  * `Mountable`, so it can't be a root, a page or a feature.
  *
+ * The `view` closure given to `h.child` is the consumer's code. A child
+ * declared in it, its `onEmit` and `onFailure` messages, and a fallback in
+ * it all belong to the consumer, and a slot in it takes the consumer's refs.
+ * A closure that throws fails the headless child's slot, logged with the
+ * source `content`, and the slot shows its fallback.
+ *
+ * A part applied to an element adds a layer that the headless instance
+ * owns. When the element's event fires, each layer's handler runs and its
+ * message goes to its owner: the deepest headless owner first, and the
+ * consumer last. A layer's `preventDefault: true` cancels the default only
+ * when that layer's handler returned a message. `preventDefault: "always"`
+ * from any layer wins, and two layers setting any other option of one event
+ * fail the render that applies them. Handle keys on the part the user focuses, such as an
+ * input or a trigger, rather than on a container around it.
+ *
+ * A part's ref and mount belong to its owner: `Html.focus` in the headless
+ * `update` reaches its own ref, and the mount runs in a Scope of the
+ * headless instance while the part stays applied to the element.
+ *
+ * Parts need no runtime: `Story.parts` builds them from a Model and props
+ * alone. `p.id` is derived from the instance's path, so ids match on the
+ * server and the client and differ between instances, and outside a mount
+ * they're under the component's own name.
+ *
+ * Lists are data: a part reads its items from props, and takes an item as an
+ * argument where the consumer applies it. Richer row content stays in the
+ * consumer's closure, looked up by id.
+ *
+ * A headless child renders again whenever its consumer does, since the
+ * closure is part of the consumer's view, and its own `update` renders only
+ * the closure. When the consumer renders often, wrap the headless child in a
+ * small normal component of its own. `Router.prefetch` doesn't walk into
+ * closures, so it never prefetches the reads of children declared there.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
