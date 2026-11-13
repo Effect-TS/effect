@@ -465,10 +465,10 @@ export const makeEncodedStorage: (options?: {
     sqlite: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
   })
-  // Writes to a request's replies lock its row first, in deleteProcessed's
-  // order, so they cannot deadlock. An empty result means it was deleted.
-  const lockRequest = (requestId: string) =>
-    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
+  // Lock the request before changing its replies, following deleteProcessed's lock order.
+  const lockRequest = (requestId: string, expectedReplyId?: string) =>
+    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId}
+      ${expectedReplyId === undefined ? sql.literal("") : sql`AND last_reply_id = ${expectedReplyId}`} ${forUpdate}`
   // mssql can scan the clustered index on small tables and deadlock on other
   // requests' rows, so these statements force the request_id indexes
   const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
@@ -787,7 +787,11 @@ export const makeEncodedStorage: (options?: {
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
         const expectedReplyId = options?.expectedReplyId
-        yield* lockRequest(String(requestId))
+        const current = yield* lockRequest(
+          String(requestId),
+          expectedReplyId === undefined ? undefined : String(expectedReplyId)
+        )
+        if (expectedReplyId !== undefined && current.length === 0) return
         if (expectedReplyId === undefined) {
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
@@ -800,9 +804,10 @@ export const makeEncodedStorage: (options?: {
         }
         const id = String(requestId)
         const expected = String(expectedReplyId)
-        // Check at the storage boundary, not at the earlier workflow read.
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
-          AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0`
+        // Interrupts received after the reply have no last_reply_id and must survive the reset.
+        yield* sql`DELETE FROM ${messagesTableSql}
+          WHERE request_id = ${id} AND kind = ${messageKindInterrupt} AND last_reply_id = ${expected}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
           WHERE request_id = ${id} AND last_reply_id = ${expected}`
       },

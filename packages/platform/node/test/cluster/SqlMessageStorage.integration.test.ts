@@ -631,17 +631,54 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
-      it.effect("clearReplies requeues when the expected reply is current", () =>
+      it.effect("clearReplies removes a consumed interrupt but preserves an interrupt after the expected reply", () =>
         Effect.gen(function*() {
           yield* truncate
+          const sql = yield* SqlClient.SqlClient
           const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
           const request = yield* makeRequest()
-          const reply = yield* makeReply(request)
+          const unrelated = yield* makeRequest({ entityId: "unrelated" })
+          const unrelatedReply = yield* makeReply(unrelated)
+          yield* storage.saveRequest(unrelated)
+          yield* storage.saveReply(unrelatedReply)
+          const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE request_id = ${
+            String(unrelated.envelope.requestId)
+          }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
+          const interrupt = () =>
+            Message.OutgoingEnvelope.interrupt({
+              id: snowflake.nextUnsafe(),
+              requestId: request.envelope.requestId,
+              address: request.envelope.address
+            })
+          const consumed = interrupt()
           yield* storage.saveRequest(request)
+          yield* storage.saveEnvelope(consumed)
+          const reply = yield* makeReply(request)
           yield* storage.saveReply(reply)
+          const pending = interrupt()
+          yield* storage.saveEnvelope(pending)
+
           yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
-          expect(yield* storage.repliesFor([request])).toHaveLength(0)
-          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+
+          assert.deepStrictEqual(yield* storage.repliesFor([request]), [])
+          const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+          assert.deepStrictEqual(messages.map(({ envelope }) => envelope._tag), ["Request", "Interrupt"])
+          assert.strictEqual(messages[0].envelope.requestId, request.envelope.requestId)
+          const retained = messages[1].envelope
+          assert(retained._tag === "Interrupt")
+          assert.strictEqual(retained.id, pending.envelope.id)
+          assert.deepStrictEqual(
+            yield* sql`SELECT 1 FROM cluster_messages WHERE id = ${String(consumed.envelope.id)}`,
+            []
+          )
+          assert.deepStrictEqual(yield* storage.repliesFor([unrelated]), [unrelatedReply.reply])
+          assert.deepStrictEqual(
+            yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE request_id = ${
+              String(unrelated.envelope.requestId)
+            }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true)),
+            before
+          )
         }))
 
       it.effect("clearReplies with a stale expected reply preserves a newer completion and processed state", () =>
@@ -655,18 +692,24 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(request)
           yield* storage.saveReply(oldReply)
           yield* storage.saveReply(completed)
-          const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
+          const snowflake = yield* Snowflake.Generator
+          yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
+            id: snowflake.nextUnsafe(),
+            requestId: request.envelope.requestId,
+            address: request.envelope.address
+          }))
+          const before = yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE request_id = ${
             String(request.envelope.requestId)
-          }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
+          } ORDER BY rowid`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
           yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
           expect((yield* storage.repliesFor([request])).map((r) => r.id)).toEqual([
             oldReply.reply.id,
             completed.reply.id
           ])
           expect(
-            yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE id = ${
+            yield* sql`SELECT processed, last_reply_id FROM cluster_messages WHERE request_id = ${
               String(request.envelope.requestId)
-            }`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
+            } ORDER BY rowid`.pipe(Effect.provideService(SqlClient.SafeIntegers, true))
           ).toEqual(before)
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(0)
           yield* truncate
