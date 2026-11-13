@@ -58,4 +58,29 @@ describe("HttpApi", () => {
       expect(Prefixed.groups.admins.endpoints.find).type.toBe<HttpApiEndpoint.AddPrefix<typeof FindAdmin, "/v1">>()
     })
   })
+
+  it("Groups / GroupsWithIdentifier", () => {
+    const User = Schema.Struct({ id: Schema.String })
+    const Users = HttpApiGroup.make("users").add(
+      HttpApiEndpoint.get("find", "/users/:id", {
+        params: { id: Schema.String },
+        success: User
+      })
+    )
+    const Admins = HttpApiGroup.make("admins").add(
+      HttpApiEndpoint.get("find", "/admins", { success: Schema.Array(User) })
+    )
+    const Api = HttpApi.make("api").add(Users, Admins)
+
+    expect<HttpApi.Groups<typeof Api>>().type.toBe<typeof Users | typeof Admins>()
+    expect<HttpApi.Groups<HttpApi.HttpApi<"empty">>>().type.toBe<never>()
+    expect<HttpApi.GroupsWithIdentifier<typeof Api, "users">>().type.toBe<typeof Users>()
+    expect<HttpApi.GroupsWithIdentifier<typeof Api, "missing">>().type.toBe<never>()
+    expect<
+      HttpApiEndpoint.SuccessWithIdentifier<
+        HttpApiGroup.Endpoints<HttpApi.GroupsWithIdentifier<typeof Api, "admins">>,
+        "find"
+      >
+    >().type.toBe<ReadonlyArray<{ readonly id: string }>>()
+  })
 })

@@ -139,6 +139,27 @@ export interface Constraint {
  */
 export interface Top extends HttpApi<string, HttpApiGroup.Top> {}
 
+/**
+ * Extracts the group union contained in an `HttpApi`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type Groups<Api> = Api extends HttpApi<infer _Id, infer _Groups> ? _Groups : never
+
+/**
+ * Selects the group with the specified identifier from an `HttpApi`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.1.3
+ */
+export type GroupsWithIdentifier<Api, Identifier extends string> = HttpApiGroup.WithIdentifier<
+  Groups<Api>,
+  Identifier
+>
+
 const Proto = {
   [TypeId]: TypeId,
   pipe() {
