@@ -231,6 +231,7 @@ export const make = Effect.gen(function*() {
           "Array",
           "Object",
           "String",
+          "TypeError",
           "JSON",
           "Uint8Array",
           "ReadonlyArray",
@@ -324,7 +325,12 @@ const parseOpenApi = (
 
       const description = Utils.nonEmptyString(operation.description) ?? Utils.nonEmptyString(operation.summary)
 
-      const { pathIds, pathTemplate } = processPath(path)
+      const parameters = resolveOperationParameters(
+        Array.isArray(methods.parameters) ? methods.parameters : undefined,
+        Array.isArray(operation.parameters) ? operation.parameters : undefined,
+        resolveRef
+      )
+      const { pathIds, pathSchema, pathTemplate } = processPath(path, isHttpApi ? [] : parameters)
 
       const op = ParsedOperation.makeDeepMutable({
         id,
@@ -358,14 +364,6 @@ const parseOpenApi = (
 
       const schemaId = Utils.identifier(operation.operationId ?? path)
 
-      const pathParameters = Array.isArray(methods.parameters)
-        ? methods.parameters
-        : undefined
-      const parameters = resolveOperationParameters(
-        pathParameters,
-        Array.isArray(operation.parameters) ? operation.parameters : undefined,
-        resolveRef
-      )
       const droppedCookies = new Set<OpenApiParameter>()
       for (const parameter of parameters) {
         const parsedParameter: ParsedOperation.ParsedOperationParameter = {
@@ -474,6 +472,8 @@ const parseOpenApi = (
           op.headersSchema = addSchema(`${schemaId}Headers`, headerParameterSchema.schema, op)
           op.headersSchemaOptional = headerParameterSchema.optional
         }
+      } else if (pathSchema !== undefined) {
+        op.pathSchema = addSchema(`${schemaId}PathParams`, pathSchema, op)
       }
 
       if (Predicate.isNotUndefined(requestBody) && Predicate.isObject(requestBody)) {
@@ -1583,21 +1583,38 @@ const convertSwaggerSpec = Effect.fn((spec: OpenAPISpec) =>
   }).pipe(Effect.withSpan("OpenApi.convertSwaggerSpec"))
 )
 
-const processPath = (path: string): {
+const processPath = (path: string, parameters: ReadonlyArray<OpenApiParameter>): {
   readonly pathIds: Array<string>
   readonly pathTemplate: string
+  readonly pathSchema: JsonSchema.JsonSchema | undefined
 } => {
   const pathIds: Array<string> = []
   const fragments: Array<string> = []
+  const properties: Record<string, JsonSchema.JsonSchema> = {}
+  const required: Array<string> = []
   let offset = 0
   for (const match of path.matchAll(/{([^}]+)}/g)) {
     fragments.push(JSON.stringify(path.slice(offset, match.index)))
-    const id = Utils.camelize(match[1])
+    const name = match[1]
+    const parameter = parameters.find((parameter) => parameter.in === "path" && parameter.name === name)
+    const style = parameter?.style ?? "simple"
+    if (style !== "simple" && style !== "label" && style !== "matrix") {
+      throw new Error(`Unsupported path parameter style "${style}" for "${name}" in "${path}"`)
+    }
+    const id = Utils.camelize(name)
     pathIds.push(id)
-    fragments.push(`__encodePathParam(${id})`)
+    fragments.push(
+      `__encodePathParam(${JSON.stringify(name)}, ${id}, ${JSON.stringify(style)}, ${parameter?.explode === true})`
+    )
+    Rec.assignProperty(properties, name, parameter?.schema as JsonSchema.JsonSchema ?? { type: "string" })
+    required.push(name)
     offset = match.index + match[0].length
   }
   fragments.push(JSON.stringify(path.slice(offset)))
   const pathTemplate = fragments.join(" + ")
-  return { pathIds, pathTemplate } as const
+  return {
+    pathIds,
+    pathTemplate,
+    pathSchema: pathIds.length === 0 ? undefined : { type: "object", properties, required, additionalProperties: false }
+  }
 }

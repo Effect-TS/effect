@@ -68,6 +68,10 @@ export const registerModule = (
   const client = module.declare(name)
   module.declare(`${client.name}Error`, { exact: true })
   module.declare(`${client.name}ErrorImpl`, { exact: true })
+  for (const operation of parsed.operations) {
+    const parameters = module.scope(locals)
+    for (const name of operation.pathIds) module.declare(name, { scope: parameters })
+  }
   return (parsed) => Codegen.deferred((render) => renderClient(render, imports, client.name, parsed, typeOnly))
 }
 
@@ -96,6 +100,18 @@ const renderClient = (
   parsed: ParsedOpenApi,
   typeOnly: boolean
 ): string => {
+  const pathArguments = (operation: ParsedOperation): Array<string> => {
+    const names = Array.from(operation.path.matchAll(/{([^}]+)}/g), (match) => match[1])
+    return operation.pathIds.map((id, index) => {
+      const type = operation.pathSchema === undefined
+        ? "string"
+        : `${typeOnly ? operation.pathSchema : `(typeof ${operation.pathSchema}.Encoded)`}[${
+          JSON.stringify(names[index])
+        }]`
+      return `${id}: ${type}`
+    })
+  }
+
   const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
     const pipeline: Array<string> = []
     if (!operation.params) {
@@ -167,10 +183,7 @@ ${clientErrorSource(name)}`
 
     const operationToMethod = (name: string, operation: ParsedOperation) => {
       const responses = operation.httpClientResponses
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -213,10 +226,7 @@ ${clientErrorSource(name)}`
 
     const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
       const responses = operation.httpClientResponses
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -250,10 +260,7 @@ ${clientErrorSource(name)}`
     }
 
     const operationToBinaryMethod = (_name: string, operation: ParsedOperation) => {
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -507,10 +514,7 @@ ${clientErrorSource(name)}`
 
     const operationToMethod = (name: string, operation: ParsedOperation) => {
       const responses = operation.httpClientResponses
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -549,10 +553,7 @@ ${clientErrorSource(name)}`
 
     const operationToSseMethod = (operation: ParsedOperation) => {
       const responses = operation.httpClientResponses
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -581,10 +582,7 @@ ${clientErrorSource(name)}`
     }
 
     const operationToBinaryMethod = (operation: ParsedOperation) => {
-      const args: Array<string> = []
-      if (operation.pathIds.length > 0) {
-        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-      }
+      const args = pathArguments(operation)
 
       const options: Array<string> = []
       if (operation.params) {
@@ -824,10 +822,38 @@ export const make = <E, R>(
   }
 
   const pathRequestSource = () =>
-    `const __encodePathParam = encodeURIComponent
+    `const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean,
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(/[!'()*]/g, (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase())
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label": return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => ${render(imports.HttpClientRequest)}.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string,
   ) => ${render(imports.Effect)}.suspend(() => {
     const fail = (description: string, cause?: unknown) => ${render(imports.Effect)}.fail(
@@ -839,7 +865,7 @@ export const make = <E, R>(
         }),
       }),
     )
-    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+    if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)))) {
       return fail("Path parameters must be non-empty and cannot be dot segments")
     }
     let path: string

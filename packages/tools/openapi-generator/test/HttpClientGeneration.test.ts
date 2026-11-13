@@ -159,6 +159,112 @@ describe("HttpClient generation", () => {
     }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs)))
 
   describe("path parameters", () => {
+    it.effect("rejects unsupported path parameter styles during generation", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        for (const format of ["httpclient", "httpclient-type-only"] as const) {
+          const error = yield* generator.generate({
+            openapi: "3.0.3",
+            info: { title: "Unsupported style", version: "1.0.0" },
+            paths: {
+              "/rooms/{ids}": {
+                get: {
+                  parameters: [{ name: "ids", in: "path", required: true, style: "form", schema: { type: "array" } }],
+                  responses: { "204": { description: "OK" } }
+                }
+              }
+            }
+          } as unknown as OpenAPISpec, { name: "TestClient", format }).pipe(
+            Effect.flip,
+            Effect.catchDefect(Effect.succeed)
+          )
+          assert.instanceOf(error, Error)
+          assert.strictEqual(
+            String(error),
+            "Error: Unsupported path parameter style \"form\" for \"ids\" in \"/rooms/{ids}\""
+          )
+        }
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs)))
+
+    it.effect("serializes scalars and arrays using the parameter style and explode settings", () =>
+      Effect.gen(function*() {
+        const cases = [
+          { value: [3, 4, 5], expected: "3,4,5" },
+          { style: "simple", explode: false, value: ["a,b", "c/d"], expected: "a%2Cb,c%2Fd" },
+          { style: "simple", explode: true, value: ["a,b", "c/d"], expected: "a%2Cb,c%2Fd" },
+          { style: "label", explode: false, value: ["a,b", "c/d"], expected: ".a%2Cb,c%2Fd" },
+          { style: "label", explode: true, value: ["a,b", "c/d"], expected: ".a%2Cb.c%2Fd" },
+          { style: "matrix", explode: false, value: ["a,b", "c/d"], expected: ";ids=a%2Cb,c%2Fd" },
+          { style: "matrix", explode: true, value: ["a,b", "c/d"], expected: ";ids=a%2Cb;ids=c%2Fd" },
+          { style: "matrix", explode: true, value: ["", "x"], expected: ";ids;ids=x" },
+          { value: "!'()*", expected: "%21%27%28%29%2A" },
+          { value: 42, expected: "42" },
+          { style: "label", value: "a/b", expected: ".a%2Fb" },
+          { style: "matrix", value: false, expected: ";ids=false" }
+        ]
+        const spec = {
+          openapi: "3.0.3",
+          info: { title: "Path parameters", version: "1.0.0" },
+          paths: Object.fromEntries(cases.map(({ explode, style, value }, index) => [
+            `/case${index}/{ids}`,
+            {
+              get: {
+                operationId: `case${index}`,
+                parameters: [{
+                  name: "ids",
+                  in: "path",
+                  required: true,
+                  style,
+                  explode,
+                  schema: Array.isArray(value)
+                    ? { type: "array", items: { type: typeof value[0] === "number" ? "integer" : "string" } }
+                    : { type: typeof value === "number" ? "integer" : typeof value }
+                }],
+                responses: {
+                  "200": {
+                    description: "OK",
+                    content: { "application/octet-stream": { schema: { type: "string" } } }
+                  }
+                }
+              }
+            }
+          ]))
+        } as unknown as OpenAPISpec
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        for (const format of ["httpclient", "httpclient-type-only"] as const) {
+          const source = yield* generator.generate(spec, { name: "TestClient", format })
+          const make = yield* Effect.promise(() =>
+            loadClient<
+              Record<string, (value: unknown) => Effect.Effect<unknown, HttpClientError.HttpClientError>> & {
+                case0Stream: (value: unknown) => Stream.Stream<unknown, HttpClientError.HttpClientError>
+              }
+            >(source)
+          )
+          const urls: Array<string> = []
+          const client = make(
+            HttpClient.make((request, url) => {
+              urls.push(url.pathname)
+              return Effect.succeed(HttpClientResponse.fromWeb(request, new Response("")))
+            }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+          )
+          for (const [index, { expected, value }] of cases.entries()) {
+            yield* client[`case${index}`](value)
+            assert.strictEqual(urls.at(-1), `/case${index}/${expected}`, format)
+          }
+          yield* Stream.runDrain(client.case0Stream([3, 4, 5]))
+          assert.strictEqual(urls.at(-1), "/case0/3,4,5")
+          const sent = urls.length
+          for (const value of [[], [""], [".."], [[1]], {}, null, ["\uD800"]]) {
+            const error = yield* Effect.flip(client.case0(value))
+            assert.instanceOf(error, HttpClientError.HttpClientError)
+            assert.instanceOf(error.reason, HttpClientError.InvalidUrlError)
+          }
+          const streamError = yield* Effect.flip(Stream.runDrain(client.case0Stream([".."])))
+          assert.instanceOf(streamError.reason, HttpClientError.InvalidUrlError)
+          assert.strictEqual(urls.length, sent)
+        }
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerTs)))
+
     const generate = Effect.gen(function*() {
       const generator = yield* OpenApiGenerator.OpenApiGenerator
       const source = yield* generator.generate({
