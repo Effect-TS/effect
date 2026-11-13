@@ -325,6 +325,28 @@ describe("files", () => {
     )
   })
 
+  it.effect("a long Retry-After on the attach is cut off by its deadline and rolled back, even when interrupted", () => {
+    const fake = makeFake({
+      ...upload(["F1"]),
+      "chat.postMessage": posted(ts),
+      "chat.update": { status: 429, headers: { "retry-after": "3600" } }
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const fiber = yield* Effect.forkChild(slack.post(channelThread, { markdown: "x", files: [file("a")] }))
+        yield* TestClock.adjust("1 second")
+        const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber))
+        yield* TestClock.adjust("61 seconds")
+        yield* Fiber.join(interrupting)
+        assert.strictEqual(fake.called("chat.update").length, 1)
+        assert.deepStrictEqual(fake.called("chat.delete")[0].params, { channel, ts })
+        assert.deepStrictEqual(fake.called("files.delete").map((call) => call.params.file), ["F1"])
+      })
+    )
+  })
+
   it.effect("a refused attach deletes the message and the files and fails file_refused", () => {
     const fake = makeFake({
       ...upload(["F1"]),

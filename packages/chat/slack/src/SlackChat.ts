@@ -119,11 +119,12 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - A post with files is all-or-nothing. A file Slack refuses at upload,
  *   one past `limits`, or an attach Slack refuses fails the post `denied`
  *   with detail `file_refused`: a refused attach first deletes the message
- *   and then the files, best effort. A timed out attach is retried. When the
- *   message can't be deleted, the post fails `Unknown` with detail
- *   `attach_failed_message_left` and a `SlackAttachFailed` as its cause.
- *   From the post on, the route can't be interrupted, and each call has a
- *   timeout.
+ *   and then the files, best effort. A timed out attach is retried, for up
+ *   to a minute in all, waits after a 429 included; past that it is rolled
+ *   back the same way. When the message can't be deleted, the post fails
+ *   `Unknown` with detail `attach_failed_message_left` and a
+ *   `SlackAttachFailed` as its cause. From the post on, the route can't be
+ *   interrupted, and each call has a timeout.
  * - `edit` keeps a message's files, and `delete` removes the message and
  *   not its files: a user may have shared them on. Read the file ids with
  *   `fetchMessage` before deleting to remove them too.
@@ -193,9 +194,11 @@ export const layer = (options: {
  *
  * **Details**
  *
- * - Slack refused to attach the files and the message could not be deleted,
- *   so it exists without them. `messageId` is that message and `fileIds`
- *   are its files, which are kept. `reason` is the attach's own.
+ * - The attach failed and the message could not be deleted. The message may
+ *   still exist, with or without its files: an attach that timed out may
+ *   have landed, and a delete that timed out may have too. `messageId` is
+ *   that message and `fileIds` are its files, which are kept. `reason` is
+ *   the attach's own.
  * - Its `message` leaves the ids out.
  *
  * @stability unstable
@@ -214,7 +217,7 @@ export class SlackAttachFailed
   )
 {
   override get message(): string {
-    return `Slack refused to attach the files and the message could not be deleted: ${this.reason.message}`
+    return `Slack did not attach the files and the message may be left: ${this.reason.message}`
   }
 }
 

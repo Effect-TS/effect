@@ -104,6 +104,13 @@ const pageSize = 200
 /** The bound on each call of a file post from `chat.postMessage` on: the post, each attach and the rollback. */
 const fileCallTimeout = Duration.seconds(30)
 
+/**
+ * The bound on the whole attach: every attempt, the waits between them and
+ * the pacing after a 429. Past it the post is rolled back, however long a
+ * `Retry-After` asked for.
+ */
+const attachDeadline = Duration.minutes(1)
+
 /** Codes on `chat.startStream` that mean the feature is off for this thread. */
 const streamUnsupported = new Set(["channel_type_not_supported", "feature_disabled", "not_allowed_token_type"])
 
@@ -340,11 +347,12 @@ export const make = (options: {
    * the update budget, so `text` never changes between them.
    *
    * From the post on, the route runs uninterruptible, with a timeout on each
-   * call. The attach replaces the file list, so it is retried. When it still
-   * fails, the message is deleted and then the files, best effort. If the
-   * message can't be deleted, it is left without its files and the post fails
-   * `uncertain` with a `SlackAttachFailed` as its cause, and the files are
-   * kept so the ids it carries still mean something.
+   * call and `attachDeadline` on the attach as a whole, retries and waits
+   * included. The attach replaces the file list, so it is retried. When it
+   * still fails, the message is deleted and then the files, best effort. If
+   * the delete fails or times out, the message may be left, with or without
+   * its files, and the post fails `uncertain` with a `SlackAttachFailed` as
+   * its cause. The files are kept so the ids it carries still mean something.
    */
   const postFiles = Effect.fnUntraced(function*(
     thread: ChatThread,
@@ -371,14 +379,13 @@ export const make = (options: {
     const channel = parts.channel
 
     return yield* Effect.uninterruptible(Effect.gen(function*() {
-      const removeFiles = Effect.forEach(
-        fileIds,
-        (file) =>
-          bounded(call("post", "files.delete", { file }, { write: true }), Errors.transport(true, "timeout")).pipe(
-            Effect.ignore
-          ),
-        { discard: true }
-      )
+      const removeFiles = bounded(
+        Effect.forEach(fileIds, (file) => call("post", "files.delete", { file }, { write: true }).pipe(Effect.ignore), {
+          concurrency: "unbounded",
+          discard: true
+        }),
+        Errors.transport(true, "timeout")
+      ).pipe(Effect.ignore)
       const ts = yield* bounded(
         call("post", "chat.postMessage", {
           channel,
@@ -398,7 +405,13 @@ export const make = (options: {
           Errors.transport(false, "timeout")
         ),
         "edit"
-      )).pipe(Effect.result)
+      )).pipe(
+        Effect.timeoutOrElse({
+          duration: attachDeadline,
+          orElse: () => fail("post", Errors.transport(false, "attach_deadline"))
+        }),
+        Effect.result
+      )
       if (Result.isSuccess(attached)) return posted
 
       const error = attached.failure
