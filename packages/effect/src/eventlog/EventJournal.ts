@@ -719,7 +719,6 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
         (entries, exit) =>
           Effect.sync(() => {
             if (exit._tag === "Failure") return
-            if (entries.length === 0) return
             const uploaded = new Set(entries)
             const remote = ensureRemote(remoteId)
             remote.missing = remote.missing.filter((entry) => !uploaded.has(entry))
