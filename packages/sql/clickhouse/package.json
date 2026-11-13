@@ -62,7 +62,8 @@
   },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "esbuild": "^0.28.2"
   },
   "peerDependencies": {
     "@effect/platform-node": "workspace:^",

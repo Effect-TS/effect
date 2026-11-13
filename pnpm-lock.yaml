@@ -601,6 +601,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
 
   packages/sql/d1:
     dependencies:
