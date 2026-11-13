@@ -787,8 +787,8 @@ export const makeEncodedStorage: (options?: {
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
         const expectedReplyId = options?.expectedReplyId
-        yield* lockRequest(String(requestId))
         if (expectedReplyId === undefined) {
+          yield* lockRequest(String(requestId))
           yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
           yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
             String(requestId)
@@ -800,9 +800,14 @@ export const makeEncodedStorage: (options?: {
         }
         const id = String(requestId)
         const expected = String(expectedReplyId)
-        // Check at the storage boundary, not at the earlier workflow read.
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
-          AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
+        // Lock and check the current reply before mutating any of the request family.
+        const current = yield* sql`SELECT 1 FROM ${messagesTableSql} ${updateLock}
+          WHERE id = ${id} AND last_reply_id = ${expected} ${forUpdate}`
+        if (current.length === 0) return
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0`
+        // Only discard interrupts consumed by this reply, not newly received interrupts.
+        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${id}
+          AND kind = ${messageKindInterrupt} AND last_reply_id = ${expected}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
           WHERE request_id = ${id} AND last_reply_id = ${expected}`
       },
