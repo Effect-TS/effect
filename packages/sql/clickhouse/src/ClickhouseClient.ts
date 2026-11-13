@@ -130,12 +130,11 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 export const make = (
   options: ClickhouseClientConfig
 ): Effect.Effect<ClickhouseClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  Core.make(
-    TypeId,
-    options,
-    Clickhouse.createClient,
-    (evaluate, onError) => NodeStream.fromReadable({ evaluate: evaluate as () => Readable, onError })
-  ) as Effect.Effect<ClickhouseClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity>
+  Core.make(TypeId, options, Clickhouse.createClient, NodeStream.fromReadable) as Effect.Effect<
+    ClickhouseClient & Client.SqlClient,
+    SqlError,
+    Scope.Scope | Reactivity.Reactivity
+  >
 
 /**
  * Fiber reference read by the low-level ClickHouse connection to choose query

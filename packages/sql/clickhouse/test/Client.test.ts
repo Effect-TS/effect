@@ -11,7 +11,7 @@ import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { Readable } from "node:stream"
 import { fileURLToPath } from "node:url"
-import { vi } from "vitest"
+import { beforeEach, vi } from "vitest"
 
 let closeCalls = 0
 let connectImmediately = false
@@ -21,34 +21,40 @@ let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undef
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let commandImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
-// Clients for a 127.0.0.1 URL use the real driver against a local fixture server.
-vi.mock("@clickhouse/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof Clickhouse>()
-  return {
-    createClient: vi.fn((options: Clickhouse.ClickHouseClientConfigOptions) =>
-      options.url?.toString().startsWith("http://127.0.0.1") ? actual.createClient(options) : mockClient()
-    )
-  }
-})
-
-const mockClient = () => ({
-  ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
-  query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
-  insert: (options: Record<string, unknown>) => {
-    insertCalls.push(options)
-    return insertImpl ? insertImpl(options) : new Promise(() => {})
-  },
-  command: (options: Record<string, unknown>) => {
-    commandCalls.push(options)
-    return commandImpl ? commandImpl(options) : Promise.resolve({})
-  },
-  close: () => {
-    closeCalls++
-    return Promise.resolve()
-  }
-})
+vi.mock("@clickhouse/client", () => ({
+  createClient: vi.fn(() => ({
+    ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
+    query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
+    insert: (options: Record<string, unknown>) => {
+      insertCalls.push(options)
+      return insertImpl ? insertImpl(options) : new Promise(() => {})
+    },
+    command: (options: Record<string, unknown>) => {
+      commandCalls.push(options)
+      return commandImpl ? commandImpl(options) : Promise.resolve({})
+    },
+    close: () => {
+      closeCalls++
+      return Promise.resolve()
+    }
+  }))
+}))
 
 describe("ClickhouseClient", { concurrent: false }, () => {
+  beforeEach(() => {
+    closeCalls = 0
+    connectImmediately = true
+    commandCalls.length = 0
+    insertCalls.length = 0
+    insertImpl = queryImpl = commandImpl = undefined
+  })
+
+  const assertKilled = (queryId: string) =>
+    assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
+      query: "KILL QUERY WHERE query_id = {queryId:String}",
+      query_params: { queryId }
+    }])
+
   it("infers DateTime parameters without empty parentheses", () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
     const date = new Date("2024-01-15T14:30:00Z")
@@ -58,7 +64,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("preserves an explicit nullable parameter type and null value", () =>
     Effect.gen(function*() {
-      connectImmediately = true
       const sql = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
 
       assert.deepStrictEqual(sql`SELECT ${sql.param("Nullable(Int32)", null)}`.compile(), [
@@ -98,7 +103,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("exposes the underlying ClickHouse client", () =>
     Effect.gen(function*() {
-      connectImmediately = true
       const createClient = vi.mocked(Clickhouse.createClient)
       createClient.mockClear()
       const sql = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
@@ -110,7 +114,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
   it.effect("closes the client when the connection check times out", () =>
     Effect.gen(function*() {
       connectImmediately = false
-      closeCalls = 0
       const fiber = yield* Effect.forkDetach(
         ClickhouseClient.make({ url: "http://localhost:8123" }).pipe(Effect.scoped)
       )
@@ -124,8 +127,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("parameterizes the query id when cancelling a query", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      commandCalls.length = 0
       const queryId = "id' OR 1 = 1 --"
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const fiber = yield* client.withQueryId(client.unsafe("SELECT 1"), queryId).pipe(Effect.forkScoped)
@@ -133,10 +134,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       yield* Fiber.interrupt(fiber)
 
-      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
-        query: "KILL QUERY WHERE query_id = {queryId:String}",
-        query_params: { queryId }
-      }])
+      assertKilled(queryId)
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
@@ -144,8 +142,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("parameterizes the query id when cancelling an insert", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      commandCalls.length = 0
       const queryId = "id' OR 1 = 1 --"
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const fiber = yield* client.withQueryId(
@@ -156,10 +152,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       yield* Fiber.interrupt(fiber)
 
-      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
-        query: "KILL QUERY WHERE query_id = {queryId:String}",
-        query_params: { queryId }
-      }])
+      assertKilled(queryId)
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
@@ -167,27 +160,22 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("interrupts a query even when KILL QUERY fails", () =>
     Effect.gen(function*() {
-      connectImmediately = true
       commandImpl = () => Promise.reject(new Error("Not enough privileges"))
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const fiber = yield* client.unsafe("SELECT 1").pipe(Effect.forkScoped)
       yield* Effect.yieldNow
 
       yield* Fiber.interrupt(fiber)
-      const exit = yield* Effect.exit(Fiber.join(fiber))
+      const exit = yield* Fiber.await(fiber)
 
       assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
     }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        commandImpl = undefined
-      })),
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
 
   it.effect("aborts an unanswered KILL QUERY after 5 seconds", () =>
     Effect.gen(function*() {
-      connectImmediately = true
       let killSignal: AbortSignal | undefined
       commandImpl = (options) => {
         killSignal = options.abort_signal as AbortSignal
@@ -203,9 +191,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.isDefined(interrupting.pollUnsafe())
       assert.isTrue(killSignal?.aborted)
     }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        commandImpl = undefined
-      })),
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
@@ -238,6 +223,8 @@ describe("ClickhouseClient", { concurrent: false }, () => {
         () => Effect.promise(() => new Promise((resolve) => server.close(resolve)))
       )
       const { port } = server.address() as AddressInfo
+      const actual = yield* Effect.promise(() => vi.importActual<typeof Clickhouse>("@clickhouse/client"))
+      vi.mocked(Clickhouse.createClient).mockImplementationOnce(actual.createClient)
       // One connection, so a response left open would hold back the kill and later queries.
       const sql = yield* ClickhouseClient.make({ url: `http://127.0.0.1:${port}`, max_open_connections: 1 })
 
@@ -252,8 +239,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("passes column selection to insertQuery", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      insertCalls.length = 0
       insertImpl = () => Promise.resolve({ executed: true, query_id: "" })
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
 
@@ -269,8 +254,6 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
   it.effect("writes the ledger with commands and runs migrations as queries", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      commandCalls.length = 0
       const queries: Array<string> = []
       queryImpl = (options) => {
         queries.push(String(options.query))
@@ -290,16 +273,11 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.match(String(commandCalls[0].query), /ENGINE = MergeTree/)
       assert.match(String(commandCalls[1].query), /^INSERT INTO "effect_sql_migrations"/)
     }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        queryImpl = undefined
-      })),
       Effect.provide(Reactivity.layer)
     ))
 
   it.effect("retries a failed migration and the ones after it on the next run", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      commandCalls.length = 0
       queryImpl = (options) => {
         const ledger: Array<{ migration_id: unknown; name: unknown }> = []
         for (const command of commandCalls) {
@@ -327,16 +305,11 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.strictEqual(error.message, `Migration "2_second" failed`)
       assert.deepStrictEqual(yield* run, [[2, "second"], [3, "third"]])
     }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        queryImpl = undefined
-      })),
       Effect.provide(Reactivity.layer)
     ))
 
   it.effect("kills a streamed query only when the stream is not read to the end", () =>
     Effect.gen(function*() {
-      connectImmediately = true
-      commandCalls.length = 0
       // A minimal stand-in for the row batches emitted by `ResultSet.stream()`
       queryImpl = () =>
         Promise.resolve({
@@ -355,14 +328,8 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       assert.deepStrictEqual(all, [{ a: 1 }, { a: 2 }])
       assert.deepStrictEqual(first, [{ a: 1 }])
-      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
-        query: "KILL QUERY WHERE query_id = {queryId:String}",
-        query_params: { queryId: "take-id" }
-      }])
+      assertKilled("take-id")
     }).pipe(
-      Effect.ensuring(Effect.sync(() => {
-        queryImpl = undefined
-      })),
       Effect.provide(Reactivity.layer)
     ))
 })
@@ -374,7 +341,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
     readonly signal: AbortSignal | null | undefined
   }
 
-  const makeFetch = (handler: (request: Recorded) => Response) => {
+  const makeClient = (handler: (request: Recorded) => Response) => {
     const requests: Array<Recorded> = []
     const fetch = Object.assign(
       async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
@@ -388,7 +355,10 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
       },
       { preconnect: () => {} }
     )
-    return { fetch, requests }
+    return Effect.map(
+      ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch }),
+      (sql) => ({ sql, requests })
+    )
   }
 
   const killed = (requests: ReadonlyArray<Recorded>) =>
@@ -399,10 +369,9 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
   it.effect("sends statements through the configured fetch only", () =>
     Effect.gen(function*() {
       const globalFetch = vi.spyOn(globalThis, "fetch")
-      const { fetch, requests } = makeFetch(() =>
+      const { sql, requests } = yield* makeClient(() =>
         new Response(JSON.stringify({ data: [{ n: 1 }] }), { headers: { "content-type": "application/json" } })
       )
-      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
 
       const rows = yield* sql`SELECT ${1} AS n`
 
@@ -416,7 +385,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
   it.effect("kills a streamed query and cancels the body only when the stream is not read to the end", () =>
     Effect.gen(function*() {
       const cancelled: Array<string | null> = []
-      const { fetch, requests } = makeFetch((request) => {
+      const { sql, requests } = yield* makeClient((request) => {
         const queryId = request.params.get("query_id")
         return new Response(
           new ReadableStream<Uint8Array>({
@@ -431,7 +400,6 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
           })
         )
       })
-      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
 
       const all = yield* Stream.runCollect(sql`SELECT a FROM t`.stream).pipe(sql.withQueryId("full-id"))
       const first = yield* Stream.runCollect(sql`SELECT a FROM t`.stream.pipe(Stream.take(1))).pipe(
@@ -448,7 +416,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
     Effect.gen(function*() {
       const reading = Promise.withResolvers<void>()
       let signal: AbortSignal | null | undefined
-      const { fetch, requests } = makeFetch((request) => {
+      const { sql, requests } = yield* makeClient((request) => {
         signal = request.signal
         return new Response(
           new ReadableStream<Uint8Array>({
@@ -462,7 +430,6 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
           { headers: { "content-type": "application/json" } }
         )
       })
-      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
 
       const fiber = yield* sql`SELECT a FROM t`.pipe(sql.withQueryId("read-id"), Effect.forkChild)
       yield* Effect.promise(() => reading.promise)
@@ -474,8 +441,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
 
   it.effect("fails a stream with a SqlError on a malformed row", () =>
     Effect.gen(function*() {
-      const { fetch } = makeFetch(() => new Response("not-json\n"))
-      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+      const { sql } = yield* makeClient(() => new Response("not-json\n"))
 
       const error = yield* Effect.flip(Stream.runCollect(sql`SELECT a FROM t`.stream))
 
@@ -484,33 +450,30 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
 
   it.effect("classifies a ClickHouse error response", () =>
     Effect.gen(function*() {
-      const { fetch } = makeFetch(() =>
+      const { sql } = yield* makeClient(() =>
         new Response("Code: 62. DB::Exception: Syntax error: failed at position 1 (SYNTAX_ERROR) (version 25.8.1.1)", {
           status: 400,
           headers: { "x-clickhouse-exception-code": "62" }
         })
       )
-      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
 
       const error = yield* Effect.flip(sql`SELEC 1`)
 
       assert.strictEqual(error.reason._tag, "SqlSyntaxError")
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.live("bundles with the migrator for a runtime without Node built-ins", () =>
-    Effect.promise(() =>
-      build({
-        entryPoints: ["ClickhouseWebClient.ts", "ClickhouseMigrator.ts"].map((name) =>
-          fileURLToPath(new URL(`../src/${name}`, import.meta.url))
-        ),
-        bundle: true,
-        write: false,
-        outdir: "out",
-        format: "esm",
-        platform: "neutral",
-        conditions: ["workerd", "worker", "browser"],
-        mainFields: ["module", "main"],
-        logLevel: "silent"
-      })
-    ), { timeout: 60_000 })
+  it("bundles with the migrator for a runtime without Node built-ins", () =>
+    build({
+      entryPoints: ["ClickhouseWebClient.ts", "ClickhouseMigrator.ts"].map((name) =>
+        fileURLToPath(new URL(`../src/${name}`, import.meta.url))
+      ),
+      bundle: true,
+      write: false,
+      outdir: "out",
+      format: "esm",
+      platform: "neutral",
+      conditions: ["workerd", "worker", "browser"],
+      mainFields: ["module", "main"],
+      logLevel: "silent"
+    }), 60_000)
 })

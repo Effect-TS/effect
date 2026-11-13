@@ -5,9 +5,11 @@
  * stays free of Node built-ins.
  */
 import * as Context from "effect/Context"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { dual } from "effect/Function"
+import type * as Fiber from "effect/Fiber"
+import { dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
@@ -50,6 +52,9 @@ interface ResultSet {
   close(): unknown
 }
 
+// A query resolves to a result set; a command or insert to a summary without a body.
+type Result = ResultSet | { readonly query_id: string }
+
 /**
  * The methods both `@clickhouse/client` and `@clickhouse/client-web` clients
  * provide. The drivers' own types are not assignable to each other, so the
@@ -59,21 +64,21 @@ export interface Driver {
   ping(): Promise<{ readonly success: boolean; readonly error?: unknown }>
   close(): Promise<void>
   query(params: Request & { readonly format: DataFormat }): Promise<ResultSet>
-  command(params: Request): Promise<unknown>
+  command(params: Request): Promise<Result>
   // The values type is checked by each entry's `insertQuery` signature.
   insert(
     params: RequestBase & { readonly table: string; readonly values: any; readonly format: "JSONEachRow" }
-  ): Promise<unknown>
+  ): Promise<Result>
 }
 
 /**
  * Reads a result body as a stream of row batches. `evaluate` returns the
  * driver's stream: a Node `Readable` or a web `ReadableStream`.
  */
-export type FromStream = (
-  evaluate: () => unknown,
-  onError: (cause: unknown) => SqlError
-) => Stream.Stream<ReadonlyArray<{ json(): unknown }>, SqlError>
+export type FromStream = (options: {
+  readonly evaluate: () => any
+  readonly onError: (cause: unknown) => SqlError
+}) => Stream.Stream<ReadonlyArray<{ json(): unknown }>, SqlError>
 
 export const ClientMethod = Context.Reference<"query" | "command" | "insert">(
   "@effect/sql-clickhouse/ClickhouseClient/ClientMethod",
@@ -107,12 +112,7 @@ const clickhouseCodeFromCause = (cause: unknown): number | undefined => {
 
 const clickhouseSyntaxErrorCodes = new Set([36, 60, 62, 242])
 
-const classifyError = (
-  cause: unknown,
-  message: string,
-  operation: string,
-  fallback: "connection" | "unknown" = "unknown"
-) => {
+const classifyError = (cause: unknown, message: string, operation: string, fallback?: "connection") => {
   const props = { cause, message, operation }
   const code = clickhouseCodeFromCause(cause)
   if (code !== undefined) {
@@ -132,6 +132,9 @@ const classifyError = (
   return fallback === "connection" ? new ConnectionError(props) : new UnknownError(props)
 }
 
+const sqlError = (message: string, operation: string, fallback?: "connection") => (cause: unknown) =>
+  new SqlError({ reason: classifyError(cause, message, operation, fallback) })
+
 // Cancellation is best effort: a kill that fails or does not answer in time
 // must not turn an interruption into a defect or hold it up, and a kill that
 // times out is aborted rather than left running.
@@ -147,8 +150,6 @@ const killQuery = (client: Driver, queryId: string) =>
     Effect.ignoreCause
   )
 
-const newQueryId = (): string => globalThis.crypto.randomUUID()
-
 /**
  * Runs one request with the fiber's query id and settings, then `read`s its
  * result. On interruption the HTTP request is aborted and the query is killed
@@ -157,36 +158,28 @@ const newQueryId = (): string => globalThis.crypto.randomUUID()
  * stops listening to the abort signal once headers arrive, and the open
  * response would otherwise hold the connection the kill needs.
  */
-const runAbortable = <R, A = R>(
+const runAbortable = <A>(
   client: Driver,
   message: string,
   operation: string,
-  request: (base: {
-    readonly abort_signal: AbortSignal
-    readonly query_id: string
-    readonly clickhouse_settings: Settings
-  }) => Promise<R>,
-  read: (result: R) => A | Promise<A> = (result) => result as unknown as A
+  request: (base: Required<RequestBase>, fiber: Fiber.Fiber<unknown, unknown>) => Promise<Result>,
+  read: (result: Result, queryId: string) => A | Promise<A>
 ): Effect.Effect<A, SqlError> =>
   Effect.withFiber((fiber) =>
-    Effect.callback<A, SqlError>((resume) => {
-      const queryId = fiber.getRef(QueryId) ?? newQueryId()
-      const controller = new AbortController()
-      let reading: R | undefined
+    Effect.callback<A, SqlError>((resume, signal) => {
+      const queryId = fiber.getRef(QueryId) ?? SecureRandom.uuidV4Unsafe()
+      let reading: Result | undefined
       request({
-        abort_signal: controller.signal,
+        abort_signal: signal,
         query_id: queryId,
         clickhouse_settings: fiber.getRef(ClickhouseSettings)
-      }).then((result) => read(reading = result)).then(
+      }, fiber).then((result) => read(reading = result, queryId)).then(
         (result) => resume(Effect.succeed(result)),
-        (cause) =>
-          resume(Effect.fail(
-            cause instanceof SqlError ? cause : new SqlError({ reason: classifyError(cause, message, operation) })
-          ))
+        (cause) => resume(Effect.fail(cause instanceof SqlError ? cause : sqlError(message, operation)(cause)))
       )
+      // `signal` is aborted before this runs.
       return Effect.suspend(() => {
-        controller.abort()
-        if (isResultSet(reading, "close")) {
+        if (reading !== undefined && "close" in reading) {
           // The web driver's `close` rejects while a reader holds the body, which the abort already ends.
           Promise.resolve(reading.close()).catch(() => {})
         }
@@ -248,9 +241,16 @@ interface ClickhouseParam extends Statement.Custom<"ClickhouseParam", string, un
 const clickhouseParam = Statement.custom<ClickhouseParam>("ClickhouseParam")
 const isClickhouseParam = Statement.isCustom<ClickhouseParam>("ClickhouseParam")
 
-// Commands resolve to a summary without a body.
-const isResultSet = (result: unknown, method: keyof ResultSet): result is ResultSet =>
-  typeof result === "object" && result !== null && method in result
+const readRows = (result: Result): ReadonlyArray<any> | Promise<ReadonlyArray<any>> =>
+  "json" in result
+    ? result.json().then(
+      // `JSON` wraps rows in `{ data }`; `JSONCompact` rows are arrays.
+      (body: any) => "data" in body ? body.data : body,
+      (cause) => {
+        throw sqlError("Failed to parse result", "parseResult")(cause)
+      }
+    )
+    : []
 
 class ConnectionImpl implements Connection {
   private readonly client: Driver
@@ -260,48 +260,27 @@ class ConnectionImpl implements Connection {
     this.fromStream = fromStream
   }
 
-  private runRaw<A = unknown>(
+  // `read` runs inside the request, so interrupting while a body is still
+  // arriving aborts the request and kills the query.
+  private runRaw<A>(
     sql: string,
     params: ReadonlyArray<unknown>,
-    format: DataFormat = "JSON",
-    read?: (result: unknown) => A | Promise<A>
+    format: DataFormat,
+    read: (result: Result, queryId: string) => A | Promise<A>
   ) {
     const query_params: Record<string, unknown> = {}
     for (let i = 0; i < params.length; i++) {
       query_params[`p${i + 1}`] = params[i]
     }
-    return Effect.withFiber((fiber) => {
-      const method = fiber.getRef(ClientMethod)
-      return runAbortable<unknown, A>(
-        this.client,
-        "Failed to execute statement",
-        "execute",
-        (base) =>
-          method === "command"
-            ? this.client.command({ query: sql, query_params, ...base })
-            : this.client.query({ query: sql, query_params, ...base, format }),
-        read
-      )
-    })
-  }
-
-  // The body is read inside the request, so interrupting while it is still
-  // arriving aborts the request and kills the query.
-  private run(sql: string, params: ReadonlyArray<unknown>, format?: DataFormat) {
-    return this.runRaw(
-      sql,
-      params,
-      format,
-      (result): ReadonlyArray<any> | Promise<ReadonlyArray<any>> =>
-        isResultSet(result, "json")
-          ? result.json().then(
-            // `JSON` wraps rows in `{ data }`; `JSONCompact` rows are arrays.
-            (body: any) => "data" in body ? body.data : body,
-            (cause) => {
-              throw new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
-            }
-          )
-          : []
+    return runAbortable(
+      this.client,
+      "Failed to execute statement",
+      "execute",
+      (base, fiber) =>
+        fiber.getRef(ClientMethod) === "command"
+          ? this.client.command({ query: sql, query_params, ...base })
+          : this.client.query({ query: sql, query_params, ...base, format }),
+      read
     )
   }
 
@@ -310,15 +289,14 @@ class ConnectionImpl implements Connection {
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
-    return transformRows
-      ? Effect.map(this.run(sql, params), transformRows)
-      : this.run(sql, params)
+    const rows = this.runRaw(sql, params, "JSON", readRows)
+    return transformRows ? Effect.map(rows, transformRows) : rows
   }
   executeRaw(sql: string, params: ReadonlyArray<unknown>) {
-    return this.runRaw(sql, params)
+    return this.runRaw(sql, params, "JSON", identity)
   }
   executeValues(sql: string, params: ReadonlyArray<unknown>) {
-    return this.run(sql, params, "JSONCompact")
+    return this.runRaw(sql, params, "JSONCompact", readRows)
   }
   executeValuesUnprepared(sql: string, params: ReadonlyArray<unknown>) {
     return this.executeValues(sql, params)
@@ -335,27 +313,21 @@ class ConnectionImpl implements Connection {
     params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) {
-    return Effect.withFiber((fiber) => {
-      const queryId = fiber.getRef(QueryId) ?? newQueryId()
-      return this.runRaw(sql, params, "JSONEachRow").pipe(
-        Effect.provideService(QueryId, queryId),
-        Effect.map((result) => {
-          if (!isResultSet(result, "stream")) {
-            return Stream.empty
-          }
-          // Closing the socket does not stop a query the server is still
-          // computing, so kill it unless the response was read to the end.
-          let done = false
-          return this.fromStream(
-            () => result.stream(),
-            (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute stream", "stream") })
-          ).pipe(
-            Stream.onEnd(Effect.sync(() => {
-              done = true
-            })),
-            Stream.ensuring(Effect.suspend(() => done ? Effect.void : killQuery(this.client, queryId)))
-          )
-        })
+    return this.runRaw(sql, params, "JSONEachRow", (result, queryId) => {
+      if (!("stream" in result)) {
+        return Stream.empty
+      }
+      // Closing the socket does not stop a query the server is still
+      // computing, so kill it unless the response was read to the end.
+      let done = false
+      return this.fromStream({
+        evaluate: () => result.stream(),
+        onError: sqlError("Failed to execute stream", "stream")
+      }).pipe(
+        Stream.onEnd(Effect.sync(() => {
+          done = true
+        })),
+        Stream.ensuring(Effect.suspend(() => done ? Effect.void : killQuery(this.client, queryId)))
       )
     }).pipe(
       Stream.unwrap,
@@ -364,10 +336,10 @@ class ConnectionImpl implements Connection {
         Effect.tryPromise({
           // Rows may decode synchronously, so decoding stays inside `try`.
           try: () =>
-            Promise.all(Array.from(chunk).flat().map((row) => row.json())).then((rows: Array<any>) =>
+            Promise.all(chunk.flat().map((row) => row.json())).then((rows: Array<any>) =>
               transformRows ? transformRows(rows) : rows
             ),
-          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to parse row", "parseRow") })
+          catch: sqlError("Failed to parse row", "parseRow")
         })
       ),
       Stream.flattenIterable
@@ -407,8 +379,7 @@ export const make = <
           throw result.error
         }
       },
-      catch: (cause) =>
-        new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
+      catch: sqlError("ClickhouseClient: Failed to connect", "connect", "connection")
     }).pipe(
       Effect.timeoutOrElse({
         duration: Duration.seconds(5),
@@ -451,7 +422,8 @@ export const make = <
           client,
           "Failed to insert data",
           "insert",
-          (base) => client.insert({ format: "JSONEachRow", ...options, ...base })
+          (base) => client.insert({ format: "JSONEachRow", ...options, ...base }),
+          identity
         ),
       withQueryId: dual(
         2,

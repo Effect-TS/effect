@@ -143,12 +143,11 @@ export interface ClickhouseWebClientConfig extends ClickhouseWeb.ClickHouseClien
 export const make = (
   options: ClickhouseWebClientConfig
 ): Effect.Effect<ClickhouseWebClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  Core.make(
-    TypeId,
-    options,
-    ClickhouseWeb.createClient,
-    (evaluate, onError) => Stream.fromReadableStream({ evaluate: evaluate as () => ReadableStream, onError })
-  ) as Effect.Effect<ClickhouseWebClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity>
+  Core.make(TypeId, options, ClickhouseWeb.createClient, Stream.fromReadableStream) as Effect.Effect<
+    ClickhouseWebClient & Client.SqlClient,
+    SqlError,
+    Scope.Scope | Reactivity.Reactivity
+  >
 
 /**
  * Provides both `ClickhouseWebClient` and generic `SqlClient` services from a
