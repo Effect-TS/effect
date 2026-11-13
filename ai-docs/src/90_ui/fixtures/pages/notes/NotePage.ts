@@ -3,14 +3,19 @@ import { AsyncResult } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ActivityLog } from "../../notes/components/ActivityLog.ts"
 import { NoteActivity } from "../../notes/components/NoteActivity.ts"
-import { NoteEditor } from "../../notes/components/NoteEditor.ts"
+import { NoteEditor, NoteEditorMessage } from "../../notes/components/NoteEditor.ts"
 import { GetNote } from "../../notes/loaders/GetNote.ts"
 import { Notes } from "../../notes/services/Notes.ts"
 
 export const NotePageMessage = Schema.TaggedUnion({
   Saved: {},
-  EditorFailed: {}
+  EditorFailed: {},
+  SaveNow: {}
 })
+
+// A ref names a child slot so the page can send it messages. The note's id
+// goes in with `at`, so a new note still mounts a fresh editor.
+const Editor = NoteEditor.ref("Editor")
 
 export const NotePageNoDeps = Component.define({
   name: "NotePage",
@@ -28,10 +33,16 @@ export const NotePageNoDeps = Component.define({
 }).make({
   init: () => ({ notice: "" }),
   // `update` can read the slots too, as `$.loaded`.
-  update: (model, message) =>
+  update: (model, message, $) =>
     NotePageMessage.match(message, {
       Saved: () => ({ ...model, notice: "Saved" }),
-      EditorFailed: () => ({ ...model, notice: "The editor crashed" })
+      EditorFailed: () => ({ ...model, notice: "The editor crashed" }),
+      // "Save now" is a one-shot instruction, so it's a send, not a prop.
+      // State the editor shows, like the note, stays in its props. The
+      // editor's `update` handles the message after this render, with the
+      // props from it. A send to a slot that isn't rendered, such as while
+      // the note loads, is dropped and logged.
+      SaveNow: () => $.send(Editor.at($.props.id), NoteEditorMessage.cases.Save.make({}))
     }),
   // `head` gets the Model and the loaders' results, so the title comes
   // straight from the loaded note.
@@ -43,11 +54,13 @@ export const NotePageNoDeps = Component.define({
       onFailure: () => h.p("This note doesn't exist."),
       onSuccess: ({ value: note }) =>
         h.article(
+          h.button.attr("type", "button").onClick(NotePageMessage.make({ _tag: "SaveNow" })).children("Save now"),
           // A child by value. Its key is its identity, so a new key mounts
           // a fresh instance. Props never reach the child's `update`, so
-          // re-key to reset a child.
+          // re-key to reset a child. A slot takes a `key` or a `ref`, and
+          // the ref's key is the slot's key.
           h.child(NoteEditor, {
-            key: note.id,
+            ref: Editor.at(note.id),
             props: { note },
             // Maps the child's events to this component's messages.
             onEmit: () => NotePageMessage.make({ _tag: "Saved" }),

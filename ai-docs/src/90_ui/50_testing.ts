@@ -23,6 +23,7 @@ import { App } from "./fixtures/App.ts"
 import { NoteEditor, NoteEditorEvents, NoteEditorNoDeps, SaveNote } from "./fixtures/notes/components/NoteEditor.ts"
 import { type Note, NoteSaveError } from "./fixtures/notes/domain/Note.ts"
 import { Notes } from "./fixtures/notes/services/Notes.ts"
+import { NotePageNoDeps } from "./fixtures/pages/notes/NotePage.ts"
 import { NotesIndexNoDeps } from "./fixtures/pages/NotesIndex.ts"
 import { AppRoute } from "./fixtures/routes.ts"
 
@@ -105,6 +106,18 @@ describe("NoteEditor", () => {
         .fire(HtmlQuery.role("form", { name: "Edit note" }), "submit")
         .fail(SaveNote, new NoteSaveError({ reason: "You are offline" }))
         .check((story) => assert.strictEqual(Query.textOf(story.get(HtmlQuery.role("alert"))), "You are offline")))
+  })
+})
+
+describe("NotePage", () => {
+  it("tells the editor to save now", () => {
+    Story.make(NotePageNoDeps, { id: note.id }, (s) =>
+      s.loaded("note", note)
+        .click("Save now")
+        // A story renders no children, so what `update` sent them is data.
+        .sent((sent) =>
+          assert.deepStrictEqual(sent.map((send) => [send.ref.key, send.message]), [["Editor[n1]", { _tag: "Save" }]])
+        ))
   })
 })
 
@@ -230,6 +243,6 @@ it.layer(AppTest, { buildPerTest: true })("App", (it) => {
       const result = yield* ssr(App, Router.props(AppRoute))
       assert.include(result.html, "Milk")
       // The paths of the instances that adopted the server's state.
-      assert.include(result.adopted, "/App/NotePage[/notes/n1]/NoteEditor[n1]")
+      assert.include(result.adopted, "/App/NotePage[/notes/n1]/NoteEditor[Editor[n1]]")
     }))
 })
