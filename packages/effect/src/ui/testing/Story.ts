@@ -1614,7 +1614,8 @@ const findChild = <Msg>(
  * A ref finds the slot rendered with it.
  * Throws, as the runtime fails the parent, if the fallback renders two
  * children at one path, or a child at the path or ref key of another slot of
- * `view`.
+ * `view`. It sees one fallback, so it can't check two shown at once, as the
+ * runtime does.
  *
  * @stability experimental
  * @category queries
@@ -1629,7 +1630,7 @@ export const fallback = <Msg>(
   if (slot.fallback === undefined) return undefined
   const node = View.toNode(slot.fallback(result))
   // As the runtime does: the fallback's children share the parent's paths.
-  checkFallbackPaths("Story.fallback", view, slot, node)
+  checkFallbackPaths(checkChildPaths("Story.fallback", view), slot, node)
   return node
 }
 
