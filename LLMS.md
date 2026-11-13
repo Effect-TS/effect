@@ -447,6 +447,13 @@ Provide a feature implementation with `NoteActivity.toLayer(ActivityLog)`.
 When rendering a feature service with `h.child`, include a `fallback` for
 loading or failure; a child passed as a component value may omit it.
 
+A parent passes a child state through props, and a child answers through
+`events`. A one-shot instruction, such as "save now" or "clear your draft",
+is a send: the child lists the tags it accepts in `receives`, the parent
+renders the slot with a ref from `Child.ref("Name")`, and its `update` calls
+`$.send(ref, message)`. Don't send what the child shows: that belongs in its
+props.
+
 ### Loading data
 
 A component declares the reads it shows in `loaders`, by name. Each entry

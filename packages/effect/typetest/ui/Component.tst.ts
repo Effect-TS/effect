@@ -222,7 +222,7 @@ describe("Component", () => {
 
     it("names the missing fallback for a feature child", () => {
       const h = null as unknown as View.Helper<never, {}>
-      // @ts-expect-error Overload 2 of 2...Property 'fallback' is missing
+      // @ts-expect-error Overload 3 of 3...Property 'fallback' is missing
       h.child(Todos, {
         key: "main",
         props: { todo: { id: "", title: "", done: false } }

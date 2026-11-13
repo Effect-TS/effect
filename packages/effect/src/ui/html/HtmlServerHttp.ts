@@ -119,10 +119,11 @@ export const layerHttp = <
   Events,
   R,
   V extends View.Elements,
-  U extends Router.Routes
+  U extends Router.Routes,
+  Rcv = never
 >(
   component:
-    & Component.Component<Name, { readonly route: U["Type"] }, Model, Msg, Events, R, V>
+    & Component.Component<Name, { readonly route: U["Type"] }, Model, Msg, Events, R, V, any, Rcv>
     & BrowserHost.HtmlRoot<V>,
   options: {
     readonly routes: U

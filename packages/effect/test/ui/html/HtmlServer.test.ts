@@ -510,6 +510,61 @@ describe("HtmlServer", { concurrent: false }, () => {
       expect(b).toBe(second)
       expect(app.querySelector("ul")!.childNodes.length).toBe(2)
     }).pipe(Effect.scoped))
+  it.effect("fails the parent whose view has two children at one path when it adopts", () =>
+    Effect.gen(function*() {
+      // The server renders two keys; the client's view at adoption renders one of them twice.
+      let client = false
+      const Item = Component.define({
+        name: "Item",
+        props: Schema.Struct({ label: Schema.String }),
+        model: Schema.String,
+        message: Schema.Never,
+        elements: Html
+      }).make({
+        init: ($) => $.props.label,
+        update: (model) => model,
+        view: (label, h) => h.li(label)
+      })
+      const List = Component.define({
+        name: "List",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html
+      }).make({
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) =>
+          h.ul(
+            h.child(Item, { key: "a", props: { label: "A" } }),
+            h.child(Item, { key: client ? "a" : "b", props: { label: "B" } })
+          )
+      })
+      const Page = Component.define({
+        name: "Page",
+        model: Schema.Struct({}),
+        message: Schema.Never,
+        elements: Html
+      }).make({
+        init: () => ({}),
+        update: (model) => model,
+        view: (_, h) => h.main(h.child(List, { key: "l", props: {}, fallback: () => h.p("failed") }))
+      })
+      const rendered = yield* HtmlServer.renderToHtml(Page, {})
+      expect(rendered.html).toContain("<li>B</li>")
+      client = true
+      const app = yield* container(rendered.html)
+      const log = MessageLog.makeMemory({ size: 1000 })
+      yield* BrowserHost.mountEffect(Page, {}, app, { state: rendered.state }).pipe(
+        Effect.provideService(MessageLog.MessageLog, log)
+      )
+      expect(app.querySelector("main")!.innerHTML).toBe("<p>failed</p>")
+      const failed = log.entries().filter((entry) => entry._tag === "Failed")
+      expect(failed).toEqual([expect.objectContaining({ path: "/Page/List[l]", source: "view" })])
+      expect(log.entries().filter((entry) => entry._tag === "Mounted").map((entry) => entry.path)).toEqual([
+        "/Page",
+        "/Page/List[l]"
+      ])
+    }).pipe(Effect.scoped))
   it.effect("waits for the slot a Layer that settles in budget wakes, and for the fetches it starts", () =>
     Effect.gen(function*() {
       class GetText extends Loader.Service<GetText>()("GetText", {

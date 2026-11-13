@@ -33,6 +33,7 @@ import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as loaders from "./loaders.ts"
+import { checkChildPaths, checkFallbackPaths, type ChildPaths, segment } from "./paths.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
@@ -136,6 +137,26 @@ interface RSlot {
   readonly failure: Cause.Cause<unknown> | undefined
 }
 
+/** How many times one instance may deliver sends in a flush before it fails. */
+const maxSendPasses = 100
+
+/** The child slot rendered with a ref whose key is `key`, among an instance's direct children. */
+const findSlot = (rendered: ReadonlyArray<Rendered>, key: string): RChild | RSlot | undefined => {
+  for (const r of rendered) {
+    if (r._tag === "Element") {
+      const found = findSlot(r.children, key)
+      if (found !== undefined) return found
+    } else if (r._tag === "Child" || r._tag === "Slot") {
+      if (r.v.ref !== undefined && r.v.ref.key === key) return r
+      if (r._tag === "Slot") {
+        const found = findSlot([r.inner], key)
+        if (found !== undefined) return found
+      }
+    }
+  }
+  return undefined
+}
+
 // ---------------------------------------------------------------------------
 // Instances
 // ---------------------------------------------------------------------------
@@ -212,6 +233,13 @@ export interface Instance {
   onEmit: (events: unknown) => unknown
   onFailure: ((failure: AsyncResult.Failure<never, unknown>) => unknown) | undefined
   failure: Cause.Cause<unknown> | undefined
+  /** What the current or last render uses: each fallback it shows is checked against it, and adds to it. */
+  childPaths: ChildPaths | undefined
+  /**
+   * A fallback in this render that clashed with `childPaths`. It shows nothing, and the render
+   * fails once its nodes are in place, so the instance closes over what it rendered.
+   */
+  clash: unknown
   rendered: Array<Rendered>
   closed: boolean
   /** Hydration: the provided Layer is still building, so the server's nodes wait, inert. */
@@ -246,6 +274,8 @@ export interface Instance {
    * updates, issued after `init`'s.
    */
   mounting: Array<{ readonly command: Command.Command<any, any>; readonly issued: MessageLog.Issued }> | undefined
+  /** The `$.send`s of updates whose render hasn't happened yet: delivered at the end of it. */
+  outbox: Array<{ readonly send: Component.Send; readonly issued: MessageLog.Issued }>
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
   readonly fire: Renderer.Dispatch
 }
@@ -377,9 +407,6 @@ const entryKey = (read: string, argsKey: string): string => `${read}\u0000${args
 
 /** How long a declaration that ran for a route drops intents for it. Fixed. */
 const intentGuardMillis = 30_000
-
-const childName = (component: Component.Any | Feature.Any): string =>
-  Feature.isService(component) ? component[Feature.TypeId].name : component.name
 
 /** Shallow per key, with `Equal.equals` only for values that differ by reference. */
 const propsEqual = (a: unknown, b: unknown): boolean => {
@@ -780,6 +807,9 @@ const setup = (
     watchHold = undefined
     release?.()
   }
+  // How many times each instance has delivered sends in this flush: a parent and a child that answer
+  // each other would otherwise never leave `drainLoop`.
+  const sendPasses = new Map<Instance, number>()
   const markDirty = (inst: Instance) => {
     dirty.add(inst)
     wake()
@@ -797,6 +827,7 @@ const setup = (
     scheduled = false
     rendering = true
     flushes++
+    sendPasses.clear()
     drain()
     settleSnapshots()
     if (reportPending) reportAdoption()
@@ -1255,6 +1286,8 @@ const setup = (
       onEmit,
       onFailure,
       failure: undefined,
+      childPaths: undefined,
+      clash: undefined,
       rendered: [],
       closed: false,
       waiting: false,
@@ -1274,6 +1307,7 @@ const setup = (
       keyedQueued: false,
       loadMores: new Set(),
       mounting: undefined,
+      outbox: [],
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
         const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props, inst.slots))
@@ -1289,6 +1323,7 @@ const setup = (
           commands: next.commands,
           events: next.events,
           lists: next.lists ?? [],
+          ...(next.sends === undefined || next.sends.length === 0 ? undefined : { sends: next.sends }),
           // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
           ...(bound === undefined ? undefined : { loaded: inst.slots ?? bound.empty })
         })
@@ -1522,13 +1557,22 @@ const setup = (
         inst.mounting = undefined
         if (inst.closed || inst.failure !== undefined) return
       }
-      const tree = guard(inst, "view", () => component.view(inst.model, inst.props, runningOf(inst), inst.slots))
+      const tree = guard(inst, "view", () => {
+        const tree = component.view(inst.model, inst.props, runningOf(inst), inst.slots)
+        inst.childPaths = checkChildPaths(path, tree)
+        inst.clash = undefined
+        return tree
+      })
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
       const rendered = guard(
         inst,
         "view",
-        () => plan !== undefined ? adoptNode(inst, tree, plan[0]!, inst.env) : create(inst, tree, inst.env)
+        () => {
+          const rendered = plan !== undefined ? adoptNode(inst, tree, plan[0]!, inst.env) : create(inst, tree, inst.env)
+          throwClash(inst)
+          return rendered
+        }
       )
       if (rendered === undefined) return
       if (plan !== undefined) {
@@ -1609,6 +1653,8 @@ const setup = (
     if (mounting !== undefined) {
       // Before the first render: nothing is issued or marked dirty, and only the watches follow the Model.
       next.commands.forEach((command, index) => mounting.push({ command, issued: { seq: entrySeq, index } }))
+      // The first render, which makes the children, comes first.
+      if (queueSends(inst, next, entrySeq)) defer(() => deliverSends(inst))
       syncSubscriptions(inst, true)
       if (next.events.length > 0) defer(() => deliverEvents(inst, next.events, entrySeq))
       return
@@ -1617,6 +1663,8 @@ const setup = (
       issue(inst, command, { seq: entrySeq, index }, initial ? index : undefined)
     )
     if (!initial) markDirty(inst)
+    // Delivered at the end of the render just marked, so a child it mounts can receive them.
+    queueSends(inst, next, entrySeq)
     syncSubscriptions(inst)
     // After the watches follow the Model, so a load more reaches the args the loader returns for it.
     if (!initial && next.lists !== undefined) {
@@ -1667,6 +1715,49 @@ const setup = (
     }
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
     else whenReady(inst.env, go)
+  }
+  const queueSends = (inst: Instance, next: Component.Next<any, any, any, any>, entrySeq: number): boolean => {
+    if (next.sends === undefined || next.sends.length === 0) return false
+    next.sends.forEach((send, index) => inst.outbox.push({ send, issued: { seq: entrySeq, index } }))
+    return true
+  }
+  /**
+   * Delivers the sends of `inst`'s updates to its direct children, matched by ref key in its last
+   * render. A send whose slot can't take it is dropped and logged, never kept for a later instance.
+   */
+  const deliverSends = (inst: Instance) => {
+    if (inst.outbox.length === 0 || inst.closed) return
+    const outbox = inst.outbox
+    inst.outbox = []
+    const passes = (sendPasses.get(inst) ?? 0) + 1
+    sendPasses.set(inst, passes)
+    if (passes > maxSendPasses) {
+      const error = new Error(
+        `${inst.path} sent to its children ${maxSendPasses} times in one flush. A parent and a child whose updates answer each other loop: answer a send with state, or send from a user event.`
+      )
+      failInstance(inst, Cause.die(error), "send")
+      return
+    }
+    for (const { issued, send } of outbox) {
+      if (inst.closed) return
+      const slot = findSlot(inst.rendered, send.ref.key)
+      const reason: MessageLog.SendDropped["reason"] | undefined = slot === undefined
+        ? "unrendered"
+        : slot._tag === "Slot"
+        ? (slot.failure !== undefined ? "failed" : "fallback")
+        : slot.inst.failure !== undefined
+        ? "failed"
+        : slot.inst.closed
+        ? "unrendered"
+        : slot.inst.waiting
+        ? "waiting"
+        : undefined
+      if (reason !== undefined) {
+        record({ _tag: "SendDropped", path: inst.path, ref: send.ref.key, issued, reason })
+        continue
+      }
+      ;(slot as RChild).inst.dispatch(send.message, { _tag: "Send", path: inst.path, seq: issued.seq })
+    }
   }
   const deliverEvents = (inst: Instance, events: ReadonlyArray<unknown>, entrySeq: number) => {
     const parent = inst.parent
@@ -2804,13 +2895,17 @@ const setup = (
     if (inst.waiting) return
     guard(inst, "view", () => {
       const tree = inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots)
+      inst.childPaths = checkChildPaths(inst.path, tree)
+      inst.clash = undefined
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
       releaseRemoved(inst.rendered, [tree])
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
+      throwClash(inst)
     })
     if (!inst.closed) updateHead(inst)
+    deliverSends(inst)
   }
 
   const create = (inst: Instance, view: View.Node<any, any>, env: Env): Rendered => {
@@ -2858,7 +2953,7 @@ const setup = (
       return {
         _tag: "Slot",
         v: view,
-        inner: create(inst, View.toNode(view.fallback(unavailable(env))), settled(env)),
+        inner: create(inst, fallbackOf(inst, view, env), settled(env)),
         failure: undefined
       }
     }
@@ -2873,7 +2968,7 @@ const setup = (
     } else {
       component = target
     }
-    const path = `${inst.path}/${childName(target)}[${view.key}]`
+    const path = `${inst.path}/${segment(view)}`
     const child = makeInstance(component, view.props, path, inst, childEnv, view.onEmit, view.onFailure, range)
     // Built fresh: the server's nodes go, and the parent places the new ones.
     if (range !== undefined && !range.claimed) removeRange(range)
@@ -2887,8 +2982,45 @@ const setup = (
     return { _tag: "Child", v: view, inst: child }
   }
 
-  const fallbackFor = (view: View.Child<any, any>, failure: Cause.Cause<unknown>): View.Node<any, any> =>
-    view.fallback !== undefined ? View.toNode(view.fallback(AsyncResult.failure(failure))) : emptyText
+  /**
+   * A fallback's children are `inst`'s, so their paths are checked against the render's other
+   * slots and fallbacks. Outside the `fallback` guard: a clash fails `inst` with source `view`, as
+   * one in its view does.
+   */
+  const shownIn = (inst: Instance, view: View.Child<any, any>, node: View.Node<any, any>): View.Node<any, any> => {
+    if (inst.childPaths === undefined) return node
+    try {
+      checkFallbackPaths(inst.childPaths, view, node)
+      return node
+    } catch (error) {
+      // Thrown midway through a patch, it would close the instance over nodes the patch has
+      // already removed, so it waits for the render to finish.
+      inst.clash ??= error
+      return emptyText
+    }
+  }
+
+  /** Fails the render with the first fallback clash, once its nodes are in place. */
+  const throwClash = (inst: Instance) => {
+    const clash = inst.clash
+    if (clash === undefined) return
+    inst.clash = undefined
+    throw clash
+  }
+
+  /** What a feature slot shows while its Layer is building or failed. */
+  const fallbackOf = (inst: Instance, view: View.Child<any, any>, env: Env): View.Node<any, any> =>
+    shownIn(inst, view, View.toNode(view.fallback!(unavailable(env))))
+
+  /** What a failed slot shows. A fallback that throws fails `inst` with source `fallback`. */
+  const fallbackFor = (inst: Instance, view: View.Child<any, any>, failure: Cause.Cause<unknown>) =>
+    shownIn(
+      inst,
+      view,
+      guard(inst, "fallback", () =>
+        view.fallback !== undefined ? View.toNode(view.fallback(AsyncResult.failure(failure))) : emptyText) ??
+        emptyText
+    )
 
   const failedSlot = (
     inst: Instance,
@@ -2896,7 +3028,7 @@ const setup = (
     failure: Cause.Cause<unknown>,
     env: Env
   ): Rendered => {
-    const shown = guard(inst, "fallback", () => fallbackFor(view, failure)) ?? emptyText
+    const shown = fallbackFor(inst, view, failure)
     return { _tag: "Slot", v: view, inner: create(inst, shown, settled(env)), failure }
   }
 
@@ -2963,7 +3095,7 @@ const setup = (
           break
         }
         case "Child": {
-          const path = `${inst.path}/${childName(view.component)}[${view.key}]`
+          const path = `${inst.path}/${segment(view)}`
           if (kind?._tag !== "Open" || kind.path !== path) return undefined
           const range = rangeFrom(node, path)
           if (range === undefined) return undefined
@@ -3011,7 +3143,7 @@ const setup = (
   // -- diff -----------------------------------------------------------------
   const keyOf = (view: View.Node<any, any>, index: number): string =>
     view._tag === "Child"
-      ? `c:${childName(view.component)}[${view.key}]`
+      ? `c:${segment(view)}`
       : view._tag === "Element" && view.elementKey !== undefined
       ? `e:${view.tag}[${view.elementKey}]`
       : `p:${index}`
@@ -3116,7 +3248,7 @@ const setup = (
       case "Slot": {
         const child = view as View.Child<any, any>
         if (rendered.failure !== undefined) {
-          const shown = guard(inst, "fallback", () => fallbackFor(child, rendered.failure!)) ?? emptyText
+          const shown = fallbackFor(inst, child, rendered.failure!)
           return {
             _tag: "Slot",
             v: child,
@@ -3129,7 +3261,7 @@ const setup = (
           destroy(inst, rendered.inner)
           return createChild(inst, child, env)
         }
-        const shown = View.toNode(child.fallback!(unavailable(env)))
+        const shown = fallbackOf(inst, child, env)
         return {
           _tag: "Slot",
           v: child,
@@ -3386,7 +3518,7 @@ const setup = (
           return instance(rendered.inst, under)
         case "Slot": {
           // A failed child, or a feature whose Layer isn't ready: the client builds it fresh.
-          const path = `${inst.path}/${childName(rendered.v.component)}[${rendered.v.key}]`
+          const path = `${inst.path}/${segment(rendered.v)}`
           if (!under) deferredPaths.push(path)
           return { _tag: "Range", path, children: [serialize(inst, rendered.inner, true)] }
         }

@@ -103,6 +103,7 @@ export type FailureSource =
   | "onEmit"
   | "onFailure"
   | "head"
+  | "send"
 
 /**
  * Which Command run an entry is about: the `seq` of the entry that issued it
@@ -125,6 +126,7 @@ export interface Issued {
  * `DomEvent` is a view handler, such as a click. `Command` is a Command's result, pointing at
  * the entry that issued it and at its span. `Subscription` is a keyed
  * Subscription. `Emit` is a child's emit, pointing at the child's entry.
+ * `Send` is a parent's `$.send`, pointing at the parent's entry.
  * `Mount` is an `onMount` result, and `Dispatch` is a message sent from
  * outside the tree, such as `TestHost`'s `root.send`.
  *
@@ -143,6 +145,7 @@ export type Source =
   }
   | { readonly _tag: "Subscription"; readonly key: string }
   | { readonly _tag: "Emit"; readonly path: string; readonly seq: number }
+  | { readonly _tag: "Send"; readonly path: string; readonly seq: number }
   | { readonly _tag: "Mount"; readonly name: string }
   | { readonly _tag: "Dispatch" }
 
@@ -163,8 +166,8 @@ export interface Base {
 
 /**
  * One `update` call: the message, what sent it, the props and loader slots
- * it saw, the Model after it, and the Commands, events, load mores and resets
- * it returned.
+ * it saw, the Model after it, and the Commands, events, load mores, resets
+ * and sends it returned.
  *
  * @stability experimental
  * @category models
@@ -182,6 +185,8 @@ export interface Update extends Base {
   readonly events: ReadonlyArray<unknown>
   /** The `$.loadMore` and `$.reset` calls, in order. The wire omits it when empty. */
   readonly lists?: ReadonlyArray<Component.ListIssue> | undefined
+  /** The `$.send` calls, in order. The wire omits it when empty. */
+  readonly sends?: ReadonlyArray<Component.Send> | undefined
   /**
    * The loader slots `update` read as `$.loaded`, by loader name: what
    * `Story.fromLog` gives it back, as it gives back `props`. Only a
@@ -375,6 +380,30 @@ export interface CommandDropped extends Base {
 }
 
 /**
+ * A `$.send` that reached no child: `path` is the sender's, `ref` the key
+ * of the slot it named, and `issued` the sender's `Update` entry and the
+ * send's index in its `sends`.
+ *
+ * **Details**
+ *
+ * The reason is `unrendered` when no slot of the sender's last render has
+ * the ref, `failed` when the child there failed, `fallback` when the slot
+ * shows a feature's `fallback` because its Layer is building or failed, and
+ * `waiting` when the slot waits for its Layer before it adopts the server's
+ * nodes. The message isn't kept for a later instance at that slot.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface SendDropped extends Base {
+  readonly _tag: "SendDropped"
+  readonly ref: string
+  readonly issued: Issued
+  readonly reason: "unrendered" | "failed" | "fallback" | "waiting"
+}
+
+/**
  * An instance failed (`Failed`), or the root did (`Crashed`), with the real
  * Cause and where it happened.
  *
@@ -454,6 +483,7 @@ export type Entry =
   | CommandSettled
   | CommandAwaiting
   | CommandDropped
+  | SendDropped
   | Failed
   | FetchStarted
 
@@ -590,6 +620,7 @@ const SourceWire = Schema.Union([
   }),
   Schema.TaggedStruct("Subscription", { key: Schema.String }),
   Schema.TaggedStruct("Emit", { path: Schema.String, seq: Schema.Number }),
+  Schema.TaggedStruct("Send", { path: Schema.String, seq: Schema.Number }),
   Schema.TaggedStruct("Mount", { name: Schema.String }),
   Schema.TaggedStruct("Dispatch", {})
 ])
@@ -601,7 +632,7 @@ const SourceWire = Schema.Union([
  * **Details**
  *
  * Models, messages, props and events are encoded through the component's
- * Schemas. Command args are encoded through the Command's `args` Schema,
+ * Schemas, and a send's message through its ref's `receives`. Command args are encoded through the Command's `args` Schema,
  * field by field, and a field that doesn't encode falls back to a structural
  * encoding, best effort: a value with no JSON form becomes
  * `{ "~unserialisable": "<kind>" }`, a `Redacted` becomes
@@ -628,6 +659,7 @@ export const Wire = Schema.Union([
     lists: Schema.optionalKey(
       Schema.Array(Schema.Struct({ name: Schema.String, op: Schema.Literals(["loadMore", "reset"]) }))
     ),
+    sends: Schema.optionalKey(Schema.Array(Schema.Struct({ ref: Schema.String, message: Schema.Json }))),
     loaded: Schema.optionalKey(Schema.Json)
   }),
   Schema.TaggedStruct("Mounted", {
@@ -664,6 +696,12 @@ export const Wire = Schema.Union([
     name: Schema.String,
     issued: IssuedWire,
     reason: Schema.Literals(["mode", "server"])
+  }),
+  Schema.TaggedStruct("SendDropped", {
+    ...Seq,
+    ref: Schema.String,
+    issued: IssuedWire,
+    reason: Schema.Literals(["unrendered", "failed", "fallback", "waiting"])
   }),
   Schema.Struct({
     _tag: Schema.Literals(["Failed", "Crashed"]),
@@ -789,6 +827,12 @@ export const makeEncoder = (options?: {
             commands: entry.commands.map(encodeCommand),
             events: entry.events.map((emitted) => through(entry.component, "events", emitted) as Schema.Json),
             ...(entry.lists === undefined || entry.lists.length === 0 ? undefined : { lists: entry.lists }),
+            ...(entry.sends === undefined || entry.sends.length === 0 ? undefined : {
+              sends: entry.sends.map((send) => {
+                const encoded = encodeSend(send)
+                return { ref: encoded.ref, message: cap(encoded.message) }
+              })
+            }),
             ...(entry.loaded === undefined ? undefined : { loaded: encodeLoaded(entry.component, entry.loaded) })
           }
         case "Mounted":
@@ -864,6 +908,8 @@ export const makeEncoder = (options?: {
             issued: entry.issued,
             reason: entry.reason
           }
+        case "SendDropped":
+          return { ...base(entry), _tag: "SendDropped", ref: entry.ref, issued: entry.issued, reason: entry.reason }
         case "Unmounted":
         case "LayerPending":
         case "LayerReady":
@@ -922,6 +968,20 @@ const encodeGroup = (command: Command.Command<any, any>): string | null => {
     ? JSON.stringify({ "~redacted": true })
     : canonical(encodeArgs(source.schema, source.picked))
 }
+
+/**
+ * Encodes a `$.send` as the ref's key and the message, through the ref's
+ * `receives` Schema the way `encodeArgs` encodes Command args: redacted,
+ * with a structural fallback for what doesn't encode.
+ *
+ * @stability experimental
+ * @category Wire
+ * @since 4.1.5
+ */
+export const encodeSend = (send: Component.Send): { readonly ref: string; readonly message: Schema.Json } => ({
+  ref: send.ref.key,
+  message: encodeArgs(send.ref.receives, send.message)
+})
 
 /** The redacting codec of `ast`, or `null` when it has none. */
 const encoderOf = memoize((ast: SchemaAST.AST): ((value: unknown) => unknown) | null => {

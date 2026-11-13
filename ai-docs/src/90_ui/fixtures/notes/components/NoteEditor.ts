@@ -63,7 +63,11 @@ const NoteEditorDef = Component.define({
     actionsOpen: Schema.Boolean
   }),
   message: NoteEditorMessage,
-  events: NoteEditorEvents
+  events: NoteEditorEvents,
+  // The messages a parent may send with `$.send`. The rest of the Message
+  // union stays private, so the editor can change it without breaking a
+  // parent.
+  receives: ["Save"]
 })
 
 // An update function without a tag takes every message, so `$.combine` in
