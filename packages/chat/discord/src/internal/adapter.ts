@@ -1,4 +1,5 @@
 import type { DiscordREST } from "dfx/DiscordREST"
+import type * as Discord from "dfx/types"
 import * as Cache from "effect/Cache"
 import {
   type ChatAdapter,
@@ -10,7 +11,15 @@ import {
   type ThreadInfo,
   type User
 } from "effect/chat/ChatAdapter"
-import { type ChatError, type ChatErrorReason, TooLarge, Unsupported } from "effect/chat/ChatError"
+import {
+  type ChatError,
+  type ChatErrorReason,
+  fileRefused,
+  interactionExpired,
+  NotFound,
+  TooLarge
+} from "effect/chat/ChatError"
+import * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type * as ChatThread from "effect/chat/ChatThread"
 import type { Action } from "effect/chat/ChatUi"
@@ -24,6 +33,7 @@ import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Errors from "./errors.ts"
+import * as Interactions from "./interactions.ts"
 import * as Length from "./length.ts"
 import * as Normalize from "./normalize.ts"
 import { allowedMentions, CurrentPostOptions, flags } from "./options.ts"
@@ -45,14 +55,19 @@ export const descriptor: Descriptor = {
     "startThread",
     "getThread",
     "opener",
-    "getUser"
+    "getUser",
+    "buttons",
+    "selects",
+    "modals"
   ]),
-  measure: Length.codePoints,
+  // Components sit beside `content`, so the elements cost nothing here.
+  measure: (markdown) => Length.codePoints(markdown),
   limits: {
     messageLength: Length.messageLength,
     filesPerMessage: 10,
     uploadBytes: 10 * 1024 * 1024,
-    minWriteInterval: Duration.millis(1500)
+    minWriteInterval: Duration.millis(1500),
+    ...Interactions.limits
   }
 }
 
@@ -62,6 +77,8 @@ const pageSize = 100
 const THREAD_ALREADY_CREATED = 160004
 /** Discord's code for "cannot execute action on this channel type". */
 const WRONG_CHANNEL_TYPE = 50024
+/** Discord's code for "unknown interaction": a callback after the 3 seconds. */
+const UNKNOWN_INTERACTION = 10062
 
 const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
 
@@ -114,12 +131,11 @@ export const make = Effect.fnUntraced(function*(options: {
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
-  /** The descriptor lists no buttons or selects yet, so a write that carries them is refused, never sent without them. */
-  const refuseActions = (op: string, actions: ReadonlyArray<Action> | undefined) =>
-    actions === undefined || actions.length === 0 ? Effect.void : fail(
-      op,
-      new Unsupported({ capability: actions.some((action) => action._tag !== "Select") ? "buttons" : "selects" })
-    )
+  /** A message's elements as action rows, checked before any call. */
+  const components = (op: string, actions: ReadonlyArray<Action> | undefined) => {
+    const rows = Interactions.rows(actions ?? [])
+    return Array.isArray(rows) ? Effect.succeed(rows) : fail(op, rows)
+  }
 
   /** One REST call, its failure mapped to a `ChatError` and retried when nothing happened. */
   const call = <A, E>(op: string, effect: Effect.Effect<A, E>, write = false): Effect.Effect<A, ChatError> =>
@@ -184,24 +200,31 @@ export const make = Effect.fnUntraced(function*(options: {
   const post: ChatAdapter["post"] = Effect.fnUntraced(function*(thread, content) {
     const op = "post"
     const channelId = yield* resolve(op, thread)
-    yield* refuseActions(op, content.actions)
+    const rows = yield* components(op, content.actions)
     const postOptions = yield* CurrentPostOptions
     yield* checkMessageLength(descriptor, op, content.markdown)
     const files = content.files ?? []
-    if (files.length > descriptor.limits.filesPerMessage) {
-      return yield* fail(op, new TooLarge({ subject: "files", detail: "too_many_files" }))
-    }
-    if (files.reduce((total, file) => total + file.content.length, 0) > descriptor.limits.uploadBytes) {
-      return yield* fail(op, new TooLarge({ subject: "files", detail: "upload_too_large" }))
+    // The adapter's own count and size check refuses the file the way Discord would.
+    if (
+      files.length > descriptor.limits.filesPerMessage ||
+      files.reduce((total, file) => total + file.content.length, 0) > descriptor.limits.uploadBytes
+    ) {
+      return yield* fail(op, new TooLarge({ subject: "files", detail: fileRefused }))
     }
     const create = rest.createMessage(channelId, {
       content: content.markdown,
       allowed_mentions: allowedMentions(postOptions.notify),
       flags: flags(postOptions),
+      ...(rows.length === 0 ? {} : { components: rows }),
       ...(content.replyTo === undefined ? {} : { message_reference: { message_id: content.replyTo.messageId } }),
       ...(files.length === 0 ? {} : { attachments: files.map((file, i) => ({ id: String(i), filename: file.name })) })
     })
-    const answer = yield* call(op, files.length === 0 ? create : rest.withFiles(files.map(toFile))(create), true)
+    const answer = yield* (files.length === 0
+      ? call(op, create, true)
+      // Discord creates the message and its files in one request, so a denied answer left nothing posted.
+      : call(op, rest.withFiles(files.map(toFile))(create), true).pipe(
+        Effect.mapError((error) => Errors.chatError(op, Errors.fileRefused(error.reason)))
+      ))
     if (typeof answer.id !== "string" || typeof answer.timestamp !== "string") {
       return yield* fail(op, Errors.invalidResponse(true, "missing_id"))
     }
@@ -213,7 +236,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const edit: ChatAdapter["edit"] = Effect.fnUntraced(function*(thread, messageId, content) {
     const op = "edit"
     const channelId = yield* resolve(op, thread)
-    yield* refuseActions(op, content.actions)
+    const rows = yield* components(op, content.actions)
     const postOptions = yield* CurrentPostOptions
     yield* checkMessageLength(descriptor, op, content.markdown)
     yield* call(
@@ -221,7 +244,9 @@ export const make = Effect.fnUntraced(function*(options: {
       rest.updateMessage(channelId, messageId, {
         content: content.markdown,
         allowed_mentions: allowedMentions(postOptions.notify),
-        flags: flags(postOptions)
+        flags: flags(postOptions),
+        // Always sent, so an edit without elements removes the ones there were.
+        components: rows
       }),
       true
     )
@@ -463,5 +488,66 @@ export const make = Effect.fnUntraced(function*(options: {
   const channelType = (id: string): Effect.Effect<number, ChatError> =>
     Effect.map(channel("dispatch", id), (found) => found.type)
 
-  return { adapter, guild, channelType }
+  // Interactions
+
+  /** One callback, Discord's answer to an interaction. */
+  const callback = (
+    op: string,
+    to: { readonly id: string; readonly token: string },
+    payload: Discord.CreateInteractionResponseRequest
+  ): Effect.Effect<void, ChatError> =>
+    Effect.asVoid(call(op, rest.createInteractionResponse(to.id, to.token, { payload }), true))
+
+  const logged = (effect: Effect.Effect<void, ChatError>) =>
+    Effect.catch(effect, (error) => Effect.logWarning("@effect/chat-discord: an interaction callback failed", error))
+
+  /**
+   * Normalises an `INTERACTION_CREATE` payload, runs the handler inside
+   * `deadline` and answers through the callback endpoint.
+   */
+  const interaction = (
+    raw: unknown,
+    interactionOptions?: { readonly deadline?: Duration.Duration | undefined }
+  ): Effect.Effect<void, never, ChatInteraction.Handler> =>
+    Effect.gen(function*() {
+      const event = Interactions.normalize(raw)
+      const to = Interactions.answerTo(raw)
+      if (Option.isNone(event) || to === undefined) return
+      const reply = yield* ChatInteraction.handle(event.value, interactionOptions?.deadline ?? Duration.seconds(2))
+      switch (reply._tag) {
+        // Too late to answer: Discord shows its own banner.
+        case "Late":
+          return
+        case "Ack":
+        case "Close":
+          return yield* logged(callback("ack", to, Interactions.ackCallback))
+        case "Errors":
+          return yield* logged(callback("errors", to, Interactions.errorsCallback(reply.errors)))
+        case "OpenModal": {
+          const click = event.value as ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
+          const handler = yield* ChatInteraction.Handler
+          const data = Interactions.modalData(reply.modal)
+          if (!("custom_id" in data)) {
+            // The click is still answered, so the person sees no failure for a modal that could not be built.
+            yield* logged(callback("ack", to, Interactions.ackCallback))
+            return yield* handler.refused(click, Errors.chatError("openModal", data))
+          }
+          yield* callback("openModal", to, Interactions.modalCallback(data)).pipe(
+            Effect.catch((error) =>
+              handler.refused(
+                click,
+                Errors.hasCode(UNKNOWN_INTERACTION)(error)
+                  ? Errors.chatError(
+                    "openModal",
+                    new NotFound({ detail: interactionExpired, cause: error.reason })
+                  )
+                  : error
+              )
+            )
+          )
+        }
+      }
+    })
+
+  return { adapter, guild, channelType, interaction }
 })

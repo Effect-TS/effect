@@ -9,6 +9,12 @@
  *   rules that need another identity's message. Without it,
  *   `DISCORD_LIVE_WEBHOOK_URL`, a webhook on the channel, stands in. Without
  *   either, those rules fail at `userPosts`.
+ *
+ * The outbound buttons and modals rules run here. Nothing can click a
+ * button through the API, so the rules that need a click take the
+ * `interactions` hook and run only over the stubbed REST in
+ * `conformance.test.ts`. Discord refuses no small file on demand, so
+ * `post/refusedFile` runs there too.
  */
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { describe, it } from "@effect/vitest"

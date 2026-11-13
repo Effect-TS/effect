@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { ChatHandler, NotAccepted } from "effect/chat/ChatHandler"
 import { checkMessage } from "effect/chat/ChatTest"
+import type * as ChatUi from "effect/chat/ChatUi"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
@@ -218,23 +219,158 @@ describe("post", () => {
 })
 
 describe("buttons and selects", () => {
-  it.effect("are refused with Unsupported until the adapter supports them, calling nothing", () => {
+  const button = (i: number): ChatUi.Button => ({ _tag: "Button", id: "b" + i, label: "B" + i })
+  const select: ChatUi.Select = {
+    _tag: "Select",
+    id: "pick",
+    placeholder: "Pick",
+    options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
+    selected: "b"
+  }
+  const rowsOf = (fake: Fake) => fake.called("createMessage")[0][1].components
+
+  it.effect("go out as action rows: five buttons to a row and a select alone in its row", () => {
+    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        yield* discord.post(channel, {
+          markdown: "x",
+          actions: [
+            { _tag: "Button", id: "go", label: "Go", style: "primary", value: "v" },
+            { _tag: "Button", id: "stop", label: "Stop", style: "danger" },
+            { _tag: "LinkButton", label: "Docs", url: "https://effect.website" },
+            select,
+            ...Array.from({ length: 6 }, (_, i) => button(i))
+          ]
+        })
+        assert.deepStrictEqual(rowsOf(fake), [
+          {
+            type: 1,
+            components: [
+              { type: 2, style: 1, label: "Go", custom_id: "go\u241Fv" },
+              { type: 2, style: 4, label: "Stop", custom_id: "stop" },
+              { type: 2, style: 5, label: "Docs", url: "https://effect.website" }
+            ]
+          },
+          {
+            type: 1,
+            components: [{
+              type: 3,
+              custom_id: "pick",
+              placeholder: "Pick",
+              options: [{ label: "A", value: "a" }, { label: "B", value: "b", default: true }],
+              min_values: 1,
+              max_values: 1
+            }]
+          },
+          {
+            type: 1,
+            components: [0, 1, 2, 3, 4].map((i) => ({ type: 2, style: 2, label: "B" + i, custom_id: "b" + i }))
+          },
+          { type: 1, components: [{ type: 2, style: 2, label: "B5", custom_id: "b5" }] }
+        ])
+      })
+    )
+  })
+
+  it.effect("fail TooLarge before the call when the rows run out or a custom_id would pass 100", () => {
     const fake = makeFake({})
     return run(
       fake,
       Effect.gen(function*() {
         const discord = yield* adapter
-        const post = yield* reason(discord.post(channel, {
+        const post = (actions: ReadonlyArray<ChatUi.Action>) =>
+          reason(discord.post(channel, { markdown: "x", actions }))
+        assert.deepStrictEqual(discord.descriptor.limits.actionsPerMessage, 25)
+        assert.strictEqual((yield* post(Array.from({ length: 26 }, (_, i) => button(i)))).detail, "too_many_actions")
+        // Six selects need six rows.
+        assert.strictEqual((yield* post(Array.from({ length: 6 }, () => select))).detail, "too_many_actions")
+        // 99 code points of id and value fit, with the join, in Discord's 100.
+        const astral = "\u{1D400}"
+        assert.strictEqual(
+          (yield* post([{ _tag: "Button", id: "id", label: "x", value: astral.repeat(98) }])).detail,
+          "action_data_too_long"
+        )
+        assert.strictEqual(
+          (yield* post([{ ...select, options: [{ label: "x", value: "x".repeat(96) }] }])).tag,
+          "TooLarge"
+        )
+        assert.strictEqual(
+          (yield* post([{ _tag: "Button", id: "a\u241Fb", label: "x" }])).tag,
+          "InvalidRequest"
+        )
+        assert.strictEqual(fake.calls.length, 0)
+      })
+    )
+  })
+
+  it.effect("an id and value of 99 code points fit", () => {
+    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        yield* discord.post(channel, {
           markdown: "x",
-          actions: [{ _tag: "Button", id: "go", label: "Go" }]
-        }))
-        assert.deepStrictEqual([post.op, post.tag], ["post", "Unsupported"])
-        const edit = yield* reason(discord.edit(channel, "1", {
+          actions: [{ _tag: "Button", id: "id", label: "x", value: "\u{1D400}".repeat(97) }]
+        })
+        assert.strictEqual(fake.called("createMessage").length, 1)
+      })
+    )
+  })
+})
+
+describe("files", () => {
+  const file = { name: "fixture.txt", contentType: "text/plain", content: new TextEncoder().encode("hello") }
+  const refused = (fail: () => Effect.Effect<never, unknown>) => {
+    const fake = makeFake({ createMessage: fail })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const error = yield* Effect.flip(discord.post(channel, { markdown: "x", files: [file] }))
+        return { tag: error.reason._tag, detail: error.reason.detail, retry: error.retry, cause: error.reason.cause }
+      })
+    )
+  }
+
+  it.effect("a denied answer to a post with files is file_refused, with Discord's reason as the cause", () =>
+    Effect.gen(function*() {
+      for (const [status, code] of [[400, 40005], [400, 50045], [403, 50013]] as const) {
+        const result = yield* refused(() => Effect.fail(errorResponse(status, { code, message: "refused" })))
+        assert.strictEqual(result.detail, "file_refused")
+        assert.strictEqual(result.retry, "denied")
+        assert.strictEqual((result.cause as any).detail, String(code))
+      }
+      // A 413 from Discord's edge has no JSON body.
+      const edge = yield* refused(() =>
+        Effect.fail({ _tag: "HttpClientError", reason: { _tag: "DecodeError", response: { status: 413 } } })
+      )
+      assert.deepStrictEqual([edge.tag, edge.detail, edge.retry], ["TooLarge", "file_refused", "denied"])
+      // A failure that is not denied keeps its own reason.
+      const unavailable = yield* refused(() => Effect.fail(statusCodeError(502)))
+      assert.deepStrictEqual([unavailable.tag, unavailable.detail], ["PlatformUnavailable", "http_502"])
+    }))
+
+  it.effect("the adapter's own count and size check is file_refused, without a call", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const tooMany = yield* reason(
+          discord.post(channel, { markdown: "x", files: Array.from({ length: 11 }, () => file) })
+        )
+        const tooBig = yield* reason(discord.post(channel, {
           markdown: "x",
-          actions: [{ _tag: "Select", id: "pick", options: [{ label: "A", value: "a" }] }]
+          files: [{ ...file, content: new Uint8Array(10 * 1024 * 1024 + 1) }]
         }))
-        assert.deepStrictEqual([edit.op, edit.tag], ["edit", "Unsupported"])
-        assert.strictEqual(fake.called("createMessage").length + fake.called("updateMessage").length, 0)
+        for (const result of [tooMany, tooBig]) {
+          assert.deepStrictEqual(result, { op: "post", tag: "TooLarge", detail: "file_refused", retry: "denied" })
+        }
+        assert.strictEqual(fake.calls.length, 0)
       })
     )
   })
@@ -251,7 +387,8 @@ describe("edit", () => {
         assert.deepStrictEqual(fake.called("updateMessage"), [[scratch, "1", {
           content: "now with https://effect.website",
           allowed_mentions: noMentions,
-          flags: 4
+          flags: 4,
+          components: []
         }]])
         assert.deepStrictEqual(yield* reason(discord.edit(channel, "1", { markdown: "a".repeat(2001) })), {
           op: "edit",

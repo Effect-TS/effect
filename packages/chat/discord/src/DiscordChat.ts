@@ -1,7 +1,7 @@
 /**
  * The Discord adapter for `effect/chat`: the `Registry` layer, the
- * structural dispatch entry, the pure normaliser, a default gateway layer,
- * address helpers and the scoped post options. It runs on dfx: every REST
+ * structural dispatch and interaction entries, the pure normalisers, two
+ * default gateway layers, address helpers and the scoped post options. It runs on dfx: every REST
  * call goes through the `DiscordREST` in context.
  *
  * **Details**
@@ -25,6 +25,7 @@ import { Registry } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
 import type { ChatEvent, MessageCreated, ReactionAdded } from "effect/chat/ChatEvent"
 import { ChatHandler, NotAccepted } from "effect/chat/ChatHandler"
+import * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ParseMention } from "effect/chat/ChatTest"
 import type { ChatThread } from "effect/chat/ChatThread"
 import * as Context from "effect/Context"
@@ -39,6 +40,7 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Adapter from "./internal/adapter.ts"
 import * as Errors from "./internal/errors.ts"
+import * as Interactions from "./internal/interactions.ts"
 import * as Mentions from "./internal/mentions.ts"
 import * as Normalize from "./internal/normalize.ts"
 import { CurrentPostOptions } from "./internal/options.ts"
@@ -57,6 +59,22 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   the channel up, cached and with a five second timeout. A failed lookup
  *   is logged and fails with `NotAccepted`. A lookup that would fail the same
  *   way again, such as a deleted channel, is logged and the event dropped.
+ * - `interaction` takes one `INTERACTION_CREATE` payload, from the gateway
+ *   or from an HTTP interactions endpoint. It reads it with a Schema, so it
+ *   takes no dfx type, and ignores an interaction that is not from an
+ *   element this adapter built, a slash command for one. It calls the
+ *   handler through `ChatInteraction.handle` and answers through the
+ *   interaction callback endpoint, which has to land inside Discord's 3
+ *   seconds: `deadline` is the handler's share, 2 seconds by default.
+ * - A click is answered with callback type 6, or type 9 for `OpenModal`.
+ *   A submit's `close` is type 6. An `errors` reply is type 4 with the
+ *   ephemeral flag, listing each message as plain text, and the modal closes: Discord
+ *   can't show an error inside a modal, so the descriptor has no
+ *   `modalErrors`.
+ * - A modal that can't be built, or whose callback fails, goes to
+ *   `Handler.refused`. A callback that comes back 404 `Unknown interaction`
+ *   was late: for a modal that is `NotFound` with detail
+ *   `interaction_expired`. A failed ack is logged.
  * - `guild` reads the channel, cached. `None` for a direct.
  *
  * @stability unstable
@@ -69,6 +87,10 @@ export class DiscordChat extends Context.Service<DiscordChat, {
     readonly t: string
     readonly d: unknown
   }) => Effect.Effect<void, NotAccepted, ChatHandler>
+  readonly interaction: (interaction: unknown, options?: {
+    /** The handler's share of Discord's 3 seconds. Default 2 seconds. */
+    readonly deadline?: Duration.Duration | undefined
+  }) => Effect.Effect<void, never, ChatInteraction.Handler>
   readonly guild: (thread: ChatThread) => Effect.Effect<Option.Option<string>, ChatError>
 }>()("@effect/chat-discord/DiscordChat") {}
 
@@ -92,6 +114,26 @@ const lookupTimeout = Duration.seconds(5)
  *   otherwise. A reply does not ping its author.
  * - `post` and `edit` fail with `TooLarge` before calling Discord past
  *   2,000 code points.
+ * - A refused file fails `denied` with detail `file_refused` and leaves
+ *   nothing posted: more than 10 files or 10 MiB, by the adapter's own
+ *   check, or any `denied` answer to a post with files. The reason Discord
+ *   gave is the `cause`.
+ * - A message's elements go out as classic components beside `content`,
+ *   in action rows: five buttons to a row and a select alone in its row, in
+ *   the order given, up to five rows. More fail `TooLarge` before the call.
+ *   An `edit` without `actions` removes the ones there were.
+ * - A button's id and encoded value share one `custom_id`, joined by one
+ *   character, and so do a modal's id and its metadata. An id may not
+ *   contain U+241F, the join. `limits.actionDataLength` and
+ *   `limits.modalMetadataLength` are 99 code points, the 100 of
+ *   `custom_id` less the join.
+ * - Button styles: `default` is secondary, `primary` primary and
+ *   `danger` danger.
+ * - A modal's inputs are Label components around a text input or a string
+ *   select, and a `text` is a text display. Inputs and texts together are
+ *   5 at most. A modal over that, or with a title or label over 45
+ *   characters, reaches `Handler.refused` as `TooLarge`. Discord has no
+ *   submit label, so `submitLabel` is not shown.
  * - `replyTo` sends a message reference.
  * - Only `DEFAULT`, `REPLY`, `CHAT_INPUT_COMMAND` and
  *   `CONTEXT_MENU_COMMAND` messages are messages. A forward, a poll, a
@@ -140,7 +182,7 @@ export const layer: Layer.Layer<DiscordChat, never, DiscordREST | HttpClient.Htt
         })
       )
     })
-    const { adapter, channelType, guild } = yield* Adapter.make({ rest, http, botUserId })
+    const { adapter, channelType, guild, interaction } = yield* Adapter.make({ rest, http, botUserId })
     yield* registry.register(adapter)
 
     const refuse = (message: string, error: ChatError) =>
@@ -174,7 +216,7 @@ export const layer: Layer.Layer<DiscordChat, never, DiscordREST | HttpClient.Htt
       for (const event of result.events) yield* handler.handle(event)
     })
 
-    return DiscordChat.of({ botUserId, dispatch, guild })
+    return DiscordChat.of({ botUserId, dispatch, interaction, guild })
   })
 )
 
@@ -295,6 +337,69 @@ export const layerGateway: Layer.Layer<never, never, DiscordGateway | DiscordCha
     )
   })
 )
+
+/**
+ * For a long-running process: subscribes to dfx's gateway and feeds every
+ * `INTERACTION_CREATE` to `DiscordChat.interaction`.
+ *
+ * **Details**
+ *
+ * Interactions run concurrently, since each has its own 3 seconds. It is
+ * separate from `layerGateway`, so a consumer with no buttons needs no
+ * `ChatInteraction.Handler`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.5
+ */
+export const layerGatewayInteractions: Layer.Layer<
+  never,
+  never,
+  DiscordGateway | DiscordChat | ChatInteraction.Handler
+> = Layer.effectDiscard(
+  Effect.gen(function*() {
+    const gateway = yield* DiscordGateway
+    const discord = yield* DiscordChat
+    const handler = yield* ChatInteraction.Handler
+    yield* gateway.fromDispatch("INTERACTION_CREATE").pipe(
+      Stream.mapEffect(
+        (payload) =>
+          discord.interaction(payload).pipe(
+            Effect.provideService(ChatInteraction.Handler, handler),
+            Effect.catchCause((cause) => Effect.logWarning("discord gateway: interaction dropped", cause))
+          ),
+        { concurrency: "unbounded" }
+      ),
+      Stream.runDrain,
+      Effect.forkScoped
+    )
+  })
+)
+
+/**
+ * The normaliser behind `DiscordChat.interaction`.
+ *
+ * **Details**
+ *
+ * - Pure. A click on a button gives `ButtonClicked`, with the id and value
+ *   split from the `custom_id`. A string select gives `SelectChanged`, and
+ *   a modal's submit `ModalSubmitted`, its metadata split from the modal's
+ *   `custom_id`.
+ * - The thread and message come from the `message` Discord sends with the
+ *   interaction, so a modal's submit carries the message whose element
+ *   opened it.
+ * - A submit's `values` hold each answered input by id. An input left
+ *   empty is absent.
+ * - Anything else, a slash command or an interaction with no message, is
+ *   `None`.
+ * - `raw` is the payload, undecoded.
+ *
+ * @stability unstable
+ * @category normalization
+ * @since 4.1.5
+ */
+export const normalizeInteraction: (interaction: unknown) => Option.Option<ChatInteraction.Interaction> =
+  Interactions.normalize
 
 /**
  * Discord options for every write inside an effect.
