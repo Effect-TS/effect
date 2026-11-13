@@ -290,7 +290,8 @@ const takePermits = <A, E, R>(
 
 class SemaphoreImpl implements Semaphore {
   public waiters = new Set<Waiter>()
-  // A conservative minimum, reset only when the queue empties to avoid rescanning on removal.
+  // A lower bound on the permits of queued requests. Removals leave it stale
+  // until the queue empties, which only costs extra scanning.
   public waiterPermitsLowerBound = Infinity
   public taken = 0
   public permits: number
@@ -331,8 +332,7 @@ class SemaphoreImpl implements Semaphore {
         // Wake every queued request that fits in the free permits. Waiters
         // that were already woken still count against the budget, since they
         // keep their place until they acquire. Resumed fibers run inline and
-        // can add or remove waiters, so choose the waiters first, stopping
-        // once the free permits are spoken for, and then resume them.
+        // can add or remove waiters, so select the batch before resuming any.
         let remaining = this.free
         const woken: Array<Waiter> = []
         for (const waiter of this.waiters) {
