@@ -167,6 +167,13 @@ const evaluateAt = <T>(
  * Use when you need to transform a parsed config value with a function that
  * cannot fail.
  *
+ * **Gotchas**
+ *
+ * If the function throws, including a checked brand constructor, the exception
+ * becomes a defect rather than a `ConfigError`. Use `Config.schema` with
+ * `Schema.fromBrand` for checked brands, or `Config.mapEffect` with explicit
+ * `ConfigError` failures for other fallible transformations.
+ *
  * **Example** (Uppercasing a string config)
  *
  * ```ts import.meta.vitest
@@ -181,6 +188,7 @@ const evaluateAt = <T>(
  * ```
  *
  * @see {@link mapEffect} – when the transformation can fail
+ * @see {@link schema} – for schema-based validation
  *
  * @stability stable
  * @category mapping
