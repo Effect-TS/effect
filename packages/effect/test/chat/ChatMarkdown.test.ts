@@ -345,6 +345,22 @@ describe("ChatMarkdown", () => {
         yield* test.click(result.parts[1].messageId, "go")
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: withActions }))))
 
+    it.effect("posts the actions after an unattached note that has no room for them", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_refused" }))
+        const result = yield* ChatMarkdown.post(thread, "a".repeat(20), {
+          actions: [button],
+          files,
+          unattachedNote: () => "n".repeat(25)
+        })
+        assert.deepStrictEqual(result.parts.map((part) => part.markdown), ["a".repeat(20), "n".repeat(25), ""])
+        for (const part of result.parts.slice(0, 2)) {
+          assert.strictEqual((yield* Effect.flip(test.click(part.messageId, "go")))._tag, "NoSuchElement")
+        }
+        yield* test.click(result.parts[2].messageId, "go")
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: withActions }))))
+
     it.effect("never cuts inside a grapheme cluster to leave room for the actions", () =>
       Effect.gen(function*() {
         const { thread } = yield* setup
