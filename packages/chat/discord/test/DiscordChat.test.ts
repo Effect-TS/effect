@@ -469,7 +469,8 @@ describe("files", () => {
           assert.deepStrictEqual(result, { op: "post", tag: "TooLarge", detail: "file_refused", retry: "denied" })
         }
         assert.strictEqual(fake.calls.length, 0)
-        // The check refuses nothing Discord would take: it accepted 20 MiB in a guild with no boosts.
+        // The limit is a conservative bound, at most what Discord accepted (20 MiB in a guild with no
+        // boosts), so files between the two are refused here although Discord would take them.
         const accepted = step("uploads", "upload-20MiB")
         assert.strictEqual(accepted.status, 200)
         assert.isAtMost(discord.descriptor.limits.uploadBytes, accepted.request["files[0]"].bytes)
