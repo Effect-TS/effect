@@ -65,18 +65,18 @@ const waitForPgSleep = Effect.gen(function*() {
   }
 }).pipe(Effect.timeout("5 seconds"))
 
-// Waits until another connection is blocked on a lock.
-const waitForPgLock = Effect.gen(function*() {
+// Waits until the connection with this application_name is blocked on a lock.
+const waitForPgLock = Effect.fnUntraced(function*(applicationName: string) {
   const sql = yield* SqlClient.SqlClient
   while (true) {
     const waiting = yield* sql`
       SELECT 1 FROM pg_stat_activity
-      WHERE pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+      WHERE application_name = ${applicationName} AND wait_event_type = 'Lock'
     `
     if (waiting.length > 0) return
     yield* Effect.sleep("10 millis")
   }
-}).pipe(Effect.timeout("5 seconds"))
+}, Effect.timeout("5 seconds"))
 
 // Waits until another connection is paused in a test trigger's SLEEP.
 const waitForMysqlSleep = Effect.gen(function*() {
@@ -305,10 +305,11 @@ describe("SqlMessageStorage", () => {
               yield* release.await
             }).pipe(sql.withTransaction, Effect.forkChild)
             yield* locked.await
-            const reset = yield* Effect.forkChild(
-              storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
-            )
-            yield* waitForPgLock
+            const reset = yield* Effect.gen(function*() {
+              yield* sql`SET LOCAL application_name = 'cluster_test_guarded_reset'`
+              yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
+            }).pipe(sql.withTransaction, Effect.forkChild)
+            yield* waitForPgLock("cluster_test_guarded_reset")
             yield* release.open
             yield* Fiber.join(completion)
             yield* Fiber.join(reset)
