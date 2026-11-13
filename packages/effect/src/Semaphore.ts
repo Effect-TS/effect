@@ -241,6 +241,8 @@ interface Waiter {
 // The first queued request that fits in the free permits. Larger requests
 // ahead of it keep their place but are overtaken, as documented on `take`.
 const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
+  // With no free permit only a request that needs none fits, so skip the search.
+  if (self.free <= 0 && self.zeroPermitWaiters === 0) return undefined
   for (const waiter of self.waiters) {
     if (waiter.permits <= self.free) return waiter
   }
@@ -261,10 +263,14 @@ const takePermits = <A, E, R>(
     // it acquires or is interrupted, and re-checks eligibility when it runs.
     const waiter: Waiter = { permits: n, resume: undefined }
     const remove = () => {
-      if (self.waiters.delete(waiter)) self.releaseUnsafe(fiber, 0)
+      if (self.waiters.delete(waiter)) {
+        if (n <= 0) self.zeroPermitWaiters--
+        self.releaseUnsafe(fiber, 0)
+      }
       return undefined
     }
     self.waiters.add(waiter)
+    if (n <= 0) self.zeroPermitWaiters++
     internal.onExitUnsafe(fiber, remove)
     const wait = restore(internal.callback<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
@@ -285,6 +291,8 @@ const takePermits = <A, E, R>(
 
 class SemaphoreImpl implements Semaphore {
   public waiters = new Set<Waiter>()
+  // Queued requests that need no permit, which fit even when none are free.
+  public zeroPermitWaiters = 0
   public taken = 0
   public permits: number
 
@@ -324,11 +332,18 @@ class SemaphoreImpl implements Semaphore {
         // Wake every queued request that fits in the free permits. Waiters
         // that were already woken still count against the budget, since they
         // keep their place until they acquire. Resumed fibers run inline and
-        // can add or remove waiters, so iterate over a snapshot.
+        // can add or remove waiters, so choose the waiters first, stopping
+        // once the free permits are spoken for, and then resume them.
         let remaining = this.free
-        for (const waiter of Array.from(this.waiters)) {
-          if (!this.waiters.has(waiter) || waiter.permits > remaining) continue
+        const woken: Array<Waiter> = []
+        for (const waiter of this.waiters) {
+          if (remaining <= 0 && this.zeroPermitWaiters === 0) break
+          if (waiter.permits > remaining) continue
           remaining -= waiter.permits
+          woken.push(waiter)
+        }
+        for (const waiter of woken) {
+          if (!this.waiters.has(waiter)) continue
           const resume = waiter.resume
           waiter.resume = undefined
           resume?.(internal.void)

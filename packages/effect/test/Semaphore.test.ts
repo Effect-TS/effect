@@ -51,6 +51,61 @@ describe("Semaphore", () => {
       yield* Fiber.joinAll(waiters)
     }))
 
+  it.effect("draining a long queue looks at each request a bounded number of times", () =>
+    Effect.gen(function*() {
+      const sem = Semaphore.makeUnsafe(1)
+      // Count every queued request the semaphore looks at.
+      const waiters: Set<unknown> = (sem as any).waiters
+      const iterate = waiters[Symbol.iterator].bind(waiters)
+      let visited = 0
+      waiters[Symbol.iterator] = function*(): Generator<unknown, undefined> {
+        for (const waiter of iterate()) {
+          visited++
+          yield waiter
+        }
+        return undefined
+      }
+      const requests = 1_000
+      yield* Effect.forEach(
+        Array.from({ length: requests }),
+        () => sem.withPermits(1)(Effect.yieldNow),
+        { concurrency: "unbounded", discard: true }
+      )
+      assert.isBelow(visited, requests * 8)
+    }))
+
+  it.effect("a request for no permits is admitted while none are free", () =>
+    Effect.gen(function*() {
+      const sem = yield* Semaphore.make(2)
+      const admitted: Array<string> = []
+      const request = (name: string, permits: number) =>
+        Effect.forkChild(
+          sem.withPermits(permits)(
+            Effect.andThen(Effect.sync(() => admitted.push(name)), Effect.yieldNow)
+          )
+        )
+      // Both permits are held, so every request below queues.
+      const holder = yield* Effect.forkChild(sem.withPermits(2)(Effect.never))
+      yield* Effect.yieldNow
+      const queued = [
+        yield* request("first", 1),
+        yield* request("second", 1),
+        yield* request("both", 2),
+        yield* request("third", 1)
+      ]
+      const interrupted = yield* request("interrupted", 1)
+      const none = yield* request("none", 0)
+      yield* Fiber.join(none)
+      assert.deepStrictEqual(admitted, ["none"])
+
+      yield* Fiber.interrupt(interrupted)
+      yield* Fiber.interrupt(holder)
+      yield* Fiber.joinAll(queued)
+      // `third` fits beside `second` while `both` still waits for two permits.
+      assert.deepStrictEqual(admitted, ["none", "first", "second", "third", "both"])
+      assert.isTrue(yield* sem.takeIfAvailable(2))
+    }))
+
   it.effect("basic single partition operation", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make({ permits: 4 })
