@@ -623,7 +623,7 @@ export const replaceCookies: {
 } = dual(
   2,
   (self: HttpServerResponse, cookies: Cookies.Cookies): HttpServerResponse =>
-    copyResponse(self, self.status, self.statusText, cookies)
+    copyResponse(self, self.status, self.statusText, cookies, self.body)
 )
 
 /**
@@ -943,15 +943,8 @@ export const setBody: {
  *
  * @internal
  */
-export const setBodyKeepHeaders = (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => {
-  const response = Object.create(Proto) as Mutable<HttpServerResponse>
-  response.status = self.status
-  response.statusText = self.statusText
-  response.headers = self.headers
-  response.cookies = self.cookies
-  response.body = body
-  return response
-}
+export const setBodyKeepHeaders = (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
+  copyResponse(self, self.status, self.statusText, self.cookies, body)
 
 /**
  * Sets the HTTP status code of an `HttpServerResponse`.
@@ -980,7 +973,7 @@ export const setStatus: {
     self: HttpServerResponse,
     status: number,
     statusText?: string | undefined
-  ): HttpServerResponse => copyResponse(self, status, statusText ?? self.statusText, self.cookies)
+  ): HttpServerResponse => copyResponse(self, status, statusText ?? self.statusText, self.cookies, self.body)
 )
 
 /**
@@ -1460,20 +1453,21 @@ const makeResponse = (options: {
   return self
 }
 
-// Headers built by makeResponse already reflect the body, so they are reused
-// as-is to keep explicit content headers.
+// Shares the headers of `self`, so explicit content headers are not replaced
+// with the body's.
 const copyResponse = (
   self: HttpServerResponse,
   status: number,
   statusText: string | undefined,
-  cookies: Cookies.Cookies
+  cookies: Cookies.Cookies,
+  body: Body.HttpBody
 ): HttpServerResponse => {
   const response = Object.create(Proto) as Mutable<HttpServerResponse>
   response.status = status
   response.statusText = statusText
-  response.headers = self.headers
   response.cookies = cookies
-  response.body = self.body
+  response.body = body
+  response.headers = self.headers
   return response
 }
 
