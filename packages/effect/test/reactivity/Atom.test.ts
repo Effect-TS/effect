@@ -302,6 +302,52 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it("searchParam restores remaining readers when an observer throws", async () => {
+    const r = AtomRegistry.make()
+    const location = new URL("http://localhost/?q=before&page=2")
+    const listeners = new Set<() => void>()
+    const pushState = vitest.fn()
+    vitest.stubGlobal("window", {
+      location,
+      history: { pushState },
+      addEventListener: (type: string, listener: () => void) => {
+        if (type === "popstate") listeners.add(listener)
+      },
+      removeEventListener: (type: string, listener: () => void) => {
+        if (type === "popstate") listeners.delete(listener)
+      }
+    })
+    try {
+      const q = Atom.searchParam("q")
+      const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+      r.subscribe(q, (value) => {
+        if (value === "old") throw undefined
+      })
+      r.mount(page)
+      r.set(q, "pending")
+      r.set(page, Option.some(9))
+      location.search = "?q=old&page=1"
+      const failures: Array<unknown> = []
+      for (const listener of listeners) {
+        try {
+          listener()
+        } catch (error) {
+          failures.push(error)
+        }
+      }
+      assert.deepStrictEqual(failures, [undefined])
+      assert.deepStrictEqual(r.get(page), Option.some(1))
+      assert.strictEqual(r.get(q), "old")
+      await vitest.advanceTimersByTimeAsync(500)
+      assert.strictEqual(pushState.mock.calls.length, 0)
+      r.dispose()
+      assert.strictEqual(listeners.size, 0)
+    } finally {
+      r.dispose()
+      vitest.unstubAllGlobals()
+    }
+  })
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")

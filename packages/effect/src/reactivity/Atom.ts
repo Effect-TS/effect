@@ -2461,10 +2461,20 @@ function handleSearchParamPopstate() {
   clearTimeout(searchParamState.timeout)
   searchParamState.timeout = undefined
   searchParamState.updates.clear()
+  let failed = false
+  let failure: unknown
   for (const listener of searchParamState.listeners) {
-    listener()
+    try {
+      listener()
+    } catch (error) {
+      if (!failed) {
+        failed = true
+        failure = error
+      }
+    }
   }
   releaseSearchParamPopstate()
+  if (failed) throw failure
 }
 
 function releaseSearchParamPopstate() {
