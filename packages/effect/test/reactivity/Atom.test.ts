@@ -20,6 +20,7 @@ import {
 import { KeyValueStore } from "effect/persistence"
 import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
+import { Event, EventTarget } from "happy-dom"
 import { inspect } from "node:util"
 import { collectGarbage, getGc } from "../utils/gc.ts"
 
@@ -263,49 +264,44 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
-  it.each(["/previous?q=old&page=1", "/current?q=old&page=1"])(
-    "searchParam discards pending writes when history navigates to %s",
-    async (destination) => {
-      const r = AtomRegistry.make()
-      const location = new URL("http://localhost/current?q=before&page=2")
-      const events = new EventTarget()
-      const urls: Array<string> = []
-      vitest.stubGlobal("window", {
-        location,
-        history: {
-          pushState: (_state: unknown, _title: string, url: string) => {
-            urls.push(url)
-            location.href = new URL(url, location).href
-          }
-        },
-        addEventListener: events.addEventListener.bind(events),
-        removeEventListener: events.removeEventListener.bind(events)
-      })
+  it.each([false, true])("searchParam cancels stale writes but preserves observer writes (%s)", async (normalize) => {
+    const r = AtomRegistry.make()
+    const location = new URL("http://localhost/current?q=before&page=2")
+    const events = new EventTarget()
+    const urls: Array<string> = []
+    vitest.stubGlobal("window", {
+      location,
+      history: {
+        pushState: (_state: unknown, _title: string, url: string) => {
+          urls.push(url)
+          location.href = new URL(url, location).href
+        }
+      },
+      addEventListener: events.addEventListener.bind(events),
+      removeEventListener: events.removeEventListener.bind(events)
+    })
 
-      try {
-        const q = Atom.searchParam("q")
-        const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
-        r.mount(q)
-        r.mount(page)
-        r.set(q, "pending")
-        r.set(page, Option.some(9))
-        location.href = new URL(destination, location).href
-        events.dispatchEvent(new Event("popstate"))
-        await vitest.advanceTimersByTimeAsync(500)
-        expect(urls).toEqual([])
-        expect(location.pathname + location.search).toEqual(destination)
-        expect(r.get(q)).toEqual("old")
-        expect(r.get(page)).toEqual(Option.some(1))
-        r.set(page, Option.some(3))
-        await vitest.advanceTimersByTimeAsync(500)
-        expect(urls).toEqual([destination.replace("page=1", "page=3")])
-        expect(r.get(q)).toEqual("old")
-      } finally {
-        r.dispose()
-        vitest.unstubAllGlobals()
-      }
+    try {
+      const q = Atom.searchParam("q")
+      const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+      r.subscribe(q, (value) => {
+        if (normalize && value === "OLD") r.set(q, "old")
+      })
+      r.mount(page)
+      r.set(q, "pending")
+      r.set(page, Option.some(9))
+      location.search = "?q=OLD&page=1"
+      events.dispatchEvent(new Event("popstate"))
+      await vitest.advanceTimersByTimeAsync(500)
+      assert.deepStrictEqual(urls, normalize ? ["/current?q=old&page=1"] : [])
+      assert.strictEqual(location.search, normalize ? "?q=old&page=1" : "?q=OLD&page=1")
+      assert.strictEqual(r.get(q), normalize ? "old" : "OLD")
+      assert.deepStrictEqual(r.get(page), Option.some(1))
+    } finally {
+      r.dispose()
+      vitest.unstubAllGlobals()
     }
-  )
+  })
 
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
