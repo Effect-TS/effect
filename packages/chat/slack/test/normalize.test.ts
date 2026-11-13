@@ -338,7 +338,10 @@ describe("reactions", () => {
         ["+1", "👍"],
         ["thumbsup", "👍"],
         ["+1::skin-tone-3", "👍🏼"],
-        ["party-parrot", "custom:party-parrot"]
+        ["party-parrot", "custom:party-parrot"],
+        // Synthetic: no recording has a two-tone reaction, so its name is
+        // not resolved and reads as custom (stage 0 fixture 16).
+        ["handshake::skin-tone-2::skin-tone-5", "custom:handshake::skin-tone-2::skin-tone-5"]
       ]
       for (const [name, emoji] of cases) {
         const added = SlackChat.normalize(reaction("reaction_added", name), context)

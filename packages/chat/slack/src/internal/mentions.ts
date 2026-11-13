@@ -179,12 +179,14 @@ const align = (items: ReadonlyArray<Item>, found: ReadonlyArray<Token>): Array<n
 /**
  * The mentions of a message with offsets into `text`.
  *
- * - With a `rich_text` block, the mentions are exactly its real mention
- *   elements. Their offsets come from aligning the tokens in `text` with the
+ * - With a `rich_text` block, the mentions are its real mention elements
+ *   whose token is in `text`, since Slack decides a mention from `text`. A
+ *   real element with no token there is not reported, however long the
+ *   message. Offsets come from aligning the tokens in `text` with the
  *   block's items, in order. When no alignment places every real item,
  *   because `text` has fewer occurrences of a token than the block, each
  *   real item takes the next unused token it equals, and one with none left
- *   is reported nowhere. `text` never adds a mention.
+ *   is not reported. `text` never adds a mention.
  * - Without one, `text` is scanned, skipping backtick code spans and fences.
  *   That covers Block Kit posts, attachment-only posts and system messages.
  *

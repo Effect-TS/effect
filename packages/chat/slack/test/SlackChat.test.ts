@@ -27,19 +27,20 @@ const reason = <A>(effect: Effect.Effect<A, any>) =>
   )
 
 describe("post", () => {
-  it.effect("sends escaped markdown_text with unfurls off", () => {
+  it.effect("sends a markdown block and an escaped text, with unfurls off", () => {
     const fake = makeFake({ "chat.postMessage": posted("1794509200.000100") })
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const result = yield* slack.post(replyThread, { markdown: "hi <@U1> `<@U1>`" })
+        const result = yield* slack.post(replyThread, { markdown: "hi <@U1> `<@U1>` & >" })
         assert.strictEqual(result.id, "1794509200.000100")
         assert.deepStrictEqual(result.thread, replyThread)
         assert.deepStrictEqual(fake.called("chat.postMessage")[0].params, {
           channel,
           thread_ts: root,
-          markdown_text: "hi &lt;@U1> `<@U1>`",
+          blocks: JSON.stringify([{ type: "markdown", text: "hi &lt;@U1> `<@U1>` & >" }]),
+          text: "hi &lt;@U1&gt; `&lt;@U1&gt;` &amp; &gt;",
           unfurl_links: "false",
           unfurl_media: "false"
         })
@@ -58,7 +59,8 @@ describe("post", () => {
           SlackChat.withPostOptions({ unfurl: true })
         )
         const params = fake.called("chat.postMessage")[0].params
-        assert.strictEqual(params.markdown_text, "hi <@U1> &lt;@U2>")
+        assert.deepStrictEqual(JSON.parse(params.blocks), [{ type: "markdown", text: "hi <@U1> &lt;@U2>" }])
+        assert.strictEqual(params.text, "hi <@U1> &lt;@U2&gt;")
         assert.strictEqual(params.unfurl_links, "true")
         assert.strictEqual(params.unfurl_media, "true")
         assert.isUndefined(params.thread_ts)
@@ -84,6 +86,42 @@ describe("post", () => {
         assert.strictEqual(fake.calls.length, 0)
         // 12,000 astral letters fit.
         assert.strictEqual(slack.descriptor.measure("𝐀".repeat(12_000)), 12_000)
+      })
+    )
+  })
+
+  it.effect("never sends an empty text: a post or edit with no Markdown fails before the call", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        assert.deepStrictEqual(yield* reason(slack.post(channelThread, { markdown: "" })), {
+          op: "post",
+          tag: "InvalidRequest",
+          detail: "no_text",
+          retry: "denied"
+        })
+        assert.strictEqual((yield* reason(slack.edit(channelThread, "1.2", { markdown: "" }))).detail, "no_text")
+        assert.strictEqual(fake.calls.length, 0)
+      })
+    )
+  })
+
+  it.effect("an edit's text is cut to 3,800 bytes and keeps its allowed tokens", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        yield* slack.edit(channelThread, "1.2", { markdown: "<@U1> " + "é".repeat(5_000) + " <@U2>" }).pipe(
+          SlackChat.withPostOptions({ notify: { users: ["U1", "U2"] } })
+        )
+        const params = fake.called("chat.update")[0].params
+        assert.strictEqual(JSON.parse(params.blocks)[0].text, "<@U1> " + "é".repeat(5_000) + " <@U2>")
+        assert.isTrue(params.text.startsWith("<@U1> éé"))
+        assert.isTrue(params.text.endsWith("é… <@U2>"))
+        assert.isAtMost(new TextEncoder().encode(params.text).length, 3_800)
       })
     )
   })

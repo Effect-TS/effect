@@ -6,31 +6,46 @@ interface Row {
   readonly names: ReadonlyArray<string>
   /** Primary Slack name, with skin-tone suffixes for variations */
   readonly name: string
+  /** How many skin tones the name carries */
+  readonly tones: number
+  readonly emoji: string
   /** Whether the emoji is also written without U+FE0F */
   readonly nonQualified: boolean
 }
 
+const decode = (hex: string): string => String.fromCodePoint(...hex.split("-").map((point) => parseInt(point, 16)))
+
 // Read the generated table directly, so these tests do not trust emoji.ts to parse it.
 const rows: ReadonlyArray<Row> = emojiData.split("\n").flatMap((line) => {
-  const [names, , nonQualified, groups] = line.split("|")
+  const [names, unified, nonQualified, groups] = line.split("|")
   const aliases = names.split(",")
-  const base: Row = { names: aliases, name: aliases[0], nonQualified: nonQualified === "!" }
+  const base: Row = {
+    names: aliases,
+    name: aliases[0],
+    tones: 0,
+    emoji: decode(unified),
+    nonQualified: nonQualified === "!"
+  }
   const variations = groups === undefined ? [] : groups.split(";").flatMap((group) => {
-    const [keys, , variationNonQualified] = group.split(":")
-    return keys.split(",").map((tones): Row => ({
-      names: [],
-      name: aliases[0] + [...tones].map((tone) => "::skin-tone-" + tone).join(""),
-      nonQualified: variationNonQualified === "!"
-    }))
+    const [keys, template, variationNonQualified] = group.split(":")
+    return keys.split(",").map((tones): Row => {
+      let index = 0
+      return {
+        names: [],
+        name: aliases[0] + [...tones].map((tone) => "::skin-tone-" + tone).join(""),
+        tones: tones.length,
+        emoji: decode(template.replace(/\*/g, () => (0x1f3fb + Number(tones[index++]) - 2).toString(16))),
+        nonQualified: variationNonQualified === "!"
+      }
+    })
   })
   return [base, ...variations]
 })
 
 // Every emoji string the table defines, with its primary Slack name.
-const sequences: ReadonlyArray<readonly [emoji: string, name: string]> = rows.flatMap((row) => {
-  const emoji = fromName(row.name)!
-  return row.nonQualified ? [[emoji, row.name], [emoji.replaceAll("\uFE0F", ""), row.name]] : [[emoji, row.name]]
-})
+const sequences: ReadonlyArray<readonly [emoji: string, name: string]> = rows.flatMap((row) =>
+  row.nonQualified ? [[row.emoji, row.name], [row.emoji.replaceAll("\uFE0F", ""), row.name]] : [[row.emoji, row.name]]
+)
 
 describe("emoji", () => {
   it("holds every emoji, name and skin tone variation from emoji-data v16.0.0", () => {
@@ -61,23 +76,23 @@ describe("emoji", () => {
       assert.strictEqual(fromName("woman-running::skin-tone-6"), "🏃🏿‍♀️")
     })
 
-    it("resolves two tones on multi person emoji", () => {
-      assert.strictEqual(fromName("people_holding_hands::skin-tone-2::skin-tone-5"), "🧑🏻‍🤝‍🧑🏾")
-      assert.strictEqual(fromName("handshake::skin-tone-2::skin-tone-5"), "🫱🏻‍🫲🏾")
+    it("gives none for a name with two tones, which no recording shows", () => {
+      assert.strictEqual(fromName("people_holding_hands::skin-tone-2::skin-tone-5"), undefined)
+      assert.strictEqual(fromName("handshake::skin-tone-2::skin-tone-5"), undefined)
+      assert.strictEqual(fromName("handshake::skin-tone-3::skin-tone-3"), undefined)
     })
 
-    it("treats one tone and two equal tones alike", () => {
+    it("gives a single tone only where the table has that one tone", () => {
       assert.strictEqual(fromName("handshake::skin-tone-3"), "🤝🏼")
-      assert.strictEqual(fromName("handshake::skin-tone-3::skin-tone-3"), "🤝🏼")
-      assert.strictEqual(fromName("people_holding_hands::skin-tone-4"), "🧑🏽‍🤝‍🧑🏽")
-      assert.strictEqual(fromName("people_holding_hands::skin-tone-4::skin-tone-4"), "🧑🏽‍🤝‍🧑🏽")
+      // Keyed by two tones upstream only.
+      assert.strictEqual(fromName("people_holding_hands::skin-tone-4"), undefined)
     })
 
-    it("resolves every alias and variation in the table", () => {
+    it("resolves every alias and every one-tone variation in the table", () => {
       for (const row of rows) {
-        const emoji = fromName(row.name)
-        assert.isDefined(emoji, row.name)
-        for (const alias of row.names) assert.strictEqual(fromName(alias), emoji, alias)
+        if (row.tones > 1) continue
+        assert.strictEqual(fromName(row.name), row.emoji, row.name)
+        for (const alias of row.names) assert.strictEqual(fromName(alias), row.emoji, alias)
       }
     })
 
@@ -122,9 +137,16 @@ describe("emoji", () => {
       assert.strictEqual(toName("👍 "), undefined)
     })
 
-    it("round trips with fromName for every emoji in the table", () => {
+    it("names every emoji in the table", () => {
       for (const [emoji, name] of sequences) {
         assert.strictEqual(toName(emoji), name)
+      }
+    })
+
+    it("round trips with fromName for every emoji with at most one tone", () => {
+      for (const row of rows) {
+        if (row.tones > 1) continue
+        assert.strictEqual(fromName(toName(row.emoji)!), row.emoji, row.name)
       }
     })
   })

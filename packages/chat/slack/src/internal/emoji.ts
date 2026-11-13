@@ -101,13 +101,12 @@ const SKIN_TONE = /^skin-tone-([2-6])$/
 /**
  * Resolve a Slack emoji name to its fully qualified emoji.
  *
- * Accepts any alias, with or without surrounding colons, followed by up to
- * two `::skin-tone-N` suffixes (`+1::skin-tone-3`,
- * `handshake::skin-tone-2::skin-tone-5`). Toned emoji come from upstream
- * `skin_variations` only; a tone the emoji does not have yields `undefined`.
- * Two equal tones and a single tone are treated as the same request, since
- * upstream keys some emoji one way (`handshake`) and some the other
- * (`people_holding_hands`).
+ * Accepts any alias, with or without surrounding colons, followed by at most
+ * one `::skin-tone-N` suffix (`+1::skin-tone-3`). The toned emoji is the
+ * upstream `skin_variations` entry with that one tone, so `toName` on it
+ * gives the name back. A tone the emoji does not have, and a name with two
+ * tones, yield `undefined`: no recording shows what Slack sends for a
+ * two-tone reaction.
  *
  * @internal
  */
@@ -117,17 +116,9 @@ export const fromName = (name: string): string | undefined => {
   const entry = table().byName.get(parts[0])
   if (entry === undefined) return undefined
   if (parts.length === 1) return entry.unified
-  if (parts.length > 3) return undefined
-  let tones = ""
-  for (let i = 1; i < parts.length; i++) {
-    const match = SKIN_TONE.exec(parts[i])
-    if (match === null) return undefined
-    tones += match[1]
-  }
-  const exact = entry.variations.get(tones)
-  if (exact !== undefined) return exact
-  if (tones.length === 1) return entry.variations.get(tones + tones)
-  return tones[0] === tones[1] ? entry.variations.get(tones[0]) : undefined
+  if (parts.length !== 2) return undefined
+  const match = SKIN_TONE.exec(parts[1])
+  return match === null ? undefined : entry.variations.get(match[1])
 }
 
 /**

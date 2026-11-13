@@ -10,7 +10,7 @@
  */
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import * as SlackWebApi from "@effect/chat-slack/SlackWebApi"
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { conformance } from "effect/chat/ChatTest"
@@ -20,6 +20,7 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Semaphore from "effect/Semaphore"
+import { adapter } from "./utils.ts"
 
 const botToken = process.env.SLACK_LIVE_BOT_TOKEN
 const userToken = process.env.SLACK_LIVE_USER_TOKEN
@@ -83,4 +84,82 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
   for (const [name, rule] of Object.entries(rules)) {
     it.live(name, () => rule.pipe(Effect.provide(layer), Semaphore.withPermits(one, 1)), 600_000)
   }
+})
+
+/**
+ * The Slack mention rule, live. It posts and edits mention-looking strings,
+ * in prose and in code, with the entity forms and `<!channel>`, reads each
+ * message back and asserts the stored `text` holds no intact token. With
+ * `notify` allowed it asserts the token is in `text` and the element is in
+ * the blocks.
+ *
+ * It is a proxy: Slack decides a mention from the stored `text`, which was
+ * checked against one client's Activity feed (EFF-3730, EFF-3736). The
+ * stream inputs and the file posts belong to the stream and file routes, and
+ * are not here yet. The same assertions run in CI on the request bodies, in
+ * `text.test.ts`.
+ */
+describe.skipIf(botToken === undefined || teamId === undefined || channel === undefined)("live mention rule", () => {
+  const layer = SlackChat.layer({ botToken: Redacted.make(botToken!), teamId: teamId! }).pipe(
+    Layer.provideMerge(Chat.layer),
+    Layer.provide(FetchHttpClient.layer)
+  )
+  const token = /<(?:@[UW][A-Z0-9]+|#[CG][A-Z0-9]+|!subteam\^[A-Z0-9]+|!(?:here|channel|everyone))(?:\|[^<>]*)?>/g
+
+  it.live("no token is stored unless allowed, by post and by edit", () =>
+    Effect.gen(function*() {
+      const api = yield* SlackWebApi.make({ botToken: Redacted.make(botToken!) })
+      const self = field(yield* api.call("auth.test", {}), "user_id") as string
+      const slack = yield* adapter
+      const thread = SlackChat.thread({ team: teamId!, channel: channel! })
+      const stored = (ts: string) =>
+        api.call("conversations.replies", { channel, ts, latest: ts, oldest: ts, inclusive: true, limit: 1 }).pipe(
+          Effect.map((answer) => (field(answer, "messages") as Array<any>).find((message) => message.ts === ts))
+        )
+      const elements = (blocks: unknown): Array<any> =>
+        Array.isArray(blocks) ? blocks.flatMap((block) => [block, ...elements(field(block, "elements"))]) : []
+      const inputs = [
+        `prose <@${self}> and <!channel> and <!here>`,
+        `inline \`<@${self}>\` and a fence\n\`\`\`\n<@${self}> <!channel>\n\`\`\``,
+        `entities &lt;@${self}> &#60;@${self}> &#x3C;@${self}> &#060;@${self}> &LT;!channel>`,
+        `no semicolon &lt@${self}> &#60@${self}> &#x3c@${self}>`,
+        `an unclosed fence\n\`\`\`\n<@${self}>`,
+        `nested \`\`a \` <@${self}> \`\` backticks`
+      ]
+      const posted: Array<string> = []
+      const noToken = Effect.fnUntraced(function*(ts: string, label: string) {
+        const message = yield* stored(ts)
+        assert.deepStrictEqual(message.text.match(token), null, label)
+      })
+      for (const markdown of inputs) {
+        const post = yield* slack.post(thread, { markdown })
+        posted.push(post.id)
+        yield* noToken(post.id, `post ${markdown}`)
+      }
+      const edited = yield* slack.post(thread, { markdown: "to be edited" })
+      posted.push(edited.id)
+      for (const markdown of inputs) {
+        yield* slack.edit(thread, edited.id, { markdown })
+        yield* noToken(edited.id, `edit ${markdown}`)
+      }
+
+      // Allowed: the token is in text and the element in the blocks, by post
+      // and by a long edit whose text is cut.
+      const allowed = SlackChat.withPostOptions({ notify: { users: [self] } })
+      const check = Effect.fnUntraced(function*(ts: string, label: string) {
+        const message = yield* stored(ts)
+        assert.include(message.text, `<@${self}>`, label)
+        assert.isTrue(
+          elements(message.blocks).some((element) => element.type === "user" && element.user_id === self),
+          label
+        )
+      })
+      const allowedPost = yield* slack.post(thread, { markdown: `allowed <@${self}>` }).pipe(allowed)
+      posted.push(allowedPost.id)
+      yield* check(allowedPost.id, "post")
+      yield* slack.edit(thread, allowedPost.id, { markdown: "x".repeat(6_000) + ` <@${self}>` }).pipe(allowed)
+      yield* check(allowedPost.id, "long edit")
+
+      for (const id of posted) yield* slack.delete(thread, id).pipe(Effect.ignore)
+    }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 600_000)
 })
