@@ -20,7 +20,6 @@ import {
 import { KeyValueStore } from "effect/persistence"
 import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
-import { Event, EventTarget } from "happy-dom"
 import { inspect } from "node:util"
 import { collectGarbage, getGc } from "../utils/gc.ts"
 
