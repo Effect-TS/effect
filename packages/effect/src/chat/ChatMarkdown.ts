@@ -37,7 +37,7 @@ import * as Stream from "../Stream.ts"
 import * as Chat from "./Chat.ts"
 import type { Descriptor, File, NativeStream, Posted } from "./ChatAdapter.ts"
 import { Registry } from "./ChatAdapter.ts"
-import type { ChatError } from "./ChatError.ts"
+import { type ChatError, fileRefused } from "./ChatError.ts"
 import type { ReplyTo } from "./ChatMessage.ts"
 import type { ChatThread } from "./ChatThread.ts"
 
@@ -387,25 +387,10 @@ const firstError = <A>(exit: Exit.Exit<A, ChatError>): ChatError | undefined =>
 const unanswered = <A>(exit: Exit.Exit<A, ChatError>): boolean =>
   Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
 
-/**
- * Whether a post with files may have failed because of the files, so it is
- * tried again without them. A `TooLarge` counts only when the adapter says
- * the files were too large: a refusal of text that measured as fitting fails
- * the reply.
- */
+/** Whether the adapter guarantees the files were refused and nothing remains posted. */
 const isFileRefusal = <A>(exit: Exit.Exit<A, ChatError>): boolean => {
   const reason = firstError(exit)?.reason
-  switch (reason?._tag) {
-    case "Forbidden":
-    case "InvalidRequest":
-      return true
-    case "TooLarge":
-      return reason.subject === "files"
-    case "Unsupported":
-      return reason.capability === "files"
-    default:
-      return false
-  }
+  return reason?.retry === "denied" && reason.detail === fileRefused
 }
 
 const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result, ChatMarkdownError<E>, R | R2> =>
@@ -1118,12 +1103,11 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   `minWriteInterval`.
  * - `files` go with the last part, or with the overflow file when there is
  *   one. Blank text after the last cut stays with the last part.
- * - With `unattachedNote`, a post with files that fails `Forbidden`,
- *   `InvalidRequest`, `Unsupported` for `files`, or `TooLarge` with
- *   `subject: "files"` is tried once more without them, ending in the note,
+ * - With `unattachedNote`, a post with files that fails `denied` with
+ *   detail `file_refused` is tried once more without them, ending in the note,
  *   or followed by the note when it does not fit. Any failure of that post
  *   fails the call. Without `unattachedNote` the first failure fails the
- *   call.
+ *   call. An `uncertain` failure records the part in `uncertain` and posts no note.
  * - A `TooLarge` that does not name the files fails the call, even for text
  *   that measured as fitting.
  * - An empty input posts nothing and succeeds with no parts, unless there are

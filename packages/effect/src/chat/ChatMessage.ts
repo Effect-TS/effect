@@ -130,7 +130,8 @@ export type ReplyTo = typeof ReplyTo.Type
  *   also once it has replies. `Chat.startThread(message.thread, message.id)`
  *   is the way from such a message to its thread.
  * - `text` is the platform's own content string, verbatim, with mention tokens
- *   and code fences in place.
+ *   and code fences in place. One exception: Slack renders the bot's own
+ *   messages with `rich_text` blocks from those blocks as Markdown.
  * - `raw` is the platform's message payload, as a JSON value.
  *
  * **Gotchas**
@@ -146,6 +147,7 @@ export const ChatMessage = Schema.Struct({
   id: Schema.String,
   thread: ChatThread,
   author: Author,
+  /** The platform's content verbatim, except Slack renders the bot's own rich_text blocks as Markdown. */
   text: Schema.String,
   mentions: Schema.Array(Mention),
   replyTo: Schema.optionalKey(ReplyTo),

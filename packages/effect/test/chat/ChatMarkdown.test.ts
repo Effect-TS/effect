@@ -165,7 +165,7 @@ describe("ChatMarkdown", () => {
     it.effect("ends in the unattached note when the files are refused", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
-        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_uploads_disabled" }))
+        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_refused" }))
         const result = yield* ChatMarkdown.post(thread, "Report", {
           files,
           unattachedNote: (files) => "\n\n(" + files.length + " file not attached)"
@@ -181,7 +181,7 @@ describe("ChatMarkdown", () => {
     it.effect("fails when the files are refused without a note", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
-        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_uploads_disabled" }))
+        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_refused" }))
         const error = yield* Effect.flip(ChatMarkdown.post(thread, "Report", { files }))
         assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "Forbidden")
         assert.deepStrictEqual([error.posted, error.remaining], [[], "Report"])
@@ -204,7 +204,7 @@ describe("ChatMarkdown", () => {
     it.effect("ends in the unattached note when the files are too large", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
-        yield* test.failNext("post", new ChatError.TooLarge({ subject: "files", detail: "file_too_large" }))
+        yield* test.failNext("post", new ChatError.TooLarge({ subject: "files", detail: "file_refused" }))
         const result = yield* ChatMarkdown.post(thread, "Report", {
           files,
           unattachedNote: () => " (file not attached)"
@@ -215,13 +215,28 @@ describe("ChatMarkdown", () => {
     it.effect("does not retry without the files for a failure unrelated to them", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
-        yield* test.failNext("post", new ChatError.NotFound({ detail: "channel_not_found" }))
+        yield* test.failNext("post", new ChatError.Forbidden({ detail: "missing_scope" }))
         const error = yield* Effect.flip(ChatMarkdown.post(thread, "Report", {
           files,
           unattachedNote: () => " (file not attached)"
         }))
-        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "NotFound")
+        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "Forbidden")
         assert.strictEqual((yield* test.calls).filter((call) => call.op === "post").length, 1)
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("does not post a note for an uncertain file write", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.failNext("post", new ChatError.Transport({ retry: "uncertain", detail: "file_refused" }), {
+          landed: true
+        })
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, "Report", {
+          files,
+          unattachedNote: () => " (file not attached)"
+        }))
+        assert.isDefined(error.uncertain)
+        assert.strictEqual((yield* test.calls).filter((call) => call.op === "post").length, 1)
+        assert.deepStrictEqual(yield* texts(test, thread), ["Report"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
     it.effect("keeps the files and blank text that follow the last cut", () =>

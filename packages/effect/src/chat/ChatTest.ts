@@ -31,6 +31,7 @@ import { checkMessageLength, Registry, retrySafe } from "./ChatAdapter.ts"
 import type { Capability, ChatErrorReason } from "./ChatError.ts"
 import {
   ChatError,
+  fileRefused,
   Forbidden,
   InvalidRequest,
   isChatError,
@@ -99,6 +100,8 @@ export interface Call {
  *   `landed` makes the write happen anyway, which is what `uncertain` means.
  *   The native stream's ops are `nativeStream.start`, `nativeStream.append`
  *   and `nativeStream.stop`.
+ * - `refuseFiles` makes the next `times` posts with files fail `denied` with
+ *   detail `file_refused`, storing nothing. Text-only posts do not consume it.
  * - `clickStop` is a user clicking stop on a native stream. It closes
  *   nothing, as on Slack: the stream keeps taking text, and
  *   `NativeStream.stop` then reports `stopped: true`.
@@ -128,6 +131,7 @@ export class ChatTest extends Context.Service<ChatTest, {
     readonly times?: number | undefined
     readonly landed?: boolean | undefined
   }) => Effect.Effect<void>
+  readonly refuseFiles: (options?: { readonly times?: number | undefined }) => Effect.Effect<void>
   readonly clickStop: (messageId: string) => Effect.Effect<void>
   readonly closeStream: (messageId: string) => Effect.Effect<void>
 }>()("effect/chat/ChatTest") {}
@@ -248,6 +252,7 @@ const makeFake = (options: {
   const threadUnder = new Map<string, ChatThread.ChatThread>()
   const users = new Map<string, { readonly isBot: boolean }>([[selfId, { isBot: true }]])
   const calls: Array<Call> = []
+  let refusedFiles = 0
   const faults = new Map<string, Array<Fault>>()
   let counter = 0
   const nextId = (prefix: string) => prefix + String(++counter)
@@ -374,6 +379,11 @@ const makeFake = (options: {
         record("Unsupported")
         return fail(call.op, new Unsupported({ capability: missing }))
       }
+      if (call.op === "post" && (call.files?.length ?? 0) > 0 && refusedFiles > 0) {
+        refusedFiles--
+        record("Forbidden")
+        return fail(call.op, new Forbidden({ detail: fileRefused }))
+      }
       const fault = takeFault(call.op)
       if (fault !== undefined) {
         record(fault.reason._tag)
@@ -493,7 +503,7 @@ const makeFake = (options: {
             files.length > descriptor.limits.filesPerMessage ||
             files.some((file) => file.content.length > descriptor.limits.uploadBytes)
           ) {
-            return yield* fail("post", new TooLarge({ subject: "files", detail: "file_too_large" }))
+            return yield* fail("post", new TooLarge({ subject: "files", detail: fileRefused }))
           }
           let replyTo: ReplyTo | undefined
           if (content.replyTo !== undefined) {
@@ -688,6 +698,10 @@ const makeFake = (options: {
         return stored === undefined ? [] : listMessages(stored).map(toMessage)
       }),
     calls: Effect.sync(() => calls.slice()),
+    refuseFiles: (options) =>
+      Effect.sync(() => {
+        refusedFiles += options?.times ?? 1
+      }),
     failNext: (op, reason, failOptions) =>
       Effect.sync(() => {
         const queue = faults.get(op) ?? []
@@ -1171,8 +1185,9 @@ const findIn = (messages: ReadonlyArray<ChatMessage.ChatMessage>, id: string) =>
 
 /** A refusal of the text must not blame the files, or `ChatMarkdown` would post again without them. */
 const textTooLarge = {
-  expected: "TooLarge without subject files",
-  test: (reason: ChatErrorReason) => reason._tag === "TooLarge" && reason.subject !== "files"
+  expected: "TooLarge without subject files or detail file_refused",
+  test: (reason: ChatErrorReason) =>
+    reason._tag === "TooLarge" && reason.subject !== "files" && reason.detail !== fileRefused
 }
 
 const mentionLike = "@everyone @here <@U0000> <!here> <!channel> <@&1> <#C0000>"
@@ -1201,6 +1216,7 @@ interface ConformanceOptions {
   readonly thread: ChatThread.ChatThread
   readonly userPosts: (thread: ChatThread.ChatThread, text: string) => Effect.Effect<ChatEvent.ChatEvent>
   readonly parseMention: ParseMention
+  readonly refuseFiles?: (() => Effect.Effect<void>) | undefined
   readonly failNext?:
     | ((op: string, reason: ChatErrorReason, options?: {
       readonly times?: number | undefined
@@ -1226,6 +1242,7 @@ interface ConformanceOptions {
  * - A listed capability never fails with `Unsupported`, which every rule
  *   checks as it goes.
  * - The three `retries/*` rules exist only when `failNext` is given.
+ *   `post/refusedFile` exists only when `refuseFiles` is given.
  * - Every rule deletes what it posted when it ends, pass or fail, when the
  *   platform can delete.
  *
@@ -1244,6 +1261,7 @@ export const conformance = (options: {
   readonly thread: ChatThread.ChatThread
   readonly userPosts: (thread: ChatThread.ChatThread, text: string) => Effect.Effect<ChatEvent.ChatEvent>
   readonly parseMention: ParseMention
+  readonly refuseFiles?: (() => Effect.Effect<void>) | undefined
   readonly failNext?:
     | ((op: string, reason: ChatErrorReason, options?: {
       readonly times?: number | undefined
@@ -1325,6 +1343,32 @@ export const conformance = (options: {
         () => bytes.length + " different bytes"
       )
     }))
+
+  const refuseFiles = options.refuseFiles
+  if (refuseFiles !== undefined) {
+    rule("post/refusedFile", ["files", "history"], (t) =>
+      Effect.gen(function*() {
+        const before = yield* t.collect(t.chat.history(t.thread, { direction: "forward" }))
+        yield* refuseFiles()
+        const exit = yield* Effect.exit(t.chat.post(t.thread, {
+          markdown: conformanceText(t.rule),
+          files: [conformanceFile(t.rule)]
+        }))
+        if (Exit.isSuccess(exit)) t.created.push({ thread: t.thread, id: exit.value.id })
+        const error = Exit.findErrorOption(exit)
+        yield* t.check(
+          Option.isSome(error) && error.value.reason.retry === "denied" && error.value.reason.detail === fileRefused,
+          "denied with detail file_refused",
+          () => describeExit(exit)
+        )
+        const after = yield* t.collect(t.chat.history(t.thread, { direction: "forward" }))
+        yield* t.check(
+          after.length === before.length && after.every((message, i) => message.id === before[i].id),
+          "no new message",
+          () => after.length + " messages after, " + before.length + " before"
+        )
+      }))
+  }
 
   rule("post/tooLarge", [], (t) =>
     t.expectReason(
