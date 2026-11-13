@@ -245,6 +245,16 @@ describe("Prompt.Int", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, 7)
     }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("preserves the sign of a negative integer with a leading zero", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("-07")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(Prompt.Int({ message: "Count" }))
+
+      assert.strictEqual(value, -7)
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.Number", () => {
@@ -256,6 +266,16 @@ describe("Prompt.Number", () => {
       const value = yield* Prompt.run(Prompt.Number({ message: "Rate" }))
 
       assert.strictEqual(value, 0.05)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("accepts a negative value between -1 and 0", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("-0.05")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(Prompt.Number({ message: "Rate" }))
+
+      assert.strictEqual(value, -0.05)
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("renders appended input without literal parsed", () =>

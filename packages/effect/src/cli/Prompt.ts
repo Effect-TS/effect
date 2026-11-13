@@ -3078,6 +3078,9 @@ const processNumberClear = (state: NumberState) =>
     state: { ...state, cursor: 0, value: "", error: Option.none() }
   }))
 
+// `${-0}` is "0", which would drop a minus sign the user just typed.
+const formatNumberInput = (value: number): string => Object.is(value, -0) ? "-0" : `${value}`
+
 const defaultIntProcessor = (input: string, state: NumberState) => {
   if (state.value.length === 0 && input === "-") {
     return Effect.succeed(Action.NextFrame({
@@ -3090,7 +3093,7 @@ const defaultIntProcessor = (input: string, state: NumberState) => {
     return Effect.succeed(Action.Beep())
   } else {
     return Effect.succeed(Action.NextFrame({
-      state: { ...state, value: `${parsed}`, error: Option.none() }
+      state: { ...state, value: formatNumberInput(parsed), error: Option.none() }
     }))
   }
 }
@@ -3113,10 +3116,10 @@ const defaultFloatProcessor = (input: string, state: NumberState) => {
       state: {
         ...state,
         value: input === "."
-          ? `${parsed}.`
+          ? `${formatNumberInput(parsed)}.`
           : state.value.includes(".") && /^\d$/.test(input)
           ? state.value + input
-          : `${parsed}`,
+          : formatNumberInput(parsed),
         error: Option.none()
       }
     }))
