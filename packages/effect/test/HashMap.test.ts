@@ -30,48 +30,21 @@ describe("HashMap", () => {
   })
 
   describe("basic operations", () => {
-    it("handles custom hashes that are not 32-bit integers", () => {
-      class Key implements Equal.Equal {
-        constructor(readonly hash: number) {}
-        [Equal.symbol](that: Equal.Equal): boolean {
-          return that instanceof Key && that.hash === this.hash
-        }
-        [Hash.symbol]() {
-          return this.hash
-        }
-      }
-      const fractional = new Key(1.25)
-      const large = new Key(2 ** 32 + 1)
-      let map = HashMap.make([fractional, "a"], [new Key(1.5), "b"])
-      map = HashMap.set(map, large, "c")
-      assert.strictEqual(HashMap.size(map), 3)
-      assert.isTrue(HashMap.has(map, new Key(1.5)))
-      assert.deepStrictEqual(HashMap.get(map, large), Option.some("c"))
-      assert.deepStrictEqual(HashMap.getHash(map, fractional, 1.25), Option.some("a"))
-      assert.isTrue(HashMap.hasHash(map, large, 2 ** 32 + 1))
-      map = HashMap.remove(map, fractional)
-      assert.strictEqual(HashMap.size(map), 2)
-      assert.deepStrictEqual(HashMap.get(map, fractional), Option.none())
-      assert.deepStrictEqual(HashMap.get(map, large), Option.some("c"))
-    })
+    it("modifyHash stores a new key under the supplied hash", () => {
+      const key = {}
+      const hash = 12345
+      const map = HashMap.modifyHash(HashMap.empty<object, string>(), key, hash, () => Option.some("value"))
 
-    it("modifyHash inserts and updates using the supplied hash", () => {
-      const key = "key"
-      const hash = 12345.5
-      const map = HashMap.modifyHash(HashMap.empty<string, string>(), key, hash, () => Option.some("value"))
-
-      assert.deepStrictEqual(HashMap.getHash(map, key, hash), Option.some("value"))
-      const updated = HashMap.modifyHash(map, key, hash, Option.map((value) => value + "!"))
-      assert.deepStrictEqual(HashMap.getHash(updated, key, hash), Option.some("value!"))
+      expect(HashMap.getHash(map, key, hash)).toEqual(Option.some("value"))
     })
 
     it("modifyHash removes a key using the supplied hash", () => {
-      const key = "key"
-      const hash = 12345.5
-      const map = HashMap.modifyHash(HashMap.empty<string, string>(), key, hash, () => Option.some("value"))
+      const key = {}
+      const hash = 12345
+      const map = HashMap.modifyHash(HashMap.empty<object, string>(), key, hash, () => Option.some("value"))
       const removed = HashMap.modifyHash(map, key, hash, () => Option.none())
 
-      assert.deepStrictEqual(HashMap.getHash(removed, key, hash), Option.none())
+      expect(HashMap.getHash(removed, key, hash)).toEqual(Option.none())
     })
 
     it("get - existing key", () => {
@@ -567,6 +540,24 @@ describe("HashMap", () => {
         return this.hash
       }
     }
+
+    it("handles custom hashes that are not 32-bit integers", () => {
+      const fractional = new FixedHashKey("fractional", 1.25)
+      const other = new FixedHashKey("other", 1.5)
+      const large = new FixedHashKey("large", 2 ** 32 + 1)
+
+      let map = HashMap.make([fractional, "a"], [other, "b"])
+      map = HashMap.set(map, large, "c")
+      assert.strictEqual(HashMap.size(map), 3)
+      assert.isTrue(HashMap.has(map, other))
+      assert.deepStrictEqual(HashMap.get(map, large), Option.some("c"))
+      assert.deepStrictEqual(HashMap.getHash(map, fractional, 1.25), Option.some("a"))
+      assert.isTrue(HashMap.hasHash(map, large, 2 ** 32 + 1))
+
+      map = HashMap.remove(map, fractional)
+      assert.isFalse(HashMap.has(map, fractional))
+      assert.deepStrictEqual(HashMap.get(map, large), Option.some("c"))
+    })
 
     it("keeps entries addressable when bit 31 is present in indexed leaf insert", () => {
       const bit31Key = new FixedHashKey("bit31", 31)

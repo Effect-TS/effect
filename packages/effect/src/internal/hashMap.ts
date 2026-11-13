@@ -110,6 +110,7 @@ abstract class Node<K, V> {
   abstract readonly _tag: "EmptyNode" | "LeafNode" | "IndexedNode" | "CollisionNode" | "ArrayNode"
   abstract readonly edit: number
   abstract get size(): number
+  // `hash` must be a 32-bit integer: callers coerce with `| 0` before entering the trie.
   abstract get(shift: number, hash: number, key: K): Option.Option<V>
   abstract has(shift: number, hash: number, key: K): boolean
   abstract set(
