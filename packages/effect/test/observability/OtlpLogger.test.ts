@@ -123,4 +123,45 @@ describe("OtlpLogger", () => {
       assert.strictEqual(logRecordOf(requests[0]).traceId, "0000000000000000463ac35c9f6413ad")
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
+
+  it.effect("correlates logs with the nearest span that allows propagation", () => {
+    const { httpClient, requests } = capture()
+    return Effect.gen(function*() {
+      const logs = Effect.all([
+        Effect.log("tracing disabled").pipe(
+          Effect.withSpan("disabled"),
+          Effect.withTracerEnabled(false)
+        ),
+        Effect.log("propagation disabled").pipe(
+          Effect.withSpan("disabled", { annotations: Tracer.DisablePropagation.context(true) })
+        )
+      ])
+      yield* logs
+      const parent = yield* Effect.gen(function*() {
+        const parent = yield* Effect.currentSpan
+        yield* logs
+        return parent
+      }).pipe(Effect.withSpan("parent"))
+      const unsampled = Tracer.externalSpan({
+        traceId: "463ac35c9f6413ad",
+        spanId: "0020000000000001",
+        sampled: false
+      })
+      yield* logs.pipe(Effect.withParentSpan(unsampled))
+      yield* (yield* OtlpExporter.Flusher).flush
+
+      const records = bodyOf(requests[0]).resourceLogs[0].scopeLogs[0].logRecords
+      assert.deepStrictEqual(
+        records.map((record: { traceId?: string; spanId?: string }) => [record.traceId, record.spanId]),
+        [
+          [undefined, undefined],
+          [undefined, undefined],
+          [parent.traceId.padStart(32, "0"), parent.spanId],
+          [parent.traceId.padStart(32, "0"), parent.spanId],
+          ["0000000000000000463ac35c9f6413ad", unsampled.spanId],
+          ["0000000000000000463ac35c9f6413ad", unsampled.spanId]
+        ]
+      )
+    }).pipe(Effect.provide(makeTestLayer(httpClient)))
+  })
 })
