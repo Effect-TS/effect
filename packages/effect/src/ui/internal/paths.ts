@@ -25,7 +25,13 @@ export const childName = (component: Component.Any | Feature.Any): string =>
  * @internal
  */
 export const segment = (view: View.Child<any, any>): string =>
-  `${childName(view.component).replace(/[%[]/g, escapeChar)}[${view.key.replace(/%|(?<=\])\//g, escapeChar)}]`
+  escapeName(childName(view.component)) + "[" + escapeKey(view.key) + "]"
+
+// Most names and keys need no escaping, so the regular expressions run only for those that do.
+const escapeName = (name: string): string =>
+  name.includes("%") || name.includes("[") ? name.replace(/[%[]/g, escapeChar) : name
+const escapeKey = (key: string): string =>
+  key.includes("%") || key.includes("]/") ? key.replace(/%|(?<=\])\//g, escapeChar) : key
 
 const escapeChar = (char: string): string => "%" + char.charCodeAt(0).toString(16).toUpperCase()
 
@@ -38,8 +44,9 @@ const escapeChar = (char: string): string => "%" + char.charCodeAt(0).toString(1
  */
 export interface ChildPaths {
   readonly path: string
-  readonly paths: Map<string, View.Child<any, any>>
-  readonly refs: Map<string, View.Child<any, any>>
+  // Each Map is made for its first entry: most views render no child slot, and none with a ref.
+  paths: Map<string, View.Child<any, any>> | undefined
+  refs: Map<string, View.Child<any, any>> | undefined
 }
 
 const failure = (path: string, what: string): never => {
@@ -56,7 +63,7 @@ const failure = (path: string, what: string): never => {
  * @internal
  */
 export const checkChildPaths = (path: string, tree: View.Node<any, any>): ChildPaths => {
-  const paths: ChildPaths = { path, paths: new Map(), refs: new Map() }
+  const paths: ChildPaths = { path, paths: undefined, refs: undefined }
   visit(paths, tree, undefined, "")
   return paths
 }
@@ -84,8 +91,8 @@ const visit = (
       for (const child of node.children) go(child)
     } else if (node._tag === "Child") {
       const key = segment(node)
-      claim(paths.paths, key, node, `at ${key}`)
-      if (node.ref !== undefined) claim(paths.refs, node.ref.key, node, `with the ref ${node.ref.key}`)
+      claim(paths.paths ??= new Map(), key, node, `at ${key}`)
+      if (node.ref !== undefined) claim(paths.refs ??= new Map(), node.ref.key, node, `with the ref ${node.ref.key}`)
     }
   }
   go(tree)
@@ -119,6 +126,7 @@ export const checkFallbackPaths = (
 export const checkAuthorRefs = (path: string, written: ReadonlyArray<ChildPaths>): void => {
   const taken = new Set<string>()
   for (const paths of written) {
+    if (paths.refs === undefined) continue
     for (const key of paths.refs.keys()) {
       if (taken.has(key)) failure(path, `with the ref ${key}, in the view it gives ${paths.path}`)
       taken.add(key)

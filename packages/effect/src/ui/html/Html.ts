@@ -111,6 +111,7 @@ import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Stream from "../../Stream.ts"
 import * as Command from "../Command.ts"
+import * as builders from "../internal/builder.ts"
 import * as Renderer from "../Renderer.ts"
 import * as View from "../View.ts"
 
@@ -572,7 +573,7 @@ export class VoidElement<
    * @since 4.1.5
    */
   class(...tokens: ReadonlyArray<ClassToken>): this {
-    const value = classNames(...tokens)
+    const value = joinClassTokens(tokens)
     return this.attr("class", value === "" ? undefined : value)
   }
   /**
@@ -1007,10 +1008,13 @@ export type ClassToken = string | false | null | undefined
  * @category attributes
  * @since 4.1.5
  */
-export const classNames = (...tokens: ReadonlyArray<ClassToken>): string => {
+export const classNames = (...tokens: ReadonlyArray<ClassToken>): string => joinClassTokens(tokens)
+
+const joinClassTokens = (tokens: ReadonlyArray<ClassToken>): string => {
   let out = ""
-  for (const token of tokens) {
-    if (token) out = out === "" ? token : `${out} ${token}`
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (token) out = out === "" ? token : out + " " + token
   }
   return out
 }
@@ -1184,6 +1188,9 @@ export const Elements: Elements | undefined = undefined
  * @since 4.1.5
  */
 export const name = "html"
+
+builders.knownFields.set(VoidElement.prototype, [])
+builders.knownFields.set(Element.prototype, [])
 
 const makeTags = (): Readonly<Record<string, VoidElement<any, any, any, any>>> => {
   const out: Record<string, VoidElement<any, any, any, any>> = {}

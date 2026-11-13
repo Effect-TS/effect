@@ -174,6 +174,11 @@ interface Bound {
   readonly options: Readonly<Record<string, View.EventOptions>>
 }
 
+const isEmpty = (record: object): boolean => {
+  for (const _ in record) return false
+  return true
+}
+
 const modifiers = (event: Event) => {
   const e = event as KeyboardEvent
   return { shift: e.shiftKey === true, ctrl: e.ctrlKey === true, alt: e.altKey === true, meta: e.metaKey === true }
@@ -287,7 +292,16 @@ export const makeHost = (
     // oxlint-disable-next-line no-console
     options?.warn ?? ((message) => console.warn(message))
   )
-  const bound = new WeakMap<globalThis.Node, Bound>()
+  // Each element's events, on the element itself under a key of this host's: setting a property is
+  // several times faster than a WeakMap entry, and the entry goes with the element all the same.
+  const boundKey = Symbol("effect/ui/BrowserHost/bound")
+  const bound = {
+    get: (node: globalThis.Node): Bound | undefined => (node as any)[boundKey],
+    has: (node: globalThis.Node): boolean => (node as any)[boundKey] !== undefined,
+    set: (node: globalThis.Node, entry: Bound | undefined): void => {
+      ;(node as any)[boundKey] = entry
+    }
+  }
   // The last value the renderer set for each controlled property: what the element must show.
   const wanted = new WeakMap<globalThis.Node, Map<string, unknown>>()
   const listening = new Map<string, (event: Event) => void>()
@@ -846,6 +860,11 @@ export const makeHost = (
     parentOf: (node) => node.parentNode ?? undefined,
     nextOf: (node) => node.nextSibling ?? undefined,
     setEvents(node, handlers, dispatch, options) {
+      // An element with no events needs no entry, except a form: an entry marks it as the app's.
+      if (isEmpty(handlers) && isEmpty(options) && node.nodeName !== "FORM") {
+        if (bound.has(node)) bound.set(node, undefined)
+        return
+      }
       bound.set(node, { handlers, dispatch, options })
       for (const name in handlers) listen(name)
       // A drag source needs its `dragstart` without a handler, and a drop target all of its events.

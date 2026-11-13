@@ -111,14 +111,18 @@ const unavailable = (env: Env): AsyncResult.Initial<never, unknown> | AsyncResul
 
 type Rendered = RElement | RText | RChild | RSlot
 
+/**
+ * A rendered element. A patch updates it in place, so a node that stays keeps
+ * its record and the list it is in can tell nothing moved.
+ */
 interface RElement {
   readonly _tag: "Element"
-  readonly v: View.Element<any, any>
+  v: View.Element<any, any>
   readonly node: unknown
-  readonly children: Array<Rendered>
+  children: Array<Rendered>
   readonly mount: RunningMount | undefined
   /** The mounts of the element's owned layers, by owner and mount name. */
-  readonly ownedMounts: ReadonlyArray<OwnedMount> | undefined
+  ownedMounts: ReadonlyArray<OwnedMount> | undefined
 }
 
 /** A started mount: its Scope, and for a mount given an input, the cell its `changes` Stream reads. */
@@ -173,13 +177,13 @@ export const eventOwners = (
 
 interface RText {
   readonly _tag: "Text"
-  readonly v: View.Text
+  v: View.Text
   readonly node: unknown
 }
 
 interface RChild {
   readonly _tag: "Child"
-  readonly v: View.Child<any, any>
+  v: View.Child<any, any>
   readonly inst: Instance
 }
 
@@ -289,7 +293,8 @@ export interface Instance {
   content: ((parts: any) => View.Content<any, any>) | undefined
   readonly scope: Scope.Closeable
   env: Env
-  readonly children: Map<string, Instance>
+  /** `noChildren`, shared, until the first child is added: only `createChild` adds one. */
+  children: Map<string, Instance>
   props: unknown
   model: unknown
   /** The loader slots, beside the Model: what each loader's read last returned. */
@@ -317,10 +322,12 @@ export interface Instance {
   /** On the server: the client builds this instance fresh, because its Layer wasn't built. */
   deferred: boolean
   readonly runs: Array<Run>
+  // The collections below are made on their first entry: most instances never hold one, and an
+  // empty Map or Set costs about 150 bytes.
   /** Runs asked to stop whose fibers haven't exited: `h.isRunning` still counts them. */
-  readonly stopping: Set<Run>
-  readonly subscriptions: Map<string, SubscriptionRun>
-  readonly watches: Map<string, WatchRun>
+  stopping: Set<Run> | undefined
+  subscriptions: Map<string, SubscriptionRun> | undefined
+  watches: Map<string, WatchRun> | undefined
   /** The watches followed a Model after mount: from then on, a debounced loader's new args may wait. */
   watchesSynced: boolean
   /**
@@ -330,11 +337,11 @@ export interface Instance {
   watched: Set<string> | undefined
   /** The instance's `Router.prefetch` declaration, registered with the Router. */
   prefetch: { declaration: services.Prefetch; readonly release: () => void } | undefined
-  readonly keyed: Map<string, KeyedRun>
+  keyed: Map<string, KeyedRun> | undefined
   /** A drain of the keyed loaders is queued in the flush's deferred work. */
   keyedQueued: boolean
   /** The cancels of this instance's load mores still waiting: closing it drops them. */
-  readonly loadMores: Set<() => void>
+  loadMores: Set<() => void> | undefined
   /**
    * Set while the first emissions are folded before the first render: the Commands of those
    * updates, issued after `init`'s.
@@ -345,6 +352,12 @@ export interface Instance {
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
   readonly fire: Renderer.Dispatch
 }
+
+/**
+ * The children of every instance that has none: reads and deletes leave it empty, and an
+ * instance's first child replaces it with a Map of its own.
+ */
+const noChildren: Map<string, Instance> = new Map()
 
 /** @internal */
 export interface Pending {
@@ -1345,6 +1358,87 @@ const setup = (
   }
 
   // -- instances ------------------------------------------------------------
+  /**
+   * Sets the instance's `dispatch` and `fire`, and adds its finalizers to its Scope: the closures
+   * that live as long as it does. They are made here, so their context holds the instance and
+   * `bound`, and not every local of `makeInstance`.
+   */
+  const instanceHandlers = (inst: Instance, bound: loaders.Bound | undefined) => {
+    const handlers = inst as { -readonly [K in "dispatch" | "fire"]: Instance[K] }
+    handlers.dispatch = (message, source) => {
+      if (inst.closed || inst.waiting || frozen) return
+      const component = inst.component
+      const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props, inst.slots))
+      if (next === undefined) return
+      const entrySeq = record({
+        _tag: "Update",
+        path: inst.path,
+        component,
+        source,
+        message,
+        props: inst.props,
+        model: next.model,
+        commands: next.commands,
+        events: next.events,
+        lists: next.lists ?? [],
+        ...(next.sends === undefined || next.sends.length === 0 ? undefined : { sends: next.sends }),
+        // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
+        ...(bound === undefined ? undefined : { loaded: inst.slots ?? bound.empty })
+      })
+      apply(inst, next, entrySeq, false)
+    }
+    handlers.fire = (event, handler, payload, onMessage) => {
+      if (inst.closed || inst.waiting) return
+      const message = typeof handler === "function"
+        ? guard(inst, "domEvent", () => (handler as (payload: unknown) => unknown)(payload), event)
+        : handler
+      if (message === undefined) return
+      // Before the message is sent, so the host can still act on its event.
+      onMessage?.()
+      inst.dispatch(message, { _tag: "DomEvent", name: event })
+    }
+
+    // Finalizers run in reverse: Commands stop first, then `Unmounted` is logged.
+    // Descendants, Subscriptions and mounts use child Scopes forked later, so they close before both.
+    addFinalizer(
+      inst.scope,
+      Effect.sync(() => {
+        inst.closed = true
+        dirty.delete(inst)
+        recorded.delete(inst)
+        inst.watched = undefined
+        // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
+        releaseWatches(inst)
+        record({ _tag: "Unmounted", path: inst.path })
+        // A slot that closes while it waits no longer holds up adoption.
+        if (inst.waiting) {
+          inst.waiting = false
+          settleWaiting()
+        }
+      })
+    )
+    addFinalizer(
+      inst.scope,
+      Effect.suspend(() => {
+        inst.closed = true
+        // A detached run goes on under the Layer build that owns it. Everything else ends here, and the
+        // close waits for it, and for the instance's runs that were stopped earlier and haven't exited.
+        const waits: Array<Effect.Effect<void>> = []
+        if (inst.stopping !== undefined) {
+          for (const run of inst.stopping) {
+            if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
+          }
+        }
+        for (const run of inst.runs.slice()) {
+          // An awaiting run's message is dropped with its instance, and the run ends here.
+          if (run.status === "awaiting" || !(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
+        }
+        if (inst.runs.length > 0) orphans.add(inst)
+        return awaitRuns(waits)
+      })
+    )
+  }
+
   const makeInstance = (
     component: Component.Any,
     props: unknown,
@@ -1371,7 +1465,7 @@ const setup = (
       content,
       scope,
       env: parentEnv,
-      children: new Map(),
+      children: noChildren,
       props,
       model: undefined,
       slots: undefined,
@@ -1390,93 +1484,29 @@ const setup = (
         : { entries: [], children: [], settled: false, failed: false },
       deferred: false,
       runs: [],
-      stopping: new Set(),
-      subscriptions: new Map(),
-      watches: new Map(),
+      stopping: undefined,
+      subscriptions: undefined,
+      watches: undefined,
       watchesSynced: false,
       watched: undefined,
       prefetch: undefined,
-      keyed: new Map(),
+      keyed: undefined,
       keyedQueued: false,
-      loadMores: new Set(),
+      loadMores: undefined,
       mounting: undefined,
       outbox: [],
-      dispatch(message, source) {
-        if (inst.closed || inst.waiting || frozen) return
-        const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props, inst.slots))
-        if (next === undefined) return
-        const entrySeq = record({
-          _tag: "Update",
-          path,
-          component,
-          source,
-          message,
-          props: inst.props,
-          model: next.model,
-          commands: next.commands,
-          events: next.events,
-          lists: next.lists ?? [],
-          ...(next.sends === undefined || next.sends.length === 0 ? undefined : { sends: next.sends }),
-          // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
-          ...(bound === undefined ? undefined : { loaded: inst.slots ?? bound.empty })
-        })
-        apply(inst, next, entrySeq, false)
-      },
-      fire(event, handler, payload, onMessage) {
-        if (inst.closed || inst.waiting) return
-        const message = typeof handler === "function"
-          ? guard(inst, "domEvent", () => (handler as (payload: unknown) => unknown)(payload), event)
-          : handler
-        if (message === undefined) return
-        // Before the message is sent, so the host can still act on its event.
-        onMessage?.()
-        inst.dispatch(message, { _tag: "DomEvent", name: event })
-      }
+      dispatch: undefined as any,
+      fire: undefined as any
     }
+    // Made outside this function, the closures the instance keeps hold it alone, and not the
+    // locals of its mount: see `instanceHandlers`.
+    instanceHandlers(inst, bound)
     inst.author = owner === undefined || parent === undefined ? inst : parent.author
     if (owner !== undefined) owners.set(owner, inst)
     if (recording > 0) {
       inst.watched = new Set()
       recorded.add(inst)
     }
-
-    // Finalizers run in reverse: Commands stop first, then `Unmounted` is logged.
-    // Descendants, Subscriptions and mounts use child Scopes forked later, so they close before both.
-    addFinalizer(
-      scope,
-      Effect.sync(() => {
-        inst.closed = true
-        dirty.delete(inst)
-        recorded.delete(inst)
-        inst.watched = undefined
-        // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
-        releaseWatches(inst)
-        record({ _tag: "Unmounted", path })
-        // A slot that closes while it waits no longer holds up adoption.
-        if (inst.waiting) {
-          inst.waiting = false
-          settleWaiting()
-        }
-      })
-    )
-    addFinalizer(
-      scope,
-      Effect.suspend(() => {
-        inst.closed = true
-        // A detached run goes on under the Layer build that owns it. Everything else ends here, and the
-        // close waits for it, and for the instance's runs that were stopped earlier and haven't exited.
-        const waits: Array<Effect.Effect<void>> = []
-        for (const run of inst.stopping) {
-          if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
-        }
-        for (const run of inst.runs.slice()) {
-          // An awaiting run's message is dropped with its instance, and the run ends here.
-          if (run.status === "awaiting" || !(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
-        }
-        if (inst.runs.length > 0) orphans.add(inst)
-        return awaitRuns(waits)
-      })
-    )
 
     // Entries about the Layer wait until `Mounted` is logged.
     let buffering = true
@@ -1799,9 +1829,12 @@ const setup = (
       let done = false
       cancel = cache.loadMore(def, args, fetcher.value as any, () => {
         done = true
-        if (cancel !== undefined) inst.loadMores.delete(cancel)
+        if (cancel !== undefined) inst.loadMores?.delete(cancel)
       })
-      if (!done) inst.loadMores.add(cancel)
+      if (!done) {
+        holdsWatchers = true
+        ;(inst.loadMores ??= new Set()).add(cancel)
+      }
     }
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
     else whenReady(inst.env, go)
@@ -2020,7 +2053,7 @@ const setup = (
     if (fiber === undefined) {
       run.handle?.finish({ _tag: "Stopped" })
     } else if (fiber.pollUnsafe() === undefined) {
-      inst.stopping.add(run)
+      ;(inst.stopping ??= new Set()).add(run)
       fiber.interruptUnsafe()
     }
     recordInterrupted(inst, run)
@@ -2132,7 +2165,7 @@ const setup = (
     run.handle?.finish({ _tag: "Stopped" })
     offClose?.()
     // A stopped run sent no message, so `h.isRunning` ends here.
-    if (inst.stopping.delete(run) && !inst.closed) markDirty(inst)
+    if (inst.stopping?.delete(run) === true && !inst.closed) markDirty(inst)
     if (run.done) return
     const interrupted = Exit.isFailure(exit) && !Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause)
     const waits = command._tag === "Effect" && command.afterRefetch !== undefined && Exit.isSuccess(exit)
@@ -2280,7 +2313,7 @@ const setup = (
     const matches = (run: Run) =>
       run.command.name === name && (groupKey === undefined || run.command.groupKey === groupKey)
     if (inst.runs.some(matches)) return true
-    for (const run of inst.stopping) if (matches(run)) return true
+    if (inst.stopping !== undefined) { for (const run of inst.stopping) if (matches(run)) return true }
     return false
   }
 
@@ -2363,29 +2396,34 @@ const setup = (
     // them, and so before this instance's next render. A keyed loader's go to its next drain.
     for (const fold of folds) fold()
     // The key set may have changed: the next drain checks for a prune.
-    if (inst.keyed.size > 0) requestKeyed(inst)
+    if (inst.keyed !== undefined && inst.keyed.size > 0) requestKeyed(inst)
   }
   const syncStreams = (inst: Instance, byKey: Map<string, Subscription.Subscription<any, any>>) => {
     // Close first, so `room:1` and `room:2` are never both connected.
-    for (const [key, running] of inst.subscriptions) {
+    if (inst.subscriptions === undefined) {
+      if (byKey.size === 0) return
+      inst.subscriptions = new Map()
+    }
+    const subscriptions = inst.subscriptions
+    for (const [key, running] of subscriptions) {
       if (byKey.has(key)) continue
-      inst.subscriptions.delete(key)
+      subscriptions.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key })
       closeScope(running.scope)
     }
     for (const [key, subscription] of byKey) {
-      if (inst.subscriptions.has(key)) continue
+      if (subscriptions.has(key)) continue
       const running: SubscriptionRun = { scope: Scope.forkUnsafe(inst.scope, "sequential"), fiber: undefined }
-      inst.subscriptions.set(key, running)
+      subscriptions.set(key, running)
       record({ _tag: "SubscriptionStarted", path: inst.path, key })
       const go = (envCtx: Context.Context<any>) => {
-        if (inst.closed || inst.subscriptions.get(key) !== running) return
+        if (inst.closed || subscriptions.get(key) !== running) return
         const source: MessageLog.Source = { _tag: "Subscription", key }
         const context = withCache(
           Context.add(Context.add(envCtx, Scope.Scope, running.scope), services.CurrentRoot, () => handle)
         )
         // Attached to its source, it dispatches synchronously, and only its first check waits.
-        const current = () => !inst.closed && inst.subscriptions.get(key) === running
+        const current = () => !inst.closed && subscriptions.get(key) === running
         const attachedTo = (subscription as services.Direct)[services.direct]?.(context, (message, accepted) => {
           if (!current()) return
           accepted()
@@ -2425,14 +2463,19 @@ const setup = (
    * watcher goes, and its sleep with it.
    */
   const syncWatches = (inst: Instance, markers: Map<string, loaders.Marker>): ReadonlyArray<() => void> => {
-    for (const [key, running] of inst.watches) {
+    if (inst.watches === undefined) {
+      if (markers.size === 0) return []
+      inst.watches = new Map()
+    }
+    const watches = inst.watches
+    for (const [key, running] of watches) {
       if (markers.has(key)) continue
-      inst.watches.delete(key)
+      watches.delete(key)
       record({ _tag: "SubscriptionStopped", path: inst.path, key: running.logKey })
       // A debounced loader's old args are obsolete: their fetch goes, unless another reader still needs it.
       releaseWatch(running, running.marker.debounce !== undefined)
       if (running.marker.keyed) {
-        const run = inst.keyed.get(running.marker.name)
+        const run = inst.keyed?.get(running.marker.name)
         run?.values.delete(running.marker.argsKey!)
         run?.changes.delete(running.marker.argsKey!)
       }
@@ -2440,7 +2483,7 @@ const setup = (
     // The first values of the watchers registered in this call, folded by the caller once the loop is done.
     let folds: Array<() => void> | undefined = []
     for (const [key, marker] of markers) {
-      const existing = inst.watches.get(key)
+      const existing = watches.get(key)
       if (existing !== undefined) {
         // The same args, the same watcher.
         existing.marker = marker
@@ -2451,7 +2494,8 @@ const setup = (
         ? key
         : Subscription.keyOf(`~loaded/${marker.name}`, def.logKey(marker.args, marker.argsKey))
       const running: WatchRun = { marker, logKey, handle: undefined, released: false, debounce: undefined }
-      inst.watches.set(key, running)
+      holdsWatchers = true
+      watches.set(key, running)
       record({ _tag: "SubscriptionStarted", path: inst.path, key: logKey })
       // A disabled loader: the marker is inert.
       if (marker.argsKey === undefined) continue
@@ -2477,7 +2521,7 @@ const setup = (
         ) return
         last = { result, patched, more }
         if (marker.keyed) {
-          const run = inst.keyed.get(marker.name)!
+          const run = inst.keyed!.get(marker.name)!
           run.values.set(entry.argsKey, { args: entry.args, result, patched })
           run.changes.add(entry.argsKey)
           return requestKeyed(inst)
@@ -2557,10 +2601,10 @@ const setup = (
   }
   /** A keyed loader's keys follow the state. */
   const syncGroup = (inst: Instance, group: loaders.Group) => {
-    const run = inst.keyed.get(group.name)
+    const run = inst.keyed?.get(group.name)
     if (run !== undefined) run.group = group
     else {
-      inst.keyed.set(group.name, {
+      ;(inst.keyed ??= new Map()).set(group.name, {
         group,
         logKey: Subscription.keyOf(`~loaded/${group.name}`),
         values: new Map(),
@@ -2589,10 +2633,12 @@ const setup = (
    * single loader whose args toggle.
    */
   const drainKeyed = (inst: Instance) => {
+    const keyed = inst.keyed
+    if (keyed === undefined) return
     let sent = true
     while (sent) {
       sent = false
-      for (const run of inst.keyed.values()) {
+      for (const run of keyed.values()) {
         if (inst.closed || inst.failure !== undefined || inst.waiting) return
         if (deliverKeyed(inst, run)) sent = true
       }
@@ -2671,9 +2717,11 @@ const setup = (
   /** Drops an instance's watchers, and its descendants', at once. Closing its Scope comes after. */
   const releaseWatches = (inst: Instance) => {
     releasePrefetch(inst)
-    for (const running of inst.watches.values()) releaseWatch(running)
-    for (const cancel of inst.loadMores) cancel()
-    inst.loadMores.clear()
+    if (inst.watches !== undefined) { for (const running of inst.watches.values()) releaseWatch(running) }
+    if (inst.loadMores !== undefined) {
+      for (const cancel of inst.loadMores) cancel()
+      inst.loadMores.clear()
+    }
     for (const child of inst.children.values()) releaseWatches(child)
   }
   // -- Router.prefetch --------------------------------------------------------
@@ -2701,6 +2749,7 @@ const setup = (
         }
       })
     }
+    holdsWatchers = true
     inst.prefetch = state
   }
   const releasePrefetch = (inst: Instance) => {
@@ -2913,6 +2962,12 @@ const setup = (
       }
     }
   }
+
+  /**
+   * Set once any instance of the tree has registered a watch, a load more or a prefetch declaration:
+   * until then, the patcher's pre-pass has nothing to release and is skipped.
+   */
+  let holdsWatchers = false
 
   /** The same for whatever a rendered node holds: called before its replacement is created. */
   const releaseRendered = (rendered: Rendered): void => {
@@ -3223,11 +3278,17 @@ const setup = (
     const tree = viewOf(inst)
     if (tree === undefined) return
     guard(inst, "view", () => {
-      const old = inst.rendered.flatMap(nodesOf)
-      const parentNode = host.parentOf(old[0])!
-      const ref = host.nextOf(old[old.length - 1])
+      const parentNode = host.parentOf(firstNodeOfList(inst.rendered))!
+      const ref = host.nextOf(lastNodeOfList(inst.rendered))
       releaseRemoved(inst.rendered, [tree])
-      inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
+      const before = inst.rendered
+      const next = patchList(inst, parentNode, before, [tree], ref, inst.env)
+      if (inst.rendered === before) inst.rendered = next
+      else {
+        // Failed while rendering, as when a fallback in its tree throws: `close` left the placeholder,
+        // which stays, and what the patch built goes.
+        for (const node of next.flatMap(nodesOf)) host.remove(node)
+      }
       throwClash(inst)
     })
     // Its closures render with it, so all it wrote is current. A closure that rendered alone is checked
@@ -3326,6 +3387,7 @@ const setup = (
       for (const node of nodes) host.remove(node)
       return failedSlot(inst, view, child.failure, env)
     }
+    if (inst.children === noChildren) inst.children = new Map()
     inst.children.set(path, child)
     return { _tag: "Child", v: view, inst: child }
   }
@@ -3496,12 +3558,24 @@ const setup = (
   }
 
   // -- diff -----------------------------------------------------------------
-  const keyOf = (view: View.Node<any, any>, index: number): string =>
-    view._tag === "Child"
-      ? `c:${segment(view)}`
-      : view._tag === "Element" && view.elementKey !== undefined
-      ? `e:${view.tag}[${view.elementKey}]`
-      : `p:${index}`
+  /** Whether a node is matched among its siblings by key: a child slot, or an element with a key. Else by position. */
+  const isKeyed = (view: View.Node<any, any>): boolean =>
+    view._tag === "Child" || (view._tag === "Element" && view.elementKey !== undefined)
+
+  /** A keyed node's key among its siblings. */
+  const keyOf = (view: View.Node<any, any>): string =>
+    view._tag === "Child" ? "c:" + segment(view) : "e:" + (view as View.Element<any, any>).tag + "[" +
+      (view as View.Element<any, any>).elementKey + "]"
+
+  /** Keyed olds by key, with their index. `undefined` when every old is matched by position. */
+  const keyedIndex = (olds: ReadonlyArray<Rendered>): Map<string, number> | undefined => {
+    let byKey: Map<string, number> | undefined
+    for (let index = 0; index < olds.length; index++) {
+      const view = olds[index]!.v
+      if (isKeyed(view)) (byKey ??= new Map()).set(keyOf(view), index)
+    }
+    return byKey
+  }
 
   const same = (rendered: Rendered, view: View.Node<any, any>): boolean => {
     switch (rendered._tag) {
@@ -3515,6 +3589,12 @@ const setup = (
     }
   }
 
+  /**
+   * Matches `news` against `olds`: a keyed node by its key, any other by its position, against an
+   * old there that isn't keyed. Matched nodes are patched, the rest created, and the olds left over
+   * destroyed, in their order. Only lists with keyed nodes build a map, and a list whose nodes all
+   * stayed, in order, is left in place without reading the host's nodes.
+   */
   const patchList = (
     inst: Instance,
     parentNode: unknown,
@@ -3523,22 +3603,53 @@ const setup = (
     ref: unknown,
     env: Env
   ): Array<Rendered> => {
-    const byKey = new Map<string, Rendered>()
-    olds.forEach((rendered, index) => byKey.set(keyOf(rendered.v, index), rendered))
-    const seen = new Set<string>()
-    const result = news.map((view, index) => {
-      const key = keyOf(view, index)
-      if (seen.has(key)) throw new Error(`${inst.path}: two siblings share the key ${key.slice(2)}`)
-      seen.add(key)
-      const old = byKey.get(key)
-      if (old !== undefined && same(old, view)) {
-        byKey.delete(key)
-        return patch(inst, old, view, env)
+    const byKey = keyedIndex(olds)
+    let seen: Set<string> | undefined
+    const result: Array<Rendered> = new Array(news.length)
+    let matched = 0
+    let inPlace = true
+    let previous = -1
+    for (let index = 0; index < news.length; index++) {
+      const view = news[index]!
+      let at = -1
+      if (isKeyed(view)) {
+        const key = keyOf(view)
+        seen ??= new Set()
+        if (seen.has(key)) throw new Error(`${inst.path}: two siblings share the key ${key.slice(2)}`)
+        seen.add(key)
+        const found = byKey?.get(key)
+        if (found !== undefined && same(olds[found]!, view)) {
+          byKey!.delete(key)
+          at = found
+        }
+      } else if (index < olds.length && !isKeyed(olds[index]!.v) && same(olds[index]!, view)) {
+        at = index
       }
-      return create(inst, view, env)
-    })
-    for (const gone of byKey.values()) destroy(inst, gone)
-    place(parentNode, result, ref)
+      if (at === -1) {
+        inPlace = false
+        result[index] = create(inst, view, env)
+        continue
+      }
+      matched++
+      const old = olds[at]!
+      const next = patch(inst, old, view, env)
+      // A slot that changed what it shows has nodes that may not be placed yet.
+      if (next !== old || at < previous) inPlace = false
+      previous = at
+      result[index] = next
+    }
+    if (matched < olds.length) {
+      // What wasn't matched: the keyed olds left in the map, and the olds at a position no node took.
+      const goneKeyed = byKey === undefined ? undefined : new Set(byKey.values())
+      for (let index = 0; index < olds.length; index++) {
+        const old = olds[index]!
+        const gone = isKeyed(old.v)
+          ? goneKeyed!.has(index)
+          : !(index < news.length && !isKeyed(news[index]!) && same(old, news[index]!))
+        if (gone) destroy(inst, old)
+      }
+    }
+    if (!inPlace) place(parentNode, result, ref)
     return result
   }
 
@@ -3550,15 +3661,22 @@ const setup = (
    * makes the zero-to-one decision independent of that order.
    */
   const releaseRemoved = (olds: ReadonlyArray<Rendered>, news: ReadonlyArray<View.Node<any, any>>) => {
-    const byKey = new Map<string, Rendered>()
-    olds.forEach((rendered, index) => byKey.set(keyOf(rendered.v, index), rendered))
+    // Nothing in the tree has watchers to let go of: the pass would do nothing.
+    if (!holdsWatchers) return
+    const byKey = keyedIndex(olds)
     const kept = new Set<Rendered>()
-    news.forEach((view, index) => {
-      const old = byKey.get(keyOf(view, index))
-      if (old === undefined || !same(old, view) || kept.has(old)) return
+    for (let index = 0; index < news.length; index++) {
+      const view = news[index]!
+      const at = isKeyed(view)
+        ? byKey?.get(keyOf(view))
+        : index < olds.length && !isKeyed(olds[index]!.v)
+        ? index
+        : undefined
+      const old = at === undefined ? undefined : olds[at]!
+      if (old === undefined || !same(old, view) || kept.has(old)) continue
       kept.add(old)
       if (old._tag === "Element") releaseRemoved(old.children, (view as View.Element<any, any>).children)
-    })
+    }
     for (const old of olds) if (!kept.has(old)) releaseRendered(old)
   }
 
@@ -3581,7 +3699,8 @@ const setup = (
       case "Text": {
         const text = view as View.Text
         if (text.text !== rendered.v.text) host.setText(rendered.node, text.text)
-        return { _tag: "Text", v: text, node: rendered.node }
+        rendered.v = text
+        return rendered
       }
       case "Element": {
         const element = view as View.Element<any, any>
@@ -3598,21 +3717,16 @@ const setup = (
         ) {
           setEvents(inst, rendered.node, element)
         }
-        const children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
+        rendered.children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
         patchProps(rendered.node, prev.props, element.props)
         // A mount belongs to the element, not to one view run: it keeps running across patches, and
         // gets each new input. An owned layer's mount belongs to its part: it runs while the part is applied.
         updateMountInput(rendered.mount, element.mount)
-        return {
-          _tag: "Element",
-          v: element,
-          node: rendered.node,
-          children,
-          mount: rendered.mount,
-          ownedMounts: element.owned === prev.owned
-            ? rendered.ownedMounts
-            : startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
+        rendered.v = element
+        if (element.owned !== prev.owned) {
+          rendered.ownedMounts = startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
         }
+        return rendered
       }
       case "Slot": {
         const child = view as View.Child<any, any>
@@ -3665,7 +3779,8 @@ const setup = (
           dirty.delete(instance)
           render(instance)
         }
-        return { _tag: "Child", v: child, inst: instance }
+        rendered.v = child
+        return rendered
       }
     }
   }
@@ -3674,7 +3789,12 @@ const setup = (
   const patchOrReplace = (inst: Instance, rendered: Rendered, view: View.Node<any, any>, env: Env): Rendered => {
     // The pre-pass, as in `render`: a replaced subtree's watchers go before the new one is created.
     releaseRemoved([rendered], [view])
-    if (same(rendered, view) && keyOf(rendered.v, 0) === keyOf(view, 0)) return patch(inst, rendered, view, env)
+    if (
+      same(rendered, view) && isKeyed(rendered.v) === isKeyed(view) &&
+      (!isKeyed(view) || keyOf(rendered.v) === keyOf(view))
+    ) {
+      return patch(inst, rendered, view, env)
+    }
     const next = create(inst, view, env)
     const nodes = nodesOf(rendered)
     const parentNode = nodes.length > 0 ? host.parentOf(nodes[0]) : undefined
@@ -3690,17 +3810,49 @@ const setup = (
       ? nodesOf(rendered.inner)
       : [rendered.node]
 
+  /** The first host node of a rendered item, without collecting the others. `undefined` if it has none. */
+  const firstNodeOf = (rendered: Rendered): unknown =>
+    rendered._tag === "Child"
+      ? firstNodeOfList(rendered.inst.rendered)
+      : rendered._tag === "Slot"
+      ? firstNodeOf(rendered.inner)
+      : rendered.node
+  const lastNodeOf = (rendered: Rendered): unknown =>
+    rendered._tag === "Child"
+      ? lastNodeOfList(rendered.inst.rendered)
+      : rendered._tag === "Slot"
+      ? lastNodeOf(rendered.inner)
+      : rendered.node
+  const hasNodes = (rendered: Rendered): boolean =>
+    rendered._tag === "Child"
+      ? rendered.inst.rendered.some(hasNodes)
+      : rendered._tag === "Slot"
+      ? hasNodes(rendered.inner)
+      : true
+  const firstNodeOfList = (items: ReadonlyArray<Rendered>): unknown => {
+    for (let index = 0; index < items.length; index++) {
+      if (hasNodes(items[index]!)) return firstNodeOf(items[index]!)
+    }
+    return undefined
+  }
+  const lastNodeOfList = (items: ReadonlyArray<Rendered>): unknown => {
+    for (let index = items.length - 1; index >= 0; index--) {
+      if (hasNodes(items[index]!)) return lastNodeOf(items[index]!)
+    }
+    return undefined
+  }
+
   /** Puts each item's nodes before `ref`, last first, moving only what's out of place. */
   const place = (parentNode: unknown, items: ReadonlyArray<Rendered>, ref: unknown) => {
     let next = ref
     for (let index = items.length - 1; index >= 0; index--) {
-      const nodes = nodesOf(items[index]!)
-      if (nodes.length === 0) continue
-      const last = nodes[nodes.length - 1]
+      const item = items[index]!
+      if (!hasNodes(item)) continue
+      const last = lastNodeOf(item)
       if (host.parentOf(last) !== parentNode || host.nextOf(last) !== next) {
-        for (const node of nodes) host.insertBefore(parentNode, node, next)
+        for (const node of nodesOf(item)) host.insertBefore(parentNode, node, next)
       }
-      next = nodes[0]
+      next = firstNodeOf(item)
     }
   }
 
@@ -3800,7 +3952,7 @@ const setup = (
       // A keyed loader's pending writes go first, so the slot holds only the declared keys. A
       // navigation issued in the `update` that changed them runs in the flush's deferred work, which
       // can come before the drain gets to them.
-      if (inst.keyed.size > 0) drainKeyed(inst)
+      if (inst.keyed !== undefined && inst.keyed.size > 0) drainKeyed(inst)
       if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = stateCodecOf(inst.component).encode(inst.model, inst.slots)
       if (Option.isSome(encoded)) out[inst.path] = encoded.value

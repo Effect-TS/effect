@@ -451,6 +451,35 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(root.model()).toEqual(["click inner", "click outer"])
       }).pipe(Effect.scoped))
 
+    it.effect("a handler a render takes away no longer gets the event: the next element out does", () =>
+      Effect.gen(function*() {
+        const Toggle = Component.define({
+          name: "Toggle",
+          model: Schema.Array(Schema.String),
+          message: Message,
+          elements: Html
+        }).make({
+          init: (): ReadonlyArray<string> => [],
+          update: (log, message) => message._tag === "Clicked" ? [...log, message.where] : log,
+          view: (log, h) =>
+            h.section.onClick(Message.make({ _tag: "Clicked", where: "outer" })).children(
+              // The inner handler goes after the first click lands on it.
+              log.length === 0
+                ? h.button.onClick(Message.make({ _tag: "Clicked", where: "inner" })).children("Go")
+                : h.button("Go")
+            )
+        })
+        const app = yield* container
+        const root = yield* BrowserHost.mountEffect(Toggle, {}, app)
+        const button = HtmlQuery.getByRole(app, "button", { name: "Go" })
+        HtmlQuery.click(button)
+        yield* tick
+        HtmlQuery.click(HtmlQuery.getByRole(app, "button", { name: "Go" }))
+        yield* tick
+        assert.strictEqual(HtmlQuery.getByRole(app, "button", { name: "Go" }), button)
+        expect(root.model()).toEqual(["inner", "outer"])
+      }).pipe(Effect.scoped))
+
     it.effect("focus doesn't bubble", () =>
       Effect.gen(function*() {
         const app = yield* container
