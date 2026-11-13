@@ -54,13 +54,16 @@ const step = (options: ReadonlyArray<ListboxOption>, from: string | null, direct
 const activeIn = (shown: ReadonlyArray<ListboxOption>, active: string | null) =>
   shown.some((o) => o.id === active && o.disabled !== true) ? active : null
 
+// `Html.focus` and `Html.scrollIntoView` report whether the ref was
+// rendered, as a message. Nothing here depends on it.
 const moved = () => ListboxMessage.make({ _tag: "Moved" })
 
 /**
- * A select-only trigger with a popup holding a filter input and the rows: the
- * ARIA combobox pattern. Typeahead runs on the trigger, and arrows, Enter and
- * Escape on the input, the elements that have focus. A key handler on the
- * popup around them would also catch keys meant for the consumer's controls.
+ * A trigger that opens a popup with a filter input and the rows. The input is
+ * an ARIA combobox and the rows are its listbox, as in a command palette.
+ * Typeahead runs on the trigger, and arrows, Enter and Escape on the input:
+ * keys are handled on the element that has focus. A key handler on the popup
+ * around them would also catch keys meant for the consumer's own controls.
  */
 export const Listbox = Component.define({
   name: "Listbox",
@@ -87,7 +90,7 @@ export const Listbox = Component.define({
       // Focus moves into the popup and back to the trigger with it.
       Toggled: ({ open }) =>
         $.set({ ...model, open, query: "", active: open ? $.props.selected : null })
-          .run(Html.focus(open ? Input : Trigger, moved)),
+          .run(open ? Html.focus(Input, moved) : Html.focus(Trigger, moved)),
       Query: ({ value }) => ({ ...model, query: value, active: step(filter($.props.options, value), null, 1) }),
       Key: ({ key }) => {
         const shown = filter($.props.options, model.query)
@@ -148,8 +151,7 @@ export const Listbox = Component.define({
       trigger: p.part("button", (b) =>
         b.ref(Trigger)
           .attr("type", "button")
-          .attr("role", "combobox")
-          .attr("aria-haspopup", "listbox")
+          .attr("aria-haspopup", "dialog")
           .attr("aria-expanded", String(model.open))
           .attr("aria-controls", p.id("popup"))
           // A `popovertarget` invoker: the browser toggles the popup, and a
@@ -166,6 +168,7 @@ export const Listbox = Component.define({
           )),
       popup: p.part("div", (b) =>
         b.id(p.id("popup"))
+          .attr("role", "dialog")
           .popover("auto", model.open)
           .onToggle(({ open }) => ListboxMessage.make({ _tag: "Toggled", open }))),
       input: p.part("input", (b) =>

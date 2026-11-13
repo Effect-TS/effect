@@ -1803,7 +1803,11 @@ const setup = (
       if (inst.owner === undefined) collectSlots(inst.rendered, send.ref.key, slots)
       if (slots.length > 1) {
         // One view's slots are checked as it renders. A closure's are checked apart from its author's view.
-        failInstance(inst, Cause.die(new Error(`${inst.path} renders two children with the ref ${send.ref.key}`)), "view")
+        failInstance(
+          inst,
+          Cause.die(new Error(`${inst.path} renders two children with the ref ${send.ref.key}`)),
+          "view"
+        )
         return
       }
       const slot = slots[0]
@@ -3117,7 +3121,11 @@ const setup = (
   const viewOf = (inst: Instance): View.Node<any, any> | undefined => {
     const owner = inst.owner
     if (owner === undefined) {
-      return guard(inst, "view", () => checked(inst, inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots, inst.path)))
+      return guard(
+        inst,
+        "view",
+        () => checked(inst, inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots, inst.path))
+      )
     }
     const parts = guard(inst, "view", () => ({
       value: (inst.component as unknown as Component.Headless.Any).parts(inst.model, inst.props, {
