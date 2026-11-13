@@ -219,7 +219,10 @@ export declare namespace Ref {
    *
    * Every `Ref` fits `Ref.Any`, but `Ref.Any` fits no `Ref`, so it can't be
    * annotated back into one, and `$.send` takes nothing through it or its
-   * `at` rows. It still names a slot in `h.child`, since it sends nothing.
+   * `at` rows. It names no slot in `h.child` either: every typed ref fits
+   * it, so a slot that took it would skip the receives check. It keeps its
+   * `key`, so `Story.childEmit`, `childFailure` and `Story.fallback` find a
+   * slot by it.
    * `View.Child`'s `ref`, `Step`'s `sends`, what `isRef` narrows to,
    * and the refs of `Feature.Any` and of a component whose receives are
    * `any` are erased.
