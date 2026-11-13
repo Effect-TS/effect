@@ -262,6 +262,33 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
+/**
+ * Detects whether a date string already contains timezone info.
+ * Without a zone, `new Date("2024-01-01T12:00:00")` is parsed as local time,
+ * so `makeUnsafe` appends "Z" to force UTC interpretation.
+ * This check prevents appending "Z" to strings that already have a zone
+ * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
+ * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
+ * such as `pdt` in any case. Only that trailing match is case-insensitive, so lowercase
+ * letters in a comment like "(xyz)" do not count as a zone.
+ * A zone after the time can also be followed by a parenthesized comment or whitespace,
+ * as in "... 17:14:06 -0500 (EST)".
+ */
+const hasZone = (input: string): boolean => {
+  if (matchesZone(input)) return true
+  // Only a comment or trailing whitespace can hide a zone from the check above
+  if (!/\(|\s$/.test(input)) return false
+  const text = withoutComments(input).trimEnd()
+  const time = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(text)
+  if (time === null) return false
+  const suffix = text.slice(time.index + time[0].length)
+  // A digit before the minus marks the end of a date, as in "12:00:00 2024-01-01"
+  return matchesZone(suffix) && !/\d-\d{2}(?::?\d{2})?$/.test(suffix)
+}
+
+const matchesZone = (input: string): boolean =>
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
+
 const withoutComments = (input: string): string => {
   let text = ""
   let depth = 0
@@ -276,28 +303,6 @@ const withoutComments = (input: string): string => {
   }
   return text
 }
-
-/**
- * Detects whether a date string already contains timezone info.
- * Without a zone, `new Date("2024-01-01T12:00:00")` is parsed as local time,
- * so `makeUnsafe` appends "Z" to force UTC interpretation.
- * This check prevents appending "Z" to strings that already have a zone
- * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
- * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
- * such as `pdt` in any case. A zone after the time can also be followed by a
- * parenthesized comment or whitespace, as in "... 17:14:06 -0500 (EST)".
- */
-const hasZone = (input: string): boolean => {
-  if (matchesZone(input)) return true
-  const text = withoutComments(input).trimEnd()
-  const time = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(text)
-  if (time === null) return false
-  const suffix = text.slice(time.index + time[0].length)
-  return matchesZone(suffix) && !/\d-\d{2}(?::?\d{2})?$/.test(suffix)
-}
-
-const matchesZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
