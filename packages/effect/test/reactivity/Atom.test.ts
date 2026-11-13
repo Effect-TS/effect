@@ -265,21 +265,7 @@ describe("Atom", { concurrent: false }, () => {
 
   it.each([false, true])("searchParam cancels stale writes but preserves observer writes (%s)", async (normalize) => {
     const r = AtomRegistry.make()
-    const location = new URL("http://localhost/current?q=before&page=2")
-    const events = new EventTarget()
-    const urls: Array<string> = []
-    vitest.stubGlobal("window", {
-      location,
-      history: {
-        pushState: (_state: unknown, _title: string, url: string) => {
-          urls.push(url)
-          location.href = new URL(url, location).href
-        }
-      },
-      addEventListener: events.addEventListener.bind(events),
-      removeEventListener: events.removeEventListener.bind(events)
-    })
-
+    const window = stubSearchParamWindow("http://localhost/current?q=before&page=2")
     try {
       const q = Atom.searchParam("q")
       const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
@@ -289,11 +275,9 @@ describe("Atom", { concurrent: false }, () => {
       r.mount(page)
       r.set(q, "pending")
       r.set(page, Option.some(9))
-      location.search = "?q=OLD&page=1"
-      events.dispatchEvent(new Event("popstate"))
+      window.navigate("?q=OLD&page=1")
       await vitest.advanceTimersByTimeAsync(500)
-      assert.deepStrictEqual(urls, normalize ? ["/current?q=old&page=1"] : [])
-      assert.strictEqual(location.search, normalize ? "?q=old&page=1" : "?q=OLD&page=1")
+      assert.deepStrictEqual(window.urls, normalize ? ["/current?q=old&page=1"] : [])
       assert.strictEqual(r.get(q), normalize ? "old" : "OLD")
       assert.deepStrictEqual(r.get(page), Option.some(1))
     } finally {
@@ -304,101 +288,67 @@ describe("Atom", { concurrent: false }, () => {
 
   it("searchParam restores remaining readers when an observer throws", async () => {
     const r = AtomRegistry.make()
-    const location = new URL("http://localhost/?q=before&page=2")
-    const listeners = new Set<() => void>()
-    const pushState = vitest.fn()
-    vitest.stubGlobal("window", {
-      location,
-      history: { pushState },
-      addEventListener: (type: string, listener: () => void) => {
-        if (type === "popstate") listeners.add(listener)
-      },
-      removeEventListener: (type: string, listener: () => void) => {
-        if (type === "popstate") listeners.delete(listener)
-      }
-    })
+    const window = stubSearchParamWindow("http://localhost/?q=before&page=2")
     try {
       const q = Atom.searchParam("q")
       const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+      const failure = new Error("observer")
       r.subscribe(q, (value) => {
-        if (value === "old") throw undefined
+        if (value === "old") throw failure
       })
       r.mount(page)
       r.set(q, "pending")
       r.set(page, Option.some(9))
-      location.search = "?q=old&page=1"
-      const failures: Array<unknown> = []
-      for (const listener of listeners) {
-        try {
-          listener()
-        } catch (error) {
-          failures.push(error)
-        }
-      }
-      assert.deepStrictEqual(failures, [undefined])
-      assert.deepStrictEqual(r.get(page), Option.some(1))
+      assert.deepStrictEqual(window.navigate("?q=old&page=1"), [failure])
       assert.strictEqual(r.get(q), "old")
+      assert.deepStrictEqual(r.get(page), Option.some(1))
       await vitest.advanceTimersByTimeAsync(500)
-      assert.strictEqual(pushState.mock.calls.length, 0)
+      assert.deepStrictEqual(window.urls, [])
       r.dispose()
-      assert.strictEqual(listeners.size, 0)
+      assert.strictEqual(window.listeners.size, 0)
     } finally {
       r.dispose()
       vitest.unstubAllGlobals()
     }
   })
 
-  it.each(["dispose", "throw", "nested", "navigate"] as const)(
-    "searchParam establishes its batch before a synchronous observer can %s",
-    async (action) => {
-      const r = AtomRegistry.make()
-      const location = new URL("http://localhost/?q=before")
-      const events = new EventTarget()
-      const pushState = vitest.fn((_state: unknown, _title: string, url: string) => {
-        location.href = new URL(url, location).href
-      })
-      vitest.stubGlobal("window", {
-        location,
-        history: { pushState },
-        addEventListener: events.addEventListener.bind(events),
-        removeEventListener: events.removeEventListener.bind(events)
-      })
-      const navigate = () => {
-        location.search = "?q=old"
-        events.dispatchEvent(new Event("popstate"))
-      }
-      try {
-        const q = Atom.searchParam("q")
-        const failure = new Error("observer")
-        r.subscribe(q, (value) => {
-          if (value !== "pending") return
-          switch (action) {
-            case "dispose":
-              return r.dispose()
-            case "throw":
-              throw failure
-            case "nested":
-              return r.set(q, "fresh")
-            case "navigate":
-              return navigate()
-          }
-        })
-        if (action === "throw") {
-          assert.throws(() => r.set(q, "pending"), failure)
-        } else {
-          r.set(q, "pending")
+  it.each<[string, Array<string>]>([
+    ["dispose", []],
+    ["throw", ["/?q=pending"]],
+    ["nested", ["/?q=fresh"]],
+    ["navigate", []]
+  ])("searchParam establishes its batch before a synchronous observer can %s", async (action, urls) => {
+    const r = AtomRegistry.make()
+    const window = stubSearchParamWindow("http://localhost/?q=before")
+    try {
+      const q = Atom.searchParam("q")
+      const failure = new Error("observer")
+      r.subscribe(q, (value) => {
+        if (value !== "pending") return
+        switch (action) {
+          case "dispose":
+            return r.dispose()
+          case "throw":
+            throw failure
+          case "nested":
+            return r.set(q, "fresh")
+          case "navigate":
+            window.navigate("?q=old")
         }
-        if (action === "dispose") navigate()
-        await vitest.advanceTimersByTimeAsync(500)
-        const cancelled = action === "dispose" || action === "navigate"
-        assert.strictEqual(location.search, cancelled ? "?q=old" : action === "nested" ? "?q=fresh" : "?q=pending")
-        assert.strictEqual(pushState.mock.calls.length, cancelled ? 0 : 1)
-      } finally {
-        r.dispose()
-        vitest.unstubAllGlobals()
+      })
+      if (action === "throw") {
+        assert.throws(() => r.set(q, "pending"), failure)
+      } else {
+        r.set(q, "pending")
       }
+      if (action === "dispose") window.navigate("?q=old")
+      await vitest.advanceTimersByTimeAsync(500)
+      assert.deepStrictEqual(window.urls, urls)
+    } finally {
+      r.dispose()
+      vitest.unstubAllGlobals()
     }
-  )
+  })
 
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
@@ -3784,3 +3734,42 @@ const MultiplierLayer = Layer.effect(
 const buildCounterRuntime = Atom.runtime(BuildCounterLayer)
 const counterRuntime = Atom.runtime(CounterLayer)
 const multiplierRuntime = Atom.runtime(MultiplierLayer)
+
+// Like Window, dispatches popstate in registration order and isolates listener failures.
+const stubSearchParamWindow = (href: string) => {
+  const location = new URL(href)
+  const listeners = new Set<() => void>()
+  const urls: Array<string> = []
+  vitest.stubGlobal("window", {
+    location,
+    history: {
+      pushState(_state: unknown, _title: string, url: string) {
+        urls.push(url)
+        location.href = new URL(url, location).href
+      }
+    },
+    addEventListener(type: string, listener: () => void) {
+      if (type === "popstate") listeners.add(listener)
+    },
+    removeEventListener(type: string, listener: () => void) {
+      if (type === "popstate") listeners.delete(listener)
+    }
+  })
+  return {
+    listeners,
+    urls,
+    navigate(search: string) {
+      location.search = search
+      const failures: Array<unknown> = []
+      for (const listener of Array.from(listeners)) {
+        if (!listeners.has(listener)) continue
+        try {
+          listener()
+        } catch (error) {
+          failures.push(error)
+        }
+      }
+      return failures
+    }
+  }
+}

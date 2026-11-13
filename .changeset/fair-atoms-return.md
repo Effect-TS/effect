@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Discard pending Atom.searchParam writes when browser history navigates, so a debounced update cannot overwrite the destination query.
+Fix `Atom.searchParam` overwriting the restored URL when Back or Forward is pressed before a debounced write flushes.

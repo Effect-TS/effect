@@ -2416,13 +2416,16 @@ export const searchParam = <S extends Schema.ConstraintCodec<any, string> = neve
           get.setSelf(newValue)
         }
       }
-      searchParamState.listeners.add(handleUpdate)
-      window.addEventListener("popstate", handleSearchParamPopstate)
+      searchParamState.readers++
+      // Registered ahead of every reader, so stale writes are discarded before observers run.
+      window.addEventListener("popstate", cancelSearchParamUpdates)
+      window.addEventListener("popstate", handleUpdate)
       window.addEventListener("pushstate", handleUpdate)
       get.addFinalizer(() => {
-        searchParamState.listeners.delete(handleUpdate)
-        releaseSearchParamPopstate()
+        window.removeEventListener("popstate", handleUpdate)
         window.removeEventListener("pushstate", handleUpdate)
+        searchParamState.readers--
+        releaseSearchParamCancel()
       })
       const value = new URLSearchParams(window.location.search).get(name) || ""
       return decode ? Exit.getSuccess(decode(value)) : value as any
@@ -2440,7 +2443,7 @@ export const searchParam = <S extends Schema.ConstraintCodec<any, string> = neve
       } else {
         searchParamState.updates.set(name, value)
       }
-      window.addEventListener("popstate", handleSearchParamPopstate)
+      window.addEventListener("popstate", cancelSearchParamUpdates)
       if (searchParamState.timeout) {
         clearTimeout(searchParamState.timeout)
       }
@@ -2453,39 +2456,26 @@ export const searchParam = <S extends Schema.ConstraintCodec<any, string> = neve
 const searchParamState = {
   timeout: undefined as number | undefined,
   updates: new Map<string, string>(),
-  listeners: new Set<() => void>(),
+  readers: 0,
   updating: false
 }
 
-function handleSearchParamPopstate() {
+function cancelSearchParamUpdates() {
   clearTimeout(searchParamState.timeout)
   searchParamState.timeout = undefined
   searchParamState.updates.clear()
-  let failed = false
-  let failure: unknown
-  for (const listener of searchParamState.listeners) {
-    try {
-      listener()
-    } catch (error) {
-      if (!failed) {
-        failed = true
-        failure = error
-      }
-    }
-  }
-  releaseSearchParamPopstate()
-  if (failed) throw failure
+  releaseSearchParamCancel()
 }
 
-function releaseSearchParamPopstate() {
-  if (searchParamState.listeners.size === 0 && searchParamState.timeout === undefined) {
-    window.removeEventListener("popstate", handleSearchParamPopstate)
+function releaseSearchParamCancel() {
+  if (searchParamState.readers === 0 && searchParamState.timeout === undefined) {
+    window.removeEventListener("popstate", cancelSearchParamUpdates)
   }
 }
 
 function updateSearchParams() {
   searchParamState.timeout = undefined
-  releaseSearchParamPopstate()
+  releaseSearchParamCancel()
   searchParamState.updating = true
   const searchParams = new URLSearchParams(window.location.search)
   for (const [key, value] of searchParamState.updates.entries()) {
