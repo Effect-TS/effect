@@ -852,6 +852,49 @@ describe("BunHttpServer", () => {
       assert.isTrue(failed)
     }))
 
+  it.live("discards unread messages when a WebSocket reader is released", () =>
+    Effect.gen(function*() {
+      const received = yield* Deferred.make<void>()
+      const checked = yield* Deferred.make<void, unknown>()
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      yield* server.serve(Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const socket = yield* request.upgrade
+        yield* Deferred.complete(
+          checked,
+          Effect.gen(function*() {
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            const writer = yield* socket.writer
+            yield* writer.write("ready")
+            // A pong confirms the preceding message arrived, without pulling it.
+            yield* Deferred.await(received)
+            yield* Scope.close(readerScope, Exit.void)
+            const error = yield* Effect.flip(socket.reader)
+            assert.deepStrictEqual(
+              error.reason,
+              new Socket.SocketCloseError({
+                code: 1000,
+                closeReason: ""
+              })
+            )
+          })
+        )
+        return HttpServerResponse.empty()
+      }))
+      const port = (server.address as NetAddress.InetAddress).port
+      const ws = yield* Effect.acquireRelease(
+        Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
+        (ws) => Effect.sync(() => ws.close())
+      )
+      ws.addEventListener("message", () => {
+        ws.send("unread")
+        ;(ws as Bun.WebSocket).ping()
+      }, { once: true })
+      ws.addEventListener("pong", () => Deferred.doneUnsafe(received, Effect.void))
+      yield* Deferred.await(checked)
+    }).pipe(Effect.timeout("5 seconds")), 10000)
+
   it.effect("fails upgrades to protocols other than WebSocket", () =>
     Effect.gen(function*() {
       const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
