@@ -31,7 +31,7 @@
 // steps (create10k: 1 and 3), each after its setup; the round's figure is their median. The table
 // shows the median across rounds and the range (min-max). Variant order rotates each round.
 //
-// Memory, in MB of used JS heap after a forced garbage collection, on a fresh page per variant
+// Memory, in MiB (2^20 bytes) of used JS heap after a forced garbage collection, on a fresh page per variant
 // and round: `ready` once mounted, then `1k` after 1,000 rows, `replace` after replacing them
 // 5 times, `cycle` after 5 create-then-clear cycles of 1,000 rows (back to an empty table, so
 // it tracks `ready` unless something is retained) and `10k` after 10,000 rows.
@@ -207,7 +207,7 @@ if (!args["time-only"]) {
       await page.close()
     }
   }
-  console.log("memory: " + rounds + " rounds, median (min-max) MB")
+  console.log("memory: " + rounds + " rounds, median (min-max) MiB")
   for (const key of keys) {
     console.log(key.padEnd(11), variants.map((v) => v + " " + stat(results[v][key])).join(" | "))
   }
