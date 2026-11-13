@@ -7,6 +7,8 @@ import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { build } from "esbuild"
+import { createServer } from "node:http"
+import type { AddressInfo } from "node:net"
 import { Readable } from "node:stream"
 import { fileURLToPath } from "node:url"
 import { vi } from "vitest"
@@ -19,24 +21,32 @@ let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undef
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let commandImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
-vi.mock("@clickhouse/client", () => ({
-  createClient: vi.fn(() => ({
-    ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
-    query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
-    insert: (options: Record<string, unknown>) => {
-      insertCalls.push(options)
-      return insertImpl ? insertImpl(options) : new Promise(() => {})
-    },
-    command: (options: Record<string, unknown>) => {
-      commandCalls.push(options)
-      return commandImpl ? commandImpl(options) : Promise.resolve({})
-    },
-    close: () => {
-      closeCalls++
-      return Promise.resolve()
-    }
-  }))
-}))
+// Clients for a 127.0.0.1 URL use the real driver against a local fixture server.
+vi.mock("@clickhouse/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof Clickhouse>()
+  return {
+    createClient: vi.fn((options: Clickhouse.ClickHouseClientConfigOptions) =>
+      options.url?.toString().startsWith("http://127.0.0.1") ? actual.createClient(options) : mockClient()
+    )
+  }
+})
+
+const mockClient = () => ({
+  ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
+  query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
+  insert: (options: Record<string, unknown>) => {
+    insertCalls.push(options)
+    return insertImpl ? insertImpl(options) : new Promise(() => {})
+  },
+  command: (options: Record<string, unknown>) => {
+    commandCalls.push(options)
+    return commandImpl ? commandImpl(options) : Promise.resolve({})
+  },
+  close: () => {
+    closeCalls++
+    return Promise.resolve()
+  }
+})
 
 describe("ClickhouseClient", { concurrent: false }, () => {
   it("infers DateTime parameters without empty parentheses", () => {
@@ -199,6 +209,46 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
+
+  it.live("closes a response being read before killing its query", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const sent = Promise.withResolvers<void>()
+      const server = createServer((req, res) => {
+        let body = ""
+        req.on("data", (chunk) => body += chunk)
+        req.on("end", () => {
+          if (req.url?.startsWith("/ping")) {
+            res.end("Ok.\n")
+          } else if (body.startsWith("KILL QUERY")) {
+            events.push("kill")
+            res.writeHead(500, { "x-clickhouse-exception-code": "497" }).end(
+              "Code: 497. DB::Exception: Not enough privileges"
+            )
+          } else if (body.startsWith("SELECT a FROM slow")) {
+            res.on("close", () => events.push("closed"))
+            res.writeHead(200, { "content-type": "application/json" }).write("{\"data\":[", () => sent.resolve())
+          } else {
+            res.writeHead(200, { "content-type": "application/json" }).end("{\"data\":[{\"n\":1}]}")
+          }
+        })
+      })
+      yield* Effect.acquireRelease(
+        Effect.promise(() => new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))),
+        () => Effect.promise(() => new Promise((resolve) => server.close(resolve)))
+      )
+      const { port } = server.address() as AddressInfo
+      // One connection, so a response left open would hold back the kill and later queries.
+      const sql = yield* ClickhouseClient.make({ url: `http://127.0.0.1:${port}`, max_open_connections: 1 })
+
+      const fiber = yield* sql`SELECT a FROM slow`.pipe(Effect.forkChild)
+      yield* Effect.promise(() => sent.promise)
+      yield* Effect.sleep("100 millis")
+      yield* Fiber.interrupt(fiber)
+
+      assert.deepStrictEqual(events, ["closed", "kill"])
+      assert.deepStrictEqual(yield* sql`SELECT 1 AS n`, [{ n: 1 }])
+    }).pipe(Effect.provide(Reactivity.layer)), { timeout: 20_000 })
 
   it.effect("passes column selection to insertQuery", () =>
     Effect.gen(function*() {

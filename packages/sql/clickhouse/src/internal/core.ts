@@ -47,6 +47,7 @@ interface Request extends RequestBase {
 interface ResultSet {
   json(): Promise<unknown>
   stream(): unknown
+  close(): unknown
 }
 
 /**
@@ -149,11 +150,14 @@ const killQuery = (client: Driver, queryId: string) =>
 const newQueryId = (): string => globalThis.crypto.randomUUID()
 
 /**
- * Runs one request with the fiber's query id and settings. On interruption
- * the HTTP request is aborted and the query is killed on the server, since
- * closing the connection does not stop a query that is still being computed.
+ * Runs one request with the fiber's query id and settings, then `read`s its
+ * result. On interruption the HTTP request is aborted and the query is killed
+ * on the server, since closing the connection does not stop a query that is
+ * still being computed. A result being read is closed first: the Node driver
+ * stops listening to the abort signal once headers arrive, and the open
+ * response would otherwise hold the connection the kill needs.
  */
-const runAbortable = <A>(
+const runAbortable = <R, A = R>(
   client: Driver,
   message: string,
   operation: string,
@@ -161,17 +165,19 @@ const runAbortable = <A>(
     readonly abort_signal: AbortSignal
     readonly query_id: string
     readonly clickhouse_settings: Settings
-  }) => Promise<A>
+  }) => Promise<R>,
+  read: (result: R) => A | Promise<A> = (result) => result as unknown as A
 ): Effect.Effect<A, SqlError> =>
   Effect.withFiber((fiber) =>
     Effect.callback<A, SqlError>((resume) => {
       const queryId = fiber.getRef(QueryId) ?? newQueryId()
       const controller = new AbortController()
+      let reading: R | undefined
       request({
         abort_signal: controller.signal,
         query_id: queryId,
         clickhouse_settings: fiber.getRef(ClickhouseSettings)
-      }).then(
+      }).then((result) => read(reading = result)).then(
         (result) => resume(Effect.succeed(result)),
         (cause) =>
           resume(Effect.fail(
@@ -180,6 +186,10 @@ const runAbortable = <A>(
       )
       return Effect.suspend(() => {
         controller.abort()
+        if (isResultSet(reading, "close")) {
+          // The web driver's `close` rejects while a reader holds the body, which the abort already ends.
+          Promise.resolve(reading.close()).catch(() => {})
+        }
         return killQuery(client, queryId)
       })
     })
@@ -254,7 +264,7 @@ class ConnectionImpl implements Connection {
     sql: string,
     params: ReadonlyArray<unknown>,
     format: DataFormat = "JSON",
-    read: (result: unknown) => A | Promise<A> = (result) => result as A
+    read?: (result: unknown) => A | Promise<A>
   ) {
     const query_params: Record<string, unknown> = {}
     for (let i = 0; i < params.length; i++) {
@@ -262,10 +272,16 @@ class ConnectionImpl implements Connection {
     }
     return Effect.withFiber((fiber) => {
       const method = fiber.getRef(ClientMethod)
-      return runAbortable(this.client, "Failed to execute statement", "execute", (base) =>
-        (method === "command"
-          ? this.client.command({ query: sql, query_params, ...base })
-          : this.client.query({ query: sql, query_params, ...base, format })).then(read))
+      return runAbortable<unknown, A>(
+        this.client,
+        "Failed to execute statement",
+        "execute",
+        (base) =>
+          method === "command"
+            ? this.client.command({ query: sql, query_params, ...base })
+            : this.client.query({ query: sql, query_params, ...base, format }),
+        read
+      )
     })
   }
 
