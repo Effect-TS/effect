@@ -163,6 +163,8 @@ describe("BigInt", () => {
 
   it("sqrtUnsafe returns integer square roots and throws for negatives", () => {
     assert.strictEqual(BigInt.sqrtUnsafe(17n), 4n)
+    assert.strictEqual(BigInt.sqrtUnsafe(2n ** 65536n), 2n ** 32768n)
+    assert.strictEqual(BigInt.sqrtUnsafe(2n ** 65536n - 1n), 2n ** 32768n - 1n)
     assert.throws(() => BigInt.sqrtUnsafe(-1n), RangeError)
   })
 

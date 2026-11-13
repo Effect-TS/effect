@@ -707,14 +707,7 @@ export const sqrtUnsafe = (n: bigint): bigint => {
   if (n < bigint0) {
     throw new RangeError("Cannot take the square root of a negative number")
   }
-  if (n < bigint2) {
-    return n
-  }
-  let x = n / bigint2
-  while (x * x > n) {
-    x = ((n / x) + x) / bigint2
-  }
-  return x
+  return rootFloor(n, 2)
 }
 
 /**
