@@ -45,9 +45,9 @@ describe("headless components", () => {
             expect(m.visible).type.toBe<ReadonlyArray<Item>>()
             expect(m.open).type.toBe<boolean>()
             // Args is fixed by the author: (b, item: Item).
-            expect(m.item).type.toBe<View.Part<HTMLLIElement, [item: Item], never>>()
+            expect(m.item).type.toBe<View.Part<"li", [item: Item], never>>()
             const trigger = m.trigger(h.button.class("btn"))
-            expect(trigger).type.toBe<Html.Element<Msg, never, Html.EventsOf<"button">, HTMLButtonElement>>()
+            expect(trigger).type.toBe<Html.Element<Msg, never, Html.EventsOf<"button">, HTMLButtonElement, "button">>()
             return h.div.class("toolbar").children(
               trigger.children("Actions"),
               m.popup(h.div.class("menu")).children(
@@ -75,7 +75,7 @@ describe("headless components", () => {
           view: (m) => {
             // The root is callable and what a part returns isn't: m.trigger(h.button)("Actions") doesn't compile.
             expect(m.trigger(h.button)).type.toBe<
-              Html.Element<Msg, never, Html.EventsOf<"button">, HTMLButtonElement>
+              Html.Element<Msg, never, Html.EventsOf<"button">, HTMLButtonElement, "button">
             >()
             expect(m.trigger(h.button)).type.not.toBeAssignableTo<(...children: ReadonlyArray<string>) => unknown>()
             expect(h.button).type.toBeCallableWith("Actions")

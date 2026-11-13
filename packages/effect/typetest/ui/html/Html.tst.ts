@@ -58,8 +58,8 @@ describe("Html", () => {
       update: (model) => model,
       view: (_, h) => {
         expect(h.div(h.span("text"), "more")).type.toBe<View.Element<Msg, never>>()
-        expect(h.div.class("box")).type.toBe<Html.Element<Msg, never, Html.EventsOf<"div">, HTMLDivElement>>()
-        expect(h.input).type.toBe<Html.VoidElement<Msg, never, Html.EventsOf<"input">, HTMLInputElement>>()
+        expect(h.div.class("box")).type.toBe<Html.Element<Msg, never, Html.EventsOf<"div">, HTMLDivElement, "div">>()
+        expect(h.input).type.toBe<Html.VoidElement<Msg, never, Html.EventsOf<"input">, HTMLInputElement, "input">>()
         expect(h).type.not.toHaveProperty("script")
         return h.div()
       }

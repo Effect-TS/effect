@@ -708,18 +708,25 @@ export type HeadlessTypeId = typeof HeadlessTypeId
  * @category models
  * @since 4.1.5
  */
-export interface Headless<in out Props, out Events, out Parts, out R = never> extends Pipeable.Pipeable {
+export interface Headless<in out Props, out Events, out Parts, out R = never, in out Rcv = never>
+  extends Pipeable.Pipeable
+{
   readonly [HeadlessTypeId]: {
     readonly _Props: Types.Invariant<Props>
     readonly _Events: Types.Covariant<Events>
     readonly _Parts: Types.Covariant<Parts>
     readonly _R: Types.Covariant<R>
+    readonly _Rcv: Types.Invariant<Rcv>
   }
   readonly name: string
   readonly props: Schema.Codec<Props, any>
   readonly model: Schema.Codec<any, any>
   readonly message: Schema.Codec<any, any>
   readonly events: Schema.Codec<Events, any>
+  /** The Schema of the messages a parent may send: the cases of `message` listed in `receives`. */
+  readonly receives: Schema.Codec<Rcv, any>
+  /** A ref for a slot of this component, which a parent renders it with to send it messages. */
+  readonly ref: (name: string) => Ref.Of<Rcv>
   readonly init: (props: Props) => Next<any, any, Events, R>
   readonly update: (model: any, msg: never, props: Props, loaded?: Slots | undefined) => Next<any, any, Events, R>
   /** The parts for one render: plain values and decorators stamped with `owner`. */
@@ -760,21 +767,24 @@ export declare namespace Headless {
    * @category models
    * @since 4.1.5
    */
-  export type Any = Headless<any, any, any, any>
+  // `any` doesn't stand in for `never` in an invariant parameter, so one that receives nothing is listed apart.
+  export type Any = Headless<any, any, any, any, any> | Headless<any, any, any, any, never>
   /**
    * The requirements of a headless component.
    *
    * @category utility types
    * @since 4.1.5
    */
-  export type Requirements<C> = C extends Headless<infer _P, infer _E, infer _Parts, infer R> ? R : never
+  export type Requirements<C> = C extends Headless<infer _P, infer _E, infer _Parts, infer R, infer _Rcv> ? R
+    : never
   /**
    * The parts of a headless component.
    *
    * @category utility types
    * @since 4.1.5
    */
-  export type Parts<C> = C extends Headless<infer _P, infer _E, infer Parts, infer _R> ? Parts : never
+  export type Parts<C> = C extends Headless<infer _P, infer _E, infer Parts, infer _R, infer _Rcv> ? Parts
+    : never
 }
 
 /**
@@ -794,21 +804,27 @@ export interface PartsHelper<Msg, Props, V extends View.Elements> {
   /** An id for an element of this instance, the same on the server and the client. */
   id(name: string, key?: string | number | undefined): string
   /**
-   * A part for one tag. `decorate` gets an empty builder of that tag, bound
-   * to this component's message type, and any other arguments the consumer
-   * passes after its own builder.
+   * A part for one tag, or for any of a list of tags. `decorate` gets an
+   * empty builder of the tag the consumer used, bound to this component's
+   * message type, and any other arguments the consumer passes after its own
+   * builder.
+   *
+   * **Details**
+   *
+   * The part takes only builders of the tags it lists, checked by tag name
+   * in the types and again when it's applied.
    */
-  part<K extends keyof View.Tags<V, Msg>, Args extends ReadonlyArray<any>, R2 = never>(
-    tag: K,
+  part<K extends keyof View.Tags<V, Msg> & string, Args extends ReadonlyArray<any>, R2 = never>(
+    tag: K | readonly [K, ...ReadonlyArray<K>],
     decorate: (
       builder: PartBuilder<View.Tags<V, Msg>[K]>,
       ...args: Args
-    ) => View.ElementBuilder<Msg, R2, any, PartNode<View.Tags<V, Msg>[K]>>
-  ): View.Part<PartNode<View.Tags<V, Msg>[K]>, Args, R2>
+    ) => View.ElementBuilder<Msg, R2, any, any, any>
+  ): View.Part<PartTag<View.Tags<V, Msg>[K]>, Args, R2>
   /** A part for any element, over the host-neutral builder. */
   part<Args extends ReadonlyArray<any>, R2 = never>(
-    decorate: (builder: View.ContainerBuilder<Msg>, ...args: Args) => View.ElementBuilder<Msg, R2, any, any>
-  ): View.Part<any, Args, R2>
+    decorate: (builder: View.ContainerBuilder<Msg>, ...args: Args) => View.ElementBuilder<Msg, R2, any, any, any>
+  ): View.Part<string, Args, R2>
 }
 
 /**
@@ -821,13 +837,15 @@ export interface PartsHelper<Msg, Props, V extends View.Elements> {
 export type PartBuilder<T> = T extends { readonly attr: (...args: any) => infer B } ? B : never
 
 /**
- * The host node of a tag's builder.
+ * The tag a tag's builder declares, which a part checks: `string` for a
+ * vocabulary that doesn't declare its tags.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
-export type PartNode<T> = T extends { readonly "~HostNode"?: ((_: infer N) => any) | undefined } ? N : never
+export type PartTag<T> = T extends { readonly "~Tag"?: infer Tag extends string | undefined } ? Exclude<Tag, undefined>
+  : never
 
 /**
  * What `h` gains in `view` for a component with loaders.
@@ -1159,8 +1177,10 @@ const HeadlessProto = {
     _Props: (_: never) => _,
     _Events: (_: never) => _,
     _Parts: (_: never) => _,
-    _R: (_: never) => _
+    _R: (_: never) => _,
+    _Rcv: (_: never) => _
   },
+  ref: Proto.ref,
   layer: undefined,
   layerFailure: undefined,
   sharedLayer: undefined,
@@ -1283,7 +1303,8 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
       | Subscription.Requirements<Sub>
       | LoaderServices<L>,
       Command.FrameworkService
-    >
+    >,
+    Rcv
   >
   /** Finishes the component. */
   make<
@@ -1708,7 +1729,7 @@ const finish = (
           part: (...args: ReadonlyArray<any>) =>
             typeof args[0] === "function"
               ? View.makePart(owner, undefined, args[0])
-              : View.makePart(owner, [args[0]], args[1])
+              : View.makePart(owner, typeof args[0] === "string" ? [args[0]] : args[0], args[1])
         }
         if (bound !== undefined) {
           const opened = bound.context(model, props, context.loaded)

@@ -452,36 +452,45 @@ export const withFields = <B extends ElementBuilder<any, any, any, any>>(
  *
  * **Details**
  *
- * `N` is the host node the part is declared for, `Args` what it takes after
- * the builder, and `R` what its mount requires, which joins the headless
- * component's requirements. The result is the builder's chain type, never
- * the callable root, so `m.trigger(h.button)("Open")` doesn't compile.
+ * `Tag` is the tag, or the union of tags, the part is declared for, and
+ * `string` for a part that takes any element. `Args` is what the part takes
+ * after the builder, and `R` what its mount requires, which joins the
+ * headless component's requirements.
+ *
+ * A part is tied to tag names, the same check the runtime makes: a part
+ * declared for `"h2"` takes `h.h2` and rejects `h.h3`, although both
+ * render an `HTMLHeadingElement`. A part that takes several tags lists them,
+ * as `p.part(["h2", "h3"], ...)`.
+ *
+ * The result is the builder's chain type, never the callable root, so
+ * `m.trigger(h.button)("Open")` doesn't compile.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface Part<in out N, in Args extends ReadonlyArray<any>, out R = never> {
-  <B extends PartTarget<N>>(builder: B, ...args: Args): ReturnType<B["attr"]>
+export interface Part<in out Tag extends string, in Args extends ReadonlyArray<any>, out R = never> {
+  <B extends PartTarget<Tag>>(builder: B, ...args: Args): ReturnType<B["attr"]>
   readonly "~R"?: (_: never) => R
 }
 
 /**
- * What a part accepts: a builder for the host node `N`, either a tag's
- * callable root or its chain type.
+ * What a part accepts: a builder whose declared tag is one of `Tag`, either
+ * a tag's callable root or its chain type.
  *
  * **Details**
  *
  * It's structural on purpose. With `ElementBuilder` as the constraint, a
  * callable root such as `h.dialog` infers as the constraint and loses its
- * chain type.
+ * chain type. A builder whose tag isn't known, such as `h.el("x-foo")`'s,
+ * only fits a part declared without a tag.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface PartTarget<in out N> {
-  readonly "~HostNode"?: ((_: N) => N) | undefined
+export interface PartTarget<out Tag extends string> {
+  readonly "~Tag"?: Tag | undefined
   readonly attr: (...args: any) => any
 }
 
@@ -591,7 +600,8 @@ export class ElementBuilder<
   out Msg,
   out R = never,
   in out Handlers = Record<string, unknown>,
-  in out HostNode = unknown
+  in out HostNode = unknown,
+  out Tag extends string = string
 > {
   /**
    * The key set with `key`, if any.
@@ -661,6 +671,14 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   declare readonly "~Handlers"?: Handlers
+  /**
+   * Phantom: the element's tag as the vocabulary declares it, which a part
+   * of a headless component checks. `string` when it isn't known, as for
+   * `h.el`.
+   *
+   * @since 4.1.5
+   */
+  declare readonly "~Tag"?: Tag
   /**
    * The element's tag.
    *
@@ -739,7 +757,7 @@ export class ElementBuilder<
   onMount<R2>(
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ElementBuilder<Msg, R | R2, Handlers, HostNode> {
+  ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
     return withFields(this, { mount: { name, run } }) as any
   }
 }
@@ -760,8 +778,9 @@ export class ContainerBuilder<
   out Msg,
   out R = never,
   in out Handlers = Record<string, unknown>,
-  in out HostNode = unknown
-> extends ElementBuilder<Msg, R, Handlers, HostNode> {
+  in out HostNode = unknown,
+  out Tag extends string = string
+> extends ElementBuilder<Msg, R, Handlers, HostNode, Tag> {
   /**
    * Like `ElementBuilder.onMount`, keeping `children`.
    *
@@ -770,7 +789,7 @@ export class ContainerBuilder<
   override onMount<R2>(
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode> {
+  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
     return super.onMount(name, run) as any
   }
   /**
@@ -1020,13 +1039,21 @@ export interface Helper<Msg, Props> {
    * A headless component by value. `view` is the child's whole view, built
    * from its parts. Its requirements, and the view's, surface in the parent's.
    */
-  child<Props, Events, Parts, RC, RV = never, RF = never>(
-    component: Component.Headless<Props, Events, Parts, RC>,
-    options: Child.Options<Props, Events, Msg> & {
-      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
-      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
-      readonly view: (parts: Parts) => Content<Msg, RV>
-    }
+  child<Props, Events, Parts, RC, Rcv, RefRcv = Child.Receives<Rcv>, RV = never, RF = never>(
+    component: Component.Headless<Props, Events, Parts, RC, Rcv>,
+    options:
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv>>
+      & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
+      & {
+        /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+        readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+        /**
+         * The child's whole view, from its parts. It's this view's code: the
+         * children it declares report to this component, and it runs again
+         * whenever this component or the child renders.
+         */
+        readonly view: (parts: Parts) => Content<Msg, RV>
+      }
   ): Child<Msg, RC | RV | NoInfer<RF>>
   // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
