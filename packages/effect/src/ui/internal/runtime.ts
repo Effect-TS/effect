@@ -137,6 +137,26 @@ interface RSlot {
   readonly failure: Cause.Cause<unknown> | undefined
 }
 
+/** How many times one instance may deliver sends in a flush before it fails. */
+const maxSendPasses = 100
+
+/** The child slot rendered with a ref whose key is `key`, among an instance's direct children. */
+const findSlot = (rendered: ReadonlyArray<Rendered>, key: string): RChild | RSlot | undefined => {
+  for (const r of rendered) {
+    if (r._tag === "Element") {
+      const found = findSlot(r.children, key)
+      if (found !== undefined) return found
+    } else if (r._tag === "Child" || r._tag === "Slot") {
+      if (r.v.ref !== undefined && r.v.ref.key === key) return r
+      if (r._tag === "Slot") {
+        const found = findSlot([r.inner], key)
+        if (found !== undefined) return found
+      }
+    }
+  }
+  return undefined
+}
+
 // ---------------------------------------------------------------------------
 // Instances
 // ---------------------------------------------------------------------------
@@ -247,6 +267,8 @@ export interface Instance {
    * updates, issued after `init`'s.
    */
   mounting: Array<{ readonly command: Command.Command<any, any>; readonly issued: MessageLog.Issued }> | undefined
+  /** The `$.send`s of updates whose render hasn't happened yet: delivered at the end of it. */
+  outbox: Array<{ readonly send: Component.Send; readonly issued: MessageLog.Issued }>
   readonly dispatch: (message: unknown, source: MessageLog.Source) => void
   readonly fire: Renderer.Dispatch
 }
@@ -778,6 +800,9 @@ const setup = (
     watchHold = undefined
     release?.()
   }
+  // How many times each instance has delivered sends in this flush: a parent and a child that answer
+  // each other would otherwise never leave `drainLoop`.
+  const sendPasses = new Map<Instance, number>()
   const markDirty = (inst: Instance) => {
     dirty.add(inst)
     wake()
@@ -795,6 +820,7 @@ const setup = (
     scheduled = false
     rendering = true
     flushes++
+    sendPasses.clear()
     drain()
     settleSnapshots()
     if (reportPending) reportAdoption()
@@ -1272,6 +1298,7 @@ const setup = (
       keyedQueued: false,
       loadMores: new Set(),
       mounting: undefined,
+      outbox: [],
       dispatch(message, source) {
         if (inst.closed || inst.waiting || frozen) return
         const next = guard(inst, "update", () => component.update(inst.model, message as never, inst.props, inst.slots))
@@ -1287,6 +1314,7 @@ const setup = (
           commands: next.commands,
           events: next.events,
           lists: next.lists ?? [],
+          ...(next.sends === undefined || next.sends.length === 0 ? undefined : { sends: next.sends }),
           // What `update` saw in `$.loaded`, so a replay from any surviving entry sees it too.
           ...(bound === undefined ? undefined : { loaded: inst.slots ?? bound.empty })
         })
@@ -1611,6 +1639,8 @@ const setup = (
     if (mounting !== undefined) {
       // Before the first render: nothing is issued or marked dirty, and only the watches follow the Model.
       next.commands.forEach((command, index) => mounting.push({ command, issued: { seq: entrySeq, index } }))
+      // The first render, which makes the children, comes first.
+      if (queueSends(inst, next, entrySeq)) defer(() => deliverSends(inst))
       syncSubscriptions(inst, true)
       if (next.events.length > 0) defer(() => deliverEvents(inst, next.events, entrySeq))
       return
@@ -1619,6 +1649,8 @@ const setup = (
       issue(inst, command, { seq: entrySeq, index }, initial ? index : undefined)
     )
     if (!initial) markDirty(inst)
+    // Delivered at the end of the render just marked, so a child it mounts can receive them.
+    queueSends(inst, next, entrySeq)
     syncSubscriptions(inst)
     // After the watches follow the Model, so a load more reaches the args the loader returns for it.
     if (!initial && next.lists !== undefined) {
@@ -1669,6 +1701,49 @@ const setup = (
     }
     if (inst.env.failure !== undefined) go(settled(inst.env).ctx!)
     else whenReady(inst.env, go)
+  }
+  const queueSends = (inst: Instance, next: Component.Next<any, any, any, any>, entrySeq: number): boolean => {
+    if (next.sends === undefined || next.sends.length === 0) return false
+    next.sends.forEach((send, index) => inst.outbox.push({ send, issued: { seq: entrySeq, index } }))
+    return true
+  }
+  /**
+   * Delivers the sends of `inst`'s updates to its direct children, matched by ref key in its last
+   * render. A send whose slot can't take it is dropped and logged, never kept for a later instance.
+   */
+  const deliverSends = (inst: Instance) => {
+    if (inst.outbox.length === 0 || inst.closed) return
+    const outbox = inst.outbox
+    inst.outbox = []
+    const passes = (sendPasses.get(inst) ?? 0) + 1
+    sendPasses.set(inst, passes)
+    if (passes > maxSendPasses) {
+      const error = new Error(
+        `${inst.path} sent to its children ${maxSendPasses} times in one flush. A parent and a child whose updates answer each other loop: answer a send with state, or send from a user event.`
+      )
+      failInstance(inst, Cause.die(error), "send")
+      return
+    }
+    for (const { issued, send } of outbox) {
+      if (inst.closed) return
+      const slot = findSlot(inst.rendered, send.ref.key)
+      const reason: MessageLog.SendDropped["reason"] | undefined = slot === undefined
+        ? "unrendered"
+        : slot._tag === "Slot"
+        ? (slot.failure !== undefined ? "failed" : "fallback")
+        : slot.inst.failure !== undefined
+        ? "failed"
+        : slot.inst.closed
+        ? "unrendered"
+        : slot.inst.waiting
+        ? "waiting"
+        : undefined
+      if (reason !== undefined) {
+        record({ _tag: "SendDropped", path: inst.path, ref: send.ref.key, issued, reason })
+        continue
+      }
+      ;(slot as RChild).inst.dispatch(send.message, { _tag: "Send", path: inst.path, seq: issued.seq })
+    }
   }
   const deliverEvents = (inst: Instance, events: ReadonlyArray<unknown>, entrySeq: number) => {
     const parent = inst.parent
@@ -2814,6 +2889,7 @@ const setup = (
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
     })
     if (!inst.closed) updateHead(inst)
+    deliverSends(inst)
   }
 
   const create = (inst: Instance, view: View.Node<any, any>, env: Env): Rendered => {

@@ -167,7 +167,7 @@ export const renderToHtml = <
   V extends View.Elements,
   RP = never
 >(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V> & BrowserHost.HtmlRoot<V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any> & BrowserHost.HtmlRoot<V>,
   props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly budget?: Duration.Input | undefined

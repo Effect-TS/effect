@@ -449,7 +449,7 @@ export const mount: <
   RF = never,
   RP = never
 >(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
   props: Props | Effect.Effect<Props, never, RP>,
   container: unknown,
   options?: {
@@ -519,7 +519,7 @@ export interface LoaderOptions {
  * @since 4.1.5
  */
 export const prerender: <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, RP = never>(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
   props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly budget?: Duration.Input | undefined

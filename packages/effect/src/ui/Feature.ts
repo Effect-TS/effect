@@ -2,8 +2,9 @@
  * Features are components a parent refers to by service instead of by value,
  * so the implementation can be swapped with a Layer.
  *
- * A feature service holds the contract: the Props and Events Schemas. Model and
- * Message belong to the implementation. The app provides an implementation
+ * A feature service holds the contract: the Props and Events Schemas, and the
+ * messages a parent may send, if any. Model and Message belong to the
+ * implementation. The app provides an implementation
  * with `Todos.toLayer(TodoList)`, and a test or storybook provides a fake with
  * `Todos.toLayer(FakeTodos)`. A parent renders it with `h.child(Todos, ...)` and
  * requires `Todos` only: the implementation's requirements are closed where
@@ -46,6 +47,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import type * as Component from "./Component.ts"
+import * as childRef from "./internal/ref.ts"
 
 /**
  * Identifies a feature service.
@@ -80,7 +82,7 @@ export type TypeId = typeof TypeId
  * @since 4.1.5
  */
 export interface Implementation<in out Props, out Events> {
-  readonly component: Component.Mountable<Props, Events, never>
+  readonly component: Component.Mountable<Props, Events, never, any>
   readonly context: Context.Context<never>
 }
 
@@ -91,7 +93,7 @@ export interface Implementation<in out Props, out Events> {
  * @category models
  * @since 4.1.5
  */
-export interface Service<in out Self, in out Props, in out Events>
+export interface Service<in out Self, in out Props, in out Events, in out Receives = never>
   extends Context.Key<Self, Implementation<Props, Events>>
 {
   readonly [TypeId]: { readonly name: string }
@@ -99,12 +101,31 @@ export interface Service<in out Self, in out Props, in out Events>
   readonly props: Schema.Codec<Props, any>
   /** The Events Schema. */
   readonly events: Schema.Codec<Events, any>
+  /** The Schema of the messages a parent may send. `Schema.Never` when it declares none. */
+  readonly receives: Schema.Codec<Receives, any>
+  /** A ref for this feature's slots, so a parent can send them messages. */
+  readonly ref: (name: string) => Component.Ref<Receives>
   /**
    * Provides this feature with `component`. The Layer requires whatever the
-   * component requires, and closes it where the Layer is built.
+   * component requires, and closes it where the Layer is built. The
+   * component receives every message the feature receives, and may receive
+   * more.
    */
-  readonly toLayer: <R>(component: Component.Mountable<Props, Events, R>) => Layer.Layer<Self, never, R>
+  readonly toLayer: <R, Rcv = never>(
+    component: Component.Mountable<Props, Events, R, Rcv> & ReceivesAll<Receives, Rcv>
+  ) => Layer.Layer<Self, never, R>
 }
+
+/**
+ * Passes when an implementation receives every message its feature does, and
+ * otherwise names the messages it misses in the compiler error.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type ReceivesAll<Receives, Rcv> = [Receives] extends [Rcv] ? unknown
+  : { readonly "This component doesn't receive every message the feature does. Missing": Exclude<Receives, Rcv> }
 
 /**
  * Any feature service.
@@ -113,7 +134,7 @@ export interface Service<in out Self, in out Props, in out Events>
  * @category models
  * @since 4.1.5
  */
-export type Any = Service<any, any, any>
+export type Any = Service<any, any, any, any>
 
 /**
  * Returns `true` if `u` is a feature service.
@@ -125,7 +146,8 @@ export type Any = Service<any, any, any>
 export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
 /**
- * Declares a feature service from its Props and Events Schemas.
+ * Declares a feature service from its Props and Events Schemas, and the
+ * Schema of the messages a parent may send.
  *
  * **When to use**
  *
@@ -135,10 +157,15 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *
  * **Details**
  *
- * The class is a `Context.Service` with `props`, `events` and `toLayer`. `name`
- * is also the path segment of every instance of the feature, so paths don't
- * change when the implementation does. `toLayer(C)` doesn't compile if `C`'s
- * props or events don't fit the contract.
+ * The class is a `Context.Service` with `props`, `events`, `receives`, `ref`
+ * and `toLayer`. `name` is also the path segment of every instance of the
+ * feature, so paths don't change when the implementation does. `toLayer(C)`
+ * doesn't compile if `C`'s props or events don't fit the contract, or if
+ * `C` doesn't receive every case of `receives`.
+ *
+ * `receives` is a Schema, since a feature has no message type of its own. A
+ * parent sends with `$.send(Todos.ref("Main"), message)` to the slot it
+ * renders with `h.child(Todos, { ref, fallback })`.
  *
  * **Example** (A feature with a fake for tests)
  *
@@ -171,25 +198,30 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
 export const Service: <Self>() => <
   const Name extends string,
   Props extends Schema.Codec<any, any>,
-  Events extends Schema.Codec<any, any> = Schema.Never
+  Events extends Schema.Codec<any, any> = Schema.Never,
+  Receives extends Schema.Codec<any, any> = Schema.Never
 >(
   name: Name,
   schemas: {
     readonly props: Props
     readonly events?: Events | undefined
+    /** The messages a parent may send with `$.send`. None by default. */
+    readonly receives?: Receives | undefined
   }
 ) =>
   & Context.ServiceClass<Self, `feature/${Name}`, Implementation<Props["Type"], Events["Type"]>>
-  & Service<Self, Props["Type"], Events["Type"]>
+  & Service<Self, Props["Type"], Events["Type"], Receives["Type"]>
   & {
     readonly props: Props
     readonly events: Events
+    readonly receives: Receives
   } = () =>
   (
     name: string,
     schemas: {
       readonly props: Schema.Codec<any, any>
       readonly events?: Schema.Codec<any, any> | undefined
+      readonly receives?: Schema.Codec<any, any> | undefined
     }
   ): any => {
     const Base = Context.Service<any, Implementation<any, any>>()(`feature/${name}`)
@@ -197,11 +229,15 @@ export const Service: <Self>() => <
       static readonly [TypeId] = { name }
       static readonly props = schemas.props
       static readonly events = schemas.events ?? Schema.Never
-      static toLayer<R>(component: Component.Mountable<any, any, R>): Layer.Layer<any, never, R> {
+      static readonly receives = schemas.receives ?? Schema.Never
+      static ref(refName: string) {
+        return childRef.make(refName, FeatureService.receives)
+      }
+      static toLayer<R>(component: Component.Mountable<any, any, R, any>): Layer.Layer<any, never, R> {
         return Layer.effect(
           Base,
           Effect.map(Effect.context<R>(), (context) => ({
-            component: component as Component.Mountable<any, any, never>,
+            component: component as Component.Mountable<any, any, never, any>,
             // The implementation's requirements are closed with the build site's
             // Context. The Layer's own Scope isn't part of that contract: the
             // runtime gives every instance its own.

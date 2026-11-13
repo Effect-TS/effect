@@ -171,7 +171,10 @@ export interface Child<out Msg, out R = never> {
   readonly _tag: "Child"
   /** A component value, or a feature service resolved from the instance's context when it mounts. */
   readonly component: Component.Any | Feature.Any
+  /** The slot's key: the ref's key for a slot rendered with a ref. */
   readonly key: string
+  /** The ref the parent sends to this slot with, if it was rendered with one. */
+  readonly ref: Component.Ref<unknown> | undefined
   readonly props: unknown
   readonly onEmit: (events: any) => Msg | undefined
   /** What the slot shows while its child can't be shown. Required for a feature child. */
@@ -195,12 +198,29 @@ export declare namespace Child {
    * The options of `h.child`. `props` may be left out when the component takes
    * none.
    *
+   * **Details**
+   *
+   * A slot takes exactly one of `key` and `ref`. With a ref, the ref's key
+   * is the slot's key, and the parent can `$.send` to the slot. The ref is
+   * checked against what the component receives, `Rcv`, so a ref made from
+   * a component also fits a provided copy of it or a feature implementation.
+   *
    * @category models
    * @since 4.1.5
    */
-  export type Options<Props, Events, Msg> =
+  export type Options<Props, Events, Msg, Rcv = never> =
+    & (
+      | {
+        readonly key: string
+        readonly ref?: undefined
+      }
+      | {
+        /** Names the slot, so the parent can send it messages. Its key is the slot's key. */
+        readonly ref: Component.Ref<Rcv>
+        readonly key?: undefined
+      }
+    )
     & {
-      readonly key: string
       /** Handles the child's whole `events` union and returns `undefined` for the cases it ignores. */
       readonly onEmit?: ((events: Events) => Msg | undefined) | undefined
       /** Also tells the parent that the child failed. The failure stays in the slot either way. */
@@ -773,18 +793,18 @@ export interface Helper<Msg, Props> {
     ...group: Command.GroupArg<Args, G>
   ): boolean
   /** A component by value. Its requirements surface in the parent's. */
-  child<Props, Events, RC, RF = never>(
-    component: Component.Mountable<Props, Events, RC>,
-    options: Child.Options<Props, Events, Msg> & {
+  child<Props, Events, RC, Rcv = never, RF = never>(
+    component: Component.Mountable<Props, Events, RC, Rcv>,
+    options: Child.Options<Props, Events, Msg, NoInfer<Rcv>> & {
       /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }
   ): Child<Msg, RC | NoInfer<RF>>
   // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
-  child<Self, Props, Events, RF = never>(
-    service: Feature.Service<Self, Props, Events>,
-    options: Child.Options<Props, Events, Msg> & {
+  child<Self, Props, Events, Rcv = never, RF = never>(
+    service: Feature.Service<Self, Props, Events, Rcv>,
+    options: Child.Options<Props, Events, Msg, NoInfer<Rcv>> & {
       /** Required: the service may be building (`Initial`) or failed (`Failure`). */
       readonly fallback: (
         result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
@@ -828,17 +848,23 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   child(
     component: Component.Any | Feature.Any,
     options: {
-      readonly key: string
+      readonly key?: string | undefined
+      readonly ref?: Component.Ref<unknown> | undefined
       readonly props?: unknown
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
     }
   ): Child<Msg, any> {
+    // A slot with a key and a ref would have two identities that can disagree.
+    if ((options.key === undefined) === (options.ref === undefined)) {
+      throw new Error("h.child takes exactly one of key and ref")
+    }
     return {
       _tag: "Child",
       component,
-      key: options.key,
+      key: options.ref !== undefined ? options.ref.key : options.key!,
+      ref: options.ref,
       props: options.props ?? {},
       onEmit: options.onEmit ?? ignore,
       fallback: options.fallback,

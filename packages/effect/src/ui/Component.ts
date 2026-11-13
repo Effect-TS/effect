@@ -69,6 +69,7 @@ import type * as Types from "../Types.ts"
 import type * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
 import * as loaders from "./internal/loaders.ts"
+import * as childRef from "./internal/ref.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
 
@@ -122,7 +123,90 @@ export interface Next<out Model, out Msg, out Events, out R = never> {
   readonly events: ReadonlyArray<Events>
   /** The load mores and resets of list loaders `update` issued, in order. */
   readonly lists?: ReadonlyArray<ListIssue> | undefined
+  /** The messages `update` sent to its direct children, in order. */
+  readonly sends?: ReadonlyArray<Send> | undefined
 }
+
+/**
+ * A `$.send(ref, message)` an `update` issued: the ref of the child slot it
+ * goes to, and the message.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Send {
+  readonly ref: Ref<unknown>
+  readonly message: unknown
+}
+
+/**
+ * Identifies a component ref.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export const RefTypeId: "~effect/ui/Component/Ref" = childRef.TypeId
+
+/**
+ * Identifies a component ref.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export type RefTypeId = typeof RefTypeId
+
+/**
+ * A name for a child slot, so its parent can send it messages with
+ * `$.send`.
+ *
+ * **When to use**
+ *
+ * Use when a parent gives one of its children a one-shot instruction, such
+ * as "clear your draft" or "start the upload". State the child shows belongs
+ * in its props.
+ *
+ * **Details**
+ *
+ * `Editor.ref("Draft")` makes a ref for `Editor`'s slots, and
+ * `Todos.ref("Main")` one for a feature's. A parent renders the slot with
+ * `h.child(Editor, { ref: Draft, props })` in place of a `key`: the ref's
+ * key is the slot's key, so the child's path segment is `Editor[Draft]`.
+ * `at` derives a ref for one row of a list: `Row.at(id)` has the key
+ * `Row[id]`, as `Renderer.ref`'s `at` does. Two refs with different names
+ * never share a key.
+ *
+ * `Rcv` is the union of the messages the child receives, and `receives` its
+ * Schema, which the log encodes a send with. A send is matched to a slot by
+ * the ref's key, among the sender's direct children only. A child forwards
+ * with its own `$.send`, and answers through `events`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Ref<out Rcv> {
+  readonly [RefTypeId]: RefTypeId
+  /** The name the ref was made with. */
+  readonly name: string
+  /** The name plus any `at` keys: the key of the slot it names. */
+  readonly key: string
+  /** The Schema of the messages the child receives. */
+  readonly receives: Schema.Codec<Rcv, any>
+  /** A ref for one row: `Row.at(id)`. */
+  readonly at: (key: string | number) => Ref<Rcv>
+}
+
+/**
+ * Returns `true` if `u` is a component ref.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.1.5
+ */
+export const isRef = (u: unknown): u is Ref<unknown> => Predicate.hasProperty(u, RefTypeId)
 
 /**
  * A `$.loadMore(name)` or `$.reset(name)` an `update` issued, by loader
@@ -182,6 +266,8 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
 {
   /** The load mores and resets issued, in order. */
   readonly lists: ReadonlyArray<ListIssue>
+  /** The messages sent to direct children, in order. */
+  readonly sends: ReadonlyArray<Send>
   /** Replaces the Model. */
   set(model: Model): Step<Model, Msg, Events, R, L>
   /** Changes the Model with a function of the current one. */
@@ -208,6 +294,20 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
    * long list keeps that small.
    */
   reset(name: ListNames<L>): Step<Model, Msg, Events, R, L>
+  /**
+   * Sends `message` to the direct child rendered with `ref`, once the render
+   * this `update` causes is done, in the same flush. The child's `update`
+   * handles it with the props from this `update`'s Model.
+   *
+   * **Details**
+   *
+   * `message` is one of the messages the ref's component `receives`. A send
+   * to a slot that isn't rendered, whose child failed, or that can't take
+   * messages yet, such as a feature on its `fallback`, is dropped and logged
+   * as `SendDropped`, and the parent isn't told. `init` can't send: what a
+   * child needs at mount is a prop.
+   */
+  send<M>(ref: Ref<M>, message: NoInfer<M>): Step<Model, Msg, Events, R, L>
 }
 
 /**
@@ -287,22 +387,25 @@ const StepProto = {
     return Pipeable.pipeArguments(this, arguments)
   },
   set(this: Step<any, any, any, any>, model: unknown) {
-    return makeStep(model, this.commands, this.emitted, this.lists)
+    return makeStep(model, this.commands, this.emitted, this.lists, this.sends)
   },
   modify(this: Step<any, any, any, any>, f: (model: any) => any) {
-    return makeStep(f(this.model), this.commands, this.emitted, this.lists)
+    return makeStep(f(this.model), this.commands, this.emitted, this.lists, this.sends)
   },
   run(this: Step<any, any, any, any>, ...commands: ReadonlyArray<Command.Command<any, any>>) {
-    return makeStep(this.model, [...this.commands, ...commands], this.emitted, this.lists)
+    return makeStep(this.model, [...this.commands, ...commands], this.emitted, this.lists, this.sends)
   },
   emit(this: Step<any, any, any, any>, ...emitted: ReadonlyArray<unknown>) {
-    return makeStep(this.model, this.commands, [...this.emitted, ...emitted], this.lists)
+    return makeStep(this.model, this.commands, [...this.emitted, ...emitted], this.lists, this.sends)
   },
   loadMore(this: Step<any, any, any, any>, name: string) {
-    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "loadMore" }])
+    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "loadMore" }], this.sends)
   },
   reset(this: Step<any, any, any, any>, name: string) {
-    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "reset" }])
+    return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "reset" }], this.sends)
+  },
+  send(this: Step<any, any, any, any>, ref: Ref<unknown>, message: unknown) {
+    return makeStep(this.model, this.commands, this.emitted, this.lists, [...this.sends, { ref, message }])
   }
 }
 
@@ -310,8 +413,9 @@ const makeStep = (
   model: unknown,
   commands: ReadonlyArray<Command.Command<any, any>>,
   emitted: ReadonlyArray<unknown>,
-  lists: ReadonlyArray<ListIssue>
-): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted, lists })
+  lists: ReadonlyArray<ListIssue>,
+  sends: ReadonlyArray<Send>
+): Step<any, any, any, any> => Object.assign(Object.create(StepProto), { model, commands, emitted, lists, sends })
 
 type AnyUpdate = (model: unknown, msg: unknown, $: Update<any, any, any, any>) => unknown
 
@@ -323,14 +427,16 @@ const UpdateProto = {
     const commands: Array<Command.Command<any, any>> = [...this.commands]
     const emitted = [...this.emitted]
     const lists = [...this.lists]
+    const sends = [...this.sends]
     for (const update of updates) {
       const next = toNext(update(model, msg, makeUpdate(model, this.props, this.loaded, msg)))
       model = next.model
       commands.push(...next.commands)
       emitted.push(...next.events)
       if (next.lists !== undefined) lists.push(...next.lists)
+      if (next.sends !== undefined) sends.push(...next.sends)
     }
-    return makeStep(model, commands, emitted, lists)
+    return makeStep(model, commands, emitted, lists, sends)
   }
 }
 
@@ -341,6 +447,7 @@ const makeUpdate = (model: unknown, props: unknown, loaded: unknown, message: un
     commands: [],
     emitted: [],
     lists: [],
+    sends: [],
     props,
     loaded,
     "~message": message
@@ -348,7 +455,7 @@ const makeUpdate = (model: unknown, props: unknown, loaded: unknown, message: un
 
 const makeInit = (props: unknown): Init<any, any, any, any> => ({
   props,
-  set: (model) => makeStep(model, [], [], []) as Step<any, any, any, never>
+  set: (model) => makeStep(model, [], [], [], []) as Step<any, any, any, never>
 })
 
 /**
@@ -367,7 +474,8 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
       model: result.model,
       commands: result.commands,
       events: result.emitted,
-      lists: (result as Step<any, any, any>).lists
+      lists: (result as Step<any, any, any>).lists,
+      sends: (result as Step<any, any, any>).sends
     }
     : { model: result, commands: [], events: [] }
 
@@ -384,8 +492,8 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
  * @category models
  * @since 4.1.5
  */
-export interface Mountable<in out Props, out Events, out R = never> extends Pipeable.Pipeable {
-  readonly [TypeId]: Mountable.Variance<Props, Events, R>
+export interface Mountable<in out Props, out Events, out R = never, out Rcv = never> extends Pipeable.Pipeable {
+  readonly [TypeId]: Mountable.Variance<Props, Events, R, Rcv>
   readonly name: string
   readonly props: Schema.Codec<Props, any>
   readonly model: Schema.Codec<any, any>
@@ -438,15 +546,17 @@ export type Slots = { readonly [name: string]: unknown }
  */
 export declare namespace Mountable {
   /**
-   * Phantom variance for a component's props, events and requirements.
+   * Phantom variance for a component's props, events, requirements and the
+   * messages it receives.
    *
    * @category models
    * @since 4.1.5
    */
-  export interface Variance<in out Props, out Events, out R> {
+  export interface Variance<in out Props, out Events, out R, out Rcv = never> {
     readonly _Props: Types.Invariant<Props>
     readonly _Events: Types.Covariant<Events>
     readonly _R: Types.Covariant<R>
+    readonly _Rcv: Types.Covariant<Rcv>
   }
 }
 
@@ -465,11 +575,16 @@ export interface Component<
   out Events,
   out R = never,
   out V extends View.Elements = never,
-  out L = {}
-> extends Mountable<Props, Events, R> {
+  out L = {},
+  out Rcv = never
+> extends Mountable<Props, Events, R, Rcv> {
   readonly name: Name
   readonly model: Schema.Codec<Model, any>
   readonly message: Schema.Codec<Msg, any>
+  /** The Schema of the messages a parent may send: the cases of `message` listed in `receives`. */
+  readonly receives: Schema.Codec<Rcv, any>
+  /** A ref for this component's slots, so a parent can send them messages. */
+  readonly ref: (name: string) => Ref<Rcv>
   readonly init: (props: Props) => Next<Model, Msg, Events, R>
   readonly update: (model: Model, msg: Msg, props: Props, loaded?: Slots | undefined) => Next<Model, Msg, Events, R>
   readonly view: (
@@ -527,7 +642,7 @@ export type LoaderHelpers<L> = [keyof L] extends [never] ? {} : {
  * @category models
  * @since 4.1.5
  */
-export type Any = Mountable<any, any, any>
+export type Any = Mountable<any, any, any, any>
 
 /**
  * The props of a component.
@@ -536,7 +651,7 @@ export type Any = Mountable<any, any, any>
  * @category utility types
  * @since 4.1.5
  */
-export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R> ? P : never
+export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R, infer _Rcv> ? P : never
 
 /**
  * The events of a component.
@@ -545,7 +660,7 @@ export type Props<C> = C extends Mountable<infer P, infer _Events, infer _R> ? P
  * @category utility types
  * @since 4.1.5
  */
-export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E : never
+export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R, infer _Rcv> ? E : never
 
 /**
  * The requirements of a component: the Commands and feature services it uses.
@@ -554,7 +669,7 @@ export type Events<C> = C extends Mountable<infer _Props, infer E, infer _R> ? E
  * @category utility types
  * @since 4.1.5
  */
-export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, infer R> ? R : never
+export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, infer R, infer _Rcv> ? R : never
 
 /**
  * The Model of a component.
@@ -563,7 +678,8 @@ export type Requirements<C> = C extends Mountable<infer _Props, infer _Events, i
  * @category utility types
  * @since 4.1.5
  */
-export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _Msg, infer _E, infer _R, infer _V> ? M
+export type Model<C> = C extends
+  Component<infer _N, infer _P, infer M, infer _Msg, infer _E, infer _R, infer _V, infer _L, infer _Rcv> ? M
   : never
 
 /**
@@ -573,9 +689,19 @@ export type Model<C> = C extends Component<infer _N, infer _P, infer M, infer _M
  * @category utility types
  * @since 4.1.5
  */
-export type Message<C> = C extends Component<infer _N, infer _P, infer _M, infer Msg, infer _E, infer _R, infer _V> ?
-  Msg
+export type Message<C> = C extends
+  Component<infer _N, infer _P, infer _M, infer Msg, infer _E, infer _R, infer _V, infer _L, infer _Rcv> ? Msg
   : never
+
+/**
+ * The messages a component receives from its parent: the cases of its
+ * message listed in `receives`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type Receives<C> = C extends Mountable<infer _Props, infer _Events, infer _R, infer Rcv> ? Rcv : never
 
 /**
  * A `load` entry of `loaders`, as the types see it: one read, or a list
@@ -792,9 +918,12 @@ export type OnChange<S, M, Msg> = M extends Loader.Read.Any
 export const isComponent = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
 
 const Proto = {
-  [TypeId]: { _Props: (_: never) => _, _Events: (_: never) => _, _R: (_: never) => _ },
+  [TypeId]: { _Props: (_: never) => _, _Events: (_: never) => _, _R: (_: never) => _, _Rcv: (_: never) => _ },
   pipe() {
     return Pipeable.pipeArguments(this, arguments)
+  },
+  ref(this: { readonly receives: Schema.Codec<any, any> }, name: string) {
+    return childRef.make(name, this.receives)
   }
 }
 
@@ -821,12 +950,14 @@ type Tagged<Msg, T> = Extract<Msg, { readonly _tag: T }>
  * @category models
  * @since 4.1.5
  */
-export interface Definition<Name extends string, Props, Model, Msg, Events, V extends View.Elements, L> {
+export interface Definition<Name extends string, Props, Model, Msg, Events, V extends View.Elements, L, Rcv = never> {
   readonly name: Name
   readonly props: Schema.Codec<Props, any>
   readonly model: Schema.Codec<Model, any>
   readonly message: Schema.Codec<Msg, any>
   readonly events: Schema.Codec<Events, any>
+  /** The Schema of the cases of `message` listed in `receives`. */
+  readonly receives: Schema.Codec<Rcv, any>
   readonly loaders: unknown
   readonly elements: View.Vocabulary<V> | undefined
   /**
@@ -902,7 +1033,8 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
       Command.FrameworkService
     >,
     V,
-    L
+    L,
+    Rcv
   >
 }
 
@@ -938,7 +1070,8 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
  * @category utility types
  * @since 4.1.5
  */
-export type Helper<D> = D extends Definition<infer _N, infer P, infer _M, infer Msg, infer _E, infer V, infer L> ?
+export type Helper<D> = D extends
+  Definition<infer _N, infer P, infer _M, infer Msg, infer _E, infer V, infer L, infer _Rcv> ?
   View.Helper<Msg, P> & View.Tags<V, Msg> & LoaderHelpers<L>
   : never
 
@@ -1142,7 +1275,8 @@ export const define = <
       : S[K] extends Loader.Read.Any ? Load<S[K]>
       : never
   },
-  V extends View.Elements = View.Registered
+  V extends View.Elements = View.Registered,
+  const Tags extends TagOf<Msg> = never
 >(
   options: {
     readonly name: Name
@@ -1150,6 +1284,8 @@ export const define = <
     readonly model: Schema.Codec<Model, any>
     readonly message: Schema.Codec<Msg, any>
     readonly events?: Schema.Codec<Events, any> | undefined
+    /** The tags of `message` a parent may send with `$.send`. None by default. */
+    readonly receives?: ReadonlyArray<Tags> | undefined
     /** The reads the component shows, by name. */
     readonly loaders?:
       | (
@@ -1170,13 +1306,14 @@ export const define = <
       | undefined
     readonly elements?: View.Vocabulary<V> | undefined
   }
-): Definition<Name, Props, Model, Msg, Events, V, L> => {
-  const definition: Definition<Name, Props, Model, Msg, Events, V, L> = {
+): Definition<Name, Props, Model, Msg, Events, V, L, Tagged<Msg, Tags>> => {
+  const definition: Definition<Name, Props, Model, Msg, Events, V, L, Tagged<Msg, Tags>> = {
     name: options.name,
     props: options.props ?? (Schema.Struct({}) as any),
     model: options.model,
     message: options.message,
     events: options.events ?? (Schema.Never as any),
+    receives: receivesOf(options.message, options.receives ?? []) as Schema.Codec<any, any>,
     loaders: options.loaders,
     elements: options.elements,
     // A slice is the function given, with `$` bound to the Model and message it's called with.
@@ -1192,8 +1329,16 @@ export const define = <
   return definition
 }
 
+// The cases of `message` with one of `tags`, or `Schema.Never` without any.
+const receivesOf = (message: Schema.Codec<any, any>, tags: ReadonlyArray<string>): Schema.Codec<any, any> =>
+  tags.length === 0 ? Schema.Never : message.check(
+    Schema.makeFilter((msg: unknown) => Predicate.hasProperty(msg, "_tag") && tags.includes(msg._tag as string), {
+      expected: `a message with one of the tags ${tags.join(", ")}`
+    })
+  )
+
 const finish = (
-  definition: Definition<string, any, any, any, any, any, any>,
+  definition: Definition<string, any, any, any, any, any, any, any>,
   options: {
     readonly init: ($: Init<any, any, any, any>) => unknown
     readonly update: AnyUpdate | { readonly [tag: string]: AnyUpdate }
@@ -1225,6 +1370,7 @@ const finish = (
     model: definition.model,
     message: definition.message,
     events: definition.events,
+    receives: definition.receives,
     init: (props: unknown) => toNext(options.init(makeInit(props))),
     update: (model: unknown, msg: unknown, props: unknown, slots?: Slots) =>
       toNext(updateFn(model, msg, makeUpdate(model, props, open(model, props, slots), msg))),
@@ -1305,9 +1451,9 @@ export interface LocalOption {
  * @since 4.1.5
  */
 export type Provided<C, ROut, RIn> = C extends
-  Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V, infer L>
-  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn, V, L>
-  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn>
+  Component<infer N, infer P, infer M, infer Msg, infer E, infer _R, infer V, infer L, infer Rcv>
+  ? Component<N, P, M, Msg, E, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn, V, L, Rcv>
+  : Mountable<Props<C>, Events<C>, Exclude<Requirements<C>, Exclude<ROut, RuntimeService>> | RIn, Receives<C>>
 
 /**
  * Services the runtime owns or reads once at mount: the framework services,
@@ -1502,7 +1648,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
 export const provide: {
   <Props, ROut, RIn>(
     layer: (props: Props) => Layer.Layer<ROut, never, RIn>
-  ): <C extends Mountable<Props, any, any>>(component: C) => Provided<C, ROut, RIn>
+  ): <C extends Mountable<Props, any, any, any>>(component: C) => Provided<C, ROut, RIn>
   <const L extends Layer.Any | ReadonlyArray<Layer.Any>>(
     layer: L & CurriedCantFail<L>,
     options?: LocalOption

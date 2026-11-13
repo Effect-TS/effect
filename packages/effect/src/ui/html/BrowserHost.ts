@@ -1094,7 +1094,7 @@ export const mount = <
   RF = never,
   RP = never
 >(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any> & HtmlRoot<V>,
   props: Props | Effect.Effect<Props, never, RP>,
   container: globalThis.Element,
   options?: MountOptions<V, RF>
@@ -1130,7 +1130,7 @@ export const mountEffect = <
   RF = never,
   RP = never
 >(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V> & HtmlRoot<V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any> & HtmlRoot<V>,
   props: Props | Effect.Effect<Props, never, RP>,
   container: globalThis.Element,
   options?: MountOptions<V, RF>

@@ -91,6 +91,27 @@ describe("duplicate child paths", () => {
       })))
   }
 
+  it("fail a parent that renders one ref on two components", () => {
+    const Other = Component.define({
+      name: "Other",
+      props: Schema.Struct({ label: Schema.String }),
+      model: Schema.Null,
+      message: Schema.Never
+    }).make({ init: () => null, update: (model) => model, view: (_, h) => h.el("p", h.props.label) })
+    const Shared = Row.ref("Shared")
+    const Both = Component.define({ name: "Both", model: Schema.Null, message: Schema.Never }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) =>
+        h.el(
+          "div",
+          h.child(Row, { ref: Shared, props: { label: "a" } }),
+          h.child(Other, { ref: Shared, props: { label: "b" } })
+        )
+    })
+    assert.throws(() => Story.start(Both, {}), /\/Both renders two children with the ref Shared/)
+  })
+
   it("fail a Story step whose view renders two children at one path", () => {
     const steps = Story.start(makeList("nested"), { keys: ["a"] })
     assert.lengthOf(Story.children(steps.current.view()), 1)

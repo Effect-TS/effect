@@ -128,7 +128,7 @@ export interface AwaitedLoader {
  * @since 4.1.5
  */
 export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: string]: unknown }> {
-  readonly component: Component.Component<any, Props, Model, Msg, Events, any, any>
+  readonly component: Component.Component<any, Props, Model, Msg, Events, any, any, any, any>
   readonly props: Props
   readonly model: Model
   /**
@@ -142,6 +142,8 @@ export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: str
   readonly pending: ReadonlyArray<Pending<Msg>>
   /** Everything emitted to the parent so far. */
   readonly emitted: ReadonlyArray<Events>
+  /** Every `$.send` to a child so far, in order. A story renders no children, so nothing receives them. */
+  readonly sent: ReadonlyArray<Component.Send>
   /**
    * Commands interrupted by `switch`, by an interrupt Command, or by `given`.
    * An awaiting run that is cut delivers its message instead, and isn't here.
@@ -252,8 +254,8 @@ export type StreamTarget = Command.Definition<any, any, true, any, any> | Comman
 
 // A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
 type AnyComponent =
-  | Component.Component<any, any, any, any, any, any, any>
-  | Component.Component<any, any, any, never, any, any, any>
+  | Component.Component<any, any, any, any, any, any, any, any, any>
+  | Component.Component<any, any, any, never, any, any, any, any, any>
 
 /**
  * A cursor over one story. Each step runs as soon as it's called, replaces
@@ -354,13 +356,17 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * handler. `defaultPrevented` tells whether the default was cancelled.
    */
   fire(locator: Query.Locator, event: string, payload?: unknown): this
-  /** Sends the message the parent's `onEmit` maps `events` from the child with `key` to, if any. */
-  childEmit(key: string, events: unknown): this
+  /**
+   * Sends the message the parent's `onEmit` maps `events` from the child with
+   * `key` to, if any. A ref finds the slot rendered with it.
+   */
+  childEmit(key: string | Component.Ref<any>, events: unknown): this
   /**
    * Sends the message the parent's `onFailure` maps a failure of the child with
-   * `key` to, if any. The failure is passed as an `AsyncResult.Failure`.
+   * `key` to, if any. The failure is passed as an `AsyncResult.Failure`. A
+   * ref finds the slot rendered with it.
    */
-  childFailure(key: string, cause: Cause.Cause<unknown>): this
+  childFailure(key: string | Component.Ref<any>, cause: Cause.Cause<unknown>): this
 
   /**
    * Resolves the oldest running Command matching `target` with the result it
@@ -481,6 +487,8 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
   view(f: (view: View.Node<Component.Message<C>, any>) => void): this
   /** Checks everything emitted so far. `f` throws to fail the test. */
   emitted(f: (emitted: ReadonlyArray<Component.Events<C>>) => void): this
+  /** Checks every `$.send` to a child so far. `f` throws to fail the test. */
+  sent(f: (sent: ReadonlyArray<Component.Send>) => void): this
   /** Checks the Subscription keys the current Model and props ask for. `f` throws to fail the test. */
   subscriptions(f: (keys: ReadonlyArray<string>) => void): this
   /** Checks the loaders and their current args. `f` throws to fail the test. */
@@ -521,6 +529,7 @@ type Fields<Props, Model, Msg, Events> = Pick<
   | "slots"
   | "pending"
   | "emitted"
+  | "sent"
   | "interrupted"
   | "dropped"
   | "loadingMore"
@@ -554,6 +563,7 @@ const record = <Props, Model, Msg, Events>(
     loaded: () => context()?.loaded ?? {},
     pending: fields.pending,
     emitted: fields.emitted,
+    sent: fields.sent,
     interrupted: fields.interrupted,
     dropped: fields.dropped,
     loadingMore: fields.loadingMore,
@@ -591,6 +601,7 @@ const update = <Props, Model, Msg, Events>(
     slots: story.slots,
     pending: story.pending,
     emitted: story.emitted,
+    sent: story.sent,
     interrupted: story.interrupted,
     dropped: story.dropped,
     loadingMore: story.loadingMore,
@@ -1034,6 +1045,7 @@ const apply = <Props, Model, Msg, Events>(
     }
   }
   out = update(out, { emitted: [...out.emitted, ...next.events] })
+  if (next.sends !== undefined && next.sends.length > 0) out = update(out, { sent: [...out.sent, ...next.sends] })
   for (const list of next.lists ?? []) out = applyList(out, list)
   return out
 }
@@ -1334,6 +1346,7 @@ class StepsImpl implements Steps<AnyComponent> {
       model: next,
       pending: [],
       emitted: [],
+      sent: [],
       interrupted: [],
       dropped: [],
       loadingMore: []
@@ -1357,10 +1370,10 @@ class StepsImpl implements Steps<AnyComponent> {
     const { prevented, story } = fireAt(this.current, locator, event, payload, "fire")
     return this.step(story, prevented)
   }
-  childEmit(key: string, events: unknown): this {
+  childEmit(key: string | Component.Ref<any>, events: unknown): this {
     return this.step(dispatch(this.current, findChild(this.current.view(), key, "childEmit").onEmit(events)))
   }
-  childFailure(key: string, cause: Cause.Cause<unknown>): this {
+  childFailure(key: string | Component.Ref<any>, cause: Cause.Cause<unknown>): this {
     const child = findChild(this.current.view(), key, "childFailure")
     return this.step(dispatch(this.current, child.onFailure?.(AsyncResult.failure(cause))))
   }
@@ -1458,6 +1471,10 @@ class StepsImpl implements Steps<AnyComponent> {
     f(this.current.emitted)
     return this
   }
+  sent(f: (sent: ReadonlyArray<Component.Send>) => void): this {
+    f(this.current.sent)
+    return this
+  }
   subscriptions(f: (keys: ReadonlyArray<string>) => void): this {
     f(this.current.subscriptions())
     return this
@@ -1542,12 +1559,13 @@ export const start = <C extends AnyComponent>(component: C, props: Component.Pro
   const first = component.init(props)
   const empty = record<any, any, any, any>({
     // The record is stored with its types erased; `Steps<C>` restores them.
-    component: component as Component.Component<any, any, any, any, any, any, any>,
+    component: component as Component.Component<any, any, any, any, any, any, any, any, any>,
     props,
     model: first.model,
     slots: undefined,
     pending: [],
     emitted: [],
+    sent: [],
     interrupted: [],
     dropped: [],
     loadingMore: [],
@@ -1572,11 +1590,19 @@ export const children = <Msg>(
     node._tag === "Child" && (component === undefined || node.component === component)
   )
 
-const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): View.Child<Msg, any> => {
-  const child = children(view).find((child) => child.key === key)
+const findChild = <Msg>(
+  view: View.Node<Msg, any>,
+  key: string | Component.Ref<any>,
+  step: string
+): View.Child<Msg, any> => {
+  const child = children(view).find((child) =>
+    typeof key === "string" ? child.key === key : child.ref !== undefined && child.ref.key === key.key
+  )
   if (child === undefined) {
     throw new Error(
-      `Story.${step}: no child with key "${key}"; children: ${children(view).map((c) => c.key).join(", ")}`
+      `Story.${step}: no child ${
+        typeof key === "string" ? `with key "${key}"` : `with the ref ${key.key}`
+      }; children: ${children(view).map((c) => c.ref !== undefined ? `ref ${c.key}` : c.key).join(", ")}`
     )
   }
   return child
@@ -1585,6 +1611,7 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
 /**
  * What the slot with `key` shows for `result`: its `fallback` evaluated with an
  * `AsyncResult.Initial` or `AsyncResult.Failure`, or `undefined` without one.
+ * A ref finds the slot rendered with it.
  *
  * @stability experimental
  * @category queries
@@ -1592,7 +1619,7 @@ const findChild = <Msg>(view: View.Node<Msg, any>, key: string, step: string): V
  */
 export const fallback = <Msg>(
   view: View.Node<Msg, any>,
-  key: string,
+  key: string | Component.Ref<any>,
   result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 ): View.Node<Msg, any> | undefined => {
   const fallback = findChild(view, key, "fallback").fallback
@@ -1650,13 +1677,13 @@ export const layerFailure = <C extends Component.Any>(
  */
 export const head: {
   <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
-    component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+    component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
     model: Model,
     ...props: {} extends Props ? [props?: Props] : [props: Props]
   ): ReadonlyArray<Head.Entry>
   <Props, Model, Msg, Events>(story: Story<Props, Model, Msg, Events>): ReadonlyArray<Head.Entry>
 } = (
-  self: Component.Component<any, any, any, any, any, any, any> | Story<any, any, any, any>,
+  self: Component.Component<any, any, any, any, any, any, any, any, any> | Story<any, any, any, any>,
   model?: unknown,
   props?: unknown
 ) =>
@@ -1673,8 +1700,9 @@ export const head: {
  *
  * **Details**
  *
- * `recorded` and `recomputed` hold the Model, the events and the Commands
- * (encoded the way the Wire encodes them) after the message in entry `seq`.
+ * `recorded` and `recomputed` hold the Model, the events, the Commands and
+ * the sends (both encoded the way the Wire encodes them) after the message in
+ * entry `seq`.
  *
  * @stability experimental
  * @category models
@@ -1700,6 +1728,8 @@ export interface Outcome<Model, Events> {
   readonly commands: ReadonlyArray<ReturnType<typeof MessageLog.encodeCommand>>
   /** The `$.loadMore` and `$.reset` calls, compared and never run. */
   readonly lists: ReadonlyArray<Component.ListIssue>
+  /** The `$.send` calls, compared and never delivered. */
+  readonly sends: ReadonlyArray<ReturnType<typeof MessageLog.encodeSend>>
 }
 
 /**
@@ -1743,7 +1773,7 @@ const findPlaceholder = (value: unknown): string | undefined => {
 }
 
 const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
   entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
   options?: { readonly path?: string | undefined }
 ): Replay<Model, Msg, Events, any, any> => {
@@ -1815,6 +1845,7 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
         events: entry.events as ReadonlyArray<Events>,
         commands: (entry as MessageLog.Update).commands.map(MessageLog.encodeCommand),
         lists: entry._tag === "Update" ? entry.lists ?? [] : [],
+        sends: entry._tag === "Update" ? ((entry as MessageLog.Update).sends ?? []).map(MessageLog.encodeSend) : [],
         message: entry._tag === "Update" ? entry.message as Msg : undefined
       }
     }
@@ -1828,6 +1859,7 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
       events: wire.events.map((emitted) => decode(entry, "events", emitted)) as ReadonlyArray<Events>,
       commands: wire.commands,
       lists: wire._tag === "Update" ? wire.lists ?? [] : [],
+      sends: wire._tag === "Update" ? wire.sends ?? [] : [],
       message: wire._tag === "Update" ? decode(entry, "message", wire.message) as Msg : undefined
     }
   }
@@ -1877,11 +1909,13 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
       model: next.model,
       events: next.events,
       commands: next.commands.map(MessageLog.encodeCommand),
-      lists: next.lists ?? []
+      lists: next.lists ?? [],
+      sends: (next.sends ?? []).map(MessageLog.encodeSend)
     }
     if (
       !sameModel(recomputed.model, recorded.model) || !sameEvents(recomputed.events, recorded.events) ||
-      !sameCommands(recomputed.commands, recorded.commands) || !sameCommands(recomputed.lists, recorded.lists)
+      !sameCommands(recomputed.commands, recorded.commands) || !sameCommands(recomputed.lists, recorded.lists) ||
+      !sameCommands(recomputed.sends, recorded.sends)
     ) {
       return result({
         seq: entry.seq,
@@ -1890,7 +1924,8 @@ const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends 
           model: recorded.model,
           events: recorded.events,
           commands: recorded.commands,
-          lists: recorded.lists
+          lists: recorded.lists,
+          sends: recorded.sends
         },
         recomputed
       })
