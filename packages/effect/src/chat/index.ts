@@ -39,6 +39,12 @@ export * as ChatHandler from "./ChatHandler.ts"
  * @stability unstable
  * @since 4.1.5
  */
+export * as ChatInteraction from "./ChatInteraction.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.5
+ */
 export * as ChatMarkdown from "./ChatMarkdown.ts"
 
 /**
@@ -58,3 +64,9 @@ export * as ChatTest from "./ChatTest.ts"
  * @since 4.1.5
  */
 export * as ChatThread from "./ChatThread.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.5
+ */
+export * as ChatUi from "./ChatUi.ts"

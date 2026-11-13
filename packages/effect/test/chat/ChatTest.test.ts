@@ -1,12 +1,40 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Option } from "effect"
-import { Chat, ChatAdapter, ChatError, ChatHandler, ChatTest, ChatThread } from "effect/chat"
+import { Effect, Exit, Option, Schema } from "effect"
+import { Chat, ChatAdapter, ChatError, ChatHandler, ChatInteraction, ChatTest, ChatThread, ChatUi } from "effect/chat"
 
 const kinds = { "@": "user", "@&": "role", "#": "channel", "!": "broadcast" } as const
 
 const parseMention: ChatTest.ParseMention = (slice) => {
   const match = /^<(@&|@|#|!)([^<>\s]+)>$/.exec(slice)
   return match === null ? Option.none() : Option.some({ kind: kinds[match[1] as keyof typeof kinds], id: match[2] })
+}
+
+/** The conformance click hook, over the fake's own entry. */
+const interactionsFor = (test: ChatTest.ChatTest["Service"]): ChatTest.Interactions => {
+  let open: {
+    readonly click: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
+    readonly opened: ChatInteraction.OpenModal
+  } | undefined
+  return {
+    click: Effect.fnUntraced(function*(messageId, id, options) {
+      const click = yield* test.click(messageId, id, options)
+      const handler = yield* ChatInteraction.Handler
+      let refused = false
+      const reply = yield* test.interact(click).pipe(
+        Effect.provideService(ChatInteraction.Handler, {
+          ...handler,
+          refused: (event, error) =>
+            Effect.andThen(Effect.sync(() => void (refused = true)), handler.refused(event, error))
+        })
+      )
+      open = reply._tag === "OpenModal" && !refused ? { click, opened: reply } : undefined
+    }),
+    submit: Effect.fnUntraced(function*(values) {
+      if (open === undefined) return
+      const reply = yield* test.interact(yield* test.submit(open.click, open.opened, values))
+      if (reply._tag !== "Errors") open = undefined
+    })
+  }
 }
 
 const rulesFor = (test: ChatTest.ChatTest["Service"], thread: ChatThread.ChatThread) =>
@@ -16,7 +44,8 @@ const rulesFor = (test: ChatTest.ChatTest["Service"], thread: ChatThread.ChatThr
     userPosts: (thread, text) => test.userPosts(thread, { text }),
     parseMention,
     refuseFiles: test.refuseFiles,
-    failNext: test.failNext
+    failNext: test.failNext,
+    interactions: interactionsFor(test)
   })
 
 const suite = Effect.gen(function*() {
@@ -30,7 +59,8 @@ const ruleNames = Object.keys(ChatTest.conformance({
   userPosts: () => Effect.die("unused"),
   parseMention,
   refuseFiles: () => Effect.void,
-  failNext: () => Effect.void
+  failNext: () => Effect.void,
+  interactions: { click: () => Effect.void, submit: () => Effect.void }
 }))
 
 const capabilities = ChatError.Capability.literals
@@ -185,6 +215,194 @@ describe("ChatTest", () => {
       const getUser = yield* Effect.flip(rules["unsupported/getUser"])
       assert.strictEqual(getUser.actual, "Unsupported(opener)")
     }).pipe(Effect.provide(ChatTest.layer())))
+
+  describe("buttons and modals", () => {
+    const Approve = ChatInteraction.button("approve", { label: "Approve", value: Schema.Number })
+    const Pick = ChatInteraction.select("pick", {})
+    const Ask = ChatInteraction.modal("ask", {
+      title: "Ask",
+      metadata: Schema.String,
+      fields: { answer: ChatInteraction.textInput({ label: "Answer", optional: true }) }
+    })
+    const replying = (reply: ChatInteraction.ClickReply, refused: Array<ChatError.ChatError>) =>
+      ChatInteraction.Handler.of({
+        click: () => Effect.succeed(reply),
+        submit: () => Effect.succeed(ChatInteraction.close),
+        refused: (_, error) => Effect.sync(() => void refused.push(error))
+      })
+
+    it("lists the hook rules only with the hook, and unsupported/buttons always", () => {
+      const withoutHook = Object.keys(ChatTest.conformance({
+        platform: "test",
+        thread: ChatThread.make("test", "c0"),
+        userPosts: () => Effect.die("unused"),
+        parseMention
+      }))
+      for (
+        const name of ["unsupported/buttons", "unsupported/selects", "actions/tooMany", "descriptor/measureFitsActions"]
+      ) {
+        assert.include(withoutHook, name)
+      }
+      for (const name of ["actions/valueRoundTrips", "modal/origin", "unsupported/modals"]) {
+        assert.notInclude(withoutHook, name)
+        assert.include(ruleNames, name)
+      }
+      assert.notInclude(ruleNames, "unsupported/modalErrors")
+    })
+
+    it.effect("fails Unsupported for an element whose capability is off", () =>
+      Effect.gen(function*() {
+        const thread = yield* Effect.flatMap(ChatTest.ChatTest, (test) => test.makeThread())
+        const chat = yield* Chat.Chat
+        const button = yield* Effect.flip(chat.post(thread, { markdown: "a", actions: [Approve.of(1)] }))
+        assert.strictEqual(button.reason._tag === "Unsupported" && button.reason.capability, "buttons")
+        const selectError = yield* Effect.flip(chat.post(thread, {
+          markdown: "a",
+          actions: [Pick.of({ options: [{ label: "A", value: "a" }] })]
+        }))
+        assert.strictEqual(selectError.reason._tag === "Unsupported" && selectError.reason.capability, "selects")
+      }).pipe(Effect.provide(ChatTest.layer({
+        capabilities: capabilities.filter((c) => c !== "buttons" && c !== "selects")
+      }))))
+
+    it.effect("checks actionsPerMessage and actionDataLength in code points", () =>
+      Effect.gen(function*() {
+        const test = yield* ChatTest.ChatTest
+        const chat = yield* Chat.Chat
+        const thread = yield* test.makeThread()
+        const many = yield* Effect.flip(chat.post(thread, {
+          markdown: "a",
+          actions: [Approve.of(1), Approve.of(2), Approve.of(3)]
+        }))
+        assert.strictEqual(many.reason._tag, "TooLarge")
+        // "approve" is 7 and "12" is 2: 9 code points fit, 10 do not.
+        yield* chat.post(thread, { markdown: "a", actions: [Approve.of(12)] })
+        const long = yield* Effect.flip(chat.post(thread, { markdown: "a", actions: [Approve.of(123)] }))
+        assert.strictEqual(long.reason._tag, "TooLarge")
+        assert.strictEqual((yield* test.messages(thread)).length, 1)
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { actionsPerMessage: 2, actionDataLength: 9 } }))))
+
+    it.effect("click builds the event from what was posted or edited", () =>
+      Effect.gen(function*() {
+        const test = yield* ChatTest.ChatTest
+        const chat = yield* Chat.Chat
+        const thread = yield* test.makeThread()
+        const posted = yield* chat.post(thread, {
+          markdown: "a",
+          actions: [
+            Approve.of(7),
+            Pick.of({ options: [{ label: "A", value: "a" }, { label: "B", value: "b" }] }),
+            ChatUi.linkButton({ label: "Docs", url: "https://effect.website" })
+          ]
+        })
+        const click = yield* test.click(posted.id, "approve", { userId: "u2" })
+        assert.strictEqual(click._tag, "ButtonClicked")
+        assert.strictEqual(click.value, "7")
+        assert.strictEqual(click.userId, "u2")
+        assert.strictEqual(click.messageId, posted.id)
+        yield* ChatTest.checkInteraction(click, { platform: "test" })
+        const first = yield* test.click(posted.id, "pick")
+        assert.strictEqual(first._tag === "SelectChanged" && first.value, "a")
+        const second = yield* test.click(posted.id, "pick", { option: "b" })
+        assert.strictEqual(second._tag === "SelectChanged" && second.value, "b")
+        assert.strictEqual((yield* Effect.flip(test.click(posted.id, "pick", { option: "c" })))._tag, "NoSuchElement")
+        assert.strictEqual((yield* Effect.flip(test.click(posted.id, "missing")))._tag, "NoSuchElement")
+        yield* chat.edit(thread, posted.id, { markdown: "b" })
+        assert.strictEqual((yield* Effect.flip(test.click(posted.id, "approve")))._tag, "NoSuchElement")
+        yield* chat.delete(thread, posted.id)
+        assert.strictEqual((yield* Effect.flip(test.click(posted.id, "approve")))._tag, "NoSuchElement")
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("submit keeps the click's origin and leaves out empty values", () =>
+      Effect.gen(function*() {
+        const test = yield* ChatTest.ChatTest
+        const chat = yield* Chat.Chat
+        const thread = yield* test.makeThread()
+        const posted = yield* chat.post(thread, { markdown: "a", actions: [Approve.of(1)] })
+        const click = yield* test.click(posted.id, "approve")
+        const submitted = yield* test.submit(click, Ask.open({ metadata: "m" }), { answer: "" })
+        assert.strictEqual(submitted.id, "ask")
+        assert.strictEqual(submitted.metadata, "m")
+        assert.deepStrictEqual(submitted.values, {})
+        assert.strictEqual(submitted.messageId, posted.id)
+        yield* ChatTest.checkInteraction(submitted, { platform: "test" })
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("interact refuses a modal the fake would not open, and records openModal", () =>
+      Effect.gen(function*() {
+        const test = yield* ChatTest.ChatTest
+        const chat = yield* Chat.Chat
+        const thread = yield* test.makeThread()
+        const posted = yield* chat.post(thread, { markdown: "a", actions: [Approve.of(1)] })
+        const click = yield* test.click(posted.id, "approve")
+        const refused: Array<ChatError.ChatError> = []
+        const opened = Ask.open({ metadata: "x".repeat(10) })
+        const reply = yield* test.interact(click).pipe(
+          Effect.provideService(ChatInteraction.Handler, replying(opened, refused))
+        )
+        assert.deepStrictEqual(reply, opened)
+        assert.deepStrictEqual(refused.map((error) => [error.op, error.reason._tag]), [["openModal", "TooLarge"]])
+        const calls = (yield* test.calls).filter((call) => call.op === "openModal")
+        assert.deepStrictEqual(calls.map((call) => [call.messageId, call.outcome]), [[posted.id, "TooLarge"]])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { modalMetadataLength: 12 } }))))
+
+    it.effect("interact refuses any modal without the modals capability", () =>
+      Effect.gen(function*() {
+        const test = yield* ChatTest.ChatTest
+        const chat = yield* Chat.Chat
+        const thread = yield* test.makeThread()
+        const posted = yield* chat.post(thread, { markdown: "a", actions: [Approve.of(1)] })
+        const refused: Array<ChatError.ChatError> = []
+        yield* test.interact(yield* test.click(posted.id, "approve")).pipe(
+          Effect.provideService(ChatInteraction.Handler, replying(Ask.open({ metadata: "m" }), refused))
+        )
+        const reason = refused[0]?.reason
+        assert.strictEqual(reason?._tag === "Unsupported" && reason.capability, "modals")
+      }).pipe(Effect.provide(ChatTest.layer({ capabilities: capabilities.filter((c) => c !== "modals") }))))
+
+    it.effect("checkInteraction rejects a submit with no messageId and a foreign platform", () =>
+      Effect.gen(function*() {
+        const submitted = ChatInteraction.ModalSubmitted.make({
+          id: "ask",
+          values: {},
+          thread: ChatThread.make("test", "c1"),
+          messageId: "",
+          userId: "u",
+          raw: null
+        })
+        const empty = yield* Effect.flip(ChatTest.checkInteraction(submitted, { platform: "test" }))
+        assert.strictEqual(empty.actual, "an empty messageId")
+        const foreign = yield* Effect.flip(ChatTest.checkInteraction(submitted, { platform: "other" }))
+        assert.strictEqual(foreign.rule, "checkInteraction")
+      }))
+
+    it.effect("fails unsupported/buttons for an adapter that ignores actions", () =>
+      Effect.gen(function*() {
+        const registry = yield* ChatAdapter.Registry
+        const adapter = yield* registry.get("test")
+        const listed = new Set(adapter.descriptor.capabilities)
+        listed.delete("buttons")
+        yield* registry.register({ ...adapter, descriptor: { ...adapter.descriptor, capabilities: listed } })
+        const failure = yield* Effect.flip(Effect.flatMap(suite, (rules) => rules["unsupported/buttons"]))
+        assert.strictEqual(failure.actual, "success")
+      }).pipe(Effect.provide(ChatTest.layer())))
+
+    it.effect("fails edit/removesActions for an adapter that keeps the elements on edit", () =>
+      Effect.gen(function*() {
+        const registry = yield* ChatAdapter.Registry
+        const adapter = yield* registry.get("test")
+        yield* registry.register({
+          ...adapter,
+          edit: (thread, messageId, content) =>
+            adapter.edit(thread, messageId, {
+              markdown: content.markdown,
+              actions: [ChatInteraction.button("conformance", { label: "kept" }).of()]
+            })
+        })
+        const failure = yield* Effect.flip(Effect.flatMap(suite, (rules) => rules["edit/removesActions"]))
+        assert.strictEqual(failure.expected, "NoSuchElement")
+      }).pipe(Effect.provide(ChatTest.layer())))
+  })
 
   it.live("deletes every bot message the suite posts", () =>
     Effect.gen(function*() {

@@ -16,6 +16,7 @@ import {
 } from "effect/chat/ChatError"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
+import type { Action } from "effect/chat/ChatUi"
 import * as Clock from "effect/Clock"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
@@ -161,6 +162,13 @@ export const make = (options: {
   let declaredAgent = true
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
+
+  /** The descriptor lists no buttons or selects yet, so a write that carries them is refused, never sent without them. */
+  const refuseActions = (op: string, actions: ReadonlyArray<Action> | undefined) =>
+    actions === undefined || actions.length === 0 ? Effect.void : fail(
+      op,
+      new Unsupported({ capability: actions.some((action) => action._tag !== "Select") ? "buttons" : "selects" })
+    )
 
   /**
    * The pace of the writes that grow one reply: stream appends, the starts
@@ -646,6 +654,7 @@ export const make = (options: {
     post: Effect.fnUntraced(function*(thread, content) {
       const parts = yield* resolve("post", thread)
       if (content.replyTo !== undefined) return yield* fail("post", new Unsupported({ capability: "replyTo" }))
+      yield* refuseActions("post", content.actions)
       const postOptions = yield* CurrentPostOptions
       const notify = postOptions.notify ?? {}
       const unfurl = postOptions.unfurl === true
@@ -664,6 +673,7 @@ export const make = (options: {
     }),
     edit: Effect.fnUntraced(function*(thread, messageId, content) {
       const parts = yield* resolve("edit", thread)
+      yield* refuseActions("edit", content.actions)
       const postOptions = yield* CurrentPostOptions
       const body = yield* messageContent(
         "edit",

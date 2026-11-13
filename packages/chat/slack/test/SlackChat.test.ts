@@ -183,6 +183,39 @@ describe("post", () => {
     ))
 })
 
+describe("buttons and selects", () => {
+  const button = { _tag: "Button", id: "go", label: "Go" } as const
+  const select = { _tag: "Select", id: "pick", options: [{ label: "A", value: "a" }] } as const
+
+  it.effect("are refused with Unsupported until the adapter supports them, calling nothing", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const post = yield* reason(slack.post(channelThread, { markdown: "x", actions: [button] }))
+        assert.deepStrictEqual([post.op, post.tag], ["post", "Unsupported"])
+        const edit = yield* reason(slack.edit(channelThread, "1.2", { markdown: "x", actions: [select] }))
+        assert.deepStrictEqual([edit.op, edit.tag], ["edit", "Unsupported"])
+        assert.strictEqual(fake.called("chat.postMessage").length + fake.called("chat.update").length, 0)
+      })
+    )
+  })
+
+  it.effect("pass unsupported/buttons and unsupported/selects over the stub", () => {
+    const rules = conformance({
+      platform: "slack",
+      thread: channelThread,
+      userPosts: () => Effect.die("unused"),
+      parseMention: SlackChat.parseMention
+    })
+    return run(
+      makeFake({ "auth.test": authTest }),
+      Effect.andThen(rules["unsupported/buttons"], rules["unsupported/selects"])
+    )
+  })
+})
+
 describe("files", () => {
   const upload = (ids: ReadonlyArray<string>) => {
     let next = 0
