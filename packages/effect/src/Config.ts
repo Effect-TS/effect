@@ -169,10 +169,11 @@ const evaluateAt = <T>(
  *
  * **Gotchas**
  *
- * If the function throws, including a checked brand constructor, the exception
- * becomes a defect rather than a `ConfigError`. Use `Config.schema` with
- * `Schema.fromBrand` for checked brands, or `Config.mapEffect` with explicit
- * `ConfigError` failures for other fallible transformations.
+ * A function that throws, such as a brand constructor with checks, produces a
+ * defect rather than a `ConfigError`. Validate in the schema passed to
+ * {@link schema} instead, where `Schema.fromBrand` applies the constructor's
+ * checks. For other fallible transformations, use {@link mapEffect} and fail
+ * with a `ConfigError`.
  *
  * **Example** (Uppercasing a string config)
  *
@@ -188,7 +189,7 @@ const evaluateAt = <T>(
  * ```
  *
  * @see {@link mapEffect} – when the transformation can fail
- * @see {@link schema} – for schema-based validation
+ * @see {@link schema} – when a schema can validate the value
  *
  * @stability stable
  * @category mapping
