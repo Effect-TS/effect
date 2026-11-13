@@ -3623,6 +3623,9 @@ const setup = (
     const byKey = keyedIndex(olds)
     let seen: Set<string> | undefined
     const result: Array<Rendered> = new Array(news.length)
+    // Only keyed nodes can change order. Once a keyed list is out of order: each new node's old
+    // index, or -1 if its nodes aren't in the host yet.
+    let from: Int32Array | undefined
     let matched = 0
     let inPlace = true
     let previous = -1
@@ -3643,7 +3646,9 @@ const setup = (
         at = index
       }
       if (at === -1) {
+        if (inPlace && byKey !== undefined) from = orderSoFar(olds, result, index)
         inPlace = false
+        if (from !== undefined) from[index] = -1
         result[index] = create(inst, view, env)
         continue
       }
@@ -3651,7 +3656,11 @@ const setup = (
       const old = olds[at]!
       const next = patch(inst, old, view, env)
       // A slot that changed what it shows has nodes that may not be placed yet.
-      if (next !== old || at < previous) inPlace = false
+      if (inPlace && (next !== old || at < previous)) {
+        if (byKey !== undefined) from = orderSoFar(olds, result, index)
+        inPlace = false
+      }
+      if (from !== undefined) from[index] = next === old ? at : -1
       previous = at
       result[index] = next
     }
@@ -3666,8 +3675,51 @@ const setup = (
         if (gone) destroy(inst, old)
       }
     }
-    if (!inPlace) place(parentNode, result, ref)
+    if (!inPlace) place(parentNode, result, ref, from === undefined ? undefined : inOrder(from))
     return result
+  }
+
+  /**
+   * The old indices of `result`'s first `upTo` nodes, while they were all kept, in order. The rest
+   * of the list fills in the others.
+   */
+  const orderSoFar = (olds: ReadonlyArray<Rendered>, result: ReadonlyArray<Rendered>, upTo: number) => {
+    const from = new Int32Array(result.length)
+    let at = 0
+    for (let index = 0; index < upTo; index++) {
+      while (olds[at] !== result[index]) at++
+      from[index] = at
+    }
+    return from
+  }
+
+  /**
+   * The nodes that stay where they are when a list is reordered: the longest run of old indices in
+   * increasing order. The others move around them, so a swap of two moves two. Built from the end,
+   * so between runs as long, the one that starts first stays, as it did when `place` alone chose.
+   */
+  const inOrder = (from: Int32Array): Uint8Array => {
+    const stays = new Uint8Array(from.length)
+    // starts[length - 1]: the index of the largest old index that starts a run of that length.
+    const starts = new Int32Array(from.length)
+    const after = new Int32Array(from.length)
+    let longest = 0
+    for (let index = from.length - 1; index >= 0; index--) {
+      const at = from[index]!
+      if (at === -1) continue
+      let low = 0
+      let high = longest
+      while (low < high) {
+        const middle = (low + high) >>> 1
+        if (from[starts[middle]!]! > at) low = middle + 1
+        else high = middle
+      }
+      after[index] = low > 0 ? starts[low - 1]! : -1
+      starts[low] = index
+      if (low === longest) longest++
+    }
+    for (let index = longest > 0 ? starts[longest - 1]! : -1; index !== -1; index = after[index]!) stays[index] = 1
+    return stays
   }
 
   /**
@@ -3859,14 +3911,17 @@ const setup = (
     return undefined
   }
 
-  /** Puts each item's nodes before `ref`, last first, moving only what's out of place. */
-  const place = (parentNode: unknown, items: ReadonlyArray<Rendered>, ref: unknown) => {
+  /**
+   * Puts each item's nodes before `ref`, last first, moving only what's out of place. The items
+   * `stays` marks are in order in the host already, so the others move around them.
+   */
+  const place = (parentNode: unknown, items: ReadonlyArray<Rendered>, ref: unknown, stays?: Uint8Array) => {
     let next = ref
     for (let index = items.length - 1; index >= 0; index--) {
       const item = items[index]!
       if (!hasNodes(item)) continue
       const last = lastNodeOf(item)
-      if (host.parentOf(last) !== parentNode || host.nextOf(last) !== next) {
+      if (stays?.[index] !== 1 && (host.parentOf(last) !== parentNode || host.nextOf(last) !== next)) {
         for (const node of nodesOf(item)) host.insertBefore(parentNode, node, next)
       }
       next = firstNodeOf(item)

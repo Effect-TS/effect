@@ -223,6 +223,35 @@ describe("Runtime", () => {
         ])
       })))
 
+    it.effect("a reorder moves only the nodes out of order", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "b", "c", "d", "e", "f"] }))
+        yield* TestHost.settle
+        const moves = () => testHost.host.operations().filter((op) => op.startsWith("insert <li>"))
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["f", "b", "c", "d", "e", "a"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headfbcdeafoot")
+        assert.strictEqual(moves().length, 2)
+
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["x", "e", "b", "c", "f", "d"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headxebcfdfoot")
+        // x is new, and b, c, d, the longest run already in order, stay: only e and f move.
+        assert.strictEqual(moves().length, 3)
+
+        // The first rows stayed in order: only d, out of order after them, moves.
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["x", "e", "b", "d", "c", "f"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headxebdcffoot")
+        assert.deepStrictEqual(moves(), ["insert <li> before <li>"])
+      })))
+
     it.effect("two siblings with one key fail the instance", () =>
       provideHost(Effect.gen(function*() {
         const root = yield* TestHost.mount(Rows, {}, { fallback: (_, h) => h.el("h1", "down") })
