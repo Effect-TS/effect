@@ -10,14 +10,16 @@
  * and rows are decoded from the response text using each column's type, so
  * `bigint` values keep their full precision.
  *
- * The client keeps one Trino session: catalog, schema, session property and
- * prepared statement changes returned by the server apply to every later
- * statement made through the client. Transactions use Trino's transaction id
- * header and cannot be nested.
+ * Catalog, schema, session property and prepared statement changes returned
+ * by the server apply to later statements on the same session. Statements
+ * outside a transaction share the client's session; a reserved connection or a
+ * transaction starts from a copy of it, and its changes stay with it.
+ * Transactions use Trino's transaction id header and cannot be nested.
  *
  * @stability unstable
  * @since 4.1.5
  */
+import * as Clock from "effect/Clock"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
@@ -155,14 +157,10 @@ export const make = (
       ? undefined
       : `Basic ${Base64.encode(`${options.user}:${Redacted.value(options.password)}`)}`
 
-    const session: Session = {
-      catalog: options.catalog,
-      schema: options.schema,
-      properties: new Map(Object.entries(options.sessionProperties ?? {})),
-      preparedStatements: new Map()
-    }
+    const scopedClient = HttpClient.withScope(httpClient)
 
-    const headersFor = (transactionId: string | undefined): Record<string, string> => {
+    const headersFor = (state: ConnectionState, transactionId: string | undefined): Record<string, string> => {
+      const session = state.session
       const headers: Record<string, string> = {
         "X-Trino-User": options.user,
         "X-Trino-Source": options.source ?? "effect-sql-trino"
@@ -180,6 +178,7 @@ export const make = (
     }
 
     const applySessionHeaders = (state: ConnectionState, headers: Readonly<Record<string, string | undefined>>) => {
+      const session = state.session
       const catalog = headers["x-trino-set-catalog"]
       if (catalog !== undefined) session.catalog = catalog
       const schema = headers["x-trino-set-schema"]
@@ -199,39 +198,35 @@ export const make = (
 
     // Sends a request, retrying while `retryDelay` returns a delay and the
     // retry budget lasts. Returns the response body text of a 200 response.
+    // Each attempt runs in its own scope, so a response that is not read, such
+    // as an error before a retry, is released before the next attempt.
     const send = (
       state: ConnectionState,
       request: HttpClientRequest.HttpClientRequest,
-      retryDelay: (failure: HttpFailure) => number | undefined,
+      retryDelay: (failure: HttpFailure, now: number) => number | undefined,
       operation: string
     ): Effect.Effect<string, SqlError> =>
-      Effect.flatMap(Effect.clockWith((clock) => clock.currentTimeMillis), (startedAt) => {
-        const attempt: Effect.Effect<string, SqlError> = httpClient.execute(request).pipe(
-          Effect.matchEffect({
-            onFailure: (cause) => retryOrFail({ _tag: "Transport", cause }),
-            onSuccess: (response) =>
+      Effect.flatMap(Clock.currentTimeMillis, (startedAt) => {
+        const attempt: Effect.Effect<string, SqlError> = Effect.scoped(
+          scopedClient.execute(request).pipe(
+            Effect.mapError((cause): HttpFailure => ({ _tag: "Transport", cause })),
+            Effect.flatMap((response) =>
               response.status === 200
-                ? Effect.matchEffect(response.text, {
-                  onFailure: (cause) => retryOrFail({ _tag: "Transport", cause }),
-                  onSuccess: (body) => {
-                    applySessionHeaders(state, response.headers)
-                    return Effect.succeed(body)
-                  }
-                })
-                : retryOrFail({ _tag: "Status", response })
-          })
-        )
-        const retryOrFail = (failure: HttpFailure): Effect.Effect<string, SqlError> => {
-          const delay = retryDelay(failure)
-          if (delay === undefined) return Effect.fail(httpError(failure, operation))
-          return Effect.flatMap(
-            Effect.clockWith((clock) => clock.currentTimeMillis),
-            (now) =>
-              now + delay - startedAt > retryTimeout
-                ? Effect.fail(httpError(failure, operation))
-                : Effect.andThen(sleepMillis(delay), attempt)
+                ? response.text.pipe(
+                  Effect.mapError((cause): HttpFailure => ({ _tag: "Transport", cause })),
+                  Effect.tap(() => Effect.sync(() => applySessionHeaders(state, response.headers)))
+                )
+                : Effect.fail<HttpFailure>({ _tag: "Status", response })
+            )
           )
-        }
+        ).pipe(Effect.catch((failure) => retryOrFail(failure)))
+        const retryOrFail = (failure: HttpFailure): Effect.Effect<string, SqlError> =>
+          Effect.flatMap(Clock.currentTimeMillis, (now) => {
+            const delay = retryDelay(failure, now)
+            return delay === undefined || now + delay - startedAt > retryTimeout
+              ? Effect.fail(httpError(failure, operation))
+              : Effect.andThen(sleepMillis(delay), attempt)
+          })
         return attempt
       })
 
@@ -239,7 +234,7 @@ export const make = (
     const submit = (state: ConnectionState, sql: string, transactionId: string | undefined) =>
       send(
         state,
-        HttpClientRequest.post(`${baseUrl}/v1/statement`, { headers: headersFor(transactionId) }).pipe(
+        HttpClientRequest.post(`${baseUrl}/v1/statement`, { headers: headersFor(state, transactionId) }).pipe(
           HttpClientRequest.bodyText(sql)
         ),
         submitRetryDelay,
@@ -249,19 +244,24 @@ export const make = (
     const fetchPage = (state: ConnectionState, uri: string) =>
       send(
         state,
-        HttpClientRequest.get(uri, { headers: headersFor(state.transactionId) }),
+        HttpClientRequest.get(uri, { headers: headersFor(state, state.transactionId) }),
         pollRetryDelay,
         "fetch"
       )
 
-    const cancel = (uri: string) =>
-      httpClient.execute(HttpClientRequest.make("DELETE")(uri, { headers: headersFor(undefined) })).pipe(
+    const cancel = (state: ConnectionState, uri: string) =>
+      Effect.scoped(
+        scopedClient.execute(HttpClientRequest.make("DELETE")(uri, { headers: headersFor(state, undefined) }))
+      ).pipe(
         Effect.timeout(Duration.seconds(5)),
         Effect.ignore
       )
 
     class TrinoConnection implements Connection {
-      readonly state: ConnectionState = { transactionId: undefined }
+      readonly state: ConnectionState
+      constructor(session: Session) {
+        this.state = { transactionId: undefined, session }
+      }
 
       // Starts the query and returns a stream of decoded pages. The query is
       // cancelled on the server if the stream ends before the last page.
@@ -307,7 +307,7 @@ export const make = (
                       ([page, next]) => [[page], next] as const
                     ))
               ).pipe(
-                Stream.ensuring(Effect.suspend(() => nextUri === undefined ? Effect.void : cancel(nextUri)))
+                Stream.ensuring(Effect.suspend(() => nextUri === undefined ? Effect.void : cancel(state, nextUri)))
               )
           )
         }))
@@ -378,8 +378,16 @@ export const make = (
       }
     }
 
-    const connection = new TrinoConnection()
-    const transactionAcquirer = Effect.sync(() => new TrinoConnection())
+    // Statements outside a transaction share the client's session. A reserved
+    // or transaction connection starts from a copy of it, so its `USE` or
+    // `SET SESSION` changes stay on that connection.
+    const connection = new TrinoConnection({
+      catalog: options.catalog,
+      schema: options.schema,
+      properties: new Map(Object.entries(options.sessionProperties ?? {})),
+      preparedStatements: new Map()
+    })
+    const transactionAcquirer = Effect.sync(() => new TrinoConnection(copySession(connection.state.session)))
     const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
       [ATTR_DB_SYSTEM_NAME, "trino"],
@@ -396,6 +404,10 @@ export const make = (
     })
 
     const asTrino = (conn: unknown) => conn as TrinoConnection
+    const rollback = (conn: Connection) =>
+      asTrino(conn).state.transactionId === undefined
+        ? Effect.void
+        : Effect.asVoid(conn.executeUnprepared("ROLLBACK", [], undefined))
     const withTransaction = Client.makeWithTransaction({
       transactionService: client.transactionService,
       spanAttributes,
@@ -412,10 +424,9 @@ export const make = (
           })
         ),
       commit: (conn) => Effect.asVoid(conn.executeUnprepared("COMMIT", [], undefined)),
-      rollback: (conn) =>
-        asTrino(conn).state.transactionId === undefined
-          ? Effect.void
-          : Effect.asVoid(conn.executeUnprepared("ROLLBACK", [], undefined)),
+      // A failed COMMIT can leave the transaction open on the server.
+      onCommitFailure: rollback,
+      rollback,
       rollbackSavepoint: () => Effect.void
     })
 
@@ -499,7 +510,15 @@ interface Session {
 
 interface ConnectionState {
   transactionId: string | undefined
+  readonly session: Session
 }
+
+const copySession = (session: Session): Session => ({
+  catalog: session.catalog,
+  schema: session.schema,
+  properties: new Map(session.properties),
+  preparedStatements: new Map(session.preparedStatements)
+})
 
 // Session headers carry comma-separated `name=value` pairs whose values are
 // URL encoded, so they never contain a comma. They are stored and sent back
@@ -524,21 +543,22 @@ type HttpFailure =
 
 const transientDelayMillis = 100
 
-const retryAfterMillis = (response: HttpClientResponse.HttpClientResponse): number => {
-  const header = response.headers["retry-after"]
+// Retry-After is either a number of seconds or an HTTP date.
+const retryAfterMillis = (response: HttpClientResponse.HttpClientResponse, now: number): number => {
+  const header = response.headers["retry-after"]?.trim()
   if (header === undefined) return transientDelayMillis
-  const seconds = Number(header)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
-  return transientDelayMillis
+  if (/^\d+$/.test(header)) return Number(header) * 1000
+  const date = Date.parse(header)
+  return Number.isNaN(date) ? transientDelayMillis : Math.max(0, date - now)
 }
 
 // The statement may already be running after any failure other than 429 and
 // 503, so submitting it again could run it twice.
-const submitRetryDelay = (failure: HttpFailure): number | undefined => {
+const submitRetryDelay = (failure: HttpFailure, now: number): number | undefined => {
   if (failure._tag === "Transport") return undefined
   switch (failure.response.status) {
     case 429:
-      return retryAfterMillis(failure.response)
+      return retryAfterMillis(failure.response, now)
     case 503:
       return transientDelayMillis
     default:
@@ -547,11 +567,11 @@ const submitRetryDelay = (failure: HttpFailure): number | undefined => {
 }
 
 // Reading a page is idempotent, so network failures and gateway errors retry.
-const pollRetryDelay = (failure: HttpFailure): number | undefined => {
+const pollRetryDelay = (failure: HttpFailure, now: number): number | undefined => {
   if (failure._tag === "Transport") return transientDelayMillis
   switch (failure.response.status) {
     case 429:
-      return retryAfterMillis(failure.response)
+      return retryAfterMillis(failure.response, now)
     case 502:
     case 503:
     case 504:
@@ -695,10 +715,20 @@ const parseResults = (text: string): Result.Result<QueryResults, SqlError> => {
   }
 }
 
+// Assigning `__proto__` would set the prototype instead of adding a key, and
+// it is a valid column name, map key or row field name.
+const setOwn = (object: Record<string, unknown>, key: string, value: unknown) => {
+  if (key === "__proto__") {
+    Object.defineProperty(object, key, { value, writable: true, enumerable: true, configurable: true })
+  } else {
+    object[key] = value
+  }
+}
+
 const toObjects = (columns: ReadonlyArray<Column>, rows: ReadonlyArray<ReadonlyArray<unknown>>) =>
   rows.map((row) => {
     const object: Record<string, unknown> = {}
-    for (let i = 0; i < columns.length; i++) object[columns[i].name] = row[i]
+    for (let i = 0; i < columns.length; i++) setOwn(object, columns[i].name, row[i])
     return object
   })
 
@@ -745,7 +775,7 @@ const decoderFor = (signature: TypeSignature): Decoder => {
       const decodeValue = decoderFor(typeArgument(signature, 1))
       return nullable((value) => {
         const out: Record<string, unknown> = {}
-        for (const [key, item] of Object.entries(value as Record<string, unknown>)) out[key] = decodeValue(item)
+        for (const [key, item] of Object.entries(value as Record<string, unknown>)) setOwn(out, key, decodeValue(item))
         return out
       })
     }
@@ -761,7 +791,7 @@ const decoderFor = (signature: TypeSignature): Decoder => {
         const items = (value as ReadonlyArray<unknown>).map((item, i) => decoders[i](item))
         if (names === undefined) return items
         const out: Record<string, unknown> = {}
-        for (let i = 0; i < names.length; i++) out[names[i]] = items[i]
+        for (let i = 0; i < names.length; i++) setOwn(out, names[i], items[i])
         return out
       })
     }
@@ -850,7 +880,7 @@ const parseJson = (text: string): unknown => {
           const key = parseString()
           skipWhitespace()
           if (text[i++] !== ":") fail()
-          object[key] = parseValue()
+          setOwn(object, key, parseValue())
           skipWhitespace()
           const c = text[i++]
           if (c === "}") return object

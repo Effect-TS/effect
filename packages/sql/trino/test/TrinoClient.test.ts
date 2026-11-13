@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Redacted, Stream } from "effect"
+import { Clock, Effect, Fiber, Redacted, Stream } from "effect"
 import * as SqlClient from "effect/sql/SqlClient"
 import { SqlError } from "effect/sql/SqlError"
 import { TestClock } from "effect/testing"
@@ -73,6 +73,34 @@ describe("TrinoClient", () => {
             column("n", "integer")
           ],
           data: "[[9007199254740993,[9007199254740993,-9223372036854775808],1]]"
+        })
+      ]))))
+
+    it.effect("keeps __proto__ as an ordinary column name and map key", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+
+        const [row] = yield* sql<Record<string, unknown>>`SELECT * FROM hostile`
+
+        assert.strictEqual(Object.getPrototypeOf(row), Object.prototype)
+        assert.deepStrictEqual(Object.entries(row).map(([key]) => key), ["__proto__", "m"])
+        assert.strictEqual(Object.getOwnPropertyDescriptor(row, "__proto__")?.value, 42)
+        const m = row.m as Record<string, unknown>
+        assert.strictEqual(Object.getPrototypeOf(m), Object.prototype)
+        assert.deepStrictEqual(Object.entries(m), [["__proto__", 9007199254740993n]])
+      }).pipe(Effect.provide(Coordinator.layer([
+        page({
+          columns: [
+            column("__proto__", "integer"),
+            column("m", "map(varchar, bigint)", {
+              rawType: "map",
+              arguments: [
+                { kind: "TYPE", value: { rawType: "varchar", arguments: [] } },
+                { kind: "TYPE", value: { rawType: "bigint", arguments: [] } }
+              ]
+            })
+          ],
+          data: `[[42,{"__proto__":9007199254740993}]]`
         })
       ]))))
 
@@ -180,7 +208,69 @@ describe("TrinoClient", () => {
       page({ columns: nColumn, data: "[[1]]" })
     ], { catalog: "memory", schema: "default" }))))
 
+  it.effect("keeps session changes on reserved and transaction connections to themselves", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+
+      yield* Effect.scoped(Effect.gen(function*() {
+        const reserved = yield* sql.reserve
+        yield* reserved.executeUnprepared("USE tpch.tiny", [], undefined)
+        yield* reserved.executeUnprepared("SELECT 1 AS n", [], undefined)
+      }))
+      yield* sql`SELECT 1 AS n`
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`USE tpch.sf1`
+        yield* sql`SELECT 1 AS n`
+      }))
+      yield* sql`SELECT 1 AS n`
+
+      const requests = yield* Coordinator.requests
+      assert.deepStrictEqual(
+        requests.map((r) => [r.body, r.headers["x-trino-catalog"], r.headers["x-trino-schema"]]),
+        [
+          ["USE tpch.tiny", "memory", "default"],
+          ["SELECT 1 AS n", "tpch", "tiny"],
+          ["SELECT 1 AS n", "memory", "default"],
+          ["START TRANSACTION", "memory", "default"],
+          ["USE tpch.sf1", "memory", "default"],
+          ["SELECT 1 AS n", "tpch", "sf1"],
+          ["COMMIT", "tpch", "sf1"],
+          ["SELECT 1 AS n", "memory", "default"]
+        ]
+      )
+    }).pipe(Effect.provide(Coordinator.layer([
+      page({ updateType: "USE", headers: { "x-trino-set-catalog": "tpch", "x-trino-set-schema": "tiny" } }),
+      page({ columns: nColumn, data: "[[1]]" }),
+      page({ columns: nColumn, data: "[[1]]" }),
+      page({ updateType: "START TRANSACTION", headers: { "x-trino-started-transaction-id": "tx1" } }),
+      page({ updateType: "USE", headers: { "x-trino-set-catalog": "tpch", "x-trino-set-schema": "sf1" } }),
+      page({ columns: nColumn, data: "[[1]]" }),
+      page({ updateType: "COMMIT", headers: { "x-trino-clear-transaction-id": "true" } }),
+      page({ columns: nColumn, data: "[[1]]" })
+    ], { catalog: "memory", schema: "default" }))))
+
   describe("transactions", () => {
+    it.effect("rolls back the server transaction when COMMIT fails", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+
+        const error = yield* Effect.flip(sql.withTransaction(sql`SELECT 1 AS n`))
+
+        assert.strictEqual(error.reason._tag, "ConnectionError")
+        const requests = yield* Coordinator.requests
+        assert.deepStrictEqual(requests.map((r) => [r.body, r.headers["x-trino-transaction-id"]]), [
+          ["START TRANSACTION", "NONE"],
+          ["SELECT 1 AS n", "tx1"],
+          ["COMMIT", "tx1"],
+          ["ROLLBACK", "tx1"]
+        ])
+      }).pipe(Effect.provide(Coordinator.layer([
+        page({ updateType: "START TRANSACTION", headers: { "x-trino-started-transaction-id": "tx1" } }),
+        page({ columns: nColumn, data: "[[1]]" }),
+        Coordinator.transportError,
+        page({ updateType: "ROLLBACK", headers: { "x-trino-clear-transaction-id": "true" } })
+      ]))))
+
     it.effect("runs a transaction on the started transaction id and commits it", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
@@ -262,12 +352,38 @@ describe("TrinoClient", () => {
         yield* TestClock.adjust("1 minute")
 
         yield* Fiber.join(fiber)
-        assert.deepStrictEqual((yield* Coordinator.requests).map((r) => r.method), ["POST", "POST", "POST"])
+        const requests = yield* Coordinator.requests
+        assert.deepStrictEqual(requests.map((r) => r.method), ["POST", "POST", "POST"])
+        // the discarded responses were released before retrying
+        assert.isTrue(requests[0].signal.aborted)
+        assert.isTrue(requests[1].signal.aborted)
       }).pipe(Effect.provide(Coordinator.layer([
         Coordinator.status(429, { "retry-after": "2" }),
         Coordinator.status(503),
         page({ updateType: "INSERT", columns: [column("rows", "bigint")], data: "[[1]]" })
       ]))))
+
+    it.effect("waits until the date in an HTTP-date Retry-After", () =>
+      Effect.gen(function*() {
+        const now = yield* Clock.currentTimeMillis
+        const retryAt = (Math.floor(now / 1000) + 10) * 1000
+        const delay = retryAt - now
+
+        const requests = yield* Effect.gen(function*() {
+          const sql = yield* SqlClient.SqlClient
+          const fiber = yield* Effect.forkChild(sql`INSERT INTO t VALUES (1)`)
+          yield* TestClock.adjust(delay - 1)
+          assert.lengthOf(yield* Coordinator.requests, 1)
+          yield* TestClock.adjust(1)
+          yield* Fiber.join(fiber)
+          return yield* Coordinator.requests
+        }).pipe(Effect.provide(Coordinator.layer([
+          Coordinator.status(429, { "retry-after": new Date(retryAt).toUTCString() }),
+          page({ updateType: "INSERT", columns: [column("rows", "bigint")], data: "[[1]]" })
+        ])))
+
+        assert.lengthOf(requests, 2)
+      }))
 
     it.effect("does not retry the initial request after an ambiguous failure", () =>
       Effect.gen(function*() {

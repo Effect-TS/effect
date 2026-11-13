@@ -25,6 +25,8 @@ export interface Request {
   readonly url: string
   readonly headers: Readonly<Record<string, string | undefined>>
   readonly body: string
+  /** Aborted once the client releases the request and its response. */
+  readonly signal: AbortSignal
 }
 
 export type Reply =
@@ -135,7 +137,7 @@ const makeCoordinator = (replies: ReadonlyArray<Reply>) =>
     const received: Array<Request> = []
     let replyIndex = 0
 
-    const httpClient = HttpClient.make((request, url) =>
+    const httpClient = HttpClient.make((request, url, signal) =>
       Effect.suspend(() => {
         if (request.method === "GET" && url.pathname === "/v1/info") {
           return Effect.succeed(respond(request, {
@@ -149,7 +151,8 @@ const makeCoordinator = (replies: ReadonlyArray<Reply>) =>
           method: request.method,
           url: url.toString(),
           headers: { ...request.headers },
-          body: bodyText(request)
+          body: bodyText(request),
+          signal
         })
         if (request.method === "DELETE") {
           return Effect.succeed(respond(request, { _tag: "Response", status: 204, headers: {}, body: null }))
