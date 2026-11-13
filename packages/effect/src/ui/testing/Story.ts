@@ -70,7 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
-import { checkChildPaths, checkFallbackPaths } from "../internal/paths.ts"
+import { checkChildPaths, checkFallbackPaths, segment } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -577,7 +577,7 @@ const expand = (
       const component = node.component as unknown as Component.Headless.Any
       if (node.view === undefined || component.parts === undefined) return node
       slots.push(node)
-      const childPath = path + "/" + component.name + "[" + node.key + "]"
+      const childPath = path + "/" + segment(node)
       const model = given !== undefined && given.has(node.key) ? given.get(node.key) : component.init(node.props).model
       const parts = component.parts(model, node.props, { owner: { path: childPath, depth: depth + 1 } })
       const tree = View.toNode(node.view(parts))
