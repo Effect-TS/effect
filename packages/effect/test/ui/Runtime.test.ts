@@ -153,6 +153,8 @@ describe("Runtime", () => {
           entry.path
         )
         assert.sameMembers(unmounted, ["/List", "/List/Row[a]", "/List/Row[b]"])
+        // Descendants close first.
+        assert.strictEqual(unmounted.at(-1), "/List")
         assert.deepStrictEqual(root.container.children, [])
       }).pipe(Effect.provide(TestHost.layer())))
 

@@ -778,9 +778,15 @@ const setup = (
     fibers.add(fiber)
     fiber.addObserver(() => fibers.delete(fiber))
   }
-  /** Closing a Scope detaches it from its parent, so the close is tracked until it ends. */
+  /**
+   * Closing a Scope detaches it from its parent, so the close is tracked until it ends. Its
+   * finalizers start at once, as in a fiber started now: only a close left with something to wait
+   * for takes a fiber.
+   */
   const closeScope = (scope: Scope.Closeable) => {
-    track(closing, forkNow(ctx, Scope.close(scope, Exit.void)))
+    const rest = Scope.closeUnsafe(scope, Exit.void)
+    if (rest === undefined || (Exit.isExit(rest) && Exit.isSuccess(rest))) return
+    track(closing, forkNow(ctx, Effect.uninterruptible(rest)))
   }
   /** Adds a finalizer without running an Effect. On a Scope already closed, it runs as a tracked close. */
   const addFinalizer = (scope: Scope.Scope, finalizer: Effect.Effect<unknown>) => {
@@ -1398,45 +1404,56 @@ const setup = (
       inst.dispatch(message, { _tag: "DomEvent", name: event })
     }
 
-    // Finalizers run in reverse: Commands stop first, then `Unmounted` is logged.
-    // Descendants, Subscriptions and mounts use child Scopes forked later, so they close before both.
-    addFinalizer(
-      inst.scope,
-      Effect.sync(() => {
-        inst.closed = true
-        dirty.delete(inst)
-        recorded.delete(inst)
-        inst.watched = undefined
-        // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
-        releaseWatches(inst)
-        record({ _tag: "Unmounted", path: inst.path })
-        // A slot that closes while it waits no longer holds up adoption.
-        if (inst.waiting) {
-          inst.waiting = false
-          settleWaiting()
-        }
-      })
-    )
-    addFinalizer(
-      inst.scope,
-      Effect.suspend(() => {
-        inst.closed = true
-        // A detached run goes on under the Layer build that owns it. Everything else ends here, and the
-        // close waits for it, and for the instance's runs that were stopped earlier and haven't exited.
-        const waits: Array<Effect.Effect<void>> = []
-        if (inst.stopping !== undefined) {
-          for (const run of inst.stopping) {
-            if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
-          }
-        }
-        for (const run of inst.runs.slice()) {
-          // An awaiting run's message is dropped with its instance, and the run ends here.
-          if (run.status === "awaiting" || !(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
-        }
-        if (inst.runs.length > 0) orphans.add(inst)
-        return awaitRuns(waits)
-      })
-    )
+    // Descendants, Subscriptions and mounts use child Scopes forked later, so they close first. Then
+    // Commands stop, and once they have exited, `Unmounted` is logged. One finalizer, run as the Scope
+    // closes: a Scope that holds nothing else needs no Map, and a close with no run to wait for
+    // ends without a fiber.
+    const finalizer = () => {
+      const waits = stopRuns(inst)
+      if (waits.length === 0) {
+        unmounted(inst)
+        return Effect.void
+      }
+      return Effect.andThen(awaitRuns(waits), Effect.sync(() => unmounted(inst)))
+    }
+    if (inst.scope.state._tag === "Closed") track(closing, forkNow(ctx, Effect.suspend(finalizer)))
+    else scopeAddFinalizerUnsafe(inst.scope, inst, finalizer)
+  }
+
+  /**
+   * Stops an instance's runs as it closes, and returns what the close waits for. A detached run goes
+   * on under the Layer build that owns it. Everything else ends here, and the close waits for it,
+   * and for the instance's runs that were stopped earlier and haven't exited.
+   */
+  const stopRuns = (inst: Instance): Array<Effect.Effect<void>> => {
+    inst.closed = true
+    const waits: Array<Effect.Effect<void>> = []
+    if (inst.stopping !== undefined) {
+      for (const run of inst.stopping) {
+        if (!run.detached && run.fiber !== undefined) waits.push(Effect.asVoid(Fiber.await(run.fiber)))
+      }
+    }
+    if (inst.runs.length === 0) return waits
+    for (const run of inst.runs.slice()) {
+      // An awaiting run's message is dropped with its instance, and the run ends here.
+      if (run.status === "awaiting" || !(run.detached && survives(inst, run))) waits.push(stopAndAwait(inst, run))
+    }
+    if (inst.runs.length > 0) orphans.add(inst)
+    return waits
+  }
+
+  const unmounted = (inst: Instance) => {
+    dirty.delete(inst)
+    recorded.delete(inst)
+    inst.watched = undefined
+    // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
+    releaseWatches(inst)
+    record({ _tag: "Unmounted", path: inst.path })
+    // A slot that closes while it waits no longer holds up adoption.
+    if (inst.waiting) {
+      inst.waiting = false
+      settleWaiting()
+    }
   }
 
   const makeInstance = (
