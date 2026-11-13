@@ -7,14 +7,18 @@
  * - `SLACK_LIVE_USER_TOKEN`: a user token with `chat:write` and
  *   `channels:history`, for the rules that need another identity's
  *   message. Without it those rules fail at `userPosts`.
+ * - `SLACK_LIVE_RECIPIENT`: a user id in the channel, the recipient of the
+ *   mention rule's streams when `SLACK_LIVE_USER_TOKEN` is not set.
  */
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import * as SlackWebApi from "@effect/chat-slack/SlackWebApi"
 import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
+import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { conformance } from "effect/chat/ChatTest"
 import type * as ChatThread from "effect/chat/ChatThread"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
@@ -26,6 +30,18 @@ const botToken = process.env.SLACK_LIVE_BOT_TOKEN
 const userToken = process.env.SLACK_LIVE_USER_TOKEN
 const teamId = process.env.SLACK_LIVE_TEAM_ID
 const channel = process.env.SLACK_LIVE_CHANNEL
+const recipientId = process.env.SLACK_LIVE_RECIPIENT
+
+/** Runs a write again after Slack's retry-after, for the rules that make many. */
+const retrying = <A>(effect: Effect.Effect<A, ChatError>): Effect.Effect<A, ChatError> =>
+  effect.pipe(Effect.catchIf(
+    (error) => error.reason._tag === "RateLimited",
+    (error) =>
+      Effect.andThen(
+        Effect.sleep(error.reason._tag === "RateLimited" ? error.reason.retryAfter ?? Duration.seconds(30) : 0),
+        retrying(effect)
+      )
+  ))
 
 const field = (u: unknown, key: string): any =>
   typeof u === "object" && u !== null && !Array.isArray(u) ? (u as Record<string, unknown>)[key] : undefined
@@ -100,7 +116,8 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
  * two appends and across the start and an append. It reads each stream back
  * while it is open and asserts it holds no token that isn't allowed, and,
  * split across appends, every allowed one. Once stopped, no U+200B is left.
- * The stream needs a recipient, the identity of `SLACK_LIVE_USER_TOKEN`. The same assertions run in CI on the request
+ * The stream needs a recipient, the identity of `SLACK_LIVE_USER_TOKEN` or
+ * `SLACK_LIVE_RECIPIENT`. The same assertions run in CI on the request
  * bodies, in `text.test.ts` and `SlackChat.test.ts`.
  */
 describe.skipIf(botToken === undefined || teamId === undefined || channel === undefined)("live mention rule", () => {
@@ -193,14 +210,24 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
     "a stream split at every position stores only allowed tokens and leaves no U+200B",
     () =>
       Effect.gen(function*() {
-        if (userToken === undefined) return yield* Effect.die(new Error("SLACK_LIVE_USER_TOKEN is not set"))
         const api = yield* SlackWebApi.make({ botToken: Redacted.make(botToken!) })
         const self = field(yield* api.call("auth.test", {}), "user_id") as string
-        const user = yield* SlackWebApi.make({ botToken: Redacted.make(userToken) })
-        const recipient = field(yield* user.call("auth.test", {}), "user_id") as string
+        const recipient = userToken === undefined
+          ? recipientId
+          : field(
+            yield* (yield* SlackWebApi.make({ botToken: Redacted.make(userToken) })).call("auth.test", {}),
+            "user_id"
+          )
+        if (recipient === undefined) {
+          return yield* Effect.die(new Error("set SLACK_LIVE_USER_TOKEN or SLACK_LIVE_RECIPIENT"))
+        }
         const slack = yield* adapter
         const native = slack.nativeStream!
-        const root = yield* slack.post(SlackChat.thread({ team: teamId!, channel: channel! }), { markdown: "streams" })
+        const root = yield* Effect.acquireRelease(
+          slack.post(SlackChat.thread({ team: teamId!, channel: channel! }), { markdown: "streams" }),
+          (root) =>
+            retrying(slack.delete(SlackChat.thread({ team: teamId!, channel: channel! }), root.id)).pipe(Effect.ignore)
+        )
         const thread = SlackChat.thread({ team: teamId!, channel: channel!, threadTs: root.id })
         const stored = (ts: string) =>
           api.call("conversations.replies", { channel, ts, latest: ts, oldest: ts, inclusive: true, limit: 2 }).pipe(
@@ -230,34 +257,36 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
           const label = `${JSON.stringify(markdown)} at ${at} across ${across} allowing ${users}`
           const allowed = (found: string) => users.some((id) => found.startsWith(`<@${id}`))
           const first = markdown.slice(0, at)
-          let id: string
+          const { id } = yield* Effect.acquireRelease(
+            retrying(native.start(thread, { markdown: across === "start" ? "s " + first : "s ", recipient })),
+            ({ id }) => retrying(slack.delete(thread, id)).pipe(Effect.ignore)
+          )
           if (across === "start") {
-            id = (yield* native.start(thread, { markdown: "s " + first, recipient })).id
-            yield* native.append(thread, id, markdown.slice(at), { flush: true })
+            yield* retrying(native.append(thread, id, markdown.slice(at), { flush: true }))
           } else {
-            id = (yield* native.start(thread, { markdown: "s ", recipient })).id
-            const { held } = yield* native.append(thread, id, first, undefined)
-            yield* native.append(thread, id, first.slice(first.length - held) + markdown.slice(at), { flush: true })
+            const { held } = yield* retrying(native.append(thread, id, first, undefined))
+            yield* retrying(
+              native.append(thread, id, first.slice(first.length - held) + markdown.slice(at), { flush: true })
+            )
           }
           // What the stream stored, which is what Slack decided mentions from.
           const open = (yield* stored(id)).text as string
           assert.deepStrictEqual(tokens(open).filter((found) => !allowed(found)), [], label)
           // Held text keeps an allowed token whole. The start holds nothing, so it may break one.
           if (across === "appends") assert.strictEqual(tokens(open).length, users.length, label)
-          yield* native.stop(thread, id, { end: "done" })
+          yield* retrying(native.stop(thread, id, { end: "done" }))
           const message = yield* stored(id)
           assert.deepStrictEqual(tokens(message.text).filter((found) => !allowed(found)), [], label)
           assert.notInclude(JSON.stringify([message.text, message.blocks]), "\u200B", label)
-          yield* slack.delete(thread, id).pipe(Effect.ignore)
-        }, (effect, _markdown, users) => SlackChat.withPostOptions({ notify: { users } })(effect))
+        }, (effect, _markdown, users) =>
+          SlackChat.withPostOptions({ notify: { users } })(effect), Effect.scoped)
         for (const [markdown, users] of inputs) {
           for (let at = 0; at <= markdown.length; at++) {
             yield* streamed(markdown, users, at, "appends")
             yield* streamed(markdown, users, at, "start")
           }
         }
-        yield* slack.delete(thread, root.id).pipe(Effect.ignore)
-      }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)),
-    3_600_000
+      }).pipe(Effect.scoped, Effect.provide(layer), Effect.provide(FetchHttpClient.layer)),
+    7_200_000
   )
 })
