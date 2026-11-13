@@ -252,6 +252,223 @@ describe("Runtime", () => {
         assert.deepStrictEqual(moves(), ["insert <li> before <li>"])
       })))
 
+    it.effect("rows added or removed at the end touch no other node", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        const items = () => root.all(Query.tag("li"))
+        const before = items()
+        const structural = () =>
+          testHost.host.operations().filter((op) =>
+            op.startsWith("insert") || op.startsWith("remove") || op.startsWith("create")
+          )
+
+        // `foot` has no key, so it is matched by position and made again where the count changes.
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "b", "c", "d", "e", "f"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headabcdeffoot")
+        assert.deepStrictEqual(items().slice(0, 5), before.slice(0, 5))
+        assert.strictEqual(structural().filter((op) => op.startsWith("insert <li>")).length, 3)
+
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "b"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headabfoot")
+        assert.deepStrictEqual(items().slice(0, 3), before.slice(0, 3))
+        assert.strictEqual(structural().filter((op) => op.startsWith("insert <li>")).length, 1)
+      })))
+
+    it.effect("a list with nothing after it grows and shrinks at its end", () =>
+      provideHost(Effect.gen(function*() {
+        const Msg = Schema.Array(Schema.String)
+        const Tail = Component.define({ name: "Tail", model: Msg, message: Msg }).make({
+          init: () => ["a", "b"],
+          update: (_, ids) => ids,
+          view: (ids, h) => h.el("ul", ids.map((id) => h.el("li").key(id).children(id)))
+        })
+        const root = yield* TestHost.mount(Tail, {}, { fallback: (_, h) => h.el("h1", "down") })
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        const items = () => root.all(Query.tag("li"))
+        const [a, b] = items()
+
+        testHost.host.clearOperations()
+        root.send(["a", "b", "c", "d"])
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "abcd")
+        assert.deepStrictEqual(items().slice(0, 2), [a, b])
+        assert.strictEqual(testHost.host.operations().filter((op) => op.startsWith("insert <li>")).length, 2)
+
+        const [, , c] = items()
+        testHost.host.clearOperations()
+        root.send(["a", "b", "c"])
+        yield* TestHost.settle
+        assert.deepStrictEqual(items(), [a, b, c])
+        assert.isFalse(testHost.host.operations().some((op) => op.startsWith("insert")))
+
+        root.send([])
+        yield* TestHost.settle
+        assert.deepStrictEqual(items(), [])
+        root.send(["x", "y"])
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "xy")
+
+        // A key the rows that stayed already hold fails the render, though only the end changed.
+        root.send(["x", "y", "x"])
+        const crashed = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(crashed._tag, "RootCrashed")
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.include(Cause.pretty(failed.cause), "/Tail: two siblings share the key li[x]")
+      })))
+
+    it.effect("an empty list filled with one key twice fails the instance", () =>
+      provideHost(Effect.gen(function*() {
+        const Msg = Schema.Array(Schema.String)
+        const Fill = Component.define({ name: "Fill", model: Msg, message: Msg }).make({
+          init: (): ReadonlyArray<string> => [],
+          update: (_, ids) => ids,
+          view: (ids, h) => h.el("ul", ids.map((id) => h.el("li").key(id).children(id)))
+        })
+        const root = yield* TestHost.mount(Fill, {}, { fallback: (_, h) => h.el("h1", "down") })
+        yield* TestHost.settle
+        root.send(["a", "b", "a"])
+        const crashed = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(crashed._tag, "RootCrashed")
+        assert.strictEqual(root.text(), "down")
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.strictEqual(failed.source, "view")
+        assert.include(Cause.pretty(failed.cause), "/Fill: two siblings share the key li[a]")
+      })))
+
+    it.effect("a first render with one key twice fails the instance", () =>
+      provideHost(Effect.gen(function*() {
+        const Twice = Component.define({ name: "Twice", model: Schema.Null, message: Schema.Never }).make({
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) => h.el("ul", ["a", "b", "a"].map((id) => h.el("li").key(id).children(id)))
+        })
+        const Parent = Component.define({ name: "Parent", model: Schema.Null, message: Schema.Never }).make({
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) =>
+            h.el("div", "before ", h.child(Twice, { key: "t", props: {}, fallback: () => h.text("down") }))
+        })
+        const root = yield* TestHost.mount(Parent, {})
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "before down")
+        assert.deepStrictEqual(root.all(Query.tag("li")), [])
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.strictEqual(failed.source, "view")
+        assert.include(Cause.pretty(failed.cause), "/Parent/Twice[t]: two siblings share the key li[a]")
+      })))
+
+    it.effect("attributes that went are removed before the ones that changed are set", () =>
+      provideHost(Effect.gen(function*() {
+        const Attrs = Component.define({ name: "Attrs", model: Schema.Number, message: Schema.Number }).make({
+          init: () => 0,
+          update: (_, step) => step,
+          view: (step, h) =>
+            step === 0
+              ? h.el("p").attr("id", "a").attr("title", "t").attr("constructor", "c").children("x")
+              : step === 1
+              ? h.el("p").attr("id", "b").attr("lang", "en").children("x")
+              : h.el("p").children("x")
+        })
+        const root = yield* TestHost.mount(Attrs, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        const attrs = () => testHost.host.operations().filter((op) => op.startsWith("attr"))
+        testHost.host.clearOperations()
+        root.send(1)
+        yield* TestHost.settle
+        assert.deepStrictEqual(attrs(), [
+          "attr <p> title=(removed)",
+          "attr <p> constructor=(removed)",
+          "attr <p> id=\"b\"",
+          "attr <p> lang=\"en\""
+        ])
+        testHost.host.clearOperations()
+        root.send(2)
+        yield* TestHost.settle
+        assert.deepStrictEqual(attrs(), ["attr <p> id=(removed)", "attr <p> lang=(removed)"])
+        testHost.host.clearOperations()
+        root.send(0)
+        yield* TestHost.settle
+        assert.deepStrictEqual(attrs(), [
+          "attr <p> id=\"a\"",
+          "attr <p> title=\"t\"",
+          "attr <p> constructor=\"c\""
+        ])
+      })))
+
+    it.effect("a row inserted or removed in the middle leaves the rows around it alone", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const testHost = yield* TestHost.TestHost
+        const items = () => root.all(Query.tag("li"))
+        const [head, a, b, c, d] = items()
+        // Without `foot`, which has no key and is made again where the count changes.
+        const moves = () => testHost.host.operations().filter((op) => op.startsWith("insert <li>")).length - 1
+
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "b", "x", "c", "d"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headabxcdfoot")
+        const x = items()[3]
+        assert.deepStrictEqual(items().slice(0, 6), [head, a, b, x, c, d])
+        assert.strictEqual(moves(), 1)
+
+        testHost.host.clearOperations()
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "x", "d"] }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "headaxdfoot")
+        assert.deepStrictEqual(items().slice(0, 4), [head, a, x, d])
+        assert.strictEqual(moves(), 0)
+
+        // The key of a row before the change, used again after it.
+        root.send(RowsMessage.make({ _tag: "Show", ids: ["a", "x", "q", "a", "d"] }))
+        const crashed = yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(crashed._tag, "RootCrashed")
+        const failed = root.log().find((entry) => entry._tag === "Failed") as MessageLog.Failed
+        assert.include(Cause.pretty(failed.cause), "/Rows: two siblings share the key li[a]")
+      })))
+
+    it.effect("any sequence of keyed lists keeps each key's node, in the order shown", () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Rows, {})
+        yield* TestHost.settle
+        const items = () => root.all(Query.tag("li"))
+        // A fixed sequence of pseudo-random lists over a small alphabet, so keys come and go and move.
+        let seed = 12345
+        const random = (below: number) => {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff
+          return seed % below
+        }
+        const alphabet = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        let nodes = new Map(["a", "b", "c", "d"].map((id, index) => [id, items()[index + 1]]))
+        for (let round = 0; round < 200; round++) {
+          const pool = [...alphabet]
+          const ids: Array<string> = []
+          const length = random(alphabet.length + 1)
+          for (let index = 0; index < length; index++) ids.push(pool.splice(random(pool.length), 1)[0]!)
+          root.send(RowsMessage.make({ _tag: "Show", ids }))
+          yield* TestHost.settle
+          const shown = items()
+          assert.strictEqual(root.text(), `head${ids.join("")}foot`)
+          assert.strictEqual(shown.length, ids.length + 2)
+          const next = new Map<string, unknown>()
+          ids.forEach((id, index) => {
+            const node = shown[index + 1]
+            if (nodes.has(id)) assert.strictEqual(node, nodes.get(id), `round ${round}: ${id} kept its node`)
+            next.set(id, node)
+          })
+          nodes = next as typeof nodes
+        }
+      })))
+
     it.effect("two siblings with one key fail the instance", () =>
       provideHost(Effect.gen(function*() {
         const root = yield* TestHost.mount(Rows, {}, { fallback: (_, h) => h.el("h1", "down") })
@@ -1185,6 +1402,55 @@ describe("Runtime", () => {
         root.send(Msg.make({ _tag: "Rename", text: "two" }))
         yield* TestHost.settle
         assert.deepStrictEqual(tags(root, "/Host/Label[l]"), ["Mounted", "PropsChanged"])
+      })))
+
+    it.effect("props are compared a field at a time, and a field that differs by reference by Equal", () =>
+      provideHost(Effect.gen(function*() {
+        const Row = Schema.Struct({ id: Schema.Number, label: Schema.String, tags: Schema.Array(Schema.String) })
+        const Cell = Component.define({
+          name: "Cell",
+          props: Schema.Struct({ row: Row, at: Schema.Option(Schema.Number), ratio: Schema.Number }),
+          model: Schema.Null,
+          message: Schema.Never
+        }).make({
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) => h.el("span", `${h.props.row.label}:${h.props.row.tags.join()}`)
+        })
+        const Props = Schema.Struct({ row: Row, at: Schema.Option(Schema.Number), ratio: Schema.Number })
+        const Table = Component.define({ name: "Table", model: Props, message: Props }).make({
+          init: () => ({ row: { id: 1, label: "one", tags: ["x"] }, at: Option.some(1), ratio: NaN }),
+          update: (_, next) => next,
+          view: (model, h) => h.el("div", h.child(Cell, { key: "c", props: model }))
+        })
+        const root = yield* TestHost.mount(Table, {})
+        yield* TestHost.settle
+        const changes = () => tags(root, "/Table/Cell[c]").filter((tag) => tag === "PropsChanged").length
+
+        // New records that hold what the old ones held, NaN included: nothing changed.
+        root.send({ row: { id: 1, label: "one", tags: ["x"] }, at: Option.some(1), ratio: NaN })
+        yield* TestHost.settle
+        assert.strictEqual(changes(), 0)
+
+        // One field of a record differs.
+        root.send({ row: { id: 1, label: "uno", tags: ["x"] }, at: Option.some(1), ratio: NaN })
+        yield* TestHost.settle
+        assert.strictEqual(changes(), 1)
+        assert.strictEqual(root.text(), "uno:x")
+
+        // The fields that hold plain values are the same, and one that holds an array isn't.
+        root.send({ row: { id: 1, label: "uno", tags: ["x", "y"] }, at: Option.some(1), ratio: NaN })
+        yield* TestHost.settle
+        assert.strictEqual(changes(), 2)
+        assert.strictEqual(root.text(), "uno:x,y")
+
+        // A value with its own equality.
+        root.send({ row: { id: 1, label: "uno", tags: ["x", "y"] }, at: Option.some(2), ratio: NaN })
+        yield* TestHost.settle
+        assert.strictEqual(changes(), 3)
+        root.send({ row: { id: 1, label: "uno", tags: ["x", "y"] }, at: Option.some(2), ratio: 0.5 })
+        yield* TestHost.settle
+        assert.strictEqual(changes(), 4)
       })))
   })
 

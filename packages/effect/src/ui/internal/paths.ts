@@ -45,7 +45,11 @@ const escapeChar = (char: string): string => "%" + char.charCodeAt(0).toString(1
 export interface ChildPaths {
   readonly path: string
   // Each Map is made for its first entry: most views render no child slot, and none with a ref.
-  paths: Map<string, View.Child<any, any>> | undefined
+  /**
+   * The slots by their component's name, then by their key. A name and a key make one segment, and
+   * two that differ make two, so this finds a taken path without writing every slot's segment.
+   */
+  paths: Map<string, Map<string, View.Child<any, any>>> | undefined
   refs: Map<string, View.Child<any, any>> | undefined
 }
 
@@ -77,25 +81,35 @@ export const checkChildPaths = (path: string, tree: View.Node<any, any>): ChildP
  */
 const visit = (
   paths: ChildPaths,
-  tree: View.Node<any, any>,
+  node: View.Node<any, any>,
   replaced: View.Child<any, any> | undefined,
   where: string
 ): void => {
-  const claim = (taken: Map<string, View.Child<any, any>>, key: string, node: View.Child<any, any>, what: string) => {
-    const holder = taken.get(key)
-    if (holder !== undefined && holder !== replaced) failure(paths.path, `${what}${where}`)
-    taken.set(key, node)
-  }
-  const go = (node: View.Node<any, any>): void => {
-    if (node._tag === "Element") {
-      for (const child of node.children) go(child)
-    } else if (node._tag === "Child") {
-      const key = segment(node)
-      claim(paths.paths ??= new Map(), key, node, `at ${key}`)
-      if (node.ref !== undefined) claim(paths.refs ??= new Map(), node.ref.key, node, `with the ref ${node.ref.key}`)
+  if (node._tag === "Element") {
+    const children = node.children
+    for (let index = 0; index < children.length; index++) {
+      const child = children[index]!
+      // Text and an element with no children hold no slot: most of a view, passed over without a call.
+      if (child._tag === "Child" || (child._tag === "Element" && child.children.length > 0)) {
+        visit(paths, child, replaced, where)
+      }
+    }
+  } else if (node._tag === "Child") {
+    const name = childName(node.component)
+    const byName = paths.paths ??= new Map()
+    let taken = byName.get(name)
+    if (taken === undefined) byName.set(name, taken = new Map())
+    const holder = taken.get(node.key)
+    if (holder !== undefined && holder !== replaced) failure(paths.path, `at ${segment(node)}${where}`)
+    taken.set(node.key, node)
+    const ref = node.ref
+    if (ref !== undefined) {
+      const refs = paths.refs ??= new Map()
+      const refHolder = refs.get(ref.key)
+      if (refHolder !== undefined && refHolder !== replaced) failure(paths.path, `with the ref ${ref.key}${where}`)
+      refs.set(ref.key, node)
     }
   }
-  go(tree)
 }
 
 /**

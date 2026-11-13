@@ -572,7 +572,8 @@ export class VoidElement<
    * @since 4.1.5
    */
   class(...tokens: ReadonlyArray<ClassToken>): this {
-    const value = joinClassTokens(tokens)
+    // One token, the common call, is the value as it is.
+    const value = tokens.length === 1 ? tokens[0] || "" : joinClassTokens(tokens)
     return this.attr("class", value === "" ? undefined : value)
   }
   /**
@@ -958,7 +959,7 @@ export class Element<
   children<const C extends ReadonlyArray<View.Input<Msg, any>>>(
     ...inputs: C
   ): View.Element<Msg, R | View.Requirements<C[number]>> {
-    return View.build(this, inputs)
+    return View.buildOwned(this, inputs)
   }
 }
 

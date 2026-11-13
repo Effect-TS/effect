@@ -538,6 +538,16 @@ describe("BrowserHost", { concurrent: false }, () => {
         }
         expect(submitted(bare.querySelector("form")!)).toBe(true)
         expect(submitted(outside.querySelector("form")!)).toBe(false)
+        // The tag as the author wrote it isn't what makes it a form.
+        const Upper = Component.define({ name: "Upper", model: Schema.Null, message: Schema.Never, elements: Html })
+          .make({
+            init: () => null,
+            update: (model) => model,
+            view: (_, h) => h.el("FORM", h.input.attr("name", "q"))
+          })
+        const upper = yield* container
+        yield* BrowserHost.mountEffect(Upper, {}, upper)
+        expect(submitted(upper.querySelector("form")!)).toBe(true)
       }).pipe(Effect.scoped))
 
     it.effect("preventDefault cancels the default only when the handler sends, before the message is sent", () =>

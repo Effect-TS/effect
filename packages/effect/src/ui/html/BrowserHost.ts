@@ -98,7 +98,7 @@ import * as Loader from "../../reactivity/Loader.ts"
 import type * as Scope from "../../Scope.ts"
 import type * as Component from "../Component.ts"
 import * as Renderer from "../Renderer.ts"
-import type * as View from "../View.ts"
+import * as View from "../View.ts"
 import * as Html from "./Html.ts"
 import * as headSync from "./internal/head.ts"
 import * as markers from "./internal/markers.ts"
@@ -175,6 +175,8 @@ interface Bound {
 }
 
 const isEmpty = (record: object): boolean => {
+  // The record of a builder that set nothing, which needs no reading.
+  if (record === View.noFields) return true
   for (const _ in record) return false
   return true
 }
@@ -768,8 +770,17 @@ export const makeHost = (
   }
   for (const name of alwaysEvents) listen(name)
 
+  // The element `createElement` made last, until its events are set: it has no entry yet, and its
+  // tag is known without asking the node.
+  let fresh: globalThis.Node | undefined
+  // Whether its tag is `form` in any case, so only such an element is asked what it is.
+  let freshMayBeForm = false
+
   return {
-    createElement: (tag) => svgTags.has(tag) ? document.createElementNS(SVG, tag) : document.createElement(tag),
+    createElement(tag) {
+      freshMayBeForm = tag.length === 4 && (tag === "form" || tag.toLowerCase() === "form")
+      return fresh = svgTags.has(tag) ? document.createElementNS(SVG, tag) : document.createElement(tag)
+    },
     createText: (text) => document.createTextNode(text),
     setText(node, text) {
       const t = node as globalThis.Text
@@ -853,10 +864,17 @@ export const makeHost = (
     nextOf: (node) => node.nextSibling ?? undefined,
     setEvents(node, handlers, dispatch, options) {
       // An element with no events needs no entry, except a form: an entry marks it as the app's.
-      if (isEmpty(handlers) && isEmpty(options) && node.nodeName !== "FORM") {
-        bound.delete(node)
-        return
+      if (isEmpty(handlers) && isEmpty(options)) {
+        if (node === fresh) {
+          // New, as most elements given no events are: there is no entry to remove.
+          fresh = undefined
+          if (!freshMayBeForm || node.nodeName !== "FORM") return
+        } else if (node.nodeName !== "FORM") {
+          bound.delete(node)
+          return
+        }
       }
+      fresh = undefined
       bound.set(node, { handlers, dispatch, options })
       for (const name in handlers) listen(name)
       // A drag source needs its `dragstart` without a handler, and a drop target all of its events.

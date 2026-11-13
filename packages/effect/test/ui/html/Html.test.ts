@@ -186,6 +186,62 @@ describe("Html", () => {
       const chained = decorated.attr("id", "save").key("k")
       assert.strictEqual(chained.tone, "warm")
       assert.strictEqual(chained[mark], 1)
+      // A field under a symbol alone, on a class whose other builders hold none.
+      const marked = Object.assign(new View.ElementBuilder<TodoMessage>("button").attr("id", "a"), { [mark]: 2 })
+      assert.strictEqual(marked.attr("id", "b").key("k")[mark], 2)
+    })
+
+    it("children are the same nodes however they are passed", () => {
+      const h = helper()
+      const cases: ReadonlyArray<ReadonlyArray<View.Input<TodoMessage, any>>> = [
+        [],
+        ["a"],
+        ["a", "b"],
+        ["a", h.text("b"), h.span],
+        [h.span, "a", h.text("b")],
+        [h.text("a"), h.span, "b"],
+        ["", "a"],
+        ["a", ""],
+        [h.span, h.text("")],
+        [h.span, false, "a"],
+        ["a", null, "b"],
+        [h.span, undefined, h.p("x")],
+        [h.span, ["a", "b"], "c"],
+        ["a", [h.span, false], h.child(Item, { key: "i", props: { title: "t" } })],
+        [h.span.attr("id", "x"), h.p("x"), h.child(Item, { key: "i", props: { title: "t" } }), "end"]
+      ]
+      for (const inputs of cases) {
+        const expected: ReadonlyArray<View.Node<TodoMessage, any>> = View.children(inputs)
+        assert.deepStrictEqual(h.div.children(...inputs).children, expected)
+        assert.deepStrictEqual(h.div(...inputs as [View.Input<TodoMessage, any>]).children, expected)
+        assert.deepStrictEqual(new View.ContainerBuilder<TodoMessage>("div").children(...inputs).children, expected)
+      }
+    })
+
+    it("View.build leaves the inputs it is given as they were", () => {
+      const h = helper()
+      const inputs: ReadonlyArray<View.Input<TodoMessage>> = ["a", h.span, false, ["b"]]
+      const copy = [...inputs]
+      const built = View.build(h.div, inputs)
+      assert.deepStrictEqual(inputs, copy)
+      assert.strictEqual(inputs[1], copy[1])
+      assert.deepStrictEqual(built.children.map((child) => child._tag), ["Text", "Element", "Text"])
+    })
+
+    it("builders that set nothing share their empty records, and a chain call never writes to them", () => {
+      const h = helper()
+      const empty = h.div.attrs
+      assert.strictEqual(h.span.attrs, empty)
+      assert.isTrue(Object.isFrozen(empty))
+      const set = h.div.attr("id", "a").prop("hidden", true).on("click", add)
+      assert.deepStrictEqual(set.attrs, { id: "a" })
+      assert.deepStrictEqual(Object.keys(set.handlers), ["click"])
+      assert.deepStrictEqual(Object.keys(empty), [])
+      assert.deepStrictEqual(h.div.attrs, {})
+      assert.deepStrictEqual(h.div.props, {})
+      assert.deepStrictEqual(h.div.handlers, {})
+      // Removing the only attribute leaves a record with none.
+      assert.deepStrictEqual(set.attr("id", undefined).attrs, {})
     })
 
     it("__proto__ is an attribute or property like any other name", () => {
