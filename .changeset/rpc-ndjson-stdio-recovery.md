@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Keep serving RPC and MCP stdio after a malformed NDJSON line. The server answers JSON-RPC with a `-32700` parse error and still handles the other frames in the same chunk, instead of retrying the whole stdin stream, which lost input that cannot be replayed. The NDJSON decoder also clears its pending UTF-8 bytes after a malformed frame, and `Parser.decode` takes an optional `onError` that reports each malformed frame and keeps decoding.
+Keep RPC and MCP stdio servers answering after a malformed NDJSON line, replying with a JSON-RPC `-32700` parse error and still handling the other frames. `RpcSerialization`'s `makeUnsafe` accepts `onDecodeError` to receive malformed NDJSON frames instead of throwing, and a throwing NDJSON decode now discards its pending UTF-8 bytes.

@@ -61,6 +61,10 @@ const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new Tex
  */
 export class RpcSerialization extends Context.Service<RpcSerialization, {
   makeUnsafe(options?: {
+    /**
+     * Receives each malformed NDJSON frame instead of `decode` throwing, so the
+     * frames around it still decode. Other decoding failures still throw.
+     */
     readonly onDecodeError?: ((error: unknown) => void) | undefined
   }): Parser
   readonly contentType: string
@@ -71,12 +75,6 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
 /**
  * A stateful parser for an RPC serialization format, able to decode input
  * chunks into protocol messages and encode messages for transport.
- *
- * **Details**
- *
- * NDJSON parsers report malformed frames to `makeUnsafe`'s `onDecodeError`
- * callback when provided, preserving valid frames around them. Otherwise,
- * malformed frames throw. Other decoding failures may still throw.
  *
  * @stability unstable
  * @category serialization

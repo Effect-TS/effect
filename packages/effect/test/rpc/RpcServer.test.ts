@@ -775,9 +775,6 @@ describe("RpcServer", () => {
 
   it.live("encodes thrown stdio decode defects with the serialization codec without resubscribing", () =>
     Effect.gen(function*() {
-      const serialization = yield* RpcSerialization.RpcSerialization.pipe(
-        Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 0 }))
-      )
       const codec = yield* RpcSerialization.RpcSerialization.pipe(
         Effect.provide(RpcSerialization.layerSchemaBinary())
       )
@@ -789,7 +786,7 @@ describe("RpcServer", () => {
         const protocol = yield* RpcServer.makeProtocolStdio
         return yield* protocol.run(() => Effect.void)
       }).pipe(
-        Effect.provide(Layer.succeed(RpcSerialization.RpcSerialization)(serialization)),
+        Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 0 })),
         Effect.provide(Stdio.layerTest({
           stdin: Stream.suspend(() => {
             subscriptions++
