@@ -288,18 +288,17 @@ describe("SqlMessageStorage", () => {
                 yield* storage.saveRequest(request)
                 yield* storage.saveReply(oldReply)
                 const reset = storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
+                const save = storage.saveReply(newReply)
                 // A competing runner resets the old completion before saving its new reply.
-                const save = saveFirst
-                  ? Effect.andThen(reset, storage.saveReply(newReply))
-                  : storage.saveReply(newReply)
+                const [first, second] = saveFirst ? [Effect.andThen(reset, save), reset] : [reset, save]
                 // Hold the first operation's lock while the second connection starts.
-                const first = yield* Effect.gen(function*() {
-                  yield* (saveFirst ? save : reset)
-                  yield* sql`SELECT pg_sleep(2)`
-                }).pipe(sql.withTransaction, Effect.forkChild)
+                const fiber = yield* Effect.andThen(first, sql`SELECT pg_sleep(2)`).pipe(
+                  sql.withTransaction,
+                  Effect.forkChild
+                )
                 yield* waitForPgSleep
-                yield* (saveFirst ? reset : save)
-                yield* Fiber.join(first)
+                yield* second
+                yield* Fiber.join(fiber)
                 const replies = yield* storage.repliesFor([request])
                 assert.strictEqual(replies.at(-1)?.id, newReply.reply.id)
                 assert.deepStrictEqual(yield* storage.unprocessedMessages([request.envelope.address.shardId]), [])
