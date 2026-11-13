@@ -25,6 +25,7 @@
     "@effect/sql-sqlite-node": "workspace:*",
     "@effect/sql-sqlite-react-native": "workspace:*",
     "@effect/sql-sqlite-wasm": "workspace:*",
+    "@effect/sql-trino": "workspace:*",
     "@effect/vitest": "workspace:*",
     "effect": "workspace:*",
     "hono": "^4.13.14",
