@@ -1,6 +1,7 @@
 import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import type { NotAccepted } from "effect/chat/ChatHandler"
+import * as ChatInteraction from "effect/chat/ChatInteraction"
 import * as Clock from "effect/Clock"
 import { WebCrypto } from "effect/crypto/WebCrypto"
 import type * as Duration from "effect/Duration"
@@ -9,6 +10,7 @@ import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { normalize } from "./normalize.ts"
 
@@ -160,4 +162,52 @@ export const handleRequest = (
       Effect.catchTag("NotAccepted", () => Effect.succeed(false))
     )
     return handled ? ok : status(503)
+  })
+
+/** @internal */
+export interface InteractivityOptions {
+  readonly verify: Options["verify"]
+  readonly appId: string
+  readonly interaction: (
+    payload: unknown,
+    options: { readonly deadline: Duration.Duration }
+  ) => Effect.Effect<Schema.Json | undefined | ChatInteraction.Late>
+  readonly deadline: Duration.Duration
+  readonly maxBodyBytes: number
+}
+
+const isLate = Schema.is(ChatInteraction.Late)
+
+/**
+ * One Interactivity request: a form-encoded body whose `payload` field
+ * holds the JSON.
+ *
+ * - 413 past the body limit, 401 for a bad signature, 400 for a body with
+ *   no `payload` that is a JSON object.
+ * - A payload for another app is answered 200 and dropped.
+ * - `Late` is answered 503, which keeps a modal open. Anything else is a
+ *   200, with the body as JSON when there is one.
+ *
+ * @internal
+ */
+export const handleInteractivity = (
+  request: HttpServerRequest.HttpServerRequest,
+  options: InteractivityOptions
+): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
+  Effect.gen(function*() {
+    const body = yield* readBody(request, options.maxBodyBytes)
+    if (Option.isNone(body)) return status(413)
+    if (!(yield* options.verify(request.headers, body.value))) return status(401)
+    const field = new URLSearchParams(new TextDecoder().decode(body.value)).get("payload")
+    let payload: unknown
+    try {
+      payload = field === null ? undefined : JSON.parse(field)
+    } catch {
+      return status(400)
+    }
+    if (!isObject(payload)) return status(400)
+    if (payload.api_app_id !== options.appId) return ok
+    const answer = yield* options.interaction(payload, { deadline: options.deadline })
+    if (answer === undefined) return ok
+    return isLate(answer) ? status(503) : HttpServerResponse.jsonUnsafe(answer)
   })

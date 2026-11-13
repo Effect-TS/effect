@@ -1,6 +1,7 @@
 /**
  * The Slack adapter for `effect/chat`: the `Registry` layer, the Events API
- * webhook, the pure normaliser, address helpers and the scoped post options.
+ * webhook, the Interactivity route for buttons and modals, the pure
+ * normalisers, address helpers and the scoped post options.
  *
  * **Details**
  *
@@ -11,6 +12,12 @@
  * - Event subscriptions, sent to `layerWebhook`'s path: `message.channels`,
  *   `message.groups`, `message.im`, `message.mpim`, `app_mention`,
  *   `reaction_added`, `reaction_removed` and `agent_session_stopped`.
+ * - Buttons, selects and modals need Interactivity, which is its own
+ *   switch in the app settings, off by default, with its own Request URL,
+ *   separate from Event Subscriptions. Point it at `layerInteractivity`'s
+ *   path. With Socket Mode on, Slack sends interactions over the socket and
+ *   never to the URL: pass each payload to `SlackChat.interaction` and send
+ *   its result as the envelope ack's `payload`.
  * - Slack's stop button also needs the app declared as an agent with
  *   `features.agent_view` in the manifest. Slack documents that declaration
  *   as irreversible. Without it the adapter's session status calls answer
@@ -27,6 +34,7 @@ import { Registry } from "effect/chat/ChatAdapter"
 import { type ChatError, ChatErrorReason } from "effect/chat/ChatError"
 import type { ChatEvent } from "effect/chat/ChatEvent"
 import { ChatHandler } from "effect/chat/ChatHandler"
+import * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ParseMention } from "effect/chat/ChatTest"
 import { ChatThread } from "effect/chat/ChatThread"
 import * as Context from "effect/Context"
@@ -43,6 +51,7 @@ import * as Adapter from "./internal/adapter.ts"
 import * as Address from "./internal/address.ts"
 import * as Emoji from "./internal/emoji.ts"
 import * as Errors from "./internal/errors.ts"
+import * as Interactions from "./internal/interactions.ts"
 import * as Mentions from "./internal/mentions.ts"
 import * as Normalize from "./internal/normalize.ts"
 import { CurrentPostOptions } from "./internal/options.ts"
@@ -80,6 +89,25 @@ export interface SlackUser {
  * - `botUserId` comes from `auth.test`, read once. A failed read is tried
  *   again next time.
  * - `user` calls `users.info` each time. Nothing is cached.
+ * - `interaction` is the entry for a decoded Interactivity `payload`
+ *   (`block_actions` or `view_submission`), as `DiscordChat.interaction`
+ *   is for Discord. It normalises with `normalizeInteraction`, calls the
+ *   handler through `ChatInteraction.handle` inside `deadline` (2.5
+ *   seconds by default, the handler's share of Slack's 3), opens a modal
+ *   with `views.open` and calls `Handler.refused` when it can't.
+ * - It succeeds with the body to answer Slack with: the JSON of the 200 on
+ *   the Request URL, or the `payload` of the envelope ack on Socket Mode.
+ *   `undefined` is an empty answer: an ack, a close, a late click, or a
+ *   payload that is not from an element this adapter built.
+ * - `Late` is a submit whose handler ran past the deadline and was
+ *   interrupted. It is not an answer, since an empty one would close the
+ *   modal: `layerInteractivity` answers 503 for it, which keeps the modal
+ *   open, and a caller on Socket Mode sends no ack. `Late` is itself a
+ *   JSON value, so test for it with `Schema.is(ChatInteraction.Late)`
+ *   before treating the result as a body.
+ * - `interaction` checks no signature and no app id: that is the
+ *   transport's job. It needs `ChatInteraction.Handler` where it is
+ *   called, so the layer does not need it.
  *
  * @stability unstable
  * @category services
@@ -89,6 +117,10 @@ export class SlackChat extends Context.Service<SlackChat, {
   readonly teamId: string
   readonly botUserId: Effect.Effect<string, ChatError>
   readonly user: (id: string) => Effect.Effect<SlackUser, ChatError>
+  readonly interaction: (payload: unknown, options?: {
+    /** The handler's share of Slack's 3 seconds. Default 2.5 seconds. */
+    readonly deadline?: Duration.Duration | undefined
+  }) => Effect.Effect<Schema.Json | undefined | ChatInteraction.Late, never, ChatInteraction.Handler>
 }>()("@effect/chat-slack/SlackChat") {}
 
 /**
@@ -162,6 +194,23 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - The native stream needs a thread and a recipient, and rotates before
  *   Slack's ten minute cap. A reply that ends after a click on the stop
  *   button moves the agent session off `processing`.
+ * - A message's buttons, link buttons and selects go in one `actions` block
+ *   after the `markdown` block, on `post` and on `edit`. A button's id is
+ *   its `action_id` and its value its `value`. A message with elements and
+ *   no Markdown has no `markdown` block, and its `text` is the button
+ *   labels joined by a space. A streamed reply gets its buttons by `edit`
+ *   after the stream stops.
+ * - Elements are refused before the call past 25 in a message, for an id
+ *   longer than 255 or holding U+241F, and for an id plus a value longer
+ *   than 2,000, all in code points.
+ * - Text and elements share Slack's 13,200 budget, so
+ *   `descriptor.measure(markdown, actions)` counts the `actions` block as
+ *   Slack stores it, with every non-ASCII unit at 6. A `value` near 2,000
+ *   uses up the budget by itself. A `post` whose elements push it past the
+ *   cap fails `TooLarge` with `msg_blocks_too_long`, and nothing is posted.
+ *   The adapter never falls back to posting the text and adding the elements
+ *   by `edit`. A caller can: `chat.update` had no 13,200 cap when tested,
+ *   which Slack does not document.
  *
  * @stability unstable
  * @category layers
@@ -201,7 +250,8 @@ export const layer = (options: {
         attachFailed: (fields) => new SlackAttachFailed(fields)
       })
       yield* registry.register(adapter)
-      return SlackChat.of({ teamId: options.teamId, botUserId, user })
+      const interaction = Interactions.make({ api, teamId: options.teamId })
+      return SlackChat.of({ teamId: options.teamId, botUserId, user, interaction })
     })
   ).pipe(Layer.provideMerge(WebApi.layer({ botToken: options.botToken })))
 
@@ -309,6 +359,72 @@ export const layerWebhook = (options: {
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleRequest(request, webhookOptions))
   }))
+
+/**
+ * `POST {path}`: the Interactivity Request URL, which Slack posts
+ * form-encoded and separately from the Events API.
+ *
+ * **Details**
+ *
+ * - Checks the `v0` signature as `layerWebhook` does, decodes the form's
+ *   `payload` and drops one for another app with a 200.
+ * - Hands the payload to `SlackChat.interaction` with `deadline` (2.5
+ *   seconds by default). Its body is the response, and `Late` is answered
+ *   with a 503, so the modal stays open with Slack's own error. Answers 413
+ *   past `maxBodyBytes` (1 MiB by default).
+ * - Slack never redelivers an interaction, so a click or submit that is not
+ *   answered in time is lost. A user can submit again, as a new request.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.5
+ */
+export const layerInteractivity = (options: {
+  readonly path: `/${string}`
+  readonly signingSecret: Redacted.Redacted
+  readonly appId: string
+  readonly deadline?: Duration.Duration | undefined
+  readonly maxBodyBytes?: number | undefined
+}): Layer.Layer<never, never, HttpRouter.HttpRouter | SlackChat | ChatInteraction.Handler> =>
+  HttpRouter.use(Effect.fnUntraced(function*(router) {
+    const slack = yield* SlackChat
+    const handler = yield* ChatInteraction.Handler
+    const verify = yield* Webhook.makeVerifier(options.signingSecret)
+    const interactivityOptions: Webhook.InteractivityOptions = {
+      verify,
+      appId: options.appId,
+      interaction: (payload, interactionOptions) =>
+        Effect.provideService(slack.interaction(payload, interactionOptions), ChatInteraction.Handler, handler),
+      deadline: options.deadline ?? Interactions.defaultDeadline,
+      maxBodyBytes: options.maxBodyBytes ?? 1024 * 1024
+    }
+    yield* router.add("POST", options.path, (request) => Webhook.handleInteractivity(request, interactivityOptions))
+  }))
+
+/**
+ * The normaliser behind `SlackChat.interaction`.
+ *
+ * **Details**
+ *
+ * - Pure: takes the decoded `payload` of a `block_actions` or
+ *   `view_submission` request.
+ * - None for any other payload, and for one that is not from an element
+ *   this adapter built: a block of the consumer's own, a link button, or a
+ *   view the adapter did not open.
+ * - A submit's thread and message are those of the click that opened the
+ *   modal, which the adapter packed into `private_metadata` beside the
+ *   consumer's metadata.
+ * - The team in an address is `context.teamId`. `raw` is the payload
+ *   without its verification `token`.
+ *
+ * @stability unstable
+ * @category normalization
+ * @since 4.1.5
+ */
+export const normalizeInteraction: (
+  payload: unknown,
+  context: { readonly teamId: string }
+) => Option.Option<ChatInteraction.Interaction> = Interactions.normalize
 
 /**
  * The normaliser, for Socket Mode or a consumer's own transport.

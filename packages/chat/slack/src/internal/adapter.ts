@@ -31,6 +31,7 @@ import * as Stream from "effect/Stream"
 import * as Address from "./address.ts"
 import * as Errors from "./errors.ts"
 import * as Escape from "./escape.ts"
+import * as Interactions from "./interactions.ts"
 import * as Length from "./length.ts"
 import * as Normalize from "./normalize.ts"
 import { CurrentPostOptions, type SessionStatus } from "./options.ts"
@@ -87,7 +88,11 @@ export const descriptor: Descriptor = {
     "getThread",
     "opener",
     "getUser",
-    "nativeStream"
+    "nativeStream",
+    "buttons",
+    "selects",
+    "modals",
+    "modalErrors"
   ]),
   measure: Length.measure,
   limits: {
@@ -96,7 +101,8 @@ export const descriptor: Descriptor = {
     uploadBytes: 1024 * 1024 * 1024,
     minWriteInterval: Duration.seconds(1),
     streamLength: Length.messageLength,
-    streamAge: Duration.minutes(10)
+    streamAge: Duration.minutes(10),
+    ...Interactions.limits
   }
 }
 
@@ -191,12 +197,11 @@ export const make = (options: {
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
-  /** The descriptor lists no buttons or selects yet, so a write that carries them is refused, never sent without them. */
-  const refuseActions = (op: string, actions: ReadonlyArray<Action> | undefined) =>
-    actions === undefined || actions.length === 0 ? Effect.void : fail(
-      op,
-      new Unsupported({ capability: actions.some((action) => action._tag !== "Select") ? "buttons" : "selects" })
-    )
+  /** Refuses elements Slack would refuse, or that the adapter could not tell from a consumer's. */
+  const checkActions = (op: string, actions: ReadonlyArray<Action>) => {
+    const refusal = Interactions.checkActions(actions)
+    return refusal === undefined ? Effect.void : fail(op, refusal)
+  }
 
   /**
    * The pace of the writes that grow one reply: stream appends, the starts
@@ -297,7 +302,7 @@ export const make = (options: {
   const messageContent = Effect.fnUntraced(
     function*(op: string, body: Text.Body) {
       yield* checkSent(op, body.sent)
-      if (body.text === "") return yield* fail(op, Errors.invalidRequest("no_text"))
+      if (body.text === "" && !Text.hasActions(body)) return yield* fail(op, Errors.invalidRequest("no_text"))
       if (body.dropped > 0) yield* Effect.annotateCurrentSpan("slack.text.dropped_tokens", body.dropped)
       return { blocks: body.blocks, text: body.text }
     }
@@ -395,6 +400,7 @@ export const make = (options: {
     parts: Address.Parts,
     markdown: string,
     files: ReadonlyArray<File>,
+    actions: ReadonlyArray<Action>,
     notify: Escape.Notify,
     unfurl: boolean
   ) {
@@ -407,7 +413,10 @@ export const make = (options: {
     const content = Text.body(markdown, notify, Text.updateBudget)
     const body = yield* messageContent(
       "post",
-      content.text === "" ? Text.placeholder(files.map((file) => file.name), Text.updateBudget) : content
+      Text.withActions(
+        content.text === "" ? Text.placeholder(files.map((file) => file.name), Text.updateBudget) : content,
+        actions
+      )
     )
     const staged = yield* Effect.forEach(files, stage)
     yield* call("post", "files.completeUploadExternal", { files: staged }).pipe(Effect.mapError(refused))
@@ -809,14 +818,15 @@ export const make = (options: {
     post: Effect.fnUntraced(function*(thread, content) {
       const parts = yield* resolve("post", thread)
       if (content.replyTo !== undefined) return yield* fail("post", new Unsupported({ capability: "replyTo" }))
-      yield* refuseActions("post", content.actions)
+      const actions = content.actions ?? []
+      yield* checkActions("post", actions)
       const postOptions = yield* CurrentPostOptions
       const notify = postOptions.notify ?? {}
       const unfurl = postOptions.unfurl === true
       if (content.files !== undefined && content.files.length > 0) {
-        return yield* postFiles(thread, parts, content.markdown, content.files, notify, unfurl)
+        return yield* postFiles(thread, parts, content.markdown, content.files, actions, notify, unfurl)
       }
-      const body = yield* messageContent("post", Text.body(content.markdown, notify, Text.postBudget))
+      const body = yield* messageContent("post", Text.body(content.markdown, notify, Text.postBudget, actions))
       const ts = yield* call("post", "chat.postMessage", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
@@ -828,11 +838,12 @@ export const make = (options: {
     }),
     edit: Effect.fnUntraced(function*(thread, messageId, content) {
       const parts = yield* resolve("edit", thread)
-      yield* refuseActions("edit", content.actions)
+      const actions = content.actions ?? []
+      yield* checkActions("edit", actions)
       const postOptions = yield* CurrentPostOptions
       const body = yield* messageContent(
         "edit",
-        Text.body(content.markdown, postOptions.notify ?? {}, Text.updateBudget)
+        Text.body(content.markdown, postOptions.notify ?? {}, Text.updateBudget, actions)
       )
       yield* retrySafe(paced(
         messageId,

@@ -1,3 +1,5 @@
+import type { Action } from "effect/chat/ChatUi"
+import * as Actions from "./actions.ts"
 import { blocksCost } from "./emoji.ts"
 
 /** `msg_too_long`: code points of `markdown_text` as sent, inclusive. @internal */
@@ -24,15 +26,16 @@ const lessThan = (text: string): number => {
 }
 
 /**
- * What a Markdown string costs against `messageLength`, as an upper bound
- * that adds up. It is the larger of two counts: code points plus three for
- * every `<`, which may be sent as `&lt;`, and Slack's emoji-as-shortcode
- * count scaled from 13,200 to 12,000.
+ * What a Markdown string and the elements beside it cost against
+ * `messageLength`, as an upper bound that adds up. It is the larger of two
+ * counts: code points plus three for every `<`, which may be sent as
+ * `&lt;`, and Slack's 13,200 count, scaled to 12,000, of the text with each
+ * emoji as its shortcode plus the `actions` block's stored JSON.
  *
  * @internal
  */
-export const measure = (markdown: string): number =>
+export const measure = (markdown: string, actions?: ReadonlyArray<Action>): number =>
   Math.max(
     codePoints(markdown) + 3 * lessThan(markdown),
-    Math.ceil(blocksCost(markdown) * 10 / 11)
+    Math.ceil((blocksCost(markdown) + Actions.cost(Actions.elements(actions ?? []))) * 10 / 11)
   )
