@@ -30,7 +30,8 @@ const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
  * (such as those of `Option` and `ReadonlyMap`) encode contents before the
  * declaration's derived JSON codec runs, so they must also be redacted.
  *
- * Returns `ast` itself when it holds no `Schema.Redacted`.
+ * Suspended nodes are rebuilt lazily, even when their bodies contain no
+ * `Schema.Redacted`. Use `holdsRedacted` for a presence check.
  *
  * @internal
  */
@@ -54,4 +55,28 @@ export const redactAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: Sc
  *
  * @internal
  */
-export const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
+export const holdsRedacted = memoize((ast: SchemaAST.AST): boolean => {
+  const seen = new Set<SchemaAST.AST>()
+  const visit = (node: SchemaAST.AST): boolean => {
+    if (seen.has(node)) return false
+    seen.add(node)
+    if (isRedactedAST(node)) return true
+    if (node.encoding?.some((link) => visit(link.to))) return true
+    switch (node._tag) {
+      case "Objects":
+        return node.propertySignatures.some((property) => visit(property.type)) ||
+          node.indexSignatures.some((index) => visit(index.parameter) || visit(index.type))
+      case "Arrays":
+        return node.elements.some(visit) || node.rest.some(visit)
+      case "Union":
+        return node.types.some(visit)
+      case "Suspend":
+        return visit(node.thunk())
+      case "Declaration":
+        return node.typeParameters.some(visit)
+      default:
+        return false
+    }
+  }
+  return visit(ast)
+})
