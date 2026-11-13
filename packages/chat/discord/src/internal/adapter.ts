@@ -158,10 +158,14 @@ export const make = Effect.fnUntraced(function*(options: {
     return message === undefined ? yield* fail(op, Errors.notFound("not_a_message")) : message
   })
 
+  /** An optional read: none when the message is gone or the bot may not read it. */
   const orNone = <A>(effect: Effect.Effect<A, ChatError>): Effect.Effect<Option.Option<A>, ChatError> =>
     effect.pipe(
       Effect.map(Option.some),
-      Effect.catchIf((error) => error.reason._tag === "NotFound", () => Effect.succeed(Option.none()))
+      Effect.catchIf(
+        (error) => error.reason._tag === "NotFound" || error.reason._tag === "Forbidden",
+        () => Effect.succeed(Option.none())
+      )
     )
 
   // Writes
@@ -192,7 +196,9 @@ export const make = Effect.fnUntraced(function*(options: {
     if (typeof answer.id !== "string" || typeof answer.timestamp !== "string") {
       return yield* fail(op, Errors.invalidResponse(true, "missing_id"))
     }
-    return { id: answer.id, thread, timestamp: DateTime.makeUnsafe(answer.timestamp) } satisfies Posted
+    const timestamp = DateTime.make(answer.timestamp)
+    if (Option.isNone(timestamp)) return yield* fail(op, Errors.invalidResponse(true, "invalid_timestamp"))
+    return { id: answer.id, thread, timestamp: DateTime.toUtc(timestamp.value) } satisfies Posted
   })
 
   const edit: ChatAdapter["edit"] = Effect.fnUntraced(function*(thread, messageId, content) {
@@ -338,8 +344,12 @@ export const make = Effect.fnUntraced(function*(options: {
     const name = kind === "direct" ? undefined : nonEmpty(found.name)
     const topic = nonEmpty(found.topic)
     const parent = kind === "thread" ? nonEmpty(found.parent_id) : undefined
-    const created = nonEmpty(found.thread_metadata?.create_timestamp)
-    const createdAt = created === undefined ? Normalize.snowflakeTime(found.id) : DateTime.makeUnsafe(created)
+    // An unreadable creation time falls back to the id's.
+    const created = Option.flatMap(
+      Option.fromUndefinedOr(nonEmpty(found.thread_metadata?.create_timestamp)),
+      DateTime.make
+    )
+    const createdAt = Option.isSome(created) ? DateTime.toUtc(created.value) : Normalize.snowflakeTime(found.id)
     return {
       thread,
       kind,

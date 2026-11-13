@@ -84,7 +84,7 @@ export const MessageFields = Schema.Struct({
   channel_id: Schema.String,
   type: Schema.Number,
   content: optional(Schema.String),
-  timestamp: Schema.String,
+  timestamp: Schema.DateTimeUtcFromString,
   author: UserFields,
   webhook_id: optional(Schema.String),
   guild_id: optional(Schema.String),
@@ -214,7 +214,7 @@ export const message = (
       ? {}
       : { replyTo: { messageId: replyId, ...(replyAuthor === undefined ? {} : { authorId: replyAuthor }) } }),
     attachments,
-    timestamp: DateTime.makeUnsafe(fields.timestamp),
+    timestamp: fields.timestamp,
     raw
   }
 }
