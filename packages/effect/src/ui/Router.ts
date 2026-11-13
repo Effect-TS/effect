@@ -57,11 +57,12 @@
  *   Navigated: {}
  * })
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   props: Schema.Struct({ route: AppRoute }),
  *   model: Schema.Struct({ route: AppRoute }),
- *   message: Message,
+ *   message: Message
+ * }).make({
  *   init: ($) => ({ route: $.props.route }),
  *   update: (model, message, $) =>
  *     Message.match(message, {
@@ -559,11 +560,12 @@ export const currentRoute = <U extends Routes>(routes: U): Effect.Effect<U["Type
  *   NotFound: Route.make("/*")
  * })
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   props: Schema.Struct({ route: AppRoute }),
  *   model: AppRoute,
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: ($) => $.props.route,
  *   update: (route) => route,
  *   view: (route, h) => h.el("p", route._tag)
@@ -769,7 +771,7 @@ interface ErasedPage {
  *
  * **Gotchas**
  *
- * Accepts a component returned by `Component.make`, with or without
+ * Accepts a component built with `Component.define`, with or without
  * `Component.provide`. Rejects features and `Component.Mountable` values,
  * whose erased Model hides their reads.
  *
@@ -865,12 +867,13 @@ type PageRequirement<P> = P extends Page<infer R> ? R : never
  *   success: Schema.String
  * }, Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))) {}
  *
- * const Person = Component.make({
+ * const Person = Component.define({
  *   name: "Person",
  *   props: Schema.Struct({ id: Schema.Number }),
  *   model: Schema.Struct({}),
  *   message: Schema.Never,
- *   loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+ *   loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } }
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_model, h) => h.el("p", "Person")

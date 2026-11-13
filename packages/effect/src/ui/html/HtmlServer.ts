@@ -24,10 +24,11 @@
  * import { Effect, Schema } from "effect"
  * import { Component, Head } from "effect/ui"
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   model: Schema.Struct({}),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   head: () => [Head.title("Home"), Head.lang("en")],

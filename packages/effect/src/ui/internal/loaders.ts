@@ -1,5 +1,5 @@
 /**
- * What `Component.make` builds from `loaders`: the loader slots an instance
+ * What a component builds from `loaders`: the loader slots an instance
  * holds beside its Model, their Schema, the opened views of `h` and `$`,
  * and the watches the runtime registers.
  *

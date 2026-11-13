@@ -5,11 +5,12 @@ import { Html } from "effect/ui/html"
 import { HtmlStory } from "effect/ui/html/testing"
 import { Query, Story } from "effect/ui/testing"
 
-const Board = Component.make({
+const Board = Component.define({
   name: "Board",
   model: Schema.Array(Schema.String),
   message: Schema.String,
-  elements: Html,
+  elements: Html
+}).make({
   init: (): ReadonlyArray<string> => [],
   update: (log, message) => [...log, message],
   view: (_, h) =>

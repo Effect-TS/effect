@@ -14,7 +14,7 @@ export const ConfirmMessage = Schema.TaggedUnion({
 })
 
 /** A confirm dialog: Escape is accepted only with `acceptEscape`, and its form's choice closes it. */
-export const Confirm = Component.make({
+export const Confirm = Component.define({
   name: "Confirm",
   props: Schema.Struct({ state: State, acceptEscape: Schema.Boolean }),
   model: Schema.Struct({
@@ -24,7 +24,8 @@ export const Confirm = Component.make({
     log: Schema.Array(Schema.String)
   }),
   message: ConfirmMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => ({ state: $.props.state, acceptEscape: $.props.acceptEscape, shown: true, log: [] }),
   update: (model, message) =>
     ConfirmMessage.match(message, {
@@ -60,11 +61,12 @@ export const Confirm = Component.make({
 })
 
 /** Two modals, one nested in the other, both open from the start. */
-export const Nested = Component.make({
+export const Nested = Component.define({
   name: "Nested",
   model: Schema.Null,
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => null,
   update: (model) => model,
   view: (_, h) =>

@@ -23,13 +23,14 @@ export const TodoItemEvents = Schema.TaggedUnion({
   Deleted: { id: Schema.String }
 })
 
-export const TodoItem = Component.make({
+export const TodoItem = Component.define({
   name: "TodoItem",
   props: Schema.Struct({ todo: Todo }),
   model: Schema.Struct({}),
   message: TodoItemMessage,
   events: TodoItemEvents,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => ({}),
   update: (_, message, $) =>
     TodoItemMessage.match(message, {
@@ -68,11 +69,12 @@ export const TodoAppModel = Schema.Struct({
 })
 export type TodoAppModel = typeof TodoAppModel.Type
 
-export const TodoApp = Component.make({
+export const TodoApp = Component.define({
   name: "TodoApp",
   model: TodoAppModel,
   message: TodoAppMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: (): TodoAppModel => ({ draft: "", nextId: 1, todos: [] }),
   update: (model, message): TodoAppModel =>
     TodoAppMessage.match(message, {

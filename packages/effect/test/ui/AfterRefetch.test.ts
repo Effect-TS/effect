@@ -88,7 +88,7 @@ const makeApp = (options?: {
     )
     return options?.wait === false ? matched : Command.afterRefetch(matched, budget)
   }
-  const Card = Component.make({
+  const Card = Component.define({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
     model: Schema.Struct({ done: Schema.Array(Schema.String) }),
@@ -99,7 +99,8 @@ const makeApp = (options?: {
         args: (_model, props) => ({ id: props.id }),
         onChange: () => CardMessage.make({ _tag: "UserChanged" })
       }
-    },
+    }
+  }).make({
     init: () => ({ done: [] }),
     update: (model, message, $) => {
       order.push(`update ${$.props.tag} ${message._tag}${"name" in message ? " " + message.name : ""}`)
@@ -131,11 +132,12 @@ const makeApp = (options?: {
 
   /** A parent whose Model says which cards are mounted: "tag:id" each. */
   const ListMessage = Schema.TaggedUnion({ Set: { cards: Schema.Array(Schema.String) } })
-  const List = Component.make({
+  const List = Component.define({
     name: "List",
     props: Schema.Struct({ cards: Schema.Array(Schema.String) }),
     model: Schema.Array(Schema.String),
-    message: ListMessage,
+    message: ListMessage
+  }).make({
     init: ($) => $.props.cards,
     update: (_model, message) => message.cards,
     view: (cards, h) =>
@@ -367,7 +369,7 @@ describe("Command.afterRefetch", () => {
     const app = makeApp({ invalidates: "all" })
     const BoardMessage = Schema.TaggedUnion({ Changed: {}, Rename: {}, Renamed: {} })
     const order: Array<string> = []
-    const Board = Component.make({
+    const Board = Component.define({
       name: "Board",
       model: Schema.Struct({ renamed: Schema.Boolean }),
       message: BoardMessage,
@@ -380,7 +382,8 @@ describe("Command.afterRefetch", () => {
             return BoardMessage.make({ _tag: "Changed" })
           }
         }
-      },
+      }
+    }).make({
       init: () => ({ renamed: false }),
       update: (model, message, $) => {
         order.push(`update ${message._tag}`)
@@ -678,11 +681,12 @@ describe("Command.afterRefetch", () => {
       )
     ) {}
     const ItemsMessage = Schema.TaggedUnion({ More: {}, Touch: {}, Touched: {} })
-    const ItemsView = Component.make({
+    const ItemsView = Component.define({
       name: "ItemsView",
       model: Schema.Struct({ touched: Schema.Boolean }),
       message: ItemsMessage,
-      loaders: { items: { load: ListItems, args: () => ({}) } },
+      loaders: { items: { load: ListItems, args: () => ({}) } }
+    }).make({
       init: () => ({ touched: false }),
       update: (model, message, $) =>
         ItemsMessage.match(message, {

@@ -87,7 +87,7 @@ const makeApp = (options?: {
       onSuccess: (success) => success.value.name + (success.waiting ? "…" : ""),
       onFailure: () => "failed"
     })
-  const Board = Component.make({
+  const Board = Component.define({
     name: "Board",
     props: Schema.Struct({ tag: Schema.String, ids: Schema.Array(Schema.String) }),
     model: Schema.Struct({ ids: Schema.Array(Schema.String) }),
@@ -108,7 +108,8 @@ const makeApp = (options?: {
           })
         }
       }
-    },
+    }
+  }).make({
     init: ($) => ({ ids: $.props.ids }),
     update: (model, message, $) =>
       BoardMessage.match(message, {
@@ -141,11 +142,12 @@ const makeApp = (options?: {
 
   /** Boards side by side: "tag:id,id" each. */
   const ListMessage = Schema.TaggedUnion({ Set: { boards: Schema.Array(Schema.String) } })
-  const List = Component.make({
+  const List = Component.define({
     name: "List",
     props: Schema.Struct({ boards: Schema.Array(Schema.String) }),
     model: Schema.Array(Schema.String),
-    message: ListMessage,
+    message: ListMessage
+  }).make({
     init: ($) => $.props.boards,
     update: (_model, message) => message.boards,
     view: (boards, h) =>
@@ -296,7 +298,7 @@ describe("Keyed loader fields", () => {
     const app = makeApp()
     const order: Array<string> = []
     const Message = Schema.TaggedUnion({ UsersChanged: { changed: Schema.Array(Schema.String) } })
-    const Row = Component.make({
+    const Row = Component.define({
       name: "Row",
       props: Schema.Struct({ ids: Schema.Array(Schema.String) }),
       model: Schema.Struct({}),
@@ -308,7 +310,8 @@ describe("Keyed loader fields", () => {
           onChange: (_loaded, changes) =>
             Message.make({ _tag: "UsersChanged", changed: changes.map((change) => change.args.id) })
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model, { changed }) => {
         order.push(`update [${changed.join(",")}]`)
@@ -322,10 +325,11 @@ describe("Keyed loader fields", () => {
       }
     })
     const PageMessage = Schema.TaggedUnion({ Show: { ids: Schema.Array(Schema.String) } })
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       model: Schema.Array(Schema.String),
-      message: PageMessage,
+      message: PageMessage
+    }).make({
       init: () => ["1"],
       update: (_model, { ids }) => ids,
       view: (ids, h) =>
@@ -659,7 +663,7 @@ describe("Keyed loader fields", () => {
     const app = makeApp()
     const Message = Schema.TaggedUnion({ UsersChanged: { changed: Schema.Array(Schema.String) } })
     const changed: Array<ReadonlyArray<string>> = []
-    const Mixed = Component.make({
+    const Mixed = Component.define({
       name: "Mixed",
       model: Schema.Struct({}),
       message: Message,
@@ -671,7 +675,8 @@ describe("Keyed loader fields", () => {
             Message.make({ _tag: "UsersChanged", changed: changes.map((change) => change.args.id) })
         },
         user: { load: app.GetUser, args: () => ({ id: "1" }) }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model, { changed: keys }) => {
         changed.push(keys)
@@ -731,11 +736,12 @@ describe("Keyed loader fields", () => {
 
   it.effect("get finds one entry by its args", () => {
     const app = makeApp()
-    const Probe = Component.make({
+    const Probe = Component.define({
       name: "Probe",
       model: Schema.Struct({}),
       message: Schema.Never,
-      loaders: { users: { loadMany: app.GetUser, args: () => [{ id: "2" }, { id: "1" }] } },
+      loaders: { users: { loadMany: app.GetUser, args: () => [{ id: "2" }, { id: "1" }] } }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => {
@@ -790,11 +796,12 @@ describe("Keyed slots", () => {
   it("throws at make for a keyed entry that isn't { loadMany, args }", () => {
     const app = makeApp()
     const make = (users: unknown) =>
-      Component.make({
+      Component.define({
         name: "Bad",
         model: Schema.Struct({}),
         message: Schema.Never,
-        loaders: { users },
+        loaders: { users }
+      } as any).make({
         init: () => ({}),
         update: (model: unknown) => model,
         view: () => null as never
@@ -813,19 +820,21 @@ describe("Keyed slots", () => {
 
   it.effect("fails the instance when its loadMany loader's args don't return an array", () => {
     const app = makeApp()
-    const Bad = Component.make({
+    const Bad = Component.define({
       name: "Bad",
       model: Schema.Struct({}),
       message: Schema.Never,
-      loaders: { users: { loadMany: app.GetUser, args: () => ({ id: "1" }) as any } },
+      loaders: { users: { loadMany: app.GetUser, args: () => ({ id: "1" }) as any } }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => h.el("p", "x")
     })
-    const Host = Component.make({
+    const Host = Component.define({
       name: "Host",
       model: Schema.Struct({}),
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) => h.el("div", h.child(Bad, { key: "bad", props: {} }), h.el("p", "host"))
@@ -857,14 +866,15 @@ describe("Keyed redaction", () => {
       },
       Effect.succeed(({ token }) => Effect.succeed({ secret: Redacted.make(`secret-of-${Redacted.value(token)}`) }))
     ) {}
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       props: Schema.Struct({ tokens: Schema.Array(Schema.Redacted(Schema.String)) }),
       model: Schema.Struct({}),
       message: Schema.Never,
       loaders: {
         accounts: { loadMany: GetAccount, args: (_model, props) => props.tokens.map((token) => ({ token })) }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) =>
@@ -962,7 +972,7 @@ const makeSelection = (app: ReturnType<typeof makeApp>) => {
     Show: { ids: Schema.Array(Schema.String) },
     UsersChanged: {}
   })
-  const Selection = Component.make({
+  const Selection = Component.define({
     name: "Selection",
     model: Schema.Struct({ ids: Schema.Array(Schema.String), selected: Schema.String }),
     message: Message,
@@ -972,7 +982,8 @@ const makeSelection = (app: ReturnType<typeof makeApp>) => {
         args: (model) => model.ids.map((id) => ({ id })),
         onChange: () => Message.make({ _tag: "UsersChanged" })
       }
-    },
+    }
+  }).make({
     init: () => ({ ids: ["1", "2"], selected: "2" }),
     update: (model, message, $) =>
       Message.match(message, {
@@ -1065,11 +1076,12 @@ describe("Keyed history restore", () => {
       ShowAndGo: { ids: Schema.Array(Schema.String) },
       Navigated: {}
     })
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       model: Schema.Struct({ ids: Schema.Array(Schema.String) }),
       message: Message,
-      loaders: { users: { loadMany: app.GetUser, args: (model) => model.ids.map((id) => ({ id })) } },
+      loaders: { users: { loadMany: app.GetUser, args: (model) => model.ids.map((id) => ({ id })) } }
+    }).make({
       init: () => ({ ids: ["1", "2"] }),
       update: (model, message, $) =>
         Message.match(message, {
@@ -1128,11 +1140,12 @@ describe("Keyed history restore", () => {
       Go: { route: ShellRoute },
       Navigated: {}
     })
-    const Shell = Component.make({
+    const Shell = Component.define({
       name: "Shell",
       props: Schema.Struct({ route: ShellRoute }),
       model: ShellRoute,
-      message: ShellMessage,
+      message: ShellMessage
+    }).make({
       init: ($) => $.props.route,
       update: (model, message, $) =>
         ShellMessage.match(message, {

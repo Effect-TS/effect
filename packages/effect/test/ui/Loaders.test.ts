@@ -41,7 +41,7 @@ const makeApp = () => {
 
   const NoteMessage = Schema.TaggedUnion({ Click: {}, Touch: {}, Touched: {} })
   const touched = NoteMessage.make({ _tag: "Touched" })
-  const Note = Component.make({
+  const Note = Component.define({
     name: "Note",
     props: Schema.Struct({ id: Schema.String }),
     model: Schema.Struct({ clicks: Schema.Number, last: Schema.String }),
@@ -50,7 +50,8 @@ const makeApp = () => {
     loaders: {
       // An empty id disables the loader.
       note: { load: GetNote, args: (_model, props) => props.id === "" ? undefined : { id: props.id } }
-    },
+    }
+  }).make({
     init: () => ({ clicks: 0, last: "none" }),
     // What the loader holds when the click is handled, so a replay only reproduces it with the slots.
     update: (model, message, $) =>
@@ -84,12 +85,13 @@ const makeApp = () => {
     Note: Route.make("/notes/:id", { params: { id: Schema.String } })
   })
   const AppMessage = Schema.TaggedUnion({ RouteChanged: { route: AppRoute } })
-  const App = Component.make({
+  const App = Component.define({
     name: "App",
     props: Schema.Struct({ route: AppRoute }),
     model: AppRoute,
     message: AppMessage,
-    elements: Html,
+    elements: Html
+  }).make({
     init: ($) => $.props.route,
     update: (_route, message) => message.route,
     subscriptions: (route) => [
@@ -104,11 +106,12 @@ const makeApp = () => {
 
   // Passes its id to one Note under a fixed key, so a new id is new props, not a re-key.
   const ShellMessage = Schema.TaggedUnion({ SetId: { id: Schema.String } })
-  const Shell = Component.make({
+  const Shell = Component.define({
     name: "Shell",
     model: Schema.String,
     message: ShellMessage,
-    elements: Html,
+    elements: Html
+  }).make({
     init: () => "1",
     update: (_id, message) => message.id,
     view: (id, h) => h.div(h.child(Note, { key: "note", props: { id } }))

@@ -10,11 +10,12 @@ const Field = Renderer.ref<TinyField>("Field")
 
 describe("Renderer", () => {
   it("mount requires the root vocabulary's host marker", () => {
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => h.box(h.field)
@@ -35,11 +36,12 @@ describe("Renderer", () => {
   })
 
   it("TestHost mounts any vocabulary", () => {
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => h.box(h.field)
@@ -53,11 +55,12 @@ describe("Renderer", () => {
 describe("Effect props", () => {
   const AppRoute = Route.union({ Home: Route.make("/"), NotFound: Route.make("/*") })
   type AppRoute = typeof AppRoute.Type
-  const App = Component.make({
+  const App = Component.define({
     name: "App",
     props: Schema.Struct({ route: AppRoute }),
     model: AppRoute,
-    message: Schema.Never,
+    message: Schema.Never
+  }).make({
     init: ($) => $.props.route,
     update: (route) => route,
     view: (route, h) => h.text(route._tag)
@@ -96,11 +99,12 @@ describe("Effect props", () => {
 
 describe("View elements", () => {
   it("refs are typed by the node they reach", () => {
-    Component.make({
+    Component.define({
       name: "Refs",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -112,11 +116,12 @@ describe("View elements", () => {
   })
 
   it("onMount types the node and joins the component's requirements", () => {
-    Component.make({
+    Component.define({
       name: "Mounts",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) =>
@@ -128,11 +133,12 @@ describe("View elements", () => {
   })
 
   it("handlers get the vocabulary's payload and return the component's messages", () => {
-    Component.make({
+    Component.define({
       name: "Events",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -148,10 +154,11 @@ describe("View elements", () => {
   })
 
   it("h.el takes attributes first, with children as a terminal call or shorthand", () => {
-    Component.make({
+    Component.define({
       name: "El",
       model: Schema.String,
-      message: Msg,
+      message: Msg
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {
@@ -170,11 +177,12 @@ describe("View elements", () => {
   })
 
   it("a vocabulary's void element has no children", () => {
-    Component.make({
+    Component.define({
       name: "Void",
       model: Schema.String,
       message: Msg,
-      elements: Tiny,
+      elements: Tiny
+    }).make({
       init: () => "",
       update: (model) => model,
       view: (_, h) => {

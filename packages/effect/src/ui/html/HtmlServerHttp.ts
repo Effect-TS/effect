@@ -75,11 +75,12 @@ import * as HtmlServer from "./HtmlServer.ts"
  *   NotFound: Route.make("/*")
  * })
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   props: Schema.Struct({ route: AppRoute }),
  *   model: Schema.Struct({ route: AppRoute }),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: ($) => ({ route: $.props.route }),
  *   update: (model) => model,
  *   view: ({ route }, h) => h.el("h1", route._tag === "Home" ? "Home" : "Page not found")

@@ -114,7 +114,7 @@ export const MenuMessage = Schema.TaggedUnion({
 })
 
 /** A menu popover. With `follow`, its Model follows the browser's toggles. */
-export const Menu = Component.make({
+export const Menu = Component.define({
   name: "Menu",
   props: Schema.Struct({ mode: Mode, open: Schema.Boolean, follow: Schema.Boolean }),
   model: Schema.Struct({
@@ -125,7 +125,8 @@ export const Menu = Component.make({
     log: Schema.Array(Schema.String)
   }),
   message: MenuMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => ({ ...$.props, shown: true, log: [] }),
   update: (model, message) =>
     MenuMessage.match(message, {
@@ -148,11 +149,12 @@ export const Menu = Component.make({
 })
 
 /** A modal dialog holding an auto popover, both open from the start. */
-export const ModalMenu = Component.make({
+export const ModalMenu = Component.define({
   name: "ModalMenu",
   model: Schema.Null,
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => null,
   update: (model) => model,
   view: (_, h) =>
@@ -162,12 +164,13 @@ export const ModalMenu = Component.make({
       )
 })
 
-const Popup = Component.make({
+const Popup = Component.define({
   name: "Popup",
   props: Schema.Struct({ label: Schema.String, mode: Mode }),
   model: Schema.Null,
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => null,
   update: (model) => model,
   view: (_, h) => h.div.attr("aria-label", h.props.label).popover(h.props.mode, true).children(h.button(h.props.label))
@@ -177,12 +180,13 @@ const Popup = Component.make({
  * Two keyed rows, A and B, each holding a child with a popover of `mode`, open. Reversing them moves a
  * row's subtree, and the children, whose props don't change, don't render again.
  */
-export const Rows = Component.make({
+export const Rows = Component.define({
   name: "Rows",
   props: Schema.Struct({ mode: Mode }),
   model: Schema.Boolean,
   message: Schema.Boolean,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => false,
   update: (_, reversed) => reversed,
   view: (reversed, h) => {

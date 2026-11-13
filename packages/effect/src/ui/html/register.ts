@@ -14,10 +14,11 @@
  * import { Schema } from "effect"
  * import { Component } from "effect/ui"
  *
- * const Greeting = Component.make({
+ * const Greeting = Component.define({
  *   name: "Greeting",
  *   model: Schema.Struct({}),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_, h) => h.p("Hello")

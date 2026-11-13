@@ -63,7 +63,7 @@ const makeApp = (options?: {
     Rename: { name: Schema.String },
     Renamed: {}
   })
-  const Card = Component.make({
+  const Card = Component.define({
     name: "Card",
     props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
     model: Schema.Struct({ saving: Schema.Boolean }),
@@ -76,7 +76,8 @@ const makeApp = (options?: {
         // The slot is written by the runtime: the message only lets update see the change.
         onChange: (result) => CardMessage.make({ _tag: "UserChanged", state: result._tag })
       }
-    },
+    }
+  }).make({
     init: () => ({ saving: false }),
     update: (model, message, $) =>
       CardMessage.match(message, {
@@ -114,11 +115,12 @@ const makeApp = (options?: {
 
   /** A parent whose Model says which cards are mounted: "tag:id" each. */
   const ListMessage = Schema.TaggedUnion({ Set: { cards: Schema.Array(Schema.String) } })
-  const List = Component.make({
+  const List = Component.define({
     name: "List",
     props: Schema.Struct({ cards: Schema.Array(Schema.String) }),
     model: Schema.Array(Schema.String),
-    message: ListMessage,
+    message: ListMessage
+  }).make({
     init: ($) => $.props.cards,
     update: (_model, message) => message.cards,
     view: (cards, h) =>
@@ -155,10 +157,11 @@ const makeApp = (options?: {
     )
   ) {}
   const got = (name: string) => ToolsMessage.make({ _tag: "Got", name })
-  const Tools = Component.make({
+  const Tools = Component.define({
     name: "Tools",
     model: Schema.String,
-    message: ToolsMessage,
+    message: ToolsMessage
+  }).make({
     init: () => "",
     update: (model, message, $) =>
       ToolsMessage.match(message, {
@@ -359,10 +362,11 @@ describe("Loaded", () => {
   it.effect("watch: the pre-pass releases a removal below a kept element before a sibling element creates its watcher", () => {
     const app = makeApp()
     // Two kept sections: the second loses the old card as the first gains a new one on the same entry.
-    const Sections = Component.make({
+    const Sections = Component.define({
       name: "Sections",
       model: Schema.Boolean,
-      message: Schema.Boolean,
+      message: Schema.Boolean
+    }).make({
       init: () => false,
       update: (_model, message) => message,
       view: (swapped, h) =>
@@ -415,20 +419,22 @@ describe("Loaded", () => {
   it.effect("watch: a removal inside a kept child's re-render counts as it would if the child were inlined", () => {
     const app = makeApp()
     // The second section of the two-section test, extracted into a component.
-    const Shell = Component.make({
+    const Shell = Component.define({
       name: "Shell",
       props: Schema.Struct({ show: Schema.Boolean }),
       model: Schema.Null,
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_model, h) =>
         h.el("div", h.props.show ? [h.child(app.Card, { key: "old", props: { id: "1", tag: "o" } })] : [])
     })
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       model: Schema.Boolean,
-      message: Schema.Boolean,
+      message: Schema.Boolean
+    }).make({
       init: () => false,
       update: (_model, message) => message,
       view: (swapped, h) =>
@@ -480,7 +486,7 @@ describe("Loaded", () => {
   /** Watches user `id`, and records each message's result as "tag Tag:waiting". */
   const makeWatcher = (app: ReturnType<typeof makeApp>, messages: Array<string>) => {
     const WatchMessage = Schema.TaggedUnion({ Changed: { state: Schema.String } })
-    return Component.make({
+    return Component.define({
       name: "Watcher",
       props: Schema.Struct({ id: Schema.String, tag: Schema.String }),
       model: Schema.Struct({}),
@@ -491,7 +497,8 @@ describe("Loaded", () => {
           args: (_model, props) => ({ id: props.id }),
           onChange: (result) => WatchMessage.make({ _tag: "Changed", state: `${result._tag}:${result.waiting}` })
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model, message, $) => {
         messages.push(`${$.props.tag} ${message.state}`)
@@ -506,20 +513,22 @@ describe("Loaded", () => {
       const app = makeApp()
       const messages: Array<string> = []
       const Watcher = makeWatcher(app, messages)
-      const Shell = Component.make({
+      const Shell = Component.define({
         name: "Shell",
         props: Schema.Struct({ show: Schema.Boolean }),
         model: Schema.Null,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => null,
         update: (model) => model,
         view: (_model, h) =>
           h.el("div", h.props.show ? [h.child(Watcher, { key: "old", props: { id: "9", tag: "o" } })] : [])
       })
-      const Page = Component.make({
+      const Page = Component.define({
         name: "Page",
         model: Schema.Boolean,
-        message: Schema.Boolean,
+        message: Schema.Boolean
+      }).make({
         init: () => false,
         update: (_model, message) => message,
         view: (swapped, h) =>
@@ -579,7 +588,7 @@ describe("Loaded", () => {
         Effect.succeed(({ id }) => Effect.callback<string, string>((resume) => void finish.set(id, resume)))
       ) {}
       const Message = Schema.TaggedUnion({ Changed: { state: Schema.String } })
-      const Watcher = Component.make({
+      const Watcher = Component.define({
         name: "Watcher",
         props: Schema.Struct({ tag: Schema.String }),
         model: Schema.Struct({}),
@@ -590,7 +599,8 @@ describe("Loaded", () => {
             args: () => ({ id: "fail" }),
             onChange: (result) => Message.make({ _tag: "Changed", state: `${result._tag}:${result.waiting}` })
           }
-        },
+        }
+      }).make({
         init: () => ({}),
         update: (model, message, $) => {
           messages.push(`${$.props.tag} ${message.state}`)
@@ -598,11 +608,12 @@ describe("Loaded", () => {
         },
         view: (_model, h) => h.el("p", `${h.props.tag}=${h.loaded.data._tag}:${h.loaded.data.waiting}`)
       })
-      const Shell = Component.make({
+      const Shell = Component.define({
         name: "Shell",
         props: Schema.Struct({ show: Schema.Boolean }),
         model: Schema.Null,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => null,
         update: (model) => model,
         view: (_model, h) => h.el("div", h.props.show ? [h.child(Watcher, { key: "old", props: { tag: "o" } })] : [])
@@ -611,11 +622,12 @@ describe("Loaded", () => {
         Enable: {},
         Swap: {}
       })
-      const Page = Component.make({
+      const Page = Component.define({
         name: "Page",
         model: Schema.Struct({ enabled: Schema.Boolean, swapped: Schema.Boolean }),
         message: PageMessage,
-        loaders: { other: { load: Read, args: (model) => model.enabled ? { id: "other" } : undefined } },
+        loaders: { other: { load: Read, args: (model) => model.enabled ? { id: "other" } : undefined } }
+      }).make({
         init: () => ({ enabled: false, swapped: false }),
         update: (model, message) =>
           PageMessage.match(message, {
@@ -675,10 +687,11 @@ describe("Loaded", () => {
     const app = makeApp()
     const messages: Array<string> = []
     const Watcher = makeWatcher(app, messages)
-    const Pair = Component.make({
+    const Pair = Component.define({
       name: "Pair",
       model: Schema.Boolean,
-      message: Schema.Boolean,
+      message: Schema.Boolean
+    }).make({
       init: () => false,
       update: (_model, message) => message,
       view: (joined, h) =>
@@ -713,7 +726,7 @@ describe("Loaded", () => {
   it.effect("a kept child's warm re-key emits through the onEmit of the view that re-keyed it", () => {
     const app = makeApp()
     const EmitterMessage = Schema.TaggedUnion({ UserChanged: {} })
-    const Emitter = Component.make({
+    const Emitter = Component.define({
       name: "Emitter",
       props: Schema.Struct({ id: Schema.String }),
       model: Schema.Struct({}),
@@ -725,16 +738,18 @@ describe("Loaded", () => {
           args: (_model, props) => ({ id: props.id }),
           onChange: () => EmitterMessage.make({ _tag: "UserChanged" })
         }
-      },
+      }
+    }).make({
       init: () => ({}),
       update: (model, _message, $) => $.set(model).emit($.props.id),
       view: (_model, h) => h.el("p", "emitter")
     })
     const ParentMessage = Schema.TaggedUnion({ Switch: {}, Noted: { label: Schema.String } })
-    const Parent = Component.make({
+    const Parent = Component.define({
       name: "Parent",
       model: Schema.Struct({ switched: Schema.Boolean, labels: Schema.Array(Schema.String) }),
-      message: ParentMessage,
+      message: ParentMessage
+    }).make({
       init: () => ({ switched: false, labels: [] }),
       update: (model, message) =>
         message._tag === "Switch"
@@ -777,21 +792,23 @@ describe("Loaded", () => {
       () => Effect.never.pipe(Effect.ensuring(Effect.uninterruptible(cleanup)))
     )
     const BadMessage = Schema.TaggedUnion({ Crash: {} })
-    const Bad = Component.make({
+    const Bad = Component.define({
       name: "Bad",
       model: Schema.Struct({}),
       message: BadMessage,
-      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } }
+    }).make({
       init: ($) => $.set({}).run(Hold()),
       update: (): {} => {
         throw new Error("crash")
       },
       view: (_model, h) => h.el("p").on("click", BadMessage.make({ _tag: "Crash" })).children("bad")
     })
-    const Host = Component.make({
+    const Host = Component.define({
       name: "Host",
       model: Schema.Null,
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_model, h) =>
@@ -836,11 +853,12 @@ describe("Loaded", () => {
       { args: {} },
       () => Effect.promise(() => Promise.resolve(PollMessage.make({ _tag: "Done" })))
     )
-    const Poll = Component.make({
+    const Poll = Component.define({
       name: "Poll",
       model: Schema.Struct({ done: Schema.Boolean }),
       message: PollMessage,
-      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } }
+    }).make({
       init: () => ({ done: false }),
       update: (model, message, $) =>
         PollMessage.match(message, {
@@ -890,7 +908,7 @@ describe("Loaded", () => {
         seen.push(`command ${text}`)
         return Message.make({ _tag: "Noted" })
       }))
-    const Noter = Component.make({
+    const Noter = Component.define({
       name: "Noter",
       model: Schema.Struct({}),
       message: Message,
@@ -900,7 +918,8 @@ describe("Loaded", () => {
           args: () => ({ id: "1" }),
           onChange: () => Message.make({ _tag: "UserChanged" })
         }
-      },
+      }
+    }).make({
       init: ($) => $.set({}).run(Note({ text: "init" })),
       update: (model, message, $) =>
         Message.match(message, {
@@ -915,10 +934,11 @@ describe("Loaded", () => {
         return h.el("i", "noter")
       }
     })
-    const Host = Component.make({
+    const Host = Component.define({
       name: "Host",
       model: Schema.Boolean,
-      message: Schema.Boolean,
+      message: Schema.Boolean
+    }).make({
       init: () => false,
       update: (_model, message) => message,
       view: (show, h) =>
@@ -1100,7 +1120,7 @@ describe("Loaded", () => {
     )
   })
 
-  it("Component.make rejects a loaders entry that isn't { load, args } or { loadMany, args }", () => {
+  it("make rejects a loaders entry that isn't { load, args } or { loadMany, args }", () => {
     const app = makeApp()
     class ListUsers extends Loader.ListService<ListUsers>()(
       "users/ListUsers",
@@ -1117,11 +1137,12 @@ describe("Loaded", () => {
       Effect.succeed(() => Effect.succeed([]))
     ) {}
     const make = (loaders: unknown) =>
-      Component.make({
+      Component.define({
         name: "Bad",
         model: Schema.Struct({}),
         message: Schema.Never,
-        loaders,
+        loaders
+      } as any).make({
         init: () => ({}),
         update: (model: any) => model,
         view: (_: any, h: any) => h.text("")
@@ -1149,14 +1170,15 @@ describe("Loaded", () => {
 
   it.effect("loaders that read each other in a cycle fail the instance, and settle fails with RootCrashed", () => {
     const app = makeApp()
-    const Cycle = Component.make({
+    const Cycle = Component.define({
       name: "Cycle",
       model: Schema.Struct({}),
       message: Schema.Never,
       loaders: {
         a: { load: app.GetUser, args: (_model: any, _props: any, loaded: any) => (loaded.b, { id: "1" }) },
         b: { load: app.GetUser, args: (_model: any, _props: any, loaded: any) => (loaded.a, { id: "2" }) }
-      },
+      }
+    } as any).make({
       init: () => ({}),
       update: (model: any) => model,
       view: (_model: any, h: any) => h.el("p", "never")
@@ -1186,12 +1208,13 @@ describe("Loaded", () => {
         Effect.succeed({ id: "acc", secret: Redacted.make(`secret-of-${Redacted.value(token)}`) })
       )
     ) {}
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       props: Schema.Struct({ token: Schema.Redacted(Schema.String) }),
       model: Schema.Struct({}),
       message: Schema.Never,
-      loaders: { account: { load: GetAccount, args: (_model, props) => ({ token: props.token }) } },
+      loaders: { account: { load: GetAccount, args: (_model, props) => ({ token: props.token }) } }
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_model, h) =>
@@ -1240,11 +1263,12 @@ describe("Loaded", () => {
       Effect.succeed(() => Effect.never)
     ) {}
     const Message = Schema.TaggedUnion({ Break: {} })
-    const Breaker = Component.make({
+    const Breaker = Component.define({
       name: "Breaker",
       model: Schema.Struct({}),
       message: Message,
-      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } },
+      loaders: { user: { load: app.GetUser, args: () => ({ id: "1" }) } }
+    }).make({
       init: () => ({}),
       update: (model, _message, $) =>
         $.set(model).run(BadRename.make({ id: "1" }).pipe(Command.map(() => Message.make({ _tag: "Break" })))),
@@ -1280,10 +1304,11 @@ describe("Loaded", () => {
       () => Effect.sleep("1 millis").pipe(Effect.as(Message.make({ _tag: "Tick" })))
     )
     const Spin = Command.make("Spin", { args: {} }, () => Effect.succeed(Message.make({ _tag: "Tick" })))
-    const Spinner = Component.make({
+    const Spinner = Component.define({
       name: "Spinner",
       model: Schema.Number,
-      message: Message,
+      message: Message
+    }).make({
       init: ($) => $.set(0).run(Wait()),
       // Each Tick issues the next: the work never runs out.
       update: (count, _message, $) => $.set(count + 1).run(Spin()),

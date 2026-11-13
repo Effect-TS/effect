@@ -30,10 +30,11 @@
  * import { Component, Head } from "effect/ui"
  * import { TestHost } from "effect/ui/testing"
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   model: Schema.Struct({}),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   head: () => [Head.title("Home")],

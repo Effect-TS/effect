@@ -72,11 +72,12 @@
  *
  * const Message = Schema.TaggedUnion({ Increment: {} })
  *
- * const Counter = Component.make({
+ * const Counter = Component.define({
  *   name: "Counter",
  *   model: Schema.Number,
  *   message: Message,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: () => 0,
  *   update: (count) => count + 1,
  *   view: (count, h) => h.button.onClick(Message.make({ _tag: "Increment" })).children(String(count))
@@ -1063,11 +1064,12 @@ export interface MountOptions<V extends View.Elements, RF = never> {
  * import { Effect, Layer, Schema } from "effect"
  * import { Component } from "effect/ui"
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   model: Schema.Struct({}),
  *   message: Schema.Never,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_, h) => h.h1("Hello")

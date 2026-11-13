@@ -40,12 +40,13 @@
  *
  * const Message = Schema.TaggedUnion({ ChangedRoute: { route: AppRoute } })
  *
- * const App = Component.make({
+ * const App = Component.define({
  *   name: "App",
  *   props: Schema.Struct({ route: AppRoute }),
  *   model: AppRoute,
  *   message: Message,
- *   elements: Html,
+ *   elements: Html
+ * }).make({
  *   init: ($) => $.props.route,
  *   update: (_, message) => message.route,
  *   subscriptions: (model) => [Router.subscription(AppRoute, model, (route) => Message.make({ _tag: "ChangedRoute", route }))],

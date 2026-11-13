@@ -8,12 +8,13 @@ const button = () => new Html.Element("button")
 const TodoMessage = Schema.TaggedUnion({ Add: {}, Draft: { value: Schema.String } })
 type TodoMessage = typeof TodoMessage.Type
 const NewTodo = Html.ref("NewTodo", "input")
-const Item = Component.make({
+const Item = Component.define({
   name: "Item",
   props: Schema.Struct({ title: Schema.String }),
   model: Schema.String,
   message: Schema.Never,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => $.props.title,
   update: (model) => model,
   view: (title, h) => h.li(title)
@@ -65,11 +66,12 @@ describe("Html", () => {
 
     it.effect("renders the example the same as the children-first form did", () =>
       Effect.gen(function*() {
-        const Todos = Component.make({
+        const Todos = Component.define({
           name: "Todos",
           model: Schema.String,
           message: TodoMessage,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => "draft",
           update: (model) => model,
           view: (draft, h) =>
@@ -163,11 +165,12 @@ describe("Html", () => {
 
     it.effect("renders the same classes on the server", () =>
       Effect.gen(function*() {
-        const Classes = Component.make({
+        const Classes = Component.define({
           name: "Classes",
           model: Schema.Struct({ saving: Schema.Boolean }),
           message: Schema.Never,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => ({ saving: false }),
           update: (model) => model,
           view: (model, h) =>

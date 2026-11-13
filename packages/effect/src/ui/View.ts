@@ -741,7 +741,7 @@ export const registeredElements = (): Vocabulary<any> | undefined => registered
  * **Details**
  *
  * The core helper has `el`, `child` and `text`. A vocabulary's element names
- * are mixed in by `Component.make`.
+ * are mixed in by `Component.define`.
  *
  * @stability experimental
  * @category models
