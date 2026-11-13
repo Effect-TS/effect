@@ -13,6 +13,7 @@ import * as Equal from "../../Equal.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { scopeAddFinalizerUnsafe } from "../../internal/effect.ts"
+import { holdsRedacted } from "../../internal/schemaRedact.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
@@ -422,28 +423,39 @@ const jsonCodecOf = (schema: Schema.Codec<any, any>) => {
 /**
  * An instance's state as JSON, for page state and history restore: its Model, and for a component
  * with loaders, `{ model, loaded }` with the slots.
+ *
+ * A state whose Schema holds a `Schema.Redacted` anywhere is never serialised: JSON would hold the
+ * secret. Its codec encodes and decodes nothing, so the server defers the instance and history keeps
+ * no entry for it, and state an older build wrote isn't adopted either.
  */
-const stateCodecs = new WeakMap<object, {
+const stateCodecs = new WeakMap<object, StateCodec>()
+interface StateCodec {
+  readonly redacted: boolean
   readonly encode: (model: unknown, slots: loaders.Slots | undefined) => Option.Option<unknown>
   readonly decode: (
     encoded: unknown
   ) => Option.Option<{ readonly model: unknown; readonly slots: loaders.Slots | undefined }>
-}>()
+}
+const redactedState: StateCodec = { redacted: true, encode: () => Option.none(), decode: () => Option.none() }
 /** @internal */
-export const stateCodecOf = (component: Component.Any) => {
+export const stateCodecOf = (component: Component.Any): StateCodec => {
   let found = stateCodecs.get(component)
   if (found === undefined) {
     const schema = (component as Component.Component<any, any, any, any, any, any, any>).model
     const bound = loaders.boundOf(component)
-    if (bound === undefined) {
+    if (holdsRedacted(schema.ast) || (bound !== undefined && holdsRedacted(bound.schema.ast))) {
+      found = redactedState
+    } else if (bound === undefined) {
       const codec = jsonCodecOf(schema)
       found = {
+        redacted: false,
         encode: (model) => codec.encode(model),
         decode: (encoded) => Option.map(codec.decode(encoded), (model) => ({ model, slots: undefined }))
       }
     } else {
       const codec = jsonCodecOf(Schema.Struct({ model: schema, loaded: bound.schema }))
       found = {
+        redacted: false,
         encode: (model, slots) => codec.encode({ model, loaded: slots ?? bound.empty }),
         decode: (encoded) =>
           Option.map(codec.decode(encoded), (state: any) => ({ model: state.model, slots: state.loaded }))
@@ -453,6 +465,9 @@ export const stateCodecOf = (component: Component.Any) => {
   }
   return found
 }
+
+/** The components the server has warned about, once each: a `Redacted` in state turns hydration off below them. */
+const warnedRedacted = new WeakSet<Component.Any>()
 
 /** An entry of the cache, by read name and args key: what a watch registered on, or a prefetch fetched. */
 const entryKey = (read: string, argsKey: string): string => `${read}\u0000${argsKey}`
@@ -3786,6 +3801,20 @@ const setup = (
     return undefined
   }
 
+  /** A `Redacted` in an instance's state defers it and its subtree, so the client builds them fresh. */
+  const warnRedacted = (inst: Instance) => {
+    if (warnedRedacted.has(inst.component)) return
+    warnedRedacted.add(inst.component)
+    forkNow(
+      ctx,
+      Effect.logWarning(
+        `${inst.component.name}: its state holds a Schema.Redacted, so the server sends no state for it and the ` +
+          "client builds it and everything under it fresh, without hydration. Keep the secret in a leaf component " +
+          "or in a service."
+      )
+    )
+  }
+
   /** Serialises the tree once, in document order, with the state the client adopts. */
   const finish = () => {
     if (scheduled || dirty.size > 0 || deferred.length > 0) flush()
@@ -3800,11 +3829,13 @@ const setup = (
     const instance = (inst: Instance, under: boolean): Renderer.ServerNode => {
       let inner = under
       if (!under) {
+        const codec = stateCodecOf(inst.component)
         const encoded = inst.failure !== undefined ||
             inst.deferred ||
             (inst.component.layer !== undefined && inst.env.ctx === undefined)
           ? Option.none()
-          : stateCodecOf(inst.component).encode(inst.model, inst.slots)
+          : codec.encode(inst.model, inst.slots)
+        if (codec.redacted) warnRedacted(inst)
         if (Option.isNone(encoded)) {
           deferredPaths.push(inst.path)
           inner = true
