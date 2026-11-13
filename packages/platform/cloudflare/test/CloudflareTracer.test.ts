@@ -213,6 +213,7 @@ describe("CloudflareTracer", () => {
       })
 
       const outer = yield* Effect.makeSpan("outer").pipe(Effect.provide(tracer))
+      // The calling fiber runs under the same span, without the caller's value.
       const values = yield* Effect.promise(() =>
         store.run("caller", () =>
           Effect.runPromise(
@@ -222,7 +223,7 @@ describe("CloudflareTracer", () => {
               Effect.yieldNow.pipe(Effect.andThen(kvGet))
             ]).pipe(Effect.withParentSpan(outer), Effect.provide(tracer))
           ))
-      )
+      ).pipe(Effect.withParentSpan(outer), Effect.provide(tracer))
 
       assert.deepStrictEqual(values, ["caller", "caller", "caller"])
       assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
