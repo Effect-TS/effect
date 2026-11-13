@@ -348,6 +348,58 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it.each(["dispose", "throw", "nested", "navigate"] as const)(
+    "searchParam establishes its batch before a synchronous observer can %s",
+    async (action) => {
+      const r = AtomRegistry.make()
+      const location = new URL("http://localhost/?q=before")
+      const events = new EventTarget()
+      const pushState = vitest.fn((_state: unknown, _title: string, url: string) => {
+        location.href = new URL(url, location).href
+      })
+      vitest.stubGlobal("window", {
+        location,
+        history: { pushState },
+        addEventListener: events.addEventListener.bind(events),
+        removeEventListener: events.removeEventListener.bind(events)
+      })
+      const navigate = () => {
+        location.search = "?q=old"
+        events.dispatchEvent(new Event("popstate"))
+      }
+      try {
+        const q = Atom.searchParam("q")
+        const failure = new Error("observer")
+        r.subscribe(q, (value) => {
+          if (value !== "pending") return
+          switch (action) {
+            case "dispose":
+              return r.dispose()
+            case "throw":
+              throw failure
+            case "nested":
+              return r.set(q, "fresh")
+            case "navigate":
+              return navigate()
+          }
+        })
+        if (action === "throw") {
+          assert.throws(() => r.set(q, "pending"), failure)
+        } else {
+          r.set(q, "pending")
+        }
+        if (action === "dispose") navigate()
+        await vitest.advanceTimersByTimeAsync(500)
+        const cancelled = action === "dispose" || action === "navigate"
+        assert.strictEqual(location.search, cancelled ? "?q=old" : action === "nested" ? "?q=fresh" : "?q=pending")
+        assert.strictEqual(pushState.mock.calls.length, cancelled ? 0 : 1)
+      } finally {
+        r.dispose()
+        vitest.unstubAllGlobals()
+      }
+    }
+  )
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")

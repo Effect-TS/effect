@@ -2441,11 +2441,11 @@ export const searchParam = <S extends Schema.ConstraintCodec<any, string> = neve
         searchParamState.updates.set(name, value)
       }
       window.addEventListener("popstate", handleSearchParamPopstate)
-      ctx.setSelf(value)
       if (searchParamState.timeout) {
         clearTimeout(searchParamState.timeout)
       }
       searchParamState.timeout = setTimeout(updateSearchParams, 500) as any
+      ctx.setSelf(value)
     }
   )
 }
