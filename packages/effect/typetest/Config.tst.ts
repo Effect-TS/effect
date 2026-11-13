@@ -1,4 +1,4 @@
-import { Config, ConfigProvider, Schema } from "effect"
+import { Brand, Config, ConfigProvider, Newtype, Schema } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Config", () => {
@@ -20,6 +20,38 @@ describe("Config", () => {
 
     const c3 = c.pipe(Config.withDefault("c"))
     expect(c3).type.toBe<Config.Config<"a" | "b" | "c">>()
+  })
+
+  it("withBrand", () => {
+    type UserId = string & Brand.Brand<"UserId">
+    const UserId = Brand.nominal<UserId>()
+
+    expect(Config.String("a").pipe(Config.withBrand("UserId"))).type.toBe<Config.Config<UserId>>()
+    expect(Config.withBrand(Config.String("a"), "UserId")).type.toBe<Config.Config<UserId>>()
+
+    expect(Config.String("a").pipe(Config.withBrand(UserId))).type.toBe<Config.Config<UserId>>()
+    expect(Config.withBrand(Config.String("a"), UserId)).type.toBe<Config.Config<UserId>>()
+
+    const literal = Config.Literals(["a", "b"]).pipe(Config.withBrand(UserId))
+    expect(literal).type.toBe<Config.Config<("a" | "b") & Brand.Brand<"UserId">>>()
+
+    expect(Config.Number("a").pipe).type.not.toBeCallableWith(Config.withBrand(UserId))
+    expect(Config.withBrand).type.not.toBeCallableWith(Config.Number("a"), UserId)
+  })
+
+  it("withNewtype", () => {
+    interface UserId extends Newtype.Newtype<"UserId", string> {}
+    const UserIdIso = Newtype.makeIso<UserId>()
+
+    expect(Config.String("a").pipe(Config.withNewtype<UserId>())).type.toBe<Config.Config<UserId>>()
+    expect(Config.Number("a").pipe).type.not.toBeCallableWith(Config.withNewtype<UserId>())
+
+    expect(Config.String("a").pipe(Config.withNewtype(UserIdIso))).type.toBe<Config.Config<UserId>>()
+    expect(Config.withNewtype(Config.String("a"), UserIdIso)).type.toBe<Config.Config<UserId>>()
+    expect(Config.Literals(["a", "b"]).pipe(Config.withNewtype(UserIdIso))).type.toBe<Config.Config<UserId>>()
+
+    expect(Config.Number("a").pipe).type.not.toBeCallableWith(Config.withNewtype(UserIdIso))
+    expect(Config.withNewtype).type.not.toBeCallableWith(Config.Number("a"), UserIdIso)
   })
 
   it("type level helpers", () => {

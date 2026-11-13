@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import {
+  Brand,
   ByteSize,
   Cause,
   Config,
@@ -7,6 +8,7 @@ import {
   Duration,
   Effect,
   Exit,
+  Newtype,
   Option,
   pipe,
   Redacted,
@@ -876,6 +878,71 @@ Expected "Infinity" | "-Infinity" | "NaN"
             Option.some(undefined)
           )
         }))
+    })
+
+    describe("withBrand", () => {
+      type PoolSize = number & Brand.Brand<"PoolSize">
+      const PoolSize = Brand.check<PoolSize>(Schema.isBetween({ minimum: 1, maximum: 100 }))
+
+      it("returns the parsed value unchanged for a brand key", async () => {
+        const config = Config.String("a").pipe(Config.withBrand("UserId"))
+
+        const UserId = Brand.nominal<Brand.Branded<string, "UserId">>()
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({ a: "u1" }), UserId("u1"))
+      })
+
+      it("runs the constructor checks on the parsed value", async () => {
+        const config = Config.Int("a").pipe(Config.withBrand(PoolSize))
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({ a: "10" }), PoolSize(10))
+        await assertFailure(
+          config,
+          ConfigProvider.fromUnknown({ a: "0" }),
+          `Expected a value between 1 and 100`
+        )
+      })
+
+      it("treats a failed check as invalid rather than absent", async () => {
+        const config = Config.Int("a").pipe(Config.withBrand(PoolSize), Config.withDefault(PoolSize(5)))
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({}), PoolSize(5))
+        await assertFailure(
+          config,
+          ConfigProvider.fromUnknown({ a: "0" }),
+          `Expected a value between 1 and 100`
+        )
+      })
+
+      it("skips validation for nominal constructors", async () => {
+        type UserId = string & Brand.Brand<"UserId">
+        const UserId = Brand.nominal<UserId>()
+        const config = Config.withBrand(Config.String("a"), UserId)
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({ a: "u1" }), UserId("u1"))
+      })
+    })
+
+    describe("withNewtype", () => {
+      interface UserId extends Newtype.Newtype<"UserId", string> {}
+      const UserIdIso = Newtype.makeIso<UserId>()
+
+      it("returns the parsed value unchanged without an iso", async () => {
+        const config = Config.String("a").pipe(Config.withNewtype<UserId>())
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({ a: "u1" }), UserIdIso.set("u1"))
+      })
+
+      it("wraps the parsed value with the iso", async () => {
+        const config = Config.String("a").pipe(Config.withNewtype(UserIdIso))
+
+        await assertSuccess(config, ConfigProvider.fromUnknown({ a: "u1" }), UserIdIso.set("u1"))
+        await assertSuccess(
+          config.pipe(Config.withDefault(UserIdIso.set("default"))),
+          ConfigProvider.fromUnknown({}),
+          UserIdIso.set("default")
+        )
+      })
     })
 
     describe("absence semantics", () => {
