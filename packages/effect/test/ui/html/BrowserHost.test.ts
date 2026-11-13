@@ -1413,20 +1413,24 @@ describe("BrowserHost", { concurrent: false }, () => {
         expect(root.model()?.draft ?? "").toBe("")
       }).pipe(Effect.scoped))
 
-    it.effect("a node the page keeps after the Scope closes doesn't keep the app alive", () =>
-      Effect.gen(function*() {
-        const app = yield* container
-        const scope = yield* Scope.make()
-        const model = yield* BrowserHost.mountEffect(TodoApp, {}, app).pipe(
-          Effect.map((root) => new WeakRef(root.model()!)),
-          Scope.provide(scope)
-        )
-        const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" })
-        yield* Scope.close(scope, Exit.void)
-        yield* collectGarbage
-        expect(model.deref()).toBeUndefined()
-        expect(field.isConnected).toBe(false)
-      }).pipe(Effect.scoped))
+    // collectGarbage uses Node's V8 flags, unavailable on Bun and Deno.
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "a node the page keeps after the Scope closes doesn't keep the app alive",
+      () =>
+        Effect.gen(function*() {
+          const app = yield* container
+          const scope = yield* Scope.make()
+          const model = yield* BrowserHost.mountEffect(TodoApp, {}, app).pipe(
+            Effect.map((root) => new WeakRef(root.model()!)),
+            Scope.provide(scope)
+          )
+          const field = HtmlQuery.getByRole(app, "textbox", { name: "New todo" })
+          yield* Scope.close(scope, Exit.void)
+          yield* collectGarbage
+          expect(model.deref()).toBeUndefined()
+          expect(field.isConnected).toBe(false)
+        }).pipe(Effect.scoped)
+    )
 
     it.effect("mount is a Layer: the tree is live while it is built, and closing it removes the nodes", () =>
       Effect.gen(function*() {
