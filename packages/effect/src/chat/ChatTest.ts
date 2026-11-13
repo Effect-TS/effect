@@ -57,10 +57,6 @@ import * as ChatThread from "./ChatThread.ts"
  * The core does not know any platform's syntax, so the caller supplies it. A
  * slice that is not a mention token returns `None`.
  *
- * **Gotchas**
- *
- * The name is provisional.
- *
  * @stability unstable
  * @category models
  * @since 4.1.5
