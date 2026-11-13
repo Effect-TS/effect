@@ -25,7 +25,9 @@ const program = Effect.gen(function*() {
 
 Import `ClickhouseWebClient` from `@effect/sql-clickhouse/ClickhouseWebClient`, not from the package root, which also exports the Node client.
 
-Both clients provide the generic `SqlClient`, interrupt and kill running queries the same way, and work with `ClickhouseMigrator`. Their ClickHouse-specific services are separate, so code that uses `param`, `asCommand` or `insertQuery` picks one of them; code that only needs `SqlClient` runs with either.
+Both clients provide the generic `SqlClient` and work with `ClickhouseMigrator`. Their ClickHouse-specific services are separate: code using `param`, `asCommand` or `insertQuery` must select one, while code using only `SqlClient` works with either.
+
+Interruption aborts the request and attempts server-side cancellation. Failed kills are ignored; kill requests that exceed five seconds are aborted.
 
 Building the layer checks the connection with a query, so on Workers build it once and reuse it rather than once per request.
 

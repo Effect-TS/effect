@@ -1,8 +1,6 @@
 /**
- * Behaviour shared by `ClickhouseClient` and `ClickhouseWebClient`. Each
- * entry passes in its driver client and a way to read a result body as a
- * stream. This module must not import either driver, so that the web entry
- * stays free of Node built-ins.
+ * Shared client behavior. Keep driver imports in the entry modules so the
+ * web entry stays free of Node built-ins.
  */
 import * as Context from "effect/Context"
 import * as SecureRandom from "effect/crypto/SecureRandom"
@@ -52,7 +50,6 @@ interface ResultSet {
   close(): unknown
 }
 
-// A query resolves to a result set; a command or insert to a summary without a body.
 type Result = ResultSet | { readonly query_id: string }
 
 /**
@@ -135,9 +132,7 @@ const classifyError = (cause: unknown, message: string, operation: string, fallb
 const sqlError = (message: string, operation: string, fallback?: "connection") => (cause: unknown) =>
   new SqlError({ reason: classifyError(cause, message, operation, fallback) })
 
-// Cancellation is best effort: a kill that fails or does not answer in time
-// must not turn an interruption into a defect or hold it up, and a kill that
-// times out is aborted rather than left running.
+// Keep cancellation bounded and best effort; timeout aborts the kill request.
 const killQuery = (client: Driver, queryId: string) =>
   Effect.promise((signal) =>
     client.command({
@@ -151,12 +146,9 @@ const killQuery = (client: Driver, queryId: string) =>
   )
 
 /**
- * Runs one request with the fiber's query id and settings, then `read`s its
- * result. On interruption the HTTP request is aborted and the query is killed
- * on the server, since closing the connection does not stop a query that is
- * still being computed. A result being read is closed first: the Node driver
- * stops listening to the abort signal once headers arrive, and the open
- * response would otherwise hold the connection the kill needs.
+ * Keeps body reads inside the interruptible request. Close the result before
+ * killing the query: Node stops listening for aborts after headers arrive,
+ * and an open response can hold the only connection available for the kill.
  */
 const runAbortable = <A>(
   client: Driver,
@@ -260,8 +252,6 @@ class ConnectionImpl implements Connection {
     this.fromStream = fromStream
   }
 
-  // `read` runs inside the request, so interrupting while a body is still
-  // arriving aborts the request and kills the query.
   private runRaw<A>(
     sql: string,
     params: ReadonlyArray<unknown>,
@@ -348,10 +338,8 @@ class ConnectionImpl implements Connection {
 }
 
 /**
- * Creates the driver client, verifies connectivity with a ping (5 second
- * limit), and builds the ClickHouse `SqlClient` over it. The driver client is
- * closed when the scope ends. The result has the members both entries'
- * service interfaces declare; each entry narrows it to its own.
+ * Builds the shared service members; each entry narrows the result to its
+ * driver-specific interface.
  */
 export const make = <
   Config extends {

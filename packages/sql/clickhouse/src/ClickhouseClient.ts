@@ -120,8 +120,13 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 
 /**
  * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()`,
- * closes the underlying client when the scope ends, maps ClickHouse failures
- * to `SqlError`, and aborts plus kills in-flight queries when interrupted.
+ * and closes the underlying driver when the scope ends.
+ *
+ * **Gotchas**
+ *
+ * Interruption aborts the request and attempts server-side cancellation.
+ * `KILL QUERY` failures are ignored, and the kill request is aborted after
+ * five seconds if it has not completed.
  *
  * @stability unstable
  * @category constructors

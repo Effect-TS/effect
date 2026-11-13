@@ -2,14 +2,9 @@
  * ClickHouse driver for Effect SQL on fetch-only runtimes, backed by
  * `@clickhouse/client-web`.
  *
- * This module is the counterpart of `ClickhouseClient` for runtimes without
- * Node built-ins, such as Cloudflare Workers, Deno Deploy and browsers. It
- * talks to ClickHouse over `fetch` and reads results through web streams, and
- * its import graph contains neither `@clickhouse/client` nor any `node:`
- * module. `make` creates a scoped client, checks the connection, maps
- * ClickHouse errors to `SqlError`, and aborts plus kills in-flight queries when
- * interrupted, exactly as the Node client does. `ClickhouseMigrator` works with
- * both clients.
+ * Provides ClickHouse-specific and generic `SqlClient` services for runtimes
+ * without Node built-ins, such as Cloudflare Workers. Supports
+ * `ClickhouseMigrator` and accepts a custom `fetch` through its configuration.
  *
  * Import it from `@effect/sql-clickhouse/ClickhouseWebClient`: the package
  * root also exports `ClickhouseClient`, which needs Node built-ins.
@@ -50,9 +45,8 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseWebClient"
 
 /**
  * ClickHouse-specific `SqlClient` extension for fetch-only runtimes, with
- * access to its configuration, the underlying `@clickhouse/client-web`
- * instance, typed parameter fragments, command-mode execution, insert
- * queries, and per-effect query ID and ClickHouse settings.
+ * access to the web driver, typed parameters, commands, inserts, and per-effect
+ * query IDs and settings.
  *
  * **Gotchas**
  *
@@ -132,9 +126,14 @@ export interface ClickhouseWebClientConfig extends ClickhouseWeb.ClickHouseClien
 }
 
 /**
- * Creates a scoped `ClickhouseWebClient`, verifies connectivity, closes the
- * underlying client when the scope ends, maps ClickHouse failures to
- * `SqlError`, and aborts plus kills in-flight queries when interrupted.
+ * Creates a scoped `ClickhouseWebClient`, verifies connectivity, and closes
+ * the underlying driver when the scope ends.
+ *
+ * **Gotchas**
+ *
+ * Interruption aborts the request and attempts server-side cancellation.
+ * `KILL QUERY` failures are ignored, and the kill request is aborted after
+ * five seconds if it has not completed.
  *
  * @stability unstable
  * @category constructors
@@ -176,9 +175,8 @@ export const layer = (
   Core.layer(ClickhouseWebClient, make(config))
 
 /**
- * Fiber reference read by the low-level ClickHouse connection to choose query
- * or command execution for statements; defaults to `query`. Shared with
- * `ClickhouseClient.ClientMethod`.
+ * Fiber reference selecting statement execution mode; defaults to `query`.
+ * Shared with `ClickhouseClient.ClientMethod`.
  *
  * @stability unstable
  * @category services
