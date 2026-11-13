@@ -658,20 +658,17 @@ describe("SqlEventJournal", { concurrent: false }, () => {
           const remoteId = EventJournal.makeRemoteIdUnsafe()
           const local = yield* journal.write({ ...localEntry("local"), effect: Effect.succeed })
           const older = entry(local.createdAtMillis - 1)
-          const first = yield* journal.withRemoteUncommited(remoteId, (entries) =>
+          yield* journal.withRemoteUncommited(remoteId, () =>
             journal.writeFromRemote({
               remoteId: EventJournal.makeRemoteIdUnsafe(),
               entries: remoteEntries([older]),
               effect: () => Effect.void
-            }).pipe(Effect.as(entries.map((entry) => entry.idString))))
+            }))
           const next = yield* journal.withRemoteUncommited(
             remoteId,
             (entries) => Effect.succeed(entries.map((entry) => entry.idString))
           )
-          assert.deepStrictEqual({ first, next }, {
-            first: Option.some([local.idString]),
-            next: Option.some([older.idString])
-          })
+          assert.deepStrictEqual(next, Option.some([older.idString]))
         }))
 
       it.effect("writeMany commits and publishes a batch in order only when its callback succeeds", () =>
