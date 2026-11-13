@@ -67,7 +67,7 @@ describe("Atom", { concurrent: false }, () => {
 
     try {
       r.get(reader)
-      await vitest.advanceTimersByTimeAsync(10)
+      await vitest.advanceTimersByTimeAsync(20)
       expect(r.get(reader)).toEqual(1)
     } finally {
       r.dispose()
@@ -559,7 +559,7 @@ describe("Atom", { concurrent: false }, () => {
         if (reconfigure) {
           r.set(config, 1)
         }
-        await vitest.advanceTimersByTimeAsync(10)
+        await vitest.advanceTimersByTimeAsync(20)
 
         let result = r.get(atom)
         assert(AsyncResult.isSuccess(result))
@@ -3604,41 +3604,57 @@ describe("Atom", { concurrent: false }, () => {
     })
 
     for (const mode of ["sync", "async"] as const) {
-      const makeAtom = () => {
-        const storage = new Map([["theme", JSON.stringify("light")]])
-        const kvsRuntime = Atom.runtime(Layer.succeed(
-          KeyValueStore.KeyValueStore,
-          KeyValueStore.makeStringOnly({
-            get: (key) => Effect.sync(() => storage.get(key)),
-            set: (key, value) => Effect.sync(() => storage.set(key, value)),
-            remove: (key) => Effect.sync(() => storage.delete(key)),
-            clear: Effect.sync(() => storage.clear()),
-            size: Effect.sync(() => storage.size),
-            keys: Effect.sync(() => Array.from(storage.keys()))
-          })
-        ))
-        return Atom.kvs({ mode, runtime: kvsRuntime, key: "theme", schema: Schema.String, defaultValue: () => "light" })
-      }
       const read = (value: unknown) => AsyncResult.isAsyncResult(value) ? AsyncResult.getOrThrow(value) : value
 
-      it(`${mode} mode keeps the written value after a refresh`, () => {
-        const atom = makeAtom()
-        const r = AtomRegistry.make()
-        r.mount(atom)
-        r.set(atom, "dark")
-        r.refresh(atom)
-        expect(read(r.get(atom))).toEqual("dark")
-      })
-
-      it(`${mode} mode keeps the written value after a remount past the idle TTL`, async () => {
-        const atom = makeAtom()
+      it(`${mode} mode retains persisted writes across refresh and remount`, async () => {
+        const runtime = Atom.runtime(
+          Layer.effect(
+            KeyValueStore.KeyValueStore,
+            Effect.map(KeyValueStore.KeyValueStore, (store) => ({
+              ...store,
+              set: (key, value) => store.set(key, value).pipe(Effect.delay(10))
+            }))
+          ).pipe(Layer.provide(KeyValueStore.layerMemory))
+        )
+        const atom = Atom.kvs({ mode, runtime, key: "theme", schema: Schema.String, defaultValue: () => "light" })
         const r = AtomRegistry.make({ defaultIdleTTL: 400 })
         const unmount = r.mount(atom)
+        await vitest.advanceTimersByTimeAsync(20)
+        const values: Array<unknown> = []
+        const unsubscribe = r.subscribe(atom, (value) => values.push(read(value)))
         r.set(atom, "dark")
+        assert.deepStrictEqual(values, ["dark"])
+        await vitest.advanceTimersByTimeAsync(20)
+        assert.deepStrictEqual(values, ["dark"])
+        unsubscribe()
+        r.refresh(atom)
+        assert.strictEqual(read(r.get(atom)), "dark")
         unmount()
         await vitest.advanceTimersByTimeAsync(600)
         r.mount(atom)
-        expect(read(r.get(atom))).toEqual("dark")
+        assert.strictEqual(read(r.get(atom)), "dark")
+        r.dispose()
+      })
+
+      it(`${mode} mode recovers the last persisted value after a rejected write`, () => {
+        const atom = Atom.kvs({
+          mode,
+          runtime: Atom.runtime(KeyValueStore.layerMemory),
+          key: "theme",
+          schema: Schema.String.check(Schema.isMinLength(1)),
+          defaultValue: () => "light"
+        })
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        const values: Array<unknown> = []
+        r.subscribe(atom, (value) => values.push(read(value)))
+        r.set(atom, "dark")
+        assert.deepStrictEqual(values, ["dark"])
+        r.set(atom, "")
+        assert.strictEqual(read(r.get(atom)), "")
+        r.refresh(atom)
+        assert.strictEqual(read(r.get(atom)), "dark")
+        r.dispose()
       })
     }
   })

@@ -2335,10 +2335,10 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
   readonly mode?: Mode | undefined
 }): Writable<"async" extends Mode ? AsyncResult.AsyncResult<S["Type"]> : S["Type"], S["Type"]> => {
   const setAtom = options.runtime.fn(
-    (value: S["Type"]) =>
+    (value: S["Type"], get) =>
       KeyValueStore.KeyValueStore.use((store) =>
         KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
-      )
+      ).pipe(Effect.tap(() => Effect.sync(() => get.set(resultAtom, value))))
   )
   const resultAtom = writable(
     options.runtime.atom(
@@ -2357,7 +2357,15 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             return value
           })
         )
-        get.subscribe(resultAtom, (result) => get.setSelf(mapper(result)))
+        get.subscribe(resultAtom, (result) => {
+          const value = mapper(result)
+          const current = get.self<AsyncResult.AsyncResult<S["Type"]>>()
+          if (
+            AsyncResult.isSuccess(value) && Option.isSome(current) && AsyncResult.isSuccess(current.value) &&
+            value.waiting === current.value.waiting && Object.is(value.value, current.value.value)
+          ) return
+          get.setSelf(value)
+        })
         return mapper(get.once(resultAtom))
       } :
       (get) => {
@@ -2377,7 +2385,6 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
     (ctx, value: S["Type"]) =>
       batch(() => {
         ctx.set(setAtom, value as any)
-        ctx.set(resultAtom, value)
         ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
       })
   ) as any
