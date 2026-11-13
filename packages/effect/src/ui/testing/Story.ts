@@ -70,6 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
+import { checkChildPaths } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -535,7 +536,13 @@ const record = <Props, Model, Msg, Events>(
   render: () => View.Node<Msg, any>
 ): Story<Props, Model, Msg, Events> => {
   let rendered: View.Node<Msg, any> | undefined
-  const view = () => rendered ??= render()
+  const view = () => {
+    if (rendered !== undefined) return rendered
+    const tree = render()
+    // As the runtime does: two child slots at one path fail the view.
+    checkChildPaths(`/${fields.component.name}`, tree)
+    return rendered = tree
+  }
   // A view value is a `Query` tree; a child slot is a node with no tag or text.
   const root = () => view() as Query.Node
   const context = () => boundOf(fields.component)?.context(fields.model, fields.props, fields.slots)

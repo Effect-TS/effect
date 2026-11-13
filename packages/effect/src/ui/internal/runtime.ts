@@ -33,6 +33,7 @@ import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as loaders from "./loaders.ts"
+import { checkChildPaths, segment } from "./paths.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
@@ -377,9 +378,6 @@ const entryKey = (read: string, argsKey: string): string => `${read}\u0000${args
 
 /** How long a declaration that ran for a route drops intents for it. Fixed. */
 const intentGuardMillis = 30_000
-
-const childName = (component: Component.Any | Feature.Any): string =>
-  Feature.isService(component) ? component[Feature.TypeId].name : component.name
 
 /** Shallow per key, with `Equal.equals` only for values that differ by reference. */
 const propsEqual = (a: unknown, b: unknown): boolean => {
@@ -1522,7 +1520,11 @@ const setup = (
         inst.mounting = undefined
         if (inst.closed || inst.failure !== undefined) return
       }
-      const tree = guard(inst, "view", () => component.view(inst.model, inst.props, runningOf(inst), inst.slots))
+      const tree = guard(inst, "view", () => {
+        const tree = component.view(inst.model, inst.props, runningOf(inst), inst.slots)
+        checkChildPaths(path, tree)
+        return tree
+      })
       if (tree === undefined) return
       const plan = range !== undefined && Option.isSome(serverModel) ? matchList(inst, [tree], range.nodes) : undefined
       const rendered = guard(
@@ -2804,6 +2806,7 @@ const setup = (
     if (inst.waiting) return
     guard(inst, "view", () => {
       const tree = inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots)
+      checkChildPaths(inst.path, tree)
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
@@ -2873,7 +2876,7 @@ const setup = (
     } else {
       component = target
     }
-    const path = `${inst.path}/${childName(target)}[${view.key}]`
+    const path = `${inst.path}/${segment(view)}`
     const child = makeInstance(component, view.props, path, inst, childEnv, view.onEmit, view.onFailure, range)
     // Built fresh: the server's nodes go, and the parent places the new ones.
     if (range !== undefined && !range.claimed) removeRange(range)
@@ -2963,7 +2966,7 @@ const setup = (
           break
         }
         case "Child": {
-          const path = `${inst.path}/${childName(view.component)}[${view.key}]`
+          const path = `${inst.path}/${segment(view)}`
           if (kind?._tag !== "Open" || kind.path !== path) return undefined
           const range = rangeFrom(node, path)
           if (range === undefined) return undefined
@@ -3011,7 +3014,7 @@ const setup = (
   // -- diff -----------------------------------------------------------------
   const keyOf = (view: View.Node<any, any>, index: number): string =>
     view._tag === "Child"
-      ? `c:${childName(view.component)}[${view.key}]`
+      ? `c:${segment(view)}`
       : view._tag === "Element" && view.elementKey !== undefined
       ? `e:${view.tag}[${view.elementKey}]`
       : `p:${index}`
@@ -3386,7 +3389,7 @@ const setup = (
           return instance(rendered.inst, under)
         case "Slot": {
           // A failed child, or a feature whose Layer isn't ready: the client builds it fresh.
-          const path = `${inst.path}/${childName(rendered.v.component)}[${rendered.v.key}]`
+          const path = `${inst.path}/${segment(rendered.v)}`
           if (!under) deferredPaths.push(path)
           return { _tag: "Range", path, children: [serialize(inst, rendered.inner, true)] }
         }
