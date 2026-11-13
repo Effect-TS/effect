@@ -140,7 +140,7 @@ export const UserCardMessage = Schema.TaggedUnion({
   Liked: {}
 })
 
-export const UserCard = Component.make({
+export const UserCard = Component.define({
   name: "UserCard",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({}),
@@ -148,7 +148,8 @@ export const UserCard = Component.make({
   elements: Html,
   loaders: {
     user: { load: GetUser, args: (_model, props) => ({ id: props.id }) }
-  },
+  }
+}).make({
   init: () => ({}),
   update: (model, message, $) =>
     UserCardMessage.match(message, {
@@ -188,7 +189,7 @@ export const RenameFormMessage = Schema.TaggedUnion({
   SaveFailed: { name: Schema.String, reason: Schema.String }
 })
 
-export const RenameForm = Component.make({
+export const RenameForm = Component.define({
   name: "RenameForm",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({
@@ -199,7 +200,8 @@ export const RenameForm = Component.make({
   elements: Html,
   loaders: {
     user: { load: GetUser, args: (_model, props) => ({ id: props.id }) }
-  },
+  }
+}).make({
   init: () => ({ draft: Option.none(), error: Option.none() }),
   update: (model, message, $) =>
     RenameFormMessage.match(message, {
@@ -250,12 +252,13 @@ export const RenameForm = Component.make({
 
 export const DetailPageMessage = Schema.TaggedUnion({ ToggleRename: {} })
 
-export const DetailPage = Component.make({
+export const DetailPage = Component.define({
   name: "DetailPage",
   props: Schema.Struct({ id: Schema.String }),
   model: Schema.Struct({ renaming: Schema.Boolean }),
   message: DetailPageMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: () => ({ renaming: false }),
   update: (model) => ({ renaming: !model.renaming }),
   view: (model, h) =>
@@ -272,14 +275,15 @@ export const ListPageMessage = Schema.TaggedUnion({
   GoTo: { page: Schema.Number }
 })
 
-export const ListPage = Component.make({
+export const ListPage = Component.define({
   name: "ListPage",
   model: Schema.Struct({ page: Schema.Number }),
   message: ListPageMessage,
   elements: Html,
   loaders: {
     users: { load: ListUsers, args: (model) => ({ page: model.page }) }
-  },
+  }
+}).make({
   init: () => ({ page: 0 }),
   update: (model, message) =>
     ListPageMessage.match(message, {
@@ -314,12 +318,13 @@ export const ListPage = Component.make({
 
 export const AppMessage = Schema.TaggedUnion({ RouteChanged: { route: AppRoute } })
 
-export const App = Component.make({
+export const App = Component.define({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
   model: AppRoute,
   message: AppMessage,
-  elements: Html,
+  elements: Html
+}).make({
   init: ($) => $.props.route,
   update: (_route, message) => message.route,
   subscriptions: (

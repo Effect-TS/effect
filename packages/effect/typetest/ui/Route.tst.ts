@@ -58,10 +58,11 @@ describe("Route", () => {
 describe("Router", () => {
   it("puts the navigation Commands a component runs in its requirements", () => {
     const Message = Schema.TaggedUnion({ Go: {}, Done: {} })
-    const Nav = Component.make({
+    const Nav = Component.define({
       name: "Nav",
       model: Schema.Struct({ n: Schema.Number }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ n: 0 }),
       update: (model, message, $) =>
         message._tag === "Go"
@@ -112,10 +113,11 @@ describe("Router", () => {
 
   it("blocked is a Subscription a component returns while the Model says so", () => {
     expect(Router.blocked("form")).type.toBe<Subscription.Subscription<never, Router.Router>>()
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.Struct({ dirty: Schema.Boolean }),
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => ({ dirty: false }),
       update: (model) => model,
       subscriptions: (model) => [model.dirty && Router.blocked("form")],
@@ -127,11 +129,13 @@ describe("Router", () => {
   })
 
   it("gives head only the Model", () => {
-    expect(Component.make).type.not.toBeCallableWith({
+    const PageDef = Component.define({
       name: "Page",
       props: Schema.Struct({ title: Schema.String }),
       model: Schema.Struct({}),
-      message: Schema.Never,
+      message: Schema.Never
+    })
+    expect(PageDef.make).type.not.toBeCallableWith({
       init: () => ({}),
       update: (model: {}) => model,
       head: (_model: {}, props: { readonly title: string }) => [Head.title(props.title)],
@@ -146,31 +150,34 @@ class GetPerson extends Loader.Service<GetPerson>()(
   Effect.succeed(({ id }) => Effect.succeed(`Person ${id}`))
 ) {}
 
-const PersonPage = Component.make({
+const PersonPage = Component.define({
   name: "PersonPage",
   props: Schema.Struct({ id: Schema.Number }),
   model: Schema.Struct({}),
   message: Schema.Never,
-  loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } },
+  loaders: { person: { load: GetPerson, args: (_model, props) => ({ id: props.id }) } }
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: (_, h) => h.text(AsyncResult.isSuccess(h.loaded.person) ? h.loaded.person.value : "person")
 })
 
-const HomePage = Component.make({
+const HomePage = Component.define({
   name: "HomePage",
   model: Schema.Struct({}),
-  message: Schema.Never,
+  message: Schema.Never
+}).make({
   init: () => ({}),
   update: (model) => model,
   view: (_, h) => h.text("home")
 })
 
 /** Declares the person page, which provides its own read. */
-const Declarer = Component.make({
+const Declarer = Component.define({
   name: "Declarer",
   model: Schema.Struct({}),
-  message: Schema.Never,
+  message: Schema.Never
+}).make({
   init: () => ({}),
   update: (model) => model,
   subscriptions: () => [
@@ -209,10 +216,11 @@ describe("Router.prefetch", () => {
     const Provided = Math.random() > 0.5 ? PersonPage.pipe(Component.provide(GetPerson.layer)) : HomePage
     expect(Router.page(Provided, { id: 1 })).type.toBe<Router.Page<GetPerson>>()
     // Declared, the union's reads join the declarer's requirements.
-    const UnionDeclarer = Component.make({
+    const UnionDeclarer = Component.define({
       name: "UnionDeclarer",
       model: Schema.Struct({}),
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => ({}),
       update: (model) => model,
       subscriptions: () => [

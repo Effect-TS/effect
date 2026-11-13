@@ -87,19 +87,21 @@ describe("Head", () => {
 
   it.effect("fails only the instance whose title template throws", () =>
     Effect.gen(function*() {
-      const Page = Component.make({
+      const Page = Component.define({
         name: "Page",
         model: Schema.Number,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => 0,
         update: (model) => model,
         head: () => [Head.title("Ada")],
         view: (_, h) => h.text("page")
       })
-      const Layout = Component.make({
+      const Layout = Component.define({
         name: "Layout",
         model: Schema.Number,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => 0,
         update: (model) => model,
         head: () => [
@@ -109,10 +111,11 @@ describe("Head", () => {
         ],
         view: (_, h) => h.child(Page, { key: "page", props: {} })
       })
-      const App = Component.make({
+      const App = Component.define({
         name: "App",
         model: Schema.Number,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => 0,
         update: (model) => model,
         head: () => [Head.title("App")],
@@ -128,19 +131,21 @@ describe("Head", () => {
 
   it.effect("clears the head when the root's title template throws", () =>
     Effect.gen(function*() {
-      const Page = Component.make({
+      const Page = Component.define({
         name: "Page",
         model: Schema.Number,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => 0,
         update: (model) => model,
         head: () => [Head.title("Ada")],
         view: (_, h) => h.text("page")
       })
-      const App = Component.make({
+      const App = Component.define({
         name: "App",
         model: Schema.Number,
-        message: Schema.Never,
+        message: Schema.Never
+      }).make({
         init: () => 0,
         update: (model) => model,
         head: () => [

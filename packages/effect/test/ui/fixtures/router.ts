@@ -23,10 +23,11 @@ export type AppRoute = typeof AppRoute.Type
 // Pages
 // ---------------------------------------------------------------------------
 
-export const Home = Component.make({
+export const Home = Component.define({
   name: "Home",
   model: Schema.Struct({}),
-  message: Schema.Never,
+  message: Schema.Never
+}).make({
   init: () => ({}),
   update: (model) => model,
   head: () => [Head.title("Home"), Head.meta({ name: "description", content: "The home page" })],
@@ -77,7 +78,7 @@ export const CountVisit = Command.make(
   () => Effect.succeed(PersonMessage.make({ _tag: "Visited" }))
 )
 
-export const Person = Component.make({
+export const Person = Component.define({
   name: "Person",
   props: Schema.Struct({ id: Schema.Number }),
   model: Schema.Struct({
@@ -94,7 +95,8 @@ export const Person = Component.make({
       onChange: (result) =>
         PersonMessage.make({ _tag: "Loaded", name: AsyncResult.isSuccess(result) ? result.value : "Loading" })
     }
-  },
+  }
+}).make({
   init: ($) => $.set({ id: $.props.id, name: "Loading", count: 0, visits: 0 }).run(CountVisit()),
   update: (model, message, $) =>
     PersonMessage.match(message, {
@@ -118,10 +120,11 @@ export const Person = Component.make({
 
 export class SlowData extends Context.Service<SlowData, { readonly text: string }>()("test/SlowData") {}
 
-export const Slow = Component.make({
+export const Slow = Component.define({
   name: "Slow",
   model: Schema.Struct({}),
-  message: Schema.Never,
+  message: Schema.Never
+}).make({
   init: () => ({}),
   update: (model) => model,
   head: () => [Head.title("Slow")],
@@ -145,11 +148,12 @@ export const AppMessage = Schema.TaggedUnion({
 
 const navigated = (outcome: Router.Outcome) => AppMessage.make({ _tag: "Navigated", outcome })
 
-export const App = Component.make({
+export const App = Component.define({
   name: "App",
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute, outcomes: Schema.Array(Schema.String), blocked: Schema.Boolean }),
-  message: AppMessage,
+  message: AppMessage
+}).make({
   init: ($) => ({ route: $.props.route, outcomes: [], blocked: false }),
   update: (model, message, $) =>
     AppMessage.match(message, {

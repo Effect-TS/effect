@@ -43,11 +43,12 @@ describe("Router.patchQuery", () => {
   it("adds stale to the outcome, and PatchQuery to the requirements", () => {
     expect<Router.PatchOutcome>().type.toBe<"navigated" | "blocked" | "stale">()
     const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Patched: {} })
-    const Box = Component.make({
+    const Box = Component.define({
       name: "Box",
       props: Schema.Struct({ route: SearchRoute }),
       model: Schema.Struct({ typed: Schema.Number }),
-      message: Message,
+      message: Message
+    }).make({
       init: () => ({ typed: 0 }),
       update: (model, message, $) =>
         message._tag === "Typed"

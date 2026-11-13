@@ -137,11 +137,12 @@ describe("BrowserHost", { concurrent: false }, () => {
       }).pipe(Effect.scoped))
 
     const Message = Schema.TaggedUnion({ Typed: { value: Schema.String }, Checked: { checked: Schema.Boolean } })
-    const Form = Component.make({
+    const Form = Component.define({
       name: "Form",
       model: Schema.Struct({ text: Schema.String, checked: Schema.Boolean, open: Schema.Boolean }),
       message: Message,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => ({ text: "fixed", checked: false, open: true }),
       // Every change is rejected.
       update: (model) => model,
@@ -191,11 +192,12 @@ describe("BrowserHost", { concurrent: false }, () => {
 
     it.effect("a form reset is put back to what the Model says", () =>
       Effect.gen(function*() {
-        const Resettable = Component.make({
+        const Resettable = Component.define({
           name: "Resettable",
           model: Schema.Null,
           message: Schema.Never,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => null,
           update: (model) => model,
           view: (_, h) =>
@@ -246,12 +248,13 @@ describe("BrowserHost", { concurrent: false }, () => {
       Patched: { outcome: Schema.Literals(["navigated", "blocked", "stale"]) }
     })
     // The query is the only copy of the text: the page's Model holds none. Digits are rejected.
-    const SearchPage = Component.make({
+    const SearchPage = Component.define({
       name: "SearchPage",
       props: Schema.Struct({ route: SearchRoute.subset(["Search"]) }),
       model: Schema.Struct({}),
       message: SearchMessage,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => ({}),
       update: (model, message, $) =>
         SearchMessage.match(message, {
@@ -271,12 +274,13 @@ describe("BrowserHost", { concurrent: false }, () => {
         )
     })
     const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: SearchRoute } })
-    const SearchApp = Component.make({
+    const SearchApp = Component.define({
       name: "SearchApp",
       props: Schema.Struct({ route: SearchRoute }),
       model: Schema.Struct({ route: SearchRoute }),
       message: AppMessage,
-      elements: Html,
+      elements: Html
+    }).make({
       init: ($) => ({ route: $.props.route }),
       update: (_, { route }) => ({ route }),
       subscriptions: (model) => [
@@ -395,11 +399,12 @@ describe("BrowserHost", { concurrent: false }, () => {
       Submitted: { title: Schema.String, tags: Schema.Array(Schema.String) },
       Focused: { where: Schema.String }
     })
-    const Events = Component.make({
+    const Events = Component.define({
       name: "Events",
       model: Schema.Array(Schema.String),
       message: Message,
-      elements: Html,
+      elements: Html
+    }).make({
       init: (): ReadonlyArray<string> => [],
       update: (log, message) =>
         Message.match(message, {
@@ -484,11 +489,12 @@ describe("BrowserHost", { concurrent: false }, () => {
         outside.innerHTML = "<form></form>"
         // `Events` handles submit on its own form, so the document listener is already there.
         yield* BrowserHost.mountEffect(Events, {}, app)
-        const Bare = Component.make({
+        const Bare = Component.define({
           name: "Bare",
           model: Schema.Null,
           message: Schema.Never,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => null,
           update: (model) => model,
           view: (_, h) => h.form(h.input.attr("name", "q"))
@@ -508,11 +514,12 @@ describe("BrowserHost", { concurrent: false }, () => {
       Effect.gen(function*() {
         let event: Event | undefined
         const seen: Array<string> = []
-        const Composer = Component.make({
+        const Composer = Component.define({
           name: "Composer",
           model: Schema.Number,
           message: Schema.Literals(["Send", "Menu"]),
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => 0,
           update: (count, message) => {
             seen.push(`${message} prevented=${event?.defaultPrevented}`)
@@ -548,11 +555,12 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("fields named like Object.prototype members are kept", () =>
       Effect.gen(function*() {
         const seen: Array<Html.SubmitPayload> = []
-        const Prototype = Component.make({
+        const Prototype = Component.define({
           name: "Prototype",
           model: Schema.Null,
           message: Schema.Never,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => null,
           update: (model) => model,
           view: (_, h) =>
@@ -605,11 +613,12 @@ describe("BrowserHost", { concurrent: false }, () => {
     }
     const byLabel = (app: Element, label: string) => app.querySelector(`[aria-label="${label}"]`)!
 
-    const Board = Component.make({
+    const Board = Component.define({
       name: "Board",
       model: Schema.Array(Schema.String),
       message: Schema.String,
-      elements: Html,
+      elements: Html
+    }).make({
       init: (): ReadonlyArray<string> => [],
       update: (log, message) => [...log, message],
       view: (_, h) =>
@@ -689,11 +698,12 @@ describe("BrowserHost", { concurrent: false }, () => {
     it.effect("a file drop sends the files, and the log's wire encoding replaces a message it can't encode", () =>
       Effect.gen(function*() {
         const Message = Schema.TaggedUnion({ Dropped: { files: Schema.Array(Schema.instanceOf(File)) } })
-        const Uploader = Component.make({
+        const Uploader = Component.define({
           name: "Uploader",
           model: Schema.Array(Schema.String),
           message: Message,
-          elements: Html,
+          elements: Html
+        }).make({
           init: (): ReadonlyArray<string> => [],
           // Plain facts about the files go in the Model; the files themselves would go on to a Command.
           update: (names, { files }) => [...names, ...files.map((file) => `${file.name} ${file.size}`)],
@@ -1057,11 +1067,12 @@ describe("BrowserHost", { concurrent: false }, () => {
         // A drawer: a child component mounted only while it's open.
         calls.length = 0
         const DrawerMessage = Schema.TaggedUnion({ Close: {} })
-        const Drawer = Component.make({
+        const Drawer = Component.define({
           name: "Drawer",
           model: Schema.Boolean,
           message: DrawerMessage,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => true,
           update: () => false,
           view: (open, h) =>
@@ -1078,11 +1089,12 @@ describe("BrowserHost", { concurrent: false }, () => {
 
         // Siblings shown later one before the other: the stack, not the document, sets the order.
         calls.length = 0
-        const Stack = Component.make({
+        const Stack = Component.define({
           name: "Stack",
           model: Schema.Number,
           message: Schema.Number,
-          elements: Html,
+          elements: Html
+        }).make({
           init: () => 0,
           update: (_, step) => step,
           view: (step, h) =>
@@ -1276,11 +1288,12 @@ describe("BrowserHost", { concurrent: false }, () => {
       Measured: { some: Schema.Boolean },
       Mounted: { tag: Schema.String }
     })
-    const Refs = Component.make({
+    const Refs = Component.define({
       name: "Refs",
       model: Schema.Array(Schema.String),
       message: Message,
-      elements: Html,
+      elements: Html
+    }).make({
       init: (): ReadonlyArray<string> => [],
       update: (log, message, $) =>
         Message.match(message, {
@@ -1318,20 +1331,22 @@ describe("BrowserHost", { concurrent: false }, () => {
       name: "native",
       tags: { view: new View.ElementBuilder("view") }
     }
-    const NativeBox = Component.make({
+    const NativeBox = Component.define({
       name: "NativeBox",
       model: Schema.Null,
       message: Schema.Never,
-      elements: Native,
+      elements: Native
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_, h) => h.view
     })
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       model: Schema.Null,
       message: Schema.Never,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => null,
       update: (model) => model,
       view: (_, h) =>

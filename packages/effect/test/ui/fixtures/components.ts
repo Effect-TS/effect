@@ -13,11 +13,12 @@ import { Command, Component, Subscription } from "effect/ui"
 export const CounterMessage = Schema.TaggedUnion({ Increment: {}, Decrement: {} })
 export type CounterMessage = typeof CounterMessage.Type
 
-export const Counter = Component.make({
+export const Counter = Component.define({
   name: "Counter",
   props: Schema.Struct({ initial: Schema.Number }),
   model: Schema.Struct({ count: Schema.Number }),
-  message: CounterMessage,
+  message: CounterMessage
+}).make({
   init: ($) => ({ count: $.props.initial }),
   update: (model, message) =>
     CounterMessage.match(message, {
@@ -67,12 +68,13 @@ export class SaveTodo extends Command.Service<SaveTodo>()(
   })
 ) {}
 
-export const TodoItem = Component.make({
+export const TodoItem = Component.define({
   name: "TodoItem",
   props: Schema.Struct({ todo: Todo }),
   model: Schema.Struct({ saving: Schema.Boolean }),
   message: TodoItemMessage,
-  events: TodoItemEvents,
+  events: TodoItemEvents
+}).make({
   init: ($) => $.set({ saving: false }),
   update: (_model, message, $) =>
     TodoItemMessage.match(message, {
@@ -100,11 +102,12 @@ export const TodoListMessage = Schema.TaggedUnion({
 })
 export type TodoListMessage = typeof TodoListMessage.Type
 
-export const TodoList = Component.make({
+export const TodoList = Component.define({
   name: "TodoList",
   props: Schema.Struct({ initial: Schema.Array(Todo) }),
   model: Schema.Struct({ todos: Schema.Array(Todo), failed: Schema.Array(Schema.String) }),
-  message: TodoListMessage,
+  message: TodoListMessage
+}).make({
   init: ($) => ({ todos: $.props.initial, failed: [] }),
   update: (model, message) =>
     TodoListMessage.match(message, {
@@ -155,7 +158,7 @@ export const Upload = Command.make(
   () => Stream.make(SearchMessage.make({ _tag: "Progress", percent: 100 }))
 )
 
-export const SearchBox = Component.make({
+export const SearchBox = Component.define({
   name: "SearchBox",
   model: Schema.Struct({
     text: Schema.String,
@@ -163,7 +166,8 @@ export const SearchBox = Component.make({
     percent: Schema.Number,
     ticks: Schema.Number
   }),
-  message: SearchMessage,
+  message: SearchMessage
+}).make({
   init: () => ({ text: "", items: [], percent: 0, ticks: 0 }),
   update: (model, message, $) =>
     SearchMessage.match(message, {

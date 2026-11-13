@@ -22,7 +22,7 @@ export const SearchPageMessage = Schema.TaggedUnion({
 
 const patched = Command.map(() => SearchPageMessage.make({ _tag: "Patched" }))
 
-export const SearchPageNoDeps = Component.make({
+export const SearchPageNoDeps = Component.define({
   name: "SearchPage",
   // The page takes its whole route as props. The URL is the only copy of
   // the text, the order and the page number. The Model holds no draft of
@@ -44,7 +44,8 @@ export const SearchPageNoDeps = Component.make({
         return { q: q ?? "", page, sort }
       }
     }
-  },
+  }
+}).make({
   init: () => ({}),
   update: (model, message, $) =>
     SearchPageMessage.match(message, {

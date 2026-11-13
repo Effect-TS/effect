@@ -132,11 +132,12 @@ describe("Router", { concurrent: false }, () => {
   it.effect("fails the subscribing instance on a mapper defect, not the navigation or other subscribers", () => {
     const routes = Route.union({ Home: Route.make("/"), Other: Route.make("/other") })
     const subscriber = (name: string, map: (route: typeof routes.Type) => typeof routes.Type) =>
-      Component.make({
+      Component.define({
         name,
         props: Schema.Struct({ route: routes }),
         model: Schema.Struct({ route: routes }),
-        message: routes,
+        message: routes
+      }).make({
         init: ($) => ({ route: $.props.route }),
         update: (_, route) => ({ route }),
         subscriptions: (model) => [Router.subscription(routes, model.route, map)],
@@ -166,11 +167,12 @@ describe("Router", { concurrent: false }, () => {
     const Message = Schema.TaggedUnion({ Follow: { on: Schema.Boolean }, Changed: { route: routes } })
     const settled: Array<string | undefined> = []
     let onRoute = () => {}
-    const Root = Component.make({
+    const Root = Component.define({
       name: "Root",
       props: Schema.Struct({ route: routes }),
       model: Schema.Struct({ route: routes, following: Schema.Boolean }),
-      message: Message,
+      message: Message
+    }).make({
       init: ($) => ({ route: $.props.route, following: true }),
       update: (model, message) =>
         message._tag === "Changed" ? { ...model, route: message.route } : { ...model, following: message.on },
@@ -617,19 +619,21 @@ describe("Router", { concurrent: false }, () => {
 
   it.effect("settles with the head of the live tree when a title template fails its layout", () => {
     const { layer, settled } = setup()
-    const Page = Component.make({
+    const Page = Component.define({
       name: "Page",
       model: Schema.Number,
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => 0,
       update: (model) => model,
       head: () => [Head.title("Ada")],
       view: (_, h) => h.text("page")
     })
-    const Layout = Component.make({
+    const Layout = Component.define({
       name: "Layout",
       model: Schema.Number,
-      message: Schema.Never,
+      message: Schema.Never
+    }).make({
       init: () => 0,
       update: (model) => model,
       head: () => [
@@ -639,11 +643,12 @@ describe("Router", { concurrent: false }, () => {
       ],
       view: (_, h) => h.child(Page, { key: "page", props: {} })
     })
-    const Shell = Component.make({
+    const Shell = Component.define({
       name: "Shell",
       props: Schema.Struct({ route: AppRoute }),
       model: AppRoute,
-      message: Schema.Struct({ route: AppRoute }),
+      message: Schema.Struct({ route: AppRoute })
+    }).make({
       init: ($) => $.props.route,
       update: (_, { route }) => route,
       subscriptions: (held) => [Router.subscription(AppRoute, held, (route) => ({ route }))],
@@ -715,11 +720,12 @@ describe("Router.patchQuery", { concurrent: false }, () => {
     Outcome: { outcome: Schema.String }
   })
   /** Holds its whole route as props, and writes the query with patchQuery. */
-  const SearchPage = Component.make({
+  const SearchPage = Component.define({
     name: "SearchPage",
     props: Schema.Struct({ route: SearchOnly }),
     model: Schema.Struct({ outcomes: Schema.Array(Schema.String), dirty: Schema.Boolean }),
-    message: PageMessage,
+    message: PageMessage
+  }).make({
     init: () => ({ outcomes: [], dirty: false }),
     update: (model, message, $) =>
       PageMessage.match(message, {
@@ -749,11 +755,12 @@ describe("Router.patchQuery", { concurrent: false }, () => {
   const AppMessage = Schema.TaggedUnion({ ChangedRoute: { route: Routes } })
   /** A root that holds the route, keying the search page with `key`. */
   const makeApp = (key: (route: typeof SearchOnly.Type) => string) =>
-    Component.make({
+    Component.define({
       name: "App",
       props: Schema.Struct({ route: Routes }),
       model: Schema.Struct({ route: Routes }),
-      message: AppMessage,
+      message: AppMessage
+    }).make({
       init: ($) => ({ route: $.props.route }),
       update: (_, { route }) => ({ route }),
       subscriptions: (model) => [
@@ -1166,10 +1173,11 @@ describe("Router.prefetch", { concurrent: false }, () => {
     prefetching(
       "/",
       Effect.gen(function*() {
-        const Twice = Component.make({
+        const Twice = Component.define({
           name: "Twice",
           model: Schema.Struct({}),
-          message: Schema.Never,
+          message: Schema.Never
+        }).make({
           init: () => ({}),
           update: (model) => model,
           subscriptions: () => [

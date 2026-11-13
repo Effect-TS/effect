@@ -20,12 +20,13 @@
  *
  * class Todos extends Feature.Service<Todos>()("Todos", { props: TodosProps, events: TodosEvents }) {}
  *
- * const TodoList = Component.make({
+ * const TodoList = Component.define({
  *   name: "TodoList",
  *   props: TodosProps,
  *   model: Schema.Struct({}),
  *   message: Schema.Never,
- *   events: TodosEvents,
+ *   events: TodosEvents
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_, h) => h.el("ul")
@@ -149,11 +150,12 @@ export const isService = (u: unknown): u is Any => Predicate.hasProperty(u, Type
  *   props: Schema.Struct({ filter: Schema.Literals(["all", "open"]) })
  * }) {}
  *
- * const FakeTodos = Component.make({
+ * const FakeTodos = Component.define({
  *   name: "FakeTodos",
  *   props: Todos.props,
  *   model: Schema.Struct({}),
- *   message: Schema.Never,
+ *   message: Schema.Never
+ * }).make({
  *   init: () => ({}),
  *   update: (model) => model,
  *   view: (_, h) => h.el("p", "no todos")

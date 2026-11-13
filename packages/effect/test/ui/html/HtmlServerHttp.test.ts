@@ -40,12 +40,13 @@ describe("HtmlServerHttp.layerHttp", () => {
   it("answers a URL the routes don't resolve with a 404, without rendering", async () => {
     let rendered = 0
     const HomeRoute = Route.union({ Home: Route.make("/") })
-    const Root = Component.make({
+    const Root = Component.define({
       name: "Root",
       props: Schema.Struct({ route: HomeRoute }),
       model: Schema.Struct({}),
       message: Schema.Never,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => {
         rendered++
         return {}
@@ -69,12 +70,13 @@ describe("HtmlServerHttp.layerHttp", () => {
     const ListRoute = Route.union({
       List: Route.make("/list", { query: { page: Schema.Int.pipe(Schema.withDecodingDefaultKey(Effect.succeed(1))) } })
     })
-    const List = Component.make({
+    const List = Component.define({
       name: "List",
       props: Schema.Struct({ route: ListRoute }),
       model: Schema.Struct({}),
       message: Schema.Never,
-      elements: Html,
+      elements: Html
+    }).make({
       init: () => ({}),
       update: (model) => model,
       view: (_, h) => h.p(`Page ${h.props.route.query.page}`)

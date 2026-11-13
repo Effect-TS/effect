@@ -18,7 +18,7 @@ export const AppMessage = Schema.TaggedUnion({
 
 // The root needs no domain Layers of its own, because each page provides
 // what it uses. Only the Router is left, so there is no `AppNoDeps`.
-export const App = Component.make({
+export const App = Component.define({
   name: "App",
   // The root holds the route. The first one arrives through props and every
   // later change arrives as a message, which puts navigation in the message
@@ -26,7 +26,8 @@ export const App = Component.make({
   // pure.
   props: Schema.Struct({ route: AppRoute }),
   model: Schema.Struct({ route: AppRoute }),
-  message: AppMessage,
+  message: AppMessage
+}).make({
   init: ($) => ({ route: $.props.route }),
   update: (model, message, $) =>
     AppMessage.match(message, {
