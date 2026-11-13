@@ -3,7 +3,7 @@ import { AsyncResult } from "effect/reactivity"
 import { Component, Head } from "effect/ui"
 import { ActivityLog } from "../../notes/components/ActivityLog.ts"
 import { NoteActivity } from "../../notes/components/NoteActivity.ts"
-import { NoteEditor, NoteEditorMessage } from "../../notes/components/NoteEditor.ts"
+import { NoteEditor } from "../../notes/components/NoteEditor.ts"
 import { GetNote } from "../../notes/loaders/GetNote.ts"
 import { Notes } from "../../notes/services/Notes.ts"
 
@@ -42,7 +42,7 @@ export const NotePageNoDeps = Component.define({
       // editor's `update` handles the message after this render, with the
       // props from it. A send to a slot that isn't rendered, such as while
       // the note loads, is dropped and logged.
-      SaveNow: () => $.send(Editor.at($.props.id), NoteEditorMessage.make({ _tag: "Save" }))
+      SaveNow: () => $.send(Editor.at($.props.id), { _tag: "Save" })
     }),
   // `head` gets the Model and the loaders' results, so the title comes
   // straight from the loaded note.

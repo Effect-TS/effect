@@ -179,18 +179,20 @@ export type RefTypeId = typeof RefTypeId
  * never share a key.
  *
  * `Rcv` is the union of the messages the child receives, and `receives` its
- * Schema, which the log encodes a send with. `Msg` is the child's whole
- * Message, so `$.send` can take what `Message.make` returns and check its
- * tag when the send is made. A send is matched to a slot by
- * the ref's key, among the sender's direct children only. A child forwards
+ * Schema, which the log encodes a send with. A ref is invariant in `Rcv`: it
+ * is what a parent may send, so no annotation can widen it, and no ref for
+ * fewer messages stands in for one for more. A ref whose `Rcv` is `unknown`
+ * has been erased, as `View.Child`'s `ref` is, and takes no message. A
+ * send is matched to a slot by the ref's key, among the sender's direct
+ * children only. A child forwards
  * with its own `$.send`, and answers through `events`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface Ref<out Rcv, out Msg = unknown> {
-  readonly [RefTypeId]: { readonly _Msg: Types.Covariant<Msg> }
+export interface Ref<in out Rcv> {
+  readonly [RefTypeId]: { readonly _Rcv: Types.Invariant<Rcv> }
   /** The name the ref was made with. */
   readonly name: string
   /** The name plus any `at` keys: the key of the slot it names. */
@@ -198,7 +200,7 @@ export interface Ref<out Rcv, out Msg = unknown> {
   /** The Schema of the messages the child receives. */
   readonly receives: Schema.Codec<Rcv, any>
   /** A ref for one row: `Row.at(id)`. */
-  readonly at: (key: string | number) => Ref<Rcv, Msg>
+  readonly at: (key: string | number) => Ref<Rcv>
 }
 
 /**
@@ -211,22 +213,24 @@ export interface Ref<out Rcv, out Msg = unknown> {
 export const isRef = (u: unknown): u is Ref<unknown> => Predicate.hasProperty(u, RefTypeId)
 
 /**
- * What `$.send` takes for a ref `To` that receives `Rcv` from a child whose
- * Message is `Msg`: a received message, or the whole Message as `Message.make` returns
- * it, whose tag is checked when the send is made. A message narrowed to a case
- * the child doesn't receive is rejected, and so is a wider type such as
- * `unknown` or `object`: the fallback takes exactly `Msg`, and only when the
- * ref knows it. A ref whose `Rcv` is `unknown` or `any` has been erased, as
- * `View.Child`'s `ref`, `Step`'s `sends` and `Feature.Any`'s `ref` are, and
- * takes nothing.
+ * What a component's or a feature's ref receives: `Rcv`, or `unknown` when
+ * `Rcv` is `any`, so an erased component or feature, such as `Feature.Any`,
+ * hands out a ref that takes nothing rather than everything.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
  */
-type SendMessage<A, To> = To extends Ref<infer Rcv, infer Msg> ? unknown extends Rcv ? never
-  : [Rcv] extends [never] ? never
-  : [A] extends [Rcv] ? A
-  : unknown extends Msg ? Rcv
-  : [A] extends [Msg] ? [Msg] extends [A] ? A : Rcv
-  : Rcv
-  : never
+export type RefReceives<Rcv> = 0 extends 1 & Rcv ? unknown : Rcv
+
+/**
+ * What `$.send` takes through a ref that receives `Rcv`: one of those
+ * messages. A ref whose `Rcv` is `unknown` or `any` has been erased, as
+ * `View.Child`'s `ref`, `Step`'s `sends` and what `isRef` narrows to are,
+ * and takes nothing. So does a feature whose `receives` is a top type such as
+ * `Schema.Unknown`: its type can't be told apart from an erased one.
+ */
+type SendMessage<Rcv> = unknown extends Rcv ? never : Rcv
 
 /**
  * A `$.loadMore(name)` or `$.reset(name)` an `update` issued, by loader
@@ -321,15 +325,16 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
    *
    * **Details**
    *
-   * `message` is one of the messages the ref's component `receives`. What
-   * `Message.make` returns is the whole Message, so its tag is checked here
-   * instead, and a tag the child doesn't receive fails this `update`. A send
+   * `message` is one of the messages the ref's component `receives`, such
+   * as a tagged literal `{ _tag: "Clear" }`: the whole Message, as
+   * `Message.make` returns it, doesn't fit unless the child receives every
+   * case. A send
    * to a slot that isn't rendered, whose child failed, or that can't take
    * messages yet, such as a feature on its `fallback`, is dropped and logged
    * as `SendDropped`, and the parent isn't told. `init` can't send: what a
    * child needs at mount is a prop.
    */
-  send<To extends Ref<any, any>, const A>(ref: To, message: A & SendMessage<A, To>): Step<Model, Msg, Events, R, L>
+  send<Rcv>(ref: Ref<Rcv>, message: NoInfer<SendMessage<Rcv>>): Step<Model, Msg, Events, R, L>
 }
 
 /**
@@ -427,11 +432,6 @@ const StepProto = {
     return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "reset" }], this.sends)
   },
   send(this: Step<any, any, any, any>, ref: Ref<unknown>, message: unknown) {
-    const receives: (u: unknown) => boolean = Schema.is(ref.receives)
-    if (!receives(message)) {
-      const tag = Predicate.hasProperty(message, "_tag") ? String(message._tag) : "This message"
-      throw new Error(`${tag} isn't one of the messages the slot ${ref.key} receives`)
-    }
     return makeStep(this.model, this.commands, this.emitted, this.lists, [...this.sends, { ref, message }])
   }
 }
@@ -616,7 +616,7 @@ export interface Component<
   /** The Schema of the messages a parent may send: the cases of `message` listed in `receives`. */
   readonly receives: Schema.Codec<Rcv, any>
   /** A ref for this component's slots, so a parent can send them messages. */
-  readonly ref: (name: string) => Ref<Rcv, Msg>
+  readonly ref: (name: string) => Ref<RefReceives<Rcv>>
   readonly init: (props: Props) => Next<Model, Msg, Events, R>
   readonly update: (model: Model, msg: Msg, props: Props, loaded?: Slots | undefined) => Next<Model, Msg, Events, R>
   readonly view: (

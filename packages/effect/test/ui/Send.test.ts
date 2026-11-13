@@ -47,11 +47,11 @@ const List = Component.define({
   update: (ids, message, $) => {
     switch (message._tag) {
       case "Clear":
-        return $.send(Row.at(message.id), ItemMessage.make({ _tag: "Clear" }))
+        return $.send(Row.at(message.id), { _tag: "Clear" })
       case "Add":
-        return $.set([...ids, message.id]).send(Row.at(message.id), ItemMessage.make({ _tag: "Clear" }))
+        return $.set([...ids, message.id]).send(Row.at(message.id), { _tag: "Clear" })
       case "Clears":
-        return message.ids.reduce((step, id) => step.send(Row.at(id), ItemMessage.make({ _tag: "Clear" })), $.set(ids))
+        return message.ids.reduce((step, id) => step.send(Row.at(id), { _tag: "Clear" }), $.set(ids))
     }
   },
   view: (ids, h) =>
@@ -118,47 +118,13 @@ describe("$.send", () => {
       assert.strictEqual(root.text(), "a1:0:")
     })))
 
-  it.effect("fails the sender when Message.make builds a tag the child doesn't receive", () =>
-    provideHost(Effect.gen(function*() {
-      const Message = Schema.TaggedUnion({ Go: {} })
-      const Draft = Item.ref("Draft")
-      const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
-        init: () => null,
-        // `make` returns the whole Message, so the tag is checked when the send is made.
-        update: (_, __, $) => $.send(Draft, ItemMessage.make({ _tag: "Boom" })),
-        view: (_, h) =>
-          h.el(
-            "div",
-            h.el("button").on("click", Message.make({ _tag: "Go" })).children("go"),
-            h.child(Item, { ref: Draft, props: { label: "d" } })
-          )
-      })
-      // Under a shell, so the failure stays in its slot instead of crashing the root.
-      const Shell = Component.define({ name: "Shell", model: Schema.Null, message: Schema.Never }).make({
-        init: () => null,
-        update: (model) => model,
-        view: (_, h) => h.child(Page, { key: "p", fallback: () => h.text("failed") })
-      })
-      const root = yield* TestHost.mount(Shell, {})
-      yield* TestHost.settle
-      Query.fire(root.get(Query.text("go", { exact: true })), "click")
-      yield* TestHost.settle
-      assert.strictEqual(root.text(), "failed")
-      const failed = root.log().find((entry): entry is MessageLog.Failed => entry._tag === "Failed")
-      assert.strictEqual(failed?.path, "/Shell/Page[p]")
-      assert.strictEqual(failed?.source, "update")
-      assert.include(Cause.pretty(failed!.cause), "Boom isn't one of the messages the slot Draft receives")
-      assert.lengthOf(updates(root.log(), "/Shell/Page[p]/Item[Draft]"), 0)
-    })))
-
   it.effect("drops and logs a send to a child that failed", () =>
     provideHost(Effect.gen(function*() {
       const Message = Schema.TaggedUnion({ Boom: {}, Clear: {} })
       const Draft = Item.ref("Draft")
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (model, message, $) =>
-          message._tag === "Clear" ? $.send(Draft, ItemMessage.make({ _tag: "Clear" })) : model,
+        update: (model, message, $) => message._tag === "Clear" ? $.send(Draft, { _tag: "Clear" }) : model,
         view: (_, h) =>
           h.child(Item, {
             ref: Draft,
@@ -190,7 +156,7 @@ describe("$.send", () => {
       const Message = Schema.TaggedUnion({ Clear: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) => $.send(Main, EditorReceives.make({ _tag: "Clear" })),
+        update: (_, __, $) => $.send(Main, { _tag: "Clear" }),
         view: (_, h) => h.child(Editor, { ref: Main, props: { label: "m" }, fallback: () => h.text("loading") })
       })
       const Never: Layer.Layer<Editor> = Layer.effect(Editor, Effect.never)
@@ -216,8 +182,7 @@ describe("$.send", () => {
       const Message = Schema.TaggedUnion({ Clear: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) =>
-          $.send(Main, EditorReceives.make({ _tag: "Clear" })).send(Draft, ItemMessage.make({ _tag: "Clear" })),
+        update: (_, __, $) => $.send(Main, { _tag: "Clear" }).send(Draft, { _tag: "Clear" }),
         view: (_, h) =>
           h.el(
             "div",
@@ -285,15 +250,14 @@ describe("$.send", () => {
       // Each row forwards the send it gets to its own leaf.
       const Row = Component.define({ name: "Row", model: Schema.Null, message: GoMessage, receives: ["Go"] }).make({
         init: () => null,
-        update: (_, __, $) => $.send(LeafRef, GoMessage.make({ _tag: "Go" })),
+        update: (_, __, $) => $.send(LeafRef, { _tag: "Go" }),
         view: (_, h) => h.child(Leaf, { ref: LeafRef })
       })
       const Rows = Row.ref("Rows")
       const keys = Array.from({ length: 150 }, (_, i) => i)
       const List = Component.define({ name: "List", model: Schema.Null, message: GoMessage }).make({
         init: () => null,
-        update: (_, __, $) =>
-          keys.reduce((step, i) => step.send(Rows.at(i), GoMessage.make({ _tag: "Go" })), $.set(null)),
+        update: (_, __, $) => keys.reduce((step, i) => step.send(Rows.at(i), { _tag: "Go" }), $.set(null)),
         view: (_, h) => h.el("div", keys.map((i) => h.child(Row, { ref: Rows.at(i) })))
       })
       const root = yield* TestHost.mount(List, {})
@@ -342,7 +306,7 @@ describe("Story and sends", () => {
     const story = Story.make(
       Page,
       {},
-      (s) => s.childEmit(Mine, EchoMessage.make({ _tag: "Said" })).childFailure(Mine, Cause.die("x"))
+      (s) => s.childEmit(Mine, { _tag: "Said" }).childFailure(Mine, Cause.die("x"))
     )
     assert.deepStrictEqual(story.model, ["emit", "failure"])
     assert.deepStrictEqual(Story.fallback(story.view(), Mine, AsyncResult.initial()), { _tag: "Text", text: "gone" })
@@ -371,7 +335,7 @@ describe("Story and sends", () => {
         message: ListMessage
       }).make({
         init: ($) => $.props.ids,
-        update: (ids, _, $) => $.set(ids).send(Row.at(ids[0]), ItemMessage.make({ _tag: "Clear" })),
+        update: (ids, _, $) => $.set(ids).send(Row.at(ids[0]), { _tag: "Clear" }),
         view: (ids, h) => h.el("ul", ids.map((id) => h.child(Item, { ref: Row.at(id), props: { label: id } })))
       })
       for (const entries of [log, wire]) {
@@ -394,8 +358,7 @@ describe("Story and sends", () => {
       const Message = Schema.TaggedUnion({ Go: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) =>
-          $.send(Main, EditorReceives.make({ _tag: "Focus" })).send(Main, EditorReceives.make({ _tag: "Clear" })),
+        update: (_, __, $) => $.send(Main, { _tag: "Focus" }).send(Main, { _tag: "Clear" }),
         view: (_, h) => h.child(Editor, { ref: Main, fallback: () => h.text("loading") })
       })
       const stub = TestHost.stub(Editor)

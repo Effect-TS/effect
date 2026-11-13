@@ -11,14 +11,14 @@ export const TypeId = "~effect/ui/Component/Ref" as const
 
 /** @internal */
 export interface ChildRef {
-  readonly [TypeId]: { readonly _Msg: (_: never) => unknown }
+  readonly [TypeId]: { readonly _Rcv: (_: never) => unknown }
   readonly name: string
   readonly key: string
   readonly receives: Schema.Codec<any, any>
   readonly at: (key: string | number) => ChildRef
 }
 
-const variance = { _Msg: identity }
+const variance = { _Rcv: identity }
 
 /** A ref named `name`, whose key is `key`: the name plus any `at` keys, as `Renderer.ref` writes them. @internal */
 export const make = (name: string, receives: Schema.Codec<any, any>, key: string = name): ChildRef => ({

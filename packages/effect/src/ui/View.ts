@@ -201,9 +201,10 @@ export declare namespace Child {
    * **Details**
    *
    * A slot takes exactly one of `key` and `ref`. With a ref, the ref's key
-   * is the slot's key, and the parent can `$.send` to the slot. The ref is
-   * checked against what the component receives, `Rcv`, so a ref made from
-   * a component also fits a provided copy of it or a feature implementation.
+   * is the slot's key, and the parent can `$.send` to the slot. `Rcv` is
+   * what the ref receives; `h.child` checks it against what the component
+   * receives, so a ref made from a component also fits a provided copy of it
+   * or a feature implementation.
    *
    * @category models
    * @since 4.1.5
@@ -216,7 +217,7 @@ export declare namespace Child {
       }
       | {
         /** Names the slot, so the parent can send it messages. Its key is the slot's key. */
-        readonly ref: Component.Ref<Rcv, unknown>
+        readonly ref: Component.Ref<Rcv>
         readonly key?: undefined
       }
     )
@@ -227,6 +228,29 @@ export declare namespace Child {
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
     }
     & ({} extends Props ? { readonly props?: Props | undefined } : { readonly props: Props })
+
+  /**
+   * Passes when every message a ref receives, `RefRcv`, is one the
+   * component receives, `Rcv`, and otherwise names the ones it doesn't. An
+   * erased ref, whose `RefRcv` is `unknown`, takes no message, so it fits
+   * any slot.
+   *
+   * @category models
+   * @since 4.1.5
+   */
+  export type RefFits<RefRcv, Rcv> = unknown extends RefRcv ? unknown
+    : [RefRcv] extends [Rcv] ? unknown
+    : { readonly "This ref sends messages the component doesn't receive": Exclude<RefRcv, Rcv> }
+
+  /**
+   * What a component or feature receives, as `h.child` checks a ref against
+   * it: `Rcv`, or nothing when `Rcv` is `any`, as for an erased component or
+   * `Feature.Any`.
+   *
+   * @category models
+   * @since 4.1.5
+   */
+  export type Receives<Rcv> = 0 extends 1 & Rcv ? never : Rcv
 }
 
 /**
@@ -797,13 +821,15 @@ export interface Helper<Msg, Props> {
    * no default: one would stop a nested call, such as an inline
    * `Component.provide(C, layer)`, from being inferred.
    */
-  child<Props, Events, RC, Rcv, RF = never>(
+  child<Props, Events, RC, Rcv, RefRcv = Child.Receives<Rcv>, RF = never>(
     component: Component.Mountable<Props, Events, RC, Rcv>,
-    // `any` is an erased component, which receives nothing as far as anyone knows.
-    options: Child.Options<Props, Events, Msg, NoInfer<0 extends 1 & Rcv ? never : Rcv>> & {
-      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
-      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
-    }
+    options:
+      & Child.Options<Props, Events, Msg, RefRcv>
+      & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
+      & {
+        /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+        readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+      }
   ): Child<Msg, RC | NoInfer<RF>>
   /**
    * A component by value, with `Props`, `Events` and `RC` given explicitly. It
@@ -818,15 +844,17 @@ export interface Helper<Msg, Props> {
   ): Child<Msg, RC | NoInfer<RF>>
   // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
-  child<Self, Props, Events, Rcv = never, RF = never>(
+  child<Self, Props, Events, Rcv = never, RefRcv = Child.Receives<Rcv>, RF = never>(
     service: Feature.Service<Self, Props, Events, Rcv>,
-    // `any` is an erased service, such as `Feature.Any`, which receives nothing as far as anyone knows.
-    options: Child.Options<Props, Events, Msg, NoInfer<0 extends 1 & Rcv ? never : Rcv>> & {
-      /** Required: the service may be building (`Initial`) or failed (`Failure`). */
-      readonly fallback: (
-        result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
-      ) => Content<Msg, RF>
-    }
+    options:
+      & Child.Options<Props, Events, Msg, RefRcv>
+      & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
+      & {
+        /** Required: the service may be building (`Initial`) or failed (`Failure`). */
+        readonly fallback: (
+          result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
+        ) => Content<Msg, RF>
+      }
   ): Child<Msg, Self | NoInfer<RF>>
 }
 
@@ -866,7 +894,8 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     component: Component.Any | Feature.Any,
     options: {
       readonly key?: string | undefined
-      readonly ref?: Component.Ref<unknown> | undefined
+      // Any ref: `Ref` is invariant, and `never` is the one `any` doesn't stand in for.
+      readonly ref?: Component.Ref<any> | Component.Ref<never> | undefined
       readonly props?: unknown
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
@@ -881,7 +910,8 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
       _tag: "Child",
       component,
       key: options.ref !== undefined ? options.ref.key : options.key!,
-      ref: options.ref,
+      // Erased: the slot's ref takes no message.
+      ref: options.ref as Component.Ref<unknown> | undefined,
       props: options.props ?? {},
       onEmit: options.onEmit ?? ignore,
       fallback: options.fallback,

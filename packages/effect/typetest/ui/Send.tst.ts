@@ -80,8 +80,8 @@ describe("Component receives", () => {
   it("is the Schema of the listed cases, and a ref carries them", () => {
     expect(Editor.receives).type.toBe<Schema.Codec<Received, any>>()
     expect<Component.Receives<typeof Editor>>().type.toBe<Received>()
-    expect(Draft).type.toBe<Component.Ref<Received, EditorMessage>>()
-    expect(Draft.at(1)).type.toBe<Component.Ref<Received, EditorMessage>>()
+    expect(Draft).type.toBe<Component.Ref<Received>>()
+    expect(Draft.at(1)).type.toBe<Component.Ref<Received>>()
     expect<Component.Receives<typeof Plain>>().type.toBe<never>()
   })
 
@@ -103,14 +103,12 @@ describe("$.send", () => {
   it("takes a message the ref's component receives, and rejects any other", () => {
     ParentDef.update((model, _msg, $) => {
       expect($.send(Draft, { _tag: "Clear" })).type.not.toRaiseError()
-      // `make` returns the whole Message: its tag is checked when the send is made.
-      expect($.send(Draft, EditorMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
       expect($.send(Draft, EditorMessage.cases.Focus.make({}))).type.not.toRaiseError()
-      // A case narrowed to one the component doesn't receive is still rejected.
+      expect($.send(Todos.ref("Main"), { _tag: "Clear" })).type.not.toRaiseError()
+      // `make` returns the whole Message, which includes a case Editor doesn't receive.
+      expect($.send).type.not.toBeCallableWith(Draft, EditorMessage.make({ _tag: "Clear" }))
       expect($.send).type.not.toBeCallableWith(Draft, EditorMessage.cases.Typed.make({ text: "x" }))
-      // A component that receives nothing takes nothing, not even `make`'s result.
       expect($.send).type.not.toBeCallableWith(Plain.ref("P"), EditorMessage.make({ _tag: "Clear" }))
-      expect($.send(Todos.ref("Main"), TodosMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
       // Wider than the child's Message: nothing says the value is one.
       expect($.send).type.not.toBeCallableWith(Draft, untrusted)
       expect($.send).type.not.toBeCallableWith(Draft, arbitraryObject)
@@ -154,10 +152,41 @@ describe("$.send", () => {
       expect($.send).type.not.toBeCallableWith(ErasedPlain.ref("E").at(1), { _tag: "Clear" })
       // Concrete refs, and their rows, still infer.
       expect($.send(Draft.at("a"), { _tag: "Focus" })).type.not.toRaiseError()
-      expect($.send(Rows.at(1), EditorMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
+      expect($.send(Rows.at(1), EditorMessage.cases.Clear.make({}))).type.not.toRaiseError()
       expect($.send(Todos.ref("Main").at(2), { _tag: "Clear" })).type.not.toRaiseError()
       return model
     })
+  })
+
+  it("can't widen a ref by assigning it, erased or concrete", () => {
+    type Claimed = Component.Ref<{ readonly _tag: "Clear" }>
+    ParentDef.view((_, h) => {
+      const target = h.child(Todos, { ref: Todos.ref("Main"), fallback: () => h.el("p") }).component
+      if (Feature.isService(target)) {
+        expect(target.ref("Main")).type.toBe<Component.Ref<unknown>>()
+        expect(target.ref("Main")).type.not.toBeAssignableTo<Claimed>()
+        expect(target.ref("Main").at(1)).type.not.toBeAssignableTo<Claimed>()
+      }
+      expect(h.child(Editor, { ref: Draft }).ref!).type.not.toBeAssignableTo<Claimed>()
+      expect(h.child(Editor, { ref: Draft }).ref!.at(1)).type.not.toBeAssignableTo<Claimed>()
+      return h.el("p")
+    })
+    ParentDef.update((model, _msg, $) => {
+      expect($.send(Draft, { _tag: "Clear" }).sends[0]!.ref).type.not.toBeAssignableTo<Claimed>()
+      return model
+    })
+    if (Component.isRef(untrusted)) expect(untrusted.at(1)).type.not.toBeAssignableTo<Claimed>()
+    expect(anyFeature.ref("Main")).type.not.toBeAssignableTo<Claimed>()
+    expect(anyFeature.ref("Main").at(1)).type.not.toBeAssignableTo<Claimed>()
+    expect(ErasedPlain.ref("E")).type.not.toBeAssignableTo<Claimed>()
+    expect(ErasedPlain.ref("E").at(1)).type.not.toBeAssignableTo<Claimed>()
+    expect(Story.start(Plain, {}).current.component.ref("P")).type.not.toBeAssignableTo<Claimed>()
+    // Concrete: a ref for fewer messages, or for none, can't claim more, and a ref for more can't claim fewer.
+    expect(Plain.ref("P")).type.not.toBeAssignableTo<Claimed>()
+    expect(Rows.at(1)).type.not.toBeAssignableTo<Component.Ref<EditorMessage>>()
+    expect(Draft).type.not.toBeAssignableTo<Claimed>()
+    expect(Rows.at(1)).type.toBeAssignableTo<Claimed>()
+    expect(Todos.ref("Main").at(1)).type.toBeAssignableTo<Claimed>()
   })
 
   it("isn't available in init", () => {
@@ -198,7 +227,7 @@ describe("h.child with a ref", () => {
 
   it("takes a feature's ref, on the feature or on an implementation", () => {
     const Main = Todos.ref("Main")
-    expect(Main).type.toBe<Component.Ref<typeof TodosMessage.Type, typeof TodosMessage.Type>>()
+    expect(Main).type.toBe<Component.Ref<typeof TodosMessage.Type>>()
     ParentDef.view((_, h) => {
       expect(h.child(Todos, { ref: Main, fallback: () => h.el("p") })).type.not.toRaiseError()
       expect(h.child(Editor, { ref: Main })).type.not.toRaiseError()
@@ -304,5 +333,7 @@ describe("a component that receives", () => {
   it("mounts, and runs in a story", () => {
     expect(TestHost.mount(Editor, {})).type.not.toRaiseError()
     expect(Story.make(Editor, {}, (s) => s.send(EditorMessage.make({ _tag: "Clear" })))).type.not.toRaiseError()
+    expect(Story.start(Editor, {}).childEmit(Draft, {})).type.not.toRaiseError()
+    expect(Story.start(Editor, {}).childEmit(Plain.ref("P"), {})).type.not.toRaiseError()
   })
 })

@@ -104,7 +104,7 @@ export interface Service<in out Self, in out Props, in out Events, in out Receiv
   /** The Schema of the messages a parent may send. `Schema.Never` when it declares none. */
   readonly receives: Schema.Codec<Receives, any>
   /** A ref for this feature's slots, so a parent can send them messages. */
-  readonly ref: (name: string) => Component.Ref<Receives, Receives>
+  readonly ref: (name: string) => Component.Ref<Component.RefReceives<Receives>>
   /**
    * Provides this feature with `component`. The Layer requires whatever the
    * component requires, and closes it where the Layer is built. The
