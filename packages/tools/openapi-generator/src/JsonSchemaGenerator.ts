@@ -346,17 +346,9 @@ function render(title: string, as: ReadonlyArray<string>) {
   return "// " + title + "\n" + as.join("\n") + "\n"
 }
 
-// Ignore quoted property names and literal types when checking generated dependencies.
-const typeTokenPattern =
-  /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\/\/[^\n]*|\/\*[\s\S]*?\*\/|[A-Za-z_$][\w$]*|[^\s]/g
-
-function referencesSchema(source: string): boolean {
-  let previous = ""
-  for (const [token] of source.matchAll(typeTokenPattern)) {
-    if (previous === "Schema" && token === ".") return true
-    previous = token
-  }
-  return false
+// Quoted property names and literal types can contain "Schema." without referencing the namespace.
+function referencesSchema(declarations: string): boolean {
+  return /\bSchema\./.test(declarations.replace(/"(?:\\.|[^"\\])*"/g, ""))
 }
 
 function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {
