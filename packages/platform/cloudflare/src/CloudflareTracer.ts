@@ -39,7 +39,9 @@
  */
 import * as Cause from "effect/Cause"
 import type * as Context from "effect/Context"
+import * as Hex from "effect/encoding/Hex"
 import type * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -94,15 +96,40 @@ export interface TracingSpan {
  */
 export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
   const tracing = options.tracing
+  const withActiveSpan = (active: TracingSpan): Enter => (f) => tracing.withActiveSpan(active, f)
+
+  // `withActiveSpan` is too slow to call for every primitive. Instead, each
+  // fiber takes an AsyncLocalStorage snapshot with its span active, inside its
+  // own async context, and re-enters it until its span changes. That context
+  // stays the same for the fiber's lifetime, because the runtime restores it
+  // whenever the fiber resumes, so the snapshot keeps the caller's other
+  // AsyncLocalStorage values. A snapshot taken where the span was created would
+  // replace them.
+  const fiberEnters = new WeakMap<
+    Fiber.Fiber<unknown, unknown>,
+    { readonly active: TracingSpan; readonly enter: Enter }
+  >()
+  const fiberEnter = (fiber: Fiber.Fiber<unknown, unknown>) => (active: TracingSpan): Enter => {
+    if (snapshot === undefined) return withActiveSpan(active)
+    const cached = fiberEnters.get(fiber)
+    if (cached !== undefined && cached.active === active) return cached.enter
+    const enter = tracing.withActiveSpan(active, snapshot)
+    fiberEnters.set(fiber, { active, enter })
+    return enter
+  }
 
   // Runs `f` with the span's Cloudflare span active, or returns `notEntered`
   // when it has none or it belongs to an earlier invocation.
-  const run = <A>(span: CloudflareSpan, f: () => A): A | typeof notEntered => {
+  const run = <A>(
+    span: CloudflareSpan,
+    f: () => A,
+    enter: (active: TracingSpan) => Enter = withActiveSpan
+  ): A | typeof notEntered => {
     const active = span.active
     if (active === undefined) return notEntered
     let entered = false
     try {
-      return tracing.withActiveSpan(active, () => {
+      return enter(active)(() => {
         entered = true
         return f()
       })
@@ -129,7 +156,7 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
     context(primitive, fiber) {
       const span = fiber.cache.span
       if (span instanceof CloudflareSpan) {
-        const result = run(span, () => primitive["~effect/Effect/evaluate"](fiber))
+        const result = run(span, () => primitive["~effect/Effect/evaluate"](fiber), fiberEnter(fiber))
         if (result !== notEntered) return result
       }
       return primitive["~effect/Effect/evaluate"](fiber)
@@ -172,8 +199,19 @@ export const layer = (options: { readonly tracing: Tracing }): Layer.Layer<never
 
 const notEntered: unique symbol = Symbol.for("@effect/platform-cloudflare/CloudflareTracer/notEntered")
 
-const zeroTraceId = "00000000000000000000000000000000"
-const zeroSpanId = "0000000000000000"
+type Enter = <A>(f: () => A) => A
+
+const snapshot: (() => Enter) | undefined = (() => {
+  try {
+    const AsyncLocalStorage = (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage
+    return typeof AsyncLocalStorage?.snapshot === "function" ? () => AsyncLocalStorage.snapshot() : undefined
+  } catch {
+    return undefined
+  }
+})()
+
+// Cloudflare gives spans it does not record all-zero ids.
+const isValidId = (id: string | undefined): id is string => id !== undefined && /[^0]/.test(id)
 
 class CloudflareSpan implements Tracer.Span {
   readonly _tag = "Span"
@@ -204,11 +242,16 @@ class CloudflareSpan implements Tracer.Span {
     this.kind = options.kind
     this.recorded = recorded
     this.active = active
-    this.sampled = recorded !== undefined && recorded.isTraced
+    // Whether Cloudflare records the span is decided per invocation, so it must
+    // not leak into the sampling decision that later child spans inherit.
+    this.sampled = options.sampled
     const context = recorded?.spanContext()
-    this.traceId = context?.traceId ??
-      (Option.isSome(options.parent) ? options.parent.value.traceId : zeroTraceId)
-    this.spanId = context?.spanId ?? zeroSpanId
+    this.traceId = isValidId(context?.traceId)
+      ? context.traceId
+      : Option.isSome(options.parent)
+      ? options.parent.value.traceId
+      : Hex.random(32)
+    this.spanId = isValidId(context?.spanId) ? context.spanId : Hex.random(16)
     this.status = { _tag: "Started", startTime: options.startTime }
   }
 

@@ -1,6 +1,7 @@
 import * as CloudflareTracer from "@effect/platform-cloudflare/CloudflareTracer"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
+import { HttpTraceContext } from "effect/http"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 // A stand-in for Cloudflare's `tracing` API (`import { tracing } from
@@ -9,14 +10,17 @@ import { AsyncLocalStorage } from "node:async_hooks"
 // - the active span lives on the async context, and a new span becomes a child
 //   of it, or of the invocation's root span when none is active
 // - a span can only be used by the invocation that created it
-const makeTracing = () => {
+// - an invocation can be unrecorded, and then its spans report `isTraced: false`
+//   and all-zero ids
+const makeTracing = (options?: { readonly traced?: boolean }) => {
   const traceId = "0af7651916cd43dd8448eb211c80319c"
   const active = new AsyncLocalStorage<FakeSpan>()
   const spans: Array<FakeSpan> = []
   let invocation = 1
+  let traced = options?.traced ?? true
 
   class FakeSpan {
-    readonly isTraced = true
+    readonly isTraced = traced
     readonly invocation = invocation
     readonly spanId = (spans.length + 1).toString(16).padStart(16, "0")
     readonly attributes: Record<string, string | number | boolean> = {}
@@ -42,7 +46,9 @@ const makeTracing = () => {
     }
     spanContext() {
       this.assertCurrent()
-      return { traceId, spanId: this.spanId, traceFlags: 0 }
+      return this.isTraced
+        ? { traceId, spanId: this.spanId, traceFlags: 0 }
+        : { traceId: "0".repeat(32), spanId: "0".repeat(16), traceFlags: 0 }
     }
     setAttribute(key: string, value: string | number | boolean) {
       this.assertCurrent()
@@ -71,6 +77,7 @@ const makeTracing = () => {
     /** Ends the current invocation and starts the next one in the same isolate. */
     nextInvocation() {
       invocation++
+      traced = true
       root = new FakeSpan(`request-${invocation}`, undefined)
     },
     tracing: {
@@ -176,8 +183,9 @@ describe("CloudflareTracer", () => {
       const cloudflare = makeTracing()
       const kvGet = Effect.sync(() => cloudflare.tracing.startSpan("kv_get").end())
 
-      yield* Effect.yieldNow.pipe(
+      const span = yield* Effect.yieldNow.pipe(
         Effect.andThen(kvGet),
+        Effect.andThen(Effect.currentSpan),
         Effect.withSpan("debug-step", { sampled: false }),
         Effect.withSpan("handle-request"),
         Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
@@ -187,16 +195,40 @@ describe("CloudflareTracer", () => {
         "request-1 > handle-request",
         "request-1 > handle-request > kv_get"
       ])
+      // Outgoing requests still carry a valid, unsampled trace context.
+      const propagated = HttpTraceContext.w3c(HttpTraceContext.toHeaders(span))
+      assert.isTrue(Option.isSome(propagated))
+      assert.strictEqual(propagated.pipe(Option.map((parent) => parent.sampled), Option.getOrUndefined), false)
+    }))
+
+  it.effect("keeps the caller's AsyncLocalStorage values under a span created elsewhere", () =>
+    Effect.gen(function*() {
+      const cloudflare = makeTracing()
+      const tracer = CloudflareTracer.layer({ tracing: cloudflare.tracing })
+      const store = new AsyncLocalStorage<string>()
+
+      const outer = yield* Effect.makeSpan("outer").pipe(Effect.provide(tracer))
+      const value = yield* Effect.promise(() =>
+        store.run("caller", () =>
+          Effect.runPromise(
+            Effect.sync(() => store.getStore()).pipe(Effect.withParentSpan(outer), Effect.provide(tracer))
+          ))
+      )
+
+      assert.strictEqual(value, "caller")
     }))
 
   it.effect("keeps running an effect whose span outlived its invocation", () =>
     Effect.gen(function*() {
-      const cloudflare = makeTracing()
+      // The first invocation is unrecorded, which must not stop the next one
+      // from recording.
+      const cloudflare = makeTracing({ traced: false })
 
       // A span opened in one invocation, such as a `Layer.span` built together
       // with the runtime, is still current when later invocations run.
-      yield* Effect.sync(() => cloudflare.nextInvocation()).pipe(
+      const background = yield* Effect.sync(() => cloudflare.nextInvocation()).pipe(
         Effect.andThen(Effect.void.pipe(Effect.withSpan("refresh-cache"))),
+        Effect.andThen(Effect.currentSpan),
         Effect.withSpan("background"),
         Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
       )
@@ -205,5 +237,7 @@ describe("CloudflareTracer", () => {
         "request-1 > background",
         "request-2 > refresh-cache"
       ])
+      // Cloudflare gives unrecorded spans all-zero ids, which are not valid to propagate.
+      assert.isTrue(Option.isSome(HttpTraceContext.w3c(HttpTraceContext.toHeaders(background))))
     }))
 })
