@@ -1362,7 +1362,7 @@ const fireAt = <Props, Model, Msg, Events>(
   // The innermost element with any layer for the event, as on a host.
   const handler = pathTo(view, found[0])?.find((node): node is View.Element<Msg, any> =>
     node._tag === "Element" &&
-    (Object.hasOwn(node.handlers, event) || node.owned.some((layer) => Object.hasOwn(layer.handlers, event)))
+    (Object.hasOwn(node.handlers, event) || (node.owned ?? []).some((layer) => Object.hasOwn(layer.handlers, event)))
   )
   const submit = event === "submit"
   if (handler === undefined) {
@@ -1371,7 +1371,7 @@ const fireAt = <Props, Model, Msg, Events>(
   }
   // A story runs its own component's layer. A headless child's layer needs the child's `update`.
   if (!Object.hasOwn(handler.handlers, event)) {
-    const owners = handler.owned.filter((layer) => Object.hasOwn(layer.handlers, event)).map((layer) =>
+    const owners = (handler.owned ?? []).filter((layer) => Object.hasOwn(layer.handlers, event)).map((layer) =>
       layer.owner.path
     )
     throw new Error(
@@ -1621,8 +1621,8 @@ export const make: {
    * closure. Its `h` has no messages of its own, so every handler in the
    * story is one of the component's parts'.
    */
-  <Props, Events, Parts, R, V extends View.Elements = never>(
-    component: Component.Headless<Props, Events, Parts, R>,
+  <Props, Events, Parts, R, Rcv, V extends View.Elements = never>(
+    component: Component.Headless<Props, Events, Parts, R, Rcv>,
     props: Props,
     options: {
       readonly elements?: View.Vocabulary<V> | undefined
@@ -1715,7 +1715,7 @@ const withView = (
 const lower = (node: View.Node<any, any>): View.Node<any, any> => {
   if (node._tag !== "Element") return node
   const children = node.children.map(lower)
-  if (node.owned.length === 0) return { ...node, children }
+  if (node.owned === undefined || node.owned.length === 0) return { ...node, children }
   return {
     ...node,
     handlers: Object.assign({}, node.handlers, ...node.owned.map((layer) => layer.handlers)),
@@ -1733,8 +1733,8 @@ const lower = (node: View.Node<any, any>): View.Node<any, any> => {
  * @category queries
  * @since 4.1.5
  */
-export const parts = <Props, Events, Parts, R>(
-  component: Component.Headless<Props, Events, Parts, R>,
+export const parts = <Props, Events, Parts, R, Rcv>(
+  component: Component.Headless<Props, Events, Parts, R, Rcv>,
   story: { readonly model: unknown; readonly props: Props }
 ): Parts => component.parts(story.model, story.props, { owner: { path: "/" + component.name, depth: 0 } })
 

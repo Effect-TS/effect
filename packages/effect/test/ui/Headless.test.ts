@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Schema } from "effect"
-import { Component, type MessageLog } from "effect/ui"
+import { Component, type MessageLog, type View } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { Query, TestHost } from "effect/ui/testing"
 import { Dialog, type Item, Menu } from "./html/fixtures/headless.ts"
@@ -132,6 +132,57 @@ const Board = Component.define({
     })
 })
 
+// ---------------------------------------------------------------------------
+// A parent that sends to a headless child through its ref
+// ---------------------------------------------------------------------------
+
+const OpenerMessage = Schema.TaggedUnion({ Open: {} })
+
+const Actions = Menu.ref("Actions")
+
+const Opener = Component.define({
+  name: "Opener",
+  props: Schema.Struct({ twice: Schema.Boolean }),
+  model: Schema.Null,
+  message: OpenerMessage,
+  elements: Html
+}).make({
+  init: () => null,
+  update: (_, __, $) => $.send(Actions, { _tag: "Toggle" }),
+  view: (_, h) =>
+    h.div(
+      h.button.onClick(OpenerMessage.make({ _tag: "Open" })).children("open"),
+      h.child(Menu, {
+        ref: Actions,
+        props: { items },
+        view: (m) =>
+          h.p(
+            m.open ? "shown" : "hidden",
+            // The closure is the parent's code, so a slot in it takes the parent's refs.
+            h.props.twice && h.child(Menu, { ref: Actions, props: { items }, view: () => h.span("again") })
+          )
+      })
+    )
+})
+
+// ---------------------------------------------------------------------------
+// Token lists: a part adds to the consumer's class and aria-describedby
+// ---------------------------------------------------------------------------
+
+const Field = Component.define({ name: "Field", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+  init: () => null,
+  update: (model) => model,
+  parts: (_, p) => ({ input: p.part("input", (b) => b.class("field").attr("aria-describedby", "hint")) })
+})
+
+const Form = Component.define({ name: "Form", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+  init: () => null,
+  update: (model) => model,
+  // One list set before the part is applied, and one after.
+  view: (_, h) =>
+    h.child(Field, { key: "f", view: (f) => f.input(h.input.class("wide field")).attr("aria-describedby", "note") })
+})
+
 const Shell = Component.define({
   name: "Shell",
   props: Schema.Struct({ fallbackThrows: Schema.Boolean }),
@@ -160,6 +211,9 @@ describe("headless components", () => {
       ])
       assert.deepStrictEqual(root.model(), ["picked c", "closed", "clicked c"])
       assert.include(root.text(), "picked c, closed, clicked c")
+      assert.deepStrictEqual((root.get(Query.text("Copy", { exact: true })) as TestHost.TestElement).owners, {
+        click: ["/Picker/Dialog[confirm]/Menu[actions]", "/Picker/Dialog[confirm]", "/Picker"]
+      })
     })))
 
   it.effect("a normal child inside the closure reports to whoever wrote the closure, never to the headless one", () =>
@@ -182,6 +236,57 @@ describe("headless components", () => {
       assert.deepStrictEqual(failures(root), ["/Shell/Board[board]/Menu[actions]/Bell[bell] update"])
       assert.include(root.text(), "bell down")
       assert.include(root.text(), "Rang, Rang, Failed")
+    })))
+
+  it.effect("a parent sends to a headless child through its ref", () =>
+    provideHost(Effect.gen(function*() {
+      const root = yield* TestHost.mount(Opener, { twice: false })
+      assert.include(root.text(), "hidden")
+      click(root, "open")
+      yield* TestHost.settle
+      assert.include(root.text(), "shown")
+      assert.deepStrictEqual(updates(root), ["/Opener DomEvent Open", "/Opener/Menu[Actions] Send Toggle"])
+    })))
+
+  it.effect("a send fails the parent when its ref is on a slot in the view and one in a closure", () =>
+    provideHost(Effect.gen(function*() {
+      const root = yield* TestHost.mount(Opener, { twice: true }, { fallback: (_, h) => h.text("crashed") })
+      click(root, "open")
+      yield* Effect.flip(TestHost.settle)
+      assert.strictEqual(root.text(), "crashed")
+      assert.deepStrictEqual(failures(root), ["/Opener view"])
+    })))
+
+  it.effect("a part adds its tokens to a token list, whenever the consumer set it", () =>
+    provideHost(Effect.gen(function*() {
+      const root = yield* TestHost.mount(Form, {})
+      const input = root.get(Query.tag("input")) as TestHost.TestElement
+      assert.strictEqual(input.attrs.class, "wide field")
+      assert.strictEqual(input.attrs["aria-describedby"], "note hint")
+    })))
+
+  it.effect("an element written by hand leaves owned out", () =>
+    provideHost(Effect.gen(function*() {
+      const Hand = Component.define({ name: "Hand", model: Schema.Number, message: Schema.Literal("hit") }).make({
+        init: () => 0,
+        update: (count) => count + 1,
+        view: (count): View.Element<"hit"> => ({
+          _tag: "Element",
+          tag: "button",
+          elementKey: undefined,
+          attrs: {},
+          props: {},
+          handlers: { click: "hit" },
+          eventOptions: {},
+          refKey: undefined,
+          mount: undefined,
+          children: [{ _tag: "Text", text: "hits " + count }]
+        })
+      })
+      const root = yield* TestHost.mount(Hand, {})
+      click(root, "hits 0")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "hits 1")
     })))
 
   it.effect("a fallback that throws inside the closure fails whoever wrote it", () =>

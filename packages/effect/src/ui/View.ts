@@ -126,6 +126,14 @@ export interface Owner {
  * What a part of a headless component added to an element: its handlers,
  * their options, its ref and its mount, kept apart from the author's.
  *
+ * **Details**
+ *
+ * `tokens` holds the part's token-list attributes, such as `class` and
+ * `aria-describedby`. They're added to the element's own value, whether the
+ * consumer set it before or after applying the part, and a token already
+ * there isn't repeated. The part's other attributes are written over what
+ * the consumer set before applying it.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -136,7 +144,27 @@ export interface Owned {
   readonly eventOptions: Readonly<Record<string, EventOptions>>
   readonly refKey: string | undefined
   readonly mount: Mount<any> | undefined
+  readonly tokens: Readonly<Record<string, string>>
 }
+
+/**
+ * The attributes whose value is a space-separated list, which a part adds
+ * its tokens to rather than replacing: `class`, `rel` and the ARIA
+ * attributes that list ids.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export const tokenListAttributes: ReadonlySet<string> = new Set([
+  "class",
+  "rel",
+  "aria-controls",
+  "aria-describedby",
+  "aria-flowto",
+  "aria-labelledby",
+  "aria-owns"
+])
 
 const noOwned: ReadonlyArray<Owned> = []
 
@@ -166,8 +194,11 @@ export interface Element<out Msg, out R = never> {
   readonly eventOptions: Readonly<Record<string, EventOptions>>
   readonly refKey: string | undefined
   readonly mount: Mount<Msg> | undefined
-  /** The layers the parts of headless components added, in the order they were applied. */
-  readonly owned: ReadonlyArray<Owned>
+  /**
+   * The layers the parts of headless components added, in the order they
+   * were applied. An element written by hand may leave it out.
+   */
+  readonly owned?: ReadonlyArray<Owned> | undefined
   readonly children: ReadonlyArray<Node<Msg, R>>
 }
 
@@ -417,7 +448,7 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
   _tag: "Element",
   tag: builder.tag,
   elementKey: builder.elementKey,
-  attrs: builder.attrs,
+  attrs: builder.owned.length === 0 ? builder.attrs : withTokens(builder.attrs, builder.owned),
   props: builder.props,
   handlers: builder.handlers,
   eventOptions: builder.eventOptions,
@@ -426,6 +457,28 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
   owned: builder.owned,
   children: inputs.length === 0 ? [] : children(inputs)
 })
+
+const withTokens = (
+  attrs: Readonly<Record<string, string>>,
+  owned: ReadonlyArray<Owned>
+): Readonly<Record<string, string>> => {
+  let out: Record<string, string> | undefined
+  for (const layer of owned) {
+    for (const name in layer.tokens) {
+      out ??= { ...attrs }
+      out[name] = joinTokens(out[name], layer.tokens[name]!)
+    }
+  }
+  return out ?? attrs
+}
+
+const joinTokens = (current: string | undefined, added: string): string => {
+  const tokens = current === undefined ? [] : current.split(/\s+/).filter((token) => token !== "")
+  for (const token of added.split(/\s+/)) {
+    if (token !== "" && !tokens.includes(token)) tokens.push(token)
+  }
+  return tokens.join(" ")
+}
 
 /**
  * Copies a builder with some of its fields replaced, keeping its class. Every
@@ -506,8 +559,9 @@ export type PartRequirements<P> = P extends { readonly "~R"?: (_: never) => infe
 /**
  * Makes a part for one owner. `decorate` gets an empty builder of the
  * consumer's class and tag, so it never sees what the consumer set. Its
- * attributes and properties are written over the consumer's, and its
- * handlers, event options, ref and mount become one owned layer.
+ * attributes and properties are written over the consumer's, except token
+ * lists, and its handlers, event options, ref, mount and token lists become
+ * one owned layer.
  *
  * @internal
  */
@@ -535,15 +589,22 @@ export const makePart = (
   }
   if (patch.elementKey !== undefined) throw new Error(owner.path + ": a part can't set an element's key")
   if (patch.owned.length > 0) throw new Error(owner.path + ": a part can't apply another part")
+  const attrs: Record<string, string> = { ...builder.attrs }
+  const tokens: Record<string, string> = {}
+  for (const name in patch.attrs) {
+    if (tokenListAttributes.has(name)) tokens[name] = patch.attrs[name]!
+    else attrs[name] = patch.attrs[name]!
+  }
   const layer: Owned = {
     owner,
     handlers: patch.handlers,
     eventOptions: patch.eventOptions,
     refKey: patch.refKey,
-    mount: patch.mount
+    mount: patch.mount,
+    tokens
   }
   return withFields(builder, {
-    attrs: { ...builder.attrs, ...patch.attrs },
+    attrs,
     props: { ...builder.props, ...patch.props },
     owned: [...builder.owned, layer]
   })

@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { Component, type View } from "effect/ui"
+import { Component, View } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { Query, Story } from "effect/ui/testing"
-import { type Item, Menu } from "./fixtures/headless.ts"
+import { Dialog, type Item, Menu } from "./fixtures/headless.ts"
 
 const items: ReadonlyArray<Item> = [
   { id: "a", label: "Archive" },
@@ -76,18 +76,22 @@ const Ids = Component.define({ name: "Ids", model: Schema.Null, message: Schema.
 })
 
 describe("headless components in a story", () => {
-  it("arrow keys skip a disabled row and wrap, and typeahead on the trigger reads the labels", () => {
+  it("arrow keys skip a disabled row and wrap, and typeahead on the trigger reads the labels and starts over", () => {
     const active = (story: { readonly model: unknown; readonly props: { readonly items: ReadonlyArray<Item> } }) =>
       Story.parts(Menu, story).active
     const story = Story.make(Menu, { items }, standIn, (s) => {
       // Block is disabled, so typing its first letter moves nowhere.
       s.fire(trigger, "keydown", { key: "b" })
         .check((story) => assert.isNull(active(story)))
-      s.given((model: any) => ({ ...model, typed: "" }))
         .fire(trigger, "keydown", { key: "c" })
         .fire(trigger, "keydown", { key: "o" })
         .check((story) => assert.strictEqual(active(story), "c"))
-        // Down from the last row wraps to the first, and from there skips Block.
+        // No label starts with "coa", so typing starts over from "a".
+        .fire(trigger, "keydown", { key: "a" })
+        .check((story) => assert.strictEqual(active(story), "a"))
+        // Up from the first row wraps to the last, down wraps back, and from there skips Block.
+        .fire(filter, "keydown", { key: "ArrowUp" })
+        .check((story) => assert.strictEqual(active(story), "c"))
         .fire(filter, "keydown", { key: "ArrowDown" })
         .check((story) => assert.strictEqual(active(story), "a"))
         .fire(filter, "keydown", { key: "ArrowDown" })
@@ -132,6 +136,14 @@ describe("headless components in a story", () => {
     const [button, span] = view.children as ReadonlyArray<View.Element<never>>
     assert.strictEqual(button!.attrs["aria-controls"], "_1b_Menu-popup")
     assert.strictEqual(span!.attrs.id, "_1b_Bare-label")
+  })
+
+  it("a part checks the tag name it's given, as its type does", () => {
+    const d = Story.parts(Dialog, { model: { open: false }, props: { label: "Confirm" } })
+    const h = View.makeHelper<never, {}, Html.Elements>({}, Html)
+    assert.strictEqual(d.title(h.h2).tag, "h2")
+    // Both are HTMLHeadingElement, but the part was declared for <h2>.
+    assert.throws(() => d.title(h.h3 as any), /a part for <h2> was given <h3>/)
   })
 
   it("ids of one instance differ whenever the name or the key does", () => {

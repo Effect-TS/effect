@@ -141,6 +141,25 @@ class Layered {
   }
 }
 
+const none: ReadonlyArray<never> = []
+
+/**
+ * For each event a part handles, the paths of the instances that get it, deepest owner first and the
+ * view's author last. An event only the author handles isn't listed. What `TestElement.owners` shows.
+ *
+ * @internal
+ */
+export const eventOwners = (
+  handlers: Readonly<Record<string, unknown>>
+): Readonly<Record<string, ReadonlyArray<string>>> => {
+  const out: Record<string, ReadonlyArray<string>> = {}
+  for (const event in handlers) {
+    const handler = handlers[event]
+    if (handler instanceof Layered) out[event] = handler.layers.map((layer) => layer.inst.path)
+  }
+  return out
+}
+
 interface RText {
   readonly _tag: "Text"
   readonly v: View.Text
@@ -2898,7 +2917,7 @@ const setup = (
         const view = rendered.v
         if (author === who && view.refKey === key) return rendered.node
         if (who.owner !== undefined) {
-          for (const layer of view.owned) {
+          for (const layer of view.owned ?? none) {
             if (layer.owner === who.owner && layer.refKey === key) return rendered.node
           }
         }
@@ -3006,7 +3025,9 @@ const setup = (
    */
   const setEvents = (inst: Instance, node: unknown, view: View.Element<any, any>) => {
     const author = inst.author
-    if (view.owned.length === 0) return host.setEvents(node, view.handlers, author.fire, view.eventOptions)
+    if (view.owned === undefined || view.owned.length === 0) {
+      return host.setEvents(node, view.handlers, author.fire, view.eventOptions)
+    }
     // Deepest owner first, and the author last.
     const owned = view.owned.length === 1
       ? view.owned
@@ -3064,9 +3085,10 @@ const setup = (
     env: Env,
     running?: ReadonlyArray<OwnedMount> | undefined
   ): ReadonlyArray<OwnedMount> | undefined => {
-    if (view.owned.length === 0 && running === undefined) return undefined
+    const owned = view.owned ?? none
+    if (owned.length === 0 && running === undefined) return undefined
     const out: Array<OwnedMount> = []
-    for (const layer of view.owned) {
+    for (const layer of owned) {
       const mount = layer.mount
       if (mount === undefined) continue
       const kept = running?.find((entry) => entry.owner === layer.owner && entry.name === mount.name)

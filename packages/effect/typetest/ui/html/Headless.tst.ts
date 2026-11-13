@@ -28,6 +28,13 @@ const Timed = Component.define({
   })
 })
 
+// A part that takes either of two headings.
+const Heading = Component.define({ name: "Heading", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+  init: () => null,
+  update: (model) => model,
+  parts: (_, p) => ({ heading: p.part(["h2", "h3"], (b) => b.attr("role", "heading")) })
+})
+
 describe("headless components", () => {
   it("the consumer calls parts with no annotations", () => {
     Component.define({ name: "App", model: Schema.Null, message: Msg, elements: Html }).make({
@@ -79,8 +86,9 @@ describe("headless components", () => {
             >()
             expect(m.trigger(h.button)).type.not.toBeAssignableTo<(...children: ReadonlyArray<string>) => unknown>()
             expect(h.button).type.toBeCallableWith("Actions")
-            // A part is tied to its tag's node: a button part rejects a div, and the missing item is an error.
+            // A part is tied to its tag name: a button part rejects a div, and the missing item is an error.
             expect(m.trigger).type.not.toBeCallableWith(h.div)
+            expect(m.trigger).type.not.toBeCallableWith(h.el("button"))
             expect(m.item).type.not.toBeCallableWith(h.li)
             expect(m.item).type.not.toBeCallableWith(h.li, "a")
             // The tagless part takes any element.
@@ -110,6 +118,54 @@ describe("headless components", () => {
         })
     })
     expect<Component.Requirements<typeof App>>().type.toBe<Clock | Tracker>()
+  })
+
+  it("a part for one heading rejects another, and a part may list several tags", () => {
+    Component.define({ name: "App", model: Schema.Null, message: Msg, elements: Html }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) =>
+        h.child(Dialog, {
+          key: "confirm",
+          props: { label: "Confirm" },
+          view: (d) => {
+            // Both are HTMLHeadingElement: the check is by tag name, as at runtime.
+            expect(d.title).type.toBeCallableWith(h.h2)
+            expect(d.title).type.not.toBeCallableWith(h.h3)
+            return h.child(Heading, {
+              key: "h",
+              view: (p) => {
+                expect(p.heading).type.toBe<View.Part<"h2" | "h3", [], never>>()
+                expect(p.heading).type.toBeCallableWith(h.h3)
+                expect(p.heading).type.not.toBeCallableWith(h.h4)
+                return p.heading(h.h2)
+              }
+            })
+          }
+        })
+    })
+  })
+
+  it("a headless child takes a ref of what it receives, and no other", () => {
+    const Other = Component.define({
+      name: "Other",
+      model: Schema.Null,
+      message: Schema.TaggedUnion({ Reset: {} }),
+      receives: ["Reset"]
+    }).make({ init: () => null, update: (model) => model, view: (_, h) => h.el("p") })
+    Component.define({ name: "App", model: Schema.Null, message: Msg, elements: Html }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) => {
+        expect(h.child).type.toBeCallableWith(Menu, { ref: Menu.ref("Actions"), props: { items }, view: () => h.div() })
+        expect(h.child).type.not.toBeCallableWith(Menu, {
+          ref: Other.ref("Actions"),
+          props: { items },
+          view: () => h.div()
+        })
+        return h.div()
+      }
+    })
   })
 
   it("a headless component isn't a Mountable", () => {

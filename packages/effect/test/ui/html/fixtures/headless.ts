@@ -54,6 +54,8 @@ const MenuDef = Component.define({
   }),
   message: MenuMessage,
   events: MenuEvents,
+  // A parent may open or close it.
+  receives: ["Toggle"],
   elements: Html
 })
 
@@ -90,11 +92,13 @@ export const Menu = MenuDef.make({
               : $.set({ ...model, open: false }).emit(MenuEvents.make({ _tag: "Picked", id: active }))
           default: {
             // Typeahead: a printable key on the trigger moves to the first label that starts with what was typed.
-            const typed = model.typed + key.toLowerCase()
-            const hit = $.props.items.find((item) =>
-              item.disabled !== true && item.label.toLowerCase().startsWith(typed)
-            )
-            return { ...model, typed, active: hit === undefined ? active : hit.id }
+            // A key that no label continues with starts over from that key, so the buffer is never longer than a label.
+            const find = (prefix: string) =>
+              $.props.items.find((item) => item.disabled !== true && item.label.toLowerCase().startsWith(prefix))
+            const next = model.typed + key.toLowerCase()
+            const typed = find(next) !== undefined ? next : key.toLowerCase()
+            const hit = find(typed)
+            return { ...model, typed: hit === undefined ? "" : typed, active: hit === undefined ? active : hit.id }
           }
         }
       },
