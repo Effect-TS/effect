@@ -15,21 +15,17 @@ export const childName = (component: Component.Any | Feature.Any): string =>
 /** The segment a child slot adds to its parent's path: `Name[key]`. @internal */
 export const segment = (view: View.Child<any, any>): string => `${childName(view.component)}[${view.key}]`
 
-interface Taken {
-  readonly paths: Set<string>
-  readonly refs: Set<string>
-}
-
 /**
- * The paths and ref keys one render of an instance uses: its view's slots,
- * then the children of each fallback shown in this render, as they're shown.
+ * The paths and ref keys one render of an instance uses, each with the slot
+ * that holds it: its view's slots, then the children of each fallback shown
+ * in this render, as they're shown.
  *
  * @internal
  */
 export interface ChildPaths {
   readonly path: string
-  readonly view: Taken
-  readonly fallbacks: Taken
+  readonly paths: Map<string, View.Child<any, any>>
+  readonly refs: Map<string, View.Child<any, any>>
 }
 
 const failure = (path: string, what: string): never => {
@@ -46,30 +42,47 @@ const failure = (path: string, what: string): never => {
  * @internal
  */
 export const checkChildPaths = (path: string, tree: View.Node<any, any>): ChildPaths => {
-  const view: Taken = { paths: new Set(), refs: new Set() }
-  const visit = (node: View.Node<any, any>): void => {
+  const paths: ChildPaths = { path, paths: new Map(), refs: new Map() }
+  visit(paths, tree, undefined, "")
+  return paths
+}
+
+/**
+ * Adds the child slots of `tree` to `paths`, as rendered by the fallback of
+ * `replaced`, or by the view without one. Throws on a path or ref key another
+ * slot holds. `replaced`'s own are free, since the child that failed there is
+ * gone: its fallback's children take them over, so a fallback nested in
+ * another fallback can reuse its slot's path too.
+ */
+const visit = (
+  paths: ChildPaths,
+  tree: View.Node<any, any>,
+  replaced: View.Child<any, any> | undefined,
+  where: string
+): void => {
+  const claim = (taken: Map<string, View.Child<any, any>>, key: string, node: View.Child<any, any>, what: string) => {
+    const holder = taken.get(key)
+    if (holder !== undefined && holder !== replaced) failure(paths.path, `${what}${where}`)
+    taken.set(key, node)
+  }
+  const go = (node: View.Node<any, any>): void => {
     if (node._tag === "Element") {
-      for (const child of node.children) visit(child)
+      for (const child of node.children) go(child)
     } else if (node._tag === "Child") {
       const key = segment(node)
-      if (view.paths.has(key)) failure(path, `at ${key}`)
-      view.paths.add(key)
-      if (node.ref !== undefined) {
-        if (view.refs.has(node.ref.key)) failure(path, `with the ref ${node.ref.key}`)
-        view.refs.add(node.ref.key)
-      }
+      claim(paths.paths, key, node, `at ${key}`)
+      if (node.ref !== undefined) claim(paths.refs, node.ref.key, node, `with the ref ${node.ref.key}`)
     }
   }
-  visit(tree)
-  return { path, view, fallbacks: { paths: new Set(), refs: new Set() } }
+  go(tree)
 }
 
 /**
  * Throws when `fallback`, shown in place of the slot `slot`, renders a child
- * at a path or ref key that another slot of the view, or a child of a
- * fallback already shown in this render, uses. A fallback's children are the
- * parent's children, so they share its paths. Only the slot's own path and
- * ref key are free: the child that failed there is gone.
+ * at a path or ref key that another slot holds: one of the view's, or a child
+ * of a fallback already shown in this render. A fallback's children are the
+ * parent's children, so they share its paths. Only `slot`'s own path and ref
+ * key are free, since the child that failed there is gone.
  *
  * @internal
  */
@@ -78,25 +91,5 @@ export const checkFallbackPaths = (
   slot: View.Child<any, any>,
   fallback: View.Node<any, any>
 ): void => {
-  const own = segment(slot)
-  const where = `, in the fallback of ${own}`
-  const visit = (node: View.Node<any, any>): void => {
-    if (node._tag === "Element") {
-      for (const child of node.children) visit(child)
-    } else if (node._tag === "Child") {
-      const key = segment(node)
-      if ((key !== own && paths.view.paths.has(key)) || paths.fallbacks.paths.has(key)) {
-        failure(paths.path, `at ${key}${where}`)
-      }
-      paths.fallbacks.paths.add(key)
-      if (node.ref !== undefined) {
-        const ref = node.ref.key
-        if ((ref !== slot.ref?.key && paths.view.refs.has(ref)) || paths.fallbacks.refs.has(ref)) {
-          failure(paths.path, `with the ref ${ref}${where}`)
-        }
-        paths.fallbacks.refs.add(ref)
-      }
-    }
-  }
-  visit(fallback)
+  visit(paths, fallback, slot, `, in the fallback of ${segment(slot)}`)
 }

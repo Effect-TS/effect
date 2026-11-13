@@ -235,6 +235,11 @@ export interface Instance {
   failure: Cause.Cause<unknown> | undefined
   /** What the current or last render uses: each fallback it shows is checked against it, and adds to it. */
   childPaths: ChildPaths | undefined
+  /**
+   * A fallback in this render that clashed with `childPaths`. It shows nothing, and the render
+   * fails once its nodes are in place, so the instance closes over what it rendered.
+   */
+  clash: unknown
   rendered: Array<Rendered>
   closed: boolean
   /** Hydration: the provided Layer is still building, so the server's nodes wait, inert. */
@@ -1282,6 +1287,7 @@ const setup = (
       onFailure,
       failure: undefined,
       childPaths: undefined,
+      clash: undefined,
       rendered: [],
       closed: false,
       waiting: false,
@@ -1554,6 +1560,7 @@ const setup = (
       const tree = guard(inst, "view", () => {
         const tree = component.view(inst.model, inst.props, runningOf(inst), inst.slots)
         inst.childPaths = checkChildPaths(path, tree)
+        inst.clash = undefined
         return tree
       })
       if (tree === undefined) return
@@ -1561,7 +1568,11 @@ const setup = (
       const rendered = guard(
         inst,
         "view",
-        () => plan !== undefined ? adoptNode(inst, tree, plan[0]!, inst.env) : create(inst, tree, inst.env)
+        () => {
+          const rendered = plan !== undefined ? adoptNode(inst, tree, plan[0]!, inst.env) : create(inst, tree, inst.env)
+          throwClash(inst)
+          return rendered
+        }
       )
       if (rendered === undefined) return
       if (plan !== undefined) {
@@ -2885,11 +2896,13 @@ const setup = (
     guard(inst, "view", () => {
       const tree = inst.component.view(inst.model, inst.props, runningOf(inst), inst.slots)
       inst.childPaths = checkChildPaths(inst.path, tree)
+      inst.clash = undefined
       const old = inst.rendered.flatMap(nodesOf)
       const parentNode = host.parentOf(old[0])!
       const ref = host.nextOf(old[old.length - 1])
       releaseRemoved(inst.rendered, [tree])
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
+      throwClash(inst)
     })
     if (!inst.closed) updateHead(inst)
     deliverSends(inst)
@@ -2975,8 +2988,24 @@ const setup = (
    * one in its view does.
    */
   const shownIn = (inst: Instance, view: View.Child<any, any>, node: View.Node<any, any>): View.Node<any, any> => {
-    if (inst.childPaths !== undefined) checkFallbackPaths(inst.childPaths, view, node)
-    return node
+    if (inst.childPaths === undefined) return node
+    try {
+      checkFallbackPaths(inst.childPaths, view, node)
+      return node
+    } catch (error) {
+      // Thrown midway through a patch, it would close the instance over nodes the patch has
+      // already removed, so it waits for the render to finish.
+      inst.clash ??= error
+      return emptyText
+    }
+  }
+
+  /** Fails the render with the first fallback clash, once its nodes are in place. */
+  const throwClash = (inst: Instance) => {
+    const clash = inst.clash
+    if (clash === undefined) return
+    inst.clash = undefined
+    throw clash
   }
 
   /** What a feature slot shows while its Layer is building or failed. */

@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Schema } from "effect"
 import { AsyncResult } from "effect/reactivity"
 import { Component, type MessageLog } from "effect/ui"
-import { Story, TestHost } from "effect/ui/testing"
+import { Query, Story, TestHost } from "effect/ui/testing"
 
 const provideHost = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.provide(TestHost.layer()))
 
@@ -233,5 +233,108 @@ describe("duplicate child paths", () => {
         )
       )
     })
+  })
+
+  describe("in a nested fallback", () => {
+    const Broken = Component.define({ name: "Broken", model: Schema.Null, message: Schema.Never }).make({
+      init: () => {
+        throw new Error("broken")
+      },
+      update: (model) => model,
+      view: (_, h) => h.text("")
+    })
+
+    const Go = Schema.TaggedUnion({ Go: {} })
+    /** Named `Row`, so its fallback can show a `Row` at its own path. Fails on a click. */
+    const Faulty = Component.define({ name: "Row", model: Schema.Null, message: Go }).make({
+      init: () => null,
+      update: () => {
+        throw new Error("faulty")
+      },
+      view: (_, h) => h.el("button").on("click", Go.make({ _tag: "Go" })).children("faulty")
+    })
+    const RowRef = Row.ref("a")
+
+    const Props = Schema.Struct({ nested: Schema.Array(Schema.String), ref: Schema.Boolean })
+    const ParentMessage = Schema.TaggedUnion({ Bump: {} })
+
+    /**
+     * `Broken[b]`'s fallback shows `Faulty` at `Row[a]`, by key or by ref, and
+     * `Faulty`'s fallback shows a `Row` per `nested` key, the same way.
+     */
+    const Parent = Component.define({ name: "Parent", props: Props, model: Schema.Number, message: ParentMessage })
+      .make({
+        init: () => 0,
+        update: (count) => count + 1,
+        view: (_, h) =>
+          h.child(Broken, {
+            key: "b",
+            fallback: () => {
+              const rows = () =>
+                h.el(
+                  "ul",
+                  h.props.nested.map((key) =>
+                    h.props.ref
+                      ? h.child(Row, { ref: Row.ref(key), props: { label: key } })
+                      : h.child(Row, { key, props: { label: key } })
+                  )
+                )
+              return h.props.ref
+                ? h.child(Faulty, { ref: RowRef, fallback: rows })
+                : h.child(Faulty, { key: "a", fallback: rows })
+            }
+          })
+      })
+
+    const Root = Component.define({ name: "Root", props: Props, model: Schema.Null, message: Schema.Never }).make({
+      init: () => null,
+      update: (model) => model,
+      view: (_, h) => h.child(Parent, { key: "p", props: h.props, fallback: () => h.text("parent-failed") })
+    })
+
+    const parentFailures = (root: TestHost.TestRoot<null, never, never>) =>
+      root.log().filter((entry): entry is MessageLog.Failed =>
+        entry._tag === "Failed" && entry.path === "/Root/Parent[p]"
+      )
+
+    for (const ref of [false, true]) {
+      const by = ref ? "ref" : "key"
+      it.effect(`let a failed slot's fallback reuse the slot's own ${by}, render after render`, () =>
+        provideHost(Effect.gen(function*() {
+          const root = yield* TestHost.mount(Parent, { nested: ["a"], ref })
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "faulty")
+          Query.fire(root.get(Query.text("faulty", { exact: true })), "click")
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "a")
+          root.send(ParentMessage.make({ _tag: "Bump" }))
+          yield* TestHost.settle
+          assert.strictEqual(root.text(), "a")
+          assert.isFalse(root.log().some((entry) => entry._tag === "Failed" && entry.path === "/Parent"))
+        })))
+
+      it.effect(`fail the parent when a nested fallback renders two children with one ${by}`, () =>
+        provideHost(Effect.gen(function*() {
+          const root = yield* TestHost.mount(Root, { nested: ["a", "a"], ref })
+          yield* TestHost.settle
+          Query.fire(root.get(Query.text("faulty", { exact: true })), "click")
+          yield* TestHost.settle
+          console.log(
+            JSON.stringify(
+              root.log().filter((e) => e._tag === "Failed").map((
+                e: any
+              ) => [e.path, e.source, Cause.pretty(e.cause).split("\n")[0]])
+            )
+          )
+          assert.strictEqual(root.text(), "parent-failed")
+          const failed = parentFailures(root)
+          assert.lengthOf(failed, 1)
+          assert.strictEqual(failed[0].source, "view")
+          assert.include(
+            Cause.pretty(failed[0].cause),
+            "/Root/Parent[p] renders two children at Row[a], in the fallback of Row[a]"
+          )
+        })))
+    }
   })
 })
