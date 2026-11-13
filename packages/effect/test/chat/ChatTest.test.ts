@@ -81,6 +81,52 @@ describe("ChatTest", () => {
     })
   }
 
+  it.effect("post/refusedFile rejects Unsupported for a listed capability", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const thread = yield* test.makeThread()
+      const rules = ChatTest.conformance({
+        platform: test.platform,
+        thread,
+        parseMention,
+        userPosts: (thread, text) => test.userPosts(thread, { text }),
+        refuseFiles: () =>
+          test.failNext(
+            "post",
+            new ChatError.Unsupported({
+              capability: "files",
+              detail: ChatError.fileRefused
+            })
+          )
+      })
+      const error = yield* Effect.flip(rules["post/refusedFile"])
+      assert.strictEqual(error.rule, "post/refusedFile")
+      assert.strictEqual(error.actual, "Unsupported(files) for a listed capability")
+    }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.effect("post/refusedFile cleans up a refused write that landed", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const thread = yield* test.makeThread()
+      const rules = ChatTest.conformance({
+        platform: test.platform,
+        thread,
+        parseMention,
+        userPosts: (thread, text) => test.userPosts(thread, { text }),
+        refuseFiles: () =>
+          test.failNext(
+            "post",
+            new ChatError.Forbidden({
+              detail: ChatError.fileRefused
+            }),
+            { landed: true }
+          )
+      })
+      const error = yield* Effect.flip(rules["post/refusedFile"])
+      assert.strictEqual(error.expected, "no new message")
+      assert.deepStrictEqual(yield* test.messages(thread), [])
+    }).pipe(Effect.provide(ChatTest.layer())))
+
   it.effect("fails unsupported/{capability} for a descriptor that leaves out a working op", () =>
     Effect.gen(function*() {
       const registry = yield* ChatAdapter.Registry

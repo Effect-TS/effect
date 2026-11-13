@@ -1355,13 +1355,21 @@ export const conformance = (options: {
           files: [conformanceFile(t.rule)]
         }))
         if (Exit.isSuccess(exit)) t.created.push({ thread: t.thread, id: exit.value.id })
-        const error = Exit.findErrorOption(exit)
-        yield* t.check(
-          Option.isSome(error) && error.value.reason.retry === "denied" && error.value.reason.detail === fileRefused,
-          "denied with detail file_refused",
-          () => describeExit(exit)
-        )
         const after = yield* t.collect(t.chat.history(t.thread, { direction: "forward" }))
+        const beforeIds = new Set(before.map((message) => message.id))
+        for (const message of after) {
+          if (message.author.isSelf && !beforeIds.has(message.id) && !t.created.some(({ id }) => id === message.id)) {
+            t.created.push({ thread: message.thread, id: message.id })
+          }
+        }
+        const error = Exit.findErrorOption(exit)
+        const reason = Option.isSome(error) ? error.value.reason : undefined
+        const listed = reason?._tag === "Unsupported" && t.has(reason.capability)
+        yield* t.check(
+          !listed && reason?.retry === "denied" && reason.detail === fileRefused,
+          "denied with detail file_refused, not Unsupported for a listed capability",
+          () => describeExit(exit) + (listed ? " for a listed capability" : "")
+        )
         yield* t.check(
           after.length === before.length && after.every((message, i) => message.id === before[i].id),
           "no new message",
