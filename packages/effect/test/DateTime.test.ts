@@ -778,6 +778,7 @@ describe("DateTime", () => {
       ["Tue, 27 Jan 2026 17:14:06 -05 ", "2026-01-27T22:14:06.000Z"],
       ["Tue, 27 Jan 2026 05:14:06 PM EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
       ["Tue, 27 Jan 2026 17:14:06 -0500 EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["12:00:00 2024-01-01 (note)", "2024-01-01T12:00:00.000Z"],
       ["2024-01-01 ", "2024-01-01T00:00:00.000Z"],
       ["01-01-2024 (note)", "2024-01-01T00:00:00.000Z"]
     ])("preserves zone interpretation before comments or whitespace: %s", (input, expected) => {

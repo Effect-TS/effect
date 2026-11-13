@@ -290,7 +290,10 @@ const withoutComments = (input: string): string => {
 const hasZone = (input: string): boolean => {
   if (matchesZone(input)) return true
   const text = withoutComments(input).trimEnd()
-  return /\d:\d{2}/.test(text) && matchesZone(text)
+  const time = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(text)
+  if (time === null) return false
+  const suffix = text.slice(time.index + time[0].length)
+  return matchesZone(suffix) && !/\d[+-]\d{2}(?::?\d{2})?$/.test(suffix)
 }
 
 const matchesZone = (input: string): boolean =>
