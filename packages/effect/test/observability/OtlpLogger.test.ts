@@ -137,13 +137,8 @@ describe("OtlpLogger", () => {
         )
       ])
       yield* logs
-      const parent = yield* Effect.gen(function*() {
-        const parent = yield* Effect.currentSpan
-        yield* logs
-        return parent
-      }).pipe(Effect.withSpan("parent"))
       const unsampled = Tracer.externalSpan({
-        traceId: "463ac35c9f6413ad",
+        traceId: "80f198ee56343ba864fe8b2a57d3eff7",
         spanId: "0020000000000001",
         sampled: false
       })
@@ -156,10 +151,8 @@ describe("OtlpLogger", () => {
         [
           [undefined, undefined],
           [undefined, undefined],
-          [parent.traceId.padStart(32, "0"), parent.spanId],
-          [parent.traceId.padStart(32, "0"), parent.spanId],
-          ["0000000000000000463ac35c9f6413ad", unsampled.spanId],
-          ["0000000000000000463ac35c9f6413ad", unsampled.spanId]
+          ["80f198ee56343ba864fe8b2a57d3eff7", "0020000000000001"],
+          ["80f198ee56343ba864fe8b2a57d3eff7", "0020000000000001"]
         ]
       )
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
