@@ -12,6 +12,11 @@
  * rule runs on the `Clock`, so `TestClock` drives it, and
  * `effect/testing/TestLoader` is the harness for tests.
  *
+ * Server dehydration omits entries whose args, success or error Schema holds
+ * a `Schema.Redacted`, even when the current value contains no secret. The
+ * client fetches omitted entries instead of hydrating them. Ordinary entries
+ * still dehydrate and hydrate through their JSON codecs.
+ *
  * **Example** (Defining a read and sharing its fetch)
  *
  * ```ts import.meta.vitest
@@ -53,7 +58,7 @@ import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Hash from "../Hash.ts"
 import { byReferenceInstances } from "../internal/equal.ts"
-import { redactAST } from "../internal/schemaRedact.ts"
+import { holdsRedacted, redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Queue from "../Queue.ts"
@@ -2501,7 +2506,8 @@ interface CacheInternals {
   /**
    * Interrupts every fetch in flight and every pending `get`, and returns
    * every settled entry for `~loader`. An entry that can't be encoded is
-   * left out and reported.
+   * left out and reported. Entries whose args, success or error Schema holds
+   * a `Schema.Redacted` are left out without an encoding diagnostic; the client fetches them.
    */
   readonly dehydrate: () => Dehydrated
   /**
@@ -5010,7 +5016,12 @@ const buildCache = (
       entry.target = undefined
       if (entry.shared !== undefined) endShared(entry.shared, Exit.interrupt())
       const result = entry.result
-      if (result === undefined) {
+      if (
+        result === undefined ||
+        holdsRedacted(entry.def.args.ast) ||
+        holdsRedacted(entry.def.success.ast) ||
+        holdsRedacted(entry.def.error.ast)
+      ) {
         afterQuiet(entry)
         continue
       }
