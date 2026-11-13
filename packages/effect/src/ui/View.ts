@@ -793,9 +793,9 @@ export interface Helper<Msg, Props> {
     ...group: Command.GroupArg<Args, G>
   ): boolean
   /** A component by value. Its requirements surface in the parent's. */
-  child<Props, Events, RC, RF = never, C = unknown>(
-    component: Component.Mountable<Props, Events, RC, any> & C,
-    options: Child.Options<Props, Events, Msg, NoInfer<Component.ReceivedByAll<C>>> & {
+  child<Props, Events, RC, Rcv = never, RF = never>(
+    component: Component.Mountable<Props, Events, RC, Rcv>,
+    options: Child.Options<Props, Events, Msg, NoInfer<Rcv>> & {
       /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }

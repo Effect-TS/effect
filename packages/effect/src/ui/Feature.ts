@@ -82,7 +82,7 @@ export type TypeId = typeof TypeId
  * @since 4.1.5
  */
 export interface Implementation<in out Props, out Events> {
-  readonly component: Component.Mountable<Props, Events, never, any>
+  readonly component: Component.Mountable<Props, Events, never, never>
   readonly context: Context.Context<never>
 }
 
@@ -111,8 +111,8 @@ export interface Service<in out Self, in out Props, in out Events, in out Receiv
    * component receives every message the feature receives, and may receive
    * more.
    */
-  readonly toLayer: <R, C = unknown>(
-    component: Component.Mountable<Props, Events, R, any> & C & ReceivesAll<Receives, Component.ReceivedByAll<C>>
+  readonly toLayer: <R, Rcv = never>(
+    component: Component.Mountable<Props, Events, R, Rcv> & ReceivesAll<Receives, Rcv>
   ) => Layer.Layer<Self, never, R>
 }
 
@@ -233,11 +233,11 @@ export const Service: <Self>() => <
       static ref(refName: string) {
         return childRef.make(refName, FeatureService.receives)
       }
-      static toLayer<R>(component: Component.Mountable<any, any, R, any>): Layer.Layer<any, never, R> {
+      static toLayer<R>(component: Component.Mountable<any, any, R, never>): Layer.Layer<any, never, R> {
         return Layer.effect(
           Base,
           Effect.map(Effect.context<R>(), (context) => ({
-            component: component as Component.Mountable<any, any, never, any>,
+            component: component as Component.Mountable<any, any, never, never>,
             // The implementation's requirements are closed with the build site's
             // Context. The Layer's own Scope isn't part of that contract: the
             // runtime gives every instance its own.

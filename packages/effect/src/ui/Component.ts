@@ -512,11 +512,16 @@ const toNext = (result: unknown): Next<any, any, any, any> =>
  * A component with `message: Schema.Never` is a valid child, because
  * `update` takes `msg: never`.
  *
+ * `Rcv`, the messages a parent may send it, is contravariant. A component
+ * that receives more can be used where fewer are needed, but an annotation
+ * can't claim a message the component doesn't receive. `Mountable<P, E, R>`,
+ * with `Rcv = never`, accepts a component whatever it receives.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface Mountable<in out Props, out Events, out R = never, out Rcv = never> extends Pipeable.Pipeable {
+export interface Mountable<in out Props, out Events, out R = never, in Rcv = never> extends Pipeable.Pipeable {
   readonly [TypeId]: Mountable.Variance<Props, Events, R, Rcv>
   readonly name: string
   readonly props: Schema.Codec<Props, any>
@@ -576,11 +581,11 @@ export declare namespace Mountable {
    * @category models
    * @since 4.1.5
    */
-  export interface Variance<in out Props, out Events, out R, out Rcv = never> {
+  export interface Variance<in out Props, out Events, out R, in Rcv = never> {
     readonly _Props: Types.Invariant<Props>
     readonly _Events: Types.Covariant<Events>
     readonly _R: Types.Covariant<R>
-    readonly _Rcv: Types.Covariant<Rcv>
+    readonly _Rcv: Types.Contravariant<Rcv>
   }
 }
 
@@ -600,7 +605,7 @@ export interface Component<
   out R = never,
   out V extends View.Elements = never,
   out L = {},
-  out Rcv = never
+  in out Rcv = never
 > extends Mountable<Props, Events, R, Rcv> {
   readonly name: Name
   readonly model: Schema.Codec<Model, any>
@@ -666,7 +671,7 @@ export type LoaderHelpers<L> = [keyof L] extends [never] ? {} : {
  * @category models
  * @since 4.1.5
  */
-export type Any = Mountable<any, any, any, any>
+export type Any = Mountable<any, any, any, never>
 
 /**
  * The props of a component.
@@ -726,29 +731,6 @@ export type Message<C> = C extends
  * @since 4.1.5
  */
 export type Receives<C> = C extends Mountable<infer _Props, infer _Events, infer _R, infer Rcv> ? Rcv : never
-
-/**
- * The messages every member of a component union receives.
- *
- * **When to use**
- *
- * Use when checking a ref against a component that may be one of several,
- * such as `flag ? Editor : Viewer`.
- *
- * **Details**
- *
- * `Receives` of a union is the union of what its members receive, which a
- * member that doesn't receive a message would still pass. This is the
- * intersection instead: a message is in it only if each member receives it.
- *
- * @stability experimental
- * @category utility types
- * @since 4.1.5
- */
-export type ReceivedByAll<C> =
-  (C extends Mountable<infer _Props, infer _Events, infer _R, infer Rcv> ? (rcv: Rcv) => void : never) extends
-    (rcv: infer All) => void ? All
-    : never
 
 /**
  * A `load` entry of `loaders`, as the types see it: one read, or a list
@@ -1695,7 +1677,7 @@ const toLayer = (layers: Layer.Any | ReadonlyArray<Layer.Any>): Layer.Layer<any,
 export const provide: {
   <Props, ROut, RIn>(
     layer: (props: Props) => Layer.Layer<ROut, never, RIn>
-  ): <C extends Mountable<Props, any, any, any>>(component: C) => Provided<C, ROut, RIn>
+  ): <C extends Mountable<Props, any, any, never>>(component: C) => Provided<C, ROut, RIn>
   <const L extends Layer.Any | ReadonlyArray<Layer.Any>>(
     layer: L & CurriedCantFail<L>,
     options?: LocalOption

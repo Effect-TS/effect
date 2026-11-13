@@ -568,9 +568,10 @@ export const mount = <
   R,
   V extends View.Elements,
   RF = never,
-  RP = never
+  RP = never,
+  Rcv = never
 >(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, Rcv>,
   props: Props | Effect.Effect<Props, never, RP>,
   options?: {
     readonly fallback?:

@@ -1,5 +1,5 @@
 import { Context, Layer, Schema } from "effect"
-import { Component, Feature } from "effect/ui"
+import { Component, Feature, type View } from "effect/ui"
 import { Story, TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
 
@@ -41,6 +41,19 @@ const Rows = Note.ref("Row")
 
 class Store extends Context.Service<Store, { readonly draft: string }>()("typetest/send/Store") {}
 const ProvidedEditor = Component.provide(Editor, Layer.succeed(Store, { draft: "" }))
+
+// Receives Clear, and requires Store.
+declare const NeedsStore: Component.Component<
+  "NeedsStore",
+  {},
+  string,
+  EditorMessage,
+  never,
+  Store,
+  never,
+  {},
+  Extract<EditorMessage, { readonly _tag: "Clear" }>
+>
 
 const TodosMessage = Schema.TaggedUnion({ Clear: {} })
 class Todos extends Feature.Service<Todos>()("Todos", {
@@ -160,6 +173,39 @@ describe("h.child with a ref", () => {
       return h.el("p")
     })
   })
+
+  it("rejects a ref when explicit type arguments leave Rcv out", () => {
+    ParentDef.view((_, h) => {
+      expect(h.child<{}, never, never>).type.not.toBeCallableWith(Plain, { ref: Rows })
+      expect(h.child<{}, never, never>).type.not.toBeCallableWith(Editor, { ref: Rows })
+      expect(h.child<{}, never, never>(Plain, { key: "a" })).type.not.toRaiseError()
+      return h.el("p")
+    })
+  })
+
+  it("keeps requirements and provided components", () => {
+    ParentDef.view((_, h) => {
+      expect(h.child(NeedsStore, { ref: Rows })).type.toBe<View.Child<typeof ParentMessage.Type, Store>>()
+      expect(h.child(Editor.pipe(Component.provide(Layer.succeed(Store, { draft: "" }))), { ref: Draft })).type
+        .not.toRaiseError()
+      return h.el("p")
+    })
+  })
+})
+
+describe("Mountable", () => {
+  it("can't claim a message the component doesn't receive", () => {
+    expect<Component.Mountable<{}, never, never, Received>>().type.not.toBeAssignableFrom(Plain)
+    expect<Component.Mountable<{}, never, never, Received>>().type.not.toBeAssignableFrom(Note)
+  })
+
+  it("takes a component that receives more, or anything with Rcv left out", () => {
+    expect<Component.Mountable<{}, never, never, Received>>().type.toBeAssignableFrom(Editor)
+    expect<Component.Mountable<{}, never, never, Extract<Received, { readonly _tag: "Clear" }>>>().type
+      .toBeAssignableFrom(Editor)
+    expect<Component.Mountable<{}, never, never>>().type.toBeAssignableFrom(Plain)
+    expect<Component.Mountable<{}, never, never>>().type.toBeAssignableFrom(Editor)
+  })
 })
 
 describe("Feature receives", () => {
@@ -173,6 +219,13 @@ describe("Feature receives", () => {
     // Each member of a union must receive every case.
     expect(Todos.toLayer).type.not.toBeCallableWith(EditorOrPlain)
     expect(Todos.toLayer(EditorOrNote)).type.toBe<Layer.Layer<Todos, never, never>>()
+    // Explicit type arguments leave Rcv out, and that receives nothing.
+    expect(Todos.toLayer<never>).type.not.toBeCallableWith(Plain)
+    expect(Todos.toLayer<never>).type.not.toBeCallableWith(Note)
+    expect(Todos.toLayer(NeedsStore)).type.toBe<Layer.Layer<Todos, never, Store>>()
+    expect(Todos.toLayer(Component.provide(NeedsStore, Layer.succeed(Store, { draft: "" })))).type.toBe<
+      Layer.Layer<Todos, never, never>
+    >()
   })
 })
 

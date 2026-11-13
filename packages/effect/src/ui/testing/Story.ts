@@ -253,9 +253,12 @@ export type Target =
 export type StreamTarget = Command.Definition<any, any, true, any, any> | Command.Issued<any, any, never, "Stream">
 
 // A component with no messages has `Msg = never`, and its `update` can't take `any`, so it needs its own member.
+// `Rcv` is invariant, and `any` doesn't stand for `never`, so one that receives nothing needs its own members too.
 type AnyComponent =
   | Component.Component<any, any, any, any, any, any, any, any, any>
   | Component.Component<any, any, any, never, any, any, any, any, any>
+  | Component.Component<any, any, any, any, any, any, any, any, never>
+  | Component.Component<any, any, any, never, any, any, any, any, never>
 
 /**
  * A cursor over one story. Each step runs as soon as it's called, replaces
@@ -1684,14 +1687,14 @@ export const layerFailure = <C extends Component.Any>(
  * @since 4.1.5
  */
 export const head: {
-  <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
-    component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
+  <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, Rcv = never>(
+    component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, Rcv>,
     model: Model,
     ...props: {} extends Props ? [props?: Props] : [props: Props]
   ): ReadonlyArray<Head.Entry>
   <Props, Model, Msg, Events>(story: Story<Props, Model, Msg, Events>): ReadonlyArray<Head.Entry>
 } = (
-  self: Component.Component<any, any, any, any, any, any, any, any, any> | Story<any, any, any, any>,
+  self: AnyComponent | Story<any, any, any, any>,
   model?: unknown,
   props?: unknown
 ) =>
@@ -1780,8 +1783,8 @@ const findPlaceholder = (value: unknown): string | undefined => {
   return undefined
 }
 
-const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements>(
-  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, any>,
+const replayLog = <Name extends string, Props, Model, Msg, Events, R, V extends View.Elements, Rcv>(
+  component: Component.Component<Name, Props, Model, Msg, Events, R, V, any, Rcv>,
   entries: ReadonlyArray<MessageLog.Entry | MessageLog.Wire>,
   options?: { readonly path?: string | undefined }
 ): Replay<Model, Msg, Events, any, any> => {

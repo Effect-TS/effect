@@ -272,6 +272,37 @@ describe("$.send", () => {
       assert.strictEqual(failed[0].source, "send")
       assert.include(Cause.pretty(failed[0].cause), "/Page/Loop[l] sent to its children")
     })))
+
+  it.effect("doesn't count independent sends against each other", () =>
+    provideHost(Effect.gen(function*() {
+      const GoMessage = Schema.TaggedUnion({ Go: {} })
+      const Leaf = Component.define({ name: "Leaf", model: Schema.Number, message: GoMessage, receives: ["Go"] }).make({
+        init: () => 0,
+        update: (n) => n + 1,
+        view: (n, h) => h.text(String(n))
+      })
+      const LeafRef = Leaf.ref("Leaf")
+      // Each row forwards the send it gets to its own leaf.
+      const Row = Component.define({ name: "Row", model: Schema.Null, message: GoMessage, receives: ["Go"] }).make({
+        init: () => null,
+        update: (_, __, $) => $.send(LeafRef, GoMessage.make({ _tag: "Go" })),
+        view: (_, h) => h.child(Leaf, { ref: LeafRef })
+      })
+      const Rows = Row.ref("Rows")
+      const keys = Array.from({ length: 150 }, (_, i) => i)
+      const List = Component.define({ name: "List", model: Schema.Null, message: GoMessage }).make({
+        init: () => null,
+        update: (_, __, $) =>
+          keys.reduce((step, i) => step.send(Rows.at(i), GoMessage.make({ _tag: "Go" })), $.set(null)),
+        view: (_, h) => h.el("div", keys.map((i) => h.child(Row, { ref: Rows.at(i) })))
+      })
+      const root = yield* TestHost.mount(List, {})
+      yield* TestHost.settle
+      root.send(GoMessage.make({ _tag: "Go" }))
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "1".repeat(150))
+      assert.isFalse(root.log().some((entry) => entry._tag === "Failed"))
+    })))
 })
 
 describe("Story and sends", () => {
