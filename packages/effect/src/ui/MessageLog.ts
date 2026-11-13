@@ -28,7 +28,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import { memoize } from "../Function.ts"
-import { redactAST } from "../internal/schemaRedact.ts"
+import { holdsRedacted, redactAST } from "../internal/schemaRedact.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import type * as Loader from "../reactivity/Loader.ts"
@@ -1006,8 +1006,6 @@ const guardOf = memoize((ast: SchemaAST.AST): (value: unknown) => boolean => {
 })
 const isPlainRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !Redacted.isRedacted(value)
-/** Whether `ast` declares a `Schema.Redacted` anywhere. */
-const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
 
 /**
  * Detects objects anywhere in `ast` with a redacted index signature beside

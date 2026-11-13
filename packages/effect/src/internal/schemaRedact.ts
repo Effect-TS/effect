@@ -1,5 +1,6 @@
 /**
- * The redacting walk shared by the message log and the loader's log keys.
+ * The redacting walk shared by the message log and the loader's log keys, and
+ * the check that keeps a `Schema.Redacted` out of serialised state.
  *
  * @internal
  */
@@ -46,3 +47,11 @@ export const redactAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: Sc
   }
   return "recur" in ast ? ast.recur(redactAST) : ast
 })
+
+/**
+ * Whether `ast` declares a `Schema.Redacted` anywhere, as `redactAST` finds
+ * one. The check is on the Schema, not on a value.
+ *
+ * @internal
+ */
+export const holdsRedacted = (ast: SchemaAST.AST): boolean => redactAST(ast) !== ast
