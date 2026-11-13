@@ -34,6 +34,7 @@ const element = (
   eventOptions: {},
   refKey: undefined,
   mount: undefined,
+  owned: [],
   children,
   ...fields
 })
@@ -115,7 +116,7 @@ describe("Html", () => {
 
     it("the root's own name and length never reach a builder or a node", () => {
       const h = helper()
-      const fields = ["attrs", "elementKey", "eventOptions", "handlers", "mount", "props", "refKey", "tag"]
+      const fields = ["attrs", "elementKey", "eventOptions", "handlers", "mount", "owned", "props", "refKey", "tag"]
       assert.deepStrictEqual(Object.keys(h.form.attr("method", "post")).sort(), fields)
       assert.deepStrictEqual(Object.keys(h.form("a")).sort(), ["_tag", "children", ...fields].sort())
       assert.deepStrictEqual(Object.keys(View.toNode(h.form)).sort(), ["_tag", "children", ...fields].sort())

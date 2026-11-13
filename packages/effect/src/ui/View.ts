@@ -110,6 +110,37 @@ export interface EventOptions {
 }
 
 /**
+ * Who a layer of an element belongs to: one headless instance. The runtime
+ * makes one per instance, and a story one per expanded child.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Owner {
+  readonly path: string
+  readonly depth: number
+}
+
+/**
+ * What a part of a headless component added to an element: its handlers,
+ * their options, its ref and its mount, kept apart from the author's.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Owned {
+  readonly owner: Owner
+  readonly handlers: Readonly<Record<string, Handler<any, any>>>
+  readonly eventOptions: Readonly<Record<string, EventOptions>>
+  readonly refKey: string | undefined
+  readonly mount: Mount<any> | undefined
+}
+
+const noOwned: ReadonlyArray<Owned> = []
+
+/**
  * An element node, as data.
  *
  * **Details**
@@ -135,6 +166,8 @@ export interface Element<out Msg, out R = never> {
   readonly eventOptions: Readonly<Record<string, EventOptions>>
   readonly refKey: string | undefined
   readonly mount: Mount<Msg> | undefined
+  /** The layers the parts of headless components added, in the order they were applied. */
+  readonly owned: ReadonlyArray<Owned>
   readonly children: ReadonlyArray<Node<Msg, R>>
 }
 
@@ -183,6 +216,8 @@ export interface Child<out Msg, out R = never> {
     | undefined
   /** Also tells the parent that the child failed. */
   readonly onFailure: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
+  /** A headless child's whole view, written by whoever declared the slot. */
+  readonly view: ((parts: any) => Content<Msg, any>) | undefined
   /** Phantom: the child's requirements surface in its parent's. */
   readonly "~R"?: (_: never) => R
 }
@@ -388,6 +423,7 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
   eventOptions: builder.eventOptions,
   refKey: builder.refKey,
   mount: builder.mount,
+  owned: builder.owned,
   children: inputs.length === 0 ? [] : children(inputs)
 })
 
@@ -402,9 +438,134 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
 export const withFields = <B extends ElementBuilder<any, any, any, any>>(
   builder: B,
   fields: Partial<
-    Pick<Element<unknown>, "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount">
+    Pick<
+      Element<unknown>,
+      "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount" | "owned"
+    >
   >
 ): B => Object.assign(Object.create(Object.getPrototypeOf(builder)), builder, fields)
+
+/**
+ * A part of a headless component: it takes the builder of an element the
+ * consumer wrote and returns it with the part's attributes, properties and
+ * owned layer added.
+ *
+ * **Details**
+ *
+ * `N` is the host node the part is declared for, `Args` what it takes after
+ * the builder, and `R` what its mount requires, which joins the headless
+ * component's requirements. The result is the builder's chain type, never
+ * the callable root, so `m.trigger(h.button)("Open")` doesn't compile.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Part<in out N, in Args extends ReadonlyArray<any>, out R = never> {
+  <B extends PartTarget<N>>(builder: B, ...args: Args): ReturnType<B["attr"]>
+  readonly "~R"?: (_: never) => R
+}
+
+/**
+ * What a part accepts: a builder for the host node `N`, either a tag's
+ * callable root or its chain type.
+ *
+ * **Details**
+ *
+ * It's structural on purpose. With `ElementBuilder` as the constraint, a
+ * callable root such as `h.dialog` infers as the constraint and loses its
+ * chain type.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PartTarget<in out N> {
+  readonly "~HostNode"?: ((_: N) => N) | undefined
+  readonly attr: (...args: any) => any
+}
+
+/**
+ * The requirements of the parts in a headless component's `parts` record.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type PartRequirements<P> = P extends { readonly "~R"?: (_: never) => infer R } ? R : never
+
+/**
+ * Makes a part for one owner. `decorate` gets an empty builder of the
+ * consumer's class and tag, so it never sees what the consumer set. Its
+ * attributes and properties are written over the consumer's, and its
+ * handlers, event options, ref and mount become one owned layer.
+ *
+ * @internal
+ */
+export const makePart = (
+  owner: Owner,
+  tags: ReadonlyArray<string> | undefined,
+  decorate: (builder: any, ...args: ReadonlyArray<any>) => ElementBuilder<any, any, any, any>
+): Part<any, any, any> =>
+(target: PartTarget<any>, ...args: ReadonlyArray<any>): any => {
+  const builder: unknown = target
+  if (!(builder instanceof ElementBuilder)) {
+    throw new Error(owner.path + ": a part takes an element builder, such as h.button")
+  }
+  if (tags !== undefined && !tags.includes(builder.tag)) {
+    throw new Error(owner.path + ": a part for <" + tags.join("> or <") + "> was given <" + builder.tag + ">")
+  }
+  const blank: ElementBuilder<any, any, any, any> = Object.assign(
+    Object.create(Object.getPrototypeOf(builder)),
+    blankFields,
+    { tag: builder.tag }
+  )
+  const patch = decorate(blank, ...args)
+  if (!(patch instanceof ElementBuilder)) {
+    throw new Error(owner.path + ": a part returns the builder it was given, without children")
+  }
+  if (patch.elementKey !== undefined) throw new Error(owner.path + ": a part can't set an element's key")
+  if (patch.owned.length > 0) throw new Error(owner.path + ": a part can't apply another part")
+  const layer: Owned = {
+    owner,
+    handlers: patch.handlers,
+    eventOptions: patch.eventOptions,
+    refKey: patch.refKey,
+    mount: patch.mount
+  }
+  return withFields(builder, {
+    attrs: { ...builder.attrs, ...patch.attrs },
+    props: { ...builder.props, ...patch.props },
+    owned: [...builder.owned, layer]
+  })
+}
+
+const blankFields = {
+  elementKey: undefined,
+  attrs: {},
+  props: {},
+  handlers: {},
+  eventOptions: {},
+  refKey: undefined,
+  mount: undefined,
+  owned: noOwned
+}
+
+/**
+ * An id for an element of the instance at `path`, the same on the server and
+ * the client. The path, the name and the key are each escaped down to
+ * `[A-Za-z0-9]` and joined with a hyphen, which no escaped field contains:
+ * two ids are equal only when all three are. The result is safe in a
+ * space-separated list such as `aria-labelledby`, and in a selector.
+ *
+ * @internal
+ */
+export const idOf = (path: string, name: string, key?: string | number | undefined): string =>
+  escapeId(path) + "-" + escapeId(name) + (key === undefined ? "" : "-" + escapeId(String(key)))
+
+// The underscore that opens and closes an escape is escaped too, so the escaping can be undone.
+const escapeId = (value: string): string =>
+  value.replace(/[^A-Za-z0-9]/g, (char) => "_" + char.codePointAt(0)!.toString(36) + "_")
 
 /**
  * The element builder: `h.el(tag)` and a vocabulary's element names. It
@@ -474,6 +635,12 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   readonly mount: Mount<Msg> | undefined = undefined
+  /**
+   * The layers added by the parts of headless components.
+   *
+   * @since 4.1.5
+   */
+  readonly owned: ReadonlyArray<Owned> = noOwned
   /**
    * Phantom: the requirements of the element's mount, which surface in the
    * component's.
@@ -819,6 +986,11 @@ export interface Helper<Msg, Props> {
     ...group: Command.GroupArg<Args, G>
   ): boolean
   /**
+   * An id for an element of this instance, derived from the instance's path:
+   * the same on the server and the client, and different for every instance.
+   */
+  id(name: string, key?: string | number | undefined): string
+  /**
    * A component by value. Its requirements surface in the parent's. `Rcv` has
    * no default: one would stop a nested call, such as an inline
    * `Component.provide(C, layer)`, from being inferred.
@@ -844,6 +1016,18 @@ export interface Helper<Msg, Props> {
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }
   ): Child<Msg, RC | NoInfer<RF>>
+  /**
+   * A headless component by value. `view` is the child's whole view, built
+   * from its parts. Its requirements, and the view's, surface in the parent's.
+   */
+  child<Props, Events, Parts, RC, RV = never, RF = never>(
+    component: Component.Headless<Props, Events, Parts, RC>,
+    options: Child.Options<Props, Events, Msg> & {
+      /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+      readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+      readonly view: (parts: Parts) => Content<Msg, RV>
+    }
+  ): Child<Msg, RC | RV | NoInfer<RF>>
   // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
   child<Self, Props, Events, Rcv = never, RefRcv = Child.Receives<Rcv>, RF = never>(
@@ -874,13 +1058,18 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   readonly props: Props
   readonly elements: Vocabulary<any> | undefined
   readonly runningFn: Running
-  constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined) {
+  readonly instancePath: string
+  constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined, path: string) {
     this.props = props
     this.elements = elements
     this.runningFn = running ?? notRunning
+    this.instancePath = path
   }
   isRunning(command: Command.Definition.Any, group?: unknown): boolean {
     return this.runningFn(Command.nameOf(command), Command.groupKeyOf(command, group))
+  }
+  id(name: string, key?: string | number | undefined): string {
+    return idOf(this.instancePath, name, key)
   }
   el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): any {
     const textParents = this.elements?.textParents
@@ -893,7 +1082,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     return text(value)
   }
   child(
-    component: Component.Any | Feature.Any,
+    component: Component.Any | Component.Headless.Any | Feature.Any,
     options: {
       readonly key?: string | undefined
       // Every ref fits `Ref.Any`; the overloads have checked what it receives.
@@ -902,6 +1091,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
+      readonly view?: ((parts: any) => Content<Msg, any>) | undefined
     }
   ): Child<Msg, any> {
     // A slot with a key and a ref would have two identities that can disagree.
@@ -910,13 +1100,14 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     }
     return {
       _tag: "Child",
-      component,
+      component: component as Component.Any,
       key: options.ref !== undefined ? options.ref.key : options.key!,
       ref: options.ref,
       props: options.props ?? {},
       onEmit: options.onEmit ?? ignore,
       fallback: options.fallback,
-      onFailure: options.onFailure
+      onFailure: options.onFailure,
+      view: options.view
     }
   }
 }
@@ -956,9 +1147,10 @@ const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>(
 export const makeHelper = <Msg, Props, V extends Elements = never>(
   props: Props,
   elements: Vocabulary<V> | undefined,
-  running?: Running | undefined
+  running?: Running | undefined,
+  path?: string | undefined
 ): Helper<Msg, Props> & Tags<V, Msg> => {
-  if (elements === undefined) return new HelperImpl(props, undefined, running) as any
+  if (elements === undefined) return new HelperImpl(props, undefined, running, path ?? "") as any
   let Class = helperClasses.get(elements)
   if (Class === undefined) {
     const Made = class extends HelperImpl<any, any> {}
@@ -966,7 +1158,7 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
     helperClasses.set(elements, Made)
     Class = Made
   }
-  return new Class(props, elements, running) as any
+  return new Class(props, elements, running, path ?? "") as any
 }
 
 /**
