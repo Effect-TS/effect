@@ -7,11 +7,13 @@ import type * as ChatEvent from "effect/chat/ChatEvent"
 import { ChatHandler, NotAccepted } from "effect/chat/ChatHandler"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
+import { TestClock } from "effect/testing"
 import { appId, authTest, botUserId, makeFake, messageEnvelope, team } from "./utils.ts"
 
 const secret = "8f742231b10e8888abcd99yyyzzz85a5"
@@ -150,6 +152,44 @@ describe("webhook", () => {
       )
       assert.strictEqual(slowBot.status, 503)
       assert.strictEqual(slowBot.events.length, 0)
+    }))
+
+  it.effect("layerWebhook bounds a request whose body never finishes", () =>
+    Effect.gen(function*() {
+      const fake = makeFake({ "auth.test": authTest })
+      const events: Array<ChatEvent.ChatEvent> = []
+      const app = SlackChat.layerWebhook({
+        path: "/slack/events",
+        signingSecret: Redacted.make(secret),
+        appId,
+        deadline: Duration.seconds(2)
+      }).pipe(
+        Layer.provide(SlackChat.layer({ botToken: Redacted.make("xoxb-test"), teamId: team })),
+        Layer.provide(Chat.layer),
+        Layer.provide(Layer.succeed(ChatHandler, { handle: (event) => Effect.sync(() => void events.push(event)) })),
+        Layer.provide(fake.layer)
+      )
+      const router = yield* HttpRouter.toHttpEffect(app)
+      let cancelled = false
+      const web = new Request("http://localhost/slack/events", {
+        method: "POST",
+        body: new ReadableStream({
+          cancel: () => {
+            cancelled = true
+          }
+        }),
+        duplex: "half",
+        headers: { "x-slack-request-timestamp": now(), "x-slack-signature": "v0=" + "0".repeat(64) }
+      } as RequestInit)
+      const fiber = yield* router.pipe(
+        Effect.provideService(HttpServerRequest.HttpServerRequest, HttpServerRequest.fromWeb(web)),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(2000)
+      const response = yield* Fiber.join(fiber)
+      assert.strictEqual(response.status, 503)
+      assert.strictEqual(events.length, 0)
+      assert.isTrue(cancelled)
     }))
 
   it.live("layerWebhook serves the path", () =>
