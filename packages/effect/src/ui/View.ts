@@ -32,6 +32,7 @@
  */
 import type * as Effect from "../Effect.ts"
 import type * as AsyncResult from "../reactivity/AsyncResult.ts"
+import type * as Stream from "../Stream.ts"
 import * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
 import type * as Feature from "./Feature.ts"
@@ -203,8 +204,16 @@ export interface Element<out Msg, out R = never> {
 }
 
 /**
- * What `onMount` stores: a name shown in the tree, and the work to run with
- * the host's node once the element is committed.
+ * What `onMount` stores: a name shown in the tree, the work to run with the
+ * host's node once the element is committed, and the input it was given, if
+ * any.
+ *
+ * **Details**
+ *
+ * `run` gets the node and a Stream of the input's values. The input is
+ * present only when `onMount` was given one, so a story can check the
+ * value the view rendered with `"input" in mount`. Without one, the Stream
+ * is empty.
  *
  * @stability experimental
  * @category models
@@ -212,7 +221,9 @@ export interface Element<out Msg, out R = never> {
  */
 export interface Mount<out Msg> {
   readonly name: string
-  readonly run: (node: any) => Effect.Effect<Msg, never, any>
+  readonly run: (node: any, changes: Stream.Stream<any>) => Effect.Effect<Msg | void, never, any>
+  /** The input given to `onMount(name, input, run)`. */
+  readonly input?: unknown
 }
 
 /**
@@ -324,19 +335,51 @@ export declare namespace Child {
 /**
  * One child argument of an element: a node, an element builder, text, an
  * array of them, or a hole (`false`, `null`, `undefined`) that renders
- * nothing.
+ * nothing. `R` is what the child requires, as for `Content`.
+ *
+ * **When to use**
+ *
+ * Use to type the children a shared view helper passes on. Leaving `R` out
+ * accepts only children that need no service, so a child that needs one
+ * fails at the call site. To pass on whatever the children need, take them
+ * as a generic tuple, as in the example: the element adds their
+ * requirements to its own.
+ *
+ * **Gotchas**
+ *
+ * `Input<Msg, any>` as a parameter's type, outside a generic, erases what
+ * the children require.
+ *
+ * **Example** (A view helper that keeps its children's requirements)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Component, View } from "effect/ui"
+ *
+ * const Msg = Schema.TaggedUnion({ Close: {} })
+ * const PageDef = Component.define({
+ *   name: "Page",
+ *   model: Schema.Null,
+ *   message: Msg
+ * })
+ *
+ * const card = <const C extends ReadonlyArray<View.Input<typeof Msg.Type, any>>>(
+ *   h: Component.Helper<typeof PageDef>,
+ *   ...children: C
+ * ) => h.el("section").children(...children)
+ * ```
  *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export type Input<Msg> =
-  | Content<Msg, any>
+export type Input<Msg, R = never> =
+  | Content<Msg, R>
   | string
   | false
   | null
   | undefined
-  | ReadonlyArray<Content<Msg, any> | string | false | null | undefined>
+  | ReadonlyArray<Content<Msg, R> | string | false | null | undefined>
 
 /**
  * What a view, a child and a fallback may return: a node, or an element
@@ -350,19 +393,20 @@ export type Content<Msg, R = never> = Node<Msg, R> | ElementBuilder<Msg, R, any,
 
 /**
  * The requirements of a tuple of children, collected one at a time, so two
- * siblings with different needs give the union.
+ * siblings with different needs give the union. `Requirements<any>` is
+ * `any`.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
-export type Requirements<T> = T extends string | false | null | undefined ? never
-  : T extends Text ? never
-  : T extends ReadonlyArray<infer E> ? Requirements<E>
-  : T extends Child<infer _Msg, infer R> ? R
-  : T extends Element<infer _Msg, infer R> ? R
-  : T extends ElementBuilder<infer _Msg, infer R, any, any> ? R
-  : never
+export type Requirements<T> = 0 extends 1 & T ? any : T extends string | false | null | undefined ? never
+: T extends Text ? never
+: T extends ReadonlyArray<infer E> ? Requirements<E>
+: T extends Child<infer _Msg, infer R> ? R
+: T extends Element<infer _Msg, infer R> ? R
+: T extends ElementBuilder<infer _Msg, infer R, any, any> ? R
+: never
 
 /**
  * Builds a text node.
@@ -387,7 +431,7 @@ export const text = (text: string): Text => ({ _tag: "Text", text })
  * @category constructors
  * @since 4.1.5
  */
-export const children = <Msg>(inputs: ReadonlyArray<Input<Msg>>): Array<Node<Msg, any>> => {
+export const children = <Msg>(inputs: ReadonlyArray<Input<Msg, any>>): Array<Node<Msg, any>> => {
   const out: Array<Node<Msg, any>> = []
   const push = (input: Content<Msg, any> | string | false | null | undefined) => {
     if (input === false || input === null || input === undefined) return
@@ -441,7 +485,7 @@ export const toNode = <Msg, R>(content: Content<Msg, R>): Node<Msg, R> =>
  * @category constructors
  * @since 4.1.5
  */
-export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
+export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg, any>>>(
   builder: ElementBuilder<Msg, R, any, any>,
   inputs: C
 ): Element<Msg, R | Requirements<C[number]>> => ({
@@ -803,23 +847,45 @@ export class ElementBuilder<
   }
   /**
    * Runs `run` with this element's host node after it's committed, in a Scope
-   * that closes when the element goes and survives patches. Its message comes
-   * back to the component, and its requirements join the component's.
+   * that closes when the element goes and survives patches. A message it
+   * returns comes back to the component, and one that ends with `undefined`
+   * sends nothing. Its requirements join the component's.
    *
    * **Details**
+   *
+   * `run` runs once per element, so it doesn't see a later render's values.
+   * With an `input`, `run` also gets `changes`: a Stream that starts with
+   * the current input and gives each new one, when a render's input differs
+   * by `Equal`. A reader that falls behind gets only the latest value. To
+   * redo work for every value, run it over the Stream:
+   * `Stream.runForEach(changes, (data) => draw(node, data))`.
    *
    * A defect fails the instance. It never runs on the server or on a host that
    * doesn't run mounts, such as `TestHost`, where a test sends the message
    * itself. A vocabulary's element class overrides it to return its own
    * class, so the chain goes on after it.
    *
+   * **Gotchas**
+   *
+   * A mount returns one message, so a running mount can't send messages as
+   * it goes. A mount that forgets `Effect.as(message)` still compiles, and
+   * sends nothing.
+   *
    * @since 4.1.5
    */
   onMount<R2>(
     name: string,
-    run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
-    return withFields(this, { mount: { name, run } }) as any
+    run: (node: HostNode) => Effect.Effect<Msg | void, never, R2>
+  ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return withFields(this, {
+      mount: args.length === 1 ? { name, run: args[0] } : { name, input: args[0], run: args[1] }
+    })
   }
 }
 
@@ -849,9 +915,15 @@ export class ContainerBuilder<
    */
   override onMount<R2>(
     name: string,
-    run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
-    return super.onMount(name, run) as any
+    run: (node: HostNode) => Effect.Effect<Msg | void, never, R2>
+  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  override onMount<I, R2>(
+    name: string,
+    input: I,
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  override onMount(name: string, ...args: ReadonlyArray<any>): any {
+    return (super.onMount as any)(name, ...args)
   }
   /**
    * Ends the chain with the element's children: nodes, builders, text,
@@ -860,7 +932,7 @@ export class ContainerBuilder<
    *
    * @since 4.1.5
    */
-  children<const C extends ReadonlyArray<Input<Msg>>>(...inputs: C): Element<Msg, R | Requirements<C[number]>> {
+  children<const C extends ReadonlyArray<Input<Msg, any>>>(...inputs: C): Element<Msg, R | Requirements<C[number]>> {
     return build(this, inputs)
   }
 }
@@ -900,7 +972,7 @@ export const shorthand = <
 >(
   builder: B
 ): Shorthand<B> => {
-  const root = (...inputs: ReadonlyArray<Input<any>>) => (root as any).children(...inputs)
+  const root = (...inputs: ReadonlyArray<Input<any, any>>) => (root as any).children(...inputs)
   Object.setPrototypeOf(root, Object.getPrototypeOf(builder))
   return Object.assign(root, builder) as any
 }
@@ -1048,7 +1120,7 @@ export interface Helper<Msg, Props> {
    */
   el(tag: string): ContainerBuilder<Msg>
   /** Shorthand for `h.el(tag).children(...children)`, with at least one child. */
-  el<const C extends readonly [Input<Msg>, ...ReadonlyArray<Input<Msg>>]>(
+  el<const C extends readonly [Input<Msg, any>, ...ReadonlyArray<Input<Msg, any>>]>(
     tag: string,
     ...children: C
   ): Element<Msg, Requirements<C[number]>>
@@ -1159,7 +1231,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   id(name: string, key?: string | number | undefined): string {
     return idOf(this.instancePath, name, key)
   }
-  el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): any {
+  el(tag: string, ...inputs: ReadonlyArray<Input<Msg, any>>): any {
     const textParents = this.elements?.textParents
     const builder = textParents === undefined || textParents.includes(tag)
       ? new ContainerBuilder<Msg>(tag)
@@ -1211,7 +1283,9 @@ class NoTextBuilder<Msg> extends ContainerBuilder<Msg> {
     this.vocabulary = vocabulary
     this.textParents = textParents
   }
-  override children<const C extends ReadonlyArray<Input<Msg>>>(...inputs: C): Element<Msg, Requirements<C[number]>> {
+  override children<const C extends ReadonlyArray<Input<Msg, any>>>(
+    ...inputs: C
+  ): Element<Msg, Requirements<C[number]>> {
     const node = super.children(...inputs)
     if (node.children.some((child) => child._tag === "Text")) {
       throw new Error(

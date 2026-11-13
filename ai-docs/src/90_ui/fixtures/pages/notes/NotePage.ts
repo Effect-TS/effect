@@ -44,9 +44,12 @@ export const NotePageNoDeps = Component.define({
       // the note loads, is dropped and logged.
       SaveNow: () => $.send(Editor.at($.props.id), { _tag: "Save" })
     }),
-  // `head` gets the Model and the loaders' results, so the title comes
-  // straight from the loaded note.
-  head: (_model, loaded) => [Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value.title : "Note")],
+  // `head` gets the Model, the props and the loaders' results, as a view
+  // does. The title comes from the loaded note, and the note's id from the
+  // route stands in while it loads, with no copy of the prop in the Model.
+  head: (_model, props, loaded) => [
+    Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value.title : `Note ${props.id}`)
+  ],
   view: (model, h) =>
     // `h.loaded.note` is the loader's slot as an `AsyncResult`.
     AsyncResult.match(h.loaded.note, {

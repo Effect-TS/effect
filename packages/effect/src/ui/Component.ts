@@ -586,7 +586,7 @@ export interface Mountable<in out Props, out Events, out R = never, in Rcv = nev
   readonly subscriptions:
     | ((model: any, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Subscription.Subscription<any, R>>)
     | undefined
-  /** The instance's document head entries, a pure function of its Model and loaders. */
+  /** The instance's document head entries, a pure function of its Model, props and loaders. */
   readonly head: ((model: any, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Head.Entry>) | undefined
   /** The component's vocabulary: its `elements` override, else the registered one. Read lazily. */
   readonly elements: () => View.Vocabulary<any> | undefined
@@ -1319,7 +1319,11 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
       ) => ReadonlyArray<Sub | false | null | undefined>)
       | undefined
     readonly head?:
-      | ((model: Model, loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }) => ReadonlyArray<Head.Entry>)
+      | ((
+        model: Model,
+        props: Props,
+        loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+      ) => ReadonlyArray<Head.Entry>)
       | undefined
   }): Headless<
     Props,
@@ -1366,7 +1370,11 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
       ) => ReadonlyArray<Sub | false | null | undefined>)
       | undefined
     readonly head?:
-      | ((model: Model, loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }) => ReadonlyArray<Head.Entry>)
+      | ((
+        model: Model,
+        props: Props,
+        loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+      ) => ReadonlyArray<Head.Entry>)
       | undefined
   }): Component<
     Name,
@@ -1480,9 +1488,9 @@ export type Helper<D> = D extends
  * message's `update` sees it in `$.loaded`.
  *
  * `head` returns the instance's document head entries (see `Head`). It's a
- * pure function of the Model and the loaders' results, and never sees props.
- * The entries live and die with the instance, and a slot's `fallback`
- * contributes none.
+ * pure function of the Model, the props and the loaders' results, like a
+ * view, and runs again when any of them changes. The entries live and die
+ * with the instance, and a slot's `fallback` contributes none.
  *
  * `update` is a function over the whole message type, or a record with a
  * function for every `_tag` of the message, which gets that tag's member and
@@ -1492,6 +1500,15 @@ export type Helper<D> = D extends
  * `$.combine` runs update functions one after another. `Def.view(f)` is a
  * view, and `Def.fragment(f)` a view fragment that takes `h` and any other
  * arguments, such as a row.
+ *
+ * **Gotchas**
+ *
+ * An instance whose `model` Schema, or a loader's success, error or args
+ * Schema, holds a `Schema.Redacted` anywhere never has its state written as
+ * JSON. The server defers it and its subtree to the client, and logs a
+ * warning once per component, and the Router keeps no history entry for it.
+ * Keep a secret in a leaf component, or in a service, so the rest of the
+ * page still hydrates and restores.
  *
  * **Example** (A counter)
  *
@@ -1702,7 +1719,7 @@ const finish = (
         loaded: any
       ) => ReadonlyArray<Subscription.Subscription<any, any> | false | null | undefined>)
       | undefined
-    readonly head?: ((model: any, loaded: any) => ReadonlyArray<Head.Entry>) | undefined
+    readonly head?: ((model: any, props: any, loaded: any) => ReadonlyArray<Head.Entry>) | undefined
   }
 ): Any => {
   const bound = loaders.bind(definition.name, definition.loaders)
@@ -1775,7 +1792,7 @@ const finish = (
         subscriptions(model, props, open(model, props, slots)).filter((entry) => !!entry),
     head: head === undefined
       ? undefined
-      : (model: unknown, props: unknown, slots?: Slots) => head(model, open(model, props, slots)),
+      : (model: unknown, props: unknown, slots?: Slots) => head(model, props, open(model, props, slots)),
     elements: () => elements ?? View.registeredElements(),
     layer: undefined,
     layerFailure: undefined,

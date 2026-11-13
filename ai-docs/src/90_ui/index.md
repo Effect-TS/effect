@@ -44,7 +44,7 @@ with the results it had.
 
 Every function of the component can read the slots, by loader name:
 `h.loaded` in `view`, `$.loaded` in `update`, and the `loaded` argument of
-`head(model, loaded)` and `subscriptions(model, props, loaded)`. Give an entry
+`head(model, props, loaded)` and `subscriptions(model, props, loaded)`. Give an entry
 an `onChange` only when `update` has to react to a new result, such as
 moving focus once a read fails. It returns a message, which `update` gets
 after the slot is written.

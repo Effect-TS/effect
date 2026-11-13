@@ -68,7 +68,7 @@ const makeApp = () => {
           ),
         Touched: () => model
       }),
-    head: (_model, loaded) => [Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value : "Note")],
+    head: (_model, _props, loaded) => [Head.title(AsyncResult.isSuccess(loaded.note) ? loaded.note.value : "Note")],
     view: (model, h) =>
       h.div(
         h.p(AsyncResult.match(h.loaded.note, {

@@ -2146,6 +2146,79 @@ describe("Runtime", () => {
         yield* TestHost.settle
         assert.strictEqual(root.text(), "waiting")
       })))
+
+    it.effect("a mount that ends with undefined sends nothing and logs no update", () =>
+      Effect.gen(function*() {
+        let ran = 0
+        const Quiet = Component.define({ name: "Quiet", model: Schema.Null, message: Schema.Never, elements: Tiny })
+          .make({
+            init: () => null,
+            update: (model) => model,
+            view: (_, h) => h.box(h.field.onMount("focus", () => Effect.sync(() => void ran++)))
+          })
+        const root = yield* TestHost.mount(Quiet, {})
+        yield* TestHost.settle
+        assert.strictEqual(ran, 1)
+        assert.deepStrictEqual(tags(root).filter((tag) => tag === "Update" || tag === "Failed"), [])
+      }).pipe(
+        Effect.provide(Renderer.layer({ ...TestHost.makeHost(), runsMounts: true })),
+        provideHost
+      ))
+
+    it.effect("an input mount runs once, sees each new input by Equal, and its Scope closes with the element", () =>
+      Effect.gen(function*() {
+        const Msg = Schema.TaggedUnion({ Set: { n: Schema.Number }, Touch: {}, Hide: {} })
+        const runs: Array<number> = []
+        const seen: Array<number> = []
+        let closed = 0
+        const Chart = Component.define({
+          name: "Chart",
+          model: Schema.Struct({ n: Schema.Number, touches: Schema.Number, shown: Schema.Boolean }),
+          message: Msg,
+          elements: Tiny
+        }).make({
+          init: () => ({ n: 0, touches: 0, shown: true }),
+          update: (model, message) =>
+            Msg.match(message, {
+              Set: ({ n }) => ({ ...model, n }),
+              Touch: () => ({ ...model, touches: model.touches + 1 }),
+              Hide: () => ({ ...model, shown: false })
+            }),
+          view: (model, h) =>
+            h.box(
+              h.label(`touches ${model.touches}`),
+              model.shown
+                ? h.field.onMount("draw", model.n, (_node, changes) =>
+                  Effect.gen(function*() {
+                    runs.push(model.n)
+                    yield* Effect.addFinalizer(() => Effect.sync(() => closed++))
+                    yield* Stream.runForEach(changes, (n) => Effect.sync(() => seen.push(n)))
+                  }))
+                : null
+            )
+        })
+        const root = yield* TestHost.mount(Chart, {})
+        yield* TestHost.settle
+        assert.deepStrictEqual(seen, [0])
+        root.send(Msg.make({ _tag: "Set", n: 1 }))
+        yield* TestHost.settle
+        // A render whose input is equal gives no new value.
+        root.send(Msg.make({ _tag: "Touch" }))
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "touches 1")
+        root.send(Msg.make({ _tag: "Set", n: 2 }))
+        yield* TestHost.settle
+        assert.deepStrictEqual(seen, [0, 1, 2])
+        assert.deepStrictEqual(runs, [0])
+        assert.strictEqual(closed, 0)
+        root.send(Msg.make({ _tag: "Hide" }))
+        yield* TestHost.settle
+        assert.strictEqual(closed, 1)
+        assert.deepStrictEqual(runs, [0])
+      }).pipe(
+        Effect.provide(Renderer.layer({ ...TestHost.makeHost(), runsMounts: true })),
+        provideHost
+      ))
   })
 
   it.effect("a removed element's mount that was waiting for its Layer never runs", () =>

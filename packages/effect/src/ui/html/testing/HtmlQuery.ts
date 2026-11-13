@@ -69,7 +69,7 @@ const structuralReader: Reader<Query.Node> = {
   isElement: (node) => node.tag !== undefined,
   tag: (node) => node.tag!,
   attr: (node, name) => node.attrs?.[name],
-  prop: (node, name) => (node as { readonly props?: Readonly<Record<string, unknown>> }).props?.[name],
+  prop: (node, name) => node.props?.[name],
   children: (node) => node.children ?? [],
   text: (node) => node.tag === undefined ? node.text : undefined
 }
@@ -635,6 +635,66 @@ export const dialogState = (node: unknown): "closed" | "open" | "modal" => {
   if (reader.prop(element, "open") === "modal") return "modal"
   return dialogOpen(reader, element) ? "open" : "closed"
 }
+
+/**
+ * Reads a form field's current value: its `value` property, else its
+ * `value` attribute. It reads a story's view, a `TestHost` tree or a DOM
+ * element, and returns `undefined` for an element with neither.
+ *
+ * **When to use**
+ *
+ * Use to check what a field shows. `.value(text)` sets a property, so the
+ * attributes of a story's node don't hold it.
+ *
+ * **Example** (Checking a search field)
+ *
+ * ```ts
+ * import { HtmlQuery } from "effect/ui/html/testing"
+ *
+ * declare const story: { get: (locator: unknown) => unknown }
+ * const field = story.get(HtmlQuery.role("searchbox", { name: "Search" }))
+ * console.log(HtmlQuery.value(field)) // "effect"
+ * ```
+ *
+ * @see {@link checked} for a checkbox or radio button
+ * @stability experimental
+ * @category getters
+ * @since 4.1.5
+ */
+export const value = (node: unknown): string | undefined => {
+  const reader = readerOf(node)
+  const prop = reader.prop(node, "value")
+  return typeof prop === "string" ? prop : reader.attr(node, "value")
+}
+
+/**
+ * Reads whether a checkbox or radio button is checked: `aria-checked` when
+ * the element sets it, else an input's `checked` property, else its
+ * `checked` attribute. It reads a story's view, a `TestHost` tree or a DOM
+ * element, and returns `undefined` for an element that can't be checked.
+ *
+ * **When to use**
+ *
+ * Use to check a box's live state. `.checked(on)` sets a property, so the
+ * attributes of a story's node don't hold it. It's the state the `checked`
+ * option of `role` matches.
+ *
+ * **Example** (Checking a done box)
+ *
+ * ```ts
+ * import { HtmlQuery } from "effect/ui/html/testing"
+ *
+ * declare const story: { get: (locator: unknown) => unknown }
+ * const done = story.get(HtmlQuery.role("checkbox", { name: "Done" }))
+ * console.log(HtmlQuery.checked(done)) // true
+ * ```
+ *
+ * @see {@link value} for a field's text
+ * @stability experimental
+ * @category getters
+ * @since 4.1.5
+ */
+export const checked = (node: unknown): boolean | undefined => isChecked(readerOf(node), node)
 
 /**
  * Whether a popover is showing. It reads a story's view or a `TestHost`
