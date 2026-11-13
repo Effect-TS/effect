@@ -111,7 +111,6 @@ import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Stream from "../../Stream.ts"
 import * as Command from "../Command.ts"
-import * as builders from "../internal/builder.ts"
 import * as Renderer from "../Renderer.ts"
 import * as View from "../View.ts"
 
@@ -1188,9 +1187,6 @@ export const Elements: Elements | undefined = undefined
  * @since 4.1.5
  */
 export const name = "html"
-
-builders.knownFields.set(VoidElement.prototype, [])
-builders.knownFields.set(Element.prototype, [])
 
 const makeTags = (): Readonly<Record<string, VoidElement<any, any, any, any>>> => {
   const out: Record<string, VoidElement<any, any, any, any>> = {}

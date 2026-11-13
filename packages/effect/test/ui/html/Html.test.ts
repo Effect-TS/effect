@@ -179,6 +179,24 @@ describe("Html", () => {
       assert.deepStrictEqual(toned.attrs, { "data-tone": "warm", id: "b" })
       assert.strictEqual(toned.elementKey, "k")
     })
+
+    it("fields added to a library builder are kept by its chain calls", () => {
+      const mark = Symbol("mark")
+      const decorated = Object.assign(new View.ElementBuilder<TodoMessage>("button"), { tone: "warm", [mark]: 1 })
+      const chained = decorated.attr("id", "save").key("k")
+      assert.strictEqual(chained.tone, "warm")
+      assert.strictEqual(chained[mark], 1)
+    })
+
+    it("__proto__ is an attribute or property like any other name", () => {
+      const h = helper()
+      const set = h.div.attr("__proto__", "a").attr("id", "x").prop("__proto__", { hidden: true })
+      assert.deepStrictEqual(Object.entries(set.attrs), [["__proto__", "a"], ["id", "x"]])
+      assert.deepStrictEqual(Object.entries(set.props), [["__proto__", { hidden: true }]])
+      assert.strictEqual(Object.getPrototypeOf(set.props), Object.prototype)
+      // Setting another attribute again copies `__proto__` across.
+      assert.deepStrictEqual(Object.entries(set.attr("id", "y").attrs), [["__proto__", "a"], ["id", "y"]])
+    })
   })
 
   describe("classNames", () => {

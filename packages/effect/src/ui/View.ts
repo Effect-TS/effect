@@ -36,7 +36,6 @@ import type * as Stream from "../Stream.ts"
 import * as Command from "./Command.ts"
 import type * as Component from "./Component.ts"
 import type * as Feature from "./Feature.ts"
-import * as builders from "./internal/builder.ts"
 import type * as Renderer from "./Renderer.ts"
 
 /**
@@ -555,7 +554,9 @@ export const withFields = <B extends ElementBuilder<any, any, any, any>>(
   >
 ): B => Object.assign(copyBuilder(builder), fields)
 
-const copyBuilder: <B extends ElementBuilder<any, any, any, any>>(builder: B) => B = builders.copy
+/** A copy of a builder, with its class and every field it holds. */
+const copyBuilder = <B extends ElementBuilder<any, any, any, any>>(builder: B): B =>
+  Object.assign(Object.create(Object.getPrototypeOf(builder)), builder)
 
 /**
  * A part of a headless component: it takes the builder of an element the
@@ -681,9 +682,9 @@ const withEntry = <A>(
   if (!Object.hasOwn(record, name)) return value === undefined ? record : assoc(record, name, value)
   const out: Record<string, A> = {}
   for (const key in record) {
-    if (key !== name) out[key] = record[key]!
+    if (key !== name) put(out, key, record[key]!)
   }
-  if (value !== undefined) out[name] = value
+  if (value !== undefined) put(out, name, value)
   return out
 }
 
@@ -693,8 +694,17 @@ const withEntry = <A>(
  */
 const assoc = <A>(record: Readonly<Record<string, A>>, name: string, value: A): Readonly<Record<string, A>> => {
   const out: Record<string, A> = { ...record }
-  out[name] = value
+  put(out, name, value)
   return out
+}
+
+/** Sets an own entry, `__proto__` included, which a plain store would take as the prototype. */
+const put = <A>(record: Record<string, A>, name: string, value: A): void => {
+  if (name === "__proto__") {
+    Object.defineProperty(record, name, { value, writable: true, enumerable: true, configurable: true })
+  } else {
+    record[name] = value
+  }
 }
 
 type Mutable<A> = { -readonly [K in keyof A]: A[K] }
@@ -1352,10 +1362,6 @@ class NoTextBuilder<Msg> extends ContainerBuilder<Msg> {
     return node
   }
 }
-
-builders.knownFields.set(ElementBuilder.prototype, [])
-builders.knownFields.set(ContainerBuilder.prototype, [])
-builders.knownFields.set(NoTextBuilder.prototype, ["vocabulary", "textParents"])
 
 const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>()
 

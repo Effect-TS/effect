@@ -292,16 +292,8 @@ export const makeHost = (
     // oxlint-disable-next-line no-console
     options?.warn ?? ((message) => console.warn(message))
   )
-  // Each element's events, on the element itself under a key of this host's: setting a property is
-  // several times faster than a WeakMap entry, and the entry goes with the element all the same.
-  const boundKey = Symbol("effect/ui/BrowserHost/bound")
-  const bound = {
-    get: (node: globalThis.Node): Bound | undefined => (node as any)[boundKey],
-    has: (node: globalThis.Node): boolean => (node as any)[boundKey] !== undefined,
-    set: (node: globalThis.Node, entry: Bound | undefined): void => {
-      ;(node as any)[boundKey] = entry
-    }
-  }
+  // Weak, so a node the page keeps after the app is gone doesn't keep the app's dispatch alive.
+  const bound = new WeakMap<globalThis.Node, Bound>()
   // The last value the renderer set for each controlled property: what the element must show.
   const wanted = new WeakMap<globalThis.Node, Map<string, unknown>>()
   const listening = new Map<string, (event: Event) => void>()
@@ -862,7 +854,7 @@ export const makeHost = (
     setEvents(node, handlers, dispatch, options) {
       // An element with no events needs no entry, except a form: an entry marks it as the app's.
       if (isEmpty(handlers) && isEmpty(options) && node.nodeName !== "FORM") {
-        if (bound.has(node)) bound.set(node, undefined)
+        bound.delete(node)
         return
       }
       bound.set(node, { handlers, dispatch, options })
