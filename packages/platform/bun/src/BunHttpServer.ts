@@ -76,19 +76,34 @@ export type ServeOptions<R extends string> =
   & { readonly routes?: Bun.Serve.Routes<WebSocketContext, R> }
 
 /**
- * WebSocket tuning options forwarded to `Bun.serve`'s `websocket` handler.
+ * WebSocket tuning options for the Bun HTTP server and its `Bun.serve` handler.
  *
  * **Details**
  *
  * The lifecycle handlers (`open`, `message`, `close`, ...) are managed by the
- * server and cannot be overridden; everything else — such as
- * `perMessageDeflate` compression, payload limits, and idle timeouts — passes
+ * server and cannot be overridden. Bun options — such as
+ * `perMessageDeflate` compression, payload limits, and idle timeouts — pass
  * through, e.g.
  * `BunHttpServer.layer({ port: 3000, websocket: { perMessageDeflate: true } })`.
  *
  * The `compressionThreshold` option controls the minimum message size in bytes
  * that is compressed when per-message deflate is negotiated. It defaults to
  * 1024, matching the default threshold of Node's `ws` server.
+ *
+ * The `maxBufferedMessages` option bounds inbound messages waiting for a
+ * reader pull, including messages received before reader startup. Overflow
+ * closes the connection with code 1008 and reason
+ * "Inbound message buffer limit exceeded". Queued messages remain readable in
+ * order, followed by a `SocketError` wrapping a `SocketCloseError`.
+ *
+ * **Gotchas**
+ *
+ * Inbound buffering is unbounded by default for compatibility. Directly exposed
+ * servers should set `maxBufferedMessages` together with `maxPayloadLength`
+ * (Bun's default is 16 MiB per message). Their product bounds queued payload
+ * bytes, not total connection memory or messages already pulled by consumers.
+ * Even an idle reader can receive a burst before its fiber runs, so size the
+ * message limit above the largest expected burst, not just steady-state load.
  *
  * @stability unstable
  * @category options
@@ -107,6 +122,14 @@ export type WebSocketOptions =
      * @default 1024
      */
     readonly compressionThreshold?: number | undefined
+    /**
+     * The maximum number of inbound messages waiting for a reader pull. A
+     * message arriving when the queue is full is not retained, and the socket
+     * is closed with code 1008.
+     *
+     * @default unbounded
+     */
+    readonly maxBufferedMessages?: number | undefined
   }
 
 /**
@@ -162,7 +185,11 @@ export const make = Effect.fnUntraced(
       }
       listenOptions = { ...options, hostname }
     }
-    const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
+    const {
+      compressionThreshold = MIN_COMPRESSIBLE_SIZE,
+      maxBufferedMessages = Infinity,
+      ...websocket
+    } = options.websocket ?? {}
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
         function(_request, _server) {
@@ -186,6 +213,10 @@ export const make = Effect.fnUntraced(
           Deferred.doneUnsafe(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
+          if (ws.data.buffer.length >= maxBufferedMessages) {
+            ws.close(1008, "Inbound message buffer limit exceeded")
+            return
+          }
           ws.data.run(message)
         },
         close(ws, code, closeReason) {
@@ -457,7 +488,7 @@ export const layerConfig = <R extends string>(
 
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
-  readonly buffer: Array<Uint8Array | string>
+  buffer: Array<Uint8Array | string>
   closeError: Socket.SocketError | undefined
   run: (_: Uint8Array | string) => void
   onClose: (error: Socket.SocketError) => void
@@ -736,25 +767,24 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             effect: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
           ) => void
 
-          let buffer: Array<Uint8Array | string> = ws.data.buffer.splice(0)
           let error: Socket.SocketError | undefined = closeError
           let waiter: ReadResume | undefined
           let flushScheduled = false
 
           function takeBuffer(): Arr.NonEmptyReadonlyArray<Uint8Array | string> {
-            const chunk = buffer
-            buffer = []
+            const chunk = ws.data.buffer
+            ws.data.buffer = []
             return chunk as unknown as Arr.NonEmptyReadonlyArray<Uint8Array | string>
           }
           function deliver() {
             flushScheduled = false
-            if (waiter === undefined || buffer.length === 0) return
+            if (waiter === undefined || ws.data.buffer.length === 0) return
             const resumeRead = waiter
             waiter = undefined
             resumeRead(Effect.succeed(takeBuffer()))
           }
           function push(data: Uint8Array | string) {
-            buffer.push(data)
+            ws.data.buffer.push(data)
             if (waiter !== undefined && !flushScheduled) {
               flushScheduled = true
               dispatcher.scheduleTask(deliver, 0)
@@ -765,7 +795,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             if (waiter !== undefined) {
               const resumeRead = waiter
               waiter = undefined
-              resumeRead(buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
+              resumeRead(ws.data.buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
             }
           }
 
@@ -793,7 +823,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               Arr.NonEmptyReadonlyArray<Uint8Array | string>,
               Socket.SocketError
             >((resumeRead) => {
-              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+              if (ws.data.buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
               if (error !== undefined) return resumeRead(Effect.fail(error))
               waiter = resumeRead
               return Effect.sync(() => {
