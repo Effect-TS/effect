@@ -70,7 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
-import { checkChildPaths, checkFallbackPaths, segment } from "../internal/paths.ts"
+import { checkAuthorRefs, checkChildPaths, checkFallbackPaths, type ChildPaths, segment } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -559,7 +559,8 @@ const expand = (
   path: string,
   depth: number,
   given: ReadonlyMap<string, unknown> | undefined,
-  slots: Array<View.Child<any, any>>
+  slots: Array<View.Child<any, any>>,
+  written: Array<ChildPaths>
 ): View.Node<any, any> => {
   switch (node._tag) {
     case "Text":
@@ -567,7 +568,7 @@ const expand = (
     case "Element": {
       let changed = false
       const children = node.children.map((child) => {
-        const next = expand(child, path, depth, given, slots)
+        const next = expand(child, path, depth, given, slots, written)
         if (next !== child) changed = true
         return next
       })
@@ -582,8 +583,8 @@ const expand = (
       const parts = component.parts(model, node.props, { owner: { path: childPath, depth: depth + 1 } })
       const tree = View.toNode(node.view(parts))
       // As the runtime does: two child slots at one path in the closure fail it.
-      checkChildPaths(childPath, tree)
-      return expand(tree, childPath, depth + 1, given, slots)
+      written.push(checkChildPaths(childPath, tree))
+      return expand(tree, childPath, depth + 1, given, slots, written)
     }
   }
 }
@@ -594,9 +595,11 @@ const expandRoot = <Msg>(
   given: ReadonlyMap<string, unknown> | undefined
 ): View.Node<Msg, any> => {
   const slots: Array<View.Child<any, any>> = []
-  // As the runtime does: two child slots at one path fail the view.
-  checkChildPaths("/" + name, view)
-  const expanded = expand(view, "/" + name, 0, given, slots)
+  // As the runtime does: two child slots at one path fail the view, and so do two slots with one
+  // ref key across the view and the closures it gives its headless children.
+  const written = [checkChildPaths("/" + name, view)]
+  const expanded = expand(view, "/" + name, 0, given, slots, written)
+  checkAuthorRefs("/" + name, written)
   if (slots.length > 0) expandedSlots.set(expanded, slots)
   return expanded
 }

@@ -707,7 +707,9 @@ export type HeadlessTypeId = typeof HeadlessTypeId
  * The `view` closure given to `h.child` is the consumer's code. A child
  * declared in it, its `onEmit` and `onFailure` messages, and a fallback in
  * it all belong to the consumer, and a slot in it takes the consumer's refs.
- * A closure that throws fails the headless child's slot, logged with the
+ * A ref's key names one slot across the consumer's view and every closure it
+ * wrote: a render that puts it on two fails the consumer with the source
+ * `view`, whether the view or a closure rendered. A closure that throws fails the headless child's slot, logged with the
  * source `content`, and the slot shows its fallback.
  *
  * A part applied to an element adds a layer that the headless instance

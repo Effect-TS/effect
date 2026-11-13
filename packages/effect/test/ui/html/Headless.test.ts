@@ -170,6 +170,34 @@ const Tip = Component.define({
 
 const flaky = { throws: false }
 
+// The closure's second slot takes the ref `Actions` on the client only, at the path the server gave it.
+const twin = { client: false }
+const TwinActions = Menu.ref("Actions")
+const Twin = Component.define({ name: "Twin", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+  init: () => null,
+  update: (model) => model,
+  view: (_, h) =>
+    h.child(Menu, {
+      ref: TwinActions,
+      props: { items },
+      view: (m) =>
+        h.div(
+          m.trigger(h.button).children("Actions"),
+          h.child(Menu, {
+            ...(twin.client ? { ref: TwinActions } : { key: "Actions" }),
+            props: { items },
+            view: () => h.span("again")
+          })
+        )
+    })
+})
+const TwinShell = Component.define({ name: "Shell", model: Schema.Null, message: Schema.Never, elements: Html })
+  .make({
+    init: () => null,
+    update: (model) => model,
+    view: (_, h) => h.main(h.child(Twin, { key: "t", props: {}, fallback: () => h.p("twin down") }))
+  })
+
 const Page = Component.define({
   name: "Page",
   model: Schema.Null,
@@ -465,4 +493,18 @@ describe("headless components on BrowserHost", { concurrent: false }, () => {
       assert.notInclude(app.textContent, "menu down")
       assert.strictEqual(app.querySelectorAll("button")[1]!.textContent, "More")
     }).pipe(Effect.scoped))
+
+  it.effect("an adopted render fails whoever gives a ref to a slot in its view and one in a closure", () =>
+    Effect.gen(function*() {
+      twin.client = false
+      const rendered = yield* HtmlServer.renderToHtml(TwinShell, {})
+      assert.include(rendered.html, "again")
+      const app = yield* container
+      app.innerHTML = rendered.html
+      twin.client = true
+      const root = yield* BrowserHost.mountEffect(TwinShell, {}, app, { state: rendered.state })
+      yield* root.adopted
+      yield* tick
+      assert.strictEqual(app.textContent, "twin down")
+    }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => twin.client = false))))
 })

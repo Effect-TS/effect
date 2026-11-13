@@ -107,3 +107,22 @@ export const checkFallbackPaths = (
 ): void => {
   visit(paths, fallback, slot, `, in the fallback of ${segment(slot)}`)
 }
+
+/**
+ * Throws when two of `written`, the paths of one author's view and of each
+ * closure it gave a headless child, hold slots with refs of one key. The
+ * author wrote all of them, and a send finds a slot by its ref's key alone,
+ * across all of them. One view's own refs are checked as it renders.
+ *
+ * @internal
+ */
+export const checkAuthorRefs = (path: string, written: ReadonlyArray<ChildPaths>): void => {
+  const taken = new Map<string, ChildPaths>()
+  for (const paths of written) {
+    for (const key of paths.refs.keys()) {
+      const holder = taken.get(key)
+      if (holder !== undefined) failure(path, `with the ref ${key}, in the view it gives ${paths.path}`)
+      taken.set(key, paths)
+    }
+  }
+}

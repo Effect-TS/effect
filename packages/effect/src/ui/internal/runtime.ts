@@ -33,7 +33,7 @@ import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as loaders from "./loaders.ts"
-import { checkChildPaths, checkFallbackPaths, type ChildPaths, segment } from "./paths.ts"
+import { checkAuthorRefs, checkChildPaths, checkFallbackPaths, type ChildPaths, segment } from "./paths.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
 import * as services from "./services.ts"
@@ -183,21 +183,24 @@ interface RSlot {
 /** How many times one instance may deliver sends in a flush before it fails. */
 const maxSendPasses = 100
 
-/** The child slot rendered with a ref whose key is `key`, among an instance's direct children. */
 /**
- * The slots rendered with the ref `key` in the trees one author wrote: its view, the fallbacks shown
- * in it, and the closures of the headless children declared there, which it wrote too.
+ * The slot rendered with the ref `key` in the trees one author wrote: its view, the fallbacks shown
+ * in it, and the closures of the headless children declared there, which it wrote too. Each render
+ * checks that at most one slot across them has the key.
  */
-const collectSlots = (rendered: ReadonlyArray<Rendered>, key: string, found: Array<RChild | RSlot>): void => {
+const findSlot = (rendered: ReadonlyArray<Rendered>, key: string): RChild | RSlot | undefined => {
   for (const r of rendered) {
+    let found: RChild | RSlot | undefined
     if (r._tag === "Element") {
-      collectSlots(r.children, key, found)
+      found = findSlot(r.children, key)
     } else if (r._tag === "Child" || r._tag === "Slot") {
-      if (r.v.ref !== undefined && r.v.ref.key === key) found.push(r)
-      if (r._tag === "Slot") collectSlots([r.inner], key, found)
-      else if (r.inst.owner !== undefined) collectSlots(r.inst.rendered, key, found)
+      if (r.v.ref !== undefined && r.v.ref.key === key) return r
+      if (r._tag === "Slot") found = findSlot([r.inner], key)
+      else if (r.inst.owner !== undefined) found = findSlot(r.inst.rendered, key)
     }
+    if (found !== undefined) return found
   }
+  return undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -273,6 +276,8 @@ export interface Instance {
   readonly owner: View.Owner | undefined
   /** A headless instance: the closure that is its view, as last declared. */
   content: ((parts: any) => View.Content<any, any>) | undefined
+  /** The headless instances, at any depth, whose closures this instance wrote. */
+  readonly authored: Set<Instance>
   readonly scope: Scope.Closeable
   env: Env
   readonly children: Map<string, Instance>
@@ -906,9 +911,12 @@ const setup = (
   }
   function drainLoop() {
     do {
+      // Before any send is delivered: a mount or a closure that rendered alone leaves its author's refs to check.
+      checkPendingRefs()
       while (dirty.size > 0 || deferred.length > 0 || isHolding()) {
         if (deferred.length > 0) {
           deferred.shift()!()
+          checkPendingRefs()
           continue
         }
         if (dirty.size === 0) {
@@ -922,6 +930,7 @@ const setup = (
         }
         dirty.delete(next!)
         if (!next!.closed) render(next!)
+        checkPendingRefs()
       }
       mergeHead()
     } while (dirty.size > 0 || deferred.length > 0 || isHolding())
@@ -1337,6 +1346,7 @@ const setup = (
       author: undefined as any,
       owner,
       content,
+      authored: new Set(),
       scope,
       env: parentEnv,
       children: new Map(),
@@ -1402,6 +1412,7 @@ const setup = (
       }
     }
     inst.author = owner === undefined || parent === undefined ? inst : parent.author
+    if (owner !== undefined) inst.author.authored.add(inst)
     if (owner !== undefined) owners.set(owner, inst)
     if (recording > 0) {
       inst.watched = new Set()
@@ -1415,6 +1426,7 @@ const setup = (
       Effect.sync(() => {
         inst.closed = true
         dirty.delete(inst)
+        inst.author.authored.delete(inst)
         recorded.delete(inst)
         inst.watched = undefined
         // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
@@ -1798,19 +1810,8 @@ const setup = (
     }
     for (const { issued, send } of outbox) {
       if (inst.closed) return
-      const slots: Array<RChild | RSlot> = []
       // A headless instance wrote none of the tree it renders, so it has no slots to send to.
-      if (inst.owner === undefined) collectSlots(inst.rendered, send.ref.key, slots)
-      if (slots.length > 1) {
-        // One view's slots are checked as it renders. A closure's are checked apart from its author's view.
-        failInstance(
-          inst,
-          Cause.die(new Error(`${inst.path} renders two children with the ref ${send.ref.key}`)),
-          "view"
-        )
-        return
-      }
-      const slot = slots[0]
+      const slot = inst.owner === undefined ? findSlot(inst.rendered, send.ref.key) : undefined
       const reason: MessageLog.SendDropped["reason"] | undefined = slot === undefined
         ? "unrendered"
         : slot._tag === "Slot"
@@ -3143,7 +3144,42 @@ const setup = (
   const checked = (inst: Instance, tree: View.Node<any, any>): View.Node<any, any> => {
     inst.childPaths = checkChildPaths(inst.path, tree)
     inst.clash = undefined
+    // Its author's refs are checked once the author's other trees are current too.
+    if (inst.owner !== undefined) refChecks.add(inst.author)
     return tree
+  }
+
+  /**
+   * Authors with a closure rendered since their refs were last checked: one that mounted, or that
+   * rendered alone, as a headless child does when its own Model changes.
+   */
+  const refChecks = new Set<Instance>()
+  /**
+   * Fails `author` with source `view` when two slots across its view and the closures it wrote have
+   * refs with one key, since a send matches a slot by its key alone. Run once all of them are current.
+   */
+  const checkRefs = (author: Instance) => {
+    refChecks.delete(author)
+    if (author.closed || author.authored.size === 0) return
+    const written: Array<ChildPaths> = author.childPaths === undefined ? [] : [author.childPaths]
+    for (const inst of author.authored) {
+      if (inst.childPaths !== undefined && isMounted(inst, author)) written.push(inst.childPaths)
+    }
+    try {
+      checkAuthorRefs(author.path, written)
+    } catch (error) {
+      failInstance(author, Cause.die(error), "view")
+    }
+  }
+  /** Whether `inst` is still in the tree below `author`: a removed one's Scope can close later. */
+  const isMounted = (inst: Instance, author: Instance): boolean => {
+    for (let at = inst; at !== author; at = at.parent!) {
+      if (at.closed || at.parent!.children.get(at.path) !== at) return false
+    }
+    return true
+  }
+  const checkPendingRefs = () => {
+    for (const author of refChecks) checkRefs(author)
   }
 
   const render = (inst: Instance) => {
@@ -3158,6 +3194,9 @@ const setup = (
       inst.rendered = patchList(inst, parentNode, inst.rendered, [tree], ref, inst.env)
       throwClash(inst)
     })
+    // Its closures render with it, so all it wrote is current. A closure that rendered alone is checked
+    // in the drain, after the render that holds it.
+    if (inst.owner === undefined) checkRefs(inst)
     if (!inst.closed) updateHead(inst)
     deliverSends(inst)
   }
