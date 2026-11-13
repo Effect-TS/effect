@@ -67,7 +67,7 @@ describe("Atom", { concurrent: false }, () => {
 
     try {
       r.get(reader)
-      await vitest.advanceTimersByTimeAsync(20)
+      await vitest.advanceTimersByTimeAsync(10)
       expect(r.get(reader)).toEqual(1)
     } finally {
       r.dispose()
@@ -559,7 +559,7 @@ describe("Atom", { concurrent: false }, () => {
         if (reconfigure) {
           r.set(config, 1)
         }
-        await vitest.advanceTimersByTimeAsync(20)
+        await vitest.advanceTimersByTimeAsync(10)
 
         let result = r.get(atom)
         assert(AsyncResult.isSuccess(result))

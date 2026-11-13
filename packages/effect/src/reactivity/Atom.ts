@@ -2337,21 +2337,24 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
   const setAtom = options.runtime.fn(
     (value: S["Type"], get) =>
       KeyValueStore.KeyValueStore.use((store) =>
-        KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
-      ).pipe(Effect.tap(() => Effect.sync(() => get.set(resultAtom, value))))
+        Effect.map(
+          KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value),
+          () => get.set(persistedAtom, value)
+        )
+      )
   )
-  const readAtom = options.runtime.atom(
+  const resultAtom = options.runtime.atom(
     KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
   )
-  const resultAtom = writable(
-    (get) => get(readAtom),
+  const persistedAtom = writable(
+    (get) => get(resultAtom),
     (ctx, value: S["Type"]) => ctx.setSelf(AsyncResult.success(Option.some(value)))
   )
   return writable(
     options.mode === "async" ?
       (get) => {
         get.mount(setAtom)
-        get.mount(resultAtom)
+        get.mount(persistedAtom)
         const mapper = AsyncResult.map<Option.Option<S["Type"]>, S["Type"]>(
           Option.getOrElse(() => {
             const value = options.defaultValue()
@@ -2359,12 +2362,12 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             return value
           })
         )
-        get.subscribe(readAtom, (result) => get.setSelf(mapper(result)))
-        return mapper(get.once(resultAtom))
+        get.subscribe(resultAtom, (result) => get.setSelf(mapper(result)))
+        return mapper(get.once(persistedAtom))
       } :
       (get) => {
         get.mount(setAtom)
-        get.mount(resultAtom)
+        get.mount(persistedAtom)
         const update = (result: AsyncResult.AsyncResult<Option.Option<S["Type"]>, unknown>) => {
           if (!AsyncResult.isSuccess(result)) return
           if (Option.isSome(result.value)) {
@@ -2375,8 +2378,8 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             get.set(setAtom, value)
           }
         }
-        get.subscribe(readAtom, update)
-        update(get.once(resultAtom))
+        get.subscribe(resultAtom, update)
+        update(get.once(persistedAtom))
         return Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
       },
     (ctx, value: S["Type"]) => {

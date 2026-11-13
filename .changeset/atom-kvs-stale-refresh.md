@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Atom.kvs` reverting successfully persisted values after refresh or remount past its idle TTL.
+Fix `Atom.kvs` showing the value from before its last write after being refreshed or remounted past its idle TTL.
