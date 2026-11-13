@@ -293,7 +293,7 @@ const hasZone = (input: string): boolean => {
   const time = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(text)
   if (time === null) return false
   const suffix = text.slice(time.index + time[0].length)
-  return matchesZone(suffix) && !/\d[+-]\d{2}(?::?\d{2})?$/.test(suffix)
+  return matchesZone(suffix) && !/\d-\d{2}(?::?\d{2})?$/.test(suffix)
 }
 
 const matchesZone = (input: string): boolean =>
