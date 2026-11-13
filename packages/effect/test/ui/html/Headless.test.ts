@@ -536,4 +536,33 @@ describe("headless components on BrowserHost", { concurrent: false }, () => {
       app.querySelector("button")!.dispatchEvent(event)
       assert.isTrue(event.defaultPrevented)
     }).pipe(Effect.scoped))
+
+  it.effect("the author's own preventDefault holds on an element a part decorated", () =>
+    Effect.gen(function*() {
+      const Plain = Component.define({
+        name: "Plain",
+        model: Schema.Null,
+        message: Schema.Literal("hit"),
+        elements: Html
+      }).make({
+        init: () => null,
+        update: (model) => model,
+        parts: (_, p) => ({ button: p.part("button", (b) => b.onClick("hit")) })
+      })
+      const App = Component.define({ name: "App", model: Schema.Null, message: Schema.Literal("own"), elements: Html })
+        .make({
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) =>
+            h.child(Plain, {
+              key: "p",
+              view: (p) => p.button(h.button).onClick("own", { preventDefault: true }).children("hit")
+            })
+        })
+      const app = yield* container
+      yield* BrowserHost.mountEffect(App, {}, app)
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+      app.querySelector("button")!.dispatchEvent(event)
+      assert.isTrue(event.defaultPrevented)
+    }).pipe(Effect.scoped))
 })

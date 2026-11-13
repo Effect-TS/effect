@@ -117,12 +117,11 @@ export const checkFallbackPaths = (
  * @internal
  */
 export const checkAuthorRefs = (path: string, written: ReadonlyArray<ChildPaths>): void => {
-  const taken = new Map<string, ChildPaths>()
+  const taken = new Set<string>()
   for (const paths of written) {
     for (const key of paths.refs.keys()) {
-      const holder = taken.get(key)
-      if (holder !== undefined) failure(path, `with the ref ${key}, in the view it gives ${paths.path}`)
-      taken.set(key, paths)
+      if (taken.has(key)) failure(path, `with the ref ${key}, in the view it gives ${paths.path}`)
+      taken.add(key)
     }
   }
 }

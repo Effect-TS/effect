@@ -135,10 +135,7 @@ interface EventLayer {
 
 /** What the host stores for an event with more than the author's layer. It is opaque to the host. */
 class Layered {
-  readonly layers: ReadonlyArray<EventLayer>
-  constructor(layers: ReadonlyArray<EventLayer>) {
-    this.layers = layers
-  }
+  readonly layers: Array<EventLayer> = []
 }
 
 const none: ReadonlyArray<never> = []
@@ -276,8 +273,6 @@ export interface Instance {
   readonly owner: View.Owner | undefined
   /** A headless instance: the closure that is its view, as last declared. */
   content: ((parts: any) => View.Content<any, any>) | undefined
-  /** The headless instances, at any depth, whose closures this instance wrote. */
-  readonly authored: Set<Instance>
   readonly scope: Scope.Closeable
   env: Env
   readonly children: Map<string, Instance>
@@ -1346,7 +1341,6 @@ const setup = (
       author: undefined as any,
       owner,
       content,
-      authored: new Set(),
       scope,
       env: parentEnv,
       children: new Map(),
@@ -1412,7 +1406,6 @@ const setup = (
       }
     }
     inst.author = owner === undefined || parent === undefined ? inst : parent.author
-    if (owner !== undefined) inst.author.authored.add(inst)
     if (owner !== undefined) owners.set(owner, inst)
     if (recording > 0) {
       inst.watched = new Set()
@@ -1426,7 +1419,6 @@ const setup = (
       Effect.sync(() => {
         inst.closed = true
         dirty.delete(inst)
-        inst.author.authored.delete(inst)
         recorded.delete(inst)
         inst.watched = undefined
         // Normally done already by whoever closed the Scope, in the patcher's pre-pass.
@@ -3001,10 +2993,10 @@ const setup = (
   /** The event options of every layer as one record: the host reads one value per event. */
   const mergeOptions = (
     inst: Instance,
-    layers: ReadonlyArray<Readonly<Record<string, View.EventOptions>>>
+    layers: ReadonlyArray<Pick<View.Owned, "eventOptions">>
   ): Readonly<Record<string, View.EventOptions>> => {
     const out: Record<string, Record<string, unknown>> = {}
-    for (const options of layers) {
+    for (const { eventOptions: options } of layers) {
       for (const event in options) {
         const merged = out[event] ??= {}
         const option = options[event] as Readonly<Record<string, unknown>>
@@ -3039,32 +3031,19 @@ const setup = (
     const owned = view.owned.length === 1
       ? view.owned
       : view.owned.slice().sort((a, b) => b.owner.depth - a.owner.depth)
-    const byEvent: Record<string, Array<EventLayer>> = {}
-    for (const layer of owned) {
-      const target = ownerInstance(inst, layer.owner)
+    const handlers: Record<string, Layered> = {}
+    const add = (target: Instance, layer: Pick<View.Owned, "handlers" | "eventOptions">) => {
       for (const event in layer.handlers) {
-        ;(byEvent[event] ??= []).push({
+        ;(handlers[event] ??= new Layered()).layers.push({
           inst: target,
           handler: layer.handlers[event]!,
           prevents: layer.eventOptions[event]?.preventDefault === true
         })
       }
     }
-    for (const event in view.handlers) {
-      ;(byEvent[event] ??= []).push({
-        inst: author,
-        handler: view.handlers[event]!,
-        prevents: view.eventOptions[event]?.preventDefault === true
-      })
-    }
-    const handlers: Record<string, View.Handler<unknown, any>> = {}
-    for (const event in byEvent) handlers[event] = new Layered(byEvent[event]!) as any
-    host.setEvents(
-      node,
-      handlers,
-      fireLayered,
-      mergeOptions(inst, [...owned.map((layer) => layer.eventOptions), view.eventOptions])
-    )
+    for (const layer of owned) add(ownerInstance(inst, layer.owner), layer)
+    add(author, view)
+    host.setEvents(node, handlers as any, fireLayered, mergeOptions(inst, [...owned, view]))
   }
 
   const fireLayered: Renderer.Dispatch = (event, handler, payload, onMessage) => {
@@ -3162,23 +3141,25 @@ const setup = (
    */
   const checkRefs = (author: Instance) => {
     refChecks.delete(author)
-    if (author.closed || author.authored.size === 0) return
+    if (author.closed) return
     const written: Array<ChildPaths> = author.childPaths === undefined ? [] : [author.childPaths]
-    for (const inst of author.authored) {
-      if (inst.childPaths !== undefined && isMounted(inst, author)) written.push(inst.childPaths)
-    }
+    closurePaths(author, written)
     try {
       checkAuthorRefs(author.path, written)
     } catch (error) {
       failInstance(author, Cause.die(error), "view")
     }
   }
-  /** Whether `inst` is still in the tree below `author`: a removed one's Scope can close later. */
-  const isMounted = (inst: Instance, author: Instance): boolean => {
-    for (let at = inst; at !== author; at = at.parent!) {
-      if (at.closed || at.parent!.children.get(at.path) !== at) return false
+  /**
+   * Adds the paths of the closures below `inst` that its author wrote: those of its headless children,
+   * at any depth. Only what's still in the tree counts, since a removed child's Scope can close later.
+   */
+  const closurePaths = (inst: Instance, out: Array<ChildPaths>) => {
+    for (const child of inst.children.values()) {
+      if (child.owner === undefined || child.closed) continue
+      if (child.childPaths !== undefined) out.push(child.childPaths)
+      closurePaths(child, out)
     }
-    return true
   }
   const checkPendingRefs = () => {
     for (const author of refChecks) checkRefs(author)

@@ -1216,14 +1216,8 @@ const HeadlessProto = {
     _R: (_: never) => _,
     _Rcv: (_: never) => _
   },
-  ref: Proto.ref,
-  layer: undefined,
-  layerFailure: undefined,
-  sharedLayer: undefined,
-  layerOnServer: true,
-  pipe() {
-    return Pipeable.pipeArguments(this, arguments)
-  }
+  pipe: Proto.pipe,
+  ref: Proto.ref
 }
 
 /**

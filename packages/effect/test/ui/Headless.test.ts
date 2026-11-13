@@ -398,6 +398,37 @@ describe("headless components", () => {
         }).pipe(Effect.ensuring(Effect.sync(() => Deferred.doneUnsafe(lingering.release, Effect.void))))
       ))
 
+    it.effect("fail the parent for a closure inside another closure", () =>
+      provideHost(Effect.gen(function*() {
+        const Nested = Component.define({ name: "Nested", model: Schema.Null, message: Schema.Never, elements: Html })
+          .make({
+            init: () => null,
+            update: (model) => model,
+            view: (_, h) =>
+              h.div(
+                h.child(Menu, { ref: Spare, props: { items }, view: () => h.span("in the view") }),
+                h.child(Menu, {
+                  key: "outer",
+                  props: { items },
+                  view: () =>
+                    h.child(Menu, {
+                      key: "inner",
+                      props: { items },
+                      view: () =>
+                        h.child(Menu, { ref: Spare, props: { items }, view: () => h.span("two closures down") })
+                    })
+                })
+              )
+          })
+        const root = yield* TestHost.mount(Nested, {}, { fallback: (_, h) => h.text("crashed") })
+        yield* Effect.flip(TestHost.settle)
+        assert.strictEqual(root.text(), "crashed")
+        assert.deepStrictEqual(failed(root), [
+          "/Nested view Error: /Nested renders two children with the ref Spare, in the view it gives " +
+          "/Nested/Menu[outer]/Menu[inner]"
+        ])
+      })))
+
     it("fail a Story step the same way", () => {
       const twice = /\/Opener renders two children with the ref Actions, in the view it gives \/Opener\/Menu\[Actions\]/
       assert.throws(() => Story.start(Opener, { twin: "mount" }).current.view(), twice)
