@@ -293,7 +293,7 @@ const fitCut = (
 
 let segmenter: Intl.Segmenter | undefined
 
-/** The grapheme clusters of `text`. `Intl.Segmenter` is created on first use, so only a cut needs it. */
+/** The grapheme clusters of `text`. `Intl.Segmenter` is created on first use. */
 const graphemes = (text: string): Intl.Segments =>
   (segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" })).segment(text)
 
@@ -323,11 +323,17 @@ const holdLimit = 300
 const releasable = (pending: string, fence: Fence | undefined): string => {
   const lines = scanLines(pending, fence, false)
   const complete = lines.length === 0 ? 0 : lines[lines.length - 1].end
-  if (fenceAt(lines, fence, complete) !== undefined) return pending
-  const tail = pending.slice(complete)
-  if (tail.length <= holdLimit) return pending.slice(0, complete)
-  const space = tail.search(/\s\S*$/)
-  return space === -1 ? pending : pending.slice(0, complete + space + 1)
+  if (complete === pending.length) return pending
+  if (fenceAt(lines, fence, complete) === undefined) {
+    const tail = pending.slice(complete)
+    if (tail.length <= holdLimit) return pending.slice(0, complete)
+    const space = tail.search(/\s\S*$/)
+    if (space !== -1) return pending.slice(0, complete + space + 1)
+  }
+  // The next delta may still extend the trailing cluster, even inside a fence.
+  let last = 0
+  for (const cluster of graphemes(pending)) last = cluster.index
+  return pending.slice(0, last)
 }
 
 const utf8Length = (text: string): number => {
