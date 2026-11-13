@@ -262,6 +262,21 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
+const withoutComments = (input: string): string => {
+  let text = ""
+  let depth = 0
+  for (const char of input) {
+    if (char === "(") {
+      depth++
+    } else if (char === ")" && depth > 0) {
+      depth--
+    } else if (depth === 0) {
+      text += char
+    }
+  }
+  return text
+}
+
 /**
  * Detects whether a date string already contains timezone info.
  * Without a zone, `new Date("2024-01-01T12:00:00")` is parsed as local time,
@@ -269,11 +284,12 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * This check prevents appending "Z" to strings that already have a zone
  * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
  * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
- * such as `pdt` in any case. Only that trailing match is case-insensitive, so lowercase
- * letters in a comment like "(xyz)" do not count as a zone.
+ * such as `pdt` in any case. A zone after the time can also be followed by a
+ * parenthesized comment or whitespace, as in "... 17:14:06 -0500 (EST)".
  */
 const hasZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
+  /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:[+-]\d{2}:?\d{2}|z|gmt|utc?|[ecmp][sd]t)$/i.test(withoutComments(input).trimEnd())
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
