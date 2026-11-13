@@ -709,20 +709,22 @@ describe("nativeStream", () => {
           state: "closed",
           held: 0
         })
-        assert.deepStrictEqual(yield* native.append(replyThread, ts, "d", { flush: true }), {
+        const suspended = SlackChat.withPostOptions({ sessionStatusAtEnd: "suspended" })
+        assert.deepStrictEqual(yield* native.append(replyThread, ts, "d", { flush: true }).pipe(suspended), {
           state: "stopped",
           held: 0
         })
-        const result = yield* native.stop(replyThread, ts, { end: "done" }).pipe(
-          SlackChat.withPostOptions({ sessionStatusAtEnd: "suspended" })
-        )
-        assert.deepStrictEqual(result, { stopped: true })
-        assert.strictEqual(fake.called("chat.stopStream")[0].params.session_status, "suspended")
-        assert.deepStrictEqual(fake.called("agents.sessions.setStatus")[0].params, {
+        // The layer sends no stop after a stopped append, so the append moves the session off processing.
+        assert.deepStrictEqual(fake.called("agents.sessions.setStatus").map((call) => call.params), [{
           channel_id: channel,
           thread_ts: root,
           status: "suspended"
-        })
+        }])
+        // A caller that stops anyway gets stopped, and the status isn't set twice.
+        const result = yield* native.stop(replyThread, ts, { end: "done" }).pipe(suspended)
+        assert.deepStrictEqual(result, { stopped: true })
+        assert.strictEqual(fake.called("chat.stopStream")[0].params.session_status, "suspended")
+        assert.strictEqual(fake.called("agents.sessions.setStatus").length, 1)
       })
     )
   })

@@ -674,12 +674,18 @@ export const make = (options: {
               return { state: "closed" as const, held: 0 }
             })
         ),
-        // Slack closed the stream, and the layer sends no stop after this, so the cleanup runs here.
+        // Slack closed the stream and the reply ends stopped. The layer sends no stop after this, so the
+        // cleanup and the session status go here.
         Effect.catchIf(
           hasDetail("stopped_by_user"),
           () =>
             Effect.sync(() => streams.set(messageId, { ...state, stopped: true })).pipe(
               Effect.andThen(cleanup(op, parts.channel, messageId, postOptions.notify ?? {})),
+              Effect.andThen(
+                parts.threadTs === undefined
+                  ? Effect.void
+                  : sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
+              ),
               Effect.as({ state: "stopped" as const, held: 0 })
             )
         ),
@@ -723,7 +729,8 @@ export const make = (options: {
       yield* cleanup(op, parts.channel, messageId, postOptions.notify ?? {})
       // Kept until now, so a stop sent again after a cut-off one still cleans up.
       streams.delete(messageId)
-      if (stopped && stopOptions.end === "done" && parts.threadTs !== undefined) {
+      // An append that found the stream stopped has set the session status already.
+      if (stopped && state?.stopped !== true && stopOptions.end === "done" && parts.threadTs !== undefined) {
         yield* sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
       }
       return { stopped }
