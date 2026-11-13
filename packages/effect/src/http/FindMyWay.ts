@@ -37,7 +37,8 @@ import * as internal from "./FindMyWay/internal/router.ts"
  *
  * Each field is independent. Omitted fields use the default listed on the
  * field. The defaults normalize request paths before matching; use
- * {@link strictConfig} to match only the path that was registered.
+ * {@link strictConfig} to turn normalization off and match static route text
+ * literally.
  *
  * **Gotchas**
  *
@@ -94,11 +95,13 @@ export interface RouterConfig {
    *
    * **Details**
    *
-   * With `false`, route paths are compared as written: register
-   * `/caf%C3%A9` to match a request for `/caf%C3%A9`. Segments that contain a parameter, regex, or wildcard are decoded once in
-   * either mode before they are matched, so `/files/:name.png` also matches
-   * `/files/a%2Epng`. Their values are decoded data and a malformed escape in
-   * them does not match.
+   * With `false`, route text is stored as written and compared with the
+   * request path as received up to the first parameter or wildcard: register
+   * `/caf%C3%A9` to match a request for `/caf%C3%A9`. The rest of a segment,
+   * from a parameter onwards, or the rest of the path after a wildcard, is
+   * decoded once and then matched, so `/files/pre-:name.png` matches
+   * `/files/pre-a%2Epng` but not `/files/%70re-a.png`. A malformed escape in
+   * that decoded part does not match.
    *
    * @default true
    * @since 4.0.0
@@ -107,7 +110,8 @@ export interface RouterConfig {
 }
 
 /**
- * Router configuration that matches only the path that was registered.
+ * Router configuration that turns off path normalization and matches static
+ * route text literally.
  *
  * **When to use**
  *
@@ -119,15 +123,18 @@ export interface RouterConfig {
  * It sets `caseSensitive: true`, `ignoreTrailingSlash: false`,
  * `ignoreDuplicateSlashes: false`, `useSemicolonDelimiter: false`, and
  * `decodeStaticPath: false`. A route then matches only when each of its
- * segments without parameters appears character for character in the request
- * path. Spread it to override individual fields.
+ * segments without parameters, and the text before the first parameter in
+ * each other segment, appears character for character in the request path.
+ * Spread it to override individual fields.
  *
  * **Gotchas**
  *
  * Parameter values are still percent-decoded, so a path rule that overlaps a
  * parameter segment, such as `/files/secret` against `/files/:name`, can
  * still be reached as `/files/%73ecret`. Encoded separators such as `%2F` in
- * parameter values are decoded too.
+ * parameter values are decoded too, and text after a parameter in the same
+ * segment is matched after decoding, so `/files/:name.png` also matches
+ * `/files/a%2Epng`.
  *
  * @see {@link RouterConfig}
  * @stability unstable

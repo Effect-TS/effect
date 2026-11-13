@@ -318,8 +318,8 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
  * **Details**
  *
  * The value is passed to the route matcher when an `HttpRouter` is created and
- * defaults to an empty configuration. Use `FindMyWay.strictConfig` to match
- * only the registered path, without decoding or normalizing static segments.
+ * defaults to an empty configuration. Use `FindMyWay.strictConfig` to turn
+ * off path normalization and match static route text literally.
  *
  * **Gotchas**
  *

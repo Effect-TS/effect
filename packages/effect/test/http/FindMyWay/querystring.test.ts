@@ -87,6 +87,9 @@ it("matches static segments literally when decodeStaticPath is false", () => {
       ["/internal/:a/keys/:b", "/internal/x/%6Beys/y"],
       ["/files/*", "/%66iles/a"],
       ["/files/:name.png", "/%66iles/a.png"],
+      ["/files/pre-:name.png", "/files/%70re-a.png"],
+      ["/files/pre-:name", "/files/pre%2Dx"],
+      ["/files/pre*", "/files/%70rex"],
       ["/caf%C3%A9", "/caf%25C3%25A9"],
       ["/café", "/caf%C3%A9"]
     ] as const
@@ -104,6 +107,8 @@ it("decodes parameters once when decodeStaticPath is false", () => {
   assert.deepStrictEqual(findLiteral("/a/:a/b/:b", "/a/x%20y/b/c%2Fd")?.params, { a: "x y", b: "c/d" })
   assert.deepStrictEqual(findLiteral("/files/*", "/files/a%2Fb/c%20d")?.params, { "*": "a/b/c d" })
   assert.deepStrictEqual(findLiteral("/files/:name.png", "/files/a%2Epng")?.params, { name: "a" })
+  assert.deepStrictEqual(findLiteral("/files/pre-:name.png", "/files/pre-a%2Epng")?.params, { name: "a" })
+  assert.deepStrictEqual(findLiteral("/files/pre*", "/files/prex%2Fy")?.params, { "*": "x/y" })
   assert.deepStrictEqual(findLiteral("/n/:id(^\\d+$)", "/n/%31%32")?.params, { id: "12" })
   assert.isUndefined(findLiteral("/slugs/:slug([^.]+)", "/slugs/a%2Eb"))
 })
