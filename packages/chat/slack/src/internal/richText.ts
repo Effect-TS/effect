@@ -168,6 +168,13 @@ const literal = (text: string, atLineStart: boolean): string =>
     .map((line, index) => index > 0 || atLineStart ? escapeLineStart(line) : line)
     .join("\n")
 
+/**
+ * Markdown that renders `text` as written, as the start of a message.
+ *
+ * @internal
+ */
+export const escapeMarkdown = (text: string): string => literal(text, true)
+
 interface Writer {
   out: string
   readonly mentions: Array<Mention>

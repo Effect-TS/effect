@@ -6,7 +6,14 @@ import {
   retrySafe,
   type ThreadInfo
 } from "effect/chat/ChatAdapter"
-import { type ChatError, type ChatErrorReason, TooLarge, Unknown, Unsupported } from "effect/chat/ChatError"
+import {
+  type ChatError,
+  type ChatErrorReason,
+  fileRefused,
+  TooLarge,
+  Unknown,
+  Unsupported
+} from "effect/chat/ChatError"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
 import * as Clock from "effect/Clock"
@@ -94,9 +101,8 @@ export const descriptor: Descriptor = {
 
 const pageSize = 200
 
-/** `files.info` reads for the share of a fresh upload, at this interval. */
-const shareAttempts = 20
-const shareInterval = Duration.millis(500)
+/** The bound on each call of a file post from `chat.postMessage` on: the post, each attach and the rollback. */
+const fileCallTimeout = Duration.seconds(30)
 
 /** Codes on `chat.startStream` that mean the feature is off for this thread. */
 const streamUnsupported = new Set(["channel_type_not_supported", "feature_disabled", "not_allowed_token_type"])
@@ -135,6 +141,13 @@ export const make = (options: {
   readonly botToken: Redacted.Redacted
   readonly teamId: string
   readonly botUserId: Effect.Effect<string, ChatError>
+  /** Builds the `SlackAttachFailed` cause, which lives in the public module. */
+  readonly attachFailed: (fields: {
+    readonly thread: ChatThread
+    readonly messageId: string
+    readonly fileIds: ReadonlyArray<string>
+    readonly reason: ChatErrorReason
+  }) => unknown
 }) => {
   const { api, teamId } = options
   const streams = new Map<string, StreamState>()
@@ -239,8 +252,7 @@ export const make = (options: {
    * is sent, so `markdown_text` is never used on these two calls.
    */
   const messageContent = Effect.fnUntraced(
-    function*(op: string, markdown: string, notify: Escape.Notify, budget: Text.Budget) {
-      const body = Text.body(markdown, notify, budget)
+    function*(op: string, body: Text.Body) {
       yield* checkSent(op, body.sent)
       if (body.text === "") return yield* fail(op, Errors.invalidRequest("no_text"))
       if (body.dropped > 0) yield* Effect.annotateCurrentSpan("slack.text.dropped_tokens", body.dropped)
@@ -292,6 +304,10 @@ export const make = (options: {
 
   // Files
 
+  /** A `denied` failure of an upload call refused a file. */
+  const refused = (error: ChatError): ChatError =>
+    error.reason.retry === "denied" ? Errors.chatError(error.op, Errors.fileRefused(error.reason)) : error
+
   const stage = (file: File): Effect.Effect<{ readonly id: string; readonly title: string }, ChatError> =>
     Effect.gen(function*() {
       const answer = yield* call("post", "files.getUploadURLExternal", {
@@ -311,76 +327,99 @@ export const make = (options: {
         return yield* fail("post", Errors.reasonForStatus(response.status, { write: false }))
       }
       return { id: fileId, title: file.name }
-    })
+    }).pipe(Effect.mapError(refused))
 
-  /** The ts of the message that shared a fresh upload, from `files.info`. */
-  const shareTs = (answer: Json, channel: string, threadTs: string | undefined): string | undefined => {
-    const file = isObject(answer) ? object(answer, "file") : undefined
-    const shares = file === undefined ? undefined : object(file, "shares")
-    if (shares === undefined) return undefined
-    for (const visibility of ["public", "private"]) {
-      const byChannel = object(shares, visibility)
-      const list = byChannel === undefined ? undefined : byChannel[channel]
-      if (!Array.isArray(list)) continue
-      for (const share of list) {
-        if (!isObject(share)) continue
-        const ts = string(share, "ts")
-        const shareThread = string(share, "thread_ts")
-        if (
-          ts !== undefined &&
-          (threadTs === undefined ? shareThread === undefined || shareThread === ts : shareThread === threadTs)
-        ) {
-          return ts
-        }
-      }
-    }
-    return undefined
-  }
+  /** One call of the post, the attach or the rollback, cut off after `fileCallTimeout`. */
+  const bounded = <A>(effect: Effect.Effect<A, ChatError>, onTimeout: ChatErrorReason): Effect.Effect<A, ChatError> =>
+    Effect.timeoutOrElse(effect, { duration: fileCallTimeout, orElse: () => fail("post", onTimeout) })
 
-  const postFiles = (
+  /**
+   * Upload, post, then attach. The files are completed with no channel, so
+   * nothing is visible until `chat.postMessage`, and `chat.update` with
+   * `file_ids` attaches them. Both calls send the same body, with `text` under
+   * the update budget, so `text` never changes between them.
+   *
+   * From the post on, the route runs uninterruptible, with a timeout on each
+   * call. The attach replaces the file list, so it is retried. When it still
+   * fails, the message is deleted and then the files, best effort. If the
+   * message can't be deleted, it is left without its files and the post fails
+   * `uncertain` with a `SlackAttachFailed` as its cause, and the files are
+   * kept so the ids it carries still mean something.
+   */
+  const postFiles = Effect.fnUntraced(function*(
     thread: ChatThread,
     parts: Address.Parts,
     markdown: string,
     files: ReadonlyArray<File>,
-    notify: Escape.Notify
-  ): Effect.Effect<Posted, ChatError> =>
-    Effect.gen(function*() {
-      if (files.length > descriptor.limits.filesPerMessage) {
-        return yield* fail("post", new TooLarge({ subject: "files", detail: "too_many_files" }))
-      }
-      if (files.some((file) => file.content.length > descriptor.limits.uploadBytes)) {
-        return yield* fail("post", new TooLarge({ subject: "files", detail: "file_too_large" }))
-      }
-      // A message with files takes no `markdown_text`: its text goes as mrkdwn.
-      const comment = markdown.trim() === "" ? undefined : Escape.toMrkdwn(markdown, notify)
-      if (comment !== undefined) yield* checkSent("post", comment)
-      const staged = yield* Effect.forEach(files, stage)
-      yield* call("post", "files.completeUploadExternal", {
-        files: staged,
-        channel_id: parts.channel,
-        thread_ts: parts.threadTs,
-        initial_comment: comment
-      }, { write: true })
-      // The answer carries no message ts. Slack fills the file's shares soon after.
-      // The message exists from here on, so not finding its ts is an
-      // uncertain outcome, never a refusal or a retryable failure.
-      let lastError: ChatError | undefined
-      for (let attempt = 0; attempt < shareAttempts; attempt++) {
-        if (attempt > 0) yield* Effect.sleep(shareInterval)
-        const info = yield* Effect.result(call("post", "files.info", { file: staged[0].id }))
-        if (Result.isFailure(info)) {
-          lastError = info.failure
-          if (lastError.reason.retry === "denied") break
-          continue
-        }
-        const ts = shareTs(info.success, parts.channel, parts.threadTs)
-        if (ts !== undefined) return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
+    notify: Escape.Notify,
+    unfurl: boolean
+  ) {
+    if (
+      files.length > descriptor.limits.filesPerMessage ||
+      files.some((file) => file.content.length > descriptor.limits.uploadBytes)
+    ) {
+      return yield* fail("post", new TooLarge({ subject: "files", detail: fileRefused }))
+    }
+    const content = Text.body(markdown, notify, Text.updateBudget)
+    const body = yield* messageContent(
+      "post",
+      content.text === "" ? Text.placeholder(files.map((file) => file.name), Text.updateBudget) : content
+    )
+    const staged = yield* Effect.forEach(files, stage)
+    yield* call("post", "files.completeUploadExternal", { files: staged }).pipe(Effect.mapError(refused))
+    const fileIds = staged.map((file) => file.id)
+    const channel = parts.channel
+
+    return yield* Effect.uninterruptible(Effect.gen(function*() {
+      const removeFiles = Effect.forEach(
+        fileIds,
+        (file) =>
+          bounded(call("post", "files.delete", { file }, { write: true }), Errors.transport(true, "timeout")).pipe(
+            Effect.ignore
+          ),
+        { discard: true }
+      )
+      const ts = yield* bounded(
+        call("post", "chat.postMessage", {
+          channel,
+          thread_ts: parts.threadTs,
+          ...body,
+          unfurl_links: unfurl,
+          unfurl_media: unfurl
+        }, { write: true }).pipe(Effect.flatMap(tsOf("post", true))),
+        Errors.transport(true, "timeout")
+      ).pipe(Effect.tapError(() => removeFiles))
+      const posted: Posted = { id: ts, thread, timestamp: Normalize.timestamp(ts) }
+
+      const attached = yield* retrySafe(paced(
+        ts,
+        bounded(
+          call("post", "chat.update", { channel, ts, ...body, file_ids: fileIds }, { write: false, retry: false }),
+          Errors.transport(false, "timeout")
+        ),
+        "edit"
+      )).pipe(Effect.result)
+      if (Result.isSuccess(attached)) return posted
+
+      const error = attached.failure
+      yield* Effect.annotateCurrentSpan("slack.attach.failed", error.reason._tag)
+      const deleted = yield* bounded(
+        call("post", "chat.delete", { channel, ts }, { write: true }),
+        Errors.transport(true, "timeout")
+      ).pipe(Effect.result)
+      if (Result.isSuccess(deleted)) {
+        yield* removeFiles
+        return yield* Effect.fail(refused(error))
       }
       return yield* fail(
         "post",
-        new Unknown({ detail: "share_ts_unknown", ...(lastError === undefined ? {} : { cause: lastError }) })
+        new Unknown({
+          detail: "attach_failed_message_left",
+          cause: options.attachFailed({ thread, messageId: ts, fileIds, reason: error.reason })
+        })
       )
-    })
+    }))
+  })
 
   // History
 
@@ -596,11 +635,11 @@ export const make = (options: {
       if (content.replyTo !== undefined) return yield* fail("post", new Unsupported({ capability: "replyTo" }))
       const postOptions = yield* CurrentPostOptions
       const notify = postOptions.notify ?? {}
-      if (content.files !== undefined && content.files.length > 0) {
-        return yield* postFiles(thread, parts, content.markdown, content.files, notify)
-      }
-      const body = yield* messageContent("post", content.markdown, notify, Text.postBudget)
       const unfurl = postOptions.unfurl === true
+      if (content.files !== undefined && content.files.length > 0) {
+        return yield* postFiles(thread, parts, content.markdown, content.files, notify, unfurl)
+      }
+      const body = yield* messageContent("post", Text.body(content.markdown, notify, Text.postBudget))
       const ts = yield* call("post", "chat.postMessage", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
@@ -613,7 +652,10 @@ export const make = (options: {
     edit: Effect.fnUntraced(function*(thread, messageId, content) {
       const parts = yield* resolve("edit", thread)
       const postOptions = yield* CurrentPostOptions
-      const body = yield* messageContent("edit", content.markdown, postOptions.notify ?? {}, Text.updateBudget)
+      const body = yield* messageContent(
+        "edit",
+        Text.body(content.markdown, postOptions.notify ?? {}, Text.updateBudget)
+      )
       yield* retrySafe(paced(
         messageId,
         call("edit", "chat.update", { channel: parts.channel, ts: messageId, ...body }, {

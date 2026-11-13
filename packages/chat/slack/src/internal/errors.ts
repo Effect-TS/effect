@@ -1,16 +1,19 @@
 import {
   ChatError,
   type ChatErrorReason,
+  fileRefused as fileRefusedDetail,
   Forbidden,
   InvalidRequest,
   InvalidResponse,
+  NoAdapter,
   NotFound,
   PlatformUnavailable,
   RateLimited,
   TooLarge,
   Transport,
   Unauthenticated,
-  Unknown
+  Unknown,
+  Unsupported
 } from "effect/chat/ChatError"
 import * as Duration from "effect/Duration"
 import { platform } from "./address.ts"
@@ -149,3 +152,41 @@ export const invalidRequest = (detail: string): ChatErrorReason => new InvalidRe
 
 /** @internal */
 export const notFound = (detail: string): ChatErrorReason => new NotFound({ detail })
+
+/**
+ * A `denied` reason from an upload call, or from the attach of a post whose
+ * rollback left nothing behind, as a refused file: the same reason with
+ * detail `file_refused`, and the reason it replaces, with Slack's code, as
+ * its `cause`. Any other reason is returned as it is.
+ *
+ * @internal
+ */
+export const fileRefused = (reason: ChatErrorReason): ChatErrorReason => {
+  if (reason.retry !== "denied" || reason.detail === fileRefusedDetail) return reason
+  const fields = { detail: fileRefusedDetail, cause: reason }
+  switch (reason._tag) {
+    case "Unsupported":
+      return new Unsupported({ capability: reason.capability, ...fields })
+    case "Transport":
+      return new Transport({ retry: reason.retry, ...fields })
+    case "PlatformUnavailable":
+      return new PlatformUnavailable({ retry: reason.retry, ...fields })
+    case "NoAdapter":
+      return new NoAdapter(fields)
+    case "Unauthenticated":
+      return new Unauthenticated(fields)
+    case "Forbidden":
+      return new Forbidden(fields)
+    case "NotFound":
+      return new NotFound(fields)
+    case "TooLarge":
+      return new TooLarge({ ...(reason.subject === undefined ? {} : { subject: reason.subject }), ...fields })
+    case "InvalidRequest":
+      return new InvalidRequest(fields)
+    case "InvalidResponse":
+      return new InvalidResponse(fields)
+    case "RateLimited":
+    case "Unknown":
+      return reason
+  }
+}

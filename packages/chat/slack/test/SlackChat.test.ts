@@ -1,14 +1,26 @@
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { SlackWebApi } from "@effect/chat-slack/SlackWebApi"
 import { assert, describe, it } from "@effect/vitest"
-import { checkMessage } from "effect/chat/ChatTest"
+import { type ChatErrorReason, fileRefused } from "effect/chat/ChatError"
+import { checkMessage, conformance } from "effect/chat/ChatTest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
-import { adapter, authTest, botUserId, channel, checkOptions, fixture, makeFake, slackLayer, team } from "./utils.ts"
+import {
+  adapter,
+  authTest,
+  botUserId,
+  channel,
+  checkOptions,
+  fixture,
+  hang,
+  makeFake,
+  slackLayer,
+  team
+} from "./utils.ts"
 
 const root = "1794509110.999799"
 const channelThread = SlackChat.thread({ team, channel })
@@ -169,72 +181,226 @@ describe("post", () => {
         assert.isFalse(slack.descriptor.capabilities.has("replyTo"))
       })
     ))
+})
 
-  it.effect("files go up and are shared as one message", () => {
+describe("files", () => {
+  const upload = (ids: ReadonlyArray<string>) => {
+    let next = 0
+    return {
+      "files.getUploadURLExternal": () => {
+        const id = ids[next++]
+        return { ok: true, upload_url: `https://files.slack.test/upload/${id}`, file_id: id }
+      },
+      "files.completeUploadExternal": { ok: true, files: ids.map((id) => ({ id })) }
+    }
+  }
+  const file = (name: string) => ({ name, contentType: "text/plain", content: new TextEncoder().encode("hello") })
+  const ts = "1794509300.000100"
+  const methods = (fake: ReturnType<typeof makeFake>) =>
+    fake.calls.map((call) => call.method).filter((method) => !method.startsWith("/upload/"))
+
+  it.effect("uploads, completes with no channel, posts, then attaches with the same body", () => {
+    const fake = makeFake({ ...upload(["F1", "F2"]), "chat.postMessage": posted(ts) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const markdown = "**see** <@U1> " + "a".repeat(5_000)
+        const result = yield* slack.post(replyThread, { markdown, files: [file("a.txt"), file("b.txt")] })
+        assert.strictEqual(result.id, ts)
+        assert.deepStrictEqual(methods(fake), [
+          "files.getUploadURLExternal",
+          "files.getUploadURLExternal",
+          "files.completeUploadExternal",
+          "chat.postMessage",
+          "chat.update"
+        ])
+        assert.deepStrictEqual(fake.called("files.completeUploadExternal")[0].params, {
+          files: JSON.stringify([{ id: "F1", title: "a.txt" }, { id: "F2", title: "b.txt" }])
+        })
+        const post = fake.called("chat.postMessage")[0].params
+        const attach = fake.called("chat.update")[0].params
+        assert.deepStrictEqual(attach, {
+          channel,
+          ts,
+          blocks: post.blocks,
+          text: post.text,
+          file_ids: JSON.stringify(["F1", "F2"])
+        })
+        // The text is cut to the update budget from the post on.
+        assert.isAtMost(new TextEncoder().encode(post.text).length, 3_800)
+        assert.isTrue(post.text.endsWith("…"))
+        assert.strictEqual(post.thread_ts, root)
+
+        // Later writes keep the files: no file_ids, and no files.delete.
+        const edit = yield* Effect.forkChild(slack.edit(replyThread, ts, { markdown: "edited" }))
+        yield* TestClock.adjust("3 seconds")
+        yield* Fiber.join(edit)
+        yield* slack.delete(replyThread, ts)
+        assert.isUndefined(fake.called("chat.update")[1].params.file_ids)
+        assert.strictEqual(fake.called("files.delete").length, 0)
+      })
+    )
+  })
+
+  it.effect("a post with files and no Markdown carries the escaped file names", () => {
+    const fake = makeFake({ ...upload(["F1", "F2"]), "chat.postMessage": posted(ts) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        yield* slack.post(channelThread, { markdown: "", files: [file("*a*.txt"), file("<@U1>.csv")] })
+        const post = fake.called("chat.postMessage")[0].params
+        assert.deepStrictEqual(JSON.parse(post.blocks), [{ type: "markdown", text: "\\*a\\*.txt, &lt;@U1>.csv" }])
+        assert.strictEqual(post.text, "*a*.txt, &lt;@U1&gt;.csv")
+        assert.strictEqual(fake.called("chat.update")[0].params.text, post.text)
+      })
+    )
+  })
+
+  it.effect("too many files fail file_refused before any call", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const files = Array.from({ length: slack.descriptor.limits.filesPerMessage + 1 }, (_, i) => file(`${i}.txt`))
+        assert.deepStrictEqual(yield* reason(slack.post(channelThread, { markdown: "x", files })), {
+          op: "post",
+          tag: "TooLarge",
+          detail: fileRefused,
+          retry: "denied"
+        })
+        assert.deepStrictEqual(fake.calls, [])
+      })
+    )
+  })
+
+  it.effect("a file refused at the complete call posts nothing", () => {
     const fake = makeFake({
-      "files.getUploadURLExternal": { ok: true, upload_url: "https://files.slack.test/upload/1", file_id: "F1" },
-      "files.completeUploadExternal": { ok: true, files: [{ id: "F1" }] },
-      "files.info": [
-        { ok: true, file: { id: "F1", shares: {} } },
-        {
-          ok: true,
-          file: { id: "F1", shares: { private: { [channel]: [{ ts: "1794509300.000100", thread_ts: root }] } } }
-        }
-      ]
+      ...upload(["F1"]),
+      "files.completeUploadExternal": { ok: false, error: "invalid_arguments" }
     })
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const result = yield* slack.post(replyThread, {
-          markdown: "**see** <@U1>",
-          files: [{ name: "a.txt", contentType: "text/plain", content: new TextEncoder().encode("hello") }]
-        }).pipe(Effect.forkChild)
-        yield* TestClock.adjust("1 second")
-        const value = yield* Fiber.join(result)
-        assert.strictEqual(value.id, "1794509300.000100")
-        const complete = fake.called("files.completeUploadExternal")[0].params
-        assert.strictEqual(complete.initial_comment, "*see* &lt;@U1&gt;")
-        assert.strictEqual(complete.thread_ts, root)
-        assert.deepStrictEqual(JSON.parse(complete.files), [{ id: "F1", title: "a.txt" }])
-        assert.strictEqual(fake.called("/upload/1").length, 1)
-      })
-    )
-  })
-})
-
-describe("files", () => {
-  const upload = {
-    "files.getUploadURLExternal": { ok: true, upload_url: "https://files.slack.test/upload/1", file_id: "F1" },
-    "files.completeUploadExternal": { ok: true, files: [{ id: "F1" }] }
-  }
-  const file = { name: "a.txt", contentType: "text/plain", content: new TextEncoder().encode("hello") }
-
-  it.effect("a refused read after the share is an uncertain post, not a refusal", () => {
-    const fake = makeFake({ ...upload, "files.info": { ok: false, error: "missing_scope" } })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const failure = yield* reason(slack.post(replyThread, { markdown: "see", files: [file] }))
-        assert.deepStrictEqual(failure, { op: "post", tag: "Unknown", detail: "share_ts_unknown", retry: "uncertain" })
-        assert.strictEqual(fake.called("files.info").length, 1)
+        const error = yield* Effect.flip(slack.post(channelThread, { markdown: "x", files: [file("a.txt")] }))
+        assert.strictEqual(error.reason._tag, "InvalidRequest")
+        assert.strictEqual(error.reason.detail, fileRefused)
+        assert.strictEqual(error.retry, "denied")
+        // Slack's code stays on the cause.
+        assert.strictEqual((error.reason.cause as ChatErrorReason).detail, "invalid_arguments")
+        assert.strictEqual(fake.called("chat.postMessage").length, 0)
       })
     )
   })
 
-  it.effect("a failing read after the share is polled again, then uncertain", () => {
-    const fake = makeFake({ ...upload, "files.info": { status: 500 } })
+  it.effect("a failed post removes the uploads", () => {
+    const fake = makeFake({ ...upload(["F1", "F2"]), "chat.postMessage": { ok: false, error: "not_in_channel" } })
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const result = yield* Effect.forkChild(reason(slack.post(replyThread, { markdown: "see", files: [file] })))
-        yield* TestClock.adjust("10 minutes")
-        const failure = yield* Fiber.join(result)
-        assert.strictEqual(failure.tag, "Unknown")
-        assert.strictEqual(failure.retry, "uncertain")
-        assert.isAbove(fake.called("files.info").length, 1)
+        const failure = yield* reason(slack.post(channelThread, { markdown: "x", files: [file("a"), file("b")] }))
+        assert.deepStrictEqual(failure, { op: "post", tag: "Forbidden", detail: "not_in_channel", retry: "denied" })
+        assert.deepStrictEqual(fake.called("files.delete").map((call) => call.params.file), ["F1", "F2"])
+        assert.strictEqual(fake.called("chat.update").length, 0)
+      })
+    )
+  })
+
+  it.effect("an attach that times out is retried", () => {
+    const fake = makeFake({ ...upload(["F1"]), "chat.postMessage": posted(ts), "chat.update": [hang, { ok: true }] })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const fiber = yield* Effect.forkChild(slack.post(channelThread, { markdown: "x", files: [file("a")] }))
+        yield* TestClock.adjust("31 seconds")
+        assert.strictEqual((yield* Fiber.join(fiber)).id, ts)
+        assert.strictEqual(fake.called("chat.update").length, 2)
+        assert.strictEqual(fake.called("chat.delete").length, 0)
+      })
+    )
+  })
+
+  it.effect("a refused attach deletes the message and the files and fails file_refused", () => {
+    const fake = makeFake({
+      ...upload(["F1"]),
+      "chat.postMessage": posted(ts),
+      "chat.update": { ok: false, error: "file_not_found" }
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const error = yield* Effect.flip(slack.post(channelThread, { markdown: "x", files: [file("a")] }))
+        assert.deepStrictEqual([error.reason._tag, error.reason.detail, error.retry], [
+          "NotFound",
+          fileRefused,
+          "denied"
+        ])
+        assert.strictEqual(methods(fake).slice(-3).join(), "chat.update,chat.delete,files.delete")
+        assert.deepStrictEqual(fake.called("chat.delete")[0].params, { channel, ts })
+      })
+    )
+  })
+
+  it.effect("a rollback that can't delete the message fails uncertain with SlackAttachFailed", () => {
+    const fake = makeFake({
+      ...upload(["F1", "F2"]),
+      "chat.postMessage": posted(ts),
+      "chat.update": { ok: false, error: "file_not_found" },
+      "chat.delete": { ok: false, error: "cant_delete_message" }
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const error = yield* Effect.flip(slack.post(replyThread, { markdown: "x", files: [file("a"), file("b")] }))
+        assert.deepStrictEqual(
+          [error.reason._tag, error.reason.detail, error.retry],
+          ["Unknown", "attach_failed_message_left", "uncertain"]
+        )
+        const cause = error.reason.cause
+        assert.instanceOf(cause, SlackChat.SlackAttachFailed)
+        assert.deepStrictEqual(cause.thread, replyThread)
+        assert.strictEqual(cause.messageId, ts)
+        assert.deepStrictEqual(cause.fileIds, ["F1", "F2"])
+        assert.deepStrictEqual([cause.reason._tag, cause.reason.detail], ["NotFound", "file_not_found"])
+        assert.notInclude(cause.message, ts)
+        assert.notInclude(cause.message, "F1")
+        // The files are kept, so the ids it carries still mean something.
+        assert.strictEqual(fake.called("files.delete").length, 0)
+      })
+    )
+  })
+
+  it.effect("post/refusedFile passes over the stub", () => {
+    let refuse = false
+    const fake = makeFake({
+      ...upload(["F1"]),
+      "auth.test": authTest,
+      "conversations.history": { ok: true, messages: [] },
+      "files.completeUploadExternal": () =>
+        refuse ? { ok: false, error: "invalid_arguments" } : { ok: true, files: [{ id: "F1" }] }
+    })
+    const rules = conformance({
+      platform: "slack",
+      thread: channelThread,
+      userPosts: () => Effect.die("unused"),
+      parseMention: SlackChat.parseMention,
+      refuseFiles: () =>
+        Effect.sync(() => {
+          refuse = true
+        })
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        yield* rules["post/refusedFile"]
+        assert.strictEqual(fake.called("chat.postMessage").length, 0)
       })
     )
   })
