@@ -844,9 +844,13 @@ describe("getThread and getUser", () => {
         const inGuild = yield* discord.getUser(botUserId, { in: channel })
         assert.strictEqual(inGuild.name, "Janny")
         assert.isTrue(inGuild.isSelf && inGuild.isBot)
+        // raw is the guild member, so the roles are there to read.
+        assert.deepStrictEqual(inGuild.raw, { ...member, nick: "Janny" })
+        assert.isTrue(Array.isArray(member.roles))
         assert.deepStrictEqual(fake.called("getGuildMember"), [[guild, botUserId]])
         const plain = yield* discord.getUser(botUserId)
         assert.strictEqual(plain.name, "Janitor")
+        assert.deepStrictEqual(plain.raw, step("users", "get-user-bot").response)
         assert.strictEqual((yield* reason(discord.getUser("1570607260156297307"))).tag, "NotFound")
       })
     )

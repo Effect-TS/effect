@@ -1233,6 +1233,10 @@ describe("SlackChat", () => {
         assert.strictEqual(fake.called("auth.test").length, 1)
         const user = yield* slack.user("U0EXT")
         assert.include(user, { id: "U0EXT", teamId: "T0OTHER", name: "Ext", isRestricted: true, isStranger: true })
+        // The core op reads the same record, with the team on raw.
+        const core = yield* (yield* adapter).getUser("U0EXT")
+        assert.deepStrictEqual(core.raw, user.raw)
+        assert.include(core.raw, { team_id: "T0OTHER" })
       })
     )
   })
