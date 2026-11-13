@@ -1360,7 +1360,8 @@ const lateClick = (event: ButtonClicked | SelectChanged) =>
  *   it later returns `OpenModal`, the modal is dropped and `Handler.refused`
  *   is called with a `ChatError` whose reason is `NotFound`, op `openModal`,
  *   detail `interaction_expired`, platform `event.thread.platform`.
- * - A late submit interrupts its handler.
+ * - A late submit interrupts its handler. `Late` is given at the deadline,
+ *   without waiting for the handler's finalizers to finish.
  * - `deadline` is the handler's share of the platform's 3 seconds, not the 3
  *   seconds. The adapter subtracts what its own answer costs. This function
  *   knows no platform.
@@ -1382,16 +1383,20 @@ export const handle: {
 } = (event: Interaction, deadline: Duration.Duration): Effect.Effect<any, never, Handler> =>
   Effect.gen(function*() {
     const handler = yield* Handler
-    if (event._tag === "ModalSubmitted") {
-      const reply = yield* Effect.timeoutOption(handler.submit(event), deadline)
-      return Option.isSome(reply) ? reply.value : late
-    }
-    const fiber = yield* Effect.forkDetach(handler.click(event))
+    // Detached, so the reply at the deadline waits for neither a late click nor a late submit's cleanup.
+    const fiber: Fiber.Fiber<ClickReply | SubmitReply> = yield* Effect.forkDetach(
+      event._tag === "ModalSubmitted" ? handler.submit(event) : handler.click(event)
+    )
     const exit = yield* Effect.onInterrupt(
       Effect.timeoutOption(Fiber.await(fiber), deadline),
       () => Fiber.interrupt(fiber)
     )
     if (Option.isSome(exit)) return yield* exit.value
+    if (event._tag === "ModalSubmitted") {
+      // Requests the interrupt without waiting for it to finish.
+      yield* Effect.forkDetach(Fiber.interrupt(fiber))
+      return late
+    }
     yield* Effect.forkDetach(Effect.flatMap(
       Fiber.await(fiber),
       (exit) =>
