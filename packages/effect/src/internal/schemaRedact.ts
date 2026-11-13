@@ -1,5 +1,6 @@
 /**
- * The redacting walk shared by the message log and the loader's log keys.
+ * The redacting walk shared by the message log and the loader's log keys, and
+ * the check that keeps a `Schema.Redacted` out of serialised state.
  *
  * @internal
  */
@@ -29,7 +30,8 @@ const redactedLink = Schema.link<Redacted.Redacted<unknown>>()(
  * (such as those of `Option` and `ReadonlyMap`) encode contents before the
  * declaration's derived JSON codec runs, so they must also be redacted.
  *
- * Returns `ast` itself when it holds no `Schema.Redacted`.
+ * Suspended nodes are rebuilt lazily, even when their bodies contain no
+ * `Schema.Redacted`. Use `holdsRedacted` for a presence check.
  *
  * @internal
  */
@@ -45,4 +47,36 @@ export const redactAST: (ast: SchemaAST.AST) => SchemaAST.AST = memoize((ast: Sc
     return redactedBody === body && encoding === ast.encoding ? ast : SchemaAST.replaceEncoding(redactedBody, encoding)
   }
   return "recur" in ast ? ast.recur(redactAST) : ast
+})
+
+/**
+ * Whether `ast` declares a `Schema.Redacted` anywhere, as `redactAST` finds
+ * one. The check is on the Schema, not on a value.
+ *
+ * @internal
+ */
+export const holdsRedacted = memoize((ast: SchemaAST.AST): boolean => {
+  const seen = new Set<SchemaAST.AST>()
+  const visit = (node: SchemaAST.AST): boolean => {
+    if (seen.has(node)) return false
+    seen.add(node)
+    if (isRedactedAST(node)) return true
+    if (node.encoding?.some((link) => visit(link.to))) return true
+    switch (node._tag) {
+      case "Objects":
+        return node.propertySignatures.some((property) => visit(property.type)) ||
+          node.indexSignatures.some((index) => visit(index.parameter) || visit(index.type))
+      case "Arrays":
+        return node.elements.some(visit) || node.rest.some(visit)
+      case "Union":
+        return node.types.some(visit)
+      case "Suspend":
+        return visit(node.thunk())
+      case "Declaration":
+        return node.typeParameters.some(visit)
+      default:
+        return false
+    }
+  }
+  return visit(ast)
 })
