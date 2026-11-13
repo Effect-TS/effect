@@ -1,16 +1,19 @@
 import {
   ChatError,
   type ChatErrorReason,
+  fileRefused as fileRefusedDetail,
   Forbidden,
   InvalidRequest,
   InvalidResponse,
+  NoAdapter,
   NotFound,
   PlatformUnavailable,
   RateLimited,
   TooLarge,
   Transport,
   Unauthenticated,
-  Unknown
+  Unknown,
+  Unsupported
 } from "effect/chat/ChatError"
 import * as Duration from "effect/Duration"
 import { platform } from "./normalize.ts"
@@ -108,6 +111,10 @@ export const reasonForRestError = (error: unknown, options: { readonly write: bo
     const reason = tagged.reason
     const reasonResponse = isObject(reason.response) ? reason.response : undefined
     const reasonStatus = typeof reasonResponse?.status === "number" ? reasonResponse.status : undefined
+    // An error status whose body is not JSON, such as a 413 from the edge, is still Discord's answer.
+    if (reasonStatus !== undefined && reasonStatus >= 400 && reasonStatus < 500) {
+      return reasonForResponse(reasonStatus, undefined, { write: options.write, cause: error })
+    }
     switch (reason._tag) {
       case "StatusCodeError":
         return reasonForResponse(reasonStatus ?? 500, undefined, { write: options.write, cause: error })
@@ -138,3 +145,40 @@ export const notFound = (detail: string): ChatErrorReason => new NotFound({ deta
  * @internal
  */
 export const hasCode = (code: number) => (error: ChatError): boolean => error.reason.detail === String(code)
+
+/**
+ * A `denied` reason from a post that carries files, as a refused file: the
+ * same reason with detail `file_refused`, and the reason it replaces, with
+ * Discord's code, as its `cause`. Any other reason is returned as it is.
+ *
+ * @internal
+ */
+export const fileRefused = (reason: ChatErrorReason): ChatErrorReason => {
+  if (reason.retry !== "denied" || reason.detail === fileRefusedDetail) return reason
+  const fields = { detail: fileRefusedDetail, cause: reason }
+  switch (reason._tag) {
+    case "Unsupported":
+      return new Unsupported({ capability: reason.capability, ...fields })
+    case "Transport":
+      return new Transport({ retry: reason.retry, ...fields })
+    case "PlatformUnavailable":
+      return new PlatformUnavailable({ retry: reason.retry, ...fields })
+    case "NoAdapter":
+      return new NoAdapter(fields)
+    case "Unauthenticated":
+      return new Unauthenticated(fields)
+    case "Forbidden":
+      return new Forbidden(fields)
+    case "NotFound":
+      return new NotFound(fields)
+    case "TooLarge":
+      return new TooLarge({ ...(reason.subject === undefined ? {} : { subject: reason.subject }), ...fields })
+    case "InvalidRequest":
+      return new InvalidRequest(fields)
+    case "InvalidResponse":
+      return new InvalidResponse(fields)
+    case "RateLimited":
+    case "Unknown":
+      return reason
+  }
+}

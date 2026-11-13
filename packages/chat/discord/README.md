@@ -1,6 +1,6 @@
 # @effect/chat-discord
 
-A [Discord](https://discord.com) adapter for `effect/chat`, built on [dfx](https://github.com/tim-smart/dfx). Includes a structural gateway dispatch entry, a pure event normaliser, a default gateway layer, and every adapter op over dfx's REST client.
+A [Discord](https://discord.com) adapter for `effect/chat`, built on [dfx](https://github.com/tim-smart/dfx). Includes structural entries for gateway dispatches and interactions, pure normalisers, default gateway layers, buttons, selects and modals, and every adapter op over dfx's REST client.
 
 The adapter reads message text, so the application needs the privileged **Message Content** intent, switched on in Discord's developer portal and requested in your dfx gateway config. Without it, message text is empty unless the message mentions the bot, and attachments are missing.
 
