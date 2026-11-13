@@ -60,7 +60,9 @@ const decodeText = (bytes: Uint8Array): string => (sharedTextDecoder ??= new Tex
  * @since 4.0.0
  */
 export class RpcSerialization extends Context.Service<RpcSerialization, {
-  makeUnsafe(): Parser
+  makeUnsafe(options?: {
+    readonly onDecodeError?: ((error: unknown) => void) | undefined
+  }): Parser
   readonly contentType: string
   readonly includesFraming: boolean
   readonly codecFor: CodecFor
@@ -70,16 +72,18 @@ export class RpcSerialization extends Context.Service<RpcSerialization, {
  * A stateful parser for an RPC serialization format, able to decode input
  * chunks into protocol messages and encode messages for transport.
  *
- * `decode` throws on a malformed frame. A streaming format that is given
- * `onError` instead reports each malformed frame to it and keeps decoding the
- * frames around it.
+ * **Details**
+ *
+ * NDJSON parsers report malformed frames to `makeUnsafe`'s `onDecodeError`
+ * callback when provided, preserving valid frames around them. Otherwise,
+ * malformed frames throw. Other decoding failures may still throw.
  *
  * @stability unstable
  * @category serialization
  * @since 4.0.0
  */
 export interface Parser {
-  readonly decode: (data: Uint8Array | string, onError?: (error: NdjsonDecodeError) => void) => ReadonlyArray<unknown>
+  readonly decode: (data: Uint8Array | string) => ReadonlyArray<unknown>
   readonly encode: (response: unknown) => Uint8Array | string | undefined
 }
 
@@ -169,7 +173,8 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
     contentType: "application/x-ndjson",
     includesFraming: true,
     codecFor: codecForJson,
-    makeUnsafe: () => {
+    makeUnsafe: (options) => {
+      const onDecodeError = options?.onDecodeError
       // lazily created: string transports never need byte decoding
       let decoder: TextDecoder | undefined
       let buffer = ""
@@ -179,7 +184,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
         throw new MaxBufferSizeExceeded({ maxBufferSize })
       }
       return ({
-        decode: (bytes, onError) => {
+        decode: (bytes) => {
           buffer += typeof bytes === "string" ? bytes : (decoder ??= new TextDecoder()).decode(bytes, { stream: true })
           let position = 0
           let nlIndex = buffer.indexOf("\n", position)
@@ -195,12 +200,12 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
                 items.push(JSON.parse(line))
               } catch (cause) {
                 const error = new NdjsonDecodeError({ cause })
-                if (onError === undefined) {
+                if (onDecodeError === undefined) {
                   buffer = ""
                   decoder = undefined
                   throw error
                 }
-                onError(error)
+                onDecodeError(error)
               }
             }
             nlIndex = buffer.indexOf("\n", position)
@@ -300,16 +305,16 @@ export const ndJsonRpc = (options?: {
     contentType: options?.contentType ?? "application/json-rpc",
     includesFraming: true,
     codecFor: codecForJson,
-    makeUnsafe: () => {
-      const parser = makeNdjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
+    makeUnsafe: (parserOptions) => {
+      const parser = makeNdjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe(parserOptions)
       const controlMessages = options?.controlMessages ?? true
       const batches = new Map<string, {
         readonly size: number
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
       }>()
       return ({
-        decode: (bytes, onError) => {
-          const frames = parser.decode(bytes, onError)
+        decode: (bytes) => {
+          const frames = parser.decode(bytes)
           if (frames.length === 0) return []
           const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
           for (let i = 0; i < frames.length; i++) {
@@ -549,7 +554,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
       } as any
     }
     case "Defect":
-      if (response.defect instanceof NdjsonDecodeError) {
+      if (hasProperty(response.defect, "name") && response.defect.name === "NdjsonDecodeError") {
         return {
           jsonrpc: "2.0",
           id: null,

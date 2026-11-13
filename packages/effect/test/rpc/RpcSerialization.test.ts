@@ -362,7 +362,7 @@ describe("RpcSerialization", () => {
     assert.strictEqual(errors.length, 2)
     assert.instanceOf(errors[0], RpcSerialization.NdjsonDecodeError)
     assert.deepStrictEqual(parser.decode("3}\n"), [{ tail: 3 }])
-    assert.strictEqual(errors.length, 1)
+    assert.strictEqual(errors.length, 2)
   })
 
   it("jsonRpc encodes an NdjsonDecodeError defect as a parse error without the input", () => {

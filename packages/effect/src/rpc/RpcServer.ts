@@ -1598,19 +1598,19 @@ export const makeProtocolStdio = Effect.gen(function*() {
   const stdio = yield* Stdio
   const fiber = Fiber.getCurrent()!
   const serialization = yield* RpcSerialization.RpcSerialization
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
 
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
     const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(8)
-    const parser = serialization.makeUnsafe()
+    const errors: Array<unknown> = []
+    const parser = serialization.makeUnsafe({ onDecodeError: (error) => errors.push(error) })
 
     yield* stdio.stdin.pipe(
       Stream.runForEach((data) => {
-        // A malformed frame is answered on stdout and the rest of the chunk is still served, on the same
-        // subscription: retrying would resubscribe to stdin, which loses input that cannot be replayed.
-        const errors: Array<unknown> = []
+        errors.length = 0
         let decoded: ReadonlyArray<FromClientEncoded>
         try {
-          decoded = parser.decode(data, (error) => errors.push(error)) as ReadonlyArray<FromClientEncoded>
+          decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
         } catch (cause) {
           errors.push(cause)
           decoded = []
@@ -1621,7 +1621,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
         return Effect.whileLoop({
           while: () => e < errors.length,
           body: () => {
-            const encoded = parser.encode(ResponseDefectEncoded(errors[e++]))
+            const encoded = parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(errors[e++])))
             return encoded === undefined ? Effect.void : Queue.offer(queue, encoded)
           },
           step: constVoid

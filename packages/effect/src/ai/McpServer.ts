@@ -2687,14 +2687,14 @@ const mcpStdioSerialization = (
     contentType: serialization.contentType,
     includesFraming: true,
     codecFor: serialization.codecFor,
-    makeUnsafe: () => {
-      const frames = RpcSerialization.ndjson.makeUnsafe()
+    makeUnsafe: (options) => {
+      const frames = RpcSerialization.ndjson.makeUnsafe(options)
       const parser = serialization.makeUnsafe()
       let selectedProtocol: McpProtocol.ProtocolAdapter | undefined
       return {
-        decode: (data, onError) => {
+        decode: (data) => {
           const decoded: Array<unknown> = []
-          for (const frame of frames.decode(data, onError)) {
+          for (const frame of frames.decode(data)) {
             if (Array.isArray(frame)) {
               const acceptsBatch = selectedProtocol?.runtime.transport.jsonRpc.acceptsBatches === true
               if (
