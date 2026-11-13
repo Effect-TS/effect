@@ -26,4 +26,22 @@ describe("Statement", () => {
     expect(sql.csv).type.toBeCallableWith([Statement.fragment([])])
     expect(sql.csv).type.not.toBeCallableWith([plainFragment])
   })
+
+  it("onDialect requires a trino branch", () => {
+    const branches = {
+      sqlite: () => 1,
+      pg: () => 2,
+      mysql: () => 3,
+      mssql: () => 4,
+      clickhouse: () => 5
+    }
+    expect(sql.onDialect).type.not.toBeCallableWith(branches)
+    expect(sql.onDialect).type.toBeCallableWith({ ...branches, trino: () => 6 })
+  })
+
+  it("onDialectOrElse accepts a trino branch", () => {
+    expect(sql.onDialectOrElse({ orElse: () => "other" as const, trino: () => "trino" as const })).type.toBe<
+      "other" | "trino"
+    >()
+  })
 })
