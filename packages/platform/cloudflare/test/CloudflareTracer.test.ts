@@ -154,6 +154,41 @@ describe("CloudflareTracer", () => {
       assert.isTrue(span.ended)
     }))
 
+  it.effect("marks a span ended by interruption as interrupted rather than failed", () =>
+    Effect.gen(function*() {
+      const cloudflare = makeTracing()
+
+      yield* Effect.interrupt.pipe(
+        Effect.withSpan("long-poll"),
+        Effect.exit,
+        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+      )
+
+      const span = cloudflare.spans[0]
+      assert.deepStrictEqual(span.attributes, { "effect.fiber.interrupted": true })
+      assert.deepStrictEqual(span.status, { code: "unset" })
+      assert.deepStrictEqual(span.exceptions, [])
+      assert.isTrue(span.ended)
+    }))
+
+  it.effect("records no Cloudflare span for an unsampled span and nests its work under the sampled parent", () =>
+    Effect.gen(function*() {
+      const cloudflare = makeTracing()
+      const kvGet = Effect.sync(() => cloudflare.tracing.startSpan("kv_get").end())
+
+      yield* Effect.yieldNow.pipe(
+        Effect.andThen(kvGet),
+        Effect.withSpan("debug-step", { sampled: false }),
+        Effect.withSpan("handle-request"),
+        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+      )
+
+      assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
+        "request-1 > handle-request",
+        "request-1 > handle-request > kv_get"
+      ])
+    }))
+
   it.effect("keeps running an effect whose span outlived its invocation", () =>
     Effect.gen(function*() {
       const cloudflare = makeTracing()

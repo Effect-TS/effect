@@ -23,7 +23,10 @@
     "./packages/effect/typetest/reactivity/ReactivityKeys.tst.ts",
     // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
     // graph loads bun globals that clash with this project's node globals.
-    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts"
+    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts",
+    // Loads the Workers globals, which clash with this project's node globals.
+    // TSTyche still checks it in its own program.
+    "./packages/platform/cloudflare/typetest/CloudflareTracer.tst.ts"
   ],
   "compilerOptions": {
     "rootDir": ".",
