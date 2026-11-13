@@ -132,6 +132,27 @@ export const fromName = (name: string): string | undefined => {
  */
 export const toName = (emoji: string): string | undefined => table().bySequence.get(emoji)
 
+/**
+ * The longest emoji in the table that starts at `index`, with its name and
+ * its length in UTF-16 units, or `undefined`.
+ *
+ * @internal
+ */
+export const longestAt = (
+  text: string,
+  index: number
+): { readonly name: string; readonly length: number } | undefined => {
+  const { bySequence, lengthsByFirst } = table()
+  const codePoint = codePointAt(text, index)
+  for (const length of lengthsByFirst.get(codePoint) ?? []) {
+    const name = index + length <= text.length ? bySequence.get(text.slice(index, index + length)) : undefined
+    if (name !== undefined) return { name, length }
+  }
+  const width = codePoint > 0xffff ? 2 : 1
+  const name = bySequence.get(text.slice(index, index + width))
+  return name === undefined ? undefined : { name, length: width }
+}
+
 // Code points that are never an emoji on their own but join or modify emoji
 // sequences. Charging them more than one keeps blocksCost subadditive: an
 // emoji sequence split anywhere costs at least as much as the whole sequence.

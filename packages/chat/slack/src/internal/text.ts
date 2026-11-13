@@ -4,6 +4,8 @@
  * mentions from this field, not from the blocks, so the adapter always
  * builds it itself: Slack's own would carry every token intact.
  */
+import type { Action } from "effect/chat/ChatUi"
+import * as Actions from "./actions.ts"
 import * as Escape from "./escape.ts"
 import { codePoints } from "./length.ts"
 import { escapeMarkdown } from "./richText.ts"
@@ -183,23 +185,56 @@ export const build = (markdown: string, notify: Escape.Notify, budget: Budget): 
 export interface Body {
   /** The Markdown as sent in the block, for the length check. */
   readonly sent: string
-  readonly blocks: ReadonlyArray<{ readonly type: "markdown"; readonly text: string }>
+  readonly blocks: ReadonlyArray<unknown>
   readonly text: string
   readonly dropped: number
 }
 
 /**
  * The content of a `chat.postMessage` or `chat.update`: the Markdown as one
- * `markdown` block, escaped as `markdown_text` was, and the `text` from
- * `build`.
+ * `markdown` block, escaped as `markdown_text` was, then the elements as
+ * one `actions` block, and the `text` from `build`.
+ *
+ * With elements and no Markdown there is no `markdown` block, and `text`
+ * is the button labels joined by a space, escaped. Slack's own fallback,
+ * which appends the word "button" to each label, never appears.
  *
  * @internal
  */
-export const body = (markdown: string, notify: Escape.Notify, budget: Budget): Body => {
+export const body = (
+  markdown: string,
+  notify: Escape.Notify,
+  budget: Budget,
+  actions: ReadonlyArray<Action> = []
+): Body => {
+  if (markdown === "" && actions.length > 0) {
+    const built = build(Actions.labels(actions), {}, budget)
+    return withActions({ sent: "", blocks: [], text: built.text, dropped: built.dropped }, actions)
+  }
   const sent = Escape.escape(markdown, notify, { flush: true }).sent
   const built = build(markdown, notify, budget)
-  return { sent, blocks: [{ type: "markdown", text: sent }], text: built.text, dropped: built.dropped }
+  return withActions(
+    { sent, blocks: [{ type: "markdown", text: sent }], text: built.text, dropped: built.dropped },
+    actions
+  )
 }
+
+/**
+ * `body` with the elements' `actions` block last, when there are any.
+ *
+ * @internal
+ */
+export const withActions = (body: Body, actions: ReadonlyArray<Action>): Body =>
+  actions.length === 0 ? body : { ...body, blocks: [...body.blocks, Actions.block(actions)] }
+
+/**
+ * Whether `body` has an `actions` block, which is content enough without
+ * `text`.
+ *
+ * @internal
+ */
+export const hasActions = (body: Body): boolean =>
+  body.blocks.some((block) => (block as { readonly type?: unknown }).type === "actions")
 
 /**
  * The content of a post with files and no Markdown: the file names joined by

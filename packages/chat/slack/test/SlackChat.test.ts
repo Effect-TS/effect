@@ -3,6 +3,7 @@ import { SlackWebApi } from "@effect/chat-slack/SlackWebApi"
 import { assert, describe, it } from "@effect/vitest"
 import { type ChatErrorReason, fileRefused } from "effect/chat/ChatError"
 import { checkMessage, conformance } from "effect/chat/ChatTest"
+import type { Action } from "effect/chat/ChatUi"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -184,34 +185,87 @@ describe("post", () => {
 })
 
 describe("buttons and selects", () => {
-  const button = { _tag: "Button", id: "go", label: "Go" } as const
-  const select = { _tag: "Select", id: "pick", options: [{ label: "A", value: "a" }] } as const
+  const button = { _tag: "Button", id: "go", label: "Go <now>", value: "v", style: "primary" } as const
+  const link = { _tag: "LinkButton", label: "Docs", url: "https://effect.website/docs" } as const
+  const select = {
+    _tag: "Select",
+    id: "pick",
+    options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
+    selected: "b"
+  } as const
 
-  it.effect("are refused with Unsupported until the adapter supports them, calling nothing", () => {
+  it.effect("go as one actions block after the markdown, and with no markdown the labels are the text", () => {
+    const fake = makeFake({
+      "chat.postMessage": posted("1794509200.000100"),
+      "chat.update": posted("1794509200.000100")
+    })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        yield* slack.post(channelThread, { markdown: "Pick", actions: [button, link, select] })
+        yield* slack.edit(channelThread, "1794509200.000100", { markdown: "", actions: [button, link] })
+        const [post] = fake.called("chat.postMessage")
+        assert.deepStrictEqual(JSON.parse(post.params.blocks), [
+          { type: "markdown", text: "Pick" },
+          {
+            type: "actions",
+            block_id: "chat1",
+            elements: [
+              {
+                type: "button",
+                action_id: "go",
+                text: { type: "plain_text", text: "Go <now>" },
+                value: "v",
+                style: "primary"
+              },
+              {
+                type: "button",
+                action_id: "\u241F1",
+                text: { type: "plain_text", text: "Docs" },
+                url: "https://effect.website/docs"
+              },
+              {
+                type: "static_select",
+                action_id: "pick",
+                options: [
+                  { text: { type: "plain_text", text: "A" }, value: "a" },
+                  { text: { type: "plain_text", text: "B" }, value: "b" }
+                ],
+                initial_option: { text: { type: "plain_text", text: "B" }, value: "b" }
+              }
+            ]
+          }
+        ])
+        const [edit] = fake.called("chat.update")
+        assert.deepStrictEqual(JSON.parse(edit.params.blocks).map((block: any) => block.type), ["actions"])
+        assert.strictEqual(edit.params.text, "Go &lt;now&gt; Docs")
+      })
+    )
+  })
+
+  it.effect("are refused before any call for an id Slack or the adapter can't take", () => {
     const fake = makeFake({})
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const post = yield* reason(slack.post(channelThread, { markdown: "x", actions: [button] }))
-        assert.deepStrictEqual([post.op, post.tag], ["post", "Unsupported"])
-        const edit = yield* reason(slack.edit(channelThread, "1.2", { markdown: "x", actions: [select] }))
-        assert.deepStrictEqual([edit.op, edit.tag], ["edit", "Unsupported"])
-        assert.strictEqual(fake.called("chat.postMessage").length + fake.called("chat.update").length, 0)
+        const refused = (actions: ReadonlyArray<Action>) =>
+          reason(slack.post(channelThread, { markdown: "x", actions }))
+        assert.deepStrictEqual(
+          [
+            yield* refused([{ ...button, id: "a\u241Fb" }]),
+            yield* refused([{ ...button, id: "日".repeat(256) }]),
+            yield* refused([{ ...select, id: "i".repeat(10), options: [{ label: "A", value: "v".repeat(1_991) }] }])
+          ].map((error) => [error.op, error.tag, error.detail]),
+          [
+            ["post", "InvalidRequest", "invalid_action_id"],
+            ["post", "TooLarge", "action_id_too_long"],
+            ["post", "TooLarge", "action_data_too_long"]
+          ]
+        )
+        assert.strictEqual(fake.called("chat.postMessage").length, 0)
       })
-    )
-  })
-
-  it.effect("pass unsupported/buttons and unsupported/selects over the stub", () => {
-    const rules = conformance({
-      platform: "slack",
-      thread: channelThread,
-      userPosts: () => Effect.die("unused"),
-      parseMention: SlackChat.parseMention
-    })
-    return run(
-      makeFake({ "auth.test": authTest }),
-      Effect.andThen(rules["unsupported/buttons"], rules["unsupported/selects"])
     )
   })
 })
@@ -287,6 +341,22 @@ describe("files", () => {
         assert.deepStrictEqual(JSON.parse(post.blocks), [{ type: "markdown", text: "\\*a\\*.txt, &lt;@U1>.csv" }])
         assert.strictEqual(post.text, "*a*.txt, &lt;@U1&gt;.csv")
         assert.strictEqual(fake.called("chat.update")[0].params.text, post.text)
+      })
+    )
+  })
+
+  it.effect("a post with files and buttons carries the actions block on the post and the attach", () => {
+    const fake = makeFake({ ...upload(["F1"]), "chat.postMessage": posted(ts) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const slack = yield* adapter
+        const actions = [{ _tag: "Button", id: "go", label: "Go" }] as const
+        yield* slack.post(channelThread, { markdown: "", files: [file("a.txt")], actions })
+        const post = fake.called("chat.postMessage")[0].params
+        assert.deepStrictEqual(JSON.parse(post.blocks).map((block: any) => block.type), ["markdown", "actions"])
+        assert.strictEqual(post.text, "a.txt")
+        assert.strictEqual(fake.called("chat.update")[0].params.blocks, post.blocks)
       })
     )
   })

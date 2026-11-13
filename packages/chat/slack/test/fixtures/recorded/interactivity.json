@@ -1,0 +1,244 @@
+{
+  "source": "EFF-3726 series H in chat-testing-123, as the Interactivity Request URL received them, with the verification token, response_url and most of trigger_id redacted. The click is on an element of a block another app built; the submit is of a view the adapter did not open.",
+  "cases": {
+    "block_actions": {
+      "type": "block_actions",
+      "user": {
+        "id": "U080YLYB277",
+        "username": "tim.smart",
+        "name": "tim.smart",
+        "team_id": "T05479Z6JBW"
+      },
+      "api_app_id": "A0CCHBHDK7X",
+      "token": "<redacted>",
+      "container": {
+        "type": "message",
+        "message_ts": "1794535967.302589",
+        "channel_id": "C0CH1LGJ4F3",
+        "is_ephemeral": false
+      },
+      "trigger_id": "12585269731701<redacted>",
+      "team": {
+        "id": "T05479Z6JBW",
+        "domain": "effectfulworkspace"
+      },
+      "enterprise": null,
+      "is_enterprise_install": false,
+      "channel": {
+        "id": "C0CH1LGJ4F3",
+        "name": "privategroup"
+      },
+      "message": {
+        "user": "U0CCLMD4S1L",
+        "type": "message",
+        "ts": "1794535967.302589",
+        "bot_id": "B0CCQH77VA5",
+        "app_id": "A0CCHBHDK7X",
+        "text": "EFF-3726 click test",
+        "team": "T05479Z6JBW",
+        "blocks": [
+          {
+            "type": "section",
+            "block_id": "q6zWT",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*EFF-3726 click test (series H).* Click 1 to 7 in order, one at a time, and note what the client shows after each.",
+              "verbatim": false
+            }
+          },
+          {
+            "type": "actions",
+            "block_id": "h_clicks",
+            "elements": [
+              {
+                "type": "button",
+                "action_id": "ack_now",
+                "text": {
+                  "type": "plain_text",
+                  "text": "1 ack now",
+                  "emoji": true
+                },
+                "value": "ack_now"
+              },
+              {
+                "type": "button",
+                "action_id": "ack_late_5s",
+                "text": {
+                  "type": "plain_text",
+                  "text": "2 ack at 5s",
+                  "emoji": true
+                },
+                "value": "ack_late_5s"
+              },
+              {
+                "type": "button",
+                "action_id": "ack_late_20s",
+                "text": {
+                  "type": "plain_text",
+                  "text": "3 ack at 20s",
+                  "emoji": true
+                },
+                "value": "ack_late_20s"
+              },
+              {
+                "type": "button",
+                "action_id": "ack_never",
+                "text": {
+                  "type": "plain_text",
+                  "text": "4 never ack",
+                  "emoji": true
+                },
+                "value": "ack_never"
+              }
+            ]
+          },
+          {
+            "type": "actions",
+            "block_id": "h_modals",
+            "elements": [
+              {
+                "type": "button",
+                "action_id": "open_modal_ok",
+                "text": {
+                  "type": "plain_text",
+                  "text": "5 modal, submit acked",
+                  "emoji": true
+                },
+                "value": "open_modal_ok"
+              },
+              {
+                "type": "button",
+                "action_id": "open_modal_late_5s",
+                "text": {
+                  "type": "plain_text",
+                  "text": "6 modal, submit acked at 5s",
+                  "emoji": true
+                },
+                "value": "open_modal_late_5s"
+              },
+              {
+                "type": "button",
+                "action_id": "open_modal_never",
+                "text": {
+                  "type": "plain_text",
+                  "text": "7 modal, submit never acked",
+                  "emoji": true
+                },
+                "value": "open_modal_never"
+              }
+            ]
+          }
+        ]
+      },
+      "state": {
+        "values": {}
+      },
+      "response_url": "<redacted>",
+      "actions": [
+        {
+          "type": "button",
+          "block_id": "h_modals",
+          "action_id": "open_modal_ok",
+          "text": {
+            "type": "plain_text",
+            "text": "5 modal, submit acked",
+            "emoji": true
+          },
+          "value": "open_modal_ok",
+          "action_ts": "1794536129.903602"
+        }
+      ]
+    },
+    "view_submission": {
+      "type": "view_submission",
+      "team": {
+        "id": "T05479Z6JBW",
+        "domain": "effectfulworkspace"
+      },
+      "user": {
+        "id": "U080YLYB277",
+        "username": "tim.smart",
+        "name": "tim.smart",
+        "team_id": "T05479Z6JBW"
+      },
+      "api_app_id": "A0CCHBHDK7X",
+      "token": "<redacted>",
+      "trigger_id": "12618937762224<redacted>",
+      "view": {
+        "id": "V0CHAHJNBSS",
+        "team_id": "T05479Z6JBW",
+        "type": "modal",
+        "blocks": [
+          {
+            "type": "section",
+            "block_id": "9aEq0",
+            "text": {
+              "type": "mrkdwn",
+              "text": "EFF-3726 test modal *submit_ok*. Wait for the test channel to say the limit probe is done before you submit.",
+              "verbatim": false
+            }
+          },
+          {
+            "type": "input",
+            "block_id": "b_note",
+            "label": {
+              "type": "plain_text",
+              "text": "Note",
+              "emoji": true
+            },
+            "optional": true,
+            "dispatch_action": false,
+            "element": {
+              "type": "plain_text_input",
+              "action_id": "note",
+              "dispatch_action_config": {
+                "trigger_actions_on": [
+                  "on_enter_pressed"
+                ]
+              }
+            }
+          }
+        ],
+        "private_metadata": "{\"q\":\"\\\"quoted\\\"\",\"amp\":\"a&b <c> &lt;d&gt;\",\"emoji\":\"😀👩🏽‍💻\",\"nl\":\"line1\\nline2\\ttab\",\"uni\":\"é ü 日本\",\"pad\":\"  trailing  \"}",
+        "callback_id": "submit_ok",
+        "state": {
+          "values": {
+            "b_note": {
+              "note": {
+                "type": "plain_text_input",
+                "value": "hello"
+              }
+            }
+          }
+        },
+        "hash": "1794536131.FvPOkwwj",
+        "title": {
+          "type": "plain_text",
+          "text": "EFF-3726",
+          "emoji": true
+        },
+        "clear_on_close": false,
+        "notify_on_close": false,
+        "close": {
+          "type": "plain_text",
+          "text": "Cancel",
+          "emoji": true
+        },
+        "submit": {
+          "type": "plain_text",
+          "text": "Submit",
+          "emoji": true
+        },
+        "previous_view_id": null,
+        "root_view_id": "V0CHAHJNBSS",
+        "app_id": "A0CCHBHDK7X",
+        "external_id": "",
+        "app_installed_team_id": "T05479Z6JBW",
+        "bot_id": "B0CCQH77VA5"
+      },
+      "response_urls": [],
+      "is_enterprise_install": false,
+      "enterprise": null
+    }
+  }
+}
