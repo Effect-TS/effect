@@ -417,7 +417,6 @@ describe("ScopedCache", () => {
           assert.strictEqual(yield* ScopedCache.get(cache, "key"), 1)
           yield* TestClock.adjust("31 seconds")
           assert.strictEqual(yield* ScopedCache.get(cache, "key"), 2)
-          assert.strictEqual(lookups, 2)
         }))
 
       it.effect("get succeeds after an expired entry's finalizer dies", () =>

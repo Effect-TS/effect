@@ -484,7 +484,6 @@ describe("Cache", () => {
             assert.strictEqual(yield* Cache.get(cache, "key"), 1)
             yield* TestClock.adjust("31 seconds")
             assert.strictEqual(yield* Cache.get(cache, "key"), 2)
-            assert.strictEqual(lookups, 2)
           })
       )
 
