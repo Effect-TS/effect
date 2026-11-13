@@ -311,32 +311,41 @@ describe("Chat", () => {
     )
   })
 
-  it.effect("does not replay a completed approved tool after streaming with tool call resolution disabled", () => {
+  it.effect("preserves approval results when streaming with tool call resolution disabled", () => {
     let executions = 0
     const toolkit = Toolkit.make(Tool.make("Counter", {
-      parameters: Schema.Struct({}),
       success: Schema.Number,
       needsApproval: true
     }))
 
     return Effect.gen(function*() {
       const chat = yield* Chat.empty
-      const initial = yield* chat.generateText({ prompt: "Run the counter", toolkit }).pipe(
+      const initial = yield* chat.generateText({ prompt: "Run the counters", toolkit }).pipe(
         TestUtils.withLanguageModel({
-          generateText: [{ type: "tool-call", id: "counter-call", name: "Counter", params: {} }]
+          generateText: [
+            { type: "tool-call", id: "approved", name: "Counter", params: {} },
+            { type: "tool-call", id: "denied", name: "Counter", params: {} }
+          ]
         })
       )
-      const approval = initial.content.find((part) => part.type === "tool-approval-request")
-      assert.isDefined(approval)
-
-      yield* chat.streamText({
+      const parts = yield* chat.streamText({
         toolkit,
         disableToolCallResolution: true,
         prompt: [Prompt.toolMessage({
-          content: [Prompt.toolApprovalResponsePart({ approvalId: approval.approvalId, approved: true })]
+          content: initial.content.filter((part) => part.type === "tool-approval-request").map((part) =>
+            Prompt.toolApprovalResponsePart({
+              approvalId: part.approvalId,
+              approved: part.toolCallId === "approved"
+            })
+          )
         })]
-      }).pipe(Stream.runDrain)
+      }).pipe(Stream.runCollect)
 
+      assert.deepStrictEqual(parts.map((part) => part.type === "tool-result" ? part.id : part.type), [
+        "approved",
+        "denied",
+        "finish"
+      ])
       assert.strictEqual(executions, 1)
 
       yield* chat.streamText({ prompt: "Continue", toolkit, disableToolCallResolution: true }).pipe(Stream.runDrain)
