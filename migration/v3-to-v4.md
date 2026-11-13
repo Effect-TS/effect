@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `7db415ae0e36bbfadeb967f4ea59158c6b93cbcc` (`7db415ae0e36bbfadeb967f4ea59158c6b93cbcc`)
+Head: `f79ead4ef218c8e889c1778a41f49df238a3a418` (`f79ead4ef218c8e889c1778a41f49df238a3a418`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -9611,7 +9611,7 @@ Arbitrary.schema(schema)
 
 - `Config.boolean` -> `Config.Boolean`: Direct constructor rename.
 
-- `Config.branded` -> `Config.schema(schema.pipe(Schema.brand(brand)), path)`: Brand validation moved to Schema; define the branded schema and construct the Config with Config.schema.
+- `Config.branded` -> `Config.schema(schema.pipe(Schema.fromBrand(key, constructor)), path)`: Brand validation moved to Schema; use Schema.fromBrand with the brand key and the existing Brand.Constructor to preserve its checks. Schema.brand only adds a nominal brand and does not run constructor checks.
 
 - `Config.chunk` -> `Config.schema(Schema.Chunk(valueSchema), path)`: Collection parsing is schema-based in v4; use Schema.Chunk when a Chunk result is still required.
 
