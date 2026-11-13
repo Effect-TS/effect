@@ -322,9 +322,103 @@ describe("buttons and selects", () => {
   })
 })
 
+describe("recorded components", () => {
+  // fixtures/recorded/components.json: what Discord accepted and refused in #test.
+  const call = (name: string) => step("components", name)
+  const styles = ["default", "primary", "danger"] as const
+  const sentRows = (actions: ReadonlyArray<ChatUi.Action>) => {
+    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        yield* discord.post(channel, { markdown: "x", actions })
+        return fake.called("createMessage")[0][1].components
+      })
+    )
+  }
+  const buttons = (from: number, to: number): Array<ChatUi.Action> =>
+    Array.from(
+      { length: to - from },
+      (_, i) => ({ _tag: "Button", id: "b" + (from + i), label: "b" + (from + i), value: "v" + (from + i) })
+    )
+  const options = (n: number) => Array.from({ length: n }, (_, i) => ({ label: "o" + i, value: "o" + i }))
+
+  it.effect("the rows the adapter builds are the rows Discord accepted", () =>
+    Effect.gen(function*() {
+      const cases: ReadonlyArray<readonly [string, ReadonlyArray<ChatUi.Action>]> = [
+        ["rows-25-buttons", [
+          ...Array.from({ length: 24 }, (_, i): ChatUi.Action => ({
+            _tag: "Button",
+            id: "b" + i,
+            label: "b" + i,
+            value: "v" + i,
+            style: styles[i % 3]
+          })),
+          { _tag: "LinkButton", label: "link", url: "https://effect.website" }
+        ]],
+        ["rows-selects-and-buttons", [
+          ...buttons(0, 5),
+          { _tag: "Select", id: "s1", options: options(25), selected: "o3" },
+          ...buttons(5, 10),
+          { _tag: "Select", id: "s2", options: options(2) },
+          ...buttons(10, 15)
+        ]],
+        ["custom-id-100-ascii-with-join", [{ _tag: "Button", id: "a".repeat(98), label: "x", value: "b" }]],
+        // 100 code points but 150 UTF-16 units: Discord counts code points.
+        ["custom-id-100-code-points-astral", [{
+          _tag: "Button",
+          id: "a".repeat(49),
+          label: "x",
+          value: "\u{1F600}".repeat(50)
+        }]]
+      ]
+      for (const [name, actions] of cases) {
+        assert.strictEqual(call(name).status, 200)
+        assert.deepStrictEqual(yield* sentRows(actions), call(name).request.components, name)
+      }
+    }))
+
+  it.effect("what Discord refused, the adapter refuses before a call", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const post = (actions: ReadonlyArray<ChatUi.Action>) =>
+          reason(discord.post(channel, { markdown: "x", actions }))
+        const cases: ReadonlyArray<readonly [string, ReadonlyArray<ChatUi.Action>, string]> = [
+          ["twenty-six-buttons", buttons(0, 26), "too_many_actions"],
+          [
+            "six-rows",
+            Array.from({ length: 6 }, (_, i) => ({ _tag: "Select", id: "s" + i, options: options(2) })),
+            "too_many_actions"
+          ],
+          [
+            "custom-id-101-ascii",
+            [{ _tag: "Button", id: "a".repeat(100), label: "x", value: "b" }],
+            "action_data_too_long"
+          ],
+          ["custom-id-101-code-points-astral", [{
+            _tag: "Button",
+            id: "a".repeat(50),
+            label: "x",
+            value: "\u{1F600}".repeat(50)
+          }], "action_data_too_long"]
+        ]
+        for (const [name, actions, detail] of cases) {
+          assert.deepStrictEqual([call(name).status, call(name).response.code], [400, 50035], name)
+          assert.deepStrictEqual(yield* post(actions), { op: "post", tag: "TooLarge", detail, retry: "denied" }, name)
+        }
+        assert.strictEqual(fake.calls.length, 0)
+      })
+    )
+  })
+})
+
 describe("files", () => {
   const file = { name: "fixture.txt", contentType: "text/plain", content: new TextEncoder().encode("hello") }
-  const refused = (fail: () => Effect.Effect<never, unknown>) => {
+  const refused = (fail: () => Effect.Effect<unknown, unknown>) => {
     const fake = makeFake({ createMessage: fail })
     return run(
       fake,
@@ -344,7 +438,11 @@ describe("files", () => {
         assert.strictEqual(result.retry, "denied")
         assert.strictEqual((result.cause as any).detail, String(code))
       }
-      // A 413 from Discord's edge has no JSON body.
+      // Discord's own 413, as recorded in fixtures/recorded/uploads.json.
+      const oversize = yield* refused(() => answer(step("uploads", "upload-20MiB-plus-1")))
+      assert.deepStrictEqual([oversize.tag, oversize.detail, oversize.retry], ["TooLarge", "file_refused", "denied"])
+      assert.strictEqual((oversize.cause as any).detail, "40005")
+      // A 413 with no JSON body, as a proxy in between might send.
       const edge = yield* refused(() =>
         Effect.fail({ _tag: "HttpClientError", reason: { _tag: "DecodeError", response: { status: 413 } } })
       )
@@ -371,6 +469,10 @@ describe("files", () => {
           assert.deepStrictEqual(result, { op: "post", tag: "TooLarge", detail: "file_refused", retry: "denied" })
         }
         assert.strictEqual(fake.calls.length, 0)
+        // The check refuses nothing Discord would take: it accepted 20 MiB in a guild with no boosts.
+        const accepted = step("uploads", "upload-20MiB")
+        assert.strictEqual(accepted.status, 200)
+        assert.isAtMost(discord.descriptor.limits.uploadBytes, accepted.request["files[0]"].bytes)
       })
     )
   })

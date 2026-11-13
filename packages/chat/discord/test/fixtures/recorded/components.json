@@ -1,0 +1,2345 @@
+{
+  "case": "Action rows as the adapter's rows() builds them and as Discord refuses them, an edit that clears them, custom_id length in code points, and callbacks for an interaction Discord doesn't know",
+  "provenance": {
+    "kind": "recorded",
+    "source": "Discord REST v10 with the Janitor bot token, from a local script",
+    "where": "guild 840178841540362250 (Tim's test guild); #test 1570605581192929301. The callbacks name no guild: their interaction id and token are made up, and Discord answers 10062 before it reads the body",
+    "recordedAt": "2026-11-13T08:40Z, during EFF-3755",
+    "body": "Each response verbatim, apart from signed CDN URLs, whose query is replaced; see scrubbed. Every posted message was deleted after it was read"
+  },
+  "calls": [
+    {
+      "step": "rows-25-buttons",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: rows-25-buttons",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b1",
+                "custom_id": "b1␟v1"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b2",
+                "custom_id": "b2␟v2"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b3",
+                "custom_id": "b3␟v3"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b4",
+                "custom_id": "b4␟v4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b5",
+                "custom_id": "b5␟v5"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b6",
+                "custom_id": "b6␟v6"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b7",
+                "custom_id": "b7␟v7"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b8",
+                "custom_id": "b8␟v8"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b9",
+                "custom_id": "b9␟v9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b10",
+                "custom_id": "b10␟v10"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b11",
+                "custom_id": "b11␟v11"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b12",
+                "custom_id": "b12␟v12"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b13",
+                "custom_id": "b13␟v13"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b14",
+                "custom_id": "b14␟v14"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b15",
+                "custom_id": "b15␟v15"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b16",
+                "custom_id": "b16␟v16"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b17",
+                "custom_id": "b17␟v17"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b18",
+                "custom_id": "b18␟v18"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b19",
+                "custom_id": "b19␟v19"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b20",
+                "custom_id": "b20␟v20"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b21",
+                "custom_id": "b21␟v21"
+              },
+              {
+                "type": 2,
+                "style": 1,
+                "label": "b22",
+                "custom_id": "b22␟v22"
+              },
+              {
+                "type": 2,
+                "style": 4,
+                "label": "b23",
+                "custom_id": "b23␟v23"
+              },
+              {
+                "type": 2,
+                "style": 5,
+                "label": "link",
+                "url": "https://effect.website"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: rows-25-buttons",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:57.239000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "b0␟v0",
+                "style": 2,
+                "label": "b0"
+              },
+              {
+                "type": 2,
+                "id": 3,
+                "custom_id": "b1␟v1",
+                "style": 1,
+                "label": "b1"
+              },
+              {
+                "type": 2,
+                "id": 4,
+                "custom_id": "b2␟v2",
+                "style": 4,
+                "label": "b2"
+              },
+              {
+                "type": 2,
+                "id": 5,
+                "custom_id": "b3␟v3",
+                "style": 2,
+                "label": "b3"
+              },
+              {
+                "type": 2,
+                "id": 6,
+                "custom_id": "b4␟v4",
+                "style": 1,
+                "label": "b4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 7,
+            "components": [
+              {
+                "type": 2,
+                "id": 8,
+                "custom_id": "b5␟v5",
+                "style": 4,
+                "label": "b5"
+              },
+              {
+                "type": 2,
+                "id": 9,
+                "custom_id": "b6␟v6",
+                "style": 2,
+                "label": "b6"
+              },
+              {
+                "type": 2,
+                "id": 10,
+                "custom_id": "b7␟v7",
+                "style": 1,
+                "label": "b7"
+              },
+              {
+                "type": 2,
+                "id": 11,
+                "custom_id": "b8␟v8",
+                "style": 4,
+                "label": "b8"
+              },
+              {
+                "type": 2,
+                "id": 12,
+                "custom_id": "b9␟v9",
+                "style": 2,
+                "label": "b9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 13,
+            "components": [
+              {
+                "type": 2,
+                "id": 14,
+                "custom_id": "b10␟v10",
+                "style": 1,
+                "label": "b10"
+              },
+              {
+                "type": 2,
+                "id": 15,
+                "custom_id": "b11␟v11",
+                "style": 4,
+                "label": "b11"
+              },
+              {
+                "type": 2,
+                "id": 16,
+                "custom_id": "b12␟v12",
+                "style": 2,
+                "label": "b12"
+              },
+              {
+                "type": 2,
+                "id": 17,
+                "custom_id": "b13␟v13",
+                "style": 1,
+                "label": "b13"
+              },
+              {
+                "type": 2,
+                "id": 18,
+                "custom_id": "b14␟v14",
+                "style": 4,
+                "label": "b14"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 19,
+            "components": [
+              {
+                "type": 2,
+                "id": 20,
+                "custom_id": "b15␟v15",
+                "style": 2,
+                "label": "b15"
+              },
+              {
+                "type": 2,
+                "id": 21,
+                "custom_id": "b16␟v16",
+                "style": 1,
+                "label": "b16"
+              },
+              {
+                "type": 2,
+                "id": 22,
+                "custom_id": "b17␟v17",
+                "style": 4,
+                "label": "b17"
+              },
+              {
+                "type": 2,
+                "id": 23,
+                "custom_id": "b18␟v18",
+                "style": 2,
+                "label": "b18"
+              },
+              {
+                "type": 2,
+                "id": 24,
+                "custom_id": "b19␟v19",
+                "style": 1,
+                "label": "b19"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 25,
+            "components": [
+              {
+                "type": 2,
+                "id": 26,
+                "custom_id": "b20␟v20",
+                "style": 4,
+                "label": "b20"
+              },
+              {
+                "type": 2,
+                "id": 27,
+                "custom_id": "b21␟v21",
+                "style": 2,
+                "label": "b21"
+              },
+              {
+                "type": 2,
+                "id": 28,
+                "custom_id": "b22␟v22",
+                "style": 1,
+                "label": "b22"
+              },
+              {
+                "type": 2,
+                "id": 29,
+                "custom_id": "b23␟v23",
+                "style": 4,
+                "label": "b23"
+              },
+              {
+                "type": 2,
+                "id": 30,
+                "style": 5,
+                "label": "link",
+                "url": "https://effect.website"
+              }
+            ]
+          }
+        ],
+        "id": "1570720111872975040",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "rows-25-buttons/read",
+      "method": "GET",
+      "path": "/channels/1570605581192929301/messages/1570720111872975040",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: rows-25-buttons",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:57.239000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "b0␟v0",
+                "style": 2,
+                "label": "b0"
+              },
+              {
+                "type": 2,
+                "id": 3,
+                "custom_id": "b1␟v1",
+                "style": 1,
+                "label": "b1"
+              },
+              {
+                "type": 2,
+                "id": 4,
+                "custom_id": "b2␟v2",
+                "style": 4,
+                "label": "b2"
+              },
+              {
+                "type": 2,
+                "id": 5,
+                "custom_id": "b3␟v3",
+                "style": 2,
+                "label": "b3"
+              },
+              {
+                "type": 2,
+                "id": 6,
+                "custom_id": "b4␟v4",
+                "style": 1,
+                "label": "b4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 7,
+            "components": [
+              {
+                "type": 2,
+                "id": 8,
+                "custom_id": "b5␟v5",
+                "style": 4,
+                "label": "b5"
+              },
+              {
+                "type": 2,
+                "id": 9,
+                "custom_id": "b6␟v6",
+                "style": 2,
+                "label": "b6"
+              },
+              {
+                "type": 2,
+                "id": 10,
+                "custom_id": "b7␟v7",
+                "style": 1,
+                "label": "b7"
+              },
+              {
+                "type": 2,
+                "id": 11,
+                "custom_id": "b8␟v8",
+                "style": 4,
+                "label": "b8"
+              },
+              {
+                "type": 2,
+                "id": 12,
+                "custom_id": "b9␟v9",
+                "style": 2,
+                "label": "b9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 13,
+            "components": [
+              {
+                "type": 2,
+                "id": 14,
+                "custom_id": "b10␟v10",
+                "style": 1,
+                "label": "b10"
+              },
+              {
+                "type": 2,
+                "id": 15,
+                "custom_id": "b11␟v11",
+                "style": 4,
+                "label": "b11"
+              },
+              {
+                "type": 2,
+                "id": 16,
+                "custom_id": "b12␟v12",
+                "style": 2,
+                "label": "b12"
+              },
+              {
+                "type": 2,
+                "id": 17,
+                "custom_id": "b13␟v13",
+                "style": 1,
+                "label": "b13"
+              },
+              {
+                "type": 2,
+                "id": 18,
+                "custom_id": "b14␟v14",
+                "style": 4,
+                "label": "b14"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 19,
+            "components": [
+              {
+                "type": 2,
+                "id": 20,
+                "custom_id": "b15␟v15",
+                "style": 2,
+                "label": "b15"
+              },
+              {
+                "type": 2,
+                "id": 21,
+                "custom_id": "b16␟v16",
+                "style": 1,
+                "label": "b16"
+              },
+              {
+                "type": 2,
+                "id": 22,
+                "custom_id": "b17␟v17",
+                "style": 4,
+                "label": "b17"
+              },
+              {
+                "type": 2,
+                "id": 23,
+                "custom_id": "b18␟v18",
+                "style": 2,
+                "label": "b18"
+              },
+              {
+                "type": 2,
+                "id": 24,
+                "custom_id": "b19␟v19",
+                "style": 1,
+                "label": "b19"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 25,
+            "components": [
+              {
+                "type": 2,
+                "id": 26,
+                "custom_id": "b20␟v20",
+                "style": 4,
+                "label": "b20"
+              },
+              {
+                "type": 2,
+                "id": 27,
+                "custom_id": "b21␟v21",
+                "style": 2,
+                "label": "b21"
+              },
+              {
+                "type": 2,
+                "id": 28,
+                "custom_id": "b22␟v22",
+                "style": 1,
+                "label": "b22"
+              },
+              {
+                "type": 2,
+                "id": 29,
+                "custom_id": "b23␟v23",
+                "style": 4,
+                "label": "b23"
+              },
+              {
+                "type": 2,
+                "id": 30,
+                "style": 5,
+                "label": "link",
+                "url": "https://effect.website"
+              }
+            ]
+          }
+        ],
+        "id": "1570720111872975040",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "rows-25-buttons/edit-clears",
+      "method": "PATCH",
+      "path": "/channels/1570605581192929301/messages/1570720111872975040",
+      "request": {
+        "content": "effect-chat probe: edited",
+        "components": []
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: edited",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:57.239000+00:00",
+        "edited_timestamp": "2026-11-13T08:40:57.601507+00:00",
+        "flags": 0,
+        "components": [],
+        "id": "1570720111872975040",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "rows-selects-and-buttons",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: rows-selects-and-buttons",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b1",
+                "custom_id": "b1␟v1"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b2",
+                "custom_id": "b2␟v2"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b3",
+                "custom_id": "b3␟v3"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b4",
+                "custom_id": "b4␟v4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 3,
+                "custom_id": "s1",
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  },
+                  {
+                    "label": "o2",
+                    "value": "o2"
+                  },
+                  {
+                    "label": "o3",
+                    "value": "o3",
+                    "default": true
+                  },
+                  {
+                    "label": "o4",
+                    "value": "o4"
+                  },
+                  {
+                    "label": "o5",
+                    "value": "o5"
+                  },
+                  {
+                    "label": "o6",
+                    "value": "o6"
+                  },
+                  {
+                    "label": "o7",
+                    "value": "o7"
+                  },
+                  {
+                    "label": "o8",
+                    "value": "o8"
+                  },
+                  {
+                    "label": "o9",
+                    "value": "o9"
+                  },
+                  {
+                    "label": "o10",
+                    "value": "o10"
+                  },
+                  {
+                    "label": "o11",
+                    "value": "o11"
+                  },
+                  {
+                    "label": "o12",
+                    "value": "o12"
+                  },
+                  {
+                    "label": "o13",
+                    "value": "o13"
+                  },
+                  {
+                    "label": "o14",
+                    "value": "o14"
+                  },
+                  {
+                    "label": "o15",
+                    "value": "o15"
+                  },
+                  {
+                    "label": "o16",
+                    "value": "o16"
+                  },
+                  {
+                    "label": "o17",
+                    "value": "o17"
+                  },
+                  {
+                    "label": "o18",
+                    "value": "o18"
+                  },
+                  {
+                    "label": "o19",
+                    "value": "o19"
+                  },
+                  {
+                    "label": "o20",
+                    "value": "o20"
+                  },
+                  {
+                    "label": "o21",
+                    "value": "o21"
+                  },
+                  {
+                    "label": "o22",
+                    "value": "o22"
+                  },
+                  {
+                    "label": "o23",
+                    "value": "o23"
+                  },
+                  {
+                    "label": "o24",
+                    "value": "o24"
+                  }
+                ],
+                "min_values": 1,
+                "max_values": 1
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b5",
+                "custom_id": "b5␟v5"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b6",
+                "custom_id": "b6␟v6"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b7",
+                "custom_id": "b7␟v7"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b8",
+                "custom_id": "b8␟v8"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b9",
+                "custom_id": "b9␟v9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 3,
+                "custom_id": "s2",
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  }
+                ],
+                "min_values": 1,
+                "max_values": 1
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b10",
+                "custom_id": "b10␟v10"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b11",
+                "custom_id": "b11␟v11"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b12",
+                "custom_id": "b12␟v12"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b13",
+                "custom_id": "b13␟v13"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b14",
+                "custom_id": "b14␟v14"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: rows-selects-and-buttons",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:57.926000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "b0␟v0",
+                "style": 2,
+                "label": "b0"
+              },
+              {
+                "type": 2,
+                "id": 3,
+                "custom_id": "b1␟v1",
+                "style": 2,
+                "label": "b1"
+              },
+              {
+                "type": 2,
+                "id": 4,
+                "custom_id": "b2␟v2",
+                "style": 2,
+                "label": "b2"
+              },
+              {
+                "type": 2,
+                "id": 5,
+                "custom_id": "b3␟v3",
+                "style": 2,
+                "label": "b3"
+              },
+              {
+                "type": 2,
+                "id": 6,
+                "custom_id": "b4␟v4",
+                "style": 2,
+                "label": "b4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 7,
+            "components": [
+              {
+                "type": 3,
+                "id": 8,
+                "custom_id": "s1",
+                "min_values": 1,
+                "max_values": 1,
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  },
+                  {
+                    "label": "o2",
+                    "value": "o2"
+                  },
+                  {
+                    "label": "o3",
+                    "value": "o3",
+                    "default": true
+                  },
+                  {
+                    "label": "o4",
+                    "value": "o4"
+                  },
+                  {
+                    "label": "o5",
+                    "value": "o5"
+                  },
+                  {
+                    "label": "o6",
+                    "value": "o6"
+                  },
+                  {
+                    "label": "o7",
+                    "value": "o7"
+                  },
+                  {
+                    "label": "o8",
+                    "value": "o8"
+                  },
+                  {
+                    "label": "o9",
+                    "value": "o9"
+                  },
+                  {
+                    "label": "o10",
+                    "value": "o10"
+                  },
+                  {
+                    "label": "o11",
+                    "value": "o11"
+                  },
+                  {
+                    "label": "o12",
+                    "value": "o12"
+                  },
+                  {
+                    "label": "o13",
+                    "value": "o13"
+                  },
+                  {
+                    "label": "o14",
+                    "value": "o14"
+                  },
+                  {
+                    "label": "o15",
+                    "value": "o15"
+                  },
+                  {
+                    "label": "o16",
+                    "value": "o16"
+                  },
+                  {
+                    "label": "o17",
+                    "value": "o17"
+                  },
+                  {
+                    "label": "o18",
+                    "value": "o18"
+                  },
+                  {
+                    "label": "o19",
+                    "value": "o19"
+                  },
+                  {
+                    "label": "o20",
+                    "value": "o20"
+                  },
+                  {
+                    "label": "o21",
+                    "value": "o21"
+                  },
+                  {
+                    "label": "o22",
+                    "value": "o22"
+                  },
+                  {
+                    "label": "o23",
+                    "value": "o23"
+                  },
+                  {
+                    "label": "o24",
+                    "value": "o24"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 9,
+            "components": [
+              {
+                "type": 2,
+                "id": 10,
+                "custom_id": "b5␟v5",
+                "style": 2,
+                "label": "b5"
+              },
+              {
+                "type": 2,
+                "id": 11,
+                "custom_id": "b6␟v6",
+                "style": 2,
+                "label": "b6"
+              },
+              {
+                "type": 2,
+                "id": 12,
+                "custom_id": "b7␟v7",
+                "style": 2,
+                "label": "b7"
+              },
+              {
+                "type": 2,
+                "id": 13,
+                "custom_id": "b8␟v8",
+                "style": 2,
+                "label": "b8"
+              },
+              {
+                "type": 2,
+                "id": 14,
+                "custom_id": "b9␟v9",
+                "style": 2,
+                "label": "b9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 15,
+            "components": [
+              {
+                "type": 3,
+                "id": 16,
+                "custom_id": "s2",
+                "min_values": 1,
+                "max_values": 1,
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 17,
+            "components": [
+              {
+                "type": 2,
+                "id": 18,
+                "custom_id": "b10␟v10",
+                "style": 2,
+                "label": "b10"
+              },
+              {
+                "type": 2,
+                "id": 19,
+                "custom_id": "b11␟v11",
+                "style": 2,
+                "label": "b11"
+              },
+              {
+                "type": 2,
+                "id": 20,
+                "custom_id": "b12␟v12",
+                "style": 2,
+                "label": "b12"
+              },
+              {
+                "type": 2,
+                "id": 21,
+                "custom_id": "b13␟v13",
+                "style": 2,
+                "label": "b13"
+              },
+              {
+                "type": 2,
+                "id": 22,
+                "custom_id": "b14␟v14",
+                "style": 2,
+                "label": "b14"
+              }
+            ]
+          }
+        ],
+        "id": "1570720114754723871",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "rows-selects-and-buttons/read",
+      "method": "GET",
+      "path": "/channels/1570605581192929301/messages/1570720114754723871",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: rows-selects-and-buttons",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:57.926000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "b0␟v0",
+                "style": 2,
+                "label": "b0"
+              },
+              {
+                "type": 2,
+                "id": 3,
+                "custom_id": "b1␟v1",
+                "style": 2,
+                "label": "b1"
+              },
+              {
+                "type": 2,
+                "id": 4,
+                "custom_id": "b2␟v2",
+                "style": 2,
+                "label": "b2"
+              },
+              {
+                "type": 2,
+                "id": 5,
+                "custom_id": "b3␟v3",
+                "style": 2,
+                "label": "b3"
+              },
+              {
+                "type": 2,
+                "id": 6,
+                "custom_id": "b4␟v4",
+                "style": 2,
+                "label": "b4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 7,
+            "components": [
+              {
+                "type": 3,
+                "id": 8,
+                "custom_id": "s1",
+                "min_values": 1,
+                "max_values": 1,
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  },
+                  {
+                    "label": "o2",
+                    "value": "o2"
+                  },
+                  {
+                    "label": "o3",
+                    "value": "o3",
+                    "default": true
+                  },
+                  {
+                    "label": "o4",
+                    "value": "o4"
+                  },
+                  {
+                    "label": "o5",
+                    "value": "o5"
+                  },
+                  {
+                    "label": "o6",
+                    "value": "o6"
+                  },
+                  {
+                    "label": "o7",
+                    "value": "o7"
+                  },
+                  {
+                    "label": "o8",
+                    "value": "o8"
+                  },
+                  {
+                    "label": "o9",
+                    "value": "o9"
+                  },
+                  {
+                    "label": "o10",
+                    "value": "o10"
+                  },
+                  {
+                    "label": "o11",
+                    "value": "o11"
+                  },
+                  {
+                    "label": "o12",
+                    "value": "o12"
+                  },
+                  {
+                    "label": "o13",
+                    "value": "o13"
+                  },
+                  {
+                    "label": "o14",
+                    "value": "o14"
+                  },
+                  {
+                    "label": "o15",
+                    "value": "o15"
+                  },
+                  {
+                    "label": "o16",
+                    "value": "o16"
+                  },
+                  {
+                    "label": "o17",
+                    "value": "o17"
+                  },
+                  {
+                    "label": "o18",
+                    "value": "o18"
+                  },
+                  {
+                    "label": "o19",
+                    "value": "o19"
+                  },
+                  {
+                    "label": "o20",
+                    "value": "o20"
+                  },
+                  {
+                    "label": "o21",
+                    "value": "o21"
+                  },
+                  {
+                    "label": "o22",
+                    "value": "o22"
+                  },
+                  {
+                    "label": "o23",
+                    "value": "o23"
+                  },
+                  {
+                    "label": "o24",
+                    "value": "o24"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 9,
+            "components": [
+              {
+                "type": 2,
+                "id": 10,
+                "custom_id": "b5␟v5",
+                "style": 2,
+                "label": "b5"
+              },
+              {
+                "type": 2,
+                "id": 11,
+                "custom_id": "b6␟v6",
+                "style": 2,
+                "label": "b6"
+              },
+              {
+                "type": 2,
+                "id": 12,
+                "custom_id": "b7␟v7",
+                "style": 2,
+                "label": "b7"
+              },
+              {
+                "type": 2,
+                "id": 13,
+                "custom_id": "b8␟v8",
+                "style": 2,
+                "label": "b8"
+              },
+              {
+                "type": 2,
+                "id": 14,
+                "custom_id": "b9␟v9",
+                "style": 2,
+                "label": "b9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 15,
+            "components": [
+              {
+                "type": 3,
+                "id": 16,
+                "custom_id": "s2",
+                "min_values": 1,
+                "max_values": 1,
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "id": 17,
+            "components": [
+              {
+                "type": 2,
+                "id": 18,
+                "custom_id": "b10␟v10",
+                "style": 2,
+                "label": "b10"
+              },
+              {
+                "type": 2,
+                "id": 19,
+                "custom_id": "b11␟v11",
+                "style": 2,
+                "label": "b11"
+              },
+              {
+                "type": 2,
+                "id": 20,
+                "custom_id": "b12␟v12",
+                "style": 2,
+                "label": "b12"
+              },
+              {
+                "type": 2,
+                "id": 21,
+                "custom_id": "b13␟v13",
+                "style": 2,
+                "label": "b13"
+              },
+              {
+                "type": 2,
+                "id": 22,
+                "custom_id": "b14␟v14",
+                "style": 2,
+                "label": "b14"
+              }
+            ]
+          }
+        ],
+        "id": "1570720114754723871",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "custom-id-100-ascii-with-join",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: custom-id-100-ascii-with-join",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "x",
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa␟b"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: custom-id-100-ascii-with-join",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:58.462000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa␟b",
+                "style": 2,
+                "label": "x"
+              }
+            ]
+          }
+        ],
+        "id": "1570720117002862676",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "custom-id-100-code-points-astral",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: custom-id-100-code-points-astral",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "x",
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa␟😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "effect-chat probe: custom-id-100-code-points-astral",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T08:40:59.804000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [
+          {
+            "type": 1,
+            "id": 1,
+            "components": [
+              {
+                "type": 2,
+                "id": 2,
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa␟😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+                "style": 2,
+                "label": "x"
+              }
+            ]
+          }
+        ],
+        "id": "1570720122631356538",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "1564742987727118426",
+          "username": "Janitor",
+          "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+          "discriminator": "5426",
+          "public_flags": 0,
+          "flags": 0,
+          "bot": true,
+          "banner": null,
+          "accent_color": null,
+          "global_name": null,
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "six-rows",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: six-rows",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b1",
+                "custom_id": "b1␟v1"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b2",
+                "custom_id": "b2␟v2"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b3",
+                "custom_id": "b3␟v3"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b4",
+                "custom_id": "b4␟v4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b5",
+                "custom_id": "b5␟v5"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "_errors": [
+              {
+                "code": "BASE_TYPE_MAX_LENGTH",
+                "message": "Must be 5 or fewer in length."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "step": "six-buttons-in-a-row",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: six-buttons-in-a-row",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b1",
+                "custom_id": "b1␟v1"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b2",
+                "custom_id": "b2␟v2"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b3",
+                "custom_id": "b3␟v3"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b4",
+                "custom_id": "b4␟v4"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b5",
+                "custom_id": "b5␟v5"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "0": {
+              "components": {
+                "_errors": [
+                  {
+                    "code": "BASE_TYPE_BAD_LENGTH",
+                    "message": "Must be between 1 and 5 in length."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "step": "select-and-button-in-a-row",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: select-and-button-in-a-row",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 3,
+                "custom_id": "s",
+                "options": [
+                  {
+                    "label": "o0",
+                    "value": "o0"
+                  },
+                  {
+                    "label": "o1",
+                    "value": "o1"
+                  }
+                ],
+                "min_values": 1,
+                "max_values": 1
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "0": {
+              "components": {
+                "1": {
+                  "_errors": [
+                    {
+                      "code": "COMPONENT_LAYOUT_WIDTH_EXCEEDED",
+                      "message": "The specified component exceeds the maximum width"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "step": "custom-id-101-ascii",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: custom-id-101-ascii",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "x",
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "0": {
+              "components": {
+                "0": {
+                  "custom_id": {
+                    "_errors": [
+                      {
+                        "code": "BASE_TYPE_BAD_LENGTH",
+                        "message": "Must be between 1 and 100 in length."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "step": "custom-id-101-code-points-astral",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: custom-id-101-code-points-astral",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "x",
+                "custom_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "0": {
+              "components": {
+                "0": {
+                  "custom_id": {
+                    "_errors": [
+                      {
+                        "code": "BASE_TYPE_BAD_LENGTH",
+                        "message": "Must be between 1 and 100 in length."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "step": "twenty-six-buttons",
+      "method": "POST",
+      "path": "/channels/1570605581192929301/messages",
+      "request": {
+        "content": "effect-chat probe: twenty-six-buttons",
+        "allowed_mentions": {
+          "parse": []
+        },
+        "components": [
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b0",
+                "custom_id": "b0␟v0"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b1",
+                "custom_id": "b1␟v1"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b2",
+                "custom_id": "b2␟v2"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b3",
+                "custom_id": "b3␟v3"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b4",
+                "custom_id": "b4␟v4"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b5",
+                "custom_id": "b5␟v5"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b6",
+                "custom_id": "b6␟v6"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b7",
+                "custom_id": "b7␟v7"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b8",
+                "custom_id": "b8␟v8"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b9",
+                "custom_id": "b9␟v9"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b10",
+                "custom_id": "b10␟v10"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b11",
+                "custom_id": "b11␟v11"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b12",
+                "custom_id": "b12␟v12"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b13",
+                "custom_id": "b13␟v13"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b14",
+                "custom_id": "b14␟v14"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b15",
+                "custom_id": "b15␟v15"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b16",
+                "custom_id": "b16␟v16"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b17",
+                "custom_id": "b17␟v17"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b18",
+                "custom_id": "b18␟v18"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b19",
+                "custom_id": "b19␟v19"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b20",
+                "custom_id": "b20␟v20"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b21",
+                "custom_id": "b21␟v21"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b22",
+                "custom_id": "b22␟v22"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b23",
+                "custom_id": "b23␟v23"
+              },
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b24",
+                "custom_id": "b24␟v24"
+              }
+            ]
+          },
+          {
+            "type": 1,
+            "components": [
+              {
+                "type": 2,
+                "style": 2,
+                "label": "b25",
+                "custom_id": "b25␟v25"
+              }
+            ]
+          }
+        ]
+      },
+      "status": 400,
+      "response": {
+        "message": "Invalid Form Body",
+        "code": 50035,
+        "errors": {
+          "components": {
+            "_errors": [
+              {
+                "code": "BASE_TYPE_MAX_LENGTH",
+                "message": "Must be 5 or fewer in length."
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "step": "callback-unknown-interaction-modal-45",
+      "method": "POST",
+      "path": "/interactions/1570720847549693952/invalid-token/callback",
+      "request": {
+        "type": 9,
+        "data": {
+          "custom_id": "m",
+          "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "components": [
+            {
+              "type": 18,
+              "label": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+              "component": {
+                "type": 4,
+                "custom_id": "a",
+                "style": 1
+              }
+            }
+          ]
+        }
+      },
+      "status": 404,
+      "response": {
+        "message": "Unknown interaction",
+        "code": 10062
+      }
+    },
+    {
+      "step": "callback-unknown-interaction-modal-title-46",
+      "method": "POST",
+      "path": "/interactions/1570720847549693952/invalid-token/callback",
+      "request": {
+        "type": 9,
+        "data": {
+          "custom_id": "m",
+          "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "components": [
+            {
+              "type": 18,
+              "label": "y",
+              "component": {
+                "type": 4,
+                "custom_id": "a",
+                "style": 1
+              }
+            }
+          ]
+        }
+      },
+      "status": 404,
+      "response": {
+        "message": "Unknown interaction",
+        "code": 10062
+      }
+    },
+    {
+      "step": "callback-unknown-interaction-ack",
+      "method": "POST",
+      "path": "/interactions/1570720847549693952/invalid-token/callback",
+      "request": {
+        "type": 6
+      },
+      "status": 404,
+      "response": {
+        "message": "Unknown interaction",
+        "code": 10062
+      }
+    }
+  ]
+}

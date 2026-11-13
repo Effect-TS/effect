@@ -1,7 +1,7 @@
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { type Interactions, NoSuchElement } from "effect/chat/ChatTest"
 import * as Effect from "effect/Effect"
-import { botUserId, errorResponse, type Fake, guild, makeFake, tim } from "./utils.ts"
+import { answer, botUserId, errorResponse, type Fake, guild, makeFake, step, tim } from "./utils.ts"
 
 /** The join between an id and its value in a `custom_id`, as the adapter writes it. */
 const join = "\u241F"
@@ -29,7 +29,8 @@ export const makeDiscord = (channelType = 0) => {
     createMessage: (channelId: string, body: any) => {
       if ((body.attachments ?? []).length > 0 && refuse > 0) {
         refuse--
-        return Effect.fail(errorResponse(400, { code: 40005, message: "Request entity too large" }))
+        // Discord's answer to an oversize upload, from fixtures/recorded/uploads.json.
+        return answer(step("uploads", "upload-20MiB-plus-1"))
       }
       const id = nextId()
       const message = {

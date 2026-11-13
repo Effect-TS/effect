@@ -8,7 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import * as TestClock from "effect/testing/TestClock"
-import { botUserId, discordLayer, errorResponse, type Fake, guild, makeFake, scratch, tim } from "./utils.ts"
+import { answer, botUserId, discordLayer, type Fake, guild, makeFake, scratch, step, tim } from "./utils.ts"
 
 const message = { id: "1570700000000000001", channel_id: scratch }
 
@@ -261,8 +261,7 @@ describe("interaction", () => {
   it.effect("a modal callback that comes back Unknown interaction is refused as interaction_expired", () =>
     Effect.gen(function*() {
       const fake = makeFake({
-        createInteractionResponse: () =>
-          Effect.fail(errorResponse(404, { code: 10062, message: "Unknown interaction" }))
+        createInteractionResponse: () => answer(step("components", "callback-unknown-interaction-modal-45"))
       })
       const { handler, refused } = recording({
         click: ChatInteraction.modal("form", { title: "t", fields: {} }).open()
