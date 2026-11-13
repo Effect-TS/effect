@@ -1,12 +1,29 @@
 # @effect/sql-clickhouse
 
-An Effect SQL client for [ClickHouse](https://clickhouse.com), built on the [`@clickhouse/client`](https://clickhouse.com/docs/integrations/javascript) library.
+An Effect SQL client for [ClickHouse](https://clickhouse.com), built on the [`@clickhouse/client`](https://clickhouse.com/docs/integrations/javascript) and [`@clickhouse/client-web`](https://clickhouse.com/docs/integrations/javascript#web-version) libraries.
 
 ## Installation
 
 ```sh
 npm install effect @effect/sql-clickhouse
 ```
+
+## Runtimes
+
+`ClickhouseClient` runs on Node.js and uses [`@clickhouse/client`](https://clickhouse.com/docs/integrations/javascript). On runtimes without Node built-ins, such as Cloudflare Workers, use `ClickhouseWebClient`, which talks to ClickHouse over `fetch` through [`@clickhouse/client-web`](https://clickhouse.com/docs/integrations/javascript#web-version).
+
+```ts
+import { ClickhouseWebClient } from "@effect/sql-clickhouse"
+import { Effect } from "effect"
+import { SqlClient } from "effect/sql"
+
+const program = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  return yield* sql`SELECT ${1} AS n`
+}).pipe(Effect.provide(ClickhouseWebClient.layer({ url: "https://clickhouse.example.com:8443" })))
+```
+
+Both clients provide the generic `SqlClient`, interrupt and kill running queries the same way, and work with `ClickhouseMigrator`. Import `ClickhouseWebClient` from `@effect/sql-clickhouse/ClickhouseWebClient` if your bundler does not tree-shake the package root; that module reaches neither `@clickhouse/client` nor any Node built-in.
 
 ## Links
 
