@@ -3012,7 +3012,9 @@ const setup = (
           const value = option[key]
           if (value === undefined) continue
           if (key === "preventDefault") {
-            if (merged[key] !== "always") merged[key] = value
+            // `"always"` from any layer wins, then `true` from any: `fireLayered` still cancels only for a
+            // message from a layer that set `true`, so another layer's `false` can't take that away.
+            if (value === "always" || (merged[key] !== "always" && merged[key] !== true)) merged[key] = value
           } else if (key in merged) {
             throw new Error(inst.path + ": two owners set the " + key + " option of " + event + " on one element")
           } else {
@@ -3322,7 +3324,12 @@ const setup = (
 
   /** What a feature slot shows while its Layer is building or failed. */
   const fallbackOf = (inst: Instance, view: View.Child<any, any>, env: Env): View.Node<any, any> =>
-    shownIn(inst, view, View.toNode(view.fallback!(unavailable(env))))
+    shownIn(
+      inst,
+      view,
+      // As in `fallbackFor`: the fallback is its author's code, so one that throws fails its author.
+      guard(inst.author, "fallback", () => View.toNode(view.fallback!(unavailable(env)))) ?? emptyText
+    )
 
   /** What a failed slot shows. A fallback that throws fails `inst` with source `fallback`. */
   const fallbackFor = (inst: Instance, view: View.Child<any, any>, failure: Cause.Cause<unknown>) =>

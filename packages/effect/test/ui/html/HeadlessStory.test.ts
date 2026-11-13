@@ -204,4 +204,59 @@ describe("headless components in a story", () => {
       assert.throws(() => s.click("Actions"), /only \/Toolbar\/Menu\[actions\] handles "click"/)
     })
   })
+
+  it("an author's story renders with the vocabulary it's given", () => {
+    const Neutral = Component.define({ name: "Neutral", model: Schema.Null, message: Schema.Never }).make({
+      init: () => null,
+      update: (model) => model,
+      parts: (_, p) => ({ root: p.part((b) => b.attr("role", "button")) })
+    })
+    Story.make(Neutral, {}, { elements: Html, view: (p, h) => p.root(h.button).children("neutral") }, (s) => {
+      s.check((story) => assert.strictEqual(story.get(Query.text("neutral")).tag, "button"))
+    })
+  })
+
+  it("an author's story runs every part layer of one event, and each layer's own preventDefault", () => {
+    const Dual = Component.define({
+      name: "Dual",
+      model: Schema.Number,
+      message: Schema.Literals(["one", "ten"]),
+      elements: Html
+    }).make({
+      init: () => 0,
+      update: (count, message) => count + (message === "one" ? 1 : 10),
+      parts: (_, p) => ({
+        one: p.part("button", (b) => b.onClick("one", { preventDefault: true })),
+        ten: p.part("button", (b) => b.onClick("ten"))
+      })
+    })
+    const story = Story.make(Dual, {}, {
+      elements: Html,
+      view: (p, h) => p.ten(p.one(h.button)).onClick(() => undefined, { preventDefault: false }).children("both")
+    }, (s) => {
+      s.click("both")
+    })
+    assert.strictEqual(story.model, 11)
+    assert.isTrue(story.defaultPrevented)
+  })
+
+  it("a consumer's story cancels the default when a child's layer always does", () => {
+    const Guard = Component.define({ name: "Guard", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+      init: () => null,
+      update: (model) => model,
+      parts: (_, p) => ({ link: p.part("a", (b) => b.onClick(() => undefined, { preventDefault: "always" })) })
+    })
+    const Clicked = Schema.TaggedUnion({ Clicked: {} })
+    const Page = Component.define({ name: "Page", model: Schema.Number, message: Clicked, elements: Html }).make({
+      init: () => 0,
+      update: (count) => count + 1,
+      view: (_, h) =>
+        h.child(Guard, { key: "g", view: (p) => p.link(h.a).onClick(Clicked.make({ _tag: "Clicked" })).children("go") })
+    })
+    const story = Story.make(Page, {}, (s) => {
+      s.click("go")
+    })
+    assert.strictEqual(story.model, 1)
+    assert.isTrue(story.defaultPrevented)
+  })
 })

@@ -507,4 +507,33 @@ describe("headless components on BrowserHost", { concurrent: false }, () => {
       yield* tick
       assert.strictEqual(app.textContent, "twin down")
     }).pipe(Effect.scoped, Effect.ensuring(Effect.sync(() => twin.client = false))))
+
+  it.effect("a layer's preventDefault false leaves another layer's prevention in place", () =>
+    Effect.gen(function*() {
+      const Hit = Component.define({
+        name: "Hit",
+        model: Schema.Number,
+        message: Schema.Literal("hit"),
+        elements: Html
+      })
+        .make({
+          init: () => 0,
+          update: (count) => count + 1,
+          parts: (_, p) => ({ button: p.part("button", (b) => b.onClick("hit", { preventDefault: true })) })
+        })
+      const App = Component.define({ name: "App", model: Schema.Null, message: Schema.Never, elements: Html }).make({
+        init: () => null,
+        update: (model) => model,
+        view: (_, h) =>
+          h.child(Hit, {
+            key: "h",
+            view: (p) => p.button(h.button).onClick(() => undefined, { preventDefault: false }).children("hit")
+          })
+      })
+      const app = yield* container
+      yield* BrowserHost.mountEffect(App, {}, app)
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+      app.querySelector("button")!.dispatchEvent(event)
+      assert.isTrue(event.defaultPrevented)
+    }).pipe(Effect.scoped))
 })

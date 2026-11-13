@@ -1382,11 +1382,23 @@ const fireAt = <Props, Model, Msg, Events>(
         "A story doesn't run a child's update: use givenChild for its Model, or a TestHost test."
     )
   }
-  // Run once: the message decides whether the default is cancelled, then it's sent.
-  const message = handle(handler.handlers[event], payload)
-  const preventDefault = handler.eventOptions[event]?.preventDefault
-  const prevented = submit || preventDefault === "always" || (message !== undefined && preventDefault === true)
-  return { story: dispatch(story, message), prevented }
+  // Each layer runs once: its message decides whether its `preventDefault: true` cancels, then it's sent.
+  // `"always"` from any layer cancels, a child's included.
+  const layers: ReadonlyArray<LoweredLayer> = lowered.get(handler)?.[event] ??
+    [{ handler: handler.handlers[event], preventDefault: handler.eventOptions[event]?.preventDefault }]
+  let prevented = submit ||
+    [...(handler.owned ?? []).map((layer) => layer.eventOptions[event]), ...layers].some((layer) =>
+      layer?.preventDefault === "always"
+    )
+  let out = story
+  for (const layer of layers) {
+    const message = handle(layer.handler, payload)
+    if (message === undefined) continue
+    if (layer.preventDefault === true) prevented = true
+    // A lowered element's layers are its component's own, so each message is the story's.
+    out = dispatch(out, message as Msg)
+  }
+  return { story: out, prevented }
 }
 
 // Pending Commands are stored with their Source erased; `findRunning` matched `target`, so
@@ -1622,7 +1634,10 @@ export const make: {
   /**
    * A story of a headless component: `view` stands in for a consumer's
    * closure. Its `h` has no messages of its own, so every handler in the
-   * story is one of the component's parts'.
+   * story is one of the component's parts'. `h` builds elements from
+   * `elements`, then the component's own vocabulary, then the registered
+   * one. An event runs every part layer on its element, in the runtime's
+   * order, and each layer's `preventDefault` applies to its own message.
    */
   <Props, Events, Parts, R, Rcv, V extends View.Elements = never>(
     component: Component.Headless<Props, Events, Parts, R, Rcv>,
@@ -1639,7 +1654,7 @@ export const make: {
   ...rest: ReadonlyArray<any>
 ): any => {
   const f: (steps: Steps<any>) => void = rest[rest.length - 1]
-  const steps = start(rest.length === 2 ? withView(component, rest[0].view) : component, props)
+  const steps = start(rest.length === 2 ? withView(component, rest[0].view, rest[0].elements) : component, props)
   f(steps)
   const story = steps.current
   if (story.pending.length > 0) {
@@ -1704,28 +1719,58 @@ export const children = <Msg>(
  */
 const withView = (
   component: Component.Headless.Any,
-  view: (parts: any, h: any) => View.Content<any, any>
+  view: (parts: any, h: any) => View.Content<any, any>,
+  elements: View.Vocabulary<any> | undefined
 ): AnyComponent => {
   const owner: View.Owner = { path: "/" + component.name, depth: 0 }
   return Object.assign(Object.create(component), {
     view: (model: unknown, props: unknown, running?: View.Running, slots?: Component.Slots) => {
-      const h = View.makeHelper(props, component.elements() ?? View.registeredElements(), running, owner.path)
+      const h = View.makeHelper(
+        props,
+        elements ?? component.elements() ?? View.registeredElements(),
+        running,
+        owner.path
+      )
       return lower(View.toNode(view(component.parts(model, props, { owner, running, loaded: slots }), h)))
     }
   })
 }
 
+/** One handler of a lowered element's event, with its own `preventDefault`. */
+interface LoweredLayer {
+  readonly handler: View.Handler<unknown, any>
+  readonly preventDefault: View.EventOptions["preventDefault"]
+}
+/** A lowered element's handlers by event, every layer's in the runtime's order. */
+const lowered = new WeakMap<View.Element<any, any>, Readonly<Record<string, ReadonlyArray<LoweredLayer>>>>()
+
+/**
+ * Makes the component's own layers the element's handlers, so queries and
+ * `HtmlStory` see them. Each event keeps every layer's handler, as the
+ * runtime runs them: the parts' layers, then the stand-in's own.
+ */
 const lower = (node: View.Node<any, any>): View.Node<any, any> => {
   if (node._tag !== "Element") return node
   const children = node.children.map(lower)
   if (node.owned === undefined || node.owned.length === 0) return { ...node, children }
-  return {
+  const layers: Record<string, Array<LoweredLayer>> = {}
+  for (const layer of [...node.owned, node]) {
+    for (const event in layer.handlers) {
+      ;(layers[event] ??= []).push({
+        handler: layer.handlers[event]!,
+        preventDefault: layer.eventOptions[event]?.preventDefault
+      })
+    }
+  }
+  const out: View.Element<any, any> = {
     ...node,
     handlers: Object.assign({}, node.handlers, ...node.owned.map((layer) => layer.handlers)),
     eventOptions: Object.assign({}, node.eventOptions, ...node.owned.map((layer) => layer.eventOptions)),
     owned: [],
     children
   }
+  lowered.set(out, layers)
+  return out
 }
 
 /**

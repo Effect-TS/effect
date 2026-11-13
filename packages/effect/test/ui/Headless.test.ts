@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Schema } from "effect"
-import { Command, Component, type MessageLog, type View } from "effect/ui"
+import { Cause, Deferred, Effect, Layer, Schema } from "effect"
+import { Command, Component, Feature, type MessageLog, type View } from "effect/ui"
 import { Html } from "effect/ui/html"
 import { Query, Story, TestHost } from "effect/ui/testing"
 import { Dialog, type Item, Menu } from "./html/fixtures/headless.ts"
@@ -202,6 +202,68 @@ const Opener = Component.define({
 })
 
 // ---------------------------------------------------------------------------
+// A feature slot in a closure, under a Layer that never finishes building
+// ---------------------------------------------------------------------------
+
+class Badge extends Feature.Service<Badge>()("Badge", { props: Schema.Struct({}) }) {}
+const BadgeImpl = Component.define({ name: "BadgeImpl", model: Schema.Null, message: Schema.Never }).make({
+  init: () => null,
+  update: (model) => model,
+  view: (_, h) => h.el("span", "badge")
+})
+const Bare = Component.define({ name: "Bare", model: Schema.Null, message: Schema.Never }).make({
+  init: () => null,
+  update: (model) => model,
+  parts: () => ({})
+})
+const ConsumerMessage = Schema.TaggedUnion({ Break: {} })
+const Consumer = Component.define({
+  name: "Consumer",
+  props: Schema.Struct({ throwsAt: Schema.Literals(["mount", "re-render"]) }),
+  model: Schema.Boolean,
+  message: ConsumerMessage
+}).make({
+  init: ($) => $.props.throwsAt === "mount",
+  update: () => true,
+  view: (broken, h) =>
+    h.el(
+      "div",
+      h.el("button").on("click", ConsumerMessage.make({ _tag: "Break" })).children("break"),
+      h.child(Bare, {
+        key: "h",
+        fallback: () => h.text("headless down"),
+        view: () =>
+          h.child(Badge, {
+            key: "b",
+            fallback: () => {
+              if (broken) throw new Error("the fallback threw")
+              return h.text("loading")
+            }
+          })
+      })
+    )
+})
+const Provided = Component.provide(
+  Consumer,
+  Layer.merge(Badge.toLayer(BadgeImpl), Layer.effectDiscard(Effect.never))
+)
+const Waiting = Component.define({
+  name: "Waiting",
+  props: Schema.Struct({ throwsAt: Schema.Literals(["mount", "re-render"]) }),
+  model: Schema.Null,
+  message: Schema.Never
+}).make({
+  init: () => null,
+  update: (model) => model,
+  view: (_, h) =>
+    h.child(Provided, {
+      key: "c",
+      props: { throwsAt: h.props.throwsAt },
+      fallback: () => h.text("consumer down")
+    })
+})
+
+// ---------------------------------------------------------------------------
 // Token lists: a part adds to the consumer's class and aria-describedby
 // ---------------------------------------------------------------------------
 
@@ -391,4 +453,19 @@ describe("headless components", () => {
       ])
       assert.strictEqual(root.text(), "board down")
     })))
+
+  for (const when of ["mount", "re-render"] as const) {
+    it.effect(`a feature's fallback in a closure that throws on ${when} fails whoever wrote it`, () =>
+      provideHost(Effect.gen(function*() {
+        const root = yield* TestHost.mount(Waiting, { throwsAt: when })
+        yield* TestHost.settle
+        if (when === "re-render") {
+          assert.strictEqual(root.text(), "breakloading")
+          click(root, "break")
+          yield* TestHost.settle
+        }
+        assert.deepStrictEqual(failures(root), ["/Waiting/Consumer[c] fallback"])
+        assert.strictEqual(root.text(), "consumer down")
+      })))
+  }
 })
