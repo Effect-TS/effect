@@ -804,15 +804,15 @@ type Tagged<Msg, T> = Extract<Msg, { readonly _tag: T }>
 
 /**
  * What `define` returns: a component's name, Schemas, loaders and
- * vocabulary. `update` and `view` written in pieces are typed against it,
- * and `make` finishes the component.
+ * vocabulary. `update`, `view` and `fragment` written in pieces are typed
+ * against it, and `make` finishes the component.
  *
  * **Details**
  *
  * `update` with a tag returns a slice for that tag. Without one, it returns
  * an update function over the whole message type. Either fits the matching
  * key of a record `update`, and `$.combine` takes either where the message
- * fits. `view` returns the function it's given.
+ * fits. `view` and `fragment` return the function they're given.
  *
  * `make` takes `init`, `update`, `view`, `subscriptions` and `head`, and
  * reads `R` off what they return.
@@ -847,6 +847,13 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
   view<UV extends View.Content<Msg, any>>(
     view: (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>) => UV
   ): (model: Model, h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>) => UV
+  /**
+   * A view fragment: a function that takes `h` first and any other
+   * arguments after it, called from a view as `fragment(h, ...args)`.
+   */
+  fragment<Args extends ReadonlyArray<unknown>, Out>(
+    fragment: (h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>, ...args: Args) => Out
+  ): (h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>, ...args: Args) => Out
   /** Finishes the component. */
   make<
     UI extends Model | InitStep<Model, Msg, Events, any> = Model,
@@ -900,8 +907,8 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
 }
 
 /**
- * `h` in the view of a definition, for a view fragment written as a plain
- * function that takes more than the Model.
+ * `h` in the view of a definition, for a function that takes it without
+ * `Def.fragment`.
  *
  * **Example** (A row fragment)
  *
@@ -999,8 +1006,8 @@ export type Helper<D> = D extends Definition<infer _N, infer P, infer _M, infer 
  * catch-all uses the function form. `Def.update(tag, f)` is a slice for one
  * tag, and `Def.update(f)` an update function over the whole message type.
  * `$.combine` runs update functions one after another. `Def.view(f)` is a
- * view, and `Component.Helper` types `h` for a fragment that takes more
- * than the Model.
+ * view, and `Def.fragment(f)` a view fragment that takes `h` and any other
+ * arguments, such as a row.
  *
  * **Example** (A counter)
  *
@@ -1102,7 +1109,10 @@ export type Helper<D> = D extends Definition<infer _N, infer P, infer _M, infer 
  * const handleEdited = NotePageDef.update("Edited", (model, msg, $) =>
  *   $.combine(() => ({ ...model, body: msg.body }), touch))
  *
- * const noteView = NotePageDef.view((model, h) => h.el("p", model.body))
+ * // `h` first, then any other arguments.
+ * const counter = NotePageDef.fragment((h, edits: number) => h.el("small", `${edits} edits`))
+ *
+ * const noteView = NotePageDef.view((model, h) => h.el("div", h.el("p", model.body), counter(h, model.edits)))
  *
  * export const NotePage = NotePageDef.make({
  *   init: () => ({ body: "", edits: 0, error: null }),
@@ -1176,6 +1186,7 @@ export const define = <
         update(model, msg, makeUpdate(model, $.props, $.loaded, msg))
     }) as any,
     view: (view) => view,
+    fragment: (fragment) => fragment,
     make: (rest) => finish(definition, rest as any) as any
   }
   return definition

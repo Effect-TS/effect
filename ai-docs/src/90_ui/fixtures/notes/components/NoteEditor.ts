@@ -100,8 +100,9 @@ const askDiscard = NoteEditorDef.update(
   (_model, _message, $) => $.combine(closeActions, (model) => ({ ...model, confirming: true }))
 )
 
-// A fragment that takes more than the Model is a plain function of `h`.
-// `Component.Helper` is `h`'s type for the definition.
+// A fragment takes `h` first and any other arguments after it, and is
+// called from the view as `discardDialog(h, open)`. `fragment` types `h`
+// from the definition, as `view` does.
 //
 // A modal dialog is open while the Model says so. The browser host shows it
 // in the top layer, keeps focus inside and gives focus back when it closes.
@@ -109,7 +110,7 @@ const askDiscard = NoteEditorDef.update(
 // only when `update` says so. A form in the dialog is the app's like any
 // other, so the choice is read from the submission's `entries`, not from
 // `returnValue`, and `method="dialog"` isn't needed.
-const discardDialog = (h: Component.Helper<typeof NoteEditorDef>, open: boolean) =>
+const discardDialog = NoteEditorDef.fragment((h, open: boolean) =>
   h.dialog.attr("aria-label", "Discard your changes?")
     .modal(open)
     .onCancel(NoteEditorMessage.make({ _tag: "KeepEditing" })).children(
@@ -121,6 +122,7 @@ const discardDialog = (h: Component.Helper<typeof NoteEditorDef>, open: boolean)
         h.button.attr("name", "choice").attr("value", "discard").children("Discard")
       )
     )
+)
 
 // The view takes `(model, h)`, as `view` in `make` does.
 //

@@ -163,6 +163,20 @@ describe("Component.define", () => {
     })
   })
 
+  it("fragment types h from the definition, with its loaders and elements, and infers the other arguments", () => {
+    const row = NoteDef.fragment((h, label: string, count: number) => {
+      expect(h).type.toBe<Component.Helper<typeof NoteDef>>()
+      expect(h.props).type.toBe<{ readonly id: string }>()
+      expect(h.loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
+      return h.li(`${label} ${count}`)
+    })
+    expect<Parameters<typeof row>>().type.toBe<[h: Component.Helper<typeof NoteDef>, label: string, count: number]>()
+    NoteDef.view((model, h) => {
+      expect(row).type.not.toBeCallableWith(h, model.body)
+      return h.ul(row(h, model.body, model.edits))
+    })
+  })
+
   it("Helper types a view fragment that takes more than the Model", () => {
     const row = (h: Component.Helper<typeof NoteDef>, label: string) => {
       expect(h.loaded.user).type.toBe<AsyncResult.AsyncResult<typeof User.Type, string>>()
