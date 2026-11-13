@@ -30,6 +30,30 @@ describe("HashMap", () => {
   })
 
   describe("basic operations", () => {
+    it("handles custom hashes that are not 32-bit integers", () => {
+      class Key implements Equal.Equal {
+        constructor(readonly hash: number) {}
+        [Equal.symbol](that: Equal.Equal): boolean {
+          return that instanceof Key && that.hash === this.hash
+        }
+        [Hash.symbol]() {
+          return this.hash
+        }
+      }
+      const fractional = new Key(1.25)
+      const large = new Key(2 ** 32 + 1)
+      let map = HashMap.make([fractional, "a"], [new Key(1.5), "b"], [large, "c"])
+      map = HashMap.set(map, new Key(1), "d")
+      assert.strictEqual(HashMap.size(map), 4)
+      assert.isTrue(HashMap.has(map, new Key(1.5)))
+      assert.deepStrictEqual(HashMap.get(map, large), Option.some("c"))
+      assert.deepStrictEqual(HashMap.getHash(map, fractional, 1.25), Option.some("a"))
+      assert.isTrue(HashMap.hasHash(map, large, 2 ** 32 + 1))
+      map = HashMap.modifyHash(map, new Key(0.5), 0.5, () => Option.some("e"))
+      assert.deepStrictEqual(HashMap.get(map, new Key(0.5)), Option.some("e"))
+      assert.strictEqual(HashMap.size(HashMap.remove(map, fractional)), 4)
+    })
+
     it("modifyHash stores a new key under the supplied hash", () => {
       const key = {}
       const hash = 12345
