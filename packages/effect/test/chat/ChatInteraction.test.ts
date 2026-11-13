@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Duration, Effect, Fiber, Layer, Option, Schema } from "effect"
+import { Deferred, Duration, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
 import { ChatError, ChatInteraction, ChatTest, ChatThread } from "effect/chat"
 import { TestClock } from "effect/testing"
 
@@ -246,6 +246,28 @@ describe("ChatInteraction", () => {
         yield* TestClock.adjust("3 seconds")
         assert.isTrue(Schema.is(ChatInteraction.Late)(yield* Fiber.join(fiber)))
         assert.isTrue(interrupted)
+      }))
+    it.effect("gives Late at the deadline without waiting for a late submit's cleanup", () =>
+      Effect.gen(function*() {
+        const cleaned = yield* Deferred.make<void>()
+        const handler = handlerWith({
+          submit: Effect.never.pipe(
+            Effect.onInterrupt(() => Effect.andThen(Effect.sleep("5 seconds"), Deferred.succeed(cleaned, undefined)))
+          )
+        })
+        const submitted = ChatInteraction.ModalSubmitted.make({ id: "m", values: {}, ...origin })
+        const fiber = yield* ChatInteraction.handle(submitted, deadline).pipe(
+          Effect.provideService(ChatInteraction.Handler, handler),
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("3 seconds")
+        const exit = fiber.pollUnsafe()
+        assert.isDefined(exit)
+        assert.isTrue(Exit.isSuccess(exit!) && Schema.is(ChatInteraction.Late)(exit.value))
+        // The interrupt was requested, and the cleanup still runs to its end.
+        assert.isFalse(yield* Deferred.isDone(cleaned))
+        yield* TestClock.adjust("5 seconds")
+        yield* Deferred.await(cleaned)
       }))
   })
 

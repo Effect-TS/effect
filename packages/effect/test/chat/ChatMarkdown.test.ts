@@ -296,6 +296,78 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(yield* test.messages(thread), [])
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 9 }, measure: withActions }))))
 
+    /** One element costs `cost`, so a test can leave as little room beside it as it needs. */
+    const costing = (cost: number) => (markdown: string, actions?: ReadonlyArray<ChatUi.Action>) =>
+      codePoints(markdown) + cost * (actions?.length ?? 0)
+
+    it.effect("fills the parts before the last one without leaving room for the actions", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const result = yield* ChatMarkdown.post(thread, "a".repeat(25), { actions: [button] })
+        assert.deepStrictEqual(result.parts.map((part) => part.text), ["a".repeat(24), "a"])
+        yield* test.click(result.parts[1].messageId, "go")
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: costing(29) }))))
+
+    it.effect("posts the actions in a message of their own when no text fits beside them", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const result = yield* ChatMarkdown.post(thread, "Hello", { actions: [button], files })
+        assert.deepStrictEqual(result.parts.map((part) => part.text), ["Hello", ""])
+        const messages = yield* test.messages(thread)
+        assert.deepStrictEqual(messages.map((message) => [message.text, message.attachments.length]), [
+          ["Hello", 0],
+          ["", 1]
+        ])
+        assert.strictEqual((yield* Effect.flip(test.click(result.parts[0].messageId, "go")))._tag, "NoSuchElement")
+        yield* test.click(result.parts[1].messageId, "go")
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: costing(30) }))))
+
+    it.effect("fails Overflow when the actions' own message has no part left", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, "Hello", { actions: [button], maxParts: 1 }))
+        assert.strictEqual(error.cause._tag, "Overflow")
+        assert.deepStrictEqual([error.posted.map((part) => part.text), error.remaining], [["Hello"], ""])
+        assert.strictEqual((yield* test.messages(thread)).length, 1)
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: costing(30) }))))
+
+    it.effect("moves the actions to an unattached note posted on its own", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.failNext("post", new ChatError.Forbidden({ detail: "file_refused" }))
+        const result = yield* ChatMarkdown.post(thread, "a".repeat(20), {
+          actions: [button],
+          files,
+          unattachedNote: () => " note"
+        })
+        assert.deepStrictEqual(result.parts.map((part) => part.markdown), ["a".repeat(20), " note"])
+        assert.strictEqual((yield* Effect.flip(test.click(result.parts[0].messageId, "go")))._tag, "NoSuchElement")
+        yield* test.click(result.parts[1].messageId, "go")
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: withActions }))))
+
+    it.effect("never cuts inside a grapheme cluster to leave room for the actions", () =>
+      Effect.gen(function*() {
+        const { thread } = yield* setup
+        const input = "1234567890a\u0301" + "b".repeat(13)
+        const result = yield* ChatMarkdown.post(thread, input, { actions: [button] })
+        assert.strictEqual(joined(result.parts), input)
+        for (const part of result.parts) assert.isFalse(part.text.startsWith("\u0301"), part.text)
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: costing(19) }))))
+
+    it.effect("never cuts inside a grapheme cluster on a hard cut", () =>
+      Effect.gen(function*() {
+        const { thread } = yield* setup
+        // The 10th code unit is the "e" of "e\u0301", and the flag is two code points of one cluster.
+        const input = "aaaaaaaaae\u0301bbbbbbb\u{1F1EF}\u{1F1F5}cc"
+        const result = yield* ChatMarkdown.post(thread, input)
+        assert.strictEqual(joined(result.parts), input)
+        assert.deepStrictEqual(result.parts.map((part) => part.text), [
+          "aaaaaaaaa",
+          "e\u0301bbbbbbb",
+          "\u{1F1EF}\u{1F1F5}cc"
+        ])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 10 } }))))
+
     it.effect("reports the text of an uncertain post as uncertain", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup

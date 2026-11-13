@@ -245,7 +245,7 @@ const render = (prefix: string, text: string, fence: Fence | undefined): string 
  * Where to cut `text` so that `prefix`, the cut text and a closing fence
  * measure at most `room`: after the last block boundary that fits, else after
  * the last line, else after the last whitespace, else at the last character.
- * Never inside a surrogate pair, and never at 0.
+ * Never inside a grapheme cluster, and never at 0.
  */
 const fitCut = (
   measure: (markdown: string) => number,
@@ -282,19 +282,36 @@ const fitCut = (
     }
   }
   candidates.push(most)
+  const clusters = graphemes(text)
   for (const candidate of candidates) {
-    const cut = withoutSplitPair(text, candidate)
+    const cut = clusterStart(clusters, text, candidate)
     if (cut > 0 && fits(cut)) return cut
   }
-  return Math.max(1, withoutSplitPair(text, most) || codePointEnd(text))
+  // Not even one cluster fits: the cut goes after the first one, and the write fails `TooLarge`.
+  return clusterStart(clusters, text, most) || clusterEnd(clusters, 0)
 }
 
-const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff
+let segmenter: Intl.Segmenter | undefined
 
-const withoutSplitPair = (text: string, cut: number): number =>
-  cut > 0 && cut < text.length && isHighSurrogate(text.charCodeAt(cut - 1)) ? cut - 1 : cut
+/** The grapheme clusters of `text`. `Intl.Segmenter` is created on first use, so only a cut needs it. */
+const graphemes = (text: string): Intl.Segments =>
+  (segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" })).segment(text)
 
-const codePointEnd = (text: string): number => isHighSurrogate(text.charCodeAt(0)) && text.length > 1 ? 2 : 1
+/** The grapheme cluster boundary at or before `cut`. */
+const clusterStart = (clusters: Intl.Segments, text: string, cut: number): number =>
+  cut <= 0 || cut >= text.length ? cut : clusters.containing(cut)!.index
+
+/** The end of the grapheme cluster that contains `index`. */
+const clusterEnd = (clusters: Intl.Segments, index: number): number => {
+  const cluster = clusters.containing(index)!
+  return cluster.index + cluster.segment.length
+}
+
+/** Where the last grapheme cluster of `text` that is not whitespace starts, or -1 for blank text. */
+const lastContentStart = (text: string): number => {
+  const end = text.trimEnd().length
+  return end === 0 ? -1 : graphemes(text).containing(end - 1)!.index
+}
 
 /** Past this many held characters, a held line is released up to its last whitespace. */
 const holdLimit = 300
@@ -576,6 +593,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const measureLast = hasActions ? (markdown: string) => measure(markdown, actions) : measure
     /** The last part takes the files and the actions. */
     const hasExtras = hasFiles || hasActions
+    /**
+     * Set when not even the text's last grapheme cluster fits beside the
+     * actions: the text is posted without them, and the files and the
+     * actions follow in a message of their own.
+     */
+    let extrasAlone = false
+    /** Whether the note posted on its own takes the actions. */
+    let noteActions = false
 
     // --- post-then-edit --------------------------------------------------------
 
@@ -614,7 +639,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     ): Effect.Effect<void, never, R2> => {
       const files = withFiles && hasFiles ? options.files! : undefined
       const unattachedNote = files === undefined ? undefined : options.unattachedNote
-      const extras = withFiles && hasActions ? { actions } : {}
+      const withActions = withFiles && hasActions
       const settle = (exit: Exit.Exit<Posted, ChatError>, markdown: string) => {
         if (Exit.isSuccess(exit)) {
           part.posted = exit.value
@@ -628,13 +653,18 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (error.retry === "uncertain") part.uncertain = end
         failChat(error)
       }
-      const attempt = (markdown: string, files: ReadonlyArray<File> | undefined, fallback: boolean) =>
+      const attempt = (
+        markdown: string,
+        files: ReadonlyArray<File> | undefined,
+        fallback: boolean,
+        withActions: boolean
+      ) =>
         create(
           chat.post(thread, {
             markdown,
             ...(parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}),
             ...(files === undefined ? {} : { files }),
-            ...extras
+            ...(withActions ? { actions } : {})
           }),
           (posted) => toPart(part, posted, markdown, end),
           (exit) => {
@@ -643,15 +673,17 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
             settle(exit, markdown)
           }
         )
-      return Effect.flatMap(attempt(markdown, files, unattachedNote !== undefined), (exit) => {
+      return Effect.flatMap(attempt(markdown, files, unattachedNote !== undefined, withActions), (exit) => {
         if (unattachedNote === undefined || !isFileRefusal(exit)) return Effect.void
         // The platform may have refused the files: the last part goes out without them, ending in the note.
         const text = unattachedNote(files!)
         if (measureLast(markdown + text) <= limits.messageLength) {
-          return Effect.asVoid(attempt(markdown + text, undefined, false))
+          return Effect.asVoid(attempt(markdown + text, undefined, false, withActions))
         }
+        // The note is the last message now, so it takes the actions when they fit beside it.
         note = text
-        return Effect.asVoid(attempt(markdown, undefined, false))
+        noteActions = withActions && measure(text, actions) <= limits.messageLength
+        return Effect.asVoid(attempt(markdown, undefined, false, withActions && !noteActions))
       })
     }
 
@@ -665,7 +697,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         kind: "text",
         transport: "post"
       })
-      return Effect.asVoid(create(chat.post(thread, { markdown: text }), part, (exit) => {
+      const post = chat.post(thread, { markdown: text, ...(noteActions ? { actions } : {}) })
+      return Effect.asVoid(create(post, part, (exit) => {
         note = undefined
         if (Exit.isSuccess(exit)) {
           parts.push(part(exit.value))
@@ -675,6 +708,28 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (error !== undefined) failChat(error)
       }))
     }
+
+    /**
+     * Posts the files and the actions in a message of their own, after the
+     * text. It counts against `maxParts`, and there is no text left to put in
+     * an overflow file, so with no part left the reply fails `Overflow`.
+     */
+    const postExtras: Effect.Effect<void, never, R2> = Effect.suspend(() => {
+      extrasAlone = false
+      if (parts.length >= maxParts) {
+        fail({ _tag: "Overflow" })
+        return Effect.void
+      }
+      const part = newPart(input.length, undefined)
+      current = part
+      return Effect.flatMap(postPart(part, input.length, "", true), () => {
+        if (!isRunning()) return Effect.void
+        finishPart(input.length)
+        if (note !== undefined) return postNote(note)
+        done(false)
+        return Effect.void
+      })
+    })
 
     const stepEdit = (final: boolean): Effect.Effect<void, never, R2> =>
       Effect.suspend(() => {
@@ -694,6 +749,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         }
         const end = (last: boolean): Effect.Effect<void, never, R2> => {
           if (!last || !isRunning()) return Effect.void
+          if (extrasAlone) return postExtras
           if (note !== undefined) return postNote(note)
           done(false)
           return Effect.void
@@ -701,7 +757,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         const cutAt = (cut: number): Effect.Effect<void, never, R2> => {
           // Only blank text follows the cut: this is the last part, so it takes the files, the actions and that text.
           const last = final && isBlank(input.slice(cut))
-          return Effect.flatMap(writeEdit(cut, true, last), () => {
+          return Effect.flatMap(writeEdit(cut, true, last && !extrasAlone), () => {
             if (!isRunning()) return Effect.void
             finishPart(last ? input.length : cut)
             return end(last)
@@ -709,15 +765,29 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         }
         /** A cut that would end the reply has to leave room for the actions. */
         const lastFits = (cut: number) =>
-          !final || !hasActions || !isBlank(input.slice(cut)) ||
+          !final || !hasActions || extrasAlone || !isBlank(input.slice(cut)) ||
           measureLast(render(part.prefix, input.slice(part.start, cut), part.fence)) <= limits.messageLength
-        const withActions = () => part.start + fitCut(measureLast, body, part.fence, part.prefix, limits.messageLength)
-        if (measure(render(part.prefix, body, part.fence)) > limits.messageLength) {
-          const cut = part.start + fitCut(measure, body, part.fence, part.prefix, limits.messageLength)
-          return cutAt(lastFits(cut) ? cut : withActions())
+        const cut = measure(render(part.prefix, body, part.fence)) > limits.messageLength
+          ? part.start + fitCut(measure, body, part.fence, part.prefix, limits.messageLength)
+          : input.length
+        if (!lastFits(cut)) {
+          // The cut would end the reply, and the actions don't fit beside its text. Only the last part
+          // makes room for them: this part is cut before the text's last grapheme cluster, so it isn't the
+          // last, and fills its whole budget. When not even that cluster fits beside the actions, they go
+          // in a message of their own.
+          const keep = lastContentStart(body)
+          const tailStart = part.start + keep
+          const tailFence = fenceAtInput(part, tailStart)
+          const tail = render(reopening(tailFence), input.slice(tailStart), tailFence)
+          if (keep > 0 && measureLast(tail) <= limits.messageLength) {
+            return cutAt(
+              part.start + fitCut(measure, body.slice(0, keep), part.fence, part.prefix, limits.messageLength)
+            )
+          }
+          extrasAlone = true
         }
-        if (!lastFits(input.length)) return cutAt(withActions())
-        return Effect.flatMap(writeEdit(input.length, final, final), () => {
+        if (cut < input.length) return cutAt(cut)
+        return Effect.flatMap(writeEdit(input.length, final, final && !extrasAlone), () => {
           if (final && isRunning()) finishPart(input.length)
           return end(final)
         })
@@ -1132,9 +1202,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   fails the call. Without `unattachedNote` the first failure fails the
  *   call. An `uncertain` failure records the part in `uncertain` and posts no note.
  * - `actions` go with the last part too, which is cut so that
- *   `measure(part, actions) <= limits.messageLength`. That can add a part,
- *   which counts against `maxParts`. When `measure("", actions)` is already
- *   over, the call fails `TooLarge` before anything is posted.
+ *   `measure(part, actions) <= limits.messageLength`. The parts before it
+ *   are filled without room for them. When not even the text's last grapheme
+ *   cluster fits beside the actions, the files and the actions go in a
+ *   message of their own after the text. Either can add a part, which counts
+ *   against `maxParts`. When `measure("", actions)` is already over, the
+ *   call fails `TooLarge` before anything is posted.
+ * - An unattached note posted on its own takes the actions, when they fit
+ *   beside it.
  * - A `TooLarge` without detail `file_refused` fails the call, even with
  *   `subject: "files"` or text that measured as fitting. Fallback requires
  *   `denied` plus `file_refused`; `subject` never controls it.
