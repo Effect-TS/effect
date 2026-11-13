@@ -15932,6 +15932,7 @@ export const tx = <A, E, R>(
           if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(mutable))
           return restore(awaitPendingTransaction(mutable))
         }),
+        tap(() => mutable.retry ? restore(awaitPendingTransaction(mutable)) : void_),
         exit
       )
       return flatMap(
