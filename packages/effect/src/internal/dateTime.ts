@@ -287,9 +287,14 @@ const withoutComments = (input: string): string => {
  * such as `pdt` in any case. A zone after the time can also be followed by a
  * parenthesized comment or whitespace, as in "... 17:14:06 -0500 (EST)".
  */
-const hasZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
-  /\d:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:[+-]\d{2}:?\d{2}|z|gmt|utc?|[ecmp][sd]t)$/i.test(withoutComments(input).trimEnd())
+const hasZone = (input: string): boolean => {
+  if (matchesZone(input)) return true
+  const text = withoutComments(input).trimEnd()
+  return /\d:\d{2}/.test(text) && matchesZone(text)
+}
+
+const matchesZone = (input: string): boolean =>
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)

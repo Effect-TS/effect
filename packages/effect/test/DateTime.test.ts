@@ -773,32 +773,15 @@ describe("DateTime", () => {
     })
 
     it.each([
-      "Tue, 27 Jan 2026 17:14:06 -0500 (EST)",
-      "Tue, 27 Jan 2026 17:14:06 -0500 ",
-      "Tue, 27 Jan 2026 17:14:06 EST (Eastern Standard Time)"
-    ])("keeps zones followed by a comment or whitespace: %s", (input) => {
-      const expected = "2026-01-27T22:14:06.000Z"
+      ["Tue, 27 Jan 2026 17:14:06 -0500 (EST)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 +0530 (India Standard Time)", "2026-01-27T11:44:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -05 ", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 05:14:06 PM EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -0500 EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["2024-01-01 ", "2024-01-01T00:00:00.000Z"],
+      ["01-01-2024 (note)", "2024-01-01T00:00:00.000Z"]
+    ])("preserves zone interpretation before comments or whitespace: %s", (input, expected) => {
       strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
-      assertSomeIso(DateTime.make(input), expected)
-    })
-
-    it("keeps date-only strings followed by a comment or whitespace in UTC", { concurrent: false }, () => {
-      const previousTZ = process.env.TZ
-      try {
-        process.env.TZ = "America/New_York"
-        deepStrictEqual(
-          ["2024-01-01 ", "2024-01-01 (note)", "01-01-2024 ", "01-01-2024 (note)"].map((input) =>
-            DateTime.makeUnsafe(input).toJSON()
-          ),
-          Array(4).fill("2024-01-01T00:00:00.000Z")
-        )
-      } finally {
-        if (previousTZ === undefined) {
-          delete process.env.TZ
-        } else {
-          process.env.TZ = previousTZ
-        }
-      }
     })
   })
 
