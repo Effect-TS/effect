@@ -954,6 +954,8 @@ function safeDecodeURI(path: string) {
   let shouldDecodeParam = false
 
   let querystring = ""
+  let escaped = ""
+  let escapedEnd = 0
 
   for (let i = 1; i < path.length; i++) {
     const charCode = path.charCodeAt(i)
@@ -966,11 +968,13 @@ function safeDecodeURI(path: string) {
         shouldDecode = true
       } else {
         shouldDecodeParam = true
-        // %25 - encoded % char. We need to encode one more time to prevent double decoding
+        // %25 - encoded % char. We need to encode one more time to prevent double decoding.
+        // Append the escaped text instead of rewriting `path`, which copies the whole path
+        // for every escape (find-my-way PR #455).
         if (highCharCode === 50 && lowCharCode === 53) {
           shouldDecode = true
-          path = path.slice(0, i + 1) + "25" + path.slice(i + 1)
-          i += 2
+          escaped += path.slice(escapedEnd, i) + "%2525"
+          escapedEnd = i + 3
         }
         i += 2
       }
@@ -982,6 +986,9 @@ function safeDecodeURI(path: string) {
       path = path.slice(0, i)
       break
     }
+  }
+  if (escapedEnd > 0) {
+    path = escaped + path.slice(escapedEnd)
   }
   const decodedPath = shouldDecode ? decodeURI(path) : path
   return { path: decodedPath, querystring, shouldDecodeParam } as const
