@@ -96,8 +96,8 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 /**
  * Creates a migrator that ensures the migrations table exists, runs pending
  * migrations in a transaction, and optionally dumps the schema after successful
- * migrations. ClickHouse runs without a transaction and records each migration
- * only after it succeeds.
+ * migrations. ClickHouse and Trino run without a transaction and record each
+ * migration only after it succeeds.
  *
  * **Details**
  *
@@ -161,6 +161,13 @@ ORDER BY migration_id`,
   created_at timestamp with time zone not null default now(),
   name text not null
 )`,
+      trino: () =>
+        // Trino has no column defaults or primary keys; `created_at` is sent with each row
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id integer,
+  created_at timestamp(3) with time zone,
+  name varchar
+)`,
       orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id integer PRIMARY KEY NOT NULL,
@@ -186,13 +193,23 @@ ORDER BY migration_id`,
       orElse: () => createMigrationsTable
     })
 
+    // Trino tables have no column defaults, so the ledger time is sent with the row.
+    const stampCreatedAt = sql.onDialectOrElse({
+      trino: () => true,
+      orElse: () => false
+    })
+
     const insertMigrations = (
       rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
       transformWrites(
         sql`INSERT INTO ${sql(table)} ${
           sql.insert(
-            Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
+            Arr.map(rows, ([migration_id, name]) => ({
+              migration_id,
+              name,
+              ...(stampCreatedAt ? { created_at: new Date() } : {})
+            }))
           )
         }`.withoutTransform
       )
@@ -256,9 +273,11 @@ ORDER BY migration_id`,
 
     // === run
 
-    // BEGIN is still experimental on clickhouse
+    // BEGIN is still experimental on clickhouse, and Trino connectors reject
+    // DDL and writes across several statements in one transaction
     const transactional = sql.onDialectOrElse({
       clickhouse: () => false,
+      trino: () => false,
       orElse: () => true
     })
 
