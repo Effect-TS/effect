@@ -650,6 +650,75 @@ describe("BunHttpServer", () => {
       assert.deepStrictEqual(frames.map((frame) => new TextDecoder().decode(frame.payload)), [payload, payload])
     }))
 
+  for (const phase of ["before reader startup", "with an active reader"] as const) {
+    it.live(
+      `bounds inbound WebSocket messages ${phase}`,
+      () =>
+        Effect.gen(function*() {
+          const closed = yield* Deferred.make<CloseEvent>()
+          const read = yield* Deferred.make<void>()
+          const checked = yield* Deferred.make<void, unknown>()
+          const server = yield* BunHttpServer.make({
+            hostname: "127.0.0.1",
+            port: 0,
+            websocket: { maxBufferedMessages: 2 }
+          })
+          yield* server.serve(Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            yield* Deferred.complete(
+              checked,
+              Effect.gen(function*() {
+                const activeReader = phase === "with an active reader" ? yield* socket.reader : undefined
+                if (activeReader !== undefined) {
+                  const writer = yield* socket.writer
+                  yield* writer.write("ready")
+                }
+                yield* Deferred.await(read)
+                const reader = activeReader ?? (yield* socket.reader)
+                assert.deepStrictEqual(yield* reader.pull, ["first", "second"])
+                const error = yield* Effect.flip(reader.pull)
+                assert.deepStrictEqual(
+                  error.reason,
+                  new Socket.SocketCloseError({
+                    code: 1008,
+                    closeReason: "Inbound message buffer limit exceeded"
+                  })
+                )
+              })
+            )
+            return HttpServerResponse.empty()
+          }))
+          const port = (server.address as NetAddress.InetAddress).port
+          const ws = yield* Effect.acquireRelease(
+            Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
+            (ws) => Effect.sync(() => ws.close())
+          )
+          const send = () => {
+            ws.send("first")
+            ws.send("second")
+            ws.send("overflow")
+          }
+          if (phase === "before reader startup") {
+            ws.addEventListener("open", send, { once: true })
+          } else {
+            ws.addEventListener("message", (event) => {
+              if (event.data === "ready") send()
+            }, { once: true })
+          }
+          ws.addEventListener("close", (event) => Deferred.doneUnsafe(closed, Effect.succeed(event)))
+          const event = yield* Deferred.await(closed).pipe(
+            Effect.timeout("1 second"),
+            Effect.ensuring(Deferred.succeed(read, undefined))
+          )
+          assert.strictEqual(event.code, 1008)
+          assert.strictEqual(event.reason, "Inbound message buffer limit exceeded")
+          yield* Deferred.await(checked)
+        }).pipe(Effect.timeout("5 seconds")),
+      10000
+    )
+  }
+
   for (
     const [name, exit, code] of [
       ["success", "success", 1000],
