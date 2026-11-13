@@ -10,7 +10,7 @@ const bytes = (text: string) => new TextEncoder().encode(text).length
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
 const graphemes = (text: string) => [...segmenter.segment(text)]
 const isBoundary = (text: string, index: number) =>
-  index === text.length || segmenter.segment(text).containing(index)!.index === index
+  index === text.length || graphemes(text).some((segment) => segment.index === index)
 
 describe("build", () => {
   it("writes every <, > and & as an entity, in code too, and keeps allowed tokens", () => {

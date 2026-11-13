@@ -148,14 +148,13 @@ export const build = (markdown: string, notify: Escape.Notify, budget: Budget): 
 
   // The last of them on a grapheme cluster boundary.
   segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" })
-  const segments = segmenter.segment(text)
   let best = -1
-  for (let k = candidates.length - 1; k >= 0; k--) {
-    const at = candidates[k]
-    if (at === 0 || segments.containing(at)!.index === at) {
-      best = at
-      break
-    }
+  let candidate = 0
+  // Iterate boundaries: Bun's containing() reports incorrect offsets for astral text.
+  for (const { index } of segmenter.segment(text)) {
+    while (candidate < candidates.length && candidates[candidate] < index) candidate++
+    if (candidate === candidates.length) break
+    if (candidates[candidate] === index) best = index
   }
 
   if (best >= 0) {
