@@ -96,9 +96,16 @@ export class SlackChat extends Context.Service<SlackChat, {
  *
  * **Details**
  *
- * - Content goes out as `markdown_text`. A `<` outside inline and fenced
- *   code is sent as `&lt;`, so no mention token notifies unless
- *   `withPostOptions({ notify })` allows it.
+ * - `post` and `edit` send the Markdown as one `markdown` block, in which
+ *   a `<` outside inline and fenced code goes as `&lt;`, plus a `text` the
+ *   adapter builds, in which every `<`, `>` and `&` goes as an entity.
+ *   Slack decides who a message mentions from `text`, so no token notifies
+ *   unless `withPostOptions({ notify })` allows it. Allowed tokens stay
+ *   intact in both.
+ * - That `text` is cut to 16,000 code points on a post and 3,800 UTF-8
+ *   bytes on an edit, on a grapheme cluster boundary, ending in `…` with
+ *   the allowed tokens the cut left out appended. The cut never fails.
+ *   Stream appends still go as `markdown_text`.
  * - `post`, `edit` and stream writes fail with `TooLarge` before calling
  *   Slack when the text as sent passes 12,000 code points. Slack's second
  *   limit, 13,200 with every emoji counted as its shortcode, is left to
@@ -247,7 +254,13 @@ export const layerWebhook = (options: {
  * - A message subtype other than `file_share`, `thread_broadcast`,
  *   `bot_message` and `me_message` gives none.
  * - Mentions come from the message's `rich_text` block when it has one,
- *   and from `text` outside code otherwise.
+ *   and only for elements whose token is in `text`, since Slack decides a
+ *   mention from `text`. Without a `rich_text` block they come from `text`
+ *   outside code.
+ * - The bot's own messages with a `rich_text` block read back with `text`
+ *   rendered from the blocks as Markdown, whole and with its newlines, as
+ *   the stored `text` the adapter sent may be cut. Everyone else's `text`
+ *   is Slack's field as stored.
  * - `agent_session_stopped` gives a `StopRequested`.
  * - `raw` is the envelope without its verification `token`.
  *
@@ -313,8 +326,9 @@ export const withPostOptions: {
 )
 
 /**
- * A Slack emoji name, with or without colons and with skin tone suffixes, as
- * Unicode. `None` for a name the table doesn't know, such as a custom emoji.
+ * A Slack emoji name, with or without colons and with at most one skin tone
+ * suffix (`+1::skin-tone-4`), as Unicode. `None` for a name the table
+ * doesn't know, such as a custom emoji, and for a name with two tones.
  *
  * @stability unstable
  * @category emoji

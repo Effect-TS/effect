@@ -6,6 +6,7 @@ import type * as Schema from "effect/Schema"
 import { isDirectChannel, thread } from "./address.ts"
 import * as Emoji from "./emoji.ts"
 import * as Mentions from "./mentions.ts"
+import * as RichText from "./richText.ts"
 
 /**
  * The message subtypes that count as a message, for inbound events and for
@@ -86,6 +87,12 @@ const attachments = (message: JsonObject): Array<ChatMessage.Attachment> => {
  *   `ts`, and the thread otherwise. It never depends on later replies.
  * - A `bot_message` has `bot_id` and no `user`: `author.id` is the
  *   `bot_id`, with `isBot` true.
+ * - `text` is Slack's field as stored, except for a message the bot itself
+ *   wrote that has a `rich_text` block. Its `text` is rendered from the
+ *   blocks as Markdown, and its mentions are the mention elements outside
+ *   code, at the offsets the renderer wrote. The adapter's own `text` is
+ *   often cut, and the blocks hold the whole message. Slack's field stays on
+ *   `raw`.
  *
  * @internal
  */
@@ -100,7 +107,11 @@ export const message = (raw: unknown, context: MessageContext): ChatMessage.Chat
   const authorId = user ?? botId
   if (authorId === undefined) return undefined
   const threadTs = string(raw, "thread_ts")
-  const text = typeof raw.text === "string" ? raw.text : ""
+  const isSelf = user !== undefined && user === context.botUserId
+  const rendered = isSelf && Array.isArray(raw.blocks) && RichText.hasRichText(raw.blocks)
+    ? RichText.render(raw.blocks, context.botUserId)
+    : undefined
+  const text = rendered?.text ?? (typeof raw.text === "string" ? raw.text : "")
   const name = authorName(raw)
   return {
     id: ts,
@@ -113,10 +124,10 @@ export const message = (raw: unknown, context: MessageContext): ChatMessage.Chat
       id: authorId,
       ...(name === undefined ? {} : { name }),
       isBot: botId !== undefined || subtype === "bot_message" || user === context.botUserId,
-      isSelf: user !== undefined && user === context.botUserId
+      isSelf
     },
     text,
-    mentions: Mentions.extract(text, raw.blocks, context.botUserId),
+    mentions: rendered === undefined ? Mentions.extract(text, raw.blocks, context.botUserId) : [...rendered.mentions],
     attachments: attachments(raw),
     timestamp: timestamp(ts),
     raw

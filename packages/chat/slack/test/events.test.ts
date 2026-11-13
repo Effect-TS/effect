@@ -152,10 +152,10 @@ describe("captured Events API deliveries", () => {
       }
     }))
 
-  it.live("a /me line keeps its labelled mention token", () =>
+  it.live("the bot's own /me line reads back from its blocks, with the token the renderer wrote", () =>
     Effect.gen(function*() {
       const event = created((yield* deliveries("me-message"))[0])
-      assert.deepStrictEqual(mentions(event), selfMention("|janitor2"))
+      assert.deepStrictEqual(mentions(event), selfMention())
     }))
 
   it.live("a file share with a mention in its comment", () =>

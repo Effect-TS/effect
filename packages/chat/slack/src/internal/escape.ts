@@ -1,7 +1,12 @@
 /**
- * Escaping for Slack's `markdown_text`: a `<` outside inline and fenced code
- * becomes `&lt;`, so no mention token notifies, unless the scoped notify
- * options allow that token.
+ * Escaping for what the adapter sends Slack.
+ *
+ * - The Markdown, in a `markdown` block or in `markdown_text`: a `<`
+ *   outside inline and fenced code becomes `&lt;`, unless the scoped notify
+ *   options allow that token.
+ * - The `text` beside a `markdown` block, from which Slack decides who is
+ *   mentioned: every `<`, `>` and `&` becomes an entity, in code too, and
+ *   only the tokens the block keeps intact stay intact.
  */
 
 /** @internal */
@@ -129,10 +134,18 @@ const codeSpans = (line: string): { readonly spans: Array<readonly [number, numb
 export const escape = (
   text: string,
   notify: Notify,
-  options?: { readonly state?: State | undefined; readonly flush?: boolean | undefined }
+  options?: {
+    readonly state?: State | undefined
+    readonly flush?: boolean | undefined
+    /** Write every `<`, `>` and `&` as an entity, apart from allowed tokens. */
+    readonly entities?: boolean | undefined
+    /** Called with the span in the output of each allowed token kept intact. */
+    readonly onToken?: ((start: number, end: number) => void) | undefined
+  }
 ): Escaped => {
   const state = options?.state ?? initialState
   const flush = options?.flush === true
+  const entities = options?.entities === true
   const full = state.line + text
   const offset = state.line.length
   const anyAllowed = allowsAny(notify)
@@ -141,7 +154,11 @@ export const escape = (
   let lineStart = 0
   const emit = (from: number, to: number, piece?: string) => {
     if (to <= offset) return
-    out += piece !== undefined ? piece : full.slice(Math.max(from, offset), to)
+    if (piece !== undefined) out += piece
+    else {
+      const slice = full.slice(Math.max(from, offset), to)
+      out += entities ? textEntities(slice) : slice
+    }
   }
   while (lineStart <= full.length) {
     const newline = full.indexOf("\n", lineStart)
@@ -186,7 +203,9 @@ export const escape = (
         }
         const token = allowedToken(rest, notify)
         if (token > 0) {
-          emit(at, at + token)
+          const start = out.length
+          emit(at, at + token, at >= offset ? rest.slice(0, token) : undefined)
+          if (at >= offset) options?.onToken?.(start, out.length)
           i += token
         } else {
           emit(at, at + 1, at >= offset ? "&lt;" : undefined)
@@ -204,7 +223,9 @@ export const escape = (
   return { sent: out, consumed: full.length - offset, state: { fence, line: "" } }
 }
 
-const mrkdwnEntities = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+const entityOf: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" }
+
+const textEntities = (text: string): string => text.replace(/[&<>]/g, (char) => entityOf[char])
 
 /**
  * Markdown as Slack's mrkdwn, for the text of a message that carries files,
@@ -219,7 +240,7 @@ export const toMrkdwn = (markdown: string, notify: Notify): string =>
   markdown
     .split(/(```[\s\S]*?```|`[^`\n]*`)/)
     .map((part, index) => {
-      if (index % 2 === 1) return mrkdwnEntities(part.replace(/^```[\w+#.-]+\n/, "```\n"))
+      if (index % 2 === 1) return textEntities(part.replace(/^```[\w+#.-]+\n/, "```\n"))
       // Allowed tokens become private-use placeholders, so the conversions
       // below can span them but never change them.
       const tokens: Array<string> = []

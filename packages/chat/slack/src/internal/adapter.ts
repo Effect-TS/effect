@@ -26,6 +26,7 @@ import * as Escape from "./escape.ts"
 import * as Length from "./length.ts"
 import * as Normalize from "./normalize.ts"
 import { CurrentPostOptions, type SessionStatus } from "./options.ts"
+import * as Text from "./text.ts"
 
 type Json = Schema.Json
 type JsonObject = { readonly [key: string]: Json }
@@ -230,6 +231,22 @@ export const make = (options: {
     Length.codePoints(sent) > Length.messageLength
       ? fail(op, new TooLarge({ subject: "text", detail: "msg_too_long" }))
       : Effect.void
+
+  /**
+   * The body of a post or an update: the Markdown as one `markdown` block,
+   * and a `text` the adapter builds, cut to the call's budget. Slack decides
+   * mentions from `text`, and builds one with every token intact when none
+   * is sent, so `markdown_text` is never used on these two calls.
+   */
+  const messageContent = Effect.fnUntraced(
+    function*(op: string, markdown: string, notify: Escape.Notify, budget: Text.Budget) {
+      const body = Text.body(markdown, notify, budget)
+      yield* checkSent(op, body.sent)
+      if (body.text === "") return yield* fail(op, Errors.invalidRequest("no_text"))
+      if (body.dropped > 0) yield* Effect.annotateCurrentSpan("slack.text.dropped_tokens", body.dropped)
+      return { blocks: body.blocks, text: body.text }
+    }
+  )
 
   const messages = (answer: Json): ReadonlyArray<Json> =>
     isObject(answer) && Array.isArray(answer.messages) ? answer.messages : []
@@ -582,13 +599,12 @@ export const make = (options: {
       if (content.files !== undefined && content.files.length > 0) {
         return yield* postFiles(thread, parts, content.markdown, content.files, notify)
       }
-      const sent = Escape.escape(content.markdown, notify, { flush: true }).sent
-      yield* checkSent("post", sent)
+      const body = yield* messageContent("post", content.markdown, notify, Text.postBudget)
       const unfurl = postOptions.unfurl === true
       const ts = yield* call("post", "chat.postMessage", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
-        markdown_text: sent,
+        ...body,
         unfurl_links: unfurl,
         unfurl_media: unfurl
       }, { write: true }).pipe(Effect.flatMap(tsOf("post", true)))
@@ -597,11 +613,10 @@ export const make = (options: {
     edit: Effect.fnUntraced(function*(thread, messageId, content) {
       const parts = yield* resolve("edit", thread)
       const postOptions = yield* CurrentPostOptions
-      const sent = Escape.escape(content.markdown, postOptions.notify ?? {}, { flush: true }).sent
-      yield* checkSent("edit", sent)
+      const body = yield* messageContent("edit", content.markdown, postOptions.notify ?? {}, Text.updateBudget)
       yield* retrySafe(paced(
         messageId,
-        call("edit", "chat.update", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
+        call("edit", "chat.update", { channel: parts.channel, ts: messageId, ...body }, {
           write: true,
           retry: false
         }),
