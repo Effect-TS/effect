@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
+    "@testcontainers/clickhouse": "^12.2.1",
     "effect": "workspace:^",
     "esbuild": "^0.28.2"
   },

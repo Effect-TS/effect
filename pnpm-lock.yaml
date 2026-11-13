@@ -598,6 +598,9 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../../platform/node
+      '@testcontainers/clickhouse':
+        specifier: ^12.2.1
+        version: 12.2.1(supports-color@10.2.2)
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -4197,6 +4200,9 @@ packages:
     engines: {node: '>=16.0.0'}
     cpu: [x64, ia32]
     os: [win32]
+
+  '@testcontainers/clickhouse@12.2.1':
+    resolution: {integrity: sha512-94gEHCNDQZjGMnhOd7HAktzeukil80z2wbdiVkS60EBCxphj05vLkK1R3D/azwVZDIKmlh0rireVeu5u7tcZHw==}
 
   '@testcontainers/mssqlserver@12.2.1':
     resolution: {integrity: sha512-5PO5LOIc5mGp+iq27etwwO/NLY90nGhl3jjfisEuMQI9wAIASgX6qOrHNyDK4rSt+DOpW4oOX/NX8XavFr5KaA==}
@@ -10360,6 +10366,15 @@ snapshots:
 
   '@sqliteai/sqlite-vector-win32-x86_64@1.0.0':
     optional: true
+
+  '@testcontainers/clickhouse@12.2.1(supports-color@10.2.2)':
+    dependencies:
+      testcontainers: 12.2.1(bare-buffer@3.7.1)(supports-color@10.2.2)
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
 
   '@testcontainers/mssqlserver@12.2.1(bare-buffer@3.7.1)(supports-color@10.2.2)':
     dependencies:
