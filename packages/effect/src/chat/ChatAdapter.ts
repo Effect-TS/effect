@@ -151,7 +151,10 @@ export interface ThreadInfo {
  *
  * **Details**
  *
- * `name` is the guild nick when `in` was given and the platform has one.
+ * - `name` is the guild nick when `in` was given and the platform has one.
+ * - `raw` is the platform's own record of the user. What the model has no
+ *   field for, such as a Slack user's team or a Discord member's roles, is
+ *   read from there. Each adapter documents what its `raw` holds.
  *
  * @stability unstable
  * @category models
@@ -182,8 +185,11 @@ export interface User {
  *   opener, whose `thread` is the thread's parent: the one message in a
  *   thread's history that is not addressed to that thread. Without an opener,
  *   history starts at the first reply, whether the opener was deleted or the
- *   platform's thread root is not a message.
+ *   platform's thread root is not a message. A `backward` read that stops
+ *   early has not reached the opener: `opener` reads it by itself.
  * - `download` fails with `TooLarge` as soon as more than `maxBytes` arrive.
+ *   It streams, so a file is never held whole unless the caller asks:
+ *   `Stream.mkUint8Array` collects the stream into one array.
  * - `startThread` returns the thread under `messageId`, created when there is
  *   none. It is get-or-create, and the only way from an opener to its thread.
  * - `opener` is the message a thread hangs off: `None` for a channel or

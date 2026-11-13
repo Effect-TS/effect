@@ -158,7 +158,13 @@ const lookupTimeout = Duration.seconds(5)
  *   parent channel, in place of Discord's placeholder. When the opener is
  *   deleted it starts at the first reply. A forum post's starter is in the
  *   thread itself.
- * - `getUser` with `in` gives the guild nick.
+ * - `getUser` with `in` gives the guild nick, and its `raw` is Discord's
+ *   guild member, whose `roles` are the member's role ids. Without `in`, in
+ *   a direct, or for someone who left the guild, `raw` is the user.
+ * - The layer provides the `DiscordChat` service as well as registering the
+ *   adapter, and makes every call through the `DiscordREST` it is given. A
+ *   consumer that needs more of Discord than `Chat` has reads either from
+ *   context beside `Chat`. dfx keeps one rate-limit state for both.
  * - There is no native streaming: streamed replies post, then edit, at
  *   least 1.5 seconds apart.
  *

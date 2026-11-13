@@ -190,6 +190,12 @@ export class SlackChat extends Context.Service<SlackChat, {
  * - `replyTo` is not supported.
  * - A message from another app or an incoming webhook (`bot_message`) has
  *   the `bot_id` as its author id. `getUser` on that id fails `NotFound`.
+ * - `getUser`'s `raw` is the user from `users.info`, with its `team_id`.
+ *   `SlackChat.user` is the same call with the team, guest and Slack
+ *   Connect status as typed fields.
+ * - The layer provides the `SlackChat` and `SlackWebApi` services as well
+ *   as registering the adapter. A consumer that needs more of Slack than
+ *   `Chat` has reads either from context beside `Chat`.
  * - A thread root whose subtype is not a message, such as an agent-view
  *   chat's `assistant_app_thread` root, is treated as deleted: `opener`
  *   gives `None` and history starts at the first reply.

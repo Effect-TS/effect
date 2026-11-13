@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Option, Schema } from "effect"
+import { Effect, Exit, Option, Schema, Stream } from "effect"
 import {
   Chat,
   ChatAdapter,
@@ -473,6 +473,28 @@ describe("ChatTest", () => {
         )
         assert.isTrue(Exit.isFailure(exit))
       }
+    }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.effect("Stream.mkUint8Array collects a download into the file's bytes", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const chat = yield* Chat.Chat
+      const thread = yield* test.makeThread()
+      // Larger than one chunk of the fake's download.
+      const content = Uint8Array.from({ length: 3000 }, (_, i) => i % 251)
+      const event = yield* test.userPosts(thread, {
+        text: "a file",
+        files: [{ name: "data.bin", contentType: "application/octet-stream", content }]
+      })
+      assert(event._tag === "MessageCreated")
+      const [attachment] = event.message.attachments
+      const download = chat.download(thread, attachment, { maxBytes: content.length })
+      assert.isAbove((yield* Stream.runCollect(download)).length, 1)
+      assert.deepStrictEqual(yield* Stream.mkUint8Array(download), content)
+      const error = yield* Effect.flip(
+        Stream.mkUint8Array(chat.download(thread, attachment, { maxBytes: content.length - 1 }))
+      )
+      assert.strictEqual(error.reason._tag, "TooLarge")
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.effect("ChatHandler.layer drops the bot's own messages unless deliverSelf", () =>
