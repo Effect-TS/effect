@@ -2340,8 +2340,11 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
         KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
       )
   )
-  const resultAtom = options.runtime.atom(
-    KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
+  const resultAtom = writable(
+    options.runtime.atom(
+      KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
+    ).read,
+    (ctx, value: S["Type"]) => ctx.setSelf(AsyncResult.success(Option.some(value)))
   )
   return writable(
     options.mode === "async" ?
@@ -2371,10 +2374,12 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
         }, { immediate: true })
         return Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
       },
-    (ctx, value: S["Type"]) => {
-      ctx.set(setAtom, value as any)
-      ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
-    }
+    (ctx, value: S["Type"]) =>
+      batch(() => {
+        ctx.set(setAtom, value as any)
+        ctx.set(resultAtom, value)
+        ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
+      })
   ) as any
 }
 

@@ -3602,6 +3602,45 @@ describe("Atom", { concurrent: false }, () => {
       assert(AsyncResult.isSuccess(updated))
       expect(updated.value).toEqual(24)
     })
+
+    for (const mode of ["sync", "async"] as const) {
+      const makeAtom = () => {
+        const storage = new Map([["theme", JSON.stringify("light")]])
+        const kvsRuntime = Atom.runtime(Layer.succeed(
+          KeyValueStore.KeyValueStore,
+          KeyValueStore.makeStringOnly({
+            get: (key) => Effect.sync(() => storage.get(key)),
+            set: (key, value) => Effect.sync(() => storage.set(key, value)),
+            remove: (key) => Effect.sync(() => storage.delete(key)),
+            clear: Effect.sync(() => storage.clear()),
+            size: Effect.sync(() => storage.size),
+            keys: Effect.sync(() => Array.from(storage.keys()))
+          })
+        ))
+        return Atom.kvs({ mode, runtime: kvsRuntime, key: "theme", schema: Schema.String, defaultValue: () => "light" })
+      }
+      const read = (value: unknown) => AsyncResult.isAsyncResult(value) ? AsyncResult.getOrThrow(value) : value
+
+      it(`${mode} mode keeps the written value after a refresh`, () => {
+        const atom = makeAtom()
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        r.set(atom, "dark")
+        r.refresh(atom)
+        expect(read(r.get(atom))).toEqual("dark")
+      })
+
+      it(`${mode} mode keeps the written value after a remount past the idle TTL`, async () => {
+        const atom = makeAtom()
+        const r = AtomRegistry.make({ defaultIdleTTL: 400 })
+        const unmount = r.mount(atom)
+        r.set(atom, "dark")
+        unmount()
+        await vitest.advanceTimersByTimeAsync(600)
+        r.mount(atom)
+        expect(read(r.get(atom))).toEqual("dark")
+      })
+    }
   })
 })
 
