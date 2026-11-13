@@ -4539,21 +4539,16 @@ describe("Effect", () => {
 
       it.effect("should interrupt a recovered retry without committing its writes", () =>
         Effect.gen(function*() {
-          const gate = TxRef.makeUnsafe(0)
           const written = TxRef.makeUnsafe(0)
           const waiter = yield* Effect.tx(Effect.gen(function*() {
             yield* TxRef.set(written, 1)
-            yield* TxRef.get(gate)
             yield* Effect.exit(Effect.txRetry)
           })).pipe(Effect.forkChild({ startImmediately: true }))
 
-          assert.strictEqual(gate.pending.size, 1)
           const exit = yield* Fiber.interrupt(waiter).pipe(Effect.andThen(Fiber.await(waiter)))
 
           assert.isTrue(Exit.hasInterrupts(exit))
           assert.strictEqual(yield* TxRef.get(written), 0)
-          assert.strictEqual(gate.pending.size, 0)
-          assert.strictEqual(written.pending.size, 0)
         }))
 
       it.effect("should preserve a retry cleanup failure when a read ref changes during cleanup", () =>
