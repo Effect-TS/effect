@@ -239,6 +239,29 @@ describe("TrinoClient", () => {
       }))
   })
 
+  it.effect("does not roll back a transaction the server already ended", () => {
+    const aborted = page("q", {}).replace(
+      /\}$/,
+      `,"error":{"message":"boom","errorCode":65541,"errorName":"TRANSACTION_ABORTED","errorType":"USER_ERROR"}}`
+    )
+    const { http, log } = statements((statement) =>
+      statement === "START TRANSACTION"
+        ? { page: page("q", { update: "START TRANSACTION" }), headers: { "X-Trino-Started-Transaction-Id": "tx-1" } }
+        : statement === "SELECT boom"
+        ? { page: aborted, headers: { "X-Trino-Clear-Transaction-Id": "true" } }
+        : { page: page("q", { columns: column("x", "integer"), data: "[[1]]" }) }
+    )
+    return withClient(http, {}, (sql) =>
+      Effect.gen(function*() {
+        const error = yield* Effect.flip(sql.withTransaction(sql`SELECT boom`))
+        assert.strictEqual(error._tag, "SqlError")
+        assert.include(String(error.cause), "boom")
+        // The server cleared the transaction, so no ROLLBACK is sent for it.
+        assert.deepStrictEqual(posts(log).map((exchange) => exchange.body), ["START TRANSACTION", "SELECT boom"])
+        assert.strictEqual((yield* sql.session).transactionId, undefined)
+      }))
+  })
+
   it.effect("streams rows page by page", () => {
     let counter = 0
     const { http } = coordinator((exchange) => {
