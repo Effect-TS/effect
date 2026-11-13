@@ -1,5 +1,5 @@
-// The keyed-table benchmark (js-framework-benchmark's operations) for effect/ui, in headless
-// Chromium: rendering times and JS heap sizes.
+// The keyed-table benchmark (js-framework-benchmark's operations) for effect/ui, and the same table
+// on React as a baseline, in headless Chromium: rendering times and JS heap sizes.
 //
 // Run from the repository root:
 //
@@ -11,10 +11,15 @@
 // production) straight from packages/effect/src, so it measures the working tree. The bundle goes to
 // scratchpad/rows.bundle.js; delete it when done.
 //
-// Variants, rendering the same table (see entry.ts): `plain` (one component) and `component`
-// (a child component per row).
+// Variants, rendering the same table (see harness.ts): effect/ui's `plain` (one component) and
+// `component` (a child component per row), and React's `react-plain`, `react-component` (a row
+// component, unmemoized) and `react-memo` (a row component under React.memo); see react.mjs. The
+// default is effect/ui's two. React variants run from scratchpad/rows-react.bundle.js, built the same
+// way from react.mjs with the React that @effect/atom-react's dev dependencies installed (the run
+// prints its version), so a page loads one framework only.
 //
-// Times, in milliseconds from the message (or click) to the first microtask after the render flush:
+// Times, in milliseconds from the message (or click) to the first microtask after the change is in
+// the DOM. Style, layout and paint are not included:
 //
 //   create1k   1,000 rows into an empty table        replace1k  1,000 new rows over 1,000
 //   update10th every 10th label of 1,000 changes     select     a click selects one of 1,000 rows
@@ -62,18 +67,29 @@ const esbuild = fs.readdirSync(store).filter((name) => name.startsWith("esbuild@
   .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-1)
 const { build } = await import(pathToFileURL(path.join(store, esbuild, "node_modules/esbuild/lib/main.js")).href)
 
-const out = path.join(process.cwd(), "scratchpad/rows.bundle.js")
-await build({
-  entryPoints: [path.join(import.meta.dirname, "entry.ts")],
-  bundle: true,
-  minify: args.profile === undefined,
-  format: "iife",
-  platform: "browser",
-  target: "es2023",
-  define: { "process.env.NODE_ENV": "\"production\"" },
-  outfile: out,
-  logLevel: "error"
-})
+const variants = (args.profile?.split(":")[0] ?? args.variants).split(",")
+const isReact = (variant) => variant.startsWith("react-")
+// React isn't a dependency of effect: it comes from the workspace package that develops against it.
+const reactModules = path.join(process.cwd(), "packages/atom/react/node_modules")
+const bundles = {
+  effect: { entry: "entry.ts", out: path.join(process.cwd(), "scratchpad/rows.bundle.js") },
+  react: { entry: "react.mjs", out: path.join(process.cwd(), "scratchpad/rows-react.bundle.js") }
+}
+const bundleOf = (variant) => isReact(variant) ? bundles.react : bundles.effect
+for (const bundle of new Set(variants.map(bundleOf))) {
+  await build({
+    entryPoints: [path.join(import.meta.dirname, bundle.entry)],
+    bundle: true,
+    minify: args.profile === undefined,
+    format: "iife",
+    platform: "browser",
+    target: "es2023",
+    define: { "process.env.NODE_ENV": "\"production\"" },
+    nodePaths: bundle === bundles.react ? [reactModules] : [],
+    outfile: bundle.out,
+    logLevel: "error"
+  })
+}
 
 const which = () => {
   try {
@@ -85,16 +101,19 @@ const which = () => {
 const executablePath = args.chromium ?? process.env.CHROMIUM ?? which()
 const browser = await chromium.launch({ executablePath, headless: true, args: ["--js-flags=--expose-gc"] })
 console.log("chromium " + browser.version() + " (" + (executablePath ?? "playwright") + "), node " + process.version)
+if (variants.some(isReact)) {
+  const version = (name) => JSON.parse(fs.readFileSync(path.join(reactModules, name, "package.json"), "utf8")).version
+  console.log("react " + version("react") + ", react-dom " + version("react-dom") + " (production builds)")
+}
 
-const open = async () => {
+const open = async (variant) => {
   const page = await browser.newPage()
   page.on("pageerror", (error) => console.error("page error:", error.message))
   await page.setContent("<!doctype html><html><body></body></html>")
-  await page.addScriptTag({ path: out })
+  await page.addScriptTag({ path: bundleOf(variant).out })
   return page
 }
 
-const variants = args.variants.split(",")
 const rounds = Number(args.rounds)
 const stat = (values) => {
   const sorted = [...values].sort((a, b) => a - b)
@@ -104,7 +123,7 @@ const stat = (values) => {
 
 if (args.profile !== undefined) {
   const [variant, op] = args.profile.split(":")
-  const page = await open()
+  const page = await open(variant)
   const cdp = await page.context().newCDPSession(page)
   await page.evaluate(([v, o]) => window.bench(v, o, 2, 2), [variant, op])
   await cdp.send("Profiler.enable")
@@ -138,7 +157,7 @@ if (args.profile !== undefined) {
 }
 
 if (!args["memory-only"]) {
-  const page = await open()
+  const page = await open(variants[0])
   const ops = args.ops?.split(",") ?? await page.evaluate(() => window.opNames)
   await page.close()
   const results = Object.fromEntries(variants.map((v) => [v, Object.fromEntries(ops.map((op) => [op, []]))]))
@@ -146,7 +165,7 @@ if (!args["memory-only"]) {
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[(i + round) % variants.length]
       for (const op of ops) {
-        const page = await open()
+        const page = await open(variant)
         const big = op === "create10k"
         results[variant][op].push(
           await page.evaluate(([v, o, w, r]) => window.bench(v, o, w, r), [variant, op, big ? 1 : 2, big ? 3 : 9])
@@ -167,7 +186,7 @@ if (!args["time-only"]) {
   for (let round = 0; round < rounds; round++) {
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[(i + round) % variants.length]
-      const page = await open()
+      const page = await open(variant)
       const cdp = await page.context().newCDPSession(page)
       const heap = async (key) => {
         for (let j = 0; j < 3; j++) await cdp.send("HeapProfiler.collectGarbage")
