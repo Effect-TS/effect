@@ -601,6 +601,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     let extrasAlone = false
     /** Whether the note posted on its own takes the actions. */
     let noteActions = false
+    /** Set when the actions fit beside neither the text nor the note: they follow in a message of their own. */
+    let actionsAfter = false
 
     // --- post-then-edit --------------------------------------------------------
 
@@ -680,15 +682,18 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (measureLast(markdown + text) <= limits.messageLength) {
           return Effect.asVoid(attempt(markdown + text, undefined, false, withActions))
         }
-        // The note is the last message now, so it takes the actions when they fit beside it.
-        note = text
+        // The note is the last message now, so it takes the actions, or they follow it on their own.
         noteActions = withActions && measure(text, actions) <= limits.messageLength
-        return Effect.asVoid(attempt(markdown, undefined, false, withActions && !noteActions))
+        actionsAfter = withActions && !noteActions
+        // With no text to post, this part is the note.
+        if (isBlank(markdown)) return Effect.asVoid(attempt(text, undefined, false, noteActions))
+        note = text
+        return Effect.asVoid(attempt(markdown, undefined, false, false))
       })
     }
 
-    /** Posts an unattached note that did not fit the last part as a message of its own. */
-    const postNote = (text: string): Effect.Effect<void, never, R2> => {
+    /** Posts a message after the text that is not part of it: the unattached note, or the actions alone. */
+    const postAfter = (text: string, withActions: boolean): Effect.Effect<void, never, R2> => {
       const part = (posted: Posted): Part => ({
         messageId: posted.id,
         timestamp: posted.timestamp,
@@ -697,17 +702,40 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         kind: "text",
         transport: "post"
       })
-      const post = chat.post(thread, { markdown: text, ...(noteActions ? { actions } : {}) })
-      return Effect.asVoid(create(post, part, (exit) => {
-        note = undefined
-        if (Exit.isSuccess(exit)) {
-          parts.push(part(exit.value))
-          return done(false)
-        }
-        const error = firstError(exit)
-        if (error !== undefined) failChat(error)
-      }))
+      const post = chat.post(thread, { markdown: text, ...(withActions ? { actions } : {}) })
+      return Effect.flatMap(
+        create(post, part, (exit) => {
+          if (Exit.isSuccess(exit)) return void parts.push(part(exit.value))
+          const error = firstError(exit)
+          if (error !== undefined) failChat(error)
+        }),
+        () => isRunning() ? finishAfter : Effect.void
+      )
     }
+
+    /**
+     * Ends the reply once the text is posted: the unattached note that did
+     * not fit the last part follows, then the actions when they fit beside
+     * neither. The actions' message counts against `maxParts`, and with no
+     * part left the reply fails `Overflow`.
+     */
+    const finishAfter: Effect.Effect<void, never, R2> = Effect.suspend(() => {
+      if (note !== undefined) {
+        const text = note
+        note = undefined
+        return postAfter(text, noteActions)
+      }
+      if (actionsAfter) {
+        actionsAfter = false
+        if (parts.length >= maxParts) {
+          fail({ _tag: "Overflow" })
+          return Effect.void
+        }
+        return postAfter("", true)
+      }
+      done(false)
+      return Effect.void
+    })
 
     /**
      * Posts the files and the actions in a message of their own, after the
@@ -725,9 +753,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       return Effect.flatMap(postPart(part, input.length, "", true), () => {
         if (!isRunning()) return Effect.void
         finishPart(input.length)
-        if (note !== undefined) return postNote(note)
-        done(false)
-        return Effect.void
+        return finishAfter
       })
     })
 
@@ -749,10 +775,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         }
         const end = (last: boolean): Effect.Effect<void, never, R2> => {
           if (!last || !isRunning()) return Effect.void
-          if (extrasAlone) return postExtras
-          if (note !== undefined) return postNote(note)
-          done(false)
-          return Effect.void
+          return extrasAlone ? postExtras : finishAfter
         }
         const cutAt = (cut: number): Effect.Effect<void, never, R2> => {
           // Only blank text follows the cut: this is the last part, so it takes the files, the actions and that text.
@@ -1208,8 +1231,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   message of their own after the text. Either can add a part, which counts
  *   against `maxParts`. When `measure("", actions)` is already over, the
  *   call fails `TooLarge` before anything is posted.
- * - An unattached note posted on its own takes the actions, when they fit
- *   beside it.
+ * - An unattached note posted on its own takes the actions. When they don't
+ *   fit beside it, they follow it in a message of their own, which counts
+ *   against `maxParts`.
  * - A `TooLarge` without detail `file_refused` fails the call, even with
  *   `subject: "files"` or text that measured as fitting. Fallback requires
  *   `denied` plus `file_refused`; `subject` never controls it.
