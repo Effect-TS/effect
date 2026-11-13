@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { Component, View } from "effect/ui"
 import { Html } from "effect/ui/html"
+import { HtmlStory } from "effect/ui/html/testing"
 import { Query, Story } from "effect/ui/testing"
 import { Dialog, type Item, Menu } from "./fixtures/headless.ts"
 
@@ -257,6 +258,59 @@ describe("headless components in a story", () => {
       s.click("go")
     })
     assert.strictEqual(story.model, 1)
+    assert.isTrue(story.defaultPrevented)
+  })
+
+  it("an author's story runs its own layers around and inside a headless child's closure", () => {
+    const Inner = Component.define({ name: "Inner", model: Schema.Null, message: Schema.Never }).make({
+      init: () => null,
+      update: (model) => model,
+      parts: () => ({})
+    })
+    const Outer = Component.define({
+      name: "Outer",
+      model: Schema.Number,
+      message: Schema.Literals(["one", "ten", "hundred"]),
+      elements: Html
+    }).make({
+      init: () => 0,
+      update: (count, message) => count + (message === "one" ? 1 : message === "ten" ? 10 : 100),
+      parts: (_, p) => ({
+        one: p.part("div", (b) => b.onClick("one", { preventDefault: true })),
+        ten: p.part("div", (b) => b.onClick("ten")),
+        hundred: p.part("button", (b) => b.onClick("hundred"))
+      })
+    })
+    Story.make(Outer, {}, {
+      elements: Html,
+      view: (p, h) =>
+        p.ten(p.one(h.div)).children(
+          h.button("hit"),
+          h.child(Inner, { key: "inner", view: () => p.hundred(h.button).children("inside") })
+        )
+    }, (s) => {
+      s.click("hit")
+      s.check((story) => {
+        assert.strictEqual(story.model, 11)
+        assert.isTrue(story.defaultPrevented)
+      })
+      s.click("inside")
+      s.check((story) => assert.strictEqual(story.model, 111))
+    })
+  })
+
+  it("an author's story drops on a part's drop target", () => {
+    const Zone = Component.define({ name: "Zone", model: Schema.String, message: Schema.String, elements: Html }).make({
+      init: () => "",
+      update: (_, message) => message,
+      parts: (_, p) => ({
+        zone: p.part("div", (b) => b.onDrop((payload) => payload.data["text/plain"], { accepts: ["text/plain"] }))
+      })
+    })
+    const story = Story.make(Zone, {}, { elements: Html, view: (p, h) => p.zone(h.div).children("zone") }, (s) => {
+      s.pipe(HtmlStory.drop(Query.text("zone"), { data: { "text/plain": "milk" } }))
+    })
+    assert.strictEqual(story.model, "milk")
     assert.isTrue(story.defaultPrevented)
   })
 })
