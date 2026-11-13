@@ -9,6 +9,7 @@ export interface PostOptions {
     readonly repliedUser?: boolean | undefined
   } | undefined
   readonly suppressEmbeds?: boolean | undefined
+  readonly failIfNotExists?: boolean | undefined
   readonly autoArchiveDuration?: 60 | 1440 | 4320 | 10080 | undefined
 }
 

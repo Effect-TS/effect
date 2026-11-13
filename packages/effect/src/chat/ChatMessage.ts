@@ -102,13 +102,21 @@ export type Attachment = typeof Attachment.Type
 /**
  * Schema for the message a message replies to.
  *
+ * **Details**
+ *
+ * - `authorId` is there when the platform says who wrote the message
+ *   replied to. Discord leaves it out once that message is deleted.
+ * - `isSelf` says whether that author is the bot. An adapter sets it on
+ *   every message it reads that has an `authorId`. A write ignores both.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.1.5
  */
 export const ReplyTo = Schema.Struct({
   messageId: Schema.String,
-  authorId: Schema.optionalKey(Schema.String)
+  authorId: Schema.optionalKey(Schema.String),
+  isSelf: Schema.optionalKey(Schema.Boolean)
 }).annotate({ identifier: "ChatMessage.ReplyTo" })
 
 /**
@@ -173,8 +181,33 @@ export type ChatMessage = typeof ChatMessage.Type
  * A reply to the bot is not a mention. Whether it counts as one is the
  * consumer's policy.
  *
+ * @see {@link repliesToSelf} for a reply to one of the bot's messages
+ *
  * @stability unstable
  * @category predicates
  * @since 4.1.5
  */
 export const mentionsSelf = (message: ChatMessage): boolean => message.mentions.some((mention) => mention.isSelf)
+
+/**
+ * Returns whether the message replies to one of the bot's own messages.
+ *
+ * **When to use**
+ *
+ * Use with `mentionsSelf` when a reply to the bot should count as addressed
+ * to it, whether or not the reply pings.
+ *
+ * **Gotchas**
+ *
+ * - It reads `replyTo.isSelf`, so it is false when the platform does not say
+ *   who wrote the message replied to.
+ * - A message in a Slack thread is not a reply to the thread's first
+ *   message: Slack messages carry no `replyTo`.
+ *
+ * @see {@link mentionsSelf} for a mention of the bot
+ *
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.5
+ */
+export const repliesToSelf = (message: ChatMessage): boolean => message.replyTo?.isSelf === true

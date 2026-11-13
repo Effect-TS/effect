@@ -97,6 +97,9 @@ export interface Result {
  *   write that failed `uncertain` and was never confirmed since, and
  *   `remaining` was never sent. The `text` of `posted`, then `uncertain`,
  *   then `remaining` is the input, with nothing in two of them.
+ * - `remainingFence` is set when `remaining` starts inside a code fence:
+ *   the line that opened it, with its info string. Text sent later starts
+ *   with that line and a newline, then `remaining`.
  * - `cause` is a `ChatError` from a write, the upstream's error `E`, or
  *   `Overflow` when the input outgrew `maxParts` and the overflow file.
  *
@@ -112,6 +115,7 @@ export interface Result {
 export class ChatMarkdownError<E = never> extends Data.TaggedError("ChatMarkdownError")<{
   readonly posted: ReadonlyArray<Part>
   readonly remaining: string
+  readonly remainingFence?: string | undefined
   readonly uncertain?: string | undefined
   readonly cause:
     | { readonly _tag: "Chat"; readonly error: ChatError }
@@ -1170,9 +1174,14 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         from = Math.max(part.confirmed, part.uncertain)
         uncertain = input.slice(part.confirmed, from)
       }
+      // Read from the start of the input, so it holds whichever part the cut fell in.
+      const fence = from === input.length
+        ? undefined
+        : fenceAt(scanLines(input.slice(0, from), undefined, false), undefined, from)
       return new ChatMarkdownError<E>({
         posted,
         remaining: input.slice(from),
+        ...(fence === undefined ? {} : { remainingFence: fence.line }),
         ...(uncertain === "" ? {} : { uncertain }),
         cause
       })

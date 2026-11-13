@@ -212,7 +212,12 @@ export const message = (
     mentions: mentionsOf(fields, text, context.botUserId),
     ...(replyId === undefined
       ? {}
-      : { replyTo: { messageId: replyId, ...(replyAuthor === undefined ? {} : { authorId: replyAuthor }) } }),
+      : {
+        replyTo: {
+          messageId: replyId,
+          ...(replyAuthor === undefined ? {} : { authorId: replyAuthor, isSelf: replyAuthor === context.botUserId })
+        }
+      }),
     attachments,
     timestamp: fields.timestamp,
     raw

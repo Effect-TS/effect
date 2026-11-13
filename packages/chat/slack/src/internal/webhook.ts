@@ -102,6 +102,17 @@ const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "obj
 const ok = HttpServerResponse.empty({ status: 200 })
 const status = (code: number) => HttpServerResponse.empty({ status: code })
 
+/**
+ * What is logged with each 503 of the Events API route.
+ *
+ * @internal
+ */
+export const unavailable = {
+  botUser: "slack webhook: the bot user could not be read, answered 503",
+  notAccepted: "slack webhook: the handler refused the event, answered 503",
+  deadline: "slack webhook: the request passed its deadline, answered 503"
+} as const
+
 /** @internal */
 export interface Options {
   readonly verify: (headers: { readonly [key: string]: string | undefined }, body: Uint8Array) => Effect.Effect<boolean>
@@ -123,7 +134,8 @@ export interface Options {
  *   answered 200 and dropped, so Slack does not retry it.
  * - 503 when the bot user can't be read, the handler fails `NotAccepted`,
  *   or the whole request (including its body and verification) takes longer
- *   than the deadline. Slack then retries.
+ *   than the deadline. Slack then retries. Each is logged with its own
+ *   message, since the status alone does not say which it was.
  *
  * @internal
  */
@@ -149,19 +161,22 @@ export const handleRequest = (
     }
     if (envelope.type !== "event_callback" || envelope.api_app_id !== options.appId) return ok
     const callback = envelope
-    const handled = yield* Effect.gen(function*() {
-      const botUserId = yield* Effect.option(options.botUserId)
-      if (Option.isNone(botUserId)) return false
-      const events = normalize(callback, { teamId: options.teamId, botUserId: botUserId.value })
-      yield* Effect.forEach(events, options.handle, { discard: true })
-      return true
-    }).pipe(
-      Effect.catchTag("NotAccepted", () => Effect.succeed(false))
+    const botUserId = yield* Effect.catch(
+      Effect.asSome(options.botUserId),
+      (error) => Effect.as(Effect.logError(unavailable.botUser, error), Option.none<string>())
     )
-    return handled ? ok : status(503)
+    if (Option.isNone(botUserId)) return status(503)
+    const events = normalize(callback, { teamId: options.teamId, botUserId: botUserId.value })
+    return yield* Effect.forEach(events, options.handle, { discard: true }).pipe(
+      Effect.as(ok),
+      Effect.catchTag("NotAccepted", () => Effect.as(Effect.logWarning(unavailable.notAccepted), status(503)))
+    )
   }).pipe(
     Effect.timeoutOption(options.deadline),
-    Effect.map(Option.getOrElse(() => status(503)))
+    Effect.flatMap(Option.match({
+      onNone: () => Effect.as(Effect.logWarning(unavailable.deadline), status(503)),
+      onSome: Effect.succeed
+    }))
   )
 
 /** @internal */

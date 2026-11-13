@@ -141,6 +141,43 @@ describe("ChatMarkdown", () => {
         assert.strictEqual(joined(error.posted) + error.remaining, input)
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 } }))))
 
+    it.effect("remainingFence is the fence remaining was cut in, and reopening it gives the rest back", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const code = Array.from({ length: 6 }, (_, i) => "const line" + i + " = " + i).join("\n")
+        const input = "Intro\n\n~~~ts title\n" + code + "\n~~~\n\nOutro"
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, input, { maxParts: 2 }))
+        assert.strictEqual(error.cause._tag, "Overflow")
+        assert.strictEqual(joined(error.posted) + error.remaining, input)
+        assert.isTrue(error.remaining.startsWith("const line"), error.remaining)
+        assert.strictEqual(error.remainingFence, "~~~ts title")
+        // Sent again with the fence reopened, the thread reads as the input does.
+        yield* ChatMarkdown.post(thread, error.remainingFence + "\n" + error.remaining)
+        const sent = yield* texts(test, thread)
+        assert.isTrue(sent.every((text) => (text.match(/^~~~/gm) ?? []).length % 2 === 0), sent.join("\n---\n"))
+        assert.deepStrictEqual(
+          sent.flatMap((text) => text.split("\n")).filter((line) => line.startsWith("const line")),
+          code.split("\n")
+        )
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 60 } }))))
+
+    it.effect("remainingFence is unset outside a fence and when nothing remains", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const outside = yield* Effect.flip(
+          ChatMarkdown.post(thread, "```ts\ncode\n```\n\n" + paragraphs(4, 20), { maxParts: 2 })
+        )
+        assert.isTrue(outside.remaining.startsWith("Paragraph"), outside.remaining)
+        assert.isUndefined(outside.remainingFence)
+        yield* test.failNext("post", new ChatError.Forbidden({}))
+        const refused = yield* Effect.flip(ChatMarkdown.post(thread, "```ts\ncode"))
+        assert.deepStrictEqual([refused.posted, refused.remaining, refused.remainingFence], [
+          [],
+          "```ts\ncode",
+          undefined
+        ])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 } }))))
+
     it.effect("uploads the rest past maxParts as a file", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup

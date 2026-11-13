@@ -216,7 +216,12 @@ export const make = Effect.fnUntraced(function*(options: {
       allowed_mentions: allowedMentions(postOptions.notify),
       flags: flags(postOptions),
       ...(rows.length === 0 ? {} : { components: rows }),
-      ...(content.replyTo === undefined ? {} : { message_reference: { message_id: content.replyTo.messageId } }),
+      ...(content.replyTo === undefined ? {} : {
+        message_reference: {
+          message_id: content.replyTo.messageId,
+          ...(postOptions.failIfNotExists === false ? { fail_if_not_exists: false } : {})
+        }
+      }),
       ...(files.length === 0 ? {} : { attachments: files.map((file, i) => ({ id: String(i), filename: file.name })) })
     })
     const answer = yield* (files.length === 0
