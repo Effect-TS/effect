@@ -141,6 +141,8 @@ interface StreamState {
    * and the repair edit rewrites the message itself.
    */
   readonly settled: boolean
+  /** Whether the cleanup edit has run or been skipped. */
+  readonly cleaned: boolean
 }
 
 /**
@@ -526,7 +528,7 @@ export const make = (options: {
   // Native stream
 
   /**
-   * The cleanup edit: once a stream is stopped, a message whose appends
+   * The cleanup edit: once a stream is closed, a message whose appends
    * differ from what the block path would send is rewritten once as blocks
    * plus `text`, which takes out the zero-width spaces. It carries no
    * `actions`, since the stop never does.
@@ -535,8 +537,12 @@ export const make = (options: {
    * leaving the characters, failing nothing and saying so on the span. A
    * message whose last append is unsettled is left to the layer's repair,
    * which rewrites it, so it gets no second edit.
+   *
+   * An interrupted cleanup leaves the message marked not cleaned, so the
+   * stop the layer's finaliser sends again runs it again.
    */
-  const cleanup = Effect.fnUntraced(function*(
+  const cleanupEdit = Effect.fnUntraced(function*(
+    op: string,
     channel: string,
     messageId: string,
     state: StreamState,
@@ -553,7 +559,7 @@ export const make = (options: {
     if (body.dropped > 0) yield* Effect.annotateCurrentSpan("slack.text.dropped_tokens", body.dropped)
     const edited = yield* paced(
       messageId,
-      call("nativeStream.stop", "chat.update", { channel, ts: messageId, blocks: body.blocks, text: body.text }, {
+      call(op, "chat.update", { channel, ts: messageId, blocks: body.blocks, text: body.text }, {
         write: true,
         retry: false
       }),
@@ -561,6 +567,16 @@ export const make = (options: {
     ).pipe(Effect.result)
     yield* Effect.annotateCurrentSpan("slack.stream.cleanup", Result.isSuccess(edited) ? "edited" : "failed")
   })
+
+  const cleanup = (op: string, channel: string, messageId: string, notify: Escape.Notify): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      const state = streams.get(messageId)
+      if (state === undefined || state.cleaned) return Effect.void
+      return Effect.andThen(
+        cleanupEdit(op, channel, messageId, state, notify),
+        Effect.sync(() => void streams.set(messageId, { ...state, cleaned: true }))
+      )
+    })
 
   const nativeStream: NonNullable<ChatAdapter["nativeStream"]> = {
     start: Effect.fnUntraced(function*(thread, start) {
@@ -602,7 +618,14 @@ export const make = (options: {
       const ts = yield* tsOf(op, true)(answer)
       const backoff = continues === undefined ? undefined : backoffs.get(continues)
       if (backoff !== undefined) backoffs.set(ts, backoff)
-      streams.set(ts, { escape: escaped.state, markdown: start.markdown, sent, stopped: false, settled: true })
+      streams.set(ts, {
+        escape: escaped.state,
+        markdown: start.markdown,
+        sent,
+        stopped: false,
+        settled: true,
+        cleaned: false
+      })
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
     append: Effect.fnUntraced(function*(thread, messageId, markdown, appendOptions) {
@@ -610,7 +633,7 @@ export const make = (options: {
       const parts = yield* resolve(op, thread)
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId) ??
-        { escape: Escape.initialState, markdown: "", sent: "", stopped: false, settled: true }
+        { escape: Escape.initialState, markdown: "", sent: "", stopped: false, settled: true, cleaned: false }
       const flush = appendOptions?.flush === true
       // A trailing high surrogate waits for its other half.
       const input = !flush && /[\ud800-\udbff]$/.test(markdown) ? markdown.slice(0, -1) : markdown
@@ -637,7 +660,8 @@ export const make = (options: {
             markdown: state.markdown + input.slice(0, escaped.consumed),
             sent: state.sent + sent,
             stopped: false,
-            settled: true
+            settled: true,
+            cleaned: false
           })
           return { state: "open" as const, held }
         }),
@@ -650,11 +674,15 @@ export const make = (options: {
               return { state: "closed" as const, held: 0 }
             })
         ),
-        Effect.catchIf(hasDetail("stopped_by_user"), () =>
-          Effect.sync(() => {
-            streams.set(messageId, { ...state, stopped: true })
-            return { state: "stopped" as const, held: 0 }
-          })),
+        // Slack closed the stream, and the layer sends no stop after this, so the cleanup runs here.
+        Effect.catchIf(
+          hasDetail("stopped_by_user"),
+          () =>
+            Effect.sync(() => streams.set(messageId, { ...state, stopped: true })).pipe(
+              Effect.andThen(cleanup(op, parts.channel, messageId, postOptions.notify ?? {})),
+              Effect.as({ state: "stopped" as const, held: 0 })
+            )
+        ),
         // Nothing was added.
         Effect.tapError((error) =>
           Effect.sync(() => {
@@ -687,14 +715,14 @@ export const make = (options: {
         Effect.map(Option.some),
         Effect.catchIf(hasDetail("message_not_in_streaming_state"), () => Effect.succeed(Option.none<Json>()))
       )
-      // Kept until the stop is answered, so a stop sent again after a cut-off one still cleans up.
-      streams.delete(messageId)
       const message = Option.isSome(answer) && isObject(answer.value) ? object(answer.value, "message") : undefined
       const context = message === undefined ? undefined : object(message, "ai_context")
       const result = Option.isSome(answer) && isObject(answer.value) ? answer.value.result_status : undefined
       const stopped = state?.stopped === true || result === "stopped_by_user" ||
         (context !== undefined && context.result_status === "stopped_by_user")
-      if (state !== undefined) yield* cleanup(parts.channel, messageId, state, postOptions.notify ?? {})
+      yield* cleanup(op, parts.channel, messageId, postOptions.notify ?? {})
+      // Kept until now, so a stop sent again after a cut-off one still cleans up.
+      streams.delete(messageId)
       if (stopped && stopOptions.end === "done" && parts.threadTs !== undefined) {
         yield* sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
       }

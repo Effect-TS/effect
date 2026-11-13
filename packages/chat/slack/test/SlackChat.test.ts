@@ -1005,6 +1005,47 @@ describe("nativeStream", () => {
         })
       )
     })
+
+    it.effect("runs again on a stop sent after one interrupted during it", () => {
+      const fake = makeFake({
+        "chat.startStream": posted(ts),
+        "chat.stopStream": [{ ok: true }, { ok: false, error: "message_not_in_streaming_state" }],
+        "chat.update": [hang, posted(ts)]
+      })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "<@U2>", recipient })
+          const first = yield* Effect.forkChild(native.stop(replyThread, ts, { end: "done" }))
+          yield* TestClock.adjust("1 millis")
+          assert.strictEqual(fake.called("chat.update").length, 1)
+          yield* Fiber.interrupt(first)
+          assert.strictEqual(yield* cleanupOf(native.stop(replyThread, ts, { end: "done" })), "edited")
+          assert.strictEqual(fake.called("chat.update").length, 2)
+        })
+      )
+    })
+
+    it.effect("runs when an append finds the stream stopped by the user, and only once", () => {
+      const fake = makeFake({
+        "chat.startStream": posted(ts),
+        "chat.appendStream": { ok: false, error: "stopped_by_user" },
+        "chat.stopStream": { ok: false, error: "message_not_in_streaming_state" }
+      })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "a <@U2>", recipient })
+          const appended = yield* cleanupOf(native.append(replyThread, ts, " b", { flush: true }))
+          assert.strictEqual(appended, "edited")
+          assert.deepStrictEqual(updates(fake)[0].blocks, [{ type: "markdown", text: "a &lt;@U2>" }])
+          assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: true })
+          assert.strictEqual(fake.called("chat.update").length, 1)
+        })
+      )
+    })
   })
 
   it.effect("holds a trailing high surrogate and sends any other lone surrogate as U+FFFD", () => {

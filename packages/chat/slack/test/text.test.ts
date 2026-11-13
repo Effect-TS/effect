@@ -157,10 +157,11 @@ describe("request bodies", () => {
 
 /**
  * The CI half of the Slack mention rule for a stream: every input split at
- * every position across two appends, with the held tail sent again as the
- * layer does. Slack joins a reference split across appends, so the check is
- * on what the appends add up to, decoded. Forms without a semicolon decode to
- * nothing, so they must give no token.
+ * every position, across two appends with the held tail sent again as the
+ * layer does, and across the start and an append, where nothing is held.
+ * Slack joins a reference split across writes, so the check is on what the
+ * writes add up to, decoded. Forms without a semicolon decode to nothing, so
+ * they must give no token.
  */
 describe("stream bodies", () => {
   const thread = SlackChat.thread({ team, channel, threadTs: "1794509110.999799" })
@@ -171,48 +172,69 @@ describe("stream bodies", () => {
       /&(?:excl|#0*33|#[xX]0*21);/g,
       "!"
     )
+  const tokens = (text: string) => decode(text).match(token) ?? []
   const alphabet = ["<", "&lt;", "&l", "t;", "&lt", "@U1", "&commat;", "!", "here", "`", "\n", "x", ">", "👍🏽"]
   const words = (length: number): Array<string> =>
     length === 0 ? [""] : words(length - 1).flatMap((word) => alphabet.map((piece) => word + piece))
+  /** Whole tokens, which the generated words are too short to spell. */
+  const seeds = [
+    "<@U1>",
+    "<!here>",
+    "&lt;@U1>",
+    "<&commat;U1>",
+    "&#x3C;!here>",
+    "`<@U1>`",
+    "&#0000000000000060;@U1>",
+    "&#x00000000003c;&#00000000064;U1>",
+    "<@U1|hello world>",
+    "&lt@U1> &#60@U1>"
+  ]
 
   it.effect("hold the mention rule at every split, and leave no U+200B after the stream", () => {
     let count = 0
     // A new message for each stream, so the edit pacing never waits.
-    const fake = makeFake({ "chat.startStream": () => ({ ok: true, channel, ts: `1.${count}` }) })
+    const fake = makeFake({ "chat.startStream": () => ({ ok: true, channel, ts: `1.${count++}` }) })
     return Effect.gen(function*() {
       const native = (yield* adapter).nativeStream!
       let cleaned = 0
       for (const notify of [{}, { users: ["U1"] }] as ReadonlyArray<Escape.Notify>) {
-        const allowed = notify.users === undefined ? [] : ["<@U1>"]
-        for (const word of [1, 2].flatMap(words)) {
+        const allowed = (found: string) => notify.users !== undefined && /^<@U1[|>]/.test(found)
+        for (const word of [...seeds, ...[1, 2].flatMap(words)]) {
           for (let at = 0; at <= word.length; at++) {
-            const label = `${JSON.stringify(word)} at ${at} ${JSON.stringify(notify)}`
-            const before = fake.calls.length
-            const first = word.slice(0, at)
-            yield* Effect.gen(function*() {
-              const { id: ts } = yield* native.start(thread, { markdown: "s ", recipient: "U080YLYB277" })
-              const { held } = yield* native.append(thread, ts, first, undefined)
-              yield* native.append(thread, ts, first.slice(first.length - held) + word.slice(at), { flush: true })
-              yield* native.stop(thread, ts, { end: "done" })
-            }).pipe(SlackChat.withPostOptions({ notify }))
-            const calls = fake.calls.slice(before)
-            const streamed = calls.filter((call) => call.method !== "chat.update" && call.params.markdown_text)
-              .map((call) => call.params.markdown_text).join("")
-            // However it is split, the stream sends the same.
-            assert.strictEqual(streamed, Escape.escapeStream("s " + word, notify, { flush: true }).sent, label)
-            let rest = decode(streamed)
-            for (const allowedToken of allowed) rest = rest.replaceAll(allowedToken, "")
-            assert.deepStrictEqual(rest.match(token), null, label)
-            const update = calls.find((call) => call.method === "chat.update")
-            const left = update === undefined ? streamed : update.params.blocks + update.params.text
-            assert.notInclude(left, "\u200B", label)
-            if (update !== undefined) cleaned++
-            count++
+            for (const across of ["appends", "start"] as const) {
+              const label = `${JSON.stringify(word)} at ${at} across ${across} ${JSON.stringify(notify)}`
+              const before = fake.calls.length
+              const first = word.slice(0, at)
+              yield* Effect.gen(function*() {
+                if (across === "start") {
+                  const { id: ts } = yield* native.start(thread, { markdown: "s " + first, recipient: "U080YLYB277" })
+                  yield* native.append(thread, ts, word.slice(at), { flush: true })
+                  return yield* native.stop(thread, ts, { end: "done" })
+                }
+                const { id: ts } = yield* native.start(thread, { markdown: "s ", recipient: "U080YLYB277" })
+                const { held } = yield* native.append(thread, ts, first, undefined)
+                yield* native.append(thread, ts, first.slice(first.length - held) + word.slice(at), { flush: true })
+                yield* native.stop(thread, ts, { end: "done" })
+              }).pipe(SlackChat.withPostOptions({ notify }))
+              const calls = fake.calls.slice(before)
+              const streamed = calls.filter((call) => call.method !== "chat.update" && call.params.markdown_text)
+                .map((call) => call.params.markdown_text).join("")
+              if (across === "appends") {
+                // Held text keeps every allowed token whole, and nothing else.
+                assert.deepStrictEqual(tokens(streamed), tokens("s " + word).filter(allowed), label)
+              } else {
+                // The start holds nothing, so it may break an allowed token, but never makes one.
+                assert.deepStrictEqual(tokens(streamed).filter((found) => !allowed(found)), [], label)
+              }
+              const update = calls.find((call) => call.method === "chat.update")
+              const left = update === undefined ? streamed : update.params.blocks + update.params.text
+              assert.notInclude(left, "\u200B", label)
+              if (update !== undefined) cleaned++
+            }
           }
         }
       }
-      assert.strictEqual(count, 2 * [1, 2].flatMap(words).reduce((sum, word) => sum + word.length + 1, 0))
       assert.isAbove(cleaned, 0)
     }).pipe(Effect.provide(slackLayer(fake)))
-  }, 60_000)
+  }, 120_000)
 })

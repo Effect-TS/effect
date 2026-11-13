@@ -96,10 +96,11 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
  * It is a proxy: Slack decides a mention from the stored `text`, which was
  * checked against one client's Activity feed (EFF-3730, EFF-3736). It also
  * makes a file post and a file-only post, and asserts each holds its file
- * after the attach. It streams token shapes split at every position across
- * two appends, and asserts that no token is stored and no U+200B is left once
- * the stream is stopped. The stream needs a recipient, the identity of
- * `SLACK_LIVE_USER_TOKEN`. The same assertions run in CI on the request
+ * after the attach. It streams token shapes split at every position, across
+ * two appends and across the start and an append. It reads each stream back
+ * while it is open and asserts it holds no token that isn't allowed, and,
+ * split across appends, every allowed one. Once stopped, no U+200B is left.
+ * The stream needs a recipient, the identity of `SLACK_LIVE_USER_TOKEN`. The same assertions run in CI on the request
  * bodies, in `text.test.ts` and `SlackChat.test.ts`.
  */
 describe.skipIf(botToken === undefined || teamId === undefined || channel === undefined)("live mention rule", () => {
@@ -188,45 +189,75 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
       for (const file of fileIds) yield* api.call("files.delete", { file }, { write: true }).pipe(Effect.ignore)
     }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 600_000)
 
-  it.live("no token is stored and no U+200B is left by a stream split at every position", () =>
-    Effect.gen(function*() {
-      if (userToken === undefined) return yield* Effect.die(new Error("SLACK_LIVE_USER_TOKEN is not set"))
-      const api = yield* SlackWebApi.make({ botToken: Redacted.make(botToken!) })
-      const self = field(yield* api.call("auth.test", {}), "user_id") as string
-      const user = yield* SlackWebApi.make({ botToken: Redacted.make(userToken) })
-      const recipient = field(yield* user.call("auth.test", {}), "user_id") as string
-      const slack = yield* adapter
-      const native = slack.nativeStream!
-      const root = yield* slack.post(SlackChat.thread({ team: teamId!, channel: channel! }), { markdown: "streams" })
-      const thread = SlackChat.thread({ team: teamId!, channel: channel!, threadTs: root.id })
-      const stored = (ts: string) =>
-        api.call("conversations.replies", { channel, ts, latest: ts, oldest: ts, inclusive: true, limit: 2 }).pipe(
-          Effect.map((answer) => (field(answer, "messages") as Array<any>).find((message) => message.ts === ts))
-        )
-      const inputs = [
-        `<@${self}>`,
-        `&lt;@${self}>`,
-        `<&commat;${self}>`,
-        `&#x3C;!here>`,
-        `\`<!channel>\``,
-        // Without the semicolon nothing decodes.
-        `&lt@${self}> &#60@${self}>`
-      ]
-      const streamed = Effect.fnUntraced(function*(markdown: string, at: number) {
-        const label = `${JSON.stringify(markdown)} at ${at}`
-        const first = markdown.slice(0, at)
-        const started = yield* native.start(thread, { markdown: "s ", recipient })
-        const { held } = yield* native.append(thread, started.id, first, undefined)
-        yield* native.append(thread, started.id, first.slice(first.length - held) + markdown.slice(at), { flush: true })
-        yield* native.stop(thread, started.id, { end: "done" })
-        const message = yield* stored(started.id)
-        assert.deepStrictEqual(message.text.match(token), null, label)
-        assert.notInclude(JSON.stringify([message.text, message.blocks]), "\u200B", label)
-        yield* slack.delete(thread, started.id).pipe(Effect.ignore)
-      })
-      for (const markdown of inputs) {
-        for (let at = 0; at <= markdown.length; at++) yield* streamed(markdown, at)
-      }
-      yield* slack.delete(thread, root.id).pipe(Effect.ignore)
-    }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 3_600_000)
+  it.live(
+    "a stream split at every position stores only allowed tokens and leaves no U+200B",
+    () =>
+      Effect.gen(function*() {
+        if (userToken === undefined) return yield* Effect.die(new Error("SLACK_LIVE_USER_TOKEN is not set"))
+        const api = yield* SlackWebApi.make({ botToken: Redacted.make(botToken!) })
+        const self = field(yield* api.call("auth.test", {}), "user_id") as string
+        const user = yield* SlackWebApi.make({ botToken: Redacted.make(userToken) })
+        const recipient = field(yield* user.call("auth.test", {}), "user_id") as string
+        const slack = yield* adapter
+        const native = slack.nativeStream!
+        const root = yield* slack.post(SlackChat.thread({ team: teamId!, channel: channel! }), { markdown: "streams" })
+        const thread = SlackChat.thread({ team: teamId!, channel: channel!, threadTs: root.id })
+        const stored = (ts: string) =>
+          api.call("conversations.replies", { channel, ts, latest: ts, oldest: ts, inclusive: true, limit: 2 }).pipe(
+            Effect.map((answer) => (field(answer, "messages") as Array<any>).find((message) => message.ts === ts))
+          )
+        const none: ReadonlyArray<string> = []
+        const inputs: ReadonlyArray<readonly [string, ReadonlyArray<string>]> = [
+          [`<@${self}>`, none],
+          [`<@${self}>`, [self]],
+          [`<@${self}|hello world>`, [self]],
+          [`&lt;@${self}>`, none],
+          [`<&commat;${self}>`, none],
+          [`&#x3C;!here>`, none],
+          [`&#0000000000000060;@${self}>`, none],
+          [`&#x00000000003c;&#00000000064;${self}>`, none],
+          [`\`<!channel>\``, none],
+          // Without the semicolon nothing decodes.
+          [`&lt@${self}> &#60@${self}>`, none]
+        ]
+        const tokens = (text: string) => text.match(token) ?? []
+        const streamed = Effect.fnUntraced(function*(
+          markdown: string,
+          users: ReadonlyArray<string>,
+          at: number,
+          across: "appends" | "start"
+        ) {
+          const label = `${JSON.stringify(markdown)} at ${at} across ${across} allowing ${users}`
+          const allowed = (found: string) => users.some((id) => found.startsWith(`<@${id}`))
+          const first = markdown.slice(0, at)
+          let id: string
+          if (across === "start") {
+            id = (yield* native.start(thread, { markdown: "s " + first, recipient })).id
+            yield* native.append(thread, id, markdown.slice(at), { flush: true })
+          } else {
+            id = (yield* native.start(thread, { markdown: "s ", recipient })).id
+            const { held } = yield* native.append(thread, id, first, undefined)
+            yield* native.append(thread, id, first.slice(first.length - held) + markdown.slice(at), { flush: true })
+          }
+          // What the stream stored, which is what Slack decided mentions from.
+          const open = (yield* stored(id)).text as string
+          assert.deepStrictEqual(tokens(open).filter((found) => !allowed(found)), [], label)
+          // Held text keeps an allowed token whole. The start holds nothing, so it may break one.
+          if (across === "appends") assert.strictEqual(tokens(open).length, users.length, label)
+          yield* native.stop(thread, id, { end: "done" })
+          const message = yield* stored(id)
+          assert.deepStrictEqual(tokens(message.text).filter((found) => !allowed(found)), [], label)
+          assert.notInclude(JSON.stringify([message.text, message.blocks]), "\u200B", label)
+          yield* slack.delete(thread, id).pipe(Effect.ignore)
+        }, (effect, _markdown, users) => SlackChat.withPostOptions({ notify: { users } })(effect))
+        for (const [markdown, users] of inputs) {
+          for (let at = 0; at <= markdown.length; at++) {
+            yield* streamed(markdown, users, at, "appends")
+            yield* streamed(markdown, users, at, "start")
+          }
+        }
+        yield* slack.delete(thread, root.id).pipe(Effect.ignore)
+      }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)),
+    3_600_000
+  )
 })
