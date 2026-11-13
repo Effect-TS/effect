@@ -636,6 +636,27 @@ describe("dispatch", () => {
     )
   })
 
+  it.effect("delivers Tim's recorded mention after looking the channel up", () => {
+    // Derived dispatch: a REST body, which carries no channel_type.
+    const raw = step("human", "human-mention-get-message").response
+    const fake = makeFake({ getChannel: () => answer(step("human", "human-mention-get-channel")) })
+    const { provide, seen } = collect()
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* DiscordChat.DiscordChat
+        yield* provide(discord.dispatch({ t: "MESSAGE_CREATE", d: raw }))
+        assert.strictEqual(seen.length, 1)
+        const event = seen[0]
+        assert(event._tag === "MessageCreated")
+        assert.strictEqual(event.kind, "channel")
+        assert.isFalse(event.message.author.isBot)
+        assert.deepStrictEqual(event.message.mentions.map((mention) => mention.id), [botUserId])
+        assert.deepStrictEqual(fake.called("getChannel"), [[raw.channel_id]])
+      })
+    )
+  })
+
   it.effect("passes the handler's NotAccepted on", () => {
     const fake = makeFake({})
     return run(

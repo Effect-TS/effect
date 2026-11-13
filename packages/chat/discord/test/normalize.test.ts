@@ -290,6 +290,75 @@ describe("normalize", () => {
 })
 
 /**
+ * Item 11, recorded: Tim typed both in the Discord client. The gateway recorder
+ * had stopped by then, so the bodies are REST reads, which carry no
+ * `guild_id`, `member` or `channel_type`. The REST tests read them as history
+ * does. The dispatch tests wrap a body as a `MESSAGE_CREATE` with the
+ * channel's recorded type in the context, which makes those dispatches derived.
+ */
+describe("a person's messages, recorded through REST", () => {
+  const read = (raw: any) => {
+    const fields = decodeMessageFields(raw)
+    assert.isDefined(fields)
+    return message(raw, fields!, context)!
+  }
+  const mention = step("human", "human-mention-get-message").response
+  const dm = step("human", "human-dm-get-message").response
+  const derived = (raw: any): Dispatch => ({ t: "MESSAGE_CREATE", d: raw })
+
+  it.effect("a typed mention of the bot in a guild channel", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(mention.content, `<@${botUserId}> hello`)
+      assert.deepStrictEqual(mention.mentions.map((user: any) => user.id), [botUserId])
+      const found = read(mention)
+      assert.strictEqual(found.author.id, tim)
+      assert.isFalse(found.author.isBot)
+      assert.isFalse(found.author.isSelf)
+      assert.deepStrictEqual(found.thread, DiscordChat.thread(test))
+      assert.deepStrictEqual(found.mentions, [{
+        kind: "user",
+        id: botUserId,
+        start: 0,
+        end: botUserId.length + 3,
+        isSelf: true
+      }])
+      yield* checkMessage(found, checkOptions)
+      // Derived dispatch: the REST body alone has no channel type.
+      assert(Result.isFailure(DiscordChat.normalize(derived(mention), context)))
+      const channelType = step("human", "human-mention-get-channel").response.type
+      assert.strictEqual(channelType, 0)
+      const result = DiscordChat.normalize(derived(mention), { ...context, channelType })
+      assert(Result.isSuccess(result))
+      const event = result.success[0]
+      assert(event._tag === "MessageCreated")
+      assert.strictEqual(event.kind, "channel")
+      assert.deepStrictEqual(event.message.mentions, found.mentions)
+      yield* checkEvent(event, checkOptions)
+    }))
+
+  it.effect("a DM to the bot", () =>
+    Effect.gen(function*() {
+      assert.strictEqual(dm.content, "hello DM")
+      const found = read(dm)
+      assert.strictEqual(found.author.id, tim)
+      assert.isFalse(found.author.isBot)
+      assert.isFalse(found.author.isSelf)
+      assert.deepStrictEqual(found.mentions, [])
+      yield* checkMessage(found, checkOptions)
+      const channelType = step("human", "human-dm-get-channel").response.type
+      assert.strictEqual(channelType, 1)
+      const result = DiscordChat.normalize(derived(dm), { ...context, channelType })
+      assert(Result.isSuccess(result))
+      const event = result.success[0]
+      assert(event._tag === "MessageCreated")
+      assert.strictEqual(event.kind, "direct")
+      assert.isTrue(Option.isNone(DiscordChat.guildId(event)))
+      assert.isTrue(Option.isNone(DiscordChat.member(event)))
+      yield* checkEvent(event, checkOptions)
+    }))
+})
+
+/**
  * Synthetic: nobody has yet sent these for the recorder. Each one is a
  * recorded dispatch with the fields that differ changed by hand.
  */
@@ -299,33 +368,6 @@ describe("synthetic", () => {
     const { message_reference: _, referenced_message: __, ...rest } = person.d
     return { t: "MESSAGE_CREATE", d: { ...rest, type: 0, mentions: [], ...d } }
   }
-
-  it.effect("a person mentioning the bot in a guild channel", () =>
-    Effect.gen(function*() {
-      const event = created(fromPerson({
-        content: `<@${botUserId}> hello`,
-        mentions: [person.d.referenced_message.author]
-      }))
-      assert.deepStrictEqual(mentionsOf(event), [{
-        kind: "user",
-        id: botUserId,
-        isSelf: true,
-        token: `<@${botUserId}>`
-      }])
-      assert.isFalse(event.message.author.isBot)
-      assert.strictEqual(event.kind, "channel")
-      yield* checkEvent(event, checkOptions)
-    }))
-
-  it.effect("a DM to the bot", () =>
-    Effect.gen(function*() {
-      const { guild_id: _, member: __, ...rest } = fromPerson({ content: "hello", channel_id: "1", channel_type: 1 }).d
-      const event = created({ t: "MESSAGE_CREATE", d: rest })
-      assert.strictEqual(event.kind, "direct")
-      assert.isTrue(Option.isNone(DiscordChat.guildId(event)))
-      assert.isTrue(Option.isNone(DiscordChat.member(event)))
-      yield* checkEvent(event, checkOptions)
-    }))
 
   it.effect("a forward comes through as DEFAULT with empty text", () =>
     Effect.gen(function*() {
@@ -371,7 +413,7 @@ describe("REST messages", () => {
   it.effect("every recorded message passes checkMessage", () =>
     Effect.gen(function*() {
       let count = 0
-      for (const name of ["posts", "history", "other-bots", "reactions", "embeds"]) {
+      for (const name of ["posts", "history", "other-bots", "reactions", "embeds", "human"]) {
         for (const call of recorded(name)) {
           if (call.status >= 300 || call.response === null) continue
           const list = Array.isArray(call.response) ? call.response : [call.response]

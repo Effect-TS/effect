@@ -1,0 +1,168 @@
+{
+  "case": "Item 11: a message Tim Smart typed in #test mentioning the bot, and a DM he sent the bot, each with its channel. Read back through REST because the gateway recorder had stopped before he sent them, so these are REST message objects: no guild_id, member or channel_type, which only gateway deliveries carry",
+  "provenance": {
+    "kind": "recorded",
+    "source": "Discord REST v10 with the Janitor bot token, from a local script; not gateway dispatches",
+    "where": "guild 840178841540362250 (Tim's test guild), #test 1570605581192929301, and the DM channel between Tim (449108784879763458) and the bot",
+    "author": "Tim Smart (449108784879763458), typing in the Discord client",
+    "sentAt": "2026-11-13T01:53Z",
+    "recordedAt": "2026-11-13T01:54Z, during EFF-3695",
+    "body": "Each response verbatim, apart from signed CDN URLs, whose query is replaced; see scrubbed (none here)"
+  },
+  "calls": [
+    {
+      "step": "human-mention-get-message",
+      "method": "GET",
+      "path": "/channels/1570605581192929301/messages/1570617458174337055",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "<@1564742987727118426> hello",
+        "mentions": [
+          {
+            "id": "1564742987727118426",
+            "username": "Janitor",
+            "avatar": "07aaab1f8e37dd6b088b6f21d1332701",
+            "discriminator": "5426",
+            "public_flags": 0,
+            "flags": 0,
+            "bot": true,
+            "banner": null,
+            "accent_color": null,
+            "global_name": null,
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        ],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:53:02.690000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570617458174337055",
+        "channel_id": "1570605581192929301",
+        "author": {
+          "id": "449108784879763458",
+          "username": "timsmart",
+          "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+          "discriminator": "0",
+          "public_flags": 0,
+          "flags": 0,
+          "banner": null,
+          "accent_color": null,
+          "global_name": "Tim Smart",
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "human-mention-get-channel",
+      "method": "GET",
+      "path": "/channels/1570605581192929301",
+      "request": null,
+      "status": 200,
+      "response": {
+        "id": "1570605581192929301",
+        "type": 0,
+        "last_message_id": "1570617458174337055",
+        "flags": 0,
+        "guild_id": "840178841540362250",
+        "name": "test",
+        "parent_id": "840178841540362251",
+        "rate_limit_per_user": 0,
+        "topic": null,
+        "position": 6,
+        "permission_overwrites": [],
+        "nsfw": false
+      }
+    },
+    {
+      "step": "human-dm-get-message",
+      "method": "GET",
+      "path": "/channels/1570608637783572490/messages/1570617528227598377",
+      "request": null,
+      "status": 200,
+      "response": {
+        "type": 0,
+        "content": "hello DM",
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": [],
+        "timestamp": "2026-11-13T01:53:19.392000+00:00",
+        "edited_timestamp": null,
+        "flags": 0,
+        "components": [],
+        "id": "1570617528227598377",
+        "channel_id": "1570608637783572490",
+        "author": {
+          "id": "449108784879763458",
+          "username": "timsmart",
+          "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+          "discriminator": "0",
+          "public_flags": 0,
+          "flags": 0,
+          "banner": null,
+          "accent_color": null,
+          "global_name": "Tim Smart",
+          "avatar_decoration_data": null,
+          "collectibles": null,
+          "display_name_styles": null,
+          "banner_color": null,
+          "clan": null,
+          "primary_guild": null
+        },
+        "pinned": false,
+        "mention_everyone": false,
+        "tts": false
+      }
+    },
+    {
+      "step": "human-dm-get-channel",
+      "method": "GET",
+      "path": "/channels/1570608637783572490",
+      "request": null,
+      "status": 200,
+      "response": {
+        "id": "1570608637783572490",
+        "type": 1,
+        "last_message_id": "1570617530232610907",
+        "flags": 0,
+        "recipients": [
+          {
+            "id": "449108784879763458",
+            "username": "timsmart",
+            "avatar": "2eded1558c297f57913f8b7e4c6b7efc",
+            "discriminator": "0",
+            "public_flags": 0,
+            "flags": 0,
+            "banner": null,
+            "accent_color": null,
+            "global_name": "Tim Smart",
+            "avatar_decoration_data": null,
+            "collectibles": null,
+            "display_name_styles": null,
+            "banner_color": null,
+            "clan": null,
+            "primary_guild": null
+          }
+        ]
+      }
+    }
+  ]
+}
