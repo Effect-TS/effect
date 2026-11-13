@@ -62,13 +62,16 @@
   },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:^"
+    "@testcontainers/clickhouse": "^12.2.1",
+    "effect": "workspace:^",
+    "esbuild": "^0.28.2"
   },
   "peerDependencies": {
     "@effect/platform-node": "workspace:^",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@clickhouse/client": "^1.25.0"
+    "@clickhouse/client": "^1.25.0",
+    "@clickhouse/client-web": "^1.25.0"
   }
 }

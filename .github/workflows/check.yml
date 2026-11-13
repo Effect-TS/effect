@@ -190,6 +190,7 @@ jobs:
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           docker pull coredns/coredns:1.14.7 &
+          docker pull clickhouse/clickhouse-server:25.8 &
           wait
 
       - name: Install dependencies
