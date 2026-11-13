@@ -331,8 +331,10 @@ const releasable = (pending: string, fence: Fence | undefined): string => {
     if (space !== -1) return pending.slice(0, complete + space + 1)
   }
   // The next delta may still extend the trailing cluster, even inside a fence.
+  // A split surrogate may complete a code point that extends the preceding cluster.
+  const text = /[\ud800-\udbff]$/.test(pending) ? pending.slice(0, -1) : pending
   let last = 0
-  for (const cluster of graphemes(pending)) last = cluster.index
+  for (const cluster of graphemes(text)) last = cluster.index
   return pending.slice(0, last)
 }
 

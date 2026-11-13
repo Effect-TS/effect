@@ -467,9 +467,17 @@ describe("ChatMarkdown", () => {
       }).pipe(Effect.provide(ChatTest.layer())))
 
     for (const prefix of ["~~~\n", "x".repeat(301)]) {
-      for (const [first, rest, whole] of [["🇺", "🇸", "🇺🇸"], ["1", "\uFE0F\u20E3", "1️⃣"]]) {
+      for (
+        const [first, rest, whole] of [
+          ["🇺", "🇸", "🇺🇸"],
+          ["🇺\uD83C", "\uDDF8", "🇺🇸"],
+          ["1", "\uFE0F\u20E3", "1️⃣"]
+        ]
+      ) {
         it.effect(
-          `holds ${whole} across deltas ${prefix === "~~~\n" ? "inside a fence" : "in a long line"}`,
+          `holds ${whole} split at ${first.length} across deltas ${
+            prefix === "~~~\n" ? "inside a fence" : "in a long line"
+          }`,
           () =>
             Effect.gen(function*() {
               const { test, thread } = yield* setup
