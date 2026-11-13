@@ -501,8 +501,9 @@ export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectEleme
  *
  * **Details**
  *
- * `Events` are the tag's events and `Node` the DOM element it renders to,
- * which types `ref` and `onMount`. Every method returns a copy. A builder
+ * `Events` are the tag's events, `Node` the DOM element it renders to,
+ * which types `ref` and `onMount`, and `Tag` the tag, which a part of a
+ * headless component checks. Every method returns a copy. A builder
  * is itself a valid child or view, so `h.input.value(draft)` needs no
  * terminal call.
  *
@@ -510,9 +511,13 @@ export type ValueNode = HTMLInputElement | HTMLTextAreaElement | HTMLSelectEleme
  * @category models
  * @since 4.1.5
  */
-export class VoidElement<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
-  extends View.ElementBuilder<Msg, R, E, Node>
-{
+export class VoidElement<
+  out Msg,
+  out R = never,
+  in out E = Record<string, unknown>,
+  in out Node = unknown,
+  out Tag extends string = string
+> extends View.ElementBuilder<Msg, R, E, Node, Tag> {
   /**
    * Like `View.ElementBuilder.onMount`, keeping the HTML methods.
    *
@@ -521,7 +526,7 @@ export class VoidElement<out Msg, out R = never, in out E = Record<string, unkno
   override onMount<R2>(
     name: string,
     run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): VoidElement<Msg, R | R2, E, Node> {
+  ): VoidElement<Msg, R | R2, E, Node, Tag> {
     return super.onMount(name, run) as any
   }
   /**
@@ -911,9 +916,13 @@ export class VoidElement<out Msg, out R = never, in out E = Record<string, unkno
  * @category models
  * @since 4.1.5
  */
-export class Element<out Msg, out R = never, in out E = Record<string, unknown>, in out Node = unknown>
-  extends VoidElement<Msg, R, E, Node>
-{
+export class Element<
+  out Msg,
+  out R = never,
+  in out E = Record<string, unknown>,
+  in out Node = unknown,
+  out Tag extends string = string
+> extends VoidElement<Msg, R, E, Node, Tag> {
   /**
    * Like `View.ElementBuilder.onMount`, keeping the HTML methods and
    * `children`.
@@ -923,7 +932,7 @@ export class Element<out Msg, out R = never, in out E = Record<string, unknown>,
   override onMount<R2>(
     name: string,
     run: (node: Node) => Effect.Effect<Msg, never, R2>
-  ): Element<Msg, R | R2, E, Node> {
+  ): Element<Msg, R | R2, E, Node, Tag> {
     return super.onMount(name, run) as any
   }
   /**
@@ -1129,8 +1138,8 @@ export type VoidTag = typeof voidTags[number]
  * @since 4.1.5
  */
 export type Tags<Msg> =
-  & { readonly [K in ContainerTag]: View.Shorthand<Element<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]>> }
-  & { readonly [K in VoidTag]: VoidElement<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K]> }
+  & { readonly [K in ContainerTag]: View.Shorthand<Element<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K], K>> }
+  & { readonly [K in VoidTag]: VoidElement<Msg, never, EventsOf<K>, HTMLElementTagNameMap[K], K> }
 
 /**
  * The type-level vocabulary, for `View.Register`.

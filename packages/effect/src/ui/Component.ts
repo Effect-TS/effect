@@ -66,7 +66,7 @@ import type * as AsyncResult from "../reactivity/AsyncResult.ts"
 import type * as Loader from "../reactivity/Loader.ts"
 import * as Schema from "../Schema.ts"
 import type * as Types from "../Types.ts"
-import type * as Command from "./Command.ts"
+import * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
 import * as loaders from "./internal/loaders.ts"
 import * as childRef from "./internal/ref.ts"
@@ -579,7 +579,9 @@ export interface Mountable<in out Props, out Events, out R = never, in Rcv = nev
     model: any,
     props: Props,
     running?: ((name: string, groupKey: string | undefined) => boolean) | undefined,
-    loaded?: Slots | undefined
+    loaded?: Slots | undefined,
+    /** The instance's path, which `h.id` derives ids from. Without it, the root path `/<name>`. */
+    path?: string | undefined
   ) => View.Node<any, R>
   readonly subscriptions:
     | ((model: any, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Subscription.Subscription<any, R>>)
@@ -663,7 +665,8 @@ export interface Component<
     model: Model,
     props: Props,
     running?: ((name: string, groupKey: string | undefined) => boolean) | undefined,
-    loaded?: Slots | undefined
+    loaded?: Slots | undefined,
+    path?: string | undefined
   ) => View.Node<Msg, R>
   readonly subscriptions:
     | ((model: Model, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Subscription.Subscription<Msg, R>>)
@@ -673,6 +676,212 @@ export interface Component<
   readonly "~V"?: V
   readonly "~L"?: L
 }
+
+/**
+ * The type id of a headless component.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export const HeadlessTypeId = "~effect/ui/Component/Headless" as const
+
+/**
+ * The type id of a headless component.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export type HeadlessTypeId = typeof HeadlessTypeId
+
+/**
+ * A component with `parts` and no `view`. Whoever declares it with
+ * `h.child` writes its whole view from the parts.
+ *
+ * **Details**
+ *
+ * It keeps its own Model, `update`, Commands and Scope. It isn't a
+ * `Mountable`, so it can't be a root, a page or a feature.
+ *
+ * The `view` closure given to `h.child` is the consumer's code. A child
+ * declared in it, its `onEmit` and `onFailure` messages, and a fallback in
+ * it all belong to the consumer, and a slot in it takes the consumer's refs.
+ * A ref's key names one slot across the consumer's view and every closure it
+ * wrote: a render that puts it on two fails the consumer with the source
+ * `view`, whether the view or a closure rendered. A closure that throws fails the headless child's slot, logged with the
+ * source `content`, and the slot shows its fallback.
+ *
+ * A part applied to an element adds a layer that the headless instance
+ * owns. When the element's event fires, each layer's handler runs and its
+ * message goes to its owner: the deepest headless owner first, and the
+ * consumer last. A layer's `preventDefault: true` cancels the default only
+ * when that layer's handler returned a message. `preventDefault: "always"`
+ * from any layer wins, and two layers setting any other option of one event
+ * fail the render that applies them. Handle keys on the part the user focuses, such as an
+ * input or a trigger, rather than on a container around it.
+ *
+ * A part's ref and mount belong to its owner: `Html.focus` in the headless
+ * `update` reaches its own ref, and the mount runs in a Scope of the
+ * headless instance while the part stays applied to the element.
+ *
+ * Parts need no runtime: `Story.parts` builds them from a Model and props
+ * alone. `p.id` is derived from the instance's path, so ids match on the
+ * server and the client and differ between instances, and outside a mount
+ * they're under the component's own name.
+ *
+ * Lists are data: a part reads its items from props, and takes an item as an
+ * argument where the consumer applies it. Richer row content stays in the
+ * consumer's closure, looked up by id.
+ *
+ * A headless child renders again whenever its consumer does, since the
+ * closure is part of the consumer's view, and its own `update` renders only
+ * the closure. When the consumer renders often, wrap the headless child in a
+ * small normal component of its own. `Router.prefetch` doesn't walk into
+ * closures, so it never prefetches the reads of children declared there.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Headless<in out Props, out Events, out Parts, out R = never, in out Rcv = never>
+  extends Pipeable.Pipeable
+{
+  readonly [HeadlessTypeId]: {
+    readonly _Props: Types.Invariant<Props>
+    readonly _Events: Types.Covariant<Events>
+    readonly _Parts: Types.Covariant<Parts>
+    readonly _R: Types.Covariant<R>
+    readonly _Rcv: Types.Invariant<Rcv>
+  }
+  readonly name: string
+  readonly props: Schema.Codec<Props, any>
+  readonly model: Schema.Codec<any, any>
+  readonly message: Schema.Codec<any, any>
+  readonly events: Schema.Codec<Events, any>
+  /** The Schema of the messages a parent may send: the cases of `message` listed in `receives`. */
+  readonly receives: Schema.Codec<Rcv, any>
+  /** A ref for a slot of this component, which a parent renders it with to send it messages. */
+  readonly ref: (name: string) => Ref.Of<Rcv>
+  readonly init: (props: Props) => Next<any, any, Events, R>
+  readonly update: (model: any, msg: never, props: Props, loaded?: Slots | undefined) => Next<any, any, Events, R>
+  /** The parts for one render: plain values and decorators stamped with `owner`. */
+  readonly parts: (model: any, props: Props, context: PartsContext) => Parts
+  readonly subscriptions:
+    | ((model: any, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Subscription.Subscription<any, R>>)
+    | undefined
+  readonly head: ((model: any, props: Props, loaded?: Slots | undefined) => ReadonlyArray<Head.Entry>) | undefined
+  readonly elements: () => View.Vocabulary<any> | undefined
+  readonly "~loaders": unknown
+}
+
+/**
+ * What a host of headless instances gives `parts` for one render: who owns
+ * the layers, and the instance's path. Plain data, so a story builds it with
+ * no runtime.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PartsContext {
+  readonly owner: View.Owner
+  readonly running?: ((name: string, groupKey: string | undefined) => boolean) | undefined
+  readonly loaded?: Slots | undefined
+}
+
+/**
+ * Helper types for `Headless`.
+ *
+ * @stability experimental
+ * @since 4.1.5
+ */
+export declare namespace Headless {
+  /**
+   * Any headless component.
+   *
+   * @category models
+   * @since 4.1.5
+   */
+  // `any` doesn't stand in for `never` in an invariant parameter, so one that receives nothing is listed apart.
+  export type Any = Headless<any, any, any, any, any> | Headless<any, any, any, any, never>
+  /**
+   * The requirements of a headless component.
+   *
+   * @category utility types
+   * @since 4.1.5
+   */
+  export type Requirements<C> = C extends Headless<infer _P, infer _E, infer _Parts, infer R, infer _Rcv> ? R
+    : never
+  /**
+   * The parts of a headless component.
+   *
+   * @category utility types
+   * @since 4.1.5
+   */
+  export type Parts<C> = C extends Headless<infer _P, infer _E, infer Parts, infer _R, infer _Rcv> ? Parts
+    : never
+}
+
+/**
+ * `p` in a headless component's `parts`: the props, the instance's ids, and
+ * `part`, which declares a decorator for one tag.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PartsHelper<Msg, Props, V extends View.Elements> {
+  readonly props: Props
+  isRunning<Args, G extends string>(
+    command: Command.Definition<Args, any, boolean, any, G>,
+    ...group: Command.GroupArg<Args, G>
+  ): boolean
+  /** An id for an element of this instance, the same on the server and the client. */
+  id(name: string, key?: string | number | undefined): string
+  /**
+   * A part for one tag, or for any of a list of tags. `decorate` gets an
+   * empty builder of the tag the consumer used, bound to this component's
+   * message type, and any other arguments the consumer passes after its own
+   * builder.
+   *
+   * **Details**
+   *
+   * The part takes only builders of the tags it lists, checked by tag name
+   * in the types and again when it's applied.
+   */
+  part<K extends keyof View.Tags<V, Msg> & string, Args extends ReadonlyArray<any>, R2 = never>(
+    tag: K | readonly [K, ...ReadonlyArray<K>],
+    decorate: (
+      builder: PartBuilder<View.Tags<V, Msg>[K]>,
+      ...args: Args
+    ) => View.ElementBuilder<Msg, R2, any, any, any>
+  ): View.Part<PartTag<View.Tags<V, Msg>[K]>, Args, R2>
+  /** A part for any element, over the host-neutral builder. */
+  part<Args extends ReadonlyArray<any>, R2 = never>(
+    decorate: (builder: View.ContainerBuilder<Msg>, ...args: Args) => View.ElementBuilder<Msg, R2, any, any, any>
+  ): View.Part<string, Args, R2>
+}
+
+/**
+ * The chain type of a tag's root builder: what a part's `decorate` gets.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type PartBuilder<T> = T extends { readonly attr: (...args: any) => infer B } ? B : never
+
+/**
+ * The tag a tag's builder declares, which a part checks: `string` for a
+ * vocabulary that doesn't declare its tags.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type PartTag<T> = T extends { readonly "~Tag"?: infer Tag extends string | undefined } ? Exclude<Tag, undefined>
+  : never
 
 /**
  * What `h` gains in `view` for a component with loaders.
@@ -999,6 +1208,27 @@ const Proto = {
   }
 }
 
+const HeadlessProto = {
+  [HeadlessTypeId]: {
+    _Props: (_: never) => _,
+    _Events: (_: never) => _,
+    _Parts: (_: never) => _,
+    _R: (_: never) => _,
+    _Rcv: (_: never) => _
+  },
+  pipe: Proto.pipe,
+  ref: Proto.ref
+}
+
+/**
+ * Whether a value is a headless component.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.1.5
+ */
+export const isHeadless = (u: unknown): u is Headless.Any => Predicate.hasProperty(u, HeadlessTypeId)
+
 // The tags of a message union, and the member with one tag.
 type TagOf<Msg> = Msg extends { readonly _tag: infer T extends string } ? T : never
 type Tagged<Msg, T> = Extract<Msg, { readonly _tag: T }>
@@ -1057,6 +1287,55 @@ export interface Definition<Name extends string, Props, Model, Msg, Events, V ex
   fragment<Args extends ReadonlyArray<unknown>, Out>(
     fragment: (h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>, ...args: Args) => Out
   ): (h: View.Helper<Msg, Props> & View.Tags<V, Msg> & LoaderHelpers<L>, ...args: Args) => Out
+  /**
+   * Finishes a headless component: `parts` in place of `view`. Whoever
+   * declares it with `h.child` writes the view from what `parts` returns.
+   */
+  make<
+    Parts,
+    UI extends Model | InitStep<Model, Msg, Events, any> = Model,
+    U extends Model | Step<Model, Msg, Events, any, L> = Model,
+    UR extends { readonly [T in TagOf<Msg>]: Model | Step<Model, Msg, Events, any, L> } = {
+      readonly [T in TagOf<Msg>]: Model
+    },
+    Sub extends Subscription.Subscription<Msg, any> = never
+  >(options: {
+    readonly init: ($: Init<Model, Msg, Events, Props>) => UI
+    readonly update:
+      | ((model: Model, msg: Msg, $: Update<Model, Msg, Events, Props, L>) => U)
+      | {
+        readonly [T in keyof UR]: (
+          model: Model,
+          msg: Tagged<Msg, T>,
+          $: Update<Model, Msg, Events, Props, L, Tagged<Msg, T>>
+        ) => UR[T]
+      }
+    readonly parts: (model: Model, p: PartsHelper<Msg, Props, V> & LoaderHelpers<L>) => Parts
+    readonly subscriptions?:
+      | ((
+        model: Model,
+        props: Props,
+        loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }
+      ) => ReadonlyArray<Sub | false | null | undefined>)
+      | undefined
+    readonly head?:
+      | ((model: Model, loaded: { readonly [K in keyof L]: LoadedOf<L[K]> }) => ReadonlyArray<Head.Entry>)
+      | undefined
+  }): Headless<
+    Props,
+    Events,
+    Parts,
+    Exclude<
+      | StepRequirements<UI>
+      | StepRequirements<U>
+      | StepRequirements<UR[keyof UR]>
+      | View.PartRequirements<Parts[keyof Parts]>
+      | Subscription.Requirements<Sub>
+      | LoaderServices<L>,
+      Command.FrameworkService
+    >,
+    Rcv
+  >
   /** Finishes the component. */
   make<
     UI extends Model | InitStep<Model, Msg, Events, any> = Model,
@@ -1396,7 +1675,7 @@ export const define = <
     }) as any,
     view: (view) => view,
     fragment: (fragment) => fragment,
-    make: (rest) => finish(definition, rest as any) as any
+    make: (rest: any) => finish(definition, rest) as any
   }
   return definition
 }
@@ -1414,7 +1693,8 @@ const finish = (
   options: {
     readonly init: ($: Init<any, any, any, any>) => unknown
     readonly update: AnyUpdate | { readonly [tag: string]: AnyUpdate }
-    readonly view: (model: any, h: any) => View.Content<any, any>
+    readonly view?: ((model: any, h: any) => View.Content<any, any>) | undefined
+    readonly parts?: ((model: any, p: any) => unknown) | undefined
     readonly subscriptions?:
       | ((
         model: any,
@@ -1436,7 +1716,9 @@ const finish = (
   const subscriptions = options.subscriptions
   const head = options.head
   const elements = definition.elements
-  return Object.assign(Object.create(Proto), {
+  const view = options.view
+  const parts = options.parts
+  return Object.assign(Object.create(view === undefined ? HeadlessProto : Proto), {
     name: definition.name,
     props: definition.props,
     model: definition.model,
@@ -1446,16 +1728,47 @@ const finish = (
     init: (props: unknown) => toNext(options.init(makeInit(props))),
     update: (model: unknown, msg: unknown, props: unknown, slots?: Slots) =>
       toNext(updateFn(model, msg, makeUpdate(model, props, open(model, props, slots), msg))),
-    view: (model: unknown, props: unknown, running?: View.Running, slots?: Slots) => {
-      const h: any = View.makeHelper(props, elements ?? View.registeredElements(), running)
-      if (bound !== undefined) {
-        const context = bound.context(model, props, slots)
-        h.loaded = context.loaded
-        h.previous = context.previous
-        h.patched = context.patched
-      }
-      return View.toNode(options.view(model, h))
-    },
+    view: view === undefined
+      ? undefined
+      : (model: unknown, props: unknown, running?: View.Running, slots?: Slots, path?: string) => {
+        const h: any = View.makeHelper(
+          props,
+          elements ?? View.registeredElements(),
+          running,
+          path ?? ("/" + definition.name)
+        )
+        if (bound !== undefined) {
+          const context = bound.context(model, props, slots)
+          h.loaded = context.loaded
+          h.previous = context.previous
+          h.patched = context.patched
+        }
+        return View.toNode(view(model, h))
+      },
+    parts: parts === undefined
+      ? undefined
+      : (model: unknown, props: unknown, context: PartsContext) => {
+        const owner = context.owner
+        const p: any = {
+          props,
+          isRunning: (command: Command.Definition.Any, group?: unknown): boolean =>
+            context.running === undefined
+              ? false
+              : context.running(Command.nameOf(command), Command.groupKeyOf(command, group)),
+          id: (name: string, key?: string | number) => View.idOf(owner.path, name, key),
+          part: (...args: ReadonlyArray<any>) =>
+            typeof args[0] === "function"
+              ? View.makePart(owner, undefined, args[0])
+              : View.makePart(owner, typeof args[0] === "string" ? [args[0]] : args[0], args[1])
+        }
+        if (bound !== undefined) {
+          const opened = bound.context(model, props, context.loaded)
+          p.loaded = opened.loaded
+          p.previous = opened.previous
+          p.patched = opened.patched
+        }
+        return parts(model, p)
+      },
     subscriptions: subscriptions === undefined
       ? undefined
       : (model: unknown, props: unknown, slots?: Slots) =>

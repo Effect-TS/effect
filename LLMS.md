@@ -494,6 +494,19 @@ replays `$.loaded` as it was. New props from a parent are logged as a
 `PropsChanged` entry, so the result's `props` and `loaded()` hold what the
 instance ended with.
 
+### Headless components
+
+A component finished with `parts` instead of `view` is headless: it keeps
+its own Model, `update` and Commands, and owns behaviour such as keyboard
+handling, ids and ARIA, but no markup. A consumer places it with `h.child`
+and a `view` closure that applies each part to a builder of its own:
+`m.trigger(h.button).children("Open")`. The closure is the consumer's code,
+so children declared in it report to the consumer. Pass rows as Schema data in
+props, and keep richer row content in the closure, looked up by id. The
+closure runs whenever the consumer renders, so wrap a headless child in a
+small normal component when the consumer renders often. Test one with
+`Story.parts`, which needs no runtime.
+
 ### Organizing an app
 
 The examples below are one notes app. Each example is an entry module, for
@@ -508,6 +521,7 @@ Group files by feature, then by kind within each feature:
 fixtures/
   App.ts                      // root component, imports pages
   routes.ts                   // AppRoute
+  kit/Listbox.ts              // headless components no feature owns
   notes/
     domain/Note.ts            // Schema, errors, NotesTag
     services/Notes.ts         // service and its Layers
@@ -517,6 +531,7 @@ fixtures/
     components/NoteEditor.ts  // NoteEditor and its SaveNote command
     components/NoteActivity.ts
     components/ActivityLog.ts
+    components/NoteLinkPicker.ts
   pages/
     NotesIndex.ts             // /
     notes/NotePage.ts         // /notes/:id
@@ -575,6 +590,11 @@ client, not the services.
   page handles a child's events, provides Layers with `Component.provide`,
   and makes one child swappable with `Feature.Service`. This entry module
   mounts the page, which is in `fixtures/pages/notes/NotePage.ts`.
+- **[Headless components](./ai-docs/src/90_ui/22_headless-components.ts)**:
+  Build a filterable listbox that owns its state, keyboard handling and ARIA
+  but no markup, and draw it from a consumer with `h.child` and a `view`
+  closure. This browser entry module mounts the consumer, which is in
+  `fixtures/notes/components/NoteLinkPicker.ts`.
 - **[Routing and the document head](./ai-docs/src/90_ui/30_routing.ts)**:
   Define typed routes with `Route` and keep the current route in the root's
   Model. The app also sets the title and meta tags with `Head`. This entry

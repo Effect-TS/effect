@@ -92,11 +92,14 @@ export const drop =
         } ${locator.description}`
       )
     }
+    // Any layer's `onDrop` makes a target, a part's included. `fire` then decides which layers run.
     const target = pathTo(s.current.view(), found[0]!)?.find((node): node is View.Element<any, any> =>
       node._tag === "Element" &&
-      Object.hasOwn(node.handlers, "drop") &&
-      ((node.eventOptions.drop as Html.DropTargetOptions | undefined)?.accepts ?? []).some((type) =>
-        lower.includes(type.toLowerCase())
+      [node, ...(node.owned ?? [])].some((layer) =>
+        Object.hasOwn(layer.handlers, "drop") &&
+        ((layer.eventOptions.drop as Html.DropTargetOptions | undefined)?.accepts ?? []).some((type) =>
+          lower.includes(type.toLowerCase())
+        )
       )
     )
     if (target === undefined) {

@@ -71,6 +71,12 @@ export type Dispatch = (
  * events honours `preventDefault: true` from `dispatch`'s `onMessage`, and
  * `preventDefault: "always"` before it calls `dispatch`.
  *
+ * A handler value is opaque to the host. It may be a message, a function or
+ * a value the renderer made, such as the one standing for every layer of an
+ * element that parts of headless components decorated. The host stores it
+ * as given and passes that same value back to `dispatch`, never calling or
+ * copying it.
+ *
  * `elements` lists the vocabularies the host shows, by name, or is `"any"`.
  * `controlled` lists the properties re-applied after every patch, since the
  * user may have changed them; the host skips a no-op. `runsMounts` is `false`

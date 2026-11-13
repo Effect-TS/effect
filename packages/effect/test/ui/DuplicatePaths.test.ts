@@ -92,6 +92,27 @@ describe("duplicate child paths", () => {
       })))
   }
 
+  it.effect("never give a key holding ]/ the path of a grandchild", () =>
+    provideHost(Effect.gen(function*() {
+      const Group = makeList("siblings")
+      const Page = Component.define({ name: "Page", model: Schema.Null, message: Schema.Never }).make({
+        init: () => null,
+        update: (model) => model,
+        view: (_, h) =>
+          h.el(
+            "main",
+            h.child(Group, { key: "a", props: { keys: ["b"] } }),
+            h.child(Group, { key: "a]/Row[b", props: { keys: [] } })
+          )
+      })
+      const root = yield* TestHost.mount(Page, {})
+      yield* TestHost.settle
+      assert.deepStrictEqual(
+        root.log().filter((entry) => entry._tag === "Mounted").map((entry) => entry.path),
+        ["/Page", "/Page/List[a]", "/Page/List[a]/Row[b]", "/Page/List[a]%2FRow[b]"]
+      )
+    })))
+
   it("fail a parent that renders one ref on two components", () => {
     const Other = Component.define({
       name: "Other",

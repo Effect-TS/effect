@@ -93,6 +93,13 @@ export interface TestElement extends Query.Firable {
   parent: TestElement | undefined
   handlers: Readonly<Record<string, View.Handler<unknown, any>>>
   eventOptions: Readonly<Record<string, View.EventOptions>>
+  /**
+   * For each event a part of a headless component handles here, the paths
+   * of the instances that get it: the deepest owner first, and the
+   * component that wrote the element last. An event only that component
+   * handles isn't listed.
+   */
+  owners: Readonly<Record<string, ReadonlyArray<string>>>
   dispatch: Renderer.Dispatch | undefined
 }
 
@@ -138,6 +145,7 @@ const makeElement = (tag: string): TestElement => ({
   parent: undefined,
   handlers: {},
   eventOptions: {},
+  owners: {},
   dispatch: undefined,
   fire: fireFrom
 })
@@ -228,6 +236,7 @@ export const makeHost = (): Renderer.Host<TestNode> & {
       const element = node as TestElement
       element.handlers = handlers
       element.eventOptions = options
+      element.owners = runtime.eventOwners(handlers)
       element.dispatch = dispatch
     },
     elements: "any",

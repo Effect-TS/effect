@@ -110,6 +110,65 @@ export interface EventOptions {
 }
 
 /**
+ * Who a layer of an element belongs to: one headless instance. The runtime
+ * makes one per instance, and a story one per expanded child.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Owner {
+  readonly path: string
+  readonly depth: number
+}
+
+/**
+ * What a part of a headless component added to an element: its handlers,
+ * their options, its ref and its mount, kept apart from the author's.
+ *
+ * **Details**
+ *
+ * `tokens` holds the part's token-list attributes, such as `class` and
+ * `aria-describedby`. They're added to the element's own value, whether the
+ * consumer set it before or after applying the part, and a token already
+ * there isn't repeated. The part's other attributes are written over what
+ * the consumer set before applying it.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Owned {
+  readonly owner: Owner
+  readonly handlers: Readonly<Record<string, Handler<any, any>>>
+  readonly eventOptions: Readonly<Record<string, EventOptions>>
+  readonly refKey: string | undefined
+  readonly mount: Mount<any> | undefined
+  readonly tokens: Readonly<Record<string, string>>
+}
+
+/**
+ * The attributes whose value is a space-separated list, which a part adds
+ * its tokens to rather than replacing: `class`, `rel` and the ARIA
+ * attributes that list ids.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export const tokenListAttributes: ReadonlySet<string> = new Set([
+  "class",
+  "rel",
+  "aria-controls",
+  "aria-describedby",
+  "aria-flowto",
+  "aria-labelledby",
+  "aria-owns"
+])
+
+const noOwned: ReadonlyArray<Owned> = []
+
+/**
  * An element node, as data.
  *
  * **Details**
@@ -135,6 +194,11 @@ export interface Element<out Msg, out R = never> {
   readonly eventOptions: Readonly<Record<string, EventOptions>>
   readonly refKey: string | undefined
   readonly mount: Mount<Msg> | undefined
+  /**
+   * The layers the parts of headless components added, in the order they
+   * were applied. An element written by hand may leave it out.
+   */
+  readonly owned?: ReadonlyArray<Owned> | undefined
   readonly children: ReadonlyArray<Node<Msg, R>>
 }
 
@@ -183,6 +247,8 @@ export interface Child<out Msg, out R = never> {
     | undefined
   /** Also tells the parent that the child failed. */
   readonly onFailure: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
+  /** A headless child's whole view, written by whoever declared the slot. */
+  readonly view: ((parts: any) => Content<Msg, any>) | undefined
   /** Phantom: the child's requirements surface in its parent's. */
   readonly "~R"?: (_: never) => R
 }
@@ -382,14 +448,37 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
   _tag: "Element",
   tag: builder.tag,
   elementKey: builder.elementKey,
-  attrs: builder.attrs,
+  attrs: builder.owned.length === 0 ? builder.attrs : withTokens(builder.attrs, builder.owned),
   props: builder.props,
   handlers: builder.handlers,
   eventOptions: builder.eventOptions,
   refKey: builder.refKey,
   mount: builder.mount,
+  owned: builder.owned,
   children: inputs.length === 0 ? [] : children(inputs)
 })
+
+const withTokens = (
+  attrs: Readonly<Record<string, string>>,
+  owned: ReadonlyArray<Owned>
+): Readonly<Record<string, string>> => {
+  let out: Record<string, string> | undefined
+  for (const layer of owned) {
+    for (const name in layer.tokens) {
+      out ??= { ...attrs }
+      out[name] = joinTokens(out[name], layer.tokens[name]!)
+    }
+  }
+  return out ?? attrs
+}
+
+const joinTokens = (current: string | undefined, added: string): string => {
+  const tokens = current === undefined ? [] : current.split(/\s+/).filter((token) => token !== "")
+  for (const token of added.split(/\s+/)) {
+    if (token !== "" && !tokens.includes(token)) tokens.push(token)
+  }
+  return tokens.join(" ")
+}
 
 /**
  * Copies a builder with some of its fields replaced, keeping its class. Every
@@ -402,9 +491,151 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg>>>(
 export const withFields = <B extends ElementBuilder<any, any, any, any>>(
   builder: B,
   fields: Partial<
-    Pick<Element<unknown>, "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount">
+    Pick<
+      Element<unknown>,
+      "elementKey" | "attrs" | "props" | "handlers" | "eventOptions" | "refKey" | "mount" | "owned"
+    >
   >
 ): B => Object.assign(Object.create(Object.getPrototypeOf(builder)), builder, fields)
+
+/**
+ * A part of a headless component: it takes the builder of an element the
+ * consumer wrote and returns it with the part's attributes, properties and
+ * owned layer added.
+ *
+ * **Details**
+ *
+ * `Tag` is the tag, or the union of tags, the part is declared for, and
+ * `string` for a part that takes any element. `Args` is what the part takes
+ * after the builder, and `R` what its mount requires, which joins the
+ * headless component's requirements.
+ *
+ * A part is tied to tag names, the same check the runtime makes: a part
+ * declared for `"h2"` takes `h.h2` and rejects `h.h3`, although both
+ * render an `HTMLHeadingElement`. A part that takes several tags lists them,
+ * as `p.part(["h2", "h3"], ...)`.
+ *
+ * The result is the builder's chain type, never the callable root, so
+ * `m.trigger(h.button)("Open")` doesn't compile.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Part<in out Tag extends string, in Args extends ReadonlyArray<any>, out R = never> {
+  <B extends PartTarget<Tag>>(builder: B, ...args: Args): ReturnType<B["attr"]>
+  readonly "~R"?: (_: never) => R
+}
+
+/**
+ * What a part accepts: a builder whose declared tag is one of `Tag`, either
+ * a tag's callable root or its chain type.
+ *
+ * **Details**
+ *
+ * It's structural on purpose. With `ElementBuilder` as the constraint, a
+ * callable root such as `h.dialog` infers as the constraint and loses its
+ * chain type. A builder whose tag isn't known, such as `h.el("x-foo")`'s,
+ * only fits a part declared without a tag.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface PartTarget<out Tag extends string> {
+  readonly "~Tag"?: Tag | undefined
+  readonly attr: (...args: any) => any
+}
+
+/**
+ * The requirements of the parts in a headless component's `parts` record.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.1.5
+ */
+export type PartRequirements<P> = P extends { readonly "~R"?: (_: never) => infer R } ? R : never
+
+/**
+ * Makes a part for one owner. `decorate` gets an empty builder of the
+ * consumer's class and tag, so it never sees what the consumer set. Its
+ * attributes and properties are written over the consumer's, except token
+ * lists, and its handlers, event options, ref, mount and token lists become
+ * one owned layer.
+ *
+ * @internal
+ */
+export const makePart = (
+  owner: Owner,
+  tags: ReadonlyArray<string> | undefined,
+  decorate: (builder: any, ...args: ReadonlyArray<any>) => ElementBuilder<any, any, any, any>
+): Part<any, any, any> =>
+(target: PartTarget<any>, ...args: ReadonlyArray<any>): any => {
+  const builder: unknown = target
+  if (!(builder instanceof ElementBuilder)) {
+    throw new Error(owner.path + ": a part takes an element builder, such as h.button")
+  }
+  if (tags !== undefined && !tags.includes(builder.tag)) {
+    throw new Error(owner.path + ": a part for <" + tags.join("> or <") + "> was given <" + builder.tag + ">")
+  }
+  const blank: ElementBuilder<any, any, any, any> = Object.assign(
+    Object.create(Object.getPrototypeOf(builder)),
+    blankFields,
+    { tag: builder.tag }
+  )
+  const patch = decorate(blank, ...args)
+  if (!(patch instanceof ElementBuilder)) {
+    throw new Error(owner.path + ": a part returns the builder it was given, without children")
+  }
+  if (patch.elementKey !== undefined) throw new Error(owner.path + ": a part can't set an element's key")
+  if (patch.owned.length > 0) throw new Error(owner.path + ": a part can't apply another part")
+  const attrs: Record<string, string> = { ...builder.attrs }
+  const tokens: Record<string, string> = {}
+  for (const name in patch.attrs) {
+    if (tokenListAttributes.has(name)) tokens[name] = patch.attrs[name]!
+    else attrs[name] = patch.attrs[name]!
+  }
+  const layer: Owned = {
+    owner,
+    handlers: patch.handlers,
+    eventOptions: patch.eventOptions,
+    refKey: patch.refKey,
+    mount: patch.mount,
+    tokens
+  }
+  return withFields(builder, {
+    attrs,
+    props: { ...builder.props, ...patch.props },
+    owned: [...builder.owned, layer]
+  })
+}
+
+const blankFields = {
+  elementKey: undefined,
+  attrs: {},
+  props: {},
+  handlers: {},
+  eventOptions: {},
+  refKey: undefined,
+  mount: undefined,
+  owned: noOwned
+}
+
+/**
+ * An id for an element of the instance at `path`, the same on the server and
+ * the client. The path, the name and the key are each escaped down to
+ * `[A-Za-z0-9]` and joined with a hyphen, which no escaped field contains:
+ * two ids are equal only when all three are. The result is safe in a
+ * space-separated list such as `aria-labelledby`, and in a selector.
+ *
+ * @internal
+ */
+export const idOf = (path: string, name: string, key?: string | number | undefined): string =>
+  escapeId(path) + "-" + escapeId(name) + (key === undefined ? "" : "-" + escapeId(String(key)))
+
+// The underscore that opens and closes an escape is escaped too, so the escaping can be undone.
+const escapeId = (value: string): string =>
+  value.replace(/[^A-Za-z0-9]/g, (char) => "_" + char.codePointAt(0)!.toString(36) + "_")
 
 /**
  * The element builder: `h.el(tag)` and a vocabulary's element names. It
@@ -430,7 +661,8 @@ export class ElementBuilder<
   out Msg,
   out R = never,
   in out Handlers = Record<string, unknown>,
-  in out HostNode = unknown
+  in out HostNode = unknown,
+  out Tag extends string = string
 > {
   /**
    * The key set with `key`, if any.
@@ -475,6 +707,12 @@ export class ElementBuilder<
    */
   readonly mount: Mount<Msg> | undefined = undefined
   /**
+   * The layers added by the parts of headless components.
+   *
+   * @since 4.1.5
+   */
+  readonly owned: ReadonlyArray<Owned> = noOwned
+  /**
    * Phantom: the requirements of the element's mount, which surface in the
    * component's.
    *
@@ -494,6 +732,14 @@ export class ElementBuilder<
    * @since 4.1.5
    */
   declare readonly "~Handlers"?: Handlers
+  /**
+   * Phantom: the element's tag as the vocabulary declares it, which a part
+   * of a headless component checks. `string` when it isn't known, as for
+   * `h.el`.
+   *
+   * @since 4.1.5
+   */
+  declare readonly "~Tag"?: Tag
   /**
    * The element's tag.
    *
@@ -572,7 +818,7 @@ export class ElementBuilder<
   onMount<R2>(
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ElementBuilder<Msg, R | R2, Handlers, HostNode> {
+  ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
     return withFields(this, { mount: { name, run } }) as any
   }
 }
@@ -593,8 +839,9 @@ export class ContainerBuilder<
   out Msg,
   out R = never,
   in out Handlers = Record<string, unknown>,
-  in out HostNode = unknown
-> extends ElementBuilder<Msg, R, Handlers, HostNode> {
+  in out HostNode = unknown,
+  out Tag extends string = string
+> extends ElementBuilder<Msg, R, Handlers, HostNode, Tag> {
   /**
    * Like `ElementBuilder.onMount`, keeping `children`.
    *
@@ -603,7 +850,7 @@ export class ContainerBuilder<
   override onMount<R2>(
     name: string,
     run: (node: HostNode) => Effect.Effect<Msg, never, R2>
-  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode> {
+  ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag> {
     return super.onMount(name, run) as any
   }
   /**
@@ -819,6 +1066,11 @@ export interface Helper<Msg, Props> {
     ...group: Command.GroupArg<Args, G>
   ): boolean
   /**
+   * An id for an element of this instance, derived from the instance's path:
+   * the same on the server and the client, and different for every instance.
+   */
+  id(name: string, key?: string | number | undefined): string
+  /**
    * A component by value. Its requirements surface in the parent's. `Rcv` has
    * no default: one would stop a nested call, such as an inline
    * `Component.provide(C, layer)`, from being inferred.
@@ -844,6 +1096,26 @@ export interface Helper<Msg, Props> {
       readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
     }
   ): Child<Msg, RC | NoInfer<RF>>
+  /**
+   * A headless component by value. `view` is the child's whole view, built
+   * from its parts. Its requirements, and the view's, surface in the parent's.
+   */
+  child<Props, Events, Parts, RC, Rcv, RefRcv = Child.Receives<Rcv>, RV = never, RF = never>(
+    component: Component.Headless<Props, Events, Parts, RC, Rcv>,
+    options:
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv>>
+      & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
+      & {
+        /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
+        readonly fallback?: ((result: AsyncResult.Failure<never, unknown>) => Content<Msg, RF>) | undefined
+        /**
+         * The child's whole view, from its parts. It's this view's code: the
+         * children it declares report to this component, and it runs again
+         * whenever this component or the child renders.
+         */
+        readonly view: (parts: Parts) => Content<Msg, RV>
+      }
+  ): Child<Msg, RC | RV | NoInfer<RF>>
   // Keep this overload last so a missing feature fallback is the final diagnostic.
   /** A feature by service. The parent requires the service only. */
   child<Self, Props, Events, Rcv = never, RefRcv = Child.Receives<Rcv>, RF = never>(
@@ -874,13 +1146,18 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
   readonly props: Props
   readonly elements: Vocabulary<any> | undefined
   readonly runningFn: Running
-  constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined) {
+  readonly instancePath: string
+  constructor(props: Props, elements: Vocabulary<any> | undefined, running: Running | undefined, path: string) {
     this.props = props
     this.elements = elements
     this.runningFn = running ?? notRunning
+    this.instancePath = path
   }
   isRunning(command: Command.Definition.Any, group?: unknown): boolean {
     return this.runningFn(Command.nameOf(command), Command.groupKeyOf(command, group))
+  }
+  id(name: string, key?: string | number | undefined): string {
+    return idOf(this.instancePath, name, key)
   }
   el(tag: string, ...inputs: ReadonlyArray<Input<Msg>>): any {
     const textParents = this.elements?.textParents
@@ -893,7 +1170,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     return text(value)
   }
   child(
-    component: Component.Any | Feature.Any,
+    component: Component.Any | Component.Headless.Any | Feature.Any,
     options: {
       readonly key?: string | undefined
       // Every ref fits `Ref.Any`; the overloads have checked what it receives.
@@ -902,6 +1179,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
       readonly onFailure?: ((failure: AsyncResult.Failure<never, unknown>) => Msg | undefined) | undefined
+      readonly view?: ((parts: any) => Content<Msg, any>) | undefined
     }
   ): Child<Msg, any> {
     // A slot with a key and a ref would have two identities that can disagree.
@@ -910,13 +1188,14 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     }
     return {
       _tag: "Child",
-      component,
+      component: component as Component.Any,
       key: options.ref !== undefined ? options.ref.key : options.key!,
       ref: options.ref,
       props: options.props ?? {},
       onEmit: options.onEmit ?? ignore,
       fallback: options.fallback,
-      onFailure: options.onFailure
+      onFailure: options.onFailure,
+      view: options.view
     }
   }
 }
@@ -956,9 +1235,10 @@ const helperClasses = new WeakMap<Vocabulary<any>, typeof HelperImpl<any, any>>(
 export const makeHelper = <Msg, Props, V extends Elements = never>(
   props: Props,
   elements: Vocabulary<V> | undefined,
-  running?: Running | undefined
+  running?: Running | undefined,
+  path?: string | undefined
 ): Helper<Msg, Props> & Tags<V, Msg> => {
-  if (elements === undefined) return new HelperImpl(props, undefined, running) as any
+  if (elements === undefined) return new HelperImpl(props, undefined, running, path ?? "") as any
   let Class = helperClasses.get(elements)
   if (Class === undefined) {
     const Made = class extends HelperImpl<any, any> {}
@@ -966,7 +1246,7 @@ export const makeHelper = <Msg, Props, V extends Elements = never>(
     helperClasses.set(elements, Made)
     Class = Made
   }
-  return new Class(props, elements, running) as any
+  return new Class(props, elements, running, path ?? "") as any
 }
 
 /**

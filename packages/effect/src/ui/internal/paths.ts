@@ -12,8 +12,22 @@ import type * as View from "../View.ts"
 export const childName = (component: Component.Any | Feature.Any): string =>
   Feature.isService(component) ? component[Feature.TypeId].name : component.name
 
-/** The segment a child slot adds to its parent's path: `Name[key]`. @internal */
-export const segment = (view: View.Child<any, any>): string => `${childName(view.component)}[${view.key}]`
+/**
+ * The segment a child slot adds to its parent's path: `Name[key]`.
+ *
+ * A segment's name ends at its first `[`, and the segment at its first `]/`
+ * or at the end of the path. So a name's `[` is written as `%5B`, the `/`
+ * of a key's `]/` as `%2F`, and `%` as `%25` in both. Two different slots
+ * never share a path: a key `a]/B[b` can't stand for a grandchild. Names
+ * and keys keep `/` and brackets otherwise, as in `test/Badge`, a route
+ * path or a ref's `Row[b]`, and a root's name is its path as given.
+ *
+ * @internal
+ */
+export const segment = (view: View.Child<any, any>): string =>
+  `${childName(view.component).replace(/[%[]/g, escapeChar)}[${view.key.replace(/%|(?<=\])\//g, escapeChar)}]`
+
+const escapeChar = (char: string): string => "%" + char.charCodeAt(0).toString(16).toUpperCase()
 
 /**
  * The paths and ref keys one render of an instance uses, each with the slot
@@ -92,4 +106,22 @@ export const checkFallbackPaths = (
   fallback: View.Node<any, any>
 ): void => {
   visit(paths, fallback, slot, `, in the fallback of ${segment(slot)}`)
+}
+
+/**
+ * Throws when two of `written`, the paths of one author's view and of each
+ * closure it gave a headless child, hold slots with refs of one key. The
+ * author wrote all of them, and a send finds a slot by its ref's key alone,
+ * across all of them. One view's own refs are checked as it renders.
+ *
+ * @internal
+ */
+export const checkAuthorRefs = (path: string, written: ReadonlyArray<ChildPaths>): void => {
+  const taken = new Set<string>()
+  for (const paths of written) {
+    for (const key of paths.refs.keys()) {
+      if (taken.has(key)) failure(path, `with the ref ${key}, in the view it gives ${paths.path}`)
+      taken.add(key)
+    }
+  }
 }

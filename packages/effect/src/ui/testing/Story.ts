@@ -70,7 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
-import { checkChildPaths, checkFallbackPaths } from "../internal/paths.ts"
+import { checkAuthorRefs, checkChildPaths, checkFallbackPaths, segment } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
 import * as View from "../View.ts"
@@ -371,6 +371,11 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * ref finds the slot rendered with it.
    */
   childFailure(key: string | Component.Ref.Any, cause: Cause.Cause<unknown>): this
+  /**
+   * Sets the Model the headless child with `key` is expanded from, in place
+   * of its `init` Model. The story never runs the child's `update`.
+   */
+  givenChild(key: string, model: unknown): this
 
   /**
    * Resolves the oldest running Command matching `target` with the result it
@@ -525,20 +530,70 @@ export declare namespace Steps {
   export type Any = Steps<AnyComponent>
 }
 
-type Fields<Props, Model, Msg, Events> = Pick<
-  Story<Props, Model, Msg, Events>,
-  | "component"
-  | "props"
-  | "model"
-  | "slots"
-  | "pending"
-  | "emitted"
-  | "sent"
-  | "interrupted"
-  | "dropped"
-  | "loadingMore"
-  | "defaultPrevented"
->
+type Fields<Props, Model, Msg, Events> =
+  & Pick<
+    Story<Props, Model, Msg, Events>,
+    | "component"
+    | "props"
+    | "model"
+    | "slots"
+    | "pending"
+    | "emitted"
+    | "sent"
+    | "interrupted"
+    | "dropped"
+    | "loadingMore"
+    | "defaultPrevented"
+  >
+  & { readonly childModels?: ReadonlyMap<string, unknown> | undefined }
+
+// -- headless children ------------------------------------------------------
+// A story shows a headless child expanded: its slot's closure, run against the parts of the
+// child's `init` Model or of the Model `givenChild` set. No runtime is involved.
+const childModels = new WeakMap<object, ReadonlyMap<string, unknown>>()
+// The slots an expansion replaced, by the expanded root: `childEmit` and `childFailure` still find them.
+const expandedSlots = new WeakMap<object, ReadonlyArray<View.Child<any, any>>>()
+
+const expandRoot = <Msg>(
+  view: View.Node<Msg, any>,
+  name: string,
+  given: ReadonlyMap<string, unknown> | undefined
+): View.Node<Msg, any> => {
+  const slots: Array<View.Child<any, any>> = []
+  // As the runtime does: two child slots at one path fail the view or the closure that holds them, and
+  // so do two slots with one ref key across the view and the closures it gives its headless children.
+  const written = [checkChildPaths("/" + name, view)]
+  const expand = (node: View.Node<any, any>, path: string, depth: number): View.Node<any, any> => {
+    switch (node._tag) {
+      case "Text":
+        return node
+      case "Element": {
+        let changed = false
+        const children = node.children.map((child) => {
+          const next = expand(child, path, depth)
+          if (next !== child) changed = true
+          return next
+        })
+        return changed ? { ...node, children } : node
+      }
+      case "Child": {
+        const component = node.component as unknown as Component.Headless.Any
+        if (node.view === undefined || component.parts === undefined) return node
+        slots.push(node)
+        const childPath = path + "/" + segment(node)
+        const model = given?.has(node.key) ? given.get(node.key) : component.init(node.props).model
+        const parts = component.parts(model, node.props, { owner: { path: childPath, depth: depth + 1 } })
+        const tree = View.toNode(node.view(parts))
+        written.push(checkChildPaths(childPath, tree))
+        return expand(tree, childPath, depth + 1)
+      }
+    }
+  }
+  const expanded = expand(view, "/" + name, 0)
+  checkAuthorRefs("/" + name, written)
+  if (slots.length > 0) expandedSlots.set(expanded, slots)
+  return expanded
+}
 
 /**
  * Defers rendering until the view is first read, after the step's keyed
@@ -550,16 +605,12 @@ const record = <Props, Model, Msg, Events>(
 ): Story<Props, Model, Msg, Events> => {
   let rendered: View.Node<Msg, any> | undefined
   const view = () => {
-    if (rendered !== undefined) return rendered
-    const tree = render()
-    // As the runtime does: two child slots at one path fail the view.
-    checkChildPaths(`/${fields.component.name}`, tree)
-    return rendered = tree
+    return rendered ??= expandRoot(render(), fields.component.name, fields.childModels)
   }
   // A view value is a `Query` tree; a child slot is a node with no tag or text.
   const root = () => view() as Query.Node
   const context = () => boundOf(fields.component)?.context(fields.model, fields.props, fields.slots)
-  return {
+  const story: Story<Props, Model, Msg, Events> = {
     component: fields.component,
     props: fields.props,
     model: fields.model,
@@ -592,6 +643,8 @@ const record = <Props, Model, Msg, Events>(
     query: (locator) => Query.query(root(), locator),
     all: (locator) => Query.all(root(), locator)
   }
+  if (fields.childModels !== undefined) childModels.set(story, fields.childModels)
+  return story
 }
 
 const update = <Props, Model, Msg, Events>(
@@ -611,11 +664,13 @@ const update = <Props, Model, Msg, Events>(
     loadingMore: story.loadingMore,
     // Only a `click` or `fire` step sets it, last, once the step has settled.
     defaultPrevented: false,
+    childModels: childModels.get(story),
     ...patch
   }
   // A defect in `view` fails the step that changed the Model, the slots, the props or what's pending.
   const view = fields.model === story.model && fields.slots === story.slots && fields.props === story.props &&
-      fields.pending === story.pending && fields.loadingMore === story.loadingMore
+      fields.pending === story.pending && fields.loadingMore === story.loadingMore &&
+      fields.childModels === childModels.get(story)
     ? story.view
     : () => story.component.view(fields.model, fields.props, runningOf(fields.pending), fields.slots)
   return record(fields, view)
@@ -1298,19 +1353,42 @@ const fireAt = <Props, Model, Msg, Events>(
     )
   }
   const view = story.view()
+  // The innermost element with any layer for the event, as on a host.
   const handler = pathTo(view, found[0])?.find((node): node is View.Element<Msg, any> =>
-    node._tag === "Element" && Object.hasOwn(node.handlers, event)
+    node._tag === "Element" &&
+    (Object.hasOwn(node.handlers, event) || (node.owned ?? []).some((layer) => Object.hasOwn(layer.handlers, event)))
   )
   const submit = event === "submit"
   if (handler === undefined) {
     if (submit) return { story, prevented: true }
     throw new Error(`Story.${step}: nothing handles "${event}" at ${locator.description}`)
   }
-  // Run once: the message decides whether the default is cancelled, then it's sent.
-  const message = handle(handler.handlers[event], payload)
-  const preventDefault = handler.eventOptions[event]?.preventDefault
-  const prevented = submit || preventDefault === "always" || (message !== undefined && preventDefault === true)
-  return { story: dispatch(story, message), prevented }
+  // A story runs its own component's layers: the element's handlers, and in an author's story the
+  // parts' layers it owns, wherever its view applied them. A headless child's layer needs the child's `update`.
+  const own = "/" + story.component.name
+  const owned = handler.owned ?? []
+  const layers = [...owned.filter((layer) => layer.owner.path === own), handler].filter((layer) =>
+    Object.hasOwn(layer.handlers, event)
+  )
+  if (layers.length === 0) {
+    const owners = owned.filter((layer) => Object.hasOwn(layer.handlers, event)).map((layer) => layer.owner.path)
+    throw new Error(
+      `Story.${step}: only ${owners.join(" and ")} handles "${event}" at ${locator.description}. ` +
+        "A story doesn't run a child's update: use givenChild for its Model, or a TestHost test."
+    )
+  }
+  // `"always"` from any layer cancels, a child's included. Then each layer runs once, in the runtime's
+  // order: its message decides whether its own `preventDefault: true` cancels, then it's sent.
+  let prevented = submit || [...owned, handler].some((layer) => layer.eventOptions[event]?.preventDefault === "always")
+  let out = story
+  for (const layer of layers) {
+    const message = handle(layer.handlers[event]!, payload)
+    if (message === undefined) continue
+    if (layer.eventOptions[event]?.preventDefault === true) prevented = true
+    // Every layer here is the story's own component's, so each message is the story's.
+    out = dispatch(out, message as Msg)
+  }
+  return { story: out, prevented }
 }
 
 // Pending Commands are stored with their Source erased; `findRunning` matched `target`, so
@@ -1380,6 +1458,12 @@ class StepsImpl implements Steps<AnyComponent> {
   childFailure(key: string | Component.Ref.Any, cause: Cause.Cause<unknown>): this {
     const child = findChild(this.current.view(), key, "childFailure")
     return this.step(dispatch(this.current, child.onFailure?.(AsyncResult.failure(cause))))
+  }
+  givenChild(key: string, model: unknown): this {
+    findChild(this.current.view(), key, "givenChild")
+    const given = new Map(childModels.get(this.current))
+    given.set(key, model)
+    return this.step(update(this.current, { childModels: given }))
   }
 
   resolve(target: Target, result: unknown): this {
@@ -1531,12 +1615,36 @@ class StepsImpl implements Steps<AnyComponent> {
  * @category constructors
  * @since 4.1.5
  */
-export const make = <C extends AnyComponent>(
-  component: C,
-  props: Component.Props<C>,
-  f: (steps: Steps<C>) => void
-): Steps<C>["current"] => {
-  const steps = start(component, props)
+export const make: {
+  <C extends AnyComponent>(
+    component: C,
+    props: Component.Props<C>,
+    f: (steps: Steps<C>) => void
+  ): Steps<C>["current"]
+  /**
+   * A story of a headless component: `view` stands in for a consumer's
+   * closure. Its `h` has no messages of its own, so every handler in the
+   * story is one of the component's parts'. `h` builds elements from
+   * `elements`, then the component's own vocabulary, then the registered
+   * one. An event runs every part layer on its element, in the runtime's
+   * order, and each layer's `preventDefault` applies to its own message.
+   */
+  <Props, Events, Parts, R, Rcv, V extends View.Elements = never>(
+    component: Component.Headless<Props, Events, Parts, R, Rcv>,
+    props: Props,
+    options: {
+      readonly elements?: View.Vocabulary<V> | undefined
+      readonly view: (parts: Parts, h: View.Helper<never, Props> & View.Tags<V, never>) => View.Content<never, any>
+    },
+    f: (steps: Steps<Component.Component<string, Props, any, any, Events, R, V>>) => void
+  ): Story<Props, any, any, Events>
+} = (
+  component: any,
+  props: any,
+  ...rest: ReadonlyArray<any>
+): any => {
+  const f: (steps: Steps<any>) => void = rest[rest.length - 1]
+  const steps = start(rest.length === 2 ? withView(component, rest[0].view, rest[0].elements) : component, props)
   f(steps)
   const story = steps.current
   if (story.pending.length > 0) {
@@ -1590,9 +1698,42 @@ export const children = <Msg>(
   view: View.Node<Msg, any>,
   component?: Component.Any | { readonly key: string }
 ): ReadonlyArray<View.Child<Msg, any>> =>
-  [...View.nodes(view)].filter((node): node is View.Child<Msg, any> =>
+  [...(expandedSlots.get(view) ?? []), ...View.nodes(view)].filter((node): node is View.Child<Msg, any> =>
     node._tag === "Child" && (component === undefined || node.component === component)
   )
+
+/**
+ * A headless component with `view` as its consumer, as a component a story
+ * can run. `view` has no messages of its own, so every handler that runs is
+ * a layer of the component's parts: `fireAt` runs the layers whose owner is
+ * the story's component, wherever the view applied them.
+ */
+const withView = (
+  component: Component.Headless.Any,
+  view: (parts: any, h: any) => View.Content<any, any>,
+  elements: View.Vocabulary<any> | undefined
+): AnyComponent => {
+  const owner: View.Owner = { path: "/" + component.name, depth: 0 }
+  return Object.assign(Object.create(component), {
+    view: (model: unknown, props: unknown, running?: View.Running, slots?: Component.Slots) => {
+      const h = View.makeHelper(props, elements ?? component.elements(), running, owner.path)
+      return View.toNode(view(component.parts(model, props, { owner, running, loaded: slots }), h))
+    }
+  })
+}
+
+/**
+ * The parts of a headless component for a story's Model and props: the
+ * plain values a consumer's closure would read.
+ *
+ * @stability experimental
+ * @category queries
+ * @since 4.1.5
+ */
+export const parts = <Props, Events, Parts, R, Rcv>(
+  component: Component.Headless<Props, Events, Parts, R, Rcv>,
+  story: { readonly model: unknown; readonly props: Props }
+): Parts => component.parts(story.model, story.props, { owner: { path: "/" + component.name, depth: 0 } })
 
 const findChild = <Msg>(
   view: View.Node<Msg, any>,
