@@ -132,12 +132,14 @@ const classifyError = (
 }
 
 // Cancellation is best effort: a kill that fails or does not answer in time
-// must not turn an interruption into a defect or hold it up.
+// must not turn an interruption into a defect or hold it up, and a kill that
+// times out is aborted rather than left running.
 const killQuery = (client: Driver, queryId: string) =>
-  Effect.promise(() =>
+  Effect.promise((signal) =>
     client.command({
       query: "KILL QUERY WHERE query_id = {queryId:String}",
-      query_params: { queryId }
+      query_params: { queryId },
+      abort_signal: signal
     })
   ).pipe(
     Effect.timeoutOption(Duration.seconds(5)),
@@ -171,7 +173,10 @@ const runAbortable = <A>(
         clickhouse_settings: fiber.getRef(ClickhouseSettings)
       }).then(
         (result) => resume(Effect.succeed(result)),
-        (cause) => resume(Effect.fail(new SqlError({ reason: classifyError(cause, message, operation) })))
+        (cause) =>
+          resume(Effect.fail(
+            cause instanceof SqlError ? cause : new SqlError({ reason: classifyError(cause, message, operation) })
+          ))
       )
       return Effect.suspend(() => {
         controller.abort()
@@ -245,7 +250,12 @@ class ConnectionImpl implements Connection {
     this.fromStream = fromStream
   }
 
-  private runRaw(sql: string, params: ReadonlyArray<unknown>, format: DataFormat = "JSON") {
+  private runRaw<A = unknown>(
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    format: DataFormat = "JSON",
+    read: (result: unknown) => A | Promise<A> = (result) => result as A
+  ) {
     const query_params: Record<string, unknown> = {}
     for (let i = 0; i < params.length; i++) {
       query_params[`p${i + 1}`] = params[i]
@@ -253,23 +263,29 @@ class ConnectionImpl implements Connection {
     return Effect.withFiber((fiber) => {
       const method = fiber.getRef(ClientMethod)
       return runAbortable(this.client, "Failed to execute statement", "execute", (base) =>
-        method === "command"
+        (method === "command"
           ? this.client.command({ query: sql, query_params, ...base })
-          : this.client.query({ query: sql, query_params, ...base, format }))
+          : this.client.query({ query: sql, query_params, ...base, format })).then(read))
     })
   }
 
+  // The body is read inside the request, so interrupting while it is still
+  // arriving aborts the request and kills the query.
   private run(sql: string, params: ReadonlyArray<unknown>, format?: DataFormat) {
-    return this.runRaw(sql, params, format).pipe(
-      Effect.flatMap((result): Effect.Effect<ReadonlyArray<any>, SqlError> =>
+    return this.runRaw(
+      sql,
+      params,
+      format,
+      (result): ReadonlyArray<any> | Promise<ReadonlyArray<any>> =>
         isResultSet(result, "json")
-          ? Effect.tryPromise({
+          ? result.json().then(
             // `JSON` wraps rows in `{ data }`; `JSONCompact` rows are arrays.
-            try: () => result.json().then((body: any) => "data" in body ? body.data : body),
-            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
-          })
-          : Effect.succeed([])
-      )
+            (body: any) => "data" in body ? body.data : body,
+            (cause) => {
+              throw new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
+            }
+          )
+          : []
     )
   }
 
@@ -328,18 +344,16 @@ class ConnectionImpl implements Connection {
     }).pipe(
       Stream.unwrap,
       Stream.chunks,
-      Stream.mapEffect((chunk) => {
-        const promises: Array<Promise<any>> = []
-        for (const rows of chunk) {
-          for (const row of rows) {
-            promises.push(Promise.resolve(row.json()))
-          }
-        }
-        return Effect.tryPromise({
-          try: () => Promise.all(promises).then((rows) => transformRows ? transformRows(rows) : rows),
+      Stream.mapEffect((chunk) =>
+        Effect.tryPromise({
+          // Rows may decode synchronously, so decoding stays inside `try`.
+          try: () =>
+            Promise.all(Array.from(chunk).flat().map((row) => row.json())).then((rows: Array<any>) =>
+              transformRows ? transformRows(rows) : rows
+            ),
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to parse row", "parseRow") })
         })
-      }),
+      ),
       Stream.flattenIterable
     )
   }

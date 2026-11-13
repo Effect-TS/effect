@@ -17,7 +17,7 @@ const commandCalls: Array<Record<string, unknown>> = []
 const insertCalls: Array<Record<string, unknown>> = []
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
-let commandImpl: (() => Promise<unknown>) | undefined
+let commandImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
   createClient: vi.fn(() => ({
@@ -29,7 +29,7 @@ vi.mock("@clickhouse/client", () => ({
     },
     command: (options: Record<string, unknown>) => {
       commandCalls.push(options)
-      return commandImpl ? commandImpl() : Promise.resolve({})
+      return commandImpl ? commandImpl(options) : Promise.resolve({})
     },
     close: () => {
       closeCalls++
@@ -123,7 +123,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       yield* Fiber.interrupt(fiber)
 
-      assert.deepStrictEqual(commandCalls, [{
+      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
         query: "KILL QUERY WHERE query_id = {queryId:String}",
         query_params: { queryId }
       }])
@@ -146,7 +146,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       yield* Fiber.interrupt(fiber)
 
-      assert.deepStrictEqual(commandCalls, [{
+      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
         query: "KILL QUERY WHERE query_id = {queryId:String}",
         query_params: { queryId }
       }])
@@ -175,10 +175,14 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       Effect.provide(Reactivity.layer)
     ))
 
-  it.effect("stops waiting for an unanswered KILL QUERY after 5 seconds", () =>
+  it.effect("aborts an unanswered KILL QUERY after 5 seconds", () =>
     Effect.gen(function*() {
       connectImmediately = true
-      commandImpl = () => new Promise(() => {})
+      let killSignal: AbortSignal | undefined
+      commandImpl = (options) => {
+        killSignal = options.abort_signal as AbortSignal
+        return new Promise(() => {})
+      }
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const fiber = yield* client.unsafe("SELECT 1").pipe(Effect.forkScoped)
       yield* Effect.yieldNow
@@ -187,6 +191,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       yield* TestClock.adjust("5 seconds")
 
       assert.isDefined(interrupting.pollUnsafe())
+      assert.isTrue(killSignal?.aborted)
     }).pipe(
       Effect.ensuring(Effect.sync(() => {
         commandImpl = undefined
@@ -300,7 +305,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
 
       assert.deepStrictEqual(all, [{ a: 1 }, { a: 2 }])
       assert.deepStrictEqual(first, [{ a: 1 }])
-      assert.deepStrictEqual(commandCalls, [{
+      assert.deepStrictEqual(commandCalls.map(({ query, query_params }) => ({ query, query_params })), [{
         query: "KILL QUERY WHERE query_id = {queryId:String}",
         query_params: { queryId: "take-id" }
       }])
@@ -316,6 +321,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
   interface Recorded {
     readonly query: string
     readonly params: URLSearchParams
+    readonly signal: AbortSignal | null | undefined
   }
 
   const makeFetch = (handler: (request: Recorded) => Response) => {
@@ -324,7 +330,7 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
       async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
         const url = new URL(input instanceof Request ? input.url : String(input))
         const query = typeof init?.body === "string" ? init.body : ""
-        const request = { query, params: url.searchParams }
+        const request = { query, params: url.searchParams, signal: init?.signal }
         requests.push(request)
         return url.searchParams.get("query") === "SELECT 'ping'" || query.startsWith("KILL QUERY")
           ? new Response("")
@@ -386,6 +392,44 @@ describe("ClickhouseWebClient", { concurrent: false }, () => {
       assert.deepStrictEqual(first, [{ a: 1 }])
       assert.deepStrictEqual(killed(requests), ["take-id"])
       assert.deepStrictEqual(cancelled, ["take-id"])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("aborts and kills a query interrupted while its result is being read", () =>
+    Effect.gen(function*() {
+      const reading = Promise.withResolvers<void>()
+      let signal: AbortSignal | null | undefined
+      const { fetch, requests } = makeFetch((request) => {
+        signal = request.signal
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              // Part of the body arrives and the rest waits until the request is aborted.
+              controller.enqueue(new TextEncoder().encode("{\"data\":["))
+              reading.resolve()
+              return new Promise((_, reject) => request.signal?.addEventListener("abort", reject))
+            }
+          }, { highWaterMark: 0 }),
+          { headers: { "content-type": "application/json" } }
+        )
+      })
+      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+
+      const fiber = yield* sql`SELECT a FROM t`.pipe(sql.withQueryId("read-id"), Effect.forkChild)
+      yield* Effect.promise(() => reading.promise)
+      yield* Fiber.interrupt(fiber)
+
+      assert.isTrue(signal?.aborted)
+      assert.deepStrictEqual(killed(requests), ["read-id"])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("fails a stream with a SqlError on a malformed row", () =>
+    Effect.gen(function*() {
+      const { fetch } = makeFetch(() => new Response("not-json\n"))
+      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+
+      const error = yield* Effect.flip(Stream.runCollect(sql`SELECT a FROM t`.stream))
+
+      assert.strictEqual(error.reason.operation, "parseRow")
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("classifies a ClickHouse error response", () =>
