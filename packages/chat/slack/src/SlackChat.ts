@@ -95,6 +95,13 @@ export interface SlackUser {
  *   handler through `ChatInteraction.handle` inside `deadline` (2.5
  *   seconds by default, the handler's share of Slack's 3), opens a modal
  *   with `views.open` and calls `Handler.refused` when it can't.
+ * - A modal's title is held to 24 code points, each input label to 2,000 and
+ *   the modal's id to 255. These are not on the descriptor. A modal past one
+ *   of them is not opened: `Handler.refused` gets `TooLarge`, and the click
+ *   is still acked. A portable modal keeps its title to 24.
+ * - Slack needs a submit button on a modal with inputs, so a modal with no
+ *   `submitLabel` gets the English "Submit". Pass `submitLabel` to localise
+ *   it.
  * - It succeeds with the body to answer Slack with: the JSON of the 200 on
  *   the Request URL, or the `payload` of the envelope ack on Socket Mode.
  *   `undefined` is an empty answer: an ack, a close, a late click, or a
