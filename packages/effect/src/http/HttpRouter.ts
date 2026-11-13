@@ -126,6 +126,7 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
 export const make = Effect.gen(function*() {
   const config = yield* RouterConfig
   const ignoreDuplicateSlashes = config.ignoreDuplicateSlashes ?? true
+  const segmentEnd = config.useSemicolonDelimiter === false ? "/?#" : "/?;#"
   const router = FindMyWay.make<{
     readonly route: Route<any, never>
     readonly prefixSegments: number | undefined
@@ -234,7 +235,7 @@ export const make = Effect.gen(function*() {
           context = Context.add(
             context,
             HttpServerRequest.HttpServerRequest,
-            sliceRequestUrl(request, prefixSegments, ignoreDuplicateSlashes)
+            sliceRequestUrl(request, prefixSegments, ignoreDuplicateSlashes, segmentEnd)
           )
         }
         context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
@@ -272,7 +273,8 @@ export const make = Effect.gen(function*() {
 function sliceRequestUrl(
   request: HttpServerRequest.HttpServerRequest,
   prefixSegments: number,
-  ignoreDuplicateSlashes: boolean
+  ignoreDuplicateSlashes: boolean,
+  segmentEnd: string
 ) {
   const url = request.url
   let index = 0
@@ -282,7 +284,7 @@ function sliceRequestUrl(
     } else if (url[index] === "/") {
       index++
     }
-    while (index < url.length && !"/?;#".includes(url[index])) index++
+    while (index < url.length && !segmentEnd.includes(url[index])) index++
   }
   const rest = url.slice(index)
   return request.modify({ url: rest.startsWith("/") ? rest : "/" + rest })
@@ -316,7 +318,15 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
  * **Details**
  *
  * The value is passed to the route matcher when an `HttpRouter` is created and
- * defaults to an empty configuration.
+ * defaults to an empty configuration. Use `FindMyWay.strictConfig` to turn
+ * off path normalization and match static route text literally.
+ *
+ * **Gotchas**
+ *
+ * The router reads this reference when its layer is built, so provide it
+ * outside `serve` or pass `routerConfig` to `serve` or `toWebHandler`.
+ * Providing it to the app layer does not reach the router. A `routerConfig`
+ * option replaces the provided value as a whole rather than merging fields.
  *
  * @stability unstable
  * @category services

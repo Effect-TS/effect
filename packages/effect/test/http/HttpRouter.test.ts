@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
+import type { FindMyWay } from "effect/http"
 import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
@@ -10,9 +11,13 @@ const layerPrefixed = (prefix: string) =>
     Effect.map(HttpRouter.HttpRouter, (router) => router.prefixed(prefix))
   )
 
-const fetchText = (app: Layer.Layer<never, never, HttpRouter.HttpRouter>, path: string) =>
+const fetchText = (
+  app: Layer.Layer<never, never, HttpRouter.HttpRouter>,
+  path: string,
+  routerConfig?: Partial<FindMyWay.RouterConfig>
+) =>
   Effect.acquireUseRelease(
-    Effect.sync(() => HttpRouter.toWebHandler(app, { disableLogger: true })),
+    Effect.sync(() => HttpRouter.toWebHandler(app, { disableLogger: true, routerConfig })),
     ({ handler }) =>
       Effect.promise(async () => {
         const response = await handler(new Request(`http://localhost${path}`))
@@ -116,17 +121,26 @@ describe("HttpRouter", () => {
   for (const ignoreDuplicateSlashes of [true, false]) {
     it.effect(`preserves the local URL with ignoreDuplicateSlashes=${ignoreDuplicateSlashes}`, () =>
       Effect.gen(function*() {
-        const routes = HttpRouter.use((router) => router.prefixed("/api//v1").add("GET", "/users", echoUrl)).pipe(
-          Layer.provide(
-            Layer.succeed(HttpRouter.RouterConfig)(ignoreDuplicateSlashes ? {} : { ignoreDuplicateSlashes })
-          )
-        )
+        const routes = HttpRouter.use((router) => router.prefixed("/api//v1").add("GET", "/users", echoUrl))
 
-        const body = yield* fetchText(routes, ignoreDuplicateSlashes ? "/api/v1/users?x=1" : "/api//v1/users?x=1")
+        const body = yield* fetchText(
+          routes,
+          ignoreDuplicateSlashes ? "/api/v1/users?x=1" : "/api//v1/users?x=1",
+          { ignoreDuplicateSlashes }
+        )
 
         assert.strictEqual(body, "/users?x=1")
       }))
   }
+
+  it.effect("removes a matched prefix containing ; when useSemicolonDelimiter is false", () =>
+    Effect.gen(function*() {
+      const routes = HttpRouter.use((router) => router.prefixed("/tenants/:tenant").add("GET", "/users", echoUrl))
+
+      const body = yield* fetchText(routes, "/tenants/acme;v=1/users?x=1", { useSemicolonDelimiter: false })
+
+      assert.strictEqual(body, "/users?x=1")
+    }))
 
   it.effect("nests a prefixed sub-router beneath a prefixed parent router", () =>
     Effect.gen(function*() {
