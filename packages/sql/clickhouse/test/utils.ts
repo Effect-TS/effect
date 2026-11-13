@@ -20,7 +20,6 @@ export class ClickhouseContainer extends Context.Service<
     )
   )
 
-  /** Connection options shared by the Node and the web client. */
   static readonly options = Effect.gen(function*() {
     const container = yield* ClickhouseContainer
     return {

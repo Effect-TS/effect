@@ -1,12 +1,14 @@
 import * as Clickhouse from "@clickhouse/client"
-import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
+import { ClickhouseClient, ClickhouseMigrator, ClickhouseWebClient } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
+import { build } from "esbuild"
 import { Readable } from "node:stream"
+import { fileURLToPath } from "node:url"
 import { vi } from "vitest"
 
 let closeCalls = 0
@@ -267,4 +269,113 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       })),
       Effect.provide(Reactivity.layer)
     ))
+})
+
+describe("ClickhouseWebClient", { concurrent: false }, () => {
+  interface Recorded {
+    readonly query: string
+    readonly params: URLSearchParams
+  }
+
+  const makeFetch = (handler: (request: Recorded) => Response) => {
+    const requests: Array<Recorded> = []
+    const fetch = Object.assign(
+      async (input: Parameters<typeof globalThis.fetch>[0], init?: RequestInit) => {
+        const url = new URL(input instanceof Request ? input.url : String(input))
+        const query = typeof init?.body === "string" ? init.body : ""
+        const request = { query, params: url.searchParams }
+        requests.push(request)
+        return url.searchParams.get("query") === "SELECT 'ping'" || query.startsWith("KILL QUERY")
+          ? new Response("")
+          : handler(request)
+      },
+      { preconnect: () => {} }
+    )
+    return { fetch, requests }
+  }
+
+  const killed = (requests: ReadonlyArray<Recorded>) =>
+    requests.filter((request) => request.query.startsWith("KILL QUERY")).map((request) =>
+      request.params.get("param_queryId")
+    )
+
+  it.effect("sends statements through the configured fetch only", () =>
+    Effect.gen(function*() {
+      const globalFetch = vi.spyOn(globalThis, "fetch")
+      const { fetch, requests } = makeFetch(() =>
+        new Response(JSON.stringify({ data: [{ n: 1 }] }), { headers: { "content-type": "application/json" } })
+      )
+      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+
+      const rows = yield* sql`SELECT ${1} AS n`
+
+      assert.deepStrictEqual(rows, [{ n: 1 }])
+      const select = requests.find((request) => request.query === "SELECT {p1: Float64} AS n")
+      assert.strictEqual(select?.params.get("param_p1"), "1")
+      assert.strictEqual(globalFetch.mock.calls.length, 0)
+      globalFetch.mockRestore()
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("kills a streamed query and cancels the body only when the stream is not read to the end", () =>
+    Effect.gen(function*() {
+      const cancelled: Array<string | null> = []
+      const { fetch, requests } = makeFetch((request) => {
+        const queryId = request.params.get("query_id")
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("{\"a\":1}\n{\"a\":2}\n"))
+              // "take-id" stays open, as a long-running query would.
+              if (queryId === "full-id") controller.close()
+            },
+            cancel() {
+              cancelled.push(queryId)
+            }
+          })
+        )
+      })
+      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+
+      const all = yield* Stream.runCollect(sql`SELECT a FROM t`.stream).pipe(sql.withQueryId("full-id"))
+      const first = yield* Stream.runCollect(sql`SELECT a FROM t`.stream.pipe(Stream.take(1))).pipe(
+        sql.withQueryId("take-id")
+      )
+
+      assert.deepStrictEqual(all, [{ a: 1 }, { a: 2 }])
+      assert.deepStrictEqual(first, [{ a: 1 }])
+      assert.deepStrictEqual(killed(requests), ["take-id"])
+      assert.deepStrictEqual(cancelled, ["take-id"])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("classifies a ClickHouse error response", () =>
+    Effect.gen(function*() {
+      const { fetch } = makeFetch(() =>
+        new Response("Code: 62. DB::Exception: Syntax error: failed at position 1 (SYNTAX_ERROR) (version 25.8.1.1)", {
+          status: 400,
+          headers: { "x-clickhouse-exception-code": "62" }
+        })
+      )
+      const sql = yield* ClickhouseWebClient.make({ url: "http://clickhouse.test:8123", fetch })
+
+      const error = yield* Effect.flip(sql`SELEC 1`)
+
+      assert.strictEqual(error.reason._tag, "SqlSyntaxError")
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.live("bundles with the migrator for a runtime without Node built-ins", () =>
+    Effect.promise(() =>
+      build({
+        entryPoints: ["ClickhouseWebClient.ts", "ClickhouseMigrator.ts"].map((name) =>
+          fileURLToPath(new URL(`../src/${name}`, import.meta.url))
+        ),
+        bundle: true,
+        write: false,
+        outdir: "out",
+        format: "esm",
+        platform: "neutral",
+        conditions: ["workerd", "worker", "browser"],
+        mainFields: ["module", "main"],
+        logLevel: "silent"
+      })
+    ), { timeout: 60_000 })
 })
