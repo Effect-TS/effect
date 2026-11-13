@@ -23,7 +23,3 @@ export const printImports = (imports: ReadonlyArray<Codegen.Import>): string => 
   const module = new Codegen.Module()
   return module.finalize(imports.map((input) => module.addImport(input))).imports.join("\n")
 }
-
-export const provideImports = (module: Codegen.Module, imports: ReadonlyArray<Codegen.Import>): void => {
-  for (const input of imports) module.provideImport(input)
-}

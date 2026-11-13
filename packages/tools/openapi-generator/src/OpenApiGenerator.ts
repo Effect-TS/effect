@@ -20,7 +20,6 @@ import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
-import * as String from "effect/String"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as HttpClientGenerator from "./internal/httpClient.ts"
@@ -262,15 +261,8 @@ export const make = Effect.gen(function*() {
         if (binding === undefined) throw new Error(`Missing schema ${name}`)
         return binding
       })
-      module.add(Codegen.deferred((render) => registration.implementation(ParsedOperation.mapSchemas(bound, render))))
-      const output = module.finalize()
-      const declarations = [...output.imports, ...output.declarations.flatMap((declaration) => declaration.fragments)]
-      const generation = declarations.length === 0 ? "" : declarations.join("\n") + "\n"
-      return String.stripMargin(
-        `|${registration.imports}
-         |${generation}
-         |${output.body.join("\n")}`
-      )
+      module.add(Codegen.deferred((render) => render(registration(ParsedOperation.mapSchemas(bound, render)))))
+      return module.print()
     }
   )
 

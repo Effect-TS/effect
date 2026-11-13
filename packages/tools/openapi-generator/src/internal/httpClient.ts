@@ -1,10 +1,10 @@
 /** @internal */
-import type * as Codegen from "effect/Codegen"
+import * as Codegen from "effect/Codegen"
 import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { ParsedOpenApi, ParsedOperation, ParsedOperationHttpClientResponses } from "../ParsedOperation.ts"
 import * as Utils from "../Utils.ts"
-import { namedImport, namespaceImport, printImports, provideImports } from "./module.ts"
+import { namedImport, namespaceImport } from "./module.ts"
 
 interface ImportRequirements {
   readonly eventStream: boolean
@@ -35,22 +35,24 @@ const computeImportRequirements = (operations: ReadonlyArray<ParsedOperation>): 
   return { eventStream, eventStreamData, eventStreamSchema, octetStream }
 }
 
-const moduleImports = (importName: string, parsed: ParsedOpenApi, typeOnly: boolean): ReadonlyArray<Codegen.Import> => {
-  const requirements = computeImportRequirements(parsed.operations)
-  const imports = [namespaceImport("effect/Data", "Data"), namespaceImport("effect/Effect", "Effect")]
-  if (!typeOnly) {
-    imports.push(namedImport("effect/Schema", "SchemaError", true), namespaceImport("effect/Schema", importName))
-  }
-  if (requiresStreaming(requirements)) imports.push(namespaceImport("effect/Stream", "Stream"))
-  if (!typeOnly && requirements.eventStream) imports.push(namespaceImport("effect/encoding/Sse", "Sse"))
-  imports.push(
-    namespaceImport("effect/http/HttpClient", "HttpClient", !requiresStreaming(requirements)),
-    namespaceImport("effect/http/HttpClientError", "HttpClientError"),
-    namespaceImport("effect/http/HttpClientRequest", "HttpClientRequest"),
-    namespaceImport("effect/http/HttpClientResponse", "HttpClientResponse")
-  )
-  return imports
-}
+const registerImports = (module: Codegen.Module, importName: string, parsed: ParsedOpenApi) => ({
+  Data: module.addImport(namespaceImport("effect/Data", "Data")),
+  Effect: module.addImport(namespaceImport("effect/Effect", "Effect")),
+  SchemaError: module.addImport(namedImport("effect/Schema", "SchemaError", true)),
+  Schema: module.addImport(namespaceImport("effect/Schema", importName)),
+  Stream: module.addImport(namespaceImport("effect/Stream", "Stream")),
+  Sse: module.addImport(namespaceImport("effect/encoding/Sse", "Sse")),
+  HttpClient: module.addImport(
+    namespaceImport(
+      "effect/http/HttpClient",
+      "HttpClient",
+      !requiresStreaming(computeImportRequirements(parsed.operations))
+    )
+  ),
+  HttpClientError: module.addImport(namespaceImport("effect/http/HttpClientError", "HttpClientError")),
+  HttpClientRequest: module.addImport(namespaceImport("effect/http/HttpClientRequest", "HttpClientRequest")),
+  HttpClientResponse: module.addImport(namespaceImport("effect/http/HttpClientResponse", "HttpClientResponse"))
+})
 
 export const registerModule = (
   module: Codegen.Module,
@@ -58,19 +60,15 @@ export const registerModule = (
   name: string,
   parsed: ParsedOpenApi,
   typeOnly: boolean
-): { readonly imports: string; readonly implementation: (parsed: ParsedOpenApi) => string } => {
-  const imports = moduleImports(importName, parsed, typeOnly)
-  provideImports(module, imports)
+): (parsed: ParsedOpenApi) => Codegen.Fragment => {
+  const imports = registerImports(module, importName, parsed)
   const locals = module.scope()
   for (const name of ["E", "R"]) module.declare(name, { scope: locals, exact: true })
   for (const name of ["make", "OperationConfig", "WithOptionalResponse"]) module.declare(name, { exact: true })
   const client = module.declare(name)
   module.declare(`${client.name}Error`, { exact: true })
   module.declare(`${client.name}ErrorImpl`, { exact: true })
-  return {
-    imports: printImports(imports),
-    implementation: (parsed) => (typeOnly ? renderTypeOnly : renderSchema)(importName, client.name, parsed)
-  }
+  return (parsed) => Codegen.deferred((render) => renderClient(render, imports, client.name, parsed, typeOnly))
 }
 
 const requiresStreaming = (requirements: ImportRequirements): boolean =>
@@ -91,232 +89,246 @@ const normalizeSuccessStatus = (
   return successCount === 1 && status.startsWith("2") ? "2xx" : status
 }
 
-const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
-  const pipeline: Array<string> = []
-  if (!operation.params) {
+const renderClient = (
+  render: Codegen.Render,
+  imports: ReturnType<typeof registerImports>,
+  name: string,
+  parsed: ParsedOpenApi,
+  typeOnly: boolean
+): string => {
+  const paramsToPipeline = (operation: ParsedOperation): Array<string> => {
+    const pipeline: Array<string> = []
+    if (!operation.params) {
+      return pipeline
+    }
+    const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
+    if (operation.urlParams.length > 0) {
+      const props = operation.urlParams.map((param) => {
+        const key = JSON.stringify(param)
+        const value = `${paramsAccessor}[${key}]`
+        return `${key}: ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
+      })
+      pipeline.push(`${render(imports.HttpClientRequest)}.setUrlParams({ ${props.join(", ")} })`)
+    }
+    if (operation.headers.length > 0) {
+      const props = operation.headers.map(
+        (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}] ?? undefined`
+      )
+      pipeline.push(`${render(imports.HttpClientRequest)}.setHeaders({ ${props.join(", ")} })`)
+    }
+    if (operation.cookies.length > 0) {
+      const props = operation.cookies.map(
+        (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}]`
+      )
+      pipeline.push(
+        `${render(imports.HttpClientRequest)}.setHeaders({ "cookie": __cookieHeader({ ${props.join(", ")} }) })`
+      )
+    }
     return pipeline
   }
-  const paramsAccessor = resolveParamsAccessor(operation, "options", "params")
-  if (operation.urlParams.length > 0) {
-    const props = operation.urlParams.map((param) => {
-      const key = JSON.stringify(param)
-      const value = `${paramsAccessor}[${key}]`
-      return `${key}: ${operation.commaUrlParams.includes(param) ? `__joinComma(${value})` : value} as any`
-    })
-    pipeline.push(`HttpClientRequest.setUrlParams({ ${props.join(", ")} })`)
-  }
-  if (operation.headers.length > 0) {
-    const props = operation.headers.map(
-      (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}] ?? undefined`
-    )
-    pipeline.push(`HttpClientRequest.setHeaders({ ${props.join(", ")} })`)
-  }
-  if (operation.cookies.length > 0) {
-    const props = operation.cookies.map(
-      (param) => `${JSON.stringify(param)}: ${paramsAccessor}[${JSON.stringify(param)}]`
-    )
-    pipeline.push(`HttpClientRequest.setHeaders({ "cookie": __cookieHeader({ ${props.join(", ")} }) })`)
-  }
-  return pipeline
-}
 
-const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, streaming = false): string => {
-  const request = `HttpClientRequest.${operation.method}`
-  const pipe = `.pipe(\n      ${pipeline.join(",\n      ")}\n    )`
-  if (operation.pathIds.length === 0) {
-    return `${request}(${operation.pathTemplate})${pipe}`
-  }
-  const effect = `__makePathRequest(${request}, [${
-    operation.pathIds.join(", ")
-  }], () => ${operation.pathTemplate}).pipe(
-    Effect.${streaming ? "map" : "flatMap"}((request) => request${pipe})
-  )`
-  return streaming ? `Stream.unwrap(${effect})` : effect
-}
-
-const renderSchema = (importName: string, name: string, parsed: ParsedOpenApi): string => {
-  const operationsToInterface = (
-    _importName: string,
-    name: string,
-    operations: ReadonlyArray<ParsedOperation>
-  ) => {
-    const methods: Array<string> = []
-    for (const op of operations) {
-      methods.push(operationToMethod(name, op))
-      if (op.httpClientResponses.sseSchema) {
-        methods.push(operationToSseMethod(name, op))
-      }
-      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
-        methods.push(operationToBinaryMethod(name, op))
-      }
+  const requestToImpl = (operation: ParsedOperation, pipeline: Array<string>, streaming = false): string => {
+    const request = `${render(imports.HttpClientRequest)}.${operation.method}`
+    const pipe = `.pipe(\n      ${pipeline.join(",\n      ")}\n    )`
+    if (operation.pathIds.length === 0) {
+      return `${request}(${operation.pathTemplate})${pipe}`
     }
-    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
-  readonly httpClient: HttpClient.HttpClient.With<E, R>
+    const effect = `__makePathRequest(${request}, [${
+      operation.pathIds.join(", ")
+    }], () => ${operation.pathTemplate}).pipe(
+    ${render(imports.Effect)}.${streaming ? "map" : "flatMap"}((request) => request${pipe})
+  )`
+    return streaming ? `${render(imports.Stream)}.unwrap(${effect})` : effect
+  }
+
+  const renderSchema = (importName: string, name: string, parsed: ParsedOpenApi): string => {
+    const operationsToInterface = (
+      _importName: string,
+      name: string,
+      operations: ReadonlyArray<ParsedOperation>
+    ) => {
+      const methods: Array<string> = []
+      for (const op of operations) {
+        methods.push(operationToMethod(name, op))
+        if (op.httpClientResponses.sseSchema) {
+          methods.push(operationToSseMethod(name, op))
+        }
+        if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
+          methods.push(operationToBinaryMethod(name, op))
+        }
+      }
+      return `export interface ${name}<E = ${render(imports.HttpClientError)}.HttpClientError, R = never> {
+  readonly httpClient: ${render(imports.HttpClient)}.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
 ${clientErrorSource(name)}`
-  }
-
-  const operationToMethod = (name: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
     }
 
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      const key = `readonly payload`
-      const type = `typeof ${operation.payload}.Encoded`
-      options.push(`${key}: ${type}`)
-    }
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-
-    const successTypes = new Set(responses.successSchemas.values())
-    if (responses.binarySuccessStatuses.size > 0) {
-      successTypes.add("Uint8Array")
-    }
-    if (responses.voidSuccessStatuses.size > 0) {
-      successTypes.add("void")
-    }
-    const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
-    const errors = ["E", "HttpClientError.HttpClientError", "SchemaError"]
-    if (responses.errorSchemas.size > 0) {
-      Utils.spreadElementsInto(
-        Array.from(responses.errorSchemas.values()).map(
-          (schema) => `${name}Error<"${schema}", ${schema}>`
-        ),
-        errors
-      )
-    }
-    for (const status of responses.voidErrorStatuses) {
-      errors.push(`${name}Error<"${status}", undefined>`)
-    }
-
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(operation.id)}`
-    return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
-  }
-
-  const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-    }
-
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      options.push(`readonly payload: typeof ${operation.payload}.Encoded`)
-    }
-
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else if (options.length > 0) {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
-    }
-
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
-    const parameters = args.join(", ")
-    const value = responses.sseSchemaMode === "event"
-      ? responses.sseSchema
-      : `{ readonly event: string; readonly id: string | undefined; readonly data: ${responses.sseSchema} }`
-    const returnType =
-      `Stream.Stream<${value}, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, R | typeof ${responses.sseSchema}.DecodingServices>`
-    return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
-  }
-
-  const operationToBinaryMethod = (_name: string, operation: ParsedOperation) => {
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-    }
-
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      options.push(`readonly payload: typeof ${operation.payload}.Encoded`)
-    }
-
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else if (options.length > 0) {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
-    }
-
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
-    const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
-    return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
-  }
-
-  const operationsToImpl = (
-    importName: string,
-    name: string,
-    operations: ReadonlyArray<ParsedOperation>
-  ) => {
-    const requirements = computeImportRequirements(operations)
-    const implMethods: Array<string> = []
-    for (const op of operations) {
-      implMethods.push(operationToImpl(name, op))
-      if (op.httpClientResponses.sseSchema) {
-        implMethods.push(operationToSseImpl(importName, op))
+    const operationToMethod = (name: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
       }
-      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
-        implMethods.push(operationToBinaryImpl(op))
+
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
       }
+      if (operation.payload) {
+        const key = `readonly payload`
+        const type = `typeof ${operation.payload}.Encoded`
+        options.push(`${key}: ${type}`)
+      }
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+
+      const successTypes = new Set(responses.successSchemas.values())
+      if (responses.binarySuccessStatuses.size > 0) {
+        successTypes.add("Uint8Array")
+      }
+      if (responses.voidSuccessStatuses.size > 0) {
+        successTypes.add("void")
+      }
+      const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
+      const errors = ["E", `${render(imports.HttpClientError)}.HttpClientError`, `${render(imports.SchemaError)}`]
+      if (responses.errorSchemas.size > 0) {
+        Utils.spreadElementsInto(
+          Array.from(responses.errorSchemas.values()).map(
+            (schema) => `${name}Error<"${schema}", ${schema}>`
+          ),
+          errors
+        )
+      }
+      for (const status of responses.voidErrorStatuses) {
+        errors.push(`${name}Error<"${status}", undefined>`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(operation.id)}`
+      return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
     }
 
-    const helpers: Array<string> = [commonSource]
-    if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
-      helpers.push(commaUrlParamsSource)
+    const operationToSseMethod = (_name: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
+      }
+
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
+      }
+      if (operation.payload) {
+        options.push(`readonly payload: typeof ${operation.payload}.Encoded`)
+      }
+
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions) {
+        args.push(`options: { ${options.join("; ")} }`)
+      } else if (options.length > 0) {
+        args.push(`options: { ${options.join("; ")} } | undefined`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
+      const parameters = args.join(", ")
+      const value = responses.sseSchemaMode === "event"
+        ? responses.sseSchema
+        : `{ readonly event: string; readonly id: string | undefined; readonly data: ${responses.sseSchema} }`
+      const returnType = `${render(imports.Stream)}.Stream<${value}, E | ${
+        render(imports.HttpClientError)
+      }.HttpClientError | ${render(imports.SchemaError)} | ${render(imports.Sse)}.Retry | ${
+        render(imports.Sse)
+      }.SseError, R | typeof ${responses.sseSchema}.DecodingServices>`
+      return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
     }
-    if (operations.some((operation) => operation.pathIds.length > 0)) {
-      helpers.push(pathRequestSource)
+
+    const operationToBinaryMethod = (_name: string, operation: ParsedOperation) => {
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
+      }
+
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `typeof ${operation.params}.Encoded${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
+      }
+      if (operation.payload) {
+        options.push(`readonly payload: typeof ${operation.payload}.Encoded`)
+      }
+
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions) {
+        args.push(`options: { ${options.join("; ")} }`)
+      } else if (options.length > 0) {
+        args.push(`options: { ${options.join("; ")} } | undefined`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
+      const parameters = args.join(", ")
+      const returnType = `${render(imports.Stream)}.Stream<Uint8Array, E | ${
+        render(imports.HttpClientError)
+      }.HttpClientError, R>`
+      return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
     }
-    if (operations.some((operation) => operation.cookies.length > 0)) {
-      helpers.push(cookieHeaderSource)
-    }
-    if (requiresStreaming(requirements)) {
-      helpers.push(executeStreamRequestSource)
-    }
-    if (requirements.eventStreamData) {
-      helpers.push(sseRequestSource(importName))
-    }
-    if (requirements.eventStreamSchema) {
-      helpers.push(sseEventRequestSource)
-    }
-    if (requirements.octetStream) {
-      helpers.push(decodeBinarySource)
-      helpers.push(binaryRequestSource)
-    }
-    if (operations.some((operation) => operation.httpClientResponses.voidErrorStatuses.size > 0)) {
-      helpers.push(decodeVoidErrorSource(name))
-    }
-    helpers.push(decodeSuccessSource(importName))
-    if (operations.some((operation) => operation.httpClientResponses.errorSchemas.size > 0)) {
-      helpers.push(decodeErrorSource(importName, name))
-    }
-    return `export interface OperationConfig {
+
+    const operationsToImpl = (
+      importName: string,
+      name: string,
+      operations: ReadonlyArray<ParsedOperation>
+    ) => {
+      const requirements = computeImportRequirements(operations)
+      const implMethods: Array<string> = []
+      for (const op of operations) {
+        implMethods.push(operationToImpl(name, op))
+        if (op.httpClientResponses.sseSchema) {
+          implMethods.push(operationToSseImpl(importName, op))
+        }
+        if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
+          implMethods.push(operationToBinaryImpl(op))
+        }
+      }
+
+      const helpers: Array<string> = [commonSource()]
+      if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
+        helpers.push(commaUrlParamsSource())
+      }
+      if (operations.some((operation) => operation.pathIds.length > 0)) {
+        helpers.push(pathRequestSource())
+      }
+      if (operations.some((operation) => operation.cookies.length > 0)) {
+        helpers.push(cookieHeaderSource())
+      }
+      if (requiresStreaming(requirements)) {
+        helpers.push(executeStreamRequestSource())
+      }
+      if (requirements.eventStreamData) {
+        helpers.push(sseRequestSource(importName))
+      }
+      if (requirements.eventStreamSchema) {
+        helpers.push(sseEventRequestSource())
+      }
+      if (requirements.octetStream) {
+        helpers.push(decodeBinarySource())
+        helpers.push(binaryRequestSource())
+      }
+      if (operations.some((operation) => operation.httpClientResponses.voidErrorStatuses.size > 0)) {
+        helpers.push(decodeVoidErrorSource(name))
+      }
+      helpers.push(decodeSuccessSource(importName))
+      if (operations.some((operation) => operation.httpClientResponses.errorSchemas.size > 0)) {
+        helpers.push(decodeErrorSource(importName, name))
+      }
+      return `export interface OperationConfig {
   /**
    * Whether or not the response should be included in the value returned from
    * an operation.
@@ -336,14 +348,16 @@ ${clientErrorSource(name)}`
  */
 export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
-} ? [A, HttpClientResponse.HttpClientResponse]
+} ? [A, ${render(imports.HttpClientResponse)}.HttpClientResponse]
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
-  : A | [A, HttpClientResponse.HttpClientResponse]
+  : A | [A, ${render(imports.HttpClientResponse)}.HttpClientResponse]
 
 export const make = <E, R>(
-  httpClient: HttpClient.HttpClient.With<E, R>,
+  httpClient: ${render(imports.HttpClient)}.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
+    readonly transformClient?: ((client: ${render(imports.HttpClient)}.HttpClient.With<E, R>) => ${
+        render(imports.Effect)
+      }.Effect<${render(imports.HttpClient)}.HttpClient.With<E, R>>) | undefined
   } = {}
 ): ${name}<E, R> => {
   ${helpers.join("\n  ")}
@@ -352,291 +366,295 @@ export const make = <E, R>(
     ${implMethods.join(",\n    ")}
   }
 }`
-  }
-
-  const operationToImpl = (name: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const params = [
-      ...operation.pathIds,
-      `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
-    ].join(", ")
-
-    const pipeline: Array<string> = []
-
-    pipeline.push(...paramsToPipeline(operation))
-
-    const payloadVarName = "options.payload"
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadVarName} as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadVarName} as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(${payloadVarName})`)
     }
 
-    const decodes: Array<string> = []
-    responses.successSchemas.forEach((schema, status) => {
-      decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeSuccess(${schema})`)
-    })
-    responses.binarySuccessStatuses.forEach((status) => {
-      decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeBinary`)
-    })
-    responses.errorSchemas.forEach((schema, status) => {
-      decodes.push(`"${status}": decodeError("${schema}", ${schema})`)
-    })
-    responses.voidSuccessStatuses.forEach((status) => {
-      decodes.push(`"${status}": () => Effect.void`)
-    })
-    responses.voidErrorStatuses.forEach((status) => {
-      decodes.push(`"${status}": decodeVoidError("${status}")`)
-    })
-    decodes.push(`orElse: unexpectedStatus`)
+    const operationToImpl = (name: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const params = [
+        ...operation.pathIds,
+        `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
+      ].join(", ")
 
-    const configAccessor = resolveConfigAccessor(operation, "options", "config")
-    pipeline.push(`withResponse(${configAccessor})(HttpClientResponse.matchStatus({
+      const pipeline: Array<string> = []
+
+      pipeline.push(...paramsToPipeline(operation))
+
+      const payloadVarName = "options.payload"
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(${payloadVarName} as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(${payloadVarName} as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(${payloadVarName})`)
+      }
+
+      const decodes: Array<string> = []
+      responses.successSchemas.forEach((schema, status) => {
+        decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeSuccess(${schema})`)
+      })
+      responses.binarySuccessStatuses.forEach((status) => {
+        decodes.push(`"${normalizeSuccessStatus(responses, status)}": decodeBinary`)
+      })
+      responses.errorSchemas.forEach((schema, status) => {
+        decodes.push(`"${status}": decodeError("${schema}", ${schema})`)
+      })
+      responses.voidSuccessStatuses.forEach((status) => {
+        decodes.push(`"${status}": () => ${render(imports.Effect)}.void`)
+      })
+      responses.voidErrorStatuses.forEach((status) => {
+        decodes.push(`"${status}": decodeVoidError("${status}")`)
+      })
+      decodes.push(`orElse: unexpectedStatus`)
+
+      const configAccessor = resolveConfigAccessor(operation, "options", "config")
+      pipeline.push(`withResponse(${configAccessor})(${render(imports.HttpClientResponse)}.matchStatus({
       ${decodes.join(",\n      ")}
     }))`)
 
-    return (
-      `${JSON.stringify(operation.id)}: (${params}) => ` +
-      requestToImpl(operation, pipeline)
-    )
-  }
-
-  const operationToSseImpl = (_importName: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const args: Array<string> = [...operation.pathIds]
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions || operation.params || operation.payload) {
-      args.push("options")
-    }
-    const params = args.join(", ")
-
-    const pipeline: Array<string> = []
-
-    pipeline.push(...paramsToPipeline(operation))
-
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
+      return (
+        `${JSON.stringify(operation.id)}: (${params}) => ` +
+        requestToImpl(operation, pipeline)
+      )
     }
 
-    pipeline.push(`${responses.sseSchemaMode === "event" ? "sseEventRequest" : "sseRequest"}(${responses.sseSchema})`)
+    const operationToSseImpl = (_importName: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const args: Array<string> = [...operation.pathIds]
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions || operation.params || operation.payload) {
+        args.push("options")
+      }
+      const params = args.join(", ")
 
-    return (
-      `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
-    )
-  }
+      const pipeline: Array<string> = []
 
-  const operationToBinaryImpl = (operation: ParsedOperation) => {
-    const args: Array<string> = [...operation.pathIds]
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions || operation.params || operation.payload) {
-      args.push("options")
+      pipeline.push(...paramsToPipeline(operation))
+
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(options.payload as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(options.payload as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
+      }
+
+      pipeline.push(`${responses.sseSchemaMode === "event" ? "sseEventRequest" : "sseRequest"}(${responses.sseSchema})`)
+
+      return (
+        `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
+        requestToImpl(operation, pipeline, true)
+      )
     }
-    const params = args.join(", ")
 
-    const pipeline: Array<string> = []
+    const operationToBinaryImpl = (operation: ParsedOperation) => {
+      const args: Array<string> = [...operation.pathIds]
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions || operation.params || operation.payload) {
+        args.push("options")
+      }
+      const params = args.join(", ")
 
-    pipeline.push(...paramsToPipeline(operation))
+      const pipeline: Array<string> = []
 
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
+      pipeline.push(...paramsToPipeline(operation))
+
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(options.payload as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(options.payload as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
+      }
+
+      pipeline.push(`binaryRequest`)
+
+      return (
+        `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
+        requestToImpl(operation, pipeline, true)
+      )
     }
 
-    pipeline.push(`binaryRequest`)
-
-    return (
-      `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
-    )
-  }
-
-  return String.stripMargin(
-    `|${operationsToImpl(importName, name, parsed.operations)}
+    return String.stripMargin(
+      `|${operationsToImpl(importName, name, parsed.operations)}
      |
      |${operationsToInterface(importName, name, parsed.operations)}`
-  )
-}
+    )
+  }
 
-const renderTypeOnly = (importName: string, name: string, parsed: ParsedOpenApi): string => {
-  const operationsToInterface = (
-    _importName: string,
-    name: string,
-    operations: ReadonlyArray<ParsedOperation>
-  ) => {
-    const methods: Array<string> = []
-    for (const op of operations) {
-      methods.push(operationToMethod(name, op))
-      if (op.httpClientResponses.sseSchema) {
-        methods.push(operationToSseMethod(op))
+  const renderTypeOnly = (importName: string, name: string, parsed: ParsedOpenApi): string => {
+    const operationsToInterface = (
+      _importName: string,
+      name: string,
+      operations: ReadonlyArray<ParsedOperation>
+    ) => {
+      const methods: Array<string> = []
+      for (const op of operations) {
+        methods.push(operationToMethod(name, op))
+        if (op.httpClientResponses.sseSchema) {
+          methods.push(operationToSseMethod(op))
+        }
+        if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
+          methods.push(operationToBinaryMethod(op))
+        }
       }
-      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
-        methods.push(operationToBinaryMethod(op))
-      }
-    }
-    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
-  readonly httpClient: HttpClient.HttpClient.With<E, R>
+      return `export interface ${name}<E = ${render(imports.HttpClientError)}.HttpClientError, R = never> {
+  readonly httpClient: ${render(imports.HttpClient)}.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
 ${clientErrorSource(name)}`
-  }
-
-  const operationToMethod = (name: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
     }
 
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      options.push(`readonly payload: ${operation.payload}`)
-    }
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-
-    const successTypes = new Set(responses.successSchemas.values())
-    if (responses.binarySuccessStatuses.size > 0) {
-      successTypes.add("Uint8Array")
-    }
-    if (responses.voidSuccessStatuses.size > 0) {
-      successTypes.add("void")
-    }
-    const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
-
-    const errors = ["E", "HttpClientError.HttpClientError"]
-    if (responses.errorSchemas.size > 0) {
-      for (const schema of responses.errorSchemas.values()) {
-        errors.push(`${name}Error<"${schema}", ${schema}>`)
+    const operationToMethod = (name: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
       }
-    }
-    for (const status of responses.voidErrorStatuses) {
-      errors.push(`${name}Error<"${status}", undefined>`)
-    }
 
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(operation.id)}`
-    return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
-  }
-
-  const operationToSseMethod = (operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-    }
-
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      options.push(`readonly payload: ${operation.payload}`)
-    }
-
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else if (options.length > 0) {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
-    }
-
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
-    const parameters = args.join(", ")
-    const returnType = `Stream.Stream<${responses.sseSchema}, E | HttpClientError.HttpClientError, R>`
-    return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
-  }
-
-  const operationToBinaryMethod = (operation: ParsedOperation) => {
-    const args: Array<string> = []
-    if (operation.pathIds.length > 0) {
-      Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
-    }
-
-    const options: Array<string> = []
-    if (operation.params) {
-      const key = `readonly params${operation.paramsOptional ? "?" : ""}`
-      const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
-      options.push(`${key}: ${type}`)
-    }
-    if (operation.payload) {
-      options.push(`readonly payload: ${operation.payload}`)
-    }
-
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions) {
-      args.push(`options: { ${options.join("; ")} }`)
-    } else if (options.length > 0) {
-      args.push(`options: { ${options.join("; ")} } | undefined`)
-    }
-
-    const jsdoc = Utils.toComment(operation.description)
-    const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
-    const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
-    return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
-  }
-
-  const operationsToImpl = (
-    _importName: string,
-    name: string,
-    operations: ReadonlyArray<ParsedOperation>
-  ) => {
-    const requirements = computeImportRequirements(operations)
-    const implMethods: Array<string> = []
-    for (const op of operations) {
-      implMethods.push(operationToImpl(name, op))
-      if (op.httpClientResponses.sseSchema) {
-        implMethods.push(operationToSseImpl(op))
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
       }
-      if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
-        implMethods.push(operationToBinaryImpl(op))
+      if (operation.payload) {
+        options.push(`readonly payload: ${operation.payload}`)
       }
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+
+      const successTypes = new Set(responses.successSchemas.values())
+      if (responses.binarySuccessStatuses.size > 0) {
+        successTypes.add("Uint8Array")
+      }
+      if (responses.voidSuccessStatuses.size > 0) {
+        successTypes.add("void")
+      }
+      const success = successTypes.size > 0 ? Array.from(successTypes).join(" | ") : "void"
+
+      const errors = ["E", `${render(imports.HttpClientError)}.HttpClientError`]
+      if (responses.errorSchemas.size > 0) {
+        for (const schema of responses.errorSchemas.values()) {
+          errors.push(`${name}Error<"${schema}", ${schema}>`)
+        }
+      }
+      for (const status of responses.voidErrorStatuses) {
+        errors.push(`${name}Error<"${status}", undefined>`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(operation.id)}`
+      return `${jsdoc}${methodKey}: ${operationSignatures(args, options, Boolean(hasOptions), success, errors)}`
     }
 
-    const helpers: Array<string> = [commonSource]
-    if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
-      helpers.push(commaUrlParamsSource)
-    }
-    if (operations.some((operation) => operation.pathIds.length > 0)) {
-      helpers.push(pathRequestSource)
-    }
-    if (operations.some((operation) => operation.cookies.length > 0)) {
-      helpers.push(cookieHeaderSource)
-    }
-    if (requiresStreaming(requirements)) {
-      helpers.push(executeStreamRequestSource)
-    }
-    if (requirements.eventStream) {
-      helpers.push(sseRequestSourceTs)
-    }
-    const withResponseVariants = operations.some((op) => hasResponseVariants(op.httpClientResponses))
-    if (withResponseVariants) {
-      helpers.push(decodeBinarySource)
-      helpers.push(decodeVoidErrorSource(name))
-    }
-    if (requirements.octetStream) {
-      helpers.push(binaryRequestSourceTs)
+    const operationToSseMethod = (operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
+      }
+
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
+      }
+      if (operation.payload) {
+        options.push(`readonly payload: ${operation.payload}`)
+      }
+
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions) {
+        args.push(`options: { ${options.join("; ")} }`)
+      } else if (options.length > 0) {
+        args.push(`options: { ${options.join("; ")} } | undefined`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(`${operation.id}Sse`)}`
+      const parameters = args.join(", ")
+      const returnType = `${render(imports.Stream)}.Stream<${responses.sseSchema}, E | ${
+        render(imports.HttpClientError)
+      }.HttpClientError, R>`
+      return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
     }
 
-    return `export interface OperationConfig {
+    const operationToBinaryMethod = (operation: ParsedOperation) => {
+      const args: Array<string> = []
+      if (operation.pathIds.length > 0) {
+        Utils.spreadElementsInto(operation.pathIds.map((id) => `${id}: string`), args)
+      }
+
+      const options: Array<string> = []
+      if (operation.params) {
+        const key = `readonly params${operation.paramsOptional ? "?" : ""}`
+        const type = `${operation.params}${operation.paramsOptional ? " | undefined" : ""}`
+        options.push(`${key}: ${type}`)
+      }
+      if (operation.payload) {
+        options.push(`readonly payload: ${operation.payload}`)
+      }
+
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions) {
+        args.push(`options: { ${options.join("; ")} }`)
+      } else if (options.length > 0) {
+        args.push(`options: { ${options.join("; ")} } | undefined`)
+      }
+
+      const jsdoc = Utils.toComment(operation.description)
+      const methodKey = `readonly ${JSON.stringify(`${operation.id}Stream`)}`
+      const parameters = args.join(", ")
+      const returnType = `${render(imports.Stream)}.Stream<Uint8Array, E | ${
+        render(imports.HttpClientError)
+      }.HttpClientError, R>`
+      return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
+    }
+
+    const operationsToImpl = (
+      _importName: string,
+      name: string,
+      operations: ReadonlyArray<ParsedOperation>
+    ) => {
+      const requirements = computeImportRequirements(operations)
+      const implMethods: Array<string> = []
+      for (const op of operations) {
+        implMethods.push(operationToImpl(name, op))
+        if (op.httpClientResponses.sseSchema) {
+          implMethods.push(operationToSseImpl(op))
+        }
+        if (op.httpClientResponses.binarySuccessStatuses.size > 0) {
+          implMethods.push(operationToBinaryImpl(op))
+        }
+      }
+
+      const helpers: Array<string> = [commonSource()]
+      if (operations.some((operation) => operation.commaUrlParams.length > 0)) {
+        helpers.push(commaUrlParamsSource())
+      }
+      if (operations.some((operation) => operation.pathIds.length > 0)) {
+        helpers.push(pathRequestSource())
+      }
+      if (operations.some((operation) => operation.cookies.length > 0)) {
+        helpers.push(cookieHeaderSource())
+      }
+      if (requiresStreaming(requirements)) {
+        helpers.push(executeStreamRequestSource())
+      }
+      if (requirements.eventStream) {
+        helpers.push(sseRequestSourceTs())
+      }
+      const withResponseVariants = operations.some((op) => hasResponseVariants(op.httpClientResponses))
+      if (withResponseVariants) {
+        helpers.push(decodeBinarySource())
+        helpers.push(decodeVoidErrorSource(name))
+      }
+      if (requirements.octetStream) {
+        helpers.push(binaryRequestSourceTs())
+      }
+
+      return `export interface OperationConfig {
   /**
    * Whether or not the response should be included in the value returned from
    * an operation.
@@ -656,32 +674,34 @@ ${clientErrorSource(name)}`
  */
 export type WithOptionalResponse<A, Config extends OperationConfig | undefined> = Config extends {
   readonly includeResponse: true
-} ? [A, HttpClientResponse.HttpClientResponse]
+} ? [A, ${render(imports.HttpClientResponse)}.HttpClientResponse]
   : Config extends { readonly includeResponse?: false | undefined } | undefined ? A
-  : A | [A, HttpClientResponse.HttpClientResponse]
+  : A | [A, ${render(imports.HttpClientResponse)}.HttpClientResponse]
 
 export const make = <E, R>(
-  httpClient: HttpClient.HttpClient.With<E, R>,
+  httpClient: ${render(imports.HttpClient)}.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
+    readonly transformClient?: ((client: ${render(imports.HttpClient)}.HttpClient.With<E, R>) => ${
+        render(imports.Effect)
+      }.Effect<${render(imports.HttpClient)}.HttpClient.With<E, R>>) | undefined
   } = {}
 ): ${name}<E, R> => {
   ${helpers.join("\n  ")}
-  const decodeSuccess = <A>(response: HttpClientResponse.HttpClientResponse) =>
-    response.json as Effect.Effect<A, HttpClientError.HttpClientError>
-  const decodeVoid = (_response: HttpClientResponse.HttpClientResponse) =>
-    Effect.void
+  const decodeSuccess = <A>(response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+    response.json as ${render(imports.Effect)}.Effect<A, ${render(imports.HttpClientError)}.HttpClientError>
+  const decodeVoid = (_response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+    ${render(imports.Effect)}.void
   const decodeError =
     <Tag extends string, E>(tag: Tag) =>
     (
-      response: HttpClientResponse.HttpClientResponse,
-    ): Effect.Effect<
+      response: ${render(imports.HttpClientResponse)}.HttpClientResponse,
+    ): ${render(imports.Effect)}.Effect<
       never,
-      ${name}Error<Tag, E> | HttpClientError.HttpClientError
+      ${name}Error<Tag, E> | ${render(imports.HttpClientError)}.HttpClientError
     > =>
-      Effect.flatMap(
-        response.json as Effect.Effect<E, HttpClientError.HttpClientError>,
-        (cause) => Effect.fail(${name}Error(tag, cause, response)),
+      ${render(imports.Effect)}.flatMap(
+        response.json as ${render(imports.Effect)}.Effect<E, ${render(imports.HttpClientError)}.HttpClientError>,
+        (cause) => ${render(imports.Effect)}.fail(${name}Error(tag, cause, response)),
       )
   ${onRequestSource(withResponseVariants)}
   return {
@@ -689,129 +709,130 @@ export const make = <E, R>(
     ${implMethods.join(",\n    ")}
   }
 }`
-  }
-
-  const operationToImpl = (name: string, operation: ParsedOperation) => {
-    const responses = operation.httpClientResponses
-    const params = [
-      ...operation.pathIds,
-      `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
-    ].join(", ")
-
-    const pipeline: Array<string> = []
-
-    pipeline.push(...paramsToPipeline(operation))
-
-    const payloadAccessor = "options.payload"
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(${payloadAccessor} as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(${payloadAccessor} as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(${payloadAccessor})`)
     }
 
-    const successCodes = Array.from(
-      responses.successSchemas.keys(),
-      (status) => JSON.stringify(normalizeSuccessStatus(responses, status))
-    ).join(", ")
-    const errorCodes = responses.errorSchemas.size > 0 &&
-      Object.fromEntries(responses.errorSchemas.entries())
-    const configAccessor = resolveConfigAccessor(operation, "options", "config")
-    const requestArgs = [`[${successCodes}]`]
-    if (hasResponseVariants(responses)) {
-      const responseCodes = {
-        binary: Array.from(
-          responses.binarySuccessStatuses,
-          (status) => normalizeSuccessStatus(responses, status)
-        ),
-        voidSuccess: Array.from(responses.voidSuccessStatuses),
-        voidError: Array.from(responses.voidErrorStatuses)
+    const operationToImpl = (name: string, operation: ParsedOperation) => {
+      const responses = operation.httpClientResponses
+      const params = [
+        ...operation.pathIds,
+        `options: Parameters<${name}[${JSON.stringify(operation.id)}]>[${operation.pathIds.length}]`
+      ].join(", ")
+
+      const pipeline: Array<string> = []
+
+      pipeline.push(...paramsToPipeline(operation))
+
+      const payloadAccessor = "options.payload"
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(${payloadAccessor} as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(${payloadAccessor} as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(${payloadAccessor})`)
       }
-      requestArgs.push(errorCodes ? JSON.stringify(errorCodes) : "undefined", JSON.stringify(responseCodes))
-    } else if (errorCodes) {
-      requestArgs.push(JSON.stringify(errorCodes))
-    }
-    pipeline.push(`onRequest(${configAccessor})(${requestArgs.join(", ")})`)
 
-    return (
-      `${JSON.stringify(operation.id)}: (${params}) => ` +
-      requestToImpl(operation, pipeline)
-    )
-  }
+      const successCodes = Array.from(
+        responses.successSchemas.keys(),
+        (status) => JSON.stringify(normalizeSuccessStatus(responses, status))
+      ).join(", ")
+      const errorCodes = responses.errorSchemas.size > 0 &&
+        Object.fromEntries(responses.errorSchemas.entries())
+      const configAccessor = resolveConfigAccessor(operation, "options", "config")
+      const requestArgs = [`[${successCodes}]`]
+      if (hasResponseVariants(responses)) {
+        const responseCodes = {
+          binary: Array.from(
+            responses.binarySuccessStatuses,
+            (status) => normalizeSuccessStatus(responses, status)
+          ),
+          voidSuccess: Array.from(responses.voidSuccessStatuses),
+          voidError: Array.from(responses.voidErrorStatuses)
+        }
+        requestArgs.push(errorCodes ? JSON.stringify(errorCodes) : "undefined", JSON.stringify(responseCodes))
+      } else if (errorCodes) {
+        requestArgs.push(JSON.stringify(errorCodes))
+      }
+      pipeline.push(`onRequest(${configAccessor})(${requestArgs.join(", ")})`)
 
-  const operationToSseImpl = (operation: ParsedOperation) => {
-    const args: Array<string> = [...operation.pathIds]
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions || operation.params || operation.payload) {
-      args.push("options")
-    }
-    const params = args.join(", ")
-
-    const pipeline: Array<string> = []
-
-    pipeline.push(...paramsToPipeline(operation))
-
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
+      return (
+        `${JSON.stringify(operation.id)}: (${params}) => ` +
+        requestToImpl(operation, pipeline)
+      )
     }
 
-    pipeline.push(`sseRequest`)
+    const operationToSseImpl = (operation: ParsedOperation) => {
+      const args: Array<string> = [...operation.pathIds]
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions || operation.params || operation.payload) {
+        args.push("options")
+      }
+      const params = args.join(", ")
 
-    return (
-      `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
-    )
-  }
+      const pipeline: Array<string> = []
 
-  const operationToBinaryImpl = (operation: ParsedOperation) => {
-    const args: Array<string> = [...operation.pathIds]
-    const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
-    if (hasOptions || operation.params || operation.payload) {
-      args.push("options")
+      pipeline.push(...paramsToPipeline(operation))
+
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(options.payload as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(options.payload as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
+      }
+
+      pipeline.push(`sseRequest`)
+
+      return (
+        `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
+        requestToImpl(operation, pipeline, true)
+      )
     }
-    const params = args.join(", ")
 
-    const pipeline: Array<string> = []
+    const operationToBinaryImpl = (operation: ParsedOperation) => {
+      const args: Array<string> = [...operation.pathIds]
+      const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
+      if (hasOptions || operation.params || operation.payload) {
+        args.push("options")
+      }
+      const params = args.join(", ")
 
-    pipeline.push(...paramsToPipeline(operation))
+      const pipeline: Array<string> = []
 
-    if (operation.payloadFormData) {
-      pipeline.push(`HttpClientRequest.bodyFormDataRecord(options.payload as any)`)
-    } else if (operation.payloadFormUrlEncoded) {
-      pipeline.push(`HttpClientRequest.bodyUrlParams(options.payload as any)`)
-    } else if (operation.payload) {
-      pipeline.push(`HttpClientRequest.bodyJsonUnsafe(options.payload)`)
+      pipeline.push(...paramsToPipeline(operation))
+
+      if (operation.payloadFormData) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyFormDataRecord(options.payload as any)`)
+      } else if (operation.payloadFormUrlEncoded) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyUrlParams(options.payload as any)`)
+      } else if (operation.payload) {
+        pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
+      }
+
+      pipeline.push(`binaryRequest`)
+
+      return (
+        `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
+        requestToImpl(operation, pipeline, true)
+      )
     }
 
-    pipeline.push(`binaryRequest`)
-
-    return (
-      `${JSON.stringify(`${operation.id}Stream`)}: (${params}) => ` +
-      requestToImpl(operation, pipeline, true)
-    )
-  }
-
-  return String.stripMargin(
-    `|${operationsToImpl(importName, name, parsed.operations)}
+    return String.stripMargin(
+      `|${operationsToImpl(importName, name, parsed.operations)}
      |
      |${operationsToInterface(importName, name, parsed.operations)}`
-  )
-}
+    )
+  }
 
-const pathRequestSource = `const __encodePathParam = encodeURIComponent
+  const pathRequestSource = () =>
+    `const __encodePathParam = encodeURIComponent
   const __makePathRequest = (
-    method: (url: string) => HttpClientRequest.HttpClientRequest,
+    method: (url: string) => ${render(imports.HttpClientRequest)}.HttpClientRequest,
     parameters: ReadonlyArray<string>,
     getPath: () => string,
-  ) => Effect.suspend(() => {
-    const fail = (description: string, cause?: unknown) => Effect.fail(
-      new HttpClientError.HttpClientError({
-        reason: new HttpClientError.InvalidUrlError({
+  ) => ${render(imports.Effect)}.suspend(() => {
+    const fail = (description: string, cause?: unknown) => ${render(imports.Effect)}.fail(
+      new ${render(imports.HttpClientError)}.HttpClientError({
+        reason: new ${render(imports.HttpClientError)}.InvalidUrlError({
           request: method(""),
           cause,
           description,
@@ -830,13 +851,14 @@ const pathRequestSource = `const __encodePathParam = encodeURIComponent
     if (path.split("/").some((segment) => /^(?:\\.|%2e){1,2}$/i.test(segment))) {
       return fail("Request paths cannot contain dot segments")
     }
-    return Effect.succeed(method(path))
+    return ${render(imports.Effect)}.succeed(method(path))
   })`
 
-const commaUrlParamsSource =
-  `const __joinComma = (value: unknown) => Array.isArray(value) && value.length > 0 ? value.join(",") : value`
+  const commaUrlParamsSource = () =>
+    `const __joinComma = (value: unknown) => Array.isArray(value) && value.length > 0 ? value.join(",") : value`
 
-const cookieHeaderSource = `const __cookieHeader = (cookies: Record<string, unknown>) => {
+  const cookieHeaderSource = () =>
+    `const __cookieHeader = (cookies: Record<string, unknown>) => {
     const header = Object.entries(cookies)
       .filter(([, value]) => value !== undefined && value !== null)
       .map(([name, value]) => \`\${name}=\${encodeURIComponent(String(value))}\`)
@@ -844,13 +866,14 @@ const cookieHeaderSource = `const __cookieHeader = (cookies: Record<string, unkn
     return header === "" ? undefined : header
   }`
 
-const commonSource = `const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
-    Effect.flatMap(
-      Effect.orElseSucceed(response.json, () => "Unexpected status code"),
+  const commonSource = () =>
+    `const unexpectedStatus = (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+    ${render(imports.Effect)}.flatMap(
+      ${render(imports.Effect)}.orElseSucceed(response.json, () => "Unexpected status code"),
       (description) =>
-        Effect.fail(
-          new HttpClientError.HttpClientError({
-            reason: new HttpClientError.StatusCodeError({
+        ${render(imports.Effect)}.fail(
+          new ${render(imports.HttpClientError)}.HttpClientError({
+            reason: new ${render(imports.HttpClientError)}.StatusCodeError({
               request: response.request,
               response,
               description: typeof description === "string" ? description : JSON.stringify(description),
@@ -859,56 +882,65 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
         ),
     )
   const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
-    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, R> => {
+    f: (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) => ${
+      render(imports.Effect)
+    }.Effect<any, any>,
+  ): (request: ${render(imports.HttpClientRequest)}.HttpClientRequest) => ${
+      render(imports.Effect)
+    }.Effect<any, any, R> => {
     const withOptionalResponse = (
       config?.includeResponse
-        ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
-        : (response: HttpClientResponse.HttpClientResponse) => f(response)
+        ? (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) => ${
+      render(imports.Effect)
+    }.map(f(response), (a) => [a, response])
+        : (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) => f(response)
     ) as any
     return options?.transformClient
       ? (request) =>
-          Effect.flatMap(
-            Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
+          ${render(imports.Effect)}.flatMap(
+            ${
+      render(imports.Effect)
+    }.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
             withOptionalResponse
           )
-      : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
+      : (request) => ${render(imports.Effect)}.flatMap(httpClient.execute(request), withOptionalResponse)
   }`
 
-const decodeBinarySource = `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>
-    Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`
+  const decodeBinarySource = () =>
+    `const decodeBinary = (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+    ${render(imports.Effect)}.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`
 
-const decodeSuccessSource = (importName: string) =>
-  `const decodeSuccess =
+  const decodeSuccessSource = (importName: string) =>
+    `const decodeSuccess =
     <Schema extends ${importName}.Constraint>(schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      HttpClientResponse.schemaBodyJson(schema)(response)`
+    (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+      ${render(imports.HttpClientResponse)}.schemaBodyJson(schema)(response)`
 
-const decodeErrorSource = (importName: string, name: string) =>
-  `const decodeError =
+  const decodeErrorSource = (importName: string, name: string) =>
+    `const decodeError =
     <const Tag extends string, Schema extends ${importName}.Constraint>(tag: Tag, schema: Schema) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      Effect.flatMap(
-        HttpClientResponse.schemaBodyJson(schema)(response),
-        (cause) => Effect.fail(${name}Error(tag, cause, response)),
+    (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+      ${render(imports.Effect)}.flatMap(
+        ${render(imports.HttpClientResponse)}.schemaBodyJson(schema)(response),
+        (cause) => ${render(imports.Effect)}.fail(${name}Error(tag, cause, response)),
       )`
 
-const decodeVoidErrorSource = (name: string) =>
-  `const decodeVoidError = <const Tag extends string>(tag: Tag) =>
-    (response: HttpClientResponse.HttpClientResponse) =>
-      Effect.fail(${name}Error(tag, undefined, response))`
+  const decodeVoidErrorSource = (name: string) =>
+    `const decodeVoidError = <const Tag extends string>(tag: Tag) =>
+    (response: ${render(imports.HttpClientResponse)}.HttpClientResponse) =>
+      ${render(imports.Effect)}.fail(${name}Error(tag, undefined, response))`
 
-const onRequestSource = (withResponseVariants: boolean) => {
-  const responseCodesParam = withResponseVariants
-    ? `
+  const onRequestSource = (withResponseVariants: boolean) => {
+    const responseCodesParam = withResponseVariants
+      ? `
     responseCodes: {
       readonly binary: ReadonlyArray<string>
       readonly voidSuccess: ReadonlyArray<string>
       readonly voidError: ReadonlyArray<string>
     } = { binary: [], voidSuccess: [], voidError: [] },`
-    : ""
-  const responseCodesCases = withResponseVariants
-    ? `
+      : ""
+    const responseCodesCases = withResponseVariants
+      ? `
     for (const code of responseCodes.binary) {
       cases[code] = decodeBinary
     }
@@ -918,11 +950,11 @@ const onRequestSource = (withResponseVariants: boolean) => {
     for (const code of responseCodes.voidError) {
       cases[code] = decodeVoidError(code)
     }`
-    : ""
-  const voidFallbackCondition = withResponseVariants
-    ? "successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.voidSuccess.length === 0"
-    : "successCodes.length === 0"
-  return `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
+      : ""
+    const voidFallbackCondition = withResponseVariants
+      ? "successCodes.length === 0 && responseCodes.binary.length === 0 && responseCodes.voidSuccess.length === 0"
+      : "successCodes.length === 0"
+    return `const onRequest = <Config extends OperationConfig>(config: Config | undefined) => (
     successCodes: ReadonlyArray<string>,
     errorCodes?: Record<string, string>,${responseCodesParam}
   ) => {
@@ -938,100 +970,114 @@ const onRequestSource = (withResponseVariants: boolean) => {
     if (${voidFallbackCondition}) {
       cases["2xx"] = decodeVoid
     }
-    return withResponse(config)(HttpClientResponse.matchStatus(cases) as any)
+    return withResponse(config)(${render(imports.HttpClientResponse)}.matchStatus(cases) as any)
   }`
-}
+  }
 
-const executeStreamRequestSource = `const executeStreamRequest = (request: HttpClientRequest.HttpClientRequest) =>
-    Effect.suspend(() =>
+  const executeStreamRequestSource = () =>
+    `const executeStreamRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest) =>
+    ${render(imports.Effect)}.suspend(() =>
       options.transformClient
-        ? Effect.flatMap(options.transformClient(httpClient), (client) => HttpClient.filterStatusOk(client).execute(request))
-        : HttpClient.filterStatusOk(httpClient).execute(request)
+        ? ${render(imports.Effect)}.flatMap(options.transformClient(httpClient), (client) => ${
+      render(imports.HttpClient)
+    }.filterStatusOk(client).execute(request))
+        : ${render(imports.HttpClient)}.filterStatusOk(httpClient).execute(request)
     )`
 
-const sseRequestSource = (_importName: string) =>
-  `const sseRequest = <
+  const sseRequestSource = (importName: string) =>
+    `const sseRequest = <
      Type,
      DecodingServices
     >(
-      schema: Schema.ConstraintDecoder<Type, DecodingServices>
+      schema: ${importName}.ConstraintDecoder<Type, DecodingServices>
     ) =>
     (
-      request: HttpClientRequest.HttpClientRequest
-    ): Stream.Stream<
+      request: ${render(imports.HttpClientRequest)}.HttpClientRequest
+    ): ${render(imports.Stream)}.Stream<
       { readonly event: string; readonly id: string | undefined; readonly data: Type },
-      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
+      E | ${render(imports.HttpClientError)}.HttpClientError | ${render(imports.SchemaError)} | ${
+      render(imports.Sse)
+    }.Retry | ${render(imports.Sse)}.SseError,
       R | DecodingServices
     > =>
       executeStreamRequest(request).pipe(
-        Effect.map((response) => response.stream),
-        Stream.unwrap,
-        Stream.decodeText(),
-        Stream.pipeThroughChannel(Sse.decodeDataSchema(schema))
+        ${render(imports.Effect)}.map((response) => response.stream),
+        ${render(imports.Stream)}.unwrap,
+        ${render(imports.Stream)}.decodeText(),
+        ${render(imports.Stream)}.pipeThroughChannel(${render(imports.Sse)}.decodeDataSchema(schema))
       )`
 
-const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec>(schema: S) =>
+  const sseEventRequestSource = () =>
+    `const sseEventRequest = <S extends ${render(imports.Sse)}.EventCodec>(schema: S) =>
     (
-      request: HttpClientRequest.HttpClientRequest
-    ): Stream.Stream<
+      request: ${render(imports.HttpClientRequest)}.HttpClientRequest
+    ): ${render(imports.Stream)}.Stream<
       S["Type"],
-      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
+      E | ${render(imports.HttpClientError)}.HttpClientError | ${render(imports.SchemaError)} | ${
+      render(imports.Sse)
+    }.Retry | ${render(imports.Sse)}.SseError,
       R | S["DecodingServices"]
     > =>
       executeStreamRequest(request).pipe(
-        Effect.map((response) => response.stream),
-        Stream.unwrap,
-        Stream.decodeText(),
-        Stream.pipeThroughChannel(Sse.decodeSchema(schema))
+        ${render(imports.Effect)}.map((response) => response.stream),
+        ${render(imports.Stream)}.unwrap,
+        ${render(imports.Stream)}.decodeText(),
+        ${render(imports.Stream)}.pipeThroughChannel(${render(imports.Sse)}.decodeSchema(schema))
       )`
 
-const binaryRequestSource =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
+  const binaryRequestSource = () =>
+    `const binaryRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
+      render(imports.Stream)
+    }.Stream<Uint8Array, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
-      Effect.map((response) => response.stream),
-      Stream.unwrap
+      ${render(imports.Effect)}.map((response) => response.stream),
+      ${render(imports.Stream)}.unwrap
     )`
 
-// Type-only mode helpers (no schema decoding)
-const sseRequestSourceTs =
-  `const sseRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<unknown, E | HttpClientError.HttpClientError, R> =>
+  // Type-only mode helpers (no schema decoding)
+  const sseRequestSourceTs = () =>
+    `const sseRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
+      render(imports.Stream)
+    }.Stream<unknown, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
-      Effect.map((response) => response.stream),
-      Stream.unwrap,
-      Stream.decodeText(),
-      Stream.splitLines,
-      Stream.filter((line) => line.startsWith("data: ")),
-      Stream.map((line) => JSON.parse(line.slice(6)))
+      ${render(imports.Effect)}.map((response) => response.stream),
+      ${render(imports.Stream)}.unwrap,
+      ${render(imports.Stream)}.decodeText(),
+      ${render(imports.Stream)}.splitLines,
+      ${render(imports.Stream)}.filter((line) => line.startsWith("data: ")),
+      ${render(imports.Stream)}.map((line) => JSON.parse(line.slice(6)))
     )`
 
-const binaryRequestSourceTs =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
+  const binaryRequestSourceTs = () =>
+    `const binaryRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
+      render(imports.Stream)
+    }.Stream<Uint8Array, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
-      Effect.map((response) => response.stream),
-      Stream.unwrap
+      ${render(imports.Effect)}.map((response) => response.stream),
+      ${render(imports.Stream)}.unwrap
     )`
 
-const clientErrorSource = (
-  name: string
-) =>
-  `export interface ${name}Error<Tag extends string, E> {
+  const clientErrorSource = (
+    name: string
+  ) =>
+    `export interface ${name}Error<Tag extends string, E> {
   readonly _tag: Tag
-  readonly request: HttpClientRequest.HttpClientRequest
-  readonly response: HttpClientResponse.HttpClientResponse
+  readonly request: ${render(imports.HttpClientRequest)}.HttpClientRequest
+  readonly response: ${render(imports.HttpClientResponse)}.HttpClientResponse
   readonly cause: E
 }
 
-class ${name}ErrorImpl extends Data.Error<{
+class ${name}ErrorImpl extends ${render(imports.Data)}.Error<{
   _tag: string
   cause: any
-  request: HttpClientRequest.HttpClientRequest
-  response: HttpClientResponse.HttpClientResponse
+  request: ${render(imports.HttpClientRequest)}.HttpClientRequest
+  response: ${render(imports.HttpClientResponse)}.HttpClientResponse
 }> {}
 
 export const ${name}Error = <Tag extends string, E>(
   tag: Tag,
   cause: E,
-  response: HttpClientResponse.HttpClientResponse,
+  response: ${render(imports.HttpClientResponse)}.HttpClientResponse,
 ): ${name}Error<Tag, E> =>
   new ${name}ErrorImpl({
     _tag: tag,
@@ -1040,27 +1086,30 @@ export const ${name}Error = <Tag extends string, E>(
     request: response.request,
   }) as any`
 
-const operationSignatures = (
-  args: ReadonlyArray<string>,
-  options: ReadonlyArray<string>,
-  optionsRequired: boolean,
-  success: string,
-  errors: ReadonlyArray<string>
-): string => {
-  const signature = (configOptional: boolean) => {
-    const config = configOptional ? "Config | undefined" : "Config"
-    const fields = [...options, `readonly config${configOptional ? "?" : ""}: ${config}`].join("; ")
-    const parameters = [...args, `options: { ${fields} }${configOptional && !optionsRequired ? " | undefined" : ""}`]
-    return `    <Config extends OperationConfig | undefined = undefined>(${
-      parameters.join(", ")
-    }): Effect.Effect<WithOptionalResponse<${success}, ${config}>, ${errors.join(" | ")}, R>;`
-  }
-  // Infer the whole config from a required property before allowing omitted config.
-  // An optional property would otherwise discard undefined during inference.
-  return `{
+  const operationSignatures = (
+    args: ReadonlyArray<string>,
+    options: ReadonlyArray<string>,
+    optionsRequired: boolean,
+    success: string,
+    errors: ReadonlyArray<string>
+  ): string => {
+    const signature = (configOptional: boolean) => {
+      const config = configOptional ? "Config | undefined" : "Config"
+      const fields = [...options, `readonly config${configOptional ? "?" : ""}: ${config}`].join("; ")
+      const parameters = [...args, `options: { ${fields} }${configOptional && !optionsRequired ? " | undefined" : ""}`]
+      return `    <Config extends OperationConfig | undefined = undefined>(${parameters.join(", ")}): ${
+        render(imports.Effect)
+      }.Effect<WithOptionalResponse<${success}, ${config}>, ${errors.join(" | ")}, R>;`
+    }
+    // Infer the whole config from a required property before allowing omitted config.
+    // An optional property would otherwise discard undefined during inference.
+    return `{
 ${signature(false)}
 ${signature(true)}
   }`
+  }
+
+  return typeOnly ? renderTypeOnly("", name, parsed) : renderSchema(render(imports.Schema), name, parsed)
 }
 
 const resolveConfigAccessor = (operation: ParsedOperation, rootKey: string, configKey: string): string => {

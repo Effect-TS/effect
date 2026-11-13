@@ -106,80 +106,10 @@ function isSimpleLiveLiteral(
     representation.annotations === undefined
 }
 
-function collectRefs(
-  root: SchemaRepresentation.Representation,
-  identifierSet: ReadonlySet<string>
-): ReadonlySet<string> {
-  const refs = new Set<string>()
-  const visited = new WeakSet<object>()
-  const stack: Array<SchemaRepresentation.Representation> = [root]
-
-  function pushRepresentationSchemas(representation: CheckRepresentationAnnotation | undefined): void {
-    if (representation?.schemas !== undefined) stack.push(...representation.schemas)
-  }
-
-  function pushChecks(
-    checks: ReadonlyArray<SchemaRepresentation.Check>
-  ): void {
-    for (const check of checks) {
-      pushRepresentationSchemas(check.representation)
-      if (check._tag === "FilterGroup") pushChecks(check.checks)
-    }
-  }
-
-  while (stack.length > 0) {
-    const representation = stack.pop()!
-    if (visited.has(representation)) continue
-    visited.add(representation)
-    if (representation._tag === "Reference") {
-      if (identifierSet.has(representation.$ref)) refs.add(representation.$ref)
-      continue
-    }
-
-    pushChecks(representation.checks)
-    switch (representation._tag) {
-      case "Declaration":
-        pushRepresentationSchemas(representation.representation)
-        stack.push(...representation.typeParameters)
-        break
-      case "Suspend":
-        break
-      case "TemplateLiteral":
-        stack.push(...representation.parts)
-        break
-      case "Arrays":
-        for (const element of representation.elements) stack.push(element.type)
-        stack.push(...representation.rest)
-        break
-      case "Objects":
-        for (const property of representation.propertySignatures) stack.push(property.type)
-        for (const signature of representation.indexSignatures) {
-          stack.push(signature.parameter, signature.type)
-        }
-        break
-      case "Union":
-        stack.push(...representation.types)
-        break
-    }
-  }
-  return refs
-}
-
-interface CompiledCode extends Code {
-  readonly dependencies: ReadonlyArray<Binding>
-}
-
-interface Definition {
+interface SymbolDeclaration {
   readonly binding: DeclarationBinding
-  readonly code: CompiledCode
-}
-
-interface SymbolArtifact extends Definition {
-  readonly _tag: "Symbol"
   runtime: boolean
 }
-
-type Artifact = SymbolArtifact | Definition & { readonly _tag: "Enum" }
 
 const schemaNamespace: Import = {
   module: "effect/Schema",
@@ -190,7 +120,7 @@ const schemaNamespace: Import = {
   attributes: ""
 }
 
-const moduleSymbols = new WeakMap<Module, Map<symbol, SymbolArtifact>>()
+const moduleSymbols = new WeakMap<Module, Map<symbol, SymbolDeclaration>>()
 
 /** @internal */
 export function addSchemas(
@@ -201,95 +131,51 @@ export function addSchemas(
     readonly typeOnly?: boolean | undefined
   }
 ): ReadonlyMap<string, DeclarationBinding> {
-  const entries = Object.entries(schemas)
-  const compiled = compile(
-    {
-      representations: entries.map(([, representation]) => representation),
-      references: options?.references ?? {}
-    },
-    module,
-    module.addImport(schemaNamespace),
-    options?.typeOnly === true
-  )
-  for (const artifact of compiled.artifacts) {
-    const source = artifact._tag === "Enum"
-      ? code`${options?.typeOnly ? "declare " : ""}${artifact.code.runtime}`
-      : deferred((render) =>
-        artifact.runtime
-          ? `const ${render(artifact.binding)} = ${render(artifact.code.runtime)}`
-          : `declare const ${render(artifact.binding)}: unique symbol`
-      )
-    module.define(artifact.binding, [source], artifact.code.dependencies)
-  }
-  for (const { binding, code: fragments } of compiled.definitions.values()) {
-    module.define(binding, [
-      code`export type ${binding} = ${fragments.Type}`,
-      ...(options?.typeOnly ? [] : [code`export const ${binding} = ${fragments.runtime}`])
-    ], fragments.dependencies)
-  }
-  const bindings = new Map<string, DeclarationBinding>()
-  for (const [index, [name, representation]] of entries.entries()) {
-    const existing = representation._tag === "Reference" && representation.$ref === name
-      ? compiled.definitions.get(name)
-      : undefined
-    if (existing !== undefined) {
-      bindings.set(name, existing.binding)
-      continue
-    }
-    const binding = module.declare(name)
-    const fragments = compiled.codes[index]
-    module.define(binding, [
-      code`export type ${binding} = ${fragments.Type}`,
-      ...(options?.typeOnly ? [] : [code`export const ${binding} = ${fragments.runtime}`])
-    ], fragments.dependencies)
-    bindings.set(name, binding)
-  }
-  return bindings
-}
-
-function compile(
-  document: {
-    readonly representations: ReadonlyArray<SchemaRepresentation.Representation>
-    readonly references: SchemaRepresentation.References
-  },
-  module: Module,
-  schemaImport: Binding,
-  typeOnly = false
-) {
+  const typeOnly = options?.typeOnly === true
+  const schemaImport = module.addImport(schemaNamespace)
+  const definitions = options?.references ?? {}
   const references = new Map(
-    Object.keys(document.references).map(($ref) => [$ref, freshIdentifier($ref)])
+    Object.keys(definitions).map(($ref) => [$ref, freshIdentifier($ref)])
   )
-  const identifierSet = new Set(references.keys())
-  const artifacts: Array<Artifact> = []
-  const symbols = moduleSymbols.get(module) ?? new Map<symbol, SymbolArtifact>()
+  const symbols = moduleSymbols.get(module) ?? new Map<symbol, SymbolDeclaration>()
   moduleSymbols.set(module, symbols)
   const parsedImports = new Map<string, CodeImports.Imports>()
   let callbackIndex = 0
-  let artifactDependencies = new Set<Binding>()
+  let dependencies = new Set<Binding>()
   let suspendDepth = 0
-  const definitions = new Map<string, Definition>()
   for (const [$ref, binding] of references) {
-    definitions.set($ref, { binding, code: compileRoot(document.references[$ref], ["references", $ref]) })
+    defineSchema(binding, definitions[$ref], ["references", $ref])
   }
-  const codes = document.representations.map((representation, index) =>
-    compileRoot(representation, ["representations", index])
-  )
-  return { definitions, artifacts, codes }
-
-  function compileRoot(representation: SchemaRepresentation.Representation, path: Path): CompiledCode {
-    artifactDependencies = new Set()
-    const fragments = recur(representation, path)
-    return {
-      ...fragments,
-      dependencies: [
-        ...Array.from(collectRefs(representation, identifierSet), ($ref) => references.get($ref)!),
-        ...artifactDependencies
-      ]
+  const bindings = new Map<string, DeclarationBinding>()
+  for (const [index, [name, representation]] of Object.entries(schemas).entries()) {
+    const existing = representation._tag === "Reference" && representation.$ref === name
+      ? references.get(name)
+      : undefined
+    if (existing !== undefined) {
+      bindings.set(name, existing)
+    } else {
+      const binding = module.declare(name)
+      defineSchema(binding, representation, ["representations", index])
+      bindings.set(name, binding)
     }
   }
+  return bindings
 
-  function dependOnArtifact(binding: DeclarationBinding): DeclarationBinding {
-    if (suspendDepth === 0) artifactDependencies.add(binding)
+  function defineSchema(
+    binding: DeclarationBinding,
+    representation: SchemaRepresentation.Representation,
+    path: Path
+  ): void {
+    dependencies = new Set()
+    const fragments = recur(representation, path)
+    module.define(binding, [
+      code`export type ${binding} = ${fragments.Type}`,
+      ...(typeOnly ? [] : [code`export const ${binding} = ${fragments.runtime}`])
+    ], [...dependencies])
+  }
+
+  function dependOn(binding: DeclarationBinding): DeclarationBinding {
+    if (suspendDepth === 0) dependencies.add(binding)
     return binding
   }
 
@@ -368,26 +254,22 @@ function compile(
     const existing = symbols.get(symbol)
     if (existing !== undefined) {
       existing.runtime ||= !typeOnly
-      return dependOnArtifact(existing.binding)
+      return dependOn(existing.binding)
     }
     const identifier = freshIdentifier("_symbol")
     const key = globalThis.Symbol.keyFor(symbol)
     const description = symbol.description
-    const artifact: SymbolArtifact = {
-      _tag: "Symbol",
-      binding: identifier,
-      runtime: !typeOnly,
-      code: {
-        runtime: key === undefined
-          ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
-          : `globalThis.Symbol.for(${format(key)})`,
-        Type: code`typeof ${identifier}`,
-        dependencies: []
-      }
-    }
-    symbols.set(symbol, artifact)
-    artifacts.push(artifact)
-    return dependOnArtifact(identifier)
+    const declaration: SymbolDeclaration = { binding: identifier, runtime: !typeOnly }
+    symbols.set(symbol, declaration)
+    const runtime = key === undefined
+      ? `globalThis.Symbol(${description === undefined ? "" : format(description)})`
+      : `globalThis.Symbol.for(${format(key)})`
+    module.define(identifier, [deferred((render) =>
+      declaration.runtime
+        ? `const ${render(identifier)} = ${runtime}`
+        : `declare const ${render(identifier)}: unique symbol`
+    )])
+    return dependOn(identifier)
   }
 
   function annotationSchemas(
@@ -468,7 +350,7 @@ function compile(
       if (identifier === undefined) {
         throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
       }
-      return makeFragments(identifier, identifier)
+      return makeFragments(dependOn(identifier), identifier)
     }
     return applyNode(on(representation, path), representation, path)
   }
@@ -535,18 +417,12 @@ function compile(
         return makeFragments(code`${schemaImport}.ObjectKeyword`, "object")
       case "Enum": {
         const identifier = freshIdentifier("_Enum")
-        artifacts.push({
-          _tag: "Enum",
-          binding: identifier,
-          code: {
-            runtime: code`enum ${identifier} { ${
-              representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(", ")
-            } }`,
-            Type: code`typeof ${identifier}`,
-            dependencies: []
-          }
-        })
-        dependOnArtifact(identifier)
+        module.define(identifier, [
+          code`${typeOnly ? "declare " : ""}enum ${identifier} { ${
+            representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(", ")
+          } }`
+        ])
+        dependOn(identifier)
         return makeFragments(code`${schemaImport}.Enum(${identifier})`, identifier)
       }
       case "TemplateLiteral": {

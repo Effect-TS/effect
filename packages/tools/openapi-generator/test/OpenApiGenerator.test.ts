@@ -882,7 +882,9 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
+
 export const GetUser200 = Schema.Struct({ "id": Schema.String, "name": Schema.String }).annotate({ "description": "User object" })
 
 export interface OperationConfig {
@@ -1023,7 +1025,8 @@ export const TestClientError = <Tag extends string, E>(
     cause,
     response,
     request: response.request,
-  }) as any`
+  }) as any
+`
       ))
 
     it.effect("resolves JSON Pointer-escaped local references", () =>
@@ -1405,6 +1408,7 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
 export interface OperationConfig {
@@ -1572,7 +1576,8 @@ export const TestClientError = <Tag extends string, E>(
     cause,
     response,
     request: response.request,
-  }) as any`
+  }) as any
+`
       ))
 
     it.effect("preserves response variants and routes binary and bodiless statuses", () =>
@@ -1696,7 +1701,7 @@ export const TestClientError = <Tag extends string, E>(
           ]
         },
         [
-          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, HttpApiSecurity, OpenApi } from "effect/http-api"`,
+          `import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"`,
           `export type GetUserPathParams = { readonly "id": string }`,
           `export const GetUserPathParams = Schema.Struct({ "id": Schema.String })`,
           `class UsersGroup extends HttpApiGroup.make("Users")`,
@@ -1965,13 +1970,16 @@ export const TestClientError = <Tag extends string, E>(
         [
           `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
+
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
+
 export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `export type CreatePayloadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`,
           `export const CreatePayloadRequestFormData = Schema.Struct({ "file": __HttpApiMultipartSingleFile, "files": __HttpApiMultipartFiles })`,
           `export type CreatePayloadRequestJson = { readonly "a": string }`,
           `export type CreatePayloadRequestText = string
+
 export const CreatePayloadRequestText = Schema.String`,
           `payload: [HttpApiSchema.NoContent, CreatePayloadRequestJson, CreatePayloadRequestFormData.pipe(HttpApiSchema.asMultipart()), CreatePayloadRequestFormUrlEncoded.pipe(HttpApiSchema.asFormUrlEncoded()), CreatePayloadRequestText.pipe(HttpApiSchema.asText()), CreatePayloadRequestBinary.pipe(HttpApiSchema.asUint8Array())]`,
           `success: [CreatePayload200, CreatePayload200Text.pipe(HttpApiSchema.asText()), CreatePayload200Binary.pipe(HttpApiSchema.asUint8Array()), HttpApiSchema.Empty(201)]`
@@ -2541,8 +2549,10 @@ export const CreatePayloadRequestText = Schema.String`,
         [
           `import { Multipart } from "effect/http"`,
           `export type __HttpApiMultipartSingleFile = Multipart.PersistedFile
+
 export const __HttpApiMultipartSingleFile = Multipart.SingleFileSchema`,
           `export type __HttpApiMultipartFiles = ReadonlyArray<Multipart.PersistedFile>
+
 export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile, readonly "files": __HttpApiMultipartFiles }`,
           `export const UploadRequestFormData = Schema.Struct({ "file": __HttpApiMultipartSingleFile, "files": __HttpApiMultipartFiles })`,
@@ -3456,7 +3466,23 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
-    const collisionNames = ["Data", "OperationConfig", "TestClient", "Config", "HttpApi", "DefaultGroup"]
+    const collisionNames = [
+      "Data",
+      "Effect",
+      "Schema",
+      "SchemaError",
+      "HttpClient",
+      "HttpClientError",
+      "HttpClientRequest",
+      "HttpClientResponse",
+      "OperationConfig",
+      "TestClient",
+      "Config",
+      "HttpApi",
+      "HttpApiEndpoint",
+      "HttpApiGroup",
+      "DefaultGroup"
+    ]
     const collisionSpec: OpenAPISpec = {
       openapi: "3.1.0",
       info: { title: "Shared module names", version: "1.0.0" },
@@ -3497,6 +3523,26 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
     itGeneratedClientsCompile("resolves schema names against imports and generated declarations", collisionSpec, {
       formats: ["httpclient", "httpclient-type-only", "httpapi"]
     })
+
+    itGeneratedClientsCompile("resolves schema imports in streaming clients", {
+      ...collisionSpec,
+      paths: {
+        "/events": {
+          get: {
+            operationId: "getEvents",
+            parameters: [],
+            security: [],
+            tags: ["default"],
+            responses: {
+              "200": {
+                description: "Events",
+                content: { "text/event-stream": { schema: { $ref: "#/components/schemas/Schema" } } }
+              }
+            }
+          }
+        }
+      }
+    }, { formats: ["httpclient"] })
 
     it.effect("uses the resolved schemas in client responses and HttpApi endpoints", () =>
       Effect.gen(function*() {

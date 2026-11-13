@@ -16,6 +16,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import type { SchemaError } from "effect/Schema"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+
 export type ActivityItem = {
   readonly "byok_usage_inference": number
   readonly "cached_tokens": number
@@ -31,6 +32,7 @@ export type ActivityItem = {
   readonly "usage": number
   readonly "workspace_id"?: string
 }
+
 export const ActivityItem = Schema.Struct({
   "byok_usage_inference": Schema.Number.annotate({
     "description": "BYOK inference cost in USD (external credits spent)",
@@ -100,7 +102,9 @@ export const ActivityItem = Schema.Struct({
   }],
   "identifier": "ActivityItem"
 })
+
 export type ActivityResponse = { readonly "data": globalThis.ReadonlyArray<ActivityItem> }
+
 export const ActivityResponse = Schema.Struct({
   "data": Schema.Array(ActivityItem).annotate({ "description": "List of activity items" })
 }).annotate({
@@ -122,11 +126,13 @@ export const ActivityResponse = Schema.Struct({
   }],
   "identifier": "ActivityResponse"
 })
+
 export type BadRequestResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const BadRequestResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -138,11 +144,13 @@ export const BadRequestResponseErrorData = Schema.Struct({
   "examples": [{ "code": 400, "message": "Invalid request parameters" }],
   "identifier": "BadRequestResponseErrorData"
 })
+
 export type BadRequestResponse = {
   readonly "error": BadRequestResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const BadRequestResponse = Schema.Struct({
   "error": BadRequestResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -154,11 +162,13 @@ export const BadRequestResponse = Schema.Struct({
   "examples": [{ "error": { "code": 400, "message": "Invalid request parameters" } }],
   "identifier": "BadRequestResponse"
 })
+
 export type UnauthorizedResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const UnauthorizedResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -170,11 +180,13 @@ export const UnauthorizedResponseErrorData = Schema.Struct({
   "examples": [{ "code": 401, "message": "Missing Authentication header" }],
   "identifier": "UnauthorizedResponseErrorData"
 })
+
 export type UnauthorizedResponse = {
   readonly "error": UnauthorizedResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const UnauthorizedResponse = Schema.Struct({
   "error": UnauthorizedResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -186,11 +198,13 @@ export const UnauthorizedResponse = Schema.Struct({
   "examples": [{ "error": { "code": 401, "message": "Missing Authentication header" } }],
   "identifier": "UnauthorizedResponse"
 })
+
 export type ForbiddenResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const ForbiddenResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -202,11 +216,13 @@ export const ForbiddenResponseErrorData = Schema.Struct({
   "examples": [{ "code": 403, "message": "Only management keys can perform this operation" }],
   "identifier": "ForbiddenResponseErrorData"
 })
+
 export type ForbiddenResponse = {
   readonly "error": ForbiddenResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const ForbiddenResponse = Schema.Struct({
   "error": ForbiddenResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -218,11 +234,13 @@ export const ForbiddenResponse = Schema.Struct({
   "examples": [{ "error": { "code": 403, "message": "Only management keys can perform this operation" } }],
   "identifier": "ForbiddenResponse"
 })
+
 export type NotFoundResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const NotFoundResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -234,11 +252,13 @@ export const NotFoundResponseErrorData = Schema.Struct({
   "examples": [{ "code": 404, "message": "Resource not found" }],
   "identifier": "NotFoundResponseErrorData"
 })
+
 export type NotFoundResponse = {
   readonly "error": NotFoundResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const NotFoundResponse = Schema.Struct({
   "error": NotFoundResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -250,11 +270,13 @@ export const NotFoundResponse = Schema.Struct({
   "examples": [{ "error": { "code": 404, "message": "Resource not found" } }],
   "identifier": "NotFoundResponse"
 })
+
 export type InternalServerResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const InternalServerResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -266,11 +288,13 @@ export const InternalServerResponseErrorData = Schema.Struct({
   "examples": [{ "code": 500, "message": "Internal Server Error" }],
   "identifier": "InternalServerResponseErrorData"
 })
+
 export type InternalServerResponse = {
   readonly "error": InternalServerResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const InternalServerResponse = Schema.Struct({
   "error": InternalServerResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -282,10 +306,12 @@ export const InternalServerResponse = Schema.Struct({
   "examples": [{ "error": { "code": 500, "message": "Internal Server Error" } }],
   "identifier": "InternalServerResponse"
 })
+
 export type Operator = {
   readonly "name": "eq" | "neq" | "in" | "not_in" | "gt" | "gte" | "lt" | "lte"
   readonly "value_type": "scalar" | "array"
 }
+
 export const Operator = Schema.Struct({
   "name": Schema.Literals(["eq", "neq", "in", "not_in", "gt", "gte", "lt", "lte"]).annotate({
     "description": "Operator identifier used in filter definitions",
@@ -295,18 +321,22 @@ export const Operator = Schema.Struct({
     "description": "Whether the operator expects a single value or an array"
   })
 }).annotate({ "identifier": "Operator" })
+
 export type ClassifierScalarFilterOperator = "eq" | "neq"
+
 export const ClassifierScalarFilterOperator = Schema.Literals(["eq", "neq"]).annotate({
   "description":
     "Equality operator taking a scalar filter value. Ordered comparisons are not available because classification values are strings.",
   "examples": ["eq"],
   "identifier": "ClassifierScalarFilterOperator"
 })
+
 export type ClassifierScalarFilter = {
   readonly "field": string
   readonly "operator": ClassifierScalarFilterOperator
   readonly "value": string | number
 }
+
 export const ClassifierScalarFilter = Schema.Struct({
   "field": Schema.String.annotate({
     "description":
@@ -323,17 +353,21 @@ export const ClassifierScalarFilter = Schema.Struct({
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
   ]).annotate({ "description": "Scalar (string or number) filter value.", "examples": ["Engineering"] })
 }).annotate({ "identifier": "ClassifierScalarFilter" })
+
 export type ClassifierSetFilterOperator = "in" | "not_in"
+
 export const ClassifierSetFilterOperator = Schema.Literals(["in", "not_in"]).annotate({
   "description": "Set-membership operator taking an array filter value.",
   "examples": ["in"],
   "identifier": "ClassifierSetFilterOperator"
 })
+
 export type ClassifierSetFilter = {
   readonly "field": string
   readonly "operator": ClassifierSetFilterOperator
   readonly "value": globalThis.ReadonlyArray<string | number>
 }
+
 export const ClassifierSetFilter = Schema.Struct({
   "field": Schema.String.annotate({
     "description":
@@ -354,21 +388,27 @@ export const ClassifierSetFilter = Schema.Struct({
     ])
   ).annotate({ "description": "Array of scalar filter values.", "examples": [["Engineering", "Support"]] })
 }).annotate({ "identifier": "ClassifierSetFilter" })
+
 export type ClassifierFiltersFilter = ClassifierScalarFilter | ClassifierSetFilter
+
 export const ClassifierFiltersFilter = Schema.Union([ClassifierScalarFilter, ClassifierSetFilter]).annotate({
   "identifier": "ClassifierFiltersFilter"
 })
+
 export type ScalarFilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte"
+
 export const ScalarFilterOperator = Schema.Literals(["eq", "neq", "gt", "gte", "lt", "lte"]).annotate({
   "description": "Comparison operator taking a scalar filter value.",
   "examples": ["eq"],
   "identifier": "ScalarFilterOperator"
 })
+
 export type ScalarFilter = {
   readonly "field": string
   readonly "operator": ScalarFilterOperator
   readonly "value": string | number
 }
+
 export const ScalarFilter = Schema.Struct({
   "field": Schema.String.annotate({
     "description": "Dimension to filter on. Use the /meta endpoint for available dimensions.",
@@ -383,18 +423,22 @@ export const ScalarFilter = Schema.Struct({
       "Several dimensions are enriched in responses (returned as human-readable labels), but filters must use the underlying ID: `api_key_id` — numeric ID (from generation metadata) or key hash (64-char hex from GET /api/v1/keys, resolved server-side); `user` — Clerk user ID (e.g. \"user_abc123\"), not the display name; `workspace` — workspace UUID, not the workspace name (filtering or grouping by the account default workspace also covers activity recorded before workspace resolution existed, which is attributed to that default workspace); `app` — numeric app ID, not the app title; `model` — permaslug (e.g. \"openai/gpt-4o\"), not the display name. Other dimensions (provider, origin, country, etc.) are not enriched and accept the value as returned."
   })
 }).annotate({ "identifier": "ScalarFilter" })
+
 export type SetFilterOperator = "in" | "not_in"
+
 export const SetFilterOperator = Schema.Literals(["in", "not_in"]).annotate({
   "description": "Set-membership operator taking an array filter value.",
   "examples": ["in"],
   "identifier": "SetFilterOperator"
 })
+
 export type SetFilter = {
   readonly "field": string
   readonly "include_unset"?: boolean
   readonly "operator": SetFilterOperator
   readonly "value": globalThis.ReadonlyArray<string | number>
 }
+
 export const SetFilter = Schema.Struct({
   "field": Schema.String.annotate({
     "description": "Dimension to filter on. Use the /meta endpoint for available dimensions.",
@@ -419,13 +463,17 @@ export const SetFilter = Schema.Struct({
     })
   )
 }).annotate({ "identifier": "SetFilter" })
+
 export type Filter = ScalarFilter | SetFilter
+
 export const Filter = Schema.Union([ScalarFilter, SetFilter]).annotate({ "identifier": "Filter" })
+
 export type RequestTimeoutResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const RequestTimeoutResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -437,11 +485,13 @@ export const RequestTimeoutResponseErrorData = Schema.Struct({
   "examples": [{ "code": 408, "message": "Operation timed out. Please try again later." }],
   "identifier": "RequestTimeoutResponseErrorData"
 })
+
 export type RequestTimeoutResponse = {
   readonly "error": RequestTimeoutResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const RequestTimeoutResponse = Schema.Struct({
   "error": RequestTimeoutResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -453,11 +503,13 @@ export const RequestTimeoutResponse = Schema.Struct({
   "examples": [{ "error": { "code": 408, "message": "Operation timed out. Please try again later." } }],
   "identifier": "RequestTimeoutResponse"
 })
+
 export type DecisionsImageAsset = {
   readonly "data_base64": string
   readonly "format": "png" | "jpg" | "jpeg"
   readonly "type"?: "image"
 }
+
 export const DecisionsImageAsset = Schema.Struct({
   "data_base64": Schema.String.check(
     Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
@@ -474,6 +526,7 @@ export const DecisionsImageAsset = Schema.Struct({
     "An image sent once and referenced by its key in the `assets` map. `data_base64` is the PNG or JPEG file in standard base64 with no `data:` prefix. The multipart `part` field of TypeSafe's API is not accepted.",
   "identifier": "DecisionsImageAsset"
 })
+
 export type ProviderName =
   | "Modal"
   | "AkashML"
@@ -598,6 +651,7 @@ export type ProviderName =
   | "xAI"
   | "Z.AI"
   | "FakeProvider"
+
 export const ProviderName = Schema.Literals([
   "Modal",
   "AkashML",
@@ -723,6 +777,7 @@ export const ProviderName = Schema.Literals([
   "Z.AI",
   "FakeProvider"
 ]).annotate({ "examples": ["OpenAI"], "identifier": "ProviderName" })
+
 export type ProviderOptions = {
   readonly "01ai"?: { readonly [x: string]: Schema.Json }
   readonly "ai21"?: { readonly [x: string]: Schema.Json }
@@ -880,6 +935,7 @@ export type ProviderOptions = {
   readonly "xiaomi"?: { readonly [x: string]: Schema.Json }
   readonly "z-ai"?: { readonly [x: string]: Schema.Json }
 }
+
 export const ProviderOptions = Schema.Struct({
   "01ai": Schema.optionalKey(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
   "ai21": Schema.optionalKey(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
@@ -1062,12 +1118,14 @@ export const ProviderOptions = Schema.Struct({
   "examples": [{ "openai": { "max_tokens": 1000 } }],
   "identifier": "ProviderOptions"
 })
+
 export type PercentileLatencyCutoffs = {
   readonly "p50"?: number | null
   readonly "p75"?: number | null
   readonly "p90"?: number | null
   readonly "p99"?: number | null
 }
+
 export const PercentileLatencyCutoffs = Schema.Struct({
   "p50": Schema.optionalKey(
     Schema.Union([Schema.Finite, Schema.Null]).annotate({
@@ -1098,7 +1156,9 @@ export const PercentileLatencyCutoffs = Schema.Struct({
   "examples": [{ "p50": 5, "p90": 10 }],
   "identifier": "PercentileLatencyCutoffs"
 })
+
 export type PreferredMaxLatency = number | PercentileLatencyCutoffs | null
+
 export const PreferredMaxLatency = Schema.Union([
   Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" })),
   PercentileLatencyCutoffs,
@@ -1109,12 +1169,14 @@ export const PreferredMaxLatency = Schema.Union([
   "examples": [5],
   "identifier": "PreferredMaxLatency"
 })
+
 export type PercentileThroughputCutoffs = {
   readonly "p50"?: number | null
   readonly "p75"?: number | null
   readonly "p90"?: number | null
   readonly "p99"?: number | null
 }
+
 export const PercentileThroughputCutoffs = Schema.Struct({
   "p50": Schema.optionalKey(
     Schema.Union([Schema.Finite, Schema.Null]).annotate({
@@ -1146,7 +1208,9 @@ export const PercentileThroughputCutoffs = Schema.Struct({
   "examples": [{ "p50": 100, "p90": 50 }],
   "identifier": "PercentileThroughputCutoffs"
 })
+
 export type PreferredMinThroughput = number | PercentileThroughputCutoffs | null
+
 export const PreferredMinThroughput = Schema.Union([
   Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" })),
   PercentileThroughputCutoffs,
@@ -1157,6 +1221,7 @@ export const PreferredMinThroughput = Schema.Union([
   "examples": [100],
   "identifier": "PreferredMinThroughput"
 })
+
 export type Quantization =
   | "int4"
   | "int8"
@@ -1170,6 +1235,7 @@ export type Quantization =
   | "bf16"
   | "fp32"
   | "unknown"
+
 export const Quantization = Schema.Literals([
   "int4",
   "int8",
@@ -1184,16 +1250,20 @@ export const Quantization = Schema.Literals([
   "fp32",
   "unknown"
 ]).annotate({ "examples": ["fp16"], "identifier": "Quantization" })
+
 export type ProviderSort = "price" | "throughput" | "latency" | "exacto"
+
 export const ProviderSort = Schema.Literals(["price", "throughput", "latency", "exacto"]).annotate({
   "description": "The provider sorting strategy (price, throughput, latency)",
   "examples": ["price"],
   "identifier": "ProviderSort"
 })
+
 export type ProviderSortConfig = {
   readonly "by"?: "price" | "throughput" | "latency" | "exacto" | null
   readonly "partition"?: "model" | "none" | null
 }
+
 export const ProviderSortConfig = Schema.Struct({
   "by": Schema.optionalKey(
     Schema.Union([Schema.Literals(["price", "throughput", "latency", "exacto"]), Schema.Null]).annotate({
@@ -1213,6 +1283,7 @@ export const ProviderSortConfig = Schema.Struct({
   "examples": [{ "by": "price", "partition": "model" }],
   "identifier": "ProviderSortConfig"
 })
+
 export type ProviderPreferences = {
   readonly "allow_fallbacks"?: boolean | null
   readonly "data_collection"?: "deny" | "allow" | null
@@ -1235,6 +1306,7 @@ export type ProviderPreferences = {
   readonly "sort"?: ProviderSort | ProviderSortConfig | null
   readonly "zdr"?: boolean | null
 } | null
+
 export const ProviderPreferences = Schema.Union([
   Schema.Struct({
     "allow_fallbacks": Schema.optionalKey(
@@ -1329,6 +1401,7 @@ export const ProviderPreferences = Schema.Union([
   "examples": [{ "allow_fallbacks": true }],
   "identifier": "ProviderPreferences"
 })
+
 export type DecisionsNoulQuestion = {
   readonly "criteria"?: {
     readonly "false"?: string | { readonly [x: string]: Schema.Json } | globalThis.ReadonlyArray<Schema.Json> | null
@@ -1341,6 +1414,7 @@ export type DecisionsNoulQuestion = {
     | null
   readonly "type": "noul"
 }
+
 export const DecisionsNoulQuestion = Schema.Struct({
   "criteria": Schema.optionalKey(Schema.Struct({
     "false": Schema.optionalKey(
@@ -1370,6 +1444,7 @@ export const DecisionsNoulQuestion = Schema.Struct({
   ),
   "type": Schema.Literal("noul")
 }).annotate({ "identifier": "DecisionsNoulQuestion" })
+
 export type DecisionsChoiceQuestion = {
   readonly "criteria": {
     readonly [x: string]: string | { readonly [x: string]: Schema.Json } | globalThis.ReadonlyArray<Schema.Json> | null
@@ -1381,6 +1456,7 @@ export type DecisionsChoiceQuestion = {
     | null
   readonly "type": "choice"
 }
+
 export const DecisionsChoiceQuestion = Schema.Struct({
   "criteria": Schema.Record(
     Schema.String,
@@ -1401,6 +1477,7 @@ export const DecisionsChoiceQuestion = Schema.Struct({
   ),
   "type": Schema.Literal("choice")
 }).annotate({ "identifier": "DecisionsChoiceQuestion" })
+
 export type DecisionsScoreQuestion = {
   readonly "criteria": globalThis.ReadonlyArray<
     string | { readonly [x: string]: Schema.Json } | globalThis.ReadonlyArray<Schema.Json>
@@ -1412,6 +1489,7 @@ export type DecisionsScoreQuestion = {
     | null
   readonly "type": "score"
 }
+
 export const DecisionsScoreQuestion = Schema.Struct({
   "criteria": Schema.Array(
     Schema.Union([
@@ -1430,10 +1508,12 @@ export const DecisionsScoreQuestion = Schema.Struct({
   ),
   "type": Schema.Literal("score")
 }).annotate({ "identifier": "DecisionsScoreQuestion" })
+
 export type DecisionsBoxQuestion = {
   readonly "instructions": string | { readonly [x: string]: Schema.Json } | globalThis.ReadonlyArray<Schema.Json>
   readonly "type": "box"
 }
+
 export const DecisionsBoxQuestion = Schema.Struct({
   "instructions": Schema.Union([
     Schema.String,
@@ -1449,6 +1529,7 @@ export const DecisionsBoxQuestion = Schema.Struct({
     "Finds one target in an image in `state` and answers with one bounding box (`top`, `bottom`, `left`, `right` as fractions of the image). Served by TypeSafe Jev endpoints only; every other provider rejects a box question with `400` before anything is sent upstream.",
   "identifier": "DecisionsBoxQuestion"
 })
+
 export type TraceConfig = {
   readonly "generation_name"?: string
   readonly "parent_span_id"?: string
@@ -1456,6 +1537,7 @@ export type TraceConfig = {
   readonly "trace_id"?: string
   readonly "trace_name"?: string
 } & { readonly [x: string]: Schema.Json }
+
 export const TraceConfig = Schema.StructWithRest(
   Schema.Struct({
     "generation_name": Schema.optionalKey(Schema.String),
@@ -1471,6 +1553,7 @@ export const TraceConfig = Schema.StructWithRest(
   "examples": [{ "trace_id": "trace-abc123", "trace_name": "my-app-trace" }],
   "identifier": "TraceConfig"
 })
+
 export type DecisionsRequest = {
   readonly "assets"?: { readonly [x: string]: DecisionsImageAsset }
   readonly "model": string
@@ -1487,6 +1570,7 @@ export type DecisionsRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const DecisionsRequest = Schema.Struct({
   "assets": Schema.optionalKey(
     Schema.Record(Schema.String, DecisionsImageAsset).annotate({
@@ -1527,10 +1611,12 @@ export const DecisionsRequest = Schema.Struct({
     Schema.String.check(Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" }))
   )
 }).annotate({ "identifier": "DecisionsRequest" })
+
 export type DecisionsUrlCitationAnnotation = {
   readonly "type": "url_citation"
   readonly "url_citation": { readonly "content"?: string; readonly "title"?: string; readonly "url": string }
 }
+
 export const DecisionsUrlCitationAnnotation = Schema.Struct({
   "type": Schema.Literal("url_citation"),
   "url_citation": Schema.Struct({
@@ -1543,7 +1629,9 @@ export const DecisionsUrlCitationAnnotation = Schema.Struct({
     "A web source the provider used for this request. Applies to the whole request, not to a specific answer.",
   "identifier": "DecisionsUrlCitationAnnotation"
 })
+
 export type DecisionsNoulAnswer = { readonly "confidence"?: number; readonly "noul": number; readonly "type": "noul" }
+
 export const DecisionsNoulAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -1553,12 +1641,14 @@ export const DecisionsNoulAnswer = Schema.Struct({
   ),
   "type": Schema.Literal("noul")
 }).annotate({ "identifier": "DecisionsNoulAnswer" })
+
 export type DecisionsChoiceAnswer = {
   readonly "choice": string
   readonly "confidence"?: number
   readonly "probabilities"?: { readonly [x: string]: number }
   readonly "type": "choice"
 }
+
 export const DecisionsChoiceAnswer = Schema.Struct({
   "choice": Schema.String,
   "confidence": Schema.optionalKey(
@@ -1574,6 +1664,7 @@ export const DecisionsChoiceAnswer = Schema.Struct({
   ),
   "type": Schema.Literal("choice")
 }).annotate({ "identifier": "DecisionsChoiceAnswer" })
+
 export type DecisionsScoreAnswer = {
   readonly "confidence"?: number
   readonly "legend"?: {
@@ -1583,6 +1674,7 @@ export type DecisionsScoreAnswer = {
   readonly "score": number
   readonly "type": "score"
 }
+
 export const DecisionsScoreAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -1610,6 +1702,7 @@ export const DecisionsScoreAnswer = Schema.Struct({
   ),
   "type": Schema.Literal("score")
 }).annotate({ "identifier": "DecisionsScoreAnswer" })
+
 export type DecisionsBoxAnswer = {
   readonly "box": {
     readonly "bottom": number
@@ -1620,6 +1713,7 @@ export type DecisionsBoxAnswer = {
   readonly "confidence"?: number
   readonly "type": "box"
 }
+
 export const DecisionsBoxAnswer = Schema.Struct({
   "box": Schema.Struct({
     "bottom": Schema.Number.annotate({ "format": "double" }).check(
@@ -1640,18 +1734,22 @@ export const DecisionsBoxAnswer = Schema.Struct({
   ),
   "type": Schema.Literal("box")
 }).annotate({ "identifier": "DecisionsBoxAnswer" })
+
 export type DecisionsRefusalAnswer = { readonly "type": "refusal" }
+
 export const DecisionsRefusalAnswer = Schema.Struct({ "type": Schema.Literal("refusal") }).annotate({
   "description":
     "The provider declined to answer this question; no value or probabilities are returned. Other questions in the same request can still have answers.",
   "identifier": "DecisionsRefusalAnswer"
 })
+
 export type CostDetails = {
   readonly "server_tool_cost"?: number | null
   readonly "upstream_inference_completions_cost": number
   readonly "upstream_inference_cost"?: number | null
   readonly "upstream_inference_prompt_cost": number
 } | null
+
 export const CostDetails = Schema.Union([
   Schema.Struct({
     "server_tool_cost": Schema.optionalKey(
@@ -1681,11 +1779,14 @@ export const CostDetails = Schema.Union([
   }],
   "identifier": "CostDetails"
 })
+
 export type DecisionsUsageInputTokensDetails = { readonly "cached_tokens": number }
+
 export const DecisionsUsageInputTokensDetails = Schema.Struct({ "cached_tokens": Schema.Int }).annotate({
   "description": "Of `input_tokens`, those the provider served from its prompt cache.",
   "identifier": "DecisionsUsageInputTokensDetails"
 })
+
 export type DecisionsResponse = {
   readonly "annotations"?: globalThis.ReadonlyArray<DecisionsUrlCitationAnnotation>
   readonly "answers": {
@@ -1708,6 +1809,7 @@ export type DecisionsResponse = {
     readonly "output_tokens": number
   }
 }
+
 export const DecisionsResponse = Schema.Struct({
   "annotations": Schema.optionalKey(
     Schema.Array(DecisionsUrlCitationAnnotation).annotate({
@@ -1748,11 +1850,13 @@ export const DecisionsResponse = Schema.Struct({
     "output_tokens": Schema.Int
   })
 }).annotate({ "identifier": "DecisionsResponse" })
+
 export type PaymentRequiredResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const PaymentRequiredResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1764,11 +1868,13 @@ export const PaymentRequiredResponseErrorData = Schema.Struct({
   "examples": [{ "code": 402, "message": "Insufficient credits. Add more using https://openrouter.ai/credits" }],
   "identifier": "PaymentRequiredResponseErrorData"
 })
+
 export type PaymentRequiredResponse = {
   readonly "error": PaymentRequiredResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const PaymentRequiredResponse = Schema.Struct({
   "error": PaymentRequiredResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1782,11 +1888,13 @@ export const PaymentRequiredResponse = Schema.Struct({
   }],
   "identifier": "PaymentRequiredResponse"
 })
+
 export type PayloadTooLargeResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const PayloadTooLargeResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1798,11 +1906,13 @@ export const PayloadTooLargeResponseErrorData = Schema.Struct({
   "examples": [{ "code": 413, "message": "Request payload too large" }],
   "identifier": "PayloadTooLargeResponseErrorData"
 })
+
 export type PayloadTooLargeResponse = {
   readonly "error": PayloadTooLargeResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const PayloadTooLargeResponse = Schema.Struct({
   "error": PayloadTooLargeResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1814,11 +1924,13 @@ export const PayloadTooLargeResponse = Schema.Struct({
   "examples": [{ "error": { "code": 413, "message": "Request payload too large" } }],
   "identifier": "PayloadTooLargeResponse"
 })
+
 export type TooManyRequestsResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const TooManyRequestsResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1830,11 +1942,13 @@ export const TooManyRequestsResponseErrorData = Schema.Struct({
   "examples": [{ "code": 429, "message": "Rate limit exceeded" }],
   "identifier": "TooManyRequestsResponseErrorData"
 })
+
 export type TooManyRequestsResponse = {
   readonly "error": TooManyRequestsResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const TooManyRequestsResponse = Schema.Struct({
   "error": TooManyRequestsResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1846,11 +1960,13 @@ export const TooManyRequestsResponse = Schema.Struct({
   "examples": [{ "error": { "code": 429, "message": "Rate limit exceeded" } }],
   "identifier": "TooManyRequestsResponse"
 })
+
 export type BadGatewayResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const BadGatewayResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1862,11 +1978,13 @@ export const BadGatewayResponseErrorData = Schema.Struct({
   "examples": [{ "code": 502, "message": "Provider returned error" }],
   "identifier": "BadGatewayResponseErrorData"
 })
+
 export type BadGatewayResponse = {
   readonly "error": BadGatewayResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const BadGatewayResponse = Schema.Struct({
   "error": BadGatewayResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1878,11 +1996,13 @@ export const BadGatewayResponse = Schema.Struct({
   "examples": [{ "error": { "code": 502, "message": "Provider returned error" } }],
   "identifier": "BadGatewayResponse"
 })
+
 export type ServiceUnavailableResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const ServiceUnavailableResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1894,11 +2014,13 @@ export const ServiceUnavailableResponseErrorData = Schema.Struct({
   "examples": [{ "code": 503, "message": "Service temporarily unavailable" }],
   "identifier": "ServiceUnavailableResponseErrorData"
 })
+
 export type ServiceUnavailableResponse = {
   readonly "error": ServiceUnavailableResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const ServiceUnavailableResponse = Schema.Struct({
   "error": ServiceUnavailableResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1910,11 +2032,13 @@ export const ServiceUnavailableResponse = Schema.Struct({
   "examples": [{ "error": { "code": 503, "message": "Service temporarily unavailable" } }],
   "identifier": "ServiceUnavailableResponse"
 })
+
 export type EdgeNetworkTimeoutResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const EdgeNetworkTimeoutResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1926,11 +2050,13 @@ export const EdgeNetworkTimeoutResponseErrorData = Schema.Struct({
   "examples": [{ "code": 524, "message": "Request timed out. Please try again later." }],
   "identifier": "EdgeNetworkTimeoutResponseErrorData"
 })
+
 export type EdgeNetworkTimeoutResponse = {
   readonly "error": EdgeNetworkTimeoutResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const EdgeNetworkTimeoutResponse = Schema.Struct({
   "error": EdgeNetworkTimeoutResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1942,11 +2068,13 @@ export const EdgeNetworkTimeoutResponse = Schema.Struct({
   "examples": [{ "error": { "code": 524, "message": "Request timed out. Please try again later." } }],
   "identifier": "EdgeNetworkTimeoutResponse"
 })
+
 export type ProviderOverloadedResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const ProviderOverloadedResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -1958,11 +2086,13 @@ export const ProviderOverloadedResponseErrorData = Schema.Struct({
   "examples": [{ "code": 529, "message": "Provider returned error" }],
   "identifier": "ProviderOverloadedResponseErrorData"
 })
+
 export type ProviderOverloadedResponse = {
   readonly "error": ProviderOverloadedResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const ProviderOverloadedResponse = Schema.Struct({
   "error": ProviderOverloadedResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -1974,11 +2104,13 @@ export const ProviderOverloadedResponse = Schema.Struct({
   "examples": [{ "error": { "code": 529, "message": "Provider returned error" } }],
   "identifier": "ProviderOverloadedResponse"
 })
+
 export type ExtractionAsset = {
   readonly "data_base64": string
   readonly "format": "png" | "jpg" | "jpeg" | "pdf"
   readonly "type"?: "image" | "document"
 }
+
 export const ExtractionAsset = Schema.Struct({
   "data_base64": Schema.String.check(
     Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
@@ -1995,11 +2127,13 @@ export const ExtractionAsset = Schema.Struct({
     "An image or PDF sent once and referenced by its key in the `assets` map. `data_base64` is the file in standard base64 with no `data:` prefix. PDF is read by document models only.",
   "identifier": "ExtractionAsset"
 })
+
 export type ExtractionTextField = {
   readonly "instructions"?: string
   readonly "null_threshold"?: number
   readonly "type": "text"
 }
+
 export const ExtractionTextField = Schema.Struct({
   "instructions": Schema.optionalKey(Schema.String.annotate({ "description": "What the field should contain." })),
   "null_threshold": Schema.optionalKey(
@@ -2012,6 +2146,7 @@ export const ExtractionTextField = Schema.Struct({
   ),
   "type": Schema.Literal("text")
 }).annotate({ "identifier": "ExtractionTextField" })
+
 export type ExtractionNumberField = {
   readonly "decimals"?: number
   readonly "instructions"?: string
@@ -2020,6 +2155,7 @@ export type ExtractionNumberField = {
   readonly "type": "number"
   readonly "unit"?: string
 }
+
 export const ExtractionNumberField = Schema.Struct({
   "decimals": Schema.optionalKey(
     Schema.Number.annotate({ "description": "Decimal places kept in `value`." }).check(
@@ -2041,11 +2177,13 @@ export const ExtractionNumberField = Schema.Struct({
   "type": Schema.Literal("number"),
   "unit": Schema.optionalKey(Schema.String)
 }).annotate({ "identifier": "ExtractionNumberField" })
+
 export type ExtractionDateField = {
   readonly "instructions"?: string
   readonly "null_threshold"?: number
   readonly "type": "date"
 }
+
 export const ExtractionDateField = Schema.Struct({
   "instructions": Schema.optionalKey(Schema.String.annotate({ "description": "What the field should contain." })),
   "null_threshold": Schema.optionalKey(
@@ -2058,11 +2196,13 @@ export const ExtractionDateField = Schema.Struct({
   ),
   "type": Schema.Literal("date")
 }).annotate({ "identifier": "ExtractionDateField" })
+
 export type ExtractionTimeField = {
   readonly "instructions"?: string
   readonly "null_threshold"?: number
   readonly "type": "time"
 }
+
 export const ExtractionTimeField = Schema.Struct({
   "instructions": Schema.optionalKey(Schema.String.annotate({ "description": "What the field should contain." })),
   "null_threshold": Schema.optionalKey(
@@ -2075,11 +2215,13 @@ export const ExtractionTimeField = Schema.Struct({
   ),
   "type": Schema.Literal("time")
 }).annotate({ "identifier": "ExtractionTimeField" })
+
 export type ExtractionDatetimeField = {
   readonly "instructions"?: string
   readonly "null_threshold"?: number
   readonly "type": "datetime"
 }
+
 export const ExtractionDatetimeField = Schema.Struct({
   "instructions": Schema.optionalKey(Schema.String.annotate({ "description": "What the field should contain." })),
   "null_threshold": Schema.optionalKey(
@@ -2092,6 +2234,7 @@ export const ExtractionDatetimeField = Schema.Struct({
   ),
   "type": Schema.Literal("datetime")
 }).annotate({ "identifier": "ExtractionDatetimeField" })
+
 export type ExtractionDurationField = {
   readonly "decimals"?: number
   readonly "instructions"?: string
@@ -2100,6 +2243,7 @@ export type ExtractionDurationField = {
   readonly "type": "duration"
   readonly "unit"?: string
 }
+
 export const ExtractionDurationField = Schema.Struct({
   "decimals": Schema.optionalKey(
     Schema.Number.annotate({ "description": "Decimal places kept in `value`." }).check(
@@ -2123,6 +2267,7 @@ export const ExtractionDurationField = Schema.Struct({
     Schema.String.annotate({ "description": "seconds, minutes, hours, days, weeks, months or years." })
   )
 }).annotate({ "identifier": "ExtractionDurationField" })
+
 export type ExtractionListField = {
   readonly "decimals"?: number
   readonly "instructions"?: string
@@ -2130,6 +2275,7 @@ export type ExtractionListField = {
   readonly "null_threshold"?: number
   readonly "type": "list"
 }
+
 export const ExtractionListField = Schema.Struct({
   "decimals": Schema.optionalKey(
     Schema.Number.annotate({ "description": "Decimal places kept in `value`." }).check(
@@ -2150,6 +2296,7 @@ export const ExtractionListField = Schema.Struct({
   ),
   "type": Schema.Literal("list")
 }).annotate({ "identifier": "ExtractionListField" })
+
 export type ExtractionEstimateField = {
   readonly "instructions"?: string
   readonly "max": number | string
@@ -2160,6 +2307,7 @@ export type ExtractionEstimateField = {
   readonly "type": "estimate"
   readonly "unit"?: string
 }
+
 export const ExtractionEstimateField = Schema.Struct({
   "instructions": Schema.optionalKey(Schema.String.annotate({ "description": "What the field should contain." })),
   "max": Schema.Union([
@@ -2191,6 +2339,7 @@ export const ExtractionEstimateField = Schema.Struct({
   "type": Schema.Literal("estimate"),
   "unit": Schema.optionalKey(Schema.String)
 }).annotate({ "identifier": "ExtractionEstimateField" })
+
 export type ExtractionForecastField = {
   readonly "horizon": number
   readonly "instructions"?: string
@@ -2203,6 +2352,7 @@ export type ExtractionForecastField = {
   readonly "type": "forecast"
   readonly "unit"?: string
 }
+
 export const ExtractionForecastField = Schema.Struct({
   "horizon": Schema.Number.annotate({ "description": "Number of forecast steps." }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
@@ -2240,6 +2390,7 @@ export const ExtractionForecastField = Schema.Struct({
   "type": Schema.Literal("forecast"),
   "unit": Schema.optionalKey(Schema.String)
 }).annotate({ "identifier": "ExtractionForecastField" })
+
 export type ExtractionsRequest = {
   readonly "assets"?: { readonly [x: string]: ExtractionAsset }
   readonly "fields": {
@@ -2262,6 +2413,7 @@ export type ExtractionsRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const ExtractionsRequest = Schema.Struct({
   "assets": Schema.optionalKey(
     Schema.Record(Schema.String, ExtractionAsset).annotate({
@@ -2314,6 +2466,7 @@ export const ExtractionsRequest = Schema.Struct({
     Schema.String.check(Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" }))
   )
 }).annotate({ "identifier": "ExtractionsRequest" })
+
 export type ExtractionTextAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: string
@@ -2324,6 +2477,7 @@ export type ExtractionTextAnswer = {
   readonly "type": "text"
   readonly "value": string | null
 }
+
 export const ExtractionTextAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2362,6 +2516,7 @@ export const ExtractionTextAnswer = Schema.Struct({
   "type": Schema.Literal("text"),
   "value": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ExtractionTextAnswer" })
+
 export type ExtractionNumberAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: number
@@ -2372,6 +2527,7 @@ export type ExtractionNumberAnswer = {
   readonly "type": "number"
   readonly "value": number | null
 }
+
 export const ExtractionNumberAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2411,6 +2567,7 @@ export const ExtractionNumberAnswer = Schema.Struct({
   "type": Schema.Literal("number"),
   "value": Schema.Union([Schema.Finite, Schema.Null]).annotate({ "format": "double" })
 }).annotate({ "identifier": "ExtractionNumberAnswer" })
+
 export type ExtractionDateAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: string
@@ -2421,6 +2578,7 @@ export type ExtractionDateAnswer = {
   readonly "type": "date"
   readonly "value": string | null
 }
+
 export const ExtractionDateAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2459,6 +2617,7 @@ export const ExtractionDateAnswer = Schema.Struct({
   "type": Schema.Literal("date"),
   "value": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ExtractionDateAnswer" })
+
 export type ExtractionTimeAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: string
@@ -2469,6 +2628,7 @@ export type ExtractionTimeAnswer = {
   readonly "type": "time"
   readonly "value": string | null
 }
+
 export const ExtractionTimeAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2507,6 +2667,7 @@ export const ExtractionTimeAnswer = Schema.Struct({
   "type": Schema.Literal("time"),
   "value": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ExtractionTimeAnswer" })
+
 export type ExtractionDatetimeAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: string
@@ -2517,6 +2678,7 @@ export type ExtractionDatetimeAnswer = {
   readonly "type": "datetime"
   readonly "value": string | null
 }
+
 export const ExtractionDatetimeAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2555,6 +2717,7 @@ export const ExtractionDatetimeAnswer = Schema.Struct({
   "type": Schema.Literal("datetime"),
   "value": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ExtractionDatetimeAnswer" })
+
 export type ExtractionDurationAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: number
@@ -2566,6 +2729,7 @@ export type ExtractionDurationAnswer = {
   readonly "unit"?: string
   readonly "value": number | null
 }
+
 export const ExtractionDurationAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2606,6 +2770,7 @@ export const ExtractionDurationAnswer = Schema.Struct({
   "unit": Schema.optionalKey(Schema.String.annotate({ "description": "The unit `value` is expressed in." })),
   "value": Schema.Union([Schema.Finite, Schema.Null]).annotate({ "format": "double" })
 }).annotate({ "identifier": "ExtractionDurationAnswer" })
+
 export type ExtractionListAnswer = {
   readonly "confidence"?: number
   readonly "confidences"?: globalThis.ReadonlyArray<number>
@@ -2617,6 +2782,7 @@ export type ExtractionListAnswer = {
   readonly "type": "list"
   readonly "value": globalThis.ReadonlyArray<string | number> | null
 }
+
 export const ExtractionListAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2681,6 +2847,7 @@ export const ExtractionListAnswer = Schema.Struct({
     Schema.Null
   ])
 }).annotate({ "identifier": "ExtractionListAnswer" })
+
 export type ExtractionEstimateAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: number | string
@@ -2697,6 +2864,7 @@ export type ExtractionEstimateAnswer = {
   readonly "type": "estimate"
   readonly "value": number | string | null
 }
+
 export const ExtractionEstimateAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2788,6 +2956,7 @@ export const ExtractionEstimateAnswer = Schema.Struct({
     Schema.Null
   ])
 }).annotate({ "identifier": "ExtractionEstimateAnswer" })
+
 export type ExtractionForecastStep = {
   readonly "mean"?: number | string
   readonly "median"?: number | string
@@ -2798,6 +2967,7 @@ export type ExtractionForecastStep = {
   readonly "quantiles"?: globalThis.ReadonlyArray<number | string>
   readonly "value": number | string | null
 }
+
 export const ExtractionForecastStep = Schema.Struct({
   "mean": Schema.optionalKey(
     Schema.Union([
@@ -2857,6 +3027,7 @@ export const ExtractionForecastStep = Schema.Struct({
     Schema.Null
   ])
 }).annotate({ "identifier": "ExtractionForecastStep" })
+
 export type ExtractionForecastAnswer = {
   readonly "confidence"?: number
   readonly "guess"?: globalThis.ReadonlyArray<number | string>
@@ -2871,6 +3042,7 @@ export type ExtractionForecastAnswer = {
   readonly "type": "forecast"
   readonly "value": globalThis.ReadonlyArray<number | string> | null
 }
+
 export const ExtractionForecastAnswer = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2959,6 +3131,7 @@ export const ExtractionForecastAnswer = Schema.Struct({
     Schema.Null
   ])
 }).annotate({ "identifier": "ExtractionForecastAnswer" })
+
 export type ExtractionsUsage = {
   readonly "cost"?: number
   readonly "image_tokens"?: number
@@ -2968,6 +3141,7 @@ export type ExtractionsUsage = {
   readonly "schema_tokens"?: number
   readonly "state_tokens"?: number
 }
+
 export const ExtractionsUsage = Schema.Struct({
   "cost": Schema.optionalKey(
     Schema.Number.annotate({ "format": "double" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
@@ -2983,6 +3157,7 @@ export const ExtractionsUsage = Schema.Struct({
   "schema_tokens": Schema.optionalKey(Schema.Int),
   "state_tokens": Schema.optionalKey(Schema.Int)
 }).annotate({ "identifier": "ExtractionsUsage" })
+
 export type ExtractionsResponse = {
   readonly "answers": {
     readonly [x: string]:
@@ -3003,6 +3178,7 @@ export type ExtractionsResponse = {
   readonly "truncated"?: boolean
   readonly "usage": ExtractionsUsage
 }
+
 export const ExtractionsResponse = Schema.Struct({
   "answers": Schema.Record(
     Schema.String,
@@ -3033,7 +3209,9 @@ export const ExtractionsResponse = Schema.Struct({
   ),
   "usage": ExtractionsUsage
 }).annotate({ "identifier": "ExtractionsResponse" })
+
 export type SpeechTurn = { readonly "instructions"?: string; readonly "text": string; readonly "voice"?: string }
+
 export const SpeechTurn = Schema.Struct({
   "instructions": Schema.optionalKey(
     Schema.String.annotate({
@@ -3050,7 +3228,9 @@ export const SpeechTurn = Schema.Struct({
     }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
   )
 }).annotate({ "identifier": "SpeechTurn" })
+
 export type SpeechInput = string | globalThis.ReadonlyArray<SpeechTurn>
+
 export const SpeechInput = Schema.Union([
   Schema.String,
   Schema.Array(SpeechTurn).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
@@ -3060,11 +3240,13 @@ export const SpeechInput = Schema.Union([
   "examples": ["Hello world"],
   "identifier": "SpeechInput"
 })
+
 export type SpeechInputReferenceAudioInput = {
   readonly "data"?: string
   readonly "format"?: string
   readonly "url"?: string
 }
+
 export const SpeechInputReferenceAudioInput = Schema.Struct({
   "data": Schema.optionalKey(
     Schema.String.annotate({
@@ -3095,10 +3277,12 @@ export const SpeechInputReferenceAudioInput = Schema.Struct({
   "examples": [{ "data": "data:audio/wav;base64,UklGRuQXDABXQVZF..." }],
   "identifier": "SpeechInputReferenceAudioInput"
 })
+
 export type SpeechInputReferenceAudio = {
   readonly "input_audio": SpeechInputReferenceAudioInput
   readonly "type": "input_audio"
 }
+
 export const SpeechInputReferenceAudio = Schema.Struct({
   "input_audio": SpeechInputReferenceAudioInput,
   "type": Schema.Literal("input_audio")
@@ -3108,7 +3292,9 @@ export const SpeechInputReferenceAudio = Schema.Struct({
   "examples": [{ "input_audio": { "data": "data:audio/wav;base64,UklGRuQXDABXQVZF..." }, "type": "input_audio" }],
   "identifier": "SpeechInputReferenceAudio"
 })
+
 export type SpeechInputReferenceText = { readonly "text": string; readonly "type": "text" }
+
 export const SpeechInputReferenceText = Schema.Struct({
   "text": Schema.String.annotate({
     "description":
@@ -3121,7 +3307,9 @@ export const SpeechInputReferenceText = Schema.Struct({
   "examples": [{ "text": "I used to rule the world.", "type": "text" }],
   "identifier": "SpeechInputReferenceText"
 })
+
 export type SpeechInputReferenceImageInput = { readonly "url": string }
+
 export const SpeechInputReferenceImageInput = Schema.Struct({
   "url": Schema.String.annotate({
     "description":
@@ -3135,10 +3323,12 @@ export const SpeechInputReferenceImageInput = Schema.Struct({
   "examples": [{ "url": "data:image/png;base64,iVBORw0KGgo..." }],
   "identifier": "SpeechInputReferenceImageInput"
 })
+
 export type SpeechInputReferenceImage = {
   readonly "image_url": SpeechInputReferenceImageInput
   readonly "type": "image_url"
 }
+
 export const SpeechInputReferenceImage = Schema.Struct({
   "image_url": SpeechInputReferenceImageInput,
   "type": Schema.Literal("image_url")
@@ -3148,7 +3338,9 @@ export const SpeechInputReferenceImage = Schema.Struct({
   "examples": [{ "image_url": { "url": "data:image/png;base64,iVBORw0KGgo..." }, "type": "image_url" }],
   "identifier": "SpeechInputReferenceImage"
 })
+
 export type SpeechInputReference = SpeechInputReferenceAudio | SpeechInputReferenceText | SpeechInputReferenceImage
+
 export const SpeechInputReference = Schema.Union([
   SpeechInputReferenceAudio,
   SpeechInputReferenceText,
@@ -3158,6 +3350,7 @@ export const SpeechInputReference = Schema.Union([
   "examples": [{ "input_audio": { "data": "data:audio/wav;base64,UklGRuQXDABXQVZF..." }, "type": "input_audio" }],
   "identifier": "SpeechInputReference"
 })
+
 export type SpeechRequest = {
   readonly "input": SpeechInput
   readonly "input_references"?: globalThis.ReadonlyArray<SpeechInputReference>
@@ -3179,6 +3372,7 @@ export type SpeechRequest = {
   readonly "user"?: string
   readonly "voice"?: string
 }
+
 export const SpeechRequest = Schema.Struct({
   "input": SpeechInput,
   "input_references": Schema.optionalKey(
@@ -3293,7 +3487,9 @@ export const SpeechRequest = Schema.Struct({
   }],
   "identifier": "SpeechRequest"
 })
+
 export type STTInlineInputAudio = { readonly "data": string; readonly "format": string }
+
 export const STTInlineInputAudio = Schema.Struct({
   "data": Schema.String.annotate({ "description": "Base64-encoded audio data (raw bytes, not a data URI)" }),
   "format": Schema.String.annotate({
@@ -3309,7 +3505,9 @@ export const STTInlineInputAudio = Schema.Struct({
   "examples": [{ "data": "UklGRiQA...", "format": "wav" }],
   "identifier": "STTInlineInputAudio"
 })
+
 export type STTUrlInputAudio = { readonly "format"?: string; readonly "url": string }
+
 export const STTUrlInputAudio = Schema.Struct({
   "format": Schema.optionalKey(
     Schema.String.annotate({
@@ -3331,17 +3529,22 @@ export const STTUrlInputAudio = Schema.Struct({
   "examples": [{ "format": "mp3", "url": "https://example.com/meeting.mp3" }],
   "identifier": "STTUrlInputAudio"
 })
+
 export type STTInputAudio = STTInlineInputAudio | STTUrlInputAudio
+
 export const STTInputAudio = Schema.Union([STTInlineInputAudio, STTUrlInputAudio]).annotate({
   "description": "Audio to transcribe: inline base64 bytes, or a URL the provider downloads directly.",
   "identifier": "STTInputAudio"
 })
+
 export type STTTimestampGranularity = "word" | "segment"
+
 export const STTTimestampGranularity = Schema.Literals(["word", "segment"]).annotate({
   "description": "A timestamp detail level for verbose_json transcription responses.",
   "examples": ["word"],
   "identifier": "STTTimestampGranularity"
 })
+
 export type STTRequest = {
   readonly "diarize"?: boolean
   readonly "input_audio": STTInputAudio
@@ -3364,6 +3567,7 @@ export type STTRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const STTRequest = Schema.Struct({
   "diarize": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -3485,12 +3689,14 @@ export const STTRequest = Schema.Struct({
   }],
   "identifier": "STTRequest"
 })
+
 export type STTEntity = {
   readonly "end_char": number
   readonly "start_char": number
   readonly "text": string
   readonly "type": string
 }
+
 export const STTEntity = Schema.Struct({
   "end_char": Schema.Number.annotate({
     "description":
@@ -3508,6 +3714,7 @@ export const STTEntity = Schema.Struct({
   "examples": [{ "end_char": 25, "start_char": 15, "text": "John Smith", "type": "name" }],
   "identifier": "STTEntity"
 })
+
 export type STTSegment = {
   readonly "avg_logprob"?: number
   readonly "channel"?: number
@@ -3523,6 +3730,7 @@ export type STTSegment = {
   readonly "text": string
   readonly "tokens"?: globalThis.ReadonlyArray<number>
 }
+
 export const STTSegment = Schema.Struct({
   "avg_logprob": Schema.optionalKey(
     Schema.Number.annotate({ "description": "Average log probability of the segment", "format": "double" }).check(
@@ -3597,6 +3805,7 @@ export const STTSegment = Schema.Struct({
   }],
   "identifier": "STTSegment"
 })
+
 export type STTUsage = {
   readonly "cost"?: number
   readonly "input_tokens"?: number
@@ -3604,6 +3813,7 @@ export type STTUsage = {
   readonly "seconds"?: number
   readonly "total_tokens"?: number
 }
+
 export const STTUsage = Schema.Struct({
   "cost": Schema.optionalKey(
     Schema.Number.annotate({
@@ -3639,6 +3849,7 @@ export const STTUsage = Schema.Struct({
   "examples": [{ "cost": 0.000508, "input_tokens": 83, "output_tokens": 30, "seconds": 9.2, "total_tokens": 113 }],
   "identifier": "STTUsage"
 })
+
 export type STTWord = {
   readonly "channel"?: number
   readonly "confidence"?: number
@@ -3649,6 +3860,7 @@ export type STTWord = {
   readonly "type"?: "word" | "audio_event"
   readonly "word": string
 }
+
 export const STTWord = Schema.Struct({
   "channel": Schema.optionalKey(
     Schema.Number.annotate({
@@ -3697,6 +3909,7 @@ export const STTWord = Schema.Struct({
   "examples": [{ "confidence": 0.98, "end": 0.4, "speaker": 0, "start": 0, "word": "Hello" }],
   "identifier": "STTWord"
 })
+
 export type STTResponse = {
   readonly "confidence"?: number
   readonly "duration"?: number
@@ -3709,6 +3922,7 @@ export type STTResponse = {
   readonly "usage"?: STTUsage
   readonly "words"?: globalThis.ReadonlyArray<STTWord>
 }
+
 export const STTResponse = Schema.Struct({
   "confidence": Schema.optionalKey(
     Schema.Number.annotate({
@@ -3776,11 +3990,13 @@ export const STTResponse = Schema.Struct({
   }],
   "identifier": "STTResponse"
 })
+
 export type GatewayTimeoutResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const GatewayTimeoutResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -3792,11 +4008,13 @@ export const GatewayTimeoutResponseErrorData = Schema.Struct({
   "examples": [{ "code": 504, "message": "The operation was aborted due to timeout" }],
   "identifier": "GatewayTimeoutResponseErrorData"
 })
+
 export type GatewayTimeoutResponse = {
   readonly "error": GatewayTimeoutResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const GatewayTimeoutResponse = Schema.Struct({
   "error": GatewayTimeoutResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -3808,11 +4026,13 @@ export const GatewayTimeoutResponse = Schema.Struct({
   "examples": [{ "error": { "code": 504, "message": "The operation was aborted due to timeout" } }],
   "identifier": "GatewayTimeoutResponse"
 })
+
 export type ConflictResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const ConflictResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -3824,11 +4044,13 @@ export const ConflictResponseErrorData = Schema.Struct({
   "examples": [{ "code": 409, "message": "Resource conflict. Please try again later." }],
   "identifier": "ConflictResponseErrorData"
 })
+
 export type ConflictResponse = {
   readonly "error": ConflictResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const ConflictResponse = Schema.Struct({
   "error": ConflictResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -3840,7 +4062,9 @@ export const ConflictResponse = Schema.Struct({
   "examples": [{ "error": { "code": 409, "message": "Resource conflict. Please try again later." } }],
   "identifier": "ConflictResponse"
 })
+
 export type BatchListStatus = "validating" | "in_progress" | "completed" | "failed" | "expired" | "cancelled"
+
 export const BatchListStatus = Schema.Literals([
   "validating",
   "in_progress",
@@ -3854,7 +4078,9 @@ export const BatchListStatus = Schema.Literals([
   "examples": ["completed"],
   "identifier": "BatchListStatus"
 })
+
 export type BatchListTimestamp = string | string | string
+
 export const BatchListTimestamp = Schema.Union([
   Schema.String.check(
     Schema.isPattern(new globalThis.RegExp("^\\d+$", "u")).annotate({
@@ -3867,10 +4093,12 @@ export const BatchListTimestamp = Schema.Union([
   "examples": ["2026-08-20T00:00:00Z"],
   "identifier": "BatchListTimestamp"
 })
+
 export type AnthropicCacheCreation = {
   readonly "ephemeral_1h_input_tokens": number
   readonly "ephemeral_5m_input_tokens": number
 } | null
+
 export const AnthropicCacheCreation = Schema.Union([
   Schema.Struct({ "ephemeral_1h_input_tokens": Schema.Int, "ephemeral_5m_input_tokens": Schema.Int }),
   Schema.Null
@@ -3878,10 +4106,12 @@ export const AnthropicCacheCreation = Schema.Union([
   "examples": [{ "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 100 }],
   "identifier": "AnthropicCacheCreation"
 })
+
 export type AnthropicIterationCacheCreation = {
   readonly "ephemeral_1h_input_tokens"?: number
   readonly "ephemeral_5m_input_tokens"?: number
 } | null
+
 export const AnthropicIterationCacheCreation = Schema.Union([
   Schema.Struct({
     "ephemeral_1h_input_tokens": Schema.optionalKey(Schema.Int),
@@ -3892,6 +4122,7 @@ export const AnthropicIterationCacheCreation = Schema.Union([
   "examples": [{ "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 0 }],
   "identifier": "AnthropicIterationCacheCreation"
 })
+
 export type AnthropicCompactionUsageIteration = {
   readonly "cache_creation"?: AnthropicIterationCacheCreation
   readonly "cache_creation_input_tokens"?: number
@@ -3900,6 +4131,7 @@ export type AnthropicCompactionUsageIteration = {
   readonly "output_tokens"?: number
   readonly "type": "compaction"
 }
+
 export const AnthropicCompactionUsageIteration = Schema.Struct({
   "cache_creation": Schema.optionalKey(AnthropicIterationCacheCreation),
   "cache_creation_input_tokens": Schema.optionalKey(Schema.Int),
@@ -3918,6 +4150,7 @@ export const AnthropicCompactionUsageIteration = Schema.Struct({
   }],
   "identifier": "AnthropicCompactionUsageIteration"
 })
+
 export type AnthropicMessageUsageIteration = {
   readonly "cache_creation"?: AnthropicIterationCacheCreation
   readonly "cache_creation_input_tokens"?: number
@@ -3927,6 +4160,7 @@ export type AnthropicMessageUsageIteration = {
   readonly "model"?: string
   readonly "type": "message"
 }
+
 export const AnthropicMessageUsageIteration = Schema.Struct({
   "cache_creation": Schema.optionalKey(AnthropicIterationCacheCreation),
   "cache_creation_input_tokens": Schema.optionalKey(Schema.Int),
@@ -3946,6 +4180,7 @@ export const AnthropicMessageUsageIteration = Schema.Struct({
   }],
   "identifier": "AnthropicMessageUsageIteration"
 })
+
 export type AnthropicAdvisorMessageUsageIteration = {
   readonly "cache_creation"?: AnthropicIterationCacheCreation
   readonly "cache_creation_input_tokens"?: number
@@ -3955,6 +4190,7 @@ export type AnthropicAdvisorMessageUsageIteration = {
   readonly "model": string
   readonly "type": "advisor_message"
 }
+
 export const AnthropicAdvisorMessageUsageIteration = Schema.Struct({
   "cache_creation": Schema.optionalKey(AnthropicIterationCacheCreation),
   "cache_creation_input_tokens": Schema.optionalKey(Schema.Int),
@@ -3975,6 +4211,7 @@ export const AnthropicAdvisorMessageUsageIteration = Schema.Struct({
   }],
   "identifier": "AnthropicAdvisorMessageUsageIteration"
 })
+
 export type AnthropicUnknownUsageIteration = {
   readonly "cache_creation"?: AnthropicIterationCacheCreation
   readonly "cache_creation_input_tokens"?: number
@@ -3983,6 +4220,7 @@ export type AnthropicUnknownUsageIteration = {
   readonly "output_tokens"?: number
   readonly "type": string
 }
+
 export const AnthropicUnknownUsageIteration = Schema.Struct({
   "cache_creation": Schema.optionalKey(AnthropicIterationCacheCreation),
   "cache_creation_input_tokens": Schema.optionalKey(Schema.Int),
@@ -4001,11 +4239,13 @@ export const AnthropicUnknownUsageIteration = Schema.Struct({
   }],
   "identifier": "AnthropicUnknownUsageIteration"
 })
+
 export type AnthropicUsageIteration =
   | AnthropicCompactionUsageIteration
   | AnthropicMessageUsageIteration
   | AnthropicAdvisorMessageUsageIteration
   | AnthropicUnknownUsageIteration
+
 export const AnthropicUsageIteration = Schema.Union([
   AnthropicCompactionUsageIteration,
   AnthropicMessageUsageIteration,
@@ -4022,11 +4262,14 @@ export const AnthropicUsageIteration = Schema.Union([
   }],
   "identifier": "AnthropicUsageIteration"
 })
+
 export type AnthropicSpeed = "fast" | "standard" | null
+
 export const AnthropicSpeed = Schema.Union([Schema.Literals(["fast", "standard"]), Schema.Null]).annotate({
   "examples": ["standard"],
   "identifier": "AnthropicSpeed"
 })
+
 export type BatchListItem = {
   readonly "completion_window": "24h"
   readonly "created_at": number
@@ -4079,6 +4322,7 @@ export type BatchListItem = {
     readonly "total_tokens": number
   } | null
 }
+
 export const BatchListItem = Schema.Struct({
   "completion_window": Schema.Literal("24h"),
   "created_at": Schema.Int,
@@ -4218,6 +4462,7 @@ export const BatchListItem = Schema.Struct({
   "description": "Metadata-only batch object. `results` is always `null` in list responses.",
   "identifier": "BatchListItem"
 })
+
 export type BatchListResponse = {
   readonly "data": globalThis.ReadonlyArray<BatchListItem>
   readonly "first_id": string | null
@@ -4225,6 +4470,7 @@ export type BatchListResponse = {
   readonly "last_id": string | null
   readonly "object": "list"
 }
+
 export const BatchListResponse = Schema.Struct({
   "data": Schema.Array(BatchListItem),
   "first_id": Schema.Union([Schema.String, Schema.Null]),
@@ -4236,17 +4482,21 @@ export const BatchListResponse = Schema.Struct({
   "examples": [{ "data": [], "first_id": null, "has_more": false, "last_id": null, "object": "list" }],
   "identifier": "BatchListResponse"
 })
+
 export type BatchErrorResponse = { readonly "error": { readonly "code": number; readonly "message": string } }
+
 export const BatchErrorResponse = Schema.Struct({
   "error": Schema.Struct({ "code": Schema.Int, "message": Schema.String })
 }).annotate({
   "examples": [{ "error": { "code": 400, "message": "custom_id is required on requests[0]." } }],
   "identifier": "BatchErrorResponse"
 })
+
 export type BatchProviderPreferences = {
   readonly "allow_fallbacks"?: boolean | null
   readonly "only"?: globalThis.ReadonlyArray<ProviderName | string> | null
 } | null
+
 export const BatchProviderPreferences = Schema.Union([
   Schema.Struct({
     "allow_fallbacks": Schema.optionalKey(
@@ -4270,6 +4520,7 @@ export const BatchProviderPreferences = Schema.Union([
   "examples": [{ "only": ["google-vertex"] }],
   "identifier": "BatchProviderPreferences"
 })
+
 export type BatchSubmitBody = {
   readonly "callback_url"?: string
   readonly "completion_window"?: "24h"
@@ -4280,6 +4531,7 @@ export type BatchSubmitBody = {
     { readonly "body": { readonly [x: string]: Schema.Json }; readonly "custom_id": string }
   >
 }
+
 export const BatchSubmitBody = Schema.Struct({
   "callback_url": Schema.optionalKey(
     Schema.String.annotate({
@@ -4301,6 +4553,7 @@ export const BatchSubmitBody = Schema.Struct({
     )
   })).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 }).annotate({ "description": "Batch submit request body.", "identifier": "BatchSubmitBody" })
+
 export type ApiErrorType =
   | "context_length_exceeded"
   | "max_tokens_exceeded"
@@ -4329,6 +4582,7 @@ export type ApiErrorType =
   | "server"
   | "timeout"
   | "unmapped"
+
 export const ApiErrorType = Schema.Literals([
   "context_length_exceeded",
   "max_tokens_exceeded",
@@ -4362,11 +4616,13 @@ export const ApiErrorType = Schema.Literals([
   "examples": ["rate_limit_exceeded"],
   "identifier": "ApiErrorType"
 })
+
 export type AlignmentRuleRecord = {
   readonly "applicable": boolean
   readonly "broken": boolean
   readonly "probability": number | null
 }
+
 export const AlignmentRuleRecord = Schema.Struct({
   "applicable": Schema.Boolean.annotate({
     "description": "Whether the message has a field the rule watches. Only an applicable rule is evaluated."
@@ -4379,11 +4635,13 @@ export const AlignmentRuleRecord = Schema.Struct({
     "format": "double"
   })
 }).annotate({ "identifier": "AlignmentRuleRecord" })
+
 export type AlignmentAllowedCallRecord = {
   readonly "call": number
   readonly "outcome": "allowed"
   readonly "rules": globalThis.ReadonlyArray<AlignmentRuleRecord>
 }
+
 export const AlignmentAllowedCallRecord = Schema.Struct({
   "call": Schema.Number.annotate({
     "description":
@@ -4396,11 +4654,13 @@ export const AlignmentAllowedCallRecord = Schema.Struct({
     Schema.isMaxLength(128).annotate({ "expected": "a value with a length of at most 128" })
   )
 }).annotate({ "identifier": "AlignmentAllowedCallRecord" })
+
 export type AlignmentBlockedCallRecord = {
   readonly "call": number
   readonly "outcome": "blocked"
   readonly "rules": globalThis.ReadonlyArray<AlignmentRuleRecord>
 }
+
 export const AlignmentBlockedCallRecord = Schema.Struct({
   "call": Schema.Number.annotate({
     "description":
@@ -4413,11 +4673,13 @@ export const AlignmentBlockedCallRecord = Schema.Struct({
     Schema.isMaxLength(128).annotate({ "expected": "a value with a length of at most 128" })
   )
 }).annotate({ "identifier": "AlignmentBlockedCallRecord" })
+
 export type AlignmentUnavailableCallRecord = {
   readonly "call": number
   readonly "outcome": "unavailable"
   readonly "reason": "cut" | "evaluator_error" | "malformed_answer" | "time_limit"
 }
+
 export const AlignmentUnavailableCallRecord = Schema.Struct({
   "call": Schema.Number.annotate({
     "description":
@@ -4426,16 +4688,20 @@ export const AlignmentUnavailableCallRecord = Schema.Struct({
   "outcome": Schema.Literal("unavailable"),
   "reason": Schema.Literals(["cut", "evaluator_error", "malformed_answer", "time_limit"])
 }).annotate({ "identifier": "AlignmentUnavailableCallRecord" })
+
 export type AlignmentCallRecord =
   | AlignmentAllowedCallRecord
   | AlignmentBlockedCallRecord
   | AlignmentUnavailableCallRecord
+
 export const AlignmentCallRecord = Schema.Union([
   AlignmentAllowedCallRecord,
   AlignmentBlockedCallRecord,
   AlignmentUnavailableCallRecord
 ], { mode: "oneOf" }).annotate({ "identifier": "AlignmentCallRecord" })
+
 export type Alignment = { readonly "calls": globalThis.ReadonlyArray<AlignmentCallRecord> }
+
 export const Alignment = Schema.Struct({
   "calls": Schema.Array(AlignmentCallRecord).annotate({
     "description":
@@ -4452,9 +4718,12 @@ export const Alignment = Schema.Struct({
   }],
   "identifier": "Alignment"
 })
+
 export type FinishReason = "stop" | "length" | "tool_calls" | "content_filter" | "function_call"
+
 export const FinishReason = Schema.Literals(["stop", "length", "tool_calls", "content_filter", "function_call"])
   .annotate({ "examples": ["stop"], "identifier": "FinishReason" })
+
 export type ReasoningFormat =
   | "unknown"
   | "openai-responses-v1"
@@ -4467,6 +4736,7 @@ export type ReasoningFormat =
   | "anthropic-claude-v1"
   | "google-gemini-v1"
   | null
+
 export const ReasoningFormat = Schema.Union([
   Schema.Literals([
     "unknown",
@@ -4482,6 +4752,7 @@ export const ReasoningFormat = Schema.Union([
   ]),
   Schema.Null
 ]).annotate({ "examples": ["unknown"], "identifier": "ReasoningFormat" })
+
 export type ReasoningDetailSummary = {
   readonly "format"?: ReasoningFormat
   readonly "id"?: string | null
@@ -4489,6 +4760,7 @@ export type ReasoningDetailSummary = {
   readonly "summary": string
   readonly "type": "reasoning.summary"
 }
+
 export const ReasoningDetailSummary = Schema.Struct({
   "format": Schema.optionalKey(ReasoningFormat),
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -4504,6 +4776,7 @@ export const ReasoningDetailSummary = Schema.Struct({
   }],
   "identifier": "ReasoningDetailSummary"
 })
+
 export type ReasoningDetailEncrypted = {
   readonly "data": string
   readonly "format"?: ReasoningFormat
@@ -4511,6 +4784,7 @@ export type ReasoningDetailEncrypted = {
   readonly "index"?: number
   readonly "type": "reasoning.encrypted"
 }
+
 export const ReasoningDetailEncrypted = Schema.Struct({
   "data": Schema.String,
   "format": Schema.optionalKey(ReasoningFormat),
@@ -4522,6 +4796,7 @@ export const ReasoningDetailEncrypted = Schema.Struct({
   "examples": [{ "data": "encrypted data", "type": "reasoning.encrypted" }],
   "identifier": "ReasoningDetailEncrypted"
 })
+
 export type ReasoningDetailText = {
   readonly "format"?: ReasoningFormat
   readonly "id"?: string | null
@@ -4530,6 +4805,7 @@ export type ReasoningDetailText = {
   readonly "text"?: string | null
   readonly "type": "reasoning.text"
 }
+
 export const ReasoningDetailText = Schema.Struct({
   "format": Schema.optionalKey(ReasoningFormat),
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -4547,6 +4823,7 @@ export const ReasoningDetailText = Schema.Struct({
   }],
   "identifier": "ReasoningDetailText"
 })
+
 export type ReasoningDetailServerToolCall = {
   readonly "arguments": string
   readonly "format"?: ReasoningFormat
@@ -4557,6 +4834,7 @@ export type ReasoningDetailServerToolCall = {
   readonly "tool_name": string
   readonly "type": "reasoning.server_tool_call"
 }
+
 export const ReasoningDetailServerToolCall = Schema.Struct({
   "arguments": Schema.String,
   "format": Schema.optionalKey(ReasoningFormat),
@@ -4578,13 +4856,17 @@ export const ReasoningDetailServerToolCall = Schema.Struct({
   }],
   "identifier": "ReasoningDetailServerToolCall"
 })
+
 export type RouterAttempt = { readonly "model": string; readonly "provider": string; readonly "status": number }
+
 export const RouterAttempt = Schema.Struct({ "model": Schema.String, "provider": Schema.String, "status": Schema.Int })
   .annotate({
     "examples": [{ "model": "openai/gpt-4o", "provider": "OpenAI", "status": 200 }],
     "identifier": "RouterAttempt"
   })
+
 export type EndpointInfo = { readonly "model": string; readonly "provider": string; readonly "selected": boolean }
+
 export const EndpointInfo = Schema.Struct({
   "model": Schema.String,
   "provider": Schema.String,
@@ -4593,20 +4875,24 @@ export const EndpointInfo = Schema.Struct({
   "examples": [{ "model": "openai/gpt-4o", "provider": "OpenAI", "selected": true }],
   "identifier": "EndpointInfo"
 })
+
 export type EndpointsMetadata = {
   readonly "available": globalThis.ReadonlyArray<EndpointInfo>
   readonly "total": number
 }
+
 export const EndpointsMetadata = Schema.Struct({ "available": Schema.Array(EndpointInfo), "total": Schema.Int })
   .annotate({
     "examples": [{ "available": [{ "model": "openai/gpt-4o", "provider": "OpenAI", "selected": true }], "total": 3 }],
     "identifier": "EndpointsMetadata"
   })
+
 export type RouterParams = {
   readonly "quality_floor"?: number
   readonly "throughput_floor"?: number
   readonly "version_group"?: string
 } & { readonly [x: string]: Schema.Json }
+
 export const RouterParams = Schema.StructWithRest(
   Schema.Struct({
     "quality_floor": Schema.optionalKey(
@@ -4623,7 +4909,9 @@ export const RouterParams = Schema.StructWithRest(
   }),
   [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]
 ).annotate({ "examples": [{ "version_group": "anthropic/claude-sonnet-4" }], "identifier": "RouterParams" })
+
 export type PipelineStageType = "guardrail" | "plugin" | "server_tools" | "response_healing" | "context_compression"
+
 export const PipelineStageType = Schema.Literals([
   "guardrail",
   "plugin",
@@ -4636,6 +4924,7 @@ export const PipelineStageType = Schema.Literals([
   "examples": ["guardrail"],
   "identifier": "PipelineStageType"
 })
+
 export type PipelineStage = {
   readonly "cost_usd"?: number | null
   readonly "data"?: { readonly [x: string]: Schema.Json }
@@ -4645,6 +4934,7 @@ export type PipelineStage = {
   readonly "summary"?: string
   readonly "type": PipelineStageType
 }
+
 export const PipelineStage = Schema.Struct({
   "cost_usd": Schema.optionalKey(Schema.Union([Schema.Finite, Schema.Null]).annotate({ "format": "double" })),
   "data": Schema.optionalKey(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
@@ -4667,6 +4957,7 @@ export const PipelineStage = Schema.Struct({
   }],
   "identifier": "PipelineStage"
 })
+
 export type RoutingStrategy =
   | "direct"
   | "auto"
@@ -4677,6 +4968,7 @@ export type RoutingStrategy =
   | "pareto"
   | "bodybuilder"
   | "fusion"
+
 export const RoutingStrategy = Schema.Literals([
   "direct",
   "auto",
@@ -4688,6 +4980,7 @@ export const RoutingStrategy = Schema.Literals([
   "bodybuilder",
   "fusion"
 ]).annotate({ "examples": ["direct"], "identifier": "RoutingStrategy" })
+
 export type OpenRouterMetadata = {
   readonly "attempt": number
   readonly "attempts"?: globalThis.ReadonlyArray<RouterAttempt>
@@ -4701,6 +4994,7 @@ export type OpenRouterMetadata = {
   readonly "strategy": RoutingStrategy
   readonly "summary": string
 }
+
 export const OpenRouterMetadata = Schema.Struct({
   "attempt": Schema.Int,
   "attempts": Schema.optionalKey(Schema.Array(RouterAttempt)),
@@ -4732,6 +5026,7 @@ export const OpenRouterMetadata = Schema.Struct({
   }],
   "identifier": "OpenRouterMetadata"
 })
+
 export type ArmorSafeguardResult = {
   readonly "status": {
     readonly "tool_uses": {
@@ -4748,6 +5043,7 @@ export type ArmorSafeguardResult = {
   }
   readonly "type": "dangerous_tool_use"
 }
+
 export const ArmorSafeguardResult = Schema.Struct({
   "status": Schema.Struct({
     "tool_uses": Schema.Record(
@@ -4780,7 +5076,9 @@ export const ArmorSafeguardResult = Schema.Struct({
   }],
   "identifier": "ArmorSafeguardResult"
 })
+
 export type AlignmentChatAudio = { readonly "id"?: string; readonly "transcript": string }
+
 export const AlignmentChatAudio = Schema.Struct({
   "id": Schema.optionalKey(
     Schema.String.annotate({ "description": "The provider id of the audio." }).check(
@@ -4794,23 +5092,28 @@ export const AlignmentChatAudio = Schema.Struct({
   "examples": [{ "id": "audio_abc123", "transcript": "Sure, I can take 20% off your order." }],
   "identifier": "AlignmentChatAudio"
 })
+
 export type AlignmentChatImage = { readonly "image_url": { readonly "url": string }; readonly "type": "image_url" }
+
 export const AlignmentChatImage = Schema.Struct({
   "image_url": Schema.Struct({
     "url": Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
   }),
   "type": Schema.Literal("image_url")
 }).annotate({ "identifier": "AlignmentChatImage" })
+
 export type AlignmentChatToolCall = {
   readonly "function": { readonly "arguments": string; readonly "name": string }
   readonly "id": string
   readonly "type": "function"
 }
+
 export const AlignmentChatToolCall = Schema.Struct({
   "function": Schema.Struct({ "arguments": Schema.String, "name": Schema.String }),
   "id": Schema.String,
   "type": Schema.Literal("function")
 }).annotate({ "identifier": "AlignmentChatToolCall" })
+
 export type AlignmentChatRejected = {
   readonly "audio"?: AlignmentChatAudio
   readonly "content": string | null
@@ -4819,6 +5122,7 @@ export type AlignmentChatRejected = {
   readonly "role": "assistant"
   readonly "tool_calls"?: globalThis.ReadonlyArray<AlignmentChatToolCall>
 }
+
 export const AlignmentChatRejected = Schema.Struct({
   "audio": Schema.optionalKey(AlignmentChatAudio),
   "content": Schema.Union([Schema.String, Schema.Null]),
@@ -4832,12 +5136,14 @@ export const AlignmentChatRejected = Schema.Struct({
   "examples": [{ "content": "Sure, I can take 20% off your order.", "refusal": null, "role": "assistant" }],
   "identifier": "AlignmentChatRejected"
 })
+
 export type FileCitation = {
   readonly "file_id": string
   readonly "filename": string
   readonly "index": number
   readonly "type": "file_citation"
 }
+
 export const FileCitation = Schema.Struct({
   "file_id": Schema.String,
   "filename": Schema.String,
@@ -4847,6 +5153,7 @@ export const FileCitation = Schema.Struct({
   "examples": [{ "file_id": "file-abc123", "filename": "research_paper.pdf", "index": 0, "type": "file_citation" }],
   "identifier": "FileCitation"
 })
+
 export type URLCitation = {
   readonly "content"?: string
   readonly "end_index": number
@@ -4855,6 +5162,7 @@ export type URLCitation = {
   readonly "type": "url_citation"
   readonly "url": string
 }
+
 export const URLCitation = Schema.Struct({
   "content": Schema.optionalKey(Schema.String),
   "end_index": Schema.Int,
@@ -4873,17 +5181,22 @@ export const URLCitation = Schema.Struct({
   }],
   "identifier": "URLCitation"
 })
+
 export type FilePath = { readonly "file_id": string; readonly "index": number; readonly "type": "file_path" }
+
 export const FilePath = Schema.Struct({
   "file_id": Schema.String,
   "index": Schema.Int,
   "type": Schema.Literal("file_path")
 }).annotate({ "examples": [{ "file_id": "file-xyz789", "index": 0, "type": "file_path" }], "identifier": "FilePath" })
+
 export type OpenAIResponsesAnnotation = FileCitation | URLCitation | FilePath
+
 export const OpenAIResponsesAnnotation = Schema.Union([FileCitation, URLCitation, FilePath]).annotate({
   "examples": [{ "file_id": "file-abc123", "filename": "research_paper.pdf", "index": 0, "type": "file_citation" }],
   "identifier": "OpenAIResponsesAnnotation"
 })
+
 export type ResponseOutputText = {
   readonly "annotations"?: globalThis.ReadonlyArray<OpenAIResponsesAnnotation>
   readonly "logprobs"?: globalThis.ReadonlyArray<
@@ -4899,6 +5212,7 @@ export type ResponseOutputText = {
   readonly "text": string
   readonly "type": "output_text"
 }
+
 export const ResponseOutputText = Schema.Struct({
   "annotations": Schema.optionalKey(Schema.Array(OpenAIResponsesAnnotation)),
   "logprobs": Schema.optionalKey(Schema.Array(Schema.Struct({
@@ -4933,7 +5247,9 @@ export const ResponseOutputText = Schema.Struct({
   }],
   "identifier": "ResponseOutputText"
 })
+
 export type OpenAIResponsesRefusalContent = { readonly "refusal": string; readonly "type": "refusal" }
+
 export const OpenAIResponsesRefusalContent = Schema.Struct({
   "refusal": Schema.String,
   "type": Schema.Literal("refusal")
@@ -4941,6 +5257,7 @@ export const OpenAIResponsesRefusalContent = Schema.Struct({
   "examples": [{ "refusal": "I'm sorry, I cannot assist with that request", "type": "refusal" }],
   "identifier": "OpenAIResponsesRefusalContent"
 })
+
 export type OutputMessage = {
   readonly "content": globalThis.ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>
   readonly "id": string
@@ -4949,6 +5266,7 @@ export type OutputMessage = {
   readonly "status"?: "completed" | "incomplete" | "in_progress"
   readonly "type": "message"
 }
+
 export const OutputMessage = Schema.Struct({
   "content": Schema.Array(Schema.Union([ResponseOutputText, OpenAIResponsesRefusalContent])),
   "id": Schema.String,
@@ -4971,18 +5289,23 @@ export const OutputMessage = Schema.Struct({
   }],
   "identifier": "OutputMessage"
 })
+
 export type ReasoningTextContent = { readonly "text": string; readonly "type": "reasoning_text" }
+
 export const ReasoningTextContent = Schema.Struct({ "text": Schema.String, "type": Schema.Literal("reasoning_text") })
   .annotate({
     "examples": [{ "text": "Let me think step by step about this problem...", "type": "reasoning_text" }],
     "identifier": "ReasoningTextContent"
   })
+
 export type ReasoningSummaryText = { readonly "text": string; readonly "type": "summary_text" }
+
 export const ReasoningSummaryText = Schema.Struct({ "text": Schema.String, "type": Schema.Literal("summary_text") })
   .annotate({
     "examples": [{ "text": "Analyzed the problem using first principles", "type": "summary_text" }],
     "identifier": "ReasoningSummaryText"
   })
+
 export type OutputItemReasoning = {
   readonly "content"?: globalThis.ReadonlyArray<ReasoningTextContent>
   readonly "encrypted_content"?: string | null
@@ -4991,6 +5314,7 @@ export type OutputItemReasoning = {
   readonly "summary": globalThis.ReadonlyArray<ReasoningSummaryText>
   readonly "type": "reasoning"
 }
+
 export const OutputItemReasoning = Schema.Struct({
   "content": Schema.optionalKey(Schema.Array(ReasoningTextContent)),
   "encrypted_content": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5006,6 +5330,7 @@ export const OutputItemReasoning = Schema.Struct({
   }],
   "identifier": "OutputItemReasoning"
 })
+
 export type OutputItemFunctionCall = {
   readonly "arguments": string
   readonly "async"?: boolean
@@ -5016,6 +5341,7 @@ export type OutputItemFunctionCall = {
   readonly "status"?: "completed" | "incomplete" | "in_progress"
   readonly "type": "function_call"
 }
+
 export const OutputItemFunctionCall = Schema.Struct({
   "arguments": Schema.String,
   "async": Schema.optionalKey(
@@ -5045,6 +5371,7 @@ export const OutputItemFunctionCall = Schema.Struct({
   }],
   "identifier": "OutputItemFunctionCall"
 })
+
 export type OutputItemCustomToolCall = {
   readonly "async"?: boolean
   readonly "call_id": string
@@ -5055,6 +5382,7 @@ export type OutputItemCustomToolCall = {
   readonly "status"?: "in_progress" | "completed" | "incomplete"
   readonly "type": "custom_tool_call"
 }
+
 export const OutputItemCustomToolCall = Schema.Struct({
   "async": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -5085,14 +5413,19 @@ export const OutputItemCustomToolCall = Schema.Struct({
   }],
   "identifier": "OutputItemCustomToolCall"
 })
+
 export type WebSearchSource = { readonly "type": "url"; readonly "url": string }
+
 export const WebSearchSource = Schema.Struct({ "type": Schema.Literal("url"), "url": Schema.String }).annotate({
   "examples": [{ "type": "url", "url": "https://example.com/article" }],
   "identifier": "WebSearchSource"
 })
+
 export type WebSearchStatus = "completed" | "searching" | "in_progress" | "failed" | "incomplete"
+
 export const WebSearchStatus = Schema.Literals(["completed", "searching", "in_progress", "failed", "incomplete"])
   .annotate({ "examples": ["completed"], "identifier": "WebSearchStatus" })
+
 export type OutputItemWebSearchCall = {
   readonly "action"?:
     | {
@@ -5107,6 +5440,7 @@ export type OutputItemWebSearchCall = {
   readonly "status": WebSearchStatus
   readonly "type": "web_search_call"
 } & { readonly [x: string]: Schema.Json }
+
 export const OutputItemWebSearchCall = Schema.StructWithRest(
   Schema.Struct({
     "action": Schema.optionalKey(
@@ -5138,12 +5472,14 @@ export const OutputItemWebSearchCall = Schema.StructWithRest(
   }],
   "identifier": "OutputItemWebSearchCall"
 })
+
 export type OutputItemFileSearchCall = {
   readonly "id": string
   readonly "queries": globalThis.ReadonlyArray<string>
   readonly "status": WebSearchStatus
   readonly "type": "file_search_call"
 }
+
 export const OutputItemFileSearchCall = Schema.Struct({
   "id": Schema.String,
   "queries": Schema.Array(Schema.String),
@@ -5158,17 +5494,21 @@ export const OutputItemFileSearchCall = Schema.Struct({
   }],
   "identifier": "OutputItemFileSearchCall"
 })
+
 export type ImageGenerationStatus = "in_progress" | "completed" | "generating" | "failed"
+
 export const ImageGenerationStatus = Schema.Literals(["in_progress", "completed", "generating", "failed"]).annotate({
   "examples": ["completed"],
   "identifier": "ImageGenerationStatus"
 })
+
 export type OutputItemImageGenerationCall = {
   readonly "id": string
   readonly "result"?: string | null
   readonly "status": ImageGenerationStatus
   readonly "type": "image_generation_call"
 }
+
 export const OutputItemImageGenerationCall = Schema.Struct({
   "id": Schema.String,
   "result": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5183,11 +5523,13 @@ export const OutputItemImageGenerationCall = Schema.Struct({
   }],
   "identifier": "OutputItemImageGenerationCall"
 })
+
 export type ApplyPatchCreateFileOperation = {
   readonly "diff": string
   readonly "path": string
   readonly "type": "create_file"
 }
+
 export const ApplyPatchCreateFileOperation = Schema.Struct({
   "diff": Schema.String,
   "path": Schema.String,
@@ -5198,11 +5540,13 @@ export const ApplyPatchCreateFileOperation = Schema.Struct({
   "examples": [{ "diff": "@@\n+console.log(\"hi\");\n", "path": "/src/main.ts", "type": "create_file" }],
   "identifier": "ApplyPatchCreateFileOperation"
 })
+
 export type ApplyPatchUpdateFileOperation = {
   readonly "diff": string
   readonly "path": string
   readonly "type": "update_file"
 }
+
 export const ApplyPatchUpdateFileOperation = Schema.Struct({
   "diff": Schema.String,
   "path": Schema.String,
@@ -5217,7 +5561,9 @@ export const ApplyPatchUpdateFileOperation = Schema.Struct({
   }],
   "identifier": "ApplyPatchUpdateFileOperation"
 })
+
 export type ApplyPatchDeleteFileOperation = { readonly "path": string; readonly "type": "delete_file" }
+
 export const ApplyPatchDeleteFileOperation = Schema.Struct({
   "path": Schema.String,
   "type": Schema.Literal("delete_file")
@@ -5227,6 +5573,7 @@ export const ApplyPatchDeleteFileOperation = Schema.Struct({
   "examples": [{ "path": "/src/main.ts", "type": "delete_file" }],
   "identifier": "ApplyPatchDeleteFileOperation"
 })
+
 export type OutputItemApplyPatchCall = {
   readonly "call_id": string
   readonly "created_by"?: string
@@ -5235,6 +5582,7 @@ export type OutputItemApplyPatchCall = {
   readonly "status": "in_progress" | "completed"
   readonly "type": "apply_patch_call"
 }
+
 export const OutputItemApplyPatchCall = Schema.Struct({
   "call_id": Schema.String,
   "created_by": Schema.optionalKey(Schema.String),
@@ -5260,15 +5608,20 @@ export const OutputItemApplyPatchCall = Schema.Struct({
   }],
   "identifier": "OutputItemApplyPatchCall"
 })
+
 export type CodeInterpreterLogsOutput = { readonly "logs": string; readonly "type": "logs" }
+
 export const CodeInterpreterLogsOutput = Schema.Struct({ "logs": Schema.String, "type": Schema.Literal("logs") })
   .annotate({ "examples": [{ "logs": "hello\n", "type": "logs" }], "identifier": "CodeInterpreterLogsOutput" })
+
 export type CodeInterpreterImageOutput = { readonly "type": "image"; readonly "url": string }
+
 export const CodeInterpreterImageOutput = Schema.Struct({ "type": Schema.Literal("image"), "url": Schema.String })
   .annotate({
     "examples": [{ "type": "image", "url": "https://example.com/plot.png" }],
     "identifier": "CodeInterpreterImageOutput"
   })
+
 export type CodeInterpreterFileOutput = {
   readonly "download_url"?: string
   readonly "error_code"?: string | null
@@ -5281,6 +5634,7 @@ export type CodeInterpreterFileOutput = {
   readonly "status"?: string
   readonly "type": "file"
 }
+
 export const CodeInterpreterFileOutput = Schema.Struct({
   "download_url": Schema.optionalKey(
     Schema.String.annotate({
@@ -5320,6 +5674,7 @@ export const CodeInterpreterFileOutput = Schema.Struct({
   }],
   "identifier": "CodeInterpreterFileOutput"
 })
+
 export type OutputItemCodeInterpreterCall = {
   readonly "code"?: string | null
   readonly "container_id"?: string
@@ -5330,6 +5685,7 @@ export type OutputItemCodeInterpreterCall = {
   readonly "status": "in_progress" | "completed" | "incomplete" | "interpreting" | "failed"
   readonly "type": "code_interpreter_call"
 } & { readonly [x: string]: Schema.Json }
+
 export const OutputItemCodeInterpreterCall = Schema.StructWithRest(
   Schema.Struct({
     "code": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5359,12 +5715,14 @@ export const OutputItemCodeInterpreterCall = Schema.StructWithRest(
   }],
   "identifier": "OutputItemCodeInterpreterCall"
 })
+
 export type OutputItemCompaction = {
   readonly "created_by"?: string
   readonly "encrypted_content": string
   readonly "id": string
   readonly "type": "compaction"
 }
+
 export const OutputItemCompaction = Schema.Struct({
   "created_by": Schema.optionalKey(Schema.String),
   "encrypted_content": Schema.String,
@@ -5374,6 +5732,7 @@ export const OutputItemCompaction = Schema.Struct({
   "examples": [{ "encrypted_content": "enc_abc123...", "id": "cmp_abc123", "type": "compaction" }],
   "identifier": "OutputItemCompaction"
 })
+
 export type OutputItemMcpListTools = {
   readonly "error"?: string | null
   readonly "id": string
@@ -5388,6 +5747,7 @@ export type OutputItemMcpListTools = {
   >
   readonly "type": "mcp_list_tools"
 }
+
 export const OutputItemMcpListTools = Schema.Struct({
   "error": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "id": Schema.String,
@@ -5400,6 +5760,7 @@ export const OutputItemMcpListTools = Schema.Struct({
   })),
   "type": Schema.Literal("mcp_list_tools")
 }).annotate({ "identifier": "OutputItemMcpListTools" })
+
 export type OutputItemMcpCall = {
   readonly "approval_request_id"?: string | null
   readonly "arguments": string
@@ -5416,6 +5777,7 @@ export type OutputItemMcpCall = {
   readonly "status"?: "in_progress" | "completed" | "incomplete" | "calling" | "failed"
   readonly "type": "mcp_call"
 }
+
 export const OutputItemMcpCall = Schema.Struct({
   "approval_request_id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "arguments": Schema.String,
@@ -5438,6 +5800,7 @@ export const OutputItemMcpCall = Schema.Struct({
   "status": Schema.optionalKey(Schema.Literals(["in_progress", "completed", "incomplete", "calling", "failed"])),
   "type": Schema.Literal("mcp_call")
 }).annotate({ "identifier": "OutputItemMcpCall" })
+
 export type OutputItemMcpApprovalRequest = {
   readonly "arguments": string
   readonly "id": string
@@ -5445,6 +5808,7 @@ export type OutputItemMcpApprovalRequest = {
   readonly "server_label": string
   readonly "type": "mcp_approval_request"
 }
+
 export const OutputItemMcpApprovalRequest = Schema.Struct({
   "arguments": Schema.String,
   "id": Schema.String,
@@ -5452,6 +5816,7 @@ export const OutputItemMcpApprovalRequest = Schema.Struct({
   "server_label": Schema.String,
   "type": Schema.Literal("mcp_approval_request")
 }).annotate({ "identifier": "OutputItemMcpApprovalRequest" })
+
 export type AlignmentResponsesRejected = globalThis.ReadonlyArray<
   | OutputMessage
   | OutputItemReasoning
@@ -5467,6 +5832,7 @@ export type AlignmentResponsesRejected = globalThis.ReadonlyArray<
   | OutputItemMcpCall
   | OutputItemMcpApprovalRequest
 >
+
 export const AlignmentResponsesRejected = Schema.Array(
   Schema.Union([
     OutputMessage,
@@ -5495,16 +5861,20 @@ export const AlignmentResponsesRejected = Schema.Array(
   }]],
   "identifier": "AlignmentResponsesRejected"
 })
+
 export type AlignmentRejected = AlignmentChatRejected | AlignmentResponsesRejected
+
 export const AlignmentRejected = Schema.Union([AlignmentChatRejected, AlignmentResponsesRejected]).annotate({
   "identifier": "AlignmentRejected"
 })
+
 export type OpenResponsesErrorMetadata = {
   readonly "alignment"?: {
     readonly "calls": globalThis.ReadonlyArray<AlignmentCallRecord>
     readonly "rejected"?: AlignmentRejected
   }
 }
+
 export const OpenResponsesErrorMetadata = Schema.Struct({
   "alignment": Schema.optionalKey(
     Schema.Struct({ "calls": Schema.Array(AlignmentCallRecord), "rejected": Schema.optionalKey(AlignmentRejected) })
@@ -5516,12 +5886,16 @@ export const OpenResponsesErrorMetadata = Schema.Struct({
   "examples": [{ "alignment": { "calls": [{ "call": 1, "outcome": "unavailable", "reason": "evaluator_error" }] } }],
   "identifier": "OpenResponsesErrorMetadata"
 })
+
 export type IncompleteDetails = { readonly "reason"?: "max_output_tokens" | "content_filter" } | null
+
 export const IncompleteDetails = Schema.Union([
   Schema.Struct({ "reason": Schema.optionalKey(Schema.Literals(["max_output_tokens", "content_filter"])) }),
   Schema.Null
 ]).annotate({ "examples": [{ "reason": "max_output_tokens" }], "identifier": "IncompleteDetails" })
+
 export type PromptCacheBreakpoint = { readonly "mode": "explicit"; readonly "ttl"?: string | null } | null
+
 export const PromptCacheBreakpoint = Schema.Union([
   Schema.Struct({
     "mode": Schema.Literal("explicit"),
@@ -5534,11 +5908,13 @@ export const PromptCacheBreakpoint = Schema.Union([
   "examples": [{ "mode": "explicit", "ttl": "30m" }],
   "identifier": "PromptCacheBreakpoint"
 })
+
 export type InputText = {
   readonly "prompt_cache_breakpoint"?: PromptCacheBreakpoint
   readonly "text": string
   readonly "type": "input_text"
 }
+
 export const InputText = Schema.Struct({
   "prompt_cache_breakpoint": Schema.optionalKey(PromptCacheBreakpoint),
   "text": Schema.String,
@@ -5548,12 +5924,14 @@ export const InputText = Schema.Struct({
   "examples": [{ "text": "Hello, how can I help you?", "type": "input_text" }],
   "identifier": "InputText"
 })
+
 export type InputImage = {
   readonly "detail": "auto" | "high" | "low" | "original"
   readonly "file_id"?: string | null
   readonly "image_url"?: string | null
   readonly "type": "input_image"
 }
+
 export const InputImage = Schema.Struct({
   "detail": Schema.Literals(["auto", "high", "low", "original"]),
   "file_id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5565,6 +5943,7 @@ export const InputImage = Schema.Struct({
   "examples": [{ "detail": "auto", "image_url": "https://example.com/image.jpg", "type": "input_image" }],
   "identifier": "InputImage"
 })
+
 export type InputFile = {
   readonly "file_data"?: string
   readonly "file_id"?: string | null
@@ -5572,6 +5951,7 @@ export type InputFile = {
   readonly "filename"?: string
   readonly "type": "input_file"
 }
+
 export const InputFile = Schema.Struct({
   "file_data": Schema.optionalKey(Schema.String),
   "file_id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5583,10 +5963,12 @@ export const InputFile = Schema.Struct({
   "examples": [{ "file_id": "file-abc123", "filename": "document.pdf", "type": "input_file" }],
   "identifier": "InputFile"
 })
+
 export type InputAudio = {
   readonly "input_audio": { readonly "data": string; readonly "format": "mp3" | "wav" }
   readonly "type": "input_audio"
 }
+
 export const InputAudio = Schema.Struct({
   "input_audio": Schema.Struct({ "data": Schema.String, "format": Schema.Literals(["mp3", "wav"]) }),
   "type": Schema.Literal("input_audio")
@@ -5595,12 +5977,14 @@ export const InputAudio = Schema.Struct({
   "examples": [{ "input_audio": { "data": "SGVsbG8gV29ybGQ=", "format": "mp3" }, "type": "input_audio" }],
   "identifier": "InputAudio"
 })
+
 export type OpenAIResponseInputMessageItem = {
   readonly "content": globalThis.ReadonlyArray<InputText | InputImage | InputFile | InputAudio>
   readonly "id": string
   readonly "role": "user" | "system" | "developer"
   readonly "type"?: "message"
 }
+
 export const OpenAIResponseInputMessageItem = Schema.Struct({
   "content": Schema.Array(Schema.Union([InputText, InputImage, InputFile, InputAudio], { mode: "oneOf" })),
   "id": Schema.String,
@@ -5615,11 +5999,14 @@ export const OpenAIResponseInputMessageItem = Schema.Struct({
   }],
   "identifier": "OpenAIResponseInputMessageItem"
 })
+
 export type ToolCallStatus = "in_progress" | "completed" | "incomplete"
+
 export const ToolCallStatus = Schema.Literals(["in_progress", "completed", "incomplete"]).annotate({
   "examples": ["completed"],
   "identifier": "ToolCallStatus"
 })
+
 export type OpenAIResponseFunctionToolCallOutput = {
   readonly "call_id": string
   readonly "id"?: string | null
@@ -5627,6 +6014,7 @@ export type OpenAIResponseFunctionToolCallOutput = {
   readonly "status"?: ToolCallStatus | null
   readonly "type": "function_call_output"
 }
+
 export const OpenAIResponseFunctionToolCallOutput = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5644,6 +6032,7 @@ export const OpenAIResponseFunctionToolCallOutput = Schema.Struct({
   }],
   "identifier": "OpenAIResponseFunctionToolCallOutput"
 })
+
 export type OpenAIResponseFunctionToolCall = {
   readonly "arguments": string
   readonly "async"?: boolean
@@ -5658,6 +6047,7 @@ export type OpenAIResponseFunctionToolCall = {
   >
   readonly "type": "function_call"
 }
+
 export const OpenAIResponseFunctionToolCall = Schema.Struct({
   "arguments": Schema.String,
   "async": Schema.optionalKey(
@@ -5704,6 +6094,7 @@ export const OpenAIResponseFunctionToolCall = Schema.Struct({
   }],
   "identifier": "OpenAIResponseFunctionToolCall"
 })
+
 export type OpenAIResponseCustomToolCall = {
   readonly "async"?: boolean
   readonly "call_id": string
@@ -5713,6 +6104,7 @@ export type OpenAIResponseCustomToolCall = {
   readonly "namespace"?: string
   readonly "type": "custom_tool_call"
 }
+
 export const OpenAIResponseCustomToolCall = Schema.Struct({
   "async": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -5741,12 +6133,14 @@ export const OpenAIResponseCustomToolCall = Schema.Struct({
   }],
   "identifier": "OpenAIResponseCustomToolCall"
 })
+
 export type OpenAIResponseCustomToolCallOutput = {
   readonly "call_id": string
   readonly "id"?: string
   readonly "output": string | globalThis.ReadonlyArray<InputText | InputImage | InputFile>
   readonly "type": "custom_tool_call_output"
 }
+
 export const OpenAIResponseCustomToolCallOutput = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.String),
@@ -5759,10 +6153,12 @@ export const OpenAIResponseCustomToolCallOutput = Schema.Struct({
   "examples": [{ "call_id": "call-abc123", "output": "patch applied successfully", "type": "custom_tool_call_output" }],
   "identifier": "OpenAIResponseCustomToolCallOutput"
 })
+
 export type ApplyPatchCallOperation =
   | ApplyPatchCreateFileOperation
   | ApplyPatchUpdateFileOperation
   | ApplyPatchDeleteFileOperation
+
 export const ApplyPatchCallOperation = Schema.Union([
   ApplyPatchCreateFileOperation,
   ApplyPatchUpdateFileOperation,
@@ -5777,12 +6173,15 @@ export const ApplyPatchCallOperation = Schema.Union([
   }],
   "identifier": "ApplyPatchCallOperation"
 })
+
 export type ApplyPatchCallStatus = "in_progress" | "completed"
+
 export const ApplyPatchCallStatus = Schema.Literals(["in_progress", "completed"]).annotate({
   "description": "Lifecycle state of an `apply_patch_call` output item.",
   "examples": ["completed"],
   "identifier": "ApplyPatchCallStatus"
 })
+
 export type ApplyPatchCallItem = {
   readonly "call_id": string
   readonly "id"?: string | null
@@ -5790,6 +6189,7 @@ export type ApplyPatchCallItem = {
   readonly "status": ApplyPatchCallStatus
   readonly "type": "apply_patch_call"
 }
+
 export const ApplyPatchCallItem = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5812,6 +6212,7 @@ export const ApplyPatchCallItem = Schema.Struct({
   }],
   "identifier": "ApplyPatchCallItem"
 })
+
 export type ApplyPatchCallOutputItem = {
   readonly "call_id": string
   readonly "id"?: string | null
@@ -5819,6 +6220,7 @@ export type ApplyPatchCallOutputItem = {
   readonly "status": "completed" | "failed"
   readonly "type": "apply_patch_call_output"
 }
+
 export const ApplyPatchCallOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -5836,9 +6238,11 @@ export const ApplyPatchCallOutputItem = Schema.Struct({
   }],
   "identifier": "ApplyPatchCallOutputItem"
 })
+
 export type ConfigurationUpdateReasoning = {
   readonly "effort": "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none"
 }
+
 export const ConfigurationUpdateReasoning = Schema.Struct({
   "effort": Schema.Literals(["max", "xhigh", "high", "medium", "low", "minimal", "none"]).annotate({
     "description": "Reasoning effort to apply from this point in the conversation onward",
@@ -5849,11 +6253,13 @@ export const ConfigurationUpdateReasoning = Schema.Struct({
   "examples": [{ "effort": "low" }],
   "identifier": "ConfigurationUpdateReasoning"
 })
+
 export type ConfigurationUpdateItem = {
   readonly "id"?: string | null
   readonly "reasoning": ConfigurationUpdateReasoning
   readonly "type": "configuration_update"
 }
+
 export const ConfigurationUpdateItem = Schema.Struct({
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "reasoning": ConfigurationUpdateReasoning,
@@ -5864,6 +6270,7 @@ export const ConfigurationUpdateItem = Schema.Struct({
   "examples": [{ "reasoning": { "effort": "low" }, "type": "configuration_update" }],
   "identifier": "ConfigurationUpdateItem"
 })
+
 export type BaseInputs =
   | string
   | globalThis.ReadonlyArray<
@@ -5885,6 +6292,7 @@ export type BaseInputs =
     | ConfigurationUpdateItem
   >
   | null
+
 export const BaseInputs = Schema.Union([
   Schema.String,
   Schema.Array(Schema.Union([
@@ -5912,7 +6320,9 @@ export const BaseInputs = Schema.Union([
   ])),
   Schema.Null
 ]).annotate({ "examples": [[{ "content": "What is the weather today?", "role": "user" }]], "identifier": "BaseInputs" })
+
 export type RequestMetadata = { readonly [x: string]: string } | null
+
 export const RequestMetadata = Schema.Union([
   Schema.Record(
     Schema.String,
@@ -5925,10 +6335,12 @@ export const RequestMetadata = Schema.Union([
   "examples": [{ "session_id": "abc-def-ghi", "user_id": "123" }],
   "identifier": "RequestMetadata"
 })
+
 export type StoredPromptTemplate = {
   readonly "id": string
   readonly "variables"?: { readonly [x: string]: string | InputText | InputImage | InputFile } | null
 } | null
+
 export const StoredPromptTemplate = Schema.Union([
   Schema.Struct({
     "id": Schema.String,
@@ -5944,7 +6356,9 @@ export const StoredPromptTemplate = Schema.Union([
   "examples": [{ "id": "prompt-abc123", "variables": { "name": "John" } }],
   "identifier": "StoredPromptTemplate"
 })
+
 export type PromptCacheOptions = { readonly "mode": "explicit"; readonly "ttl"?: string | null } | null
+
 export const PromptCacheOptions = Schema.Union([
   Schema.Struct({
     "mode": Schema.Literal("explicit"),
@@ -5957,7 +6371,9 @@ export const PromptCacheOptions = Schema.Union([
   "examples": [{ "mode": "explicit", "ttl": "30m" }],
   "identifier": "PromptCacheOptions"
 })
+
 export type ReasoningContext = "auto" | "all_turns" | "current_turn" | null
+
 export const ReasoningContext = Schema.Union([Schema.Literals(["auto", "all_turns", "current_turn"]), Schema.Null])
   .annotate({
     "description":
@@ -5965,27 +6381,35 @@ export const ReasoningContext = Schema.Union([Schema.Literals(["auto", "all_turn
     "examples": ["all_turns"],
     "identifier": "ReasoningContext"
   })
+
 export type ReasoningEffort = "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none" | null
+
 export const ReasoningEffort = Schema.Union([
   Schema.Literals(["max", "xhigh", "high", "medium", "low", "minimal", "none"]),
   Schema.Null
 ]).annotate({ "examples": ["medium"], "identifier": "ReasoningEffort" })
+
 export type ReasoningMode = "standard" | "pro" | null
+
 export const ReasoningMode = Schema.Union([Schema.Literals(["standard", "pro"]), Schema.Null]).annotate({
   "description":
     "Selects the reasoning mode. `standard` is the default; `pro` engages deeper reasoning on models that support it, billed at standard token rates. Only supported by OpenAI GPT-5.6 and newer.",
   "examples": ["standard"],
   "identifier": "ReasoningMode"
 })
+
 export type ReasoningSummaryVerbosity = "auto" | "concise" | "detailed" | null
+
 export const ReasoningSummaryVerbosity = Schema.Union([Schema.Literals(["auto", "concise", "detailed"]), Schema.Null])
   .annotate({ "examples": ["auto"], "identifier": "ReasoningSummaryVerbosity" })
+
 export type BaseReasoningConfig = {
   readonly "context"?: ReasoningContext
   readonly "effort"?: ReasoningEffort
   readonly "mode"?: ReasoningMode
   readonly "summary"?: ReasoningSummaryVerbosity
 } | null
+
 export const BaseReasoningConfig = Schema.Union([
   Schema.Struct({
     "context": Schema.optionalKey(ReasoningContext),
@@ -5995,6 +6419,7 @@ export const BaseReasoningConfig = Schema.Union([
   }),
   Schema.Null
 ]).annotate({ "examples": [{ "effort": "medium", "summary": "auto" }], "identifier": "BaseReasoningConfig" })
+
 export type OpenAIResponsesResponseStatus =
   | "completed"
   | "incomplete"
@@ -6002,6 +6427,7 @@ export type OpenAIResponsesResponseStatus =
   | "failed"
   | "cancelled"
   | "queued"
+
 export const OpenAIResponsesResponseStatus = Schema.Literals([
   "completed",
   "incomplete",
@@ -6010,18 +6436,23 @@ export const OpenAIResponsesResponseStatus = Schema.Literals([
   "cancelled",
   "queued"
 ]).annotate({ "examples": ["completed"], "identifier": "OpenAIResponsesResponseStatus" })
+
 export type FormatTextConfig = { readonly "type": "text" }
+
 export const FormatTextConfig = Schema.Struct({ "type": Schema.Literal("text") }).annotate({
   "description": "Plain text response format",
   "examples": [{ "type": "text" }],
   "identifier": "FormatTextConfig"
 })
+
 export type FormatJsonObjectConfig = { readonly "type": "json_object" }
+
 export const FormatJsonObjectConfig = Schema.Struct({ "type": Schema.Literal("json_object") }).annotate({
   "description": "JSON object response format",
   "examples": [{ "type": "json_object" }],
   "identifier": "FormatJsonObjectConfig"
 })
+
 export type FormatJsonSchemaConfig = {
   readonly "description"?: string
   readonly "name": string
@@ -6029,6 +6460,7 @@ export type FormatJsonSchemaConfig = {
   readonly "strict"?: boolean | null
   readonly "type": "json_schema"
 }
+
 export const FormatJsonSchemaConfig = Schema.Struct({
   "description": Schema.optionalKey(Schema.String),
   "name": Schema.String,
@@ -6049,17 +6481,21 @@ export const FormatJsonSchemaConfig = Schema.Struct({
   }],
   "identifier": "FormatJsonSchemaConfig"
 })
+
 export type Formats = FormatTextConfig | FormatJsonObjectConfig | FormatJsonSchemaConfig
+
 export const Formats = Schema.Union([FormatTextConfig, FormatJsonObjectConfig, FormatJsonSchemaConfig]).annotate({
   "description": "Text response format configuration",
   "examples": [{ "type": "text" }],
   "identifier": "Formats"
 })
+
 export type ToolChoiceAllowed = {
   readonly "mode": "auto" | "required"
   readonly "tools": globalThis.ReadonlyArray<{ readonly [x: string]: Schema.Json }>
   readonly "type": "allowed_tools"
 }
+
 export const ToolChoiceAllowed = Schema.Struct({
   "mode": Schema.Literals(["auto", "required"]),
   "tools": Schema.Array(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
@@ -6069,7 +6505,9 @@ export const ToolChoiceAllowed = Schema.Struct({
   "examples": [{ "mode": "auto", "tools": [{ "name": "get_weather", "type": "function" }], "type": "allowed_tools" }],
   "identifier": "ToolChoiceAllowed"
 })
+
 export type ToolChoiceMcp = { readonly "name"?: string | null; readonly "server_label": string; readonly "type": "mcp" }
+
 export const ToolChoiceMcp = Schema.Struct({
   "name": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "server_label": Schema.String,
@@ -6079,6 +6517,7 @@ export const ToolChoiceMcp = Schema.Struct({
   "examples": [{ "server_label": "huggingface", "type": "mcp" }],
   "identifier": "ToolChoiceMcp"
 })
+
 export type OpenAIResponsesToolChoice =
   | "auto"
   | "none"
@@ -6089,6 +6528,7 @@ export type OpenAIResponsesToolChoice =
   | { readonly "type": "apply_patch" }
   | { readonly "type": "shell" }
   | ToolChoiceMcp
+
 export const OpenAIResponsesToolChoice = Schema.Union([
   Schema.Literal("auto"),
   Schema.Literal("none"),
@@ -6100,7 +6540,9 @@ export const OpenAIResponsesToolChoice = Schema.Union([
   Schema.Struct({ "type": Schema.Literal("shell") }),
   ToolChoiceMcp
 ]).annotate({ "examples": ["auto"], "identifier": "OpenAIResponsesToolChoice" })
+
 export type WebSearchEngineEnum = "native" | "exa" | "parallel" | "firecrawl" | "perplexity" | "auto"
+
 export const WebSearchEngineEnum = Schema.Literals(["native", "exa", "parallel", "firecrawl", "perplexity", "auto"])
   .annotate({
     "description":
@@ -6108,11 +6550,13 @@ export const WebSearchEngineEnum = Schema.Literals(["native", "exa", "parallel",
     "examples": ["auto"],
     "identifier": "WebSearchEngineEnum"
   })
+
 export type WebSearchDomainFilter = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string> | null
   readonly "blocked_domains"?: globalThis.ReadonlyArray<string> | null
   readonly "excluded_domains"?: globalThis.ReadonlyArray<string> | null
 } | null
+
 export const WebSearchDomainFilter = Schema.Union([
   Schema.Struct({
     "allowed_domains": Schema.optionalKey(Schema.Union([Schema.Array(Schema.String), Schema.Null])),
@@ -6128,6 +6572,7 @@ export const WebSearchDomainFilter = Schema.Union([
   }],
   "identifier": "WebSearchDomainFilter"
 })
+
 export type WebSearchMode =
   | "instant"
   | "fast"
@@ -6138,6 +6583,7 @@ export type WebSearchMode =
   | "turbo"
   | "basic"
   | "advanced"
+
 export const WebSearchMode = Schema.Literals([
   "instant",
   "fast",
@@ -6154,12 +6600,15 @@ export const WebSearchMode = Schema.Literals([
   "examples": ["auto"],
   "identifier": "WebSearchMode"
 })
+
 export type SearchContextSizeEnum = "low" | "medium" | "high"
+
 export const SearchContextSizeEnum = Schema.Literals(["low", "medium", "high"]).annotate({
   "description": "Size of the search context for web search tools",
   "examples": ["medium"],
   "identifier": "SearchContextSizeEnum"
 })
+
 export type Preview_WebSearchUserLocation = {
   readonly "city"?: string | null
   readonly "country"?: string | null
@@ -6167,6 +6616,7 @@ export type Preview_WebSearchUserLocation = {
   readonly "timezone"?: string | null
   readonly "type": "approximate"
 } | null
+
 export const Preview_WebSearchUserLocation = Schema.Union([
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -6186,6 +6636,7 @@ export const Preview_WebSearchUserLocation = Schema.Union([
   }],
   "identifier": "Preview_WebSearchUserLocation"
 })
+
 export type XSearchOptions = {
   readonly "allowed_x_handles"?: globalThis.ReadonlyArray<string>
   readonly "enable_image_understanding"?: boolean
@@ -6194,6 +6645,7 @@ export type XSearchOptions = {
   readonly "from_date"?: string
   readonly "to_date"?: string
 }
+
 export const XSearchOptions = Schema.Struct({
   "allowed_x_handles": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -6233,6 +6685,7 @@ export const XSearchOptions = Schema.Struct({
   "examples": [{ "allowed_x_handles": ["OpenRouterAI"], "from_date": "2025-01-01" }],
   "identifier": "XSearchOptions"
 })
+
 export type Preview_WebSearchServerTool = {
   readonly "engine"?: WebSearchEngineEnum
   readonly "filters"?: WebSearchDomainFilter
@@ -6244,6 +6697,7 @@ export type Preview_WebSearchServerTool = {
   readonly "user_location"?: Preview_WebSearchUserLocation
   readonly "x_search"?: XSearchOptions
 }
+
 export const Preview_WebSearchServerTool = Schema.Struct({
   "engine": Schema.optionalKey(WebSearchEngineEnum),
   "filters": Schema.optionalKey(WebSearchDomainFilter),
@@ -6271,6 +6725,7 @@ export const Preview_WebSearchServerTool = Schema.Struct({
   "examples": [{ "type": "web_search_preview" }],
   "identifier": "Preview_WebSearchServerTool"
 })
+
 export type Preview_20250311_WebSearchServerTool = {
   readonly "engine"?: WebSearchEngineEnum
   readonly "filters"?: WebSearchDomainFilter
@@ -6282,6 +6737,7 @@ export type Preview_20250311_WebSearchServerTool = {
   readonly "user_location"?: Preview_WebSearchUserLocation
   readonly "x_search"?: XSearchOptions
 }
+
 export const Preview_20250311_WebSearchServerTool = Schema.Struct({
   "engine": Schema.optionalKey(WebSearchEngineEnum),
   "filters": Schema.optionalKey(WebSearchDomainFilter),
@@ -6309,6 +6765,7 @@ export const Preview_20250311_WebSearchServerTool = Schema.Struct({
   "examples": [{ "type": "web_search_preview_2025_03_11" }],
   "identifier": "Preview_20250311_WebSearchServerTool"
 })
+
 export type WebSearchUserLocation = {
   readonly "city"?: string | null
   readonly "country"?: string | null
@@ -6316,6 +6773,7 @@ export type WebSearchUserLocation = {
   readonly "timezone"?: string | null
   readonly "type"?: "approximate"
 } | null
+
 export const WebSearchUserLocation = Schema.Union([
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -6336,6 +6794,7 @@ export const WebSearchUserLocation = Schema.Union([
   }],
   "identifier": "WebSearchUserLocation"
 })
+
 export type Legacy_WebSearchServerTool = {
   readonly "engine"?: WebSearchEngineEnum
   readonly "filters"?: WebSearchDomainFilter
@@ -6347,6 +6806,7 @@ export type Legacy_WebSearchServerTool = {
   readonly "user_location"?: WebSearchUserLocation
   readonly "x_search"?: XSearchOptions
 }
+
 export const Legacy_WebSearchServerTool = Schema.Struct({
   "engine": Schema.optionalKey(WebSearchEngineEnum),
   "filters": Schema.optionalKey(WebSearchDomainFilter),
@@ -6374,6 +6834,7 @@ export const Legacy_WebSearchServerTool = Schema.Struct({
   "examples": [{ "engine": "auto", "filters": { "allowed_domains": ["example.com"] }, "type": "web_search" }],
   "identifier": "Legacy_WebSearchServerTool"
 })
+
 export type WebSearchServerTool = {
   readonly "engine"?: WebSearchEngineEnum
   readonly "filters"?: WebSearchDomainFilter
@@ -6385,6 +6846,7 @@ export type WebSearchServerTool = {
   readonly "user_location"?: WebSearchUserLocation
   readonly "x_search"?: XSearchOptions
 }
+
 export const WebSearchServerTool = Schema.Struct({
   "engine": Schema.optionalKey(WebSearchEngineEnum),
   "filters": Schema.optionalKey(WebSearchDomainFilter),
@@ -6416,10 +6878,12 @@ export const WebSearchServerTool = Schema.Struct({
   }],
   "identifier": "WebSearchServerTool"
 })
+
 export type CompoundFilter = {
   readonly "filters": globalThis.ReadonlyArray<{ readonly [x: string]: Schema.Json }>
   readonly "type": "and" | "or"
 }
+
 export const CompoundFilter = Schema.Struct({
   "filters": Schema.Array(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
   "type": Schema.Literals(["and", "or"])
@@ -6428,6 +6892,7 @@ export const CompoundFilter = Schema.Struct({
   "examples": [{ "filters": [{ "key": "author", "type": "eq", "value": "Alice" }], "type": "and" }],
   "identifier": "CompoundFilter"
 })
+
 export type FileSearchServerTool = {
   readonly "filters"?:
     | {
@@ -6445,6 +6910,7 @@ export type FileSearchServerTool = {
   readonly "type": "file_search"
   readonly "vector_store_ids": globalThis.ReadonlyArray<string>
 }
+
 export const FileSearchServerTool = Schema.Struct({
   "filters": Schema.optionalKey(Schema.Union([
     Schema.Struct({
@@ -6488,12 +6954,14 @@ export const FileSearchServerTool = Schema.Struct({
   "examples": [{ "type": "file_search", "vector_store_ids": ["vs_abc123"] }],
   "identifier": "FileSearchServerTool"
 })
+
 export type ComputerUseServerTool = {
   readonly "display_height": number
   readonly "display_width": number
   readonly "environment": "windows" | "mac" | "linux" | "ubuntu" | "browser"
   readonly "type": "computer_use_preview"
 }
+
 export const ComputerUseServerTool = Schema.Struct({
   "display_height": Schema.Int,
   "display_width": Schema.Int,
@@ -6509,6 +6977,7 @@ export const ComputerUseServerTool = Schema.Struct({
   }],
   "identifier": "ComputerUseServerTool"
 })
+
 export type CodeInterpreterServerTool = {
   readonly "container": string | {
     readonly "file_ids"?: globalThis.ReadonlyArray<string>
@@ -6517,6 +6986,7 @@ export type CodeInterpreterServerTool = {
   }
   readonly "type": "code_interpreter"
 }
+
 export const CodeInterpreterServerTool = Schema.Struct({
   "container": Schema.Union([
     Schema.String,
@@ -6533,6 +7003,7 @@ export const CodeInterpreterServerTool = Schema.Struct({
   "examples": [{ "container": "auto", "type": "code_interpreter" }],
   "identifier": "CodeInterpreterServerTool"
 })
+
 export type McpServerTool = {
   readonly "allowed_tools"?:
     | globalThis.ReadonlyArray<string>
@@ -6560,6 +7031,7 @@ export type McpServerTool = {
   readonly "server_url"?: string
   readonly "type": "mcp"
 } & { readonly [x: string]: Schema.Json }
+
 export const McpServerTool = Schema.StructWithRest(
   Schema.Struct({
     "allowed_tools": Schema.optionalKey(
@@ -6617,6 +7089,7 @@ export const McpServerTool = Schema.StructWithRest(
   "examples": [{ "server_label": "my-server", "server_url": "https://example.com/mcp", "type": "mcp" }],
   "identifier": "McpServerTool"
 })
+
 export type ImageGenerationServerTool = {
   readonly "background"?: "transparent" | "opaque" | "auto"
   readonly "input_fidelity"?: "high" | "low" | null
@@ -6630,6 +7103,7 @@ export type ImageGenerationServerTool = {
   readonly "size"?: string
   readonly "type": "image_generation"
 }
+
 export const ImageGenerationServerTool = Schema.Struct({
   "background": Schema.optionalKey(Schema.Literals(["transparent", "opaque", "auto"])),
   "input_fidelity": Schema.optionalKey(Schema.Union([Schema.Literals(["high", "low"]), Schema.Null])),
@@ -6649,24 +7123,31 @@ export const ImageGenerationServerTool = Schema.Struct({
   "examples": [{ "quality": "high", "type": "image_generation" }],
   "identifier": "ImageGenerationServerTool"
 })
+
 export type CodexLocalShellTool = { readonly "type": "local_shell" }
+
 export const CodexLocalShellTool = Schema.Struct({ "type": Schema.Literal("local_shell") }).annotate({
   "description": "Local shell tool configuration",
   "examples": [{ "type": "local_shell" }],
   "identifier": "CodexLocalShellTool"
 })
+
 export type ShellServerTool = { readonly "type": "shell" }
+
 export const ShellServerTool = Schema.Struct({ "type": Schema.Literal("shell") }).annotate({
   "description": "Shell tool configuration",
   "examples": [{ "type": "shell" }],
   "identifier": "ShellServerTool"
 })
+
 export type ApplyPatchServerTool = { readonly "type": "apply_patch" }
+
 export const ApplyPatchServerTool = Schema.Struct({ "type": Schema.Literal("apply_patch") }).annotate({
   "description": "Apply patch tool configuration",
   "examples": [{ "type": "apply_patch" }],
   "identifier": "ApplyPatchServerTool"
 })
+
 export type CustomTool = {
   readonly "async"?: boolean
   readonly "defer_loading"?: boolean
@@ -6679,6 +7160,7 @@ export type CustomTool = {
   readonly "name": string
   readonly "type": "custom"
 }
+
 export const CustomTool = Schema.Struct({
   "async": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -6704,6 +7186,7 @@ export const CustomTool = Schema.Struct({
   "examples": [{ "name": "my_tool", "type": "custom" }],
   "identifier": "CustomTool"
 })
+
 export type NamespaceFunctionTool = {
   readonly "allowed_callers"?: globalThis.ReadonlyArray<"direct" | "programmatic"> | null
   readonly "async"?: boolean
@@ -6715,6 +7198,7 @@ export type NamespaceFunctionTool = {
   readonly "strict"?: boolean | null
   readonly "type": "function"
 }
+
 export const NamespaceFunctionTool = Schema.Struct({
   "allowed_callers": Schema.optionalKey(
     Schema.Union([Schema.Array(Schema.Literals(["direct", "programmatic"])), Schema.Null])
@@ -6740,12 +7224,14 @@ export const NamespaceFunctionTool = Schema.Struct({
   "examples": [{ "name": "spawn_agent", "type": "function" }],
   "identifier": "NamespaceFunctionTool"
 })
+
 export type NamespaceTool = {
   readonly "description": string
   readonly "name": string
   readonly "tools": globalThis.ReadonlyArray<NamespaceFunctionTool | CustomTool>
   readonly "type": "namespace"
 }
+
 export const NamespaceTool = Schema.Struct({
   "description": Schema.String,
   "name": Schema.String,
@@ -6761,17 +7247,21 @@ export const NamespaceTool = Schema.Struct({
   }],
   "identifier": "NamespaceTool"
 })
+
 export type Truncation = "auto" | "disabled" | null
+
 export const Truncation = Schema.Union([Schema.Literals(["auto", "disabled"]), Schema.Null]).annotate({
   "examples": ["auto"],
   "identifier": "Truncation"
 })
+
 export type DeferredToolsDetails = {
   readonly "completion_tokens": number
   readonly "prompt_tokens": number
   readonly "total_tokens": number
   readonly "turns": number
 }
+
 export const DeferredToolsDetails = Schema.Struct({
   "completion_tokens": Schema.Number.annotate({ "description": "Completion tokens summed over every upstream call" })
     .check(Schema.isInt().annotate({ "expected": "an integer" })),
@@ -6790,11 +7280,13 @@ export const DeferredToolsDetails = Schema.Struct({
   "examples": [{ "completion_tokens": 180, "prompt_tokens": 2400, "total_tokens": 2580, "turns": 2 }],
   "identifier": "DeferredToolsDetails"
 })
+
 export type ServerToolUseDetails = {
   readonly "tool_calls_executed"?: number | null
   readonly "tool_calls_requested"?: number | null
   readonly "web_search_requests"?: number | null
 } | null
+
 export const ServerToolUseDetails = Schema.Union([
   Schema.Struct({
     "tool_calls_executed": Schema.optionalKey(
@@ -6821,6 +7313,7 @@ export const ServerToolUseDetails = Schema.Union([
   "examples": [{ "tool_calls_executed": 2, "tool_calls_requested": 2, "web_search_requests": 2 }],
   "identifier": "ServerToolUseDetails"
 })
+
 export type OpenResponsesResult = {
   readonly "background"?: boolean | null
   readonly "completed_at": number | null
@@ -7067,6 +7560,7 @@ export type OpenResponsesResult = {
   readonly "openrouter_metadata"?: OpenRouterMetadata
   readonly "safeguard_results"?: globalThis.ReadonlyArray<ArmorSafeguardResult>
 }
+
 export const OpenResponsesResult = Schema.Struct({
   "background": Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Null])),
   "completed_at": Schema.Union([Schema.Int, Schema.Null]),
@@ -7686,11 +8180,13 @@ export const OpenResponsesResult = Schema.Struct({
   }],
   "identifier": "OpenResponsesResult"
 })
+
 export type AnthropicContainerSkill = {
   readonly "skill_id": string
   readonly "type": "anthropic" | "custom"
   readonly "version": string
 }
+
 export const AnthropicContainerSkill = Schema.Struct({
   "skill_id": Schema.String,
   "type": Schema.Literals(["anthropic", "custom"]),
@@ -7699,11 +8195,13 @@ export const AnthropicContainerSkill = Schema.Struct({
   "examples": [{ "skill_id": "pdf", "type": "anthropic", "version": "latest" }],
   "identifier": "AnthropicContainerSkill"
 })
+
 export type AnthropicContainer = {
   readonly "expires_at": string
   readonly "id": string
   readonly "skills"?: globalThis.ReadonlyArray<AnthropicContainerSkill> | null
 } | null
+
 export const AnthropicContainer = Schema.Union([
   Schema.Struct({
     "expires_at": Schema.String,
@@ -7715,6 +8213,7 @@ export const AnthropicContainer = Schema.Union([
   "examples": [{ "expires_at": "2026-04-08T00:00:00Z", "id": "ctr_01abc", "skills": null }],
   "identifier": "AnthropicContainer"
 })
+
 export type AnthropicCitationCharLocation = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -7724,6 +8223,7 @@ export type AnthropicCitationCharLocation = {
   readonly "start_char_index": number
   readonly "type": "char_location"
 }
+
 export const AnthropicCitationCharLocation = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -7744,6 +8244,7 @@ export const AnthropicCitationCharLocation = Schema.Struct({
   }],
   "identifier": "AnthropicCitationCharLocation"
 })
+
 export type AnthropicCitationPageLocation = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -7753,6 +8254,7 @@ export type AnthropicCitationPageLocation = {
   readonly "start_page_number": number
   readonly "type": "page_location"
 }
+
 export const AnthropicCitationPageLocation = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -7773,6 +8275,7 @@ export const AnthropicCitationPageLocation = Schema.Struct({
   }],
   "identifier": "AnthropicCitationPageLocation"
 })
+
 export type AnthropicCitationContentBlockLocation = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -7782,6 +8285,7 @@ export type AnthropicCitationContentBlockLocation = {
   readonly "start_block_index": number
   readonly "type": "content_block_location"
 }
+
 export const AnthropicCitationContentBlockLocation = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -7802,6 +8306,7 @@ export const AnthropicCitationContentBlockLocation = Schema.Struct({
   }],
   "identifier": "AnthropicCitationContentBlockLocation"
 })
+
 export type AnthropicCitationWebSearchResultLocation = {
   readonly "cited_text": string
   readonly "encrypted_index": string
@@ -7809,6 +8314,7 @@ export type AnthropicCitationWebSearchResultLocation = {
   readonly "type": "web_search_result_location"
   readonly "url": string
 }
+
 export const AnthropicCitationWebSearchResultLocation = Schema.Struct({
   "cited_text": Schema.String,
   "encrypted_index": Schema.String,
@@ -7825,6 +8331,7 @@ export const AnthropicCitationWebSearchResultLocation = Schema.Struct({
   }],
   "identifier": "AnthropicCitationWebSearchResultLocation"
 })
+
 export type AnthropicCitationSearchResultLocation = {
   readonly "cited_text": string
   readonly "end_block_index": number
@@ -7834,6 +8341,7 @@ export type AnthropicCitationSearchResultLocation = {
   readonly "title": string | null
   readonly "type": "search_result_location"
 }
+
 export const AnthropicCitationSearchResultLocation = Schema.Struct({
   "cited_text": Schema.String,
   "end_block_index": Schema.Int,
@@ -7854,12 +8362,14 @@ export const AnthropicCitationSearchResultLocation = Schema.Struct({
   }],
   "identifier": "AnthropicCitationSearchResultLocation"
 })
+
 export type AnthropicTextCitation =
   | AnthropicCitationCharLocation
   | AnthropicCitationPageLocation
   | AnthropicCitationContentBlockLocation
   | AnthropicCitationWebSearchResultLocation
   | AnthropicCitationSearchResultLocation
+
 export const AnthropicTextCitation = Schema.Union([
   AnthropicCitationCharLocation,
   AnthropicCitationPageLocation,
@@ -7878,11 +8388,13 @@ export const AnthropicTextCitation = Schema.Union([
   }],
   "identifier": "AnthropicTextCitation"
 })
+
 export type AnthropicTextBlock = {
   readonly "citations": globalThis.ReadonlyArray<AnthropicTextCitation> | null
   readonly "text": string
   readonly "type": "text"
 }
+
 export const AnthropicTextBlock = Schema.Struct({
   "citations": Schema.Union([Schema.Array(AnthropicTextCitation), Schema.Null]),
   "text": Schema.String,
@@ -7891,15 +8403,19 @@ export const AnthropicTextBlock = Schema.Struct({
   "examples": [{ "citations": null, "text": "Hello, world!", "type": "text" }],
   "identifier": "AnthropicTextBlock"
 })
+
 export type AnthropicDirectCaller = { readonly "type": "direct" }
+
 export const AnthropicDirectCaller = Schema.Struct({ "type": Schema.Literal("direct") }).annotate({
   "examples": [{ "type": "direct" }],
   "identifier": "AnthropicDirectCaller"
 })
+
 export type AnthropicCodeExecution20250825Caller = {
   readonly "tool_id": string
   readonly "type": "code_execution_20250825"
 }
+
 export const AnthropicCodeExecution20250825Caller = Schema.Struct({
   "tool_id": Schema.String,
   "type": Schema.Literal("code_execution_20250825")
@@ -7907,10 +8423,12 @@ export const AnthropicCodeExecution20250825Caller = Schema.Struct({
   "examples": [{ "tool_id": "toolu_01abc", "type": "code_execution_20250825" }],
   "identifier": "AnthropicCodeExecution20250825Caller"
 })
+
 export type AnthropicCodeExecution20260120Caller = {
   readonly "tool_id": string
   readonly "type": "code_execution_20260120"
 }
+
 export const AnthropicCodeExecution20260120Caller = Schema.Struct({
   "tool_id": Schema.String,
   "type": Schema.Literal("code_execution_20260120")
@@ -7918,15 +8436,18 @@ export const AnthropicCodeExecution20260120Caller = Schema.Struct({
   "examples": [{ "tool_id": "toolu_01abc", "type": "code_execution_20260120" }],
   "identifier": "AnthropicCodeExecution20260120Caller"
 })
+
 export type AnthropicCaller =
   | AnthropicDirectCaller
   | AnthropicCodeExecution20250825Caller
   | AnthropicCodeExecution20260120Caller
+
 export const AnthropicCaller = Schema.Union([
   AnthropicDirectCaller,
   AnthropicCodeExecution20250825Caller,
   AnthropicCodeExecution20260120Caller
 ], { mode: "oneOf" }).annotate({ "examples": [{ "type": "direct" }], "identifier": "AnthropicCaller" })
+
 export type AnthropicToolUseBlock = {
   readonly "caller": AnthropicCaller
   readonly "id": string
@@ -7934,6 +8455,7 @@ export type AnthropicToolUseBlock = {
   readonly "name": string
   readonly "type": "tool_use"
 }
+
 export const AnthropicToolUseBlock = Schema.Struct({
   "caller": AnthropicCaller,
   "id": Schema.String,
@@ -7950,11 +8472,13 @@ export const AnthropicToolUseBlock = Schema.Struct({
   }],
   "identifier": "AnthropicToolUseBlock"
 })
+
 export type AnthropicThinkingBlock = {
   readonly "signature": string
   readonly "thinking": string
   readonly "type": "thinking"
 }
+
 export const AnthropicThinkingBlock = Schema.Struct({
   "signature": Schema.String,
   "thinking": Schema.String,
@@ -7963,7 +8487,9 @@ export const AnthropicThinkingBlock = Schema.Struct({
   "examples": [{ "signature": "sig_abc123", "thinking": "Let me think about this...", "type": "thinking" }],
   "identifier": "AnthropicThinkingBlock"
 })
+
 export type AnthropicRedactedThinkingBlock = { readonly "data": string; readonly "type": "redacted_thinking" }
+
 export const AnthropicRedactedThinkingBlock = Schema.Struct({
   "data": Schema.String,
   "type": Schema.Literal("redacted_thinking")
@@ -7971,17 +8497,20 @@ export const AnthropicRedactedThinkingBlock = Schema.Struct({
   "examples": [{ "data": "cmVkYWN0ZWQ=", "type": "redacted_thinking" }],
   "identifier": "AnthropicRedactedThinkingBlock"
 })
+
 export type ORAnthropicNullableCaller =
   | AnthropicDirectCaller
   | AnthropicCodeExecution20250825Caller
   | AnthropicCodeExecution20260120Caller
   | null
+
 export const ORAnthropicNullableCaller = Schema.Union([
   AnthropicDirectCaller,
   AnthropicCodeExecution20250825Caller,
   AnthropicCodeExecution20260120Caller,
   Schema.Null
 ], { mode: "oneOf" }).annotate({ "examples": [{ "type": "direct" }], "identifier": "ORAnthropicNullableCaller" })
+
 export type ORAnthropicServerToolUseBlock = {
   readonly "caller"?: ORAnthropicNullableCaller
   readonly "id": string
@@ -7989,6 +8518,7 @@ export type ORAnthropicServerToolUseBlock = {
   readonly "name": string
   readonly "type": "server_tool_use"
 }
+
 export const ORAnthropicServerToolUseBlock = Schema.Struct({
   "caller": Schema.optionalKey(ORAnthropicNullableCaller),
   "id": Schema.String,
@@ -8005,6 +8535,7 @@ export const ORAnthropicServerToolUseBlock = Schema.Struct({
   }],
   "identifier": "ORAnthropicServerToolUseBlock"
 })
+
 export type AnthropicWebSearchResult = {
   readonly "encrypted_content": string
   readonly "page_age": string | null
@@ -8012,6 +8543,7 @@ export type AnthropicWebSearchResult = {
   readonly "type": "web_search_result"
   readonly "url": string
 }
+
 export const AnthropicWebSearchResult = Schema.Struct({
   "encrypted_content": Schema.String,
   "page_age": Schema.Union([Schema.String, Schema.Null]),
@@ -8028,6 +8560,7 @@ export const AnthropicWebSearchResult = Schema.Struct({
   }],
   "identifier": "AnthropicWebSearchResult"
 })
+
 export type AnthropicWebSearchToolResultError = {
   readonly "error_code":
     | "invalid_tool_input"
@@ -8038,6 +8571,7 @@ export type AnthropicWebSearchToolResultError = {
     | "request_too_large"
   readonly "type": "web_search_tool_result_error"
 }
+
 export const AnthropicWebSearchToolResultError = Schema.Struct({
   "error_code": Schema.Literals([
     "invalid_tool_input",
@@ -8052,12 +8586,14 @@ export const AnthropicWebSearchToolResultError = Schema.Struct({
   "examples": [{ "error_code": "unavailable", "type": "web_search_tool_result_error" }],
   "identifier": "AnthropicWebSearchToolResultError"
 })
+
 export type AnthropicWebSearchToolResult = {
   readonly "caller": AnthropicCaller
   readonly "content": globalThis.ReadonlyArray<AnthropicWebSearchResult> | AnthropicWebSearchToolResultError
   readonly "tool_use_id": string
   readonly "type": "web_search_tool_result"
 }
+
 export const AnthropicWebSearchToolResult = Schema.Struct({
   "caller": AnthropicCaller,
   "content": Schema.Union([Schema.Array(AnthropicWebSearchResult), AnthropicWebSearchToolResultError]),
@@ -8072,6 +8608,7 @@ export const AnthropicWebSearchToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicWebSearchToolResult"
 })
+
 export type AnthropicWebFetchToolResultError = {
   readonly "error_code":
     | "content_too_large"
@@ -8086,6 +8623,7 @@ export type AnthropicWebFetchToolResultError = {
     | "unavailable"
   readonly "type": "web_fetch_tool_result_error"
 }
+
 export const AnthropicWebFetchToolResultError = Schema.Struct({
   "error_code": Schema.Literals([
     "content_too_large",
@@ -8104,14 +8642,18 @@ export const AnthropicWebFetchToolResultError = Schema.Struct({
   "examples": [{ "error_code": "unavailable", "type": "web_fetch_tool_result_error" }],
   "identifier": "AnthropicWebFetchToolResultError"
 })
+
 export type AnthropicCitationsConfig = { readonly "enabled": boolean } | null
+
 export const AnthropicCitationsConfig = Schema.Union([Schema.Struct({ "enabled": Schema.Boolean }), Schema.Null])
   .annotate({ "examples": [{ "enabled": true }], "identifier": "AnthropicCitationsConfig" })
+
 export type AnthropicBase64PdfSource = {
   readonly "data": string
   readonly "media_type": "application/pdf"
   readonly "type": "base64"
 }
+
 export const AnthropicBase64PdfSource = Schema.Struct({
   "data": Schema.String,
   "media_type": Schema.Literal("application/pdf"),
@@ -8120,11 +8662,13 @@ export const AnthropicBase64PdfSource = Schema.Struct({
   "examples": [{ "data": "JVBERi0x...", "media_type": "application/pdf", "type": "base64" }],
   "identifier": "AnthropicBase64PdfSource"
 })
+
 export type AnthropicPlainTextSource = {
   readonly "data": string
   readonly "media_type": "text/plain"
   readonly "type": "text"
 }
+
 export const AnthropicPlainTextSource = Schema.Struct({
   "data": Schema.String,
   "media_type": Schema.Literal("text/plain"),
@@ -8133,12 +8677,14 @@ export const AnthropicPlainTextSource = Schema.Struct({
   "examples": [{ "data": "Hello, world!", "media_type": "text/plain", "type": "text" }],
   "identifier": "AnthropicPlainTextSource"
 })
+
 export type AnthropicDocumentBlock = {
   readonly "citations"?: AnthropicCitationsConfig
   readonly "source": AnthropicBase64PdfSource | AnthropicPlainTextSource
   readonly "title": string | null
   readonly "type": "document"
 }
+
 export const AnthropicDocumentBlock = Schema.Struct({
   "citations": Schema.optionalKey(AnthropicCitationsConfig),
   "source": Schema.Union([AnthropicBase64PdfSource, AnthropicPlainTextSource]),
@@ -8153,12 +8699,14 @@ export const AnthropicDocumentBlock = Schema.Struct({
   }],
   "identifier": "AnthropicDocumentBlock"
 })
+
 export type AnthropicWebFetchBlock = {
   readonly "content": AnthropicDocumentBlock
   readonly "retrieved_at": string | null
   readonly "type": "web_fetch_result"
   readonly "url": string
 }
+
 export const AnthropicWebFetchBlock = Schema.Struct({
   "content": AnthropicDocumentBlock,
   "retrieved_at": Schema.Union([Schema.String, Schema.Null]),
@@ -8178,7 +8726,9 @@ export const AnthropicWebFetchBlock = Schema.Struct({
   }],
   "identifier": "AnthropicWebFetchBlock"
 })
+
 export type AnthropicWebFetchContent = AnthropicWebFetchToolResultError | AnthropicWebFetchBlock
+
 export const AnthropicWebFetchContent = Schema.Union([AnthropicWebFetchToolResultError, AnthropicWebFetchBlock], {
   mode: "oneOf"
 }).annotate({
@@ -8195,12 +8745,14 @@ export const AnthropicWebFetchContent = Schema.Union([AnthropicWebFetchToolResul
   }],
   "identifier": "AnthropicWebFetchContent"
 })
+
 export type AnthropicWebFetchToolResult = {
   readonly "caller": AnthropicCaller
   readonly "content": AnthropicWebFetchContent
   readonly "tool_use_id": string
   readonly "type": "web_fetch_tool_result"
 }
+
 export const AnthropicWebFetchToolResult = Schema.Struct({
   "caller": AnthropicCaller,
   "content": AnthropicWebFetchContent,
@@ -8225,21 +8777,25 @@ export const AnthropicWebFetchToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicWebFetchToolResult"
 })
+
 export type AnthropicServerToolErrorCode =
   | "invalid_tool_input"
   | "unavailable"
   | "too_many_requests"
   | "execution_time_exceeded"
+
 export const AnthropicServerToolErrorCode = Schema.Literals([
   "invalid_tool_input",
   "unavailable",
   "too_many_requests",
   "execution_time_exceeded"
 ]).annotate({ "examples": ["unavailable"], "identifier": "AnthropicServerToolErrorCode" })
+
 export type AnthropicCodeExecutionToolResultError = {
   readonly "error_code": AnthropicServerToolErrorCode
   readonly "type": "code_execution_tool_result_error"
 }
+
 export const AnthropicCodeExecutionToolResultError = Schema.Struct({
   "error_code": AnthropicServerToolErrorCode,
   "type": Schema.Literal("code_execution_tool_result_error")
@@ -8247,7 +8803,9 @@ export const AnthropicCodeExecutionToolResultError = Schema.Struct({
   "examples": [{ "error_code": "unavailable", "type": "code_execution_tool_result_error" }],
   "identifier": "AnthropicCodeExecutionToolResultError"
 })
+
 export type AnthropicCodeExecutionOutput = { readonly "file_id": string; readonly "type": "code_execution_output" }
+
 export const AnthropicCodeExecutionOutput = Schema.Struct({
   "file_id": Schema.String,
   "type": Schema.Literal("code_execution_output")
@@ -8255,6 +8813,7 @@ export const AnthropicCodeExecutionOutput = Schema.Struct({
   "examples": [{ "file_id": "file_01abc", "type": "code_execution_output" }],
   "identifier": "AnthropicCodeExecutionOutput"
 })
+
 export type AnthropicCodeExecutionResult = {
   readonly "content": globalThis.ReadonlyArray<AnthropicCodeExecutionOutput>
   readonly "return_code": number
@@ -8262,6 +8821,7 @@ export type AnthropicCodeExecutionResult = {
   readonly "stdout": string
   readonly "type": "code_execution_result"
 }
+
 export const AnthropicCodeExecutionResult = Schema.Struct({
   "content": Schema.Array(AnthropicCodeExecutionOutput),
   "return_code": Schema.Int,
@@ -8272,6 +8832,7 @@ export const AnthropicCodeExecutionResult = Schema.Struct({
   "examples": [{ "content": [], "return_code": 0, "stderr": "", "stdout": "Hello", "type": "code_execution_result" }],
   "identifier": "AnthropicCodeExecutionResult"
 })
+
 export type AnthropicEncryptedCodeExecutionResult = {
   readonly "content": globalThis.ReadonlyArray<AnthropicCodeExecutionOutput>
   readonly "encrypted_stdout": string
@@ -8279,6 +8840,7 @@ export type AnthropicEncryptedCodeExecutionResult = {
   readonly "stderr": string
   readonly "type": "encrypted_code_execution_result"
 }
+
 export const AnthropicEncryptedCodeExecutionResult = Schema.Struct({
   "content": Schema.Array(AnthropicCodeExecutionOutput),
   "encrypted_stdout": Schema.String,
@@ -8295,10 +8857,12 @@ export const AnthropicEncryptedCodeExecutionResult = Schema.Struct({
   }],
   "identifier": "AnthropicEncryptedCodeExecutionResult"
 })
+
 export type AnthropicCodeExecutionContent =
   | AnthropicCodeExecutionToolResultError
   | AnthropicCodeExecutionResult
   | AnthropicEncryptedCodeExecutionResult
+
 export const AnthropicCodeExecutionContent = Schema.Union([
   AnthropicCodeExecutionToolResultError,
   AnthropicCodeExecutionResult,
@@ -8307,11 +8871,13 @@ export const AnthropicCodeExecutionContent = Schema.Union([
   "examples": [{ "content": [], "return_code": 0, "stderr": "", "stdout": "Hello", "type": "code_execution_result" }],
   "identifier": "AnthropicCodeExecutionContent"
 })
+
 export type AnthropicCodeExecutionToolResult = {
   readonly "content": AnthropicCodeExecutionContent
   readonly "tool_use_id": string
   readonly "type": "code_execution_tool_result"
 }
+
 export const AnthropicCodeExecutionToolResult = Schema.Struct({
   "content": AnthropicCodeExecutionContent,
   "tool_use_id": Schema.String,
@@ -8324,6 +8890,7 @@ export const AnthropicCodeExecutionToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicCodeExecutionToolResult"
 })
+
 export type AnthropicBashCodeExecutionToolResultError = {
   readonly "error_code":
     | "invalid_tool_input"
@@ -8333,6 +8900,7 @@ export type AnthropicBashCodeExecutionToolResultError = {
     | "output_file_too_large"
   readonly "type": "bash_code_execution_tool_result_error"
 }
+
 export const AnthropicBashCodeExecutionToolResultError = Schema.Struct({
   "error_code": Schema.Literals([
     "invalid_tool_input",
@@ -8346,10 +8914,12 @@ export const AnthropicBashCodeExecutionToolResultError = Schema.Struct({
   "examples": [{ "error_code": "unavailable", "type": "bash_code_execution_tool_result_error" }],
   "identifier": "AnthropicBashCodeExecutionToolResultError"
 })
+
 export type AnthropicBashCodeExecutionOutput = {
   readonly "file_id": string
   readonly "type": "bash_code_execution_output"
 }
+
 export const AnthropicBashCodeExecutionOutput = Schema.Struct({
   "file_id": Schema.String,
   "type": Schema.Literal("bash_code_execution_output")
@@ -8357,6 +8927,7 @@ export const AnthropicBashCodeExecutionOutput = Schema.Struct({
   "examples": [{ "file_id": "file_01abc", "type": "bash_code_execution_output" }],
   "identifier": "AnthropicBashCodeExecutionOutput"
 })
+
 export type AnthropicBashCodeExecutionResult = {
   readonly "content": globalThis.ReadonlyArray<AnthropicBashCodeExecutionOutput>
   readonly "return_code": number
@@ -8364,6 +8935,7 @@ export type AnthropicBashCodeExecutionResult = {
   readonly "stdout": string
   readonly "type": "bash_code_execution_result"
 }
+
 export const AnthropicBashCodeExecutionResult = Schema.Struct({
   "content": Schema.Array(AnthropicBashCodeExecutionOutput),
   "return_code": Schema.Int,
@@ -8380,9 +8952,11 @@ export const AnthropicBashCodeExecutionResult = Schema.Struct({
   }],
   "identifier": "AnthropicBashCodeExecutionResult"
 })
+
 export type AnthropicBashCodeExecutionContent =
   | AnthropicBashCodeExecutionToolResultError
   | AnthropicBashCodeExecutionResult
+
 export const AnthropicBashCodeExecutionContent = Schema.Union([
   AnthropicBashCodeExecutionToolResultError,
   AnthropicBashCodeExecutionResult
@@ -8396,11 +8970,13 @@ export const AnthropicBashCodeExecutionContent = Schema.Union([
   }],
   "identifier": "AnthropicBashCodeExecutionContent"
 })
+
 export type AnthropicBashCodeExecutionToolResult = {
   readonly "content": AnthropicBashCodeExecutionContent
   readonly "tool_use_id": string
   readonly "type": "bash_code_execution_tool_result"
 }
+
 export const AnthropicBashCodeExecutionToolResult = Schema.Struct({
   "content": AnthropicBashCodeExecutionContent,
   "tool_use_id": Schema.String,
@@ -8419,6 +8995,7 @@ export const AnthropicBashCodeExecutionToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicBashCodeExecutionToolResult"
 })
+
 export type AnthropicTextEditorCodeExecutionToolResultError = {
   readonly "error_code":
     | "invalid_tool_input"
@@ -8429,6 +9006,7 @@ export type AnthropicTextEditorCodeExecutionToolResultError = {
   readonly "error_message": string | null
   readonly "type": "text_editor_code_execution_tool_result_error"
 }
+
 export const AnthropicTextEditorCodeExecutionToolResultError = Schema.Struct({
   "error_code": Schema.Literals([
     "invalid_tool_input",
@@ -8447,6 +9025,7 @@ export const AnthropicTextEditorCodeExecutionToolResultError = Schema.Struct({
   }],
   "identifier": "AnthropicTextEditorCodeExecutionToolResultError"
 })
+
 export type AnthropicTextEditorCodeExecutionViewResult = {
   readonly "content": string
   readonly "file_type": "text" | "image" | "pdf"
@@ -8455,6 +9034,7 @@ export type AnthropicTextEditorCodeExecutionViewResult = {
   readonly "total_lines": number | null
   readonly "type": "text_editor_code_execution_view_result"
 }
+
 export const AnthropicTextEditorCodeExecutionViewResult = Schema.Struct({
   "content": Schema.String,
   "file_type": Schema.Literals(["text", "image", "pdf"]),
@@ -8473,10 +9053,12 @@ export const AnthropicTextEditorCodeExecutionViewResult = Schema.Struct({
   }],
   "identifier": "AnthropicTextEditorCodeExecutionViewResult"
 })
+
 export type AnthropicTextEditorCodeExecutionCreateResult = {
   readonly "is_file_update": boolean
   readonly "type": "text_editor_code_execution_create_result"
 }
+
 export const AnthropicTextEditorCodeExecutionCreateResult = Schema.Struct({
   "is_file_update": Schema.Boolean,
   "type": Schema.Literal("text_editor_code_execution_create_result")
@@ -8484,6 +9066,7 @@ export const AnthropicTextEditorCodeExecutionCreateResult = Schema.Struct({
   "examples": [{ "is_file_update": false, "type": "text_editor_code_execution_create_result" }],
   "identifier": "AnthropicTextEditorCodeExecutionCreateResult"
 })
+
 export type AnthropicTextEditorCodeExecutionStrReplaceResult = {
   readonly "lines": globalThis.ReadonlyArray<string> | null
   readonly "new_lines": number | null
@@ -8492,6 +9075,7 @@ export type AnthropicTextEditorCodeExecutionStrReplaceResult = {
   readonly "old_start": number | null
   readonly "type": "text_editor_code_execution_str_replace_result"
 }
+
 export const AnthropicTextEditorCodeExecutionStrReplaceResult = Schema.Struct({
   "lines": Schema.Union([Schema.Array(Schema.String), Schema.Null]),
   "new_lines": Schema.Union([Schema.Int, Schema.Null]),
@@ -8510,11 +9094,13 @@ export const AnthropicTextEditorCodeExecutionStrReplaceResult = Schema.Struct({
   }],
   "identifier": "AnthropicTextEditorCodeExecutionStrReplaceResult"
 })
+
 export type AnthropicTextEditorCodeExecutionContent =
   | AnthropicTextEditorCodeExecutionToolResultError
   | AnthropicTextEditorCodeExecutionViewResult
   | AnthropicTextEditorCodeExecutionCreateResult
   | AnthropicTextEditorCodeExecutionStrReplaceResult
+
 export const AnthropicTextEditorCodeExecutionContent = Schema.Union([
   AnthropicTextEditorCodeExecutionToolResultError,
   AnthropicTextEditorCodeExecutionViewResult,
@@ -8531,11 +9117,13 @@ export const AnthropicTextEditorCodeExecutionContent = Schema.Union([
   }],
   "identifier": "AnthropicTextEditorCodeExecutionContent"
 })
+
 export type AnthropicTextEditorCodeExecutionToolResult = {
   readonly "content": AnthropicTextEditorCodeExecutionContent
   readonly "tool_use_id": string
   readonly "type": "text_editor_code_execution_tool_result"
 }
+
 export const AnthropicTextEditorCodeExecutionToolResult = Schema.Struct({
   "content": AnthropicTextEditorCodeExecutionContent,
   "tool_use_id": Schema.String,
@@ -8555,11 +9143,13 @@ export const AnthropicTextEditorCodeExecutionToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicTextEditorCodeExecutionToolResult"
 })
+
 export type AnthropicToolSearchResultError = {
   readonly "error_code": AnthropicServerToolErrorCode
   readonly "error_message": string | null
   readonly "type": "tool_search_tool_result_error"
 }
+
 export const AnthropicToolSearchResultError = Schema.Struct({
   "error_code": AnthropicServerToolErrorCode,
   "error_message": Schema.Union([Schema.String, Schema.Null]),
@@ -8568,7 +9158,9 @@ export const AnthropicToolSearchResultError = Schema.Struct({
   "examples": [{ "error_code": "unavailable", "error_message": null, "type": "tool_search_tool_result_error" }],
   "identifier": "AnthropicToolSearchResultError"
 })
+
 export type AnthropicToolReference = { readonly "tool_name": string; readonly "type": "tool_reference" }
+
 export const AnthropicToolReference = Schema.Struct({
   "tool_name": Schema.String,
   "type": Schema.Literal("tool_reference")
@@ -8576,10 +9168,12 @@ export const AnthropicToolReference = Schema.Struct({
   "examples": [{ "tool_name": "my_tool", "type": "tool_reference" }],
   "identifier": "AnthropicToolReference"
 })
+
 export type AnthropicToolSearchResult = {
   readonly "tool_references": globalThis.ReadonlyArray<AnthropicToolReference>
   readonly "type": "tool_search_tool_search_result"
 }
+
 export const AnthropicToolSearchResult = Schema.Struct({
   "tool_references": Schema.Array(AnthropicToolReference),
   "type": Schema.Literal("tool_search_tool_search_result")
@@ -8590,7 +9184,9 @@ export const AnthropicToolSearchResult = Schema.Struct({
   }],
   "identifier": "AnthropicToolSearchResult"
 })
+
 export type AnthropicToolSearchContent = AnthropicToolSearchResultError | AnthropicToolSearchResult
+
 export const AnthropicToolSearchContent = Schema.Union([AnthropicToolSearchResultError, AnthropicToolSearchResult], {
   mode: "oneOf"
 }).annotate({
@@ -8600,11 +9196,13 @@ export const AnthropicToolSearchContent = Schema.Union([AnthropicToolSearchResul
   }],
   "identifier": "AnthropicToolSearchContent"
 })
+
 export type AnthropicToolSearchToolResult = {
   readonly "content": AnthropicToolSearchContent
   readonly "tool_use_id": string
   readonly "type": "tool_search_tool_result"
 }
+
 export const AnthropicToolSearchToolResult = Schema.Struct({
   "content": AnthropicToolSearchContent,
   "tool_use_id": Schema.String,
@@ -8620,7 +9218,9 @@ export const AnthropicToolSearchToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicToolSearchToolResult"
 })
+
 export type AnthropicContainerUpload = { readonly "file_id": string; readonly "type": "container_upload" }
+
 export const AnthropicContainerUpload = Schema.Struct({
   "file_id": Schema.String,
   "type": Schema.Literal("container_upload")
@@ -8628,11 +9228,13 @@ export const AnthropicContainerUpload = Schema.Struct({
   "examples": [{ "file_id": "file_01abc", "type": "container_upload" }],
   "identifier": "AnthropicContainerUpload"
 })
+
 export type AnthropicCompactionBlock = {
   readonly "content": string | null
   readonly "encrypted_content"?: string | null
   readonly "type": "compaction"
 }
+
 export const AnthropicCompactionBlock = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Null]),
   "encrypted_content": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -8641,11 +9243,13 @@ export const AnthropicCompactionBlock = Schema.Struct({
   "examples": [{ "content": "Compacted summary of conversation.", "type": "compaction" }],
   "identifier": "AnthropicCompactionBlock"
 })
+
 export type AnthropicAdvisorToolResult = {
   readonly "content": { readonly [x: string]: Schema.Json }
   readonly "tool_use_id": string
   readonly "type": "advisor_tool_result"
 }
+
 export const AnthropicAdvisorToolResult = Schema.Struct({
   "content": Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })),
   "tool_use_id": Schema.String,
@@ -8658,6 +9262,7 @@ export const AnthropicAdvisorToolResult = Schema.Struct({
   }],
   "identifier": "AnthropicAdvisorToolResult"
 })
+
 export type ORAnthropicShellToolResult = {
   readonly "container_id"?: string
   readonly "content": { readonly [x: string]: Schema.Json }
@@ -8674,6 +9279,7 @@ export type ORAnthropicShellToolResult = {
   readonly "tool_use_id": string
   readonly "type": "openrouter_shell_tool_result"
 }
+
 export const ORAnthropicShellToolResult = Schema.Struct({
   "container_id": Schema.optionalKey(
     Schema.String.annotate({
@@ -8708,6 +9314,7 @@ export const ORAnthropicShellToolResult = Schema.Struct({
   }],
   "identifier": "ORAnthropicShellToolResult"
 })
+
 export type ORAnthropicBashToolResult = {
   readonly "container_id"?: string
   readonly "content": { readonly [x: string]: Schema.Json }
@@ -8724,6 +9331,7 @@ export type ORAnthropicBashToolResult = {
   readonly "tool_use_id": string
   readonly "type": "openrouter_bash_tool_result"
 }
+
 export const ORAnthropicBashToolResult = Schema.Struct({
   "container_id": Schema.optionalKey(
     Schema.String.annotate({
@@ -8758,11 +9366,13 @@ export const ORAnthropicBashToolResult = Schema.Struct({
   }],
   "identifier": "ORAnthropicBashToolResult"
 })
+
 export type ORAnthropicToolSearchResult = {
   readonly "content": { readonly [x: string]: Schema.Json }
   readonly "tool_use_id": string
   readonly "type": "openrouter_tool_search_result"
 }
+
 export const ORAnthropicToolSearchResult = Schema.Struct({
   "content": Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })),
   "tool_use_id": Schema.String,
@@ -8772,6 +9382,7 @@ export const ORAnthropicToolSearchResult = Schema.Struct({
   "examples": [{ "content": { "matches": [] }, "tool_use_id": "search", "type": "openrouter_tool_search_result" }],
   "identifier": "ORAnthropicToolSearchResult"
 })
+
 export type ORAnthropicContentBlock =
   | AnthropicTextBlock
   | AnthropicToolUseBlock
@@ -8790,6 +9401,7 @@ export type ORAnthropicContentBlock =
   | ORAnthropicShellToolResult
   | ORAnthropicBashToolResult
   | ORAnthropicToolSearchResult
+
 export const ORAnthropicContentBlock = Schema.Union([
   AnthropicTextBlock,
   AnthropicToolUseBlock,
@@ -8812,11 +9424,13 @@ export const ORAnthropicContentBlock = Schema.Union([
   "examples": [{ "citations": null, "text": "Hello, world!", "type": "text" }],
   "identifier": "ORAnthropicContentBlock"
 })
+
 export type AnthropicInputTransformation = {
   readonly "path"?: string | null
   readonly "reason"?: string | null
   readonly "type": string
 } & { readonly [x: string]: Schema.Json }
+
 export const AnthropicInputTransformation = Schema.StructWithRest(
   Schema.Struct({
     "path": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -8829,11 +9443,13 @@ export const AnthropicInputTransformation = Schema.StructWithRest(
   "examples": [{ "path": "messages.1.content.0", "reason": "prefix_binding_mismatch", "type": "thinking_dropped" }],
   "identifier": "AnthropicInputTransformation"
 })
+
 export type AnthropicRefusalStopDetails = {
   readonly "category": "cyber" | "bio" | "frontier_llm" | "reasoning_extraction" | "general_harms" | null
   readonly "explanation": string | null
   readonly "type": "refusal"
 } | null
+
 export const AnthropicRefusalStopDetails = Schema.Union([
   Schema.Struct({
     "category": Schema.Union([
@@ -8849,6 +9465,7 @@ export const AnthropicRefusalStopDetails = Schema.Union([
   "examples": [{ "category": "cyber", "explanation": "The request was refused due to policy.", "type": "refusal" }],
   "identifier": "AnthropicRefusalStopDetails"
 })
+
 export type ORAnthropicStopReason =
   | "end_turn"
   | "max_tokens"
@@ -8859,6 +9476,7 @@ export type ORAnthropicStopReason =
   | "refusal"
   | "compaction"
   | null
+
 export const ORAnthropicStopReason = Schema.Union([
   Schema.Literals([
     "end_turn",
@@ -8872,14 +9490,18 @@ export const ORAnthropicStopReason = Schema.Union([
   ]),
   Schema.Null
 ]).annotate({ "examples": ["end_turn"], "identifier": "ORAnthropicStopReason" })
+
 export type AnthropicOutputTokensDetails = { readonly "thinking_tokens": number } | null
+
 export const AnthropicOutputTokensDetails = Schema.Union([
   Schema.Struct({ "thinking_tokens": Schema.Int }),
   Schema.Null
 ]).annotate({ "examples": [{ "thinking_tokens": 0 }], "identifier": "AnthropicOutputTokensDetails" })
+
 export type AnthropicServerToolUsage =
   | { readonly "web_fetch_requests": number; readonly "web_search_requests": number }
   | null
+
 export const AnthropicServerToolUsage = Schema.Union([
   Schema.Struct({ "web_fetch_requests": Schema.Int, "web_search_requests": Schema.Int }),
   Schema.Null
@@ -8887,9 +9509,12 @@ export const AnthropicServerToolUsage = Schema.Union([
   "examples": [{ "web_fetch_requests": 0, "web_search_requests": 1 }],
   "identifier": "AnthropicServerToolUsage"
 })
+
 export type AnthropicServiceTier = "standard" | "priority" | "batch" | null
+
 export const AnthropicServiceTier = Schema.Union([Schema.Literals(["standard", "priority", "batch"]), Schema.Null])
   .annotate({ "examples": ["standard"], "identifier": "AnthropicServiceTier" })
+
 export type BatchObject = {
   readonly "completion_window": "24h"
   readonly "created_at": number
@@ -9165,6 +9790,7 @@ export type BatchObject = {
     readonly "total_tokens": number
   } | null
 }
+
 export const BatchObject = Schema.Struct({
   "completion_window": Schema.Literal("24h"),
   "created_at": Schema.Int,
@@ -9753,6 +10379,7 @@ export const BatchObject = Schema.Struct({
     Schema.Null
   ])
 }).annotate({ "identifier": "BatchObject" })
+
 export type BatchPaymentRequiredResponse = {
   readonly "completion_window": "24h"
   readonly "created_at": number
@@ -9805,6 +10432,7 @@ export type BatchPaymentRequiredResponse = {
     readonly "total_tokens": number
   } | null
 }
+
 export const BatchPaymentRequiredResponse = Schema.Struct({
   "completion_window": Schema.Literal("24h"),
   "created_at": Schema.Int,
@@ -9945,17 +10573,21 @@ export const BatchPaymentRequiredResponse = Schema.Struct({
     "Batch metadata with results withheld (results: null) plus the standard error envelope. Add credits to unlock the already-computed results; the batch is not re-run.",
   "identifier": "BatchPaymentRequiredResponse"
 })
+
 export type BatchDeletionOutcome = "deleted" | "unsupported" | "not_applicable"
+
 export const BatchDeletionOutcome = Schema.Literals(["deleted", "unsupported", "not_applicable"]).annotate({
   "description":
     "Outcome for one deletion target: `deleted` (removed), `unsupported` (the provider has no batch-delete API; supported file cleanup still runs), or `not_applicable` (the batch never reached that target).",
   "examples": ["deleted"],
   "identifier": "BatchDeletionOutcome"
 })
+
 export type BatchDeletionTargets = {
   readonly "openrouter": "deleted"
   readonly "upstream"?: { readonly "provider": string; readonly "status": BatchDeletionOutcome }
 }
+
 export const BatchDeletionTargets = Schema.Struct({
   "openrouter": Schema.Literal("deleted").annotate({
     "description": "OpenRouter-held request and result artifacts were purged."
@@ -9974,11 +10606,13 @@ export const BatchDeletionTargets = Schema.Struct({
   "examples": [{ "openrouter": "deleted", "upstream": { "provider": "Anthropic", "status": "deleted" } }],
   "identifier": "BatchDeletionTargets"
 })
+
 export type BatchDeletedObject = {
   readonly "deletion": BatchDeletionTargets
   readonly "id": string
   readonly "object": "batch"
 }
+
 export const BatchDeletedObject = Schema.Struct({
   "deletion": BatchDeletionTargets,
   "id": Schema.String.annotate({ "examples": ["batch_abc123"] }),
@@ -9993,7 +10627,9 @@ export const BatchDeletedObject = Schema.Struct({
   }],
   "identifier": "BatchDeletedObject"
 })
+
 export type UnifiedBenchmarkPricing = { readonly "completion": string; readonly "prompt": string } | null
+
 export const UnifiedBenchmarkPricing = Schema.Union([
   Schema.Struct({
     "completion": Schema.String.annotate({
@@ -10011,6 +10647,7 @@ export const UnifiedBenchmarkPricing = Schema.Union([
   "examples": [{ "completion": "0.000015", "prompt": "0.000003" }],
   "identifier": "UnifiedBenchmarkPricing"
 })
+
 export type UnifiedBenchmarksAAItem = {
   readonly "agentic_index": number | null
   readonly "coding_index": number | null
@@ -10020,6 +10657,7 @@ export type UnifiedBenchmarksAAItem = {
   readonly "pricing": UnifiedBenchmarkPricing
   readonly "source": "artificial-analysis"
 }
+
 export const UnifiedBenchmarksAAItem = Schema.Struct({
   "agentic_index": Schema.Union([Schema.Finite, Schema.Null]).annotate({
     "description": "Artificial Analysis Agentic Index composite score. Higher is better.",
@@ -10058,6 +10696,7 @@ export const UnifiedBenchmarksAAItem = Schema.Struct({
   }],
   "identifier": "UnifiedBenchmarksAAItem"
 })
+
 export type UnifiedBenchmarksDAItem = {
   readonly "arena": string
   readonly "avg_generation_time_ms": number | null
@@ -10076,6 +10715,7 @@ export type UnifiedBenchmarksDAItem = {
   }
   readonly "win_rate": number
 }
+
 export const UnifiedBenchmarksDAItem = Schema.Struct({
   "arena": Schema.String.annotate({ "description": "Arena this ranking belongs to.", "examples": ["models"] }),
   "avg_generation_time_ms": Schema.Union([Schema.Finite, Schema.Null]).annotate({
@@ -10126,6 +10766,7 @@ export const UnifiedBenchmarksDAItem = Schema.Struct({
   }],
   "identifier": "UnifiedBenchmarksDAItem"
 })
+
 export type UnifiedBenchmarksORItem = {
   readonly "accuracy": number
   readonly "accuracy_stddev": number | null
@@ -10137,6 +10778,7 @@ export type UnifiedBenchmarksORItem = {
   readonly "source": "openrouter"
   readonly "total_tasks": number
 }
+
 export const UnifiedBenchmarksORItem = Schema.Struct({
   "accuracy": Schema.Number.annotate({
     "description": "Aggregate accuracy score from 0 to 1. Higher is better.",
@@ -10183,11 +10825,13 @@ export const UnifiedBenchmarksORItem = Schema.Struct({
   }],
   "identifier": "UnifiedBenchmarksORItem"
 })
+
 export type UnifiedBenchmarksSearchRunConfig = {
   readonly "max_agent_turns": number | null
   readonly "reasoning_effort": string | null
   readonly "temperature": number | null
 }
+
 export const UnifiedBenchmarksSearchRunConfig = Schema.Struct({
   "max_agent_turns": Schema.Union([Schema.Int, Schema.Null]).annotate({
     "description": "Agent-turn count for the published lane, or null for plugin lanes.",
@@ -10207,6 +10851,7 @@ export const UnifiedBenchmarksSearchRunConfig = Schema.Struct({
     "Published lane configuration, included only when include_run_config=true. Only the agent turn count, reasoning effort, and temperature are exposed; other harness settings are intentionally not part of the public contract.",
   "identifier": "UnifiedBenchmarksSearchRunConfig"
 })
+
 export type UnifiedBenchmarksSearchItem = {
   readonly "avg_cost_per_task": number | null
   readonly "avg_latency_per_task_ms": number | null
@@ -10222,6 +10867,7 @@ export type UnifiedBenchmarksSearchItem = {
   readonly "source": "openrouter"
   readonly "total_tasks": number
 }
+
 export const UnifiedBenchmarksSearchItem = Schema.Struct({
   "avg_cost_per_task": Schema.Union([Schema.Finite, Schema.Null]).annotate({
     "description": "Average cost per task in USD, or null if unavailable.",
@@ -10272,6 +10918,7 @@ export const UnifiedBenchmarksSearchItem = Schema.Struct({
     "examples": [100]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "identifier": "UnifiedBenchmarksSearchItem" })
+
 export type UnifiedBenchmarksMeta = {
   readonly "as_of": string
   readonly "citation": string | null
@@ -10281,6 +10928,7 @@ export type UnifiedBenchmarksMeta = {
   readonly "task_type": string | null
   readonly "version": "v1"
 }
+
 export const UnifiedBenchmarksMeta = Schema.Struct({
   "as_of": Schema.String.annotate({
     "description": "ISO-8601 timestamp of when this data was last updated.",
@@ -10319,12 +10967,14 @@ export const UnifiedBenchmarksMeta = Schema.Struct({
   }],
   "identifier": "UnifiedBenchmarksMeta"
 })
+
 export type UnifiedBenchmarksResponse = {
   readonly "data": globalThis.ReadonlyArray<
     UnifiedBenchmarksAAItem | UnifiedBenchmarksDAItem | UnifiedBenchmarksORItem | UnifiedBenchmarksSearchItem
   >
   readonly "meta": UnifiedBenchmarksMeta
 }
+
 export const UnifiedBenchmarksResponse = Schema.Struct({
   "data": Schema.Array(
     Schema.Union([
@@ -10368,6 +11018,7 @@ export const UnifiedBenchmarksResponse = Schema.Struct({
   }],
   "identifier": "UnifiedBenchmarksResponse"
 })
+
 export type BYOKProviderSlug =
   | "ai21"
   | "aion-labs"
@@ -10493,6 +11144,7 @@ export type BYOKProviderSlug =
   | "xai"
   | "xiaomi"
   | "z-ai"
+
 export const BYOKProviderSlug = Schema.Literals([
   "ai21",
   "aion-labs",
@@ -10624,6 +11276,7 @@ export const BYOKProviderSlug = Schema.Literals([
   "examples": ["openai"],
   "identifier": "BYOKProviderSlug"
 })
+
 export type BYOKKey = {
   readonly "allowed_api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "allowed_models": globalThis.ReadonlyArray<string> | null
@@ -10642,6 +11295,7 @@ export type BYOKKey = {
   readonly "sort_order": number
   readonly "workspace_id": string | null
 }
+
 export const BYOKKey = Schema.Struct({
   "allowed_api_key_hashes": Schema.Union([
     Schema.Array(Schema.String).check(
@@ -10752,10 +11406,12 @@ export const BYOKKey = Schema.Struct({
   }],
   "identifier": "BYOKKey"
 })
+
 export type ListBYOKKeysResponse = {
   readonly "data": globalThis.ReadonlyArray<BYOKKey>
   readonly "total_count": number
 }
+
 export const ListBYOKKeysResponse = Schema.Struct({
   "data": Schema.Array(BYOKKey).annotate({ "description": "List of BYOK credentials." }),
   "total_count": Schema.Number.annotate({
@@ -10786,6 +11442,7 @@ export const ListBYOKKeysResponse = Schema.Struct({
   }],
   "identifier": "ListBYOKKeysResponse"
 })
+
 export type CreateBYOKKeyRequest = {
   readonly "allowed_api_key_hashes"?: globalThis.ReadonlyArray<string> | null
   readonly "allowed_models"?: globalThis.ReadonlyArray<string> | null
@@ -10801,6 +11458,7 @@ export type CreateBYOKKeyRequest = {
   readonly "provider": BYOKProviderSlug
   readonly "workspace_id"?: string
 }
+
 export const CreateBYOKKeyRequest = Schema.Struct({
   "allowed_api_key_hashes": Schema.optionalKey(
     Schema.Union([
@@ -10906,7 +11564,9 @@ export const CreateBYOKKeyRequest = Schema.Struct({
   "examples": [{ "key": "sk-proj-abc123...", "name": "Production OpenAI Key", "provider": "openai" }],
   "identifier": "CreateBYOKKeyRequest"
 })
+
 export type CreateBYOKKeyResponse = { readonly "data": BYOKKey }
+
 export const CreateBYOKKeyResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<BYOKKey> => BYOKKey).annotate({
     "description": "The created BYOK credential."
@@ -10934,7 +11594,9 @@ export const CreateBYOKKeyResponse = Schema.Struct({
   }],
   "identifier": "CreateBYOKKeyResponse"
 })
+
 export type GetBYOKKeyResponse = { readonly "data": BYOKKey }
+
 export const GetBYOKKeyResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<BYOKKey> => BYOKKey).annotate({ "description": "The BYOK credential." })
 }).annotate({
@@ -10960,13 +11622,16 @@ export const GetBYOKKeyResponse = Schema.Struct({
   }],
   "identifier": "GetBYOKKeyResponse"
 })
+
 export type DeleteBYOKKeyResponse = { readonly "deleted": true }
+
 export const DeleteBYOKKeyResponse = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({
     "description": "Confirmation that the BYOK credential was deleted.",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "deleted": true }], "identifier": "DeleteBYOKKeyResponse" })
+
 export type UpdateBYOKKeyRequest = {
   readonly "allowed_api_key_hashes"?: globalThis.ReadonlyArray<string> | null
   readonly "allowed_models"?: globalThis.ReadonlyArray<string> | null
@@ -10980,6 +11645,7 @@ export type UpdateBYOKKeyRequest = {
   readonly "key"?: string
   readonly "name"?: string | null
 }
+
 export const UpdateBYOKKeyRequest = Schema.Struct({
   "allowed_api_key_hashes": Schema.optionalKey(
     Schema.Union([
@@ -11074,7 +11740,9 @@ export const UpdateBYOKKeyRequest = Schema.Struct({
     })
   )
 }).annotate({ "examples": [{ "disabled": false, "name": "Updated OpenAI Key" }], "identifier": "UpdateBYOKKeyRequest" })
+
 export type UpdateBYOKKeyResponse = { readonly "data": BYOKKey }
+
 export const UpdateBYOKKeyResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<BYOKKey> => BYOKKey).annotate({
     "description": "The updated BYOK credential."
@@ -11102,18 +11770,24 @@ export const UpdateBYOKKeyResponse = Schema.Struct({
   }],
   "identifier": "UpdateBYOKKeyResponse"
 })
+
 export type MetadataLevel = "disabled" | "enabled"
+
 export const MetadataLevel = Schema.Literals(["disabled", "enabled"]).annotate({
   "description": "Opt-in level for surfacing routing metadata on the response under `openrouter_metadata`.",
   "examples": ["enabled"],
   "identifier": "MetadataLevel"
 })
+
 export type AnthropicCacheControlTtl = "5m" | "1h"
+
 export const AnthropicCacheControlTtl = Schema.Literals(["5m", "1h"]).annotate({
   "examples": ["5m"],
   "identifier": "AnthropicCacheControlTtl"
 })
+
 export type AnthropicCacheControlDirective = { readonly "ttl"?: AnthropicCacheControlTtl; readonly "type": "ephemeral" }
+
 export const AnthropicCacheControlDirective = Schema.Struct({
   "ttl": Schema.optionalKey(AnthropicCacheControlTtl),
   "type": Schema.Literal("ephemeral")
@@ -11123,7 +11797,9 @@ export const AnthropicCacheControlDirective = Schema.Struct({
   "examples": [{ "type": "ephemeral" }],
   "identifier": "AnthropicCacheControlDirective"
 })
+
 export type ChatDebugOptions = { readonly "echo_upstream_body"?: boolean }
+
 export const ChatDebugOptions = Schema.Struct({
   "echo_upstream_body": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -11137,12 +11813,14 @@ export const ChatDebugOptions = Schema.Struct({
   "examples": [{ "echo_upstream_body": true }],
   "identifier": "ChatDebugOptions"
 })
+
 export type DeferredRegexSearch = {
   readonly "max_results"?: number
   readonly "miss_sources"?: boolean
   readonly "siblings"?: boolean
   readonly "type": "regex"
 }
+
 export const DeferredRegexSearch = Schema.Struct({
   "max_results": Schema.optionalKey(Schema.Int),
   "miss_sources": Schema.optionalKey(Schema.Boolean.annotate({
@@ -11159,6 +11837,7 @@ export const DeferredRegexSearch = Schema.Struct({
   "examples": [{ "max_results": 5, "type": "regex" }],
   "identifier": "DeferredRegexSearch"
 })
+
 export type DeferredBm25Search = {
   readonly "max_results"?: number
   readonly "miss_sources"?: boolean
@@ -11166,6 +11845,7 @@ export type DeferredBm25Search = {
   readonly "spread"?: boolean
   readonly "type": "bm25"
 }
+
 export const DeferredBm25Search = Schema.Struct({
   "max_results": Schema.optionalKey(Schema.Int),
   "miss_sources": Schema.optionalKey(Schema.Boolean.annotate({
@@ -11186,12 +11866,14 @@ export const DeferredBm25Search = Schema.Struct({
   "examples": [{ "max_results": 5, "type": "bm25" }],
   "identifier": "DeferredBm25Search"
 })
+
 export type DeferredCustomSearch = {
   readonly "max_results"?: number
   readonly "result_key": string
   readonly "tool_id": string
   readonly "type": "custom"
 }
+
 export const DeferredCustomSearch = Schema.Struct({
   "max_results": Schema.optionalKey(Schema.Int),
   "result_key": Schema.String.check(
@@ -11204,7 +11886,9 @@ export const DeferredCustomSearch = Schema.Struct({
   "examples": [{ "max_results": 5, "result_key": "tool_names", "tool_id": "search_catalog", "type": "custom" }],
   "identifier": "DeferredCustomSearch"
 })
+
 export type DeferredToolsSearchStrategy = DeferredRegexSearch | DeferredBm25Search | DeferredCustomSearch
+
 export const DeferredToolsSearchStrategy = Schema.Union(
   [DeferredRegexSearch, DeferredBm25Search, DeferredCustomSearch],
   { mode: "oneOf" }
@@ -11213,6 +11897,7 @@ export const DeferredToolsSearchStrategy = Schema.Union(
   "examples": [{ "max_results": 5, "type": "bm25" }],
   "identifier": "DeferredToolsSearchStrategy"
 })
+
 export type DeferredToolsControl = {
   readonly "announce_catalog_changes"?: boolean
   readonly "cascade_mode"?: "keywords" | "native"
@@ -11225,6 +11910,7 @@ export type DeferredToolsControl = {
   readonly "search": DeferredToolsSearchStrategy
   readonly "validation": "runtime"
 }
+
 export const DeferredToolsControl = Schema.Struct({
   "announce_catalog_changes": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -11283,7 +11969,9 @@ export const DeferredToolsControl = Schema.Struct({
   }],
   "identifier": "DeferredToolsControl"
 })
+
 export type ImageConfig = { readonly [x: string]: string | number | globalThis.ReadonlyArray<Schema.Json> }
+
 export const ImageConfig = Schema.Record(
   Schema.String,
   Schema.Union([
@@ -11297,14 +11985,18 @@ export const ImageConfig = Schema.Record(
   "examples": [{ "aspect_ratio": "16:9", "quality": "high" }],
   "identifier": "ImageConfig"
 })
+
 export type ConfigurationUpdate = { readonly "reasoning": ConfigurationUpdateReasoning }
+
 export const ConfigurationUpdate = Schema.Struct({ "reasoning": ConfigurationUpdateReasoning }).annotate({
   "description":
     "Mid-conversation configuration update. Changes reasoning effort from this point onward without invalidating the prompt cache for the preceding turns.",
   "examples": [{ "reasoning": { "effort": "low" } }],
   "identifier": "ConfigurationUpdate"
 })
+
 export type ChatContentCacheControl = { readonly "ttl"?: AnthropicCacheControlTtl; readonly "type": "ephemeral" }
+
 export const ChatContentCacheControl = Schema.Struct({
   "ttl": Schema.optionalKey(AnthropicCacheControlTtl),
   "type": Schema.Literal("ephemeral")
@@ -11314,12 +12006,14 @@ export const ChatContentCacheControl = Schema.Struct({
   "examples": [{ "ttl": "5m", "type": "ephemeral" }],
   "identifier": "ChatContentCacheControl"
 })
+
 export type ChatContentText = {
   readonly "cache_control"?: ChatContentCacheControl
   readonly "prompt_cache_breakpoint"?: PromptCacheBreakpoint
   readonly "text": string
   readonly "type": "text"
 }
+
 export const ChatContentText = Schema.Struct({
   "cache_control": Schema.optionalKey(ChatContentCacheControl),
   "prompt_cache_breakpoint": Schema.optionalKey(PromptCacheBreakpoint),
@@ -11330,12 +12024,14 @@ export const ChatContentText = Schema.Struct({
   "examples": [{ "text": "Hello, world!", "type": "text" }],
   "identifier": "ChatContentText"
 })
+
 export type ChatSystemMessage = {
   readonly "configuration_update"?: ConfigurationUpdate | null | null
   readonly "content": string | globalThis.ReadonlyArray<ChatContentText>
   readonly "name"?: string
   readonly "role": "system"
 }
+
 export const ChatSystemMessage = Schema.Struct({
   "configuration_update": Schema.optionalKey(
     Schema.Union([ConfigurationUpdate, Schema.Null, Schema.Null]).annotate({
@@ -11357,10 +12053,12 @@ export const ChatSystemMessage = Schema.Struct({
   "examples": [{ "content": "You are a helpful assistant.", "name": "Assistant Config", "role": "system" }],
   "identifier": "ChatSystemMessage"
 })
+
 export type ChatContentImage = {
   readonly "image_url": { readonly "detail"?: "auto" | "low" | "high" | "original"; readonly "url": string }
   readonly "type": "image_url"
 }
+
 export const ChatContentImage = Schema.Struct({
   "image_url": Schema.Struct({
     "detail": Schema.optionalKey(
@@ -11377,10 +12075,12 @@ export const ChatContentImage = Schema.Struct({
   "examples": [{ "image_url": { "detail": "auto", "url": "https://example.com/image.jpg" }, "type": "image_url" }],
   "identifier": "ChatContentImage"
 })
+
 export type ChatContentAudio = {
   readonly "input_audio": { readonly "data": string; readonly "format": string }
   readonly "type": "input_audio"
 }
+
 export const ChatContentAudio = Schema.Struct({
   "input_audio": Schema.Struct({
     "data": Schema.String.annotate({ "description": "Base64 encoded audio data" }),
@@ -11395,7 +12095,9 @@ export const ChatContentAudio = Schema.Struct({
   "examples": [{ "input_audio": { "data": "SGVsbG8gV29ybGQ=", "format": "wav" }, "type": "input_audio" }],
   "identifier": "ChatContentAudio"
 })
+
 export type Legacy_ChatContentVideoInput = { readonly "processing"?: "agentic" | "static"; readonly "url": string }
+
 export const Legacy_ChatContentVideoInput = Schema.Struct({
   "processing": Schema.optionalKey(
     Schema.Literals(["agentic", "static"]).annotate({
@@ -11410,10 +12112,12 @@ export const Legacy_ChatContentVideoInput = Schema.Struct({
   "examples": [{ "url": "https://example.com/video.mp4" }],
   "identifier": "Legacy_ChatContentVideoInput"
 })
+
 export type Legacy_ChatContentVideo = {
   readonly "type": "input_video"
   readonly "video_url": Legacy_ChatContentVideoInput
 }
+
 export const Legacy_ChatContentVideo = Schema.Struct({
   "type": Schema.Literal("input_video"),
   "video_url": Legacy_ChatContentVideoInput
@@ -11422,7 +12126,9 @@ export const Legacy_ChatContentVideo = Schema.Struct({
   "examples": [{ "type": "input_video", "video_url": { "url": "https://example.com/video.mp4" } }],
   "identifier": "Legacy_ChatContentVideo"
 })
+
 export type ChatContentVideoInput = { readonly "processing"?: "agentic" | "static"; readonly "url": string }
+
 export const ChatContentVideoInput = Schema.Struct({
   "processing": Schema.optionalKey(
     Schema.Literals(["agentic", "static"]).annotate({
@@ -11437,7 +12143,9 @@ export const ChatContentVideoInput = Schema.Struct({
   "examples": [{ "url": "https://example.com/video.mp4" }],
   "identifier": "ChatContentVideoInput"
 })
+
 export type ChatContentVideo = { readonly "type": "video_url"; readonly "video_url": ChatContentVideoInput }
+
 export const ChatContentVideo = Schema.Struct({
   "type": Schema.Literal("video_url"),
   "video_url": ChatContentVideoInput
@@ -11446,10 +12154,12 @@ export const ChatContentVideo = Schema.Struct({
   "examples": [{ "type": "video_url", "video_url": { "url": "https://example.com/video.mp4" } }],
   "identifier": "ChatContentVideo"
 })
+
 export type ChatContentFile = {
   readonly "file": { readonly "file_data"?: string; readonly "file_id"?: string; readonly "filename"?: string }
   readonly "type": "file"
 }
+
 export const ChatContentFile = Schema.Struct({
   "file": Schema.Struct({
     "file_data": Schema.optionalKey(
@@ -11467,6 +12177,7 @@ export const ChatContentFile = Schema.Struct({
   }],
   "identifier": "ChatContentFile"
 })
+
 export type ChatContentItems =
   | ChatContentText
   | ChatContentImage
@@ -11474,6 +12185,7 @@ export type ChatContentItems =
   | Legacy_ChatContentVideo
   | ChatContentVideo
   | ChatContentFile
+
 export const ChatContentItems = Schema.Union([
   ChatContentText,
   ChatContentImage,
@@ -11486,11 +12198,13 @@ export const ChatContentItems = Schema.Union([
   "examples": [{ "text": "Hello, world!", "type": "text" }],
   "identifier": "ChatContentItems"
 })
+
 export type ChatUserMessage = {
   readonly "content": string | globalThis.ReadonlyArray<ChatContentItems>
   readonly "name"?: string
   readonly "role": "user"
 }
+
 export const ChatUserMessage = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Array(ChatContentItems)]).annotate({
     "description": "User message content",
@@ -11505,12 +12219,14 @@ export const ChatUserMessage = Schema.Struct({
   "examples": [{ "content": "What is the capital of France?", "role": "user" }],
   "identifier": "ChatUserMessage"
 })
+
 export type ChatDeveloperMessage = {
   readonly "configuration_update"?: ConfigurationUpdate | null | null
   readonly "content": string | globalThis.ReadonlyArray<ChatContentText>
   readonly "name"?: string
   readonly "role": "developer"
 }
+
 export const ChatDeveloperMessage = Schema.Struct({
   "configuration_update": Schema.optionalKey(
     Schema.Union([ConfigurationUpdate, Schema.Null, Schema.Null]).annotate({
@@ -11532,12 +12248,14 @@ export const ChatDeveloperMessage = Schema.Struct({
   "examples": [{ "content": "This is a message from the developer.", "role": "developer" }],
   "identifier": "ChatDeveloperMessage"
 })
+
 export type ChatAudioOutput = {
   readonly "data"?: string
   readonly "expires_at"?: number
   readonly "id"?: string
   readonly "transcript"?: string
 }
+
 export const ChatAudioOutput = Schema.Struct({
   "data": Schema.optionalKey(Schema.String.annotate({ "description": "Base64 encoded audio data" })),
   "expires_at": Schema.optionalKey(
@@ -11557,11 +12275,13 @@ export const ChatAudioOutput = Schema.Struct({
   }],
   "identifier": "ChatAudioOutput"
 })
+
 export type ReasoningDetailUnion =
   | ReasoningDetailSummary
   | ReasoningDetailEncrypted
   | ReasoningDetailText
   | ReasoningDetailServerToolCall
+
 export const ReasoningDetailUnion = Schema.Union([
   ReasoningDetailSummary,
   ReasoningDetailEncrypted,
@@ -11576,17 +12296,21 @@ export const ReasoningDetailUnion = Schema.Union([
   }],
   "identifier": "ReasoningDetailUnion"
 })
+
 export type ChatReasoningDetails = globalThis.ReadonlyArray<ReasoningDetailUnion>
+
 export const ChatReasoningDetails = Schema.Array(ReasoningDetailUnion).annotate({
   "description": "Reasoning details for extended thinking models",
   "examples": [[{ "text": "Let me work through this step by step...", "type": "reasoning.text" }]],
   "identifier": "ChatReasoningDetails"
 })
+
 export type ChatToolCall = {
   readonly "function": { readonly "arguments": string; readonly "name": string }
   readonly "id"?: string
   readonly "type": "function"
 }
+
 export const ChatToolCall = Schema.Struct({
   "function": Schema.Struct({
     "arguments": Schema.String.annotate({ "description": "Function arguments as JSON string" }),
@@ -11603,6 +12327,7 @@ export const ChatToolCall = Schema.Struct({
   }],
   "identifier": "ChatToolCall"
 })
+
 export type ChatAssistantMessage = {
   readonly "audio"?: ChatAudioOutput
   readonly "content"?: string | globalThis.ReadonlyArray<ChatContentItems> | null
@@ -11641,6 +12366,7 @@ export type ChatAssistantMessage = {
     >
     | null
 }
+
 export const ChatAssistantMessage = Schema.Struct({
   "audio": Schema.optionalKey(ChatAudioOutput),
   "content": Schema.optionalKey(
@@ -11708,11 +12434,13 @@ export const ChatAssistantMessage = Schema.Struct({
   "examples": [{ "content": "The capital of France is Paris.", "model": "openai/gpt-4o", "role": "assistant" }],
   "identifier": "ChatAssistantMessage"
 })
+
 export type ChatToolMessage = {
   readonly "content": string | globalThis.ReadonlyArray<ChatContentItems>
   readonly "role": "tool"
   readonly "tool_call_id": string
 }
+
 export const ChatToolMessage = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Array(ChatContentItems)]).annotate({
     "description": "Tool response content",
@@ -11732,12 +12460,14 @@ export const ChatToolMessage = Schema.Struct({
   }],
   "identifier": "ChatToolMessage"
 })
+
 export type ChatMessages =
   | ChatSystemMessage
   | ChatUserMessage
   | ChatDeveloperMessage
   | ChatAssistantMessage
   | ChatToolMessage
+
 export const ChatMessages = Schema.Union([
   ChatSystemMessage,
   ChatUserMessage,
@@ -11749,13 +12479,17 @@ export const ChatMessages = Schema.Union([
   "examples": [{ "content": "What is the capital of France?", "role": "user" }],
   "identifier": "ChatMessages"
 })
+
 export type ModelName = string
+
 export const ModelName = Schema.String.annotate({
   "description": "Model to use for completion",
   "examples": ["openai/gpt-4"],
   "identifier": "ModelName"
 })
+
 export type ChatModelNames = globalThis.ReadonlyArray<ModelName>
+
 export const ChatModelNames = Schema.Array(
   Schema.suspend((): Schema.Codec<ModelName> => ModelName).annotate({
     "description": "Available OpenRouter chat completion models"
@@ -11765,6 +12499,7 @@ export const ChatModelNames = Schema.Array(
   "examples": [["openai/gpt-4", "openai/gpt-4o"]],
   "identifier": "ChatModelNames"
 })
+
 export type AutoRouterPlugin = {
   readonly "allowed_models"?: globalThis.ReadonlyArray<string>
   readonly "cost_quality_tradeoff"?: number
@@ -11774,6 +12509,7 @@ export type AutoRouterPlugin = {
   readonly "id": "auto-router"
   readonly "pin_model"?: boolean
 }
+
 export const AutoRouterPlugin = Schema.Struct({
   "allowed_models": Schema.optionalKey(
     Schema.Array(
@@ -11837,6 +12573,7 @@ export const AutoRouterPlugin = Schema.Struct({
   }],
   "identifier": "AutoRouterPlugin"
 })
+
 export type AutoBetaRouterPlugin = {
   readonly "allowed_models"?: globalThis.ReadonlyArray<string>
   readonly "cost_quality_tradeoff"?: number
@@ -11845,6 +12582,7 @@ export type AutoBetaRouterPlugin = {
   readonly "excluded_models"?: globalThis.ReadonlyArray<string>
   readonly "id": "auto-beta-router"
 }
+
 export const AutoBetaRouterPlugin = Schema.Struct({
   "allowed_models": Schema.optionalKey(
     Schema.Array(
@@ -11900,17 +12638,22 @@ export const AutoBetaRouterPlugin = Schema.Struct({
   }],
   "identifier": "AutoBetaRouterPlugin"
 })
+
 export type ModerationPlugin = { readonly "id": "moderation" }
+
 export const ModerationPlugin = Schema.Struct({ "id": Schema.Literal("moderation") }).annotate({
   "examples": [{ "id": "moderation" }],
   "identifier": "ModerationPlugin"
 })
+
 export type WebSearchEngine = "native" | "exa" | "firecrawl" | "parallel" | "perplexity"
+
 export const WebSearchEngine = Schema.Literals(["native", "exa", "firecrawl", "parallel", "perplexity"]).annotate({
   "description": "The search engine to use for web search.",
   "examples": ["exa"],
   "identifier": "WebSearchEngine"
 })
+
 export type WebSearchPlugin = {
   readonly "enabled"?: boolean
   readonly "engine"?: WebSearchEngine
@@ -11930,6 +12673,7 @@ export type WebSearchPlugin = {
   } | null
   readonly "x_search"?: XSearchOptions
 }
+
 export const WebSearchPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -11990,6 +12734,7 @@ export const WebSearchPlugin = Schema.Struct({
   ),
   "x_search": Schema.optionalKey(XSearchOptions)
 }).annotate({ "examples": [{ "enabled": true, "id": "web", "max_results": 5 }], "identifier": "WebSearchPlugin" })
+
 export type WebFetchPlugin = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string>
   readonly "blocked_domains"?: globalThis.ReadonlyArray<string>
@@ -11997,6 +12742,7 @@ export type WebFetchPlugin = {
   readonly "max_content_tokens"?: number
   readonly "max_uses"?: number
 }
+
 export const WebFetchPlugin = Schema.Struct({
   "allowed_domains": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({ "description": "Only fetch from these domains." })
@@ -12016,7 +12762,9 @@ export const WebFetchPlugin = Schema.Struct({
     }).check(Schema.isInt().annotate({ "expected": "an integer" }))
   )
 }).annotate({ "examples": [{ "id": "web-fetch", "max_uses": 10 }], "identifier": "WebFetchPlugin" })
+
 export type PDFParserEngine = "mistral-ocr" | "native" | "cloudflare-ai" | "pdf-text"
+
 export const PDFParserEngine = Schema.Union([
   Schema.Literals(["mistral-ocr", "native", "cloudflare-ai"]),
   Schema.Literal("pdf-text")
@@ -12026,17 +12774,21 @@ export const PDFParserEngine = Schema.Union([
   "examples": ["cloudflare-ai"],
   "identifier": "PDFParserEngine"
 })
+
 export type PDFParserOptions = { readonly "engine"?: PDFParserEngine }
+
 export const PDFParserOptions = Schema.Struct({ "engine": Schema.optionalKey(PDFParserEngine) }).annotate({
   "description": "Options for PDF parsing.",
   "examples": [{ "engine": "cloudflare-ai" }],
   "identifier": "PDFParserOptions"
 })
+
 export type FileParserPlugin = {
   readonly "enabled"?: boolean
   readonly "id": "file-parser"
   readonly "pdf"?: PDFParserOptions
 }
+
 export const FileParserPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -12049,7 +12801,9 @@ export const FileParserPlugin = Schema.Struct({
   "examples": [{ "enabled": true, "id": "file-parser", "pdf": { "engine": "cloudflare-ai" } }],
   "identifier": "FileParserPlugin"
 })
+
 export type ResponseHealingPlugin = { readonly "enabled"?: boolean; readonly "id": "response-healing" }
+
 export const ResponseHealingPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -12058,17 +12812,21 @@ export const ResponseHealingPlugin = Schema.Struct({
   ),
   "id": Schema.Literal("response-healing")
 }).annotate({ "examples": [{ "enabled": true, "id": "response-healing" }], "identifier": "ResponseHealingPlugin" })
+
 export type ContextCompressionEngine = "middle-out"
+
 export const ContextCompressionEngine = Schema.Literal("middle-out").annotate({
   "description": "The compression engine to use. Defaults to \"middle-out\".",
   "examples": ["middle-out"],
   "identifier": "ContextCompressionEngine"
 })
+
 export type ContextCompressionPlugin = {
   readonly "enabled"?: boolean
   readonly "engine"?: ContextCompressionEngine
   readonly "id": "context-compression"
 }
+
 export const ContextCompressionPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -12081,6 +12839,7 @@ export const ContextCompressionPlugin = Schema.Struct({
   "examples": [{ "enabled": true, "engine": "middle-out", "id": "context-compression" }],
   "identifier": "ContextCompressionPlugin"
 })
+
 export type ParetoRouterPlugin = {
   readonly "enabled"?: boolean
   readonly "id": "pareto-router"
@@ -12088,6 +12847,7 @@ export type ParetoRouterPlugin = {
   readonly "min_coding_score"?: number
   readonly "price_source"?: "prompt" | "weighted_avg"
 }
+
 export const ParetoRouterPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -12125,6 +12885,7 @@ export const ParetoRouterPlugin = Schema.Struct({
   "examples": [{ "enabled": true, "id": "pareto-router", "max_price": 5, "price_source": "prompt" }],
   "identifier": "ParetoRouterPlugin"
 })
+
 export type FusionPlugin = {
   readonly "analysis_models"?: globalThis.ReadonlyArray<string>
   readonly "enabled"?: boolean
@@ -12148,6 +12909,7 @@ export type FusionPlugin = {
     }
   >
 }
+
 export const FusionPlugin = Schema.Struct({
   "analysis_models": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -12245,11 +13007,13 @@ export const FusionPlugin = Schema.Struct({
   }],
   "identifier": "FusionPlugin"
 })
+
 export type SwitchyardRouterPlugin = {
   readonly "algorithm"?: "capability" | "stage" | "auto" | "random" | "composite" | "passthrough"
   readonly "id": "switchyard-router"
   readonly "judge_model"?: string
 }
+
 export const SwitchyardRouterPlugin = Schema.Struct({
   "algorithm": Schema.optionalKey(
     Schema.Literals(["capability", "stage", "auto", "random", "composite", "passthrough"]).annotate({
@@ -12269,6 +13033,7 @@ export const SwitchyardRouterPlugin = Schema.Struct({
   "examples": [{ "algorithm": "stage", "id": "switchyard-router" }],
   "identifier": "SwitchyardRouterPlugin"
 })
+
 export type JevRouterPlugin = {
   readonly "allowed_models"?: globalThis.ReadonlyArray<string>
   readonly "cost_tier"?: string
@@ -12276,6 +13041,7 @@ export type JevRouterPlugin = {
   readonly "id": "jev-router"
   readonly "models"?: globalThis.ReadonlyArray<string>
 }
+
 export const JevRouterPlugin = Schema.Struct({
   "allowed_models": Schema.optionalKey(
     Schema.Array(
@@ -12329,10 +13095,12 @@ export const JevRouterPlugin = Schema.Struct({
   }],
   "identifier": "JevRouterPlugin"
 })
+
 export type AlignmentRule = {
   readonly "rule": string
   readonly "watch": globalThis.ReadonlyArray<"content" | "tool_calls" | "refusal" | "images" | "audio">
 }
+
 export const AlignmentRule = Schema.Struct({
   "rule": Schema.String.annotate({ "description": "Text that states what the reply must do or must not do." }).check(
     Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
@@ -12347,6 +13115,7 @@ export const AlignmentRule = Schema.Struct({
   "examples": [{ "rule": "Never offer a discount.", "watch": ["content"] }],
   "identifier": "AlignmentRule"
 })
+
 export type AlignmentPlugin = {
   readonly "id": "alignment"
   readonly "instruct"?: boolean
@@ -12355,6 +13124,7 @@ export type AlignmentPlugin = {
   readonly "rules": globalThis.ReadonlyArray<AlignmentRule>
   readonly "threshold"?: number
 }
+
 export const AlignmentPlugin = Schema.Struct({
   "id": Schema.Literal("alignment"),
   "instruct": Schema.optionalKey(
@@ -12399,12 +13169,14 @@ export const AlignmentPlugin = Schema.Struct({
   }],
   "identifier": "AlignmentPlugin"
 })
+
 export type ArmorRule = {
   readonly "id": string
   readonly "instructions": string
   readonly "name"?: string
   readonly "threshold"?: number
 }
+
 export const ArmorRule = Schema.Struct({
   "id": Schema.String.annotate({
     "description": "Stable id, unique within its source; reported as the deciding rule when it fires."
@@ -12431,7 +13203,9 @@ export const ArmorRule = Schema.Struct({
     }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))
   )
 }).annotate({ "identifier": "ArmorRule" })
+
 export type ArmorEnvironmentEntry = { readonly "name": string; readonly "value": string }
+
 export const ArmorEnvironmentEntry = Schema.Struct({
   "name": Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
     .check(Schema.isMaxCodePoints(120).annotate({ "expected": "a string with at most 120 code points" })),
@@ -12439,12 +13213,14 @@ export const ArmorEnvironmentEntry = Schema.Struct({
     Schema.isMaxCodePoints(4000).annotate({ "expected": "a string with at most 4000 code points" })
   )
 }).annotate({ "identifier": "ArmorEnvironmentEntry" })
+
 export type ArmorAutoMode = {
   readonly "allow"?: globalThis.ReadonlyArray<string | ArmorRule>
   readonly "environment"?: globalThis.ReadonlyArray<string | ArmorEnvironmentEntry>
   readonly "hard_deny"?: globalThis.ReadonlyArray<string | ArmorRule>
   readonly "soft_deny"?: globalThis.ReadonlyArray<string | ArmorRule>
 }
+
 export const ArmorAutoMode = Schema.Struct({
   "allow": Schema.optionalKey(
     Schema.Array(
@@ -12483,9 +13259,11 @@ export const ArmorAutoMode = Schema.Struct({
     )
   )
 }).annotate({ "identifier": "ArmorAutoMode" })
+
 export type ArmorContext = { readonly "auto_mode"?: ArmorAutoMode; readonly "v": 1 } & {
   readonly [x: string]: Schema.Json
 }
+
 export const ArmorContext = Schema.StructWithRest(
   Schema.Struct({ "auto_mode": Schema.optionalKey(ArmorAutoMode), "v": Schema.Literal(1) }),
   [Schema.Record(
@@ -12510,6 +13288,7 @@ export const ArmorContext = Schema.StructWithRest(
   }],
   "identifier": "ArmorContext"
 })
+
 export type ArmorPlugin = {
   readonly "classifier_context"?: ArmorContext
   readonly "enabled"?: boolean
@@ -12520,6 +13299,7 @@ export type ArmorPlugin = {
   readonly "output_mode"?: "text" | "custom_item" | "claude_code_compatibility"
   readonly "use_cc_style_default_rules"?: boolean
 }
+
 export const ArmorPlugin = Schema.Struct({
   "classifier_context": Schema.optionalKey(ArmorContext),
   "enabled": Schema.optionalKey(
@@ -12572,16 +13352,20 @@ export const ArmorPlugin = Schema.Struct({
   }],
   "identifier": "ArmorPlugin"
 })
+
 export type PredictionContentText = { readonly "text": string; readonly "type": "text" }
+
 export const PredictionContentText = Schema.Struct({ "text": Schema.String, "type": Schema.Literal("text") }).annotate({
   "description": "Text content part for a predicted output.",
   "examples": [{ "text": "Expected response", "type": "text" }],
   "identifier": "PredictionContentText"
 })
+
 export type Prediction = {
   readonly "content": string | globalThis.ReadonlyArray<PredictionContentText>
   readonly "type": "content"
 } | null
+
 export const Prediction = Schema.Union([
   Schema.Struct({
     "content": Schema.Union([Schema.String, Schema.Array(PredictionContentText)]),
@@ -12594,29 +13378,37 @@ export const Prediction = Schema.Union([
   "examples": [{ "content": "Expected response", "type": "content" }],
   "identifier": "Prediction"
 })
+
 export type ChatReasoningSummaryVerbosityEnum = "auto" | "concise" | "detailed" | null
+
 export const ChatReasoningSummaryVerbosityEnum = Schema.Union([
   Schema.Literals(["auto", "concise", "detailed"]),
   Schema.Null
 ]).annotate({ "examples": ["concise"], "identifier": "ChatReasoningSummaryVerbosityEnum" })
+
 export type ChatFormatTextConfig = { readonly "type": "text" }
+
 export const ChatFormatTextConfig = Schema.Struct({ "type": Schema.Literal("text") }).annotate({
   "description": "Default text response format",
   "examples": [{ "type": "text" }],
   "identifier": "ChatFormatTextConfig"
 })
+
 export type ChatFormatJsonObjectConfig = { readonly "type": "json_object" }
+
 export const ChatFormatJsonObjectConfig = Schema.Struct({ "type": Schema.Literal("json_object") }).annotate({
   "description": "JSON object response format",
   "examples": [{ "type": "json_object" }],
   "identifier": "ChatFormatJsonObjectConfig"
 })
+
 export type ChatJsonSchemaConfig = {
   readonly "description"?: string
   readonly "name": string
   readonly "schema"?: { readonly [x: string]: Schema.Json }
   readonly "strict"?: boolean | null
 }
+
 export const ChatJsonSchemaConfig = Schema.Struct({
   "description": Schema.optionalKey(
     Schema.String.annotate({
@@ -12650,10 +13442,12 @@ export const ChatJsonSchemaConfig = Schema.Struct({
   }],
   "identifier": "ChatJsonSchemaConfig"
 })
+
 export type ChatFormatJsonSchemaConfig = {
   readonly "json_schema": ChatJsonSchemaConfig
   readonly "type": "json_schema"
 }
+
 export const ChatFormatJsonSchemaConfig = Schema.Struct({
   "json_schema": ChatJsonSchemaConfig,
   "type": Schema.Literal("json_schema")
@@ -12668,7 +13462,9 @@ export const ChatFormatJsonSchemaConfig = Schema.Struct({
   }],
   "identifier": "ChatFormatJsonSchemaConfig"
 })
+
 export type ChatFormatGrammarConfig = { readonly "grammar": string; readonly "type": "grammar" }
+
 export const ChatFormatGrammarConfig = Schema.Struct({
   "grammar": Schema.String.annotate({
     "description": "Custom grammar for text generation",
@@ -12680,20 +13476,26 @@ export const ChatFormatGrammarConfig = Schema.Struct({
   "examples": [{ "grammar": "root ::= \"yes\" | \"no\"", "type": "grammar" }],
   "identifier": "ChatFormatGrammarConfig"
 })
+
 export type ChatFormatPythonConfig = { readonly "type": "python" }
+
 export const ChatFormatPythonConfig = Schema.Struct({ "type": Schema.Literal("python") }).annotate({
   "description": "Python code response format",
   "examples": [{ "type": "python" }],
   "identifier": "ChatFormatPythonConfig"
 })
+
 export type DeprecatedRoute = "fallback" | "sort" | null
+
 export const DeprecatedRoute = Schema.Union([Schema.Literals(["fallback", "sort"]), Schema.Null]).annotate({
   "description":
     "**DEPRECATED** Use providers.sort.partition instead. Backwards-compatible alias for providers.sort.partition. Accepts legacy values: \"fallback\" (maps to \"model\"), \"sort\" (maps to \"none\").",
   "examples": ["fallback"],
   "identifier": "DeprecatedRoute"
 })
+
 export type StopServerToolsWhenStepCountIs = { readonly "step_count": number; readonly "type": "step_count_is" }
+
 export const StopServerToolsWhenStepCountIs = Schema.Struct({
   "step_count": Schema.Int,
   "type": Schema.Literal("step_count_is")
@@ -12702,7 +13504,9 @@ export const StopServerToolsWhenStepCountIs = Schema.Struct({
   "examples": [{ "step_count": 5, "type": "step_count_is" }],
   "identifier": "StopServerToolsWhenStepCountIs"
 })
+
 export type StopServerToolsWhenHasToolCall = { readonly "tool_name": string; readonly "type": "has_tool_call" }
+
 export const StopServerToolsWhenHasToolCall = Schema.Struct({
   "tool_name": Schema.String.check(
     Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
@@ -12713,7 +13517,9 @@ export const StopServerToolsWhenHasToolCall = Schema.Struct({
   "examples": [{ "tool_name": "finalize", "type": "has_tool_call" }],
   "identifier": "StopServerToolsWhenHasToolCall"
 })
+
 export type StopServerToolsWhenMaxTokensUsed = { readonly "max_tokens": number; readonly "type": "max_tokens_used" }
+
 export const StopServerToolsWhenMaxTokensUsed = Schema.Struct({
   "max_tokens": Schema.Int,
   "type": Schema.Literal("max_tokens_used")
@@ -12722,7 +13528,9 @@ export const StopServerToolsWhenMaxTokensUsed = Schema.Struct({
   "examples": [{ "max_tokens": 10000, "type": "max_tokens_used" }],
   "identifier": "StopServerToolsWhenMaxTokensUsed"
 })
+
 export type StopServerToolsWhenMaxCost = { readonly "max_cost_in_dollars": number; readonly "type": "max_cost" }
+
 export const StopServerToolsWhenMaxCost = Schema.Struct({
   "max_cost_in_dollars": Schema.Number.annotate({ "format": "double" }).check(
     Schema.isFinite().annotate({ "expected": "a finite number" })
@@ -12733,7 +13541,9 @@ export const StopServerToolsWhenMaxCost = Schema.Struct({
   "examples": [{ "max_cost_in_dollars": 0.5, "type": "max_cost" }],
   "identifier": "StopServerToolsWhenMaxCost"
 })
+
 export type StopServerToolsWhenFinishReasonIs = { readonly "reason": string; readonly "type": "finish_reason_is" }
+
 export const StopServerToolsWhenFinishReasonIs = Schema.Struct({
   "reason": Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
   "type": Schema.Literal("finish_reason_is")
@@ -12742,12 +13552,14 @@ export const StopServerToolsWhenFinishReasonIs = Schema.Struct({
   "examples": [{ "reason": "length", "type": "finish_reason_is" }],
   "identifier": "StopServerToolsWhenFinishReasonIs"
 })
+
 export type StopServerToolsWhenCondition =
   | StopServerToolsWhenStepCountIs
   | StopServerToolsWhenHasToolCall
   | StopServerToolsWhenMaxTokensUsed
   | StopServerToolsWhenMaxCost
   | StopServerToolsWhenFinishReasonIs
+
 export const StopServerToolsWhenCondition = Schema.Union([
   StopServerToolsWhenStepCountIs,
   StopServerToolsWhenHasToolCall,
@@ -12759,7 +13571,9 @@ export const StopServerToolsWhenCondition = Schema.Union([
   "examples": [{ "step_count": 5, "type": "step_count_is" }],
   "identifier": "StopServerToolsWhenCondition"
 })
+
 export type StopServerToolsWhen = globalThis.ReadonlyArray<StopServerToolsWhenCondition>
+
 export const StopServerToolsWhen = Schema.Array(StopServerToolsWhenCondition).annotate({
   "description":
     "Stop conditions for the server-tool agent loop. Any condition firing halts the loop (OR logic). When set, this overrides `max_tool_calls`. When a condition fires while the model is still emitting tool calls, the pending tool calls are executed and one final turn is made with tool calls disabled so the response ends with a natural-language answer instead of an unfinished tool call.",
@@ -12770,7 +13584,9 @@ export const StopServerToolsWhen = Schema.Array(StopServerToolsWhenCondition).an
     "identifier": "StopServerToolsWhen"
   })
 )
+
 export type ChatStreamOptions = { readonly "include_usage"?: boolean } | null
+
 export const ChatStreamOptions = Schema.Union([
   Schema.Struct({
     "include_usage": Schema.optionalKey(
@@ -12786,7 +13602,9 @@ export const ChatStreamOptions = Schema.Union([
   "examples": [{ "include_usage": true }],
   "identifier": "ChatStreamOptions"
 })
+
 export type ChatNamedToolChoice = { readonly "function": { readonly "name": string }; readonly "type": "function" }
+
 export const ChatNamedToolChoice = Schema.Struct({
   "function": Schema.Struct({
     "name": Schema.String.annotate({ "description": "Function name to call", "examples": ["get_weather"] })
@@ -12797,7 +13615,9 @@ export const ChatNamedToolChoice = Schema.Struct({
   "examples": [{ "function": { "name": "get_weather" }, "type": "function" }],
   "identifier": "ChatNamedToolChoice"
 })
+
 export type ChatServerToolChoice = { readonly "type": string }
+
 export const ChatServerToolChoice = Schema.Struct({
   "type": Schema.String.annotate({
     "description":
@@ -12810,7 +13630,9 @@ export const ChatServerToolChoice = Schema.Struct({
   "examples": [{ "type": "openrouter:web_search" }],
   "identifier": "ChatServerToolChoice"
 })
+
 export type ChatToolChoice = "none" | "auto" | "required" | ChatNamedToolChoice | ChatServerToolChoice
+
 export const ChatToolChoice = Schema.Union([
   Schema.Literal("none"),
   Schema.Literal("auto"),
@@ -12818,10 +13640,12 @@ export const ChatToolChoice = Schema.Union([
   ChatNamedToolChoice,
   ChatServerToolChoice
 ]).annotate({ "description": "Tool choice configuration", "examples": ["auto"], "identifier": "ChatToolChoice" })
+
 export type AdvisorReasoning = {
   readonly "effort"?: "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none"
   readonly "max_tokens"?: number
 }
+
 export const AdvisorReasoning = Schema.Struct({
   "effort": Schema.optionalKey(
     Schema.Literals(["max", "xhigh", "high", "medium", "low", "minimal", "none"]).annotate({
@@ -12839,6 +13663,7 @@ export const AdvisorReasoning = Schema.Struct({
   "examples": [{ "effort": "high" }],
   "identifier": "AdvisorReasoning"
 })
+
 export type AdvisorServerToolConfig = {
   readonly "forward_transcript"?: boolean
   readonly "instructions"?: string
@@ -12849,6 +13674,7 @@ export type AdvisorServerToolConfig = {
   readonly "stream"?: boolean
   readonly "temperature"?: number
 }
+
 export const AdvisorServerToolConfig = Schema.Struct({
   "forward_transcript": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -12908,10 +13734,12 @@ export const AdvisorServerToolConfig = Schema.Struct({
   "examples": [{ "model": "~anthropic/claude-opus-latest", "name": "reviewer" }],
   "identifier": "AdvisorServerToolConfig"
 })
+
 export type AdvisorServerTool_OpenRouter = {
   readonly "parameters"?: AdvisorServerToolConfig
   readonly "type": "openrouter:advisor"
 }
+
 export const AdvisorServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(AdvisorServerToolConfig),
   "type": Schema.Literal("openrouter:advisor")
@@ -12924,14 +13752,18 @@ export const AdvisorServerTool_OpenRouter = Schema.Struct({
   }],
   "identifier": "AdvisorServerTool_OpenRouter"
 })
+
 export type BashServerToolEngine = "auto" | "native" | "openrouter"
+
 export const BashServerToolEngine = Schema.Literals(["auto", "native", "openrouter"]).annotate({
   "description":
     "Which bash engine to use. \"openrouter\" runs commands server-side in the OpenRouter sandbox. \"auto\" (default) and \"native\" use native passthrough, returning the tool call to your application to run client-side; OpenRouter does not execute the commands.",
   "examples": ["auto"],
   "identifier": "BashServerToolEngine"
 })
+
 export type ContainerFileIds = globalThis.ReadonlyArray<string>
+
 export const ContainerFileIds = Schema.Array(
   Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 ).annotate({
@@ -12944,10 +13776,12 @@ export const ContainerFileIds = Schema.Array(
     "identifier": "ContainerFileIds"
   })
 )
+
 export type ContainerNetworkPolicy = { readonly "type": "disabled" } | {
   readonly "allowed_domains": globalThis.ReadonlyArray<string>
   readonly "type": "allowlist"
 }
+
 export const ContainerNetworkPolicy = Schema.Union([
   Schema.Struct({ "type": Schema.Literal("disabled").annotate({ "description": "No outbound internet access." }) }),
   Schema.Struct({
@@ -12977,11 +13811,13 @@ export const ContainerNetworkPolicy = Schema.Union([
   "examples": [{ "allowed_domains": ["pypi.org", "files.pythonhosted.org"], "type": "allowlist" }],
   "identifier": "ContainerNetworkPolicy"
 })
+
 export type ContainerAutoEnvironment = {
   readonly "file_ids"?: ContainerFileIds
   readonly "network_policy"?: ContainerNetworkPolicy
   readonly "type": "container_auto"
 }
+
 export const ContainerAutoEnvironment = Schema.Struct({
   "file_ids": Schema.optionalKey(ContainerFileIds),
   "network_policy": Schema.optionalKey(ContainerNetworkPolicy),
@@ -12991,12 +13827,14 @@ export const ContainerAutoEnvironment = Schema.Struct({
   "examples": [{ "type": "container_auto" }],
   "identifier": "ContainerAutoEnvironment"
 })
+
 export type ContainerReferenceEnvironment = {
   readonly "container_id": string
   readonly "file_ids"?: ContainerFileIds
   readonly "network_policy"?: ContainerNetworkPolicy
   readonly "type": "container_reference"
 }
+
 export const ContainerReferenceEnvironment = Schema.Struct({
   "container_id": Schema.String.annotate({
     "description":
@@ -13018,7 +13856,9 @@ export const ContainerReferenceEnvironment = Schema.Struct({
   "examples": [{ "container_id": "sess_abc123", "type": "container_reference" }],
   "identifier": "ContainerReferenceEnvironment"
 })
+
 export type BashServerToolEnvironment = ContainerAutoEnvironment | ContainerReferenceEnvironment
+
 export const BashServerToolEnvironment = Schema.Union([ContainerAutoEnvironment, ContainerReferenceEnvironment], {
   mode: "oneOf"
 }).annotate({
@@ -13026,10 +13866,12 @@ export const BashServerToolEnvironment = Schema.Union([ContainerAutoEnvironment,
   "examples": [{ "type": "container_auto" }],
   "identifier": "BashServerToolEnvironment"
 })
+
 export type BashServerToolConfig = {
   readonly "engine"?: BashServerToolEngine
   readonly "environment"?: BashServerToolEnvironment
 }
+
 export const BashServerToolConfig = Schema.Struct({
   "engine": Schema.optionalKey(BashServerToolEngine),
   "environment": Schema.optionalKey(BashServerToolEnvironment)
@@ -13038,7 +13880,9 @@ export const BashServerToolConfig = Schema.Struct({
   "examples": [{ "environment": { "type": "container_auto" } }],
   "identifier": "BashServerToolConfig"
 })
+
 export type BashServerTool = { readonly "parameters"?: BashServerToolConfig; readonly "type": "openrouter:bash" }
+
 export const BashServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(BashServerToolConfig),
   "type": Schema.Literal("openrouter:bash")
@@ -13047,7 +13891,9 @@ export const BashServerTool = Schema.Struct({
   "examples": [{ "parameters": { "environment": { "type": "container_auto" } }, "type": "openrouter:bash" }],
   "identifier": "BashServerTool"
 })
+
 export type DatetimeServerToolConfig = { readonly "timezone"?: string }
+
 export const DatetimeServerToolConfig = Schema.Struct({
   "timezone": Schema.optionalKey(
     Schema.String.annotate({
@@ -13060,10 +13906,12 @@ export const DatetimeServerToolConfig = Schema.Struct({
   "examples": [{ "timezone": "America/New_York" }],
   "identifier": "DatetimeServerToolConfig"
 })
+
 export type DatetimeServerTool = {
   readonly "parameters"?: DatetimeServerToolConfig
   readonly "type": "openrouter:datetime"
 }
+
 export const DatetimeServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(DatetimeServerToolConfig),
   "type": Schema.Literal("openrouter:datetime")
@@ -13072,14 +13920,18 @@ export const DatetimeServerTool = Schema.Struct({
   "examples": [{ "parameters": { "timezone": "America/New_York" }, "type": "openrouter:datetime" }],
   "identifier": "DatetimeServerTool"
 })
+
 export type FilesServerToolConfig = { readonly [x: string]: Schema.Json }
+
 export const FilesServerToolConfig = Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))
   .annotate({
     "description": "Configuration for the openrouter:files server tool",
     "examples": [{}],
     "identifier": "FilesServerToolConfig"
   })
+
 export type FilesServerTool = { readonly "parameters"?: FilesServerToolConfig; readonly "type": "openrouter:files" }
+
 export const FilesServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(FilesServerToolConfig),
   "type": Schema.Literal("openrouter:files")
@@ -13089,6 +13941,7 @@ export const FilesServerTool = Schema.Struct({
   "examples": [{ "parameters": {}, "type": "openrouter:files" }],
   "identifier": "FilesServerTool"
 })
+
 export type FusionServerToolConfig = {
   readonly "analysis_models"?: globalThis.ReadonlyArray<string>
   readonly "cache_control"?: AnthropicCacheControlDirective
@@ -13104,6 +13957,7 @@ export type FusionServerToolConfig = {
     { readonly "parameters"?: { readonly [x: string]: Schema.Json }; readonly "type": string }
   >
 }
+
 export const FusionServerToolConfig = Schema.Struct({
   "analysis_models": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -13189,10 +14043,12 @@ export const FusionServerToolConfig = Schema.Struct({
   }],
   "identifier": "FusionServerToolConfig"
 })
+
 export type FusionServerTool_OpenRouter = {
   readonly "parameters"?: FusionServerToolConfig
   readonly "type": "openrouter:fusion"
 }
+
 export const FusionServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(FusionServerToolConfig),
   "type": Schema.Literal("openrouter:fusion")
@@ -13205,9 +14061,11 @@ export const FusionServerTool_OpenRouter = Schema.Struct({
   }],
   "identifier": "FusionServerTool_OpenRouter"
 })
+
 export type ImageGenerationServerToolConfig = { readonly "model"?: string } & {
   readonly [x: string]: string | number | globalThis.ReadonlyArray<Schema.Json>
 }
+
 export const ImageGenerationServerToolConfig = Schema.StructWithRest(
   Schema.Struct({
     "model": Schema.optionalKey(
@@ -13234,10 +14092,12 @@ export const ImageGenerationServerToolConfig = Schema.StructWithRest(
   "examples": [{ "aspect_ratio": "16:9", "model": "openai/gpt-image-2.6-flare", "quality": "high" }],
   "identifier": "ImageGenerationServerToolConfig"
 })
+
 export type ImageGenerationServerTool_OpenRouter = {
   readonly "parameters"?: ImageGenerationServerToolConfig
   readonly "type": "openrouter:image_generation"
 }
+
 export const ImageGenerationServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(ImageGenerationServerToolConfig),
   "type": Schema.Literal("openrouter:image_generation")
@@ -13249,7 +14109,9 @@ export const ImageGenerationServerTool_OpenRouter = Schema.Struct({
   }],
   "identifier": "ImageGenerationServerTool_OpenRouter"
 })
+
 export type SearchModelsServerToolConfig = { readonly "max_results"?: number }
+
 export const SearchModelsServerToolConfig = Schema.Struct({
   "max_results": Schema.optionalKey(
     Schema.Number.annotate({
@@ -13262,10 +14124,12 @@ export const SearchModelsServerToolConfig = Schema.Struct({
   "examples": [{ "max_results": 5 }],
   "identifier": "SearchModelsServerToolConfig"
 })
+
 export type ChatSearchModelsServerTool = {
   readonly "parameters"?: SearchModelsServerToolConfig
   readonly "type": "openrouter:experimental__search_models"
 }
+
 export const ChatSearchModelsServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(SearchModelsServerToolConfig),
   "type": Schema.Literal("openrouter:experimental__search_models")
@@ -13274,10 +14138,12 @@ export const ChatSearchModelsServerTool = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:experimental__search_models" }],
   "identifier": "ChatSearchModelsServerTool"
 })
+
 export type SubagentReasoning = {
   readonly "effort"?: "max" | "xhigh" | "high" | "medium" | "low" | "minimal" | "none"
   readonly "max_tokens"?: number
 }
+
 export const SubagentReasoning = Schema.Struct({
   "effort": Schema.optionalKey(
     Schema.Literals(["max", "xhigh", "high", "medium", "low", "minimal", "none"]).annotate({
@@ -13296,10 +14162,12 @@ export const SubagentReasoning = Schema.Struct({
   "examples": [{ "effort": "low" }],
   "identifier": "SubagentReasoning"
 })
+
 export type SubagentNestedTool = {
   readonly "parameters"?: { readonly [x: string]: Schema.Json }
   readonly "type": string
 } & { readonly [x: string]: Schema.Json }
+
 export const SubagentNestedTool = Schema.StructWithRest(
   Schema.Struct({
     "parameters": Schema.optionalKey(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
@@ -13312,6 +14180,7 @@ export const SubagentNestedTool = Schema.StructWithRest(
   "examples": [{ "type": "openrouter:web_search" }],
   "identifier": "SubagentNestedTool"
 })
+
 export type SubagentServerToolConfig = {
   readonly "inherit_functions"?: boolean
   readonly "inherited_function_names"?: globalThis.ReadonlyArray<string>
@@ -13324,6 +14193,7 @@ export type SubagentServerToolConfig = {
   readonly "temperature"?: number
   readonly "tools"?: globalThis.ReadonlyArray<SubagentNestedTool>
 }
+
 export const SubagentServerToolConfig = Schema.Struct({
   "inherit_functions": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -13400,10 +14270,12 @@ export const SubagentServerToolConfig = Schema.Struct({
   "examples": [{ "model": "~anthropic/claude-haiku-latest", "name": "summarizer" }],
   "identifier": "SubagentServerToolConfig"
 })
+
 export type SubagentServerTool_OpenRouter = {
   readonly "parameters"?: SubagentServerToolConfig
   readonly "type": "openrouter:subagent"
 }
+
 export const SubagentServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(SubagentServerToolConfig),
   "type": Schema.Literal("openrouter:subagent")
@@ -13413,7 +14285,9 @@ export const SubagentServerTool_OpenRouter = Schema.Struct({
   "examples": [{ "parameters": { "model": "~anthropic/claude-haiku-latest" }, "type": "openrouter:subagent" }],
   "identifier": "SubagentServerTool_OpenRouter"
 })
+
 export type WebFetchEngineEnum = "auto" | "native" | "openrouter" | "exa" | "parallel" | "firecrawl"
+
 export const WebFetchEngineEnum = Schema.Literals(["auto", "native", "openrouter", "exa", "parallel", "firecrawl"])
   .annotate({
     "description":
@@ -13421,6 +14295,7 @@ export const WebFetchEngineEnum = Schema.Literals(["auto", "native", "openrouter
     "examples": ["auto"],
     "identifier": "WebFetchEngineEnum"
   })
+
 export type WebFetchServerToolConfig = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string>
   readonly "blocked_domains"?: globalThis.ReadonlyArray<string>
@@ -13428,6 +14303,7 @@ export type WebFetchServerToolConfig = {
   readonly "max_content_tokens"?: number
   readonly "max_uses"?: number
 }
+
 export const WebFetchServerToolConfig = Schema.Struct({
   "allowed_domains": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({ "description": "Only fetch from these domains." })
@@ -13453,10 +14329,12 @@ export const WebFetchServerToolConfig = Schema.Struct({
   "examples": [{ "max_content_tokens": 100000, "max_uses": 10 }],
   "identifier": "WebFetchServerToolConfig"
 })
+
 export type WebFetchServerTool = {
   readonly "parameters"?: WebFetchServerToolConfig
   readonly "type": "openrouter:web_fetch"
 }
+
 export const WebFetchServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(WebFetchServerToolConfig),
   "type": Schema.Literal("openrouter:web_fetch")
@@ -13465,13 +14343,16 @@ export const WebFetchServerTool = Schema.Struct({
   "examples": [{ "parameters": { "max_uses": 10 }, "type": "openrouter:web_fetch" }],
   "identifier": "WebFetchServerTool"
 })
+
 export type SearchQualityLevel = "low" | "medium" | "high"
+
 export const SearchQualityLevel = Schema.Literals(["low", "medium", "high"]).annotate({
   "description":
     "How much context to retrieve per result. Applies to Exa, Parallel, and Perplexity engines; ignored with native provider search and Firecrawl. For Exa, pins a fixed per-result character cap (low=5,000, medium=15,000, high=30,000); when omitted, Exa picks an adaptive size per query and document (typically ~2,000–4,000 characters per result). For Parallel, controls the total characters across all results; when omitted, Parallel uses its own default size. For Perplexity, maps directly to the Search API's native search_context_size parameter. Overridden by `max_characters` when both are set.",
   "examples": ["medium"],
   "identifier": "SearchQualityLevel"
 })
+
 export type WebSearchUserLocationServerTool = {
   readonly "city"?: string | null
   readonly "country"?: string | null
@@ -13479,6 +14360,7 @@ export type WebSearchUserLocationServerTool = {
   readonly "timezone"?: string | null
   readonly "type"?: "approximate"
 }
+
 export const WebSearchUserLocationServerTool = Schema.Struct({
   "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "country": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -13496,6 +14378,7 @@ export const WebSearchUserLocationServerTool = Schema.Struct({
   }],
   "identifier": "WebSearchUserLocationServerTool"
 })
+
 export type WebSearchConfig = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string>
   readonly "engine"?: WebSearchEngineEnum
@@ -13509,6 +14392,7 @@ export type WebSearchConfig = {
   readonly "user_location"?: WebSearchUserLocationServerTool
   readonly "x_search"?: XSearchOptions
 }
+
 export const WebSearchConfig = Schema.Struct({
   "allowed_domains": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -13556,10 +14440,12 @@ export const WebSearchConfig = Schema.Struct({
   "user_location": Schema.optionalKey(WebSearchUserLocationServerTool),
   "x_search": Schema.optionalKey(XSearchOptions)
 }).annotate({ "examples": [{ "max_results": 5, "search_context_size": "medium" }], "identifier": "WebSearchConfig" })
+
 export type OpenRouterWebSearchServerTool = {
   readonly "parameters"?: WebSearchConfig
   readonly "type": "openrouter:web_search"
 }
+
 export const OpenRouterWebSearchServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(WebSearchConfig),
   "type": Schema.Literal("openrouter:web_search")
@@ -13568,6 +14454,7 @@ export const OpenRouterWebSearchServerTool = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:web_search" }],
   "identifier": "OpenRouterWebSearchServerTool"
 })
+
 export type ChatWebSearchShorthand = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string>
   readonly "engine"?: WebSearchEngineEnum
@@ -13583,6 +14470,7 @@ export type ChatWebSearchShorthand = {
   readonly "user_location"?: WebSearchUserLocationServerTool
   readonly "x_search"?: XSearchOptions
 }
+
 export const ChatWebSearchShorthand = Schema.Struct({
   "allowed_domains": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -13641,10 +14529,12 @@ export const ChatWebSearchShorthand = Schema.Struct({
   "examples": [{ "type": "web_search_preview" }],
   "identifier": "ChatWebSearchShorthand"
 })
+
 export type ChatDynamicServerTool = {
   readonly "parameters"?: { readonly [x: string]: Schema.Json }
   readonly "type": string
 }
+
 export const ChatDynamicServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))),
   "type": Schema.String
@@ -13654,6 +14544,7 @@ export const ChatDynamicServerTool = Schema.Struct({
   "examples": [{ "parameters": {}, "type": "openrouter:datetime_v2" }],
   "identifier": "ChatDynamicServerTool"
 })
+
 export type ChatFunctionTool =
   | {
     readonly "cache_control"?: ChatContentCacheControl
@@ -13679,6 +14570,7 @@ export type ChatFunctionTool =
   | OpenRouterWebSearchServerTool
   | ChatWebSearchShorthand
   | ChatDynamicServerTool
+
 export const ChatFunctionTool = Schema.Union([
   Schema.Struct({
     "cache_control": Schema.optionalKey(ChatContentCacheControl),
@@ -13756,6 +14648,7 @@ export const ChatFunctionTool = Schema.Union([
   }],
   "identifier": "ChatFunctionTool"
 })
+
 export type ChatRequest = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "debug"?: ChatDebugOptions
@@ -13825,6 +14718,7 @@ export type ChatRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const ChatRequest = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "debug": Schema.optionalKey(ChatDebugOptions),
@@ -14075,11 +14969,14 @@ export const ChatRequest = Schema.Struct({
   }],
   "identifier": "ChatRequest"
 })
+
 export type ChatFinishReasonEnum = "tool_calls" | "stop" | "length" | "content_filter" | "error" | null
+
 export const ChatFinishReasonEnum = Schema.Union([
   Schema.Literals(["tool_calls", "stop", "length", "content_filter", "error"]),
   Schema.Null
 ]).annotate({ "examples": ["stop"], "identifier": "ChatFinishReasonEnum" })
+
 export type ChatTokenLogprob = {
   readonly "bytes": globalThis.ReadonlyArray<number> | null
   readonly "logprob": number
@@ -14088,6 +14985,7 @@ export type ChatTokenLogprob = {
     { readonly "bytes": globalThis.ReadonlyArray<number> | null; readonly "logprob": number; readonly "token": string }
   >
 }
+
 export const ChatTokenLogprob = Schema.Struct({
   "bytes": Schema.Union([Schema.Array(Schema.Int), Schema.Null]).annotate({
     "description": "UTF-8 bytes of the token"
@@ -14115,10 +15013,12 @@ export const ChatTokenLogprob = Schema.Struct({
   }],
   "identifier": "ChatTokenLogprob"
 })
+
 export type ChatTokenLogprobs = {
   readonly "content": globalThis.ReadonlyArray<ChatTokenLogprob> | null
   readonly "refusal"?: globalThis.ReadonlyArray<ChatTokenLogprob> | null
 } | null
+
 export const ChatTokenLogprobs = Schema.Union([
   Schema.Struct({
     "content": Schema.Union([Schema.Array(ChatTokenLogprob), Schema.Null]).annotate({
@@ -14139,12 +15039,14 @@ export const ChatTokenLogprobs = Schema.Union([
   }],
   "identifier": "ChatTokenLogprobs"
 })
+
 export type ChatChoice = {
   readonly "finish_reason": ChatFinishReasonEnum
   readonly "index": number
   readonly "logprobs"?: ChatTokenLogprobs
   readonly "message": ChatAssistantMessage
 }
+
 export const ChatChoice = Schema.Struct({
   "finish_reason": ChatFinishReasonEnum,
   "index": Schema.Number.annotate({ "description": "Choice index", "examples": [0] }).check(
@@ -14162,6 +15064,7 @@ export const ChatChoice = Schema.Struct({
   }],
   "identifier": "ChatChoice"
 })
+
 export type ChatUsage = {
   readonly "completion_tokens": number
   readonly "completion_tokens_details"?: {
@@ -14184,6 +15087,7 @@ export type ChatUsage = {
   readonly "server_tool_use_details"?: ServerToolUseDetails
   readonly "total_tokens": number
 }
+
 export const ChatUsage = Schema.Struct({
   "completion_tokens": Schema.Number.annotate({ "description": "Number of tokens in the completion" }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
@@ -14269,6 +15173,7 @@ export const ChatUsage = Schema.Struct({
   }],
   "identifier": "ChatUsage"
 })
+
 export type ChatResult = {
   readonly "alignment"?: Alignment
   readonly "choices": globalThis.ReadonlyArray<ChatChoice>
@@ -14282,6 +15187,7 @@ export type ChatResult = {
   readonly "system_fingerprint": string | null
   readonly "usage"?: ChatUsage
 }
+
 export const ChatResult = Schema.Struct({
   "alignment": Schema.optionalKey(Alignment),
   "choices": Schema.Array(ChatChoice).annotate({ "description": "List of completion choices" }),
@@ -14326,18 +15232,22 @@ export const ChatResult = Schema.Struct({
   }],
   "identifier": "ChatResult"
 })
+
 export type ChatStreamReasoningDetails = globalThis.ReadonlyArray<ReasoningDetailUnion>
+
 export const ChatStreamReasoningDetails = Schema.Array(ReasoningDetailUnion).annotate({
   "description": "Reasoning details for extended thinking models",
   "examples": [[{ "text": "Let me think about this...", "type": "reasoning.text" }]],
   "identifier": "ChatStreamReasoningDetails"
 })
+
 export type ChatStreamToolCall = {
   readonly "function"?: { readonly "arguments"?: string; readonly "name"?: string | null }
   readonly "id"?: string | null
   readonly "index"?: number
   readonly "type"?: "function" | null
 }
+
 export const ChatStreamToolCall = Schema.Struct({
   "function": Schema.optionalKey(
     Schema.Struct({
@@ -14367,6 +15277,7 @@ export const ChatStreamToolCall = Schema.Struct({
   }],
   "identifier": "ChatStreamToolCall"
 })
+
 export type ChatStreamDelta = {
   readonly "audio"?: ChatAudioOutput
   readonly "content"?: string | null
@@ -14403,6 +15314,7 @@ export type ChatStreamDelta = {
     >
     | null
 }
+
 export const ChatStreamDelta = Schema.Struct({
   "audio": Schema.optionalKey(
     Schema.suspend((): Schema.Codec<ChatAudioOutput> => ChatAudioOutput).annotate({
@@ -14471,12 +15383,14 @@ export const ChatStreamDelta = Schema.Struct({
   "examples": [{ "content": "Hello", "role": "assistant" }],
   "identifier": "ChatStreamDelta"
 })
+
 export type ChatStreamChoice = {
   readonly "delta": ChatStreamDelta
   readonly "finish_reason"?: ChatFinishReasonEnum
   readonly "index": number
   readonly "logprobs"?: ChatTokenLogprobs
 }
+
 export const ChatStreamChoice = Schema.Struct({
   "delta": ChatStreamDelta,
   "finish_reason": Schema.optionalKey(ChatFinishReasonEnum),
@@ -14489,6 +15403,7 @@ export const ChatStreamChoice = Schema.Struct({
   "examples": [{ "delta": { "content": "Hello", "role": "assistant" }, "finish_reason": null, "index": 0 }],
   "identifier": "ChatStreamChoice"
 })
+
 export type ChatStreamChunk = {
   readonly "alignment"?: Alignment
   readonly "choices": globalThis.ReadonlyArray<ChatStreamChoice>
@@ -14507,6 +15422,7 @@ export type ChatStreamChunk = {
   readonly "system_fingerprint"?: string
   readonly "usage"?: ChatUsage
 }
+
 export const ChatStreamChunk = Schema.Struct({
   "alignment": Schema.optionalKey(
     Schema.suspend((): Schema.Codec<Alignment> => Alignment).annotate({
@@ -14571,7 +15487,9 @@ export const ChatStreamChunk = Schema.Struct({
   }],
   "identifier": "ChatStreamChunk"
 })
+
 export type ChatStreamingResponse = { readonly "data": ChatStreamChunk }
+
 export const ChatStreamingResponse = Schema.Struct({ "data": ChatStreamChunk }).annotate({
   "examples": [{
     "data": {
@@ -14584,11 +15502,13 @@ export const ChatStreamingResponse = Schema.Struct({ "data": ChatStreamChunk }).
   }],
   "identifier": "ChatStreamingResponse"
 })
+
 export type UnprocessableEntityResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const UnprocessableEntityResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -14600,11 +15520,13 @@ export const UnprocessableEntityResponseErrorData = Schema.Struct({
   "examples": [{ "code": 422, "message": "Invalid argument" }],
   "identifier": "UnprocessableEntityResponseErrorData"
 })
+
 export type UnprocessableEntityResponse = {
   readonly "error": UnprocessableEntityResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const UnprocessableEntityResponse = Schema.Struct({
   "error": UnprocessableEntityResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -14616,11 +15538,13 @@ export const UnprocessableEntityResponse = Schema.Struct({
   "examples": [{ "error": { "code": 422, "message": "Invalid argument" } }],
   "identifier": "UnprocessableEntityResponse"
 })
+
 export type TaskClassificationModel = {
   readonly "id": string
   readonly "tag_token_share": number
   readonly "tag_usage_share": number
 }
+
 export const TaskClassificationModel = Schema.Struct({
   "id": Schema.String.annotate({ "description": "Model identifier (permaslug).", "examples": ["openai/gpt-4.1-mini"] }),
   "tag_token_share": Schema.Number.annotate({
@@ -14639,6 +15563,7 @@ export const TaskClassificationModel = Schema.Struct({
   "examples": [{ "id": "openai/gpt-4.1-mini", "tag_token_share": 0.75, "tag_usage_share": 0.55 }],
   "identifier": "TaskClassificationModel"
 })
+
 export type TaskClassificationItem = {
   readonly "category_token_share": number
   readonly "category_usage_share": number
@@ -14649,6 +15574,7 @@ export type TaskClassificationItem = {
   readonly "token_share": number
   readonly "usage_share": number
 }
+
 export const TaskClassificationItem = Schema.Struct({
   "category_token_share": Schema.Number.annotate({
     "description":
@@ -14707,12 +15633,14 @@ export const TaskClassificationItem = Schema.Struct({
   }],
   "identifier": "TaskClassificationItem"
 })
+
 export type TaskClassificationMacroCategory = {
   readonly "key": string
   readonly "label": string
   readonly "token_share": number
   readonly "usage_share": number
 }
+
 export const TaskClassificationMacroCategory = Schema.Struct({
   "key": Schema.String.annotate({ "description": "Macro-category identifier.", "examples": ["code"] }),
   "label": Schema.String.annotate({
@@ -14733,6 +15661,7 @@ export const TaskClassificationMacroCategory = Schema.Struct({
   "examples": [{ "key": "code", "label": "Code", "token_share": 0.52, "usage_share": 0.45 }],
   "identifier": "TaskClassificationMacroCategory"
 })
+
 export type TaskClassificationResponse = {
   readonly "data": {
     readonly "as_of": string
@@ -14741,6 +15670,7 @@ export type TaskClassificationResponse = {
     readonly "window_days": number
   }
 }
+
 export const TaskClassificationResponse = Schema.Struct({
   "data": Schema.Struct({
     "as_of": Schema.String.annotate({
@@ -14779,6 +15709,7 @@ export const TaskClassificationResponse = Schema.Struct({
   }],
   "identifier": "TaskClassificationResponse"
 })
+
 export type ContainerFile = {
   readonly "bytes": number
   readonly "container_id": string
@@ -14788,6 +15719,7 @@ export type ContainerFile = {
   readonly "path": string
   readonly "source": "assistant"
 }
+
 export const ContainerFile = Schema.Struct({
   "bytes": Schema.Number.annotate({ "description": "File size in bytes.", "examples": [123] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
@@ -14811,6 +15743,7 @@ export const ContainerFile = Schema.Struct({
     "examples": ["assistant"]
   })
 }).annotate({ "identifier": "ContainerFile" })
+
 export type ContainerFileListResponse = {
   readonly "data": globalThis.ReadonlyArray<ContainerFile>
   readonly "first_id": string | null
@@ -14818,6 +15751,7 @@ export type ContainerFileListResponse = {
   readonly "last_id": string | null
   readonly "object": "list"
 }
+
 export const ContainerFileListResponse = Schema.Struct({
   "data": Schema.Array(ContainerFile),
   "first_id": Schema.Union([Schema.String, Schema.Null]).annotate({ "examples": ["cfile_b3V0L3JlcG9ydC5jc3Y"] }),
@@ -14833,6 +15767,7 @@ export const ContainerFileListResponse = Schema.Struct({
   }),
   "object": Schema.Literal("list").annotate({ "examples": ["list"] })
 }).annotate({ "identifier": "ContainerFileListResponse" })
+
 export type OpenRouterFile = {
   readonly "_shape": "openrouter"
   readonly "created_at": string
@@ -14843,6 +15778,7 @@ export type OpenRouterFile = {
   readonly "size_bytes": number
   readonly "type": "file"
 }
+
 export const OpenRouterFile = Schema.Struct({
   "_shape": Schema.Literal("openrouter"),
   "created_at": Schema.String,
@@ -14866,6 +15802,7 @@ export const OpenRouterFile = Schema.Struct({
   }],
   "identifier": "OpenRouterFile"
 })
+
 export type OpenAIFile = {
   readonly "_shape": "openai"
   readonly "bytes": number
@@ -14885,6 +15822,7 @@ export type OpenAIFile = {
     | "fine-tune-results"
   readonly "status": "processed"
 }
+
 export const OpenAIFile = Schema.Struct({
   "_shape": Schema.Literal("openai"),
   "bytes": Schema.Int,
@@ -14918,6 +15856,7 @@ export const OpenAIFile = Schema.Struct({
   }],
   "identifier": "OpenAIFile"
 })
+
 export type AnthropicFile = {
   readonly "_shape": "anthropic"
   readonly "created_at": string
@@ -14928,6 +15867,7 @@ export type AnthropicFile = {
   readonly "size_bytes": number
   readonly "type": "file"
 }
+
 export const AnthropicFile = Schema.Struct({
   "_shape": Schema.Literal("anthropic"),
   "created_at": Schema.String,
@@ -14951,7 +15891,9 @@ export const AnthropicFile = Schema.Struct({
   }],
   "identifier": "AnthropicFile"
 })
+
 export type FileResponse = OpenRouterFile | OpenAIFile | AnthropicFile
+
 export const FileResponse = Schema.Union([OpenRouterFile, OpenAIFile, AnthropicFile], { mode: "oneOf" }).annotate({
   "description": "A stored file. The shape is negotiated per request — see the endpoint description.",
   "examples": [{
@@ -14966,11 +15908,13 @@ export const FileResponse = Schema.Union([OpenRouterFile, OpenAIFile, AnthropicF
   }],
   "identifier": "FileResponse"
 })
+
 export type ClientClosedRequestResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const ClientClosedRequestResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -14982,11 +15926,13 @@ export const ClientClosedRequestResponseErrorData = Schema.Struct({
   "examples": [{ "code": 499, "message": "The request was cancelled." }],
   "identifier": "ClientClosedRequestResponseErrorData"
 })
+
 export type ClientClosedRequestResponse = {
   readonly "error": ClientClosedRequestResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const ClientClosedRequestResponse = Schema.Struct({
   "error": ClientClosedRequestResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -14998,11 +15944,13 @@ export const ClientClosedRequestResponse = Schema.Struct({
   "examples": [{ "error": { "code": 499, "message": "The request was cancelled." } }],
   "identifier": "ClientClosedRequestResponse"
 })
+
 export type GoneResponseErrorData = {
   readonly "code": number
   readonly "message": string
   readonly "metadata"?: { readonly [x: string]: Schema.Json } | null
 }
+
 export const GoneResponseErrorData = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -15018,11 +15966,13 @@ export const GoneResponseErrorData = Schema.Struct({
   }],
   "identifier": "GoneResponseErrorData"
 })
+
 export type GoneResponse = {
   readonly "error": GoneResponseErrorData
   readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json } | null
   readonly "user_id"?: string | null
 }
+
 export const GoneResponse = Schema.Struct({
   "error": GoneResponseErrorData,
   "openrouter_metadata": Schema.optionalKey(
@@ -15040,7 +15990,9 @@ export const GoneResponse = Schema.Struct({
   }],
   "identifier": "GoneResponse"
 })
+
 export type CreateCreditPurchaseRequest = { readonly "credit_amount_usd": string }
+
 export const CreateCreditPurchaseRequest = Schema.Struct({
   "credit_amount_usd": Schema.String.annotate({
     "description":
@@ -15048,6 +16000,7 @@ export const CreateCreditPurchaseRequest = Schema.Struct({
     "examples": ["25.00"]
   })
 }).annotate({ "identifier": "CreateCreditPurchaseRequest" })
+
 export type CreditPurchase = {
   readonly "created_at": string
   readonly "credit_amount_usd": string
@@ -15059,6 +16012,7 @@ export type CreditPurchase = {
   readonly "status": "awaiting_payment" | "processing" | "credited" | "failed"
   readonly "total_charged_usd": string
 }
+
 export const CreditPurchase = Schema.Struct({
   "created_at": Schema.String,
   "credit_amount_usd": Schema.String,
@@ -15072,10 +16026,13 @@ export const CreditPurchase = Schema.Struct({
   "status": Schema.Literals(["awaiting_payment", "processing", "credited", "failed"]),
   "total_charged_usd": Schema.String
 }).annotate({ "identifier": "CreditPurchase" })
+
 export type CreditPurchaseResponse = { readonly "data": CreditPurchase }
+
 export const CreditPurchaseResponse = Schema.Struct({ "data": CreditPurchase }).annotate({
   "identifier": "CreditPurchaseResponse"
 })
+
 export type AppRankingsItem = {
   readonly "app_id": number
   readonly "app_name": string
@@ -15083,6 +16040,7 @@ export type AppRankingsItem = {
   readonly "total_requests": number
   readonly "total_tokens": string
 }
+
 export const AppRankingsItem = Schema.Struct({
   "app_id": Schema.Number.annotate({
     "description": "Stable numeric identifier of the app on OpenRouter.",
@@ -15106,12 +16064,14 @@ export const AppRankingsItem = Schema.Struct({
   "examples": [{ "app_id": 12345, "app_name": "Cline", "rank": 1, "total_requests": 4321, "total_tokens": "12345678" }],
   "identifier": "AppRankingsItem"
 })
+
 export type RankingsDailyMeta = {
   readonly "as_of": string
   readonly "end_date": string
   readonly "start_date": string
   readonly "version": "v1"
 }
+
 export const RankingsDailyMeta = Schema.Struct({
   "as_of": Schema.String.annotate({
     "description":
@@ -15138,10 +16098,12 @@ export const RankingsDailyMeta = Schema.Struct({
   }],
   "identifier": "RankingsDailyMeta"
 })
+
 export type AppRankingsResponse = {
   readonly "data": globalThis.ReadonlyArray<AppRankingsItem>
   readonly "meta": RankingsDailyMeta
 }
+
 export const AppRankingsResponse = Schema.Struct({
   "data": Schema.Array(AppRankingsItem).annotate({
     "description":
@@ -15166,11 +16128,13 @@ export const AppRankingsResponse = Schema.Struct({
   }],
   "identifier": "AppRankingsResponse"
 })
+
 export type RankingsDailyItem = {
   readonly "date": string
   readonly "model_permaslug": string
   readonly "total_tokens": string
 }
+
 export const RankingsDailyItem = Schema.Struct({
   "date": Schema.String.annotate({
     "description": "UTC calendar date the row is aggregated over (YYYY-MM-DD).",
@@ -15190,10 +16154,12 @@ export const RankingsDailyItem = Schema.Struct({
   "examples": [{ "date": "2026-05-11", "model_permaslug": "openai/gpt-4o-2024-05-13", "total_tokens": "12345678" }],
   "identifier": "RankingsDailyItem"
 })
+
 export type RankingsDailyResponse = {
   readonly "data": globalThis.ReadonlyArray<RankingsDailyItem>
   readonly "meta": RankingsDailyMeta
 }
+
 export const RankingsDailyResponse = Schema.Struct({
   "data": Schema.Array(RankingsDailyItem).annotate({
     "description":
@@ -15216,6 +16182,7 @@ export const RankingsDailyResponse = Schema.Struct({
   }],
   "identifier": "RankingsDailyResponse"
 })
+
 export type SessionCostItem = {
   readonly "app_name": string
   readonly "app_slug": string
@@ -15223,6 +16190,7 @@ export type SessionCostItem = {
   readonly "model_permaslug": string
   readonly "turn_range": "1-turn" | "2-9-turns" | "10-49-turns" | "50-plus-turns"
 }
+
 export const SessionCostItem = Schema.Struct({
   "app_name": Schema.String.annotate({
     "description": "Published harness display label.",
@@ -15246,12 +16214,14 @@ export const SessionCostItem = Schema.Struct({
     "examples": ["10-49-turns"]
   })
 }).annotate({ "identifier": "SessionCostItem" })
+
 export type SessionCostMeta = {
   readonly "as_of": string
   readonly "version": "v1"
   readonly "window_days": number | null
   readonly "window_end_date": string | null
 }
+
 export const SessionCostMeta = Schema.Struct({
   "as_of": Schema.String.annotate({
     "description": "ISO-8601 timestamp when the response was generated.",
@@ -15267,19 +16237,25 @@ export const SessionCostMeta = Schema.Struct({
     "examples": ["2026-05-11"]
   })
 }).annotate({ "identifier": "SessionCostMeta" })
+
 export type SessionCostResponse = {
   readonly "data": globalThis.ReadonlyArray<SessionCostItem>
   readonly "meta": SessionCostMeta
 }
+
 export const SessionCostResponse = Schema.Struct({ "data": Schema.Array(SessionCostItem), "meta": SessionCostMeta })
   .annotate({ "identifier": "SessionCostResponse" })
+
 export type MultimodalMedia = { readonly "data": string; readonly "format"?: string }
+
 export const MultimodalMedia = Schema.Struct({ "data": Schema.String, "format": Schema.optionalKey(Schema.String) })
   .annotate({
     "examples": [{ "data": "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAA...", "format": "wav" }],
     "identifier": "MultimodalMedia"
   })
+
 export type ContentPartInputAudio = { readonly "input_audio": MultimodalMedia; readonly "type": "input_audio" }
+
 export const ContentPartInputAudio = Schema.Struct({
   "input_audio": MultimodalMedia,
   "type": Schema.Literal("input_audio")
@@ -15290,7 +16266,9 @@ export const ContentPartInputAudio = Schema.Struct({
   }],
   "identifier": "ContentPartInputAudio"
 })
+
 export type ContentPartInputVideo = { readonly "input_video": MultimodalMedia; readonly "type": "input_video" }
+
 export const ContentPartInputVideo = Schema.Struct({
   "input_video": MultimodalMedia,
   "type": Schema.Literal("input_video")
@@ -15301,7 +16279,9 @@ export const ContentPartInputVideo = Schema.Struct({
   }],
   "identifier": "ContentPartInputVideo"
 })
+
 export type ContentPartInputFile = { readonly "input_file": MultimodalMedia; readonly "type": "input_file" }
+
 export const ContentPartInputFile = Schema.Struct({
   "input_file": MultimodalMedia,
   "type": Schema.Literal("input_file")
@@ -15312,7 +16292,9 @@ export const ContentPartInputFile = Schema.Struct({
   }],
   "identifier": "ContentPartInputFile"
 })
+
 export type ModelAliasTarget = { readonly "name": string; readonly "slug": string }
+
 export const ModelAliasTarget = Schema.Struct({
   "name": Schema.String.annotate({ "description": "Human-readable name of the concrete model targeted by this alias" }),
   "slug": Schema.String.annotate({
@@ -15323,11 +16305,14 @@ export const ModelAliasTarget = Schema.Struct({
   "examples": [{ "name": "Claude Sonnet 4.5", "slug": "anthropic/claude-sonnet-4.5" }],
   "identifier": "ModelAliasTarget"
 })
+
 export type InputModality = "text" | "image" | "file" | "audio" | "video"
+
 export const InputModality = Schema.Literals(["text", "image", "file", "audio", "video"]).annotate({
   "examples": ["text"],
   "identifier": "InputModality"
 })
+
 export type InstructType =
   | "none"
   | "airoboros"
@@ -15352,6 +16337,7 @@ export type InstructType =
   | "qwq"
   | "qwen3"
   | null
+
 export const InstructType = Schema.Union([
   Schema.Literals([
     "none",
@@ -15379,6 +16365,7 @@ export const InstructType = Schema.Union([
   ]),
   Schema.Null
 ]).annotate({ "description": "Instruction format type", "examples": ["chatml"], "identifier": "InstructType" })
+
 export type OutputModality =
   | "text"
   | "image"
@@ -15389,6 +16376,7 @@ export type OutputModality =
   | "decisions"
   | "speech"
   | "transcription"
+
 export const OutputModality = Schema.Literals([
   "text",
   "image",
@@ -15400,6 +16388,7 @@ export const OutputModality = Schema.Literals([
   "speech",
   "transcription"
 ]).annotate({ "examples": ["text"], "identifier": "OutputModality" })
+
 export type ModelGroup =
   | "Router"
   | "Media"
@@ -15421,6 +16410,7 @@ export type ModelGroup =
   | "PaLM"
   | "RWKV"
   | "Qwen3"
+
 export const ModelGroup = Schema.Literals([
   "Router",
   "Media",
@@ -15443,6 +16433,7 @@ export const ModelGroup = Schema.Literals([
   "RWKV",
   "Qwen3"
 ]).annotate({ "description": "Tokenizer type used by the model", "examples": ["GPT"], "identifier": "ModelGroup" })
+
 export type ModelArchitecture = {
   readonly "input_modalities": globalThis.ReadonlyArray<InputModality>
   readonly "instruct_type"?: InstructType
@@ -15450,6 +16441,7 @@ export type ModelArchitecture = {
   readonly "output_modalities": globalThis.ReadonlyArray<OutputModality>
   readonly "tokenizer"?: ModelGroup
 }
+
 export const ModelArchitecture = Schema.Struct({
   "input_modalities": Schema.Array(InputModality).annotate({ "description": "Supported input modalities" }),
   "instruct_type": Schema.optionalKey(InstructType),
@@ -15470,11 +16462,13 @@ export const ModelArchitecture = Schema.Struct({
   }],
   "identifier": "ModelArchitecture"
 })
+
 export type AABenchmarkEntry = {
   readonly "agentic_index": number | null
   readonly "coding_index": number | null
   readonly "intelligence_index": number | null
 }
+
 export const AABenchmarkEntry = Schema.Struct({
   "agentic_index": Schema.Union([Schema.Finite, Schema.Null]).annotate({
     "description": "Artificial Analysis Agentic Index score",
@@ -15496,6 +16490,7 @@ export const AABenchmarkEntry = Schema.Struct({
   "examples": [{ "agentic_index": 55.8, "coding_index": 63.2, "intelligence_index": 71.4 }],
   "identifier": "AABenchmarkEntry"
 })
+
 export type DABenchmarkEntry = {
   readonly "arena": string
   readonly "category": string
@@ -15503,6 +16498,7 @@ export type DABenchmarkEntry = {
   readonly "rank": number
   readonly "win_rate": number
 }
+
 export const DABenchmarkEntry = Schema.Struct({
   "arena": Schema.String.annotate({
     "description": "Arena type (e.g. models, builders, agents)",
@@ -15531,10 +16527,12 @@ export const DABenchmarkEntry = Schema.Struct({
   "examples": [{ "arena": "models", "category": "website", "elo": 1385.2, "rank": 5, "win_rate": 62.5 }],
   "identifier": "DABenchmarkEntry"
 })
+
 export type ModelBenchmarks = {
   readonly "artificial_analysis"?: AABenchmarkEntry
   readonly "design_arena": globalThis.ReadonlyArray<DABenchmarkEntry>
 }
+
 export const ModelBenchmarks = Schema.Struct({
   "artificial_analysis": Schema.optionalKey(AABenchmarkEntry),
   "design_arena": Schema.Array(DABenchmarkEntry).annotate({
@@ -15549,6 +16547,7 @@ export const ModelBenchmarks = Schema.Struct({
   }],
   "identifier": "ModelBenchmarks"
 })
+
 export type DefaultParameters = {
   readonly "frequency_penalty"?: number | null | null
   readonly "presence_penalty"?: number | null | null
@@ -15557,6 +16556,7 @@ export type DefaultParameters = {
   readonly "top_k"?: number | null
   readonly "top_p"?: number | null | null
 } | null
+
 export const DefaultParameters = Schema.Union([
   Schema.Struct({
     "frequency_penalty": Schema.optionalKey(
@@ -15589,7 +16589,9 @@ export const DefaultParameters = Schema.Union([
   }],
   "identifier": "DefaultParameters"
 })
+
 export type ModelLinks = { readonly "details": string }
+
 export const ModelLinks = Schema.Struct({
   "details": Schema.String.annotate({
     "description": "URL for the model details/endpoints API",
@@ -15600,7 +16602,9 @@ export const ModelLinks = Schema.Struct({
   "examples": [{ "details": "/api/v1/models/openai/gpt-5.4/endpoints" }],
   "identifier": "ModelLinks"
 })
+
 export type PerRequestLimits = { readonly "completion_tokens": number; readonly "prompt_tokens": number } | null
+
 export const PerRequestLimits = Schema.Union([
   Schema.Struct({
     "completion_tokens": Schema.Number.annotate({
@@ -15616,6 +16620,7 @@ export const PerRequestLimits = Schema.Union([
   "examples": [{ "completion_tokens": 1000, "prompt_tokens": 1000 }],
   "identifier": "PerRequestLimits"
 })
+
 export type PricingOverride = {
   readonly "audio"?: string
   readonly "completion"?: string
@@ -15631,6 +16636,7 @@ export type PricingOverride = {
   readonly "utc_end"?: number
   readonly "utc_start"?: number
 }
+
 export const PricingOverride = Schema.Struct({
   "audio": Schema.optionalKey(
     Schema.String.annotate({ "description": "Overridden price in USD per audio input token" })
@@ -15686,6 +16692,7 @@ export const PricingOverride = Schema.Struct({
   "examples": [{ "completion": "0.00002", "min_prompt_tokens": 200000, "prompt": "0.000005" }],
   "identifier": "PricingOverride"
 })
+
 export type PublicPricing = {
   readonly "audio"?: string
   readonly "audio_output"?: string
@@ -15704,6 +16711,7 @@ export type PublicPricing = {
   readonly "request"?: string
   readonly "web_search"?: string
 }
+
 export const PublicPricing = Schema.Struct({
   "audio": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per audio input token" })),
   "audio_output": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per audio output token" })),
@@ -15753,6 +16761,7 @@ export const PublicPricing = Schema.Struct({
   "examples": [{ "completion": "0.00006", "image": "0", "prompt": "0.00003", "request": "0" }],
   "identifier": "PublicPricing"
 })
+
 export type ModelReasoning = {
   readonly "default_effort"?: ReasoningEffort
   readonly "default_enabled"?: boolean
@@ -15760,6 +16769,7 @@ export type ModelReasoning = {
   readonly "supported_efforts"?: globalThis.ReadonlyArray<ReasoningEffort> | null
   readonly "supports_max_tokens"?: boolean
 }
+
 export const ModelReasoning = Schema.Struct({
   "default_effort": Schema.optionalKey(
     Schema.suspend((): Schema.Codec<ReasoningEffort> => ReasoningEffort).annotate({
@@ -15797,6 +16807,7 @@ export const ModelReasoning = Schema.Struct({
   }],
   "identifier": "ModelReasoning"
 })
+
 export type Parameter =
   | "temperature"
   | "top_p"
@@ -15824,6 +16835,7 @@ export type Parameter =
   | "reasoning_effort"
   | "web_search_options"
   | "verbosity"
+
 export const Parameter = Schema.Literals([
   "temperature",
   "top_p",
@@ -15852,11 +16864,13 @@ export const Parameter = Schema.Literals([
   "web_search_options",
   "verbosity"
 ]).annotate({ "examples": ["temperature"], "identifier": "Parameter" })
+
 export type TopProviderInfo = {
   readonly "context_length"?: number | null
   readonly "is_moderated": boolean
   readonly "max_completion_tokens"?: number | null
 }
+
 export const TopProviderInfo = Schema.Struct({
   "context_length": Schema.optionalKey(
     Schema.Union([Schema.Int, Schema.Null]).annotate({
@@ -15880,6 +16894,7 @@ export const TopProviderInfo = Schema.Struct({
   "examples": [{ "context_length": 8192, "is_moderated": true, "max_completion_tokens": 4096 }],
   "identifier": "TopProviderInfo"
 })
+
 export type Model = {
   readonly "alias_target"?: ModelAliasTarget
   readonly "architecture": ModelArchitecture
@@ -15903,6 +16918,7 @@ export type Model = {
   readonly "supported_voices": globalThis.ReadonlyArray<string> | null
   readonly "top_provider": TopProviderInfo
 }
+
 export const Model = Schema.Struct({
   "alias_target": Schema.optionalKey(ModelAliasTarget),
   "architecture": ModelArchitecture,
@@ -15966,16 +16982,20 @@ export const Model = Schema.Struct({
   }),
   "top_provider": TopProviderInfo
 }).annotate({ "description": "Information about an AI model available on OpenRouter", "identifier": "Model" })
+
 export type ModelsListResponseData = globalThis.ReadonlyArray<Model>
+
 export const ModelsListResponseData = Schema.Array(Model).annotate({
   "description": "List of available models",
   "identifier": "ModelsListResponseData"
 })
+
 export type ModelsListResponse = {
   readonly "data": ModelsListResponseData
   readonly "links": { readonly "next": string | null }
   readonly "total_count": number
 }
+
 export const ModelsListResponse = Schema.Struct({
   "data": ModelsListResponseData,
   "links": Schema.Struct({
@@ -15989,12 +17009,14 @@ export const ModelsListResponse = Schema.Struct({
     "examples": [150]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "description": "List of available models", "identifier": "ModelsListResponse" })
+
 export type PercentileStats = {
   readonly "p50": number
   readonly "p75": number
   readonly "p90": number
   readonly "p99": number
 } | null
+
 export const PercentileStats = Schema.Union([
   Schema.Struct({
     "p50": Schema.Number.annotate({ "description": "Median (50th percentile)", "examples": [25.5], "format": "double" })
@@ -16016,18 +17038,22 @@ export const PercentileStats = Schema.Union([
   "examples": [{ "p50": 25.5, "p75": 35.2, "p90": 48.7, "p99": 85.3 }],
   "identifier": "PercentileStats"
 })
+
 export type NativeTools = { readonly "type": string }
+
 export const NativeTools = Schema.Struct({
   "type": Schema.String.annotate({
     "description":
       "The provider tool type the request is translated to when this tool runs natively, e.g. `web_search_20260209` on Anthropic or `google_search` on Gemini."
   })
 }).annotate({ "identifier": "NativeTools" })
+
 export type Decisions = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const Decisions = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16041,11 +17067,13 @@ export const Decisions = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "Decisions" })
+
 export type Embeddings = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const Embeddings = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16059,11 +17087,13 @@ export const Embeddings = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "Embeddings" })
+
 export type Extractions = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const Extractions = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16077,11 +17107,13 @@ export const Extractions = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "Extractions" })
+
 export type ImageGeneration = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const ImageGeneration = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16095,11 +17127,13 @@ export const ImageGeneration = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "ImageGeneration" })
+
 export type Rerank = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const Rerank = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16113,11 +17147,13 @@ export const Rerank = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "Rerank" })
+
 export type STT = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const STT = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16131,11 +17167,13 @@ export const STT = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "STT" })
+
 export type TextGeneration = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const TextGeneration = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16149,11 +17187,13 @@ export const TextGeneration = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "TextGeneration" })
+
 export type TTS = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const TTS = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16167,11 +17207,13 @@ export const TTS = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "TTS" })
+
 export type Unknown = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const Unknown = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16185,11 +17227,13 @@ export const Unknown = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "Unknown" })
+
 export type VideoGeneration = {
   readonly "latency": PercentileStats
   readonly "request_count": number | null
   readonly "throughput": PercentileStats
 }
+
 export const VideoGeneration = Schema.Struct({
   "latency": Schema.suspend((): Schema.Codec<PercentileStats> => PercentileStats).annotate({
     "description":
@@ -16203,6 +17247,7 @@ export const VideoGeneration = Schema.Struct({
       "Throughput percentiles in tokens per second; pN is the speed that N% of requests reached or exceeded, so p90 is lower than p50. Only meaningful for text generation; null for workloads without token throughput."
   })
 }).annotate({ "identifier": "VideoGeneration" })
+
 export type PerfLast30mByWorkload = {
   readonly "decisions"?: Decisions
   readonly "embeddings"?: Embeddings
@@ -16215,6 +17260,7 @@ export type PerfLast30mByWorkload = {
   readonly "unknown"?: Unknown
   readonly "video_generation"?: VideoGeneration
 }
+
 export const PerfLast30mByWorkload = Schema.Struct({
   "decisions": Schema.optionalKey(Decisions),
   "embeddings": Schema.optionalKey(Embeddings),
@@ -16231,6 +17277,7 @@ export const PerfLast30mByWorkload = Schema.Struct({
     "Endpoint performance over the last 30 minutes, keyed by the kind of request served (e.g. `text_generation`, `image_generation`). Additive to the legacy singular latency and throughput fields; image and video generation report end-to-end latency. Only visible when authenticated with an API key or cookie.",
   "identifier": "PerfLast30mByWorkload"
 })
+
 export type Pricing = {
   readonly "audio"?: string
   readonly "audio_output"?: string
@@ -16249,6 +17296,7 @@ export type Pricing = {
   readonly "request"?: string
   readonly "web_search"?: string
 }
+
 export const Pricing = Schema.Struct({
   "audio": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per audio input token" })),
   "audio_output": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per audio output token" })),
@@ -16294,7 +17342,9 @@ export const Pricing = Schema.Struct({
   "request": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per request" })),
   "web_search": Schema.optionalKey(Schema.String.annotate({ "description": "Price in USD per web search" }))
 }).annotate({ "identifier": "Pricing" })
+
 export type PublicServiceTier = "flex" | "priority" | "ultrafast" | null
+
 export const PublicServiceTier = Schema.Union([Schema.Literals(["flex", "priority", "ultrafast"]), Schema.Null])
   .annotate({
     "description":
@@ -16302,17 +17352,21 @@ export const PublicServiceTier = Schema.Union([Schema.Literals(["flex", "priorit
     "examples": ["priority"],
     "identifier": "PublicServiceTier"
   })
+
 export type EndpointStatus = 0 | -1 | -2 | -3 | -5 | -10
+
 export const EndpointStatus = Schema.Literals([0, -1, -2, -3, -5, -10]).annotate({
   "examples": [0],
   "identifier": "EndpointStatus"
 })
+
 export type ToolChoiceSupport = {
   readonly "auto": boolean
   readonly "function": boolean
   readonly "none": boolean
   readonly "required": boolean
 }
+
 export const ToolChoiceSupport = Schema.Struct({
   "auto": Schema.Boolean.annotate({ "description": "Whether the endpoint supports `\"tool_choice\": \"auto\"`." }),
   "function": Schema.Boolean.annotate({
@@ -16328,6 +17382,7 @@ export const ToolChoiceSupport = Schema.Struct({
   "examples": [{ "auto": true, "function": true, "none": true, "required": true }],
   "identifier": "ToolChoiceSupport"
 })
+
 export type PublicZdrEndpoint = {
   readonly "context_length": number
   readonly "latency_last_30m": PercentileStats
@@ -16357,6 +17412,7 @@ export type PublicZdrEndpoint = {
   readonly "uptime_last_5m": number | null
   readonly "safety_retention": boolean
 }
+
 export const PublicZdrEndpoint = Schema.Struct({
   "context_length": Schema.Int,
   "latency_last_30m": PercentileStats,
@@ -16460,12 +17516,14 @@ export const PublicZdrEndpoint = Schema.Struct({
   }],
   "identifier": "PublicZdrEndpoint"
 })
+
 export type ExternalUser = {
   readonly "created_at": string
   readonly "is_active": boolean
   readonly "updated_at": string
   readonly "user": string
 }
+
 export const ExternalUser = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "Registration creation time.",
@@ -16501,10 +17559,12 @@ export const ExternalUser = Schema.Struct({
   }],
   "identifier": "ExternalUser"
 })
+
 export type ListExternalUsersResponse = {
   readonly "data": globalThis.ReadonlyArray<ExternalUser>
   readonly "total_count": number
 }
+
 export const ListExternalUsersResponse = Schema.Struct({
   "data": Schema.Array(ExternalUser),
   "total_count": Schema.Number.annotate({
@@ -16523,7 +17583,9 @@ export const ListExternalUsersResponse = Schema.Struct({
   }],
   "identifier": "ListExternalUsersResponse"
 })
+
 export type CreateExternalUserRequest = { readonly "user": string }
+
 export const CreateExternalUserRequest = Schema.Struct({
   "user": Schema.String.annotate({
     "description":
@@ -16537,7 +17599,9 @@ export const CreateExternalUserRequest = Schema.Struct({
     })
   )
 }).annotate({ "examples": [{ "user": "employee_123" }], "identifier": "CreateExternalUserRequest" })
+
 export type ExternalUserResponse = { readonly "data": ExternalUser }
+
 export const ExternalUserResponse = Schema.Struct({ "data": ExternalUser }).annotate({
   "examples": [{
     "data": {
@@ -16549,20 +17613,25 @@ export const ExternalUserResponse = Schema.Struct({ "data": ExternalUser }).anno
   }],
   "identifier": "ExternalUserResponse"
 })
+
 export type UpdateExternalUserRequest = { readonly "is_active": boolean }
+
 export const UpdateExternalUserRequest = Schema.Struct({
   "is_active": Schema.Boolean.annotate({
     "description": "Registration state only; does not enforce inference access.",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "is_active": true }], "identifier": "UpdateExternalUserRequest" })
+
 export type FileProvider = "openai" | "anthropic"
+
 export const FileProvider = Schema.Literals(["openai", "anthropic"]).annotate({
   "description":
     "Store or read this file on the named provider using your own API key for it. Omit to use OpenRouter storage.",
   "examples": ["openai"],
   "identifier": "FileProvider"
 })
+
 export type OpenRouterFileList = {
   readonly "_shape": "openrouter"
   readonly "cursor": string | null
@@ -16571,6 +17640,7 @@ export type OpenRouterFileList = {
   readonly "has_more": boolean
   readonly "last_id": string | null
 }
+
 export const OpenRouterFileList = Schema.Struct({
   "_shape": Schema.Literal("openrouter"),
   "cursor": Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -16592,6 +17662,7 @@ export const OpenRouterFileList = Schema.Struct({
   }],
   "identifier": "OpenRouterFileList"
 })
+
 export type OpenAIFileList = {
   readonly "_shape": "openai"
   readonly "data": globalThis.ReadonlyArray<OpenAIFile>
@@ -16600,6 +17671,7 @@ export type OpenAIFileList = {
   readonly "last_id": string | null
   readonly "object": "list"
 }
+
 export const OpenAIFileList = Schema.Struct({
   "_shape": Schema.Literal("openai"),
   "data": Schema.Array(OpenAIFile),
@@ -16619,6 +17691,7 @@ export const OpenAIFileList = Schema.Struct({
   }],
   "identifier": "OpenAIFileList"
 })
+
 export type AnthropicFileList = {
   readonly "_shape": "anthropic"
   readonly "data": globalThis.ReadonlyArray<AnthropicFile>
@@ -16626,6 +17699,7 @@ export type AnthropicFileList = {
   readonly "has_more": boolean
   readonly "last_id": string | null
 }
+
 export const AnthropicFileList = Schema.Struct({
   "_shape": Schema.Literal("anthropic"),
   "data": Schema.Array(AnthropicFile),
@@ -16637,7 +17711,9 @@ export const AnthropicFileList = Schema.Struct({
   "examples": [{ "_shape": "anthropic", "data": [], "first_id": null, "has_more": false, "last_id": null }],
   "identifier": "AnthropicFileList"
 })
+
 export type FileListResponse = OpenRouterFileList | OpenAIFileList | AnthropicFileList
+
 export const FileListResponse = Schema.Union([OpenRouterFileList, OpenAIFileList, AnthropicFileList], { mode: "oneOf" })
   .annotate({
     "description": "A page of files, in the negotiated shape.",
@@ -16651,13 +17727,17 @@ export const FileListResponse = Schema.Union([OpenRouterFileList, OpenAIFileList
     }],
     "identifier": "FileListResponse"
   })
+
 export type __ClientMultipartFile = globalThis.File | globalThis.Blob
+
 export const __ClientMultipartFile = Schema.instanceOf(globalThis.Blob, { expected: "File | Blob" })
+
 export type OpenRouterFileDeleted = {
   readonly "_shape": "openrouter"
   readonly "id": string
   readonly "type": "file_deleted"
 }
+
 export const OpenRouterFileDeleted = Schema.Struct({
   "_shape": Schema.Literal("openrouter"),
   "id": Schema.String,
@@ -16667,12 +17747,14 @@ export const OpenRouterFileDeleted = Schema.Struct({
   "examples": [{ "_shape": "openrouter", "id": "or_file_011CNha8iCJcU1wXNR6q4V8w", "type": "file_deleted" }],
   "identifier": "OpenRouterFileDeleted"
 })
+
 export type OpenAIFileDeleted = {
   readonly "_shape": "openai"
   readonly "deleted": true
   readonly "id": string
   readonly "object": "file"
 }
+
 export const OpenAIFileDeleted = Schema.Struct({
   "_shape": Schema.Literal("openai"),
   "deleted": Schema.Literal(true),
@@ -16683,11 +17765,13 @@ export const OpenAIFileDeleted = Schema.Struct({
   "examples": [{ "_shape": "openai", "deleted": true, "id": "or_file_011CNha8iCJcU1wXNR6q4V8w", "object": "file" }],
   "identifier": "OpenAIFileDeleted"
 })
+
 export type AnthropicFileDeleted = {
   readonly "_shape": "anthropic"
   readonly "id": string
   readonly "type": "file_deleted"
 }
+
 export const AnthropicFileDeleted = Schema.Struct({
   "_shape": Schema.Literal("anthropic"),
   "id": Schema.String,
@@ -16697,7 +17781,9 @@ export const AnthropicFileDeleted = Schema.Struct({
   "examples": [{ "_shape": "anthropic", "id": "or_file_011CNha8iCJcU1wXNR6q4V8w", "type": "file_deleted" }],
   "identifier": "AnthropicFileDeleted"
 })
+
 export type FileDeleteResponse = OpenRouterFileDeleted | OpenAIFileDeleted | AnthropicFileDeleted
+
 export const FileDeleteResponse = Schema.Union([OpenRouterFileDeleted, OpenAIFileDeleted, AnthropicFileDeleted], {
   mode: "oneOf"
 }).annotate({
@@ -16705,6 +17791,7 @@ export const FileDeleteResponse = Schema.Union([OpenRouterFileDeleted, OpenAIFil
   "examples": [{ "_shape": "openrouter", "id": "or_file_011CNha8iCJcU1wXNR6q4V8w", "type": "file_deleted" }],
   "identifier": "FileDeleteResponse"
 })
+
 export type ProviderResponse = {
   readonly "endpoint_id"?: string
   readonly "id"?: string
@@ -16866,6 +17953,7 @@ export type ProviderResponse = {
   readonly "routed_service_tier"?: "flex" | "priority" | "ultrafast"
   readonly "status": number | null
 }
+
 export const ProviderResponse = Schema.Struct({
   "endpoint_id": Schema.optionalKey(
     Schema.String.annotate({ "description": "Internal endpoint identifier", "examples": ["ep_abc123"] })
@@ -17065,6 +18153,7 @@ export const ProviderResponse = Schema.Struct({
   }],
   "identifier": "ProviderResponse"
 })
+
 export type GenerationResponse = {
   readonly "data": {
     readonly "api_type":
@@ -17125,6 +18214,7 @@ export type GenerationResponse = {
     readonly "workspace_id": string | null
   }
 }
+
 export const GenerationResponse = Schema.Struct({
   "data": Schema.Struct({
     "api_type": Schema.Union([
@@ -17376,12 +18466,14 @@ export const GenerationResponse = Schema.Struct({
   }],
   "identifier": "GenerationResponse"
 })
+
 export type GenerationContentErrorAttempt = {
   readonly "code": number
   readonly "message": string
   readonly "provider_name": string | null
   readonly "raw": string | null
 }
+
 export const GenerationContentErrorAttempt = Schema.Struct({
   "code": Schema.Number.annotate({ "description": "HTTP status returned by this attempt", "examples": [429] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
@@ -17408,6 +18500,7 @@ export const GenerationContentErrorAttempt = Schema.Struct({
   }],
   "identifier": "GenerationContentErrorAttempt"
 })
+
 export type GenerationContentError = {
   readonly "message": string | null
   readonly "previous_errors": globalThis.ReadonlyArray<GenerationContentErrorAttempt>
@@ -17415,6 +18508,7 @@ export type GenerationContentError = {
   readonly "raw": string | null
   readonly "status": number | null
 } | null
+
 export const GenerationContentError = Schema.Union([
   Schema.Struct({
     "message": Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -17454,11 +18548,13 @@ export const GenerationContentError = Schema.Union([
   }],
   "identifier": "GenerationContentError"
 })
+
 export type GenerationContentData = {
   readonly "error": GenerationContentError
   readonly "input": { readonly "prompt": string } | { readonly "messages": globalThis.ReadonlyArray<Schema.Json> }
   readonly "output": { readonly "completion": string | null; readonly "reasoning": string | null }
 }
+
 export const GenerationContentData = Schema.Struct({
   "error": GenerationContentError,
   "input": Schema.Union([
@@ -17488,7 +18584,9 @@ export const GenerationContentData = Schema.Struct({
   }],
   "identifier": "GenerationContentData"
 })
+
 export type GenerationContentResponse = { readonly "data": GenerationContentData }
+
 export const GenerationContentResponse = Schema.Struct({ "data": GenerationContentData }).annotate({
   "description": "Stored prompt and completion content for a generation",
   "examples": [{
@@ -17500,6 +18598,7 @@ export const GenerationContentResponse = Schema.Struct({ "data": GenerationConte
   }],
   "identifier": "GenerationContentResponse"
 })
+
 export type SubmitGenerationFeedbackRequest = {
   readonly "category":
     | "latency"
@@ -17512,6 +18611,7 @@ export type SubmitGenerationFeedbackRequest = {
   readonly "comment"?: string
   readonly "generation_id": string
 }
+
 export const SubmitGenerationFeedbackRequest = Schema.Struct({
   "category": Schema.Literals([
     "latency",
@@ -17541,7 +18641,9 @@ export const SubmitGenerationFeedbackRequest = Schema.Struct({
   }],
   "identifier": "SubmitGenerationFeedbackRequest"
 })
+
 export type SubmitGenerationFeedbackResponse = { readonly "data": { readonly "success": true } }
+
 export const SubmitGenerationFeedbackResponse = Schema.Struct({
   "data": Schema.Struct({
     "success": Schema.Literal(true).annotate({ "description": "Whether the feedback was recorded", "examples": [true] })
@@ -17551,26 +18653,33 @@ export const SubmitGenerationFeedbackResponse = Schema.Struct({
   "examples": [{ "data": { "success": true } }],
   "identifier": "SubmitGenerationFeedbackResponse"
 })
+
 export type GuardrailDataRegion = "global" | "europe" | "us"
+
 export const GuardrailDataRegion = Schema.Literals(["global", "europe", "us"]).annotate({
   "description":
     "An OpenRouter data region: `global` (https://openrouter.ai), `europe` (https://eu.openrouter.ai), or `us` (https://us.openrouter.ai)",
   "examples": ["europe"],
   "identifier": "GuardrailDataRegion"
 })
+
 export type ContentFilterBuiltinAction = "redact" | "block" | "flag"
+
 export const ContentFilterBuiltinAction = Schema.Literals(["redact", "block", "flag"]).annotate({
   "description": "Action taken when the builtin filter triggers",
   "examples": ["block"],
   "identifier": "ContentFilterBuiltinAction"
 })
+
 export type PromptInjectionScanScope = "user_only" | "all_messages"
+
 export const PromptInjectionScanScope = Schema.Literals(["user_only", "all_messages"]).annotate({
   "description":
     "Which message roles to scan for prompt injection. Only applies to the regex-prompt-injection builtin. Defaults to all_messages.",
   "examples": ["user_only"],
   "identifier": "PromptInjectionScanScope"
 })
+
 export type ContentFilterBuiltinSlug =
   | "email"
   | "phone"
@@ -17581,6 +18690,7 @@ export type ContentFilterBuiltinSlug =
   | "person-name"
   | "address"
   | "regex-prompt-injection"
+
 export const ContentFilterBuiltinSlug = Schema.Literals([
   "email",
   "phone",
@@ -17596,12 +18706,14 @@ export const ContentFilterBuiltinSlug = Schema.Literals([
   "examples": ["regex-prompt-injection"],
   "identifier": "ContentFilterBuiltinSlug"
 })
+
 export type ContentFilterBuiltinEntry = {
   readonly "action": ContentFilterBuiltinAction
   readonly "label"?: string
   readonly "scan_scope"?: PromptInjectionScanScope
   readonly "slug": ContentFilterBuiltinSlug
 }
+
 export const ContentFilterBuiltinEntry = Schema.Struct({
   "action": ContentFilterBuiltinAction,
   "label": Schema.optionalKey(
@@ -17619,17 +18731,21 @@ export const ContentFilterBuiltinEntry = Schema.Struct({
   "examples": [{ "action": "redact", "label": "[EMAIL]", "slug": "email" }],
   "identifier": "ContentFilterBuiltinEntry"
 })
+
 export type ContentFilterAction = "redact" | "block" | "flag"
+
 export const ContentFilterAction = Schema.Literals(["redact", "block", "flag"]).annotate({
   "description": "Action taken when the pattern matches",
   "examples": ["block"],
   "identifier": "ContentFilterAction"
 })
+
 export type ContentFilterEntry = {
   readonly "action": ContentFilterAction
   readonly "label"?: string | null
   readonly "pattern": string
 }
+
 export const ContentFilterEntry = Schema.Struct({
   "action": ContentFilterAction,
   "label": Schema.optionalKey(
@@ -17652,12 +18768,15 @@ export const ContentFilterEntry = Schema.Struct({
   "examples": [{ "action": "redact", "label": "[API_KEY]", "pattern": "\\b(sk-[a-zA-Z0-9]{48})\\b" }],
   "identifier": "ContentFilterEntry"
 })
+
 export type GuardrailInterval = "daily" | "weekly" | "monthly" | null
+
 export const GuardrailInterval = Schema.Union([Schema.Literals(["daily", "weekly", "monthly"]), Schema.Null]).annotate({
   "description": "Interval at which the limit resets (daily, weekly, monthly)",
   "examples": ["monthly"],
   "identifier": "GuardrailInterval"
 })
+
 export type Guardrail = {
   readonly "allow_safety_retention_google"?: boolean | null
   readonly "allow_safety_retention_other"?: boolean | null
@@ -17688,6 +18807,7 @@ export type Guardrail = {
   readonly "updated_at"?: string | null
   readonly "workspace_id": string | null
 }
+
 export const Guardrail = Schema.Struct({
   "allow_safety_retention_google": Schema.optionalKey(
     Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -17884,10 +19004,12 @@ export const Guardrail = Schema.Struct({
   }],
   "identifier": "Guardrail"
 })
+
 export type ListGuardrailsResponse = {
   readonly "data": globalThis.ReadonlyArray<Guardrail>
   readonly "total_count": number
 }
+
 export const ListGuardrailsResponse = Schema.Struct({
   "data": Schema.Array(Guardrail).annotate({ "description": "List of guardrails" }),
   "total_count": Schema.Number.annotate({ "description": "Total number of guardrails", "examples": [25] }).check(
@@ -17925,12 +19047,14 @@ export const ListGuardrailsResponse = Schema.Struct({
   }],
   "identifier": "ListGuardrailsResponse"
 })
+
 export type ContentFilterBuiltinEntryInput = {
   readonly "action": ContentFilterBuiltinAction
   readonly "label"?: string
   readonly "scan_scope"?: PromptInjectionScanScope
   readonly "slug": ContentFilterBuiltinSlug
 }
+
 export const ContentFilterBuiltinEntryInput = Schema.Struct({
   "action": ContentFilterBuiltinAction,
   "label": Schema.optionalKey(
@@ -17947,6 +19071,7 @@ export const ContentFilterBuiltinEntryInput = Schema.Struct({
   "examples": [{ "action": "redact", "slug": "email" }],
   "identifier": "ContentFilterBuiltinEntryInput"
 })
+
 export type CreateGuardrailRequest = {
   readonly "allow_safety_retention_google"?: boolean | null
   readonly "allow_safety_retention_other"?: boolean | null
@@ -17974,6 +19099,7 @@ export type CreateGuardrailRequest = {
   readonly "reset_interval"?: GuardrailInterval
   readonly "workspace_id"?: string
 }
+
 export const CreateGuardrailRequest = Schema.Struct({
   "allow_safety_retention_google": Schema.optionalKey(
     Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -18173,7 +19299,9 @@ export const CreateGuardrailRequest = Schema.Struct({
   }],
   "identifier": "CreateGuardrailRequest"
 })
+
 export type CreateGuardrailResponse = { readonly "data": Guardrail }
+
 export const CreateGuardrailResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Guardrail> => Guardrail).annotate({ "description": "The created guardrail" })
 }).annotate({
@@ -18207,7 +19335,9 @@ export const CreateGuardrailResponse = Schema.Struct({
   }],
   "identifier": "CreateGuardrailResponse"
 })
+
 export type GetGuardrailResponse = { readonly "data": Guardrail }
+
 export const GetGuardrailResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Guardrail> => Guardrail).annotate({ "description": "The guardrail" })
 }).annotate({
@@ -18241,13 +19371,16 @@ export const GetGuardrailResponse = Schema.Struct({
   }],
   "identifier": "GetGuardrailResponse"
 })
+
 export type DeleteGuardrailResponse = { readonly "deleted": true }
+
 export const DeleteGuardrailResponse = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({
     "description": "Confirmation that the guardrail was deleted",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "deleted": true }], "identifier": "DeleteGuardrailResponse" })
+
 export type UpdateGuardrailRequest = {
   readonly "allow_safety_retention_google"?: boolean | null
   readonly "allow_safety_retention_other"?: boolean | null
@@ -18274,6 +19407,7 @@ export type UpdateGuardrailRequest = {
   readonly "name"?: string
   readonly "reset_interval"?: GuardrailInterval
 }
+
 export const UpdateGuardrailRequest = Schema.Struct({
   "allow_safety_retention_google": Schema.optionalKey(
     Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -18460,7 +19594,9 @@ export const UpdateGuardrailRequest = Schema.Struct({
   }],
   "identifier": "UpdateGuardrailRequest"
 })
+
 export type UpdateGuardrailResponse = { readonly "data": Guardrail }
+
 export const UpdateGuardrailResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Guardrail> => Guardrail).annotate({ "description": "The updated guardrail" })
 }).annotate({
@@ -18494,6 +19630,7 @@ export const UpdateGuardrailResponse = Schema.Struct({
   }],
   "identifier": "UpdateGuardrailResponse"
 })
+
 export type KeyAssignment = {
   readonly "assigned_by": string | null
   readonly "created_at": string
@@ -18503,6 +19640,7 @@ export type KeyAssignment = {
   readonly "key_label": string
   readonly "key_name": string
 }
+
 export const KeyAssignment = Schema.Struct({
   "assigned_by": Schema.Union([Schema.String, Schema.Null]).annotate({
     "description": "User ID of who made the assignment",
@@ -18540,10 +19678,12 @@ export const KeyAssignment = Schema.Struct({
   }],
   "identifier": "KeyAssignment"
 })
+
 export type ListKeyAssignmentsResponse = {
   readonly "data": globalThis.ReadonlyArray<KeyAssignment>
   readonly "total_count": number
 }
+
 export const ListKeyAssignmentsResponse = Schema.Struct({
   "data": Schema.Array(KeyAssignment).annotate({ "description": "List of key assignments" }),
   "total_count": Schema.Number.annotate({
@@ -18565,7 +19705,9 @@ export const ListKeyAssignmentsResponse = Schema.Struct({
   }],
   "identifier": "ListKeyAssignmentsResponse"
 })
+
 export type BulkAssignKeysRequest = { readonly "key_hashes": globalThis.ReadonlyArray<string> }
+
 export const BulkAssignKeysRequest = Schema.Struct({
   "key_hashes": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
@@ -18579,12 +19721,16 @@ export const BulkAssignKeysRequest = Schema.Struct({
   "examples": [{ "key_hashes": ["c56454edb818d6b14bc0d61c46025f1450b0f4012d12304ab40aacb519fcbc93"] }],
   "identifier": "BulkAssignKeysRequest"
 })
+
 export type BulkAssignKeysResponse = { readonly "assigned_count": number }
+
 export const BulkAssignKeysResponse = Schema.Struct({
   "assigned_count": Schema.Number.annotate({ "description": "Number of keys successfully assigned", "examples": [3] })
     .check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "examples": [{ "assigned_count": 3 }], "identifier": "BulkAssignKeysResponse" })
+
 export type BulkUnassignKeysRequest = { readonly "key_hashes": globalThis.ReadonlyArray<string> }
+
 export const BulkUnassignKeysRequest = Schema.Struct({
   "key_hashes": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
@@ -18598,13 +19744,16 @@ export const BulkUnassignKeysRequest = Schema.Struct({
   "examples": [{ "key_hashes": ["c56454edb818d6b14bc0d61c46025f1450b0f4012d12304ab40aacb519fcbc93"] }],
   "identifier": "BulkUnassignKeysRequest"
 })
+
 export type BulkUnassignKeysResponse = { readonly "unassigned_count": number }
+
 export const BulkUnassignKeysResponse = Schema.Struct({
   "unassigned_count": Schema.Number.annotate({
     "description": "Number of keys successfully unassigned",
     "examples": [3]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "examples": [{ "unassigned_count": 3 }], "identifier": "BulkUnassignKeysResponse" })
+
 export type MemberAssignment = {
   readonly "assigned_by": string | null
   readonly "created_at": string
@@ -18613,6 +19762,7 @@ export type MemberAssignment = {
   readonly "organization_id": string
   readonly "user_id": string
 }
+
 export const MemberAssignment = Schema.Struct({
   "assigned_by": Schema.Union([Schema.String, Schema.Null]).annotate({
     "description": "User ID of who made the assignment",
@@ -18648,10 +19798,12 @@ export const MemberAssignment = Schema.Struct({
   }],
   "identifier": "MemberAssignment"
 })
+
 export type ListMemberAssignmentsResponse = {
   readonly "data": globalThis.ReadonlyArray<MemberAssignment>
   readonly "total_count": number
 }
+
 export const ListMemberAssignmentsResponse = Schema.Struct({
   "data": Schema.Array(MemberAssignment).annotate({ "description": "List of member assignments" }),
   "total_count": Schema.Number.annotate({ "description": "Total number of member assignments", "examples": [10] })
@@ -18670,7 +19822,9 @@ export const ListMemberAssignmentsResponse = Schema.Struct({
   }],
   "identifier": "ListMemberAssignmentsResponse"
 })
+
 export type BulkAssignMembersRequest = { readonly "member_user_ids": globalThis.ReadonlyArray<string> }
+
 export const BulkAssignMembersRequest = Schema.Struct({
   "member_user_ids": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
@@ -18684,14 +19838,18 @@ export const BulkAssignMembersRequest = Schema.Struct({
   "examples": [{ "member_user_ids": ["user_abc123", "user_def456"] }],
   "identifier": "BulkAssignMembersRequest"
 })
+
 export type BulkAssignMembersResponse = { readonly "assigned_count": number }
+
 export const BulkAssignMembersResponse = Schema.Struct({
   "assigned_count": Schema.Number.annotate({
     "description": "Number of members successfully assigned",
     "examples": [2]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "examples": [{ "assigned_count": 2 }], "identifier": "BulkAssignMembersResponse" })
+
 export type BulkUnassignMembersRequest = { readonly "member_user_ids": globalThis.ReadonlyArray<string> }
+
 export const BulkUnassignMembersRequest = Schema.Struct({
   "member_user_ids": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
@@ -18705,18 +19863,22 @@ export const BulkUnassignMembersRequest = Schema.Struct({
   "examples": [{ "member_user_ids": ["user_abc123", "user_def456"] }],
   "identifier": "BulkUnassignMembersRequest"
 })
+
 export type BulkUnassignMembersResponse = { readonly "unassigned_count": number }
+
 export const BulkUnassignMembersResponse = Schema.Struct({
   "unassigned_count": Schema.Number.annotate({
     "description": "Number of members successfully unassigned",
     "examples": [2]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "examples": [{ "unassigned_count": 2 }], "identifier": "BulkUnassignMembersResponse" })
+
 export type GuardrailBudgetPolicyConfig = {
   readonly "include_byok_in_budgets"?: boolean
   readonly "limit_usd"?: number | null
   readonly "reset_interval"?: GuardrailInterval
 }
+
 export const GuardrailBudgetPolicyConfig = Schema.Struct({
   "include_byok_in_budgets": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -18738,6 +19900,7 @@ export const GuardrailBudgetPolicyConfig = Schema.Struct({
   "examples": [{ "include_byok_in_budgets": false, "limit_usd": 200, "reset_interval": "monthly" }],
   "identifier": "GuardrailBudgetPolicyConfig"
 })
+
 export type BudgetAccountGuardrailPolicy = {
   readonly "config": GuardrailBudgetPolicyConfig
   readonly "created_at": string
@@ -18752,6 +19915,7 @@ export type BudgetAccountGuardrailPolicy = {
   readonly "workspace_count": number
   readonly "workspace_ids": globalThis.ReadonlyArray<string>
 }
+
 export const BudgetAccountGuardrailPolicy = Schema.Struct({
   "config": GuardrailBudgetPolicyConfig,
   "created_at": Schema.String.annotate({ "examples": ["2025-08-24T10:30:00Z"] }),
@@ -18782,6 +19946,7 @@ export const BudgetAccountGuardrailPolicy = Schema.Struct({
     "examples": [["0df9e665-d932-5740-b2c7-b52af166bc11"]]
   })
 }).annotate({ "identifier": "BudgetAccountGuardrailPolicy" })
+
 export type GuardrailModerationPolicyConfig = {
   readonly "armor"?: {
     readonly "classifier_context"?: ArmorContext
@@ -18832,6 +19997,7 @@ export type GuardrailModerationPolicyConfig = {
   readonly "platform_image_moderated_providers"?: globalThis.ReadonlyArray<string> | null
   readonly "platform_moderated_providers"?: globalThis.ReadonlyArray<string> | null
 }
+
 export const GuardrailModerationPolicyConfig = Schema.Struct({
   "armor": Schema.optionalKey(Schema.Union([
     Schema.Struct({
@@ -18926,6 +20092,7 @@ export const GuardrailModerationPolicyConfig = Schema.Struct({
   "examples": [{ "content_filter_builtins": [{ "action": "block", "slug": "secrets" }] }],
   "identifier": "GuardrailModerationPolicyConfig"
 })
+
 export type ModerationAccountGuardrailPolicy = {
   readonly "config": GuardrailModerationPolicyConfig
   readonly "created_at": string
@@ -18940,6 +20107,7 @@ export type ModerationAccountGuardrailPolicy = {
   readonly "workspace_count": number
   readonly "workspace_ids": globalThis.ReadonlyArray<string>
 }
+
 export const ModerationAccountGuardrailPolicy = Schema.Struct({
   "config": GuardrailModerationPolicyConfig,
   "created_at": Schema.String.annotate({ "examples": ["2025-08-24T10:30:00Z"] }),
@@ -18970,6 +20138,7 @@ export const ModerationAccountGuardrailPolicy = Schema.Struct({
     "examples": [["0df9e665-d932-5740-b2c7-b52af166bc11"]]
   })
 }).annotate({ "identifier": "ModerationAccountGuardrailPolicy" })
+
 export type GuardrailModelAvailabilityPolicyConfig = {
   readonly "allow_safety_retention_google"?: boolean | null
   readonly "allow_safety_retention_other"?: boolean | null
@@ -18993,6 +20162,7 @@ export type GuardrailModelAvailabilityPolicyConfig = {
   readonly "platform_banned_providers"?: globalThis.ReadonlyArray<string> | null
   readonly "require_eu_data_region"?: boolean | null
 }
+
 export const GuardrailModelAvailabilityPolicyConfig = Schema.Struct({
   "allow_safety_retention_google": Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Null])),
   "allow_safety_retention_other": Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Null])),
@@ -19024,6 +20194,7 @@ export const GuardrailModelAvailabilityPolicyConfig = Schema.Struct({
   }],
   "identifier": "GuardrailModelAvailabilityPolicyConfig"
 })
+
 export type ModelAvailabilityAccountGuardrailPolicy = {
   readonly "config": GuardrailModelAvailabilityPolicyConfig
   readonly "created_at": string
@@ -19038,6 +20209,7 @@ export type ModelAvailabilityAccountGuardrailPolicy = {
   readonly "workspace_count": number
   readonly "workspace_ids": globalThis.ReadonlyArray<string>
 }
+
 export const ModelAvailabilityAccountGuardrailPolicy = Schema.Struct({
   "config": GuardrailModelAvailabilityPolicyConfig,
   "created_at": Schema.String.annotate({ "examples": ["2025-08-24T10:30:00Z"] }),
@@ -19068,30 +20240,36 @@ export const ModelAvailabilityAccountGuardrailPolicy = Schema.Struct({
     "examples": [["0df9e665-d932-5740-b2c7-b52af166bc11"]]
   })
 }).annotate({ "identifier": "ModelAvailabilityAccountGuardrailPolicy" })
+
 export type AccountGuardrailPolicy =
   | BudgetAccountGuardrailPolicy
   | ModerationAccountGuardrailPolicy
   | ModelAvailabilityAccountGuardrailPolicy
+
 export const AccountGuardrailPolicy = Schema.Union([
   BudgetAccountGuardrailPolicy,
   ModerationAccountGuardrailPolicy,
   ModelAvailabilityAccountGuardrailPolicy
 ], { mode: "oneOf" }).annotate({ "identifier": "AccountGuardrailPolicy" })
+
 export type ListAccountGuardrailPoliciesResponse = {
   readonly "data": globalThis.ReadonlyArray<AccountGuardrailPolicy>
   readonly "total_count": number
 }
+
 export const ListAccountGuardrailPoliciesResponse = Schema.Struct({
   "data": Schema.Array(AccountGuardrailPolicy),
   "total_count": Schema.Number.annotate({ "description": "Total number of policies", "examples": [1] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" }))
 }).annotate({ "identifier": "ListAccountGuardrailPoliciesResponse" })
+
 export type GuardrailBudgetPolicyAuthoringConfig = {
   readonly "include_byok_in_budgets": boolean
   readonly "limit_usd": number | null
   readonly "reset_interval": "daily" | "weekly" | "monthly" | null
 }
+
 export const GuardrailBudgetPolicyAuthoringConfig = Schema.Struct({
   "include_byok_in_budgets": Schema.Boolean,
   "limit_usd": Schema.Union([
@@ -19104,6 +20282,7 @@ export const GuardrailBudgetPolicyAuthoringConfig = Schema.Struct({
   "examples": [{ "include_byok_in_budgets": false, "limit_usd": 200, "reset_interval": "monthly" }],
   "identifier": "GuardrailBudgetPolicyAuthoringConfig"
 })
+
 export type BudgetAccountGuardrailPolicyRequest = {
   readonly "config": GuardrailBudgetPolicyAuthoringConfig
   readonly "floor_reassignment"?: {
@@ -19118,6 +20297,7 @@ export type BudgetAccountGuardrailPolicyRequest = {
   readonly "released_floor_workspace_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_ids"?: globalThis.ReadonlyArray<string>
 }
+
 export const BudgetAccountGuardrailPolicyRequest = Schema.Struct({
   "config": GuardrailBudgetPolicyAuthoringConfig,
   "floor_reassignment": Schema.optionalKey(
@@ -19177,6 +20357,7 @@ export const BudgetAccountGuardrailPolicyRequest = Schema.Struct({
   }],
   "identifier": "BudgetAccountGuardrailPolicyRequest"
 })
+
 export type ModerationAccountGuardrailPolicyRequest = {
   readonly "config": GuardrailModerationPolicyConfig
   readonly "floor_reassignment"?: {
@@ -19191,6 +20372,7 @@ export type ModerationAccountGuardrailPolicyRequest = {
   readonly "released_floor_workspace_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_ids"?: globalThis.ReadonlyArray<string>
 }
+
 export const ModerationAccountGuardrailPolicyRequest = Schema.Struct({
   "config": GuardrailModerationPolicyConfig,
   "floor_reassignment": Schema.optionalKey(
@@ -19250,6 +20432,7 @@ export const ModerationAccountGuardrailPolicyRequest = Schema.Struct({
   }],
   "identifier": "ModerationAccountGuardrailPolicyRequest"
 })
+
 export type GuardrailModelAvailabilityPolicyAuthoringConfig = {
   readonly "allow_safety_retention_google"?: boolean | null
   readonly "allow_safety_retention_other"?: boolean | null
@@ -19273,6 +20456,7 @@ export type GuardrailModelAvailabilityPolicyAuthoringConfig = {
   readonly "platform_banned_providers"?: globalThis.ReadonlyArray<string> | null
   readonly "require_eu_data_region"?: boolean | null
 }
+
 export const GuardrailModelAvailabilityPolicyAuthoringConfig = Schema.Struct({
   "allow_safety_retention_google": Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Null])),
   "allow_safety_retention_other": Schema.optionalKey(Schema.Union([Schema.Boolean, Schema.Null])),
@@ -19311,6 +20495,7 @@ export const GuardrailModelAvailabilityPolicyAuthoringConfig = Schema.Struct({
   }],
   "identifier": "GuardrailModelAvailabilityPolicyAuthoringConfig"
 })
+
 export type ModelAvailabilityAccountGuardrailPolicyRequest = {
   readonly "config": GuardrailModelAvailabilityPolicyAuthoringConfig
   readonly "floor_reassignment"?: {
@@ -19325,6 +20510,7 @@ export type ModelAvailabilityAccountGuardrailPolicyRequest = {
   readonly "released_floor_workspace_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_ids"?: globalThis.ReadonlyArray<string>
 }
+
 export const ModelAvailabilityAccountGuardrailPolicyRequest = Schema.Struct({
   "config": GuardrailModelAvailabilityPolicyAuthoringConfig,
   "floor_reassignment": Schema.optionalKey(
@@ -19389,28 +20575,36 @@ export const ModelAvailabilityAccountGuardrailPolicyRequest = Schema.Struct({
   }],
   "identifier": "ModelAvailabilityAccountGuardrailPolicyRequest"
 })
+
 export type AccountGuardrailPolicyRequest =
   | BudgetAccountGuardrailPolicyRequest
   | ModerationAccountGuardrailPolicyRequest
   | ModelAvailabilityAccountGuardrailPolicyRequest
+
 export const AccountGuardrailPolicyRequest = Schema.Union([
   BudgetAccountGuardrailPolicyRequest,
   ModerationAccountGuardrailPolicyRequest,
   ModelAvailabilityAccountGuardrailPolicyRequest
 ], { mode: "oneOf" }).annotate({ "identifier": "AccountGuardrailPolicyRequest" })
+
 export type AccountGuardrailPolicyResponse = { readonly "data": AccountGuardrailPolicy }
+
 export const AccountGuardrailPolicyResponse = Schema.Struct({ "data": AccountGuardrailPolicy }).annotate({
   "identifier": "AccountGuardrailPolicyResponse"
 })
+
 export type DeleteGuardrailPolicyResponse = { readonly "data": boolean }
+
 export const DeleteGuardrailPolicyResponse = Schema.Struct({
   "data": Schema.Boolean.annotate({ "description": "Whether the policy was deleted", "examples": [true] })
 }).annotate({ "identifier": "DeleteGuardrailPolicyResponse" })
+
 export type GuardrailPolicyAssignmentState = {
   readonly "opted_out": boolean
   readonly "policy_ids": globalThis.ReadonlyArray<string>
   readonly "workspace_default_policy_ids": globalThis.ReadonlyArray<string>
 }
+
 export const GuardrailPolicyAssignmentState = Schema.Struct({
   "opted_out": Schema.Boolean.annotate({
     "description": "Whether the subject is opted out of the workspace default",
@@ -19425,10 +20619,13 @@ export const GuardrailPolicyAssignmentState = Schema.Struct({
     "examples": [["2c6f1a4e-0b7d-4e59-9a61-3f8d2e7c1b90"]]
   })
 }).annotate({ "identifier": "GuardrailPolicyAssignmentState" })
+
 export type GuardrailPolicyAssignmentResponse = { readonly "data": GuardrailPolicyAssignmentState }
+
 export const GuardrailPolicyAssignmentResponse = Schema.Struct({ "data": GuardrailPolicyAssignmentState }).annotate({
   "identifier": "GuardrailPolicyAssignmentResponse"
 })
+
 export type ChangeGuardrailPolicyAssignmentRequest = {
   readonly "assigned": boolean
   readonly "expected_assignment": GuardrailPolicyAssignmentState
@@ -19436,6 +20633,7 @@ export type ChangeGuardrailPolicyAssignmentRequest = {
   readonly "policy_type": "budget" | "model_availability" | "moderation" | "rate_limit"
   readonly "workspace_id": string
 }
+
 export const ChangeGuardrailPolicyAssignmentRequest = Schema.Struct({
   "assigned": Schema.Boolean.annotate({
     "description": "`true` assigns the policy to the subject, `false` removes it",
@@ -19461,10 +20659,13 @@ export const ChangeGuardrailPolicyAssignmentRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "ChangeGuardrailPolicyAssignmentRequest" })
+
 export type ChangeGuardrailPolicyAssignmentResponse = { readonly "data": boolean }
+
 export const ChangeGuardrailPolicyAssignmentResponse = Schema.Struct({
   "data": Schema.Boolean.annotate({ "description": "Whether the assignment changed", "examples": [true] })
 }).annotate({ "identifier": "ChangeGuardrailPolicyAssignmentResponse" })
+
 export type BudgetGuardrailPolicySummary = {
   readonly "api_key_count": number
   readonly "config": GuardrailBudgetPolicyConfig
@@ -19478,6 +20679,7 @@ export type BudgetGuardrailPolicySummary = {
   readonly "replaced_legacy_guardrail_ids"?: globalThis.ReadonlyArray<string>
   readonly "updated_at": string | null
 }
+
 export const BudgetGuardrailPolicySummary = Schema.Struct({
   "api_key_count": Schema.Int.check(
     Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
@@ -19507,16 +20709,19 @@ export const BudgetGuardrailPolicySummary = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "BudgetGuardrailPolicySummary" })
+
 export type ListBudgetGuardrailPoliciesResponse = {
   readonly "data": globalThis.ReadonlyArray<BudgetGuardrailPolicySummary>
   readonly "total_count": number
 }
+
 export const ListBudgetGuardrailPoliciesResponse = Schema.Struct({
   "data": Schema.Array(BudgetGuardrailPolicySummary),
   "total_count": Schema.Number.annotate({ "description": "Total number of policies", "examples": [1] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" }))
 }).annotate({ "identifier": "ListBudgetGuardrailPoliciesResponse" })
+
 export type CreateBudgetGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailBudgetPolicyAuthoringConfig
@@ -19528,6 +20733,7 @@ export type CreateBudgetGuardrailPolicyRequest = {
   readonly "policy_type": "budget"
   readonly "workspace_id": string
 }
+
 export const CreateBudgetGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -19582,12 +20788,14 @@ export const CreateBudgetGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "CreateBudgetGuardrailPolicyRequest" })
+
 export type BudgetGuardrailPolicy = {
   readonly "config": GuardrailBudgetPolicyConfig
   readonly "id": string
   readonly "name": string
   readonly "policy_type": "budget"
 }
+
 export const BudgetGuardrailPolicy = Schema.Struct({
   "config": GuardrailBudgetPolicyConfig,
   "id": Schema.String.annotate({
@@ -19600,10 +20808,13 @@ export const BudgetGuardrailPolicy = Schema.Struct({
   ).check(Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })),
   "policy_type": Schema.Literal("budget")
 }).annotate({ "identifier": "BudgetGuardrailPolicy" })
+
 export type BudgetGuardrailPolicyResponse = { readonly "data": BudgetGuardrailPolicy }
+
 export const BudgetGuardrailPolicyResponse = Schema.Struct({ "data": BudgetGuardrailPolicy }).annotate({
   "identifier": "BudgetGuardrailPolicyResponse"
 })
+
 export type BudgetGuardrailPolicyDetail = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string>
   readonly "config": GuardrailBudgetPolicyConfig
@@ -19620,6 +20831,7 @@ export type BudgetGuardrailPolicyDetail = {
   readonly "replaces_legacy_default"?: boolean
   readonly "updated_at": string | null
 }
+
 export const BudgetGuardrailPolicyDetail = Schema.Struct({
   "api_key_hashes": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
@@ -19692,10 +20904,13 @@ export const BudgetGuardrailPolicyDetail = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "BudgetGuardrailPolicyDetail" })
+
 export type BudgetGuardrailPolicyDetailResponse = { readonly "data": BudgetGuardrailPolicyDetail }
+
 export const BudgetGuardrailPolicyDetailResponse = Schema.Struct({ "data": BudgetGuardrailPolicyDetail }).annotate({
   "identifier": "BudgetGuardrailPolicyDetailResponse"
 })
+
 export type UpdateBudgetGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailBudgetPolicyAuthoringConfig
@@ -19706,6 +20921,7 @@ export type UpdateBudgetGuardrailPolicyRequest = {
   readonly "opted_out_member_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_id": string
 }
+
 export const UpdateBudgetGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -19761,6 +20977,7 @@ export const UpdateBudgetGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "UpdateBudgetGuardrailPolicyRequest" })
+
 export type ModelAvailabilityGuardrailPolicySummary = {
   readonly "api_key_count": number
   readonly "config": GuardrailModelAvailabilityPolicyConfig
@@ -19774,6 +20991,7 @@ export type ModelAvailabilityGuardrailPolicySummary = {
   readonly "replaced_legacy_guardrail_ids"?: globalThis.ReadonlyArray<string>
   readonly "updated_at": string | null
 }
+
 export const ModelAvailabilityGuardrailPolicySummary = Schema.Struct({
   "api_key_count": Schema.Int.check(
     Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
@@ -19803,16 +21021,19 @@ export const ModelAvailabilityGuardrailPolicySummary = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ModelAvailabilityGuardrailPolicySummary" })
+
 export type ListModelAvailabilityGuardrailPoliciesResponse = {
   readonly "data": globalThis.ReadonlyArray<ModelAvailabilityGuardrailPolicySummary>
   readonly "total_count": number
 }
+
 export const ListModelAvailabilityGuardrailPoliciesResponse = Schema.Struct({
   "data": Schema.Array(ModelAvailabilityGuardrailPolicySummary),
   "total_count": Schema.Number.annotate({ "description": "Total number of policies", "examples": [1] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" }))
 }).annotate({ "identifier": "ListModelAvailabilityGuardrailPoliciesResponse" })
+
 export type CreateModelAvailabilityGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModelAvailabilityPolicyAuthoringConfig
@@ -19824,6 +21045,7 @@ export type CreateModelAvailabilityGuardrailPolicyRequest = {
   readonly "policy_type": "model_availability"
   readonly "workspace_id": string
 }
+
 export const CreateModelAvailabilityGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -19878,12 +21100,14 @@ export const CreateModelAvailabilityGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "CreateModelAvailabilityGuardrailPolicyRequest" })
+
 export type ModelAvailabilityGuardrailPolicy = {
   readonly "config": GuardrailModelAvailabilityPolicyConfig
   readonly "id": string
   readonly "name": string
   readonly "policy_type": "model_availability"
 }
+
 export const ModelAvailabilityGuardrailPolicy = Schema.Struct({
   "config": GuardrailModelAvailabilityPolicyConfig,
   "id": Schema.String.annotate({
@@ -19896,9 +21120,12 @@ export const ModelAvailabilityGuardrailPolicy = Schema.Struct({
   ).check(Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })),
   "policy_type": Schema.Literal("model_availability")
 }).annotate({ "identifier": "ModelAvailabilityGuardrailPolicy" })
+
 export type ModelAvailabilityGuardrailPolicyResponse = { readonly "data": ModelAvailabilityGuardrailPolicy }
+
 export const ModelAvailabilityGuardrailPolicyResponse = Schema.Struct({ "data": ModelAvailabilityGuardrailPolicy })
   .annotate({ "identifier": "ModelAvailabilityGuardrailPolicyResponse" })
+
 export type ModelAvailabilityGuardrailPolicyDetail = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModelAvailabilityPolicyConfig
@@ -19915,6 +21142,7 @@ export type ModelAvailabilityGuardrailPolicyDetail = {
   readonly "replaces_legacy_default"?: boolean
   readonly "updated_at": string | null
 }
+
 export const ModelAvailabilityGuardrailPolicyDetail = Schema.Struct({
   "api_key_hashes": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
@@ -19987,10 +21215,13 @@ export const ModelAvailabilityGuardrailPolicyDetail = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ModelAvailabilityGuardrailPolicyDetail" })
+
 export type ModelAvailabilityGuardrailPolicyDetailResponse = { readonly "data": ModelAvailabilityGuardrailPolicyDetail }
+
 export const ModelAvailabilityGuardrailPolicyDetailResponse = Schema.Struct({
   "data": ModelAvailabilityGuardrailPolicyDetail
 }).annotate({ "identifier": "ModelAvailabilityGuardrailPolicyDetailResponse" })
+
 export type UpdateModelAvailabilityGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModelAvailabilityPolicyAuthoringConfig
@@ -20001,6 +21232,7 @@ export type UpdateModelAvailabilityGuardrailPolicyRequest = {
   readonly "opted_out_member_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_id": string
 }
+
 export const UpdateModelAvailabilityGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -20056,6 +21288,7 @@ export const UpdateModelAvailabilityGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "UpdateModelAvailabilityGuardrailPolicyRequest" })
+
 export type ModerationGuardrailPolicySummary = {
   readonly "api_key_count": number
   readonly "config": GuardrailModerationPolicyConfig
@@ -20069,6 +21302,7 @@ export type ModerationGuardrailPolicySummary = {
   readonly "replaced_legacy_guardrail_ids"?: globalThis.ReadonlyArray<string>
   readonly "updated_at": string | null
 }
+
 export const ModerationGuardrailPolicySummary = Schema.Struct({
   "api_key_count": Schema.Int.check(
     Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })
@@ -20098,16 +21332,19 @@ export const ModerationGuardrailPolicySummary = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ModerationGuardrailPolicySummary" })
+
 export type ListModerationGuardrailPoliciesResponse = {
   readonly "data": globalThis.ReadonlyArray<ModerationGuardrailPolicySummary>
   readonly "total_count": number
 }
+
 export const ListModerationGuardrailPoliciesResponse = Schema.Struct({
   "data": Schema.Array(ModerationGuardrailPolicySummary),
   "total_count": Schema.Number.annotate({ "description": "Total number of policies", "examples": [1] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   ).check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" }))
 }).annotate({ "identifier": "ListModerationGuardrailPoliciesResponse" })
+
 export type CreateModerationGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModerationPolicyConfig
@@ -20119,6 +21356,7 @@ export type CreateModerationGuardrailPolicyRequest = {
   readonly "policy_type": "moderation"
   readonly "workspace_id": string
 }
+
 export const CreateModerationGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -20173,12 +21411,14 @@ export const CreateModerationGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "CreateModerationGuardrailPolicyRequest" })
+
 export type ModerationGuardrailPolicy = {
   readonly "config": GuardrailModerationPolicyConfig
   readonly "id": string
   readonly "name": string
   readonly "policy_type": "moderation"
 }
+
 export const ModerationGuardrailPolicy = Schema.Struct({
   "config": GuardrailModerationPolicyConfig,
   "id": Schema.String.annotate({
@@ -20191,10 +21431,13 @@ export const ModerationGuardrailPolicy = Schema.Struct({
   ).check(Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })),
   "policy_type": Schema.Literal("moderation")
 }).annotate({ "identifier": "ModerationGuardrailPolicy" })
+
 export type ModerationGuardrailPolicyResponse = { readonly "data": ModerationGuardrailPolicy }
+
 export const ModerationGuardrailPolicyResponse = Schema.Struct({ "data": ModerationGuardrailPolicy }).annotate({
   "identifier": "ModerationGuardrailPolicyResponse"
 })
+
 export type ModerationGuardrailPolicyDetail = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModerationPolicyConfig
@@ -20212,6 +21455,7 @@ export type ModerationGuardrailPolicyDetail = {
   readonly "replaces_legacy_default"?: boolean
   readonly "updated_at": string | null
 }
+
 export const ModerationGuardrailPolicyDetail = Schema.Struct({
   "api_key_hashes": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
@@ -20287,9 +21531,12 @@ export const ModerationGuardrailPolicyDetail = Schema.Struct({
   ),
   "updated_at": Schema.Union([Schema.String, Schema.Null])
 }).annotate({ "identifier": "ModerationGuardrailPolicyDetail" })
+
 export type ModerationGuardrailPolicyDetailResponse = { readonly "data": ModerationGuardrailPolicyDetail }
+
 export const ModerationGuardrailPolicyDetailResponse = Schema.Struct({ "data": ModerationGuardrailPolicyDetail })
   .annotate({ "identifier": "ModerationGuardrailPolicyDetailResponse" })
+
 export type UpdateModerationGuardrailPolicyRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string>
   readonly "config": GuardrailModerationPolicyConfig
@@ -20300,6 +21547,7 @@ export type UpdateModerationGuardrailPolicyRequest = {
   readonly "opted_out_member_ids"?: globalThis.ReadonlyArray<string>
   readonly "workspace_id": string
 }
+
 export const UpdateModerationGuardrailPolicyRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Array(
@@ -20355,7 +21603,9 @@ export const UpdateModerationGuardrailPolicyRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "UpdateModerationGuardrailPolicyRequest" })
+
 export type ContentPartImage = { readonly "image_url": { readonly "url": string }; readonly "type": "image_url" }
+
 export const ContentPartImage = Schema.Struct({
   "image_url": Schema.Struct({ "url": Schema.String }),
   "type": Schema.Literal("image_url")
@@ -20363,6 +21613,7 @@ export const ContentPartImage = Schema.Struct({
   "examples": [{ "image_url": { "url": "https://example.com/image.png" }, "type": "image_url" }],
   "identifier": "ContentPartImage"
 })
+
 export type ImageGenerationProviderPreferences = {
   readonly "allow_fallbacks"?: boolean | null
   readonly "ignore"?: globalThis.ReadonlyArray<ProviderName | string> | null
@@ -20371,6 +21622,7 @@ export type ImageGenerationProviderPreferences = {
   readonly "order"?: globalThis.ReadonlyArray<ProviderName | string> | null
   readonly "sort"?: ProviderSort | ProviderSortConfig | null
 }
+
 export const ImageGenerationProviderPreferences = Schema.Struct({
   "allow_fallbacks": Schema.optionalKey(
     Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -20416,6 +21668,7 @@ export const ImageGenerationProviderPreferences = Schema.Struct({
   "examples": [{ "allow_fallbacks": false, "only": ["google-ai-studio"] }],
   "identifier": "ImageGenerationProviderPreferences"
 })
+
 export type ImageGenerationRequest = {
   readonly "aspect_ratio"?:
     | "1:1"
@@ -20464,6 +21717,7 @@ export type ImageGenerationRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const ImageGenerationRequest = Schema.Struct({
   "aspect_ratio": Schema.optionalKey(
     Schema.Literals([
@@ -20614,6 +21868,7 @@ export const ImageGenerationRequest = Schema.Struct({
   }],
   "identifier": "ImageGenerationRequest"
 })
+
 export type ImageGenerationUsage = {
   readonly "cache_creation"?: AnthropicCacheCreation
   readonly "completion_tokens": number
@@ -20643,6 +21898,7 @@ export type ImageGenerationUsage = {
   readonly "speed"?: AnthropicSpeed
   readonly "total_tokens": number
 }
+
 export const ImageGenerationUsage = Schema.Struct({
   "cache_creation": Schema.optionalKey(AnthropicCacheCreation),
   "completion_tokens": Schema.Number.annotate({ "description": "The tokens generated" }).check(
@@ -20742,11 +21998,13 @@ export const ImageGenerationUsage = Schema.Struct({
   "examples": [{ "completion_tokens": 4175, "cost": 0.04, "prompt_tokens": 0, "total_tokens": 4175 }],
   "identifier": "ImageGenerationUsage"
 })
+
 export type ImageGenerationResponse = {
   readonly "created": number
   readonly "data": globalThis.ReadonlyArray<{ readonly "b64_json": string; readonly "media_type"?: string }>
   readonly "usage"?: ImageGenerationUsage
 }
+
 export const ImageGenerationResponse = Schema.Struct({
   "created": Schema.Number.annotate({
     "description": "Unix timestamp (seconds) when the image was generated",
@@ -20772,11 +22030,13 @@ export const ImageGenerationResponse = Schema.Struct({
   }],
   "identifier": "ImageGenerationResponse"
 })
+
 export type ImageGenPartialImageEvent = {
   readonly "b64_json": string
   readonly "partial_image_index": number
   readonly "type": "image_generation.partial_image"
 }
+
 export const ImageGenPartialImageEvent = Schema.Struct({
   "b64_json": Schema.String.annotate({ "description": "Base64-encoded partial image data" }),
   "partial_image_index": Schema.Number.annotate({
@@ -20792,11 +22052,13 @@ export const ImageGenPartialImageEvent = Schema.Struct({
   }],
   "identifier": "ImageGenPartialImageEvent"
 })
+
 export type ImageGenTextChunkEvent = {
   readonly "phase": "content" | "reasoning" | "draft"
   readonly "text": string
   readonly "type": "image_generation.text_chunk"
 }
+
 export const ImageGenTextChunkEvent = Schema.Struct({
   "phase": Schema.Literals(["content", "reasoning", "draft"]).annotate({
     "description":
@@ -20816,6 +22078,7 @@ export const ImageGenTextChunkEvent = Schema.Struct({
   }],
   "identifier": "ImageGenTextChunkEvent"
 })
+
 export type ImageGenCompletedEvent = {
   readonly "b64_json": string
   readonly "created": number
@@ -20823,6 +22086,7 @@ export type ImageGenCompletedEvent = {
   readonly "type": "image_generation.completed"
   readonly "usage"?: ImageGenerationUsage
 }
+
 export const ImageGenCompletedEvent = Schema.Struct({
   "b64_json": Schema.String.annotate({ "description": "Base64-encoded final image data" }),
   "created": Schema.Number.annotate({ "description": "Unix timestamp (seconds) when the image was generated" }).check(
@@ -20847,6 +22111,7 @@ export const ImageGenCompletedEvent = Schema.Struct({
   }],
   "identifier": "ImageGenCompletedEvent"
 })
+
 export type ImageGenStreamErrorEvent = {
   readonly "error": {
     readonly "code"?: string | null
@@ -20856,6 +22121,7 @@ export type ImageGenStreamErrorEvent = {
   }
   readonly "type": "error"
 }
+
 export const ImageGenStreamErrorEvent = Schema.Struct({
   "error": Schema.Struct({
     "code": Schema.optionalKey(
@@ -20885,6 +22151,7 @@ export const ImageGenStreamErrorEvent = Schema.Struct({
   }],
   "identifier": "ImageGenStreamErrorEvent"
 })
+
 export type ImageStreamingResponse = {
   readonly "data":
     | ImageGenPartialImageEvent
@@ -20892,6 +22159,7 @@ export type ImageStreamingResponse = {
     | ImageGenCompletedEvent
     | ImageGenStreamErrorEvent
 }
+
 export const ImageStreamingResponse = Schema.Struct({
   "data": Schema.Union([
     ImageGenPartialImageEvent,
@@ -20909,11 +22177,14 @@ export const ImageStreamingResponse = Schema.Struct({
   }],
   "identifier": "ImageStreamingResponse"
 })
+
 export type ImageInputModality = "text" | "image" | "file" | "audio" | "video"
+
 export const ImageInputModality = Schema.Literals(["text", "image", "file", "audio", "video"]).annotate({
   "examples": ["text"],
   "identifier": "ImageInputModality"
 })
+
 export type ImageOutputModality =
   | "text"
   | "image"
@@ -20924,6 +22195,7 @@ export type ImageOutputModality =
   | "decisions"
   | "speech"
   | "transcription"
+
 export const ImageOutputModality = Schema.Literals([
   "text",
   "image",
@@ -20935,10 +22207,12 @@ export const ImageOutputModality = Schema.Literals([
   "speech",
   "transcription"
 ]).annotate({ "examples": ["image"], "identifier": "ImageOutputModality" })
+
 export type ImageModelArchitecture = {
   readonly "input_modalities": globalThis.ReadonlyArray<ImageInputModality>
   readonly "output_modalities": globalThis.ReadonlyArray<ImageOutputModality>
 }
+
 export const ImageModelArchitecture = Schema.Struct({
   "input_modalities": Schema.Array(ImageInputModality).annotate({ "description": "Supported input modalities" }),
   "output_modalities": Schema.Array(ImageOutputModality).annotate({ "description": "Supported output modalities" })
@@ -20946,14 +22220,18 @@ export const ImageModelArchitecture = Schema.Struct({
   "examples": [{ "input_modalities": ["text", "image"], "output_modalities": ["image"] }],
   "identifier": "ImageModelArchitecture"
 })
+
 export type EnumCapability = { readonly "type": "enum"; readonly "values": globalThis.ReadonlyArray<string> }
+
 export const EnumCapability = Schema.Struct({ "type": Schema.Literal("enum"), "values": Schema.Array(Schema.String) })
   .annotate({
     "description": "A parameter that accepts one of a discrete set of string values.",
     "examples": [{ "type": "enum", "values": ["1K", "2K", "4K"] }],
     "identifier": "EnumCapability"
   })
+
 export type RangeCapability = { readonly "max": number; readonly "min": number; readonly "type": "range" }
+
 export const RangeCapability = Schema.Struct({
   "max": Schema.Number.annotate({ "format": "double" }).check(
     Schema.isFinite().annotate({ "expected": "a finite number" })
@@ -20967,13 +22245,17 @@ export const RangeCapability = Schema.Struct({
   "examples": [{ "max": 100, "min": 0, "type": "range" }],
   "identifier": "RangeCapability"
 })
+
 export type BooleanCapability = { readonly "type": "boolean" }
+
 export const BooleanCapability = Schema.Struct({ "type": Schema.Literal("boolean") }).annotate({
   "description": "A supported-or-not flag. Present means the parameter is accepted.",
   "examples": [{ "type": "boolean" }],
   "identifier": "BooleanCapability"
 })
+
 export type CapabilityDescriptor = EnumCapability | RangeCapability | BooleanCapability
+
 export const CapabilityDescriptor = Schema.Union([EnumCapability, RangeCapability, BooleanCapability], {
   mode: "oneOf"
 }).annotate({
@@ -20981,7 +22263,9 @@ export const CapabilityDescriptor = Schema.Union([EnumCapability, RangeCapabilit
   "examples": [{ "type": "enum", "values": ["1K", "2K", "4K"] }],
   "identifier": "CapabilityDescriptor"
 })
+
 export type SupportedParameters = { readonly [x: string]: CapabilityDescriptor }
+
 export const SupportedParameters = Schema.Record(Schema.String, CapabilityDescriptor).annotate({
   "description":
     "Union of supported parameters across every endpoint of this model. Coarse discovery aid; the definitive per-endpoint set is behind the endpoints URL.",
@@ -20992,6 +22276,7 @@ export const SupportedParameters = Schema.Record(Schema.String, CapabilityDescri
   }],
   "identifier": "SupportedParameters"
 })
+
 export type ImageModelListItem = {
   readonly "architecture": ImageModelArchitecture
   readonly "created": number
@@ -21002,6 +22287,7 @@ export type ImageModelListItem = {
   readonly "supported_parameters": SupportedParameters
   readonly "supports_streaming": boolean
 }
+
 export const ImageModelListItem = Schema.Struct({
   "architecture": ImageModelArchitecture,
   "created": Schema.Number.annotate({
@@ -21038,7 +22324,9 @@ export const ImageModelListItem = Schema.Struct({
   }],
   "identifier": "ImageModelListItem"
 })
+
 export type ImageModelsListResponse = { readonly "data": globalThis.ReadonlyArray<ImageModelListItem> }
+
 export const ImageModelsListResponse = Schema.Struct({ "data": Schema.Array(ImageModelListItem) }).annotate({
   "description": "List of image generation models.",
   "examples": [{
@@ -21055,12 +22343,14 @@ export const ImageModelsListResponse = Schema.Struct({ "data": Schema.Array(Imag
   }],
   "identifier": "ImageModelsListResponse"
 })
+
 export type ImagePricingEntry = {
   readonly "billable": "output_image" | "input_image" | "input_font" | "input_reference" | "input_text"
   readonly "cost_usd": number
   readonly "unit": "request" | "image" | "megapixel" | "token"
   readonly "variant"?: string
 }
+
 export const ImagePricingEntry = Schema.Struct({
   "billable": Schema.Literals(["output_image", "input_image", "input_font", "input_reference", "input_text"]),
   "cost_usd": Schema.Number.annotate({ "format": "double" }).check(
@@ -21073,6 +22363,7 @@ export const ImagePricingEntry = Schema.Struct({
   "examples": [{ "billable": "output_image", "cost_usd": 0.05, "unit": "image" }],
   "identifier": "ImagePricingEntry"
 })
+
 export type ImageEndpoint = {
   readonly "allowed_passthrough_parameters": globalThis.ReadonlyArray<string>
   readonly "pricing": globalThis.ReadonlyArray<ImagePricingEntry>
@@ -21082,6 +22373,7 @@ export type ImageEndpoint = {
   readonly "supported_parameters": SupportedParameters
   readonly "supports_streaming": boolean
 }
+
 export const ImageEndpoint = Schema.Struct({
   "allowed_passthrough_parameters": Schema.Array(Schema.String).annotate({
     "description": "Provider-specific options accepted under provider.options[provider_slug].",
@@ -21120,10 +22412,12 @@ export const ImageEndpoint = Schema.Struct({
   }],
   "identifier": "ImageEndpoint"
 })
+
 export type ImageModelEndpointsResponse = {
   readonly "endpoints": globalThis.ReadonlyArray<ImageEndpoint>
   readonly "id": string
 }
+
 export const ImageModelEndpointsResponse = Schema.Struct({
   "endpoints": Schema.Array(ImageEndpoint),
   "id": Schema.String.annotate({ "description": "Model slug", "examples": ["bytedance-seed/seedream-4.5"] })
@@ -21143,6 +22437,7 @@ export const ImageModelEndpointsResponse = Schema.Struct({
   }],
   "identifier": "ImageModelEndpointsResponse"
 })
+
 export type KeyBudget = {
   readonly "budget_id": string | null
   readonly "guardrail_id": string | null
@@ -21160,6 +22455,7 @@ export type KeyBudget = {
     | "key_limit"
   readonly "spend_usd": number
 }
+
 export const KeyBudget = Schema.Struct({
   "budget_id": Schema.Union([Schema.String, Schema.Null]).annotate({
     "description": "ID of the workspace budget for the `workspace` scope; null for other scopes.",
@@ -21229,7 +22525,9 @@ export const KeyBudget = Schema.Struct({
   }],
   "identifier": "KeyBudget"
 })
+
 export type FreeModelDailyRequests = { readonly "limit": number; readonly "remaining": number; readonly "used": number }
+
 export const FreeModelDailyRequests = Schema.Struct({
   "limit": Schema.Number.annotate({
     "description":
@@ -21250,7 +22548,9 @@ export const FreeModelDailyRequests = Schema.Struct({
   "examples": [{ "limit": 50, "remaining": 38, "used": 12 }],
   "identifier": "FreeModelDailyRequests"
 })
+
 export type AnthropicInputTokensClearAtLeast = { readonly "type": "input_tokens"; readonly "value": number } | null
+
 export const AnthropicInputTokensClearAtLeast = Schema.Union([
   Schema.Struct({ "type": Schema.Literal("input_tokens"), "value": Schema.Int }),
   Schema.Null
@@ -21258,21 +22558,31 @@ export const AnthropicInputTokensClearAtLeast = Schema.Union([
   "examples": [{ "type": "input_tokens", "value": 50000 }],
   "identifier": "AnthropicInputTokensClearAtLeast"
 })
+
 export type AnthropicToolUsesKeep = { readonly "type": "tool_uses"; readonly "value": number }
+
 export const AnthropicToolUsesKeep = Schema.Struct({ "type": Schema.Literal("tool_uses"), "value": Schema.Int })
   .annotate({ "examples": [{ "type": "tool_uses", "value": 5 }], "identifier": "AnthropicToolUsesKeep" })
+
 export type AnthropicInputTokensTrigger = { readonly "type": "input_tokens"; readonly "value": number }
+
 export const AnthropicInputTokensTrigger = Schema.Struct({
   "type": Schema.Literal("input_tokens"),
   "value": Schema.Int
 }).annotate({ "examples": [{ "type": "input_tokens", "value": 100000 }], "identifier": "AnthropicInputTokensTrigger" })
+
 export type AnthropicToolUsesTrigger = { readonly "type": "tool_uses"; readonly "value": number }
+
 export const AnthropicToolUsesTrigger = Schema.Struct({ "type": Schema.Literal("tool_uses"), "value": Schema.Int })
   .annotate({ "examples": [{ "type": "tool_uses", "value": 10 }], "identifier": "AnthropicToolUsesTrigger" })
+
 export type AnthropicThinkingTurns = { readonly "type": "thinking_turns"; readonly "value": number }
+
 export const AnthropicThinkingTurns = Schema.Struct({ "type": Schema.Literal("thinking_turns"), "value": Schema.Int })
   .annotate({ "examples": [{ "type": "thinking_turns", "value": 3 }], "identifier": "AnthropicThinkingTurns" })
+
 export type MessagesFallbackParam = { readonly "model": string } & { readonly [x: string]: Schema.Json }
+
 export const MessagesFallbackParam = Schema.StructWithRest(Schema.Struct({ "model": Schema.String }), [
   Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))
 ]).annotate({
@@ -21281,9 +22591,12 @@ export const MessagesFallbackParam = Schema.StructWithRest(Schema.Struct({ "mode
   "examples": [{ "model": "claude-opus-4-8" }],
   "identifier": "MessagesFallbackParam"
 })
+
 export type AnthropicSystemClearAt = "next_user_message" | "never" | null
+
 export const AnthropicSystemClearAt = Schema.Union([Schema.Literals(["next_user_message", "never"]), Schema.Null])
   .annotate({ "examples": ["next_user_message"], "identifier": "AnthropicSystemClearAt" })
+
 export type AnthropicCitationCharLocationParam = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -21292,6 +22605,7 @@ export type AnthropicCitationCharLocationParam = {
   readonly "start_char_index": number
   readonly "type": "char_location"
 }
+
 export const AnthropicCitationCharLocationParam = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -21310,6 +22624,7 @@ export const AnthropicCitationCharLocationParam = Schema.Struct({
   }],
   "identifier": "AnthropicCitationCharLocationParam"
 })
+
 export type AnthropicCitationPageLocationParam = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -21318,6 +22633,7 @@ export type AnthropicCitationPageLocationParam = {
   readonly "start_page_number": number
   readonly "type": "page_location"
 }
+
 export const AnthropicCitationPageLocationParam = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -21336,6 +22652,7 @@ export const AnthropicCitationPageLocationParam = Schema.Struct({
   }],
   "identifier": "AnthropicCitationPageLocationParam"
 })
+
 export type AnthropicCitationContentBlockLocationParam = {
   readonly "cited_text": string
   readonly "document_index": number
@@ -21344,6 +22661,7 @@ export type AnthropicCitationContentBlockLocationParam = {
   readonly "start_block_index": number
   readonly "type": "content_block_location"
 }
+
 export const AnthropicCitationContentBlockLocationParam = Schema.Struct({
   "cited_text": Schema.String,
   "document_index": Schema.Int,
@@ -21362,6 +22680,7 @@ export const AnthropicCitationContentBlockLocationParam = Schema.Struct({
   }],
   "identifier": "AnthropicCitationContentBlockLocationParam"
 })
+
 export type AnthropicCitationWebSearchResultLocationParam = {
   readonly "cited_text": string
   readonly "encrypted_index": string
@@ -21369,6 +22688,7 @@ export type AnthropicCitationWebSearchResultLocationParam = {
   readonly "type": "web_search_result_location"
   readonly "url": string
 }
+
 export const AnthropicCitationWebSearchResultLocationParam = Schema.Struct({
   "cited_text": Schema.String,
   "encrypted_index": Schema.String,
@@ -21385,6 +22705,7 @@ export const AnthropicCitationWebSearchResultLocationParam = Schema.Struct({
   }],
   "identifier": "AnthropicCitationWebSearchResultLocationParam"
 })
+
 export type AnthropicCitationSearchResultLocationParam = {
   readonly "cited_text": string
   readonly "end_block_index": number
@@ -21394,6 +22715,7 @@ export type AnthropicCitationSearchResultLocationParam = {
   readonly "title": string | null
   readonly "type": "search_result_location"
 }
+
 export const AnthropicCitationSearchResultLocationParam = Schema.Struct({
   "cited_text": Schema.String,
   "end_block_index": Schema.Int,
@@ -21414,6 +22736,7 @@ export const AnthropicCitationSearchResultLocationParam = Schema.Struct({
   }],
   "identifier": "AnthropicCitationSearchResultLocationParam"
 })
+
 export type AnthropicTextBlockParam = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "citations"?:
@@ -21428,6 +22751,7 @@ export type AnthropicTextBlockParam = {
   readonly "text": string
   readonly "type": "text"
 }
+
 export const AnthropicTextBlockParam = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "citations": Schema.optionalKey(
@@ -21447,16 +22771,20 @@ export const AnthropicTextBlockParam = Schema.Struct({
   "text": Schema.String,
   "type": Schema.Literal("text")
 }).annotate({ "examples": [{ "text": "Hello, world!", "type": "text" }], "identifier": "AnthropicTextBlockParam" })
+
 export type AnthropicImageMimeType = "image/jpeg" | "image/png" | "image/gif" | "image/webp"
+
 export const AnthropicImageMimeType = Schema.Literals(["image/jpeg", "image/png", "image/gif", "image/webp"]).annotate({
   "examples": ["image/jpeg"],
   "identifier": "AnthropicImageMimeType"
 })
+
 export type AnthropicBase64ImageSource = {
   readonly "data": string
   readonly "media_type": AnthropicImageMimeType
   readonly "type": "base64"
 }
+
 export const AnthropicBase64ImageSource = Schema.Struct({
   "data": Schema.String,
   "media_type": AnthropicImageMimeType,
@@ -21465,22 +22793,28 @@ export const AnthropicBase64ImageSource = Schema.Struct({
   "examples": [{ "data": "/9j/4AAQ...", "media_type": "image/jpeg", "type": "base64" }],
   "identifier": "AnthropicBase64ImageSource"
 })
+
 export type AnthropicUrlImageSource = { readonly "type": "url"; readonly "url": string }
+
 export const AnthropicUrlImageSource = Schema.Struct({ "type": Schema.Literal("url"), "url": Schema.String }).annotate({
   "examples": [{ "type": "url", "url": "https://example.com/image.jpg" }],
   "identifier": "AnthropicUrlImageSource"
 })
+
 export type AnthropicFileDocumentSource = { readonly "file_id": string; readonly "type": "file" }
+
 export const AnthropicFileDocumentSource = Schema.Struct({ "file_id": Schema.String, "type": Schema.Literal("file") })
   .annotate({
     "examples": [{ "file_id": "or_file_011CNha8iCJcU1wXNR6q4V8w", "type": "file" }],
     "identifier": "AnthropicFileDocumentSource"
   })
+
 export type AnthropicImageBlockParam = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "source": AnthropicBase64ImageSource | AnthropicUrlImageSource | AnthropicFileDocumentSource
   readonly "type": "image"
 }
+
 export const AnthropicImageBlockParam = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "source": Schema.Union([AnthropicBase64ImageSource, AnthropicUrlImageSource, AnthropicFileDocumentSource], {
@@ -21491,11 +22825,14 @@ export const AnthropicImageBlockParam = Schema.Struct({
   "examples": [{ "source": { "data": "/9j/4AAQ...", "media_type": "image/jpeg", "type": "base64" }, "type": "image" }],
   "identifier": "AnthropicImageBlockParam"
 })
+
 export type AnthropicUrlPdfSource = { readonly "type": "url"; readonly "url": string }
+
 export const AnthropicUrlPdfSource = Schema.Struct({ "type": Schema.Literal("url"), "url": Schema.String }).annotate({
   "examples": [{ "type": "url", "url": "https://example.com/document.pdf" }],
   "identifier": "AnthropicUrlPdfSource"
 })
+
 export type AnthropicDocumentBlockParam = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "citations"?: { readonly "enabled"?: boolean } | null
@@ -21512,6 +22849,7 @@ export type AnthropicDocumentBlockParam = {
   readonly "title"?: string | null
   readonly "type": "document"
 }
+
 export const AnthropicDocumentBlockParam = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "citations": Schema.optionalKey(
@@ -21540,6 +22878,7 @@ export const AnthropicDocumentBlockParam = Schema.Struct({
   }],
   "identifier": "AnthropicDocumentBlockParam"
 })
+
 export type AnthropicSearchResultBlockParam = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "citations"?: { readonly "enabled"?: boolean }
@@ -21548,6 +22887,7 @@ export type AnthropicSearchResultBlockParam = {
   readonly "title": string
   readonly "type": "search_result"
 }
+
 export const AnthropicSearchResultBlockParam = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "citations": Schema.optionalKey(Schema.Struct({ "enabled": Schema.optionalKey(Schema.Boolean) })),
@@ -21564,6 +22904,7 @@ export const AnthropicSearchResultBlockParam = Schema.Struct({
   }],
   "identifier": "AnthropicSearchResultBlockParam"
 })
+
 export type AnthropicWebSearchResultBlockParam = {
   readonly "encrypted_content": string
   readonly "page_age"?: string | null
@@ -21571,6 +22912,7 @@ export type AnthropicWebSearchResultBlockParam = {
   readonly "type": "web_search_result"
   readonly "url": string
 }
+
 export const AnthropicWebSearchResultBlockParam = Schema.Struct({
   "encrypted_content": Schema.String,
   "page_age": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -21586,11 +22928,13 @@ export const AnthropicWebSearchResultBlockParam = Schema.Struct({
   }],
   "identifier": "AnthropicWebSearchResultBlockParam"
 })
+
 export type MessagesAdvisorToolResultBlock = {
   readonly "content": { readonly [x: string]: Schema.Json }
   readonly "tool_use_id": string
   readonly "type": "advisor_tool_result"
 }
+
 export const MessagesAdvisorToolResultBlock = Schema.Struct({
   "content": Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })),
   "tool_use_id": Schema.String,
@@ -21605,6 +22949,7 @@ export const MessagesAdvisorToolResultBlock = Schema.Struct({
   }],
   "identifier": "MessagesAdvisorToolResultBlock"
 })
+
 export type AnthropicWebSearchToolUserLocation = {
   readonly "city"?: string | null
   readonly "country"?: string | null
@@ -21612,6 +22957,7 @@ export type AnthropicWebSearchToolUserLocation = {
   readonly "timezone"?: string | null
   readonly "type": "approximate"
 } | null
+
 export const AnthropicWebSearchToolUserLocation = Schema.Union([
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -21631,12 +22977,15 @@ export const AnthropicWebSearchToolUserLocation = Schema.Union([
   }],
   "identifier": "AnthropicWebSearchToolUserLocation"
 })
+
 export type AnthropicAllowedCallers = globalThis.ReadonlyArray<
   "direct" | "code_execution_20250825" | "code_execution_20260120"
 >
+
 export const AnthropicAllowedCallers = Schema.Array(
   Schema.Literals(["direct", "code_execution_20250825", "code_execution_20260120"])
 ).annotate({ "examples": [["direct"]], "identifier": "AnthropicAllowedCallers" })
+
 export type AnthropicToolUnion = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "defer_loading"?: boolean
@@ -21675,6 +23024,7 @@ export type AnthropicToolUnion = {
   readonly "type": "web_search_20260209"
   readonly "user_location"?: AnthropicWebSearchToolUserLocation
 }
+
 export const AnthropicToolUnion = Schema.Union([
   Schema.Struct({
     "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
@@ -21731,6 +23081,7 @@ export const AnthropicToolUnion = Schema.Union([
   }],
   "identifier": "AnthropicToolUnion"
 })
+
 export type MessagesToolAdditionBlock = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "tool":
@@ -21740,6 +23091,7 @@ export type MessagesToolAdditionBlock = {
     | { readonly "definition": AnthropicToolUnion; readonly "type": "tool_definition" }
   readonly "type": "tool_addition"
 }
+
 export const MessagesToolAdditionBlock = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "tool": Schema.Union([
@@ -21759,6 +23111,7 @@ export const MessagesToolAdditionBlock = Schema.Struct({
   "examples": [{ "tool": { "name": "get_forecast", "type": "tool_reference" }, "type": "tool_addition" }],
   "identifier": "MessagesToolAdditionBlock"
 })
+
 export type MessagesToolRemovalBlock = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "tool": { readonly "name": string; readonly "type": "tool_reference" } | {
@@ -21768,6 +23121,7 @@ export type MessagesToolRemovalBlock = {
   } | { readonly "server_name": string; readonly "type": "mcp_toolset_reference" }
   readonly "type": "tool_removal"
 }
+
 export const MessagesToolRemovalBlock = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "tool": Schema.Union([
@@ -21786,6 +23140,7 @@ export const MessagesToolRemovalBlock = Schema.Struct({
   "examples": [{ "tool": { "name": "get_weather", "type": "tool_reference" }, "type": "tool_removal" }],
   "identifier": "MessagesToolRemovalBlock"
 })
+
 export type MessagesShellToolResultBlock = {
   readonly "container_id"?: string
   readonly "content": { readonly [x: string]: Schema.Json }
@@ -21802,6 +23157,7 @@ export type MessagesShellToolResultBlock = {
   readonly "tool_use_id": string
   readonly "type": "openrouter_shell_tool_result"
 }
+
 export const MessagesShellToolResultBlock = Schema.Struct({
   "container_id": Schema.optionalKey(
     Schema.String.annotate({
@@ -21837,6 +23193,7 @@ export const MessagesShellToolResultBlock = Schema.Struct({
   }],
   "identifier": "MessagesShellToolResultBlock"
 })
+
 export type MessagesBashToolResultBlock = {
   readonly "container_id"?: string
   readonly "content": { readonly [x: string]: Schema.Json }
@@ -21853,6 +23210,7 @@ export type MessagesBashToolResultBlock = {
   readonly "tool_use_id": string
   readonly "type": "openrouter_bash_tool_result"
 }
+
 export const MessagesBashToolResultBlock = Schema.Struct({
   "container_id": Schema.optionalKey(
     Schema.String.annotate({
@@ -21888,11 +23246,13 @@ export const MessagesBashToolResultBlock = Schema.Struct({
   }],
   "identifier": "MessagesBashToolResultBlock"
 })
+
 export type ORAnthropicToolSearchResultParam = {
   readonly "content": { readonly [x: string]: Schema.Json }
   readonly "tool_use_id": string
   readonly "type": "openrouter_tool_search_result"
 }
+
 export const ORAnthropicToolSearchResultParam = Schema.Struct({
   "content": Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })),
   "tool_use_id": Schema.String,
@@ -21902,16 +23262,21 @@ export const ORAnthropicToolSearchResultParam = Schema.Struct({
   "examples": [{ "content": { "matches": [] }, "tool_use_id": "search", "type": "openrouter_tool_search_result" }],
   "identifier": "ORAnthropicToolSearchResultParam"
 })
+
 export type AnthropicOutputEffort = "low" | "medium" | "high" | "xhigh" | "max" | null
+
 export const AnthropicOutputEffort = Schema.Union([
   Schema.Literals(["low", "medium", "high", "xhigh", "max"]),
   Schema.Null
 ]).annotate({ "examples": ["high"], "identifier": "AnthropicOutputEffort" })
+
 export type AnthropicMessageOutputConfig = { readonly "effort"?: AnthropicOutputEffort } | null
+
 export const AnthropicMessageOutputConfig = Schema.Union([
   Schema.Struct({ "effort": Schema.optionalKey(AnthropicOutputEffort) }),
   Schema.Null
 ]).annotate({ "examples": [{ "effort": "low" }], "identifier": "AnthropicMessageOutputConfig" })
+
 export type MessagesMessageParam = {
   readonly "clear_at"?: AnthropicSystemClearAt
   readonly "content":
@@ -21983,6 +23348,7 @@ export type MessagesMessageParam = {
   readonly "output_config"?: AnthropicMessageOutputConfig
   readonly "role": "user" | "assistant" | "system"
 }
+
 export const MessagesMessageParam = Schema.Struct({
   "clear_at": Schema.optionalKey(AnthropicSystemClearAt),
   "content": Schema.Union([
@@ -22070,6 +23436,7 @@ export const MessagesMessageParam = Schema.Struct({
   "examples": [{ "content": "Hello, how are you?", "role": "user" }],
   "identifier": "MessagesMessageParam"
 })
+
 export type MessagesOutputConfig = {
   readonly "effort"?: "low" | "medium" | "high" | "xhigh" | "max" | null
   readonly "format"?:
@@ -22079,6 +23446,7 @@ export type MessagesOutputConfig = {
     | { readonly "remaining"?: number | null; readonly "total": number; readonly "type": "tokens" }
     | null
 }
+
 export const MessagesOutputConfig = Schema.Struct({
   "effort": Schema.optionalKey(
     Schema.Union([Schema.Literals(["low", "medium", "high", "xhigh", "max"]), Schema.Null]).annotate({
@@ -22128,10 +23496,12 @@ export const MessagesOutputConfig = Schema.Struct({
   "examples": [{ "effort": "medium" }],
   "identifier": "MessagesOutputConfig"
 })
+
 export type AnthropicSafeguard = {
   readonly "classifier_context"?: { readonly [x: string]: Schema.Json }
   readonly "type": string
 } & { readonly [x: string]: Schema.Json }
+
 export const AnthropicSafeguard = Schema.StructWithRest(
   Schema.Struct({
     "classifier_context": Schema.optionalKey(
@@ -22145,10 +23515,12 @@ export const AnthropicSafeguard = Schema.StructWithRest(
   "examples": [{ "classifier_context": { "permission_mode": "auto", "v": 1 }, "type": "dangerous_tool_use" }],
   "identifier": "AnthropicSafeguard"
 })
+
 export type AnthropicThinkingBlockBinding = {
   readonly "mismatch_behavior"?: "error" | "drop_block" | null
   readonly "prefix_mismatch_behavior"?: "error" | "drop_block" | null
 } | null
+
 export const AnthropicThinkingBlockBinding = Schema.Union([
   Schema.Struct({
     "mismatch_behavior": Schema.optionalKey(
@@ -22165,15 +23537,19 @@ export const AnthropicThinkingBlockBinding = Schema.Union([
   "examples": [{ "prefix_mismatch_behavior": "drop_block" }],
   "identifier": "AnthropicThinkingBlockBinding"
 })
+
 export type AnthropicThinkingDisplay = "summarized" | "omitted" | "updates" | null
+
 export const AnthropicThinkingDisplay = Schema.Union([
   Schema.Literals(["summarized", "omitted", "updates"]),
   Schema.Null
 ]).annotate({ "examples": ["summarized"], "identifier": "AnthropicThinkingDisplay" })
+
 export type MessagesSearchModelsServerTool = {
   readonly "parameters"?: SearchModelsServerToolConfig
   readonly "type": "openrouter:experimental__search_models"
 }
+
 export const MessagesSearchModelsServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(SearchModelsServerToolConfig),
   "type": Schema.Literal("openrouter:experimental__search_models")
@@ -22182,6 +23558,7 @@ export const MessagesSearchModelsServerTool = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:experimental__search_models" }],
   "identifier": "MessagesSearchModelsServerTool"
 })
+
 export type AnthropicToolSearchToolBm25 = {
   readonly "allowed_callers"?: AnthropicAllowedCallers
   readonly "cache_control"?: AnthropicCacheControlDirective
@@ -22190,6 +23567,7 @@ export type AnthropicToolSearchToolBm25 = {
   readonly "strict"?: boolean
   readonly "type": "tool_search_tool_bm25_20251119" | "tool_search_tool_bm25"
 }
+
 export const AnthropicToolSearchToolBm25 = Schema.Struct({
   "allowed_callers": Schema.optionalKey(AnthropicAllowedCallers),
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
@@ -22198,6 +23576,7 @@ export const AnthropicToolSearchToolBm25 = Schema.Struct({
   "strict": Schema.optionalKey(Schema.Boolean),
   "type": Schema.Literals(["tool_search_tool_bm25_20251119", "tool_search_tool_bm25"])
 }).annotate({ "identifier": "AnthropicToolSearchToolBm25" })
+
 export type AnthropicToolSearchToolRegex = {
   readonly "allowed_callers"?: AnthropicAllowedCallers
   readonly "cache_control"?: AnthropicCacheControlDirective
@@ -22206,6 +23585,7 @@ export type AnthropicToolSearchToolRegex = {
   readonly "strict"?: boolean
   readonly "type": "tool_search_tool_regex_20251119" | "tool_search_tool_regex"
 }
+
 export const AnthropicToolSearchToolRegex = Schema.Struct({
   "allowed_callers": Schema.optionalKey(AnthropicAllowedCallers),
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
@@ -22214,14 +23594,18 @@ export const AnthropicToolSearchToolRegex = Schema.Struct({
   "strict": Schema.optionalKey(Schema.Boolean),
   "type": Schema.Literals(["tool_search_tool_regex_20251119", "tool_search_tool_regex"])
 }).annotate({ "identifier": "AnthropicToolSearchToolRegex" })
+
 export type ShellServerToolEngine = "auto" | "openrouter"
+
 export const ShellServerToolEngine = Schema.Literals(["auto", "openrouter"]).annotate({
   "description":
     "Which shell engine to use. \"openrouter\" runs commands server-side in the OpenRouter sandbox. \"auto\" (default) keeps the provider's native hosted shell when available (OpenAI); on other providers the call is routed to the OpenRouter sandbox.",
   "examples": ["openrouter"],
   "identifier": "ShellServerToolEngine"
 })
+
 export type ShellServerToolEnvironment = ContainerAutoEnvironment | ContainerReferenceEnvironment
+
 export const ShellServerToolEnvironment = Schema.Union([ContainerAutoEnvironment, ContainerReferenceEnvironment], {
   mode: "oneOf"
 }).annotate({
@@ -22230,10 +23614,12 @@ export const ShellServerToolEnvironment = Schema.Union([ContainerAutoEnvironment
   "examples": [{ "type": "container_auto" }],
   "identifier": "ShellServerToolEnvironment"
 })
+
 export type ShellServerToolConfig = {
   readonly "engine"?: ShellServerToolEngine
   readonly "environment"?: ShellServerToolEnvironment
 }
+
 export const ShellServerToolConfig = Schema.Struct({
   "engine": Schema.optionalKey(ShellServerToolEngine),
   "environment": Schema.optionalKey(ShellServerToolEnvironment)
@@ -22242,10 +23628,12 @@ export const ShellServerToolConfig = Schema.Struct({
   "examples": [{ "engine": "openrouter", "environment": { "type": "container_auto" } }],
   "identifier": "ShellServerToolConfig"
 })
+
 export type ShellServerTool_OpenRouter = {
   readonly "parameters"?: ShellServerToolConfig
   readonly "type": "openrouter:shell"
 }
+
 export const ShellServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(ShellServerToolConfig),
   "type": Schema.Literal("openrouter:shell")
@@ -22258,7 +23646,9 @@ export const ShellServerTool_OpenRouter = Schema.Struct({
   }],
   "identifier": "ShellServerTool_OpenRouter"
 })
+
 export type ToolSearchServerToolConfig = { readonly "max_results"?: number }
+
 export const ToolSearchServerToolConfig = Schema.Struct({
   "max_results": Schema.optionalKey(
     Schema.Number.annotate({ "description": "Maximum tools returned by one search. Defaults to 5.", "examples": [5] })
@@ -22269,10 +23659,12 @@ export const ToolSearchServerToolConfig = Schema.Struct({
   "examples": [{ "max_results": 5 }],
   "identifier": "ToolSearchServerToolConfig"
 })
+
 export type ToolSearchServerTool = {
   readonly "parameters"?: ToolSearchServerToolConfig
   readonly "type": "openrouter:tool_search"
 }
+
 export const ToolSearchServerTool = Schema.Struct({
   "parameters": Schema.optionalKey(ToolSearchServerToolConfig),
   "type": Schema.Literal("openrouter:tool_search")
@@ -22281,6 +23673,7 @@ export const ToolSearchServerTool = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:tool_search" }],
   "identifier": "ToolSearchServerTool"
 })
+
 export type MessagesRequest = {
   readonly "cache_control"?: AnthropicCacheControlDirective
   readonly "context_management"?: {
@@ -22427,6 +23820,7 @@ export type MessagesRequest = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const MessagesRequest = Schema.Struct({
   "cache_control": Schema.optionalKey(AnthropicCacheControlDirective),
   "context_management": Schema.optionalKey(Schema.Union([
@@ -22652,10 +24046,12 @@ export const MessagesRequest = Schema.Struct({
   }],
   "identifier": "MessagesRequest"
 })
+
 export type AnthropicSafeguardResult = {
   readonly "status": { readonly "type": string } & { readonly [x: string]: Schema.Json }
   readonly "type": string
 } & { readonly [x: string]: Schema.Json }
+
 export const AnthropicSafeguardResult = Schema.StructWithRest(
   Schema.Struct({
     "status": Schema.StructWithRest(Schema.Struct({ "type": Schema.String }), [
@@ -22675,6 +24071,7 @@ export const AnthropicSafeguardResult = Schema.StructWithRest(
   }],
   "identifier": "AnthropicSafeguardResult"
 })
+
 export type MessagesResult = {
   readonly "container": AnthropicContainer
   readonly "content": globalThis.ReadonlyArray<ORAnthropicContentBlock>
@@ -22722,6 +24119,7 @@ export type MessagesResult = {
   readonly "provider"?: string
   readonly "safeguard_results"?: globalThis.ReadonlyArray<AnthropicSafeguardResult> | null
 }
+
 export const MessagesResult = Schema.Struct({
   "container": AnthropicContainer,
   "content": Schema.Array(ORAnthropicContentBlock),
@@ -22821,6 +24219,7 @@ export const MessagesResult = Schema.Struct({
   }],
   "identifier": "MessagesResult"
 })
+
 export type MessagesStartEvent = {
   readonly "message": {
     readonly "container": AnthropicContainer
@@ -23001,6 +24400,7 @@ export type MessagesStartEvent = {
   }
   readonly "type": "message_start"
 }
+
 export const MessagesStartEvent = Schema.Struct({
   "message": Schema.Struct({
     "container": AnthropicContainer,
@@ -23226,12 +24626,14 @@ export const MessagesStartEvent = Schema.Struct({
   }],
   "identifier": "MessagesStartEvent"
 })
+
 export type ORAnthropicServerToolUsage = {
   readonly "tool_calls_executed"?: number
   readonly "tool_calls_requested"?: number
   readonly "web_fetch_requests": number
   readonly "web_search_requests": number
 } | null
+
 export const ORAnthropicServerToolUsage = Schema.Union([
   Schema.Struct({
     "tool_calls_executed": Schema.optionalKey(Schema.Int),
@@ -23249,6 +24651,7 @@ export const ORAnthropicServerToolUsage = Schema.Union([
   }],
   "identifier": "ORAnthropicServerToolUsage"
 })
+
 export type MessagesDeltaEvent = {
   readonly "delta": {
     readonly "container": AnthropicContainer
@@ -23269,6 +24672,7 @@ export type MessagesDeltaEvent = {
     readonly "server_tool_use": ORAnthropicServerToolUsage
   }
 }
+
 export const MessagesDeltaEvent = Schema.Struct({
   "delta": Schema.Struct({
     "container": AnthropicContainer,
@@ -23304,7 +24708,9 @@ export const MessagesDeltaEvent = Schema.Struct({
   }],
   "identifier": "MessagesDeltaEvent"
 })
+
 export type MessagesStopEvent = { readonly "openrouter_metadata"?: OpenRouterMetadata; readonly "type": "message_stop" }
+
 export const MessagesStopEvent = Schema.Struct({
   "openrouter_metadata": Schema.optionalKey(OpenRouterMetadata),
   "type": Schema.Literal("message_stop")
@@ -23313,6 +24719,7 @@ export const MessagesStopEvent = Schema.Struct({
   "examples": [{ "type": "message_stop" }],
   "identifier": "MessagesStopEvent"
 })
+
 export type MessagesContentBlockStartEvent = {
   readonly "content_block":
     | AnthropicTextBlock
@@ -23336,6 +24743,7 @@ export type MessagesContentBlockStartEvent = {
   readonly "index": number
   readonly "type": "content_block_start"
 }
+
 export const MessagesContentBlockStartEvent = Schema.Struct({
   "content_block": Schema.Union([
     AnthropicTextBlock,
@@ -23372,6 +24780,7 @@ export const MessagesContentBlockStartEvent = Schema.Struct({
   }],
   "identifier": "MessagesContentBlockStartEvent"
 })
+
 export type MessagesContentBlockDeltaEvent = {
   readonly "delta":
     | { readonly "text": string; readonly "type": "text_delta" }
@@ -23395,6 +24804,7 @@ export type MessagesContentBlockDeltaEvent = {
   readonly "index": number
   readonly "type": "content_block_delta"
 }
+
 export const MessagesContentBlockDeltaEvent = Schema.Struct({
   "delta": Schema.Union([
     Schema.Struct({ "text": Schema.String, "type": Schema.Literal("text_delta") }),
@@ -23424,7 +24834,9 @@ export const MessagesContentBlockDeltaEvent = Schema.Struct({
   "examples": [{ "delta": { "text": "Hello", "type": "text_delta" }, "index": 0, "type": "content_block_delta" }],
   "identifier": "MessagesContentBlockDeltaEvent"
 })
+
 export type MessagesContentBlockStopEvent = { readonly "index": number; readonly "type": "content_block_stop" }
+
 export const MessagesContentBlockStopEvent = Schema.Struct({
   "index": Schema.Int,
   "type": Schema.Literal("content_block_stop")
@@ -23433,17 +24845,21 @@ export const MessagesContentBlockStopEvent = Schema.Struct({
   "examples": [{ "index": 0, "type": "content_block_stop" }],
   "identifier": "MessagesContentBlockStopEvent"
 })
+
 export type MessagesPingEvent = { readonly "type": "ping" }
+
 export const MessagesPingEvent = Schema.Struct({ "type": Schema.Literal("ping") }).annotate({
   "description": "Keep-alive ping event",
   "examples": [{ "type": "ping" }],
   "identifier": "MessagesPingEvent"
 })
+
 export type MessagesErrorEvent = {
   readonly "error": { readonly "error_type"?: ApiErrorType; readonly "message": string; readonly "type": string }
   readonly "openrouter_metadata"?: OpenRouterMetadata
   readonly "type": "error"
 }
+
 export const MessagesErrorEvent = Schema.Struct({
   "error": Schema.Struct({
     "error_type": Schema.optionalKey(ApiErrorType),
@@ -23460,6 +24876,7 @@ export const MessagesErrorEvent = Schema.Struct({
   }],
   "identifier": "MessagesErrorEvent"
 })
+
 export type MessagesStreamEvents =
   | MessagesStartEvent
   | MessagesDeltaEvent
@@ -23469,6 +24886,7 @@ export type MessagesStreamEvents =
   | MessagesContentBlockStopEvent
   | MessagesPingEvent
   | MessagesErrorEvent
+
 export const MessagesStreamEvents = Schema.Union([
   MessagesStartEvent,
   MessagesDeltaEvent,
@@ -23483,7 +24901,9 @@ export const MessagesStreamEvents = Schema.Union([
   "examples": [{ "delta": { "text": "Hello", "type": "text_delta" }, "index": 0, "type": "content_block_delta" }],
   "identifier": "MessagesStreamEvents"
 })
+
 export type MessagesStreamingResponse = { readonly "data": MessagesStreamEvents; readonly "event": string }
+
 export const MessagesStreamingResponse = Schema.Struct({ "data": MessagesStreamEvents, "event": Schema.String })
   .annotate({
     "examples": [{
@@ -23492,6 +24912,7 @@ export const MessagesStreamingResponse = Schema.Struct({ "data": MessagesStreamE
     }],
     "identifier": "MessagesStreamingResponse"
   })
+
 export type AnthropicMessagesErrorResponse = {
   readonly "error": {
     readonly "error_type"?: ApiErrorType
@@ -23512,6 +24933,7 @@ export type AnthropicMessagesErrorResponse = {
   readonly "request_id": string | null
   readonly "type": "error"
 }
+
 export const AnthropicMessagesErrorResponse = Schema.Struct({
   "error": Schema.Struct({
     "error_type": Schema.optionalKey(ApiErrorType),
@@ -23547,7 +24969,9 @@ export const AnthropicMessagesErrorResponse = Schema.Struct({
   }],
   "identifier": "AnthropicMessagesErrorResponse"
 })
+
 export type ModelResponse = { readonly "data": Model }
+
 export const ModelResponse = Schema.Struct({ "data": Model }).annotate({
   "description": "Single model response",
   "examples": [{
@@ -23579,6 +25003,7 @@ export const ModelResponse = Schema.Struct({ "data": Model }).annotate({
   }],
   "identifier": "ModelResponse"
 })
+
 export type PublicEndpoint = {
   readonly "context_length": number
   readonly "latency_last_30m": PercentileStats
@@ -23607,6 +25032,7 @@ export type PublicEndpoint = {
   readonly "uptime_last_30m": number | null
   readonly "uptime_last_5m": number | null
 }
+
 export const PublicEndpoint = Schema.Struct({
   "context_length": Schema.Int,
   "latency_last_30m": PercentileStats,
@@ -23711,6 +25137,7 @@ export const PublicEndpoint = Schema.Struct({
   }],
   "identifier": "PublicEndpoint"
 })
+
 export type ListEndpointsResponse = {
   readonly "architecture": {
     readonly "input_modalities": globalThis.ReadonlyArray<InputModality>
@@ -23745,6 +25172,7 @@ export type ListEndpointsResponse = {
   readonly "id": string
   readonly "name": string
 }
+
 export const ListEndpointsResponse = Schema.Struct({
   "architecture": Schema.Struct({
     "input_modalities": Schema.Array(InputModality).annotate({ "description": "Supported input modalities" }),
@@ -23789,7 +25217,9 @@ export const ListEndpointsResponse = Schema.Struct({
   "id": Schema.String.annotate({ "description": "Unique identifier for the model", "examples": ["openai/gpt-4"] }),
   "name": Schema.String.annotate({ "description": "Display name of the model", "examples": ["GPT-4"] })
 }).annotate({ "description": "List of available endpoints for a model", "identifier": "ListEndpointsResponse" })
+
 export type ModelsCountResponse = { readonly "data": { readonly "count": number } }
+
 export const ModelsCountResponse = Schema.Struct({
   "data": Schema.Struct({
     "count": Schema.Number.annotate({ "description": "Total number of available models", "examples": [150] }).check(
@@ -23801,6 +25231,7 @@ export const ModelsCountResponse = Schema.Struct({
   "examples": [{ "data": { "count": 150 } }],
   "identifier": "ModelsCountResponse"
 })
+
 export type OAuthJwks = {
   readonly "keys": globalThis.ReadonlyArray<
     {
@@ -23814,6 +25245,7 @@ export type OAuthJwks = {
     }
   >
 }
+
 export const OAuthJwks = Schema.Struct({
   "keys": Schema.Array(Schema.Struct({
     "alg": Schema.Literal("ES256"),
@@ -23847,6 +25279,7 @@ export const OAuthJwks = Schema.Struct({
   }],
   "identifier": "OAuthJwks"
 })
+
 export type TokenExchangeRequest = {
   readonly "federation_policy_id": string
   readonly "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -23855,6 +25288,7 @@ export type TokenExchangeRequest = {
   readonly "subject_token": string
   readonly "subject_token_type": "urn:ietf:params:oauth:token-type:jwt"
 }
+
 export const TokenExchangeRequest = Schema.Struct({
   "federation_policy_id": Schema.String.annotate({
     "description":
@@ -23894,6 +25328,7 @@ export const TokenExchangeRequest = Schema.Struct({
   "description": "RFC 8693 token exchange request body (application/x-www-form-urlencoded).",
   "identifier": "TokenExchangeRequest"
 })
+
 export type TokenExchangeResponse = {
   readonly "access_token": string
   readonly "expires_in": number
@@ -23901,6 +25336,7 @@ export type TokenExchangeResponse = {
   readonly "scope": string
   readonly "token_type": "Bearer"
 }
+
 export const TokenExchangeResponse = Schema.Struct({
   "access_token": Schema.String.annotate({
     "description": "A short-lived JWT to send as `Authorization: Bearer` to the inference API.",
@@ -23931,6 +25367,7 @@ export const TokenExchangeResponse = Schema.Struct({
   }],
   "identifier": "TokenExchangeResponse"
 })
+
 export type OAuthErrorResponse = {
   readonly "error":
     | "invalid_request"
@@ -23941,6 +25378,7 @@ export type OAuthErrorResponse = {
     | "temporarily_unavailable"
   readonly "error_description": string
 }
+
 export const OAuthErrorResponse = Schema.Struct({
   "error": Schema.Literals([
     "invalid_request",
@@ -23956,6 +25394,7 @@ export const OAuthErrorResponse = Schema.Struct({
   "examples": [{ "error": "invalid_grant", "error_description": "The subject token was not accepted." }],
   "identifier": "OAuthErrorResponse"
 })
+
 export type ObservabilityFilterRuleGroup = {
   readonly "logic"?: "and" | "or"
   readonly "rules": globalThis.ReadonlyArray<
@@ -23991,6 +25430,7 @@ export type ObservabilityFilterRuleGroup = {
     }
   >
 }
+
 export const ObservabilityFilterRuleGroup = Schema.Struct({
   "logic": Schema.optionalKey(Schema.Literals(["and", "or"])),
   "rules": Schema.Array(Schema.Struct({
@@ -24029,10 +25469,12 @@ export const ObservabilityFilterRuleGroup = Schema.Struct({
   "examples": [{ "logic": "and", "rules": [{ "field": "model", "operator": "equals", "value": "openai/gpt-4o" }] }],
   "identifier": "ObservabilityFilterRuleGroup"
 })
+
 export type ObservabilityFilterRulesConfig = {
   readonly "enabled"?: boolean
   readonly "groups": globalThis.ReadonlyArray<ObservabilityFilterRuleGroup>
 } | null
+
 export const ObservabilityFilterRulesConfig = Schema.Union([
   Schema.Struct({
     "enabled": Schema.optionalKey(Schema.Boolean),
@@ -24044,11 +25486,14 @@ export const ObservabilityFilterRulesConfig = Schema.Union([
   "examples": [null],
   "identifier": "ObservabilityFilterRulesConfig"
 })
+
 export type ObservabilityDataRegion = "global" | "europe" | "us"
+
 export const ObservabilityDataRegion = Schema.Literals(["global", "europe", "us"]).annotate({
   "examples": ["global"],
   "identifier": "ObservabilityDataRegion"
 })
+
 export type ObservabilityArizeDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24074,6 +25519,7 @@ export type ObservabilityArizeDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityArizeDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24183,6 +25629,7 @@ export const ObservabilityArizeDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityArizeDestination"
 })
+
 export type ObservabilityBraintrustDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24207,6 +25654,7 @@ export type ObservabilityBraintrustDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityBraintrustDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24308,6 +25756,7 @@ export const ObservabilityBraintrustDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityBraintrustDestination"
 })
+
 export type ObservabilityClickhouseDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24335,6 +25784,7 @@ export type ObservabilityClickhouseDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityClickhouseDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24451,6 +25901,7 @@ export const ObservabilityClickhouseDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityClickhouseDestination"
 })
+
 export type ObservabilityDatadogDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24475,6 +25926,7 @@ export type ObservabilityDatadogDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityDatadogDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24580,6 +26032,7 @@ export const ObservabilityDatadogDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityDatadogDestination"
 })
+
 export type ObservabilityGrafanaDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24604,6 +26057,7 @@ export type ObservabilityGrafanaDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityGrafanaDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24709,6 +26163,7 @@ export const ObservabilityGrafanaDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityGrafanaDestination"
 })
+
 export type ObservabilityLangfuseDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24733,6 +26188,7 @@ export type ObservabilityLangfuseDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityLangfuseDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24834,6 +26290,7 @@ export const ObservabilityLangfuseDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityLangfuseDestination"
 })
+
 export type ObservabilityLangsmithDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24859,6 +26316,7 @@ export type ObservabilityLangsmithDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityLangsmithDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -24967,6 +26425,7 @@ export const ObservabilityLangsmithDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityLangsmithDestination"
 })
+
 export type ObservabilityNewrelicDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -24990,6 +26449,7 @@ export type ObservabilityNewrelicDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityNewrelicDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25088,6 +26548,7 @@ export const ObservabilityNewrelicDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityNewrelicDestination"
 })
+
 export type ObservabilityOpikDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25112,6 +26573,7 @@ export type ObservabilityOpikDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityOpikDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25215,6 +26677,7 @@ export const ObservabilityOpikDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityOpikDestination"
 })
+
 export type ObservabilityOtelCollectorDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25234,6 +26697,7 @@ export type ObservabilityOtelCollectorDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityOtelCollectorDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25330,6 +26794,7 @@ export const ObservabilityOtelCollectorDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityOtelCollectorDestination"
 })
+
 export type ObservabilityPosthogDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25353,6 +26818,7 @@ export type ObservabilityPosthogDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityPosthogDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25451,6 +26917,7 @@ export const ObservabilityPosthogDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityPosthogDestination"
 })
+
 export type ObservabilityRampDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25474,6 +26941,7 @@ export type ObservabilityRampDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityRampDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25572,6 +27040,7 @@ export const ObservabilityRampDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityRampDestination"
 })
+
 export type ObservabilityS3Destination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25605,6 +27074,7 @@ export type ObservabilityS3Destination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityS3Destination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25758,6 +27228,7 @@ export const ObservabilityS3Destination = Schema.Struct({
   }],
   "identifier": "ObservabilityS3Destination"
 })
+
 export type ObservabilitySentryDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25781,6 +27252,7 @@ export type ObservabilitySentryDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilitySentryDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -25887,6 +27359,7 @@ export const ObservabilitySentryDestination = Schema.Struct({
   }],
   "identifier": "ObservabilitySentryDestination"
 })
+
 export type ObservabilitySnowflakeDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -25915,6 +27388,7 @@ export type ObservabilitySnowflakeDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilitySnowflakeDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -26026,6 +27500,7 @@ export const ObservabilitySnowflakeDestination = Schema.Struct({
   }],
   "identifier": "ObservabilitySnowflakeDestination"
 })
+
 export type ObservabilityWeaveDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -26051,6 +27526,7 @@ export type ObservabilityWeaveDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityWeaveDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -26160,6 +27636,7 @@ export const ObservabilityWeaveDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityWeaveDestination"
 })
+
 export type ObservabilityWebhookDestination = {
   readonly "api_key_hashes": globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost": boolean
@@ -26183,6 +27660,7 @@ export type ObservabilityWebhookDestination = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ObservabilityWebhookDestination = Schema.Struct({
   "api_key_hashes": Schema.Union([Schema.Array(Schema.String), Schema.Null]).annotate({
     "description":
@@ -26277,6 +27755,7 @@ export const ObservabilityWebhookDestination = Schema.Struct({
   }],
   "identifier": "ObservabilityWebhookDestination"
 })
+
 export type ObservabilityDestination =
   | ObservabilityArizeDestination
   | ObservabilityBraintrustDestination
@@ -26295,6 +27774,7 @@ export type ObservabilityDestination =
   | ObservabilitySnowflakeDestination
   | ObservabilityWeaveDestination
   | ObservabilityWebhookDestination
+
 export const ObservabilityDestination = Schema.Union([
   ObservabilityArizeDestination,
   ObservabilityBraintrustDestination,
@@ -26335,10 +27815,12 @@ export const ObservabilityDestination = Schema.Union([
   }],
   "identifier": "ObservabilityDestination"
 })
+
 export type ListObservabilityDestinationsResponse = {
   readonly "data": globalThis.ReadonlyArray<ObservabilityDestination>
   readonly "total_count": number
 }
+
 export const ListObservabilityDestinationsResponse = Schema.Struct({
   "data": Schema.Array(ObservabilityDestination).annotate({ "description": "List of observability destinations." }),
   "total_count": Schema.Number.annotate({
@@ -26370,10 +27852,12 @@ export const ListObservabilityDestinationsResponse = Schema.Struct({
   }],
   "identifier": "ListObservabilityDestinationsResponse"
 })
+
 export type ObservabilityFilterRulesConfigNullable = {
   readonly "enabled"?: boolean
   readonly "groups": globalThis.ReadonlyArray<ObservabilityFilterRuleGroup>
 } | null
+
 export const ObservabilityFilterRulesConfigNullable = Schema.Union([
   Schema.Struct({
     "enabled": Schema.optionalKey(Schema.Boolean),
@@ -26385,12 +27869,15 @@ export const ObservabilityFilterRulesConfigNullable = Schema.Union([
   "examples": [null],
   "identifier": "ObservabilityFilterRulesConfigNullable"
 })
+
 export type ObservabilityDataRegionInput = "global" | "europe" | "us" | "eu"
+
 export const ObservabilityDataRegionInput = Schema.Literals(["global", "europe", "us", "eu"]).annotate({
   "description": "`eu` is accepted as an alias for `europe` and normalizes to `europe`.",
   "examples": ["global"],
   "identifier": "ObservabilityDataRegionInput"
 })
+
 export type CreateObservabilityDestinationRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost"?: boolean
@@ -26424,6 +27911,7 @@ export type CreateObservabilityDestinationRequest = {
     | "webhook"
   readonly "workspace_id"?: string
 }
+
 export const CreateObservabilityDestinationRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Union([
@@ -26535,7 +28023,9 @@ export const CreateObservabilityDestinationRequest = Schema.Struct({
   }],
   "identifier": "CreateObservabilityDestinationRequest"
 })
+
 export type CreateObservabilityDestinationResponse = { readonly "data": ObservabilityDestination }
+
 export const CreateObservabilityDestinationResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<ObservabilityDestination> => ObservabilityDestination).annotate({
     "description": "The newly created observability destination."
@@ -26564,7 +28054,9 @@ export const CreateObservabilityDestinationResponse = Schema.Struct({
   }],
   "identifier": "CreateObservabilityDestinationResponse"
 })
+
 export type GetObservabilityDestinationResponse = { readonly "data": ObservabilityDestination }
+
 export const GetObservabilityDestinationResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<ObservabilityDestination> => ObservabilityDestination).annotate({
     "description": "The observability destination."
@@ -26593,10 +28085,13 @@ export const GetObservabilityDestinationResponse = Schema.Struct({
   }],
   "identifier": "GetObservabilityDestinationResponse"
 })
+
 export type DeleteObservabilityDestinationResponse = { readonly "deleted": true }
+
 export const DeleteObservabilityDestinationResponse = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({ "description": "Always `true` on success." })
 }).annotate({ "examples": [{ "deleted": true }], "identifier": "DeleteObservabilityDestinationResponse" })
+
 export type UpdateObservabilityDestinationRequest = {
   readonly "api_key_hashes"?: globalThis.ReadonlyArray<string> | null
   readonly "broadcast_generation_cost"?: boolean
@@ -26611,6 +28106,7 @@ export type UpdateObservabilityDestinationRequest = {
   readonly "regions"?: globalThis.ReadonlyArray<ObservabilityDataRegionInput>
   readonly "sampling_rate"?: number
 }
+
 export const UpdateObservabilityDestinationRequest = Schema.Struct({
   "api_key_hashes": Schema.optionalKey(
     Schema.Union([
@@ -26696,7 +28192,9 @@ export const UpdateObservabilityDestinationRequest = Schema.Struct({
   "examples": [{ "enabled": false, "name": "Updated Langfuse" }],
   "identifier": "UpdateObservabilityDestinationRequest"
 })
+
 export type UpdateObservabilityDestinationResponse = { readonly "data": ObservabilityDestination }
+
 export const UpdateObservabilityDestinationResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<ObservabilityDestination> => ObservabilityDestination).annotate({
     "description": "The updated observability destination."
@@ -26725,7 +28223,9 @@ export const UpdateObservabilityDestinationResponse = Schema.Struct({
   }],
   "identifier": "UpdateObservabilityDestinationResponse"
 })
+
 export type OrganizationSettings = { readonly "id": string; readonly "is_filtered_model_catalog_enabled": boolean }
+
 export const OrganizationSettings = Schema.Struct({
   "id": Schema.String.annotate({
     "description": "ID of the organization the settings belong to",
@@ -26740,7 +28240,9 @@ export const OrganizationSettings = Schema.Struct({
   "examples": [{ "id": "org_2dHFtVWx2n56w6HkM0000000000", "is_filtered_model_catalog_enabled": true }],
   "identifier": "OrganizationSettings"
 })
+
 export type UpdateOrganizationSettingsRequest = { readonly "is_filtered_model_catalog_enabled": boolean }
+
 export const UpdateOrganizationSettingsRequest = Schema.Struct({
   "is_filtered_model_catalog_enabled": Schema.Boolean.annotate({
     "description":
@@ -26748,12 +28250,15 @@ export const UpdateOrganizationSettingsRequest = Schema.Struct({
     "examples": [true]
   })
 }).annotate({ "identifier": "UpdateOrganizationSettingsRequest" })
+
 export type PresetStatus = "active" | "disabled" | "archived"
+
 export const PresetStatus = Schema.Literals(["active", "disabled", "archived"]).annotate({
   "description": "The status of a preset.",
   "examples": ["active"],
   "identifier": "PresetStatus"
 })
+
 export type Preset = {
   readonly "created_at": string
   readonly "creator_user_id": string | null
@@ -26767,6 +28272,7 @@ export type Preset = {
   readonly "updated_at": string
   readonly "workspace_id": string | null
 }
+
 export const Preset = Schema.Struct({
   "created_at": Schema.String,
   "creator_user_id": Schema.Union([Schema.String, Schema.Null]),
@@ -26796,7 +28302,9 @@ export const Preset = Schema.Struct({
   }],
   "identifier": "Preset"
 })
+
 export type ListPresetsResponse = { readonly "data": globalThis.ReadonlyArray<Preset>; readonly "total_count": number }
+
 export const ListPresetsResponse = Schema.Struct({ "data": Schema.Array(Preset), "total_count": Schema.Int }).annotate({
   "description": "A paginated list of presets.",
   "examples": [{
@@ -26817,6 +28325,7 @@ export const ListPresetsResponse = Schema.Struct({ "data": Schema.Array(Preset),
   }],
   "identifier": "ListPresetsResponse"
 })
+
 export type PresetDesignatedVersion = {
   readonly "config": { readonly [x: string]: Schema.Json }
   readonly "created_at": string
@@ -26827,6 +28336,7 @@ export type PresetDesignatedVersion = {
   readonly "updated_at": string
   readonly "version": number
 } | null
+
 export const PresetDesignatedVersion = Schema.Union([
   Schema.Struct({
     "config": Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })),
@@ -26853,6 +28363,7 @@ export const PresetDesignatedVersion = Schema.Union([
   }],
   "identifier": "PresetDesignatedVersion"
 })
+
 export type PresetWithDesignatedVersion = {
   readonly "created_at": string
   readonly "creator_user_id": string | null
@@ -26867,6 +28378,7 @@ export type PresetWithDesignatedVersion = {
   readonly "workspace_id": string | null
   readonly "designated_version": PresetDesignatedVersion
 }
+
 export const PresetWithDesignatedVersion = Schema.Struct({
   "created_at": Schema.String,
   "creator_user_id": Schema.Union([Schema.String, Schema.Null]),
@@ -26907,7 +28419,9 @@ export const PresetWithDesignatedVersion = Schema.Struct({
   }],
   "identifier": "PresetWithDesignatedVersion"
 })
+
 export type GetPresetResponse = { readonly "data": PresetWithDesignatedVersion }
+
 export const GetPresetResponse = Schema.Struct({ "data": PresetWithDesignatedVersion }).annotate({
   "description": "A preset with its currently designated version.",
   "examples": [{
@@ -26937,7 +28451,9 @@ export const GetPresetResponse = Schema.Struct({ "data": PresetWithDesignatedVer
   }],
   "identifier": "GetPresetResponse"
 })
+
 export type CreatePresetFromInferenceResponse = { readonly "data": PresetWithDesignatedVersion }
+
 export const CreatePresetFromInferenceResponse = Schema.Struct({ "data": PresetWithDesignatedVersion }).annotate({
   "description": "Response containing the created preset with its designated version.",
   "examples": [{
@@ -26967,6 +28483,7 @@ export const CreatePresetFromInferenceResponse = Schema.Struct({ "data": PresetW
   }],
   "identifier": "CreatePresetFromInferenceResponse"
 })
+
 export type ResponseIncludesEnum =
   | "file_search_call.results"
   | "message.input_image.image_url"
@@ -26974,6 +28491,7 @@ export type ResponseIncludesEnum =
   | "reasoning.encrypted_content"
   | "output.encrypted_content"
   | "code_interpreter_call.outputs"
+
 export const ResponseIncludesEnum = Schema.Literals([
   "file_search_call.results",
   "message.input_image.image_url",
@@ -26982,6 +28500,7 @@ export const ResponseIncludesEnum = Schema.Literals([
   "output.encrypted_content",
   "code_interpreter_call.outputs"
 ]).annotate({ "examples": ["file_search_call.results"], "identifier": "ResponseIncludesEnum" })
+
 export type ReasoningItem = {
   readonly "content"?: globalThis.ReadonlyArray<ReasoningTextContent>
   readonly "encrypted_content"?: string | null
@@ -26992,6 +28511,7 @@ export type ReasoningItem = {
   readonly "format"?: ReasoningFormat
   readonly "signature"?: string | null
 }
+
 export const ReasoningItem = Schema.Struct({
   "content": Schema.optionalKey(Schema.Array(ReasoningTextContent)),
   "encrypted_content": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -27010,11 +28530,13 @@ export const ReasoningItem = Schema.Struct({
   }],
   "identifier": "ReasoningItem"
 })
+
 export type InputVideo = {
   readonly "processing"?: "agentic" | "static"
   readonly "type": "input_video"
   readonly "video_url": string
 }
+
 export const InputVideo = Schema.Struct({
   "processing": Schema.optionalKey(
     Schema.Literals(["agentic", "static"]).annotate({
@@ -27032,6 +28554,7 @@ export const InputVideo = Schema.Struct({
   "examples": [{ "type": "input_video", "video_url": "https://example.com/video.mp4" }],
   "identifier": "InputVideo"
 })
+
 export type EasyInputMessage = {
   readonly "content"?:
     | globalThis.ReadonlyArray<
@@ -27052,6 +28575,7 @@ export type EasyInputMessage = {
   readonly "role": "user" | "system" | "assistant" | "developer"
   readonly "type"?: "message"
 }
+
 export const EasyInputMessage = Schema.Struct({
   "content": Schema.optionalKey(Schema.Union([
     Schema.Array(Schema.Union([
@@ -27086,6 +28610,7 @@ export const EasyInputMessage = Schema.Struct({
   "examples": [{ "content": "What is the weather today?", "role": "user" }],
   "identifier": "EasyInputMessage"
 })
+
 export type InputMessageItem = {
   readonly "content"?:
     | globalThis.ReadonlyArray<
@@ -27105,6 +28630,7 @@ export type InputMessageItem = {
   readonly "role": "user" | "system" | "developer"
   readonly "type"?: "message"
 }
+
 export const InputMessageItem = Schema.Struct({
   "content": Schema.optionalKey(Schema.Union([
     Schema.Array(Schema.Union([
@@ -27137,6 +28663,7 @@ export const InputMessageItem = Schema.Struct({
   }],
   "identifier": "InputMessageItem"
 })
+
 export type FunctionCallItem = {
   readonly "arguments": string
   readonly "async"?: boolean | null
@@ -27151,6 +28678,7 @@ export type FunctionCallItem = {
     | null
   readonly "type": "function_call"
 }
+
 export const FunctionCallItem = Schema.Struct({
   "arguments": Schema.String,
   "async": Schema.optionalKey(
@@ -27201,6 +28729,7 @@ export const FunctionCallItem = Schema.Struct({
   }],
   "identifier": "FunctionCallItem"
 })
+
 export type FunctionCallOutputItem = {
   readonly "call_id": string
   readonly "id"?: string | null
@@ -27217,6 +28746,7 @@ export type FunctionCallOutputItem = {
   readonly "status"?: ToolCallStatus | null
   readonly "type": "function_call_output"
 }
+
 export const FunctionCallOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -27250,6 +28780,7 @@ export const FunctionCallOutputItem = Schema.Struct({
   }],
   "identifier": "FunctionCallOutputItem"
 })
+
 export type OutputWebSearchCallItem = {
   readonly "action"?:
     | {
@@ -27264,6 +28795,7 @@ export type OutputWebSearchCallItem = {
   readonly "status": WebSearchStatus
   readonly "type": "web_search_call"
 } & { readonly [x: string]: Schema.Json }
+
 export const OutputWebSearchCallItem = Schema.StructWithRest(
   Schema.Struct({
     "action": Schema.optionalKey(
@@ -27290,18 +28822,21 @@ export const OutputWebSearchCallItem = Schema.StructWithRest(
   "examples": [{ "id": "ws-abc123", "status": "completed", "type": "web_search_call" }],
   "identifier": "OutputWebSearchCallItem"
 })
+
 export type OutputFileSearchCallItem = {
   readonly "id": string
   readonly "queries": globalThis.ReadonlyArray<string>
   readonly "status": WebSearchStatus
   readonly "type": "file_search_call"
 }
+
 export const OutputFileSearchCallItem = Schema.Struct({
   "id": Schema.String,
   "queries": Schema.Array(Schema.String),
   "status": WebSearchStatus,
   "type": Schema.Literal("file_search_call")
 }).annotate({ "identifier": "OutputFileSearchCallItem" })
+
 export type OutputImageGenerationCallItem = {
   readonly "id": string
   readonly "result"?: string | null
@@ -27309,6 +28844,7 @@ export type OutputImageGenerationCallItem = {
   readonly "type": "image_generation_call"
   readonly "prompt"?: string
 }
+
 export const OutputImageGenerationCallItem = Schema.Struct({
   "id": Schema.String,
   "result": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -27321,6 +28857,7 @@ export const OutputImageGenerationCallItem = Schema.Struct({
   "examples": [{ "id": "img-abc123", "result": null, "status": "completed", "type": "image_generation_call" }],
   "identifier": "OutputImageGenerationCallItem"
 })
+
 export type OutputCodeInterpreterCallItem = {
   readonly "code"?: string | null
   readonly "container_id"?: string
@@ -27331,6 +28868,7 @@ export type OutputCodeInterpreterCallItem = {
   readonly "status": "in_progress" | "completed" | "incomplete" | "interpreting" | "failed"
   readonly "type": "code_interpreter_call"
 } & { readonly [x: string]: Schema.Json }
+
 export const OutputCodeInterpreterCallItem = Schema.StructWithRest(
   Schema.Struct({
     "code": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -27362,6 +28900,7 @@ export const OutputCodeInterpreterCallItem = Schema.StructWithRest(
   "description": "A code interpreter execution call with outputs",
   "identifier": "OutputCodeInterpreterCallItem"
 })
+
 export type OutputComputerCallItem = {
   readonly "action"?: Schema.Json
   readonly "call_id": string
@@ -27372,6 +28911,7 @@ export type OutputComputerCallItem = {
   readonly "status": "completed" | "incomplete" | "in_progress"
   readonly "type": "computer_call"
 }
+
 export const OutputComputerCallItem = Schema.Struct({
   "action": Schema.optionalKey(Schema.Json.annotate({ "expected": "JSON value" })),
   "call_id": Schema.String,
@@ -27392,11 +28932,14 @@ export const OutputComputerCallItem = Schema.Struct({
   }],
   "identifier": "OutputComputerCallItem"
 })
+
 export type FailableToolCallStatus = "in_progress" | "completed" | "incomplete" | "failed"
+
 export const FailableToolCallStatus = Schema.Literals(["in_progress", "completed", "incomplete", "failed"]).annotate({
   "examples": ["completed"],
   "identifier": "FailableToolCallStatus"
 })
+
 export type OutputDatetimeItem = {
   readonly "datetime": string
   readonly "error"?: string
@@ -27405,6 +28948,7 @@ export type OutputDatetimeItem = {
   readonly "timezone": string
   readonly "type": "openrouter:datetime"
 }
+
 export const OutputDatetimeItem = Schema.Struct({
   "datetime": Schema.String.annotate({ "description": "ISO 8601 datetime string" }),
   "error": Schema.optionalKey(
@@ -27429,6 +28973,7 @@ export const OutputDatetimeItem = Schema.Struct({
   }],
   "identifier": "OutputDatetimeItem"
 })
+
 export type OutputWebSearchServerToolItem = {
   readonly "action"?: {
     readonly "query": string
@@ -27440,6 +28985,7 @@ export type OutputWebSearchServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:web_search"
 }
+
 export const OutputWebSearchServerToolItem = Schema.Struct({
   "action": Schema.optionalKey(
     Schema.Struct({
@@ -27473,6 +29019,7 @@ export const OutputWebSearchServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputWebSearchServerToolItem"
 })
+
 export type OutputCodeInterpreterServerToolItem = {
   readonly "code"?: string
   readonly "exitCode"?: number
@@ -27483,6 +29030,7 @@ export type OutputCodeInterpreterServerToolItem = {
   readonly "stdout"?: string
   readonly "type": "openrouter:code_interpreter"
 }
+
 export const OutputCodeInterpreterServerToolItem = Schema.Struct({
   "code": Schema.optionalKey(Schema.String),
   "exitCode": Schema.optionalKey(Schema.Int),
@@ -27504,12 +29052,14 @@ export const OutputCodeInterpreterServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputCodeInterpreterServerToolItem"
 })
+
 export type OutputFileSearchServerToolItem = {
   readonly "id"?: string
   readonly "queries"?: globalThis.ReadonlyArray<string>
   readonly "status": ToolCallStatus
   readonly "type": "openrouter:file_search"
 }
+
 export const OutputFileSearchServerToolItem = Schema.Struct({
   "id": Schema.optionalKey(Schema.String),
   "queries": Schema.optionalKey(Schema.Array(Schema.String)),
@@ -27525,6 +29075,7 @@ export const OutputFileSearchServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputFileSearchServerToolItem"
 })
+
 export type OutputImageGenerationServerToolItem = {
   readonly "error"?: string
   readonly "id"?: string
@@ -27536,6 +29087,7 @@ export type OutputImageGenerationServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:image_generation"
 }
+
 export const OutputImageGenerationServerToolItem = Schema.Struct({
   "error": Schema.optionalKey(
     Schema.String.annotate({
@@ -27570,6 +29122,7 @@ export const OutputImageGenerationServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputImageGenerationServerToolItem"
 })
+
 export type OutputBrowserUseServerToolItem = {
   readonly "action"?: string
   readonly "id"?: string
@@ -27577,6 +29130,7 @@ export type OutputBrowserUseServerToolItem = {
   readonly "status": ToolCallStatus
   readonly "type": "openrouter:browser_use"
 }
+
 export const OutputBrowserUseServerToolItem = Schema.Struct({
   "action": Schema.optionalKey(Schema.String),
   "id": Schema.optionalKey(Schema.String),
@@ -27593,6 +29147,7 @@ export const OutputBrowserUseServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputBrowserUseServerToolItem"
 })
+
 export type OutputBashServerToolItem = {
   readonly "arguments"?: string | null
   readonly "call_id"?: string | null
@@ -27616,6 +29171,7 @@ export type OutputBashServerToolItem = {
   readonly "stdout"?: string
   readonly "type": "openrouter:bash"
 }
+
 export const OutputBashServerToolItem = Schema.Struct({
   "arguments": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -27673,6 +29229,7 @@ export const OutputBashServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputBashServerToolItem"
 })
+
 export type OutputTextEditorServerToolItem = {
   readonly "command"?: "view" | "create" | "str_replace" | "insert"
   readonly "filePath"?: string
@@ -27680,6 +29237,7 @@ export type OutputTextEditorServerToolItem = {
   readonly "status": ToolCallStatus
   readonly "type": "openrouter:text_editor"
 }
+
 export const OutputTextEditorServerToolItem = Schema.Struct({
   "command": Schema.optionalKey(Schema.Literals(["view", "create", "str_replace", "insert"])),
   "filePath": Schema.optionalKey(Schema.String),
@@ -27697,6 +29255,7 @@ export const OutputTextEditorServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputTextEditorServerToolItem"
 })
+
 export type OutputApplyPatchServerToolItem = {
   readonly "call_id"?: string
   readonly "error"?: string
@@ -27705,6 +29264,7 @@ export type OutputApplyPatchServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:apply_patch"
 }
+
 export const OutputApplyPatchServerToolItem = Schema.Struct({
   "call_id": Schema.optionalKey(Schema.String),
   "error": Schema.optionalKey(
@@ -27734,6 +29294,7 @@ export const OutputApplyPatchServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputApplyPatchServerToolItem"
 })
+
 export type OutputWebFetchServerToolItem = {
   readonly "content"?: string
   readonly "error"?: string
@@ -27744,6 +29305,7 @@ export type OutputWebFetchServerToolItem = {
   readonly "type": "openrouter:web_fetch"
   readonly "url"?: string
 }
+
 export const OutputWebFetchServerToolItem = Schema.Struct({
   "content": Schema.optionalKey(Schema.String),
   "error": Schema.optionalKey(Schema.String.annotate({ "description": "The error message if the fetch failed." })),
@@ -27769,6 +29331,7 @@ export const OutputWebFetchServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputWebFetchServerToolItem"
 })
+
 export type OutputToolSearchServerToolItem = {
   readonly "arguments"?: string
   readonly "call_id"?: string
@@ -27791,6 +29354,7 @@ export type OutputToolSearchServerToolItem = {
   readonly "turn_call_ids"?: globalThis.ReadonlyArray<string>
   readonly "type": "openrouter:tool_search"
 }
+
 export const OutputToolSearchServerToolItem = Schema.Struct({
   "arguments": Schema.optionalKey(
     Schema.String.annotate({
@@ -27875,6 +29439,7 @@ export const OutputToolSearchServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputToolSearchServerToolItem"
 })
+
 export type OutputMemoryServerToolItem = {
   readonly "action"?: "read" | "write" | "delete"
   readonly "id"?: string
@@ -27883,6 +29448,7 @@ export type OutputMemoryServerToolItem = {
   readonly "type": "openrouter:memory"
   readonly "value"?: Schema.Json
 }
+
 export const OutputMemoryServerToolItem = Schema.Struct({
   "action": Schema.optionalKey(Schema.Literals(["read", "write", "delete"])),
   "id": Schema.optionalKey(Schema.String),
@@ -27901,6 +29467,7 @@ export const OutputMemoryServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputMemoryServerToolItem"
 })
+
 export type OutputArmorBlockedItem = {
   readonly "arguments": string
   readonly "call_id": string
@@ -27912,6 +29479,7 @@ export type OutputArmorBlockedItem = {
   readonly "status": "completed"
   readonly "type": "openrouter:armor_blocked"
 }
+
 export const OutputArmorBlockedItem = Schema.Struct({
   "arguments": Schema.String.annotate({ "description": "The arguments exactly as the model wrote them." }),
   "call_id": Schema.String.annotate({
@@ -27949,6 +29517,7 @@ export const OutputArmorBlockedItem = Schema.Struct({
   }],
   "identifier": "OutputArmorBlockedItem"
 })
+
 export type OutputSearchModelsServerToolItem = {
   readonly "arguments"?: string
   readonly "error"?: string
@@ -27957,6 +29526,7 @@ export type OutputSearchModelsServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:experimental__search_models"
 }
+
 export const OutputSearchModelsServerToolItem = Schema.Struct({
   "arguments": Schema.optionalKey(
     Schema.String.annotate({
@@ -27985,6 +29555,7 @@ export const OutputSearchModelsServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputSearchModelsServerToolItem"
 })
+
 export type FusionAnalysisResult = {
   readonly "blind_spots": globalThis.ReadonlyArray<string>
   readonly "consensus": globalThis.ReadonlyArray<string>
@@ -27999,6 +29570,7 @@ export type FusionAnalysisResult = {
   >
   readonly "unique_insights": globalThis.ReadonlyArray<{ readonly "insight": string; readonly "model": string }>
 }
+
 export const FusionAnalysisResult = Schema.Struct({
   "blind_spots": Schema.Array(Schema.String),
   "consensus": Schema.Array(Schema.String),
@@ -28030,7 +29602,9 @@ export const FusionAnalysisResult = Schema.Struct({
   }],
   "identifier": "FusionAnalysisResult"
 })
+
 export type FusionSource = { readonly "title": string; readonly "url": string }
+
 export const FusionSource = Schema.Struct({
   "title": Schema.String.annotate({ "description": "Title of the retrieved web page." }),
   "url": Schema.String.annotate({
@@ -28041,6 +29615,7 @@ export const FusionSource = Schema.Struct({
   "examples": [{ "title": "Example article title", "url": "https://example.com/article" }],
   "identifier": "FusionSource"
 })
+
 export type OutputFusionServerToolItem = {
   readonly "analysis"?: FusionAnalysisResult
   readonly "error"?: string
@@ -28054,6 +29629,7 @@ export type OutputFusionServerToolItem = {
   readonly "status": ToolCallStatus
   readonly "type": "openrouter:fusion"
 }
+
 export const OutputFusionServerToolItem = Schema.Struct({
   "analysis": Schema.optionalKey(FusionAnalysisResult),
   "error": Schema.optionalKey(
@@ -28097,6 +29673,7 @@ export const OutputFusionServerToolItem = Schema.Struct({
   "examples": [{ "id": "st_tmp_abc123", "status": "completed", "type": "openrouter:fusion" }],
   "identifier": "OutputFusionServerToolItem"
 })
+
 export type OutputAdvisorServerToolItem = {
   readonly "advice"?: string
   readonly "error"?: string
@@ -28107,6 +29684,7 @@ export type OutputAdvisorServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:advisor"
 }
+
 export const OutputAdvisorServerToolItem = Schema.Struct({
   "advice": Schema.optionalKey(
     Schema.String.annotate({
@@ -28138,6 +29716,7 @@ export const OutputAdvisorServerToolItem = Schema.Struct({
   "examples": [{ "id": "st_tmp_abc123", "status": "completed", "type": "openrouter:advisor" }],
   "identifier": "OutputAdvisorServerToolItem"
 })
+
 export type OutputSubagentServerToolItem = {
   readonly "call_id"?: string
   readonly "error"?: string
@@ -28151,6 +29730,7 @@ export type OutputSubagentServerToolItem = {
   readonly "task_name"?: string
   readonly "type": "openrouter:subagent"
 }
+
 export const OutputSubagentServerToolItem = Schema.Struct({
   "call_id": Schema.optionalKey(Schema.String.annotate({
     "description":
@@ -28196,6 +29776,7 @@ export const OutputSubagentServerToolItem = Schema.Struct({
   "examples": [{ "id": "st_tmp_abc123", "status": "completed", "type": "openrouter:subagent" }],
   "identifier": "OutputSubagentServerToolItem"
 })
+
 export type OutputFilesServerToolItem = {
   readonly "arguments"?: string | null
   readonly "call_id"?: string | null
@@ -28208,6 +29789,7 @@ export type OutputFilesServerToolItem = {
   readonly "status": ToolCallStatus
   readonly "type": "openrouter:files"
 }
+
 export const OutputFilesServerToolItem = Schema.Struct({
   "arguments": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -28249,6 +29831,7 @@ export const OutputFilesServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputFilesServerToolItem"
 })
+
 export type ShellCallOutputContent = {
   readonly "outcome":
     | { readonly "exit_code": number; readonly "type": "exit" } & { readonly [x: string]: Schema.Json }
@@ -28256,6 +29839,7 @@ export type ShellCallOutputContent = {
   readonly "stderr": string
   readonly "stdout": string
 } & { readonly [x: string]: Schema.Json }
+
 export const ShellCallOutputContent = Schema.StructWithRest(
   Schema.Struct({
     "outcome": Schema.Union([
@@ -28275,6 +29859,7 @@ export const ShellCallOutputContent = Schema.StructWithRest(
   "examples": [{ "outcome": { "exit_code": 0, "type": "exit" }, "stderr": "", "stdout": "total 0\n" }],
   "identifier": "ShellCallOutputContent"
 })
+
 export type OutputShellServerToolItem = {
   readonly "action"?: {
     readonly "commands": globalThis.ReadonlyArray<string>
@@ -28300,6 +29885,7 @@ export type OutputShellServerToolItem = {
   readonly "status": FailableToolCallStatus
   readonly "type": "openrouter:shell"
 }
+
 export const OutputShellServerToolItem = Schema.Struct({
   "action": Schema.optionalKey(
     Schema.Struct({
@@ -28361,6 +29947,7 @@ export const OutputShellServerToolItem = Schema.Struct({
   }],
   "identifier": "OutputShellServerToolItem"
 })
+
 export type LocalShellCallItem = {
   readonly "action": {
     readonly "command": globalThis.ReadonlyArray<string>
@@ -28375,6 +29962,7 @@ export type LocalShellCallItem = {
   readonly "status": ToolCallStatus
   readonly "type": "local_shell_call"
 }
+
 export const LocalShellCallItem = Schema.Struct({
   "action": Schema.Struct({
     "command": Schema.Array(Schema.String),
@@ -28399,12 +29987,14 @@ export const LocalShellCallItem = Schema.Struct({
   }],
   "identifier": "LocalShellCallItem"
 })
+
 export type LocalShellCallOutputItem = {
   readonly "id": string
   readonly "output": string
   readonly "status"?: ToolCallStatus | null
   readonly "type": "local_shell_call_output"
 }
+
 export const LocalShellCallOutputItem = Schema.Struct({
   "id": Schema.String,
   "output": Schema.String,
@@ -28420,6 +30010,7 @@ export const LocalShellCallOutputItem = Schema.Struct({
   }],
   "identifier": "LocalShellCallOutputItem"
 })
+
 export type ShellCallItem = {
   readonly "action": {
     readonly "commands": globalThis.ReadonlyArray<string>
@@ -28433,6 +30024,7 @@ export type ShellCallItem = {
   readonly "status"?: ToolCallStatus | null
   readonly "type": "shell_call"
 }
+
 export const ShellCallItem = Schema.Struct({
   "action": Schema.Struct({
     "commands": Schema.Array(Schema.String),
@@ -28460,6 +30052,7 @@ export const ShellCallItem = Schema.Struct({
   }],
   "identifier": "ShellCallItem"
 })
+
 export type ShellCallOutputItem = {
   readonly "call_id": string
   readonly "container_id"?: string
@@ -28480,6 +30073,7 @@ export type ShellCallOutputItem = {
   readonly "status"?: ToolCallStatus | null
   readonly "type": "shell_call_output"
 }
+
 export const ShellCallOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "container_id": Schema.optionalKey(
@@ -28524,6 +30118,7 @@ export const ShellCallOutputItem = Schema.Struct({
   }],
   "identifier": "ShellCallOutputItem"
 })
+
 export type McpListToolsItem = {
   readonly "error"?: string | null
   readonly "id": string
@@ -28538,6 +30133,7 @@ export type McpListToolsItem = {
   >
   readonly "type": "mcp_list_tools"
 }
+
 export const McpListToolsItem = Schema.Struct({
   "error": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "id": Schema.String,
@@ -28563,6 +30159,7 @@ export const McpListToolsItem = Schema.Struct({
   }],
   "identifier": "McpListToolsItem"
 })
+
 export type McpApprovalRequestItem = {
   readonly "arguments": string
   readonly "id": string
@@ -28570,6 +30167,7 @@ export type McpApprovalRequestItem = {
   readonly "server_label": string
   readonly "type": "mcp_approval_request"
 }
+
 export const McpApprovalRequestItem = Schema.Struct({
   "arguments": Schema.String,
   "id": Schema.String,
@@ -28587,6 +30185,7 @@ export const McpApprovalRequestItem = Schema.Struct({
   }],
   "identifier": "McpApprovalRequestItem"
 })
+
 export type McpApprovalResponseItem = {
   readonly "approval_request_id": string
   readonly "approve": boolean
@@ -28594,6 +30193,7 @@ export type McpApprovalResponseItem = {
   readonly "reason"?: string | null
   readonly "type": "mcp_approval_response"
 }
+
 export const McpApprovalResponseItem = Schema.Struct({
   "approval_request_id": Schema.String,
   "approve": Schema.Boolean,
@@ -28610,11 +30210,13 @@ export const McpApprovalResponseItem = Schema.Struct({
   }],
   "identifier": "McpApprovalResponseItem"
 })
+
 export type McpProtocolError = {
   readonly "code": number
   readonly "message": string
   readonly "type": "mcp_protocol_error"
 }
+
 export const McpProtocolError = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -28624,7 +30226,9 @@ export const McpProtocolError = Schema.Struct({
   "examples": [{ "code": -32601, "message": "Method not found", "type": "mcp_protocol_error" }],
   "identifier": "McpProtocolError"
 })
+
 export type McpToolExecutionError = { readonly "content"?: Schema.Json; readonly "type": "mcp_tool_execution_error" }
+
 export const McpToolExecutionError = Schema.Struct({
   "content": Schema.optionalKey(Schema.Json.annotate({ "expected": "JSON value" })),
   "type": Schema.Literal("mcp_tool_execution_error")
@@ -28633,7 +30237,9 @@ export const McpToolExecutionError = Schema.Struct({
   "examples": [{ "content": "Connection refused", "type": "mcp_tool_execution_error" }],
   "identifier": "McpToolExecutionError"
 })
+
 export type McpHttpError = { readonly "code": number; readonly "message": string; readonly "type": "http_error" }
+
 export const McpHttpError = Schema.Struct({
   "code": Schema.Int,
   "message": Schema.String,
@@ -28643,7 +30249,9 @@ export const McpHttpError = Schema.Struct({
   "examples": [{ "code": 503, "message": "Service Unavailable", "type": "http_error" }],
   "identifier": "McpHttpError"
 })
+
 export type McpToolCallError = string | McpProtocolError | McpToolExecutionError | McpHttpError | null
+
 export const McpToolCallError = Schema.Union([
   Schema.String,
   McpProtocolError,
@@ -28655,6 +30263,7 @@ export const McpToolCallError = Schema.Union([
   "examples": [{ "code": 503, "message": "Service Unavailable", "type": "http_error" }],
   "identifier": "McpToolCallError"
 })
+
 export type McpCallItem = {
   readonly "approval_request_id"?: string | null
   readonly "arguments": string
@@ -28666,6 +30275,7 @@ export type McpCallItem = {
   readonly "status"?: "in_progress" | "completed" | "incomplete" | "calling" | "failed"
   readonly "type": "mcp_call"
 }
+
 export const McpCallItem = Schema.Struct({
   "approval_request_id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "arguments": Schema.String,
@@ -28688,6 +30298,7 @@ export const McpCallItem = Schema.Struct({
   }],
   "identifier": "McpCallItem"
 })
+
 export type CustomToolCallItem = {
   readonly "async"?: boolean | null
   readonly "call_id": string
@@ -28698,6 +30309,7 @@ export type CustomToolCallItem = {
   readonly "status"?: ToolCallStatus | null
   readonly "type": "custom_tool_call"
 }
+
 export const CustomToolCallItem = Schema.Struct({
   "async": Schema.optionalKey(
     Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -28729,6 +30341,7 @@ export const CustomToolCallItem = Schema.Struct({
   }],
   "identifier": "CustomToolCallItem"
 })
+
 export type CustomToolCallOutputItem = {
   readonly "call_id": string
   readonly "id"?: string
@@ -28744,6 +30357,7 @@ export type CustomToolCallOutputItem = {
     >
   readonly "type": "custom_tool_call_output"
 }
+
 export const CustomToolCallOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.optionalKey(Schema.String),
@@ -28776,17 +30390,21 @@ export const CustomToolCallOutputItem = Schema.Struct({
   }],
   "identifier": "CustomToolCallOutputItem"
 })
+
 export type CompactionTriggerItem = { readonly "type": "compaction_trigger" }
+
 export const CompactionTriggerItem = Schema.Struct({ "type": Schema.Literal("compaction_trigger") }).annotate({
   "description": "Asks the model to compact the preceding input into a compaction item",
   "examples": [{ "type": "compaction_trigger" }],
   "identifier": "CompactionTriggerItem"
 })
+
 export type CompactionItem = {
   readonly "encrypted_content": string
   readonly "id"?: string | null
   readonly "type": "compaction"
 } & { readonly [x: string]: Schema.Json }
+
 export const CompactionItem = Schema.StructWithRest(
   Schema.Struct({
     "encrypted_content": Schema.String,
@@ -28799,11 +30417,13 @@ export const CompactionItem = Schema.StructWithRest(
   "examples": [{ "encrypted_content": "enc_abc123...", "type": "compaction" }],
   "identifier": "CompactionItem"
 })
+
 export type ContextCompactionItem = {
   readonly "encrypted_content"?: string | null
   readonly "id"?: string | null
   readonly "type": "context_compaction"
 } & { readonly [x: string]: Schema.Json }
+
 export const ContextCompactionItem = Schema.StructWithRest(
   Schema.Struct({
     "encrypted_content": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -28816,17 +30436,21 @@ export const ContextCompactionItem = Schema.StructWithRest(
   "examples": [{ "encrypted_content": "enc_abc123...", "type": "context_compaction" }],
   "identifier": "ContextCompactionItem"
 })
+
 export type ItemReferenceItem = { readonly "id": string; readonly "type": "item_reference" }
+
 export const ItemReferenceItem = Schema.Struct({ "id": Schema.String, "type": Schema.Literal("item_reference") })
   .annotate({
     "description": "A reference to a previous response item by ID",
     "examples": [{ "id": "msg-abc123", "type": "item_reference" }],
     "identifier": "ItemReferenceItem"
   })
+
 export type SearchModelsServerTool_OpenRouter = {
   readonly "parameters"?: SearchModelsServerToolConfig
   readonly "type": "openrouter:experimental__search_models"
 }
+
 export const SearchModelsServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(SearchModelsServerToolConfig),
   "type": Schema.Literal("openrouter:experimental__search_models")
@@ -28835,6 +30459,7 @@ export const SearchModelsServerTool_OpenRouter = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:experimental__search_models" }],
   "identifier": "SearchModelsServerTool_OpenRouter"
 })
+
 export type WebSearchServerToolConfig = {
   readonly "allowed_domains"?: globalThis.ReadonlyArray<string>
   readonly "engine"?: WebSearchEngineEnum
@@ -28848,6 +30473,7 @@ export type WebSearchServerToolConfig = {
   readonly "user_location"?: WebSearchUserLocationServerTool
   readonly "x_search"?: XSearchOptions
 }
+
 export const WebSearchServerToolConfig = Schema.Struct({
   "allowed_domains": Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
@@ -28899,10 +30525,12 @@ export const WebSearchServerToolConfig = Schema.Struct({
   "examples": [{ "max_results": 5, "search_context_size": "medium" }],
   "identifier": "WebSearchServerToolConfig"
 })
+
 export type WebSearchServerTool_OpenRouter = {
   readonly "parameters"?: WebSearchServerToolConfig
   readonly "type": "openrouter:web_search"
 }
+
 export const WebSearchServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(WebSearchServerToolConfig),
   "type": Schema.Literal("openrouter:web_search")
@@ -28911,24 +30539,30 @@ export const WebSearchServerTool_OpenRouter = Schema.Struct({
   "examples": [{ "parameters": { "max_results": 5 }, "type": "openrouter:web_search" }],
   "identifier": "WebSearchServerTool_OpenRouter"
 })
+
 export type ApplyPatchEngineEnum = "auto" | "native" | "openrouter"
+
 export const ApplyPatchEngineEnum = Schema.Literals(["auto", "native", "openrouter"]).annotate({
   "description":
     "Which apply_patch engine to use. \"auto\" (default) uses native passthrough when the endpoint advertises native apply_patch support, otherwise falls back to OpenRouter's HITL validator. \"native\" forces native passthrough — when the endpoint does not support native, the request falls back to HITL. \"openrouter\" always runs the HITL validator. Native passthrough streams the diff incrementally via `apply_patch_call_operation_diff.delta` events; HITL buffers the diff for atomic delivery as a single delta.",
   "examples": ["auto"],
   "identifier": "ApplyPatchEngineEnum"
 })
+
 export type ApplyPatchServerToolConfig = { readonly "engine"?: ApplyPatchEngineEnum }
+
 export const ApplyPatchServerToolConfig = Schema.Struct({ "engine": Schema.optionalKey(ApplyPatchEngineEnum) })
   .annotate({
     "description": "Configuration for the openrouter:apply_patch server tool",
     "examples": [{ "engine": "auto" }],
     "identifier": "ApplyPatchServerToolConfig"
   })
+
 export type ApplyPatchServerTool_OpenRouter = {
   readonly "parameters"?: ApplyPatchServerToolConfig
   readonly "type": "openrouter:apply_patch"
 }
+
 export const ApplyPatchServerTool_OpenRouter = Schema.Struct({
   "parameters": Schema.optionalKey(ApplyPatchServerToolConfig),
   "type": Schema.Literal("openrouter:apply_patch")
@@ -28938,6 +30572,7 @@ export const ApplyPatchServerTool_OpenRouter = Schema.Struct({
   "examples": [{ "type": "openrouter:apply_patch" }],
   "identifier": "ApplyPatchServerTool_OpenRouter"
 })
+
 export type McpServerToolParameters = {
   readonly "allowed_tools"?:
     | globalThis.ReadonlyArray<string>
@@ -28964,6 +30599,7 @@ export type McpServerToolParameters = {
   readonly "server_label": string
   readonly "server_url"?: string
 }
+
 export const McpServerToolParameters = Schema.Struct({
   "allowed_tools": Schema.optionalKey(
     Schema.Union([
@@ -29042,10 +30678,12 @@ export const McpServerToolParameters = Schema.Struct({
   "examples": [{ "server_label": "huggingface", "server_url": "https://huggingface.co/mcp" }],
   "identifier": "McpServerToolParameters"
 })
+
 export type McpServerTool_OpenRouter = {
   readonly "parameters": McpServerToolParameters
   readonly "type": "openrouter:mcp"
 }
+
 export const McpServerTool_OpenRouter = Schema.Struct({
   "parameters": McpServerToolParameters,
   "type": Schema.Literal("openrouter:mcp")
@@ -29058,6 +30696,7 @@ export const McpServerTool_OpenRouter = Schema.Struct({
   }],
   "identifier": "McpServerTool_OpenRouter"
 })
+
 export type AdditionalToolsItem = {
   readonly "id"?: string | null
   readonly "role": "unknown" | "user" | "assistant" | "system" | "critic" | "discriminator" | "developer" | "tool"
@@ -29105,6 +30744,7 @@ export type AdditionalToolsItem = {
   >
   readonly "type": "additional_tools"
 }
+
 export const AdditionalToolsItem = Schema.Struct({
   "id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
   "role": Schema.Literals(["unknown", "user", "assistant", "system", "critic", "discriminator", "developer", "tool"]),
@@ -29196,6 +30836,7 @@ export const AdditionalToolsItem = Schema.Struct({
   }],
   "identifier": "AdditionalToolsItem"
 })
+
 export type AgentMessageItem = {
   readonly "agent"?: { readonly "agent_name": string } & { readonly [x: string]: Schema.Json } | null
   readonly "author": string
@@ -29215,6 +30856,7 @@ export type AgentMessageItem = {
   readonly "recipient": string
   readonly "type": "agent_message"
 } & { readonly [x: string]: Schema.Json }
+
 export const AgentMessageItem = Schema.StructWithRest(
   Schema.Struct({
     "agent": Schema.optionalKey(
@@ -29258,6 +30900,7 @@ export const AgentMessageItem = Schema.StructWithRest(
   }],
   "identifier": "AgentMessageItem"
 })
+
 export type ToolSearchCallItem = {
   readonly "arguments"?: Schema.Json
   readonly "call_id": string
@@ -29266,6 +30909,7 @@ export type ToolSearchCallItem = {
   readonly "status"?: "in_progress" | "completed" | "incomplete" | null
   readonly "type": "tool_search_call"
 }
+
 export const ToolSearchCallItem = Schema.Struct({
   "arguments": Schema.optionalKey(Schema.Json.annotate({ "expected": "JSON value" })),
   "call_id": Schema.String,
@@ -29286,6 +30930,7 @@ export const ToolSearchCallItem = Schema.Struct({
   }],
   "identifier": "ToolSearchCallItem"
 })
+
 export type ToolSearchOutputItem = {
   readonly "call_id": string
   readonly "execution": "server" | "client"
@@ -29335,6 +30980,7 @@ export type ToolSearchOutputItem = {
   >
   readonly "type": "tool_search_output"
 }
+
 export const ToolSearchOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "execution": Schema.Literals(["server", "client"]),
@@ -29432,6 +31078,7 @@ export const ToolSearchOutputItem = Schema.Struct({
   }],
   "identifier": "ToolSearchOutputItem"
 })
+
 export type Inputs =
   | string
   | globalThis.ReadonlyArray<
@@ -29504,6 +31151,7 @@ export type Inputs =
     | ToolSearchCallItem
     | ToolSearchOutputItem
   >
+
 export const Inputs = Schema.Union([
   Schema.String,
   Schema.Array(
@@ -29613,11 +31261,14 @@ export const Inputs = Schema.Union([
   "examples": [[{ "content": "What is the weather today?", "role": "user" }]],
   "identifier": "Inputs"
 })
+
 export type OutputModalityEnum = "text" | "image"
+
 export const OutputModalityEnum = Schema.Literals(["text", "image"]).annotate({
   "examples": ["text"],
   "identifier": "OutputModalityEnum"
 })
+
 export type ReasoningConfig = {
   readonly "context"?: ReasoningContext
   readonly "effort"?: ReasoningEffort
@@ -29626,6 +31277,7 @@ export type ReasoningConfig = {
   readonly "enabled"?: boolean | null
   readonly "max_tokens"?: number | null
 } | null
+
 export const ReasoningConfig = Schema.Union([
   Schema.Struct({
     "context": Schema.optionalKey(ReasoningContext),
@@ -29641,10 +31293,12 @@ export const ReasoningConfig = Schema.Union([
   "examples": [{ "enabled": true, "summary": "auto" }],
   "identifier": "ReasoningConfig"
 })
+
 export type TextExtendedConfig = {
   readonly "format"?: Formats
   readonly "verbosity"?: "high" | "low" | "medium" | null
 }
+
 export const TextExtendedConfig = Schema.Struct({
   "format": Schema.optionalKey(Formats),
   "verbosity": Schema.optionalKey(Schema.Union([Schema.Literals(["high", "low", "medium"]), Schema.Null]))
@@ -29653,11 +31307,14 @@ export const TextExtendedConfig = Schema.Struct({
   "examples": [{ "format": { "type": "text" } }],
   "identifier": "TextExtendedConfig"
 })
+
 export type OpenAIResponsesTruncation = "auto" | "disabled" | null
+
 export const OpenAIResponsesTruncation = Schema.Union([Schema.Literals(["auto", "disabled"]), Schema.Null]).annotate({
   "examples": ["auto"],
   "identifier": "OpenAIResponsesTruncation"
 })
+
 export type ResponsesRequest = {
   readonly "access_programs"?: { readonly "cyber"?: "standard" | "daybreak_blue" | "daybreak_red" }
   readonly "background"?: boolean | null
@@ -29758,6 +31415,7 @@ export type ResponsesRequest = {
   readonly "truncation"?: OpenAIResponsesTruncation
   readonly "user"?: string
 }
+
 export const ResponsesRequest = Schema.Struct({
   "access_programs": Schema.optionalKey(
     Schema.Struct({ "cyber": Schema.optionalKey(Schema.Literals(["standard", "daybreak_blue", "daybreak_red"])) })
@@ -29959,10 +31617,12 @@ export const ResponsesRequest = Schema.Struct({
   }],
   "identifier": "ResponsesRequest"
 })
+
 export type ListPresetVersionsResponse = {
   readonly "data": globalThis.ReadonlyArray<PresetDesignatedVersion>
   readonly "total_count": number
 }
+
 export const ListPresetVersionsResponse = Schema.Struct({
   "data": Schema.Array(PresetDesignatedVersion),
   "total_count": Schema.Int
@@ -29983,7 +31643,9 @@ export const ListPresetVersionsResponse = Schema.Struct({
   }],
   "identifier": "ListPresetVersionsResponse"
 })
+
 export type GetPresetVersionResponse = { readonly "data": PresetDesignatedVersion }
+
 export const GetPresetVersionResponse = Schema.Struct({ "data": PresetDesignatedVersion }).annotate({
   "description": "A single version of a preset.",
   "examples": [{
@@ -30000,13 +31662,16 @@ export const GetPresetVersionResponse = Schema.Struct({ "data": PresetDesignated
   }],
   "identifier": "GetPresetVersionResponse"
 })
+
 export type PrivateEndpointStatus = "draft" | "active" | "disabled"
+
 export const PrivateEndpointStatus = Schema.Literals(["draft", "active", "disabled"]).annotate({
   "description":
     "Lifecycle state. `draft` endpoints are not routable until validated and activated; `disabled` endpoints are activated but temporarily not routable.",
   "examples": ["active"],
   "identifier": "PrivateEndpointStatus"
 })
+
 export type PrivateEndpointSummary = {
   readonly "created_at": string
   readonly "id": string
@@ -30016,6 +31681,7 @@ export type PrivateEndpointSummary = {
   readonly "provider_name": string
   readonly "status": PrivateEndpointStatus
 }
+
 export const PrivateEndpointSummary = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "ISO timestamp of when the endpoint was created.",
@@ -30044,11 +31710,15 @@ export const PrivateEndpointSummary = Schema.Struct({
   }),
   "status": PrivateEndpointStatus
 }).annotate({ "identifier": "PrivateEndpointSummary" })
+
 export type ListPrivateEndpointsResponse = { readonly "data": globalThis.ReadonlyArray<PrivateEndpointSummary> }
+
 export const ListPrivateEndpointsResponse = Schema.Struct({ "data": Schema.Array(PrivateEndpointSummary) }).annotate({
   "identifier": "ListPrivateEndpointsResponse"
 })
+
 export type PrivateEndpointActivation = { readonly "workspace_id": string }
+
 export const PrivateEndpointActivation = Schema.Struct({
   "workspace_id": Schema.String.annotate({
     "description":
@@ -30062,6 +31732,7 @@ export const PrivateEndpointActivation = Schema.Struct({
   "examples": [{ "workspace_id": "550e8400-e29b-41d4-a716-446655440000" }],
   "identifier": "PrivateEndpointActivation"
 })
+
 export type PrivateEndpointDeclaredParameter =
   | "temperature"
   | "top_p"
@@ -30088,6 +31759,7 @@ export type PrivateEndpointDeclaredParameter =
   | "reasoning_effort"
   | "web_search_options"
   | "verbosity"
+
 export const PrivateEndpointDeclaredParameter = Schema.Literals([
   "temperature",
   "top_p",
@@ -30119,12 +31791,14 @@ export const PrivateEndpointDeclaredParameter = Schema.Literals([
   "examples": ["seed"],
   "identifier": "PrivateEndpointDeclaredParameter"
 })
+
 export type PrivateEndpointPricing = {
   readonly "cache_read"?: string
   readonly "cache_write"?: string
   readonly "completion": string
   readonly "prompt": string
 }
+
 export const PrivateEndpointPricing = Schema.Struct({
   "cache_read": Schema.optionalKey(
     Schema.String.annotate({
@@ -30174,6 +31848,7 @@ export const PrivateEndpointPricing = Schema.Struct({
   }],
   "identifier": "PrivateEndpointPricing"
 })
+
 export type PrivateEndpointQuantization =
   | "int4"
   | "int8"
@@ -30187,6 +31862,7 @@ export type PrivateEndpointQuantization =
   | "bf16"
   | "fp32"
   | "unknown"
+
 export const PrivateEndpointQuantization = Schema.Literals([
   "int4",
   "int8",
@@ -30205,12 +31881,14 @@ export const PrivateEndpointQuantization = Schema.Literals([
   "examples": ["bf16"],
   "identifier": "PrivateEndpointQuantization"
 })
+
 export type PrivateEndpointReasoningReturnMechanism =
   | "content-string"
   | "reasoning-content"
   | "reasoning"
   | "none"
   | null
+
 export const PrivateEndpointReasoningReturnMechanism = Schema.Union([
   Schema.Literals(["content-string", "reasoning-content", "reasoning", "none"]),
   Schema.Null
@@ -30220,6 +31898,7 @@ export const PrivateEndpointReasoningReturnMechanism = Schema.Union([
   "examples": ["reasoning"],
   "identifier": "PrivateEndpointReasoningReturnMechanism"
 })
+
 export type UpdatePrivateEndpointSettingsRequest = {
   readonly "completions"?: { readonly "chat"?: boolean | null; readonly "text"?: boolean | null }
   readonly "context_length"?: number | null
@@ -30272,6 +31951,7 @@ export type UpdatePrivateEndpointSettingsRequest = {
     readonly "required"?: boolean
   }
 }
+
 export const UpdatePrivateEndpointSettingsRequest = Schema.Struct({
   "completions": Schema.optionalKey(Schema.Struct({
     "chat": Schema.optionalKey(
@@ -30402,6 +32082,7 @@ export const UpdatePrivateEndpointSettingsRequest = Schema.Struct({
   "examples": [{ "context_length": 128000, "reasoning": { "supported": true } }],
   "identifier": "UpdatePrivateEndpointSettingsRequest"
 })
+
 export type CreatePrivateEndpointRequest = {
   readonly "activate"?: PrivateEndpointActivation
   readonly "base_url"?: string
@@ -30414,6 +32095,7 @@ export type CreatePrivateEndpointRequest = {
   readonly "settings"?: UpdatePrivateEndpointSettingsRequest
   readonly "upstream_model_id": string
 }
+
 export const CreatePrivateEndpointRequest = Schema.Struct({
   "activate": Schema.optionalKey(PrivateEndpointActivation),
   "base_url": Schema.optionalKey(
@@ -30454,7 +32136,9 @@ export const CreatePrivateEndpointRequest = Schema.Struct({
     "examples": ["gpt-4o-prod"]
   }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 }).annotate({ "identifier": "CreatePrivateEndpointRequest" })
+
 export type PrivateEndpointDeclaredRegion = "global" | "europe" | "us" | null
+
 export const PrivateEndpointDeclaredRegion = Schema.Union([Schema.Literals(["global", "europe", "us"]), Schema.Null])
   .annotate({
     "description":
@@ -30462,6 +32146,7 @@ export const PrivateEndpointDeclaredRegion = Schema.Union([Schema.Literals(["glo
     "examples": ["us"],
     "identifier": "PrivateEndpointDeclaredRegion"
   })
+
 export type ManagedPrivateEndpoint = {
   readonly "created_at": string
   readonly "id": string
@@ -30474,6 +32159,7 @@ export type ManagedPrivateEndpoint = {
   readonly "declared_zdr": boolean | null
   readonly "max_completion_tokens"?: number | null
 }
+
 export const ManagedPrivateEndpoint = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "ISO timestamp of when the endpoint was created.",
@@ -30514,10 +32200,13 @@ export const ManagedPrivateEndpoint = Schema.Struct({
     })
   )
 }).annotate({ "identifier": "ManagedPrivateEndpoint" })
+
 export type ManagedPrivateEndpointResponse = { readonly "data": ManagedPrivateEndpoint }
+
 export const ManagedPrivateEndpointResponse = Schema.Struct({ "data": ManagedPrivateEndpoint }).annotate({
   "identifier": "ManagedPrivateEndpointResponse"
 })
+
 export type PrivateEndpointCheckReason =
   | "database_error"
   | "endpoint_limit_reached"
@@ -30535,6 +32224,7 @@ export type PrivateEndpointCheckReason =
   | "model_mismatch"
   | "not_validated"
   | "validation_stale"
+
 export const PrivateEndpointCheckReason = Schema.Literals([
   "database_error",
   "endpoint_limit_reached",
@@ -30557,6 +32247,7 @@ export const PrivateEndpointCheckReason = Schema.Literals([
   "examples": ["no_byok_key"],
   "identifier": "PrivateEndpointCheckReason"
 })
+
 export type PrivateEndpointCheck = {
   readonly "actual_model"?: string | null
   readonly "name": string
@@ -30565,6 +32256,7 @@ export type PrivateEndpointCheck = {
   readonly "upstream_message"?: string | null
   readonly "upstream_status"?: number
 }
+
 export const PrivateEndpointCheck = Schema.Struct({
   "actual_model": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -30588,7 +32280,9 @@ export const PrivateEndpointCheck = Schema.Struct({
     )
   )
 }).annotate({ "examples": [{ "name": "auth_ok", "passed": true }], "identifier": "PrivateEndpointCheck" })
+
 export type PrivateEndpointParameterCheck = { readonly "parameter": string; readonly "supported": boolean }
+
 export const PrivateEndpointParameterCheck = Schema.Struct({
   "parameter": Schema.String.annotate({ "examples": ["response_format"] }),
   "supported": Schema.Boolean
@@ -30596,11 +32290,13 @@ export const PrivateEndpointParameterCheck = Schema.Struct({
   "examples": [{ "parameter": "response_format", "supported": true }],
   "identifier": "PrivateEndpointParameterCheck"
 })
+
 export type PrivateEndpointValidationNullable = {
   readonly "checks": globalThis.ReadonlyArray<PrivateEndpointCheck>
   readonly "parameters"?: globalThis.ReadonlyArray<PrivateEndpointParameterCheck>
   readonly "passed": boolean
 } | null
+
 export const PrivateEndpointValidationNullable = Schema.Union([
   Schema.Struct({
     "checks": Schema.Array(PrivateEndpointCheck),
@@ -30614,6 +32310,7 @@ export const PrivateEndpointValidationNullable = Schema.Union([
   }),
   Schema.Null
 ]).annotate({ "identifier": "PrivateEndpointValidationNullable" })
+
 export type CreatePrivateEndpointValidationFailedResponse = {
   readonly "data": {
     readonly "endpoint": ManagedPrivateEndpoint
@@ -30621,10 +32318,12 @@ export type CreatePrivateEndpointValidationFailedResponse = {
   }
   readonly "error": { readonly "code": number; readonly "message": string }
 }
+
 export const CreatePrivateEndpointValidationFailedResponse = Schema.Struct({
   "data": Schema.Struct({ "endpoint": ManagedPrivateEndpoint, "validation": PrivateEndpointValidationNullable }),
   "error": Schema.Struct({ "code": Schema.Int, "message": Schema.String })
 }).annotate({ "identifier": "CreatePrivateEndpointValidationFailedResponse" })
+
 export type PrivateEndpointSettings = {
   readonly "completions": { readonly "chat": boolean | null; readonly "text": boolean | null }
   readonly "context_length": number | null
@@ -30677,6 +32376,7 @@ export type PrivateEndpointSettings = {
     readonly "required": boolean
   }
 }
+
 export const PrivateEndpointSettings = Schema.Struct({
   "completions": Schema.Struct({
     "chat": Schema.Union([Schema.Boolean, Schema.Null]).annotate({
@@ -30789,6 +32489,7 @@ export const PrivateEndpointSettings = Schema.Struct({
   }],
   "identifier": "PrivateEndpointSettings"
 })
+
 export type PrivateEndpoint = {
   readonly "base_url": string | null
   readonly "declared_parameters": globalThis.ReadonlyArray<string>
@@ -30807,6 +32508,7 @@ export type PrivateEndpoint = {
   readonly "tested_parameters": globalThis.ReadonlyArray<string>
   readonly "upstream_model_id": string
 }
+
 export const PrivateEndpoint = Schema.Struct({
   "base_url": Schema.Union([Schema.String, Schema.Null]).annotate({
     "description":
@@ -30903,11 +32605,15 @@ export const PrivateEndpoint = Schema.Struct({
   }],
   "identifier": "PrivateEndpoint"
 })
+
 export type PrivateEndpointResponse = { readonly "data": PrivateEndpoint }
+
 export const PrivateEndpointResponse = Schema.Struct({ "data": PrivateEndpoint }).annotate({
   "identifier": "PrivateEndpointResponse"
 })
+
 export type DeletePrivateEndpointResponse = { readonly "data": { readonly "id": string } }
+
 export const DeletePrivateEndpointResponse = Schema.Struct({
   "data": Schema.Struct({
     "id": Schema.String.annotate({
@@ -30917,6 +32623,7 @@ export const DeletePrivateEndpointResponse = Schema.Struct({
     })
   })
 }).annotate({ "identifier": "DeletePrivateEndpointResponse" })
+
 export type UpdatePrivateEndpointRequest = {
   readonly "base_url"?: string
   readonly "declared_parameters"?: globalThis.ReadonlyArray<PrivateEndpointDeclaredParameter>
@@ -30926,6 +32633,7 @@ export type UpdatePrivateEndpointRequest = {
   readonly "settings"?: UpdatePrivateEndpointSettingsRequest
   readonly "upstream_model_id"?: string
 }
+
 export const UpdatePrivateEndpointRequest = Schema.Struct({
   "base_url": Schema.optionalKey(
     Schema.String.annotate({
@@ -30977,7 +32685,9 @@ export const UpdatePrivateEndpointRequest = Schema.Struct({
   "examples": [{ "declared_parameters": ["seed"], "settings": { "context_length": 128000 } }],
   "identifier": "UpdatePrivateEndpointRequest"
 })
+
 export type ValidatePrivateEndpointRequest = { readonly "workspace_id": string }
+
 export const ValidatePrivateEndpointRequest = Schema.Struct({
   "workspace_id": Schema.String.annotate({
     "description":
@@ -30986,11 +32696,13 @@ export const ValidatePrivateEndpointRequest = Schema.Struct({
     "format": "uuid"
   })
 }).annotate({ "identifier": "ValidatePrivateEndpointRequest" })
+
 export type PrivateEndpointValidation = {
   readonly "checks": globalThis.ReadonlyArray<PrivateEndpointCheck>
   readonly "parameters"?: globalThis.ReadonlyArray<PrivateEndpointParameterCheck>
   readonly "passed": boolean
 }
+
 export const PrivateEndpointValidation = Schema.Struct({
   "checks": Schema.Array(PrivateEndpointCheck),
   "parameters": Schema.optionalKey(
@@ -31001,10 +32713,13 @@ export const PrivateEndpointValidation = Schema.Struct({
   ),
   "passed": Schema.Boolean.annotate({ "description": "Whether every check passed.", "examples": [true] })
 }).annotate({ "identifier": "PrivateEndpointValidation" })
+
 export type PrivateEndpointValidationResponse = { readonly "data": PrivateEndpointValidation }
+
 export const PrivateEndpointValidationResponse = Schema.Struct({ "data": PrivateEndpointValidation }).annotate({
   "identifier": "PrivateEndpointValidationResponse"
 })
+
 export type PrivateProvider = {
   readonly "base_url": string | null
   readonly "created_at": string
@@ -31012,6 +32727,7 @@ export type PrivateProvider = {
   readonly "name": string
   readonly "slug": string
 }
+
 export const PrivateProvider = Schema.Struct({
   "base_url": Schema.Union([
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
@@ -31045,12 +32761,14 @@ export const PrivateProvider = Schema.Struct({
   }],
   "identifier": "PrivateProvider"
 })
+
 export type CreatePrivateProviderRequest = {
   readonly "base_url"?: string
   readonly "display_name"?: string
   readonly "name": string
   readonly "slug"?: string
 }
+
 export const CreatePrivateProviderRequest = Schema.Struct({
   "base_url": Schema.optionalKey(
     Schema.String.annotate({
@@ -31099,7 +32817,9 @@ export const CreatePrivateProviderRequest = Schema.Struct({
   }],
   "identifier": "CreatePrivateProviderRequest"
 })
+
 export type UpdatePrivateProviderRequest = { readonly "base_url"?: string; readonly "display_name"?: string }
+
 export const UpdatePrivateProviderRequest = Schema.Struct({
   "base_url": Schema.optionalKey(
     Schema.String.annotate({
@@ -31114,21 +32834,25 @@ export const UpdatePrivateProviderRequest = Schema.Struct({
     ).check(Schema.isMaxCodePoints(80).annotate({ "expected": "a string with at most 80 code points" }))
   )
 }).annotate({ "identifier": "UpdatePrivateProviderRequest" })
+
 export type OpenResponsesCreatedEvent = {
   readonly "response": OpenResponsesResult
   readonly "sequence_number": number
   readonly "type": "response.created"
 }
+
 export const OpenResponsesCreatedEvent = Schema.Struct({
   "response": OpenResponsesResult,
   "sequence_number": Schema.Int,
   "type": Schema.Literal("response.created")
 }).annotate({ "description": "Event emitted when a response is created", "identifier": "OpenResponsesCreatedEvent" })
+
 export type OpenResponsesInProgressEvent = {
   readonly "response": OpenResponsesResult
   readonly "sequence_number": number
   readonly "type": "response.in_progress"
 }
+
 export const OpenResponsesInProgressEvent = Schema.Struct({
   "response": OpenResponsesResult,
   "sequence_number": Schema.Int,
@@ -31137,11 +32861,13 @@ export const OpenResponsesInProgressEvent = Schema.Struct({
   "description": "Event emitted when a response is in progress",
   "identifier": "OpenResponsesInProgressEvent"
 })
+
 export type StreamEventsResponseCompleted = {
   readonly "response": OpenResponsesResult
   readonly "sequence_number": number
   readonly "type": "response.completed"
 }
+
 export const StreamEventsResponseCompleted = Schema.Struct({
   "response": OpenResponsesResult,
   "sequence_number": Schema.Int,
@@ -31150,11 +32876,13 @@ export const StreamEventsResponseCompleted = Schema.Struct({
   "description": "Event emitted when a response has completed successfully",
   "identifier": "StreamEventsResponseCompleted"
 })
+
 export type StreamEventsResponseIncomplete = {
   readonly "response": OpenResponsesResult
   readonly "sequence_number": number
   readonly "type": "response.incomplete"
 }
+
 export const StreamEventsResponseIncomplete = Schema.Struct({
   "response": OpenResponsesResult,
   "sequence_number": Schema.Int,
@@ -31163,16 +32891,19 @@ export const StreamEventsResponseIncomplete = Schema.Struct({
   "description": "Event emitted when a response is incomplete",
   "identifier": "StreamEventsResponseIncomplete"
 })
+
 export type StreamEventsResponseFailed = {
   readonly "response": OpenResponsesResult
   readonly "sequence_number": number
   readonly "type": "response.failed"
 }
+
 export const StreamEventsResponseFailed = Schema.Struct({
   "response": OpenResponsesResult,
   "sequence_number": Schema.Int,
   "type": Schema.Literal("response.failed")
 }).annotate({ "description": "Event emitted when a response has failed", "identifier": "StreamEventsResponseFailed" })
+
 export type ErrorEvent = {
   readonly "code": string | null
   readonly "message": string
@@ -31180,6 +32911,7 @@ export type ErrorEvent = {
   readonly "sequence_number": number
   readonly "type": "error"
 }
+
 export const ErrorEvent = Schema.Struct({
   "code": Schema.Union([Schema.String, Schema.Null]),
   "message": Schema.String,
@@ -31197,6 +32929,7 @@ export const ErrorEvent = Schema.Struct({
   }],
   "identifier": "ErrorEvent"
 })
+
 export type OutputMessageItem = {
   readonly "content": globalThis.ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>
   readonly "id": string
@@ -31205,6 +32938,7 @@ export type OutputMessageItem = {
   readonly "status"?: "completed" | "incomplete" | "in_progress"
   readonly "type": "message"
 }
+
 export const OutputMessageItem = Schema.Struct({
   "content": Schema.Array(Schema.Union([ResponseOutputText, OpenAIResponsesRefusalContent])),
   "id": Schema.String,
@@ -31228,6 +32962,7 @@ export const OutputMessageItem = Schema.Struct({
   }],
   "identifier": "OutputMessageItem"
 })
+
 export type OutputReasoningItem = {
   readonly "content"?: globalThis.ReadonlyArray<ReasoningTextContent>
   readonly "encrypted_content"?: string | null
@@ -31238,6 +32973,7 @@ export type OutputReasoningItem = {
   readonly "format"?: ReasoningFormat
   readonly "signature"?: string | null
 }
+
 export const OutputReasoningItem = Schema.Struct({
   "content": Schema.optionalKey(Schema.Array(ReasoningTextContent)),
   "encrypted_content": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -31265,6 +33001,7 @@ export const OutputReasoningItem = Schema.Struct({
   }],
   "identifier": "OutputReasoningItem"
 })
+
 export type OutputFunctionCallItem = {
   readonly "arguments": string
   readonly "async"?: boolean
@@ -31279,6 +33016,7 @@ export type OutputFunctionCallItem = {
     { readonly "type": string } & { readonly [x: string]: Schema.Json }
   >
 }
+
 export const OutputFunctionCallItem = Schema.Struct({
   "arguments": Schema.String,
   "async": Schema.optionalKey(
@@ -31325,6 +33063,7 @@ export const OutputFunctionCallItem = Schema.Struct({
   }],
   "identifier": "OutputFunctionCallItem"
 })
+
 export type OutputApplyPatchCallItem = {
   readonly "call_id": string
   readonly "id": string
@@ -31332,6 +33071,7 @@ export type OutputApplyPatchCallItem = {
   readonly "status": ApplyPatchCallStatus
   readonly "type": "apply_patch_call"
 }
+
 export const OutputApplyPatchCallItem = Schema.Struct({
   "call_id": Schema.String,
   "id": Schema.String,
@@ -31354,12 +33094,14 @@ export const OutputApplyPatchCallItem = Schema.Struct({
   }],
   "identifier": "OutputApplyPatchCallItem"
 })
+
 export type OutputCompactionItem = {
   readonly "created_by"?: string
   readonly "encrypted_content": string
   readonly "id": string
   readonly "type": "compaction"
 }
+
 export const OutputCompactionItem = Schema.Struct({
   "created_by": Schema.optionalKey(Schema.String),
   "encrypted_content": Schema.String,
@@ -31371,12 +33113,15 @@ export const OutputCompactionItem = Schema.Struct({
   "examples": [{ "encrypted_content": "enc_abc123...", "id": "cmp_abc123", "type": "compaction" }],
   "identifier": "OutputCompactionItem"
 })
+
 export type ShellCallStatus = "in_progress" | "completed" | "incomplete"
+
 export const ShellCallStatus = Schema.Literals(["in_progress", "completed", "incomplete"]).annotate({
   "description": "Status of a shell call or its output.",
   "examples": ["completed"],
   "identifier": "ShellCallStatus"
 })
+
 export type OutputShellCallItem = {
   readonly "action"?: {
     readonly "commands": globalThis.ReadonlyArray<string>
@@ -31389,6 +33134,7 @@ export type OutputShellCallItem = {
   readonly "status": ShellCallStatus
   readonly "type": "shell_call"
 }
+
 export const OutputShellCallItem = Schema.Struct({
   "action": Schema.optionalKey(
     Schema.Struct({
@@ -31419,6 +33165,7 @@ export const OutputShellCallItem = Schema.Struct({
   }],
   "identifier": "OutputShellCallItem"
 })
+
 export type OutputShellCallOutputItem = {
   readonly "call_id": string
   readonly "container_id"?: string
@@ -31439,6 +33186,7 @@ export type OutputShellCallOutputItem = {
   readonly "status": ShellCallStatus
   readonly "type": "shell_call_output"
 }
+
 export const OutputShellCallOutputItem = Schema.Struct({
   "call_id": Schema.String,
   "container_id": Schema.optionalKey(
@@ -31485,6 +33233,7 @@ export const OutputShellCallOutputItem = Schema.Struct({
   }],
   "identifier": "OutputShellCallOutputItem"
 })
+
 export type OutputCustomToolCallItem = {
   readonly "async"?: boolean
   readonly "call_id": string
@@ -31495,6 +33244,7 @@ export type OutputCustomToolCallItem = {
   readonly "status"?: "in_progress" | "completed" | "incomplete"
   readonly "type": "custom_tool_call"
 }
+
 export const OutputCustomToolCallItem = Schema.Struct({
   "async": Schema.optionalKey(
     Schema.Boolean.annotate({
@@ -31527,6 +33277,7 @@ export const OutputCustomToolCallItem = Schema.Struct({
   }],
   "identifier": "OutputCustomToolCallItem"
 })
+
 export type OutputToolSearchCallItem = {
   readonly "arguments"?: Schema.Json
   readonly "call_id": string
@@ -31535,6 +33286,7 @@ export type OutputToolSearchCallItem = {
   readonly "status": ToolCallStatus
   readonly "type": "tool_search_call"
 }
+
 export const OutputToolSearchCallItem = Schema.Struct({
   "arguments": Schema.optionalKey(Schema.Json.annotate({ "expected": "JSON value" })),
   "call_id": Schema.String,
@@ -31555,6 +33307,7 @@ export const OutputToolSearchCallItem = Schema.Struct({
   }],
   "identifier": "OutputToolSearchCallItem"
 })
+
 export type OutputItems =
   | OutputMessageItem
   | OutputReasoningItem
@@ -31592,6 +33345,7 @@ export type OutputItems =
   | OutputCustomToolCallItem
   | OutputToolSearchCallItem
   | OutputArmorBlockedItem
+
 export const OutputItems = Schema.Union([
   OutputMessageItem,
   OutputReasoningItem,
@@ -31640,12 +33394,14 @@ export const OutputItems = Schema.Union([
   }],
   "identifier": "OutputItems"
 })
+
 export type StreamEventsResponseOutputItemAdded = {
   readonly "item": OutputItems
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.output_item.added"
 }
+
 export const StreamEventsResponseOutputItemAdded = Schema.Struct({
   "item": OutputItems,
   "output_index": Schema.Int,
@@ -31655,12 +33411,14 @@ export const StreamEventsResponseOutputItemAdded = Schema.Struct({
   "description": "Event emitted when a new output item is added to the response",
   "identifier": "StreamEventsResponseOutputItemAdded"
 })
+
 export type StreamEventsResponseOutputItemDone = {
   readonly "item": OutputItems
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.output_item.done"
 }
+
 export const StreamEventsResponseOutputItemDone = Schema.Struct({
   "item": OutputItems,
   "output_index": Schema.Int,
@@ -31670,6 +33428,7 @@ export const StreamEventsResponseOutputItemDone = Schema.Struct({
   "description": "Event emitted when an output item is complete",
   "identifier": "StreamEventsResponseOutputItemDone"
 })
+
 export type ContentPartAddedEvent = {
   readonly "content_index": number
   readonly "item_id": string
@@ -31678,6 +33437,7 @@ export type ContentPartAddedEvent = {
   readonly "sequence_number": number
   readonly "type": "response.content_part.added"
 }
+
 export const ContentPartAddedEvent = Schema.Struct({
   "content_index": Schema.Int,
   "item_id": Schema.String,
@@ -31689,6 +33449,7 @@ export const ContentPartAddedEvent = Schema.Struct({
   "description": "Event emitted when a new content part is added to an output item",
   "identifier": "ContentPartAddedEvent"
 })
+
 export type ContentPartDoneEvent = {
   readonly "content_index": number
   readonly "item_id": string
@@ -31697,6 +33458,7 @@ export type ContentPartDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.content_part.done"
 }
+
 export const ContentPartDoneEvent = Schema.Struct({
   "content_index": Schema.Int,
   "item_id": Schema.String,
@@ -31705,6 +33467,7 @@ export const ContentPartDoneEvent = Schema.Struct({
   "sequence_number": Schema.Int,
   "type": Schema.Literal("response.content_part.done")
 }).annotate({ "description": "Event emitted when a content part is complete", "identifier": "ContentPartDoneEvent" })
+
 export type TextDeltaEvent = {
   readonly "content_index": number
   readonly "delta": string
@@ -31723,6 +33486,7 @@ export type TextDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.output_text.delta"
 }
+
 export const TextDeltaEvent = Schema.Struct({
   "content_index": Schema.Int,
   "delta": Schema.String,
@@ -31771,6 +33535,7 @@ export const TextDeltaEvent = Schema.Struct({
   }],
   "identifier": "TextDeltaEvent"
 })
+
 export type TextDoneEvent = {
   readonly "content_index": number
   readonly "item_id": string
@@ -31789,6 +33554,7 @@ export type TextDoneEvent = {
   readonly "text": string
   readonly "type": "response.output_text.done"
 }
+
 export const TextDoneEvent = Schema.Struct({
   "content_index": Schema.Int,
   "item_id": Schema.String,
@@ -31837,6 +33603,7 @@ export const TextDoneEvent = Schema.Struct({
   }],
   "identifier": "TextDoneEvent"
 })
+
 export type RefusalDeltaEvent = {
   readonly "content_index": number
   readonly "delta": string
@@ -31845,6 +33612,7 @@ export type RefusalDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.refusal.delta"
 }
+
 export const RefusalDeltaEvent = Schema.Struct({
   "content_index": Schema.Int,
   "delta": Schema.String,
@@ -31864,6 +33632,7 @@ export const RefusalDeltaEvent = Schema.Struct({
   }],
   "identifier": "RefusalDeltaEvent"
 })
+
 export type RefusalDoneEvent = {
   readonly "content_index": number
   readonly "item_id": string
@@ -31872,6 +33641,7 @@ export type RefusalDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.refusal.done"
 }
+
 export const RefusalDoneEvent = Schema.Struct({
   "content_index": Schema.Int,
   "item_id": Schema.String,
@@ -31891,6 +33661,7 @@ export const RefusalDoneEvent = Schema.Struct({
   }],
   "identifier": "RefusalDoneEvent"
 })
+
 export type AnnotationAddedEvent = {
   readonly "annotation": OpenAIResponsesAnnotation
   readonly "annotation_index": number
@@ -31900,6 +33671,7 @@ export type AnnotationAddedEvent = {
   readonly "sequence_number": number
   readonly "type": "response.output_text.annotation.added"
 }
+
 export const AnnotationAddedEvent = Schema.Struct({
   "annotation": OpenAIResponsesAnnotation,
   "annotation_index": Schema.Int,
@@ -31927,6 +33699,7 @@ export const AnnotationAddedEvent = Schema.Struct({
   }],
   "identifier": "AnnotationAddedEvent"
 })
+
 export type FunctionCallArgsDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -31934,6 +33707,7 @@ export type FunctionCallArgsDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.function_call_arguments.delta"
 }
+
 export const FunctionCallArgsDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -31951,6 +33725,7 @@ export const FunctionCallArgsDeltaEvent = Schema.Struct({
   }],
   "identifier": "FunctionCallArgsDeltaEvent"
 })
+
 export type FunctionCallArgsDoneEvent = {
   readonly "arguments": string
   readonly "item_id": string
@@ -31959,6 +33734,7 @@ export type FunctionCallArgsDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.function_call_arguments.done"
 }
+
 export const FunctionCallArgsDoneEvent = Schema.Struct({
   "arguments": Schema.String,
   "item_id": Schema.String,
@@ -31978,6 +33754,7 @@ export const FunctionCallArgsDoneEvent = Schema.Struct({
   }],
   "identifier": "FunctionCallArgsDoneEvent"
 })
+
 export type ReasoningDeltaEvent = {
   readonly "content_index": number
   readonly "delta": string
@@ -31986,6 +33763,7 @@ export type ReasoningDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.reasoning_text.delta"
 }
+
 export const ReasoningDeltaEvent = Schema.Struct({
   "content_index": Schema.Int,
   "delta": Schema.String,
@@ -32005,6 +33783,7 @@ export const ReasoningDeltaEvent = Schema.Struct({
   }],
   "identifier": "ReasoningDeltaEvent"
 })
+
 export type ReasoningDoneEvent = {
   readonly "content_index": number
   readonly "item_id": string
@@ -32013,6 +33792,7 @@ export type ReasoningDoneEvent = {
   readonly "text": string
   readonly "type": "response.reasoning_text.done"
 }
+
 export const ReasoningDoneEvent = Schema.Struct({
   "content_index": Schema.Int,
   "item_id": Schema.String,
@@ -32032,6 +33812,7 @@ export const ReasoningDoneEvent = Schema.Struct({
   }],
   "identifier": "ReasoningDoneEvent"
 })
+
 export type ReasoningSummaryPartAddedEvent = {
   readonly "item_id": string
   readonly "output_index": number
@@ -32040,6 +33821,7 @@ export type ReasoningSummaryPartAddedEvent = {
   readonly "summary_index": number
   readonly "type": "response.reasoning_summary_part.added"
 }
+
 export const ReasoningSummaryPartAddedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32059,6 +33841,7 @@ export const ReasoningSummaryPartAddedEvent = Schema.Struct({
   }],
   "identifier": "ReasoningSummaryPartAddedEvent"
 })
+
 export type ReasoningSummaryPartDoneEvent = {
   readonly "item_id": string
   readonly "output_index": number
@@ -32067,6 +33850,7 @@ export type ReasoningSummaryPartDoneEvent = {
   readonly "summary_index": number
   readonly "type": "response.reasoning_summary_part.done"
 }
+
 export const ReasoningSummaryPartDoneEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32086,6 +33870,7 @@ export const ReasoningSummaryPartDoneEvent = Schema.Struct({
   }],
   "identifier": "ReasoningSummaryPartDoneEvent"
 })
+
 export type ReasoningSummaryTextDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32094,6 +33879,7 @@ export type ReasoningSummaryTextDeltaEvent = {
   readonly "summary_index": number
   readonly "type": "response.reasoning_summary_text.delta"
 }
+
 export const ReasoningSummaryTextDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32113,6 +33899,7 @@ export const ReasoningSummaryTextDeltaEvent = Schema.Struct({
   }],
   "identifier": "ReasoningSummaryTextDeltaEvent"
 })
+
 export type ReasoningSummaryTextDoneEvent = {
   readonly "item_id": string
   readonly "output_index": number
@@ -32121,6 +33908,7 @@ export type ReasoningSummaryTextDoneEvent = {
   readonly "text": string
   readonly "type": "response.reasoning_summary_text.done"
 }
+
 export const ReasoningSummaryTextDoneEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32140,12 +33928,14 @@ export const ReasoningSummaryTextDoneEvent = Schema.Struct({
   }],
   "identifier": "ReasoningSummaryTextDoneEvent"
 })
+
 export type ImageGenCallInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.image_generation_call.in_progress"
 }
+
 export const ImageGenCallInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32161,12 +33951,14 @@ export const ImageGenCallInProgressEvent = Schema.Struct({
   }],
   "identifier": "ImageGenCallInProgressEvent"
 })
+
 export type ImageGenCallGeneratingEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.image_generation_call.generating"
 }
+
 export const ImageGenCallGeneratingEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32182,6 +33974,7 @@ export const ImageGenCallGeneratingEvent = Schema.Struct({
   }],
   "identifier": "ImageGenCallGeneratingEvent"
 })
+
 export type ImageGenCallPartialImageEvent = {
   readonly "item_id": string
   readonly "output_index": number
@@ -32190,6 +33983,7 @@ export type ImageGenCallPartialImageEvent = {
   readonly "sequence_number": number
   readonly "type": "response.image_generation_call.partial_image"
 }
+
 export const ImageGenCallPartialImageEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32209,12 +34003,14 @@ export const ImageGenCallPartialImageEvent = Schema.Struct({
   }],
   "identifier": "ImageGenCallPartialImageEvent"
 })
+
 export type ImageGenCallCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.image_generation_call.completed"
 }
+
 export const ImageGenCallCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32230,12 +34026,14 @@ export const ImageGenCallCompletedEvent = Schema.Struct({
   }],
   "identifier": "ImageGenCallCompletedEvent"
 })
+
 export type CodeInterpreterCallInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.code_interpreter_call.in_progress"
 }
+
 export const CodeInterpreterCallInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32251,12 +34049,14 @@ export const CodeInterpreterCallInProgressEvent = Schema.Struct({
   }],
   "identifier": "CodeInterpreterCallInProgressEvent"
 })
+
 export type CodeInterpreterCallInterpretingEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.code_interpreter_call.interpreting"
 }
+
 export const CodeInterpreterCallInterpretingEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32272,12 +34072,14 @@ export const CodeInterpreterCallInterpretingEvent = Schema.Struct({
   }],
   "identifier": "CodeInterpreterCallInterpretingEvent"
 })
+
 export type CodeInterpreterCallCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.code_interpreter_call.completed"
 }
+
 export const CodeInterpreterCallCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32293,6 +34095,7 @@ export const CodeInterpreterCallCompletedEvent = Schema.Struct({
   }],
   "identifier": "CodeInterpreterCallCompletedEvent"
 })
+
 export type CodeInterpreterCallCodeDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32300,6 +34103,7 @@ export type CodeInterpreterCallCodeDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.code_interpreter_call_code.delta"
 }
+
 export const CodeInterpreterCallCodeDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32317,6 +34121,7 @@ export const CodeInterpreterCallCodeDeltaEvent = Schema.Struct({
   }],
   "identifier": "CodeInterpreterCallCodeDeltaEvent"
 })
+
 export type CodeInterpreterCallCodeDoneEvent = {
   readonly "code": string
   readonly "item_id": string
@@ -32324,6 +34129,7 @@ export type CodeInterpreterCallCodeDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.code_interpreter_call_code.done"
 }
+
 export const CodeInterpreterCallCodeDoneEvent = Schema.Struct({
   "code": Schema.String,
   "item_id": Schema.String,
@@ -32341,12 +34147,14 @@ export const CodeInterpreterCallCodeDoneEvent = Schema.Struct({
   }],
   "identifier": "CodeInterpreterCallCodeDoneEvent"
 })
+
 export type WebSearchCallInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.web_search_call.in_progress"
 }
+
 export const WebSearchCallInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32362,12 +34170,14 @@ export const WebSearchCallInProgressEvent = Schema.Struct({
   }],
   "identifier": "WebSearchCallInProgressEvent"
 })
+
 export type WebSearchCallSearchingEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.web_search_call.searching"
 }
+
 export const WebSearchCallSearchingEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32383,12 +34193,14 @@ export const WebSearchCallSearchingEvent = Schema.Struct({
   }],
   "identifier": "WebSearchCallSearchingEvent"
 })
+
 export type WebSearchCallCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.web_search_call.completed"
 }
+
 export const WebSearchCallCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32404,6 +34216,7 @@ export const WebSearchCallCompletedEvent = Schema.Struct({
   }],
   "identifier": "WebSearchCallCompletedEvent"
 })
+
 export type CustomToolCallInputDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32411,6 +34224,7 @@ export type CustomToolCallInputDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.custom_tool_call_input.delta"
 }
+
 export const CustomToolCallInputDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32429,6 +34243,7 @@ export const CustomToolCallInputDeltaEvent = Schema.Struct({
   }],
   "identifier": "CustomToolCallInputDeltaEvent"
 })
+
 export type CustomToolCallInputDoneEvent = {
   readonly "input": string
   readonly "item_id": string
@@ -32436,6 +34251,7 @@ export type CustomToolCallInputDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.custom_tool_call_input.done"
 }
+
 export const CustomToolCallInputDoneEvent = Schema.Struct({
   "input": Schema.String,
   "item_id": Schema.String,
@@ -32454,6 +34270,7 @@ export const CustomToolCallInputDoneEvent = Schema.Struct({
   }],
   "identifier": "CustomToolCallInputDoneEvent"
 })
+
 export type ApplyPatchCallOperationDiffDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32461,6 +34278,7 @@ export type ApplyPatchCallOperationDiffDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.apply_patch_call_operation_diff.delta"
 }
+
 export const ApplyPatchCallOperationDiffDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32478,6 +34296,7 @@ export const ApplyPatchCallOperationDiffDeltaEvent = Schema.Struct({
   }],
   "identifier": "ApplyPatchCallOperationDiffDeltaEvent"
 })
+
 export type ApplyPatchCallOperationDiffDoneEvent = {
   readonly "diff": string
   readonly "item_id": string
@@ -32485,6 +34304,7 @@ export type ApplyPatchCallOperationDiffDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.apply_patch_call_operation_diff.done"
 }
+
 export const ApplyPatchCallOperationDiffDoneEvent = Schema.Struct({
   "diff": Schema.String,
   "item_id": Schema.String,
@@ -32502,12 +34322,14 @@ export const ApplyPatchCallOperationDiffDoneEvent = Schema.Struct({
   }],
   "identifier": "ApplyPatchCallOperationDiffDoneEvent"
 })
+
 export type FusionCallInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.in_progress"
 }
+
 export const FusionCallInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32523,6 +34345,7 @@ export const FusionCallInProgressEvent = Schema.Struct({
   }],
   "identifier": "FusionCallInProgressEvent"
 })
+
 export type FusionCallPanelAddedEvent = {
   readonly "item_id": string
   readonly "model": string
@@ -32530,6 +34353,7 @@ export type FusionCallPanelAddedEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.panel.added"
 }
+
 export const FusionCallPanelAddedEvent = Schema.Struct({
   "item_id": Schema.String,
   "model": Schema.String,
@@ -32547,6 +34371,7 @@ export const FusionCallPanelAddedEvent = Schema.Struct({
   }],
   "identifier": "FusionCallPanelAddedEvent"
 })
+
 export type FusionCallPanelDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32555,6 +34380,7 @@ export type FusionCallPanelDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.panel.delta"
 }
+
 export const FusionCallPanelDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32574,6 +34400,7 @@ export const FusionCallPanelDeltaEvent = Schema.Struct({
   }],
   "identifier": "FusionCallPanelDeltaEvent"
 })
+
 export type FusionCallPanelReasoningDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32582,6 +34409,7 @@ export type FusionCallPanelReasoningDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.panel.reasoning.delta"
 }
+
 export const FusionCallPanelReasoningDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32601,6 +34429,7 @@ export const FusionCallPanelReasoningDeltaEvent = Schema.Struct({
   }],
   "identifier": "FusionCallPanelReasoningDeltaEvent"
 })
+
 export type FusionCallPanelCompletedEvent = {
   readonly "content": string
   readonly "item_id": string
@@ -32609,6 +34438,7 @@ export type FusionCallPanelCompletedEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.panel.completed"
 }
+
 export const FusionCallPanelCompletedEvent = Schema.Struct({
   "content": Schema.String,
   "item_id": Schema.String,
@@ -32628,6 +34458,7 @@ export const FusionCallPanelCompletedEvent = Schema.Struct({
   }],
   "identifier": "FusionCallPanelCompletedEvent"
 })
+
 export type FusionCallPanelFailedEvent = {
   readonly "error": string
   readonly "item_id": string
@@ -32637,6 +34468,7 @@ export type FusionCallPanelFailedEvent = {
   readonly "status_code"?: number
   readonly "type": "response.fusion_call.panel.failed"
 }
+
 export const FusionCallPanelFailedEvent = Schema.Struct({
   "error": Schema.String,
   "item_id": Schema.String,
@@ -32658,6 +34490,7 @@ export const FusionCallPanelFailedEvent = Schema.Struct({
   }],
   "identifier": "FusionCallPanelFailedEvent"
 })
+
 export type FusionCallAnalysisInProgressEvent = {
   readonly "analyst_model": string
   readonly "item_id": string
@@ -32666,6 +34499,7 @@ export type FusionCallAnalysisInProgressEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.analysis.in_progress"
 }
+
 export const FusionCallAnalysisInProgressEvent = Schema.Struct({
   "analyst_model": Schema.String.annotate({ "description": "Slug of the model producing the structured analysis." }),
   "item_id": Schema.String,
@@ -32688,6 +34522,7 @@ export const FusionCallAnalysisInProgressEvent = Schema.Struct({
   }],
   "identifier": "FusionCallAnalysisInProgressEvent"
 })
+
 export type FusionCallAnalysisCompletedEvent = {
   readonly "analysis": FusionAnalysisResult
   readonly "item_id": string
@@ -32695,6 +34530,7 @@ export type FusionCallAnalysisCompletedEvent = {
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.analysis.completed"
 }
+
 export const FusionCallAnalysisCompletedEvent = Schema.Struct({
   "analysis": FusionAnalysisResult,
   "item_id": Schema.String,
@@ -32718,12 +34554,14 @@ export const FusionCallAnalysisCompletedEvent = Schema.Struct({
   }],
   "identifier": "FusionCallAnalysisCompletedEvent"
 })
+
 export type FusionCallCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.fusion_call.completed"
 }
+
 export const FusionCallCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32739,12 +34577,14 @@ export const FusionCallCompletedEvent = Schema.Struct({
   }],
   "identifier": "FusionCallCompletedEvent"
 })
+
 export type McpListToolsInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_list_tools.in_progress"
 }
+
 export const McpListToolsInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32760,12 +34600,14 @@ export const McpListToolsInProgressEvent = Schema.Struct({
   }],
   "identifier": "McpListToolsInProgressEvent"
 })
+
 export type McpListToolsCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_list_tools.completed"
 }
+
 export const McpListToolsCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32781,12 +34623,14 @@ export const McpListToolsCompletedEvent = Schema.Struct({
   }],
   "identifier": "McpListToolsCompletedEvent"
 })
+
 export type McpListToolsFailedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_list_tools.failed"
 }
+
 export const McpListToolsFailedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32802,12 +34646,14 @@ export const McpListToolsFailedEvent = Schema.Struct({
   }],
   "identifier": "McpListToolsFailedEvent"
 })
+
 export type McpCallInProgressEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_call.in_progress"
 }
+
 export const McpCallInProgressEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32823,6 +34669,7 @@ export const McpCallInProgressEvent = Schema.Struct({
   }],
   "identifier": "McpCallInProgressEvent"
 })
+
 export type McpCallArgumentsDeltaEvent = {
   readonly "delta": string
   readonly "item_id": string
@@ -32830,6 +34677,7 @@ export type McpCallArgumentsDeltaEvent = {
   readonly "sequence_number": number
   readonly "type": "response.mcp_call_arguments.delta"
 }
+
 export const McpCallArgumentsDeltaEvent = Schema.Struct({
   "delta": Schema.String,
   "item_id": Schema.String,
@@ -32847,6 +34695,7 @@ export const McpCallArgumentsDeltaEvent = Schema.Struct({
   }],
   "identifier": "McpCallArgumentsDeltaEvent"
 })
+
 export type McpCallArgumentsDoneEvent = {
   readonly "arguments": string
   readonly "item_id": string
@@ -32854,6 +34703,7 @@ export type McpCallArgumentsDoneEvent = {
   readonly "sequence_number": number
   readonly "type": "response.mcp_call_arguments.done"
 }
+
 export const McpCallArgumentsDoneEvent = Schema.Struct({
   "arguments": Schema.String,
   "item_id": Schema.String,
@@ -32871,12 +34721,14 @@ export const McpCallArgumentsDoneEvent = Schema.Struct({
   }],
   "identifier": "McpCallArgumentsDoneEvent"
 })
+
 export type McpCallCompletedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_call.completed"
 }
+
 export const McpCallCompletedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32892,12 +34744,14 @@ export const McpCallCompletedEvent = Schema.Struct({
   }],
   "identifier": "McpCallCompletedEvent"
 })
+
 export type McpCallFailedEvent = {
   readonly "item_id": string
   readonly "output_index": number
   readonly "sequence_number": number
   readonly "type": "response.mcp_call.failed"
 }
+
 export const McpCallFailedEvent = Schema.Struct({
   "item_id": Schema.String,
   "output_index": Schema.Int,
@@ -32913,6 +34767,7 @@ export const McpCallFailedEvent = Schema.Struct({
   }],
   "identifier": "McpCallFailedEvent"
 })
+
 export type DebugEvent = {
   readonly "debug": {
     readonly "echo_upstream_body"?: { readonly [x: string]: Schema.Json }
@@ -32925,6 +34780,7 @@ export type DebugEvent = {
   readonly "sequence_number": number
   readonly "type": "response.debug"
 }
+
 export const DebugEvent = Schema.Struct({
   "debug": Schema.Struct({
     "echo_upstream_body": Schema.optionalKey(
@@ -32955,6 +34811,7 @@ export const DebugEvent = Schema.Struct({
   }],
   "identifier": "DebugEvent"
 })
+
 export type StreamEvents =
   | OpenResponsesCreatedEvent
   | OpenResponsesInProgressEvent
@@ -33013,6 +34870,7 @@ export type StreamEvents =
   | McpCallCompletedEvent
   | McpCallFailedEvent
   | DebugEvent
+
 export const StreamEvents: Schema.Schema<StreamEvents> = Schema.Union([
   OpenResponsesCreatedEvent,
   OpenResponsesInProgressEvent,
@@ -33100,7 +34958,9 @@ export const StreamEvents: Schema.Schema<StreamEvents> = Schema.Union([
   }],
   "identifier": "StreamEvents"
 })
+
 export type ResponsesStreamingResponse = { readonly "data": StreamEvents }
+
 export const ResponsesStreamingResponse: Schema.Schema<ResponsesStreamingResponse> = Schema.Struct({
   "data": StreamEvents
 }).annotate({
@@ -33117,6 +34977,7 @@ export const ResponsesStreamingResponse: Schema.Schema<ResponsesStreamingRespons
   }],
   "identifier": "ResponsesStreamingResponse"
 })
+
 export type ScimGroupMapping = {
   readonly "created_at": string
   readonly "id": string
@@ -33126,6 +34987,7 @@ export type ScimGroupMapping = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const ScimGroupMapping = Schema.Struct({
   "created_at": Schema.String,
   "id": Schema.String.annotate({ "format": "uuid" }),
@@ -33146,44 +35008,59 @@ export const ScimGroupMapping = Schema.Struct({
   }],
   "identifier": "ScimGroupMapping"
 })
+
 export type ListScimGroupMappingsResponse = {
   readonly "data": globalThis.ReadonlyArray<ScimGroupMapping>
   readonly "total_count": number
 }
+
 export const ListScimGroupMappingsResponse = Schema.Struct({
   "data": Schema.Array(ScimGroupMapping),
   "total_count": Schema.Int
 }).annotate({ "identifier": "ListScimGroupMappingsResponse" })
+
 export type CreateScimGroupMappingRequest = {
   readonly "role": "admin" | "member"
   readonly "scim_group_id": string
   readonly "workspace_id": string
 }
+
 export const CreateScimGroupMappingRequest = Schema.Struct({
   "role": Schema.Literals(["admin", "member"]),
   "scim_group_id": Schema.String.annotate({ "format": "uuid" }),
   "workspace_id": Schema.String.annotate({ "format": "uuid" })
 }).annotate({ "identifier": "CreateScimGroupMappingRequest" })
+
 export type CreateScimGroupMappingResponse = { readonly "data": ScimGroupMapping }
+
 export const CreateScimGroupMappingResponse = Schema.Struct({ "data": ScimGroupMapping }).annotate({
   "identifier": "CreateScimGroupMappingResponse"
 })
+
 export type GetScimGroupMappingResponse = { readonly "data": ScimGroupMapping }
+
 export const GetScimGroupMappingResponse = Schema.Struct({ "data": ScimGroupMapping }).annotate({
   "identifier": "GetScimGroupMappingResponse"
 })
+
 export type DeleteScimGroupMappingResponse = { readonly "deleted": true }
+
 export const DeleteScimGroupMappingResponse = Schema.Struct({ "deleted": Schema.Literal(true) }).annotate({
   "identifier": "DeleteScimGroupMappingResponse"
 })
+
 export type UpdateScimGroupMappingRequest = { readonly "role": "admin" | "member" }
+
 export const UpdateScimGroupMappingRequest = Schema.Struct({ "role": Schema.Literals(["admin", "member"]) }).annotate({
   "identifier": "UpdateScimGroupMappingRequest"
 })
+
 export type UpdateScimGroupMappingResponse = { readonly "data": ScimGroupMapping }
+
 export const UpdateScimGroupMappingResponse = Schema.Struct({ "data": ScimGroupMapping }).annotate({
   "identifier": "UpdateScimGroupMappingResponse"
 })
+
 export type ScimGroup = {
   readonly "created_at": string
   readonly "display_name": string
@@ -33192,6 +35069,7 @@ export type ScimGroup = {
   readonly "organization_id": string
   readonly "updated_at": string
 }
+
 export const ScimGroup = Schema.Struct({
   "created_at": Schema.String,
   "display_name": Schema.String,
@@ -33210,12 +35088,15 @@ export const ScimGroup = Schema.Struct({
   }],
   "identifier": "ScimGroup"
 })
+
 export type ListScimGroupsResponse = {
   readonly "data": globalThis.ReadonlyArray<ScimGroup>
   readonly "total_count": number
 }
+
 export const ListScimGroupsResponse = Schema.Struct({ "data": Schema.Array(ScimGroup), "total_count": Schema.Int })
   .annotate({ "identifier": "ListScimGroupsResponse" })
+
 export type ScimSyncJob = {
   readonly "created_at": string
   readonly "deleted_groups": number | null
@@ -33226,6 +35107,7 @@ export type ScimSyncJob = {
   readonly "status": "queued" | "running" | "succeeded" | "failed"
   readonly "synced_groups": number | null
 }
+
 export const ScimSyncJob = Schema.Struct({
   "created_at": Schema.String.annotate({ "description": "Time when the sync job was created." }),
   "deleted_groups": Schema.Union([Schema.Int, Schema.Null]).annotate({
@@ -33248,19 +35130,25 @@ export const ScimSyncJob = Schema.Struct({
     "description": "Number of groups synchronized, when the job completed successfully."
   })
 }).annotate({ "identifier": "ScimSyncJob" })
+
 export type CreateScimSyncJobResponse = { readonly "data": ScimSyncJob }
+
 export const CreateScimSyncJobResponse = Schema.Struct({ "data": ScimSyncJob }).annotate({
   "identifier": "CreateScimSyncJobResponse"
 })
+
 export type GetScimSyncJobResponse = { readonly "data": ScimSyncJob }
+
 export const GetScimSyncJobResponse = Schema.Struct({ "data": ScimSyncJob }).annotate({
   "identifier": "GetScimSyncJobResponse"
 })
+
 export type ServerToolOutputName = {
   readonly "api_format": "responses" | "chat-completions" | "anthropic-messages"
   readonly "name"?: string
   readonly "type": string
 }
+
 export const ServerToolOutputName = Schema.Struct({
   "api_format": Schema.Literals(["responses", "chat-completions", "anthropic-messages"]),
   "name": Schema.optionalKey(
@@ -33275,11 +35163,13 @@ export const ServerToolOutputName = Schema.Struct({
     "examples": ["web_search_call"]
   })
 }).annotate({ "identifier": "ServerToolOutputName" })
+
 export type ServerToolInputName = {
   readonly "api_formats": globalThis.ReadonlyArray<"responses" | "chat-completions" | "anthropic-messages">
   readonly "output_names": globalThis.ReadonlyArray<ServerToolOutputName>
   readonly "type": string
 }
+
 export const ServerToolInputName = Schema.Struct({
   "api_formats": Schema.Array(Schema.Literals(["responses", "chat-completions", "anthropic-messages"])).annotate({
     "description": "API formats that accept this spelling in `tools[].type`"
@@ -33290,19 +35180,23 @@ export const ServerToolInputName = Schema.Struct({
   }),
   "type": Schema.String.annotate({ "examples": ["web_search_20250305"] })
 }).annotate({ "identifier": "ServerToolInputName" })
+
 export type ServerToolExecutedBy = "provider" | "openrouter" | "client"
+
 export const ServerToolExecutedBy = Schema.Literals(["provider", "openrouter", "client"]).annotate({
   "description":
     "Who runs the tool call: the model provider during inference (`provider`), OpenRouter (`openrouter`), or the caller's application after the call is returned (`client`).",
   "examples": ["openrouter"],
   "identifier": "ServerToolExecutedBy"
 })
+
 export type ServerToolPrice = {
   readonly "max_units_per_call": number
   readonly "mode": string | null
   readonly "price": string
   readonly "unit": string
 }
+
 export const ServerToolPrice = Schema.Struct({
   "max_units_per_call": Schema.Int,
   "mode": Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -33313,6 +35207,7 @@ export const ServerToolPrice = Schema.Struct({
   "price": Schema.String.annotate({ "description": "USD per unit, as a decimal string", "examples": ["0.007"] }),
   "unit": Schema.String.annotate({ "examples": ["request"] })
 }).annotate({ "identifier": "ServerToolPrice" })
+
 export type ServerToolEngine = {
   readonly "byok": "required" | "optional" | "none"
   readonly "data_regions": globalThis.ReadonlyArray<"global" | "europe" | "us">
@@ -33324,6 +35219,7 @@ export type ServerToolEngine = {
   readonly "pricing_doc_url": string | null
   readonly "pricing_source": "openrouter" | "provider" | "byok" | "none"
 }
+
 export const ServerToolEngine = Schema.Struct({
   "byok": Schema.Literals(["required", "optional", "none"]).annotate({
     "description":
@@ -33360,7 +35256,9 @@ export const ServerToolEngine = Schema.Struct({
     "examples": ["openrouter"]
   })
 }).annotate({ "identifier": "ServerToolEngine" })
+
 export type ServerToolNativeSupport = { readonly "endpoint_count": number; readonly "model_count": number }
+
 export const ServerToolNativeSupport = Schema.Struct({
   "endpoint_count": Schema.Number.annotate({ "examples": [18] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
@@ -33374,6 +35272,7 @@ export const ServerToolNativeSupport = Schema.Struct({
   "examples": [{ "endpoint_count": 18, "model_count": 12 }],
   "identifier": "ServerToolNativeSupport"
 })
+
 export type ServerTool = {
   readonly "aliases": globalThis.ReadonlyArray<ServerToolInputName>
   readonly "default_engine": string | null
@@ -33391,6 +35290,7 @@ export type ServerTool = {
   readonly "supported_api_formats": globalThis.ReadonlyArray<"responses" | "chat-completions" | "anthropic-messages">
   readonly "tool_description": string
 }
+
 export const ServerTool = Schema.Struct({
   "aliases": Schema.Array(ServerToolInputName).annotate({
     "description":
@@ -33439,11 +35339,13 @@ export const ServerTool = Schema.Struct({
     "description": "The description sent upstream as the function tool description"
   })
 }).annotate({ "identifier": "ServerTool" })
+
 export type ListToolsResponse = {
   readonly "data": globalThis.ReadonlyArray<ServerTool>
   readonly "links": { readonly "next": string | null }
   readonly "total_count": number
 }
+
 export const ListToolsResponse = Schema.Struct({
   "data": Schema.Array(ServerTool),
   "links": Schema.Struct({
@@ -33456,11 +35358,14 @@ export const ListToolsResponse = Schema.Struct({
     Schema.isInt().annotate({ "expected": "an integer" })
   )
 }).annotate({ "identifier": "ListToolsResponse" })
+
 export type ServerToolNativeModel = { readonly "providers": globalThis.ReadonlyArray<string>; readonly "slug": string }
+
 export const ServerToolNativeModel = Schema.Struct({
   "providers": Schema.Array(Schema.String).annotate({ "examples": [["Anthropic", "Google"]] }),
   "slug": Schema.String.annotate({ "examples": ["anthropic/claude-4.5-sonnet"] })
 }).annotate({ "identifier": "ServerToolNativeModel" })
+
 export type ServerToolDetails = {
   readonly "aliases": globalThis.ReadonlyArray<ServerToolInputName>
   readonly "default_engine": string | null
@@ -33482,6 +35387,7 @@ export type ServerToolDetails = {
   readonly "supported_api_formats": globalThis.ReadonlyArray<"responses" | "chat-completions" | "anthropic-messages">
   readonly "tool_description": string
 }
+
 export const ServerToolDetails = Schema.Struct({
   "aliases": Schema.Array(ServerToolInputName).annotate({
     "description":
@@ -33538,10 +35444,13 @@ export const ServerToolDetails = Schema.Struct({
     "description": "The description sent upstream as the function tool description"
   })
 }).annotate({ "identifier": "ServerToolDetails" })
+
 export type GetToolResponse = { readonly "data": ServerToolDetails }
+
 export const GetToolResponse = Schema.Struct({ "data": ServerToolDetails }).annotate({
   "identifier": "GetToolResponse"
 })
+
 export type VaultRoutingTable = {
   readonly "agent_id": string
   readonly "custom_origins": globalThis.ReadonlyArray<
@@ -33632,6 +35541,7 @@ export type VaultRoutingTable = {
     >
   }
 } | null
+
 export const VaultRoutingTable = Schema.Union([
   Schema.Struct({
     "agent_id": Schema.String,
@@ -33767,6 +35677,7 @@ export const VaultRoutingTable = Schema.Union([
     "The intern's routing table, for the intern's own key only; null for any other caller or when the vault could not build it in time. The keys still list.",
   "identifier": "VaultRoutingTable"
 })
+
 export type VaultEffectiveSecret = {
   readonly "created_at": string
   readonly "fingerprint": string | null
@@ -33774,6 +35685,7 @@ export type VaultEffectiveSecret = {
   readonly "name": string
   readonly "scope": "intern" | "attached" | "workspace"
 }
+
 export const VaultEffectiveSecret = Schema.Struct({
   "created_at": Schema.String.annotate({ "format": "date-time" }),
   "fingerprint": Schema.Union([
@@ -33814,10 +35726,12 @@ export const VaultEffectiveSecret = Schema.Struct({
   }],
   "identifier": "VaultEffectiveSecret"
 })
+
 export type VaultEffectiveSecretListResponse = {
   readonly "data": globalThis.ReadonlyArray<VaultEffectiveSecret>
   readonly "has_more": boolean
 }
+
 export const VaultEffectiveSecretListResponse = Schema.Struct({
   "data": Schema.Array(VaultEffectiveSecret).check(
     Schema.isMaxLength(100).annotate({ "expected": "a value with a length of at most 100" })
@@ -33852,12 +35766,14 @@ export const VaultEffectiveSecretListResponse = Schema.Struct({
   }],
   "identifier": "VaultEffectiveSecretListResponse"
 })
+
 export type VaultSecret = {
   readonly "created_at": string
   readonly "fingerprint": string | null
   readonly "hosts": globalThis.ReadonlyArray<string> | null
   readonly "name": string
 }
+
 export const VaultSecret = Schema.Struct({
   "created_at": Schema.String.annotate({ "format": "date-time" }),
   "fingerprint": Schema.Union([
@@ -33893,10 +35809,12 @@ export const VaultSecret = Schema.Struct({
   }],
   "identifier": "VaultSecret"
 })
+
 export type VaultSecretListResponse = {
   readonly "data": globalThis.ReadonlyArray<VaultSecret>
   readonly "has_more": boolean
 }
+
 export const VaultSecretListResponse = Schema.Struct({
   "data": Schema.Array(VaultSecret).check(
     Schema.isMaxLength(100).annotate({ "expected": "a value with a length of at most 100" })
@@ -33918,7 +35836,9 @@ export const VaultSecretListResponse = Schema.Struct({
   }],
   "identifier": "VaultSecretListResponse"
 })
+
 export type VaultSecretWriteRequest = { readonly "hosts": globalThis.ReadonlyArray<string>; readonly "value": string }
+
 export const VaultSecretWriteRequest = Schema.Struct({
   "hosts": Schema.Array(
     Schema.String.check(Schema.isMaxCodePoints(254).annotate({ "expected": "a string with at most 254 code points" }))
@@ -33939,7 +35859,9 @@ export const VaultSecretWriteRequest = Schema.Struct({
   "examples": [{ "hosts": ["api.github.com"], "value": "ghp_exampleTokenValue" }],
   "identifier": "VaultSecretWriteRequest"
 })
+
 export type VaultSecretResponse = { readonly "data": VaultSecret }
+
 export const VaultSecretResponse = Schema.Struct({ "data": VaultSecret }).annotate({
   "description": "Metadata for the stored secret.",
   "examples": [{
@@ -33952,7 +35874,9 @@ export const VaultSecretResponse = Schema.Struct({ "data": VaultSecret }).annota
   }],
   "identifier": "VaultSecretResponse"
 })
+
 export type VaultSecretCopyRequest = { readonly "names": globalThis.ReadonlyArray<string> }
+
 export const VaultSecretCopyRequest = Schema.Struct({
   "names": Schema.Array(
     Schema.String.check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
@@ -33973,7 +35897,9 @@ export const VaultSecretCopyRequest = Schema.Struct({
   "examples": [{ "names": ["github_token"] }],
   "identifier": "VaultSecretCopyRequest"
 })
+
 export type VaultSecretCopyResponse = { readonly "data": globalThis.ReadonlyArray<VaultSecret> }
+
 export const VaultSecretCopyResponse = Schema.Struct({
   "data": Schema.Array(VaultSecret).check(
     Schema.isMaxLength(100).annotate({ "expected": "a value with a length of at most 100" })
@@ -33990,11 +35916,13 @@ export const VaultSecretCopyResponse = Schema.Struct({
   }],
   "identifier": "VaultSecretCopyResponse"
 })
+
 export type FrameImage = {
   readonly "image_url": { readonly "url": string }
   readonly "type": "image_url"
   readonly "frame_type": "first_frame" | "last_frame"
 }
+
 export const FrameImage = Schema.Struct({
   "image_url": Schema.Struct({ "url": Schema.String }),
   "type": Schema.Literal("image_url"),
@@ -34010,7 +35938,9 @@ export const FrameImage = Schema.Struct({
   }],
   "identifier": "FrameImage"
 })
+
 export type ContentPartAudio = { readonly "audio_url": { readonly "url": string }; readonly "type": "audio_url" }
+
 export const ContentPartAudio = Schema.Struct({
   "audio_url": Schema.Struct({ "url": Schema.String }),
   "type": Schema.Literal("audio_url")
@@ -34018,7 +35948,9 @@ export const ContentPartAudio = Schema.Struct({
   "examples": [{ "audio_url": { "url": "https://example.com/audio.mp3" }, "type": "audio_url" }],
   "identifier": "ContentPartAudio"
 })
+
 export type ContentPartVideo = { readonly "type": "video_url"; readonly "video_url": { readonly "url": string } }
+
 export const ContentPartVideo = Schema.Struct({
   "type": Schema.Literal("video_url"),
   "video_url": Schema.Struct({ "url": Schema.String })
@@ -34026,7 +35958,9 @@ export const ContentPartVideo = Schema.Struct({
   "examples": [{ "type": "video_url", "video_url": { "url": "https://example.com/clip.mp4" } }],
   "identifier": "ContentPartVideo"
 })
+
 export type InputReference = ContentPartImage | ContentPartAudio | ContentPartVideo
+
 export const InputReference = Schema.Union([ContentPartImage, ContentPartAudio, ContentPartVideo], { mode: "oneOf" })
   .annotate({
     "description":
@@ -34034,6 +35968,7 @@ export const InputReference = Schema.Union([ContentPartImage, ContentPartAudio, 
     "examples": [{ "image_url": { "url": "https://example.com/image.png" }, "type": "image_url" }],
     "identifier": "InputReference"
   })
+
 export type VideoGenerationRequest = {
   readonly "aspect_ratio"?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "3:2" | "2:3" | "21:9" | "9:21"
   readonly "callback_url"?: string
@@ -34059,6 +35994,7 @@ export type VideoGenerationRequest = {
   readonly "upscale_factor"?: number
   readonly "user"?: string
 }
+
 export const VideoGenerationRequest = Schema.Struct({
   "aspect_ratio": Schema.optionalKey(
     Schema.Literals(["16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3", "21:9", "9:21"]).annotate({
@@ -34211,7 +36147,9 @@ export const VideoGenerationRequest = Schema.Struct({
   }],
   "identifier": "VideoGenerationRequest"
 })
+
 export type VideoGenerationUsage = { readonly "cost"?: number | null; readonly "is_byok"?: boolean }
+
 export const VideoGenerationUsage = Schema.Struct({
   "cost": Schema.optionalKey(
     Schema.Union([Schema.Finite, Schema.Null]).annotate({
@@ -34227,6 +36165,7 @@ export const VideoGenerationUsage = Schema.Struct({
   "examples": [{ "cost": 0.5, "is_byok": false }],
   "identifier": "VideoGenerationUsage"
 })
+
 export type VideoGenerationResponse = {
   readonly "error"?: string
   readonly "expires_at"?: number
@@ -34238,6 +36177,7 @@ export type VideoGenerationResponse = {
   readonly "urls"?: globalThis.ReadonlyArray<string>
   readonly "usage"?: VideoGenerationUsage
 }
+
 export const VideoGenerationResponse = Schema.Struct({
   "error": Schema.optionalKey(Schema.String),
   "expires_at": Schema.optionalKey(
@@ -34280,6 +36220,7 @@ export const VideoGenerationResponse = Schema.Struct({
   }],
   "identifier": "VideoGenerationResponse"
 })
+
 export type VideoModel = {
   readonly "allowed_passthrough_parameters": globalThis.ReadonlyArray<string>
   readonly "canonical_slug": string
@@ -34379,6 +36320,7 @@ export type VideoModel = {
     | null
   readonly "upscale_factor": { readonly "max"?: number | null; readonly "min"?: number | null } | null
 }
+
 export const VideoModel = Schema.Struct({
   "allowed_passthrough_parameters": Schema.Array(Schema.String).annotate({
     "description": "List of parameters that are allowed to be passed through to the provider"
@@ -34520,10 +36462,13 @@ export const VideoModel = Schema.Struct({
     Schema.Null
   ]).annotate({ "description": "Supported upscale factor range for video upscaling models" })
 }).annotate({ "identifier": "VideoModel" })
+
 export type VideoModelsListResponse = { readonly "data": globalThis.ReadonlyArray<VideoModel> }
+
 export const VideoModelsListResponse = Schema.Struct({ "data": Schema.Array(VideoModel) }).annotate({
   "identifier": "VideoModelsListResponse"
 })
+
 export type Workspace = {
   readonly "created_at": string
   readonly "created_by": string | null
@@ -34544,6 +36489,7 @@ export type Workspace = {
   readonly "slug": string
   readonly "updated_at": string | null
 }
+
 export const Workspace = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "ISO 8601 timestamp of when the workspace was created",
@@ -34644,10 +36590,12 @@ export const Workspace = Schema.Struct({
   }],
   "identifier": "Workspace"
 })
+
 export type ListWorkspacesResponse = {
   readonly "data": globalThis.ReadonlyArray<Workspace>
   readonly "total_count": number
 }
+
 export const ListWorkspacesResponse = Schema.Struct({
   "data": Schema.Array(Workspace).annotate({ "description": "List of workspaces" }),
   "total_count": Schema.Number.annotate({ "description": "Total number of workspaces", "examples": [5] }).check(
@@ -34679,6 +36627,7 @@ export const ListWorkspacesResponse = Schema.Struct({
   }],
   "identifier": "ListWorkspacesResponse"
 })
+
 export type CreateWorkspaceRequest = {
   readonly "default_image_model"?: string | null
   readonly "default_provider_sort"?: string | null
@@ -34709,6 +36658,7 @@ export type CreateWorkspaceRequest = {
   readonly "name": string
   readonly "slug": string
 }
+
 export const CreateWorkspaceRequest = Schema.Struct({
   "default_image_model": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -34809,7 +36759,9 @@ export const CreateWorkspaceRequest = Schema.Struct({
   }],
   "identifier": "CreateWorkspaceRequest"
 })
+
 export type CreateWorkspaceResponse = { readonly "data": Workspace }
+
 export const CreateWorkspaceResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Workspace> => Workspace).annotate({ "description": "The created workspace" })
 }).annotate({
@@ -34837,7 +36789,9 @@ export const CreateWorkspaceResponse = Schema.Struct({
   }],
   "identifier": "CreateWorkspaceResponse"
 })
+
 export type GetWorkspaceResponse = { readonly "data": Workspace }
+
 export const GetWorkspaceResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Workspace> => Workspace).annotate({ "description": "The workspace" })
 }).annotate({
@@ -34865,13 +36819,16 @@ export const GetWorkspaceResponse = Schema.Struct({
   }],
   "identifier": "GetWorkspaceResponse"
 })
+
 export type DeleteWorkspaceResponse = { readonly "deleted": true }
+
 export const DeleteWorkspaceResponse = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({
     "description": "Confirmation that the workspace was deleted",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "deleted": true }], "identifier": "DeleteWorkspaceResponse" })
+
 export type UpdateWorkspaceRequest = {
   readonly "default_image_model"?: string | null
   readonly "default_provider_sort"?: string | null
@@ -34902,6 +36859,7 @@ export type UpdateWorkspaceRequest = {
   readonly "name"?: string
   readonly "slug"?: string
 }
+
 export const UpdateWorkspaceRequest = Schema.Struct({
   "default_image_model": Schema.optionalKey(
     Schema.Union([Schema.String, Schema.Null]).annotate({
@@ -34999,7 +36957,9 @@ export const UpdateWorkspaceRequest = Schema.Struct({
   "examples": [{ "name": "Updated Workspace", "slug": "updated-workspace" }],
   "identifier": "UpdateWorkspaceRequest"
 })
+
 export type UpdateWorkspaceResponse = { readonly "data": Workspace }
+
 export const UpdateWorkspaceResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<Workspace> => Workspace).annotate({ "description": "The updated workspace" })
 }).annotate({
@@ -35027,6 +36987,7 @@ export const UpdateWorkspaceResponse = Schema.Struct({
   }],
   "identifier": "UpdateWorkspaceResponse"
 })
+
 export type WorkspaceMember = {
   readonly "created_at": string
   readonly "id": string
@@ -35034,6 +36995,7 @@ export type WorkspaceMember = {
   readonly "user_id": string
   readonly "workspace_id": string
 }
+
 export const WorkspaceMember = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "ISO 8601 timestamp of when the membership was created",
@@ -35065,10 +37027,12 @@ export const WorkspaceMember = Schema.Struct({
   }],
   "identifier": "WorkspaceMember"
 })
+
 export type ListWorkspaceMembersResponse = {
   readonly "data": globalThis.ReadonlyArray<WorkspaceMember>
   readonly "total_count": number
 }
+
 export const ListWorkspaceMembersResponse = Schema.Struct({
   "data": Schema.Array(WorkspaceMember).annotate({ "description": "List of workspace members" }),
   "total_count": Schema.Number.annotate({ "description": "Total number of members in the workspace", "examples": [5] })
@@ -35086,7 +37050,9 @@ export const ListWorkspaceMembersResponse = Schema.Struct({
   }],
   "identifier": "ListWorkspaceMembersResponse"
 })
+
 export type BulkAddWorkspaceMembersRequest = { readonly "user_ids": globalThis.ReadonlyArray<string> }
+
 export const BulkAddWorkspaceMembersRequest = Schema.Struct({
   "user_ids": Schema.Array(Schema.String).annotate({
     "description":
@@ -35099,10 +37065,12 @@ export const BulkAddWorkspaceMembersRequest = Schema.Struct({
   "examples": [{ "user_ids": ["user_abc123", "user_def456"] }],
   "identifier": "BulkAddWorkspaceMembersRequest"
 })
+
 export type BulkAddWorkspaceMembersResponse = {
   readonly "added_count": number
   readonly "data": globalThis.ReadonlyArray<WorkspaceMember>
 }
+
 export const BulkAddWorkspaceMembersResponse = Schema.Struct({
   "added_count": Schema.Number.annotate({
     "description": "Number of workspace memberships created or updated",
@@ -35122,7 +37090,9 @@ export const BulkAddWorkspaceMembersResponse = Schema.Struct({
   }],
   "identifier": "BulkAddWorkspaceMembersResponse"
 })
+
 export type BulkRemoveWorkspaceMembersRequest = { readonly "user_ids": globalThis.ReadonlyArray<string> }
+
 export const BulkRemoveWorkspaceMembersRequest = Schema.Struct({
   "user_ids": Schema.Array(Schema.String).annotate({
     "description": "List of user IDs to remove from the workspace",
@@ -35134,12 +37104,15 @@ export const BulkRemoveWorkspaceMembersRequest = Schema.Struct({
   "examples": [{ "user_ids": ["user_abc123", "user_def456"] }],
   "identifier": "BulkRemoveWorkspaceMembersRequest"
 })
+
 export type BulkRemoveWorkspaceMembersResponse = { readonly "removed_count": number }
+
 export const BulkRemoveWorkspaceMembersResponse = Schema.Struct({
   "removed_count": Schema.Number.annotate({ "description": "Number of members removed", "examples": [2] }).check(
     Schema.isInt().annotate({ "expected": "an integer" })
   )
 }).annotate({ "examples": [{ "removed_count": 2 }], "identifier": "BulkRemoveWorkspaceMembersResponse" })
+
 export type WorkspaceBudget = {
   readonly "created_at": string
   readonly "id": string
@@ -35148,6 +37121,7 @@ export type WorkspaceBudget = {
   readonly "updated_at": string
   readonly "workspace_id": string
 }
+
 export const WorkspaceBudget = Schema.Struct({
   "created_at": Schema.String.annotate({
     "description": "ISO 8601 timestamp of when the budget was created",
@@ -35187,10 +37161,12 @@ export const WorkspaceBudget = Schema.Struct({
   }],
   "identifier": "WorkspaceBudget"
 })
+
 export type ListWorkspaceBudgetsResponse = {
   readonly "data": globalThis.ReadonlyArray<WorkspaceBudget>
   readonly "include_byok_in_budgets"?: boolean
 }
+
 export const ListWorkspaceBudgetsResponse = Schema.Struct({
   "data": Schema.Array(WorkspaceBudget).annotate({ "description": "List of budgets configured for the workspace" }),
   "include_byok_in_budgets": Schema.optionalKey(
@@ -35214,10 +37190,12 @@ export const ListWorkspaceBudgetsResponse = Schema.Struct({
   }],
   "identifier": "ListWorkspaceBudgetsResponse"
 })
+
 export type GetWorkspaceBudgetResponse = {
   readonly "data": WorkspaceBudget
   readonly "include_byok_in_budgets"?: boolean
 }
+
 export const GetWorkspaceBudgetResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<WorkspaceBudget> => WorkspaceBudget).annotate({
     "description": "The budget for the requested interval"
@@ -35243,10 +37221,12 @@ export const GetWorkspaceBudgetResponse = Schema.Struct({
   }],
   "identifier": "GetWorkspaceBudgetResponse"
 })
+
 export type UpsertWorkspaceBudgetRequest = {
   readonly "include_byok_in_budgets"?: boolean
   readonly "limit_usd": number
 }
+
 export const UpsertWorkspaceBudgetRequest = Schema.Struct({
   "include_byok_in_budgets": Schema.optionalKey(Schema.Boolean.annotate({
     "description":
@@ -35262,10 +37242,12 @@ export const UpsertWorkspaceBudgetRequest = Schema.Struct({
   "examples": [{ "include_byok_in_budgets": true, "limit_usd": 100 }],
   "identifier": "UpsertWorkspaceBudgetRequest"
 })
+
 export type UpsertWorkspaceBudgetResponse = {
   readonly "data": WorkspaceBudget
   readonly "include_byok_in_budgets"?: boolean
 }
+
 export const UpsertWorkspaceBudgetResponse = Schema.Struct({
   "data": Schema.suspend((): Schema.Codec<WorkspaceBudget> => WorkspaceBudget).annotate({
     "description": "The created or updated budget"
@@ -35291,13 +37273,16 @@ export const UpsertWorkspaceBudgetResponse = Schema.Struct({
   }],
   "identifier": "UpsertWorkspaceBudgetResponse"
 })
+
 export type DeleteWorkspaceBudgetResponse = { readonly "deleted": true }
+
 export const DeleteWorkspaceBudgetResponse = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({
     "description": "Confirmation that the budget was deleted (or did not exist)",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "deleted": true }], "identifier": "DeleteWorkspaceBudgetResponse" })
+
 export type GetUserActivityParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -35308,6 +37293,7 @@ export type GetUserActivityParams = {
   readonly "group_by"?: "workspace"
   readonly "workspace_id"?: string
 }
+
 export const GetUserActivityParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -35345,28 +37331,43 @@ export const GetUserActivityParams = Schema.Struct({
     })
   )
 })
+
 export type GetUserActivity200 = ActivityResponse
+
 export const GetUserActivity200 = ActivityResponse
+
 export type GetUserActivity400 = BadRequestResponse
+
 export const GetUserActivity400 = BadRequestResponse
+
 export type GetUserActivity401 = UnauthorizedResponse
+
 export const GetUserActivity401 = UnauthorizedResponse
+
 export type GetUserActivity403 = ForbiddenResponse
+
 export const GetUserActivity403 = ForbiddenResponse
+
 export type GetUserActivity404 = NotFoundResponse
+
 export const GetUserActivity404 = NotFoundResponse
+
 export type GetUserActivity500 = InternalServerResponse
+
 export const GetUserActivity500 = InternalServerResponse
+
 export type GetAnalyticsMetaParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetAnalyticsMetaParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetAnalyticsMeta200 = {
   readonly "data": {
     readonly "dimensions": globalThis.ReadonlyArray<{ readonly "display_label": string; readonly "name": string }>
@@ -35384,6 +37385,7 @@ export type GetAnalyticsMeta200 = {
     readonly "operators": globalThis.ReadonlyArray<Operator>
   }
 }
+
 export const GetAnalyticsMeta200 = Schema.Struct({
   "data": Schema.Struct({
     "dimensions": Schema.Array(
@@ -35422,22 +37424,31 @@ export const GetAnalyticsMeta200 = Schema.Struct({
     "operators": Schema.Array(Operator)
   })
 })
+
 export type GetAnalyticsMeta401 = UnauthorizedResponse
+
 export const GetAnalyticsMeta401 = UnauthorizedResponse
+
 export type GetAnalyticsMeta403 = ForbiddenResponse
+
 export const GetAnalyticsMeta403 = ForbiddenResponse
+
 export type GetAnalyticsMeta500 = InternalServerResponse
+
 export const GetAnalyticsMeta500 = InternalServerResponse
+
 export type QueryAnalyticsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const QueryAnalyticsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type QueryAnalyticsRequestJson = {
   readonly "classifier_dimensions"?: {
     readonly "classifier_id": string
@@ -35457,6 +37468,7 @@ export type QueryAnalyticsRequestJson = {
   readonly "order_by"?: { readonly "direction": "asc" | "desc"; readonly "field": string }
   readonly "time_range"?: { readonly "end": string; readonly "start": string }
 }
+
 export const QueryAnalyticsRequestJson = Schema.Struct({
   "classifier_dimensions": Schema.optionalKey(
     Schema.Struct({
@@ -35555,6 +37567,7 @@ export const QueryAnalyticsRequestJson = Schema.Struct({
     })
   }))
 })
+
 export type QueryAnalytics200 = {
   readonly "data": {
     readonly "cachedAt"?: number
@@ -35567,6 +37580,7 @@ export type QueryAnalytics200 = {
     readonly "warnings"?: globalThis.ReadonlyArray<string>
   }
 }
+
 export const QueryAnalytics200 = Schema.Struct({
   "data": Schema.Struct({
     "cachedAt": Schema.optionalKey(
@@ -35594,183 +37608,317 @@ export const QueryAnalytics200 = Schema.Struct({
     )
   })
 })
+
 export type QueryAnalytics400 = BadRequestResponse
+
 export const QueryAnalytics400 = BadRequestResponse
+
 export type QueryAnalytics401 = UnauthorizedResponse
+
 export const QueryAnalytics401 = UnauthorizedResponse
+
 export type QueryAnalytics403 = ForbiddenResponse
+
 export const QueryAnalytics403 = ForbiddenResponse
+
 export type QueryAnalytics408 = RequestTimeoutResponse
+
 export const QueryAnalytics408 = RequestTimeoutResponse
+
 export type QueryAnalytics500 = InternalServerResponse
+
 export const QueryAnalytics500 = InternalServerResponse
+
 export type CreateApiAlphaDecisionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateApiAlphaDecisionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateApiAlphaDecisionsRequestJson = DecisionsRequest
+
 export const CreateApiAlphaDecisionsRequestJson = DecisionsRequest
+
 export type CreateApiAlphaDecisions200 = DecisionsResponse
+
 export const CreateApiAlphaDecisions200 = DecisionsResponse
+
 export type CreateApiAlphaDecisions400 = BadRequestResponse
+
 export const CreateApiAlphaDecisions400 = BadRequestResponse
+
 export type CreateApiAlphaDecisions401 = UnauthorizedResponse
+
 export const CreateApiAlphaDecisions401 = UnauthorizedResponse
+
 export type CreateApiAlphaDecisions402 = PaymentRequiredResponse
+
 export const CreateApiAlphaDecisions402 = PaymentRequiredResponse
+
 export type CreateApiAlphaDecisions403 = ForbiddenResponse
+
 export const CreateApiAlphaDecisions403 = ForbiddenResponse
+
 export type CreateApiAlphaDecisions404 = NotFoundResponse
+
 export const CreateApiAlphaDecisions404 = NotFoundResponse
+
 export type CreateApiAlphaDecisions413 = PayloadTooLargeResponse
+
 export const CreateApiAlphaDecisions413 = PayloadTooLargeResponse
+
 export type CreateApiAlphaDecisions429 = TooManyRequestsResponse
+
 export const CreateApiAlphaDecisions429 = TooManyRequestsResponse
+
 export type CreateApiAlphaDecisions500 = InternalServerResponse
+
 export const CreateApiAlphaDecisions500 = InternalServerResponse
+
 export type CreateApiAlphaDecisions502 = BadGatewayResponse
+
 export const CreateApiAlphaDecisions502 = BadGatewayResponse
+
 export type CreateApiAlphaDecisions503 = ServiceUnavailableResponse
+
 export const CreateApiAlphaDecisions503 = ServiceUnavailableResponse
+
 export type CreateApiAlphaDecisions524 = EdgeNetworkTimeoutResponse
+
 export const CreateApiAlphaDecisions524 = EdgeNetworkTimeoutResponse
+
 export type CreateApiAlphaDecisions529 = ProviderOverloadedResponse
+
 export const CreateApiAlphaDecisions529 = ProviderOverloadedResponse
+
 export type CreateApiAlphaExtractionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateApiAlphaExtractionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateApiAlphaExtractionsRequestJson = ExtractionsRequest
+
 export const CreateApiAlphaExtractionsRequestJson = ExtractionsRequest
+
 export type CreateApiAlphaExtractions200 = ExtractionsResponse
+
 export const CreateApiAlphaExtractions200 = ExtractionsResponse
+
 export type CreateApiAlphaExtractions400 = BadRequestResponse
+
 export const CreateApiAlphaExtractions400 = BadRequestResponse
+
 export type CreateApiAlphaExtractions401 = UnauthorizedResponse
+
 export const CreateApiAlphaExtractions401 = UnauthorizedResponse
+
 export type CreateApiAlphaExtractions402 = PaymentRequiredResponse
+
 export const CreateApiAlphaExtractions402 = PaymentRequiredResponse
+
 export type CreateApiAlphaExtractions403 = ForbiddenResponse
+
 export const CreateApiAlphaExtractions403 = ForbiddenResponse
+
 export type CreateApiAlphaExtractions404 = NotFoundResponse
+
 export const CreateApiAlphaExtractions404 = NotFoundResponse
+
 export type CreateApiAlphaExtractions413 = PayloadTooLargeResponse
+
 export const CreateApiAlphaExtractions413 = PayloadTooLargeResponse
+
 export type CreateApiAlphaExtractions429 = TooManyRequestsResponse
+
 export const CreateApiAlphaExtractions429 = TooManyRequestsResponse
+
 export type CreateApiAlphaExtractions500 = InternalServerResponse
+
 export const CreateApiAlphaExtractions500 = InternalServerResponse
+
 export type CreateApiAlphaExtractions502 = BadGatewayResponse
+
 export const CreateApiAlphaExtractions502 = BadGatewayResponse
+
 export type CreateApiAlphaExtractions503 = ServiceUnavailableResponse
+
 export const CreateApiAlphaExtractions503 = ServiceUnavailableResponse
+
 export type CreateApiAlphaExtractions524 = EdgeNetworkTimeoutResponse
+
 export const CreateApiAlphaExtractions524 = EdgeNetworkTimeoutResponse
+
 export type CreateApiAlphaExtractions529 = ProviderOverloadedResponse
+
 export const CreateApiAlphaExtractions529 = ProviderOverloadedResponse
+
 export type CreateAudioSpeechParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateAudioSpeechParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateAudioSpeechRequestJson = SpeechRequest
+
 export const CreateAudioSpeechRequestJson = SpeechRequest
+
 export type CreateAudioSpeech400 = BadRequestResponse
+
 export const CreateAudioSpeech400 = BadRequestResponse
+
 export type CreateAudioSpeech401 = UnauthorizedResponse
+
 export const CreateAudioSpeech401 = UnauthorizedResponse
+
 export type CreateAudioSpeech402 = PaymentRequiredResponse
+
 export const CreateAudioSpeech402 = PaymentRequiredResponse
+
 export type CreateAudioSpeech403 = ForbiddenResponse
+
 export const CreateAudioSpeech403 = ForbiddenResponse
+
 export type CreateAudioSpeech404 = NotFoundResponse
+
 export const CreateAudioSpeech404 = NotFoundResponse
+
 export type CreateAudioSpeech413 = PayloadTooLargeResponse
+
 export const CreateAudioSpeech413 = PayloadTooLargeResponse
+
 export type CreateAudioSpeech429 = TooManyRequestsResponse
+
 export const CreateAudioSpeech429 = TooManyRequestsResponse
+
 export type CreateAudioSpeech500 = InternalServerResponse
+
 export const CreateAudioSpeech500 = InternalServerResponse
+
 export type CreateAudioSpeech502 = BadGatewayResponse
+
 export const CreateAudioSpeech502 = BadGatewayResponse
+
 export type CreateAudioSpeech503 = ServiceUnavailableResponse
+
 export const CreateAudioSpeech503 = ServiceUnavailableResponse
+
 export type CreateAudioSpeech524 = EdgeNetworkTimeoutResponse
+
 export const CreateAudioSpeech524 = EdgeNetworkTimeoutResponse
+
 export type CreateAudioSpeech529 = ProviderOverloadedResponse
+
 export const CreateAudioSpeech529 = ProviderOverloadedResponse
+
 export type CreateAudioTranscriptionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateAudioTranscriptionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateAudioTranscriptionsRequestJson = STTRequest
+
 export const CreateAudioTranscriptionsRequestJson = STTRequest
+
 export type CreateAudioTranscriptions200 = STTResponse
+
 export const CreateAudioTranscriptions200 = STTResponse
+
 export type CreateAudioTranscriptions400 = BadRequestResponse
+
 export const CreateAudioTranscriptions400 = BadRequestResponse
+
 export type CreateAudioTranscriptions401 = UnauthorizedResponse
+
 export const CreateAudioTranscriptions401 = UnauthorizedResponse
+
 export type CreateAudioTranscriptions402 = PaymentRequiredResponse
+
 export const CreateAudioTranscriptions402 = PaymentRequiredResponse
+
 export type CreateAudioTranscriptions403 = ForbiddenResponse
+
 export const CreateAudioTranscriptions403 = ForbiddenResponse
+
 export type CreateAudioTranscriptions404 = NotFoundResponse
+
 export const CreateAudioTranscriptions404 = NotFoundResponse
+
 export type CreateAudioTranscriptions413 = PayloadTooLargeResponse
+
 export const CreateAudioTranscriptions413 = PayloadTooLargeResponse
+
 export type CreateAudioTranscriptions429 = TooManyRequestsResponse
+
 export const CreateAudioTranscriptions429 = TooManyRequestsResponse
+
 export type CreateAudioTranscriptions500 = InternalServerResponse
+
 export const CreateAudioTranscriptions500 = InternalServerResponse
+
 export type CreateAudioTranscriptions502 = BadGatewayResponse
+
 export const CreateAudioTranscriptions502 = BadGatewayResponse
+
 export type CreateAudioTranscriptions503 = ServiceUnavailableResponse
+
 export const CreateAudioTranscriptions503 = ServiceUnavailableResponse
+
 export type CreateAudioTranscriptions504 = GatewayTimeoutResponse
+
 export const CreateAudioTranscriptions504 = GatewayTimeoutResponse
+
 export type CreateAudioTranscriptions524 = EdgeNetworkTimeoutResponse
+
 export const CreateAudioTranscriptions524 = EdgeNetworkTimeoutResponse
+
 export type CreateAudioTranscriptions529 = ProviderOverloadedResponse
+
 export const CreateAudioTranscriptions529 = ProviderOverloadedResponse
+
 export type ExchangeAuthCodeForAPIKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ExchangeAuthCodeForAPIKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ExchangeAuthCodeForAPIKeyRequestJson = {
   readonly "code": string
   readonly "code_challenge_method"?: "S256" | "plain" | null
   readonly "code_verifier"?: string
 }
+
 export const ExchangeAuthCodeForAPIKeyRequestJson = Schema.Struct({
   "code": Schema.String.annotate({
     "description": "The authorization code received from the OAuth redirect",
@@ -35795,7 +37943,9 @@ export const ExchangeAuthCodeForAPIKeyRequestJson = Schema.Struct({
     "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
   }]
 })
+
 export type ExchangeAuthCodeForAPIKey200 = { readonly "key": string; readonly "user_id": string | null }
+
 export const ExchangeAuthCodeForAPIKey200 = Schema.Struct({
   "key": Schema.String.annotate({
     "description": "The API key to use for OpenRouter requests",
@@ -35806,22 +37956,31 @@ export const ExchangeAuthCodeForAPIKey200 = Schema.Struct({
     "examples": ["user_2yOPcMpKoQhcd4bVgSMlELRaIah"]
   })
 }).annotate({ "examples": [{ "key": "OPENROUTER_API_KEY", "user_id": "user_2yOPcMpKoQhcd4bVgSMlELRaIah" }] })
+
 export type ExchangeAuthCodeForAPIKey400 = BadRequestResponse
+
 export const ExchangeAuthCodeForAPIKey400 = BadRequestResponse
+
 export type ExchangeAuthCodeForAPIKey403 = ForbiddenResponse
+
 export const ExchangeAuthCodeForAPIKey403 = ForbiddenResponse
+
 export type ExchangeAuthCodeForAPIKey500 = InternalServerResponse
+
 export const ExchangeAuthCodeForAPIKey500 = InternalServerResponse
+
 export type CreateAuthKeysCodeParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateAuthKeysCodeParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateAuthKeysCodeRequestJson = {
   readonly "callback_url": string
   readonly "code_challenge"?: string
@@ -35832,6 +37991,7 @@ export type CreateAuthKeysCodeRequestJson = {
   readonly "usage_limit_type"?: "daily" | "weekly" | "monthly"
   readonly "workspace_id"?: string
 }
+
 export const CreateAuthKeysCodeRequestJson = Schema.Struct({
   "callback_url": Schema.String.annotate({
     "description":
@@ -35889,9 +38049,11 @@ export const CreateAuthKeysCodeRequestJson = Schema.Struct({
     "limit": 100
   }]
 })
+
 export type CreateAuthKeysCode200 = {
   readonly "data": { readonly "app_id": number; readonly "created_at": string; readonly "id": string }
 }
+
 export const CreateAuthKeysCode200 = Schema.Struct({
   "data": Schema.Struct({
     "app_id": Schema.Number.annotate({
@@ -35913,18 +38075,31 @@ export const CreateAuthKeysCode200 = Schema.Struct({
 }).annotate({
   "examples": [{ "data": { "app_id": 12345, "created_at": "2025-08-24T10:30:00Z", "id": "auth_code_xyz789" } }]
 })
+
 export type CreateAuthKeysCode400 = BadRequestResponse
+
 export const CreateAuthKeysCode400 = BadRequestResponse
+
 export type CreateAuthKeysCode401 = UnauthorizedResponse
+
 export const CreateAuthKeysCode401 = UnauthorizedResponse
+
 export type CreateAuthKeysCode403 = ForbiddenResponse
+
 export const CreateAuthKeysCode403 = ForbiddenResponse
+
 export type CreateAuthKeysCode409 = ConflictResponse
+
 export const CreateAuthKeysCode409 = ConflictResponse
+
 export type CreateAuthKeysCode500 = InternalServerResponse
+
 export const CreateAuthKeysCode500 = InternalServerResponse
+
 export type CreateAuthKeysCode503 = ServiceUnavailableResponse
+
 export const CreateAuthKeysCode503 = ServiceUnavailableResponse
+
 export type ListBatchesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -35935,6 +38110,7 @@ export type ListBatchesParams = {
   readonly "created_after"?: BatchListTimestamp
   readonly "created_before"?: BatchListTimestamp
 }
+
 export const ListBatchesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -35964,102 +38140,175 @@ export const ListBatchesParams = Schema.Struct({
     })
   )
 })
+
 export type ListBatches200 = BatchListResponse
+
 export const ListBatches200 = BatchListResponse
+
 export type ListBatches400 = BatchErrorResponse
+
 export const ListBatches400 = BatchErrorResponse
+
 export type ListBatches401 = BatchErrorResponse
+
 export const ListBatches401 = BatchErrorResponse
+
 export type ListBatches429 = BatchErrorResponse
+
 export const ListBatches429 = BatchErrorResponse
+
 export type ListBatches500 = BatchErrorResponse
+
 export const ListBatches500 = BatchErrorResponse
+
 export type ListBatches502 = BatchErrorResponse
+
 export const ListBatches502 = BatchErrorResponse
+
 export type CreateBatchesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateBatchesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateBatchesRequestJson = BatchSubmitBody
+
 export const CreateBatchesRequestJson = BatchSubmitBody
+
 export type CreateBatches202 = BatchObject
+
 export const CreateBatches202 = BatchObject
+
 export type CreateBatches400 = BatchErrorResponse
+
 export const CreateBatches400 = BatchErrorResponse
+
 export type CreateBatches401 = BatchErrorResponse
+
 export const CreateBatches401 = BatchErrorResponse
+
 export type CreateBatches402 = BatchErrorResponse
+
 export const CreateBatches402 = BatchErrorResponse
+
 export type CreateBatches403 = BatchErrorResponse
+
 export const CreateBatches403 = BatchErrorResponse
+
 export type CreateBatches404 = BatchErrorResponse
+
 export const CreateBatches404 = BatchErrorResponse
+
 export type CreateBatches413 = BatchErrorResponse
+
 export const CreateBatches413 = BatchErrorResponse
+
 export type CreateBatches422 = BatchErrorResponse
+
 export const CreateBatches422 = BatchErrorResponse
+
 export type CreateBatches429 = BatchErrorResponse
+
 export const CreateBatches429 = BatchErrorResponse
+
 export type CreateBatches500 = BatchErrorResponse
+
 export const CreateBatches500 = BatchErrorResponse
+
 export type CreateBatches502 = BatchErrorResponse
+
 export const CreateBatches502 = BatchErrorResponse
+
 export type GetBatchesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetBatchesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetBatches200 = BatchObject
+
 export const GetBatches200 = BatchObject
+
 export type GetBatches401 = BatchErrorResponse
+
 export const GetBatches401 = BatchErrorResponse
+
 export type GetBatches402 = BatchPaymentRequiredResponse
+
 export const GetBatches402 = BatchPaymentRequiredResponse
+
 export type GetBatches404 = BatchErrorResponse
+
 export const GetBatches404 = BatchErrorResponse
+
 export type GetBatches410 = BatchErrorResponse
+
 export const GetBatches410 = BatchErrorResponse
+
 export type GetBatches429 = BatchErrorResponse
+
 export const GetBatches429 = BatchErrorResponse
+
 export type GetBatches500 = BatchErrorResponse
+
 export const GetBatches500 = BatchErrorResponse
+
 export type GetBatches502 = BatchErrorResponse
+
 export const GetBatches502 = BatchErrorResponse
+
 export type DeleteBatchParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteBatchParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteBatch200 = BatchDeletedObject
+
 export const DeleteBatch200 = BatchDeletedObject
+
 export type DeleteBatch401 = BatchErrorResponse
+
 export const DeleteBatch401 = BatchErrorResponse
+
 export type DeleteBatch404 = BatchErrorResponse
+
 export const DeleteBatch404 = BatchErrorResponse
+
 export type DeleteBatch409 = BatchErrorResponse
+
 export const DeleteBatch409 = BatchErrorResponse
+
 export type DeleteBatch429 = BatchErrorResponse
+
 export const DeleteBatch429 = BatchErrorResponse
+
 export type DeleteBatch500 = BatchErrorResponse
+
 export const DeleteBatch500 = BatchErrorResponse
+
 export type DeleteBatch502 = BatchErrorResponse
+
 export const DeleteBatch502 = BatchErrorResponse
+
 export type GetBenchmarksParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -36080,6 +38329,7 @@ export type GetBenchmarksParams = {
   readonly "category"?: string
   readonly "max_results"?: number
 }
+
 export const GetBenchmarksParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36151,16 +38401,27 @@ export const GetBenchmarksParams = Schema.Struct({
     )
   )
 })
+
 export type GetBenchmarks200 = UnifiedBenchmarksResponse
+
 export const GetBenchmarks200 = UnifiedBenchmarksResponse
+
 export type GetBenchmarks400 = BadRequestResponse
+
 export const GetBenchmarks400 = BadRequestResponse
+
 export type GetBenchmarks401 = UnauthorizedResponse
+
 export const GetBenchmarks401 = UnauthorizedResponse
+
 export type GetBenchmarks429 = TooManyRequestsResponse
+
 export const GetBenchmarks429 = TooManyRequestsResponse
+
 export type GetBenchmarks500 = InternalServerResponse
+
 export const GetBenchmarks500 = InternalServerResponse
+
 export type ListBYOKKeysParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -36294,6 +38555,7 @@ export type ListBYOKKeysParams = {
     | "xiaomi"
     | "z-ai"
 }
+
 export const ListBYOKKeysParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36449,156 +38711,260 @@ export const ListBYOKKeysParams = Schema.Struct({
     })
   )
 })
+
 export type ListBYOKKeys200 = ListBYOKKeysResponse
+
 export const ListBYOKKeys200 = ListBYOKKeysResponse
+
 export type ListBYOKKeys400 = BadRequestResponse
+
 export const ListBYOKKeys400 = BadRequestResponse
+
 export type ListBYOKKeys401 = UnauthorizedResponse
+
 export const ListBYOKKeys401 = UnauthorizedResponse
+
 export type ListBYOKKeys403 = ForbiddenResponse
+
 export const ListBYOKKeys403 = ForbiddenResponse
+
 export type ListBYOKKeys500 = InternalServerResponse
+
 export const ListBYOKKeys500 = InternalServerResponse
+
 export type CreateBYOKKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateBYOKKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateBYOKKeyRequestJson = CreateBYOKKeyRequest
+
 export const CreateBYOKKeyRequestJson = CreateBYOKKeyRequest
+
 export type CreateBYOKKey201 = CreateBYOKKeyResponse
+
 export const CreateBYOKKey201 = CreateBYOKKeyResponse
+
 export type CreateBYOKKey400 = BadRequestResponse
+
 export const CreateBYOKKey400 = BadRequestResponse
+
 export type CreateBYOKKey401 = UnauthorizedResponse
+
 export const CreateBYOKKey401 = UnauthorizedResponse
+
 export type CreateBYOKKey403 = ForbiddenResponse
+
 export const CreateBYOKKey403 = ForbiddenResponse
+
 export type CreateBYOKKey500 = InternalServerResponse
+
 export const CreateBYOKKey500 = InternalServerResponse
+
 export type GetBYOKKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetBYOKKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetBYOKKey200 = GetBYOKKeyResponse
+
 export const GetBYOKKey200 = GetBYOKKeyResponse
+
 export type GetBYOKKey401 = UnauthorizedResponse
+
 export const GetBYOKKey401 = UnauthorizedResponse
+
 export type GetBYOKKey403 = ForbiddenResponse
+
 export const GetBYOKKey403 = ForbiddenResponse
+
 export type GetBYOKKey404 = NotFoundResponse
+
 export const GetBYOKKey404 = NotFoundResponse
+
 export type GetBYOKKey500 = InternalServerResponse
+
 export const GetBYOKKey500 = InternalServerResponse
+
 export type DeleteBYOKKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteBYOKKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteBYOKKey200 = DeleteBYOKKeyResponse
+
 export const DeleteBYOKKey200 = DeleteBYOKKeyResponse
+
 export type DeleteBYOKKey401 = UnauthorizedResponse
+
 export const DeleteBYOKKey401 = UnauthorizedResponse
+
 export type DeleteBYOKKey403 = ForbiddenResponse
+
 export const DeleteBYOKKey403 = ForbiddenResponse
+
 export type DeleteBYOKKey404 = NotFoundResponse
+
 export const DeleteBYOKKey404 = NotFoundResponse
+
 export type DeleteBYOKKey500 = InternalServerResponse
+
 export const DeleteBYOKKey500 = InternalServerResponse
+
 export type UpdateBYOKKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateBYOKKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateBYOKKeyRequestJson = UpdateBYOKKeyRequest
+
 export const UpdateBYOKKeyRequestJson = UpdateBYOKKeyRequest
+
 export type UpdateBYOKKey200 = UpdateBYOKKeyResponse
+
 export const UpdateBYOKKey200 = UpdateBYOKKeyResponse
+
 export type UpdateBYOKKey400 = BadRequestResponse
+
 export const UpdateBYOKKey400 = BadRequestResponse
+
 export type UpdateBYOKKey401 = UnauthorizedResponse
+
 export const UpdateBYOKKey401 = UnauthorizedResponse
+
 export type UpdateBYOKKey403 = ForbiddenResponse
+
 export const UpdateBYOKKey403 = ForbiddenResponse
+
 export type UpdateBYOKKey404 = NotFoundResponse
+
 export const UpdateBYOKKey404 = NotFoundResponse
+
 export type UpdateBYOKKey409 = ConflictResponse
+
 export const UpdateBYOKKey409 = ConflictResponse
+
 export type UpdateBYOKKey500 = InternalServerResponse
+
 export const UpdateBYOKKey500 = InternalServerResponse
+
 export type SendChatCompletionRequestParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "X-OpenRouter-Metadata"?: MetadataLevel
 }
+
 export const SendChatCompletionRequestParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Metadata": Schema.optionalKey(MetadataLevel)
 })
+
 export type SendChatCompletionRequestRequestJson = ChatRequest
+
 export const SendChatCompletionRequestRequestJson = ChatRequest
+
 export type SendChatCompletionRequest200 = ChatResult
+
 export const SendChatCompletionRequest200 = ChatResult
+
 export type SendChatCompletionRequest200Sse = ChatStreamingResponse
+
 export const SendChatCompletionRequest200Sse = ChatStreamingResponse
+
 export type SendChatCompletionRequest400 = BadRequestResponse
+
 export const SendChatCompletionRequest400 = BadRequestResponse
+
 export type SendChatCompletionRequest401 = UnauthorizedResponse
+
 export const SendChatCompletionRequest401 = UnauthorizedResponse
+
 export type SendChatCompletionRequest402 = PaymentRequiredResponse
+
 export const SendChatCompletionRequest402 = PaymentRequiredResponse
+
 export type SendChatCompletionRequest403 = ForbiddenResponse
+
 export const SendChatCompletionRequest403 = ForbiddenResponse
+
 export type SendChatCompletionRequest404 = NotFoundResponse
+
 export const SendChatCompletionRequest404 = NotFoundResponse
+
 export type SendChatCompletionRequest408 = RequestTimeoutResponse
+
 export const SendChatCompletionRequest408 = RequestTimeoutResponse
+
 export type SendChatCompletionRequest413 = PayloadTooLargeResponse
+
 export const SendChatCompletionRequest413 = PayloadTooLargeResponse
+
 export type SendChatCompletionRequest422 = UnprocessableEntityResponse
+
 export const SendChatCompletionRequest422 = UnprocessableEntityResponse
+
 export type SendChatCompletionRequest429 = TooManyRequestsResponse
+
 export const SendChatCompletionRequest429 = TooManyRequestsResponse
+
 export type SendChatCompletionRequest500 = InternalServerResponse
+
 export const SendChatCompletionRequest500 = InternalServerResponse
+
 export type SendChatCompletionRequest502 = BadGatewayResponse
+
 export const SendChatCompletionRequest502 = BadGatewayResponse
+
 export type SendChatCompletionRequest503 = ServiceUnavailableResponse
+
 export const SendChatCompletionRequest503 = ServiceUnavailableResponse
+
 export type SendChatCompletionRequest524 = EdgeNetworkTimeoutResponse
+
 export const SendChatCompletionRequest524 = EdgeNetworkTimeoutResponse
+
 export type SendChatCompletionRequest529 = ProviderOverloadedResponse
+
 export const SendChatCompletionRequest529 = ProviderOverloadedResponse
+
 export type GetTaskClassificationsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "window"?: "7d"
 }
+
 export const GetTaskClassificationsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36611,16 +38977,27 @@ export const GetTaskClassificationsParams = Schema.Struct({
     })
   )
 })
+
 export type GetTaskClassifications200 = TaskClassificationResponse
+
 export const GetTaskClassifications200 = TaskClassificationResponse
+
 export type GetTaskClassifications400 = BadRequestResponse
+
 export const GetTaskClassifications400 = BadRequestResponse
+
 export type GetTaskClassifications401 = UnauthorizedResponse
+
 export const GetTaskClassifications401 = UnauthorizedResponse
+
 export type GetTaskClassifications429 = TooManyRequestsResponse
+
 export const GetTaskClassifications429 = TooManyRequestsResponse
+
 export type GetTaskClassifications500 = InternalServerResponse
+
 export const GetTaskClassifications500 = InternalServerResponse
+
 export type ListContainerFilesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -36628,6 +39005,7 @@ export type ListContainerFilesParams = {
   readonly "limit"?: number
   readonly "after"?: string
 }
+
 export const ListContainerFilesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36646,111 +39024,185 @@ export const ListContainerFilesParams = Schema.Struct({
     "examples": ["cfile_b3V0L3JlcG9ydC5jc3Y"]
   }))
 })
+
 export type ListContainerFiles200 = ContainerFileListResponse
+
 export const ListContainerFiles200 = ContainerFileListResponse
+
 export type ListContainerFiles400 = BadRequestResponse
+
 export const ListContainerFiles400 = BadRequestResponse
+
 export type ListContainerFiles401 = UnauthorizedResponse
+
 export const ListContainerFiles401 = UnauthorizedResponse
+
 export type ListContainerFiles403 = ForbiddenResponse
+
 export const ListContainerFiles403 = ForbiddenResponse
+
 export type ListContainerFiles429 = TooManyRequestsResponse
+
 export const ListContainerFiles429 = TooManyRequestsResponse
+
 export type ListContainerFiles500 = InternalServerResponse
+
 export const ListContainerFiles500 = InternalServerResponse
+
 export type ListContainerFiles503 = ServiceUnavailableResponse
+
 export const ListContainerFiles503 = ServiceUnavailableResponse
+
 export type GetContainerFileParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetContainerFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetContainerFile200 = ContainerFile
+
 export const GetContainerFile200 = ContainerFile
+
 export type GetContainerFile400 = BadRequestResponse
+
 export const GetContainerFile400 = BadRequestResponse
+
 export type GetContainerFile401 = UnauthorizedResponse
+
 export const GetContainerFile401 = UnauthorizedResponse
+
 export type GetContainerFile403 = ForbiddenResponse
+
 export const GetContainerFile403 = ForbiddenResponse
+
 export type GetContainerFile404 = NotFoundResponse
+
 export const GetContainerFile404 = NotFoundResponse
+
 export type GetContainerFile429 = TooManyRequestsResponse
+
 export const GetContainerFile429 = TooManyRequestsResponse
+
 export type GetContainerFile500 = InternalServerResponse
+
 export const GetContainerFile500 = InternalServerResponse
+
 export type GetContainerFile503 = ServiceUnavailableResponse
+
 export const GetContainerFile503 = ServiceUnavailableResponse
+
 export type DownloadContainerFileContentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DownloadContainerFileContentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DownloadContainerFileContent400 = BadRequestResponse
+
 export const DownloadContainerFileContent400 = BadRequestResponse
+
 export type DownloadContainerFileContent401 = UnauthorizedResponse
+
 export const DownloadContainerFileContent401 = UnauthorizedResponse
+
 export type DownloadContainerFileContent403 = ForbiddenResponse
+
 export const DownloadContainerFileContent403 = ForbiddenResponse
+
 export type DownloadContainerFileContent404 = NotFoundResponse
+
 export const DownloadContainerFileContent404 = NotFoundResponse
+
 export type DownloadContainerFileContent429 = TooManyRequestsResponse
+
 export const DownloadContainerFileContent429 = TooManyRequestsResponse
+
 export type DownloadContainerFileContent500 = InternalServerResponse
+
 export const DownloadContainerFileContent500 = InternalServerResponse
+
 export type DownloadContainerFileContent503 = ServiceUnavailableResponse
+
 export const DownloadContainerFileContent503 = ServiceUnavailableResponse
+
 export type PromoteContainerFileParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const PromoteContainerFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type PromoteContainerFile200 = FileResponse
+
 export const PromoteContainerFile200 = FileResponse
+
 export type PromoteContainerFile400 = BadRequestResponse
+
 export const PromoteContainerFile400 = BadRequestResponse
+
 export type PromoteContainerFile401 = UnauthorizedResponse
+
 export const PromoteContainerFile401 = UnauthorizedResponse
+
 export type PromoteContainerFile403 = ForbiddenResponse
+
 export const PromoteContainerFile403 = ForbiddenResponse
+
 export type PromoteContainerFile404 = NotFoundResponse
+
 export const PromoteContainerFile404 = NotFoundResponse
+
 export type PromoteContainerFile413 = PayloadTooLargeResponse
+
 export const PromoteContainerFile413 = PayloadTooLargeResponse
+
 export type PromoteContainerFile429 = TooManyRequestsResponse
+
 export const PromoteContainerFile429 = TooManyRequestsResponse
+
 export type PromoteContainerFile499 = ClientClosedRequestResponse
+
 export const PromoteContainerFile499 = ClientClosedRequestResponse
+
 export type PromoteContainerFile500 = InternalServerResponse
+
 export const PromoteContainerFile500 = InternalServerResponse
+
 export type PromoteContainerFile503 = ServiceUnavailableResponse
+
 export const PromoteContainerFile503 = ServiceUnavailableResponse
+
 export type GetCreditsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetCreditsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetCredits200 = { readonly "data": { readonly "total_credits": number; readonly "total_usage": number } }
+
 export const GetCredits200 = Schema.Struct({
   "data": Schema.Struct({
     "total_credits": Schema.Number.annotate({
@@ -36768,30 +39220,42 @@ export const GetCredits200 = Schema.Struct({
   "description": "Total credits purchased and used",
   "examples": [{ "data": { "total_credits": 100.5, "total_usage": 25.75 } }]
 })
+
 export type GetCredits401 = UnauthorizedResponse
+
 export const GetCredits401 = UnauthorizedResponse
+
 export type GetCredits403 = ForbiddenResponse
+
 export const GetCredits403 = ForbiddenResponse
+
 export type GetCredits500 = InternalServerResponse
+
 export const GetCredits500 = InternalServerResponse
+
 export type CreateCoinbaseChargeParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateCoinbaseChargeParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateCoinbaseCharge410 = GoneResponse
+
 export const CreateCoinbaseCharge410 = GoneResponse
+
 export type CreateCreditsPurchasesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "idempotency-key": string
 }
+
 export const CreateCreditsPurchasesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36804,54 +39268,95 @@ export const CreateCreditsPurchasesParams = Schema.Struct({
     Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })
   )
 })
+
 export type CreateCreditsPurchasesRequestJson = CreateCreditPurchaseRequest
+
 export const CreateCreditsPurchasesRequestJson = CreateCreditPurchaseRequest
+
 export type CreateCreditsPurchases202 = CreditPurchaseResponse
+
 export const CreateCreditsPurchases202 = CreditPurchaseResponse
+
 export type CreateCreditsPurchases400 = BadRequestResponse
+
 export const CreateCreditsPurchases400 = BadRequestResponse
+
 export type CreateCreditsPurchases401 = UnauthorizedResponse
+
 export const CreateCreditsPurchases401 = UnauthorizedResponse
+
 export type CreateCreditsPurchases402 = CreditPurchaseResponse
+
 export const CreateCreditsPurchases402 = CreditPurchaseResponse
+
 export type CreateCreditsPurchases403 = ForbiddenResponse
+
 export const CreateCreditsPurchases403 = ForbiddenResponse
+
 export type CreateCreditsPurchases404 = NotFoundResponse
+
 export const CreateCreditsPurchases404 = NotFoundResponse
+
 export type CreateCreditsPurchases409 = ConflictResponse
+
 export const CreateCreditsPurchases409 = ConflictResponse
+
 export type CreateCreditsPurchases429 = TooManyRequestsResponse
+
 export const CreateCreditsPurchases429 = TooManyRequestsResponse
+
 export type CreateCreditsPurchases500 = InternalServerResponse
+
 export const CreateCreditsPurchases500 = InternalServerResponse
+
 export type CreateCreditsPurchases503 = ServiceUnavailableResponse
+
 export const CreateCreditsPurchases503 = ServiceUnavailableResponse
+
 export type ListCreditsPurchasesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListCreditsPurchasesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListCreditsPurchases200 = CreditPurchaseResponse
+
 export const ListCreditsPurchases200 = CreditPurchaseResponse
+
 export type ListCreditsPurchases400 = BadRequestResponse
+
 export const ListCreditsPurchases400 = BadRequestResponse
+
 export type ListCreditsPurchases401 = UnauthorizedResponse
+
 export const ListCreditsPurchases401 = UnauthorizedResponse
+
 export type ListCreditsPurchases403 = ForbiddenResponse
+
 export const ListCreditsPurchases403 = ForbiddenResponse
+
 export type ListCreditsPurchases404 = NotFoundResponse
+
 export const ListCreditsPurchases404 = NotFoundResponse
+
 export type ListCreditsPurchases429 = TooManyRequestsResponse
+
 export const ListCreditsPurchases429 = TooManyRequestsResponse
+
 export type ListCreditsPurchases500 = InternalServerResponse
+
 export const ListCreditsPurchases500 = InternalServerResponse
+
 export type ListCreditsPurchases503 = ServiceUnavailableResponse
+
 export const ListCreditsPurchases503 = ServiceUnavailableResponse
+
 export type GetAppRankingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -36879,6 +39384,7 @@ export type GetAppRankingsParams = {
   readonly "limit"?: number
   readonly "offset"?: number | null
 }
+
 export const GetAppRankingsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -36962,16 +39468,27 @@ export const GetAppRankingsParams = Schema.Struct({
     })
   )
 })
+
 export type GetAppRankings200 = AppRankingsResponse
+
 export const GetAppRankings200 = AppRankingsResponse
+
 export type GetAppRankings400 = BadRequestResponse
+
 export const GetAppRankings400 = BadRequestResponse
+
 export type GetAppRankings401 = UnauthorizedResponse
+
 export const GetAppRankings401 = UnauthorizedResponse
+
 export type GetAppRankings429 = TooManyRequestsResponse
+
 export const GetAppRankings429 = TooManyRequestsResponse
+
 export type GetAppRankings500 = InternalServerResponse
+
 export const GetAppRankings500 = InternalServerResponse
+
 export type GetRankingsDailyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -36996,6 +39513,7 @@ export type GetRankingsDailyParams = {
     | "academia"
   readonly "language_type"?: "natural" | "programming"
 }
+
 export const GetRankingsDailyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37071,16 +39589,27 @@ export const GetRankingsDailyParams = Schema.Struct({
     })
   )
 })
+
 export type GetRankingsDaily200 = RankingsDailyResponse
+
 export const GetRankingsDaily200 = RankingsDailyResponse
+
 export type GetRankingsDaily400 = BadRequestResponse
+
 export const GetRankingsDaily400 = BadRequestResponse
+
 export type GetRankingsDaily401 = UnauthorizedResponse
+
 export const GetRankingsDaily401 = UnauthorizedResponse
+
 export type GetRankingsDaily429 = TooManyRequestsResponse
+
 export const GetRankingsDaily429 = TooManyRequestsResponse
+
 export type GetRankingsDaily500 = InternalServerResponse
+
 export const GetRankingsDaily500 = InternalServerResponse
+
 export type GetSessionCostParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37091,6 +39620,7 @@ export type GetSessionCostParams = {
   readonly "limit"?: number
   readonly "offset"?: number | null
 }
+
 export const GetSessionCostParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37126,26 +39656,39 @@ export const GetSessionCostParams = Schema.Struct({
     ]).annotate({ "description": "Number of sorted cells to skip (0-5000). Defaults to 0.", "examples": [0] })
   )
 })
+
 export type GetSessionCost200 = SessionCostResponse
+
 export const GetSessionCost200 = SessionCostResponse
+
 export type GetSessionCost400 = BadRequestResponse
+
 export const GetSessionCost400 = BadRequestResponse
+
 export type GetSessionCost401 = UnauthorizedResponse
+
 export const GetSessionCost401 = UnauthorizedResponse
+
 export type GetSessionCost429 = TooManyRequestsResponse
+
 export const GetSessionCost429 = TooManyRequestsResponse
+
 export type GetSessionCost500 = InternalServerResponse
+
 export const GetSessionCost500 = InternalServerResponse
+
 export type CreateEmbeddingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateEmbeddingsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateEmbeddingsRequestJson = {
   readonly "dimensions"?: number
   readonly "encoding_format"?: "float" | "base64"
@@ -37172,6 +39715,7 @@ export type CreateEmbeddingsRequestJson = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const CreateEmbeddingsRequestJson = Schema.Struct({
   "dimensions": Schema.optionalKey(
     Schema.Number.annotate({ "description": "The number of dimensions for the output embeddings", "examples": [1536] })
@@ -37246,6 +39790,7 @@ export const CreateEmbeddingsRequestJson = Schema.Struct({
     "model": "openai/text-embedding-3-small"
   }]
 })
+
 export type CreateEmbeddings200 = {
   readonly "data": globalThis.ReadonlyArray<
     {
@@ -37272,6 +39817,7 @@ export type CreateEmbeddings200 = {
     readonly "total_tokens": number
   }
 }
+
 export const CreateEmbeddings200 = Schema.Struct({
   "data": Schema.Array(
     Schema.Struct({
@@ -37367,40 +39913,73 @@ export const CreateEmbeddings200 = Schema.Struct({
     "usage": { "prompt_tokens": 8, "total_tokens": 8 }
   }]
 })
+
 export type CreateEmbeddings200Sse = string
+
 export const CreateEmbeddings200Sse = Schema.String.annotate({
   "description": "Not used for embeddings - embeddings do not support streaming"
 })
+
 export type CreateEmbeddings400 = BadRequestResponse
+
 export const CreateEmbeddings400 = BadRequestResponse
+
 export type CreateEmbeddings401 = UnauthorizedResponse
+
 export const CreateEmbeddings401 = UnauthorizedResponse
+
 export type CreateEmbeddings402 = PaymentRequiredResponse
+
 export const CreateEmbeddings402 = PaymentRequiredResponse
+
 export type CreateEmbeddings403 = ForbiddenResponse
+
 export const CreateEmbeddings403 = ForbiddenResponse
+
 export type CreateEmbeddings404 = NotFoundResponse
+
 export const CreateEmbeddings404 = NotFoundResponse
+
 export type CreateEmbeddings408 = RequestTimeoutResponse
+
 export const CreateEmbeddings408 = RequestTimeoutResponse
+
 export type CreateEmbeddings413 = PayloadTooLargeResponse
+
 export const CreateEmbeddings413 = PayloadTooLargeResponse
+
 export type CreateEmbeddings429 = TooManyRequestsResponse
+
 export const CreateEmbeddings429 = TooManyRequestsResponse
+
 export type CreateEmbeddings499 = ClientClosedRequestResponse
+
 export const CreateEmbeddings499 = ClientClosedRequestResponse
+
 export type CreateEmbeddings500 = InternalServerResponse
+
 export const CreateEmbeddings500 = InternalServerResponse
+
 export type CreateEmbeddings502 = BadGatewayResponse
+
 export const CreateEmbeddings502 = BadGatewayResponse
+
 export type CreateEmbeddings503 = ServiceUnavailableResponse
+
 export const CreateEmbeddings503 = ServiceUnavailableResponse
+
 export type CreateEmbeddings504 = GatewayTimeoutResponse
+
 export const CreateEmbeddings504 = GatewayTimeoutResponse
+
 export type CreateEmbeddings524 = EdgeNetworkTimeoutResponse
+
 export const CreateEmbeddings524 = EdgeNetworkTimeoutResponse
+
 export type CreateEmbeddings529 = ProviderOverloadedResponse
+
 export const CreateEmbeddings529 = ProviderOverloadedResponse
+
 export type ListEmbeddingsModelsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37408,6 +39987,7 @@ export type ListEmbeddingsModelsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListEmbeddingsModelsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37432,30 +40012,47 @@ export const ListEmbeddingsModelsParams = Schema.Struct({
     ).check(Schema.isLessThanOrEqualTo(1000).annotate({ "expected": "a value less than or equal to 1000" }))
   )
 })
+
 export type ListEmbeddingsModels200 = ModelsListResponse
+
 export const ListEmbeddingsModels200 = ModelsListResponse
+
 export type ListEmbeddingsModels400 = BadRequestResponse
+
 export const ListEmbeddingsModels400 = BadRequestResponse
+
 export type ListEmbeddingsModels500 = InternalServerResponse
+
 export const ListEmbeddingsModels500 = InternalServerResponse
+
 export type ListEndpointsZdrParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListEndpointsZdrParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListEndpointsZdr200 = { readonly "data": globalThis.ReadonlyArray<PublicZdrEndpoint> }
+
 export const ListEndpointsZdr200 = Schema.Struct({ "data": Schema.Array(PublicZdrEndpoint) })
+
 export type ListEndpointsZdr403 = ForbiddenResponse
+
 export const ListEndpointsZdr403 = ForbiddenResponse
+
 export type ListEndpointsZdr500 = InternalServerResponse
+
 export const ListEndpointsZdr500 = InternalServerResponse
+
 export type ListEndpointsZdr503 = ServiceUnavailableResponse
+
 export const ListEndpointsZdr503 = ServiceUnavailableResponse
+
 export type ListExternalUsersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37465,6 +40062,7 @@ export type ListExternalUsersParams = {
   readonly "user"?: string
   readonly "include_inactive"?: boolean
 }
+
 export const ListExternalUsersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37499,104 +40097,171 @@ export const ListExternalUsersParams = Schema.Struct({
     Schema.Boolean.annotate({ "description": "Include deactivated registrations.", "examples": [false] })
   )
 })
+
 export type ListExternalUsers200 = ListExternalUsersResponse
+
 export const ListExternalUsers200 = ListExternalUsersResponse
+
 export type ListExternalUsers400 = BadRequestResponse
+
 export const ListExternalUsers400 = BadRequestResponse
+
 export type ListExternalUsers401 = UnauthorizedResponse
+
 export const ListExternalUsers401 = UnauthorizedResponse
+
 export type ListExternalUsers403 = ForbiddenResponse
+
 export const ListExternalUsers403 = ForbiddenResponse
+
 export type ListExternalUsers404 = NotFoundResponse
+
 export const ListExternalUsers404 = NotFoundResponse
+
 export type ListExternalUsers500 = InternalServerResponse
+
 export const ListExternalUsers500 = InternalServerResponse
+
 export type CreateExternalUserParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateExternalUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateExternalUserRequestJson = CreateExternalUserRequest
+
 export const CreateExternalUserRequestJson = CreateExternalUserRequest
+
 export type CreateExternalUser201 = ExternalUserResponse
+
 export const CreateExternalUser201 = ExternalUserResponse
+
 export type CreateExternalUser400 = BadRequestResponse
+
 export const CreateExternalUser400 = BadRequestResponse
+
 export type CreateExternalUser401 = UnauthorizedResponse
+
 export const CreateExternalUser401 = UnauthorizedResponse
+
 export type CreateExternalUser404 = NotFoundResponse
+
 export const CreateExternalUser404 = NotFoundResponse
+
 export type CreateExternalUser409 = ConflictResponse
+
 export const CreateExternalUser409 = ConflictResponse
+
 export type CreateExternalUser500 = InternalServerResponse
+
 export const CreateExternalUser500 = InternalServerResponse
+
 export type GetExternalUserParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetExternalUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetExternalUser200 = ExternalUserResponse
+
 export const GetExternalUser200 = ExternalUserResponse
+
 export type GetExternalUser400 = BadRequestResponse
+
 export const GetExternalUser400 = BadRequestResponse
+
 export type GetExternalUser401 = UnauthorizedResponse
+
 export const GetExternalUser401 = UnauthorizedResponse
+
 export type GetExternalUser403 = ForbiddenResponse
+
 export const GetExternalUser403 = ForbiddenResponse
+
 export type GetExternalUser404 = NotFoundResponse
+
 export const GetExternalUser404 = NotFoundResponse
+
 export type GetExternalUser500 = InternalServerResponse
+
 export const GetExternalUser500 = InternalServerResponse
+
 export type DeleteExternalUserParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteExternalUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteExternalUser400 = BadRequestResponse
+
 export const DeleteExternalUser400 = BadRequestResponse
+
 export type DeleteExternalUser401 = UnauthorizedResponse
+
 export const DeleteExternalUser401 = UnauthorizedResponse
+
 export type DeleteExternalUser404 = NotFoundResponse
+
 export const DeleteExternalUser404 = NotFoundResponse
+
 export type DeleteExternalUser500 = InternalServerResponse
+
 export const DeleteExternalUser500 = InternalServerResponse
+
 export type UpdateExternalUserParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateExternalUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateExternalUserRequestJson = UpdateExternalUserRequest
+
 export const UpdateExternalUserRequestJson = UpdateExternalUserRequest
+
 export type UpdateExternalUser200 = ExternalUserResponse
+
 export const UpdateExternalUser200 = ExternalUserResponse
+
 export type UpdateExternalUser400 = BadRequestResponse
+
 export const UpdateExternalUser400 = BadRequestResponse
+
 export type UpdateExternalUser401 = UnauthorizedResponse
+
 export const UpdateExternalUser401 = UnauthorizedResponse
+
 export type UpdateExternalUser404 = NotFoundResponse
+
 export const UpdateExternalUser404 = NotFoundResponse
+
 export type UpdateExternalUser500 = InternalServerResponse
+
 export const UpdateExternalUser500 = InternalServerResponse
+
 export type ListFilesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37610,6 +40275,7 @@ export type ListFilesParams = {
   readonly "before_id"?: string
   readonly "order"?: "asc" | "desc"
 }
+
 export const ListFilesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37660,22 +40326,39 @@ export const ListFilesParams = Schema.Struct({
     })
   )
 })
+
 export type ListFiles200 = FileListResponse
+
 export const ListFiles200 = FileListResponse
+
 export type ListFiles400 = BadRequestResponse
+
 export const ListFiles400 = BadRequestResponse
+
 export type ListFiles401 = UnauthorizedResponse
+
 export const ListFiles401 = UnauthorizedResponse
+
 export type ListFiles403 = ForbiddenResponse
+
 export const ListFiles403 = ForbiddenResponse
+
 export type ListFiles429 = TooManyRequestsResponse
+
 export const ListFiles429 = TooManyRequestsResponse
+
 export type ListFiles500 = InternalServerResponse
+
 export const ListFiles500 = InternalServerResponse
+
 export type ListFiles502 = BadGatewayResponse
+
 export const ListFiles502 = BadGatewayResponse
+
 export type ListFiles503 = ServiceUnavailableResponse
+
 export const ListFiles503 = ServiceUnavailableResponse
+
 export type UploadFileParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37683,6 +40366,7 @@ export type UploadFileParams = {
   readonly "workspace_id"?: string
   readonly "provider"?: FileProvider
 }
+
 export const UploadFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37696,28 +40380,51 @@ export const UploadFileParams = Schema.Struct({
   ),
   "provider": Schema.optionalKey(FileProvider)
 })
+
 export type UploadFileRequestFormData = { readonly "file": __ClientMultipartFile }
+
 export const UploadFileRequestFormData = Schema.Struct({ "file": __ClientMultipartFile })
+
 export type UploadFile200 = FileResponse
+
 export const UploadFile200 = FileResponse
+
 export type UploadFile400 = BadRequestResponse
+
 export const UploadFile400 = BadRequestResponse
+
 export type UploadFile401 = UnauthorizedResponse
+
 export const UploadFile401 = UnauthorizedResponse
+
 export type UploadFile403 = ForbiddenResponse
+
 export const UploadFile403 = ForbiddenResponse
+
 export type UploadFile413 = PayloadTooLargeResponse
+
 export const UploadFile413 = PayloadTooLargeResponse
+
 export type UploadFile429 = TooManyRequestsResponse
+
 export const UploadFile429 = TooManyRequestsResponse
+
 export type UploadFile499 = ClientClosedRequestResponse
+
 export const UploadFile499 = ClientClosedRequestResponse
+
 export type UploadFile500 = InternalServerResponse
+
 export const UploadFile500 = InternalServerResponse
+
 export type UploadFile502 = BadGatewayResponse
+
 export const UploadFile502 = BadGatewayResponse
+
 export type UploadFile503 = ServiceUnavailableResponse
+
 export const UploadFile503 = ServiceUnavailableResponse
+
 export type GetFileMetadataParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37725,6 +40432,7 @@ export type GetFileMetadataParams = {
   readonly "workspace_id"?: string
   readonly "provider"?: FileProvider
 }
+
 export const GetFileMetadataParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37738,22 +40446,39 @@ export const GetFileMetadataParams = Schema.Struct({
   ),
   "provider": Schema.optionalKey(FileProvider)
 })
+
 export type GetFileMetadata200 = FileResponse
+
 export const GetFileMetadata200 = FileResponse
+
 export type GetFileMetadata401 = UnauthorizedResponse
+
 export const GetFileMetadata401 = UnauthorizedResponse
+
 export type GetFileMetadata403 = ForbiddenResponse
+
 export const GetFileMetadata403 = ForbiddenResponse
+
 export type GetFileMetadata404 = NotFoundResponse
+
 export const GetFileMetadata404 = NotFoundResponse
+
 export type GetFileMetadata429 = TooManyRequestsResponse
+
 export const GetFileMetadata429 = TooManyRequestsResponse
+
 export type GetFileMetadata500 = InternalServerResponse
+
 export const GetFileMetadata500 = InternalServerResponse
+
 export type GetFileMetadata502 = BadGatewayResponse
+
 export const GetFileMetadata502 = BadGatewayResponse
+
 export type GetFileMetadata503 = ServiceUnavailableResponse
+
 export const GetFileMetadata503 = ServiceUnavailableResponse
+
 export type DeleteFileParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37761,6 +40486,7 @@ export type DeleteFileParams = {
   readonly "workspace_id"?: string
   readonly "provider"?: FileProvider
 }
+
 export const DeleteFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37774,22 +40500,39 @@ export const DeleteFileParams = Schema.Struct({
   ),
   "provider": Schema.optionalKey(FileProvider)
 })
+
 export type DeleteFile200 = FileDeleteResponse
+
 export const DeleteFile200 = FileDeleteResponse
+
 export type DeleteFile401 = UnauthorizedResponse
+
 export const DeleteFile401 = UnauthorizedResponse
+
 export type DeleteFile403 = ForbiddenResponse
+
 export const DeleteFile403 = ForbiddenResponse
+
 export type DeleteFile404 = NotFoundResponse
+
 export const DeleteFile404 = NotFoundResponse
+
 export type DeleteFile429 = TooManyRequestsResponse
+
 export const DeleteFile429 = TooManyRequestsResponse
+
 export type DeleteFile500 = InternalServerResponse
+
 export const DeleteFile500 = InternalServerResponse
+
 export type DeleteFile502 = BadGatewayResponse
+
 export const DeleteFile502 = BadGatewayResponse
+
 export type DeleteFile503 = ServiceUnavailableResponse
+
 export const DeleteFile503 = ServiceUnavailableResponse
+
 export type DownloadFileContentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37797,6 +40540,7 @@ export type DownloadFileContentParams = {
   readonly "workspace_id"?: string
   readonly "provider"?: FileProvider
 }
+
 export const DownloadFileContentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37810,28 +40554,46 @@ export const DownloadFileContentParams = Schema.Struct({
   ),
   "provider": Schema.optionalKey(FileProvider)
 })
+
 export type DownloadFileContent400 = BadRequestResponse
+
 export const DownloadFileContent400 = BadRequestResponse
+
 export type DownloadFileContent401 = UnauthorizedResponse
+
 export const DownloadFileContent401 = UnauthorizedResponse
+
 export type DownloadFileContent403 = ForbiddenResponse
+
 export const DownloadFileContent403 = ForbiddenResponse
+
 export type DownloadFileContent404 = NotFoundResponse
+
 export const DownloadFileContent404 = NotFoundResponse
+
 export type DownloadFileContent429 = TooManyRequestsResponse
+
 export const DownloadFileContent429 = TooManyRequestsResponse
+
 export type DownloadFileContent500 = InternalServerResponse
+
 export const DownloadFileContent500 = InternalServerResponse
+
 export type DownloadFileContent502 = BadGatewayResponse
+
 export const DownloadFileContent502 = BadGatewayResponse
+
 export type DownloadFileContent503 = ServiceUnavailableResponse
+
 export const DownloadFileContent503 = ServiceUnavailableResponse
+
 export type GetGenerationParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "id": string
 }
+
 export const GetGenerationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37844,34 +40606,58 @@ export const GetGenerationParams = Schema.Struct({
     })
   )
 })
+
 export type GetGeneration200 = GenerationResponse
+
 export const GetGeneration200 = GenerationResponse
+
 export type GetGeneration400 = BadRequestResponse
+
 export const GetGeneration400 = BadRequestResponse
+
 export type GetGeneration401 = UnauthorizedResponse
+
 export const GetGeneration401 = UnauthorizedResponse
+
 export type GetGeneration402 = PaymentRequiredResponse
+
 export const GetGeneration402 = PaymentRequiredResponse
+
 export type GetGeneration403 = ForbiddenResponse
+
 export const GetGeneration403 = ForbiddenResponse
+
 export type GetGeneration404 = NotFoundResponse
+
 export const GetGeneration404 = NotFoundResponse
+
 export type GetGeneration429 = TooManyRequestsResponse
+
 export const GetGeneration429 = TooManyRequestsResponse
+
 export type GetGeneration500 = InternalServerResponse
+
 export const GetGeneration500 = InternalServerResponse
+
 export type GetGeneration502 = BadGatewayResponse
+
 export const GetGeneration502 = BadGatewayResponse
+
 export type GetGeneration524 = EdgeNetworkTimeoutResponse
+
 export const GetGeneration524 = EdgeNetworkTimeoutResponse
+
 export type GetGeneration529 = ProviderOverloadedResponse
+
 export const GetGeneration529 = ProviderOverloadedResponse
+
 export type ListGenerationContentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "id": string
 }
+
 export const ListGenerationContentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37884,56 +40670,99 @@ export const ListGenerationContentParams = Schema.Struct({
     })
   )
 })
+
 export type ListGenerationContent200 = GenerationContentResponse
+
 export const ListGenerationContent200 = GenerationContentResponse
+
 export type ListGenerationContent400 = BadRequestResponse
+
 export const ListGenerationContent400 = BadRequestResponse
+
 export type ListGenerationContent401 = UnauthorizedResponse
+
 export const ListGenerationContent401 = UnauthorizedResponse
+
 export type ListGenerationContent403 = ForbiddenResponse
+
 export const ListGenerationContent403 = ForbiddenResponse
+
 export type ListGenerationContent404 = NotFoundResponse
+
 export const ListGenerationContent404 = NotFoundResponse
+
 export type ListGenerationContent429 = TooManyRequestsResponse
+
 export const ListGenerationContent429 = TooManyRequestsResponse
+
 export type ListGenerationContent500 = InternalServerResponse
+
 export const ListGenerationContent500 = InternalServerResponse
+
 export type ListGenerationContent502 = BadGatewayResponse
+
 export const ListGenerationContent502 = BadGatewayResponse
+
 export type ListGenerationContent524 = EdgeNetworkTimeoutResponse
+
 export const ListGenerationContent524 = EdgeNetworkTimeoutResponse
+
 export type ListGenerationContent529 = ProviderOverloadedResponse
+
 export const ListGenerationContent529 = ProviderOverloadedResponse
+
 export type SubmitGenerationFeedbackParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const SubmitGenerationFeedbackParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type SubmitGenerationFeedbackRequestJson = SubmitGenerationFeedbackRequest
+
 export const SubmitGenerationFeedbackRequestJson = SubmitGenerationFeedbackRequest
+
 export type SubmitGenerationFeedback200 = SubmitGenerationFeedbackResponse
+
 export const SubmitGenerationFeedback200 = SubmitGenerationFeedbackResponse
+
 export type SubmitGenerationFeedback400 = BadRequestResponse
+
 export const SubmitGenerationFeedback400 = BadRequestResponse
+
 export type SubmitGenerationFeedback401 = UnauthorizedResponse
+
 export const SubmitGenerationFeedback401 = UnauthorizedResponse
+
 export type SubmitGenerationFeedback403 = ForbiddenResponse
+
 export const SubmitGenerationFeedback403 = ForbiddenResponse
+
 export type SubmitGenerationFeedback404 = NotFoundResponse
+
 export const SubmitGenerationFeedback404 = NotFoundResponse
+
 export type SubmitGenerationFeedback409 = ConflictResponse
+
 export const SubmitGenerationFeedback409 = ConflictResponse
+
 export type SubmitGenerationFeedback429 = TooManyRequestsResponse
+
 export const SubmitGenerationFeedback429 = TooManyRequestsResponse
+
 export type SubmitGenerationFeedback500 = InternalServerResponse
+
 export const SubmitGenerationFeedback500 = InternalServerResponse
+
 export type SubmitGenerationFeedback503 = ServiceUnavailableResponse
+
 export const SubmitGenerationFeedback503 = ServiceUnavailableResponse
+
 export type ListGuardrailsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -37942,6 +40771,7 @@ export type ListGuardrailsParams = {
   readonly "limit"?: number
   readonly "workspace_id"?: string
 }
+
 export const ListGuardrailsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -37967,104 +40797,171 @@ export const ListGuardrailsParams = Schema.Struct({
     })
   )
 })
+
 export type ListGuardrails200 = ListGuardrailsResponse
+
 export const ListGuardrails200 = ListGuardrailsResponse
+
 export type ListGuardrails400 = BadRequestResponse
+
 export const ListGuardrails400 = BadRequestResponse
+
 export type ListGuardrails401 = UnauthorizedResponse
+
 export const ListGuardrails401 = UnauthorizedResponse
+
 export type ListGuardrails403 = ForbiddenResponse
+
 export const ListGuardrails403 = ForbiddenResponse
+
 export type ListGuardrails500 = InternalServerResponse
+
 export const ListGuardrails500 = InternalServerResponse
+
 export type CreateGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateGuardrailRequestJson = CreateGuardrailRequest
+
 export const CreateGuardrailRequestJson = CreateGuardrailRequest
+
 export type CreateGuardrail201 = CreateGuardrailResponse
+
 export const CreateGuardrail201 = CreateGuardrailResponse
+
 export type CreateGuardrail400 = BadRequestResponse
+
 export const CreateGuardrail400 = BadRequestResponse
+
 export type CreateGuardrail401 = UnauthorizedResponse
+
 export const CreateGuardrail401 = UnauthorizedResponse
+
 export type CreateGuardrail403 = ForbiddenResponse
+
 export const CreateGuardrail403 = ForbiddenResponse
+
 export type CreateGuardrail500 = InternalServerResponse
+
 export const CreateGuardrail500 = InternalServerResponse
+
 export type GetGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetGuardrail200 = GetGuardrailResponse
+
 export const GetGuardrail200 = GetGuardrailResponse
+
 export type GetGuardrail401 = UnauthorizedResponse
+
 export const GetGuardrail401 = UnauthorizedResponse
+
 export type GetGuardrail403 = ForbiddenResponse
+
 export const GetGuardrail403 = ForbiddenResponse
+
 export type GetGuardrail404 = NotFoundResponse
+
 export const GetGuardrail404 = NotFoundResponse
+
 export type GetGuardrail500 = InternalServerResponse
+
 export const GetGuardrail500 = InternalServerResponse
+
 export type DeleteGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteGuardrail200 = DeleteGuardrailResponse
+
 export const DeleteGuardrail200 = DeleteGuardrailResponse
+
 export type DeleteGuardrail401 = UnauthorizedResponse
+
 export const DeleteGuardrail401 = UnauthorizedResponse
+
 export type DeleteGuardrail403 = ForbiddenResponse
+
 export const DeleteGuardrail403 = ForbiddenResponse
+
 export type DeleteGuardrail404 = NotFoundResponse
+
 export const DeleteGuardrail404 = NotFoundResponse
+
 export type DeleteGuardrail500 = InternalServerResponse
+
 export const DeleteGuardrail500 = InternalServerResponse
+
 export type UpdateGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateGuardrailRequestJson = UpdateGuardrailRequest
+
 export const UpdateGuardrailRequestJson = UpdateGuardrailRequest
+
 export type UpdateGuardrail200 = UpdateGuardrailResponse
+
 export const UpdateGuardrail200 = UpdateGuardrailResponse
+
 export type UpdateGuardrail400 = BadRequestResponse
+
 export const UpdateGuardrail400 = BadRequestResponse
+
 export type UpdateGuardrail401 = UnauthorizedResponse
+
 export const UpdateGuardrail401 = UnauthorizedResponse
+
 export type UpdateGuardrail403 = ForbiddenResponse
+
 export const UpdateGuardrail403 = ForbiddenResponse
+
 export type UpdateGuardrail404 = NotFoundResponse
+
 export const UpdateGuardrail404 = NotFoundResponse
+
 export type UpdateGuardrail409 = ConflictResponse
+
 export const UpdateGuardrail409 = ConflictResponse
+
 export type UpdateGuardrail500 = InternalServerResponse
+
 export const UpdateGuardrail500 = InternalServerResponse
+
 export type ListGuardrailKeyAssignmentsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38072,6 +40969,7 @@ export type ListGuardrailKeyAssignmentsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListGuardrailKeyAssignmentsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38090,64 +40988,107 @@ export const ListGuardrailKeyAssignmentsParams = Schema.Struct({
     )
   )
 })
+
 export type ListGuardrailKeyAssignments200 = ListKeyAssignmentsResponse
+
 export const ListGuardrailKeyAssignments200 = ListKeyAssignmentsResponse
+
 export type ListGuardrailKeyAssignments401 = UnauthorizedResponse
+
 export const ListGuardrailKeyAssignments401 = UnauthorizedResponse
+
 export type ListGuardrailKeyAssignments403 = ForbiddenResponse
+
 export const ListGuardrailKeyAssignments403 = ForbiddenResponse
+
 export type ListGuardrailKeyAssignments404 = NotFoundResponse
+
 export const ListGuardrailKeyAssignments404 = NotFoundResponse
+
 export type ListGuardrailKeyAssignments500 = InternalServerResponse
+
 export const ListGuardrailKeyAssignments500 = InternalServerResponse
+
 export type BulkAssignKeysToGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkAssignKeysToGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkAssignKeysToGuardrailRequestJson = BulkAssignKeysRequest
+
 export const BulkAssignKeysToGuardrailRequestJson = BulkAssignKeysRequest
+
 export type BulkAssignKeysToGuardrail200 = BulkAssignKeysResponse
+
 export const BulkAssignKeysToGuardrail200 = BulkAssignKeysResponse
+
 export type BulkAssignKeysToGuardrail400 = BadRequestResponse
+
 export const BulkAssignKeysToGuardrail400 = BadRequestResponse
+
 export type BulkAssignKeysToGuardrail401 = UnauthorizedResponse
+
 export const BulkAssignKeysToGuardrail401 = UnauthorizedResponse
+
 export type BulkAssignKeysToGuardrail403 = ForbiddenResponse
+
 export const BulkAssignKeysToGuardrail403 = ForbiddenResponse
+
 export type BulkAssignKeysToGuardrail404 = NotFoundResponse
+
 export const BulkAssignKeysToGuardrail404 = NotFoundResponse
+
 export type BulkAssignKeysToGuardrail500 = InternalServerResponse
+
 export const BulkAssignKeysToGuardrail500 = InternalServerResponse
+
 export type BulkUnassignKeysFromGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkUnassignKeysFromGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkUnassignKeysFromGuardrailRequestJson = BulkUnassignKeysRequest
+
 export const BulkUnassignKeysFromGuardrailRequestJson = BulkUnassignKeysRequest
+
 export type BulkUnassignKeysFromGuardrail200 = BulkUnassignKeysResponse
+
 export const BulkUnassignKeysFromGuardrail200 = BulkUnassignKeysResponse
+
 export type BulkUnassignKeysFromGuardrail400 = BadRequestResponse
+
 export const BulkUnassignKeysFromGuardrail400 = BadRequestResponse
+
 export type BulkUnassignKeysFromGuardrail401 = UnauthorizedResponse
+
 export const BulkUnassignKeysFromGuardrail401 = UnauthorizedResponse
+
 export type BulkUnassignKeysFromGuardrail403 = ForbiddenResponse
+
 export const BulkUnassignKeysFromGuardrail403 = ForbiddenResponse
+
 export type BulkUnassignKeysFromGuardrail404 = NotFoundResponse
+
 export const BulkUnassignKeysFromGuardrail404 = NotFoundResponse
+
 export type BulkUnassignKeysFromGuardrail500 = InternalServerResponse
+
 export const BulkUnassignKeysFromGuardrail500 = InternalServerResponse
+
 export type ListGuardrailMemberAssignmentsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38155,6 +41096,7 @@ export type ListGuardrailMemberAssignmentsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListGuardrailMemberAssignmentsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38173,64 +41115,107 @@ export const ListGuardrailMemberAssignmentsParams = Schema.Struct({
     )
   )
 })
+
 export type ListGuardrailMemberAssignments200 = ListMemberAssignmentsResponse
+
 export const ListGuardrailMemberAssignments200 = ListMemberAssignmentsResponse
+
 export type ListGuardrailMemberAssignments401 = UnauthorizedResponse
+
 export const ListGuardrailMemberAssignments401 = UnauthorizedResponse
+
 export type ListGuardrailMemberAssignments403 = ForbiddenResponse
+
 export const ListGuardrailMemberAssignments403 = ForbiddenResponse
+
 export type ListGuardrailMemberAssignments404 = NotFoundResponse
+
 export const ListGuardrailMemberAssignments404 = NotFoundResponse
+
 export type ListGuardrailMemberAssignments500 = InternalServerResponse
+
 export const ListGuardrailMemberAssignments500 = InternalServerResponse
+
 export type BulkAssignMembersToGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkAssignMembersToGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkAssignMembersToGuardrailRequestJson = BulkAssignMembersRequest
+
 export const BulkAssignMembersToGuardrailRequestJson = BulkAssignMembersRequest
+
 export type BulkAssignMembersToGuardrail200 = BulkAssignMembersResponse
+
 export const BulkAssignMembersToGuardrail200 = BulkAssignMembersResponse
+
 export type BulkAssignMembersToGuardrail400 = BadRequestResponse
+
 export const BulkAssignMembersToGuardrail400 = BadRequestResponse
+
 export type BulkAssignMembersToGuardrail401 = UnauthorizedResponse
+
 export const BulkAssignMembersToGuardrail401 = UnauthorizedResponse
+
 export type BulkAssignMembersToGuardrail403 = ForbiddenResponse
+
 export const BulkAssignMembersToGuardrail403 = ForbiddenResponse
+
 export type BulkAssignMembersToGuardrail404 = NotFoundResponse
+
 export const BulkAssignMembersToGuardrail404 = NotFoundResponse
+
 export type BulkAssignMembersToGuardrail500 = InternalServerResponse
+
 export const BulkAssignMembersToGuardrail500 = InternalServerResponse
+
 export type BulkUnassignMembersFromGuardrailParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkUnassignMembersFromGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkUnassignMembersFromGuardrailRequestJson = BulkUnassignMembersRequest
+
 export const BulkUnassignMembersFromGuardrailRequestJson = BulkUnassignMembersRequest
+
 export type BulkUnassignMembersFromGuardrail200 = BulkUnassignMembersResponse
+
 export const BulkUnassignMembersFromGuardrail200 = BulkUnassignMembersResponse
+
 export type BulkUnassignMembersFromGuardrail400 = BadRequestResponse
+
 export const BulkUnassignMembersFromGuardrail400 = BadRequestResponse
+
 export type BulkUnassignMembersFromGuardrail401 = UnauthorizedResponse
+
 export const BulkUnassignMembersFromGuardrail401 = UnauthorizedResponse
+
 export type BulkUnassignMembersFromGuardrail403 = ForbiddenResponse
+
 export const BulkUnassignMembersFromGuardrail403 = ForbiddenResponse
+
 export type BulkUnassignMembersFromGuardrail404 = NotFoundResponse
+
 export const BulkUnassignMembersFromGuardrail404 = NotFoundResponse
+
 export type BulkUnassignMembersFromGuardrail500 = InternalServerResponse
+
 export const BulkUnassignMembersFromGuardrail500 = InternalServerResponse
+
 export type ListKeyAssignmentsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38238,6 +41223,7 @@ export type ListKeyAssignmentsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListKeyAssignmentsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38256,18 +41242,31 @@ export const ListKeyAssignmentsParams = Schema.Struct({
     )
   )
 })
+
 export type ListKeyAssignments200 = ListKeyAssignmentsResponse
+
 export const ListKeyAssignments200 = ListKeyAssignmentsResponse
+
 export type ListKeyAssignments400 = BadRequestResponse
+
 export const ListKeyAssignments400 = BadRequestResponse
+
 export type ListKeyAssignments401 = UnauthorizedResponse
+
 export const ListKeyAssignments401 = UnauthorizedResponse
+
 export type ListKeyAssignments403 = ForbiddenResponse
+
 export const ListKeyAssignments403 = ForbiddenResponse
+
 export type ListKeyAssignments404 = NotFoundResponse
+
 export const ListKeyAssignments404 = NotFoundResponse
+
 export type ListKeyAssignments500 = InternalServerResponse
+
 export const ListKeyAssignments500 = InternalServerResponse
+
 export type ListMemberAssignmentsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38275,6 +41274,7 @@ export type ListMemberAssignmentsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListMemberAssignmentsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38293,18 +41293,31 @@ export const ListMemberAssignmentsParams = Schema.Struct({
     )
   )
 })
+
 export type ListMemberAssignments200 = ListMemberAssignmentsResponse
+
 export const ListMemberAssignments200 = ListMemberAssignmentsResponse
+
 export type ListMemberAssignments400 = BadRequestResponse
+
 export const ListMemberAssignments400 = BadRequestResponse
+
 export type ListMemberAssignments401 = UnauthorizedResponse
+
 export const ListMemberAssignments401 = UnauthorizedResponse
+
 export type ListMemberAssignments403 = ForbiddenResponse
+
 export const ListMemberAssignments403 = ForbiddenResponse
+
 export type ListMemberAssignments404 = NotFoundResponse
+
 export const ListMemberAssignments404 = NotFoundResponse
+
 export type ListMemberAssignments500 = InternalServerResponse
+
 export const ListMemberAssignments500 = InternalServerResponse
+
 export type ListAccountPoliciesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38312,6 +41325,7 @@ export type ListAccountPoliciesParams = {
   readonly "offset"?: number
   readonly "limit"?: number
 }
+
 export const ListAccountPoliciesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38335,94 +41349,159 @@ export const ListAccountPoliciesParams = Schema.Struct({
     ).check(Schema.isLessThanOrEqualTo(100).annotate({ "expected": "a value less than or equal to 100" }))
   )
 })
+
 export type ListAccountPolicies200 = ListAccountGuardrailPoliciesResponse
+
 export const ListAccountPolicies200 = ListAccountGuardrailPoliciesResponse
+
 export type ListAccountPolicies400 = BadRequestResponse
+
 export const ListAccountPolicies400 = BadRequestResponse
+
 export type ListAccountPolicies401 = UnauthorizedResponse
+
 export const ListAccountPolicies401 = UnauthorizedResponse
+
 export type ListAccountPolicies403 = ForbiddenResponse
+
 export const ListAccountPolicies403 = ForbiddenResponse
+
 export type ListAccountPolicies404 = NotFoundResponse
+
 export const ListAccountPolicies404 = NotFoundResponse
+
 export type ListAccountPolicies500 = InternalServerResponse
+
 export const ListAccountPolicies500 = InternalServerResponse
+
 export type CreateAccountPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateAccountPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
+
 export const CreateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
+
 export type CreateAccountPolicy201 = AccountGuardrailPolicyResponse
+
 export const CreateAccountPolicy201 = AccountGuardrailPolicyResponse
+
 export type CreateAccountPolicy400 = BadRequestResponse
+
 export const CreateAccountPolicy400 = BadRequestResponse
+
 export type CreateAccountPolicy401 = UnauthorizedResponse
+
 export const CreateAccountPolicy401 = UnauthorizedResponse
+
 export type CreateAccountPolicy403 = ForbiddenResponse
+
 export const CreateAccountPolicy403 = ForbiddenResponse
+
 export type CreateAccountPolicy404 = NotFoundResponse
+
 export const CreateAccountPolicy404 = NotFoundResponse
+
 export type CreateAccountPolicy409 = ConflictResponse
+
 export const CreateAccountPolicy409 = ConflictResponse
+
 export type CreateAccountPolicy500 = InternalServerResponse
+
 export const CreateAccountPolicy500 = InternalServerResponse
+
 export type UpdateAccountPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateAccountPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
+
 export const UpdateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
+
 export type UpdateAccountPolicy200 = AccountGuardrailPolicyResponse
+
 export const UpdateAccountPolicy200 = AccountGuardrailPolicyResponse
+
 export type UpdateAccountPolicy400 = BadRequestResponse
+
 export const UpdateAccountPolicy400 = BadRequestResponse
+
 export type UpdateAccountPolicy401 = UnauthorizedResponse
+
 export const UpdateAccountPolicy401 = UnauthorizedResponse
+
 export type UpdateAccountPolicy403 = ForbiddenResponse
+
 export const UpdateAccountPolicy403 = ForbiddenResponse
+
 export type UpdateAccountPolicy404 = NotFoundResponse
+
 export const UpdateAccountPolicy404 = NotFoundResponse
+
 export type UpdateAccountPolicy409 = ConflictResponse
+
 export const UpdateAccountPolicy409 = ConflictResponse
+
 export type UpdateAccountPolicy500 = InternalServerResponse
+
 export const UpdateAccountPolicy500 = InternalServerResponse
+
 export type DeleteAccountPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteAccountPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteAccountPolicy200 = DeleteGuardrailPolicyResponse
+
 export const DeleteAccountPolicy200 = DeleteGuardrailPolicyResponse
+
 export type DeleteAccountPolicy400 = BadRequestResponse
+
 export const DeleteAccountPolicy400 = BadRequestResponse
+
 export type DeleteAccountPolicy401 = UnauthorizedResponse
+
 export const DeleteAccountPolicy401 = UnauthorizedResponse
+
 export type DeleteAccountPolicy403 = ForbiddenResponse
+
 export const DeleteAccountPolicy403 = ForbiddenResponse
+
 export type DeleteAccountPolicy404 = NotFoundResponse
+
 export const DeleteAccountPolicy404 = NotFoundResponse
+
 export type DeleteAccountPolicy409 = ConflictResponse
+
 export const DeleteAccountPolicy409 = ConflictResponse
+
 export type DeleteAccountPolicy500 = InternalServerResponse
+
 export const DeleteAccountPolicy500 = InternalServerResponse
+
 export type GetApiKeyPolicyAssignmentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38430,6 +41509,7 @@ export type GetApiKeyPolicyAssignmentParams = {
   readonly "workspace_id": string
   readonly "policy_type": "budget" | "model_availability" | "moderation" | "rate_limit"
 }
+
 export const GetApiKeyPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38444,44 +41524,75 @@ export const GetApiKeyPolicyAssignmentParams = Schema.Struct({
     "examples": ["budget"]
   })
 })
+
 export type GetApiKeyPolicyAssignment200 = GuardrailPolicyAssignmentResponse
+
 export const GetApiKeyPolicyAssignment200 = GuardrailPolicyAssignmentResponse
+
 export type GetApiKeyPolicyAssignment400 = BadRequestResponse
+
 export const GetApiKeyPolicyAssignment400 = BadRequestResponse
+
 export type GetApiKeyPolicyAssignment401 = UnauthorizedResponse
+
 export const GetApiKeyPolicyAssignment401 = UnauthorizedResponse
+
 export type GetApiKeyPolicyAssignment403 = ForbiddenResponse
+
 export const GetApiKeyPolicyAssignment403 = ForbiddenResponse
+
 export type GetApiKeyPolicyAssignment404 = NotFoundResponse
+
 export const GetApiKeyPolicyAssignment404 = NotFoundResponse
+
 export type GetApiKeyPolicyAssignment500 = InternalServerResponse
+
 export const GetApiKeyPolicyAssignment500 = InternalServerResponse
+
 export type ChangeApiKeyPolicyAssignmentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ChangeApiKeyPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ChangeApiKeyPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
+
 export const ChangeApiKeyPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
+
 export type ChangeApiKeyPolicyAssignment200 = ChangeGuardrailPolicyAssignmentResponse
+
 export const ChangeApiKeyPolicyAssignment200 = ChangeGuardrailPolicyAssignmentResponse
+
 export type ChangeApiKeyPolicyAssignment400 = BadRequestResponse
+
 export const ChangeApiKeyPolicyAssignment400 = BadRequestResponse
+
 export type ChangeApiKeyPolicyAssignment401 = UnauthorizedResponse
+
 export const ChangeApiKeyPolicyAssignment401 = UnauthorizedResponse
+
 export type ChangeApiKeyPolicyAssignment403 = ForbiddenResponse
+
 export const ChangeApiKeyPolicyAssignment403 = ForbiddenResponse
+
 export type ChangeApiKeyPolicyAssignment404 = NotFoundResponse
+
 export const ChangeApiKeyPolicyAssignment404 = NotFoundResponse
+
 export type ChangeApiKeyPolicyAssignment409 = ConflictResponse
+
 export const ChangeApiKeyPolicyAssignment409 = ConflictResponse
+
 export type ChangeApiKeyPolicyAssignment500 = InternalServerResponse
+
 export const ChangeApiKeyPolicyAssignment500 = InternalServerResponse
+
 export type GetMemberPolicyAssignmentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38489,6 +41600,7 @@ export type GetMemberPolicyAssignmentParams = {
   readonly "workspace_id": string
   readonly "policy_type": "budget" | "model_availability" | "moderation" | "rate_limit"
 }
+
 export const GetMemberPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38503,44 +41615,75 @@ export const GetMemberPolicyAssignmentParams = Schema.Struct({
     "examples": ["budget"]
   })
 })
+
 export type GetMemberPolicyAssignment200 = GuardrailPolicyAssignmentResponse
+
 export const GetMemberPolicyAssignment200 = GuardrailPolicyAssignmentResponse
+
 export type GetMemberPolicyAssignment400 = BadRequestResponse
+
 export const GetMemberPolicyAssignment400 = BadRequestResponse
+
 export type GetMemberPolicyAssignment401 = UnauthorizedResponse
+
 export const GetMemberPolicyAssignment401 = UnauthorizedResponse
+
 export type GetMemberPolicyAssignment403 = ForbiddenResponse
+
 export const GetMemberPolicyAssignment403 = ForbiddenResponse
+
 export type GetMemberPolicyAssignment404 = NotFoundResponse
+
 export const GetMemberPolicyAssignment404 = NotFoundResponse
+
 export type GetMemberPolicyAssignment500 = InternalServerResponse
+
 export const GetMemberPolicyAssignment500 = InternalServerResponse
+
 export type ChangeMemberPolicyAssignmentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ChangeMemberPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ChangeMemberPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
+
 export const ChangeMemberPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
+
 export type ChangeMemberPolicyAssignment200 = ChangeGuardrailPolicyAssignmentResponse
+
 export const ChangeMemberPolicyAssignment200 = ChangeGuardrailPolicyAssignmentResponse
+
 export type ChangeMemberPolicyAssignment400 = BadRequestResponse
+
 export const ChangeMemberPolicyAssignment400 = BadRequestResponse
+
 export type ChangeMemberPolicyAssignment401 = UnauthorizedResponse
+
 export const ChangeMemberPolicyAssignment401 = UnauthorizedResponse
+
 export type ChangeMemberPolicyAssignment403 = ForbiddenResponse
+
 export const ChangeMemberPolicyAssignment403 = ForbiddenResponse
+
 export type ChangeMemberPolicyAssignment404 = NotFoundResponse
+
 export const ChangeMemberPolicyAssignment404 = NotFoundResponse
+
 export type ChangeMemberPolicyAssignment409 = ConflictResponse
+
 export const ChangeMemberPolicyAssignment409 = ConflictResponse
+
 export type ChangeMemberPolicyAssignment500 = InternalServerResponse
+
 export const ChangeMemberPolicyAssignment500 = InternalServerResponse
+
 export type ListBudgetPoliciesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38549,6 +41692,7 @@ export type ListBudgetPoliciesParams = {
   readonly "limit"?: number
   readonly "workspace_id": string
 }
+
 export const ListBudgetPoliciesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38577,50 +41721,82 @@ export const ListBudgetPoliciesParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type ListBudgetPolicies200 = ListBudgetGuardrailPoliciesResponse
+
 export const ListBudgetPolicies200 = ListBudgetGuardrailPoliciesResponse
+
 export type ListBudgetPolicies400 = BadRequestResponse
+
 export const ListBudgetPolicies400 = BadRequestResponse
+
 export type ListBudgetPolicies401 = UnauthorizedResponse
+
 export const ListBudgetPolicies401 = UnauthorizedResponse
+
 export type ListBudgetPolicies403 = ForbiddenResponse
+
 export const ListBudgetPolicies403 = ForbiddenResponse
+
 export type ListBudgetPolicies404 = NotFoundResponse
+
 export const ListBudgetPolicies404 = NotFoundResponse
+
 export type ListBudgetPolicies500 = InternalServerResponse
+
 export const ListBudgetPolicies500 = InternalServerResponse
+
 export type CreateBudgetPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateBudgetPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateBudgetPolicyRequestJson = CreateBudgetGuardrailPolicyRequest
+
 export const CreateBudgetPolicyRequestJson = CreateBudgetGuardrailPolicyRequest
+
 export type CreateBudgetPolicy201 = BudgetGuardrailPolicyResponse
+
 export const CreateBudgetPolicy201 = BudgetGuardrailPolicyResponse
+
 export type CreateBudgetPolicy400 = BadRequestResponse
+
 export const CreateBudgetPolicy400 = BadRequestResponse
+
 export type CreateBudgetPolicy401 = UnauthorizedResponse
+
 export const CreateBudgetPolicy401 = UnauthorizedResponse
+
 export type CreateBudgetPolicy403 = ForbiddenResponse
+
 export const CreateBudgetPolicy403 = ForbiddenResponse
+
 export type CreateBudgetPolicy404 = NotFoundResponse
+
 export const CreateBudgetPolicy404 = NotFoundResponse
+
 export type CreateBudgetPolicy409 = ConflictResponse
+
 export const CreateBudgetPolicy409 = ConflictResponse
+
 export type CreateBudgetPolicy500 = InternalServerResponse
+
 export const CreateBudgetPolicy500 = InternalServerResponse
+
 export type GetBudgetPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const GetBudgetPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38631,50 +41807,82 @@ export const GetBudgetPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type GetBudgetPolicy200 = BudgetGuardrailPolicyDetailResponse
+
 export const GetBudgetPolicy200 = BudgetGuardrailPolicyDetailResponse
+
 export type GetBudgetPolicy400 = BadRequestResponse
+
 export const GetBudgetPolicy400 = BadRequestResponse
+
 export type GetBudgetPolicy401 = UnauthorizedResponse
+
 export const GetBudgetPolicy401 = UnauthorizedResponse
+
 export type GetBudgetPolicy403 = ForbiddenResponse
+
 export const GetBudgetPolicy403 = ForbiddenResponse
+
 export type GetBudgetPolicy404 = NotFoundResponse
+
 export const GetBudgetPolicy404 = NotFoundResponse
+
 export type GetBudgetPolicy500 = InternalServerResponse
+
 export const GetBudgetPolicy500 = InternalServerResponse
+
 export type UpdateBudgetPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateBudgetPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateBudgetPolicyRequestJson = UpdateBudgetGuardrailPolicyRequest
+
 export const UpdateBudgetPolicyRequestJson = UpdateBudgetGuardrailPolicyRequest
+
 export type UpdateBudgetPolicy200 = BudgetGuardrailPolicyResponse
+
 export const UpdateBudgetPolicy200 = BudgetGuardrailPolicyResponse
+
 export type UpdateBudgetPolicy400 = BadRequestResponse
+
 export const UpdateBudgetPolicy400 = BadRequestResponse
+
 export type UpdateBudgetPolicy401 = UnauthorizedResponse
+
 export const UpdateBudgetPolicy401 = UnauthorizedResponse
+
 export type UpdateBudgetPolicy403 = ForbiddenResponse
+
 export const UpdateBudgetPolicy403 = ForbiddenResponse
+
 export type UpdateBudgetPolicy404 = NotFoundResponse
+
 export const UpdateBudgetPolicy404 = NotFoundResponse
+
 export type UpdateBudgetPolicy409 = ConflictResponse
+
 export const UpdateBudgetPolicy409 = ConflictResponse
+
 export type UpdateBudgetPolicy500 = InternalServerResponse
+
 export const UpdateBudgetPolicy500 = InternalServerResponse
+
 export type DeleteBudgetPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const DeleteBudgetPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38685,20 +41893,35 @@ export const DeleteBudgetPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type DeleteBudgetPolicy200 = DeleteGuardrailPolicyResponse
+
 export const DeleteBudgetPolicy200 = DeleteGuardrailPolicyResponse
+
 export type DeleteBudgetPolicy400 = BadRequestResponse
+
 export const DeleteBudgetPolicy400 = BadRequestResponse
+
 export type DeleteBudgetPolicy401 = UnauthorizedResponse
+
 export const DeleteBudgetPolicy401 = UnauthorizedResponse
+
 export type DeleteBudgetPolicy403 = ForbiddenResponse
+
 export const DeleteBudgetPolicy403 = ForbiddenResponse
+
 export type DeleteBudgetPolicy404 = NotFoundResponse
+
 export const DeleteBudgetPolicy404 = NotFoundResponse
+
 export type DeleteBudgetPolicy409 = ConflictResponse
+
 export const DeleteBudgetPolicy409 = ConflictResponse
+
 export type DeleteBudgetPolicy500 = InternalServerResponse
+
 export const DeleteBudgetPolicy500 = InternalServerResponse
+
 export type ListModelAvailabilityPoliciesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38707,6 +41930,7 @@ export type ListModelAvailabilityPoliciesParams = {
   readonly "limit"?: number
   readonly "workspace_id": string
 }
+
 export const ListModelAvailabilityPoliciesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38735,50 +41959,82 @@ export const ListModelAvailabilityPoliciesParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type ListModelAvailabilityPolicies200 = ListModelAvailabilityGuardrailPoliciesResponse
+
 export const ListModelAvailabilityPolicies200 = ListModelAvailabilityGuardrailPoliciesResponse
+
 export type ListModelAvailabilityPolicies400 = BadRequestResponse
+
 export const ListModelAvailabilityPolicies400 = BadRequestResponse
+
 export type ListModelAvailabilityPolicies401 = UnauthorizedResponse
+
 export const ListModelAvailabilityPolicies401 = UnauthorizedResponse
+
 export type ListModelAvailabilityPolicies403 = ForbiddenResponse
+
 export const ListModelAvailabilityPolicies403 = ForbiddenResponse
+
 export type ListModelAvailabilityPolicies404 = NotFoundResponse
+
 export const ListModelAvailabilityPolicies404 = NotFoundResponse
+
 export type ListModelAvailabilityPolicies500 = InternalServerResponse
+
 export const ListModelAvailabilityPolicies500 = InternalServerResponse
+
 export type CreateModelAvailabilityPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateModelAvailabilityPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateModelAvailabilityPolicyRequestJson = CreateModelAvailabilityGuardrailPolicyRequest
+
 export const CreateModelAvailabilityPolicyRequestJson = CreateModelAvailabilityGuardrailPolicyRequest
+
 export type CreateModelAvailabilityPolicy201 = ModelAvailabilityGuardrailPolicyResponse
+
 export const CreateModelAvailabilityPolicy201 = ModelAvailabilityGuardrailPolicyResponse
+
 export type CreateModelAvailabilityPolicy400 = BadRequestResponse
+
 export const CreateModelAvailabilityPolicy400 = BadRequestResponse
+
 export type CreateModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export const CreateModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export type CreateModelAvailabilityPolicy403 = ForbiddenResponse
+
 export const CreateModelAvailabilityPolicy403 = ForbiddenResponse
+
 export type CreateModelAvailabilityPolicy404 = NotFoundResponse
+
 export const CreateModelAvailabilityPolicy404 = NotFoundResponse
+
 export type CreateModelAvailabilityPolicy409 = ConflictResponse
+
 export const CreateModelAvailabilityPolicy409 = ConflictResponse
+
 export type CreateModelAvailabilityPolicy500 = InternalServerResponse
+
 export const CreateModelAvailabilityPolicy500 = InternalServerResponse
+
 export type GetModelAvailabilityPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const GetModelAvailabilityPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38789,50 +42045,82 @@ export const GetModelAvailabilityPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type GetModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyDetailResponse
+
 export const GetModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyDetailResponse
+
 export type GetModelAvailabilityPolicy400 = BadRequestResponse
+
 export const GetModelAvailabilityPolicy400 = BadRequestResponse
+
 export type GetModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export const GetModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export type GetModelAvailabilityPolicy403 = ForbiddenResponse
+
 export const GetModelAvailabilityPolicy403 = ForbiddenResponse
+
 export type GetModelAvailabilityPolicy404 = NotFoundResponse
+
 export const GetModelAvailabilityPolicy404 = NotFoundResponse
+
 export type GetModelAvailabilityPolicy500 = InternalServerResponse
+
 export const GetModelAvailabilityPolicy500 = InternalServerResponse
+
 export type UpdateModelAvailabilityPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateModelAvailabilityPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateModelAvailabilityPolicyRequestJson = UpdateModelAvailabilityGuardrailPolicyRequest
+
 export const UpdateModelAvailabilityPolicyRequestJson = UpdateModelAvailabilityGuardrailPolicyRequest
+
 export type UpdateModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyResponse
+
 export const UpdateModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyResponse
+
 export type UpdateModelAvailabilityPolicy400 = BadRequestResponse
+
 export const UpdateModelAvailabilityPolicy400 = BadRequestResponse
+
 export type UpdateModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export const UpdateModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export type UpdateModelAvailabilityPolicy403 = ForbiddenResponse
+
 export const UpdateModelAvailabilityPolicy403 = ForbiddenResponse
+
 export type UpdateModelAvailabilityPolicy404 = NotFoundResponse
+
 export const UpdateModelAvailabilityPolicy404 = NotFoundResponse
+
 export type UpdateModelAvailabilityPolicy409 = ConflictResponse
+
 export const UpdateModelAvailabilityPolicy409 = ConflictResponse
+
 export type UpdateModelAvailabilityPolicy500 = InternalServerResponse
+
 export const UpdateModelAvailabilityPolicy500 = InternalServerResponse
+
 export type DeleteModelAvailabilityPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const DeleteModelAvailabilityPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38843,20 +42131,35 @@ export const DeleteModelAvailabilityPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type DeleteModelAvailabilityPolicy200 = DeleteGuardrailPolicyResponse
+
 export const DeleteModelAvailabilityPolicy200 = DeleteGuardrailPolicyResponse
+
 export type DeleteModelAvailabilityPolicy400 = BadRequestResponse
+
 export const DeleteModelAvailabilityPolicy400 = BadRequestResponse
+
 export type DeleteModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export const DeleteModelAvailabilityPolicy401 = UnauthorizedResponse
+
 export type DeleteModelAvailabilityPolicy403 = ForbiddenResponse
+
 export const DeleteModelAvailabilityPolicy403 = ForbiddenResponse
+
 export type DeleteModelAvailabilityPolicy404 = NotFoundResponse
+
 export const DeleteModelAvailabilityPolicy404 = NotFoundResponse
+
 export type DeleteModelAvailabilityPolicy409 = ConflictResponse
+
 export const DeleteModelAvailabilityPolicy409 = ConflictResponse
+
 export type DeleteModelAvailabilityPolicy500 = InternalServerResponse
+
 export const DeleteModelAvailabilityPolicy500 = InternalServerResponse
+
 export type ListModerationPoliciesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -38865,6 +42168,7 @@ export type ListModerationPoliciesParams = {
   readonly "limit"?: number
   readonly "workspace_id": string
 }
+
 export const ListModerationPoliciesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38893,50 +42197,82 @@ export const ListModerationPoliciesParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type ListModerationPolicies200 = ListModerationGuardrailPoliciesResponse
+
 export const ListModerationPolicies200 = ListModerationGuardrailPoliciesResponse
+
 export type ListModerationPolicies400 = BadRequestResponse
+
 export const ListModerationPolicies400 = BadRequestResponse
+
 export type ListModerationPolicies401 = UnauthorizedResponse
+
 export const ListModerationPolicies401 = UnauthorizedResponse
+
 export type ListModerationPolicies403 = ForbiddenResponse
+
 export const ListModerationPolicies403 = ForbiddenResponse
+
 export type ListModerationPolicies404 = NotFoundResponse
+
 export const ListModerationPolicies404 = NotFoundResponse
+
 export type ListModerationPolicies500 = InternalServerResponse
+
 export const ListModerationPolicies500 = InternalServerResponse
+
 export type CreateModerationPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateModerationPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateModerationPolicyRequestJson = CreateModerationGuardrailPolicyRequest
+
 export const CreateModerationPolicyRequestJson = CreateModerationGuardrailPolicyRequest
+
 export type CreateModerationPolicy201 = ModerationGuardrailPolicyResponse
+
 export const CreateModerationPolicy201 = ModerationGuardrailPolicyResponse
+
 export type CreateModerationPolicy400 = BadRequestResponse
+
 export const CreateModerationPolicy400 = BadRequestResponse
+
 export type CreateModerationPolicy401 = UnauthorizedResponse
+
 export const CreateModerationPolicy401 = UnauthorizedResponse
+
 export type CreateModerationPolicy403 = ForbiddenResponse
+
 export const CreateModerationPolicy403 = ForbiddenResponse
+
 export type CreateModerationPolicy404 = NotFoundResponse
+
 export const CreateModerationPolicy404 = NotFoundResponse
+
 export type CreateModerationPolicy409 = ConflictResponse
+
 export const CreateModerationPolicy409 = ConflictResponse
+
 export type CreateModerationPolicy500 = InternalServerResponse
+
 export const CreateModerationPolicy500 = InternalServerResponse
+
 export type GetModerationPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const GetModerationPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -38947,50 +42283,82 @@ export const GetModerationPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type GetModerationPolicy200 = ModerationGuardrailPolicyDetailResponse
+
 export const GetModerationPolicy200 = ModerationGuardrailPolicyDetailResponse
+
 export type GetModerationPolicy400 = BadRequestResponse
+
 export const GetModerationPolicy400 = BadRequestResponse
+
 export type GetModerationPolicy401 = UnauthorizedResponse
+
 export const GetModerationPolicy401 = UnauthorizedResponse
+
 export type GetModerationPolicy403 = ForbiddenResponse
+
 export const GetModerationPolicy403 = ForbiddenResponse
+
 export type GetModerationPolicy404 = NotFoundResponse
+
 export const GetModerationPolicy404 = NotFoundResponse
+
 export type GetModerationPolicy500 = InternalServerResponse
+
 export const GetModerationPolicy500 = InternalServerResponse
+
 export type UpdateModerationPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateModerationPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateModerationPolicyRequestJson = UpdateModerationGuardrailPolicyRequest
+
 export const UpdateModerationPolicyRequestJson = UpdateModerationGuardrailPolicyRequest
+
 export type UpdateModerationPolicy200 = ModerationGuardrailPolicyResponse
+
 export const UpdateModerationPolicy200 = ModerationGuardrailPolicyResponse
+
 export type UpdateModerationPolicy400 = BadRequestResponse
+
 export const UpdateModerationPolicy400 = BadRequestResponse
+
 export type UpdateModerationPolicy401 = UnauthorizedResponse
+
 export const UpdateModerationPolicy401 = UnauthorizedResponse
+
 export type UpdateModerationPolicy403 = ForbiddenResponse
+
 export const UpdateModerationPolicy403 = ForbiddenResponse
+
 export type UpdateModerationPolicy404 = NotFoundResponse
+
 export const UpdateModerationPolicy404 = NotFoundResponse
+
 export type UpdateModerationPolicy409 = ConflictResponse
+
 export const UpdateModerationPolicy409 = ConflictResponse
+
 export type UpdateModerationPolicy500 = InternalServerResponse
+
 export const UpdateModerationPolicy500 = InternalServerResponse
+
 export type DeleteModerationPolicyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id": string
 }
+
 export const DeleteModerationPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -39001,98 +42369,159 @@ export const DeleteModerationPolicyParams = Schema.Struct({
     "format": "uuid"
   })
 })
+
 export type DeleteModerationPolicy200 = DeleteGuardrailPolicyResponse
+
 export const DeleteModerationPolicy200 = DeleteGuardrailPolicyResponse
+
 export type DeleteModerationPolicy400 = BadRequestResponse
+
 export const DeleteModerationPolicy400 = BadRequestResponse
+
 export type DeleteModerationPolicy401 = UnauthorizedResponse
+
 export const DeleteModerationPolicy401 = UnauthorizedResponse
+
 export type DeleteModerationPolicy403 = ForbiddenResponse
+
 export const DeleteModerationPolicy403 = ForbiddenResponse
+
 export type DeleteModerationPolicy404 = NotFoundResponse
+
 export const DeleteModerationPolicy404 = NotFoundResponse
+
 export type DeleteModerationPolicy409 = ConflictResponse
+
 export const DeleteModerationPolicy409 = ConflictResponse
+
 export type DeleteModerationPolicy500 = InternalServerResponse
+
 export const DeleteModerationPolicy500 = InternalServerResponse
+
 export type CreateImagesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateImagesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateImagesRequestJson = ImageGenerationRequest
+
 export const CreateImagesRequestJson = ImageGenerationRequest
+
 export type CreateImages200 = ImageGenerationResponse
+
 export const CreateImages200 = ImageGenerationResponse
+
 export type CreateImages200Sse = ImageStreamingResponse
+
 export const CreateImages200Sse = ImageStreamingResponse
+
 export type CreateImages400 = BadRequestResponse
+
 export const CreateImages400 = BadRequestResponse
+
 export type CreateImages401 = UnauthorizedResponse
+
 export const CreateImages401 = UnauthorizedResponse
+
 export type CreateImages402 = PaymentRequiredResponse
+
 export const CreateImages402 = PaymentRequiredResponse
+
 export type CreateImages403 = ForbiddenResponse
+
 export const CreateImages403 = ForbiddenResponse
+
 export type CreateImages404 = NotFoundResponse
+
 export const CreateImages404 = NotFoundResponse
+
 export type CreateImages413 = PayloadTooLargeResponse
+
 export const CreateImages413 = PayloadTooLargeResponse
+
 export type CreateImages429 = TooManyRequestsResponse
+
 export const CreateImages429 = TooManyRequestsResponse
+
 export type CreateImages500 = InternalServerResponse
+
 export const CreateImages500 = InternalServerResponse
+
 export type CreateImages502 = BadGatewayResponse
+
 export const CreateImages502 = BadGatewayResponse
+
 export type CreateImages524 = EdgeNetworkTimeoutResponse
+
 export const CreateImages524 = EdgeNetworkTimeoutResponse
+
 export type CreateImages529 = ProviderOverloadedResponse
+
 export const CreateImages529 = ProviderOverloadedResponse
+
 export type ListImageModelsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListImageModelsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListImageModels200 = ImageModelsListResponse
+
 export const ListImageModels200 = ImageModelsListResponse
+
 export type ListImageModels500 = InternalServerResponse
+
 export const ListImageModels500 = InternalServerResponse
+
 export type ListImageModelEndpointsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListImageModelEndpointsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListImageModelEndpoints200 = ImageModelEndpointsResponse
+
 export const ListImageModelEndpoints200 = ImageModelEndpointsResponse
+
 export type ListImageModelEndpoints404 = NotFoundResponse
+
 export const ListImageModelEndpoints404 = NotFoundResponse
+
 export type ListImageModelEndpoints500 = InternalServerResponse
+
 export const ListImageModelEndpoints500 = InternalServerResponse
+
 export type GetCurrentKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetCurrentKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetCurrentKey200 = {
   readonly "data": {
     readonly "allowed_data_regions": globalThis.ReadonlyArray<"global" | "europe" | "us">
@@ -39122,6 +42551,7 @@ export type GetCurrentKey200 = {
     readonly "workspace_id": string | null
   }
 }
+
 export const GetCurrentKey200 = Schema.Struct({
   "data": Schema.Struct({
     "allowed_data_regions": Schema.Array(Schema.Literals(["global", "europe", "us"])).annotate({
@@ -39257,10 +42687,15 @@ export const GetCurrentKey200 = Schema.Struct({
     })
   }).annotate({ "description": "Current API key information" })
 })
+
 export type GetCurrentKey401 = UnauthorizedResponse
+
 export const GetCurrentKey401 = UnauthorizedResponse
+
 export type GetCurrentKey500 = InternalServerResponse
+
 export const GetCurrentKey500 = InternalServerResponse
+
 export type ListParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -39270,6 +42705,7 @@ export type ListParams = {
   readonly "offset"?: number | null
   readonly "workspace_id"?: string
 }
+
 export const ListParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -39296,6 +42732,7 @@ export const ListParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type List200 = {
   readonly "data": globalThis.ReadonlyArray<
     {
@@ -39325,6 +42762,7 @@ export type List200 = {
     }
   >
 }
+
 export const List200 = Schema.Struct({
   "data": Schema.Array(
     Schema.Struct({
@@ -39487,28 +42925,43 @@ export const List200 = Schema.Struct({
     }]
   }]
 })
+
 export type List400 = BadRequestResponse
+
 export const List400 = BadRequestResponse
+
 export type List401 = UnauthorizedResponse
+
 export const List401 = UnauthorizedResponse
+
 export type List403 = ForbiddenResponse
+
 export const List403 = ForbiddenResponse
+
 export type List404 = NotFoundResponse
+
 export const List404 = NotFoundResponse
+
 export type List429 = TooManyRequestsResponse
+
 export const List429 = TooManyRequestsResponse
+
 export type List500 = InternalServerResponse
+
 export const List500 = InternalServerResponse
+
 export type CreateKeysParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateKeysParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateKeysRequestJson = {
   readonly "creator_user_id"?: string | null
   readonly "expires_at"?: string | null
@@ -39519,6 +42972,7 @@ export type CreateKeysRequestJson = {
   readonly "name": string
   readonly "workspace_id"?: string
 }
+
 export const CreateKeysRequestJson = Schema.Struct({
   "creator_user_id": Schema.optionalKey(
     Schema.Union([
@@ -39597,6 +43051,7 @@ export const CreateKeysRequestJson = Schema.Struct({
     "name": "My New API Key"
   }]
 })
+
 export type CreateKeys201 = {
   readonly "data": {
     readonly "byok_usage": number
@@ -39625,6 +43080,7 @@ export type CreateKeys201 = {
   }
   readonly "key": string
 }
+
 export const CreateKeys201 = Schema.Struct({
   "data": Schema.Struct({
     "byok_usage": Schema.Number.annotate({
@@ -39791,26 +43247,39 @@ export const CreateKeys201 = Schema.Struct({
     "key": "OPENROUTER_API_KEY"
   }]
 })
+
 export type CreateKeys400 = BadRequestResponse
+
 export const CreateKeys400 = BadRequestResponse
+
 export type CreateKeys401 = UnauthorizedResponse
+
 export const CreateKeys401 = UnauthorizedResponse
+
 export type CreateKeys403 = ForbiddenResponse
+
 export const CreateKeys403 = ForbiddenResponse
+
 export type CreateKeys429 = TooManyRequestsResponse
+
 export const CreateKeys429 = TooManyRequestsResponse
+
 export type CreateKeys500 = InternalServerResponse
+
 export const CreateKeys500 = InternalServerResponse
+
 export type GetKeyParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetKey200 = {
   readonly "data": {
     readonly "byok_usage": number
@@ -39838,6 +43307,7 @@ export type GetKey200 = {
     readonly "workspace_id": string
   }
 }
+
 export const GetKey200 = Schema.Struct({
   "data": Schema.Struct({
     "byok_usage": Schema.Number.annotate({
@@ -39999,53 +43469,80 @@ export const GetKey200 = Schema.Struct({
     }
   }]
 })
+
 export type GetKey401 = UnauthorizedResponse
+
 export const GetKey401 = UnauthorizedResponse
+
 export type GetKey403 = ForbiddenResponse
+
 export const GetKey403 = ForbiddenResponse
+
 export type GetKey404 = NotFoundResponse
+
 export const GetKey404 = NotFoundResponse
+
 export type GetKey429 = TooManyRequestsResponse
+
 export const GetKey429 = TooManyRequestsResponse
+
 export type GetKey500 = InternalServerResponse
+
 export const GetKey500 = InternalServerResponse
+
 export type DeleteKeysParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteKeysParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteKeys200 = { readonly "deleted": true }
+
 export const DeleteKeys200 = Schema.Struct({
   "deleted": Schema.Literal(true).annotate({
     "description": "Confirmation that the API key was deleted",
     "examples": [true]
   })
 }).annotate({ "examples": [{ "deleted": true }] })
+
 export type DeleteKeys401 = UnauthorizedResponse
+
 export const DeleteKeys401 = UnauthorizedResponse
+
 export type DeleteKeys403 = ForbiddenResponse
+
 export const DeleteKeys403 = ForbiddenResponse
+
 export type DeleteKeys404 = NotFoundResponse
+
 export const DeleteKeys404 = NotFoundResponse
+
 export type DeleteKeys429 = TooManyRequestsResponse
+
 export const DeleteKeys429 = TooManyRequestsResponse
+
 export type DeleteKeys500 = InternalServerResponse
+
 export const DeleteKeys500 = InternalServerResponse
+
 export type UpdateKeysParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateKeysParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateKeysRequestJson = {
   readonly "disabled"?: boolean
   readonly "include_byok_in_limit"?: boolean
@@ -40054,6 +43551,7 @@ export type UpdateKeysRequestJson = {
   readonly "name"?: string
   readonly "workspace_id"?: string
 }
+
 export const UpdateKeysRequestJson = Schema.Struct({
   "disabled": Schema.optionalKey(
     Schema.Boolean.annotate({ "description": "Whether to disable the API key", "examples": [false] })
@@ -40096,6 +43594,7 @@ export const UpdateKeysRequestJson = Schema.Struct({
     "name": "Updated API Key Name"
   }]
 })
+
 export type UpdateKeys200 = {
   readonly "data": {
     readonly "byok_usage": number
@@ -40123,6 +43622,7 @@ export type UpdateKeys200 = {
     readonly "workspace_id": string
   }
 }
+
 export const UpdateKeys200 = Schema.Struct({
   "data": Schema.Struct({
     "byok_usage": Schema.Number.annotate({
@@ -40284,72 +43784,121 @@ export const UpdateKeys200 = Schema.Struct({
     }
   }]
 })
+
 export type UpdateKeys400 = BadRequestResponse
+
 export const UpdateKeys400 = BadRequestResponse
+
 export type UpdateKeys401 = UnauthorizedResponse
+
 export const UpdateKeys401 = UnauthorizedResponse
+
 export type UpdateKeys403 = ForbiddenResponse
+
 export const UpdateKeys403 = ForbiddenResponse
+
 export type UpdateKeys404 = NotFoundResponse
+
 export const UpdateKeys404 = NotFoundResponse
+
 export type UpdateKeys409 = ConflictResponse
+
 export const UpdateKeys409 = ConflictResponse
+
 export type UpdateKeys429 = TooManyRequestsResponse
+
 export const UpdateKeys429 = TooManyRequestsResponse
+
 export type UpdateKeys500 = InternalServerResponse
+
 export const UpdateKeys500 = InternalServerResponse
+
 export type CreateMessagesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "X-OpenRouter-Metadata"?: MetadataLevel
 }
+
 export const CreateMessagesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Metadata": Schema.optionalKey(MetadataLevel)
 })
+
 export type CreateMessagesRequestJson = MessagesRequest
+
 export const CreateMessagesRequestJson = MessagesRequest
+
 export type CreateMessages200 = MessagesResult
+
 export const CreateMessages200 = MessagesResult
+
 export type CreateMessages200Sse = MessagesStreamingResponse
+
 export const CreateMessages200Sse = MessagesStreamingResponse
+
 export type CreateMessages400 = AnthropicMessagesErrorResponse
+
 export const CreateMessages400 = AnthropicMessagesErrorResponse
+
 export type CreateMessages401 = AnthropicMessagesErrorResponse
+
 export const CreateMessages401 = AnthropicMessagesErrorResponse
+
 export type CreateMessages403 = AnthropicMessagesErrorResponse
+
 export const CreateMessages403 = AnthropicMessagesErrorResponse
+
 export type CreateMessages404 = AnthropicMessagesErrorResponse
+
 export const CreateMessages404 = AnthropicMessagesErrorResponse
+
 export type CreateMessages429 = AnthropicMessagesErrorResponse
+
 export const CreateMessages429 = AnthropicMessagesErrorResponse
+
 export type CreateMessages500 = AnthropicMessagesErrorResponse
+
 export const CreateMessages500 = AnthropicMessagesErrorResponse
+
 export type CreateMessages503 = AnthropicMessagesErrorResponse
+
 export const CreateMessages503 = AnthropicMessagesErrorResponse
+
 export type CreateMessages529 = AnthropicMessagesErrorResponse
+
 export const CreateMessages529 = AnthropicMessagesErrorResponse
+
 export type GetModelParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetModelParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetModel200 = ModelResponse
+
 export const GetModel200 = ModelResponse
+
 export type GetModel403 = ForbiddenResponse
+
 export const GetModel403 = ForbiddenResponse
+
 export type GetModel404 = NotFoundResponse
+
 export const GetModel404 = NotFoundResponse
+
 export type GetModel500 = InternalServerResponse
+
 export const GetModel500 = InternalServerResponse
+
 export type GetModelsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -40409,6 +43958,7 @@ export type GetModelsParams = {
   readonly "min_tool_success_rate"?: number | null
   readonly "max_tool_success_rate"?: number | null
 }
+
 export const GetModelsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -40653,52 +44203,86 @@ export const GetModelsParams = Schema.Struct({
     ]).annotate({ "description": "Maximum tool-calling success rate, as a fraction in [0, 1].", "examples": [1] })
   )
 })
+
 export type GetModels200 = ModelsListResponse
+
 export const GetModels200 = ModelsListResponse
+
 export type GetModels400 = BadRequestResponse
+
 export const GetModels400 = BadRequestResponse
+
 export type GetModels401 = UnauthorizedResponse
+
 export const GetModels401 = UnauthorizedResponse
+
 export type GetModels403 = ForbiddenResponse
+
 export const GetModels403 = ForbiddenResponse
+
 export type GetModels404 = NotFoundResponse
+
 export const GetModels404 = NotFoundResponse
+
 export type GetModels408 = RequestTimeoutResponse
+
 export const GetModels408 = RequestTimeoutResponse
+
 export type GetModels409 = ConflictResponse
+
 export const GetModels409 = ConflictResponse
+
 export type GetModels429 = TooManyRequestsResponse
+
 export const GetModels429 = TooManyRequestsResponse
+
 export type GetModels500 = InternalServerResponse
+
 export const GetModels500 = InternalServerResponse
+
 export type GetModels503 = ServiceUnavailableResponse
+
 export const GetModels503 = ServiceUnavailableResponse
+
 export type ListEndpointsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListEndpointsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListEndpoints200 = { readonly "data": ListEndpointsResponse }
+
 export const ListEndpoints200 = Schema.Struct({ "data": ListEndpointsResponse })
+
 export type ListEndpoints403 = ForbiddenResponse
+
 export const ListEndpoints403 = ForbiddenResponse
+
 export type ListEndpoints404 = NotFoundResponse
+
 export const ListEndpoints404 = NotFoundResponse
+
 export type ListEndpoints500 = InternalServerResponse
+
 export const ListEndpoints500 = InternalServerResponse
+
 export type ListEndpoints503 = ServiceUnavailableResponse
+
 export const ListEndpoints503 = ServiceUnavailableResponse
+
 export type ListModelsCountParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "output_modalities"?: string
 }
+
 export const ListModelsCountParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -40711,14 +44295,23 @@ export const ListModelsCountParams = Schema.Struct({
     })
   )
 })
+
 export type ListModelsCount200 = ModelsCountResponse
+
 export const ListModelsCount200 = ModelsCountResponse
+
 export type ListModelsCount400 = BadRequestResponse
+
 export const ListModelsCount400 = BadRequestResponse
+
 export type ListModelsCount403 = ForbiddenResponse
+
 export const ListModelsCount403 = ForbiddenResponse
+
 export type ListModelsCount500 = InternalServerResponse
+
 export const ListModelsCount500 = InternalServerResponse
+
 export type ListModelsUserParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -40741,6 +44334,7 @@ export type ListModelsUserParams = {
     | "design-arena-elo-high-to-low"
   readonly "client"?: "claude_code" | "claude_desktop" | "codex"
 }
+
 export const ListModelsUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -40799,60 +44393,99 @@ export const ListModelsUserParams = Schema.Struct({
     })
   )
 })
+
 export type ListModelsUser200 = ModelsListResponse
+
 export const ListModelsUser200 = ModelsListResponse
+
 export type ListModelsUser401 = UnauthorizedResponse
+
 export const ListModelsUser401 = UnauthorizedResponse
+
 export type ListModelsUser403 = ForbiddenResponse
+
 export const ListModelsUser403 = ForbiddenResponse
+
 export type ListModelsUser404 = NotFoundResponse
+
 export const ListModelsUser404 = NotFoundResponse
+
 export type ListModelsUser408 = RequestTimeoutResponse
+
 export const ListModelsUser408 = RequestTimeoutResponse
+
 export type ListModelsUser409 = ConflictResponse
+
 export const ListModelsUser409 = ConflictResponse
+
 export type ListModelsUser429 = TooManyRequestsResponse
+
 export const ListModelsUser429 = TooManyRequestsResponse
+
 export type ListModelsUser500 = InternalServerResponse
+
 export const ListModelsUser500 = InternalServerResponse
+
 export type ListModelsUser503 = ServiceUnavailableResponse
+
 export const ListModelsUser503 = ServiceUnavailableResponse
+
 export type ListOauthJwksParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListOauthJwksParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListOauthJwks200 = OAuthJwks
+
 export const ListOauthJwks200 = OAuthJwks
+
 export type ListOauthJwks500 = InternalServerResponse
+
 export const ListOauthJwks500 = InternalServerResponse
+
 export type CreateOauthTokenParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateOauthTokenParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateOauthTokenRequestFormUrlEncoded = TokenExchangeRequest
+
 export const CreateOauthTokenRequestFormUrlEncoded = TokenExchangeRequest
+
 export type CreateOauthToken200 = TokenExchangeResponse
+
 export const CreateOauthToken200 = TokenExchangeResponse
+
 export type CreateOauthToken400 = OAuthErrorResponse
+
 export const CreateOauthToken400 = OAuthErrorResponse
+
 export type CreateOauthToken429 = OAuthErrorResponse
+
 export const CreateOauthToken429 = OAuthErrorResponse
+
 export type CreateOauthToken500 = OAuthErrorResponse
+
 export const CreateOauthToken500 = OAuthErrorResponse
+
 export type CreateOauthToken503 = OAuthErrorResponse
+
 export const CreateOauthToken503 = OAuthErrorResponse
+
 export type ListObservabilityDestinationsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -40861,6 +44494,7 @@ export type ListObservabilityDestinationsParams = {
   readonly "limit"?: number
   readonly "workspace_id"?: string
 }
+
 export const ListObservabilityDestinationsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -40886,106 +44520,175 @@ export const ListObservabilityDestinationsParams = Schema.Struct({
     })
   )
 })
+
 export type ListObservabilityDestinations200 = ListObservabilityDestinationsResponse
+
 export const ListObservabilityDestinations200 = ListObservabilityDestinationsResponse
+
 export type ListObservabilityDestinations400 = BadRequestResponse
+
 export const ListObservabilityDestinations400 = BadRequestResponse
+
 export type ListObservabilityDestinations401 = UnauthorizedResponse
+
 export const ListObservabilityDestinations401 = UnauthorizedResponse
+
 export type ListObservabilityDestinations403 = ForbiddenResponse
+
 export const ListObservabilityDestinations403 = ForbiddenResponse
+
 export type ListObservabilityDestinations500 = InternalServerResponse
+
 export const ListObservabilityDestinations500 = InternalServerResponse
+
 export type CreateObservabilityDestinationParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateObservabilityDestinationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateObservabilityDestinationRequestJson = CreateObservabilityDestinationRequest
+
 export const CreateObservabilityDestinationRequestJson = CreateObservabilityDestinationRequest
+
 export type CreateObservabilityDestination201 = CreateObservabilityDestinationResponse
+
 export const CreateObservabilityDestination201 = CreateObservabilityDestinationResponse
+
 export type CreateObservabilityDestination400 = BadRequestResponse
+
 export const CreateObservabilityDestination400 = BadRequestResponse
+
 export type CreateObservabilityDestination401 = UnauthorizedResponse
+
 export const CreateObservabilityDestination401 = UnauthorizedResponse
+
 export type CreateObservabilityDestination403 = ForbiddenResponse
+
 export const CreateObservabilityDestination403 = ForbiddenResponse
+
 export type CreateObservabilityDestination409 = ConflictResponse
+
 export const CreateObservabilityDestination409 = ConflictResponse
+
 export type CreateObservabilityDestination500 = InternalServerResponse
+
 export const CreateObservabilityDestination500 = InternalServerResponse
+
 export type GetObservabilityDestinationParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetObservabilityDestinationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetObservabilityDestination200 = GetObservabilityDestinationResponse
+
 export const GetObservabilityDestination200 = GetObservabilityDestinationResponse
+
 export type GetObservabilityDestination401 = UnauthorizedResponse
+
 export const GetObservabilityDestination401 = UnauthorizedResponse
+
 export type GetObservabilityDestination403 = ForbiddenResponse
+
 export const GetObservabilityDestination403 = ForbiddenResponse
+
 export type GetObservabilityDestination404 = NotFoundResponse
+
 export const GetObservabilityDestination404 = NotFoundResponse
+
 export type GetObservabilityDestination500 = InternalServerResponse
+
 export const GetObservabilityDestination500 = InternalServerResponse
+
 export type DeleteObservabilityDestinationParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteObservabilityDestinationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteObservabilityDestination200 = DeleteObservabilityDestinationResponse
+
 export const DeleteObservabilityDestination200 = DeleteObservabilityDestinationResponse
+
 export type DeleteObservabilityDestination401 = UnauthorizedResponse
+
 export const DeleteObservabilityDestination401 = UnauthorizedResponse
+
 export type DeleteObservabilityDestination403 = ForbiddenResponse
+
 export const DeleteObservabilityDestination403 = ForbiddenResponse
+
 export type DeleteObservabilityDestination404 = NotFoundResponse
+
 export const DeleteObservabilityDestination404 = NotFoundResponse
+
 export type DeleteObservabilityDestination500 = InternalServerResponse
+
 export const DeleteObservabilityDestination500 = InternalServerResponse
+
 export type UpdateObservabilityDestinationParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateObservabilityDestinationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateObservabilityDestinationRequestJson = UpdateObservabilityDestinationRequest
+
 export const UpdateObservabilityDestinationRequestJson = UpdateObservabilityDestinationRequest
+
 export type UpdateObservabilityDestination200 = UpdateObservabilityDestinationResponse
+
 export const UpdateObservabilityDestination200 = UpdateObservabilityDestinationResponse
+
 export type UpdateObservabilityDestination400 = BadRequestResponse
+
 export const UpdateObservabilityDestination400 = BadRequestResponse
+
 export type UpdateObservabilityDestination401 = UnauthorizedResponse
+
 export const UpdateObservabilityDestination401 = UnauthorizedResponse
+
 export type UpdateObservabilityDestination403 = ForbiddenResponse
+
 export const UpdateObservabilityDestination403 = ForbiddenResponse
+
 export type UpdateObservabilityDestination404 = NotFoundResponse
+
 export const UpdateObservabilityDestination404 = NotFoundResponse
+
 export type UpdateObservabilityDestination409 = ConflictResponse
+
 export const UpdateObservabilityDestination409 = ConflictResponse
+
 export type UpdateObservabilityDestination500 = InternalServerResponse
+
 export const UpdateObservabilityDestination500 = InternalServerResponse
+
 export type ListOrganizationMembersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -40993,6 +44696,7 @@ export type ListOrganizationMembersParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListOrganizationMembersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41011,6 +44715,7 @@ export const ListOrganizationMembersParams = Schema.Struct({
     )
   )
 })
+
 export type ListOrganizationMembers200 = {
   readonly "data": globalThis.ReadonlyArray<
     {
@@ -41023,6 +44728,7 @@ export type ListOrganizationMembers200 = {
   >
   readonly "total_count": number
 }
+
 export const ListOrganizationMembers200 = Schema.Struct({
   "data": Schema.Array(Schema.Struct({
     "email": Schema.String.annotate({
@@ -41052,58 +44758,95 @@ export const ListOrganizationMembers200 = Schema.Struct({
     "examples": [25]
   }).check(Schema.isInt().annotate({ "expected": "an integer" }))
 })
+
 export type ListOrganizationMembers401 = UnauthorizedResponse
+
 export const ListOrganizationMembers401 = UnauthorizedResponse
+
 export type ListOrganizationMembers403 = ForbiddenResponse
+
 export const ListOrganizationMembers403 = ForbiddenResponse
+
 export type ListOrganizationMembers404 = NotFoundResponse
+
 export const ListOrganizationMembers404 = NotFoundResponse
+
 export type ListOrganizationMembers500 = InternalServerResponse
+
 export const ListOrganizationMembers500 = InternalServerResponse
+
 export type GetOrganizationSettingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetOrganizationSettingsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetOrganizationSettings200 = { readonly "data": OrganizationSettings }
+
 export const GetOrganizationSettings200 = Schema.Struct({ "data": OrganizationSettings })
+
 export type GetOrganizationSettings401 = UnauthorizedResponse
+
 export const GetOrganizationSettings401 = UnauthorizedResponse
+
 export type GetOrganizationSettings403 = ForbiddenResponse
+
 export const GetOrganizationSettings403 = ForbiddenResponse
+
 export type GetOrganizationSettings404 = NotFoundResponse
+
 export const GetOrganizationSettings404 = NotFoundResponse
+
 export type GetOrganizationSettings500 = InternalServerResponse
+
 export const GetOrganizationSettings500 = InternalServerResponse
+
 export type UpdateOrganizationSettingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateOrganizationSettingsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateOrganizationSettingsRequestJson = UpdateOrganizationSettingsRequest
+
 export const UpdateOrganizationSettingsRequestJson = UpdateOrganizationSettingsRequest
+
 export type UpdateOrganizationSettings200 = { readonly "data": OrganizationSettings }
+
 export const UpdateOrganizationSettings200 = Schema.Struct({ "data": OrganizationSettings })
+
 export type UpdateOrganizationSettings400 = BadRequestResponse
+
 export const UpdateOrganizationSettings400 = BadRequestResponse
+
 export type UpdateOrganizationSettings401 = UnauthorizedResponse
+
 export const UpdateOrganizationSettings401 = UnauthorizedResponse
+
 export type UpdateOrganizationSettings403 = ForbiddenResponse
+
 export const UpdateOrganizationSettings403 = ForbiddenResponse
+
 export type UpdateOrganizationSettings404 = NotFoundResponse
+
 export const UpdateOrganizationSettings404 = NotFoundResponse
+
 export type UpdateOrganizationSettings500 = InternalServerResponse
+
 export const UpdateOrganizationSettings500 = InternalServerResponse
+
 export type ListPresetsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -41112,6 +44855,7 @@ export type ListPresetsParams = {
   readonly "limit"?: number
   readonly "workspace_id"?: string
 }
+
 export const ListPresetsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41136,26 +44880,42 @@ export const ListPresetsParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type ListPresets200 = ListPresetsResponse
+
 export const ListPresets200 = ListPresetsResponse
+
 export type ListPresets400 = BadRequestResponse
+
 export const ListPresets400 = BadRequestResponse
+
 export type ListPresets401 = UnauthorizedResponse
+
 export const ListPresets401 = UnauthorizedResponse
+
 export type ListPresets403 = ForbiddenResponse
+
 export const ListPresets403 = ForbiddenResponse
+
 export type ListPresets404 = NotFoundResponse
+
 export const ListPresets404 = NotFoundResponse
+
 export type ListPresets500 = InternalServerResponse
+
 export const ListPresets500 = InternalServerResponse
+
 export type ListPresets503 = ServiceUnavailableResponse
+
 export const ListPresets503 = ServiceUnavailableResponse
+
 export type GetPresetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const GetPresetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41167,26 +44927,42 @@ export const GetPresetParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type GetPreset200 = GetPresetResponse
+
 export const GetPreset200 = GetPresetResponse
+
 export type GetPreset400 = BadRequestResponse
+
 export const GetPreset400 = BadRequestResponse
+
 export type GetPreset401 = UnauthorizedResponse
+
 export const GetPreset401 = UnauthorizedResponse
+
 export type GetPreset403 = ForbiddenResponse
+
 export const GetPreset403 = ForbiddenResponse
+
 export type GetPreset404 = NotFoundResponse
+
 export const GetPreset404 = NotFoundResponse
+
 export type GetPreset500 = InternalServerResponse
+
 export const GetPreset500 = InternalServerResponse
+
 export type GetPreset503 = ServiceUnavailableResponse
+
 export const GetPreset503 = ServiceUnavailableResponse
+
 export type DeletePresetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const DeletePresetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41198,26 +44974,42 @@ export const DeletePresetParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type DeletePreset200 = GetPresetResponse
+
 export const DeletePreset200 = GetPresetResponse
+
 export type DeletePreset400 = BadRequestResponse
+
 export const DeletePreset400 = BadRequestResponse
+
 export type DeletePreset401 = UnauthorizedResponse
+
 export const DeletePreset401 = UnauthorizedResponse
+
 export type DeletePreset403 = ForbiddenResponse
+
 export const DeletePreset403 = ForbiddenResponse
+
 export type DeletePreset404 = NotFoundResponse
+
 export const DeletePreset404 = NotFoundResponse
+
 export type DeletePreset409 = ConflictResponse
+
 export const DeletePreset409 = ConflictResponse
+
 export type DeletePreset500 = InternalServerResponse
+
 export const DeletePreset500 = InternalServerResponse
+
 export type CreatePresetsChatCompletionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const CreatePresetsChatCompletionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41229,28 +45021,46 @@ export const CreatePresetsChatCompletionsParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type CreatePresetsChatCompletionsRequestJson = ChatRequest
+
 export const CreatePresetsChatCompletionsRequestJson = ChatRequest
+
 export type CreatePresetsChatCompletions200 = CreatePresetFromInferenceResponse
+
 export const CreatePresetsChatCompletions200 = CreatePresetFromInferenceResponse
+
 export type CreatePresetsChatCompletions400 = BadRequestResponse
+
 export const CreatePresetsChatCompletions400 = BadRequestResponse
+
 export type CreatePresetsChatCompletions401 = UnauthorizedResponse
+
 export const CreatePresetsChatCompletions401 = UnauthorizedResponse
+
 export type CreatePresetsChatCompletions403 = ForbiddenResponse
+
 export const CreatePresetsChatCompletions403 = ForbiddenResponse
+
 export type CreatePresetsChatCompletions404 = NotFoundResponse
+
 export const CreatePresetsChatCompletions404 = NotFoundResponse
+
 export type CreatePresetsChatCompletions409 = ConflictResponse
+
 export const CreatePresetsChatCompletions409 = ConflictResponse
+
 export type CreatePresetsChatCompletions500 = InternalServerResponse
+
 export const CreatePresetsChatCompletions500 = InternalServerResponse
+
 export type CreatePresetsMessagesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const CreatePresetsMessagesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41262,28 +45072,46 @@ export const CreatePresetsMessagesParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type CreatePresetsMessagesRequestJson = MessagesRequest
+
 export const CreatePresetsMessagesRequestJson = MessagesRequest
+
 export type CreatePresetsMessages200 = CreatePresetFromInferenceResponse
+
 export const CreatePresetsMessages200 = CreatePresetFromInferenceResponse
+
 export type CreatePresetsMessages400 = BadRequestResponse
+
 export const CreatePresetsMessages400 = BadRequestResponse
+
 export type CreatePresetsMessages401 = UnauthorizedResponse
+
 export const CreatePresetsMessages401 = UnauthorizedResponse
+
 export type CreatePresetsMessages403 = ForbiddenResponse
+
 export const CreatePresetsMessages403 = ForbiddenResponse
+
 export type CreatePresetsMessages404 = NotFoundResponse
+
 export const CreatePresetsMessages404 = NotFoundResponse
+
 export type CreatePresetsMessages409 = ConflictResponse
+
 export const CreatePresetsMessages409 = ConflictResponse
+
 export type CreatePresetsMessages500 = InternalServerResponse
+
 export const CreatePresetsMessages500 = InternalServerResponse
+
 export type CreatePresetsResponsesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const CreatePresetsResponsesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41295,28 +45123,46 @@ export const CreatePresetsResponsesParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type CreatePresetsResponsesRequestJson = ResponsesRequest
+
 export const CreatePresetsResponsesRequestJson = ResponsesRequest
+
 export type CreatePresetsResponses200 = CreatePresetFromInferenceResponse
+
 export const CreatePresetsResponses200 = CreatePresetFromInferenceResponse
+
 export type CreatePresetsResponses400 = BadRequestResponse
+
 export const CreatePresetsResponses400 = BadRequestResponse
+
 export type CreatePresetsResponses401 = UnauthorizedResponse
+
 export const CreatePresetsResponses401 = UnauthorizedResponse
+
 export type CreatePresetsResponses403 = ForbiddenResponse
+
 export const CreatePresetsResponses403 = ForbiddenResponse
+
 export type CreatePresetsResponses404 = NotFoundResponse
+
 export const CreatePresetsResponses404 = NotFoundResponse
+
 export type CreatePresetsResponses409 = ConflictResponse
+
 export const CreatePresetsResponses409 = ConflictResponse
+
 export type CreatePresetsResponses500 = InternalServerResponse
+
 export const CreatePresetsResponses500 = InternalServerResponse
+
 export type RestorePresetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const RestorePresetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41328,20 +45174,35 @@ export const RestorePresetParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type RestorePreset200 = GetPresetResponse
+
 export const RestorePreset200 = GetPresetResponse
+
 export type RestorePreset400 = BadRequestResponse
+
 export const RestorePreset400 = BadRequestResponse
+
 export type RestorePreset401 = UnauthorizedResponse
+
 export const RestorePreset401 = UnauthorizedResponse
+
 export type RestorePreset403 = ForbiddenResponse
+
 export const RestorePreset403 = ForbiddenResponse
+
 export type RestorePreset404 = NotFoundResponse
+
 export const RestorePreset404 = NotFoundResponse
+
 export type RestorePreset409 = ConflictResponse
+
 export const RestorePreset409 = ConflictResponse
+
 export type RestorePreset500 = InternalServerResponse
+
 export const RestorePreset500 = InternalServerResponse
+
 export type ListPresetVersionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -41350,6 +45211,7 @@ export type ListPresetVersionsParams = {
   readonly "limit"?: number
   readonly "workspace_id"?: string
 }
+
 export const ListPresetVersionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41374,26 +45236,42 @@ export const ListPresetVersionsParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type ListPresetVersions200 = ListPresetVersionsResponse
+
 export const ListPresetVersions200 = ListPresetVersionsResponse
+
 export type ListPresetVersions400 = BadRequestResponse
+
 export const ListPresetVersions400 = BadRequestResponse
+
 export type ListPresetVersions401 = UnauthorizedResponse
+
 export const ListPresetVersions401 = UnauthorizedResponse
+
 export type ListPresetVersions403 = ForbiddenResponse
+
 export const ListPresetVersions403 = ForbiddenResponse
+
 export type ListPresetVersions404 = NotFoundResponse
+
 export const ListPresetVersions404 = NotFoundResponse
+
 export type ListPresetVersions500 = InternalServerResponse
+
 export const ListPresetVersions500 = InternalServerResponse
+
 export type ListPresetVersions503 = ServiceUnavailableResponse
+
 export const ListPresetVersions503 = ServiceUnavailableResponse
+
 export type GetPresetVersionParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "workspace_id"?: string
 }
+
 export const GetPresetVersionParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41405,46 +45283,74 @@ export const GetPresetVersionParams = Schema.Struct({
     "format": "uuid"
   }))
 })
+
 export type GetPresetVersion200 = GetPresetVersionResponse
+
 export const GetPresetVersion200 = GetPresetVersionResponse
+
 export type GetPresetVersion400 = BadRequestResponse
+
 export const GetPresetVersion400 = BadRequestResponse
+
 export type GetPresetVersion401 = UnauthorizedResponse
+
 export const GetPresetVersion401 = UnauthorizedResponse
+
 export type GetPresetVersion403 = ForbiddenResponse
+
 export const GetPresetVersion403 = ForbiddenResponse
+
 export type GetPresetVersion404 = NotFoundResponse
+
 export const GetPresetVersion404 = NotFoundResponse
+
 export type GetPresetVersion500 = InternalServerResponse
+
 export const GetPresetVersion500 = InternalServerResponse
+
 export type GetPresetVersion503 = ServiceUnavailableResponse
+
 export const GetPresetVersion503 = ServiceUnavailableResponse
+
 export type ListPrivateEndpointsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListPrivateEndpointsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListPrivateEndpoints200 = ListPrivateEndpointsResponse
+
 export const ListPrivateEndpoints200 = ListPrivateEndpointsResponse
+
 export type ListPrivateEndpoints401 = UnauthorizedResponse
+
 export const ListPrivateEndpoints401 = UnauthorizedResponse
+
 export type ListPrivateEndpoints403 = ForbiddenResponse
+
 export const ListPrivateEndpoints403 = ForbiddenResponse
+
 export type ListPrivateEndpoints408 = RequestTimeoutResponse
+
 export const ListPrivateEndpoints408 = RequestTimeoutResponse
+
 export type ListPrivateEndpoints500 = InternalServerResponse
+
 export const ListPrivateEndpoints500 = InternalServerResponse
+
 export type CreatePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "idempotency-key"?: string
 }
+
 export const CreatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41459,65 +45365,103 @@ export const CreatePrivateEndpointParams = Schema.Struct({
     )
   )
 })
+
 export type CreatePrivateEndpointRequestJson = CreatePrivateEndpointRequest
+
 export const CreatePrivateEndpointRequestJson = CreatePrivateEndpointRequest
+
 export type CreatePrivateEndpoint201 = ManagedPrivateEndpointResponse
+
 export const CreatePrivateEndpoint201 = ManagedPrivateEndpointResponse
+
 export type CreatePrivateEndpoint400 = BadRequestResponse
+
 export const CreatePrivateEndpoint400 = BadRequestResponse
+
 export type CreatePrivateEndpoint401 = UnauthorizedResponse
+
 export const CreatePrivateEndpoint401 = UnauthorizedResponse
+
 export type CreatePrivateEndpoint403 = ForbiddenResponse
+
 export const CreatePrivateEndpoint403 = ForbiddenResponse
+
 export type CreatePrivateEndpoint404 = CreatePrivateEndpointValidationFailedResponse | NotFoundResponse
+
 export const CreatePrivateEndpoint404 = Schema.Union([CreatePrivateEndpointValidationFailedResponse, NotFoundResponse])
+
 export type CreatePrivateEndpoint408 = RequestTimeoutResponse
+
 export const CreatePrivateEndpoint408 = RequestTimeoutResponse
+
 export type CreatePrivateEndpoint409 = CreatePrivateEndpointValidationFailedResponse | ConflictResponse
+
 export const CreatePrivateEndpoint409 = Schema.Union([CreatePrivateEndpointValidationFailedResponse, ConflictResponse])
+
 export type CreatePrivateEndpoint422 = CreatePrivateEndpointValidationFailedResponse | UnprocessableEntityResponse
+
 export const CreatePrivateEndpoint422 = Schema.Union([
   CreatePrivateEndpointValidationFailedResponse,
   UnprocessableEntityResponse
 ])
+
 export type CreatePrivateEndpoint500 = CreatePrivateEndpointValidationFailedResponse | InternalServerResponse
+
 export const CreatePrivateEndpoint500 = Schema.Union([
   CreatePrivateEndpointValidationFailedResponse,
   InternalServerResponse
 ])
+
 export type CreatePrivateEndpoint502 = CreatePrivateEndpointValidationFailedResponse | BadGatewayResponse
+
 export const CreatePrivateEndpoint502 = Schema.Union([
   CreatePrivateEndpointValidationFailedResponse,
   BadGatewayResponse
 ])
+
 export type GetPrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetPrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetPrivateEndpoint200 = PrivateEndpointResponse
+
 export const GetPrivateEndpoint200 = PrivateEndpointResponse
+
 export type GetPrivateEndpoint401 = UnauthorizedResponse
+
 export const GetPrivateEndpoint401 = UnauthorizedResponse
+
 export type GetPrivateEndpoint403 = ForbiddenResponse
+
 export const GetPrivateEndpoint403 = ForbiddenResponse
+
 export type GetPrivateEndpoint404 = NotFoundResponse
+
 export const GetPrivateEndpoint404 = NotFoundResponse
+
 export type GetPrivateEndpoint408 = RequestTimeoutResponse
+
 export const GetPrivateEndpoint408 = RequestTimeoutResponse
+
 export type GetPrivateEndpoint500 = InternalServerResponse
+
 export const GetPrivateEndpoint500 = InternalServerResponse
+
 export type DeletePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "draft_only"?: "true" | "false"
 }
+
 export const DeletePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -41528,263 +45472,449 @@ export const DeletePrivateEndpointParams = Schema.Struct({
     })
   )
 })
+
 export type DeletePrivateEndpoint200 = DeletePrivateEndpointResponse
+
 export const DeletePrivateEndpoint200 = DeletePrivateEndpointResponse
+
 export type DeletePrivateEndpoint400 = BadRequestResponse
+
 export const DeletePrivateEndpoint400 = BadRequestResponse
+
 export type DeletePrivateEndpoint401 = UnauthorizedResponse
+
 export const DeletePrivateEndpoint401 = UnauthorizedResponse
+
 export type DeletePrivateEndpoint403 = ForbiddenResponse
+
 export const DeletePrivateEndpoint403 = ForbiddenResponse
+
 export type DeletePrivateEndpoint404 = NotFoundResponse
+
 export const DeletePrivateEndpoint404 = NotFoundResponse
+
 export type DeletePrivateEndpoint408 = RequestTimeoutResponse
+
 export const DeletePrivateEndpoint408 = RequestTimeoutResponse
+
 export type DeletePrivateEndpoint409 = ConflictResponse
+
 export const DeletePrivateEndpoint409 = ConflictResponse
+
 export type DeletePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const DeletePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type DeletePrivateEndpoint500 = InternalServerResponse
+
 export const DeletePrivateEndpoint500 = InternalServerResponse
+
 export type DeletePrivateEndpoint502 = BadGatewayResponse
+
 export const DeletePrivateEndpoint502 = BadGatewayResponse
+
 export type UpdatePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdatePrivateEndpointRequestJson = UpdatePrivateEndpointRequest
+
 export const UpdatePrivateEndpointRequestJson = UpdatePrivateEndpointRequest
+
 export type UpdatePrivateEndpoint200 = PrivateEndpointResponse
+
 export const UpdatePrivateEndpoint200 = PrivateEndpointResponse
+
 export type UpdatePrivateEndpoint400 = BadRequestResponse
+
 export const UpdatePrivateEndpoint400 = BadRequestResponse
+
 export type UpdatePrivateEndpoint401 = UnauthorizedResponse
+
 export const UpdatePrivateEndpoint401 = UnauthorizedResponse
+
 export type UpdatePrivateEndpoint403 = ForbiddenResponse
+
 export const UpdatePrivateEndpoint403 = ForbiddenResponse
+
 export type UpdatePrivateEndpoint404 = NotFoundResponse
+
 export const UpdatePrivateEndpoint404 = NotFoundResponse
+
 export type UpdatePrivateEndpoint408 = RequestTimeoutResponse
+
 export const UpdatePrivateEndpoint408 = RequestTimeoutResponse
+
 export type UpdatePrivateEndpoint409 = ConflictResponse
+
 export const UpdatePrivateEndpoint409 = ConflictResponse
+
 export type UpdatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const UpdatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type UpdatePrivateEndpoint500 = InternalServerResponse
+
 export const UpdatePrivateEndpoint500 = InternalServerResponse
+
 export type UpdatePrivateEndpoint502 = BadGatewayResponse
+
 export const UpdatePrivateEndpoint502 = BadGatewayResponse
+
 export type ActivatePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ActivatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ActivatePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export const ActivatePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export type ActivatePrivateEndpoint400 = BadRequestResponse
+
 export const ActivatePrivateEndpoint400 = BadRequestResponse
+
 export type ActivatePrivateEndpoint401 = UnauthorizedResponse
+
 export const ActivatePrivateEndpoint401 = UnauthorizedResponse
+
 export type ActivatePrivateEndpoint403 = ForbiddenResponse
+
 export const ActivatePrivateEndpoint403 = ForbiddenResponse
+
 export type ActivatePrivateEndpoint404 = NotFoundResponse
+
 export const ActivatePrivateEndpoint404 = NotFoundResponse
+
 export type ActivatePrivateEndpoint408 = RequestTimeoutResponse
+
 export const ActivatePrivateEndpoint408 = RequestTimeoutResponse
+
 export type ActivatePrivateEndpoint409 = ConflictResponse
+
 export const ActivatePrivateEndpoint409 = ConflictResponse
+
 export type ActivatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const ActivatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type ActivatePrivateEndpoint500 = InternalServerResponse
+
 export const ActivatePrivateEndpoint500 = InternalServerResponse
+
 export type ActivatePrivateEndpoint502 = BadGatewayResponse
+
 export const ActivatePrivateEndpoint502 = BadGatewayResponse
+
 export type DisablePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DisablePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DisablePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export const DisablePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export type DisablePrivateEndpoint400 = BadRequestResponse
+
 export const DisablePrivateEndpoint400 = BadRequestResponse
+
 export type DisablePrivateEndpoint401 = UnauthorizedResponse
+
 export const DisablePrivateEndpoint401 = UnauthorizedResponse
+
 export type DisablePrivateEndpoint403 = ForbiddenResponse
+
 export const DisablePrivateEndpoint403 = ForbiddenResponse
+
 export type DisablePrivateEndpoint404 = NotFoundResponse
+
 export const DisablePrivateEndpoint404 = NotFoundResponse
+
 export type DisablePrivateEndpoint408 = RequestTimeoutResponse
+
 export const DisablePrivateEndpoint408 = RequestTimeoutResponse
+
 export type DisablePrivateEndpoint409 = ConflictResponse
+
 export const DisablePrivateEndpoint409 = ConflictResponse
+
 export type DisablePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const DisablePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type DisablePrivateEndpoint500 = InternalServerResponse
+
 export const DisablePrivateEndpoint500 = InternalServerResponse
+
 export type DisablePrivateEndpoint502 = BadGatewayResponse
+
 export const DisablePrivateEndpoint502 = BadGatewayResponse
+
 export type EnablePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const EnablePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type EnablePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export const EnablePrivateEndpoint200 = ManagedPrivateEndpointResponse
+
 export type EnablePrivateEndpoint400 = BadRequestResponse
+
 export const EnablePrivateEndpoint400 = BadRequestResponse
+
 export type EnablePrivateEndpoint401 = UnauthorizedResponse
+
 export const EnablePrivateEndpoint401 = UnauthorizedResponse
+
 export type EnablePrivateEndpoint403 = ForbiddenResponse
+
 export const EnablePrivateEndpoint403 = ForbiddenResponse
+
 export type EnablePrivateEndpoint404 = NotFoundResponse
+
 export const EnablePrivateEndpoint404 = NotFoundResponse
+
 export type EnablePrivateEndpoint408 = RequestTimeoutResponse
+
 export const EnablePrivateEndpoint408 = RequestTimeoutResponse
+
 export type EnablePrivateEndpoint409 = ConflictResponse
+
 export const EnablePrivateEndpoint409 = ConflictResponse
+
 export type EnablePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const EnablePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type EnablePrivateEndpoint500 = InternalServerResponse
+
 export const EnablePrivateEndpoint500 = InternalServerResponse
+
 export type EnablePrivateEndpoint502 = BadGatewayResponse
+
 export const EnablePrivateEndpoint502 = BadGatewayResponse
+
 export type ValidatePrivateEndpointParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ValidatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ValidatePrivateEndpointRequestJson = ValidatePrivateEndpointRequest
+
 export const ValidatePrivateEndpointRequestJson = ValidatePrivateEndpointRequest
+
 export type ValidatePrivateEndpoint200 = PrivateEndpointValidationResponse
+
 export const ValidatePrivateEndpoint200 = PrivateEndpointValidationResponse
+
 export type ValidatePrivateEndpoint400 = BadRequestResponse
+
 export const ValidatePrivateEndpoint400 = BadRequestResponse
+
 export type ValidatePrivateEndpoint401 = UnauthorizedResponse
+
 export const ValidatePrivateEndpoint401 = UnauthorizedResponse
+
 export type ValidatePrivateEndpoint403 = ForbiddenResponse
+
 export const ValidatePrivateEndpoint403 = ForbiddenResponse
+
 export type ValidatePrivateEndpoint404 = NotFoundResponse
+
 export const ValidatePrivateEndpoint404 = NotFoundResponse
+
 export type ValidatePrivateEndpoint408 = RequestTimeoutResponse
+
 export const ValidatePrivateEndpoint408 = RequestTimeoutResponse
+
 export type ValidatePrivateEndpoint409 = ConflictResponse
+
 export const ValidatePrivateEndpoint409 = ConflictResponse
+
 export type ValidatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export const ValidatePrivateEndpoint422 = UnprocessableEntityResponse
+
 export type ValidatePrivateEndpoint500 = InternalServerResponse
+
 export const ValidatePrivateEndpoint500 = InternalServerResponse
+
 export type ValidatePrivateEndpoint502 = BadGatewayResponse
+
 export const ValidatePrivateEndpoint502 = BadGatewayResponse
+
 export type ListPrivateProvidersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListPrivateProvidersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListPrivateProviders200 = { readonly "data": globalThis.ReadonlyArray<PrivateProvider> }
+
 export const ListPrivateProviders200 = Schema.Struct({ "data": Schema.Array(PrivateProvider) })
+
 export type ListPrivateProviders401 = UnauthorizedResponse
+
 export const ListPrivateProviders401 = UnauthorizedResponse
+
 export type ListPrivateProviders403 = ForbiddenResponse
+
 export const ListPrivateProviders403 = ForbiddenResponse
+
 export type ListPrivateProviders500 = InternalServerResponse
+
 export const ListPrivateProviders500 = InternalServerResponse
+
 export type CreatePrivateProviderParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreatePrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreatePrivateProviderRequestJson = CreatePrivateProviderRequest
+
 export const CreatePrivateProviderRequestJson = CreatePrivateProviderRequest
+
 export type CreatePrivateProvider201 = { readonly "data": PrivateProvider }
+
 export const CreatePrivateProvider201 = Schema.Struct({ "data": PrivateProvider })
+
 export type CreatePrivateProvider400 = BadRequestResponse
+
 export const CreatePrivateProvider400 = BadRequestResponse
+
 export type CreatePrivateProvider401 = UnauthorizedResponse
+
 export const CreatePrivateProvider401 = UnauthorizedResponse
+
 export type CreatePrivateProvider403 = ForbiddenResponse
+
 export const CreatePrivateProvider403 = ForbiddenResponse
+
 export type CreatePrivateProvider404 = NotFoundResponse
+
 export const CreatePrivateProvider404 = NotFoundResponse
+
 export type CreatePrivateProvider408 = RequestTimeoutResponse
+
 export const CreatePrivateProvider408 = RequestTimeoutResponse
+
 export type CreatePrivateProvider409 = ConflictResponse
+
 export const CreatePrivateProvider409 = ConflictResponse
+
 export type CreatePrivateProvider422 = UnprocessableEntityResponse
+
 export const CreatePrivateProvider422 = UnprocessableEntityResponse
+
 export type CreatePrivateProvider429 = TooManyRequestsResponse
+
 export const CreatePrivateProvider429 = TooManyRequestsResponse
+
 export type CreatePrivateProvider500 = InternalServerResponse
+
 export const CreatePrivateProvider500 = InternalServerResponse
+
 export type CreatePrivateProvider502 = BadGatewayResponse
+
 export const CreatePrivateProvider502 = BadGatewayResponse
+
 export type GetPrivateProviderParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetPrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetPrivateProvider200 = { readonly "data": PrivateProvider }
+
 export const GetPrivateProvider200 = Schema.Struct({ "data": PrivateProvider })
+
 export type GetPrivateProvider401 = UnauthorizedResponse
+
 export const GetPrivateProvider401 = UnauthorizedResponse
+
 export type GetPrivateProvider403 = ForbiddenResponse
+
 export const GetPrivateProvider403 = ForbiddenResponse
+
 export type GetPrivateProvider404 = NotFoundResponse
+
 export const GetPrivateProvider404 = NotFoundResponse
+
 export type GetPrivateProvider500 = InternalServerResponse
+
 export const GetPrivateProvider500 = InternalServerResponse
+
 export type DeletePrivateProviderParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeletePrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeletePrivateProvider200 = { readonly "data": { readonly "slug": string } }
+
 export const DeletePrivateProvider200 = Schema.Struct({
   "data": Schema.Struct({
     "slug": Schema.String.annotate({
@@ -41794,70 +45924,119 @@ export const DeletePrivateProvider200 = Schema.Struct({
     })
   })
 })
+
 export type DeletePrivateProvider400 = BadRequestResponse
+
 export const DeletePrivateProvider400 = BadRequestResponse
+
 export type DeletePrivateProvider401 = UnauthorizedResponse
+
 export const DeletePrivateProvider401 = UnauthorizedResponse
+
 export type DeletePrivateProvider403 = ForbiddenResponse
+
 export const DeletePrivateProvider403 = ForbiddenResponse
+
 export type DeletePrivateProvider404 = NotFoundResponse
+
 export const DeletePrivateProvider404 = NotFoundResponse
+
 export type DeletePrivateProvider408 = RequestTimeoutResponse
+
 export const DeletePrivateProvider408 = RequestTimeoutResponse
+
 export type DeletePrivateProvider409 = ConflictResponse
+
 export const DeletePrivateProvider409 = ConflictResponse
+
 export type DeletePrivateProvider422 = UnprocessableEntityResponse
+
 export const DeletePrivateProvider422 = UnprocessableEntityResponse
+
 export type DeletePrivateProvider429 = TooManyRequestsResponse
+
 export const DeletePrivateProvider429 = TooManyRequestsResponse
+
 export type DeletePrivateProvider500 = InternalServerResponse
+
 export const DeletePrivateProvider500 = InternalServerResponse
+
 export type DeletePrivateProvider502 = BadGatewayResponse
+
 export const DeletePrivateProvider502 = BadGatewayResponse
+
 export type UpdatePrivateProviderParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdatePrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdatePrivateProviderRequestJson = UpdatePrivateProviderRequest
+
 export const UpdatePrivateProviderRequestJson = UpdatePrivateProviderRequest
+
 export type UpdatePrivateProvider200 = { readonly "data": PrivateProvider }
+
 export const UpdatePrivateProvider200 = Schema.Struct({ "data": PrivateProvider })
+
 export type UpdatePrivateProvider400 = BadRequestResponse
+
 export const UpdatePrivateProvider400 = BadRequestResponse
+
 export type UpdatePrivateProvider401 = UnauthorizedResponse
+
 export const UpdatePrivateProvider401 = UnauthorizedResponse
+
 export type UpdatePrivateProvider403 = ForbiddenResponse
+
 export const UpdatePrivateProvider403 = ForbiddenResponse
+
 export type UpdatePrivateProvider404 = NotFoundResponse
+
 export const UpdatePrivateProvider404 = NotFoundResponse
+
 export type UpdatePrivateProvider408 = RequestTimeoutResponse
+
 export const UpdatePrivateProvider408 = RequestTimeoutResponse
+
 export type UpdatePrivateProvider409 = ConflictResponse
+
 export const UpdatePrivateProvider409 = ConflictResponse
+
 export type UpdatePrivateProvider422 = UnprocessableEntityResponse
+
 export const UpdatePrivateProvider422 = UnprocessableEntityResponse
+
 export type UpdatePrivateProvider429 = TooManyRequestsResponse
+
 export const UpdatePrivateProvider429 = TooManyRequestsResponse
+
 export type UpdatePrivateProvider500 = InternalServerResponse
+
 export const UpdatePrivateProvider500 = InternalServerResponse
+
 export type UpdatePrivateProvider502 = BadGatewayResponse
+
 export const UpdatePrivateProvider502 = BadGatewayResponse
+
 export type ListProvidersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListProvidersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListProviders200 = {
   readonly "data": globalThis.ReadonlyArray<
     {
@@ -42373,6 +46552,7 @@ export type ListProviders200 = {
     }
   >
 }
+
 export const ListProviders200 = Schema.Struct({
   "data": Schema.Array(
     Schema.Struct({
@@ -42942,18 +47122,23 @@ export const ListProviders200 = Schema.Struct({
     }]
   }]
 })
+
 export type ListProviders500 = InternalServerResponse
+
 export const ListProviders500 = InternalServerResponse
+
 export type CreateRerankParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateRerankParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateRerankRequestJson = {
   readonly "documents": globalThis.ReadonlyArray<string | { readonly "image"?: string; readonly "text"?: string }>
   readonly "model": string
@@ -42964,6 +47149,7 @@ export type CreateRerankRequestJson = {
   readonly "trace"?: TraceConfig
   readonly "user"?: string
 }
+
 export const CreateRerankRequestJson = Schema.Struct({
   "documents": Schema.Array(
     Schema.Union([
@@ -43034,6 +47220,7 @@ export const CreateRerankRequestJson = Schema.Struct({
     "top_n": 3
   }]
 })
+
 export type CreateRerank200 = {
   readonly "id"?: string
   readonly "model": string
@@ -43047,6 +47234,7 @@ export type CreateRerank200 = {
   >
   readonly "usage"?: { readonly "cost"?: number; readonly "search_units"?: number; readonly "total_tokens"?: number }
 }
+
 export const CreateRerank200 = Schema.Struct({
   "id": Schema.optionalKey(
     Schema.String.annotate({
@@ -43123,80 +47311,143 @@ export const CreateRerank200 = Schema.Struct({
     "usage": { "search_units": 1, "total_tokens": 150 }
   }]
 })
+
 export type CreateRerank200Sse = string
+
 export const CreateRerank200Sse = Schema.String.annotate({
   "description": "Not used for rerank - rerank does not support streaming"
 })
+
 export type CreateRerank400 = BadRequestResponse
+
 export const CreateRerank400 = BadRequestResponse
+
 export type CreateRerank401 = UnauthorizedResponse
+
 export const CreateRerank401 = UnauthorizedResponse
+
 export type CreateRerank402 = PaymentRequiredResponse
+
 export const CreateRerank402 = PaymentRequiredResponse
+
 export type CreateRerank403 = ForbiddenResponse
+
 export const CreateRerank403 = ForbiddenResponse
+
 export type CreateRerank404 = NotFoundResponse
+
 export const CreateRerank404 = NotFoundResponse
+
 export type CreateRerank413 = PayloadTooLargeResponse
+
 export const CreateRerank413 = PayloadTooLargeResponse
+
 export type CreateRerank429 = TooManyRequestsResponse
+
 export const CreateRerank429 = TooManyRequestsResponse
+
 export type CreateRerank500 = InternalServerResponse
+
 export const CreateRerank500 = InternalServerResponse
+
 export type CreateRerank502 = BadGatewayResponse
+
 export const CreateRerank502 = BadGatewayResponse
+
 export type CreateRerank503 = ServiceUnavailableResponse
+
 export const CreateRerank503 = ServiceUnavailableResponse
+
 export type CreateRerank524 = EdgeNetworkTimeoutResponse
+
 export const CreateRerank524 = EdgeNetworkTimeoutResponse
+
 export type CreateRerank529 = ProviderOverloadedResponse
+
 export const CreateRerank529 = ProviderOverloadedResponse
+
 export type CreateResponsesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "X-OpenRouter-Metadata"?: MetadataLevel
 }
+
 export const CreateResponsesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Metadata": Schema.optionalKey(MetadataLevel)
 })
+
 export type CreateResponsesRequestJson = ResponsesRequest
+
 export const CreateResponsesRequestJson = ResponsesRequest
+
 export type CreateResponses200 = OpenResponsesResult
+
 export const CreateResponses200 = OpenResponsesResult
+
 export type CreateResponses200Sse = ResponsesStreamingResponse
+
 export const CreateResponses200Sse: Schema.Schema<CreateResponses200Sse> = ResponsesStreamingResponse
+
 export type CreateResponses400 = BadRequestResponse
+
 export const CreateResponses400 = BadRequestResponse
+
 export type CreateResponses401 = UnauthorizedResponse
+
 export const CreateResponses401 = UnauthorizedResponse
+
 export type CreateResponses402 = PaymentRequiredResponse
+
 export const CreateResponses402 = PaymentRequiredResponse
+
 export type CreateResponses403 = ForbiddenResponse
+
 export const CreateResponses403 = ForbiddenResponse
+
 export type CreateResponses404 = NotFoundResponse
+
 export const CreateResponses404 = NotFoundResponse
+
 export type CreateResponses408 = RequestTimeoutResponse
+
 export const CreateResponses408 = RequestTimeoutResponse
+
 export type CreateResponses413 = PayloadTooLargeResponse
+
 export const CreateResponses413 = PayloadTooLargeResponse
+
 export type CreateResponses422 = UnprocessableEntityResponse
+
 export const CreateResponses422 = UnprocessableEntityResponse
+
 export type CreateResponses429 = TooManyRequestsResponse
+
 export const CreateResponses429 = TooManyRequestsResponse
+
 export type CreateResponses500 = InternalServerResponse
+
 export const CreateResponses500 = InternalServerResponse
+
 export type CreateResponses502 = BadGatewayResponse
+
 export const CreateResponses502 = BadGatewayResponse
+
 export type CreateResponses503 = ServiceUnavailableResponse
+
 export const CreateResponses503 = ServiceUnavailableResponse
+
 export type CreateResponses524 = EdgeNetworkTimeoutResponse
+
 export const CreateResponses524 = EdgeNetworkTimeoutResponse
+
 export type CreateResponses529 = ProviderOverloadedResponse
+
 export const CreateResponses529 = ProviderOverloadedResponse
+
 export type ListScimGroupMappingsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43204,6 +47455,7 @@ export type ListScimGroupMappingsParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListScimGroupMappingsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43222,68 +47474,110 @@ export const ListScimGroupMappingsParams = Schema.Struct({
     )
   )
 })
+
 export type ListScimGroupMappings200 = ListScimGroupMappingsResponse
+
 export const ListScimGroupMappings200 = ListScimGroupMappingsResponse
+
 export type ListScimGroupMappings401 = UnauthorizedResponse
+
 export const ListScimGroupMappings401 = UnauthorizedResponse
+
 export type ListScimGroupMappings403 = ForbiddenResponse
+
 export const ListScimGroupMappings403 = ForbiddenResponse
+
 export type ListScimGroupMappings404 = NotFoundResponse
+
 export const ListScimGroupMappings404 = NotFoundResponse
+
 export type ListScimGroupMappings500 = InternalServerResponse
+
 export const ListScimGroupMappings500 = InternalServerResponse
+
 export type CreateScimGroupMappingParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateScimGroupMappingParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateScimGroupMappingRequestJson = CreateScimGroupMappingRequest
+
 export const CreateScimGroupMappingRequestJson = CreateScimGroupMappingRequest
+
 export type CreateScimGroupMapping201 = CreateScimGroupMappingResponse
+
 export const CreateScimGroupMapping201 = CreateScimGroupMappingResponse
+
 export type CreateScimGroupMapping400 = BadRequestResponse
+
 export const CreateScimGroupMapping400 = BadRequestResponse
+
 export type CreateScimGroupMapping401 = UnauthorizedResponse
+
 export const CreateScimGroupMapping401 = UnauthorizedResponse
+
 export type CreateScimGroupMapping403 = ForbiddenResponse
+
 export const CreateScimGroupMapping403 = ForbiddenResponse
+
 export type CreateScimGroupMapping404 = NotFoundResponse
+
 export const CreateScimGroupMapping404 = NotFoundResponse
+
 export type CreateScimGroupMapping409 = ConflictResponse
+
 export const CreateScimGroupMapping409 = ConflictResponse
+
 export type CreateScimGroupMapping500 = InternalServerResponse
+
 export const CreateScimGroupMapping500 = InternalServerResponse
+
 export type GetScimGroupMappingParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetScimGroupMappingParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetScimGroupMapping200 = GetScimGroupMappingResponse
+
 export const GetScimGroupMapping200 = GetScimGroupMappingResponse
+
 export type GetScimGroupMapping401 = UnauthorizedResponse
+
 export const GetScimGroupMapping401 = UnauthorizedResponse
+
 export type GetScimGroupMapping403 = ForbiddenResponse
+
 export const GetScimGroupMapping403 = ForbiddenResponse
+
 export type GetScimGroupMapping404 = NotFoundResponse
+
 export const GetScimGroupMapping404 = NotFoundResponse
+
 export type GetScimGroupMapping500 = InternalServerResponse
+
 export const GetScimGroupMapping500 = InternalServerResponse
+
 export type DeleteScimGroupMappingParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "keep_members": "true" | "false" | boolean
 }
+
 export const DeleteScimGroupMappingParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43294,42 +47588,71 @@ export const DeleteScimGroupMappingParams = Schema.Struct({
     "examples": [false]
   })
 })
+
 export type DeleteScimGroupMapping200 = DeleteScimGroupMappingResponse
+
 export const DeleteScimGroupMapping200 = DeleteScimGroupMappingResponse
+
 export type DeleteScimGroupMapping400 = BadRequestResponse
+
 export const DeleteScimGroupMapping400 = BadRequestResponse
+
 export type DeleteScimGroupMapping401 = UnauthorizedResponse
+
 export const DeleteScimGroupMapping401 = UnauthorizedResponse
+
 export type DeleteScimGroupMapping403 = ForbiddenResponse
+
 export const DeleteScimGroupMapping403 = ForbiddenResponse
+
 export type DeleteScimGroupMapping404 = NotFoundResponse
+
 export const DeleteScimGroupMapping404 = NotFoundResponse
+
 export type DeleteScimGroupMapping500 = InternalServerResponse
+
 export const DeleteScimGroupMapping500 = InternalServerResponse
+
 export type UpdateScimGroupMappingParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateScimGroupMappingParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateScimGroupMappingRequestJson = UpdateScimGroupMappingRequest
+
 export const UpdateScimGroupMappingRequestJson = UpdateScimGroupMappingRequest
+
 export type UpdateScimGroupMapping200 = UpdateScimGroupMappingResponse
+
 export const UpdateScimGroupMapping200 = UpdateScimGroupMappingResponse
+
 export type UpdateScimGroupMapping400 = BadRequestResponse
+
 export const UpdateScimGroupMapping400 = BadRequestResponse
+
 export type UpdateScimGroupMapping401 = UnauthorizedResponse
+
 export const UpdateScimGroupMapping401 = UnauthorizedResponse
+
 export type UpdateScimGroupMapping403 = ForbiddenResponse
+
 export const UpdateScimGroupMapping403 = ForbiddenResponse
+
 export type UpdateScimGroupMapping404 = NotFoundResponse
+
 export const UpdateScimGroupMapping404 = NotFoundResponse
+
 export type UpdateScimGroupMapping500 = InternalServerResponse
+
 export const UpdateScimGroupMapping500 = InternalServerResponse
+
 export type ListScimGroupsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43339,6 +47662,7 @@ export type ListScimGroupsParams = {
   readonly "display_name"?: string
   readonly "external_id"?: string
 }
+
 export const ListScimGroupsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43369,94 +47693,159 @@ export const ListScimGroupsParams = Schema.Struct({
     "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
   }))
 })
+
 export type ListScimGroups200 = ListScimGroupsResponse
+
 export const ListScimGroups200 = ListScimGroupsResponse
+
 export type ListScimGroups401 = UnauthorizedResponse
+
 export const ListScimGroups401 = UnauthorizedResponse
+
 export type ListScimGroups403 = ForbiddenResponse
+
 export const ListScimGroups403 = ForbiddenResponse
+
 export type ListScimGroups404 = NotFoundResponse
+
 export const ListScimGroups404 = NotFoundResponse
+
 export type ListScimGroups500 = InternalServerResponse
+
 export const ListScimGroups500 = InternalServerResponse
+
 export type CreateScimSyncJobParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateScimSyncJobParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateScimSyncJob202 = CreateScimSyncJobResponse
+
 export const CreateScimSyncJob202 = CreateScimSyncJobResponse
+
 export type CreateScimSyncJob401 = UnauthorizedResponse
+
 export const CreateScimSyncJob401 = UnauthorizedResponse
+
 export type CreateScimSyncJob403 = ForbiddenResponse
+
 export const CreateScimSyncJob403 = ForbiddenResponse
+
 export type CreateScimSyncJob404 = NotFoundResponse
+
 export const CreateScimSyncJob404 = NotFoundResponse
+
 export type CreateScimSyncJob500 = InternalServerResponse
+
 export const CreateScimSyncJob500 = InternalServerResponse
+
 export type GetScimSyncJobParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetScimSyncJobParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetScimSyncJob200 = GetScimSyncJobResponse
+
 export const GetScimSyncJob200 = GetScimSyncJobResponse
+
 export type GetScimSyncJob401 = UnauthorizedResponse
+
 export const GetScimSyncJob401 = UnauthorizedResponse
+
 export type GetScimSyncJob403 = ForbiddenResponse
+
 export const GetScimSyncJob403 = ForbiddenResponse
+
 export type GetScimSyncJob404 = NotFoundResponse
+
 export const GetScimSyncJob404 = NotFoundResponse
+
 export type GetScimSyncJob500 = InternalServerResponse
+
 export const GetScimSyncJob500 = InternalServerResponse
+
 export type CreateSystemoneParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateSystemoneParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateSystemoneRequestJson = DecisionsRequest
+
 export const CreateSystemoneRequestJson = DecisionsRequest
+
 export type CreateSystemone200 = DecisionsResponse
+
 export const CreateSystemone200 = DecisionsResponse
+
 export type CreateSystemone400 = BadRequestResponse
+
 export const CreateSystemone400 = BadRequestResponse
+
 export type CreateSystemone401 = UnauthorizedResponse
+
 export const CreateSystemone401 = UnauthorizedResponse
+
 export type CreateSystemone402 = PaymentRequiredResponse
+
 export const CreateSystemone402 = PaymentRequiredResponse
+
 export type CreateSystemone403 = ForbiddenResponse
+
 export const CreateSystemone403 = ForbiddenResponse
+
 export type CreateSystemone404 = NotFoundResponse
+
 export const CreateSystemone404 = NotFoundResponse
+
 export type CreateSystemone413 = PayloadTooLargeResponse
+
 export const CreateSystemone413 = PayloadTooLargeResponse
+
 export type CreateSystemone429 = TooManyRequestsResponse
+
 export const CreateSystemone429 = TooManyRequestsResponse
+
 export type CreateSystemone500 = InternalServerResponse
+
 export const CreateSystemone500 = InternalServerResponse
+
 export type CreateSystemone502 = BadGatewayResponse
+
 export const CreateSystemone502 = BadGatewayResponse
+
 export type CreateSystemone503 = ServiceUnavailableResponse
+
 export const CreateSystemone503 = ServiceUnavailableResponse
+
 export type CreateSystemone524 = EdgeNetworkTimeoutResponse
+
 export const CreateSystemone524 = EdgeNetworkTimeoutResponse
+
 export type CreateSystemone529 = ProviderOverloadedResponse
+
 export const CreateSystemone529 = ProviderOverloadedResponse
+
 export type ListToolsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43465,6 +47854,7 @@ export type ListToolsParams = {
   readonly "limit"?: number
   readonly "api_format"?: "responses" | "chat-completions" | "anthropic-messages"
 }
+
 export const ListToolsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43495,51 +47885,77 @@ export const ListToolsParams = Schema.Struct({
     })
   )
 })
+
 export type ListTools200 = ListToolsResponse
+
 export const ListTools200 = ListToolsResponse
+
 export type ListTools401 = UnauthorizedResponse
+
 export const ListTools401 = UnauthorizedResponse
+
 export type ListTools403 = ForbiddenResponse
+
 export const ListTools403 = ForbiddenResponse
+
 export type ListTools404 = NotFoundResponse
+
 export const ListTools404 = NotFoundResponse
+
 export type ListTools500 = InternalServerResponse
+
 export const ListTools500 = InternalServerResponse
+
 export type GetToolParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetToolParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetTool200 = GetToolResponse
+
 export const GetTool200 = GetToolResponse
+
 export type GetTool401 = UnauthorizedResponse
+
 export const GetTool401 = UnauthorizedResponse
+
 export type GetTool403 = ForbiddenResponse
+
 export const GetTool403 = ForbiddenResponse
+
 export type GetTool404 = NotFoundResponse
+
 export const GetTool404 = NotFoundResponse
+
 export type GetTool500 = InternalServerResponse
+
 export const GetTool500 = InternalServerResponse
+
 export type ListInternConnectionsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListInternConnectionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListInternConnections200 = {
   readonly "data": globalThis.ReadonlyArray<{ readonly "key": string }>
   readonly "routing": VaultRoutingTable
   readonly "routing_text": string | null
 }
+
 export const ListInternConnections200 = Schema.Struct({
   "data": Schema.Array(Schema.Struct({ "key": Schema.String })),
   "routing": VaultRoutingTable,
@@ -43548,26 +47964,47 @@ export const ListInternConnections200 = Schema.Struct({
       "The routing table as the plain lines the intern reads in its instructions' Connections section, or a notice that it could not be read; null for a caller other than the intern."
   })
 })
+
 export type ListInternConnections400 = BadRequestResponse
+
 export const ListInternConnections400 = BadRequestResponse
+
 export type ListInternConnections401 = UnauthorizedResponse
+
 export const ListInternConnections401 = UnauthorizedResponse
+
 export type ListInternConnections403 = ForbiddenResponse
+
 export const ListInternConnections403 = ForbiddenResponse
+
 export type ListInternConnections404 = NotFoundResponse
+
 export const ListInternConnections404 = NotFoundResponse
+
 export type ListInternConnections408 = RequestTimeoutResponse
+
 export const ListInternConnections408 = RequestTimeoutResponse
+
 export type ListInternConnections429 = TooManyRequestsResponse
+
 export const ListInternConnections429 = TooManyRequestsResponse
+
 export type ListInternConnections500 = InternalServerResponse
+
 export const ListInternConnections500 = InternalServerResponse
+
 export type ListInternConnections502 = BadGatewayResponse
+
 export const ListInternConnections502 = BadGatewayResponse
+
 export type ListInternConnections503 = ServiceUnavailableResponse
+
 export const ListInternConnections503 = ServiceUnavailableResponse
+
 export type ListInternConnections504 = GatewayTimeoutResponse
+
 export const ListInternConnections504 = GatewayTimeoutResponse
+
 export type ListInternEffectiveVaultSecretsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43575,6 +48012,7 @@ export type ListInternEffectiveVaultSecretsParams = {
   readonly "limit"?: number
   readonly "offset"?: number
 }
+
 export const ListInternEffectiveVaultSecretsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43593,28 +48031,51 @@ export const ListInternEffectiveVaultSecretsParams = Schema.Struct({
       ).check(Schema.isLessThanOrEqualTo(10000).annotate({ "expected": "a value less than or equal to 10000" }))
   )
 })
+
 export type ListInternEffectiveVaultSecrets200 = VaultEffectiveSecretListResponse
+
 export const ListInternEffectiveVaultSecrets200 = VaultEffectiveSecretListResponse
+
 export type ListInternEffectiveVaultSecrets400 = BadRequestResponse
+
 export const ListInternEffectiveVaultSecrets400 = BadRequestResponse
+
 export type ListInternEffectiveVaultSecrets401 = UnauthorizedResponse
+
 export const ListInternEffectiveVaultSecrets401 = UnauthorizedResponse
+
 export type ListInternEffectiveVaultSecrets403 = ForbiddenResponse
+
 export const ListInternEffectiveVaultSecrets403 = ForbiddenResponse
+
 export type ListInternEffectiveVaultSecrets404 = NotFoundResponse
+
 export const ListInternEffectiveVaultSecrets404 = NotFoundResponse
+
 export type ListInternEffectiveVaultSecrets408 = RequestTimeoutResponse
+
 export const ListInternEffectiveVaultSecrets408 = RequestTimeoutResponse
+
 export type ListInternEffectiveVaultSecrets429 = TooManyRequestsResponse
+
 export const ListInternEffectiveVaultSecrets429 = TooManyRequestsResponse
+
 export type ListInternEffectiveVaultSecrets500 = InternalServerResponse
+
 export const ListInternEffectiveVaultSecrets500 = InternalServerResponse
+
 export type ListInternEffectiveVaultSecrets502 = BadGatewayResponse
+
 export const ListInternEffectiveVaultSecrets502 = BadGatewayResponse
+
 export type ListInternEffectiveVaultSecrets503 = ServiceUnavailableResponse
+
 export const ListInternEffectiveVaultSecrets503 = ServiceUnavailableResponse
+
 export type ListInternEffectiveVaultSecrets504 = GatewayTimeoutResponse
+
 export const ListInternEffectiveVaultSecrets504 = GatewayTimeoutResponse
+
 export type ListInternVaultSecretsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43622,6 +48083,7 @@ export type ListInternVaultSecretsParams = {
   readonly "limit"?: number
   readonly "offset"?: number
 }
+
 export const ListInternVaultSecretsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43640,136 +48102,243 @@ export const ListInternVaultSecretsParams = Schema.Struct({
       ).check(Schema.isLessThanOrEqualTo(10000).annotate({ "expected": "a value less than or equal to 10000" }))
   )
 })
+
 export type ListInternVaultSecrets200 = VaultSecretListResponse
+
 export const ListInternVaultSecrets200 = VaultSecretListResponse
+
 export type ListInternVaultSecrets400 = BadRequestResponse
+
 export const ListInternVaultSecrets400 = BadRequestResponse
+
 export type ListInternVaultSecrets401 = UnauthorizedResponse
+
 export const ListInternVaultSecrets401 = UnauthorizedResponse
+
 export type ListInternVaultSecrets403 = ForbiddenResponse
+
 export const ListInternVaultSecrets403 = ForbiddenResponse
+
 export type ListInternVaultSecrets404 = NotFoundResponse
+
 export const ListInternVaultSecrets404 = NotFoundResponse
+
 export type ListInternVaultSecrets408 = RequestTimeoutResponse
+
 export const ListInternVaultSecrets408 = RequestTimeoutResponse
+
 export type ListInternVaultSecrets429 = TooManyRequestsResponse
+
 export const ListInternVaultSecrets429 = TooManyRequestsResponse
+
 export type ListInternVaultSecrets500 = InternalServerResponse
+
 export const ListInternVaultSecrets500 = InternalServerResponse
+
 export type ListInternVaultSecrets502 = BadGatewayResponse
+
 export const ListInternVaultSecrets502 = BadGatewayResponse
+
 export type ListInternVaultSecrets503 = ServiceUnavailableResponse
+
 export const ListInternVaultSecrets503 = ServiceUnavailableResponse
+
 export type ListInternVaultSecrets504 = GatewayTimeoutResponse
+
 export const ListInternVaultSecrets504 = GatewayTimeoutResponse
+
 export type StoreInternVaultSecretParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const StoreInternVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type StoreInternVaultSecretRequestJson = VaultSecretWriteRequest
+
 export const StoreInternVaultSecretRequestJson = VaultSecretWriteRequest
+
 export type StoreInternVaultSecret200 = VaultSecretResponse
+
 export const StoreInternVaultSecret200 = VaultSecretResponse
+
 export type StoreInternVaultSecret400 = BadRequestResponse
+
 export const StoreInternVaultSecret400 = BadRequestResponse
+
 export type StoreInternVaultSecret401 = UnauthorizedResponse
+
 export const StoreInternVaultSecret401 = UnauthorizedResponse
+
 export type StoreInternVaultSecret403 = ForbiddenResponse
+
 export const StoreInternVaultSecret403 = ForbiddenResponse
+
 export type StoreInternVaultSecret404 = NotFoundResponse
+
 export const StoreInternVaultSecret404 = NotFoundResponse
+
 export type StoreInternVaultSecret408 = RequestTimeoutResponse
+
 export const StoreInternVaultSecret408 = RequestTimeoutResponse
+
 export type StoreInternVaultSecret409 = ConflictResponse
+
 export const StoreInternVaultSecret409 = ConflictResponse
+
 export type StoreInternVaultSecret413 = PayloadTooLargeResponse
+
 export const StoreInternVaultSecret413 = PayloadTooLargeResponse
+
 export type StoreInternVaultSecret429 = TooManyRequestsResponse
+
 export const StoreInternVaultSecret429 = TooManyRequestsResponse
+
 export type StoreInternVaultSecret500 = InternalServerResponse
+
 export const StoreInternVaultSecret500 = InternalServerResponse
+
 export type StoreInternVaultSecret502 = BadGatewayResponse
+
 export const StoreInternVaultSecret502 = BadGatewayResponse
+
 export type StoreInternVaultSecret503 = ServiceUnavailableResponse
+
 export const StoreInternVaultSecret503 = ServiceUnavailableResponse
+
 export type StoreInternVaultSecret504 = GatewayTimeoutResponse
+
 export const StoreInternVaultSecret504 = GatewayTimeoutResponse
+
 export type DeleteInternVaultSecretParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteInternVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteInternVaultSecret400 = BadRequestResponse
+
 export const DeleteInternVaultSecret400 = BadRequestResponse
+
 export type DeleteInternVaultSecret401 = UnauthorizedResponse
+
 export const DeleteInternVaultSecret401 = UnauthorizedResponse
+
 export type DeleteInternVaultSecret403 = ForbiddenResponse
+
 export const DeleteInternVaultSecret403 = ForbiddenResponse
+
 export type DeleteInternVaultSecret404 = NotFoundResponse
+
 export const DeleteInternVaultSecret404 = NotFoundResponse
+
 export type DeleteInternVaultSecret408 = RequestTimeoutResponse
+
 export const DeleteInternVaultSecret408 = RequestTimeoutResponse
+
 export type DeleteInternVaultSecret409 = ConflictResponse
+
 export const DeleteInternVaultSecret409 = ConflictResponse
+
 export type DeleteInternVaultSecret429 = TooManyRequestsResponse
+
 export const DeleteInternVaultSecret429 = TooManyRequestsResponse
+
 export type DeleteInternVaultSecret500 = InternalServerResponse
+
 export const DeleteInternVaultSecret500 = InternalServerResponse
+
 export type DeleteInternVaultSecret502 = BadGatewayResponse
+
 export const DeleteInternVaultSecret502 = BadGatewayResponse
+
 export type DeleteInternVaultSecret503 = ServiceUnavailableResponse
+
 export const DeleteInternVaultSecret503 = ServiceUnavailableResponse
+
 export type DeleteInternVaultSecret504 = GatewayTimeoutResponse
+
 export const DeleteInternVaultSecret504 = GatewayTimeoutResponse
+
 export type CopyVaultSecretsToInternParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CopyVaultSecretsToInternParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CopyVaultSecretsToInternRequestJson = VaultSecretCopyRequest
+
 export const CopyVaultSecretsToInternRequestJson = VaultSecretCopyRequest
+
 export type CopyVaultSecretsToIntern200 = VaultSecretCopyResponse
+
 export const CopyVaultSecretsToIntern200 = VaultSecretCopyResponse
+
 export type CopyVaultSecretsToIntern400 = BadRequestResponse
+
 export const CopyVaultSecretsToIntern400 = BadRequestResponse
+
 export type CopyVaultSecretsToIntern401 = UnauthorizedResponse
+
 export const CopyVaultSecretsToIntern401 = UnauthorizedResponse
+
 export type CopyVaultSecretsToIntern403 = ForbiddenResponse
+
 export const CopyVaultSecretsToIntern403 = ForbiddenResponse
+
 export type CopyVaultSecretsToIntern404 = NotFoundResponse
+
 export const CopyVaultSecretsToIntern404 = NotFoundResponse
+
 export type CopyVaultSecretsToIntern408 = RequestTimeoutResponse
+
 export const CopyVaultSecretsToIntern408 = RequestTimeoutResponse
+
 export type CopyVaultSecretsToIntern409 = ConflictResponse
+
 export const CopyVaultSecretsToIntern409 = ConflictResponse
+
 export type CopyVaultSecretsToIntern413 = PayloadTooLargeResponse
+
 export const CopyVaultSecretsToIntern413 = PayloadTooLargeResponse
+
 export type CopyVaultSecretsToIntern429 = TooManyRequestsResponse
+
 export const CopyVaultSecretsToIntern429 = TooManyRequestsResponse
+
 export type CopyVaultSecretsToIntern500 = InternalServerResponse
+
 export const CopyVaultSecretsToIntern500 = InternalServerResponse
+
 export type CopyVaultSecretsToIntern502 = BadGatewayResponse
+
 export const CopyVaultSecretsToIntern502 = BadGatewayResponse
+
 export type CopyVaultSecretsToIntern503 = ServiceUnavailableResponse
+
 export const CopyVaultSecretsToIntern503 = ServiceUnavailableResponse
+
 export type CopyVaultSecretsToIntern504 = GatewayTimeoutResponse
+
 export const CopyVaultSecretsToIntern504 = GatewayTimeoutResponse
+
 export type ListVaultSecretsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43777,6 +48346,7 @@ export type ListVaultSecretsParams = {
   readonly "limit"?: number
   readonly "offset"?: number
 }
+
 export const ListVaultSecretsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43795,158 +48365,274 @@ export const ListVaultSecretsParams = Schema.Struct({
       ).check(Schema.isLessThanOrEqualTo(10000).annotate({ "expected": "a value less than or equal to 10000" }))
   )
 })
+
 export type ListVaultSecrets200 = VaultSecretListResponse
+
 export const ListVaultSecrets200 = VaultSecretListResponse
+
 export type ListVaultSecrets400 = BadRequestResponse
+
 export const ListVaultSecrets400 = BadRequestResponse
+
 export type ListVaultSecrets401 = UnauthorizedResponse
+
 export const ListVaultSecrets401 = UnauthorizedResponse
+
 export type ListVaultSecrets403 = ForbiddenResponse
+
 export const ListVaultSecrets403 = ForbiddenResponse
+
 export type ListVaultSecrets404 = NotFoundResponse
+
 export const ListVaultSecrets404 = NotFoundResponse
+
 export type ListVaultSecrets408 = RequestTimeoutResponse
+
 export const ListVaultSecrets408 = RequestTimeoutResponse
+
 export type ListVaultSecrets429 = TooManyRequestsResponse
+
 export const ListVaultSecrets429 = TooManyRequestsResponse
+
 export type ListVaultSecrets500 = InternalServerResponse
+
 export const ListVaultSecrets500 = InternalServerResponse
+
 export type ListVaultSecrets502 = BadGatewayResponse
+
 export const ListVaultSecrets502 = BadGatewayResponse
+
 export type ListVaultSecrets503 = ServiceUnavailableResponse
+
 export const ListVaultSecrets503 = ServiceUnavailableResponse
+
 export type ListVaultSecrets504 = GatewayTimeoutResponse
+
 export const ListVaultSecrets504 = GatewayTimeoutResponse
+
 export type StoreVaultSecretParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const StoreVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type StoreVaultSecretRequestJson = VaultSecretWriteRequest
+
 export const StoreVaultSecretRequestJson = VaultSecretWriteRequest
+
 export type StoreVaultSecret200 = VaultSecretResponse
+
 export const StoreVaultSecret200 = VaultSecretResponse
+
 export type StoreVaultSecret400 = BadRequestResponse
+
 export const StoreVaultSecret400 = BadRequestResponse
+
 export type StoreVaultSecret401 = UnauthorizedResponse
+
 export const StoreVaultSecret401 = UnauthorizedResponse
+
 export type StoreVaultSecret403 = ForbiddenResponse
+
 export const StoreVaultSecret403 = ForbiddenResponse
+
 export type StoreVaultSecret404 = NotFoundResponse
+
 export const StoreVaultSecret404 = NotFoundResponse
+
 export type StoreVaultSecret408 = RequestTimeoutResponse
+
 export const StoreVaultSecret408 = RequestTimeoutResponse
+
 export type StoreVaultSecret409 = ConflictResponse
+
 export const StoreVaultSecret409 = ConflictResponse
+
 export type StoreVaultSecret413 = PayloadTooLargeResponse
+
 export const StoreVaultSecret413 = PayloadTooLargeResponse
+
 export type StoreVaultSecret429 = TooManyRequestsResponse
+
 export const StoreVaultSecret429 = TooManyRequestsResponse
+
 export type StoreVaultSecret500 = InternalServerResponse
+
 export const StoreVaultSecret500 = InternalServerResponse
+
 export type StoreVaultSecret502 = BadGatewayResponse
+
 export const StoreVaultSecret502 = BadGatewayResponse
+
 export type StoreVaultSecret503 = ServiceUnavailableResponse
+
 export const StoreVaultSecret503 = ServiceUnavailableResponse
+
 export type StoreVaultSecret504 = GatewayTimeoutResponse
+
 export const StoreVaultSecret504 = GatewayTimeoutResponse
+
 export type DeleteVaultSecretParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteVaultSecret400 = BadRequestResponse
+
 export const DeleteVaultSecret400 = BadRequestResponse
+
 export type DeleteVaultSecret401 = UnauthorizedResponse
+
 export const DeleteVaultSecret401 = UnauthorizedResponse
+
 export type DeleteVaultSecret403 = ForbiddenResponse
+
 export const DeleteVaultSecret403 = ForbiddenResponse
+
 export type DeleteVaultSecret404 = NotFoundResponse
+
 export const DeleteVaultSecret404 = NotFoundResponse
+
 export type DeleteVaultSecret408 = RequestTimeoutResponse
+
 export const DeleteVaultSecret408 = RequestTimeoutResponse
+
 export type DeleteVaultSecret409 = ConflictResponse
+
 export const DeleteVaultSecret409 = ConflictResponse
+
 export type DeleteVaultSecret429 = TooManyRequestsResponse
+
 export const DeleteVaultSecret429 = TooManyRequestsResponse
+
 export type DeleteVaultSecret500 = InternalServerResponse
+
 export const DeleteVaultSecret500 = InternalServerResponse
+
 export type DeleteVaultSecret502 = BadGatewayResponse
+
 export const DeleteVaultSecret502 = BadGatewayResponse
+
 export type DeleteVaultSecret503 = ServiceUnavailableResponse
+
 export const DeleteVaultSecret503 = ServiceUnavailableResponse
+
 export type DeleteVaultSecret504 = GatewayTimeoutResponse
+
 export const DeleteVaultSecret504 = GatewayTimeoutResponse
+
 export type CreateVideosParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateVideosParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateVideosRequestJson = VideoGenerationRequest
+
 export const CreateVideosRequestJson = VideoGenerationRequest
+
 export type CreateVideos202 = VideoGenerationResponse
+
 export const CreateVideos202 = VideoGenerationResponse
+
 export type CreateVideos400 = BadRequestResponse
+
 export const CreateVideos400 = BadRequestResponse
+
 export type CreateVideos401 = UnauthorizedResponse
+
 export const CreateVideos401 = UnauthorizedResponse
+
 export type CreateVideos402 = PaymentRequiredResponse
+
 export const CreateVideos402 = PaymentRequiredResponse
+
 export type CreateVideos403 = ForbiddenResponse
+
 export const CreateVideos403 = ForbiddenResponse
+
 export type CreateVideos404 = NotFoundResponse
+
 export const CreateVideos404 = NotFoundResponse
+
 export type CreateVideos413 = PayloadTooLargeResponse
+
 export const CreateVideos413 = PayloadTooLargeResponse
+
 export type CreateVideos429 = TooManyRequestsResponse
+
 export const CreateVideos429 = TooManyRequestsResponse
+
 export type CreateVideos499 = ClientClosedRequestResponse
+
 export const CreateVideos499 = ClientClosedRequestResponse
+
 export type CreateVideos500 = InternalServerResponse
+
 export const CreateVideos500 = InternalServerResponse
+
 export type CreateVideos503 = ServiceUnavailableResponse
+
 export const CreateVideos503 = ServiceUnavailableResponse
+
 export type GetVideosParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetVideosParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetVideos200 = VideoGenerationResponse
+
 export const GetVideos200 = VideoGenerationResponse
+
 export type GetVideos401 = UnauthorizedResponse
+
 export const GetVideos401 = UnauthorizedResponse
+
 export type GetVideos403 = ForbiddenResponse
+
 export const GetVideos403 = ForbiddenResponse
+
 export type GetVideos404 = NotFoundResponse
+
 export const GetVideos404 = NotFoundResponse
+
 export type GetVideos500 = InternalServerResponse
+
 export const GetVideos500 = InternalServerResponse
+
 export type ListVideosContentParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "index"?: number | null
 }
+
 export const ListVideosContentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -43958,38 +48644,63 @@ export const ListVideosContentParams = Schema.Struct({
     ]).annotate({ "examples": [0] })
   )
 })
+
 export type ListVideosContent400 = BadRequestResponse
+
 export const ListVideosContent400 = BadRequestResponse
+
 export type ListVideosContent401 = UnauthorizedResponse
+
 export const ListVideosContent401 = UnauthorizedResponse
+
 export type ListVideosContent403 = ForbiddenResponse
+
 export const ListVideosContent403 = ForbiddenResponse
+
 export type ListVideosContent404 = NotFoundResponse
+
 export const ListVideosContent404 = NotFoundResponse
+
 export type ListVideosContent409 = ConflictResponse
+
 export const ListVideosContent409 = ConflictResponse
+
 export type ListVideosContent410 = GoneResponse
+
 export const ListVideosContent410 = GoneResponse
+
 export type ListVideosContent500 = InternalServerResponse
+
 export const ListVideosContent500 = InternalServerResponse
+
 export type ListVideosContent502 = BadGatewayResponse
+
 export const ListVideosContent502 = BadGatewayResponse
+
 export type ListVideosModelsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListVideosModelsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListVideosModels200 = VideoModelsListResponse
+
 export const ListVideosModels200 = VideoModelsListResponse
+
 export type ListVideosModels400 = BadRequestResponse
+
 export const ListVideosModels400 = BadRequestResponse
+
 export type ListVideosModels500 = InternalServerResponse
+
 export const ListVideosModels500 = InternalServerResponse
+
 export type ListWorkspacesParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -43997,6 +48708,7 @@ export type ListWorkspacesParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListWorkspacesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -44015,62 +48727,98 @@ export const ListWorkspacesParams = Schema.Struct({
     )
   )
 })
+
 export type ListWorkspaces200 = ListWorkspacesResponse
+
 export const ListWorkspaces200 = ListWorkspacesResponse
+
 export type ListWorkspaces401 = UnauthorizedResponse
+
 export const ListWorkspaces401 = UnauthorizedResponse
+
 export type ListWorkspaces403 = ForbiddenResponse
+
 export const ListWorkspaces403 = ForbiddenResponse
+
 export type ListWorkspaces500 = InternalServerResponse
+
 export const ListWorkspaces500 = InternalServerResponse
+
 export type CreateWorkspaceParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const CreateWorkspaceParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type CreateWorkspaceRequestJson = CreateWorkspaceRequest
+
 export const CreateWorkspaceRequestJson = CreateWorkspaceRequest
+
 export type CreateWorkspace201 = CreateWorkspaceResponse
+
 export const CreateWorkspace201 = CreateWorkspaceResponse
+
 export type CreateWorkspace400 = BadRequestResponse
+
 export const CreateWorkspace400 = BadRequestResponse
+
 export type CreateWorkspace401 = UnauthorizedResponse
+
 export const CreateWorkspace401 = UnauthorizedResponse
+
 export type CreateWorkspace403 = ForbiddenResponse
+
 export const CreateWorkspace403 = ForbiddenResponse
+
 export type CreateWorkspace500 = InternalServerResponse
+
 export const CreateWorkspace500 = InternalServerResponse
+
 export type GetWorkspaceParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetWorkspaceParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetWorkspace200 = GetWorkspaceResponse
+
 export const GetWorkspace200 = GetWorkspaceResponse
+
 export type GetWorkspace401 = UnauthorizedResponse
+
 export const GetWorkspace401 = UnauthorizedResponse
+
 export type GetWorkspace403 = ForbiddenResponse
+
 export const GetWorkspace403 = ForbiddenResponse
+
 export type GetWorkspace404 = NotFoundResponse
+
 export const GetWorkspace404 = NotFoundResponse
+
 export type GetWorkspace500 = InternalServerResponse
+
 export const GetWorkspace500 = InternalServerResponse
+
 export type DeleteWorkspaceParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
   readonly "confirm_default_workspace_deletion"?: boolean
 }
+
 export const DeleteWorkspaceParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -44081,42 +48829,71 @@ export const DeleteWorkspaceParams = Schema.Struct({
     "examples": [false]
   }))
 })
+
 export type DeleteWorkspace200 = DeleteWorkspaceResponse
+
 export const DeleteWorkspace200 = DeleteWorkspaceResponse
+
 export type DeleteWorkspace400 = BadRequestResponse
+
 export const DeleteWorkspace400 = BadRequestResponse
+
 export type DeleteWorkspace401 = UnauthorizedResponse
+
 export const DeleteWorkspace401 = UnauthorizedResponse
+
 export type DeleteWorkspace403 = ForbiddenResponse
+
 export const DeleteWorkspace403 = ForbiddenResponse
+
 export type DeleteWorkspace404 = NotFoundResponse
+
 export const DeleteWorkspace404 = NotFoundResponse
+
 export type DeleteWorkspace500 = InternalServerResponse
+
 export const DeleteWorkspace500 = InternalServerResponse
+
 export type UpdateWorkspaceParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpdateWorkspaceParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpdateWorkspaceRequestJson = UpdateWorkspaceRequest
+
 export const UpdateWorkspaceRequestJson = UpdateWorkspaceRequest
+
 export type UpdateWorkspace200 = UpdateWorkspaceResponse
+
 export const UpdateWorkspace200 = UpdateWorkspaceResponse
+
 export type UpdateWorkspace400 = BadRequestResponse
+
 export const UpdateWorkspace400 = BadRequestResponse
+
 export type UpdateWorkspace401 = UnauthorizedResponse
+
 export const UpdateWorkspace401 = UnauthorizedResponse
+
 export type UpdateWorkspace403 = ForbiddenResponse
+
 export const UpdateWorkspace403 = ForbiddenResponse
+
 export type UpdateWorkspace404 = NotFoundResponse
+
 export const UpdateWorkspace404 = NotFoundResponse
+
 export type UpdateWorkspace500 = InternalServerResponse
+
 export const UpdateWorkspace500 = InternalServerResponse
+
 export type ListWorkspaceMembersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
@@ -44124,6 +48901,7 @@ export type ListWorkspaceMembersParams = {
   readonly "offset"?: number | null
   readonly "limit"?: number
 }
+
 export const ListWorkspaceMembersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
@@ -44142,151 +48920,249 @@ export const ListWorkspaceMembersParams = Schema.Struct({
     )
   )
 })
+
 export type ListWorkspaceMembers200 = ListWorkspaceMembersResponse
+
 export const ListWorkspaceMembers200 = ListWorkspaceMembersResponse
+
 export type ListWorkspaceMembers401 = UnauthorizedResponse
+
 export const ListWorkspaceMembers401 = UnauthorizedResponse
+
 export type ListWorkspaceMembers403 = ForbiddenResponse
+
 export const ListWorkspaceMembers403 = ForbiddenResponse
+
 export type ListWorkspaceMembers404 = NotFoundResponse
+
 export const ListWorkspaceMembers404 = NotFoundResponse
+
 export type ListWorkspaceMembers500 = InternalServerResponse
+
 export const ListWorkspaceMembers500 = InternalServerResponse
+
 export type BulkAddWorkspaceMembersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkAddWorkspaceMembersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkAddWorkspaceMembersRequestJson = BulkAddWorkspaceMembersRequest
+
 export const BulkAddWorkspaceMembersRequestJson = BulkAddWorkspaceMembersRequest
+
 export type BulkAddWorkspaceMembers200 = BulkAddWorkspaceMembersResponse
+
 export const BulkAddWorkspaceMembers200 = BulkAddWorkspaceMembersResponse
+
 export type BulkAddWorkspaceMembers400 = BadRequestResponse
+
 export const BulkAddWorkspaceMembers400 = BadRequestResponse
+
 export type BulkAddWorkspaceMembers401 = UnauthorizedResponse
+
 export const BulkAddWorkspaceMembers401 = UnauthorizedResponse
+
 export type BulkAddWorkspaceMembers403 = ForbiddenResponse
+
 export const BulkAddWorkspaceMembers403 = ForbiddenResponse
+
 export type BulkAddWorkspaceMembers404 = NotFoundResponse
+
 export const BulkAddWorkspaceMembers404 = NotFoundResponse
+
 export type BulkAddWorkspaceMembers500 = InternalServerResponse
+
 export const BulkAddWorkspaceMembers500 = InternalServerResponse
+
 export type BulkRemoveWorkspaceMembersParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const BulkRemoveWorkspaceMembersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type BulkRemoveWorkspaceMembersRequestJson = BulkRemoveWorkspaceMembersRequest
+
 export const BulkRemoveWorkspaceMembersRequestJson = BulkRemoveWorkspaceMembersRequest
+
 export type BulkRemoveWorkspaceMembers200 = BulkRemoveWorkspaceMembersResponse
+
 export const BulkRemoveWorkspaceMembers200 = BulkRemoveWorkspaceMembersResponse
+
 export type BulkRemoveWorkspaceMembers400 = BadRequestResponse
+
 export const BulkRemoveWorkspaceMembers400 = BadRequestResponse
+
 export type BulkRemoveWorkspaceMembers401 = UnauthorizedResponse
+
 export const BulkRemoveWorkspaceMembers401 = UnauthorizedResponse
+
 export type BulkRemoveWorkspaceMembers403 = ForbiddenResponse
+
 export const BulkRemoveWorkspaceMembers403 = ForbiddenResponse
+
 export type BulkRemoveWorkspaceMembers404 = NotFoundResponse
+
 export const BulkRemoveWorkspaceMembers404 = NotFoundResponse
+
 export type BulkRemoveWorkspaceMembers500 = InternalServerResponse
+
 export const BulkRemoveWorkspaceMembers500 = InternalServerResponse
+
 export type ListWorkspaceBudgetsParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const ListWorkspaceBudgetsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type ListWorkspaceBudgets200 = ListWorkspaceBudgetsResponse
+
 export const ListWorkspaceBudgets200 = ListWorkspaceBudgetsResponse
+
 export type ListWorkspaceBudgets401 = UnauthorizedResponse
+
 export const ListWorkspaceBudgets401 = UnauthorizedResponse
+
 export type ListWorkspaceBudgets403 = ForbiddenResponse
+
 export const ListWorkspaceBudgets403 = ForbiddenResponse
+
 export type ListWorkspaceBudgets404 = NotFoundResponse
+
 export const ListWorkspaceBudgets404 = NotFoundResponse
+
 export type ListWorkspaceBudgets500 = InternalServerResponse
+
 export const ListWorkspaceBudgets500 = InternalServerResponse
+
 export type GetWorkspaceBudgetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const GetWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type GetWorkspaceBudget200 = GetWorkspaceBudgetResponse
+
 export const GetWorkspaceBudget200 = GetWorkspaceBudgetResponse
+
 export type GetWorkspaceBudget400 = BadRequestResponse
+
 export const GetWorkspaceBudget400 = BadRequestResponse
+
 export type GetWorkspaceBudget401 = UnauthorizedResponse
+
 export const GetWorkspaceBudget401 = UnauthorizedResponse
+
 export type GetWorkspaceBudget403 = ForbiddenResponse
+
 export const GetWorkspaceBudget403 = ForbiddenResponse
+
 export type GetWorkspaceBudget404 = NotFoundResponse
+
 export const GetWorkspaceBudget404 = NotFoundResponse
+
 export type GetWorkspaceBudget500 = InternalServerResponse
+
 export const GetWorkspaceBudget500 = InternalServerResponse
+
 export type UpsertWorkspaceBudgetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const UpsertWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type UpsertWorkspaceBudgetRequestJson = UpsertWorkspaceBudgetRequest
+
 export const UpsertWorkspaceBudgetRequestJson = UpsertWorkspaceBudgetRequest
+
 export type UpsertWorkspaceBudget200 = UpsertWorkspaceBudgetResponse
+
 export const UpsertWorkspaceBudget200 = UpsertWorkspaceBudgetResponse
+
 export type UpsertWorkspaceBudget400 = BadRequestResponse
+
 export const UpsertWorkspaceBudget400 = BadRequestResponse
+
 export type UpsertWorkspaceBudget401 = UnauthorizedResponse
+
 export const UpsertWorkspaceBudget401 = UnauthorizedResponse
+
 export type UpsertWorkspaceBudget403 = ForbiddenResponse
+
 export const UpsertWorkspaceBudget403 = ForbiddenResponse
+
 export type UpsertWorkspaceBudget404 = NotFoundResponse
+
 export const UpsertWorkspaceBudget404 = NotFoundResponse
+
 export type UpsertWorkspaceBudget500 = InternalServerResponse
+
 export const UpsertWorkspaceBudget500 = InternalServerResponse
+
 export type DeleteWorkspaceBudgetParams = {
   readonly "HTTP-Referer"?: string
   readonly "X-OpenRouter-Title"?: string
   readonly "X-OpenRouter-Categories"?: string
 }
+
 export const DeleteWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
 export type DeleteWorkspaceBudget200 = DeleteWorkspaceBudgetResponse
+
 export const DeleteWorkspaceBudget200 = DeleteWorkspaceBudgetResponse
+
 export type DeleteWorkspaceBudget400 = BadRequestResponse
+
 export const DeleteWorkspaceBudget400 = BadRequestResponse
+
 export type DeleteWorkspaceBudget401 = UnauthorizedResponse
+
 export const DeleteWorkspaceBudget401 = UnauthorizedResponse
+
 export type DeleteWorkspaceBudget403 = ForbiddenResponse
+
 export const DeleteWorkspaceBudget403 = ForbiddenResponse
+
 export type DeleteWorkspaceBudget404 = NotFoundResponse
+
 export const DeleteWorkspaceBudget404 = NotFoundResponse
+
 export type DeleteWorkspaceBudget500 = InternalServerResponse
+
 export const DeleteWorkspaceBudget500 = InternalServerResponse
 
 export interface OperationConfig {
