@@ -1652,7 +1652,8 @@ export const make: (params: {
               }) :
               identity
           )
-        )
+        ),
+        Stream.prepend(preResolvedStreamParts)
       ) as Stream.Stream<
         Response.StreamPart<Tools>,
         AiError.AiError | Schema.SchemaError,

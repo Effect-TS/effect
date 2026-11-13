@@ -3147,6 +3147,63 @@ describe("LanguageModel", () => {
         }
       }))
 
+    it.effect("streamText emits approved and denied results when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const prompt = [true, false].flatMap((approved) => {
+          const id = approved ? "approved" : "denied"
+          return [
+            Prompt.assistantMessage({
+              content: [
+                Prompt.toolCallPart({
+                  id,
+                  name: "ApprovalTool",
+                  params: { action: "delete" },
+                  providerExecuted: false
+                }),
+                Prompt.toolApprovalRequestPart({ approvalId: id, toolCallId: id })
+              ]
+            }),
+            Prompt.toolMessage({
+              content: [Prompt.toolApprovalResponsePart({ approvalId: id, approved, reason: "User declined" })]
+            })
+          ]
+        })
+
+        const parts = yield* LanguageModel.streamText({
+          prompt,
+          toolkit: ApprovalToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({ streamText: [finishPart] }),
+          Effect.provide(ApprovalToolkitLayer)
+        )
+
+        deepStrictEqual(parts.map((part) => part.type), ["tool-result", "tool-result", "finish"])
+        deepStrictEqual(
+          parts.filter((part) => part.type === "tool-result").map((part) => ({
+            id: part.id,
+            result: part.result,
+            encodedResult: part.encodedResult,
+            isFailure: part.isFailure
+          })),
+          [
+            {
+              id: "approved",
+              result: { result: "approved-result" },
+              encodedResult: { result: "approved-result" },
+              isFailure: false
+            },
+            {
+              id: "denied",
+              result: { type: "execution-denied", reason: "User declined" },
+              encodedResult: { type: "execution-denied", reason: "User declined" },
+              isFailure: true
+            }
+          ]
+        )
+      }))
+
     it.effect("streamText emits pre-resolved tool results as stream parts", () =>
       Effect.gen(function*() {
         const toolCallId = "call-emit"
