@@ -37,6 +37,6 @@ export * as VariantSchema from "./VariantSchema.ts"
 
 /**
  * @stability unstable
- * @since 4.1.4
+ * @since 4.1.5
  */
 export * as VersionedSchema from "./VersionedSchema.ts"
