@@ -110,6 +110,12 @@ describe("normalize", () => {
     assert.strictEqual(withType.success[0].kind, "channel")
   })
 
+  it("a message with an invalid timestamp is dropped, not thrown", () => {
+    const base = events("channel-message")[0]
+    assert.deepStrictEqual(normalize({ t: base.t, d: { ...base.d, timestamp: "not a date" } }), [])
+    assert.isUndefined(decodeMessageFields({ ...base.d, timestamp: "not a date" }))
+  })
+
   it("a reaction needs no channel type", () => {
     for (const dispatch of events("reactions")) {
       const result = DiscordChat.normalize(dispatch, context)

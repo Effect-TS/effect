@@ -453,6 +453,67 @@ describe("opener", () => {
   })
 })
 
+describe("an opener the bot can't read", () => {
+  const forbidden = () => Effect.fail(errorResponse(403, { code: 50001, message: "Missing Access" }))
+
+  it.effect("history skips it and starts at the first reply", () => {
+    const placeholder = history.response.find((raw: any) => raw.type === 21)
+    const { referenced_message: _, ...bare } = placeholder
+    const reply = history.response.find((raw: any) => raw.type === 0)
+    const fake = makeFake({ listMessages: () => Effect.succeed([reply, bare]), getMessage: forbidden })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const found = Array.from(yield* Stream.runCollect(discord.history(thread, { direction: "forward" })))
+        assert.deepStrictEqual(found.map((message) => message.id), [reply.id])
+      })
+    )
+  })
+
+  it.effect("opener is None", () => {
+    const fake = makeFake({ getChannel: () => Effect.succeed(threadChannel), getMessage: forbidden })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        assert.isTrue(Option.isNone(yield* discord.opener(thread)))
+        assert.strictEqual(fake.called("getMessage").length, 2)
+      })
+    )
+  })
+
+  it.effect("a forbidden thread still fails history and opener", () => {
+    const fake = makeFake({ listMessages: forbidden, getChannel: forbidden })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        assert.strictEqual(
+          (yield* reason(Stream.runCollect(discord.history(thread, { direction: "forward" })))).tag,
+          "Forbidden"
+        )
+        assert.strictEqual((yield* reason(discord.opener(thread))).tag, "Forbidden")
+      })
+    )
+  })
+})
+
+describe("invalid timestamps", () => {
+  it.effect("a post answer with an invalid timestamp fails, as any unreadable write answer does", () => {
+    const fake = makeFake({ createMessage: () => Effect.succeed({ ...posted, timestamp: "not a date" }) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const result = yield* reason(discord.post(channel, { markdown: "x" }))
+        assert.strictEqual(result.tag, "Unknown")
+        assert.strictEqual(result.detail, "invalid_timestamp")
+      })
+    )
+  })
+})
+
 describe("getThread and getUser", () => {
   it.effect("getThread gives the kind, name and parent", () => {
     const fake = makeFake({
