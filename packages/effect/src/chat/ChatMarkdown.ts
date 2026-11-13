@@ -1108,8 +1108,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   or followed by the note when it does not fit. Any failure of that post
  *   fails the call. Without `unattachedNote` the first failure fails the
  *   call. An `uncertain` failure records the part in `uncertain` and posts no note.
- * - A `TooLarge` that does not name the files fails the call, even for text
- *   that measured as fitting.
+ * - A `TooLarge` without detail `file_refused` fails the call, even with
+ *   `subject: "files"` or text that measured as fitting. Fallback requires
+ *   `denied` plus `file_refused`; `subject` never controls it.
  * - An empty input posts nothing and succeeds with no parts, unless there are
  *   files, which then go out in a message of their own.
  *
