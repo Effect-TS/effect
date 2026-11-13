@@ -883,6 +883,10 @@ import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 
+export type GetUserPathParams = { readonly "id": string }
+
+export const GetUserPathParams = Schema.Struct({ "id": Schema.String })
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
 export const GetUser200 = Schema.Struct({ "id": Schema.String, "name": Schema.String }).annotate({ "description": "User object" })
@@ -947,10 +951,38 @@ export const make = <E, R>(
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = encodeURIComponent
+  const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean,
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(/[!'()*]/g, (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase())
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label": return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string,
   ) => Effect.suspend(() => {
     const fail = (description: string, cause?: unknown) => Effect.fail(
@@ -962,7 +994,7 @@ export const make = <E, R>(
         }),
       }),
     )
-    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+    if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)))) {
       return fail("Path parameters must be non-empty and cannot be dot segments")
     }
     let path: string
@@ -982,7 +1014,7 @@ export const make = <E, R>(
       HttpClientResponse.schemaBodyJson(schema)(response)
   return {
     httpClient,
-    "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(
+    "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam("id", id, "simple", false) + "").pipe(
     Effect.flatMap((request) => request.pipe(
       withResponse(options?.config)(HttpClientResponse.matchStatus({
       "2xx": decodeSuccess(GetUser200),
@@ -996,8 +1028,8 @@ export const make = <E, R>(
 export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
   readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError | SchemaError, R>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError | SchemaError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: (typeof GetUserPathParams.Encoded)["id"], options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError | SchemaError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: (typeof GetUserPathParams.Encoded)["id"], options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError | SchemaError, R>;
   }
 }
 
@@ -1409,6 +1441,8 @@ import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 
+export type GetUserPathParams = { readonly "id": string }
+
 export type GetUser200 = { readonly "id": string, readonly "name": string }
 
 export interface OperationConfig {
@@ -1471,10 +1505,38 @@ export const make = <E, R>(
           )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = encodeURIComponent
+  const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean,
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(/[!'()*]/g, (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase())
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label": return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string,
   ) => Effect.suspend(() => {
     const fail = (description: string, cause?: unknown) => Effect.fail(
@@ -1486,7 +1548,7 @@ export const make = <E, R>(
         }),
       }),
     )
-    if (parameters.some((value) => value === "" || /^(?:\\.|%2e){1,2}$/i.test(value))) {
+    if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\\.|%2e){1,2}$/i.test(value)))) {
       return fail("Path parameters must be non-empty and cannot be dot segments")
     }
     let path: string
@@ -1536,7 +1598,7 @@ export const make = <E, R>(
   }
   return {
     httpClient,
-    "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam(id) + "").pipe(
+    "getUser": (id, options: Parameters<TestClient["getUser"]>[1]) => __makePathRequest(HttpClientRequest.get, [id], () => "/users/" + __encodePathParam("id", id, "simple", false) + "").pipe(
     Effect.flatMap((request) => request.pipe(
       onRequest(options?.config)(["2xx"])
     ))
@@ -1547,8 +1609,8 @@ export const make = <E, R>(
 export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
   readonly httpClient: HttpClient.HttpClient.With<E, R>
   readonly "getUser": {
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError, R>;
-    <Config extends OperationConfig | undefined = undefined>(id: string, options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: GetUserPathParams["id"], options: { readonly config: Config }): Effect.Effect<WithOptionalResponse<GetUser200, Config>, E | HttpClientError.HttpClientError, R>;
+    <Config extends OperationConfig | undefined = undefined>(id: GetUserPathParams["id"], options: { readonly config?: Config | undefined } | undefined): Effect.Effect<WithOptionalResponse<GetUser200, Config | undefined>, E | HttpClientError.HttpClientError, R>;
   }
 }
 
@@ -3694,6 +3756,78 @@ export type EventsServices = Assert<CustomService extends Stream.Services<typeof
       })
     }
 
+    for (const format of ["httpclient", "httpclient-type-only"] as const) {
+      itGeneratedClientsCompile(`types positional path arguments from resolved parameter schemas (${format})`, {
+        openapi: "3.1.0",
+        info: { title: "Path arguments", version: "1.0.0" },
+        components: {
+          schemas: { RoomIds: { type: "array", items: { type: "integer" } } },
+          parameters: {
+            RoomIds: { name: "room-ids", in: "path", required: true, schema: { type: "string" } }
+          },
+          securitySchemes: {}
+        },
+        security: [],
+        tags: [],
+        paths: {
+          "/rooms/{room-ids}/{enabled}/{count}/{GetRoomsPathParams}": {
+            parameters: [
+              { $ref: "#/components/parameters/RoomIds" },
+              { name: "count", in: "path", required: true, schema: { type: "integer" } },
+              { name: "enabled", in: "path", required: true, schema: { type: "boolean" } },
+              { name: "GetRoomsPathParams", in: "path", required: true, schema: { type: "string" } }
+            ],
+            get: {
+              operationId: "getRooms",
+              parameters: [{
+                name: "room-ids",
+                in: "path",
+                required: true,
+                schema: { $ref: "#/components/schemas/RoomIds" }
+              }],
+              responses: {
+                "200": {
+                  description: "OK",
+                  ...(format === "httpclient"
+                    ? { content: { "text/event-stream": { schema: { type: "string" } } } }
+                    : {})
+                },
+                "201": {
+                  description: "Download",
+                  content: { "application/octet-stream": { schema: { type: "string" } } }
+                }
+              },
+              security: [],
+              tags: []
+            }
+          }
+        }
+      } as unknown as OpenAPISpec, {
+        formats: [format],
+        usage: `declare const client: TestClient
+declare const ids: ReadonlyArray<number>
+export const rooms = client.getRooms(ids, true, 3, "id", undefined)
+export const download = client.getRoomsStream(ids, true, 3, "id")
+// @ts-expect-error callers pass arrays, not pre-serialized strings
+client.getRooms("3,4,5", true, 3, "id", undefined)
+// @ts-expect-error array elements follow the referenced schema
+client.getRooms(["3"], true, 3, "id", undefined)
+// @ts-expect-error the boolean argument follows path order, not declaration order
+client.getRooms(ids, 3, true, "id", undefined)
+// @ts-expect-error integer arguments are numbers
+client.getRoomsStream(ids, true, "3", "id")
+${
+          format === "httpclient" ?
+            `export const events = client.getRoomsSse(ids, true, 3, "id")
+// @ts-expect-error streaming arguments use the same schema types
+client.getRoomsSse("3,4,5", true, 3, "id")
+` :
+            ""
+        }
+`
+      })
+    }
+
     it.effect("quotes static path text with and without parameters", () => {
       const prefix = "/files/\"`\\\n/"
       const suffix = "/content\"`"
@@ -3722,7 +3856,7 @@ export type EventsServices = Assert<CustomService extends Stream.Services<typeof
         }
       }, [
         `HttpClientRequest.get(${JSON.stringify(prefix + suffix)})`,
-        `() => ${JSON.stringify(prefix)} + __encodePathParam(id) + ${JSON.stringify(suffix)}`
+        `() => ${JSON.stringify(prefix)} + __encodePathParam("id", id, "simple", false) + ${JSON.stringify(suffix)}`
       ])
     })
 
