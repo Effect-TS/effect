@@ -949,11 +949,15 @@ function decodeComponentChar(highCharCode: number, lowCharCode: number) {
   return undefined
 }
 
+// Adapted from find-my-way PR #455 (6c2a84b10def2e91b427ba55cdf6fc05ba76ae79):
+// retain our scan and decoding contract, but collect %25 positions and rebuild once.
 function safeDecodeURI(path: string) {
   let shouldDecode = false
   let shouldDecodeParam = false
 
   let querystring = ""
+  let percentIndexes: Array<number> | undefined
+  let pathEnd = path.length
 
   for (let i = 1; i < path.length; i++) {
     const charCode = path.charCodeAt(i)
@@ -969,8 +973,8 @@ function safeDecodeURI(path: string) {
         // %25 - encoded % char. We need to encode one more time to prevent double decoding
         if (highCharCode === 50 && lowCharCode === 53) {
           shouldDecode = true
-          path = path.slice(0, i + 1) + "25" + path.slice(i + 1)
-          i += 2
+          percentIndexes ??= []
+          percentIndexes.push(i)
         }
         i += 2
       }
@@ -979,11 +983,26 @@ function safeDecodeURI(path: string) {
       // Thus, we need to split on `;` as well as `?` and `#`.
     } else if (charCode === 63 || charCode === 59 || charCode === 35) {
       querystring = path.slice(i + 1)
-      path = path.slice(0, i)
+      pathEnd = i
       break
     }
   }
-  const decodedPath = shouldDecode ? decodeURI(path) : path
+  // Re-slicing the entire path for each %25 makes percent-heavy paths quadratic.
+  // Keep the common case allocation-free and join the escaped pieces only once.
+  let decodedPath: string
+  if (percentIndexes === undefined) {
+    decodedPath = pathEnd === path.length ? path : path.slice(0, pathEnd)
+  } else {
+    const parts: Array<string> = []
+    let last = 0
+    for (const index of percentIndexes) {
+      parts.push(path.slice(last, index), "%2525")
+      last = index + 3
+    }
+    parts.push(path.slice(last, pathEnd))
+    decodedPath = parts.join("")
+  }
+  if (shouldDecode) decodedPath = decodeURI(decodedPath)
   return { path: decodedPath, querystring, shouldDecodeParam } as const
 }
 
