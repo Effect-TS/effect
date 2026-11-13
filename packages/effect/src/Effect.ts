@@ -15932,6 +15932,7 @@ export const tx = <A, E, R>(
           if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(mutable))
           return restore(awaitPendingTransaction(mutable))
         }),
+        // A body that recovers the txRetry interrupt succeeds with retry still set, so wait here too.
         tap(() => mutable.retry ? restore(awaitPendingTransaction(mutable)) : void_),
         exit
       )

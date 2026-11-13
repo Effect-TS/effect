@@ -4525,7 +4525,6 @@ describe("Effect", () => {
           let runs = 0
           const waiter = yield* Effect.tx(Effect.gen(function*() {
             runs++
-            yield* Effect.yieldNow
             return yield* Effect.exit(TxQueue.take(queue))
           })).pipe(Effect.forkChild({ startImmediately: true }))
 
