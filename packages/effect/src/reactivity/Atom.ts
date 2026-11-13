@@ -2340,16 +2340,18 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
         KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
       ).pipe(Effect.tap(() => Effect.sync(() => get.set(resultAtom, value))))
   )
+  const readAtom = options.runtime.atom(
+    KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
+  )
   const resultAtom = writable(
-    options.runtime.atom(
-      KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
-    ).read,
+    (get) => get(readAtom),
     (ctx, value: S["Type"]) => ctx.setSelf(AsyncResult.success(Option.some(value)))
   )
   return writable(
     options.mode === "async" ?
       (get) => {
         get.mount(setAtom)
+        get.mount(resultAtom)
         const mapper = AsyncResult.map<Option.Option<S["Type"]>, S["Type"]>(
           Option.getOrElse(() => {
             const value = options.defaultValue()
@@ -2357,20 +2359,13 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             return value
           })
         )
-        get.subscribe(resultAtom, (result) => {
-          const value = mapper(result)
-          const current = get.self<AsyncResult.AsyncResult<S["Type"]>>()
-          if (
-            AsyncResult.isSuccess(value) && Option.isSome(current) && AsyncResult.isSuccess(current.value) &&
-            value.waiting === current.value.waiting && Object.is(value.value, current.value.value)
-          ) return
-          get.setSelf(value)
-        })
+        get.subscribe(readAtom, (result) => get.setSelf(mapper(result)))
         return mapper(get.once(resultAtom))
       } :
       (get) => {
         get.mount(setAtom)
-        get.subscribe(resultAtom, (result) => {
+        get.mount(resultAtom)
+        const update = (result: AsyncResult.AsyncResult<Option.Option<S["Type"]>, unknown>) => {
           if (!AsyncResult.isSuccess(result)) return
           if (Option.isSome(result.value)) {
             get.setSelf(result.value.value)
@@ -2379,14 +2374,15 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             get.setSelf(value)
             get.set(setAtom, value)
           }
-        }, { immediate: true })
+        }
+        get.subscribe(readAtom, update)
+        update(get.once(resultAtom))
         return Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
       },
-    (ctx, value: S["Type"]) =>
-      batch(() => {
-        ctx.set(setAtom, value as any)
-        ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
-      })
+    (ctx, value: S["Type"]) => {
+      ctx.set(setAtom, value as any)
+      ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
+    }
   ) as any
 }
 

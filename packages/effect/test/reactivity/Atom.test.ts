@@ -3636,6 +3636,37 @@ describe("Atom", { concurrent: false }, () => {
         r.dispose()
       })
 
+      it(`${mode} mode preserves reentrant writes while persistence is pending`, async () => {
+        const runtime = Atom.runtime(
+          Layer.effect(
+            KeyValueStore.KeyValueStore,
+            Effect.map(KeyValueStore.KeyValueStore, (store) => ({
+              ...store,
+              set: (key, value) =>
+                value === JSON.stringify("blue")
+                  ? store.set(key, value).pipe(Effect.delay(10))
+                  : store.set(key, value)
+            }))
+          ).pipe(Layer.provide(KeyValueStore.layerMemory))
+        )
+        const atom = Atom.kvs({ mode, runtime, key: "theme", schema: Schema.String, defaultValue: () => "light" })
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        const values: Array<unknown> = []
+        r.subscribe(atom, (value) => {
+          values.push(read(value))
+          if (values.length === 1) r.set(atom, "blue")
+        })
+        r.set(atom, "dark")
+        assert.strictEqual(read(r.get(atom)), "blue")
+        assert.deepStrictEqual(values, ["dark", "blue"])
+        await vitest.advanceTimersByTimeAsync(20)
+        assert.deepStrictEqual(values, ["dark", "blue"])
+        r.refresh(atom)
+        assert.strictEqual(read(r.get(atom)), "blue")
+        r.dispose()
+      })
+
       it(`${mode} mode recovers the last persisted value after a rejected write`, () => {
         const atom = Atom.kvs({
           mode,
