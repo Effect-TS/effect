@@ -4016,8 +4016,7 @@ export const withoutLocale = client.getGreeting({ params: {} })
       security: [],
       tags: []
     }, {
-      exactOptionalPropertyTypes: false,
-      formats: ["httpclient"]
+      exactOptionalPropertyTypes: false
     })
 
     itGeneratedClientsCompile(
