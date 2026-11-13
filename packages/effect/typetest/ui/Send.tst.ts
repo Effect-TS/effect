@@ -209,8 +209,12 @@ describe("$.send", () => {
       expect(slot.component).type.toBeAssignableFrom(Todos)
       expect(slot.component).type.toBeAssignableFrom(Bare)
       expect(slot.ref).type.toBeAssignableFrom(Draft)
-      // An erased ref still names a slot: it sends nothing.
-      expect(h.child(Editor, { ref: anyFeature.ref("M") })).type.not.toRaiseError()
+      // An erased ref names no slot: a typed ref stored as one would slip past the receives check.
+      const stored: Component.Ref.Any = Draft
+      expect(h.child).type.not.toBeCallableWith(Plain, { ref: stored })
+      expect(h.child).type.not.toBeCallableWith(Editor, { ref: stored })
+      expect(h.child).type.not.toBeCallableWith(Todos, { ref: stored, fallback: () => h.el("p") })
+      expect(h.child).type.not.toBeCallableWith(Editor, { ref: anyFeature.ref("M") })
       expect(Story.fallback(h.child(Editor, { ref: Draft }), anyFeature.ref("M"), AsyncResult.initial())).type
         .not.toRaiseError()
       return h.el("p")
@@ -287,6 +291,35 @@ describe("h.child with a ref", () => {
       // Rcv given explicitly is checked against the component.
       expect(h.child<{}, never, never, Received>).type.not.toBeCallableWith(Plain, { ref: Draft })
       expect(h.child<{}, never, never, Received>(Editor, { ref: Draft })).type.not.toRaiseError()
+      // Rcv given as nothing, or the ref's receives given too: still checked.
+      expect(h.child<{}, never, never, never>).type.not.toBeCallableWith(Plain, { ref: Draft })
+      expect(h.child<{}, never, never, never, Received>).type.not.toBeCallableWith(Plain, { ref: Draft })
+      expect(h.child<{}, never, never, never, unknown>).type.not.toBeCallableWith(Plain, { ref: Draft })
+      expect(h.child<{}, never, never, never, Component.Ref.Any>).type.not.toBeCallableWith(Plain, { ref: Draft })
+      expect(h.child<{}, never, never, Received, Received>(Editor, { ref: Draft })).type.not.toRaiseError()
+      expect(h.child<{}, never, never, Received, Extract<Received, { readonly _tag: "Clear" }>>(Editor, { ref: Rows }))
+        .type.not.toRaiseError()
+      return h.el("p")
+    })
+  })
+
+  it("checks a feature slot's ref with explicit type arguments", () => {
+    class Bare extends Feature.Service<Bare>()("Bare", { props: Schema.Struct({}) }) {}
+    type Clear = typeof TodosMessage.Type
+    ParentDef.view((_, h) => {
+      const fallback = () => h.el("p")
+      expect(h.child<Bare, {}, never>).type.not.toBeCallableWith(Bare, { ref: Draft, fallback })
+      expect(h.child<Bare, {}, never, never>).type.not.toBeCallableWith(Bare, { ref: Draft, fallback })
+      expect(h.child<Bare, {}, never, never, Received>).type.not.toBeCallableWith(Bare, { ref: Draft, fallback })
+      expect(h.child<Bare, {}, never, never, Component.Ref.Any>).type.not.toBeCallableWith(Bare, {
+        ref: Draft,
+        fallback
+      })
+      expect(h.child<Todos, {}, never>).type.not.toBeCallableWith(Todos, { ref: Todos.ref("M"), fallback })
+      expect(h.child<Todos, {}, never, Clear>(Todos, { ref: Todos.ref("M"), fallback })).type.not.toRaiseError()
+      expect(h.child<Todos, {}, never, Clear, Clear>(Todos, { ref: Rows, fallback })).type.not.toRaiseError()
+      expect(h.child<Todos, {}, never, Clear>).type.not.toBeCallableWith(Todos, { ref: Draft, fallback })
+      expect(h.child<Bare, {}, never>(Bare, { key: "b", fallback })).type.not.toRaiseError()
       return h.el("p")
     })
   })

@@ -204,7 +204,9 @@ export declare namespace Child {
    * is the slot's key, and the parent can `$.send` to the slot. `SlotRef`
    * is the ref the slot takes; `h.child` checks what it receives against
    * what the component receives, so a ref made from a component also fits a
-   * provided copy of it or a feature implementation.
+   * provided copy of it or a feature implementation. An erased
+   * `Component.Ref.Any` names no slot: every typed ref fits it, so a slot
+   * that took it would take a ref the component doesn't receive.
    *
    * @category models
    * @since 4.1.5
@@ -232,8 +234,8 @@ export declare namespace Child {
   /**
    * Passes when every message a ref receives, `RefRcv`, is one the
    * component receives, `Rcv`, and otherwise names the ones it doesn't. A
-   * ref whose `RefRcv` is `unknown` takes no message, so it fits any slot,
-   * as a `Component.Ref.Any` does.
+   * ref whose `RefRcv` is `unknown`, such as the ref of a feature whose
+   * `receives` is `Schema.Unknown`, takes no message, so it fits any slot.
    *
    * @category models
    * @since 4.1.5
@@ -824,7 +826,7 @@ export interface Helper<Msg, Props> {
   child<Props, Events, RC, Rcv, RefRcv = Child.Receives<Rcv>, RF = never>(
     component: Component.Mountable<Props, Events, RC, Rcv>,
     options:
-      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv> | Component.Ref.Any>
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv>>
       & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
       & {
         /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
@@ -847,7 +849,7 @@ export interface Helper<Msg, Props> {
   child<Self, Props, Events, Rcv = never, RefRcv = Child.Receives<Rcv>, RF = never>(
     service: Feature.Service<Self, Props, Events, Rcv>,
     options:
-      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv> | Component.Ref.Any>
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv>>
       & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
       & {
         /** Required: the service may be building (`Initial`) or failed (`Failure`). */
@@ -894,7 +896,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     component: Component.Any | Feature.Any,
     options: {
       readonly key?: string | undefined
-      // Any ref: `Ref` is invariant, and `never` is the one `any` doesn't stand in for.
+      // Every ref fits `Ref.Any`; the overloads have checked what it receives.
       readonly ref?: Component.Ref.Any | undefined
       readonly props?: unknown
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
