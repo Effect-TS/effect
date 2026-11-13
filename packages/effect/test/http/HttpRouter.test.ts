@@ -133,6 +133,15 @@ describe("HttpRouter", () => {
       }))
   }
 
+  it.effect("removes a matched prefix containing ; when useSemicolonDelimiter is false", () =>
+    Effect.gen(function*() {
+      const routes = HttpRouter.use((router) => router.prefixed("/tenants/:tenant").add("GET", "/users", echoUrl))
+
+      const body = yield* fetchText(routes, "/tenants/acme;v=1/users?x=1", { useSemicolonDelimiter: false })
+
+      assert.strictEqual(body, "/users?x=1")
+    }))
+
   it.effect("nests a prefixed sub-router beneath a prefixed parent router", () =>
     Effect.gen(function*() {
       const routes = HttpRouter.use((router) => router.prefixed("/app").add("GET", "/users", echoUrl)).pipe(

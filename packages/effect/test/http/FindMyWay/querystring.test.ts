@@ -59,3 +59,65 @@ it("decodes percent-heavy parameters exactly once without changing query boundar
   assert.deepStrictEqual(router.find("GET", "/test/" + encoded)?.params, { id: decoded })
   assert.strictEqual(router.find("GET", "/test/" + encoded + "%zz"), undefined)
 })
+
+it("keeps ; in the path when useSemicolonDelimiter is false", () => {
+  const router = Router.make<string>({ useSemicolonDelimiter: false })
+  router.on("GET", "/test", "static")
+  router.on("GET", "/test/:id", "param")
+
+  assert.isUndefined(router.find("GET", "/test;jsessionid=123456"))
+  assert.deepStrictEqual(router.find("GET", "/test/a;v=1?x=1;y=2"), {
+    handler: "param",
+    params: { id: "a;v=1" },
+    searchParams: { x: "1;y=2" }
+  })
+})
+
+const findLiteral = (route: Router.PathInput, url: string) => {
+  const router = Router.make<true>({ decodeStaticPath: false, maxParamLength: 8 })
+  router.on("GET", route, true)
+  return router.find("GET", url)
+}
+
+it("matches static segments literally when decodeStaticPath is false", () => {
+  for (
+    const [route, url] of [
+      ["/internal/signing/submit", "/internal/%73igning/submit"],
+      ["/internal/keys/:id", "/internal/%6Beys/abc"],
+      ["/internal/:a/keys/:b", "/internal/x/%6Beys/y"],
+      ["/files/*", "/%66iles/a"],
+      ["/caf%C3%A9", "/caf%25C3%25A9"]
+    ] as const
+  ) {
+    assert.isUndefined(findLiteral(route, url), url)
+  }
+  assert.isDefined(findLiteral("/internal/signing/submit", "/internal/signing/submit"))
+  assert.isDefined(findLiteral("/caf%C3%A9", "/caf%C3%A9"))
+})
+
+it("decodes parameters once when decodeStaticPath is false", () => {
+  assert.deepStrictEqual(findLiteral("/keys/:id", "/keys/a%2Fb%20caf%C3%A9")?.params, { id: "a/b café" })
+  assert.deepStrictEqual(findLiteral("/keys/:id", "/keys/%252f")?.params, { id: "%2f" })
+  assert.deepStrictEqual(findLiteral("/a/:a/b/:b", "/a/x%20y/b/c%2Fd")?.params, { a: "x y", b: "c/d" })
+  assert.deepStrictEqual(findLiteral("/files/*", "/files/a%2Fb/c%20d")?.params, { "*": "a/b/c d" })
+  assert.isUndefined(findLiteral("/keys/:id", "/keys/%zz"))
+  assert.isUndefined(findLiteral("/slugs/:slug([^.]+)", "/slugs/a%2Eb"))
+})
+
+it("strictConfig only matches the registered path", () => {
+  const router = Router.make<true>(Router.strictConfig)
+  router.on("GET", "/internal/signing/submit", true)
+
+  assert.isDefined(router.find("GET", "/internal/signing/submit?x=1"))
+  for (
+    const url of [
+      "/internal/SIGNING/submit",
+      "/internal//signing/submit",
+      "/internal/signing/submit/",
+      "/internal/%73igning/submit",
+      "/internal/signing/submit;v=1"
+    ]
+  ) {
+    assert.isUndefined(router.find("GET", url), url)
+  }
+})
