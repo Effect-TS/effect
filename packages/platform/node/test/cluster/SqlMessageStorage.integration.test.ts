@@ -631,17 +631,31 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
-      it.effect("clearReplies requeues when the expected reply is current", () =>
+      it.effect("clearReplies requeues the request without replaying consumed interrupts", () =>
         Effect.gen(function*() {
           yield* truncate
           const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
           const request = yield* makeRequest()
           const reply = yield* makeReply(request)
+          const interrupt = () =>
+            Message.OutgoingEnvelope.interrupt({
+              id: snowflake.nextUnsafe(),
+              requestId: request.envelope.requestId,
+              address: request.envelope.address
+            })
           yield* storage.saveRequest(request)
+          yield* storage.saveEnvelope(interrupt())
           yield* storage.saveReply(reply)
+          // An interrupt received after completion belongs to the next execution.
+          const pending = interrupt()
+          yield* storage.saveEnvelope(pending)
           yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
-          expect(yield* storage.repliesFor([request])).toHaveLength(0)
-          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+          // A duplicate reset must not remove that pending interrupt either.
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
+          assert.deepStrictEqual(yield* storage.repliesFor([request]), [])
+          const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+          assert.deepStrictEqual(messages.map((message) => message.envelope), [request.envelope, pending.envelope])
         }))
 
       it.effect("clearReplies with a stale expected reply preserves a newer completion and processed state", () =>
