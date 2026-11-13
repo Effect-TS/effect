@@ -1,4 +1,5 @@
 import { Context, Layer, Schema } from "effect"
+import { AsyncResult } from "effect/reactivity"
 import { Component, Feature, type View } from "effect/ui"
 import { Story, TestHost } from "effect/ui/testing"
 import { describe, expect, it } from "tstyche"
@@ -163,7 +164,8 @@ describe("$.send", () => {
     ParentDef.view((_, h) => {
       const target = h.child(Todos, { ref: Todos.ref("Main"), fallback: () => h.el("p") }).component
       if (Feature.isService(target)) {
-        expect(target.ref("Main")).type.toBe<Component.Ref<unknown>>()
+        expect(target.ref("Main")).type.toBe<Component.Ref.Any>()
+        expect(target.ref("Main")).type.not.toBeAssignableTo<Component.Ref<unknown>>()
         expect(target.ref("Main")).type.not.toBeAssignableTo<Claimed>()
         expect(target.ref("Main").at(1)).type.not.toBeAssignableTo<Claimed>()
       }
@@ -187,6 +189,38 @@ describe("$.send", () => {
     expect(Draft).type.not.toBeAssignableTo<Claimed>()
     expect(Rows.at(1)).type.toBeAssignableTo<Claimed>()
     expect(Todos.ref("Main").at(1)).type.toBeAssignableTo<Claimed>()
+  })
+
+  it("stores and inspects features, components and refs in their erased forms", () => {
+    class Panel extends Feature.Service<Panel>()("Panel", {
+      props: Schema.Struct({}),
+      events: Schema.TaggedUnion({ Changed: {} })
+    }) {}
+    // Every feature fits `Feature.Any`, whatever it receives, and every ref fits `Ref.Any`.
+    class Bare extends Feature.Service<Bare>()("Bare", { props: Schema.Struct({}) }) {}
+    expect([Panel, Todos, Bare]).type.toBeAssignableTo<ReadonlyArray<Feature.Any>>()
+    expect([Editor, Plain, ErasedPlain]).type.toBeAssignableTo<ReadonlyArray<Component.Any>>()
+    expect([Draft, Rows.at(1), Plain.ref("P"), Todos.ref("Main"), anyFeature.ref("M")]).type.toBeAssignableTo<
+      ReadonlyArray<Component.Ref.Any>
+    >()
+    ParentDef.view((_, h) => {
+      const slot = h.child(Panel, { key: "p", fallback: () => h.el("p") })
+      expect(slot.component).type.toBeAssignableFrom(Panel)
+      expect(slot.component).type.toBeAssignableFrom(Todos)
+      expect(slot.component).type.toBeAssignableFrom(Bare)
+      expect(slot.ref).type.toBeAssignableFrom(Draft)
+      // An erased ref still names a slot: it sends nothing.
+      expect(h.child(Editor, { ref: anyFeature.ref("M") })).type.not.toRaiseError()
+      expect(Story.fallback(h.child(Editor, { ref: Draft }), anyFeature.ref("M"), AsyncResult.initial())).type
+        .not.toRaiseError()
+      return h.el("p")
+    })
+    ParentDef.update((model, _msg, $) => {
+      expect($.send).type.not.toBeCallableWith(anyFeature.ref("M"), { _tag: "Clear" })
+      expect($.send).type.not.toBeCallableWith(anyFeature.ref("M").at(1), { _tag: "Clear" })
+      return model
+    })
+    expect(Story.start(Editor, {}).childEmit(anyFeature.ref("M"), {})).type.not.toRaiseError()
   })
 
   it("isn't available in init", () => {
@@ -326,6 +360,28 @@ describe("Feature receives", () => {
   it("toLayer rejects an erased component", () => {
     expect(Todos.toLayer).type.not.toBeCallableWith(Story.start(Plain, {}).current.component)
     expect(Todos.toLayer).type.not.toBeCallableWith(ErasedPlain)
+  })
+
+  it("can't send to or implement a feature whose receives are unknown", () => {
+    class Open extends Feature.Service<Open>()("Open", { props: Schema.Struct({}), receives: Schema.Unknown }) {}
+    expect(Open.toLayer).type.not.toBeCallableWith(Editor)
+    expect(Open.toLayer).type.not.toBeCallableWith(Plain)
+    ParentDef.update((model, _msg, $) => {
+      expect($.send).type.not.toBeCallableWith(Open.ref("O"), { _tag: "Clear" })
+      expect($.send).type.not.toBeCallableWith(Open.ref("O").at(1), { _tag: "Clear" })
+      return model
+    })
+  })
+
+  it("treats receives of any as erased: nothing to send, nothing to implement", () => {
+    class Erased extends Feature.Service<Erased>()("Erased", { props: Schema.Struct({}), receives: Schema.Any }) {}
+    expect(Erased.ref("E")).type.toBe<Component.Ref.Any>()
+    expect(Erased.toLayer(Plain)).type.toBe<Layer.Layer<Erased, never, never>>()
+    ParentDef.update((model, _msg, $) => {
+      expect($.send).type.not.toBeCallableWith(Erased.ref("E"), { _tag: "Clear" })
+      expect($.send).type.not.toBeCallableWith(Erased.ref("E").at(1), { _tag: "Clear" })
+      return model
+    })
   })
 })
 

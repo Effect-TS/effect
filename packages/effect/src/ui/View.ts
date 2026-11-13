@@ -174,7 +174,7 @@ export interface Child<out Msg, out R = never> {
   /** The slot's key: the ref's key for a slot rendered with a ref. */
   readonly key: string
   /** The ref the parent sends to this slot with, if it was rendered with one. */
-  readonly ref: Component.Ref<unknown> | undefined
+  readonly ref: Component.Ref.Any | undefined
   readonly props: unknown
   readonly onEmit: (events: any) => Msg | undefined
   /** What the slot shows while its child can't be shown. Required for a feature child. */
@@ -201,15 +201,15 @@ export declare namespace Child {
    * **Details**
    *
    * A slot takes exactly one of `key` and `ref`. With a ref, the ref's key
-   * is the slot's key, and the parent can `$.send` to the slot. `Rcv` is
-   * what the ref receives; `h.child` checks it against what the component
-   * receives, so a ref made from a component also fits a provided copy of it
-   * or a feature implementation.
+   * is the slot's key, and the parent can `$.send` to the slot. `SlotRef`
+   * is the ref the slot takes; `h.child` checks what it receives against
+   * what the component receives, so a ref made from a component also fits a
+   * provided copy of it or a feature implementation.
    *
    * @category models
    * @since 4.1.5
    */
-  export type Options<Props, Events, Msg, Rcv = never> =
+  export type Options<Props, Events, Msg, SlotRef = Component.Ref<never>> =
     & (
       | {
         readonly key: string
@@ -217,7 +217,7 @@ export declare namespace Child {
       }
       | {
         /** Names the slot, so the parent can send it messages. Its key is the slot's key. */
-        readonly ref: Component.Ref<Rcv>
+        readonly ref: SlotRef
         readonly key?: undefined
       }
     )
@@ -231,9 +231,9 @@ export declare namespace Child {
 
   /**
    * Passes when every message a ref receives, `RefRcv`, is one the
-   * component receives, `Rcv`, and otherwise names the ones it doesn't. An
-   * erased ref, whose `RefRcv` is `unknown`, takes no message, so it fits
-   * any slot.
+   * component receives, `Rcv`, and otherwise names the ones it doesn't. A
+   * ref whose `RefRcv` is `unknown` takes no message, so it fits any slot,
+   * as a `Component.Ref.Any` does.
    *
    * @category models
    * @since 4.1.5
@@ -824,7 +824,7 @@ export interface Helper<Msg, Props> {
   child<Props, Events, RC, Rcv, RefRcv = Child.Receives<Rcv>, RF = never>(
     component: Component.Mountable<Props, Events, RC, Rcv>,
     options:
-      & Child.Options<Props, Events, Msg, RefRcv>
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv> | Component.Ref.Any>
       & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
       & {
         /** Shown if the child fails, until its key changes. Without it, the slot is blank. */
@@ -847,7 +847,7 @@ export interface Helper<Msg, Props> {
   child<Self, Props, Events, Rcv = never, RefRcv = Child.Receives<Rcv>, RF = never>(
     service: Feature.Service<Self, Props, Events, Rcv>,
     options:
-      & Child.Options<Props, Events, Msg, RefRcv>
+      & Child.Options<Props, Events, Msg, Component.Ref<RefRcv> | Component.Ref.Any>
       & Child.RefFits<NoInfer<RefRcv>, NoInfer<Child.Receives<Rcv>>>
       & {
         /** Required: the service may be building (`Initial`) or failed (`Failure`). */
@@ -895,7 +895,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
     options: {
       readonly key?: string | undefined
       // Any ref: `Ref` is invariant, and `never` is the one `any` doesn't stand in for.
-      readonly ref?: Component.Ref<any> | Component.Ref<never> | undefined
+      readonly ref?: Component.Ref.Any | undefined
       readonly props?: unknown
       readonly onEmit?: ((events: any) => Msg | undefined) | undefined
       readonly fallback?: ((result: any) => Content<Msg, any>) | undefined
@@ -910,8 +910,7 @@ class HelperImpl<Msg, Props> implements Helper<Msg, Props> {
       _tag: "Child",
       component,
       key: options.ref !== undefined ? options.ref.key : options.key!,
-      // Erased: the slot's ref takes no message.
-      ref: options.ref as Component.Ref<unknown> | undefined,
+      ref: options.ref,
       props: options.props ?? {},
       onEmit: options.onEmit ?? ignore,
       fallback: options.fallback,

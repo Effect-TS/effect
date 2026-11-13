@@ -364,13 +364,13 @@ export interface Steps<C extends AnyComponent> extends Pipeable {
    * Sends the message the parent's `onEmit` maps `events` from the child with
    * `key` to, if any. A ref finds the slot rendered with it.
    */
-  childEmit<Rcv>(key: string | Component.Ref<Rcv>, events: unknown): this
+  childEmit(key: string | Component.Ref.Any, events: unknown): this
   /**
    * Sends the message the parent's `onFailure` maps a failure of the child with
    * `key` to, if any. The failure is passed as an `AsyncResult.Failure`. A
    * ref finds the slot rendered with it.
    */
-  childFailure<Rcv>(key: string | Component.Ref<Rcv>, cause: Cause.Cause<unknown>): this
+  childFailure(key: string | Component.Ref.Any, cause: Cause.Cause<unknown>): this
 
   /**
    * Resolves the oldest running Command matching `target` with the result it
@@ -1374,10 +1374,10 @@ class StepsImpl implements Steps<AnyComponent> {
     const { prevented, story } = fireAt(this.current, locator, event, payload, "fire")
     return this.step(story, prevented)
   }
-  childEmit<Rcv>(key: string | Component.Ref<Rcv>, events: unknown): this {
+  childEmit(key: string | Component.Ref.Any, events: unknown): this {
     return this.step(dispatch(this.current, findChild(this.current.view(), key, "childEmit").onEmit(events)))
   }
-  childFailure<Rcv>(key: string | Component.Ref<Rcv>, cause: Cause.Cause<unknown>): this {
+  childFailure(key: string | Component.Ref.Any, cause: Cause.Cause<unknown>): this {
     const child = findChild(this.current.view(), key, "childFailure")
     return this.step(dispatch(this.current, child.onFailure?.(AsyncResult.failure(cause))))
   }
@@ -1596,7 +1596,7 @@ export const children = <Msg>(
 
 const findChild = <Msg>(
   view: View.Node<Msg, any>,
-  key: string | { readonly key: string },
+  key: string | Component.Ref.Any,
   step: string
 ): View.Child<Msg, any> => {
   const child = children(view).find((child) =>
@@ -1625,9 +1625,9 @@ const findChild = <Msg>(
  * @category queries
  * @since 4.1.5
  */
-export const fallback = <Msg, Rcv>(
+export const fallback = <Msg>(
   view: View.Node<Msg, any>,
-  key: string | Component.Ref<Rcv>,
+  key: string | Component.Ref.Any,
   result: AsyncResult.Initial<never, unknown> | AsyncResult.Failure<never, unknown>
 ): View.Node<Msg, any> | undefined => {
   const slot = findChild(view, key, "fallback")

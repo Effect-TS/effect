@@ -104,28 +104,35 @@ export interface Service<in out Self, in out Props, in out Events, in out Receiv
   /** The Schema of the messages a parent may send. `Schema.Never` when it declares none. */
   readonly receives: Schema.Codec<Receives, any>
   /** A ref for this feature's slots, so a parent can send them messages. */
-  readonly ref: (name: string) => Component.Ref<Component.RefReceives<Receives>>
+  readonly ref: (name: string) => Component.Ref.Of<Receives>
   /**
    * Provides this feature with `component`. The Layer requires whatever the
    * component requires, and closes it where the Layer is built. The
    * component receives every message the feature receives, and may receive
    * more.
    */
-  readonly toLayer: <R, Rcv = never>(
+  // A method, so `Feature.Any` takes every feature, including one without
+  // events, whose `Events` is `never`: `any` doesn't stand in for `never`
+  // in a strictly checked parameter.
+  toLayer<R, Rcv = never>(
     component: Component.Mountable<Props, Events, R, Rcv> & ReceivesAll<Receives, Rcv>
-  ) => Layer.Layer<Self, never, R>
+  ): Layer.Layer<Self, never, R>
 }
 
 /**
  * Passes when an implementation receives every message its feature does, and
- * otherwise names the messages it misses in the compiler error. An erased
- * implementation, whose receives are `any`, receives nothing.
+ * otherwise names the messages it misses in the compiler error. `any` is
+ * erased and receives nothing: an implementation whose receives are `any`
+ * fits only a feature that receives nothing, and a feature whose receives
+ * are `any`, such as `Feature.Any`, asks nothing of its implementation, as
+ * its ref takes no message.
  *
  * @stability experimental
  * @category utility types
  * @since 4.1.5
  */
-export type ReceivesAll<Receives, Rcv> = 0 extends 1 & Rcv ? ReceivesAll<Receives, never>
+export type ReceivesAll<Receives, Rcv> = 0 extends 1 & Receives ? unknown
+  : 0 extends 1 & Rcv ? ReceivesAll<Receives, never>
   : [Receives] extends [Rcv] ? unknown
   : { readonly "This component doesn't receive every message the feature does. Missing": Exclude<Receives, Rcv> }
 
