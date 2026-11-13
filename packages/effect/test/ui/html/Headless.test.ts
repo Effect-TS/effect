@@ -3,7 +3,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Schema } from "effect"
 import { Component } from "effect/ui"
 import { BrowserHost, Html, HtmlServer } from "effect/ui/html"
-import { HtmlQuery } from "effect/ui/html/testing"
+import { HtmlQuery, ssr } from "effect/ui/html/testing"
+import { TestHost } from "effect/ui/testing"
 import { Dialog, type Item, Menu } from "./fixtures/headless.ts"
 import { popoverStub } from "./fixtures/popover.ts"
 
@@ -202,7 +203,161 @@ const Page = Component.define({
     )
 })
 
+// ---------------------------------------------------------------------------
+// A key handler on a container part, and one on the part that has focus
+// ---------------------------------------------------------------------------
+
+const Keys = Component.define({
+  name: "Keys",
+  model: Schema.Array(Schema.String),
+  message: Schema.String,
+  elements: Html
+}).make({
+  init: () => [],
+  update: (seen, message) => [...seen, message],
+  parts: (seen, p) => ({
+    seen,
+    container: p.part("div", (b) => b.onKeyDown(({ key }) => "container " + key)),
+    focused: p.part("input", (b) => b.onKeyDown(({ key }) => "focused " + key))
+  })
+})
+
+const KeysApp = Component.define({
+  name: "KeysApp",
+  model: Schema.Array(Schema.String),
+  message: Schema.String,
+  elements: Html
+}).make({
+  init: () => [],
+  update: (seen, message) => [...seen, message],
+  view: (seen, h) =>
+    h.child(Keys, {
+      key: "keys",
+      view: (k) =>
+        k.container(h.div).children(
+          h.input.attr("aria-label", "Bare"),
+          // A handler of the consumer's that sends nothing still takes the event from the container.
+          h.input.attr("aria-label", "Shadowing").onKeyDown(() => undefined),
+          k.focused(h.input.attr("aria-label", "Composed")).onKeyDown(({ key }) => "consumer " + key),
+          h.output(k.seen.join(", ") + " | " + seen.join(", "))
+        )
+    })
+})
+
+// ---------------------------------------------------------------------------
+// A Dialog on its own
+// ---------------------------------------------------------------------------
+
+const Confirm = Component.define({
+  name: "Confirm",
+  model: Schema.Number,
+  message: Schema.Literal("closed"),
+  elements: Html
+}).make({
+  init: () => 0,
+  update: (closed) => closed + 1,
+  view: (closed, h) =>
+    h.child(Dialog, {
+      key: "confirm",
+      props: { label: "Confirm" },
+      onEmit: () => "closed" as const,
+      view: (d) =>
+        h.div(
+          d.trigger(h.button).children("Open"),
+          d.popup(h.dialog).children(d.title(h.h2).children("Sure?")),
+          h.output(String(closed))
+        )
+    })
+})
+
 describe("headless components on BrowserHost", { concurrent: false }, () => {
+  it.effect("an inner handler takes a key from a container part, and a part on the focused element composes", () =>
+    Effect.gen(function*() {
+      const app = yield* container
+      yield* BrowserHost.mountEffect(KeysApp, {}, app)
+      yield* tick
+      const press = (label: string, key: string) =>
+        Effect.andThen(
+          Effect.sync(() =>
+            HtmlQuery.getByRole(app, "textbox", { name: label }).dispatchEvent(
+              new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
+            )
+          ),
+          tick
+        )
+      const output = () => app.querySelector("output")!.textContent
+      yield* press("Bare", "a")
+      assert.strictEqual(output(), "container a | ")
+      yield* press("Shadowing", "b")
+      assert.strictEqual(output(), "container a | ")
+      yield* press("Composed", "c")
+      assert.strictEqual(output(), "container a, focused c | consumer c")
+    }).pipe(Effect.scoped))
+
+  it.effect("the Dialog opens as a modal, and cancelling it closes it and tells the consumer", () =>
+    Effect.gen(function*() {
+      const app = yield* container
+      const root = yield* BrowserHost.mountEffect(Confirm, {}, app)
+      yield* tick
+      const dialog = app.querySelector("dialog")!
+      assert.strictEqual(dialog.getAttribute("aria-labelledby"), app.querySelector("h2")!.id)
+      HtmlQuery.click(app.querySelector("button")!)
+      yield* tick
+      assert.isTrue(dialog.open)
+      dialog.dispatchEvent(new Event("cancel", { cancelable: true }))
+      yield* tick
+      assert.isFalse(dialog.open)
+      assert.strictEqual(root.model(), 1)
+    }).pipe(Effect.scoped))
+
+  it.effect("ssr() adopts a headless child, and defers one whose closure threw on the server", () =>
+    Effect.gen(function*() {
+      // The closure throws once: on the server, which renders before the client mounts.
+      flaky.throws = true
+      const failing = Component.define({ name: "Shell", model: Schema.Null, message: Schema.Never, elements: Html })
+        .make({
+          init: () => null,
+          update: (model) => model,
+          view: (_, h) =>
+            h.main(
+              h.child(Menu, {
+                key: "ok",
+                props: { items },
+                view: (m) =>
+                  h.div(
+                    m.trigger(h.button).children("Actions"),
+                    m.popup(h.div).children(
+                      h.ul.children(m.visible.map((item) => m.item(h.li.key(item.id), item).children(item.label)))
+                    )
+                  )
+              }),
+              h.child(Menu, {
+                key: "flaky",
+                props: { items },
+                fallback: () => h.p("menu down"),
+                view: (m) => {
+                  if (flaky.throws) {
+                    flaky.throws = false
+                    throw new Error("the closure threw")
+                  }
+                  return m.trigger(h.button).children("More")
+                }
+              })
+            )
+        })
+      // ssr() fails if the client rebuilds a node the server rendered outside a deferred instance.
+      const result = yield* ssr(failing, {})
+      assert.deepStrictEqual(result.state["~deferred"], ["/Shell/Menu[flaky]"])
+      assert.include(result.html, "menu down")
+      assert.include(result.adopted, "/Shell/Menu[ok]")
+      assert.notInclude(result.adopted, "/Shell/Menu[flaky]")
+      const trigger = result.container.querySelector("button")!
+      const popup = result.container.querySelector("[role=menu]")!
+      assert.strictEqual(trigger.getAttribute("aria-controls"), popup.id)
+      assert.include(result.html, `id="${popup.id}"`)
+      assert.strictEqual(result.container.querySelectorAll("button")[1]!.textContent, "More")
+    }).pipe(Effect.provide(TestHost.layer())))
+
   it.effect("three owners on one element each get a real click, and one layer's preventDefault holds", () =>
     Effect.gen(function*() {
       const app = yield* container

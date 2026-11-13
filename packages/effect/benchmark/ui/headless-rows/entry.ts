@@ -120,7 +120,12 @@ const Wrapped = Component.define(app).make({
 
 const variants = { plain: Plain, normal: Normal, headless: Headless, wrapped: Wrapped }
 
-// -- the render flush runs on a microtask, so a measurement ends one microtask after the send ----
+// -- what a figure is --------------------------------------------------------------------------
+// Wall-clock time on an otherwise idle page, from just before the message is sent (or the mount
+// starts) to the first microtask after the render flush. The flush itself runs on a microtask, so
+// that covers `update`, the hop to the flush, the views, the diff, the DOM writes and the commit
+// hooks. It is not render CPU time in isolation. The timestamp is taken before the DOM is read to
+// confirm the change, so that read is outside the figure, and nothing here forces layout or paint.
 const task = () =>
   new Promise<void>((resolve) => {
     const channel = new MessageChannel()
@@ -128,9 +133,14 @@ const task = () =>
     channel.port2.postMessage(0)
   })
 let hops = 0
-/** When `done` first held: after one microtask, or else after as few tasks as it takes. */
+/**
+ * When `done` first held: after one microtask, or else after as few tasks as it takes. A figure
+ * that needed a task has a failed read of the DOM and the wait for the task in it, so `hops`
+ * counts those and an update that needed one fails the run.
+ */
 const settle = async (done: () => boolean, label = ""): Promise<number> => {
-  null
+  // Not `await null`: the linter's fix removes an await of a value that is no promise.
+  await Promise.resolve()
   let end = performance.now()
   if (done()) return end
   for (let i = 0; i < 200; i++) {
@@ -185,6 +195,7 @@ const pass = async (name: keyof typeof variants, count: number, repeats: number)
     click.push((await settle(() => row.outerHTML !== before, name + " click")) - start)
   }
   const updateHops = hops
+  check(updateHops === 0, name + ": an update rendered later than the first microtask")
   await Effect.runPromise(Scope.close(scope, Exit.void))
   container.remove()
 

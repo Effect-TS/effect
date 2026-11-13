@@ -35,6 +35,13 @@ const step = (items: ReadonlyArray<Item>, from: string | null, direction: 1 | -1
   return enabled[(index + direction + enabled.length) % enabled.length]!.id
 }
 
+/**
+ * The active item, if the rows shown still have it and it can be picked. The Model keeps an id
+ * into the props' items, which the parent can replace at any time, so every reader goes through this.
+ */
+const activeIn = (visible: ReadonlyArray<Item>, active: string | null): string | null =>
+  visible.some((item) => item.id === active && item.disabled !== true) ? active : null
+
 const MenuDef = Component.define({
   name: "Menu",
   props: Schema.Struct({ items: Schema.Array(Item) }),
@@ -69,24 +76,25 @@ export const Menu = MenuDef.make({
       Query: ({ value }) => ({ ...model, query: value, active: step(filter($.props.items, value), null, 1) }),
       Key: ({ key }) => {
         const visible = filter($.props.items, model.query)
+        const active = activeIn(visible, model.active)
         switch (key) {
           case "ArrowDown":
-            return { ...model, open: true, active: step(visible, model.active, 1) }
+            return { ...model, open: true, active: step(visible, active, 1) }
           case "ArrowUp":
-            return { ...model, open: true, active: step(visible, model.active, -1) }
+            return { ...model, open: true, active: step(visible, active, -1) }
           case "Escape":
             return { ...model, open: false }
           case "Enter":
-            return model.active === null
+            return active === null
               ? model
-              : $.set({ ...model, open: false }).emit(MenuEvents.make({ _tag: "Picked", id: model.active }))
+              : $.set({ ...model, open: false }).emit(MenuEvents.make({ _tag: "Picked", id: active }))
           default: {
             // Typeahead: a printable key on the trigger moves to the first label that starts with what was typed.
             const typed = model.typed + key.toLowerCase()
             const hit = $.props.items.find((item) =>
               item.disabled !== true && item.label.toLowerCase().startsWith(typed)
             )
-            return { ...model, typed, active: hit === undefined ? model.active : hit.id }
+            return { ...model, typed, active: hit === undefined ? active : hit.id }
           }
         }
       },
@@ -98,10 +106,11 @@ export const Menu = MenuDef.make({
     }),
   parts: (model, p) => {
     const visible = filter(p.props.items, model.query)
+    const active = activeIn(visible, model.active)
     return {
       open: model.open,
       query: model.query,
-      active: model.active,
+      active,
       visible,
       trigger: p.part("button", (b) =>
         b.ref(Trigger)
@@ -124,7 +133,7 @@ export const Menu = MenuDef.make({
         b.ref(Input)
           .attr("role", "combobox")
           .attr("aria-controls", p.id("popup"))
-          .attr("aria-activedescendant", model.active === null ? undefined : p.id("item", model.active))
+          .attr("aria-activedescendant", active === null ? undefined : p.id("item", active))
           .value(model.query)
           .onInput(({ value }) => MenuMessage.make({ _tag: "Query", value }))
           .onKeyDown(
@@ -138,7 +147,7 @@ export const Menu = MenuDef.make({
         b.id(p.id("item", item.id))
           .attr("role", "menuitem")
           .attr("aria-disabled", item.disabled === true ? "true" : undefined)
-          .attr("data-active", model.active === item.id ? "" : undefined)
+          .attr("data-active", active === item.id ? "" : undefined)
           .onClick(item.disabled === true ? () => undefined : MenuMessage.make({ _tag: "Pick", id: item.id })))
     }
   }

@@ -507,16 +507,19 @@ const blankFields = {
 
 /**
  * An id for an element of the instance at `path`, the same on the server and
- * the client. Every character outside `[A-Za-z0-9-]` is escaped, so the id is
- * safe in a space-separated list such as `aria-labelledby`.
+ * the client. The path, the name and the key are each escaped down to
+ * `[A-Za-z0-9]` and joined with a hyphen, which no escaped field contains:
+ * two ids are equal only when all three are. The result is safe in a
+ * space-separated list such as `aria-labelledby`, and in a selector.
  *
  * @internal
  */
 export const idOf = (path: string, name: string, key?: string | number | undefined): string =>
   escapeId(path) + "-" + escapeId(name) + (key === undefined ? "" : "-" + escapeId(String(key)))
 
+// The underscore that opens and closes an escape is escaped too, so the escaping can be undone.
 const escapeId = (value: string): string =>
-  value.replace(/[^A-Za-z0-9-]/g, (char) => "_" + char.codePointAt(0)!.toString(36) + "_")
+  value.replace(/[^A-Za-z0-9]/g, (char) => "_" + char.codePointAt(0)!.toString(36) + "_")
 
 /**
  * The element builder: `h.el(tag)` and a vocabulary's element names. It
