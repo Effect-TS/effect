@@ -869,6 +869,171 @@ describe("nativeStream", () => {
     )
   })
 
+  describe("the cleanup edit", () => {
+    const z = "\u200B"
+    const recipient = "U080YLYB277"
+    /** Runs `effect` in a span and gives what it set as `slack.stream.cleanup`. */
+    const cleanupOf = Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
+      yield* effect
+      return (yield* Effect.currentSpan).attributes.get("slack.stream.cleanup")
+    }, Effect.withSpan("test"))
+    const updates = (fake: ReturnType<typeof makeFake>) =>
+      fake.called("chat.update").map((call): Record<string, unknown> => ({
+        ...call.params,
+        blocks: JSON.parse(call.params.blocks)
+      }))
+
+    it.effect("rewrites a stream whose appends differ from the block, once, after the stop, with no actions", () => {
+      const fake = makeFake({ "chat.startStream": posted(ts), "chat.appendStream": posted(ts) })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "Hi <@U2> ", recipient })
+          yield* native.append(replyThread, ts, "and `<@U3>` a < b", { flush: true })
+          assert.deepStrictEqual(
+            fake.calls.map((call) => call.method).filter((method) => method !== "auth.test"),
+            ["chat.startStream", "chat.appendStream"]
+          )
+          assert.strictEqual(fake.called("chat.startStream")[0].params.markdown_text, `Hi <${z}@U2> `)
+          assert.strictEqual(fake.called("chat.appendStream")[0].params.markdown_text, `and \`<${z}@U3>\` a &lt; b`)
+          const cleanup = yield* cleanupOf(native.stop(replyThread, ts, { end: "done" }))
+          assert.strictEqual(cleanup, "edited")
+          assert.deepStrictEqual(fake.calls.map((call) => call.method).slice(-2), ["chat.stopStream", "chat.update"])
+          assert.deepStrictEqual(updates(fake), [{
+            channel,
+            ts,
+            blocks: [{ type: "markdown", text: "Hi &lt;@U2> and `<@U3>` a &lt; b" }],
+            text: "Hi &lt;@U2&gt; and `&lt;@U3&gt;` a &lt; b"
+          }])
+        })
+      )
+    })
+
+    it.effect("runs for a message with an allowed token, which stays in text", () => {
+      const fake = makeFake({ "chat.startStream": posted(ts) })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          const allowed = SlackChat.withPostOptions({ notify: { users: ["U1"] } })
+          yield* native.start(replyThread, { markdown: "<@U1> &lt;@U2>", recipient }).pipe(allowed)
+          assert.strictEqual(fake.called("chat.startStream")[0].params.markdown_text, `<@U1> &lt;${z}@U2>`)
+          assert.strictEqual(
+            yield* cleanupOf(native.stop(replyThread, ts, { end: "rotating" }).pipe(allowed)),
+            "edited"
+          )
+          const [update] = updates(fake)
+          assert.deepStrictEqual(update.blocks, [{ type: "markdown", text: "<@U1> &lt;@U2>" }])
+          assert.strictEqual(update.text, "<@U1> &amp;lt;@U2&gt;")
+        })
+      )
+    })
+
+    it.effect("is not sent when the appends match the block", () => {
+      const fake = makeFake({ "chat.startStream": posted(ts) })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "a < b `<b>` &lt; <@U1>", recipient }).pipe(
+            SlackChat.withPostOptions({ notify: { users: ["U1"] } })
+          )
+          const cleanup = yield* cleanupOf(
+            native.stop(replyThread, ts, { end: "done" }).pipe(SlackChat.withPostOptions({ notify: { users: ["U1"] } }))
+          )
+          assert.isUndefined(cleanup)
+          assert.strictEqual(fake.called("chat.update").length, 0)
+        })
+      )
+    })
+
+    it.effect("is skipped when the block would pass 12,000", () => {
+      const fake = makeFake({ "chat.startStream": posted(ts) })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          // 7 code points each as streamed, 9 in the block: 10,500 against 13,500.
+          yield* native.start(replyThread, { markdown: "<@U2> ".repeat(1_500), recipient })
+          assert.strictEqual(yield* cleanupOf(native.stop(replyThread, ts, { end: "done" })), "too_long")
+          assert.strictEqual(fake.called("chat.update").length, 0)
+        })
+      )
+    })
+
+    it.effect("is skipped when the edit fails, and the stop still succeeds", () => {
+      const fake = makeFake({
+        "chat.startStream": posted(ts),
+        "chat.update": { ok: false, error: "cant_update_message" }
+      })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "<@U2>", recipient })
+          let result: { readonly stopped: boolean } | undefined
+          const cleanup = yield* cleanupOf(
+            Effect.map(native.stop(replyThread, ts, { end: "done" }), (stopped) => (result = stopped))
+          )
+          assert.strictEqual(cleanup, "failed")
+          assert.deepStrictEqual(result, { stopped: false })
+          assert.strictEqual(fake.called("chat.update").length, 1)
+        })
+      )
+    })
+
+    it.effect("leaves a part the repair path rewrites to the repair edit", () => {
+      const fake = makeFake({
+        "chat.startStream": posted(ts),
+        "chat.appendStream": { status: 500 },
+        "chat.update": posted(ts)
+      })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const slack = yield* adapter
+          const native = slack.nativeStream!
+          yield* native.start(replyThread, { markdown: "a <@U2>", recipient })
+          const failed = yield* reason(native.append(replyThread, ts, " b", undefined))
+          assert.strictEqual(failed.retry, "uncertain")
+          // The layer's repair: stop, then edit the part to its whole known text.
+          assert.strictEqual(yield* cleanupOf(native.stop(replyThread, ts, { end: "rotating" })), "unsettled")
+          yield* slack.edit(replyThread, ts, { markdown: "a <@U2> b" })
+          assert.strictEqual(fake.called("chat.update").length, 1)
+          assert.strictEqual(fake.called("chat.update")[0].params.text, "a &lt;@U2&gt; b")
+        })
+      )
+    })
+  })
+
+  it.effect("holds a trailing high surrogate and sends any other lone surrogate as U+FFFD", () => {
+    const fake = makeFake({ "chat.startStream": posted(ts), "chat.appendStream": posted(ts) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const native = (yield* adapter).nativeStream!
+        yield* native.start(replyThread, { markdown: "x\udc00", recipient: "U1" })
+        assert.deepStrictEqual(yield* native.append(replyThread, ts, "a\ud83d", undefined), { state: "open", held: 1 })
+        assert.deepStrictEqual(yield* native.append(replyThread, ts, "\ud83d", undefined), { state: "open", held: 1 })
+        // With an unclosed < as well, the longer tail.
+        assert.deepStrictEqual(yield* native.append(replyThread, ts, "\ud83d\ude00 <\ud83d", undefined), {
+          state: "open",
+          held: 2
+        })
+        assert.deepStrictEqual(yield* native.append(replyThread, ts, "<\ud83d", { flush: true }), {
+          state: "open",
+          held: 0
+        })
+        assert.strictEqual(fake.called("chat.startStream")[0].params.markdown_text, "x\ufffd")
+        assert.deepStrictEqual(
+          fake.called("chat.appendStream").map((call) => call.params.markdown_text),
+          ["a", "😀 ", "&lt;\ufffd"]
+        )
+      })
+    )
+  })
+
   it.effect("stop on a closed stream succeeds", () => {
     const fake = makeFake({ "chat.stopStream": { ok: false, error: "message_not_in_streaming_state" } })
     return run(

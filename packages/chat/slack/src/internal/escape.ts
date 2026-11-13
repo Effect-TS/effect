@@ -7,6 +7,8 @@
  * - The `text` beside a `markdown` block, from which Slack decides who is
  *   mentioned: every `<`, `>` and `&` becomes an entity, in code too, and
  *   only the tokens the block keeps intact stay intact.
+ * - A stream append, which has no `text`: `escapeStream` puts U+200B after
+ *   whatever spells the `<` of a token shape, in prose and in code alike.
  */
 
 /** @internal */
@@ -226,3 +228,186 @@ export const escape = (
 const entityOf: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" }
 
 const textEntities = (text: string): string => text.replace(/[&<>]/g, (char) => entityOf[char])
+
+const zeroWidthSpace = "\u200B"
+
+/** The character references a stream decodes for `<`, `@` and `!`, each only with its semicolon. */
+const references: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^&(?:lt|LT|#0*60|#[xX]0*3[cC]);/, "<"],
+  [/^&(?:commat|#0*64|#[xX]0*40);/, "@"],
+  [/^&(?:excl|#0*33|#[xX]0*21);/, "!"]
+]
+
+const referenceNames = ["lt", "LT", "commat", "excl"]
+
+/** Whether `text`, from its `&` on, could still grow into one of `references`. */
+const unfinishedReference = (text: string): boolean => {
+  const body = text.slice(1)
+  return /^#(?:[0-9]*|[xX][0-9a-fA-F]*)$/.test(body) || referenceNames.some((name) => name.startsWith(body))
+}
+
+interface Decoded {
+  readonly char: string
+  /** How many characters of the input spell it. */
+  readonly length: number
+}
+
+/** The character at `i` in the decoded view of `line`, which must be within it. */
+const decodeAt = (line: string, i: number): Decoded => {
+  if (line[i] === "&") {
+    const rest = line.slice(i, i + 16)
+    for (const [pattern, char] of references) {
+      const match = pattern.exec(rest)
+      if (match !== null) return { char, length: match[0].length }
+    }
+  }
+  return { char: line[i], length: 1 }
+}
+
+/**
+ * The character at `i` in the decoded view of `line`. `undefined` past
+ * the end of the text, and `unfinished` where the next chunk could still
+ * change it.
+ */
+const decodedAt = (line: string, i: number, ended: boolean): Decoded | "unfinished" | undefined => {
+  if (i >= line.length) return ended ? undefined : "unfinished"
+  const decoded = decodeAt(line, i)
+  return decoded.char === "&" && !ended && unfinishedReference(line.slice(i)) ? "unfinished" : decoded
+}
+
+/** `line` from `i` to its first `>`, or to its end, decoded, with the end in `line` of each decoded character. */
+const decodeToken = (line: string, i: number): { readonly text: string; readonly ends: ReadonlyArray<number> } => {
+  const close = line.indexOf(">", i)
+  const end = close === -1 ? line.length : close + 1
+  let text = ""
+  const ends: Array<number> = []
+  for (let j = i; j < end;) {
+    const decoded = decodeAt(line, j)
+    text += decoded.char
+    j += decoded.length
+    ends.push(j)
+  }
+  return { text, ends }
+}
+
+/**
+ * Escapes a stream's Markdown, continuing from `state`. Slack decodes the
+ * character references for `<`, `@` and `!` in a stream, joins one split
+ * across two appends, and has no `text` to send beside it, so:
+ *
+ * - Token shapes are found on the decoded view, which decodes those
+ *   references only with their semicolon, in prose and in code alike. A
+ *   shape is `<@`, or `<!` followed by an ASCII letter.
+ * - On a shape, U+200B goes straight after whatever spells the `<`, and the
+ *   rest is left as written. A token the notify options allow is sent as it
+ *   is.
+ * - Every other `<` keeps the rule of `escape`: `&lt;` outside code, as
+ *   written inside it.
+ *
+ * Without `flush`, it holds what the next chunk could still change: a
+ * `<` with too little after it to tell, a trailing reference that is not
+ * finished, an unclosed token the notify options might allow, and a `<`
+ * after a backtick the line has not closed yet. Past a bound, or with
+ * `flush`, it decides with what it has.
+ *
+ * @internal
+ */
+export const escapeStream = (
+  text: string,
+  notify: Notify,
+  options?: {
+    readonly state?: State | undefined
+    readonly flush?: boolean | undefined
+  }
+): Escaped => {
+  const state = options?.state ?? initialState
+  const flush = options?.flush === true
+  const full = state.line + text
+  const offset = state.line.length
+  const anyAllowed = allowsAny(notify)
+  let fence = state.fence
+  let out = ""
+  let lineStart = 0
+  const emit = (from: number, to: number) => {
+    if (to > offset) out += full.slice(Math.max(from, offset), to)
+  }
+  while (lineStart <= full.length) {
+    const newline = full.indexOf("\n", lineStart)
+    const complete = newline !== -1
+    const lineEnd = complete ? newline : full.length
+    const line = full.slice(lineStart, lineEnd)
+    const inFence = fence !== undefined
+    const opener = !inFence && complete ? opensFence(line) : undefined
+    const { open, spans } = inFence || opener !== undefined ? { open: -1, spans: [] } : codeSpans(line)
+    const hold = (i: number): Escaped => {
+      const at = lineStart + i
+      return { sent: out, consumed: at - offset, state: { fence, line: full.slice(lineStart, at) } }
+    }
+    let i = 0
+    let span = 0
+    while (i < line.length) {
+      const next = line.slice(i).search(/[<&]/)
+      if (next === -1) {
+        emit(lineStart + i, lineEnd)
+        break
+      }
+      emit(lineStart + i, lineStart + i + next)
+      i += next
+      const at = lineStart + i
+      const ended = complete || flush || full.length - at > holdBound
+      const first = decodedAt(line, i, ended)
+      if (first === "unfinished") return hold(i)
+      if (first === undefined || first.char !== "<") {
+        // An `&` that spells no `<`. What it spells is decided where it is used.
+        emit(at, at + 1)
+        i += 1
+        continue
+      }
+      const second = decodedAt(line, i + first.length, ended)
+      if (second === "unfinished") return hold(i)
+      let shape = second?.char === "@"
+      if (second?.char === "!") {
+        const third = decodedAt(line, i + first.length + second.length, ended)
+        if (third === "unfinished") return hold(i)
+        shape = third !== undefined && third.length === 1 && /[A-Za-z]/.test(third.char)
+      }
+      if (shape) {
+        const token = decodeToken(line, i)
+        const length = allowedToken(token.text, notify)
+        if (length > 0) {
+          emit(at, lineStart + token.ends[length - 1])
+          i = token.ends[length - 1]
+          continue
+        }
+        if (!ended && anyAllowed && !token.text.includes(">") && /^<(@|!)?[\w^|]*$/.test(token.text)) return hold(i)
+        emit(at, at + first.length)
+        if (at >= offset) out += zeroWidthSpace
+        i += first.length
+        continue
+      }
+      if (first.length > 1) {
+        // A reference for `<` that starts no token shape is left as written.
+        emit(at, at + first.length)
+        i += first.length
+        continue
+      }
+      while (span < spans.length && spans[span][1] <= i) span++
+      const inCode = inFence || opener !== undefined || (span < spans.length && spans[span][0] <= i)
+      if (!inCode && !ended && open !== -1 && open < i) return hold(i)
+      if (inCode) emit(at, at + 1)
+      else if (at >= offset) out += "&lt;"
+      i += 1
+    }
+    if (inFence) {
+      if (complete && closesFence(line, fence!)) fence = undefined
+    } else if (opener !== undefined) {
+      fence = opener
+    }
+    if (!complete) {
+      return { sent: out, consumed: full.length - offset, state: { fence, line } }
+    }
+    emit(lineEnd, lineEnd + 1)
+    lineStart = lineEnd + 1
+  }
+  return { sent: out, consumed: full.length - offset, state: { fence, line: "" } }
+}

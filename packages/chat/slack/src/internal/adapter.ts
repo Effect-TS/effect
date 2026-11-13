@@ -129,10 +129,34 @@ interface Backoff {
 }
 
 interface StreamState {
-  escape: Escape.State
-  text: string
-  stopped: boolean
+  readonly escape: Escape.State
+  /** The Markdown the stream took, held tails left out. */
+  readonly markdown: string
+  /** What its start and appends sent. */
+  readonly sent: string
+  readonly stopped: boolean
+  /**
+   * False while an append is in flight, and after one failed in a way the
+   * layer repairs: an append cut off or failed `uncertain` may have landed,
+   * and the repair edit rewrites the message itself.
+   */
+  readonly settled: boolean
 }
+
+/**
+ * Whether the cleanup edit runs for a stream message that holds an allowed
+ * token. It does: an edit that keeps a real mention sends no second push
+ * (EFF-3740). If that ever changes, the skip comes back here.
+ */
+const cleanupWithAllowedToken = true
+
+/**
+ * A stream write with every lone surrogate as U+FFFD, as `toWellFormed`
+ * gives. Slack blanks a message whose surrogate pair is split across two
+ * appends.
+ */
+const wellFormed = (text: string): string =>
+  text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "\ufffd")
 
 const hasDetail = (code: string) => (error: ChatError): boolean => error.reason.detail === code
 
@@ -501,6 +525,43 @@ export const make = (options: {
 
   // Native stream
 
+  /**
+   * The cleanup edit: once a stream is stopped, a message whose appends
+   * differ from what the block path would send is rewritten once as blocks
+   * plus `text`, which takes out the zero-width spaces. It carries no
+   * `actions`, since the stop never does.
+   *
+   * It is skipped when the block would pass 12,000 and when the edit fails,
+   * leaving the characters, failing nothing and saying so on the span. A
+   * message whose last append is unsettled is left to the layer's repair,
+   * which rewrites it, so it gets no second edit.
+   */
+  const cleanup = Effect.fnUntraced(function*(
+    channel: string,
+    messageId: string,
+    state: StreamState,
+    notify: Escape.Notify
+  ) {
+    let tokens = 0
+    const block = Escape.escape(state.markdown, notify, { flush: true, onToken: () => tokens++ }).sent
+    if (block === state.sent) return
+    const skip = (reason: string) => Effect.annotateCurrentSpan("slack.stream.cleanup", reason)
+    if (tokens > 0 && !cleanupWithAllowedToken) return yield* skip("allowed_token")
+    if (!state.settled) return yield* skip("unsettled")
+    const body = Text.body(state.markdown, notify, Text.updateBudget)
+    if (Length.codePoints(body.sent) > Length.messageLength) return yield* skip("too_long")
+    if (body.dropped > 0) yield* Effect.annotateCurrentSpan("slack.text.dropped_tokens", body.dropped)
+    const edited = yield* paced(
+      messageId,
+      call("nativeStream.stop", "chat.update", { channel, ts: messageId, blocks: body.blocks, text: body.text }, {
+        write: true,
+        retry: false
+      }),
+      "edit"
+    ).pipe(Effect.result)
+    yield* Effect.annotateCurrentSpan("slack.stream.cleanup", Result.isSuccess(edited) ? "edited" : "failed")
+  })
+
   const nativeStream: NonNullable<ChatAdapter["nativeStream"]> = {
     start: Effect.fnUntraced(function*(thread, start) {
       const op = "nativeStream.start"
@@ -512,14 +573,15 @@ export const make = (options: {
       if (parts.threadTs === undefined || start.recipient === undefined || start.replyTo !== undefined) {
         return yield* fail(op, new Unsupported({ capability: "nativeStream" }))
       }
-      const escaped = Escape.escape(start.markdown, postOptions.notify ?? {}, { flush: true })
-      yield* checkSent(op, escaped.sent)
+      const escaped = Escape.escapeStream(start.markdown, postOptions.notify ?? {}, { flush: true })
+      const sent = wellFormed(escaped.sent)
+      yield* checkSent(op, sent)
       const startCall = call(op, "chat.startStream", {
         channel: parts.channel,
         thread_ts: parts.threadTs,
         recipient_user_id: start.recipient,
         recipient_team_id: postOptions.recipientTeamId ?? parts.team,
-        markdown_text: escaped.sent === "" ? undefined : escaped.sent
+        markdown_text: sent === "" ? undefined : sent
       }, { write: true, retry: false }).pipe(
         Effect.catchIf(
           (error) => error.reason.detail !== undefined && streamUnsupported.has(error.reason.detail),
@@ -540,43 +602,65 @@ export const make = (options: {
       const ts = yield* tsOf(op, true)(answer)
       const backoff = continues === undefined ? undefined : backoffs.get(continues)
       if (backoff !== undefined) backoffs.set(ts, backoff)
-      streams.set(ts, { escape: escaped.state, text: escaped.sent, stopped: false })
+      streams.set(ts, { escape: escaped.state, markdown: start.markdown, sent, stopped: false, settled: true })
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
     append: Effect.fnUntraced(function*(thread, messageId, markdown, appendOptions) {
       const op = "nativeStream.append"
       const parts = yield* resolve(op, thread)
       const postOptions = yield* CurrentPostOptions
-      const state = streams.get(messageId) ?? { escape: Escape.initialState, text: "", stopped: false }
-      const escaped = Escape.escape(markdown, postOptions.notify ?? {}, {
-        state: state.escape,
-        flush: appendOptions?.flush === true
-      })
+      const state = streams.get(messageId) ??
+        { escape: Escape.initialState, markdown: "", sent: "", stopped: false, settled: true }
+      const flush = appendOptions?.flush === true
+      // A trailing high surrogate waits for its other half.
+      const input = !flush && /[\ud800-\udbff]$/.test(markdown) ? markdown.slice(0, -1) : markdown
+      const escaped = Escape.escapeStream(input, postOptions.notify ?? {}, { state: state.escape, flush })
       const held = markdown.length - escaped.consumed
       if (escaped.sent === "") return { state: "open" as const, held }
-      yield* checkSent(op, state.text + escaped.sent)
+      const sent = wellFormed(escaped.sent)
+      yield* checkSent(op, state.sent + sent)
+      const unsettle = Effect.sync(() => streams.set(messageId, { ...state, settled: false }))
       return yield* paced(
         messageId,
-        call(op, "chat.appendStream", {
-          channel: parts.channel,
-          ts: messageId,
-          markdown_text: escaped.sent
-        }, { write: true, retry: false }),
+        Effect.andThen(
+          unsettle,
+          call(op, "chat.appendStream", { channel: parts.channel, ts: messageId, markdown_text: sent }, {
+            write: true,
+            retry: false
+          })
+        ),
         "stream"
       ).pipe(
         Effect.map(() => {
-          streams.set(messageId, { escape: escaped.state, text: state.text + escaped.sent, stopped: false })
+          streams.set(messageId, {
+            escape: escaped.state,
+            markdown: state.markdown + input.slice(0, escaped.consumed),
+            sent: state.sent + sent,
+            stopped: false,
+            settled: true
+          })
           return { state: "open" as const, held }
         }),
         Effect.catchIf(
           hasDetail("message_not_in_streaming_state"),
-          () => Effect.succeed({ state: "closed" as const, held: 0 })
+          () =>
+            Effect.sync(() => {
+              // The layer carries on by editing the message, and sends no stop.
+              streams.delete(messageId)
+              return { state: "closed" as const, held: 0 }
+            })
         ),
         Effect.catchIf(hasDetail("stopped_by_user"), () =>
           Effect.sync(() => {
             streams.set(messageId, { ...state, stopped: true })
             return { state: "stopped" as const, held: 0 }
-          }))
+          })),
+        // Nothing was added.
+        Effect.tapError((error) =>
+          Effect.sync(() => {
+            if (error.retry === "denied") streams.set(messageId, state)
+          })
+        )
       )
     }),
     stop: Effect.fnUntraced(function*(thread, messageId, stopOptions) {
@@ -584,7 +668,6 @@ export const make = (options: {
       const parts = yield* resolve(op, thread)
       const postOptions = yield* CurrentPostOptions
       const state = streams.get(messageId)
-      streams.delete(messageId)
       // A rotating stop keeps the reply's backoff for its next part.
       const backoff = backoffs.get(messageId)
       if (backoff !== undefined && stopOptions.end === "done") {
@@ -604,11 +687,14 @@ export const make = (options: {
         Effect.map(Option.some),
         Effect.catchIf(hasDetail("message_not_in_streaming_state"), () => Effect.succeed(Option.none<Json>()))
       )
+      // Kept until the stop is answered, so a stop sent again after a cut-off one still cleans up.
+      streams.delete(messageId)
       const message = Option.isSome(answer) && isObject(answer.value) ? object(answer.value, "message") : undefined
       const context = message === undefined ? undefined : object(message, "ai_context")
       const result = Option.isSome(answer) && isObject(answer.value) ? answer.value.result_status : undefined
       const stopped = state?.stopped === true || result === "stopped_by_user" ||
         (context !== undefined && context.result_status === "stopped_by_user")
+      if (state !== undefined) yield* cleanup(parts.channel, messageId, state, postOptions.notify ?? {})
       if (stopped && stopOptions.end === "done" && parts.threadTs !== undefined) {
         yield* sessionStatus(parts.channel, parts.threadTs, postOptions.sessionStatusAtEnd ?? "active")
       }

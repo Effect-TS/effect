@@ -245,14 +245,18 @@ export interface Ops {
  *
  * - `start` fails with `Unsupported` when the platform refuses the feature
  *   for this thread or recipient, and the caller falls back to post-then-edit.
- *   It holds nothing back: all of `markdown` is sent.
+ *   It holds nothing back: all of `markdown` is sent. Do not end `markdown`
+ *   inside a surrogate pair: a lone surrogate is sent as U+FFFD.
  * - `append` is never retried by the adapter. `open` means the text was
- *   added apart from its last `held` characters, `stopped` means nothing was
- *   added because a user stopped the stream, and `closed` means nothing was
- *   added because the stream is closed or expired. `held` trailing characters
- *   were not sent and go again at the front of the next append; `flush` holds
- *   nothing back. A `TooLarge` failure means nothing was added and the stream
- *   is still open.
+ *   added apart from its last `held` UTF-16 code units, `stopped` means
+ *   nothing was added because a user stopped the stream, and `closed` means
+ *   nothing was added because the stream is closed or expired.
+ * - `held` counts the trailing code units the adapter could not send yet,
+ *   such as an unclosed `<` or a high surrogate whose other half has not
+ *   arrived. The caller keeps `markdown.slice(markdown.length - held)` and
+ *   sends it again at the front of the next append. `flush` holds nothing
+ *   back and sends a lone surrogate as U+FFFD. A `TooLarge` failure means
+ *   nothing was added and the stream is still open.
  * - `stop` closes the stream. `stopped` says whether a user had clicked stop
  *   on it. It succeeds with `stopped: false` on a stream that is already
  *   closed.

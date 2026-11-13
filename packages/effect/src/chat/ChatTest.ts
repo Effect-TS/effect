@@ -230,6 +230,10 @@ interface StoredStream {
 /** An append holds back an unclosed `<` tail, as Slack does, up to this many characters. */
 const heldBound = 100
 
+/** Every lone surrogate as U+FFFD, as `String.prototype.toWellFormed` gives. */
+const wellFormed = (text: string): string =>
+  text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "\ufffd")
+
 interface StoredThread {
   readonly thread: ChatThread.ChatThread
   readonly kind: ThreadKind
@@ -537,7 +541,7 @@ const makeFake = (options: {
             authorId: selfId,
             isBot: true,
             isSelf: true,
-            text: content.markdown,
+            text: wellFormed(content.markdown),
             mentions: [],
             replyTo,
             attachments: [],
@@ -558,12 +562,15 @@ const makeFake = (options: {
             return { state: stream?.clicked === true ? "stopped" as const : "closed" as const, held: 0 }
           }
           let held = 0
+          const flush = appendOptions?.flush === true
           const open = markdown.lastIndexOf("<")
-          if (appendOptions?.flush !== true && open !== -1 && !markdown.includes(">", open)) {
+          if (!flush && open !== -1 && !markdown.includes(">", open)) {
             held = markdown.length - open
             if (held > heldBound) held = 0
           }
-          const sent = markdown.slice(0, markdown.length - held)
+          // A trailing high surrogate waits for its other half.
+          if (!flush && held === 0 && /[\ud800-\udbff]$/.test(markdown)) held = 1
+          const sent = wellFormed(markdown.slice(0, markdown.length - held))
           if (descriptor.measure(message.text + sent) > streamLength()) {
             return yield* fail("nativeStream.append", new TooLarge({ subject: "text", detail: "msg_too_long" }))
           }
@@ -909,8 +916,9 @@ const makeFake = (options: {
  * - The native stream behaves the way Slack's was found to. An append past
  *   `limits.streamLength` fails with `TooLarge` and adds nothing. A stream
  *   past `limits.streamAge`, on `Clock`, is closed. An append without
- *   `flush` holds back an unclosed `<` tail of up to 100 characters. An open
- *   stream refuses `edit` and `delete`.
+ *   `flush` holds back an unclosed `<` tail of up to 100 characters, or a
+ *   trailing high surrogate. Any other lone surrogate is stored as U+FFFD.
+ *   An open stream refuses `edit` and `delete`.
  * - With `buttons` or `selects` on, a message takes 25 elements, and an
  *   element's id plus encoded value 100 code points. With `modals` on, a
  *   modal's id plus encoded metadata takes 100 code points, and a modal 5
