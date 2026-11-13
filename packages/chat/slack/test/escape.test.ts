@@ -1,4 +1,4 @@
-import { escape, toMrkdwn } from "@effect/chat-slack/internal/escape"
+import { escape } from "@effect/chat-slack/internal/escape"
 import { codePoints, measure } from "@effect/chat-slack/internal/length"
 import { assert, describe, it } from "@effect/vitest"
 
@@ -53,16 +53,6 @@ describe("escape", () => {
     const result = escape(text, {})
     assert.strictEqual(result.consumed, text.length)
     assert.strictEqual(result.sent, "`a &lt;" + "x".repeat(400))
-  })
-})
-
-describe("toMrkdwn", () => {
-  it("converts Markdown and escapes outside code", () => {
-    assert.strictEqual(
-      toMrkdwn("# Title\n**bold** ~~gone~~ [docs](https://effect.website) a < b & c <@U1>\n> quote\n`<x>`", {}),
-      "*Title*\n*bold* ~gone~ <https://effect.website|docs> a &lt; b &amp; c &lt;@U1&gt;\n> quote\n`&lt;x&gt;`"
-    )
-    assert.strictEqual(toMrkdwn("hi <@U1>", { users: ["U1"] }), "hi <@U1>")
   })
 })
 

@@ -8,6 +8,11 @@ A [Slack](https://slack.com) adapter for `effect/chat`. Includes the Events API 
 npm install effect @effect/chat-slack
 ```
 
+## Known limits
+
+- A post with files has not been tested in a Slack Connect channel.
+- A post with files uploads the files, posts the message, then attaches the files to it. If Slack refuses the attach, the adapter deletes the message. A mention in that message can still notify before the delete, for a message that then disappears. With `ChatMarkdown`'s `unattachedNote`, the reply is posted again without the files, so the mention can notify twice.
+
 ## Links
 
 - [Website](https://effect.website): documentation, guides, and news.

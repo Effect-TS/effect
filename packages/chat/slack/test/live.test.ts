@@ -94,10 +94,11 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
  * the blocks.
  *
  * It is a proxy: Slack decides a mention from the stored `text`, which was
- * checked against one client's Activity feed (EFF-3730, EFF-3736). The
- * stream inputs and the file posts belong to the stream and file routes, and
- * are not here yet. The same assertions run in CI on the request bodies, in
- * `text.test.ts`.
+ * checked against one client's Activity feed (EFF-3730, EFF-3736). It also
+ * makes a file post and a file-only post, and asserts each holds its file
+ * after the attach. The stream inputs belong to the stream route and are not
+ * here yet. The same assertions run in CI on the request bodies, in
+ * `text.test.ts` and `SlackChat.test.ts`.
  */
 describe.skipIf(botToken === undefined || teamId === undefined || channel === undefined)("live mention rule", () => {
   const layer = SlackChat.layer({ botToken: Redacted.make(botToken!), teamId: teamId! }).pipe(
@@ -160,6 +161,28 @@ describe.skipIf(botToken === undefined || teamId === undefined || channel === un
       yield* slack.edit(thread, allowedPost.id, { markdown: "x".repeat(6_000) + ` <@${self}>` }).pipe(allowed)
       yield* check(allowedPost.id, "long edit")
 
+      // A file post and a file-only post: the files are attached, and no
+      // token is stored, in the Markdown or in a file name.
+      const fileIds: Array<string> = []
+      const withFile = Effect.fnUntraced(function*(markdown: string, name: string, label: string) {
+        const post = yield* slack.post(thread, {
+          markdown,
+          files: [{ name, contentType: "text/plain", content: new TextEncoder().encode(label) }]
+        })
+        posted.push(post.id)
+        const message = yield* stored(post.id)
+        const files: Array<any> = message.files ?? []
+        fileIds.push(...files.map((file) => file.id))
+        assert.strictEqual(files.length, 1, label)
+        assert.deepStrictEqual(message.text.match(token), null, label)
+        return message
+      })
+      yield* withFile(inputs[1], "file.txt", "file post")
+      const fileOnly = yield* withFile("", `<@${self}>.txt`, "file-only post")
+      assert.strictEqual(fileOnly.text, `&lt;@${self}&gt;.txt`)
+
       for (const id of posted) yield* slack.delete(thread, id).pipe(Effect.ignore)
+      // `delete` keeps a message's files.
+      for (const file of fileIds) yield* api.call("files.delete", { file }, { write: true }).pipe(Effect.ignore)
     }).pipe(Effect.provide(layer), Effect.provide(FetchHttpClient.layer)), 600_000)
 })

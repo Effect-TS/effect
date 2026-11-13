@@ -24,11 +24,11 @@
  * @since 4.1.5
  */
 import { Registry } from "effect/chat/ChatAdapter"
-import type { ChatError } from "effect/chat/ChatError"
+import { type ChatError, ChatErrorReason } from "effect/chat/ChatError"
 import type { ChatEvent } from "effect/chat/ChatEvent"
 import { ChatHandler } from "effect/chat/ChatHandler"
 import type { ParseMention } from "effect/chat/ChatTest"
-import type { ChatThread } from "effect/chat/ChatThread"
+import { ChatThread } from "effect/chat/ChatThread"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -38,7 +38,7 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Redacted from "effect/Redacted"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import * as Adapter from "./internal/adapter.ts"
 import * as Address from "./internal/address.ts"
 import * as Emoji from "./internal/emoji.ts"
@@ -111,8 +111,25 @@ export class SlackChat extends Context.Service<SlackChat, {
  *   limit, 13,200 with every emoji counted as its shortcode, is left to
  *   Slack, whose refusal is also `TooLarge` and posts nothing.
  *   `descriptor.measure` keeps a part under both.
- * - A post with files uploads them and shares them as one message. Its text
- *   goes as Slack mrkdwn, since such a message takes no `markdown_text`.
+ * - A post with files uploads them with no channel, posts the message, then
+ *   attaches them with `chat.update` and `file_ids`. Both calls send the
+ *   same blocks and `text`, so the `text` of a post with files is cut to the
+ *   update budget of 3,800 bytes. A post with files and no Markdown carries
+ *   the file names, joined by ", ", as its text, and keeps them.
+ * - A post with files is all-or-nothing. A file Slack refuses at upload,
+ *   one past `limits`, or an attach Slack refuses fails the post `denied`
+ *   with detail `file_refused`: a refused attach first deletes the message
+ *   and then the files, best effort. A timed out attach is retried. When the
+ *   message can't be deleted, the post fails `Unknown` with detail
+ *   `attach_failed_message_left` and a `SlackAttachFailed` as its cause.
+ *   From the post on, the route can't be interrupted, and each call has a
+ *   timeout.
+ * - `edit` keeps a message's files, and `delete` removes the message and
+ *   not its files: a user may have shared them on. Read the file ids with
+ *   `fetchMessage` before deleting to remove them too.
+ * - A mention in a post with files can notify for a message that a refused
+ *   attach then deletes.
+ * - A post with files in a Slack Connect channel is untested.
  * - `replyTo` is not supported.
  * - A message from another app or an incoming webhook (`bot_message`) has
  *   the `bot_id` as its author id. `getUser` on that id fails `NotFound`.
@@ -162,12 +179,44 @@ export const layer = (options: {
         http,
         botToken: options.botToken,
         teamId: options.teamId,
-        botUserId
+        botUserId,
+        attachFailed: (fields) => new SlackAttachFailed(fields)
       })
       yield* registry.register(adapter)
       return SlackChat.of({ teamId: options.teamId, botUserId, user })
     })
   ).pipe(Layer.provideMerge(WebApi.layer({ botToken: options.botToken })))
+
+/**
+ * The `cause` of a `post` with files that failed `uncertain` with detail
+ * `attach_failed_message_left`.
+ *
+ * **Details**
+ *
+ * - Slack refused to attach the files and the message could not be deleted,
+ *   so it exists without them. `messageId` is that message and `fileIds`
+ *   are its files, which are kept. `reason` is the attach's own.
+ * - Its `message` leaves the ids out.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.5
+ */
+export class SlackAttachFailed
+  extends Schema.TaggedError<SlackAttachFailed>("@effect/chat-slack/SlackChat/SlackAttachFailed")(
+    "SlackAttachFailed",
+    {
+      thread: ChatThread,
+      messageId: Schema.String,
+      fileIds: Schema.Array(Schema.String),
+      reason: ChatErrorReason
+    }
+  )
+{
+  override get message(): string {
+    return `Slack refused to attach the files and the message could not be deleted: ${this.reason.message}`
+  }
+}
 
 /**
  * The address of a Slack channel, direct conversation or thread:

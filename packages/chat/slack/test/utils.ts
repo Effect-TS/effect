@@ -75,6 +75,10 @@ export interface FakeCall {
 export type Answer =
   | Record<string, unknown>
   | { readonly status: number; readonly headers?: Record<string, string>; readonly body?: unknown }
+  | typeof hang
+
+/** An answer that never comes. */
+export const hang = { hang: true } as const
 
 /**
  * A scripted Slack. Each method answers from a queue of answers, the last
@@ -88,7 +92,7 @@ export const makeFake = (
   for (const [method, answer] of Object.entries(script)) {
     if (Array.isArray(answer)) queues.set(method, [...answer])
   }
-  const respond = (request: HttpClientRequest.HttpClientRequest, url: URL): Response => {
+  const respond = (request: HttpClientRequest.HttpClientRequest, url: URL): Response | typeof hang => {
     const method = url.pathname.replace(/^\/api\//, "")
     const body = request.body
     const text = body._tag === "Uint8Array" ? body.text ?? new TextDecoder().decode(body.body) : ""
@@ -101,6 +105,7 @@ export const makeFake = (
       const queue = queues.get(method)!
       answer = queue.length > 1 ? queue.shift()! : queue[0]
     } else answer = (entry as Answer | undefined) ?? { ok: true }
+    if (answer === hang) return hang
     if ("status" in answer && typeof answer.status === "number") {
       const { body, headers, status } = answer as Extract<Answer, { readonly status: number }>
       return new Response(body === undefined ? "" : JSON.stringify(body), { status, headers: headers ?? {} })
@@ -108,7 +113,12 @@ export const makeFake = (
     return new Response(JSON.stringify(answer), { status: 200, headers: { "content-type": "application/json" } })
   }
   const client = HttpClient.make((request, url) =>
-    Effect.sync(() => HttpClientResponse.fromWeb(request, respond(request, url)))
+    Effect.suspend(() => {
+      const response = respond(request, url)
+      return response instanceof Response
+        ? Effect.succeed(HttpClientResponse.fromWeb(request, response))
+        : Effect.never
+    })
   )
   return {
     calls,

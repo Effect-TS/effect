@@ -6,6 +6,7 @@
  */
 import * as Escape from "./escape.ts"
 import { codePoints } from "./length.ts"
+import { escapeMarkdown } from "./richText.ts"
 
 /**
  * The budget for `text` on `chat.postMessage`, in code points. Slack cuts a
@@ -198,5 +199,20 @@ export interface Body {
 export const body = (markdown: string, notify: Escape.Notify, budget: Budget): Body => {
   const sent = Escape.escape(markdown, notify, { flush: true }).sent
   const built = build(markdown, notify, budget)
+  return { sent, blocks: [{ type: "markdown", text: sent }], text: built.text, dropped: built.dropped }
+}
+
+/**
+ * The content of a post with files and no Markdown: the file names joined by
+ * ", ", escaped as Markdown in the block so they render as written, and with
+ * entities in `text`. No token in a name is allowed. It stays as the
+ * message.
+ *
+ * @internal
+ */
+export const placeholder = (names: ReadonlyArray<string>, budget: Budget): Body => {
+  const joined = names.join(", ")
+  const sent = Escape.escape(escapeMarkdown(joined), {}, { flush: true }).sent
+  const built = build(joined, {}, budget)
   return { sent, blocks: [{ type: "markdown", text: sent }], text: built.text, dropped: built.dropped }
 }
