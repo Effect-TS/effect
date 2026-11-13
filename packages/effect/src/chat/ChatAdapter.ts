@@ -33,6 +33,7 @@ import { ChatError, TooLarge } from "./ChatError.ts"
 import type { ThreadKind } from "./ChatEvent.ts"
 import type { Attachment, ChatMessage, ReplyTo } from "./ChatMessage.ts"
 import type { ChatThread } from "./ChatThread.ts"
+import type { Action } from "./ChatUi.ts"
 import { RetriesDisabled } from "./internal/retries.ts"
 
 /**
@@ -51,11 +52,30 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *   adapter sends for the text, and it adds up:
  *   `measure(a + b) <= measure(a) + measure(b)`. It measures ASCII letters
  *   at one each.
+ * - `measure` takes the `actions` a message carries as an optional second
+ *   argument. Where text and elements share one budget (Slack) they add to
+ *   the cost, and elsewhere the argument is ignored. With it,
+ *   `measure(md, actions) <= measure(md) + measure("", actions)`, so a caller
+ *   can set room aside for the elements before it cuts the text,
+ *   `measure(md, actions) >= measure(md)`, and `measure(md, [])` is
+ *   `measure(md)`. A `measure` with one parameter fits the type.
  * - `limits.minWriteInterval` is the default floor between two writes to one
  *   thread, for streamed and multi-part posts.
  * - `limits.streamLength` and `limits.streamAge` apply to native streams
  *   only. `streamLength` is never more than `messageLength`, so a stream's
  *   text always fits an `edit`.
+ * - `limits.actionsPerMessage`, `limits.actionDataLength`,
+ *   `limits.modalMetadataLength` and `limits.modalFields` are there exactly
+ *   when the matching capability is (`buttons` for the first two, `modals`
+ *   for the last two). Each is the platform's number in the platform's unit,
+ *   as `messageLength` is. The adapter checks them exactly and fails
+ *   `TooLarge`: before the call for a message's elements, and before it
+ *   opens a modal.
+ *
+ * **Gotchas**
+ *
+ * Title and label limits of a modal are not on the descriptor. The adapter
+ * checks them the same way, and its docs list them.
  *
  * @stability unstable
  * @category models
@@ -64,7 +84,7 @@ import { RetriesDisabled } from "./internal/retries.ts"
 export interface Descriptor {
   readonly platform: string
   readonly capabilities: ReadonlySet<Capability>
-  readonly measure: (markdown: string) => number
+  readonly measure: (markdown: string, actions?: ReadonlyArray<Action>) => number
   readonly limits: {
     readonly messageLength: number
     readonly filesPerMessage: number
@@ -72,6 +92,14 @@ export interface Descriptor {
     readonly minWriteInterval: Duration.Duration
     readonly streamLength?: number | undefined
     readonly streamAge?: Duration.Duration | undefined
+    /** How many elements one message's `actions` may hold. */
+    readonly actionsPerMessage?: number | undefined
+    /** The most an element's id and encoded value may take together. */
+    readonly actionDataLength?: number | undefined
+    /** The most a modal's id and its encoded metadata may take together, after what the adapter adds. */
+    readonly modalMetadataLength?: number | undefined
+    /** How many inputs and texts one modal may hold. */
+    readonly modalFields?: number | undefined
   }
 }
 
@@ -160,6 +188,11 @@ export interface User {
  *   none. It is get-or-create, and the only way from an opener to its thread.
  * - `opener` is the message a thread hangs off: `None` for a channel or
  *   direct address, or when it was deleted.
+ * - `actions` is a flat list of elements beside the Markdown, and the
+ *   adapter lays out the rows. A platform without an element fails
+ *   `Unsupported` before the call, naming `buttons` or `selects`. An
+ *   `edit` replaces the whole message, so an edit without `actions`
+ *   removes them.
  *
  * @stability unstable
  * @category models
@@ -170,11 +203,15 @@ export interface Ops {
     readonly markdown: string
     readonly replyTo?: ReplyTo | undefined
     readonly files?: ReadonlyArray<File> | undefined
+    readonly actions?: ReadonlyArray<Action> | undefined
   }) => Effect.Effect<Posted, ChatError>
   readonly edit: (
     thread: ChatThread,
     messageId: string,
-    content: { readonly markdown: string }
+    content: {
+      readonly markdown: string
+      readonly actions?: ReadonlyArray<Action> | undefined
+    }
   ) => Effect.Effect<void, ChatError>
   readonly delete: (thread: ChatThread, messageId: string) => Effect.Effect<void, ChatError>
   readonly fetchMessage: (thread: ChatThread, messageId: string) => Effect.Effect<ChatMessage, ChatError>
@@ -316,7 +353,8 @@ export const layer = <E, R>(
  * Pass the string the adapter is about to send, after escaping. For a
  * `measure` that counts what escaping adds, measuring the escaped string
  * gives the exact cost, so a post is neither refused when the platform would
- * take it nor passed when the platform would refuse it on length.
+ * take it nor passed when the platform would refuse it on length. Pass the
+ * message's `actions` too, so they are measured with it.
  *
  * @stability unstable
  * @category validation
@@ -325,9 +363,10 @@ export const layer = <E, R>(
 export const checkMessageLength = (
   descriptor: Descriptor,
   op: string,
-  markdown: string
+  markdown: string,
+  actions?: ReadonlyArray<Action> | undefined
 ): Effect.Effect<void, ChatError> =>
-  descriptor.measure(markdown) <= descriptor.limits.messageLength ? Effect.void : Effect.fail(
+  descriptor.measure(markdown, actions ?? []) <= descriptor.limits.messageLength ? Effect.void : Effect.fail(
     new ChatError({
       platform: descriptor.platform,
       op,

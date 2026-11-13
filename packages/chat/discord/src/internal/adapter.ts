@@ -10,9 +10,10 @@ import {
   type ThreadInfo,
   type User
 } from "effect/chat/ChatAdapter"
-import { type ChatError, type ChatErrorReason, TooLarge } from "effect/chat/ChatError"
+import { type ChatError, type ChatErrorReason, TooLarge, Unsupported } from "effect/chat/ChatError"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type * as ChatThread from "effect/chat/ChatThread"
+import type { Action } from "effect/chat/ChatUi"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -113,6 +114,13 @@ export const make = Effect.fnUntraced(function*(options: {
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
+  /** The descriptor lists no buttons or selects yet, so a write that carries them is refused, never sent without them. */
+  const refuseActions = (op: string, actions: ReadonlyArray<Action> | undefined) =>
+    actions === undefined || actions.length === 0 ? Effect.void : fail(
+      op,
+      new Unsupported({ capability: actions.some((action) => action._tag !== "Select") ? "buttons" : "selects" })
+    )
+
   /** One REST call, its failure mapped to a `ChatError` and retried when nothing happened. */
   const call = <A, E>(op: string, effect: Effect.Effect<A, E>, write = false): Effect.Effect<A, ChatError> =>
     retrySafe(Effect.mapError(effect, (error) => Errors.chatError(op, Errors.reasonForRestError(error, { write }))))
@@ -176,6 +184,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const post: ChatAdapter["post"] = Effect.fnUntraced(function*(thread, content) {
     const op = "post"
     const channelId = yield* resolve(op, thread)
+    yield* refuseActions(op, content.actions)
     const postOptions = yield* CurrentPostOptions
     yield* checkMessageLength(descriptor, op, content.markdown)
     const files = content.files ?? []
@@ -204,6 +213,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const edit: ChatAdapter["edit"] = Effect.fnUntraced(function*(thread, messageId, content) {
     const op = "edit"
     const channelId = yield* resolve(op, thread)
+    yield* refuseActions(op, content.actions)
     const postOptions = yield* CurrentPostOptions
     yield* checkMessageLength(descriptor, op, content.markdown)
     yield* call(

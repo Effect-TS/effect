@@ -51,6 +51,13 @@ export type Retry = typeof Retry.Type
 /**
  * Schema for a capability name from `ChatAdapter.Descriptor`.
  *
+ * **Details**
+ *
+ * - `buttons` covers buttons and link buttons, `selects` selects on a
+ *   message, and `modals` opening a modal from a click.
+ * - `modalErrors` is field errors put back into an open modal. A platform
+ *   without it answers `errors` some other way, so no op fails for it.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.1.5
@@ -67,7 +74,11 @@ export const Capability = Schema.Literals([
   "getThread",
   "opener",
   "getUser",
-  "nativeStream"
+  "nativeStream",
+  "buttons",
+  "selects",
+  "modals",
+  "modalErrors"
 ])
 
 /**
@@ -87,6 +98,16 @@ export type Capability = typeof Capability.Type
  * @since 4.1.5
  */
 export const fileRefused = "file_refused"
+
+/**
+ * Detail for a modal returned after the deadline: the reason is `NotFound`
+ * and the op `openModal`.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.5
+ */
+export const interactionExpired = "interaction_expired"
 
 const detail = Schema.optionalKey(Schema.String)
 

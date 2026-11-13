@@ -37,9 +37,10 @@ import * as Stream from "../Stream.ts"
 import * as Chat from "./Chat.ts"
 import type { Descriptor, File, NativeStream, Posted } from "./ChatAdapter.ts"
 import { Registry } from "./ChatAdapter.ts"
-import { type ChatError, fileRefused } from "./ChatError.ts"
+import { ChatError, fileRefused, TooLarge } from "./ChatError.ts"
 import type { ReplyTo } from "./ChatMessage.ts"
 import type { ChatThread } from "./ChatThread.ts"
+import type { Action } from "./ChatUi.ts"
 
 /**
  * One message a call created.
@@ -377,6 +378,7 @@ interface ReplyOptions<E, R, R2> extends Options<R2> {
   readonly native?: NativeStream | undefined
   readonly recipient?: string | undefined
   readonly files?: ReadonlyArray<File> | undefined
+  readonly actions?: ReadonlyArray<Action> | undefined
   readonly unattachedNote?: ((files: ReadonlyArray<File>) => string) | undefined
 }
 
@@ -568,6 +570,12 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     }
 
     const hasFiles = (options.files?.length ?? 0) > 0
+    const actions = options.actions ?? []
+    const hasActions = actions.length > 0
+    /** What the reply's last part costs, measured with the actions it carries. */
+    const measureLast = hasActions ? (markdown: string) => measure(markdown, actions) : measure
+    /** The last part takes the files and the actions. */
+    const hasExtras = hasFiles || hasActions
 
     // --- post-then-edit --------------------------------------------------------
 
@@ -580,7 +588,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         const part = current
         const markdown = render(part.prefix, input.slice(part.start, end), part.fence)
         part.attempted = input.length
-        if (part.posted === undefined) return postPart(part, end, markdown, withFiles && hasFiles)
+        if (part.posted === undefined) return postPart(part, end, markdown, withFiles && hasExtras)
         if (part.confirmed === end && part.markdown === markdown) return Effect.void
         const edit = chat.edit(thread, part.posted.id, { markdown })
         return write(last ? edit : Chat.withoutRetries(edit), (exit) => {
@@ -604,8 +612,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       markdown: string,
       withFiles: boolean
     ): Effect.Effect<void, never, R2> => {
-      const files = withFiles ? options.files! : undefined
+      const files = withFiles && hasFiles ? options.files! : undefined
       const unattachedNote = files === undefined ? undefined : options.unattachedNote
+      const extras = withFiles && hasActions ? { actions } : {}
       const settle = (exit: Exit.Exit<Posted, ChatError>, markdown: string) => {
         if (Exit.isSuccess(exit)) {
           part.posted = exit.value
@@ -624,7 +633,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           chat.post(thread, {
             markdown,
             ...(parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}),
-            ...(files === undefined ? {} : { files })
+            ...(files === undefined ? {} : { files }),
+            ...extras
           }),
           (posted) => toPart(part, posted, markdown, end),
           (exit) => {
@@ -637,7 +647,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (unattachedNote === undefined || !isFileRefusal(exit)) return Effect.void
         // The platform may have refused the files: the last part goes out without them, ending in the note.
         const text = unattachedNote(files!)
-        if (measure(markdown + text) <= limits.messageLength) {
+        if (measureLast(markdown + text) <= limits.messageLength) {
           return Effect.asVoid(attempt(markdown + text, undefined, false))
         }
         note = text
@@ -678,7 +688,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           })
         }
         const body = input.slice(part.start)
-        if (part.posted === undefined && isBlank(body) && !(final && hasFiles && parts.length === 0)) {
+        if (part.posted === undefined && isBlank(body) && !(final && hasExtras && parts.length === 0)) {
           if (final) finishReply(part.start)
           return Effect.void
         }
@@ -688,9 +698,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           done(false)
           return Effect.void
         }
-        if (measure(render(part.prefix, body, part.fence)) > limits.messageLength) {
-          const cut = part.start + fitCut(measure, body, part.fence, part.prefix, limits.messageLength)
-          // Only blank text follows the cut: this is the last part, so it takes the files and that text.
+        const cutAt = (cut: number): Effect.Effect<void, never, R2> => {
+          // Only blank text follows the cut: this is the last part, so it takes the files, the actions and that text.
           const last = final && isBlank(input.slice(cut))
           return Effect.flatMap(writeEdit(cut, true, last), () => {
             if (!isRunning()) return Effect.void
@@ -698,6 +707,16 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
             return end(last)
           })
         }
+        /** A cut that would end the reply has to leave room for the actions. */
+        const lastFits = (cut: number) =>
+          !final || !hasActions || !isBlank(input.slice(cut)) ||
+          measureLast(render(part.prefix, input.slice(part.start, cut), part.fence)) <= limits.messageLength
+        const withActions = () => part.start + fitCut(measureLast, body, part.fence, part.prefix, limits.messageLength)
+        if (measure(render(part.prefix, body, part.fence)) > limits.messageLength) {
+          const cut = part.start + fitCut(measure, body, part.fence, part.prefix, limits.messageLength)
+          return cutAt(lastFits(cut) ? cut : withActions())
+        }
+        if (!lastFits(input.length)) return cutAt(withActions())
         return Effect.flatMap(writeEdit(input.length, final, final), () => {
           if (final && isRunning()) finishPart(input.length)
           return end(final)
@@ -936,19 +955,23 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         })
         // The consumer's files go with the last message, which is this one.
         const attempt = (markdown: string, files: ReadonlyArray<File>, fallback: boolean) =>
-          create(chat.post(thread, { markdown, files: [file, ...files] }), part(markdown), (exit) => {
-            if (Exit.isSuccess(exit)) {
-              parts.push(part(markdown)(exit.value))
-              overflowStart = input.length
-              return done(false)
+          create(
+            chat.post(thread, { markdown, files: [file, ...files], ...(hasActions ? { actions } : {}) }),
+            part(markdown),
+            (exit) => {
+              if (Exit.isSuccess(exit)) {
+                parts.push(part(markdown)(exit.value))
+                overflowStart = input.length
+                return done(false)
+              }
+              if (fallback && isFileRefusal(exit)) return
+              if (unanswered(exit)) overflowUncertain = true
+              const error = firstError(exit)
+              if (error === undefined) return
+              overflowUncertain = error.retry === "uncertain"
+              failChat(error)
             }
-            if (fallback && isFileRefusal(exit)) return
-            if (unanswered(exit)) overflowUncertain = true
-            const error = firstError(exit)
-            if (error === undefined) return
-            overflowUncertain = error.retry === "uncertain"
-            failChat(error)
-          })
+          )
         const files = options.files ?? []
         const unattachedNote = files.length === 0 ? undefined : options.unattachedNote
         return Effect.flatMap(attempt("", files, unattachedNote !== undefined), (exit) =>
@@ -1108,11 +1131,15 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   or followed by the note when it does not fit. Any failure of that post
  *   fails the call. Without `unattachedNote` the first failure fails the
  *   call. An `uncertain` failure records the part in `uncertain` and posts no note.
+ * - `actions` go with the last part too, which is cut so that
+ *   `measure(part, actions) <= limits.messageLength`. That can add a part,
+ *   which counts against `maxParts`. When `measure("", actions)` is already
+ *   over, the call fails `TooLarge` before anything is posted.
  * - A `TooLarge` without detail `file_refused` fails the call, even with
  *   `subject: "files"` or text that measured as fitting. Fallback requires
  *   `denied` plus `file_refused`; `subject` never controls it.
  * - An empty input posts nothing and succeeds with no parts, unless there are
- *   files, which then go out in a message of their own.
+ *   files or actions, which then go out in a message of their own.
  *
  * **Gotchas**
  *
@@ -1128,15 +1155,25 @@ export const post = <R = never>(
   markdown: string,
   options?: Options<R> & {
     readonly files?: ReadonlyArray<File> | undefined
+    readonly actions?: ReadonlyArray<Action> | undefined
     readonly unattachedNote?: ((files: ReadonlyArray<File>) => string) | undefined
   }
 ): Effect.Effect<Result, ChatMarkdownError, Chat.Chat | R> =>
   Effect.gen(function*() {
     const chat = yield* Chat.Chat
-    const descriptor = yield* Effect.mapError(
-      chat.descriptor(thread.platform),
-      (error) => new ChatMarkdownError<never>({ posted: [], remaining: markdown, cause: { _tag: "Chat", error } })
-    )
+    const failed = (error: ChatError) =>
+      new ChatMarkdownError<never>({ posted: [], remaining: markdown, cause: { _tag: "Chat", error } })
+    const descriptor = yield* Effect.mapError(chat.descriptor(thread.platform), failed)
+    const actions = options?.actions ?? []
+    if (actions.length > 0 && descriptor.measure("", actions) > descriptor.limits.messageLength) {
+      return yield* Effect.fail(failed(
+        new ChatError({
+          platform: thread.platform,
+          op: "post",
+          reason: new TooLarge({ detail: "actions_too_long" })
+        })
+      ))
+    }
     return yield* reply<never, never, R>({ ...options, thread, initial: markdown, descriptor, chat })
   }).pipe(Effect.withSpan("ChatMarkdown.post", { attributes: { "chat.platform": thread.platform } }))
 
@@ -1183,6 +1220,9 @@ export const post = <R = never>(
  *
  * - There are no files: post them after the result, when it is known whether
  *   the reply stopped.
+ * - There are no actions either. Add them after the result with
+ *   `chat.edit(thread, last.messageId, { markdown: last.markdown, actions })`,
+ *   where `last` is the final entry of `Result.parts`.
  * - To stop a reply, end `deltas` with `Stream.interruptWhen` or
  *   `Stream.haltWhen`, so a `Result` still comes back. Interrupting the call
  *   leaves only the ids collected through `onPart`.

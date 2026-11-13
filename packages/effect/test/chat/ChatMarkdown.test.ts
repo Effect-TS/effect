@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Deferred, Duration, Effect, Fiber, Queue, Stream } from "effect"
-import { Chat, ChatAdapter, ChatError, ChatMarkdown, ChatTest } from "effect/chat"
-import type { ChatThread } from "effect/chat"
+import { Chat, ChatAdapter, ChatError, ChatInteraction, ChatMarkdown, ChatTest } from "effect/chat"
+import type { ChatThread, ChatUi } from "effect/chat"
 import { TestClock } from "effect/testing"
 
 const codePoints = (markdown: string) => [...markdown].length
@@ -262,6 +262,39 @@ describe("ChatMarkdown", () => {
         const last = (yield* test.messages(thread)).at(-1)!
         assert.deepStrictEqual(last.attachments.map((attachment) => attachment.name), ["rest.md", "a.txt"])
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 } }))))
+
+    const button = ChatInteraction.button("go", { label: "Go" }).of()
+    /** Each element costs 10, as escaping and block JSON make one cost something on Slack. */
+    const withActions = (markdown: string, actions?: ReadonlyArray<ChatUi.Action>) =>
+      codePoints(markdown) + 10 * (actions?.length ?? 0)
+
+    it.effect("sends actions with the last part", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const result = yield* ChatMarkdown.post(thread, paragraphs(3, 15), { actions: [button] })
+        assert.strictEqual(result.parts.length, 3)
+        const [first, , last] = result.parts
+        assert.strictEqual((yield* Effect.flip(test.click(first.messageId, "go")))._tag, "NoSuchElement")
+        assert.strictEqual((yield* test.click(last.messageId, "go")).messageId, last.messageId)
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: withActions }))))
+
+    it.effect("cuts the last part earlier to leave room for the actions", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        // 25 code points fit alone, but not with the actions' 10.
+        const input = "aaaaaaaaaa\n\nbbbbbbbbbbbbb"
+        const result = yield* ChatMarkdown.post(thread, input, { actions: [button] })
+        assert.deepStrictEqual(result.parts.map((part) => part.text), ["aaaaaaaaaa\n\n", "bbbbbbbbbbbbb"])
+        yield* test.click(result.parts[1].messageId, "go")
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 }, measure: withActions }))))
+
+    it.effect("fails TooLarge before posting when the actions alone do not fit", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const error = yield* Effect.flip(ChatMarkdown.post(thread, "a", { actions: [button] }))
+        assert.strictEqual(error.cause._tag === "Chat" && error.cause.error.reason._tag, "TooLarge")
+        assert.deepStrictEqual(yield* test.messages(thread), [])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 9 }, measure: withActions }))))
 
     it.effect("reports the text of an uncertain post as uncertain", () =>
       Effect.gen(function*() {

@@ -217,6 +217,29 @@ describe("post", () => {
   })
 })
 
+describe("buttons and selects", () => {
+  it.effect("are refused with Unsupported until the adapter supports them, calling nothing", () => {
+    const fake = makeFake({})
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        const post = yield* reason(discord.post(channel, {
+          markdown: "x",
+          actions: [{ _tag: "Button", id: "go", label: "Go" }]
+        }))
+        assert.deepStrictEqual([post.op, post.tag], ["post", "Unsupported"])
+        const edit = yield* reason(discord.edit(channel, "1", {
+          markdown: "x",
+          actions: [{ _tag: "Select", id: "pick", options: [{ label: "A", value: "a" }] }]
+        }))
+        assert.deepStrictEqual([edit.op, edit.tag], ["edit", "Unsupported"])
+        assert.strictEqual(fake.called("createMessage").length + fake.called("updateMessage").length, 0)
+      })
+    )
+  })
+})
+
 describe("edit", () => {
   it.effect("sends allowed_mentions and the SUPPRESS_EMBEDS flag on every edit", () => {
     const fake = makeFake({ updateMessage: () => Effect.succeed(posted) })
