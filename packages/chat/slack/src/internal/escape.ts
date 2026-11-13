@@ -233,9 +233,9 @@ const zeroWidthSpace = "\u200B"
 
 /** The character references a stream decodes for `<`, `@` and `!`, each only with its semicolon. */
 const references: ReadonlyArray<readonly [RegExp, string]> = [
-  [/^&(?:lt|LT|#0*60|#[xX]0*3[cC]);/, "<"],
-  [/^&(?:commat|#0*64|#[xX]0*40);/, "@"],
-  [/^&(?:excl|#0*33|#[xX]0*21);/, "!"]
+  [/&(?:lt|LT|#0*60|#[xX]0*3[cC]);/y, "<"],
+  [/&(?:commat|#0*64|#[xX]0*40);/y, "@"],
+  [/&(?:excl|#0*33|#[xX]0*21);/y, "!"]
 ]
 
 const referenceNames = ["lt", "LT", "commat", "excl"]
@@ -246,18 +246,24 @@ const unfinishedReference = (text: string): boolean => {
   return /^#(?:[0-9]*|[xX][0-9a-fA-F]*)$/.test(body) || referenceNames.some((name) => name.startsWith(body))
 }
 
+/** The start of a token an allowed one could still complete, label included. */
+const unclosedToken = /^<[@!][\w^]*(?:\|[^<>]*)?$/
+
 interface Decoded {
   readonly char: string
   /** How many characters of the input spell it. */
   readonly length: number
 }
 
-/** The character at `i` in the decoded view of `line`, which must be within it. */
+/**
+ * The character at `i` in the decoded view of `line`, which must be within
+ * it. A reference may have any number of leading zeros.
+ */
 const decodeAt = (line: string, i: number): Decoded => {
   if (line[i] === "&") {
-    const rest = line.slice(i, i + 16)
     for (const [pattern, char] of references) {
-      const match = pattern.exec(rest)
+      pattern.lastIndex = i
+      const match = pattern.exec(line)
       if (match !== null) return { char, length: match[0].length }
     }
   }
@@ -308,7 +314,9 @@ const decodeToken = (line: string, i: number): { readonly text: string; readonly
  * `<` with too little after it to tell, a trailing reference that is not
  * finished, an unclosed token the notify options might allow, and a `<`
  * after a backtick the line has not closed yet. Past a bound, or with
- * `flush`, it decides with what it has.
+ * `flush`, it decides with what it has. A shape that only the next chunk
+ * completes, after such a write, gets U+200B at the start of the next write,
+ * since Slack reads the writes joined.
  *
  * @internal
  */
@@ -354,7 +362,8 @@ export const escapeStream = (
       emit(lineStart + i, lineStart + i + next)
       i += next
       const at = lineStart + i
-      const ended = complete || flush || full.length - at > holdBound
+      // What an earlier write sent can't be held.
+      const ended = complete || flush || at < offset || full.length - at > holdBound
       const first = decodedAt(line, i, ended)
       if (first === "unfinished") return hold(i)
       if (first === undefined || first.char !== "<") {
@@ -366,10 +375,13 @@ export const escapeStream = (
       const second = decodedAt(line, i + first.length, ended)
       if (second === "unfinished") return hold(i)
       let shape = second?.char === "@"
+      // Where the text that makes it a shape ends.
+      let decided = i + first.length + (second?.length ?? 0)
       if (second?.char === "!") {
-        const third = decodedAt(line, i + first.length + second.length, ended)
+        const third = decodedAt(line, decided, ended)
         if (third === "unfinished") return hold(i)
         shape = third !== undefined && third.length === 1 && /[A-Za-z]/.test(third.char)
+        decided += third?.length ?? 0
       }
       if (shape) {
         const token = decodeToken(line, i)
@@ -379,9 +391,13 @@ export const escapeStream = (
           i = token.ends[length - 1]
           continue
         }
-        if (!ended && anyAllowed && !token.text.includes(">") && /^<(@|!)?[\w^|]*$/.test(token.text)) return hold(i)
-        emit(at, at + first.length)
-        if (at >= offset) out += zeroWidthSpace
+        if (!ended && anyAllowed && unclosedToken.test(token.text)) return hold(i)
+        // A shape an earlier write ended inside, which that write could not see, gets the space at the
+        // start of this one: Slack reads the writes joined.
+        if (lineStart + decided > offset) {
+          emit(at, at + first.length)
+          out += zeroWidthSpace
+        }
         i += first.length
         continue
       }
