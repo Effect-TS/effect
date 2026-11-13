@@ -39,6 +39,8 @@ const assertTypeOnly = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: 
 
   // console.log(result)
   assert.strictEqual(result, expected)
+  const failures = yield* typeCheckCases([{ sources: [result], exactOptionalPropertyTypes: true }], true)
+  assert.deepStrictEqual(failures, [[]])
 }, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 const assertRuntimeIncludes = Effect.fnUntraced(function*(
@@ -148,7 +150,8 @@ const parseDiagnostics = (output: string) => {
 // which cases are clean; each of its cases is then checked on its own.
 const typeCheckCases = Effect.fnUntraced(
   function*(
-    cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>
+    cases: ReadonlyArray<{ readonly sources: ReadonlyArray<string>; readonly exactOptionalPropertyTypes: boolean }>,
+    noUnusedLocals = false
   ) {
     const directory = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), ".generated-clients-"))
     return yield* Effect.gen(function*() {
@@ -171,6 +174,7 @@ const typeCheckCases = Effect.fnUntraced(
               lib: ["ESNext", "DOM"],
               module: "NodeNext",
               noEmit: true,
+              noUnusedLocals,
               skipLibCheck: true,
               strict: true,
               target: "ES2022",
@@ -1401,7 +1405,6 @@ export const TestClientError = <Tag extends string, E>(
         },
         `import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import type * as Schema from "effect/Schema"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -1575,7 +1578,7 @@ export const TestClientError = <Tag extends string, E>(
     response,
     request: response.request,
   }) as any`
-      ))
+      ), compilationTimeout)
 
     it.effect("preserves response variants and routes binary and bodiless statuses", () =>
       assertTypeOnlyIncludes(responseMatchingSpec, [

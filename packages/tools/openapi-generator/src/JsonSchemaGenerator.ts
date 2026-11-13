@@ -128,11 +128,14 @@ function makeWithRepresentation() {
       renderSchemaTypeAndRuntime(name, generated.codeDocument.codes[i], typeOnly, options)
     )
 
-    return renderImportArtifacts(generated.codeDocument, !typeOnly) +
-      render("recursive declarations", recursiveDeclarations) +
+    const declarations = render("recursive declarations", recursiveDeclarations) +
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
       render("schemas", codes)
+    const schemaImport = typeOnly && declarations.includes("Schema.")
+      ? "import type * as Schema from \"effect/Schema\"\n"
+      : ""
+    return renderImportArtifacts(generated.codeDocument, !typeOnly) + schemaImport + declarations
   }
 
   function generateHttpApi(
