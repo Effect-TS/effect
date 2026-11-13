@@ -22,6 +22,7 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
+import * as Schema from "effect/Schema"
 import * as Semaphore from "effect/Semaphore"
 
 const botToken = process.env.DISCORD_LIVE_BOT_TOKEN
@@ -59,7 +60,7 @@ describe.skipIf(botToken === undefined || channel === undefined)("live conforman
           url.searchParams.set("wait", "true")
           const channelInfo = await fetch(`https://discord.com/api/v10/channels/${thread.id}`, {
             headers: { authorization: `Bot ${botToken}` }
-          }).then((response) => response.json())
+          }).then((response) => response.json()).then(Schema.decodeUnknownSync(Schema.Struct({ type: Schema.Number })))
           if (channelInfo.type === 11 || channelInfo.type === 10 || channelInfo.type === 12) {
             url.searchParams.set("thread_id", thread.id)
           }
@@ -69,7 +70,7 @@ describe.skipIf(botToken === undefined || channel === undefined)("live conforman
             body: JSON.stringify({ content: text, allowed_mentions: { parse: [] } })
           })
           if (!response.ok) throw new Error(`webhook answered ${response.status}`)
-          return response.json()
+          return Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await response.json())
         })
         : yield* Effect.die(new Error("neither DISCORD_LIVE_SECOND_BOT_TOKEN nor DISCORD_LIVE_WEBHOOK_URL is set"))
       const rest = yield* DiscordREST
