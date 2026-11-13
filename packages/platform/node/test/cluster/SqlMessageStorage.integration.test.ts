@@ -65,6 +65,19 @@ const waitForPgSleep = Effect.gen(function*() {
   }
 }).pipe(Effect.timeout("5 seconds"))
 
+// Waits until another connection is blocked on a lock.
+const waitForPgLock = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  while (true) {
+    const waiting = yield* sql`
+      SELECT 1 FROM pg_stat_activity
+      WHERE pid <> pg_backend_pid() AND wait_event_type = 'Lock'
+    `
+    if (waiting.length > 0) return
+    yield* Effect.sleep("10 millis")
+  }
+}).pipe(Effect.timeout("5 seconds"))
+
 // Waits until another connection is paused in a test trigger's SLEEP.
 const waitForMysqlSleep = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
@@ -291,31 +304,17 @@ describe("SqlMessageStorage", () => {
               yield* locked.open
               yield* release.await
             }).pipe(sql.withTransaction, Effect.forkChild)
-            yield* Effect.gen(function*() {
-              yield* locked.await
-              const reset = yield* Effect.gen(function*() {
-                yield* sql`SET LOCAL application_name = 'cluster_test_guarded_reset'`
-                yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
-              }).pipe(sql.withTransaction, Effect.forkChild)
-              // Observe the actual lock wait before allowing the completion to commit.
-              yield* Effect.gen(function*() {
-                while (true) {
-                  const waiting = yield* sql`
-                    SELECT 1 FROM pg_stat_activity
-                    WHERE application_name = 'cluster_test_guarded_reset'
-                    AND cardinality(pg_blocking_pids(pid)) > 0
-                  `
-                  if (waiting.length > 0) return
-                  yield* Effect.sleep("10 millis")
-                }
-              }).pipe(Effect.timeout("5 seconds"))
-              yield* release.open
-              yield* Fiber.join(completion)
-              yield* Fiber.join(reset)
-              assert.deepStrictEqual(yield* storage.repliesFor([request]), [oldReply.reply, completed.reply])
-              assert.deepStrictEqual(yield* storage.unprocessedMessages([request.envelope.address.shardId]), [])
-            }).pipe(Effect.ensuring(release.open))
-          }).pipe(Effect.timeout("10 seconds"), TestClock.withLive))
+            yield* locked.await
+            const reset = yield* Effect.forkChild(
+              storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
+            )
+            yield* waitForPgLock
+            yield* release.open
+            yield* Fiber.join(completion)
+            yield* Fiber.join(reset)
+            assert.deepStrictEqual(yield* storage.repliesFor([request]), [oldReply.reply, completed.reply])
+            assert.deepStrictEqual(yield* storage.unprocessedMessages([request.envelope.address.shardId]), [])
+          }).pipe(TestClock.withLive))
 
         it.effect("clearReplies does not deadlock with a concurrent deleteProcessed", () =>
           Effect.gen(function*() {
