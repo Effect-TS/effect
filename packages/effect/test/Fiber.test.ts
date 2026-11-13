@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Fiber, Latch, References, Scope } from "effect"
+import { Cause, Context, Effect, Exit, Fiber, Latch, References, Result, Scope } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
@@ -133,7 +133,7 @@ describe("Fiber", () => {
       }))
   })
 
-  it.effect("keeps a finalizer's defect when a child ignores the interrupt that ends its parent", () =>
+  it.effect("keeps a finalizer's defect when an interrupted fiber waits for a child", () =>
     Effect.gen(function*() {
       const finalizer = Effect.forkChild(Effect.void, { uninterruptible: true }).pipe(
         Effect.andThen(Effect.die("boom"))
@@ -145,10 +145,7 @@ describe("Fiber", () => {
       yield* Fiber.interrupt(fiber)
       const exit = yield* Fiber.await(fiber)
       assert.isTrue(Exit.hasInterrupts(exit))
-      assert.isTrue(
-        Exit.isFailure(exit) &&
-          exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "boom")
-      )
+      assert.deepStrictEqual(Exit.findDefect(exit), Result.succeed("boom"))
     }))
 
   it.effect(

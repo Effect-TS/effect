@@ -644,8 +644,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const interruptChildren = fiberMiddleware.interruptChildren &&
       fiberMiddleware.interruptChildren(this)
     if (interruptChildren !== undefined) {
-      // Wait for the children uninterruptibly: an interrupted fiber would
-      // otherwise cut the wait short and replace its exit with the interrupt.
+      // uninterruptible, so a pending interrupt cannot replace the exit during the wait
       this.interruptible = false
       return this.evaluate(flatMap(interruptChildren, () => exit) as any)
     }
