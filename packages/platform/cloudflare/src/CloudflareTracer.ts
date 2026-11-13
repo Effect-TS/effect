@@ -33,6 +33,9 @@
  *   that outlives its invocation, such as a `Layer.span` in a module-level
  *   `ManagedRuntime`, stops recording, and spans created under it in later
  *   invocations nest under that invocation's root span.
+ * - Sampling is Effect's decision and recording is Cloudflare's. A span
+ *   Cloudflare does not record gets random ids, so an outgoing `traceparent`
+ *   can be marked sampled in an invocation Cloudflare records nothing for.
  *
  * @stability experimental
  * @since 4.1.5
@@ -68,7 +71,6 @@ export interface Tracing {
  * @since 4.1.5
  */
 export interface TracingSpan {
-  readonly isTraced: boolean
   spanContext(): { readonly traceId: string; readonly spanId: string }
   setAttribute(key: string, value: string | number | boolean): unknown
   recordException(exception: { readonly name: string; readonly message: string; readonly stack?: string }): void
@@ -96,7 +98,6 @@ export interface TracingSpan {
  */
 export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
   const tracing = options.tracing
-  const withActiveSpan = (active: TracingSpan): Enter => (f) => tracing.withActiveSpan(active, f)
 
   // `withActiveSpan` is too slow to call for every primitive. Instead, each
   // fiber takes an AsyncLocalStorage snapshot with its span active, inside its
@@ -107,36 +108,35 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
   // replace them.
   const fiberEnters = new WeakMap<
     Fiber.Fiber<unknown, unknown>,
-    { readonly active: TracingSpan; readonly enter: Enter }
+    { readonly active: TracingSpan; readonly enter: <A>(f: () => A) => A }
   >()
-  const fiberEnter = (fiber: Fiber.Fiber<unknown, unknown>) => (active: TracingSpan): Enter => {
-    if (snapshot === undefined) return withActiveSpan(active)
-    const cached = fiberEnters.get(fiber)
-    if (cached !== undefined && cached.active === active) return cached.enter
-    const enter = tracing.withActiveSpan(active, snapshot)
-    fiberEnters.set(fiber, { active, enter })
-    return enter
-  }
 
-  // Runs `f` with the span's Cloudflare span active, or returns `notEntered`
-  // when it has none or it belongs to an earlier invocation.
-  const run = <A>(
-    span: CloudflareSpan,
-    f: () => A,
-    enter: (active: TracingSpan) => Enter = withActiveSpan
-  ): A | typeof notEntered => {
+  // Runs `f` with the span's Cloudflare span active, for `fiber` when given.
+  // Without a Cloudflare span, or with one from an earlier invocation, `f`
+  // runs as it is.
+  const run = <A>(span: CloudflareSpan | undefined, f: () => A, fiber?: Fiber.Fiber<unknown, unknown>): A => {
+    if (span === undefined || span.active === undefined) return f()
     const active = span.active
-    if (active === undefined) return notEntered
     let entered = false
+    const body = () => {
+      entered = true
+      return f()
+    }
     try {
-      return enter(active)(() => {
-        entered = true
-        return f()
-      })
+      if (fiber === undefined || snapshot === undefined) {
+        return tracing.withActiveSpan(active, body)
+      }
+      let cached = fiberEnters.get(fiber)
+      if (cached === undefined || cached.active !== active) {
+        cached = { active, enter: tracing.withActiveSpan(active, snapshot) }
+        fiberEnters.set(fiber, cached)
+      }
+      return cached.enter(body)
     } catch (error) {
       if (entered) throw error
-      span.detach()
-      return notEntered
+      // Cloudflare refused the span: it belongs to an earlier invocation.
+      span.active = undefined
+      return f()
     }
   }
 
@@ -145,21 +145,16 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
       const parent = Option.isSome(options.parent) && options.parent.value instanceof CloudflareSpan
         ? options.parent.value
         : undefined
-      if (!options.sampled) {
-        return new CloudflareSpan(options, undefined, parent?.active)
-      }
-      const start = () => tracing.startSpan(options.name)
-      let span = parent === undefined ? notEntered : run(parent, start)
-      if (span === notEntered) span = start()
-      return new CloudflareSpan(options, span, span)
+      return new CloudflareSpan(
+        options,
+        options.sampled ? run(parent, () => tracing.startSpan(options.name)) : parent?.active
+      )
     },
     context(primitive, fiber) {
       const span = fiber.cache.span
-      if (span instanceof CloudflareSpan) {
-        const result = run(span, () => primitive["~effect/Effect/evaluate"](fiber), fiberEnter(fiber))
-        if (result !== notEntered) return result
-      }
-      return primitive["~effect/Effect/evaluate"](fiber)
+      return span instanceof CloudflareSpan
+        ? run(span, () => primitive["~effect/Effect/evaluate"](fiber), fiber)
+        : primitive["~effect/Effect/evaluate"](fiber)
     }
   })
 }
@@ -197,11 +192,7 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
 export const layer = (options: { readonly tracing: Tracing }): Layer.Layer<never> =>
   Layer.succeed(Tracer.Tracer, make(options))
 
-const notEntered: unique symbol = Symbol.for("@effect/platform-cloudflare/CloudflareTracer/notEntered")
-
-type Enter = <A>(f: () => A) => A
-
-const snapshot: (() => Enter) | undefined = (() => {
+const snapshot: (() => <A>(f: () => A) => A) | undefined = (() => {
   try {
     const AsyncLocalStorage = (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage
     return typeof AsyncLocalStorage?.snapshot === "function" ? () => AsyncLocalStorage.snapshot() : undefined
@@ -225,27 +216,24 @@ class CloudflareSpan implements Tracer.Span {
   readonly spanId: string
   readonly attributes = new Map<string, unknown>()
   status: Tracer.SpanStatus
-  /** The Cloudflare span this span records to. */
-  recorded: TracingSpan | undefined
-  /** The Cloudflare span active while this span runs: its own, or its nearest sampled ancestor's. */
+  /**
+   * The Cloudflare span active while this span runs: the one it records to when
+   * sampled, otherwise its nearest sampled ancestor's. Cleared once the span
+   * turns out to belong to an earlier invocation.
+   */
   active: TracingSpan | undefined
 
-  constructor(
-    options: Parameters<Tracer.Tracer["span"]>[0],
-    recorded: TracingSpan | undefined,
-    active: TracingSpan | undefined
-  ) {
+  constructor(options: Parameters<Tracer.Tracer["span"]>[0], active: TracingSpan | undefined) {
     this.name = options.name
     this.parent = options.parent
     this.annotations = options.annotations
     this.links = options.links
     this.kind = options.kind
-    this.recorded = recorded
     this.active = active
     // Whether Cloudflare records the span is decided per invocation, so it must
     // not leak into the sampling decision that later child spans inherit.
     this.sampled = options.sampled
-    const context = recorded?.spanContext()
+    const context = options.sampled ? active?.spanContext() : undefined
     this.traceId = isValidId(context?.traceId)
       ? context.traceId
       : Option.isSome(options.parent)
@@ -255,18 +243,12 @@ class CloudflareSpan implements Tracer.Span {
     this.status = { _tag: "Started", startTime: options.startTime }
   }
 
-  /** Stops using Cloudflare spans that belong to an earlier invocation. */
-  detach(): void {
-    this.recorded = undefined
-    this.active = undefined
-  }
-
   private record(f: (span: TracingSpan) => void): void {
-    if (this.recorded === undefined) return
+    if (!this.sampled || this.active === undefined) return
     try {
-      f(this.recorded)
+      f(this.active)
     } catch {
-      this.detach()
+      this.active = undefined
     }
   }
 

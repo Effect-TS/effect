@@ -544,6 +544,7 @@ Cloudflare's spans are simpler than Effect's, so some span data does not carry o
 - Cloudflare spans have no events, links, kind or explicit timestamps. Span events are dropped, links and kind stay on the Effect span, and Cloudflare records the timing.
 - Unsampled Effect spans, such as spans below `Tracer.MinimumTraceLevel`, are not recorded. Work inside them nests under the nearest recorded span.
 - A Cloudflare span belongs to the invocation that created it. An Effect span that outlives its invocation, such as a `Layer.span` in a module-level `ManagedRuntime`, stops recording, and spans created under it in later invocations nest under that invocation's root span.
+- Sampling is Effect's decision and recording is Cloudflare's. A span Cloudflare does not record gets random ids, so an outgoing `traceparent` can be marked sampled in an invocation Cloudflare records nothing for.
 
 Use `Otlp.layer` with `FetchHttpClient` instead if you want the Worker to send its own trace to an OTLP endpoint. That trace is separate from Cloudflare's, and the Worker has to flush it before each invocation ends.
 

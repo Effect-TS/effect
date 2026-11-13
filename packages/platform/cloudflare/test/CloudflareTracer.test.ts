@@ -186,7 +186,7 @@ describe("CloudflareTracer", () => {
       const span = yield* Effect.yieldNow.pipe(
         Effect.andThen(kvGet),
         Effect.andThen(Effect.currentSpan),
-        Effect.withSpan("debug-step", { sampled: false }),
+        Effect.withSpan("debug-step", { sampled: false, attributes: { "debug.detail": "verbose" } }),
         Effect.withSpan("handle-request"),
         Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
       )
@@ -195,10 +195,10 @@ describe("CloudflareTracer", () => {
         "request-1 > handle-request",
         "request-1 > handle-request > kv_get"
       ])
+      assert.deepStrictEqual(cloudflare.spans[0].attributes, {})
       // Outgoing requests still carry a valid, unsampled trace context.
       const propagated = HttpTraceContext.w3c(HttpTraceContext.toHeaders(span))
-      assert.isTrue(Option.isSome(propagated))
-      assert.strictEqual(propagated.pipe(Option.map((parent) => parent.sampled), Option.getOrUndefined), false)
+      assert.strictEqual(Option.getOrUndefined(propagated)?.sampled, false)
     }))
 
   it.effect("keeps the caller's AsyncLocalStorage values under a span created elsewhere", () =>
@@ -206,16 +206,32 @@ describe("CloudflareTracer", () => {
       const cloudflare = makeTracing()
       const tracer = CloudflareTracer.layer({ tracing: cloudflare.tracing })
       const store = new AsyncLocalStorage<string>()
+      // Reads the caller's value where the runtime would create a span of its own.
+      const kvGet = Effect.sync(() => {
+        cloudflare.tracing.startSpan("kv_get").end()
+        return store.getStore()
+      })
 
       const outer = yield* Effect.makeSpan("outer").pipe(Effect.provide(tracer))
-      const value = yield* Effect.promise(() =>
+      const values = yield* Effect.promise(() =>
         store.run("caller", () =>
           Effect.runPromise(
-            Effect.sync(() => store.getStore()).pipe(Effect.withParentSpan(outer), Effect.provide(tracer))
+            Effect.all([
+              kvGet,
+              Effect.yieldNow.pipe(Effect.andThen(kvGet), Effect.withSpan("inner")),
+              Effect.yieldNow.pipe(Effect.andThen(kvGet))
+            ]).pipe(Effect.withParentSpan(outer), Effect.provide(tracer))
           ))
       )
 
-      assert.strictEqual(value, "caller")
+      assert.deepStrictEqual(values, ["caller", "caller", "caller"])
+      assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
+        "request-1 > outer",
+        "request-1 > outer > kv_get",
+        "request-1 > outer > inner",
+        "request-1 > outer > inner > kv_get",
+        "request-1 > outer > kv_get"
+      ])
     }))
 
   it.effect("keeps running an effect whose span outlived its invocation", () =>
