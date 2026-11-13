@@ -130,6 +130,9 @@ it("treats malformed escapes in parameters as a miss when decodeStaticPath is fa
   ) {
     assert.isUndefined(findLiteral(route, url), url)
   }
+  // A literal % before the parameter is route text, not part of the decoded value.
+  assert.deepStrictEqual(findLiteral("/files/100%:id", "/files/100%a")?.params, { id: "a" })
+  assert.isUndefined(findLiteral("/files/100%:id", "/files/100%%zz"))
 
   const router = Router.make<string>({ decodeStaticPath: false })
   router.on("GET", "/en/:page", "page")

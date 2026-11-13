@@ -95,13 +95,14 @@ export interface RouterConfig {
    *
    * **Details**
    *
-   * With `false`, route text is stored as written and compared with the
-   * request path as received up to the first parameter or wildcard: register
-   * `/caf%C3%A9` to match a request for `/caf%C3%A9`. The rest of a segment,
-   * from a parameter onwards, or the rest of the path after a wildcard, is
-   * decoded once and then matched, so `/files/pre-:name.png` matches
-   * `/files/pre-a%2Epng` but not `/files/%70re-a.png`. A malformed escape in
-   * that decoded part does not match.
+   * With `false`, route text is stored as written: register `/caf%C3%A9` to
+   * match a request for `/caf%C3%A9`. In each segment, the text before the
+   * first parameter or wildcard is compared with the request path as
+   * received. From a parameter to the end of its segment, or from a wildcard
+   * to the end of the path, the request text is decoded once and then
+   * matched, so `/files/pre-:name.png` matches `/files/pre-a%2Epng` but not
+   * `/files/%70re-a.png`. A malformed escape in that decoded part does not
+   * match.
    *
    * @default true
    * @since 4.0.0

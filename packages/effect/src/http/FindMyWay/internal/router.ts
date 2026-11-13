@@ -68,11 +68,9 @@ class RouterImpl<A> implements Router.Router<A> {
       useSemicolonDelimiter: options.useSemicolonDelimiter !== false,
       decodeStaticPath: options.decodeStaticPath !== false
     }
-    this.decodeParam = this.options.decodeStaticPath ? safeDecodeURIComponent : tryDecodeURIComponent
   }
 
   readonly options: Options
-  readonly decodeParam: (param: string) => string | undefined
   maxParamLengthExceeded = false
   routes: Array<Route> = []
   trees: Record<string, StaticNode> = Object.create(null)
@@ -330,7 +328,7 @@ class RouterImpl<A> implements Router.Router<A> {
     if (currentNode === undefined) return undefined
 
     let querystring = ""
-    let shouldDecodeParam = false
+    let decodeParam: ((param: string) => string | undefined) | undefined
     const useSemicolonDelimiter = this.options.useSemicolonDelimiter
 
     // Skip normalization for canonical lowercase paths.
@@ -361,7 +359,9 @@ class RouterImpl<A> implements Router.Router<A> {
           const sanitizedUrl = safeDecodeURI(path, useSemicolonDelimiter)
           path = sanitizedUrl.path
           querystring = sanitizedUrl.querystring
-          shouldDecodeParam = sanitizedUrl.shouldDecodeParam
+          if (sanitizedUrl.shouldDecodeParam) {
+            decodeParam = safeDecodeURIComponent
+          }
         } catch {
           return undefined
         }
@@ -369,7 +369,9 @@ class RouterImpl<A> implements Router.Router<A> {
         const end = pathEnd(path, useSemicolonDelimiter)
         querystring = path.slice(end + 1)
         path = path.slice(0, end)
-        shouldDecodeParam = path.includes("%")
+        if (path.includes("%")) {
+          decodeParam = tryDecodeURIComponent
+        }
       }
 
       if (this.options.ignoreDuplicateSlashes) {
@@ -407,8 +409,8 @@ class RouterImpl<A> implements Router.Router<A> {
       const handle = singleParamStore.get(path.slice(0, prefixLength))
       if (handle !== undefined && path.length > prefixLength) {
         let param: string | undefined = originPath.slice(prefixLength)
-        if (shouldDecodeParam) {
-          param = this.decodeParam(param)
+        if (decodeParam !== undefined) {
+          param = decodeParam(param)
         }
         // A malformed escape falls through to the tree, where another route may match.
         if (param !== undefined) {
@@ -452,51 +454,44 @@ class RouterImpl<A> implements Router.Router<A> {
         params.length
       )
 
-      if (node === undefined) {
-        if (brothersNodesStack.length === 0) {
-          return undefined
+      while (true) {
+        // No child matched, or its parameter did not: resume from the next brother node.
+        if (node === undefined) {
+          if (brothersNodesStack.length === 0) {
+            return undefined
+          }
+
+          const brotherNodeState = brothersNodesStack.pop()!
+          pathIndex = brotherNodeState.brotherPathIndex
+          params.splice(brotherNodeState.paramsCount)
+          node = brotherNodeState.brotherNode
         }
 
-        const brotherNodeState = brothersNodesStack.pop()!
-        pathIndex = brotherNodeState.brotherPathIndex
-        params.splice(brotherNodeState.paramsCount)
-        node = brotherNodeState.brotherNode
-      }
-
-      currentNode = node
-
-      while (true) {
-        if (currentNode._tag === "StaticNode") {
-          pathIndex += currentNode.prefix.length
+        if (node._tag === "StaticNode") {
+          pathIndex += node.prefix.length
           break
         }
 
-        const isWildcard = currentNode._tag === "WildcardNode"
+        const isWildcard = node._tag === "WildcardNode"
         let paramEndIndex = isWildcard ? pathLen : originPath.indexOf("/", pathIndex)
         if (paramEndIndex === -1) {
           paramEndIndex = pathLen
         }
 
         let param: string | undefined = originPath.slice(pathIndex, paramEndIndex)
-        if (shouldDecodeParam) {
-          param = this.decodeParam(param)
+        if (decodeParam !== undefined) {
+          param = decodeParam(param)
         }
 
-        if (param !== undefined && this.pushParam(currentNode, param, params)) {
+        if (param !== undefined && this.pushParam(node, param, params)) {
           pathIndex = paramEndIndex
           break
         }
 
-        // The parameter did not match: resume from the next brother node.
-        if (brothersNodesStack.length === 0) {
-          return undefined
-        }
-
-        const brotherNodeState = brothersNodesStack.pop()!
-        pathIndex = brotherNodeState.brotherPathIndex
-        params.splice(brotherNodeState.paramsCount)
-        currentNode = brotherNodeState.brotherNode
+        node = undefined
       }
+
+      currentNode = node
     }
   }
 
