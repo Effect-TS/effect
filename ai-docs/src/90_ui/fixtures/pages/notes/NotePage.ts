@@ -42,7 +42,7 @@ export const NotePageNoDeps = Component.define({
       // editor's `update` handles the message after this render, with the
       // props from it. A send to a slot that isn't rendered, such as while
       // the note loads, is dropped and logged.
-      SaveNow: () => $.send(Editor.at($.props.id), NoteEditorMessage.cases.Save.make({}))
+      SaveNow: () => $.send(Editor.at($.props.id), NoteEditorMessage.make({ _tag: "Save" }))
     }),
   // `head` gets the Model and the loaders' results, so the title comes
   // straight from the loaded note.

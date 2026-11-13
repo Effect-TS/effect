@@ -179,7 +179,9 @@ export type RefTypeId = typeof RefTypeId
  * never share a key.
  *
  * `Rcv` is the union of the messages the child receives, and `receives` its
- * Schema, which the log encodes a send with. A send is matched to a slot by
+ * Schema, which the log encodes a send with. `Msg` is the child's whole
+ * Message, so `$.send` can take what `Message.make` returns and check its
+ * tag when the send is made. A send is matched to a slot by
  * the ref's key, among the sender's direct children only. A child forwards
  * with its own `$.send`, and answers through `events`.
  *
@@ -187,8 +189,8 @@ export type RefTypeId = typeof RefTypeId
  * @category models
  * @since 4.1.5
  */
-export interface Ref<out Rcv> {
-  readonly [RefTypeId]: RefTypeId
+export interface Ref<out Rcv, out Msg = unknown> {
+  readonly [RefTypeId]: { readonly _Msg: Types.Covariant<Msg> }
   /** The name the ref was made with. */
   readonly name: string
   /** The name plus any `at` keys: the key of the slot it names. */
@@ -196,7 +198,7 @@ export interface Ref<out Rcv> {
   /** The Schema of the messages the child receives. */
   readonly receives: Schema.Codec<Rcv, any>
   /** A ref for one row: `Row.at(id)`. */
-  readonly at: (key: string | number) => Ref<Rcv>
+  readonly at: (key: string | number) => Ref<Rcv, Msg>
 }
 
 /**
@@ -207,6 +209,18 @@ export interface Ref<out Rcv> {
  * @since 4.1.5
  */
 export const isRef = (u: unknown): u is Ref<unknown> => Predicate.hasProperty(u, RefTypeId)
+
+/**
+ * What `$.send` takes for a ref `To` that receives `Rcv` from a child whose
+ * Message is `Msg`: a received message, or the whole Message as `Message.make` returns
+ * it, whose tag is checked when the send is made. A message narrowed to a case
+ * the child doesn't receive is rejected.
+ */
+type SendMessage<A, To> = To extends Ref<infer Rcv, infer Msg> ? [Rcv] extends [never] ? never
+  : [A] extends [Rcv] ? A
+  : [Msg] extends [A] ? A
+  : Rcv
+  : never
 
 /**
  * A `$.loadMore(name)` or `$.reset(name)` an `update` issued, by loader
@@ -301,13 +315,15 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
    *
    * **Details**
    *
-   * `message` is one of the messages the ref's component `receives`. A send
+   * `message` is one of the messages the ref's component `receives`. What
+   * `Message.make` returns is the whole Message, so its tag is checked here
+   * instead, and a tag the child doesn't receive fails this `update`. A send
    * to a slot that isn't rendered, whose child failed, or that can't take
    * messages yet, such as a feature on its `fallback`, is dropped and logged
    * as `SendDropped`, and the parent isn't told. `init` can't send: what a
    * child needs at mount is a prop.
    */
-  send<M>(ref: Ref<M>, message: NoInfer<M>): Step<Model, Msg, Events, R, L>
+  send<To extends Ref<any, any>, const A>(ref: To, message: A & SendMessage<A, To>): Step<Model, Msg, Events, R, L>
 }
 
 /**
@@ -405,6 +421,11 @@ const StepProto = {
     return makeStep(this.model, this.commands, this.emitted, [...this.lists, { name, op: "reset" }], this.sends)
   },
   send(this: Step<any, any, any, any>, ref: Ref<unknown>, message: unknown) {
+    const receives: (u: unknown) => boolean = Schema.is(ref.receives)
+    if (!receives(message)) {
+      const tag = Predicate.hasProperty(message, "_tag") ? String(message._tag) : "This message"
+      throw new Error(`${tag} isn't one of the messages the slot ${ref.key} receives`)
+    }
     return makeStep(this.model, this.commands, this.emitted, this.lists, [...this.sends, { ref, message }])
   }
 }
@@ -584,7 +605,7 @@ export interface Component<
   /** The Schema of the messages a parent may send: the cases of `message` listed in `receives`. */
   readonly receives: Schema.Codec<Rcv, any>
   /** A ref for this component's slots, so a parent can send them messages. */
-  readonly ref: (name: string) => Ref<Rcv>
+  readonly ref: (name: string) => Ref<Rcv, Msg>
   readonly init: (props: Props) => Next<Model, Msg, Events, R>
   readonly update: (model: Model, msg: Msg, props: Props, loaded?: Slots | undefined) => Next<Model, Msg, Events, R>
   readonly view: (

@@ -216,7 +216,7 @@ export declare namespace Child {
       }
       | {
         /** Names the slot, so the parent can send it messages. Its key is the slot's key. */
-        readonly ref: Component.Ref<Rcv>
+        readonly ref: Component.Ref<Rcv, unknown>
         readonly key?: undefined
       }
     )

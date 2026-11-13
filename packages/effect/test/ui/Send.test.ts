@@ -47,11 +47,11 @@ const List = Component.define({
   update: (ids, message, $) => {
     switch (message._tag) {
       case "Clear":
-        return $.send(Row.at(message.id), { _tag: "Clear" })
+        return $.send(Row.at(message.id), ItemMessage.make({ _tag: "Clear" }))
       case "Add":
-        return $.set([...ids, message.id]).send(Row.at(message.id), { _tag: "Clear" })
+        return $.set([...ids, message.id]).send(Row.at(message.id), ItemMessage.make({ _tag: "Clear" }))
       case "Clears":
-        return message.ids.reduce((step, id) => step.send(Row.at(id), { _tag: "Clear" }), $.set(ids))
+        return message.ids.reduce((step, id) => step.send(Row.at(id), ItemMessage.make({ _tag: "Clear" })), $.set(ids))
     }
   },
   view: (ids, h) =>
@@ -118,13 +118,47 @@ describe("$.send", () => {
       assert.strictEqual(root.text(), "a1:0:")
     })))
 
+  it.effect("fails the sender when Message.make builds a tag the child doesn't receive", () =>
+    provideHost(Effect.gen(function*() {
+      const Message = Schema.TaggedUnion({ Go: {} })
+      const Draft = Item.ref("Draft")
+      const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
+        init: () => null,
+        // `make` returns the whole Message, so the tag is checked when the send is made.
+        update: (_, __, $) => $.send(Draft, ItemMessage.make({ _tag: "Boom" })),
+        view: (_, h) =>
+          h.el(
+            "div",
+            h.el("button").on("click", Message.make({ _tag: "Go" })).children("go"),
+            h.child(Item, { ref: Draft, props: { label: "d" } })
+          )
+      })
+      // Under a shell, so the failure stays in its slot instead of crashing the root.
+      const Shell = Component.define({ name: "Shell", model: Schema.Null, message: Schema.Never }).make({
+        init: () => null,
+        update: (model) => model,
+        view: (_, h) => h.child(Page, { key: "p", fallback: () => h.text("failed") })
+      })
+      const root = yield* TestHost.mount(Shell, {})
+      yield* TestHost.settle
+      Query.fire(root.get(Query.text("go", { exact: true })), "click")
+      yield* TestHost.settle
+      assert.strictEqual(root.text(), "failed")
+      const failed = root.log().find((entry): entry is MessageLog.Failed => entry._tag === "Failed")
+      assert.strictEqual(failed?.path, "/Shell/Page[p]")
+      assert.strictEqual(failed?.source, "update")
+      assert.include(Cause.pretty(failed!.cause), "Boom isn't one of the messages the slot Draft receives")
+      assert.lengthOf(updates(root.log(), "/Shell/Page[p]/Item[Draft]"), 0)
+    })))
+
   it.effect("drops and logs a send to a child that failed", () =>
     provideHost(Effect.gen(function*() {
       const Message = Schema.TaggedUnion({ Boom: {}, Clear: {} })
       const Draft = Item.ref("Draft")
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (model, message, $) => message._tag === "Clear" ? $.send(Draft, { _tag: "Clear" }) : model,
+        update: (model, message, $) =>
+          message._tag === "Clear" ? $.send(Draft, ItemMessage.make({ _tag: "Clear" })) : model,
         view: (_, h) =>
           h.child(Item, {
             ref: Draft,
@@ -147,15 +181,16 @@ describe("$.send", () => {
 
   it.effect("drops and logs a send to a feature on its fallback", () =>
     provideHost(Effect.gen(function*() {
+      const EditorReceives = Schema.TaggedUnion({ Clear: {} })
       class Editor extends Feature.Service<Editor>()("Editor", {
         props: Schema.Struct({ label: Schema.String }),
-        receives: Schema.TaggedUnion({ Clear: {} })
+        receives: EditorReceives
       }) {}
       const Main = Editor.ref("Main")
       const Message = Schema.TaggedUnion({ Clear: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) => $.send(Main, { _tag: "Clear" }),
+        update: (_, __, $) => $.send(Main, EditorReceives.make({ _tag: "Clear" })),
         view: (_, h) => h.child(Editor, { ref: Main, props: { label: "m" }, fallback: () => h.text("loading") })
       })
       const Never: Layer.Layer<Editor> = Layer.effect(Editor, Effect.never)
@@ -170,9 +205,10 @@ describe("$.send", () => {
 
   it.effect("reaches a feature's implementation, and a provided component, through a ref", () =>
     provideHost(Effect.gen(function*() {
+      const EditorReceives = Schema.TaggedUnion({ Clear: {} })
       class Editor extends Feature.Service<Editor>()("Editor", {
         props: Schema.Struct({ label: Schema.String }),
-        receives: Schema.TaggedUnion({ Clear: {} })
+        receives: EditorReceives
       }) {}
       const Main = Editor.ref("Main")
       const Draft = Item.ref("Draft")
@@ -180,7 +216,8 @@ describe("$.send", () => {
       const Message = Schema.TaggedUnion({ Clear: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) => $.send(Main, { _tag: "Clear" }).send(Draft, { _tag: "Clear" }),
+        update: (_, __, $) =>
+          $.send(Main, EditorReceives.make({ _tag: "Clear" })).send(Draft, ItemMessage.make({ _tag: "Clear" })),
         view: (_, h) =>
           h.el(
             "div",
@@ -271,7 +308,11 @@ describe("Story and sends", () => {
           fallback: () => h.text("gone")
         })
     })
-    const story = Story.make(Page, {}, (s) => s.childEmit(Mine, { _tag: "Said" }).childFailure(Mine, Cause.die("x")))
+    const story = Story.make(
+      Page,
+      {},
+      (s) => s.childEmit(Mine, EchoMessage.make({ _tag: "Said" })).childFailure(Mine, Cause.die("x"))
+    )
     assert.deepStrictEqual(story.model, ["emit", "failure"])
     assert.deepStrictEqual(Story.fallback(story.view(), Mine, AsyncResult.initial()), { _tag: "Text", text: "gone" })
     assert.throws(() => Story.start(Page, {}).childEmit(Echo.ref("Other"), {}), /no child with the ref Other/)
@@ -299,7 +340,7 @@ describe("Story and sends", () => {
         message: ListMessage
       }).make({
         init: ($) => $.props.ids,
-        update: (ids, _, $) => $.set(ids).send(Row.at(ids[0]), { _tag: "Clear" }),
+        update: (ids, _, $) => $.set(ids).send(Row.at(ids[0]), ItemMessage.make({ _tag: "Clear" })),
         view: (ids, h) => h.el("ul", ids.map((id) => h.child(Item, { ref: Row.at(id), props: { label: id } })))
       })
       for (const entries of [log, wire]) {
@@ -313,15 +354,17 @@ describe("Story and sends", () => {
 
   it.effect("stub records what a parent sends it", () =>
     provideHost(Effect.gen(function*() {
+      const EditorReceives = Schema.TaggedUnion({ Clear: {}, Focus: {} })
       class Editor extends Feature.Service<Editor>()("Editor", {
         props: Schema.Struct({}),
-        receives: Schema.TaggedUnion({ Clear: {}, Focus: {} })
+        receives: EditorReceives
       }) {}
       const Main = Editor.ref("Main")
       const Message = Schema.TaggedUnion({ Go: {} })
       const Page = Component.define({ name: "Page", model: Schema.Null, message: Message }).make({
         init: () => null,
-        update: (_, __, $) => $.send(Main, { _tag: "Focus" }).send(Main, { _tag: "Clear" }),
+        update: (_, __, $) =>
+          $.send(Main, EditorReceives.make({ _tag: "Focus" })).send(Main, EditorReceives.make({ _tag: "Clear" })),
         view: (_, h) => h.child(Editor, { ref: Main, fallback: () => h.text("loading") })
       })
       const stub = TestHost.stub(Editor)

@@ -55,8 +55,8 @@ describe("Component receives", () => {
   it("is the Schema of the listed cases, and a ref carries them", () => {
     expect(Editor.receives).type.toBe<Schema.Codec<Received, any>>()
     expect<Component.Receives<typeof Editor>>().type.toBe<Received>()
-    expect(Draft).type.toBe<Component.Ref<Received>>()
-    expect(Draft.at(1)).type.toBe<Component.Ref<Received>>()
+    expect(Draft).type.toBe<Component.Ref<Received, EditorMessage>>()
+    expect(Draft.at(1)).type.toBe<Component.Ref<Received, EditorMessage>>()
     expect<Component.Receives<typeof Plain>>().type.toBe<never>()
   })
 
@@ -78,6 +78,14 @@ describe("$.send", () => {
   it("takes a message the ref's component receives, and rejects any other", () => {
     ParentDef.update((model, _msg, $) => {
       expect($.send(Draft, { _tag: "Clear" })).type.not.toRaiseError()
+      // `make` returns the whole Message: its tag is checked when the send is made.
+      expect($.send(Draft, EditorMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
+      expect($.send(Draft, EditorMessage.cases.Focus.make({}))).type.not.toRaiseError()
+      // A case narrowed to one the component doesn't receive is still rejected.
+      expect($.send).type.not.toBeCallableWith(Draft, EditorMessage.cases.Typed.make({ text: "x" }))
+      // A component that receives nothing takes nothing, not even `make`'s result.
+      expect($.send).type.not.toBeCallableWith(Plain.ref("P"), EditorMessage.make({ _tag: "Clear" }))
+      expect($.send(Todos.ref("Main"), TodosMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
       expect($.send).type.not.toBeCallableWith(Draft, { _tag: "Typed", text: "x" })
       expect($.send).type.not.toBeCallableWith(Plain.ref("P"), { _tag: "Clear" })
       expect($.send).type.not.toBeCallableWith(Rows.at(1), { _tag: "Focus" })
@@ -123,7 +131,7 @@ describe("h.child with a ref", () => {
 
   it("takes a feature's ref, on the feature or on an implementation", () => {
     const Main = Todos.ref("Main")
-    expect(Main).type.toBe<Component.Ref<typeof TodosMessage.Type>>()
+    expect(Main).type.toBe<Component.Ref<typeof TodosMessage.Type, typeof TodosMessage.Type>>()
     ParentDef.view((_, h) => {
       expect(h.child(Todos, { ref: Main, fallback: () => h.el("p") })).type.not.toRaiseError()
       expect(h.child(Editor, { ref: Main })).type.not.toRaiseError()
