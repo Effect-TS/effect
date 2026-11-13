@@ -38,9 +38,9 @@ const assertTypeOnly = Effect.fnUntraced(function*(spec: OpenAPISpec, expected: 
   })
 
   // console.log(result)
-  assert.strictEqual(result, expected)
   const failures = yield* typeCheckCases([{ sources: [result], exactOptionalPropertyTypes: true }], true)
   assert.deepStrictEqual(failures, [[]])
+  assert.strictEqual(result, expected)
 }, Effect.provide(OpenApiGenerator.layerTransformerTs))
 
 const assertRuntimeIncludes = Effect.fnUntraced(function*(
@@ -1380,11 +1380,12 @@ export const TestClientError = <Tag extends string, E>(
                             id: {
                               type: "string"
                             },
-                            name: {
-                              type: "string"
+                            "Schema.property": {
+                              type: "string",
+                              enum: ["Schema.Json"]
                             }
                           },
-                          required: ["id", "name"],
+                          required: ["id", "Schema.property"],
                           additionalProperties: false
                         }
                       }
@@ -1410,7 +1411,7 @@ import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 // schemas
-export type GetUser200 = { readonly "id": string, readonly "name": string }
+export type GetUser200 = { readonly "id": string, readonly "Schema.property": "Schema.Json" }
 
 export interface OperationConfig {
   /**

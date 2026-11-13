@@ -132,7 +132,7 @@ function makeWithRepresentation() {
       render("non-recursive definitions", nonRecursives) +
       render("recursive definitions", recursives) +
       render("schemas", codes)
-    const schemaImport = typeOnly && declarations.includes("Schema.")
+    const schemaImport = typeOnly && referencesSchema(declarations)
       ? "import type * as Schema from \"effect/Schema\"\n"
       : ""
     return renderImportArtifacts(generated.codeDocument, !typeOnly) + schemaImport + declarations
@@ -344,6 +344,19 @@ function renderRecursiveReferenceDeclaration(
 function render(title: string, as: ReadonlyArray<string>) {
   if (as.length === 0) return ""
   return "// " + title + "\n" + as.join("\n") + "\n"
+}
+
+// Ignore quoted property names and literal types when checking generated dependencies.
+const typeTokenPattern =
+  /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\/\/[^\n]*|\/\*[\s\S]*?\*\/|[A-Za-z_$][\w$]*|[^\s]/g
+
+function referencesSchema(source: string): boolean {
+  let previous = ""
+  for (const [token] of source.matchAll(typeTokenPattern)) {
+    if (previous === "Schema" && token === ".") return true
+    previous = token
+  }
+  return false
 }
 
 function renderImportArtifacts(codeDocument: SchemaRepresentation.CodeDocument, enabled: boolean): string {
