@@ -1011,8 +1011,12 @@ describe("nativeStream", () => {
     it.effect("runs again on a stop sent after one interrupted during it", () => {
       const fake = makeFake({
         "chat.startStream": posted(ts),
-        "chat.stopStream": [{ ok: true }, { ok: false, error: "message_not_in_streaming_state" }],
-        "chat.update": [hang, posted(ts)]
+        "chat.stopStream": [{ ok: true, result_status: "stopped_by_user" }, {
+          ok: false,
+          error: "message_not_in_streaming_state"
+        }],
+        "chat.update": [hang, posted(ts)],
+        "agents.sessions.setStatus": { ok: true }
       })
       return run(
         fake,
@@ -1023,8 +1027,15 @@ describe("nativeStream", () => {
           yield* TestClock.adjust("1 millis")
           assert.strictEqual(fake.called("chat.update").length, 1)
           yield* Fiber.interrupt(first)
-          assert.strictEqual(yield* cleanupOf(native.stop(replyThread, ts, { end: "done" })), "edited")
+          // Slack answers this one as not streaming, so the user's stop is known from the first.
+          let result: { readonly stopped: boolean } | undefined
+          const cleanup = yield* cleanupOf(
+            Effect.map(native.stop(replyThread, ts, { end: "done" }), (stopped) => (result = stopped))
+          )
+          assert.strictEqual(cleanup, "edited")
           assert.strictEqual(fake.called("chat.update").length, 2)
+          assert.deepStrictEqual(result, { stopped: true })
+          assert.strictEqual(fake.called("agents.sessions.setStatus").length, 1)
         })
       )
     })
@@ -1045,6 +1056,44 @@ describe("nativeStream", () => {
           assert.deepStrictEqual(updates(fake)[0].blocks, [{ type: "markdown", text: "a &lt;@U2>" }])
           assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: true })
           assert.strictEqual(fake.called("chat.update").length, 1)
+        })
+      )
+    })
+
+    it.effect("runs, with the session status, on the stops after that append is cut off", () => {
+      const fake = makeFake({
+        "chat.startStream": posted(ts),
+        "chat.appendStream": { ok: false, error: "stopped_by_user" },
+        "chat.stopStream": { ok: false, error: "message_not_in_streaming_state" },
+        "chat.update": [hang, posted(ts)],
+        "agents.sessions.setStatus": [hang, { ok: true }]
+      })
+      return run(
+        fake,
+        Effect.gen(function*() {
+          const native = (yield* adapter).nativeStream!
+          yield* native.start(replyThread, { markdown: "a <@U2>", recipient })
+          // Cut off during the cleanup.
+          const appended = yield* Effect.forkChild(native.append(replyThread, ts, " b", { flush: true }))
+          yield* TestClock.adjust("1 millis")
+          yield* Fiber.interrupt(appended)
+          assert.strictEqual(fake.called("chat.update").length, 1)
+          assert.strictEqual(fake.called("agents.sessions.setStatus").length, 0)
+          // The finaliser's stop, cut off during the session status.
+          const stopping = yield* Effect.forkChild(native.stop(replyThread, ts, { end: "done" }))
+          yield* TestClock.adjust("1 millis")
+          yield* Fiber.interrupt(stopping)
+          assert.strictEqual(fake.called("chat.update").length, 2)
+          assert.strictEqual(fake.called("agents.sessions.setStatus").length, 1)
+          assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: true })
+          assert.deepStrictEqual(fake.called("agents.sessions.setStatus").map((call) => call.params), [
+            { channel_id: channel, thread_ts: root, status: "active" },
+            { channel_id: channel, thread_ts: root, status: "active" }
+          ])
+          // A stop sent again sets it no third time.
+          yield* native.stop(replyThread, ts, { end: "done" })
+          assert.strictEqual(fake.called("agents.sessions.setStatus").length, 2)
+          assert.strictEqual(fake.called("chat.update").length, 2)
         })
       )
     })
