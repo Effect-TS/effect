@@ -187,6 +187,7 @@ jobs:
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           docker pull coredns/coredns:1.14.7 &
+          docker pull trinodb/trino@sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f &
           wait
 
       - name: Install dependencies
