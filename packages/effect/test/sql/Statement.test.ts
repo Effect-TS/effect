@@ -97,6 +97,38 @@ describe("Statement", () => {
     ])
   })
 
+  it("selects the trino branch and compiles empty IN lists as an empty subquery", () => {
+    const trino = Statement.makeCompiler({
+      dialect: "trino",
+      placeholder: () => "?",
+      onIdentifier: Statement.defaultEscape("\""),
+      onRecordUpdate: () => ["", []],
+      onCustom: () => ["", []]
+    })
+    const sql = Statement.make(Effect.die("unused"), trino, [], undefined)
+
+    assert.strictEqual(
+      sql.onDialect({
+        sqlite: () => "sqlite",
+        pg: () => "pg",
+        mysql: () => "mysql",
+        mssql: () => "mssql",
+        clickhouse: () => "clickhouse",
+        trino: () => "trino"
+      }),
+      "trino"
+    )
+    assert.strictEqual(sql.onDialectOrElse({ orElse: () => "other", trino: () => "trino" }), "trino")
+    assert.deepStrictEqual(sql`SELECT 1 WHERE ${sql("id")} IN ${sql.in([])}`.compile(), [
+      "SELECT 1 WHERE \"id\" IN (SELECT NULL WHERE 1=0)",
+      []
+    ])
+    assert.deepStrictEqual(sql`SELECT 1 WHERE ${sql("id")} NOT IN ${sql.in([1, 2])}`.compile(), [
+      "SELECT 1 WHERE \"id\" NOT IN (?,?)",
+      [1, 2]
+    ])
+  })
+
   it("binds plain objects shaped like fragments or segments as parameters", () => {
     const sql = Statement.make({} as any, Statement.makeCompilerSqlite(), [], undefined)
     const fragmentLike = {
