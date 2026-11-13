@@ -149,6 +149,17 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    */
   readonly entityRegistrationTimeout: Duration.Input
   /**
+   * How long a persisted message written at versions of a `VersionedSchema`
+   * this runner can't read waits for a runner that can, before it fails with
+   * `VersionUnsupported`. Measured from when the message was sent. The
+   * entity's later messages wait behind it.
+   *
+   * Defaults to no limit, also when left out: such messages wait until a
+   * runner that can read them owns their shard, for example after rolling back
+   * a deploy and then rolling forward again.
+   */
+  readonly unknownVersionTimeout?: Duration.Input | undefined
+  /**
    * The maximum duration of time to wait for an entity to terminate.
    *
    * By default this is set to 15 seconds to stay within kubernetes defaults.
@@ -252,6 +263,7 @@ export const defaults: ShardingConfig["Service"] = {
   unprocessedMessageBatchSize: 1024,
   entityMaxIdleTime: Duration.minutes(1),
   entityRegistrationTimeout: Duration.minutes(1),
+  unknownVersionTimeout: Duration.infinity,
   entityTerminationTimeout: Duration.seconds(15),
   entityMessagePollInterval: Duration.seconds(10),
   entityReplyPollInterval: Duration.millis(200),
@@ -395,6 +407,10 @@ export const config: Config.Config<ShardingConfig["Service"]> = Config.all({
   entityRegistrationTimeout: Config.Duration("entityRegistrationTimeout").pipe(
     Config.withDefault(defaults.entityRegistrationTimeout)
     // Config.withDescription("If an entity does not register itself within this time after a message is sent to it, the message will be marked as failed.")
+  ),
+  unknownVersionTimeout: Config.Duration("unknownVersionTimeout").pipe(
+    Config.withDefault(defaults.unknownVersionTimeout)
+    // Config.withDescription("How long a persisted message written at versions this runner can't read waits for a runner that can, before it fails.")
   ),
   entityTerminationTimeout: Config.Duration("entityTerminationTimeout").pipe(
     Config.withDefault(defaults.entityTerminationTimeout)

@@ -19,6 +19,7 @@ import * as InternalRecord from "../internal/record.ts"
 import * as InternalToCodec from "../internal/schema/toCodec.ts"
 import * as InternalToJsonSchemaDocument from "../internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "../internal/schema/toRepresentation.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as JsonSchema from "../JsonSchema.ts"
 import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
@@ -258,6 +259,22 @@ const cloneOpenAPISpec = <A>(value: A): A => {
     return out as A
   }
   return value
+}
+
+// Documents the `effect-versions` header on an operation whose bodies use
+// versioned schemas.
+function documentVersions(op: OpenAPISpecOperation, versioning: InternalVersionedSchema.Contract) {
+  const example: Record<string, number> = {}
+  for (const [id, history] of versioning.histories) example[id] = InternalVersionedSchema.latest(history)
+  op.parameters.push({
+    name: InternalVersionedSchema.header,
+    in: "header",
+    schema: { type: "string" },
+    required: false,
+    description: `The version of each versioned type the client speaks, e.g. "${
+      InternalVersionedSchema.formatHeader(example)
+    }". List every one: types left out are answered at their latest version, unless the server pins older ones. Records carry their version in a \`_version\` field, except those of a type's unversioned first version.`
+  })
 }
 
 /**
@@ -653,9 +670,13 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
         return isQuery ? (pathItem["x-oai-additionalOperations"] ??= {}) : pathItem
       }
       getOperations()[operationKey] = op
+      const versioning = HttpApiEndpoint.getVersioning(endpoint)
       finalizeOperations.push(() => {
         const operations = getOperations()
         let op = operations[operationKey]!
+        if (versioning !== undefined) {
+          documentVersions(op, versioning)
+        }
         processAnnotation(endpoint.annotations, Override, (override) => {
           // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
           for (const [key, value] of Object.entries(override)) {

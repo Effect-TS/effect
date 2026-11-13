@@ -13,6 +13,7 @@
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Option from "../Option.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
@@ -306,7 +307,12 @@ export const serializeRequest = <Rpc extends Rpc.Any>(
   codecFor: RpcSerialization.CodecFor
 ): Effect.Effect<Envelope.PartialRequest, MalformedMessage> => {
   const rpc = self.rpc as any as Rpc.AnyWithProps
-  return Schema.encodeEffect(codecFor(rpc.payloadSchema))(self.envelope.payload).pipe(
+  // written at the versions its header states, which the client set
+  return InternalVersionedSchema.withVersions(
+    Schema.encodeEffect(codecFor(rpc.payloadSchema))(self.envelope.payload),
+    Rpc.getVersioning(rpc),
+    InternalVersionedSchema.parseHeader(self.envelope.headers[InternalVersionedSchema.header])
+  ).pipe(
     Effect.provideContext(self.context),
     MalformedMessage.refail,
     Effect.map((payload) => ({
