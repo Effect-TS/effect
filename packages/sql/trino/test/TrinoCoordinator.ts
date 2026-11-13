@@ -11,9 +11,7 @@ import * as HttpClientResponse from "effect/http/HttpClientResponse"
  * in order, and records every request it receives.
  *
  * `DELETE` requests (query cancellation) are answered with `204` without
- * consuming a reply, and `GET /v1/info` is answered without being recorded so
- * the client may probe the server on startup. Any other request beyond the
- * script fails the test.
+ * consuming a reply. Any other request beyond the script fails the test.
  */
 
 export const baseUrl = "http://trino.test"
@@ -139,14 +137,6 @@ const makeCoordinator = (replies: ReadonlyArray<Reply>) =>
 
     const httpClient = HttpClient.make((request, url, signal) =>
       Effect.suspend(() => {
-        if (request.method === "GET" && url.pathname === "/v1/info") {
-          return Effect.succeed(respond(request, {
-            _tag: "Response",
-            status: 200,
-            headers: { "content-type": "application/json" },
-            body: `{"starting":false}`
-          }))
-        }
         received.push({
           method: request.method,
           url: url.toString(),

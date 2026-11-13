@@ -27,6 +27,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import * as Hex from "effect/encoding/Hex"
+import { identity } from "effect/Function"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
@@ -78,7 +79,7 @@ export type TypeId = "~@effect/sql-trino/TrinoClient"
  * @category services
  * @since 4.1.5
  */
-export interface TrinoClient extends Client.SqlClient {
+export interface TrinoClient extends Client.Base {
   readonly [TypeId]: TypeId
   readonly config: TrinoClientConfig
 }
@@ -90,7 +91,9 @@ export interface TrinoClient extends Client.SqlClient {
  * @category services
  * @since 4.1.5
  */
-export const TrinoClient = Context.Service<TrinoClient>("@effect/sql-trino/TrinoClient")
+export const TrinoClient = Context.Service<TrinoClient, TrinoClient & Client.SqlClient>(
+  "@effect/sql-trino/TrinoClient"
+)
 
 /**
  * Configuration for a Trino client.
@@ -144,7 +147,7 @@ export interface TrinoClientConfig {
  */
 export const make = (
   options: TrinoClientConfig
-): Effect.Effect<TrinoClient, never, Scope.Scope | Reactivity.Reactivity | HttpClient.HttpClient> =>
+): Effect.Effect<TrinoClient & Client.SqlClient, never, Scope.Scope | Reactivity.Reactivity | HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = yield* HttpClient.HttpClient
     const compiler = makeCompiler(options.transformQueryNames)
@@ -194,8 +197,6 @@ export const make = (
       if (headers["x-trino-clear-transaction-id"] !== undefined) state.transactionId = undefined
     }
 
-    const sleepMillis = (millis: number) => Effect.sleep(Duration.millis(millis))
-
     // Sends a request, retrying while `retryDelay` returns a delay and the
     // retry budget lasts. Returns the response body text of a 200 response.
     // Each attempt runs in its own scope, so a response that is not read, such
@@ -219,18 +220,17 @@ export const make = (
                 : Effect.fail<HttpFailure>({ _tag: "Status", response })
             )
           )
-        ).pipe(Effect.catch((failure) => retryOrFail(failure)))
-        const retryOrFail = (failure: HttpFailure): Effect.Effect<string, SqlError> =>
+        ).pipe(Effect.catch((failure) =>
           Effect.flatMap(Clock.currentTimeMillis, (now) => {
             const delay = retryDelay(failure, now)
             return delay === undefined || now + delay - startedAt > retryTimeout
               ? Effect.fail(httpError(failure, operation))
-              : Effect.andThen(sleepMillis(delay), attempt)
+              : Effect.andThen(Effect.sleep(delay), attempt)
           })
+        ))
         return attempt
       })
 
-    // A pagination step: the results of one page and the next URI to read.
     const submit = (state: ConnectionState, sql: string, transactionId: string | undefined) =>
       send(
         state,
@@ -271,12 +271,15 @@ export const make = (
         transactionId: string | undefined = this.state.transactionId
       ): Stream.Stream<QueryPage, SqlError> {
         const state = this.state
-        return Stream.unwrap(Effect.suspend(() => {
+        return Stream.suspend(() => {
           const body = renderStatement(sql, params)
-          if (Result.isFailure(body)) return Effect.fail(body.failure)
+          if (Result.isFailure(body)) return Stream.fail(body.failure)
           let nextUri: string | undefined
           let columns: ReadonlyArray<Column> | undefined
-          const readPage = (text: string): Effect.Effect<readonly [QueryPage, Option.Option<string>], SqlError> => {
+          // A pagination step: the page that was read and the next URI to read.
+          const readPage = (
+            text: string
+          ): Effect.Effect<readonly [ReadonlyArray<QueryPage>, Option.Option<string>], SqlError> => {
             const parsed = parseResults(text)
             if (Result.isFailure(parsed)) return Effect.fail(parsed.failure)
             const results = parsed.success
@@ -292,25 +295,18 @@ export const make = (
               updateType: results.updateType,
               updateCount: results.updateCount
             }
-            return Effect.succeed([page, Option.fromUndefinedOr(nextUri)] as const)
+            return Effect.succeed([[page], Option.fromUndefinedOr(nextUri)] as const)
           }
-          return Effect.map(
-            Effect.flatMap(submit(state, body.success, transactionId), readPage),
-            ([first, next]) =>
-              Stream.concat(
-                Stream.make(first),
-                Option.isNone(next)
-                  ? Stream.empty
-                  : Stream.paginate(next.value, (uri) =>
-                    Effect.map(
-                      Effect.flatMap(fetchPage(state, uri), readPage),
-                      ([page, next]) => [[page], next] as const
-                    ))
-              ).pipe(
-                Stream.ensuring(Effect.suspend(() => nextUri === undefined ? Effect.void : cancel(state, nextUri)))
-              )
-          )
-        }))
+          // The first step submits the statement, and each later one reads the
+          // URI the previous step returned.
+          return Stream.paginate(undefined as string | undefined, (uri) =>
+            Effect.flatMap(
+              uri === undefined ? submit(state, body.success, transactionId) : fetchPage(state, uri),
+              readPage
+            )).pipe(
+              Stream.ensuring(Effect.suspend(() => nextUri === undefined ? Effect.void : cancel(state, nextUri)))
+            )
+        })
       }
 
       private collect(sql: string, params: ReadonlyArray<unknown>, transactionId?: string | undefined) {
@@ -566,20 +562,12 @@ const submitRetryDelay = (failure: HttpFailure, now: number): number | undefined
   }
 }
 
-// Reading a page is idempotent, so network failures and gateway errors retry.
-const pollRetryDelay = (failure: HttpFailure, now: number): number | undefined => {
-  if (failure._tag === "Transport") return transientDelayMillis
-  switch (failure.response.status) {
-    case 429:
-      return retryAfterMillis(failure.response, now)
-    case 502:
-    case 503:
-    case 504:
-      return transientDelayMillis
-    default:
-      return undefined
-  }
-}
+// Reading a page is idempotent, so network failures and gateway errors retry
+// as well.
+const pollRetryDelay = (failure: HttpFailure, now: number): number | undefined =>
+  failure._tag === "Transport" || failure.response.status === 502 || failure.response.status === 504
+    ? transientDelayMillis
+    : submitRetryDelay(failure, now)
 
 const httpError = (failure: HttpFailure, operation: string): SqlError => {
   if (failure._tag === "Transport") {
@@ -648,31 +636,20 @@ const renderLiteral = (value: unknown): Result.Result<string, SqlError> => {
     return Result.succeed(`TIMESTAMP '${value.toISOString().replace("T", " ").replace("Z", "")} UTC'`)
   }
   if (value instanceof Uint8Array) return Result.succeed(`X'${Hex.encode(value)}'`)
-  if (Array.isArray(value)) {
-    const elements: Array<string> = []
-    for (const element of value) {
-      const rendered = renderLiteral(element)
-      if (Result.isFailure(rendered)) return rendered
-      elements.push(rendered.success)
-    }
-    return Result.succeed(`ARRAY[${elements.join(", ")}]`)
-  }
+  if (Array.isArray(value)) return Result.map(renderLiterals(value), (elements) => `ARRAY[${elements}]`)
   return renderError(`Cannot send a value of type ${typeof value} as a Trino parameter`)
 }
+
+const renderLiterals = (values: ReadonlyArray<unknown>): Result.Result<string, SqlError> =>
+  Result.map(Result.all(Array.from(values, (value) => renderLiteral(value))), (literals) => literals.join(", "))
 
 // Trino has no protocol-level parameters, so parameters are inlined as
 // literals into an EXECUTE IMMEDIATE statement, which still parses the query
 // text separately from the values.
-const renderStatement = (sql: string, params: ReadonlyArray<unknown>): Result.Result<string, SqlError> => {
-  if (params.length === 0) return Result.succeed(sql)
-  const literals: Array<string> = []
-  for (const param of params) {
-    const rendered = renderLiteral(param)
-    if (Result.isFailure(rendered)) return rendered
-    literals.push(rendered.success)
-  }
-  return Result.succeed(`EXECUTE IMMEDIATE ${quote(sql)} USING ${literals.join(", ")}`)
-}
+const renderStatement = (sql: string, params: ReadonlyArray<unknown>): Result.Result<string, SqlError> =>
+  params.length === 0
+    ? Result.succeed(sql)
+    : Result.map(renderLiterals(params), (literals) => `EXECUTE IMMEDIATE ${quote(sql)} USING ${literals}`)
 
 // results
 
@@ -739,8 +716,6 @@ const decodeRows = (columns: ReadonlyArray<Column>, data: ReadonlyArray<Readonly
 
 type Decoder = (value: unknown) => unknown
 
-const identityDecoder: Decoder = (value) => value
-
 const typeArgument = (signature: TypeSignature, index: number): TypeSignature => {
   const argument = signature.arguments?.[index]
   return (argument?.value ?? { rawType: "unknown" }) as TypeSignature
@@ -796,7 +771,7 @@ const decoderFor = (signature: TypeSignature): Decoder => {
       })
     }
     default:
-      return identityDecoder
+      return identity
   }
 }
 
