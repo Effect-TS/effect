@@ -1401,6 +1401,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         `import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import type * as Schema from "effect/Schema"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"

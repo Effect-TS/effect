@@ -859,12 +859,13 @@ export const make = <E, R>(
   }
 
   return OpenApiTransformer.of({
-    imports: (_importName, parsed) => {
+    imports: (importName, parsed) => {
       const operations = parsed.operations
       const requirements = computeImportRequirements(operations)
       const imports = [
         `import * as Data from "effect/Data"`,
-        `import * as Effect from "effect/Effect"`
+        `import * as Effect from "effect/Effect"`,
+        `import type * as ${importName} from "effect/Schema"`
       ]
       if (requiresStreaming(requirements)) {
         imports.push(
