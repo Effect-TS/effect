@@ -339,7 +339,11 @@ const makeFake = (options: {
     },
     text: message.text,
     mentions: message.mentions,
-    ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+    ...(message.replyTo === undefined ? {} : {
+      replyTo: message.replyTo.authorId === undefined
+        ? message.replyTo
+        : { ...message.replyTo, isSelf: message.replyTo.authorId === selfId }
+    }),
     attachments: message.attachments.map((stored) => stored.attachment),
     timestamp: message.timestamp,
     raw: {
@@ -785,6 +789,7 @@ const makeFake = (options: {
       isSelf: false,
       text,
       mentions: parseMentions(text, selfId),
+      // The author is read from the stored message, as a platform does, not from the caller.
       replyTo: message.replyTo === undefined ? undefined : {
         messageId: message.replyTo.messageId,
         ...(replyTarget === undefined ? {} : { authorId: replyTarget.authorId })
@@ -996,7 +1001,7 @@ const sameMentions = (a: ReadonlyArray<Mention>, b: ReadonlyArray<Mention>): boo
 const sameReplyTo = (a: ReplyTo | undefined, b: ReplyTo | undefined): boolean =>
   a === undefined || b === undefined
     ? a === b
-    : a.messageId === b.messageId && a.authorId === b.authorId
+    : a.messageId === b.messageId && a.authorId === b.authorId && a.isSelf === b.isSelf
 
 /**
  * Returns whether two reads of a message are the same message.
@@ -1100,6 +1105,15 @@ const checkMessageWith = Effect.fnUntraced(function*(rule: string, message: Chat
       () => "attachment " + (attachment.id.length > 0 ? "with a URL" : "without an id")
     )
   }
+  if (message.replyTo !== undefined) {
+    const { authorId, isSelf } = message.replyTo
+    yield* check(
+      rule,
+      (authorId === undefined) === (isSelf === undefined),
+      "replyTo.isSelf set exactly when replyTo.authorId is",
+      () => "authorId " + authorId + ", isSelf " + isSelf
+    )
+  }
   const decoded = yield* roundTrip(rule, MessageJson, message)
   yield* check(rule, sameMessage(message, decoded), "the same message after decoding", () => "a different message")
 })
@@ -1116,6 +1130,7 @@ const checkMessageWith = Effect.fnUntraced(function*(rule: string, message: Chat
  * - The message encodes and decodes through its Schema unchanged, `raw`
  *   included.
  * - Every attachment has an id and no URL.
+ * - `replyTo.isSelf` is set exactly when `replyTo.authorId` is.
  *
  * @stability unstable
  * @category testing

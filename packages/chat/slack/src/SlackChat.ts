@@ -333,10 +333,12 @@ export const parts: (thread: ChatThread) => Option.Option<{
  * - An envelope for another app, another workspace or of another type is
  *   answered 200 and dropped.
  * - The events go through `normalize` to the `ChatHandler`, one at a time.
- * - Answers 503, so Slack retries, when the handler fails `NotAccepted`, or
- *   when reading the bot user and running the handler take longer than
- *   `deadline` (2.5 seconds by default). Answers 413 past
- *   `maxBodyBytes` (1 MiB by default).
+ * - Answers 503, so Slack retries, when the handler fails `NotAccepted`,
+ *   when the bot user can't be read, or when the request, from reading its
+ *   body to the handler's return, takes longer than `deadline` (2.5 seconds
+ *   by default). Each of the three is logged with its own message, the
+ *   unreadable bot user as an error with its `ChatError` and the other two
+ *   as warnings. Answers 413 past `maxBodyBytes` (1 MiB by default).
  * - Slack redelivers on a timeout or an error, so an event can arrive twice.
  *   `ChatEvent.dedupeKey` gives the two deliveries equal keys.
  *

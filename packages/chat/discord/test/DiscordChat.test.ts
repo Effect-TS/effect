@@ -95,6 +95,26 @@ describe("post", () => {
     )
   })
 
+  it.effect("failIfNotExists false lets a reply to a deleted message go out without its reference", () => {
+    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
+    return run(
+      fake,
+      Effect.gen(function*() {
+        const discord = yield* adapter
+        yield* discord.post(channel, { markdown: "hi", replyTo: { messageId: "42" } })
+        yield* discord.post(channel, { markdown: "hi", replyTo: { messageId: "42" } }).pipe(
+          DiscordChat.withPostOptions({ failIfNotExists: false })
+        )
+        yield* discord.post(channel, { markdown: "hi" }).pipe(DiscordChat.withPostOptions({ failIfNotExists: false }))
+        assert.deepStrictEqual(fake.called("createMessage").map(([, body]) => body.message_reference), [
+          { message_id: "42" },
+          { message_id: "42", fail_if_not_exists: false },
+          undefined
+        ])
+      })
+    )
+  })
+
   it.effect("fails TooLarge past 2,000 code points without a call", () => {
     const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
     return run(

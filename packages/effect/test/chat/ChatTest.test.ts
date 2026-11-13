@@ -1,6 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Option, Schema } from "effect"
-import { Chat, ChatAdapter, ChatError, ChatHandler, ChatInteraction, ChatTest, ChatThread, ChatUi } from "effect/chat"
+import {
+  Chat,
+  ChatAdapter,
+  ChatError,
+  ChatHandler,
+  ChatInteraction,
+  ChatMessage,
+  ChatTest,
+  ChatThread,
+  ChatUi
+} from "effect/chat"
 
 const kinds = { "@": "user", "@&": "role", "#": "channel", "!": "broadcast" } as const
 
@@ -427,6 +437,42 @@ describe("ChatTest", () => {
       }
       const exit = yield* Effect.exit(ChatTest.checkMessage(shifted, { platform: "test", parseMention }))
       assert.isTrue(Exit.isFailure(exit))
+    }).pipe(Effect.provide(ChatTest.layer())))
+
+  it.effect("repliesToSelf is true for a reply to the bot's message, and is not a mention", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const chat = yield* Chat.Chat
+      const thread = yield* test.makeThread()
+      const message = (event: { readonly _tag: string; readonly message?: ChatMessage.ChatMessage }) => {
+        assert(event._tag === "MessageCreated" && event.message !== undefined)
+        return event.message
+      }
+      const own = yield* chat.post(thread, { markdown: "from the bot" })
+      const plain = message(yield* test.userPosts(thread, { text: "no reply" }))
+      const toBot = message(yield* test.userPosts(thread, { text: "to the bot", replyTo: { messageId: own.id } }))
+      const toUser = message(yield* test.userPosts(thread, { text: "to a person", replyTo: { messageId: plain.id } }))
+      const toGone = message(yield* test.userPosts(thread, { text: "to nothing", replyTo: { messageId: "gone" } }))
+      assert.deepStrictEqual(toBot.replyTo, { messageId: own.id, authorId: test.selfId, isSelf: true })
+      assert.deepStrictEqual(toUser.replyTo, { messageId: plain.id, authorId: "user", isSelf: false })
+      assert.deepStrictEqual(toGone.replyTo, { messageId: "gone" })
+      assert.deepStrictEqual(
+        [plain, toBot, toUser, toGone].map(ChatMessage.repliesToSelf),
+        [false, true, false, false]
+      )
+      // A reply is still not a mention.
+      assert.isFalse(ChatMessage.mentionsSelf(toBot))
+      for (const read of [toBot, toUser, toGone]) yield* ChatTest.checkMessage(read, { platform: "test", parseMention })
+      // History reads the same.
+      const history = yield* chat.fetchMessage(thread, toBot.id)
+      assert.isTrue(ChatMessage.repliesToSelf(history))
+      // An author without isSelf, or isSelf without an author, is not a message an adapter may read.
+      for (const replyTo of [{ messageId: own.id, authorId: test.selfId }, { messageId: own.id, isSelf: true }]) {
+        const exit = yield* Effect.exit(
+          ChatTest.checkMessage({ ...toBot, replyTo }, { platform: "test", parseMention })
+        )
+        assert.isTrue(Exit.isFailure(exit))
+      }
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.effect("ChatHandler.layer drops the bot's own messages unless deliverSelf", () =>

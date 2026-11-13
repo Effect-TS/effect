@@ -4,6 +4,7 @@ import { decodeMessageFields, message, messageTypes } from "@effect/chat-discord
 import { assert, describe, it } from "@effect/vitest"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { dedupeKey } from "effect/chat/ChatEvent"
+import * as ChatMessage from "effect/chat/ChatMessage"
 import { checkEvent, checkMessage } from "effect/chat/ChatTest"
 import * as ChatThread from "effect/chat/ChatThread"
 import * as Effect from "effect/Effect"
@@ -175,8 +176,11 @@ describe("normalize", () => {
       assert.deepStrictEqual(event.message.mentions, [])
       assert.deepStrictEqual(event.message.replyTo, {
         messageId: dispatch.d.message_reference.message_id,
-        authorId: botUserId
+        authorId: botUserId,
+        isSelf: true
       })
+      assert.isTrue(ChatMessage.repliesToSelf(event.message))
+      assert.isFalse(ChatMessage.mentionsSelf(event.message))
       assert.isFalse(event.message.author.isBot)
       assert.isFalse(event.message.author.isSelf)
       assert.strictEqual(event.message.author.id, tim)
@@ -450,6 +454,10 @@ describe("REST messages", () => {
     assert.strictEqual(read(step("other-bots", "other-bot-command-reply-empty").response)!.text, "")
     const reply = read(step("other-bots", "other-bot-reply").response)!
     assert.strictEqual(reply.replyTo?.messageId, "1103552216398303272")
+    // A reply to someone else's message, or to one whose author Discord left out, is not one to the bot.
+    assert.notStrictEqual(reply.replyTo?.isSelf, true)
+    assert.strictEqual(reply.replyTo?.isSelf === undefined, reply.replyTo?.authorId === undefined)
+    assert.isFalse(ChatMessage.repliesToSelf(reply))
   })
 
   it("the thread starter placeholder is not a message", () => {

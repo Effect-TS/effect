@@ -1,4 +1,4 @@
-import { handleRequest, makeVerifier, type Options } from "@effect/chat-slack/internal/webhook"
+import { handleRequest, makeVerifier, type Options, unavailable as logged } from "@effect/chat-slack/internal/webhook"
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
@@ -12,6 +12,7 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as Redacted from "effect/Redacted"
 import { TestClock } from "effect/testing"
 import { appId, authTest, botUserId, makeFake, messageEnvelope, team } from "./utils.ts"
@@ -69,6 +70,18 @@ const handle = Effect.fnUntraced(function*(options: Partial<Options>, web: Reque
   })
   return { status: response.status, response, events }
 })
+
+/** Runs `effect` and gives back what it logged: each entry's level and arguments. */
+const withLogs = <A, E, R>(effect: Effect.Effect<A, E, R>) => {
+  const logs: Array<{ readonly level: string; readonly message: ReadonlyArray<unknown> }> = []
+  const logger = Logger.make<unknown, void>((options) => {
+    logs.push({
+      level: options.logLevel,
+      message: Array.isArray(options.message) ? options.message : [options.message]
+    })
+  })
+  return Effect.map(Effect.provide(effect, Logger.layer([logger])), (value) => ({ value, logs }))
+}
 
 describe("webhook", () => {
   it.live("a signed event reaches the handler", () =>
@@ -152,6 +165,23 @@ describe("webhook", () => {
       )
       assert.strictEqual(slowBot.status, 503)
       assert.strictEqual(slowBot.events.length, 0)
+    }))
+
+  it.live("each 503 is logged with what caused it", () =>
+    Effect.gen(function*() {
+      const body = JSON.stringify(message)
+      const web = Effect.promise(() => request(body))
+      const noBot = yield* withLogs(handle({ botUserId: Effect.fail(unavailable) }, yield* web))
+      const refused = yield* withLogs(handle({ handle: () => Effect.fail(new NotAccepted()) }, yield* web))
+      const slow = yield* withLogs(handle({ handle: () => Effect.never, deadline: Duration.millis(20) }, yield* web))
+      const fine = yield* withLogs(handle({}, yield* web))
+      assert.deepStrictEqual([noBot, refused, slow, fine].map(({ value }) => value.status), [503, 503, 503, 200])
+      // The unreadable bot user carries the ChatError that says why.
+      assert.deepStrictEqual(noBot.logs, [{ level: "Error", message: [logged.botUser, unavailable] }])
+      assert.deepStrictEqual(refused.logs, [{ level: "Warn", message: [logged.notAccepted] }])
+      assert.deepStrictEqual(slow.logs, [{ level: "Warn", message: [logged.deadline] }])
+      assert.deepStrictEqual(fine.logs, [])
+      assert.strictEqual(new Set(Object.values(logged)).size, 3)
     }))
 
   it.effect("layerWebhook bounds a request whose body never finishes", () =>

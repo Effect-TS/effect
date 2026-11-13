@@ -1,8 +1,8 @@
 /**
  * The Discord adapter for `effect/chat`: the `Registry` layer, the
- * structural dispatch and interaction entries, the pure normalisers, two
- * default gateway layers, address helpers and the scoped post options. It runs on dfx: every REST
- * call goes through the `DiscordREST` in context.
+ * structural dispatch and interaction entries, the pure normalisers, the
+ * gateway layers, address helpers and the scoped post options. It runs on
+ * dfx: every REST call goes through the `DiscordREST` in context.
  *
  * **Details**
  *
@@ -20,7 +20,9 @@
  * @since 4.1.5
  */
 import { DiscordGateway } from "dfx/DiscordGateway"
+import { DispatchHook } from "dfx/DiscordGateway/Shard/DispatchHook"
 import { DiscordREST } from "dfx/DiscordREST"
+import * as Cause from "effect/Cause"
 import { Registry } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
 import type { ChatEvent, MessageCreated, ReactionAdded } from "effect/chat/ChatEvent"
@@ -134,7 +136,9 @@ const lookupTimeout = Duration.seconds(5)
  *   5 at most. A modal over that, or with a title or label over 45
  *   characters, reaches `Handler.refused` as `TooLarge`. Discord has no
  *   submit label, so `submitLabel` is not shown.
- * - `replyTo` sends a message reference.
+ * - `replyTo` sends a message reference. Discord refuses a reply to a
+ *   message that is gone, unless `withPostOptions({ failIfNotExists: false })`
+ *   lets it through as a plain message.
  * - Only `DEFAULT`, `REPLY`, `CHAT_INPUT_COMMAND` and
  *   `CONTEXT_MENU_COMMAND` messages are messages. A forward, a poll, a
  *   sticker or a components-only message is `DEFAULT` and comes through,
@@ -311,9 +315,15 @@ export const guildId = (event: ChatEvent): Option.Option<string> => Normalize.gu
  *
  * **Details**
  *
- * Intents and sharding stay in the consumer's dfx config. An event that
- * fails with `NotAccepted` is logged and dropped, since the gateway does
- * not redeliver.
+ * - Intents and sharding stay in the consumer's dfx config. So does the
+ *   gateway session: dfx keeps the session id, the resume URL and the
+ *   sequence in the `ShardStateStore` given to `DiscordGatewayLive`.
+ * - It reads dfx's stream of dispatches, which a dispatch reaches after its
+ *   sequence is stored. An event that fails with `NotAccepted` is logged
+ *   and dropped, and so is one the process stops in the middle of: Discord
+ *   does not send it again.
+ *
+ * @see {@link layerDispatchHook} for a host that is stopped and started again
  *
  * @stability unstable
  * @category layers
@@ -335,6 +345,110 @@ export const layerGateway: Layer.Layer<never, never, DiscordGateway | DiscordCha
       }),
       Effect.forkScoped
     )
+  })
+)
+
+/**
+ * For a host that is stopped and started again, a Durable Object for one:
+ * feeds every dispatch to `DiscordChat.dispatch` from dfx's `DispatchHook`,
+ * before the shard stores the dispatch's sequence.
+ *
+ * **When to use**
+ *
+ * Use when an event must not be lost to a restart, in place of
+ * `layerGateway`. Never provide both: every event would be delivered twice.
+ *
+ * **Details**
+ *
+ * - Provide it to the dfx layer that builds the shards, `DiscordGatewayLive`
+ *   or `ShardLive`, beside a `ShardStateStore` over storage that outlives
+ *   the host. dfx keeps the session id, the resume URL and the sequence
+ *   there, so a host built again sends RESUME, not IDENTIFY, and Discord
+ *   sends what it missed.
+ * - The handler runs before the sequence is stored. A host stopped in the
+ *   middle of an event never stored that event's sequence, so the RESUME
+ *   brings the event back.
+ * - An event that fails with `NotAccepted` fails the hook. dfx drops the
+ *   connection, resumes from the last stored sequence and gets the event
+ *   again, after 1 second, doubling with every failure in a row up to 2
+ *   minutes. An event that is refused every time holds back every event
+ *   after it.
+ * - A defect in the handler is logged and the event dropped, as a replay
+ *   would only fail the same way.
+ * - Delivery is at least once. A host stopped after the handler returned and
+ *   before the sequence was stored gets that event a second time, so a
+ *   handler that can't take an event twice remembers the ids it took.
+ * - The hook runs on the shard's read loop, one dispatch at a time. A
+ *   handler slower than Discord's heartbeat interval, about 41 seconds,
+ *   makes the shard reconnect.
+ * - Interactions stay with `layerGatewayInteractions`: each has 3 seconds,
+ *   so there is nothing to resume.
+ *
+ * **Gotchas**
+ *
+ * - Discord replays only while it keeps the session. When it refuses the
+ *   RESUME, dfx identifies again and the events in between are gone.
+ * - Waking the host, restarting a shard that went quiet and backing off
+ *   after a close Discord won't change its mind on, an invalid token (4004)
+ *   or a disallowed intent (4014), stay with the host: dfx reconnects
+ *   whatever the close code.
+ *
+ * **Example** (Resuming from the host's own storage)
+ *
+ * ```ts
+ * import { DiscordChat } from "@effect/chat-discord"
+ * import { ShardLive } from "dfx/DiscordGateway/Shard"
+ * import { type ShardState, ShardStateStore } from "dfx/DiscordGateway/Shard/StateStore"
+ * import { Effect, Layer, Option } from "effect"
+ *
+ * // Stands in for storage that outlives the host.
+ * const storage = new Map<string, ShardState>()
+ *
+ * const SessionStore = Layer.succeed(
+ *   ShardStateStore,
+ *   ShardStateStore.of({
+ *     forShard: ([id, count]) => {
+ *       const key = `${id}/${count}`
+ *       return {
+ *         get: Effect.sync(() => Option.fromUndefinedOr(storage.get(key))),
+ *         set: (state) => Effect.sync(() => void storage.set(key, state)),
+ *         clear: Effect.sync(() => void storage.delete(key))
+ *       }
+ *     }
+ *   })
+ * )
+ *
+ * // Still needs `DiscordChat`, a `ChatHandler` and the rest of dfx's gateway.
+ * export const ShardResuming = ShardLive.pipe(
+ *   Layer.provide([DiscordChat.layerDispatchHook, SessionStore])
+ * )
+ * ```
+ *
+ * @see {@link layerGateway} for a process that runs until it is told to stop
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.5
+ */
+export const layerDispatchHook: Layer.Layer<never, never, DiscordChat | ChatHandler> = Layer.effect(
+  DispatchHook,
+  Effect.gen(function*() {
+    const discord = yield* DiscordChat
+    const handler = yield* ChatHandler
+    return (payload) => {
+      const t: unknown = payload.t
+      if (typeof t !== "string" || !handled.has(t)) return Effect.void
+      return discord.dispatch({ t, d: payload.d }).pipe(
+        Effect.provideService(ChatHandler, handler),
+        // Refused or interrupted: the sequence stays unstored and a RESUME replays the event.
+        Effect.catchCause((cause): Effect.Effect<void, NotAccepted> =>
+          Cause.hasFails(cause) || Cause.hasInterrupts(cause)
+            ? Effect.failCause(cause)
+            : Effect.logError("discord gateway: handler defect, event dropped", cause)
+        ),
+        Effect.orDie
+      )
+    }
   })
 )
 
@@ -425,6 +539,12 @@ export interface DiscordPostOptions {
    * either. False sends no flag on a post and clears it on an edit.
    */
   readonly suppressEmbeds?: boolean | undefined
+  /**
+   * What a post with `replyTo` does when that message is gone. Default
+   * true: Discord refuses the post. False sends `fail_if_not_exists: false`,
+   * and Discord posts the message without the reference.
+   */
+  readonly failIfNotExists?: boolean | undefined
   /** For `startThread`, in minutes. Default: the channel's. */
   readonly autoArchiveDuration?: 60 | 1440 | 4320 | 10080 | undefined
 }
