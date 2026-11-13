@@ -743,7 +743,8 @@ export const make = (
               }
             })
           )
-        const tracerDisabled = fiber.getRef(Tracer.DisablePropagation) ||
+        const tracerDisabled = !fiber.getRef(References.TracerEnabled) ||
+          fiber.getRef(Tracer.DisablePropagation) ||
           fiber.getRef(TracerDisabledWhen)(request)
         if (tracerDisabled) {
           return exchange(request)

@@ -625,6 +625,18 @@ Missing key
         assert.strictEqual(typeof request.headers.traceparent, "string")
       }))
 
+    it.effect("omits trace headers when tracing is disabled", () =>
+      Effect.gen(function*() {
+        const { client, sent } = makeCapturingClient()
+
+        yield* client.get("http://test/").pipe(Effect.withTracerEnabled(false))
+
+        const request = sent()
+        assert(request !== undefined)
+        assert.isUndefined(request.headers.b3)
+        assert.isUndefined(request.headers.traceparent)
+      }))
+
     it.effect("omits trace headers when propagation is disabled and keeps the client span", () =>
       Effect.gen(function*() {
         const { client, sent } = makeCapturingClient()
