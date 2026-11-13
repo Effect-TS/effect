@@ -426,7 +426,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     const measure = descriptor.measure
     const limits = descriptor.limits
     const interval = Duration.toMillis(options.minWriteInterval ?? limits.minWriteInterval)
-    const maxParts = Math.max(1, options.maxParts ?? defaultMaxParts)
+    let maxParts = Math.max(1, options.maxParts ?? defaultMaxParts)
     const overflow = options.overflow ?? "fail"
     const streamLength = Math.min(limits.streamLength ?? limits.messageLength, limits.messageLength)
     const streamAge = limits.streamAge === undefined ? undefined : Duration.toMillis(limits.streamAge)
@@ -452,6 +452,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     let overflowStart: number | undefined
     let overflowBytes = 0
     let overflowUncertain = false
+    let overflowFilesRefused = false
     let note: string | undefined
     const parts: Array<Part> = []
 
@@ -683,10 +684,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
             settle(exit, markdown)
           }
         )
-      return Effect.flatMap(attempt(markdown, files, unattachedNote !== undefined, withActions), (exit) => {
-        if (unattachedNote === undefined || !isFileRefusal(exit)) return Effect.void
+      const withoutFiles = () => {
         // The platform may have refused the files: the last part goes out without them, ending in the note.
-        const text = unattachedNote(files!)
+        const text = unattachedNote!(files!)
         if (measureLast(markdown + text) <= limits.messageLength) {
           return Effect.asVoid(attempt(markdown + text, undefined, false, withActions))
         }
@@ -697,7 +697,12 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         if (isBlank(markdown)) return Effect.asVoid(attempt(text, undefined, false, noteActions))
         note = text
         return Effect.asVoid(attempt(markdown, undefined, false, false))
-      })
+      }
+      if (overflowFilesRefused && files !== undefined) return withoutFiles()
+      return Effect.flatMap(
+        attempt(markdown, files, unattachedNote !== undefined, withActions),
+        (exit) => unattachedNote !== undefined && isFileRefusal(exit) ? withoutFiles() : Effect.void
+      )
     }
 
     /** Posts a message after the text that is not part of it: the unattached note, or the actions alone. */
@@ -1075,10 +1080,16 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           )
         const files = options.files ?? []
         const unattachedNote = files.length === 0 ? undefined : options.unattachedNote
-        return Effect.flatMap(attempt("", files, unattachedNote !== undefined), (exit) =>
-          unattachedNote !== undefined && isFileRefusal(exit)
-            ? Effect.asVoid(attempt(unattachedNote(files).trim(), [], false))
-            : Effect.void)
+        return Effect.asVoid(Effect.map(attempt("", files, unattachedNote !== undefined), (exit) => {
+          if (unattachedNote === undefined || !isFileRefusal(exit)) return
+          // The overflow file was refused too. Drain the remaining text through
+          // the normal splitter, without files or another maxParts overflow.
+          overflowFilesRefused = true
+          overflowStart = undefined
+          maxParts = Infinity
+          nativeAllowed = false
+          current.native = false
+        }))
       })
 
     // --- the loop --------------------------------------------------------------
@@ -1231,7 +1242,9 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
  *   detail `file_refused` is tried once more without them, ending in the note,
  *   or followed by the note when it does not fit. Any failure of that post
  *   fails the call. Without `unattachedNote` the first failure fails the
- *   call. An `uncertain` failure records the part in `uncertain` and posts no note.
+ *   call. If the overflow file is refused too, the remaining text is split
+ *   into messages beyond `maxParts`, without files and ending in the note.
+ *   An `uncertain` failure records the part in `uncertain` and posts no note.
  * - `actions` go with the last part too, which is cut so that
  *   `measure(part, actions) <= limits.messageLength`. The parts before it
  *   are filled without room for them. When not even the text's last grapheme

@@ -122,8 +122,8 @@ export interface Options {
  * - An envelope for another app or workspace, or of another type, is
  *   answered 200 and dropped, so Slack does not retry it.
  * - 503 when the bot user can't be read, the handler fails `NotAccepted`,
- *   or reading the bot user and running the handler take longer than the
- *   deadline. Slack then retries.
+ *   or the whole request (including its body and verification) takes longer
+ *   than the deadline. Slack then retries.
  *
  * @internal
  */
@@ -149,7 +149,6 @@ export const handleRequest = (
     }
     if (envelope.type !== "event_callback" || envelope.api_app_id !== options.appId) return ok
     const callback = envelope
-    // The deadline covers the bot user lookup as well as the handlers.
     const handled = yield* Effect.gen(function*() {
       const botUserId = yield* Effect.option(options.botUserId)
       if (Option.isNone(botUserId)) return false
@@ -157,12 +156,13 @@ export const handleRequest = (
       yield* Effect.forEach(events, options.handle, { discard: true })
       return true
     }).pipe(
-      Effect.timeoutOption(options.deadline),
-      Effect.map((done) => Option.isSome(done) && done.value),
       Effect.catchTag("NotAccepted", () => Effect.succeed(false))
     )
     return handled ? ok : status(503)
-  })
+  }).pipe(
+    Effect.timeoutOption(options.deadline),
+    Effect.map(Option.getOrElse(() => status(503)))
+  )
 
 /** @internal */
 export interface InteractivityOptions {

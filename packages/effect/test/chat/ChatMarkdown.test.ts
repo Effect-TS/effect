@@ -249,6 +249,23 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(messages.map((message) => message.attachments.length), [1])
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 5 } }))))
 
+    it.effect("preserves overflow as text when files are refused", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        yield* test.refuseFiles({ times: 2 })
+        const input = paragraphs(5, 20)
+        const result = yield* ChatMarkdown.post(thread, input, {
+          files,
+          maxParts: 1,
+          overflow: { file: { name: "rest.md" } },
+          unattachedNote: () => " (not attached)"
+        })
+        assert.strictEqual(joined(result.parts), input)
+        const messages = yield* test.messages(thread)
+        assert.strictEqual(messages.map((message) => message.text).join(""), input + " (not attached)")
+        assert.isTrue(messages.every((message) => message.attachments.length === 0))
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 30 } }))))
+
     it.effect("sends the files with the overflow file", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
