@@ -1,6 +1,6 @@
 {
   "synthetic": "Hand-written, not read back from Slack: the test workspace was not available for EFF-3750. The shapes follow the recorded rich_text in ../recorded and Slack's rich_text docs. Replace each with a recording when one is made.",
-  "case": "Stage 0 fixture 13: the bot's own posts read back, for the constructs and message kinds the recordings lack (strike, quotes, lists, named links, broadcasts, user groups, emoji, buttons, file-only).",
+  "case": "Stage 0 fixture 13: the bot's own posts read back, for the constructs and message kinds the recordings lack (strike, quotes, lists, named links, broadcasts, user groups, emoji, buttons, file-only, literal Markdown characters, code span padding).",
   "cases": [
     {
       "name": "strike, bold italic and a code span holding a backtick",
@@ -358,6 +358,84 @@
             "mimetype": "text/csv",
             "size": 12,
             "url_private": "https://files.slack.com/files-pri/T05479Z6JBW-F0SYN00002/data.csv"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Markdown characters a text element holds as literals",
+      "markdown": "\\*not italic\\*, \\`not code\\`, \\~not struck\\~, \\[not\\](a link), snake_case, \\_edge\\_, C:\\dir\\\\\\*\n\\# not a heading\n\\- not a list\n1\\. not ordered\n\\> not a quote\n**2 \\* 3**",
+      "message": {
+        "type": "message",
+        "user": "U0CCLMD4S1L",
+        "bot_id": "B0CCHBHDK7X",
+        "app_id": "A0CCHBHDK7X",
+        "team": "T05479Z6JBW",
+        "ts": "1794600000.000700",
+        "text": "*not italic*, `not code`, ~not struck~, [not](a link), snake_case, _edge_, C:\\dir\\*\n# not a heading\n- not a list\n1. not ordered\n&gt; not a quote\n*2 * 3*",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "syn",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "*not italic*, `not code`, ~not struck~, [not](a link), snake_case, _edge_, C:\\dir\\*\n# not a heading\n- not a list\n1. not ordered\n> not a quote\n"
+                  },
+                  {
+                    "type": "text",
+                    "text": "2 * 3",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "a code span with a space at each end",
+      "markdown": "pad `  foo  ` end",
+      "message": {
+        "type": "message",
+        "user": "U0CCLMD4S1L",
+        "bot_id": "B0CCHBHDK7X",
+        "app_id": "A0CCHBHDK7X",
+        "team": "T05479Z6JBW",
+        "ts": "1794600000.000800",
+        "text": "pad ` foo ` end",
+        "blocks": [
+          {
+            "type": "rich_text",
+            "block_id": "syn",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "pad "
+                  },
+                  {
+                    "type": "text",
+                    "text": " foo ",
+                    "style": {
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " end"
+                  }
+                ]
+              }
+            ]
           }
         ]
       }

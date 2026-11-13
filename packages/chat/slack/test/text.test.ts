@@ -71,7 +71,11 @@ describe("build", () => {
 describe("request bodies", () => {
   const thread = SlackChat.thread({ team, channel })
   const allowed = { users: ["U1"], broadcast: true }
-  const allowedTokens = ["<@U1>", "<!here>"]
+  /** The tokens `notify` lets through, of those the alphabet can spell. */
+  const allowedTokens = (notify: Escape.Notify): ReadonlyArray<string> => [
+    ...(notify.users?.includes("U1") ? ["<@U1>"] : []),
+    ...(notify.broadcast === true ? ["<!here>"] : [])
+  ]
 
   // Pieces that spell tokens, entity forms, code and multi-unit characters.
   const alphabet = ["<", "@U1", "!here", ">", "&", "lt;", "`", "x", "👍🏽", "\n"]
@@ -98,10 +102,10 @@ describe("request bodies", () => {
     else assert.isAtMost(bytes(text), Text.updateTextBytes, label)
     // No token survives in text but an allowed one, and every & starts an entity.
     let rest = text
-    for (const token of allowedTokens) rest = rest.replaceAll(token, "")
+    for (const token of allowedTokens(notify)) rest = rest.replaceAll(token, "")
     assert.notMatch(rest, /[<>]|&(?!lt;|gt;|amp;)/, label)
     // An allowed token the block sends intact is in text too, cut or not.
-    for (const token of allowedTokens) {
+    for (const token of allowedTokens(notify)) {
       if (block.includes(token)) assert.include(text, token, label)
     }
     // A cut is a prefix of the whole text, on a grapheme boundary and outside an entity.

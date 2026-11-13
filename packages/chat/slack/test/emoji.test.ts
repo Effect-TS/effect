@@ -82,10 +82,10 @@ describe("emoji", () => {
       assert.strictEqual(fromName("handshake::skin-tone-3::skin-tone-3"), undefined)
     })
 
-    it("gives a single tone only where the table has that one tone", () => {
+    it("gives a single tone, or the same tone twice where upstream keys only by two", () => {
       assert.strictEqual(fromName("handshake::skin-tone-3"), "🤝🏼")
-      // Keyed by two tones upstream only.
-      assert.strictEqual(fromName("people_holding_hands::skin-tone-4"), undefined)
+      assert.strictEqual(fromName("people_holding_hands::skin-tone-4"), "🧑🏽‍🤝‍🧑🏽")
+      assert.strictEqual(fromName("people_holding_hands::skin-tone-1"), undefined)
     })
 
     it("resolves every alias and every one-tone variation in the table", () => {
@@ -185,6 +185,11 @@ describe("emoji", () => {
       assert.isAtLeast(blocksCost("🇺") + blocksCost("🇸"), blocksCost("🇺🇸"))
       assert.isAtLeast(blocksCost("🏃") + blocksCost("\u200D➡️"), blocksCost("🏃‍➡️"))
       assert.isAtLeast(blocksCost("\uD83D") + blocksCost("\uDE00"), blocksCost("😀"))
+      // Slack charges a lone hair component 1. At 3 or less, 🧑‍🦱 would split
+      // for less than :curly_haired_person:.
+      assert.strictEqual(blocksCost("\u{1F9B1}"), 4)
+      assert.strictEqual(blocksCost("🧑‍🦱"), ":curly_haired_person:".length)
+      assert.isBelow(blocksCost("🧑") + blocksCost("\u200D") + 3, blocksCost("🧑‍🦱"))
     })
 
     it("is subadditive", () => {
