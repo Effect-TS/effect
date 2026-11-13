@@ -216,9 +216,12 @@ export const isRef = (u: unknown): u is Ref<unknown> => Predicate.hasProperty(u,
  * it, whose tag is checked when the send is made. A message narrowed to a case
  * the child doesn't receive is rejected, and so is a wider type such as
  * `unknown` or `object`: the fallback takes exactly `Msg`, and only when the
- * ref knows it.
+ * ref knows it. A ref whose `Rcv` is `unknown` or `any` has been erased, as
+ * `View.Child`'s `ref`, `Step`'s `sends` and `Feature.Any`'s `ref` are, and
+ * takes nothing.
  */
-type SendMessage<A, To> = To extends Ref<infer Rcv, infer Msg> ? [Rcv] extends [never] ? never
+type SendMessage<A, To> = To extends Ref<infer Rcv, infer Msg> ? unknown extends Rcv ? never
+  : [Rcv] extends [never] ? never
   : [A] extends [Rcv] ? A
   : unknown extends Msg ? Rcv
   : [A] extends [Msg] ? [Msg] extends [A] ? A : Rcv

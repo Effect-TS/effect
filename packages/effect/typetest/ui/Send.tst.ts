@@ -122,6 +122,44 @@ describe("$.send", () => {
     })
   })
 
+  it("takes nothing through an erased ref, from any public output, and keeps concrete refs", () => {
+    ParentDef.view((_, h) => {
+      // A slot's `component` is `Component.Any | Feature.Any`, and `Feature.Any`'s ref receives `any`.
+      const target = h.child(Todos, { ref: Todos.ref("Main"), fallback: () => h.el("p") }).component
+      if (Feature.isService(target)) {
+        const erased = target.ref("Main")
+        ParentDef.update((model, _msg, $) => {
+          expect($.send).type.not.toBeCallableWith(erased, { _tag: "Clear" })
+          expect($.send).type.not.toBeCallableWith(erased, { arbitrary: 1 })
+          expect($.send).type.not.toBeCallableWith(erased.at("t1"), { arbitrary: 1 })
+          return model
+        })
+      }
+      // A slot's `ref` receives `unknown`.
+      const slotRef = h.child(Editor, { ref: Draft }).ref!
+      ParentDef.update((model, _msg, $) => {
+        expect($.send).type.not.toBeCallableWith(slotRef, { _tag: "Clear" })
+        expect($.send).type.not.toBeCallableWith(slotRef.at(1), { arbitrary: 1 })
+        return model
+      })
+      return h.el("p")
+    })
+    ParentDef.update((model, _msg, $) => {
+      // What a step sent, and what `isRef` narrows to.
+      const sent = $.send(Draft, { _tag: "Clear" }).sends[0]!.ref
+      expect($.send).type.not.toBeCallableWith(sent, { arbitrary: 1 })
+      if (Component.isRef(untrusted)) expect($.send).type.not.toBeCallableWith(untrusted.at("x"), { _tag: "Clear" })
+      // A component whose receives are `any`.
+      expect($.send).type.not.toBeCallableWith(ErasedPlain.ref("E"), { arbitrary: 1 })
+      expect($.send).type.not.toBeCallableWith(ErasedPlain.ref("E").at(1), { _tag: "Clear" })
+      // Concrete refs, and their rows, still infer.
+      expect($.send(Draft.at("a"), { _tag: "Focus" })).type.not.toRaiseError()
+      expect($.send(Rows.at(1), EditorMessage.make({ _tag: "Clear" }))).type.not.toRaiseError()
+      expect($.send(Todos.ref("Main").at(2), { _tag: "Clear" })).type.not.toRaiseError()
+      return model
+    })
+  })
+
   it("isn't available in init", () => {
     ParentDef.make({
       init: ($) => {
