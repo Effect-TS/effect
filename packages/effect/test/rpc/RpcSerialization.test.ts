@@ -351,23 +351,23 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(new TextEncoder().encode("{\"ok\":true}\n")), [{ ok: true }])
   })
 
-  it("ndjson reports each malformed frame to onError and keeps the frames around it", () => {
-    const parser = RpcSerialization.ndjson.makeUnsafe()
-    const errors: Array<RpcSerialization.NdjsonDecodeError> = []
+  it("ndjson reports each malformed frame to onDecodeError and keeps the frames around it", () => {
+    const errors: Array<unknown> = []
+    const parser = RpcSerialization.ndjson.makeUnsafe({ onDecodeError: (error: unknown) => errors.push(error) })
 
     assert.deepStrictEqual(
-      parser.decode("{\"before\":1}\n{\n{\"after\":2}\n{\"tail\":", (error) => errors.push(error)),
+      parser.decode("{\"before\":1}\n{\n{\"after\":2}\n{\n{\"tail\":"),
       [{ before: 1 }, { after: 2 }]
     )
-    assert.strictEqual(errors.length, 1)
+    assert.strictEqual(errors.length, 2)
     assert.instanceOf(errors[0], RpcSerialization.NdjsonDecodeError)
-    assert.deepStrictEqual(parser.decode("3}\n", (error) => errors.push(error)), [{ tail: 3 }])
+    assert.deepStrictEqual(parser.decode("3}\n"), [{ tail: 3 }])
     assert.strictEqual(errors.length, 1)
   })
 
   it("jsonRpc encodes an NdjsonDecodeError defect as a parse error without the input", () => {
     const parser = RpcSerialization.ndJsonRpc().makeUnsafe()
-    const error = new RpcSerialization.NdjsonDecodeError({ cause: new SyntaxError("Unexpected end of JSON input") })
+    const error = { name: "NdjsonDecodeError", message: "private input", cause: { message: "private input" } }
     const encoded = parser.encode({ _tag: "Defect", defect: error })
 
     assert(typeof encoded === "string")
