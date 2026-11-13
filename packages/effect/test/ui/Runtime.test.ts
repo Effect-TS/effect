@@ -2219,6 +2219,43 @@ describe("Runtime", () => {
         Effect.provide(Renderer.layer({ ...TestHost.makeHost(), runsMounts: true })),
         provideHost
       ))
+
+    it.effect("an input mount that is busy while two inputs arrive gets the latest one", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<void>()
+        const seen: Array<number> = []
+        const Chart = Component.define({
+          name: "SlowChart",
+          model: Schema.Number,
+          message: Schema.Number,
+          elements: Tiny
+        })
+          .make({
+            init: () => 0,
+            update: (_, n) => n,
+            view: (n, h) =>
+              h.field.onMount("draw", n, (_node, changes) =>
+                Stream.runForEach(changes, (value) =>
+                  Effect.gen(function*() {
+                    seen.push(value)
+                    if (value === 0) {
+                      yield* Deferred.await(gate)
+                    }
+                  })))
+          })
+        const root = yield* TestHost.mount(Chart, {})
+        yield* TestHost.settle
+        root.send(1)
+        yield* TestHost.settle
+        root.send(2)
+        yield* TestHost.settle
+        yield* Deferred.succeed(gate, undefined)
+        yield* TestHost.settle
+        assert.deepStrictEqual(seen, [0, 2])
+      }).pipe(
+        Effect.provide(Renderer.layer({ ...TestHost.makeHost(), runsMounts: true })),
+        provideHost
+      ))
   })
 
   it.effect("a removed element's mount that was waiting for its Layer never runs", () =>

@@ -3029,7 +3029,8 @@ const setup = (
     if (input === undefined || mount === undefined || !("input" in mount)) return
     if (Equal.equals(input.value, mount.input)) return
     input.value = mount.input
-    PubSub.publishUnsafe(input.pubsub, mount.input)
+    // `publishUnsafe` drops a value when the buffer is full. `publish` slides it out, and never suspends.
+    Effect.runSync(PubSub.publish(input.pubsub, mount.input))
   }
 
   // -- owned layers ---------------------------------------------------------
