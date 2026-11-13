@@ -123,6 +123,21 @@ describe("Component loaders", () => {
     expect<Component.Requirements<typeof Card>>().type.toBe<GetUser | GetTeam>()
   })
 
+  it("take the loaders from the reads when update's $ is annotated", () => {
+    const Annotated = Component.define({
+      name: "Annotated",
+      model: Schema.Struct({}),
+      message: Schema.Never,
+      loaders: { name: { load: GetName, args: () => ({ id: "1" }) } }
+    }).make({
+      init: () => ({}),
+      update: (model, _msg, $: Component.Update<{}, never, never, {}>) => $.set(model),
+      view: (_model, h) => h.text("")
+    })
+    expect<Component.Loaders<typeof Annotated>>().type.toBe<{ readonly name: Component.Load<typeof GetName> }>()
+    expect<Component.Requirements<typeof Annotated>>().type.toBe<GetName>()
+  })
+
   it("add their reads to the requirements, never what the fetchers use", () => {
     const Named = Component.define({
       name: "Named",
