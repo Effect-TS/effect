@@ -241,8 +241,7 @@ interface Waiter {
 // The first queued request that fits in the free permits. Larger requests
 // ahead of it keep their place but are overtaken, as documented on `take`.
 const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
-  // With no free permit only a request that needs none fits, so skip the search.
-  if (self.free <= 0 && self.zeroPermitWaiters === 0) return undefined
+  if (self.free < self.waiterPermitsLowerBound) return undefined
   for (const waiter of self.waiters) {
     if (waiter.permits <= self.free) return waiter
   }
@@ -264,13 +263,13 @@ const takePermits = <A, E, R>(
     const waiter: Waiter = { permits: n, resume: undefined }
     const remove = () => {
       if (self.waiters.delete(waiter)) {
-        if (n <= 0) self.zeroPermitWaiters--
+        if (self.waiters.size === 0) self.waiterPermitsLowerBound = Infinity
         self.releaseUnsafe(fiber, 0)
       }
       return undefined
     }
     self.waiters.add(waiter)
-    if (n <= 0) self.zeroPermitWaiters++
+    if (n < self.waiterPermitsLowerBound) self.waiterPermitsLowerBound = n
     internal.onExitUnsafe(fiber, remove)
     const wait = restore(internal.callback<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
@@ -291,8 +290,8 @@ const takePermits = <A, E, R>(
 
 class SemaphoreImpl implements Semaphore {
   public waiters = new Set<Waiter>()
-  // Queued requests that need no permit, which fit even when none are free.
-  public zeroPermitWaiters = 0
+  // A conservative minimum, reset only when the queue empties to avoid rescanning on removal.
+  public waiterPermitsLowerBound = Infinity
   public taken = 0
   public permits: number
 
@@ -337,7 +336,7 @@ class SemaphoreImpl implements Semaphore {
         let remaining = this.free
         const woken: Array<Waiter> = []
         for (const waiter of this.waiters) {
-          if (remaining <= 0 && this.zeroPermitWaiters === 0) break
+          if (remaining < this.waiterPermitsLowerBound) break
           if (waiter.permits > remaining) continue
           remaining -= waiter.permits
           woken.push(waiter)
