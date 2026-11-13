@@ -3858,6 +3858,41 @@ export const withoutLocale = client.getGreeting({ params: {} })
         }
       ]))
 
+    itGeneratedClientsCompile("emits compilable type-only clients with implicit additional properties", {
+      openapi: "3.1.0",
+      info: { title: "Open object API", version: "1.0.0" },
+      paths: {
+        "/users": {
+          get: {
+            operationId: "getUser",
+            parameters: [],
+            responses: {
+              "200": {
+                description: "OK",
+                content: {
+                  "application/json": { schema: { $ref: "#/components/schemas/User" } }
+                }
+              }
+            },
+            tags: ["Users"],
+            security: []
+          }
+        }
+      },
+      components: {
+        schemas: {
+          User: {
+            type: "object",
+            properties: { Name: { type: "string" } },
+            required: ["Name"]
+          }
+        },
+        securitySchemes: {}
+      },
+      security: [],
+      tags: []
+    }, { formats: ["httpclient-type-only"] })
+
     itGeneratedClientsCompile("emits compilable open objects with optional properties", {
       openapi: "3.1.0",
       info: {
