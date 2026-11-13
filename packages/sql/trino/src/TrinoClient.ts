@@ -1,0 +1,892 @@
+/**
+ * Trino driver for Effect SQL, speaking Trino's HTTP client protocol through
+ * an `HttpClient`.
+ *
+ * This module provides the Trino-specific {@link TrinoClient} service and the
+ * generic `SqlClient` service. A statement is submitted with
+ * `POST /v1/statement` and its results are read by following `nextUri` until
+ * the query finishes. Statements with parameters are sent as
+ * `EXECUTE IMMEDIATE ... USING` with each parameter rendered as a SQL literal,
+ * and rows are decoded from the response text using each column's type, so
+ * `bigint` values keep their full precision.
+ *
+ * The client keeps one Trino session: catalog, schema, session property and
+ * prepared statement changes returned by the server apply to every later
+ * statement made through the client. Transactions use Trino's transaction id
+ * header and cannot be nested.
+ *
+ * @stability unstable
+ * @since 4.1.5
+ */
+import * as Config from "effect/Config"
+import * as Context from "effect/Context"
+import * as DateTime from "effect/DateTime"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Base64 from "effect/encoding/Base64"
+import * as Hex from "effect/encoding/Hex"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
+import type * as Scope from "effect/Scope"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ConnectionError,
+  SqlError,
+  SqlSyntaxError,
+  StatementTimeoutError,
+  UnknownError
+} from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
+import * as Stream from "effect/Stream"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_NAMESPACE = "db.namespace"
+
+/**
+ * Unique runtime identifier used to tag `TrinoClient` values.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.1.5
+ */
+export const TypeId: TypeId = "~@effect/sql-trino/TrinoClient"
+
+/**
+ * Type-level literal for the `TrinoClient` runtime identifier.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.1.5
+ */
+export type TypeId = "~@effect/sql-trino/TrinoClient"
+
+/**
+ * Trino-specific `SqlClient` extension with access to its configuration.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.5
+ */
+export interface TrinoClient extends Client.SqlClient {
+  readonly [TypeId]: TypeId
+  readonly config: TrinoClientConfig
+}
+
+/**
+ * Service tag for the active Trino SQL client.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.5
+ */
+export const TrinoClient = Context.Service<TrinoClient>("@effect/sql-trino/TrinoClient")
+
+/**
+ * Configuration for a Trino client.
+ *
+ * **Details**
+ *
+ * `url` is the coordinator's base URL, such as `http://localhost:8080`.
+ * `user` is sent as `X-Trino-User` on every request, and with `password`
+ * the client also sends HTTP Basic authentication, which Trino only accepts
+ * over HTTPS. `catalog`, `schema`, `timeZone` and `sessionProperties` set
+ * the initial session.
+ *
+ * `retryTimeout` bounds how long a request keeps being retried. The request
+ * that submits a statement is only retried when the server answers 429 or 503,
+ * because any other failure leaves it unknown whether the statement started.
+ * Requests that read results are also retried on 502, 504 and network
+ * failures. It defaults to 2 minutes.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export interface TrinoClientConfig {
+  readonly url: string
+  readonly user: string
+  readonly password?: Redacted.Redacted | undefined
+  readonly source?: string | undefined
+  readonly catalog?: string | undefined
+  readonly schema?: string | undefined
+  readonly timeZone?: string | undefined
+  readonly sessionProperties?: Readonly<Record<string, string>> | undefined
+  readonly retryTimeout?: Duration.Input | undefined
+
+  readonly spanAttributes?: Record<string, unknown> | undefined
+  readonly transformResultNames?: ((str: string) => string) | undefined
+  readonly transformQueryNames?: ((str: string) => string) | undefined
+}
+
+/**
+ * Creates a `TrinoClient` that sends requests with the `HttpClient` in the
+ * environment.
+ *
+ * **Details**
+ *
+ * No request is made until the first statement runs. Interrupting a statement,
+ * or ending a stream before its last row, cancels the query on the server.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.5
+ */
+export const make = (
+  options: TrinoClientConfig
+): Effect.Effect<TrinoClient, never, Scope.Scope | Reactivity.Reactivity | HttpClient.HttpClient> =>
+  Effect.gen(function*() {
+    const httpClient = yield* HttpClient.HttpClient
+    const compiler = makeCompiler(options.transformQueryNames)
+    const transformRows = options.transformResultNames
+      ? Statement.defaultTransforms(options.transformResultNames).array
+      : undefined
+    const baseUrl = options.url.replace(/\/+$/, "")
+    const retryTimeout = Duration.toMillis(options.retryTimeout ?? Duration.minutes(2))
+    const authorization = options.password === undefined
+      ? undefined
+      : `Basic ${Base64.encode(`${options.user}:${Redacted.value(options.password)}`)}`
+
+    const session: Session = {
+      catalog: options.catalog,
+      schema: options.schema,
+      properties: new Map(Object.entries(options.sessionProperties ?? {})),
+      preparedStatements: new Map()
+    }
+
+    const headersFor = (transactionId: string | undefined): Record<string, string> => {
+      const headers: Record<string, string> = {
+        "X-Trino-User": options.user,
+        "X-Trino-Source": options.source ?? "effect-sql-trino"
+      }
+      if (authorization !== undefined) headers["Authorization"] = authorization
+      if (session.catalog !== undefined) headers["X-Trino-Catalog"] = session.catalog
+      if (session.schema !== undefined) headers["X-Trino-Schema"] = session.schema
+      if (options.timeZone !== undefined) headers["X-Trino-Time-Zone"] = options.timeZone
+      if (session.properties.size > 0) headers["X-Trino-Session"] = joinPairs(session.properties)
+      if (session.preparedStatements.size > 0) {
+        headers["X-Trino-Prepared-Statement"] = joinPairs(session.preparedStatements)
+      }
+      if (transactionId !== undefined) headers["X-Trino-Transaction-Id"] = transactionId
+      return headers
+    }
+
+    const applySessionHeaders = (state: ConnectionState, headers: Readonly<Record<string, string | undefined>>) => {
+      const catalog = headers["x-trino-set-catalog"]
+      if (catalog !== undefined) session.catalog = catalog
+      const schema = headers["x-trino-set-schema"]
+      if (schema !== undefined) session.schema = schema
+      for (const [name, value] of splitPairs(headers["x-trino-set-session"])) session.properties.set(name, value)
+      for (const name of splitList(headers["x-trino-clear-session"])) session.properties.delete(name)
+      for (const [name, value] of splitPairs(headers["x-trino-added-prepare"])) {
+        session.preparedStatements.set(name, value)
+      }
+      for (const name of splitList(headers["x-trino-deallocated-prepare"])) session.preparedStatements.delete(name)
+      const started = headers["x-trino-started-transaction-id"]
+      if (started !== undefined) state.transactionId = started
+      if (headers["x-trino-clear-transaction-id"] !== undefined) state.transactionId = undefined
+    }
+
+    const sleepMillis = (millis: number) => Effect.sleep(Duration.millis(millis))
+
+    // Sends a request, retrying while `retryDelay` returns a delay and the
+    // retry budget lasts. Returns the response body text of a 200 response.
+    const send = (
+      state: ConnectionState,
+      request: HttpClientRequest.HttpClientRequest,
+      retryDelay: (failure: HttpFailure) => number | undefined,
+      operation: string
+    ): Effect.Effect<string, SqlError> =>
+      Effect.flatMap(Effect.clockWith((clock) => clock.currentTimeMillis), (startedAt) => {
+        const attempt: Effect.Effect<string, SqlError> = httpClient.execute(request).pipe(
+          Effect.matchEffect({
+            onFailure: (cause) => retryOrFail({ _tag: "Transport", cause }),
+            onSuccess: (response) =>
+              response.status === 200
+                ? Effect.matchEffect(response.text, {
+                  onFailure: (cause) => retryOrFail({ _tag: "Transport", cause }),
+                  onSuccess: (body) => {
+                    applySessionHeaders(state, response.headers)
+                    return Effect.succeed(body)
+                  }
+                })
+                : retryOrFail({ _tag: "Status", response })
+          })
+        )
+        const retryOrFail = (failure: HttpFailure): Effect.Effect<string, SqlError> => {
+          const delay = retryDelay(failure)
+          if (delay === undefined) return Effect.fail(httpError(failure, operation))
+          return Effect.flatMap(
+            Effect.clockWith((clock) => clock.currentTimeMillis),
+            (now) =>
+              now + delay - startedAt > retryTimeout
+                ? Effect.fail(httpError(failure, operation))
+                : Effect.andThen(sleepMillis(delay), attempt)
+          )
+        }
+        return attempt
+      })
+
+    // A pagination step: the results of one page and the next URI to read.
+    const submit = (state: ConnectionState, sql: string, transactionId: string | undefined) =>
+      send(
+        state,
+        HttpClientRequest.post(`${baseUrl}/v1/statement`, { headers: headersFor(transactionId) }).pipe(
+          HttpClientRequest.bodyText(sql)
+        ),
+        submitRetryDelay,
+        "execute"
+      )
+
+    const fetchPage = (state: ConnectionState, uri: string) =>
+      send(
+        state,
+        HttpClientRequest.get(uri, { headers: headersFor(state.transactionId) }),
+        pollRetryDelay,
+        "fetch"
+      )
+
+    const cancel = (uri: string) =>
+      httpClient.execute(HttpClientRequest.make("DELETE")(uri, { headers: headersFor(undefined) })).pipe(
+        Effect.timeout(Duration.seconds(5)),
+        Effect.ignore
+      )
+
+    class TrinoConnection implements Connection {
+      readonly state: ConnectionState = { transactionId: undefined }
+
+      // Starts the query and returns a stream of decoded pages. The query is
+      // cancelled on the server if the stream ends before the last page.
+      private query(
+        sql: string,
+        params: ReadonlyArray<unknown>,
+        transactionId: string | undefined = this.state.transactionId
+      ): Stream.Stream<QueryPage, SqlError> {
+        const state = this.state
+        return Stream.unwrap(Effect.suspend(() => {
+          const body = renderStatement(sql, params)
+          if (Result.isFailure(body)) return Effect.fail(body.failure)
+          let nextUri: string | undefined
+          let columns: ReadonlyArray<Column> | undefined
+          const readPage = (text: string): Effect.Effect<readonly [QueryPage, Option.Option<string>], SqlError> => {
+            const parsed = parseResults(text)
+            if (Result.isFailure(parsed)) return Effect.fail(parsed.failure)
+            const results = parsed.success
+            if (results.error !== undefined) {
+              nextUri = undefined
+              return Effect.fail(queryError(results.error))
+            }
+            nextUri = typeof results.nextUri === "string" ? results.nextUri : undefined
+            columns ??= results.columns
+            const page: QueryPage = {
+              columns,
+              rows: columns === undefined || results.data === undefined ? [] : decodeRows(columns, results.data),
+              updateType: results.updateType,
+              updateCount: results.updateCount
+            }
+            return Effect.succeed([page, Option.fromUndefinedOr(nextUri)] as const)
+          }
+          return Effect.map(
+            Effect.flatMap(submit(state, body.success, transactionId), readPage),
+            ([first, next]) =>
+              Stream.concat(
+                Stream.make(first),
+                Option.isNone(next)
+                  ? Stream.empty
+                  : Stream.paginate(next.value, (uri) =>
+                    Effect.map(
+                      Effect.flatMap(fetchPage(state, uri), readPage),
+                      ([page, next]) => [[page], next] as const
+                    ))
+              ).pipe(
+                Stream.ensuring(Effect.suspend(() => nextUri === undefined ? Effect.void : cancel(nextUri)))
+              )
+          )
+        }))
+      }
+
+      private collect(sql: string, params: ReadonlyArray<unknown>, transactionId?: string | undefined) {
+        return Stream.runFold(
+          this.query(sql, params, transactionId),
+          () =>
+            ({ columns: undefined, rows: [], updateType: undefined, updateCount: undefined }) as {
+              columns: ReadonlyArray<Column> | undefined
+              rows: Array<ReadonlyArray<unknown>>
+              updateType: string | undefined
+              updateCount: number | undefined
+            },
+          (acc, page) => {
+            acc.columns ??= page.columns
+            for (const row of page.rows) acc.rows.push(row)
+            acc.updateType ??= page.updateType
+            acc.updateCount ??= page.updateCount
+            return acc
+          }
+        )
+      }
+
+      begin(statement: string | undefined) {
+        return Effect.asVoid(this.collect(statement ?? "START TRANSACTION", [], "NONE"))
+      }
+
+      execute(
+        sql: string,
+        params: ReadonlyArray<unknown>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return Effect.map(this.collect(sql, params), (result) => {
+          const rows = result.columns === undefined ? [] : toObjects(result.columns, result.rows)
+          return transformRows ? transformRows(rows) : rows
+        })
+      }
+      executeRaw(sql: string, params: ReadonlyArray<unknown>) {
+        return this.collect(sql, params)
+      }
+      executeValues(sql: string, params: ReadonlyArray<unknown>) {
+        return Effect.map(this.collect(sql, params), (result) => result.rows)
+      }
+      executeValuesUnprepared(sql: string, params: ReadonlyArray<unknown>) {
+        return this.executeValues(sql, params)
+      }
+      executeUnprepared(
+        sql: string,
+        params: ReadonlyArray<unknown>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return this.execute(sql, params, transformRows)
+      }
+      executeStream(
+        sql: string,
+        params: ReadonlyArray<unknown>,
+        transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+      ) {
+        return this.query(sql, params).pipe(
+          Stream.flatMap((page) => {
+            if (page.columns === undefined || page.rows.length === 0) return Stream.empty
+            const rows = toObjects(page.columns, page.rows)
+            return Stream.fromIterable(transformRows ? transformRows(rows) : rows)
+          })
+        )
+      }
+    }
+
+    const connection = new TrinoConnection()
+    const transactionAcquirer = Effect.sync(() => new TrinoConnection())
+    const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [
+      ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+      [ATTR_DB_SYSTEM_NAME, "trino"],
+      ...(options.catalog === undefined ? [] : [[ATTR_DB_NAMESPACE, options.catalog] as const])
+    ]
+
+    const client = yield* Client.make({
+      driver: "trino",
+      acquirer: Effect.succeed(connection),
+      transactionAcquirer,
+      compiler,
+      spanAttributes,
+      transformRows
+    })
+
+    const asTrino = (conn: unknown) => conn as TrinoConnection
+    const withTransaction = Client.makeWithTransaction({
+      transactionService: client.transactionService,
+      spanAttributes,
+      acquireConnection: (restore) => restore(transactionAcquirer),
+      begin: (conn, statement) => asTrino(conn).begin(statement),
+      savepoint: () =>
+        Effect.fail(
+          new SqlError({
+            reason: new UnknownError({
+              cause: undefined,
+              message: "Trino does not support nested transactions",
+              operation: "savepoint"
+            })
+          })
+        ),
+      commit: (conn) => Effect.asVoid(conn.executeUnprepared("COMMIT", [], undefined)),
+      rollback: (conn) =>
+        asTrino(conn).state.transactionId === undefined
+          ? Effect.void
+          : Effect.asVoid(conn.executeUnprepared("ROLLBACK", [], undefined)),
+      rollbackSavepoint: () => Effect.void
+    })
+
+    return Object.assign(client, {
+      [TypeId]: TypeId as TypeId,
+      config: options,
+      withTransaction
+    })
+  })
+
+/**
+ * Provides both `TrinoClient` and generic `SqlClient` services from a
+ * `Config`-backed Trino client configuration.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.5
+ */
+export const layerConfig = (
+  config: Config.Wrap<TrinoClientConfig>
+): Layer.Layer<TrinoClient | Client.SqlClient, Config.ConfigError, HttpClient.HttpClient> =>
+  Layer.effectContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) => Context.make(TrinoClient, client).pipe(Context.add(Client.SqlClient, client)))
+    )
+  ).pipe(Layer.provide(Reactivity.layer))
+
+/**
+ * Provides both `TrinoClient` and generic `SqlClient` services from a Trino
+ * client configuration.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.5
+ */
+export const layer = (
+  config: TrinoClientConfig
+): Layer.Layer<TrinoClient | Client.SqlClient, never, HttpClient.HttpClient> =>
+  Layer.effectContext(
+    Effect.map(make(config), (client) => Context.make(TrinoClient, client).pipe(Context.add(Client.SqlClient, client)))
+  ).pipe(Layer.provide(Reactivity.layer))
+
+/**
+ * Creates the Trino statement compiler, using `?` placeholders and
+ * double-quoted identifiers.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.5
+ */
+export const makeCompiler = (transform?: (_: string) => string) =>
+  Statement.makeCompiler({
+    dialect: "trino",
+    placeholder() {
+      return "?"
+    },
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
+    onCustom() {
+      return ["", []]
+    },
+    onRecordUpdate() {
+      return ["", []]
+    }
+  })
+
+const escape = Statement.defaultEscape("\"")
+
+// session
+
+interface Session {
+  catalog: string | undefined
+  schema: string | undefined
+  readonly properties: Map<string, string>
+  readonly preparedStatements: Map<string, string>
+}
+
+interface ConnectionState {
+  transactionId: string | undefined
+}
+
+// Session headers carry comma-separated `name=value` pairs whose values are
+// URL encoded, so they never contain a comma. They are stored and sent back
+// still encoded.
+const splitList = (header: string | undefined): Array<string> =>
+  header === undefined ? [] : header.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+
+const splitPairs = (header: string | undefined): Array<readonly [string, string]> =>
+  splitList(header).flatMap((pair) => {
+    const i = pair.indexOf("=")
+    return i === -1 ? [] : [[pair.slice(0, i).trim(), pair.slice(i + 1).trim()] as const]
+  })
+
+const joinPairs = (pairs: ReadonlyMap<string, string>): string =>
+  Array.from(pairs, ([name, value]) => `${name}=${value}`).join(",")
+
+// http
+
+type HttpFailure =
+  | { readonly _tag: "Transport"; readonly cause: unknown }
+  | { readonly _tag: "Status"; readonly response: HttpClientResponse.HttpClientResponse }
+
+const transientDelayMillis = 100
+
+const retryAfterMillis = (response: HttpClientResponse.HttpClientResponse): number => {
+  const header = response.headers["retry-after"]
+  if (header === undefined) return transientDelayMillis
+  const seconds = Number(header)
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
+  return transientDelayMillis
+}
+
+// The statement may already be running after any failure other than 429 and
+// 503, so submitting it again could run it twice.
+const submitRetryDelay = (failure: HttpFailure): number | undefined => {
+  if (failure._tag === "Transport") return undefined
+  switch (failure.response.status) {
+    case 429:
+      return retryAfterMillis(failure.response)
+    case 503:
+      return transientDelayMillis
+    default:
+      return undefined
+  }
+}
+
+// Reading a page is idempotent, so network failures and gateway errors retry.
+const pollRetryDelay = (failure: HttpFailure): number | undefined => {
+  if (failure._tag === "Transport") return transientDelayMillis
+  switch (failure.response.status) {
+    case 429:
+      return retryAfterMillis(failure.response)
+    case 502:
+    case 503:
+    case 504:
+      return transientDelayMillis
+    default:
+      return undefined
+  }
+}
+
+const httpError = (failure: HttpFailure, operation: string): SqlError => {
+  if (failure._tag === "Transport") {
+    return new SqlError({
+      reason: new ConnectionError({ cause: failure.cause, message: "Failed to reach the Trino server", operation })
+    })
+  }
+  const status = failure.response.status
+  const props = { cause: failure.response, message: `Trino server responded with status ${status}`, operation }
+  switch (status) {
+    case 401:
+      return new SqlError({ reason: new AuthenticationError(props) })
+    case 403:
+      return new SqlError({ reason: new AuthorizationError(props) })
+    default:
+      return new SqlError({ reason: new ConnectionError(props) })
+  }
+}
+
+interface QueryErrorBody {
+  readonly message?: string
+  readonly errorName?: string
+  readonly errorType?: string
+  readonly errorCode?: number
+}
+
+const queryError = (error: QueryErrorBody): SqlError => {
+  const props = {
+    cause: error,
+    message: error.errorName === undefined ? String(error.message) : `${error.errorName}: ${error.message}`,
+    operation: "execute"
+  }
+  switch (error.errorName) {
+    case "SYNTAX_ERROR":
+      return new SqlError({ reason: new SqlSyntaxError(props) })
+    case "PERMISSION_DENIED":
+      return new SqlError({ reason: new AuthorizationError(props) })
+    case "EXCEEDED_TIME_LIMIT":
+      return new SqlError({ reason: new StatementTimeoutError(props) })
+    default:
+      return new SqlError({ reason: new UnknownError(props) })
+  }
+}
+
+// parameters
+
+const renderError = (message: string) =>
+  Result.fail(new SqlError({ reason: new UnknownError({ cause: undefined, message, operation: "bind" }) }))
+
+const quote = (value: string) => `'${value.replace(/'/g, "''")}'`
+
+const renderLiteral = (value: unknown): Result.Result<string, SqlError> => {
+  if (value === null || value === undefined) return Result.succeed("NULL")
+  switch (typeof value) {
+    case "string":
+      return Result.succeed(quote(value))
+    case "bigint":
+      return Result.succeed(String(value))
+    case "boolean":
+      return Result.succeed(value ? "true" : "false")
+    case "number":
+      return Result.succeed(Number.isSafeInteger(value) ? String(value) : `DOUBLE '${String(value)}'`)
+  }
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return renderError("Cannot send an invalid Date as a Trino parameter")
+    return Result.succeed(`TIMESTAMP '${value.toISOString().replace("T", " ").replace("Z", "")} UTC'`)
+  }
+  if (value instanceof Uint8Array) return Result.succeed(`X'${Hex.encode(value)}'`)
+  if (Array.isArray(value)) {
+    const elements: Array<string> = []
+    for (const element of value) {
+      const rendered = renderLiteral(element)
+      if (Result.isFailure(rendered)) return rendered
+      elements.push(rendered.success)
+    }
+    return Result.succeed(`ARRAY[${elements.join(", ")}]`)
+  }
+  return renderError(`Cannot send a value of type ${typeof value} as a Trino parameter`)
+}
+
+// Trino has no protocol-level parameters, so parameters are inlined as
+// literals into an EXECUTE IMMEDIATE statement, which still parses the query
+// text separately from the values.
+const renderStatement = (sql: string, params: ReadonlyArray<unknown>): Result.Result<string, SqlError> => {
+  if (params.length === 0) return Result.succeed(sql)
+  const literals: Array<string> = []
+  for (const param of params) {
+    const rendered = renderLiteral(param)
+    if (Result.isFailure(rendered)) return rendered
+    literals.push(rendered.success)
+  }
+  return Result.succeed(`EXECUTE IMMEDIATE ${quote(sql)} USING ${literals.join(", ")}`)
+}
+
+// results
+
+interface TypeSignature {
+  readonly rawType: string
+  readonly arguments?: ReadonlyArray<{ readonly kind: string; readonly value: unknown }>
+}
+
+interface Column {
+  readonly name: string
+  readonly type: string
+  readonly typeSignature?: TypeSignature
+}
+
+interface QueryResults {
+  readonly nextUri?: unknown
+  readonly columns?: ReadonlyArray<Column>
+  readonly data?: ReadonlyArray<ReadonlyArray<unknown>>
+  readonly error?: QueryErrorBody
+  readonly updateType?: string
+  readonly updateCount?: number
+}
+
+interface QueryPage {
+  readonly columns: ReadonlyArray<Column> | undefined
+  readonly rows: ReadonlyArray<ReadonlyArray<unknown>>
+  readonly updateType: string | undefined
+  readonly updateCount: number | undefined
+}
+
+const parseResults = (text: string): Result.Result<QueryResults, SqlError> => {
+  try {
+    return Result.succeed(parseJson(text) as QueryResults)
+  } catch (cause) {
+    return Result.fail(
+      new SqlError({
+        reason: new ConnectionError({ cause, message: "Trino server sent an invalid response", operation: "fetch" })
+      })
+    )
+  }
+}
+
+const toObjects = (columns: ReadonlyArray<Column>, rows: ReadonlyArray<ReadonlyArray<unknown>>) =>
+  rows.map((row) => {
+    const object: Record<string, unknown> = {}
+    for (let i = 0; i < columns.length; i++) object[columns[i].name] = row[i]
+    return object
+  })
+
+const decodeRows = (columns: ReadonlyArray<Column>, data: ReadonlyArray<ReadonlyArray<unknown>>) => {
+  const decoders = columns.map((column) => decoderFor(column.typeSignature ?? { rawType: column.type }))
+  return data.map((row) => row.map((value, i) => decoders[i](value)))
+}
+
+type Decoder = (value: unknown) => unknown
+
+const identityDecoder: Decoder = (value) => value
+
+const typeArgument = (signature: TypeSignature, index: number): TypeSignature => {
+  const argument = signature.arguments?.[index]
+  return (argument?.value ?? { rawType: "unknown" }) as TypeSignature
+}
+
+const nullable = (decode: Decoder): Decoder => (value) => value === null ? null : decode(value)
+
+const decoderFor = (signature: TypeSignature): Decoder => {
+  switch (signature.rawType) {
+    case "bigint":
+      return nullable((value) => typeof value === "bigint" ? value : BigInt(value as number))
+    case "real":
+    case "double":
+      return nullable((value) => typeof value === "string" ? Number(value) : value)
+    case "timestamp":
+      return nullable((value) => parseTimestamp(value as string, "UTC"))
+    case "timestamp with time zone":
+      return nullable((value) => {
+        const text = value as string
+        const i = text.lastIndexOf(" ")
+        return parseTimestamp(text.slice(0, i), text.slice(i + 1))
+      })
+    case "varbinary":
+      return nullable((value) => Result.getOrThrow(Base64.decode(value as string)))
+    case "json":
+      return nullable((value) => JSON.parse(value as string))
+    case "array": {
+      const element = decoderFor(typeArgument(signature, 0))
+      return nullable((value) => (value as ReadonlyArray<unknown>).map(element))
+    }
+    case "map": {
+      const decodeValue = decoderFor(typeArgument(signature, 1))
+      return nullable((value) => {
+        const out: Record<string, unknown> = {}
+        for (const [key, item] of Object.entries(value as Record<string, unknown>)) out[key] = decodeValue(item)
+        return out
+      })
+    }
+    case "row": {
+      const fields = (signature.arguments ?? []).map((argument) =>
+        argument.value as { readonly fieldName?: { readonly name: string }; readonly typeSignature: TypeSignature }
+      )
+      const decoders = fields.map((field) => decoderFor(field.typeSignature))
+      const names = fields.every((field) => field.fieldName !== undefined)
+        ? fields.map((field) => field.fieldName!.name)
+        : undefined
+      return nullable((value) => {
+        const items = (value as ReadonlyArray<unknown>).map((item, i) => decoders[i](item))
+        if (names === undefined) return items
+        const out: Record<string, unknown> = {}
+        for (let i = 0; i < names.length; i++) out[names[i]] = items[i]
+        return out
+      })
+    }
+    default:
+      return identityDecoder
+  }
+}
+
+const timestampPattern = /^([+-]?\d+)-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/
+
+const parseTimestamp = (text: string, timeZone: string): Date | string => {
+  const match = timestampPattern.exec(text)
+  if (match === null) return text
+  const zoned = DateTime.makeZoned({
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+    second: Number(match[6]),
+    millisecond: match[7] === undefined ? 0 : Number(match[7].slice(0, 3).padEnd(3, "0"))
+  }, { timeZone, adjustForTimeZone: true })
+  return Option.isSome(zoned) ? DateTime.toDateUtc(zoned.value) : text
+}
+
+// A JSON parser that keeps integers outside the safe integer range as
+// `bigint`, because Trino sends `bigint` values as bare JSON numbers.
+const parseJson = (text: string): unknown => {
+  let i = 0
+  const fail = (): never => {
+    throw new SyntaxError(`Unexpected JSON input at position ${i}`)
+  }
+  const skipWhitespace = () => {
+    while (i < text.length) {
+      const c = text.charCodeAt(i)
+      if (c === 32 || c === 9 || c === 10 || c === 13) i++
+      else break
+    }
+  }
+  const parseString = (): string => {
+    const start = i
+    i++
+    let simple = true
+    while (i < text.length) {
+      const c = text.charCodeAt(i)
+      if (c === 34) {
+        i++
+        return simple ? text.slice(start + 1, i - 1) : JSON.parse(text.slice(start, i))
+      }
+      if (c === 92) {
+        simple = false
+        i++
+      }
+      i++
+    }
+    return fail()
+  }
+  const numberPattern = /-?(?:0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/y
+  const parseNumber = (): number | bigint => {
+    numberPattern.lastIndex = i
+    const match = numberPattern.exec(text)
+    if (match === null) return fail()
+    i = numberPattern.lastIndex
+    const value = Number(match[0])
+    return match[1] === undefined && match[2] === undefined && !Number.isSafeInteger(value) ? BigInt(match[0]) : value
+  }
+  const parseLiteral = (literal: string, value: unknown) => {
+    if (!text.startsWith(literal, i)) fail()
+    i += literal.length
+    return value
+  }
+  const parseValue = (): unknown => {
+    skipWhitespace()
+    switch (text[i]) {
+      case "{": {
+        i++
+        const object: Record<string, unknown> = {}
+        skipWhitespace()
+        if (text[i] === "}") {
+          i++
+          return object
+        }
+        while (true) {
+          skipWhitespace()
+          if (text[i] !== "\"") fail()
+          const key = parseString()
+          skipWhitespace()
+          if (text[i++] !== ":") fail()
+          object[key] = parseValue()
+          skipWhitespace()
+          const c = text[i++]
+          if (c === "}") return object
+          if (c !== ",") fail()
+        }
+      }
+      case "[": {
+        i++
+        const array: Array<unknown> = []
+        skipWhitespace()
+        if (text[i] === "]") {
+          i++
+          return array
+        }
+        while (true) {
+          array.push(parseValue())
+          skipWhitespace()
+          const c = text[i++]
+          if (c === "]") return array
+          if (c !== ",") fail()
+        }
+      }
+      case "\"":
+        return parseString()
+      case "t":
+        return parseLiteral("true", true)
+      case "f":
+        return parseLiteral("false", false)
+      case "n":
+        return parseLiteral("null", null)
+      default:
+        return parseNumber()
+    }
+  }
+  const value = parseValue()
+  skipWhitespace()
+  if (i !== text.length) fail()
+  return value
+}

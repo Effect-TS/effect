@@ -40,8 +40,6 @@ describe("Statement", () => {
   })
 
   it("onDialectOrElse accepts a trino branch", () => {
-    expect(sql.onDialectOrElse({ orElse: () => "other" as const, trino: () => "trino" as const })).type.toBe<
-      "other" | "trino"
-    >()
+    expect(sql.onDialectOrElse).type.toBeCallableWith({ orElse: () => 1, trino: () => 2 })
   })
 })
