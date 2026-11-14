@@ -23,7 +23,11 @@
     "./packages/effect/typetest/reactivity/ReactivityKeys.tst.ts",
     // Compiled by the package's own tsconfig.alchemy.json: the alchemy type
     // graph loads bun globals that clash with this project's node globals.
-    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts"
+    "./packages/platform/cloudflare/typetest/AlchemyCloudflareCluster.tst.ts",
+    // Import `effect/ui/html/register`, which would register the HTML vocabulary for every test in this program.
+    // Vitest still runs the first and TSTyche still checks the second in its own program.
+    "./packages/effect/test/ui/html/register.test.ts",
+    "./packages/effect/typetest/ui/html/register.tst.ts"
   ],
   "compilerOptions": {
     "rootDir": ".",
@@ -39,6 +43,10 @@
       "effect/graphql": ["./packages/effect/src/graphql/index.ts"],
       "effect/jose": ["./packages/effect/src/jose/index.ts"],
       "effect/schema": ["./packages/effect/src/schema/index.ts"],
+      "effect/ui": ["./packages/effect/src/ui/index.ts"],
+      "effect/ui/testing": ["./packages/effect/src/ui/testing/index.ts"],
+      "effect/ui/html": ["./packages/effect/src/ui/html/index.ts"],
+      "effect/ui/html/testing": ["./packages/effect/src/ui/html/testing/index.ts"],
       "effect/*": ["./packages/effect/src/*.ts"],
       "@effect/ai-amazon-bedrock": ["./packages/ai/amazon-bedrock/src/index.ts"],
       "@effect/ai-amazon-bedrock/*": ["./packages/ai/amazon-bedrock/src/*.ts"],

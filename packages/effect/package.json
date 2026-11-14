@@ -27,7 +27,9 @@
   ],
   "sideEffects": [
     "./src/schema/SchemaJITCompiler/enable.ts",
-    "./dist/schema/SchemaJITCompiler/enable.js"
+    "./dist/schema/SchemaJITCompiler/enable.js",
+    "./src/ui/html/register.ts",
+    "./dist/ui/html/register.js"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -56,6 +58,10 @@
     "./sql": "./src/sql/index.ts",
     "./workflow": "./src/workflow/index.ts",
     "./workers": "./src/workers/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./ui/testing": "./src/ui/testing/index.ts",
+    "./ui/html": "./src/ui/html/index.ts",
+    "./ui/html/testing": "./src/ui/html/testing/index.ts",
     "./*": "./src/*.ts",
     "./ai/internal/*": null,
     "./cli/internal/*": null,
@@ -71,6 +77,8 @@
     "./protobuf/internal/*": null,
     "./rpc/internal/*": null,
     "./workflow/internal/*": null,
+    "./ui/internal/*": null,
+    "./ui/html/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -116,6 +124,10 @@
       "./sql": "./dist/sql/index.js",
       "./workflow": "./dist/workflow/index.js",
       "./workers": "./dist/workers/index.js",
+      "./ui": "./dist/ui/index.js",
+      "./ui/testing": "./dist/ui/testing/index.js",
+      "./ui/html": "./dist/ui/html/index.js",
+      "./ui/html/testing": "./dist/ui/html/testing/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./cli/internal/*": null,
@@ -132,6 +144,8 @@
       "./protobuf/internal/*": null,
       "./rpc/internal/*": null,
       "./workflow/internal/*": null,
+      "./ui/internal/*": null,
+      "./ui/html/internal/*": null,
       "./index": null,
       "./*/index": null
     }
