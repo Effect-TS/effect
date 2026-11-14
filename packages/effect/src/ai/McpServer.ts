@@ -3406,7 +3406,12 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           Option.getOrUndefined
         )),
         readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-        destructiveHint: Context.get(tool.annotations, Tool.Destructive),
+        // A read-only tool is not destructive unless it says so: the default
+        // of `Tool.Destructive` describes tools that write.
+        destructiveHint: Context.get(tool.annotations, Tool.Readonly) &&
+            !tool.annotations.mapUnsafe.has(Tool.Destructive.key)
+          ? false
+          : Context.get(tool.annotations, Tool.Destructive),
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
