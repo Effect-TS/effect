@@ -342,6 +342,41 @@ describe("RpcSerialization", () => {
     ])
   })
 
+  it("ndjson decodes the next frame after a malformed frame that ended inside a multibyte character", () => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+
+    // A malformed line, then the first byte of a two-byte character.
+    assert.throws(() => parser.decode(new Uint8Array([123, 10, 195])), RpcSerialization.NdjsonDecodeError)
+    assert.deepStrictEqual(parser.decode(new TextEncoder().encode("{\"ok\":true}\n")), [{ ok: true }])
+  })
+
+  it("ndjson reports each malformed frame to onDecodeError and keeps the frames around it", () => {
+    const errors: Array<unknown> = []
+    const parser = RpcSerialization.ndjson.makeUnsafe({ onDecodeError: (error: unknown) => errors.push(error) })
+
+    assert.deepStrictEqual(
+      parser.decode("{\"before\":1}\n{\n{\"after\":2}\n{\n{\"tail\":"),
+      [{ before: 1 }, { after: 2 }]
+    )
+    assert.strictEqual(errors.length, 2)
+    assert.instanceOf(errors[0], RpcSerialization.NdjsonDecodeError)
+    assert.deepStrictEqual(parser.decode("3}\n"), [{ tail: 3 }])
+    assert.strictEqual(errors.length, 2)
+  })
+
+  it("jsonRpc encodes an NdjsonDecodeError defect as a parse error without the input", () => {
+    const parser = RpcSerialization.ndJsonRpc().makeUnsafe()
+    const error = { name: "NdjsonDecodeError", message: "private input", cause: { message: "private input" } }
+    const encoded = parser.encode({ _tag: "Defect", defect: error })
+
+    assert(typeof encoded === "string")
+    assert.deepStrictEqual(JSON.parse(encoded), {
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Parse error" }
+    })
+  })
+
   it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization

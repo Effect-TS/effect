@@ -734,6 +734,79 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(output, [pong])
     }))
 
+  it.live("answers malformed NDJSON and serves the next chunk on the same stdin subscription", () =>
+    Effect.gen(function*() {
+      const answered = yield* Deferred.make<void>()
+      const output: Array<string> = []
+      let subscriptions = 0
+      const group = RpcGroup.make(Rpc.make("ping", { payload: { n: Schema.Number }, success: Schema.String }))
+      yield* Layer.launch(
+        RpcServer.layer(group).pipe(
+          Layer.provide(group.toLayer({ ping: () => Effect.succeed("pong") })),
+          Layer.provide(RpcServer.layerProtocolStdio),
+          Layer.provide(RpcSerialization.layerNdJsonRpc()),
+          Layer.provide(Stdio.layerTest({
+            stdin: Stream.suspend(() => {
+              subscriptions++
+              return Stream.make("{\n", JSON.stringify(ping) + "\n").pipe(
+                Stream.map((chunk) => new TextEncoder().encode(chunk)),
+                Stream.concat(Stream.never)
+              )
+            }),
+            stdout: () =>
+              Sink.forEach((data) =>
+                Effect.gen(function*() {
+                  output.push(String(data))
+                  if (output.join("").includes("\"pong\"")) {
+                    yield* Deferred.succeed(answered, undefined)
+                  }
+                })
+              )
+          }))
+        )
+      ).pipe(Effect.forkScoped)
+      yield* Deferred.await(answered).pipe(Effect.timeout("1 second"))
+      assert.deepStrictEqual(output.join("").trim().split("\n").map((line) => JSON.parse(line)), [
+        { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
+        pong
+      ])
+      assert.strictEqual(subscriptions, 1)
+    }))
+
+  it.live("encodes thrown stdio decode defects with the serialization codec without resubscribing", () =>
+    Effect.gen(function*() {
+      const codec = yield* RpcSerialization.RpcSerialization.pipe(
+        Effect.provide(RpcSerialization.layerSchemaBinary())
+      )
+      const frame = codec.makeUnsafe().encode({ _tag: "Pong" })
+      assert.instanceOf(frame, Uint8Array)
+      const output = yield* Queue.unbounded<Uint8Array | string>()
+      let subscriptions = 0
+      yield* Effect.gen(function*() {
+        const protocol = yield* RpcServer.makeProtocolStdio
+        return yield* protocol.run(() => Effect.void)
+      }).pipe(
+        Effect.provide(RpcSerialization.layerSchemaBinary({ maxFrameSize: 0 })),
+        Effect.provide(Stdio.layerTest({
+          stdin: Stream.suspend(() => {
+            subscriptions++
+            return Stream.make(frame, frame).pipe(Stream.concat(Stream.never))
+          }),
+          stdout: () => Sink.forEach((data) => Queue.offer(output, data))
+        })),
+        Effect.forkScoped
+      )
+      const parser = codec.makeUnsafe()
+      for (let i = 0; i < 2; i++) {
+        const data = yield* Queue.take(output).pipe(Effect.timeout("1 second"))
+        const messages = parser.decode(data) as ReadonlyArray<RpcMessage.FromServerEncoded>
+        assert.strictEqual(messages.length, 1)
+        assert(messages[0]._tag === "Defect")
+        assert.instanceOf(messages[0].defect, Uint8Array)
+      }
+      assert.strictEqual(subscriptions, 1)
+    }))
+
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
     Effect.gen(function*() {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()

@@ -2687,8 +2687,8 @@ const mcpStdioSerialization = (
     contentType: serialization.contentType,
     includesFraming: true,
     codecFor: serialization.codecFor,
-    makeUnsafe: () => {
-      const frames = RpcSerialization.ndjson.makeUnsafe()
+    makeUnsafe: (options) => {
+      const frames = RpcSerialization.ndjson.makeUnsafe(options)
       const parser = serialization.makeUnsafe()
       let selectedProtocol: McpProtocol.ProtocolAdapter | undefined
       return {

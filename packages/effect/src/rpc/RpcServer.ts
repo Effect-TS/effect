@@ -1598,21 +1598,41 @@ export const makeProtocolStdio = Effect.gen(function*() {
   const stdio = yield* Stdio
   const fiber = Fiber.getCurrent()!
   const serialization = yield* RpcSerialization.RpcSerialization
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
 
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
     const queue = yield* Queue.bounded<Uint8Array | string, Cause.Done>(8)
-    const parser = serialization.makeUnsafe()
+    const errors: Array<unknown> = []
+    const parser = serialization.makeUnsafe({ onDecodeError: (error) => errors.push(error) })
+    const write = (response: FromServerEncoded) => {
+      const encoded = parser.encode(response)
+      return encoded === undefined ? Effect.void : Queue.offer(queue, encoded)
+    }
 
     yield* stdio.stdin.pipe(
       Stream.runForEach((data) => {
-        const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
-        if (decoded.length === 0) return Effect.void
+        let decoded: ReadonlyArray<FromClientEncoded> = []
+        try {
+          decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
+        } catch (cause) {
+          errors.push(cause)
+        }
         let i = 0
-        return Effect.whileLoop({
+        const requests = decoded.length === 0 ? Effect.void : Effect.whileLoop({
           while: () => i < decoded.length,
           body: () => writeRequest(0, decoded[i++]),
           step: constVoid
         })
+        if (errors.length === 0) return requests
+        // Answer decode failures instead of failing, which would resubscribe to stdin and lose input.
+        return Effect.andThen(
+          Effect.forEach(
+            errors.splice(0),
+            (error) => write(ResponseDefectEncoded(encodeDefectUnsafe(error))),
+            { discard: true }
+          ),
+          requests
+        )
       }),
       Effect.sandbox,
       Effect.tapError(Effect.logError),
@@ -1638,13 +1658,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
 
     return {
       disconnects: yield* Queue.make<number>(),
-      send(_clientId, response) {
-        const responseEncoded = parser.encode(response)
-        if (responseEncoded === undefined) {
-          return Effect.void
-        }
-        return Queue.offer(queue, responseEncoded)
-      },
+      send: (_clientId, response) => write(response),
       end(_clientId) {
         return Queue.end(queue)
       },
