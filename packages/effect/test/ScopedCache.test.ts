@@ -396,6 +396,29 @@ describe("ScopedCache", () => {
           assert.strictEqual(result3, 2)
         }))
 
+      it.effect("expires from lookup completion after the first caller is interrupted", () =>
+        Effect.gen(function*() {
+          const complete = yield* Latch.make()
+          let lookups = 0
+          const cache = yield* ScopedCache.make({
+            capacity: 10,
+            timeToLive: "1 minute",
+            lookup: (_key: string) => Effect.as(complete.await, ++lookups)
+          })
+
+          const first = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          const second = yield* ScopedCache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* Fiber.interrupt(first)
+          yield* TestClock.adjust("2 minutes")
+          yield* complete.open
+          assert.strictEqual(yield* Fiber.join(second), 1)
+
+          yield* TestClock.adjust("30 seconds")
+          assert.strictEqual(yield* ScopedCache.get(cache, "key"), 1)
+          yield* TestClock.adjust("31 seconds")
+          assert.strictEqual(yield* ScopedCache.get(cache, "key"), 2)
+        }))
+
       it.effect("get succeeds after an expired entry's finalizer dies", () =>
         Effect.gen(function*() {
           let lookups = 0
