@@ -5,13 +5,10 @@
  *
  * - `postMessage` doesn't copy a typed array whose buffer is a
  *   `SharedArrayBuffer`. The worker receives a view of the same memory.
- *   Every worker can read it, and writes from any thread are visible to all
- *   others.
  * - {@link make} allocates a typed array in shared memory. To copy existing
  *   values, allocate a shared array and call its `set` method.
  * - {@link schema} describes a shared typed array in a message schema, such
- *   as an RPC payload. Worker codecs pass it through to `postMessage`
- *   untouched, and decoding fails unless it arrived as shared memory.
+ *   as an RPC payload. Decoding rejects values without shared backing memory.
  * - Transferring (see `Transferable`) also avoids a copy. It moves a buffer
  *   to one receiver and detaches it from the sender. Share data that several
  *   threads use at once, or that the sender keeps using. Transfer results
@@ -45,7 +42,7 @@
  * import { Rpc, RpcClient, RpcGroup } from "effect/rpc"
  * import { SharedMemory } from "effect/workers"
  *
- * // shared.ts, imported by the main thread and the worker
+ * // shared.ts
  * export const Fill = Rpc.make("Fill", {
  *   payload: {
  *     data: SharedMemory.schema(Int32Array),
@@ -55,7 +52,7 @@
  * })
  * export const Compute = RpcGroup.make(Fill)
  *
- * // worker.ts, where each request fills a range of the caller's array
+ * // worker.ts
  * export const ComputeLive = Compute.toLayer({
  *   Fill: ({ data, from, to }) =>
  *     Effect.sync(() => {
@@ -63,7 +60,7 @@
  *     })
  * })
  *
- * // main.ts, where the workers' writes land in `data`
+ * // main.ts
  * export const fillOnWorkers = Effect.gen(function*() {
  *   const data = SharedMemory.make(Int32Array, 1_000_000)
  *   const client = yield* RpcClient.make(Compute)
@@ -147,8 +144,9 @@ interface SharedByName {
 export type Shared<A extends TypedArray> = SharedByName[A[typeof Symbol.toStringTag]]
 
 /**
- * Thrown by {@link make} when shared memory is unavailable
- * (see {@link isAvailable}).
+ * Thrown by {@link make} when shared memory is unavailable.
+ *
+ * @see {@link isAvailable} Check availability before allocating.
  *
  * @stability unstable
  * @category errors
@@ -159,7 +157,7 @@ export class SharedMemoryError extends Data.TaggedError("SharedMemoryError")<{
 }> {}
 
 /**
- * Returns whether shared memory can be allocated and posted to workers here.
+ * Returns whether shared memory is available in this environment.
  *
  * **Details**
  *
@@ -193,11 +191,11 @@ export const isShared = (view: ArrayBufferView): boolean =>
   typeof SharedArrayBuffer === "function" && view.buffer instanceof SharedArrayBuffer
 
 /**
- * Allocates a typed array of `length` elements, all zero, in shared memory.
+ * Allocates a zero-filled typed array of `length` elements in shared memory.
  *
  * **Gotchas**
  *
- * - Throws {@link SharedMemoryError} when shared memory is unavailable.
+ * Throws {@link SharedMemoryError} when shared memory is unavailable.
  *
  * **Example** (A shared output array)
  *
@@ -227,15 +225,12 @@ export const make = <C extends TypedArrayConstructor>(
 }
 
 /**
- * A schema for typed arrays of one kind in shared memory, for worker
- * messages.
+ * Creates a worker-message schema for a typed array backed by shared memory.
  *
  * **Details**
  *
  * - Decoding and encoding accept only instances of `constructor` backed by
- *   a `SharedArrayBuffer`. A copy fails to decode, so writes are never lost
- *   silently. Child processes and transports that serialize messages produce
- *   copies.
+ *   a `SharedArrayBuffer`. Serialized copies fail validation.
  * - Worker protocols encode messages with `Schema.toCodecJson`. Its codec
  *   for this schema passes the value through untouched, so `postMessage`
  *   shares it.
