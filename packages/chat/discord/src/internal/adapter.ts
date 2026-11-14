@@ -84,9 +84,9 @@ const WRONG_CHANNEL_TYPE = 50024
 /** Discord's code for "unknown interaction": a callback after the 3 seconds. */
 const UNKNOWN_INTERACTION = 10062
 /**
- * Discord's codes for an interaction token it no longer takes: "invalid
- * webhook token" and "unknown webhook". Taken from the docs' list, not
- * captured after 15 minutes.
+ * Discord's codes for an interaction token it no longer takes. After 15
+ * minutes it answered 401 with 50027 "Invalid Webhook Token", recorded in
+ * EFF-3802. 10015 "Unknown Webhook" is from the docs' list and was not seen.
  */
 const SPENT_TOKEN = [50027, 10015]
 /** The start of Discord's snowflake clock, in Unix milliseconds. */

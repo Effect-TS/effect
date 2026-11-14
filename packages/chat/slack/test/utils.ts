@@ -111,7 +111,9 @@ export const makeFake = (
     if (answer === hang) return hang
     if ("status" in answer && typeof answer.status === "number") {
       const { body, headers, status } = answer as Extract<Answer, { readonly status: number }>
-      return new Response(body === undefined ? "" : JSON.stringify(body), { status, headers: headers ?? {} })
+      // A string goes as it is: a `response_url` answers in plain text.
+      const text = body === undefined ? "" : typeof body === "string" ? body : JSON.stringify(body)
+      return new Response(text, { status, headers: headers ?? {} })
     }
     return new Response(JSON.stringify(answer), { status: 200, headers: { "content-type": "application/json" } })
   }
@@ -136,8 +138,8 @@ export const authTest = { ok: true, user_id: botUserId, team_id: team }
 export const responseUrl = `https://hooks.slack.com/commands/${team}/1794600000/abcdef`
 
 /**
- * A slash command's form fields, as Slack's docs list them. Built, not
- * captured: no command has been recorded from Slack yet.
+ * A slash command's form fields, with the names and shapes of the ones
+ * recorded in `fixtures/recorded/commands.json` and values made up.
  */
 export const commandFields = (command: string, text: string, overrides?: Record<string, string>) => ({
   token: "verification",

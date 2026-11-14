@@ -1,7 +1,8 @@
 /**
  * Interactions: the normaliser, the callbacks `DiscordChat.interaction`
  * answers with, `commandRequests` and a command's `followUp`. The slash
- * command payloads are built from Discord's docs: none has been captured.
+ * command payloads here are built from Discord's docs. The recorded ones are
+ * in `commands.test.ts`.
  */
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { assert, describe, it } from "@effect/vitest"

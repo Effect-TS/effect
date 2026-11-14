@@ -80,11 +80,16 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   4 with the message a `post` sends, `defer` type 5 and `OpenModal` type
  *   9, each with the ephemeral flag when private. An `Ack`, which is what a
  *   command nobody handles gets, sends nothing, so a command another library
- *   owns is left to it.
+ *   owns is left to it. `withPostOptions` does not reach a command's
+ *   answer: a mention in it renders and notifies nobody.
+ * - A click on a private answer carries the message, with the ephemeral flag
+ *   (64). Only the interaction's token reaches that message, so its
+ *   `messageId` is not one `Chat.edit`, `delete` or `fetchMessage` can use.
  * - `followUp` edits the deferred command's original response, with the
- *   application id and token from its `raw`. It fails `NotFound` with detail
- *   `interaction_expired` from 15 minutes after the command, read from the
- *   interaction's id, without calling Discord.
+ *   application id and token from its `raw`, so a second call replaces the
+ *   first answer. It fails `NotFound` with detail `interaction_expired`
+ *   from 15 minutes after the command, read from the interaction's id,
+ *   without calling Discord. Past that Discord answers 401 with code 50027.
  * - A modal that can't be built, a reply to a command that fails the checks
  *   of a `post`, or a callback that fails, goes to `Handler.refused`. A
  *   callback that comes back 404 `Unknown interaction` was late: that is

@@ -121,7 +121,10 @@ const pageSize = 200
 const isSlackHost = (host: string): boolean =>
   host === "slack.com" || host.endsWith(".slack.com") || host === "slack-gov.com" || host.endsWith(".slack-gov.com")
 
-/** What Slack is taken to answer for a `response_url` that is spent: assumed, not captured. */
+/**
+ * What a spent `response_url` answers, as plain text with a 404: `used_url`
+ * after five posts, `expired_url` after 30 minutes. Recorded in EFF-3802.
+ */
 const spentResponseUrl = new Set(["expired_url", "used_url"])
 
 /** The `response_type` of a command's answer. */
