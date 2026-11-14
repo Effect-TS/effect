@@ -54,9 +54,12 @@ export type Retry = typeof Retry.Type
  * **Details**
  *
  * - `buttons` covers buttons and link buttons, `selects` selects on a
- *   message, and `modals` opening a modal from a click.
+ *   message, and `modals` opening a modal from a click or a command.
  * - `modalErrors` is field errors put back into an open modal. A platform
  *   without it answers `errors` some other way, so no op fails for it.
+ * - `commands` is slash commands arriving, and `followUp` working.
+ * - `ephemeral` is a command's answer that only the person who ran it sees.
+ *   A platform with `commands` and without it refuses a private answer.
  *
  * @stability unstable
  * @category schemas
@@ -78,7 +81,9 @@ export const Capability = Schema.Literals([
   "buttons",
   "selects",
   "modals",
-  "modalErrors"
+  "modalErrors",
+  "commands",
+  "ephemeral"
 ])
 
 /**

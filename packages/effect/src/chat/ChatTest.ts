@@ -34,6 +34,7 @@ import {
   ChatError,
   fileRefused,
   Forbidden,
+  interactionExpired,
   InvalidRequest,
   isChatError,
   NotFound,
@@ -128,11 +129,14 @@ export class NoSuchElement extends Schema.TaggedError<NoSuchElement>("effect/cha
  *   `option` is the encoded value of the option to choose, the first by
  *   default. It fails `NoSuchElement` when the message has no such element,
  *   or no such option, or is gone.
- * - `submit` builds the submit of a modal. It takes the click that opened
- *   it, because an `OpenModal` reply does not say where it was opened from
- *   and a `ModalSubmitted` has to. `values` are by field id, still
- *   encoded, and an empty one is left out, as for an optional field left
- *   empty.
+ * - `command` builds a command typed at `thread`, without delivering it.
+ *   `text` defaults to the empty string. The fake has no registration, so
+ *   any id can be typed.
+ * - `submit` builds the submit of a modal. It takes the click or the command
+ *   that opened it, because an `OpenModal` reply does not say where it was
+ *   opened from and a `ModalSubmitted` has to. A command gives a submit
+ *   with no `messageId`. `values` are by field id, still encoded, and an
+ *   empty one is left out, as for an optional field left empty.
  * - `interact` delivers an interaction the way an adapter does: through
  *   `ChatInteraction.handle` with the layer's `interactionDeadline`, then
  *   the fake's own checks on an `OpenModal` (the `modals` capability,
@@ -140,6 +144,17 @@ export class NoSuchElement extends Schema.TaggedError<NoSuchElement>("effect/cha
  *   metadata, and `limits.modalFields`), calling `Handler.refused` when one
  *   fails. It succeeds with the handler's reply as it returned it, or
  *   `Late`. An `OpenModal` shows in `calls` as op `openModal`.
+ * - For a command, `interact` runs the checks of `post` on a `Respond`
+ *   (the element capabilities, `limits.messageLength` and the element
+ *   limits), and refuses a private `Respond` or `Defer` without
+ *   `ephemeral`. A `Respond` shows in `calls` as op `respond`, and a
+ *   `followUp` as op `followUp`, each with the command's thread and the
+ *   Markdown. Neither is stored as a message.
+ * - The fake's `followUp` succeeds once for a `Defer` that `interact`
+ *   returned, inside `limits.followUpAge` on `Clock`. Later, a second time,
+ *   or for a deferral the fake never saw, it fails `NotFound` with detail
+ *   `interaction_expired`. Failing the second call is stricter than either
+ *   platform, to catch a handler that relies on more than one.
  *
  * @stability unstable
  * @category services
@@ -171,8 +186,12 @@ export class ChatTest extends Context.Service<ChatTest, {
     readonly userId?: string | undefined
     readonly option?: string | undefined
   }) => Effect.Effect<ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged, NoSuchElement>
+  readonly command: (thread: ChatThread.ChatThread, id: string, options?: {
+    readonly text?: string | undefined
+    readonly userId?: string | undefined
+  }) => Effect.Effect<ChatInteraction.CommandInvoked>
   readonly submit: (
-    click: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged,
+    from: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged | ChatInteraction.CommandInvoked,
     opened: ChatInteraction.OpenModal,
     values: Readonly<Record<string, string>>,
     options?: { readonly userId?: string | undefined }
@@ -185,6 +204,11 @@ export class ChatTest extends Context.Service<ChatTest, {
     >
     (event: ChatInteraction.ModalSubmitted): Effect.Effect<
       ChatInteraction.SubmitReply | ChatInteraction.Late,
+      never,
+      ChatInteraction.Handler
+    >
+    (event: ChatInteraction.CommandInvoked): Effect.Effect<
+      ChatInteraction.CommandReply | ChatInteraction.Late,
       never,
       ChatInteraction.Handler
     >
@@ -211,7 +235,9 @@ const allCapabilities: ReadonlyArray<Capability> = [
   "buttons",
   "selects",
   "modals",
-  "modalErrors"
+  "modalErrors",
+  "commands",
+  "ephemeral"
 ]
 
 /** Counts code points. */
@@ -310,6 +336,7 @@ const makeFake = (options: {
       ...(capabilities.has("nativeStream") ? { streamLength: messageLength, streamAge: Duration.minutes(10) } : {}),
       ...(hasActions ? { actionsPerMessage: 25, actionDataLength: 100 } : {}),
       ...(capabilities.has("modals") ? { modalMetadataLength: 100, modalFields: 5 } : {}),
+      ...(capabilities.has("commands") ? { followUpAge: Duration.minutes(15) } : {}),
       ...options.limits
     }
   }
@@ -320,6 +347,8 @@ const makeFake = (options: {
   const threadUnder = new Map<string, ChatThread.ChatThread>()
   const users = new Map<string, { readonly isBot: boolean }>([[selfId, { isBot: true }]])
   const calls: Array<Call> = []
+  /** Deferrals `interact` returned, by the command's raw id, with when they were made. */
+  const deferrals = new Map<string, { readonly at: number; used: boolean }>()
   let refusedFiles = 0
   const faults = new Map<string, Array<Fault>>()
   let counter = 0
@@ -471,6 +500,19 @@ const makeFake = (options: {
       return chatError("openModal", new TooLarge({ detail: "too_many_fields" }))
     }
     return undefined
+  }
+
+  /** The capabilities a command's answer needs. */
+  const answerNeeds = (
+    visibility: ChatInteraction.Visibility,
+    actions?: ReadonlyArray<ChatUi.Action> | undefined
+  ): Array<Capability> => [...(visibility === "ephemeral" ? ["ephemeral" as const] : []), ...actionNeeds(actions)]
+
+  /** The id the fake gave a command it built, which keys its deferral. */
+  const commandKey = (command: ChatInteraction.CommandInvoked): string | undefined => {
+    const raw = command.raw
+    const id = typeof raw === "object" && raw !== null ? (raw as { readonly id?: unknown }).id : undefined
+    return typeof id === "string" ? id : undefined
   }
 
   const takeFault = (op: string): Fault | undefined => {
@@ -764,6 +806,27 @@ const makeFake = (options: {
               raw: { id }
             })
         })
+      ),
+    followUp: (deferred, content) =>
+      attempt(
+        { op: "followUp", thread: deferred.command.thread, markdown: content.markdown },
+        ["commands", ...answerNeeds(deferred.visibility, content.actions)],
+        Effect.gen(function*() {
+          const key = commandKey(deferred.command)
+          const stored = key === undefined ? undefined : deferrals.get(key)
+          const age = descriptor.limits.followUpAge
+          const now = yield* Clock.currentTimeMillis
+          if (
+            stored === undefined || stored.used ||
+            (age !== undefined && now - stored.at >= Duration.toMillis(age))
+          ) {
+            return yield* fail("followUp", new NotFound({ detail: interactionExpired }))
+          }
+          yield* checkMessageLength(descriptor, "followUp", content.markdown, content.actions)
+          yield* checkActions("followUp", content.actions ?? [])
+          stored.used = true
+        }),
+        false
       )
   }
 
@@ -867,29 +930,69 @@ const makeFake = (options: {
           ? Effect.fail(new NoSuchElement({ messageId, id }))
           : Effect.succeed(ChatInteraction.SelectChanged.make({ ...origin, value: option.value }))
       }),
-    submit: (click, opened, values, submitOptions) =>
+    command: (thread, id, commandOptions) =>
+      Effect.sync(() => {
+        const text = commandOptions?.text ?? ""
+        return ChatInteraction.CommandInvoked.make({
+          id,
+          text,
+          thread,
+          userId: commandOptions?.userId ?? "user",
+          raw: { type: "command", id: nextId("i"), command: id, text }
+        })
+      }),
+    submit: (from, opened, values, submitOptions) =>
       Effect.sync(() =>
         ChatInteraction.ModalSubmitted.make({
           id: opened.modal.id,
           ...(opened.modal.metadata === undefined ? {} : { metadata: opened.modal.metadata }),
           values: Object.fromEntries(Object.entries(values).filter(([, value]) => value !== "")),
-          thread: click.thread,
-          messageId: click.messageId,
-          userId: submitOptions?.userId ?? click.userId,
+          thread: from.thread,
+          ...(from._tag === "CommandInvoked" ? {} : { messageId: from.messageId }),
+          userId: submitOptions?.userId ?? from.userId,
           raw: { type: "submission", id: nextId("i"), modal: opened.modal.id }
         })
       ),
     interact: ((event: ChatInteraction.Interaction) =>
       Effect.gen(function*() {
         const reply = yield* ChatInteraction.handle(event, options.interactionDeadline)
-        if (reply._tag !== "OpenModal" || event._tag === "ModalSubmitted") return reply
-        const refusal = modalRefusal(reply.modal)
-        calls.push({
-          op: "openModal",
-          thread: event.thread,
-          messageId: event.messageId,
-          outcome: refusal === undefined ? "ok" : refusal.reason._tag
-        })
+        if (event._tag === "ModalSubmitted") return reply
+        let refusal: ChatError | undefined
+        switch (reply._tag) {
+          case "OpenModal": {
+            refusal = modalRefusal(reply.modal)
+            calls.push({
+              op: "openModal",
+              thread: event.thread,
+              ...(event._tag === "CommandInvoked" ? {} : { messageId: event.messageId }),
+              outcome: refusal === undefined ? "ok" : refusal.reason._tag
+            })
+            break
+          }
+          case "Respond": {
+            const exit = yield* Effect.exit(attempt(
+              { op: "respond", thread: event.thread, markdown: reply.markdown },
+              answerNeeds(reply.visibility, reply.actions),
+              Effect.andThen(
+                checkMessageLength(descriptor, "respond", reply.markdown, reply.actions),
+                checkActions("respond", reply.actions ?? [])
+              ),
+              false
+            ))
+            refusal = Exit.isFailure(exit) ? Option.getOrUndefined(Exit.findErrorOption(exit)) : undefined
+            break
+          }
+          case "Defer": {
+            const missing = answerNeeds(reply.visibility).find((capability) => !capabilities.has(capability))
+            if (missing !== undefined) {
+              refusal = chatError("defer", new Unsupported({ capability: missing }))
+              break
+            }
+            const key = event._tag === "CommandInvoked" ? commandKey(event) : undefined
+            if (key !== undefined) deferrals.set(key, { at: yield* Clock.currentTimeMillis, used: false })
+            break
+          }
+        }
         if (refusal !== undefined) {
           const handler = yield* ChatInteraction.Handler
           yield* handler.refused(event, refusal)
@@ -929,6 +1032,7 @@ const makeFake = (options: {
  *   modal's id plus encoded metadata takes 100 code points, and a modal 5
  *   fields. Each limit is there only with its capability.
  * - `interact` gives a handler 3 seconds by default, on `Clock`.
+ * - With `commands` on, `limits.followUpAge` is 15 minutes.
  * - Two layers merged with different platforms share one `Chat`, so routing
  *   can be tested. The `ChatTest` service in context is the last one merged.
  *
@@ -1199,8 +1303,8 @@ export const checkEvent = (event: ChatEvent.ChatEvent, options: {
 const InteractionJson = Schema.toCodecJson(ChatInteraction.Interaction)
 
 /**
- * Checks the invariants every interaction holds, for a click or a submit from
- * a fixture.
+ * Checks the invariants every interaction holds, for a click, a submit or a
+ * command from a fixture.
  *
  * **Details**
  *
@@ -1208,7 +1312,9 @@ const InteractionJson = Schema.toCodecJson(ChatInteraction.Interaction)
  *   codec.
  * - The interaction encodes and decodes through its Schema unchanged, `raw`
  *   included.
- * - A `ModalSubmitted` has a non-empty `messageId`.
+ * - A `ModalSubmitted`'s `messageId` is non-empty when it is there. A modal
+ *   a command opened has none.
+ * - A `CommandInvoked` has a non-empty `id`.
  *
  * It takes no `parseMention` and checks no dedupe key, since an interaction
  * carries neither.
@@ -1224,7 +1330,12 @@ export const checkInteraction = (interaction: ChatInteraction.Interaction, optio
     const rule = "checkInteraction"
     yield* checkThread(rule, interaction.thread, options.platform)
     if (interaction._tag === "ModalSubmitted") {
-      yield* check(rule, interaction.messageId !== "", "a submit with a messageId", () => "an empty messageId")
+      yield* check(rule, interaction.messageId !== "", "a submit with no messageId or a non-empty one", () =>
+        "an empty messageId")
+    }
+    if (interaction._tag === "CommandInvoked") {
+      yield* check(rule, interaction.id !== "", "a command with a non-empty id", () =>
+        "an empty id")
     }
     yield* roundTrip(rule, InteractionJson, interaction)
   })
@@ -1242,12 +1353,15 @@ export const checkInteraction = (interaction: ChatInteraction.Interaction, optio
  * - `click` clicks the element `id` on a message the suite posted, through
  *   the adapter's real entry, and fails `NoSuchElement` when the message
  *   carries no such element. `option` is as in `ChatTest.click`.
- * - `submit` submits the modal the last click opened, and submits it again
- *   after an `errors` reply. It does nothing when no modal is open: the rule
- *   then fails on the submit its handler never saw.
- * - Both need `ChatInteraction.Handler` and nothing else. The suite provides
- *   its own recording handler, so the entry must take its handler at the
- *   call, not at layer build.
+ * - `submit` submits the modal the last click or command opened, and
+ *   submits it again after an `errors` reply. It does nothing when no modal
+ *   is open: the rule then fails on the submit its handler never saw.
+ * - `command` sends a command typed at `thread` through the adapter's real
+ *   entry. The command rules exist only when it is given. It is optional, so
+ *   a hook written before commands still fits.
+ * - All three need `ChatInteraction.Handler` and nothing else. The suite
+ *   provides its own recording handler, so the entry must take its handler
+ *   at the call, not at layer build.
  *
  * @stability unstable
  * @category testing
@@ -1260,16 +1374,25 @@ export interface Interactions {
   readonly submit: (
     values: Readonly<Record<string, string>>
   ) => Effect.Effect<void, never, ChatInteraction.Handler>
+  readonly command?:
+    | ((thread: ChatThread.ChatThread, id: string, options?: {
+      readonly text?: string | undefined
+    }) => Effect.Effect<void, never, ChatInteraction.Handler>)
+    | undefined
 }
 
 /** What the suite's own `ChatInteraction.Handler` received, and how it answers. */
 class Recording {
   readonly clicks: Array<ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged> = []
   readonly submits: Array<ChatInteraction.ModalSubmitted> = []
+  readonly commands: Array<ChatInteraction.CommandInvoked> = []
+  readonly commandReplies: Array<ChatInteraction.CommandReply> = []
   readonly refused: Array<ChatError> = []
   onClick: (event: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged) => ChatInteraction.ClickReply = () =>
     ChatInteraction.ack
   onSubmit: (event: ChatInteraction.ModalSubmitted) => ChatInteraction.SubmitReply = () => ChatInteraction.close
+  onCommand: (event: ChatInteraction.CommandInvoked) => ChatInteraction.CommandReply = (event) =>
+    ChatInteraction.respond({ markdown: conformanceText(event.id), visibility: "public" })
   readonly handler = ChatInteraction.Handler.of({
     click: (event) =>
       Effect.sync(() => {
@@ -1280,6 +1403,13 @@ class Recording {
       Effect.sync(() => {
         this.submits.push(event)
         return this.onSubmit(event)
+      }),
+    command: (event) =>
+      Effect.sync(() => {
+        this.commands.push(event)
+        const reply = this.onCommand(event)
+        this.commandReplies.push(reply)
+        return reply
       }),
     refused: (_, error) => Effect.sync(() => void this.refused.push(error))
   })
@@ -1349,6 +1479,15 @@ class Tester {
           describeExit(exit),
           Option.getOrUndefined(Exit.findErrorOption(exit))
         ))
+    )
+  }
+
+  /** Sends a command through the hook, with the suite's recording handler. */
+  command(id: string, options?: { readonly text?: string | undefined }) {
+    return Effect.provideService(
+      this.options.interactions!.command!(this.thread, id, options),
+      ChatInteraction.Handler,
+      this.recording.handler
     )
   }
 
@@ -1533,6 +1672,41 @@ class Tester {
       case "modalErrors":
         // Its absence means a degraded answer, not a refusal, so it has no inverse.
         return Effect.void
+      case "commands":
+        // A deferral built by hand, which no adapter can follow up: it must fail, and not with Unsupported when listed.
+        return expect(chat.followUp(
+          ChatInteraction.defer(
+            ChatInteraction.CommandInvoked.make({
+              id: "conformance",
+              text: "",
+              thread,
+              userId: "conformance",
+              raw: {}
+            }),
+            { visibility: "public" }
+          ),
+          { markdown: text }
+        ))
+      case "ephemeral":
+        // A private answer exists only as the answer to a command, so without the hook there is nothing to probe.
+        return this.options.interactions?.command === undefined
+          ? Effect.void
+          : Effect.gen({ self: this }, function*() {
+            this.recording.onCommand = () => ChatInteraction.respond({ markdown: text })
+            yield* this.command("conformance")
+            const refusal = this.recording.refused.find((error) => error.reason._tag === "Unsupported")
+            const holds = listed
+              ? refusal === undefined
+              : refusal?.reason._tag === "Unsupported" && refusal.reason.capability === "ephemeral"
+            yield* this.check(
+              holds,
+              listed ? "no refusal Unsupported for listed ephemeral" : "a refusal Unsupported(ephemeral)",
+              () =>
+                this.recording.refused.length === 0
+                  ? "no refusal"
+                  : this.recording.refused.map(describeError).join(", ")
+            )
+          })
       case "nativeStream":
         return Effect.flatMap(
           Registry,
@@ -1651,6 +1825,10 @@ interface ConformanceOptions {
  *   `Chat` and `Registry`.
  * - `modalErrors` has no inverse rule: without it an `errors` reply is a
  *   degraded answer, not a refusal.
+ * - The `command/*` rules and `unsupported/ephemeral` exist only when
+ *   `interactions.command` is given. `unsupported/commands` always runs: it
+ *   calls `followUp` with a deferral the suite builds by hand, which must
+ *   fail `Unsupported` without `commands`, and fail some other way with it.
  * - Every rule deletes what it posted when it ends, pass or fail, when the
  *   platform can delete.
  *
@@ -1660,7 +1838,8 @@ interface ConformanceOptions {
  * arrives only behind a new capability or with a changeset saying third-party
  * adapters may start failing. `unsupported/buttons` and
  * `unsupported/selects` are such rules: an adapter that ignores `actions`
- * and posts anyway fails them. The `retries/retrySafe` rule waits for real
+ * and posts anyway fails them. So is `unsupported/commands`: an adapter whose
+ * `followUp` does anything but fail `Unsupported` fails it. The `retries/retrySafe` rule waits for real
  * time, so run the suite on a live `Clock`.
  *
  * @stability unstable
@@ -2329,8 +2508,111 @@ export const conformance = (options: {
     rule("unsupported/modals", ["buttons"], (t) => t.probe("modals"))
   }
 
+  if (interactions?.command !== undefined) {
+    const commandId = "conformance-command"
+
+    rule("command/arrives", ["commands"], (t) =>
+      Effect.gen(function*() {
+        const text = "deploy v1 < \u{1D400}"
+        yield* t.command(commandId, { text })
+        const command = t.recording.commands[0]
+        yield* t.check(
+          command !== undefined && command.id === commandId && command.text === text &&
+            ChatThread.equals(command.thread, t.thread),
+          "command " + commandId + " with text " + JSON.stringify(text) + " in " + ChatThread.toString(t.thread),
+          () =>
+            command === undefined
+              ? "no command"
+              : "command " + command.id + " with text " + JSON.stringify(command.text) + " in " +
+                ChatThread.toString(command.thread)
+        )
+        yield* t.checkInteraction(command)
+      }))
+
+    rule("command/emptyText", ["commands"], (t) =>
+      Effect.gen(function*() {
+        yield* t.command(commandId)
+        const command = t.recording.commands[0]
+        yield* t.check(
+          command !== undefined && command.text === "",
+          "a command with text \"\"",
+          () => command === undefined ? "no command" : "text " + JSON.stringify(command.text)
+        )
+      }))
+
+    const noRefusal = (t: Tester) =>
+      t.check(
+        t.recording.commands.length === 1 && t.recording.refused.length === 0,
+        "one command and no refusal",
+        () =>
+          t.recording.commands.length + " commands and refusals " +
+          (t.recording.refused.length === 0 ? "none" : t.recording.refused.map(describeError).join(", "))
+      )
+
+    rule("command/responds", ["commands"], (t) =>
+      Effect.gen(function*() {
+        t.recording.onCommand = () =>
+          ChatInteraction.respond({ markdown: conformanceText(t.rule), visibility: "public" })
+        yield* t.command(commandId)
+        yield* noRefusal(t)
+      }))
+
+    rule("command/respondsPrivately", ["commands", "ephemeral"], (t) =>
+      Effect.gen(function*() {
+        t.recording.onCommand = () => ChatInteraction.respond({ markdown: conformanceText(t.rule) })
+        yield* t.command(commandId)
+        yield* noRefusal(t)
+      }))
+
+    rule("command/respondTooLarge", ["commands"], (t) =>
+      Effect.gen(function*() {
+        const markdown = "x".repeat(t.descriptor.limits.messageLength + 1)
+        t.recording.onCommand = () => ChatInteraction.respond({ markdown, visibility: "public" })
+        yield* t.command(commandId)
+        const refusal = t.recording.refused[0]
+        yield* t.check(
+          refusal !== undefined && textTooLarge.test(refusal.reason),
+          "a refusal " + textTooLarge.expected,
+          () => refusal === undefined ? "no refusal" : "a refusal " + describeError(refusal)
+        )
+      }))
+
+    rule("command/followUp", ["commands"], (t) =>
+      Effect.gen(function*() {
+        t.recording.onCommand = (command) => ChatInteraction.defer(command, { visibility: "public" })
+        yield* t.command(commandId)
+        const deferred = t.recording.commandReplies[0]
+        if (deferred?._tag !== "Defer") {
+          return yield* Effect.fail(
+            failure(t.rule, "a Defer reply", deferred === undefined ? "no command" : deferred._tag)
+          )
+        }
+        yield* noRefusal(t)
+        yield* t.call(t.chat.followUp(deferred, { markdown: conformanceText(t.rule) }))
+      }))
+
+    rule("command/modalOrigin", ["commands", "modals"], (t) =>
+      Effect.gen(function*() {
+        t.recording.onCommand = () => probeModal.open()
+        yield* t.command(commandId)
+        yield* t.submit({ answer: "conformance" })
+        const submit = t.recording.submits[0]
+        yield* t.check(
+          submit !== undefined && submit.messageId === undefined && ChatThread.equals(submit.thread, t.thread),
+          "a submit in " + ChatThread.toString(t.thread) + " with no messageId",
+          () =>
+            submit === undefined
+              ? "no submit"
+              : "a submit in " + ChatThread.toString(submit.thread) + " with messageId " + submit.messageId
+        )
+        yield* t.checkInteraction(submit)
+      }))
+
+    rule("unsupported/ephemeral", ["commands"], (t) => t.probe("ephemeral"))
+  }
+
   for (const capability of allCapabilities) {
-    if (capability === "modals" || capability === "modalErrors") continue
+    if (capability === "modals" || capability === "modalErrors" || capability === "ephemeral") continue
     rule("unsupported/" + capability, [], (t) => t.probe(capability))
   }
 

@@ -41,6 +41,7 @@ import { RetriesDisabled } from "./internal/retries.ts"
  * - Every op takes an address and goes to the adapter for
  *   `thread.platform`, failing with `NoAdapter` when there is none.
  * - `getUser` takes the platform first, because a bare user id names none.
+ * - `followUp` is routed by the platform of the deferred command's thread.
  * - `descriptor` returns a platform's capabilities and limits.
  * - Each call runs in a `Chat.{op}` span whose attributes are the platform, the
  *   op and, on failure, the error reason and retry value.
@@ -120,6 +121,8 @@ const make = Effect.sync(() => {
     getThread: (thread) => route(thread.platform, "getThread", (adapter) => adapter.getThread(thread)),
     opener: (thread) => route(thread.platform, "opener", (adapter) => adapter.opener(thread)),
     getUser: (platform, id, options) => route(platform, "getUser", (adapter) => adapter.getUser(id, options)),
+    followUp: (deferred, content) =>
+      route(deferred.command.thread.platform, "followUp", (adapter) => adapter.followUp(deferred, content)),
     descriptor: (platform) => route(platform, "descriptor", (adapter) => Effect.succeed(adapter.descriptor))
   })
 

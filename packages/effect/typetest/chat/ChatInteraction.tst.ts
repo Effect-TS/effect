@@ -101,6 +101,45 @@ describe("ChatInteraction", () => {
     })
   })
 
+  it("types a command's handler, which must answer with a message, a modal or a deferral", () => {
+    const Ship = ChatInteraction.command("ship", {
+      description: "Ship a version",
+      argument: { name: "version", description: "The version", required: true }
+    })
+    const Summarize = ChatInteraction.command("summarize", { description: "Summarize this thread" })
+    const Group = ChatInteraction.group(Ship, Summarize, Approve, Feedback)
+    const valid = {
+      ship: (command: ChatInteraction.CommandInvoked) => {
+        expect(command.text).type.toBe<string>()
+        return Effect.succeed(ChatInteraction.respond({ markdown: "Ship " + command.text + "?" }))
+      },
+      summarize: (command: ChatInteraction.CommandInvoked) => Effect.succeed(ChatInteraction.defer(command)),
+      approve: () => Effect.succeed(Feedback.open()),
+      feedback: (submit: ChatInteraction.Submit<undefined, { readonly body: string }>) => {
+        expect(submit.messageId).type.toBe<string | undefined>()
+        return Effect.succeed(ChatInteraction.close)
+      }
+    }
+    expect(Group.toLayer(valid)).type.toBe<Layer.Layer<never, never, ChatInteraction.Registry>>()
+    expect(Group.toLayer).type.not.toBeCallableWith({ ...valid, ship: () => Effect.succeed(ChatInteraction.ack) })
+    expect(Group.toLayer).type.not.toBeCallableWith({ ...valid, ship: () => Effect.fail("boom") })
+    expect(Group.toLayer).type.not.toBeCallableWith({
+      ...valid,
+      approve: () => Effect.succeed(ChatInteraction.respond({ markdown: "A click cannot answer with a message." }))
+    })
+    expect(Group.toLayer).type.not.toBeCallableWith({
+      ...valid,
+      feedback: () => Effect.succeed(ChatInteraction.respond({ markdown: "Nor can a submit." }))
+    })
+    const { summarize: _, ...missing } = valid
+    expect(Group.toLayer).type.not.toBeCallableWith(missing)
+    expect(ChatInteraction.Handler.of).type.not.toBeCallableWith({
+      click: () => Effect.succeed(ChatInteraction.ack),
+      submit: () => Effect.succeed(ChatInteraction.close),
+      refused: () => Effect.void
+    })
+  })
+
   it("handle gives the reply of the event's kind, or Late", () => {
     const click = ChatInteraction.handle(
       {} as ChatInteraction.ButtonClicked,
@@ -112,6 +151,10 @@ describe("ChatInteraction", () => {
     const submit = ChatInteraction.handle({} as ChatInteraction.ModalSubmitted, Duration.seconds(2))
     expect(submit).type.toBe<
       Effect.Effect<ChatInteraction.SubmitReply | ChatInteraction.Late, never, ChatInteraction.Handler>
+    >()
+    const command = ChatInteraction.handle({} as ChatInteraction.CommandInvoked, Duration.seconds(2))
+    expect(command).type.toBe<
+      Effect.Effect<ChatInteraction.CommandReply | ChatInteraction.Late, never, ChatInteraction.Handler>
     >()
   })
 
