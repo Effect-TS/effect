@@ -42,6 +42,12 @@ export * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
 export * as NodeDns from "./NodeDns.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as NodeDnsClient from "./NodeDnsClient.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
