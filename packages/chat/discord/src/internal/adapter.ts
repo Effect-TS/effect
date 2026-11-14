@@ -500,9 +500,10 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   /**
-   * Edits the original response of a deferred command, once. Refused before
-   * the call past `followUpAge`, read from the interaction's id. A token
-   * Discord no longer takes is `interaction_expired` too.
+   * Edits the original response of a deferred command, in one attempt: not
+   * through `call`, whose retries would send again after the expiry check.
+   * Refused before the call past `followUpAge`, read from the interaction's
+   * id. A token Discord no longer takes is `interaction_expired` too.
    */
   const followUp: ChatAdapter["followUp"] = Effect.fnUntraced(function*(deferred, content) {
     const op = "followUp"
@@ -517,19 +518,14 @@ export const make = Effect.fnUntraced(function*(options: {
     }
     const body = yield* message(op, content)
     const ephemeral = deferred.visibility === "ephemeral" ? 1 << 6 : 0
-    yield* call(
-      op,
-      rest.updateOriginalWebhookMessage(to.applicationId, to.token, {
-        payload: { ...body, flags: body.flags | ephemeral }
-      }),
-      true
-    ).pipe(
-      Effect.mapError((error) =>
-        SPENT_TOKEN.some((code) => Errors.hasCode(code)(error))
-          ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
-          : error
-      )
-    )
+    yield* rest.updateOriginalWebhookMessage(to.applicationId, to.token, {
+      payload: { ...body, flags: body.flags | ephemeral }
+    }).pipe(Effect.mapError((cause) => {
+      const error = Errors.chatError(op, Errors.reasonForRestError(cause, { write: true }))
+      return SPENT_TOKEN.some((code) => Errors.hasCode(code)(error))
+        ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
+        : error
+    }))
   })
 
   const adapter: ChatAdapter = {

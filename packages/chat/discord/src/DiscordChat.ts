@@ -96,9 +96,13 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   application id and token from its `raw`, so a second call replaces the
  *   first answer. It fails `NotFound` with detail `interaction_expired`
  *   from 15 minutes after the command, read from the interaction's id,
- *   without calling Discord. Past that Discord answers 401 with code 50027,
- *   which is mapped the same if a call gets there. Code 10015 is mapped
- *   from the docs and was not seen.
+ *   without calling Discord. It sends one request and the adapter never
+ *   retries it: a 429 that reaches the adapter fails `RateLimited`, for the
+ *   caller to retry or not. dfx's own REST client waits out a 429 and sends
+ *   again below the adapter, so with it a request can still land after 15
+ *   minutes. Past that Discord answers 401 with code 50027, which is
+ *   `interaction_expired` too. Code 10015 is mapped from the docs and was
+ *   not seen.
  * - A modal that can't be built, a reply to a command that fails the checks
  *   of a `post`, or a callback that fails, goes to `Handler.refused`. A
  *   callback that comes back 404 `Unknown interaction` was late: that is
