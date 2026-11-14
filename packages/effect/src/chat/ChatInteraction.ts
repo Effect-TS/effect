@@ -79,6 +79,12 @@ const origin = {
  * - `thread` and `messageId` are where the message carrying the button
  *   lives. `raw` is the platform's interaction payload.
  *
+ * **Gotchas**
+ *
+ * On a command's private answer, `messageId` names where the click came
+ * from, not a message: `edit`, `delete` and `fetchMessage` can't reach
+ * it. Only `raw` tells the two apart.
+ *
  * @stability unstable
  * @category events
  * @since 4.1.5
@@ -100,7 +106,8 @@ export type ButtonClicked = typeof ButtonClicked.Type
 
 /**
  * Schema for a choice in a select on a message. `value` is the chosen
- * option's value, still encoded.
+ * option's value, still encoded. `messageId` is as on `ButtonClicked`, and
+ * on a command's private answer it is not a message either.
  *
  * @stability unstable
  * @category events
@@ -345,8 +352,10 @@ export type Visibility = typeof Visibility.Type
  * **Details**
  *
  * `markdown` and `actions` are rendered and checked the way `post` renders
- * and checks them. The message gets no id: it cannot be edited, deleted or
- * fetched afterwards.
+ * and checks them, with the default post options, so a mention in it
+ * notifies nobody. The message gets no id: it cannot be edited, deleted or
+ * fetched afterwards. A click on its elements carries a `messageId`, which
+ * for a private answer names the click's origin and no message.
  *
  * @stability unstable
  * @category replies
@@ -375,6 +384,8 @@ export type Respond = typeof Respond.Type
  *
  * - It is plain data, so it can go on a queue to another process.
  * - `visibility` is fixed here. `followUp` has none of its own.
+ * - Send one `followUp` for it. A second one is not portable: Slack posts
+ *   another message and Discord replaces the first.
  *
  * **Gotchas**
  *

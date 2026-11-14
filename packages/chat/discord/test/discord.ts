@@ -14,8 +14,8 @@ const idOf = (customId: string): string => customId.split(join)[0]
  * original response. `interactions` is the conformance hook: it builds
  * Discord's `INTERACTION_CREATE` payload from what was posted, or a slash
  * command's, and sends it through `DiscordChat.interaction`. The command
- * and its modal's submit without a message are built from Discord's docs,
- * not captured.
+ * and its modal's submit without a message are built with the shapes
+ * recorded in `fixtures/recorded/commands.json`.
  */
 export const makeDiscord = (channelType = 0) => {
   const messages = new Map<string, any>()

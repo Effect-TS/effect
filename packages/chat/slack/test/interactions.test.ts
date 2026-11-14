@@ -1,8 +1,8 @@
 /**
  * Interactivity: the normaliser on recorded and built payloads, the answers
  * `SlackChat.interaction` gives, `layerInteractivity` over HTTP, and a
- * command's `followUp`. The command payloads are built from Slack's docs:
- * none has been captured yet.
+ * command's `followUp`. The command payloads here are built. The recorded
+ * ones are in `commands.test.ts`.
  */
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { assert, describe, it } from "@effect/vitest"
@@ -295,7 +295,8 @@ describe("followUp", () => {
     Effect.gen(function*() {
       const fake = makeFake({
         "auth.test": authTest,
-        "response_url": { status: 404, body: { ok: false, error: "expired_url" } }
+        // As recorded in fixtures/recorded/commands.json.
+        "response_url": { status: 404, headers: { "content-type": "text/html" }, body: "used_url" }
       })
       const failure = (raw: Record<string, unknown>) =>
         Effect.flip(Effect.flatMap(Chat.Chat, (chat) => chat.followUp(deferred(raw, "ephemeral"), { markdown: "x" })))

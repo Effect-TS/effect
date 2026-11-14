@@ -205,8 +205,10 @@ export interface User {
  *   `edit` replaces the whole message, so an edit without `actions`
  *   removes them.
  * - `followUp` sends the answer a command's `Defer` promised, to whoever
- *   its `visibility` names. It is routed by `deferred.command.thread`, sent
- *   once per deferral and never retried. It takes no files. It fails
+ *   its `visibility` names. It is routed by `deferred.command.thread` and
+ *   never retried. It takes no files. The contract is one call per
+ *   deferral: a second posts another message on Slack and replaces the
+ *   first on Discord, and `ChatTest`'s fake fails it. It fails
  *   `NotFound` with detail `interaction_expired` past `limits.followUpAge`,
  *   and `Unsupported` without `commands`.
  *

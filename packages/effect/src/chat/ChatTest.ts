@@ -154,7 +154,8 @@ export class NoSuchElement extends Schema.TaggedError<NoSuchElement>("effect/cha
  *   returned, inside `limits.followUpAge` on `Clock`. Later, a second time,
  *   or for a deferral the fake never saw, it fails `NotFound` with detail
  *   `interaction_expired`. Failing the second call is stricter than either
- *   platform, to catch a handler that relies on more than one.
+ *   platform, to catch a handler that relies on more than one: Slack posts
+ *   another message and Discord replaces the first.
  *
  * @stability unstable
  * @category services

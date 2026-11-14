@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Add slash commands and private replies to `effect/chat`. `ChatInteraction.command` defines a command with at most one text argument, which arrives as `CommandInvoked` and goes to `Handler.command`. A command handler answers with `respond`, `defer` or a modal's `open`, and `respond` and `defer` are private by default. `Chat.followUp` sends the answer a `Defer` promised, within `limits.followUpAge`. `ChatTest` gains `command`, a `submit` and `interact` that take a command, the hook's optional `command` and the `command/*` rules.
+Add slash commands and private replies to `effect/chat`. `ChatInteraction.command` defines a command with at most one text argument, which arrives as `CommandInvoked` and goes to `Handler.command`. A command handler answers with `respond`, `defer` or a modal's `open`, and `respond` and `defer` are private by default. `Chat.followUp` sends the answer a `Defer` promised, within `limits.followUpAge`. `ChatTest` gains `command`, a `submit` and `interact` that take a command, the hook's optional `command` and the `command/*` rules. On a command's private answer, a click's `messageId` names where the click came from and no message `edit`, `delete` or `fetchMessage` can reach. Send one `followUp` per `Defer`: a second posts another message on Slack, replaces the first on Discord and fails in `ChatTest`.
 
 Breaking for code written against the unreleased `effect/chat` APIs:
 

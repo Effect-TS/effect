@@ -42,6 +42,7 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *   `thread.platform`, failing with `NoAdapter` when there is none.
  * - `getUser` takes the platform first, because a bare user id names none.
  * - `followUp` is routed by the platform of the deferred command's thread.
+ *   Call it once per deferral: what a second call does differs by platform.
  * - `descriptor` returns a platform's capabilities and limits.
  * - Each call runs in a `Chat.{op}` span whose attributes are the platform, the
  *   op and, on failure, the error reason and retry value.

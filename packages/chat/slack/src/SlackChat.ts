@@ -25,8 +25,8 @@
  *   and the manifest's description and usage hint are what Slack shows.
  *   With Socket Mode on, commands come as `slash_commands` envelopes: pass
  *   the envelope's `payload` to `SlackChat.interaction` in the same way.
- * - A command can't be run inside a thread, so a command that acts on a
- *   thread has to be told which one. Command names are shared by every app
+ * - A command can't be run inside a thread: Slack doesn't offer it there.
+ *   A command that acts on a thread has to be told which one. Command names are shared by every app
  *   in a workspace. "Escape channels, users, and links" is off by default;
  *   with it on, `text` carries `<@U…|name>` and `<#C…|name>` tokens.
  * - Slack's stop button also needs the app declared as an agent with
@@ -119,20 +119,33 @@ export interface SlackUser {
  *   the Request URL, or the `payload` of the envelope ack on Socket Mode.
  *   For a command answered with `respond` that body is the message, with
  *   `response_type` `ephemeral` or `in_channel`, after the checks of a
- *   `post`; one that fails them goes to `Handler.refused`.
+ *   `post`; one that fails them goes to `Handler.refused`. A command's
+ *   answer mentions nobody: `withPostOptions` does not reach it, so
+ *   `<@U…>` goes out escaped and shows as text. There is no way to allow a
+ *   mention in it.
  *   `undefined` is an empty answer: an ack, a close, a late click, a
  *   deferred command, a command that opened a modal, a command nobody
  *   handles, or a payload that is not from an element this adapter built.
  * - `Late` is a submit or a command whose handler ran past the deadline
  *   and was interrupted. It is not an answer, since an empty one would close
  *   the modal, or tell the user the command worked: `layerInteractivity`
- *   answers 503 for it, and a caller on Socket Mode sends no ack. `Late` is
+ *   answers 503 for it, and a caller on Socket Mode sends no ack. For a
+ *   command, Slack's desktop client then shows its own private failure
+ *   notice and keeps the text; its iOS client shows nothing. `Late` is
  *   itself a JSON value, so test for it with `Schema.is(ChatInteraction.Late)`
  *   before treating the result as a body.
  * - `Chat.followUp` on a deferred command posts once to the command's
  *   `response_url`, which must be on a Slack host, through the layer's
- *   `HttpClient`. It is a write and is not retried. Slack takes it for 30
- *   minutes.
+ *   `HttpClient`. It is a write and is not retried. Slack takes five posts
+ *   to one `response_url` within 30 minutes, each a new message. A spent
+ *   or expired one answers 404 `used_url` or `expired_url`, which is
+ *   `NotFound` with detail `interaction_expired`.
+ * - A click on a private answer has no `message`. Its `messageId` is the
+ *   answer's `container.message_ts`, which no Web API method reaches:
+ *   `chat.update` on it answers `message_not_found`. `raw` has
+ *   `container.is_ephemeral`. A public answer reads back as a
+ *   `bot_message` whose `bot_id` is not the app's own, so it is not
+ *   `isSelf`.
  * - `interaction` checks no signature and no app id: that is the
  *   transport's job. It needs `ChatInteraction.Handler` where it is
  *   called, so the layer does not need it.
