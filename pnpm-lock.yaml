@@ -745,6 +745,15 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/sql/trino:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+      testcontainers:
+        specifier: ^12.2.1
+        version: 12.2.1(bare-buffer@3.7.1)(supports-color@10.2.2)
+
   packages/tools/ai-codegen:
     dependencies:
       '@effect/openapi-generator':

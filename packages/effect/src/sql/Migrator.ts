@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Clock from "../Clock.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { identity, pipe } from "../Function.ts"
@@ -96,8 +97,8 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
 /**
  * Creates a migrator that ensures the migrations table exists, runs pending
  * migrations in a transaction, and optionally dumps the schema after successful
- * migrations. ClickHouse runs without a transaction and records each migration
- * only after it succeeds.
+ * migrations. ClickHouse and Trino run without a transaction and record each
+ * migration only after it succeeds.
  *
  * **Details**
  *
@@ -155,6 +156,13 @@ export const make = <RD = never>({
   name String
 ) ENGINE = MergeTree
 ORDER BY migration_id`,
+      // trino has no column defaults, so created_at is set on insert
+      trino: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id integer,
+  created_at timestamp,
+  name varchar
+)`,
       pg: () =>
         sql`CREATE TABLE ${sql(table)} (
   migration_id integer primary key,
@@ -190,11 +198,21 @@ ORDER BY migration_id`,
       rows: Arr.NonEmptyReadonlyArray<[id: number, name: string]>
     ) =>
       transformWrites(
-        sql`INSERT INTO ${sql(table)} ${
-          sql.insert(
-            Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
-          )
-        }`.withoutTransform
+        sql.onDialectOrElse({
+          trino: () =>
+            Effect.flatMap(Clock.currentTimeMillis, (now) => {
+              const created_at = new Date(now)
+              return sql`INSERT INTO ${sql(table)} ${
+                sql.insert(Arr.map(rows, ([migration_id, name]) => ({ migration_id, name, created_at })))
+              }`.withoutTransform
+            }),
+          orElse: () =>
+            sql`INSERT INTO ${sql(table)} ${
+              sql.insert(
+                Arr.map(rows, ([migration_id, name]) => ({ migration_id, name }))
+              )
+            }`.withoutTransform
+        })
       )
 
     const latestMigration = Effect.map(
@@ -256,9 +274,11 @@ ORDER BY migration_id`,
 
     // === run
 
-    // BEGIN is still experimental on clickhouse
+    // BEGIN is still experimental on clickhouse, and most trino connectors
+    // refuse writes inside a transaction
     const transactional = sql.onDialectOrElse({
       clickhouse: () => false,
+      trino: () => false,
       orElse: () => true
     })
 
