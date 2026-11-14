@@ -9,6 +9,18 @@
  * @stability experimental
  * @since 4.1.5
  */
+export * as ProtobufDescriptor from "./ProtobufDescriptor.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as ProtobufMessage from "./ProtobufMessage.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.5
+ */
 export * as ProtobufReader from "./ProtobufReader.ts"
 
 /**
