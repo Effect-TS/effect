@@ -198,6 +198,9 @@ interface RSlot {
 /** How many times one instance may deliver sends in a flush before it fails. */
 const maxSendPasses = 100
 
+/** What a keyed old's index is replaced with in the map of keys once a node has taken it. */
+const taken = -1
+
 /**
  * The slot rendered with the ref `key` in the trees one author wrote: its view, the fallbacks shown
  * in it, and the closures of the headless children declared there, which it wrote too. Each render
@@ -294,7 +297,7 @@ export interface Instance {
   readonly scope: Scope.Closeable
   env: Env
   /** `noChildren`, shared, until the first child is added: only `createChild` adds one. */
-  children: Map<string, Instance>
+  children: Set<Instance>
   props: unknown
   model: unknown
   /** The loader slots, beside the Model: what each loader's read last returned. */
@@ -355,9 +358,9 @@ export interface Instance {
 
 /**
  * The children of every instance that has none: reads and deletes leave it empty, and an
- * instance's first child replaces it with a Map of its own.
+ * instance's first child replaces it with a Set of its own.
  */
-const noChildren: Map<string, Instance> = new Map()
+const noChildren: Set<Instance> = new Set()
 
 /** @internal */
 export interface Pending {
@@ -510,12 +513,40 @@ const propsEqual = (a: unknown, b: unknown): boolean => {
   for (const key of keys) {
     const x = (a as any)[key]
     const y = (b as any)[key]
-    if (x !== y && !Equal.equals(x, y)) return false
+    if (x !== y && (differsPlainly(x, y) || !Equal.equals(x, y))) return false
   }
   return true
 }
 
+const isPrimitive = (u: unknown): boolean => u === null || (typeof u !== "object" && typeof u !== "function")
+
+/**
+ * Whether two plain objects have a field that differs as a primitive, so they can't be equal. It
+ * answers for the common change, a record with one field replaced, without the hashes `Equal.equals`
+ * takes of both. `false` leaves the answer to `Equal.equals`.
+ */
+const differsPlainly = (a: unknown, b: unknown): boolean => {
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
+  if (Object.getPrototypeOf(a) !== Object.prototype || Object.getPrototypeOf(b) !== Object.prototype) return false
+  // An object with its own equality decides for itself.
+  if (Equal.symbol in a || Equal.symbol in b) return false
+  for (const key in a) {
+    if (!Object.hasOwn(b, key)) continue
+    const x = (a as any)[key]
+    const y = (b as any)[key]
+    // `NaN` is equal to itself for `Equal.equals`.
+    if (x !== y && isPrimitive(x) && isPrimitive(y) && (x === x || y === y)) return true
+  }
+  return false
+}
+
 const emptyText: View.Text = { _tag: "Text", text: "" }
+
+/**
+ * What merging a tree with no entries gives: `Head.empty`'s fields in an object of its own, as a
+ * merge's result is, so a root that closes still tells the host its head is gone.
+ */
+const noHead: Head.Head = { ...Head.empty }
 
 type Draft = MessageLog.Entry extends infer E ? E extends MessageLog.Entry ? Omit<E, "seq" | "at" | "session"> : never
   : never
@@ -1009,9 +1040,13 @@ const setup = (
   let rootInstance: Instance | undefined
   let handle: services.RootHandle | undefined
 
+  /** Whether an instance with a `head` option has rendered. Until one has, the merged head is empty. */
+  let headed = false
+
   const updateHead = (inst: Instance) => {
     const head = inst.component.head
     if (head === undefined) return
+    headed = true
     const entries = guard(inst, "head", () => head(inst.model, inst.props, inst.slots))
     if (entries === undefined) return
     inst.head = entries
@@ -1117,7 +1152,8 @@ const setup = (
     if (root === undefined) return
     while (headDirty && dirty.size === 0 && deferred.length === 0) {
       headDirty = false
-      const next = Head.merge(headTree(root))
+      // No instance has entries to give, so the tree isn't read: an instance that goes away costs nothing here.
+      const next = headed ? Head.merge(headTree(root)) : noHead
       if (!headDirty) {
         merged = next
         headChanged = true
@@ -1167,7 +1203,7 @@ const setup = (
     closeScope(inst.scope)
     for (const node of nodes) host.remove(node)
     inst.rendered = [{ _tag: "Text", v: emptyText, node: placeholder }]
-    inst.parent?.children.delete(inst.path)
+    inst.parent?.children.delete(inst)
   }
 
   const failInstance = (
@@ -2739,7 +2775,7 @@ const setup = (
       for (const cancel of inst.loadMores) cancel()
       inst.loadMores.clear()
     }
-    for (const child of inst.children.values()) releaseWatches(child)
+    for (const child of inst.children) releaseWatches(child)
   }
   // -- Router.prefetch --------------------------------------------------------
   /** Registers, updates or drops the instance's declaration. The latest `subscriptions` run's map wins. */
@@ -2938,7 +2974,7 @@ const setup = (
       const collect = (at: Instance) => {
         if (at.closed) return
         names.add(at.component.name)
-        for (const child of at.children.values()) collect(child)
+        for (const child of at.children) collect(child)
       }
       collect(root)
       return mounted = names
@@ -2961,7 +2997,7 @@ const setup = (
       const watched = new Set<string>()
       const gather = (at: Instance) => {
         if (at.watched !== undefined) { for (const key of at.watched) watched.add(key) }
-        for (const child of at.children.values()) gather(child)
+        for (const child of at.children) gather(child)
       }
       for (const at of found) gather(at)
       for (const [key, entry] of page.entries) {
@@ -3280,7 +3316,7 @@ const setup = (
    * at any depth. Only what's still in the tree counts, since a removed child's Scope can close later.
    */
   const closurePaths = (inst: Instance, out: Array<ChildPaths>) => {
-    for (const child of inst.children.values()) {
+    for (const child of inst.children) {
       if (child.owner === undefined || child.closed) continue
       if (child.childPaths !== undefined) out.push(child.childPaths)
       closurePaths(child, out)
@@ -3321,12 +3357,19 @@ const setup = (
         return { _tag: "Text", v: view, node: host.createText(view.text) }
       case "Element": {
         const node = host.createElement(view.tag)
-        for (const name in view.attrs) host.setAttr(node, name, view.attrs[name])
+        const attrs = view.attrs
+        if (attrs !== View.noFields) { for (const name in attrs) host.setAttr(node, name, attrs[name]) }
         setEvents(inst, node, view)
-        const children = view.children.map((child) => create(inst, child, env))
-        place(node, children, undefined)
+        const views = view.children
+        checkKeys(inst, views)
+        const children: Array<Rendered> = new Array(views.length)
+        // The element is new and empty, so its children go in as they are made, without reading the host.
+        for (let index = 0; index < views.length; index++) {
+          insertNodes(node, children[index] = create(inst, views[index]!, env), undefined)
+        }
         // Properties go after the children, so a `select`'s `value` has its options to match.
-        for (const name in view.props) host.setProp(node, name, view.props[name])
+        const props = view.props
+        if (props !== View.noFields) { for (const name in props) host.setProp(node, name, props[name]) }
         return {
           _tag: "Element",
           v: view,
@@ -3404,8 +3447,10 @@ const setup = (
       for (const node of nodes) host.remove(node)
       return failedSlot(inst, view, child.failure, env)
     }
-    if (inst.children === noChildren) inst.children = new Map()
-    inst.children.set(path, child)
+    // A set of the instances, not a map by path: a path is a string made for each child, and hashing
+    // it would cost more than anything else here.
+    if (inst.children === noChildren) inst.children = new Set()
+    inst.children.add(child)
     return { _tag: "Child", v: view, inst: child }
   }
 
@@ -3555,6 +3600,7 @@ const setup = (
         }
         setEvents(inst, node, view)
         if (plans === undefined) { for (const child of childNodes(node)) host.remove(child) }
+        checkKeys(inst, view.children)
         const children = plans === undefined
           ? view.children.map((child) => create(inst, child, env))
           : view.children.map((child, index) => adoptNode(inst, child, plans[index]!, env))
@@ -3584,10 +3630,32 @@ const setup = (
     view._tag === "Child" ? "c:" + segment(view) : "e:" + (view as View.Element<any, any>).tag + "[" +
       (view as View.Element<any, any>).elementKey + "]"
 
-  /** Keyed olds by key, with their index. `undefined` when every old is matched by position. */
-  const keyedIndex = (olds: ReadonlyArray<Rendered>): Map<string, number> | undefined => {
+  const duplicateKey = (inst: Instance, key: string): Error =>
+    new Error(`${inst.path}: two siblings share the key ${key.slice(2)}`)
+
+  /**
+   * Throws when two keyed elements in `views` have one key. Every list of siblings is checked as
+   * it is made, so the olds of a patch never share a key. Child slots aren't checked here: each
+   * view's are checked by their paths, across the whole view, before it renders.
+   */
+  const checkKeys = (inst: Instance, views: ReadonlyArray<View.Node<any, any>>): void => {
+    let seen: Set<string> | undefined
+    for (let index = 0; index < views.length; index++) {
+      const view = views[index]!
+      if (view._tag !== "Element" || view.elementKey === undefined) continue
+      const key = keyOf(view)
+      if ((seen ??= new Set()).has(key)) throw duplicateKey(inst, key)
+      seen.add(key)
+    }
+  }
+
+  /**
+   * Keyed olds from `start` up to `end` by key, with their index. `undefined` when every one of them
+   * is matched by position.
+   */
+  const keyedIndex = (olds: ReadonlyArray<Rendered>, start: number, end: number): Map<string, number> | undefined => {
     let byKey: Map<string, number> | undefined
-    for (let index = 0; index < olds.length; index++) {
+    for (let index = start; index < end; index++) {
       const view = olds[index]!.v
       if (isKeyed(view)) (byKey ??= new Map()).set(keyOf(view), index)
     }
@@ -3607,11 +3675,42 @@ const setup = (
   }
 
   /**
+   * Whether `view` is matched with `rendered` when both are at one index: an unkeyed node with an
+   * unkeyed old of its kind, and a keyed node with the old that has its key. What the keys' strings
+   * would decide, without building them.
+   */
+  const pairs = (rendered: Rendered, view: View.Node<any, any>): boolean => {
+    switch (view._tag) {
+      case "Text":
+        return rendered._tag === "Text"
+      case "Element":
+        return rendered._tag === "Element" && rendered.v.tag === view.tag && rendered.v.elementKey === view.elementKey
+      case "Child":
+        return (rendered._tag === "Child" || rendered._tag === "Slot") && rendered.v.component === view.component &&
+          rendered.v.key === view.key
+    }
+  }
+
+  /**
    * Matches `news` against `olds`: a keyed node by its key, any other by its position, against an
    * old there that isn't keyed. Matched nodes are patched, the rest created, and the olds left over
-   * destroyed, in their order. Only lists with keyed nodes build a map, and a list whose nodes all
-   * stayed, in order, is left in place without reading the host's nodes.
+   * destroyed, in their order.
+   *
+   * Most lists keep their nodes where they were, so the nodes at the start that still match the old
+   * at their index are patched first, and a list that kept all of them is returned as it is. Keyed
+   * nodes at the end that match from the end are paired the same way. Only what's between them is
+   * matched through a map of keys, so a row added or removed in a long list builds none.
    */
+  /** The keys of the keyed elements in `news` before `end`. */
+  const elementKeys = (news: ReadonlyArray<View.Node<any, any>>, end: number): Set<string> => {
+    const keys = new Set<string>()
+    for (let index = 0; index < end; index++) {
+      const view = news[index]!
+      if (view._tag === "Element" && view.elementKey !== undefined) keys.add(keyOf(view))
+    }
+    return keys
+  }
+
   const patchList = (
     inst: Instance,
     parentNode: unknown,
@@ -3620,33 +3719,125 @@ const setup = (
     ref: unknown,
     env: Env
   ): Array<Rendered> => {
-    const byKey = keyedIndex(olds)
+    const oldLength = olds.length
+    const newLength = news.length
+    if (oldLength === 0) {
+      if (newLength === 0) return olds
+      // Nothing to match: every node is new.
+      return createList(inst, parentNode, news, ref, env)
+    }
+    const shared = oldLength < newLength ? oldLength : newLength
+    let start = 0
+    // Whether an old before `start` is keyed: a list with keyed nodes can change order.
+    let keyedBefore = false
+    // A slot at `start` that changed what it shows, so its nodes may not be placed yet.
+    let replaced: Rendered | undefined
+    while (start < shared) {
+      const old = olds[start]!
+      const view = news[start]!
+      // What `pairs` and `patch` do, for the two kinds most nodes are.
+      if (view._tag === "Element") {
+        if (old._tag !== "Element" || old.v.tag !== view.tag || old.v.elementKey !== view.elementKey) break
+        if (view.elementKey !== undefined) keyedBefore = true
+        patchElement(inst, old, view, env)
+      } else if (view._tag === "Text") {
+        if (old._tag !== "Text") break
+        if (view.text !== old.v.text) host.setText(old.node, view.text)
+        old.v = view
+      } else {
+        if (!pairs(old, view)) break
+        keyedBefore = true
+        const next = patch(inst, old, view, env)
+        if (next !== old) {
+          replaced = next
+          break
+        }
+      }
+      start++
+    }
+    if (replaced === undefined && start === newLength) {
+      if (start === oldLength) return olds
+      // The list only got shorter: the olds left over go, and the rest stay in place.
+      for (let index = start; index < oldLength; index++) destroy(inst, olds[index]!)
+      return olds.slice(0, start)
+    }
+    const result: Array<Rendered> = new Array(newLength)
+    for (let index = 0; index < start; index++) result[index] = olds[index]!
+    if (replaced === undefined && start === oldLength) {
+      // The list only got longer: the olds stay in place, and the new nodes go after them.
+      let seen: Set<string> | undefined
+      for (let index = start; index < newLength; index++) {
+        const view = news[index]!
+        if (view._tag === "Element" && view.elementKey !== undefined) {
+          const key = keyOf(view)
+          if ((seen ??= elementKeys(news, start)).has(key)) throw duplicateKey(inst, key)
+          seen.add(key)
+        }
+        result[index] = create(inst, view, env)
+      }
+      for (let index = start; index < newLength; index++) insertNodes(parentNode, result[index]!, ref)
+      return result
+    }
+    // Where matching goes on from: after the nodes that stayed, and after a slot that was replaced.
+    const first = replaced === undefined ? start : start + 1
+    // Keyed nodes at the end, matched with the keyed olds at the end. They are patched in their turn.
+    let oldEnd = oldLength
+    let newEnd = newLength
+    if (replaced === undefined) {
+      while (oldEnd > start && newEnd > start) {
+        const view = news[newEnd - 1]!
+        if (!isKeyed(view) || !pairs(olds[oldEnd - 1]!, view)) break
+        oldEnd--
+        newEnd--
+      }
+    }
+    const byKey = keyedIndex(olds, first, oldEnd)
+    const keyed = keyedBefore || byKey !== undefined || oldEnd < oldLength
+    // The keys of the keyed elements that are new, and of those before `first`. A node matched
+    // with an old has that old's key, and no two olds share one, so only a new element can have a
+    // key a sibling has: the set is made for the first of them.
     let seen: Set<string> | undefined
-    const result: Array<Rendered> = new Array(news.length)
     // Only keyed nodes can change order. Once a keyed list is out of order: each new node's old
     // index, or -1 if its nodes aren't in the host yet.
     let from: Int32Array | undefined
-    let matched = 0
+    let matched = start
     let inPlace = true
-    let previous = -1
-    for (let index = 0; index < news.length; index++) {
+    let previous = start - 1
+    if (replaced !== undefined) {
+      if (keyed) from = orderSoFar(olds, result, start)
+      inPlace = false
+      if (from !== undefined) from[start] = -1
+      result[start] = replaced
+      matched++
+      previous = start
+    }
+    for (let index = first; index < newLength; index++) {
       const view = news[index]!
       let at = -1
-      if (isKeyed(view)) {
-        const key = keyOf(view)
-        seen ??= new Set()
-        if (seen.has(key)) throw new Error(`${inst.path}: two siblings share the key ${key.slice(2)}`)
-        seen.add(key)
-        const found = byKey?.get(key)
-        if (found !== undefined && same(olds[found]!, view)) {
-          byKey!.delete(key)
-          at = found
+      if (index >= newEnd) {
+        // Matched from the end.
+        if (seen !== undefined && view._tag === "Element") {
+          const key = keyOf(view)
+          if (seen.has(key)) throw duplicateKey(inst, key)
         }
-      } else if (index < olds.length && !isKeyed(olds[index]!.v) && same(olds[index]!, view)) {
+        at = index - newEnd + oldEnd
+      } else if (isKeyed(view)) {
+        const key = keyOf(view)
+        const found = byKey?.get(key)
+        // An old that a node took is marked, so a second node with its key is found out.
+        if (found === taken) throw duplicateKey(inst, key)
+        if (found !== undefined && same(olds[found]!, view)) {
+          byKey!.set(key, taken)
+          at = found
+        } else if (view._tag === "Element") {
+          if ((seen ??= elementKeys(news, first)).has(key)) throw duplicateKey(inst, key)
+          seen.add(key)
+        }
+      } else if (index < oldLength && !isKeyed(olds[index]!.v) && same(olds[index]!, view)) {
         at = index
       }
       if (at === -1) {
-        if (inPlace && byKey !== undefined) from = orderSoFar(olds, result, index)
+        if (inPlace && keyed) from = orderSoFar(olds, result, index)
         inPlace = false
         if (from !== undefined) from[index] = -1
         result[index] = create(inst, view, env)
@@ -3657,25 +3848,42 @@ const setup = (
       const next = patch(inst, old, view, env)
       // A slot that changed what it shows has nodes that may not be placed yet.
       if (inPlace && (next !== old || at < previous)) {
-        if (byKey !== undefined) from = orderSoFar(olds, result, index)
+        if (keyed) from = orderSoFar(olds, result, index)
         inPlace = false
       }
       if (from !== undefined) from[index] = next === old ? at : -1
       previous = at
       result[index] = next
     }
-    if (matched < olds.length) {
+    if (matched < oldLength) {
       // What wasn't matched: the keyed olds left in the map, and the olds at a position no node took.
+      // A marked old isn't among them: `taken` is no index.
       const goneKeyed = byKey === undefined ? undefined : new Set(byKey.values())
-      for (let index = 0; index < olds.length; index++) {
+      for (let index = first; index < oldEnd; index++) {
         const old = olds[index]!
         const gone = isKeyed(old.v)
           ? goneKeyed!.has(index)
-          : !(index < news.length && !isKeyed(news[index]!) && same(old, news[index]!))
+          : !(index < newLength && !isKeyed(news[index]!) && same(old, news[index]!))
         if (gone) destroy(inst, old)
       }
     }
     if (!inPlace) place(parentNode, result, ref, from === undefined ? undefined : inOrder(from))
+    return result
+  }
+
+  /** A list with no olds: each node is created and put before `ref`, in order. */
+  const createList = (
+    inst: Instance,
+    parentNode: unknown,
+    news: ReadonlyArray<View.Node<any, any>>,
+    ref: unknown,
+    env: Env
+  ): Array<Rendered> => {
+    checkKeys(inst, news)
+    const result: Array<Rendered> = new Array(news.length)
+    for (let index = 0; index < news.length; index++) result[index] = create(inst, news[index]!, env)
+    // After all of them are made, so a list that throws part way puts nothing in the host.
+    for (let index = 0; index < result.length; index++) insertNodes(parentNode, result[index]!, ref)
     return result
   }
 
@@ -3732,7 +3940,7 @@ const setup = (
   const releaseRemoved = (olds: ReadonlyArray<Rendered>, news: ReadonlyArray<View.Node<any, any>>) => {
     // Nothing in the tree has watchers to let go of: the pass would do nothing.
     if (!holdsWatchers) return
-    const byKey = keyedIndex(olds)
+    const byKey = keyedIndex(olds, 0, olds.length)
     const kept = new Set<Rendered>()
     for (let index = 0; index < news.length; index++) {
       const view = news[index]!
@@ -3754,6 +3962,8 @@ const setup = (
     prev: Readonly<Record<string, unknown>>,
     next: Readonly<Record<string, unknown>>
   ) => {
+    // Neither sets a property, as for most elements.
+    if (next === View.noFields && prev === View.noFields) return
     for (const name in prev) {
       if (!(name in next)) host.setProp(node, name, undefined)
     }
@@ -3763,38 +3973,65 @@ const setup = (
     }
   }
 
+  /**
+   * Sets what changed between two attribute records: the names that went first, then the values
+   * that differ. A record's own values are strings, which nothing it inherits from
+   * `Object.prototype` is, so a name is looked up by reading it.
+   */
+  const patchAttrs = (
+    node: unknown,
+    prev: Readonly<Record<string, string>>,
+    next: Readonly<Record<string, string>>
+  ) => {
+    for (const name in prev) {
+      if (typeof next[name] !== "string") host.setAttr(node, name, undefined)
+    }
+    for (const name in next) {
+      const value = next[name]
+      if (prev[name] !== value) host.setAttr(node, name, value)
+    }
+  }
+
+  const patchElement = (
+    inst: Instance,
+    rendered: Extract<Rendered, { readonly _tag: "Element" }>,
+    element: View.Element<any, any>,
+    env: Env
+  ): void => {
+    const prev = rendered.v
+    const node = rendered.node
+    // One record, as when no attribute is set or a builder is reused: nothing changed.
+    if (prev.attrs !== element.attrs) patchAttrs(node, prev.attrs, element.attrs)
+    if (
+      element.handlers !== prev.handlers || element.eventOptions !== prev.eventOptions ||
+      element.owned !== prev.owned
+    ) {
+      setEvents(inst, node, element)
+    }
+    const children = rendered.children
+    if (children.length > 0 || element.children.length > 0) {
+      rendered.children = patchList(inst, node, children, element.children, undefined, env)
+    }
+    patchProps(node, prev.props, element.props)
+    // A mount belongs to the element, not to one view run: it keeps running across patches, and
+    // gets each new input. An owned layer's mount belongs to its part: it runs while the part is applied.
+    if (rendered.mount !== undefined) updateMountInput(rendered.mount, element.mount)
+    rendered.v = element
+    if (element.owned !== prev.owned) {
+      rendered.ownedMounts = startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
+    }
+  }
+
   const patch = (inst: Instance, rendered: Rendered, view: View.Node<any, any>, env: Env): Rendered => {
     switch (rendered._tag) {
+      case "Element": {
+        patchElement(inst, rendered, view as View.Element<any, any>, env)
+        return rendered
+      }
       case "Text": {
         const text = view as View.Text
         if (text.text !== rendered.v.text) host.setText(rendered.node, text.text)
         rendered.v = text
-        return rendered
-      }
-      case "Element": {
-        const element = view as View.Element<any, any>
-        const prev = rendered.v
-        for (const name in prev.attrs) {
-          if (!(name in element.attrs)) host.setAttr(rendered.node, name, undefined)
-        }
-        for (const name in element.attrs) {
-          if (prev.attrs[name] !== element.attrs[name]) host.setAttr(rendered.node, name, element.attrs[name])
-        }
-        if (
-          element.handlers !== prev.handlers || element.eventOptions !== prev.eventOptions ||
-          element.owned !== prev.owned
-        ) {
-          setEvents(inst, rendered.node, element)
-        }
-        rendered.children = patchList(inst, rendered.node, rendered.children, element.children, undefined, env)
-        patchProps(rendered.node, prev.props, element.props)
-        // A mount belongs to the element, not to one view run: it keeps running across patches, and
-        // gets each new input. An owned layer's mount belongs to its part: it runs while the part is applied.
-        updateMountInput(rendered.mount, element.mount)
-        rendered.v = element
-        if (element.owned !== prev.owned) {
-          rendered.ownedMounts = startOwnedMounts(inst, element, rendered.node, env, rendered.ownedMounts ?? [])
-        }
         return rendered
       }
       case "Slot": {
@@ -3872,12 +4109,28 @@ const setup = (
     return next
   }
 
-  const nodesOf = (rendered: Rendered): Array<unknown> =>
-    rendered._tag === "Child"
-      ? rendered.inst.rendered.flatMap(nodesOf)
-      : rendered._tag === "Slot"
-      ? nodesOf(rendered.inner)
-      : [rendered.node]
+  const nodesOf = (rendered: Rendered): Array<unknown> => {
+    const out: Array<unknown> = []
+    collectNodes(rendered, out)
+    return out
+  }
+
+  /** Adds an item's host nodes to `out`, in order: one array however deep its children's go. */
+  const collectNodes = (rendered: Rendered, out: Array<unknown>): void => {
+    switch (rendered._tag) {
+      case "Element":
+      case "Text": {
+        out.push(rendered.node)
+        return
+      }
+      case "Slot":
+        return collectNodes(rendered.inner, out)
+      case "Child": {
+        const items = rendered.inst.rendered
+        for (let index = 0; index < items.length; index++) collectNodes(items[index]!, out)
+      }
+    }
+  }
 
   /** The first host node of a rendered item, without collecting the others. `undefined` if it has none. */
   const firstNodeOf = (rendered: Rendered): unknown =>
@@ -3919,19 +4172,44 @@ const setup = (
     let next = ref
     for (let index = items.length - 1; index >= 0; index--) {
       const item = items[index]!
+      const moves = stays === undefined || stays[index] !== 1
+      if (item._tag === "Element" || item._tag === "Text") {
+        // One node: the common case, with no range to find.
+        const node = item.node
+        if (moves && (host.parentOf(node) !== parentNode || host.nextOf(node) !== next)) {
+          host.insertBefore(parentNode, node, next)
+        }
+        next = node
+        continue
+      }
       if (!hasNodes(item)) continue
       const last = lastNodeOf(item)
-      if (stays?.[index] !== 1 && (host.parentOf(last) !== parentNode || host.nextOf(last) !== next)) {
-        for (const node of nodesOf(item)) host.insertBefore(parentNode, node, next)
+      if (moves && (host.parentOf(last) !== parentNode || host.nextOf(last) !== next)) {
+        insertNodes(parentNode, item, next)
       }
       next = firstNodeOf(item)
+    }
+  }
+
+  /** Puts an item's nodes before `ref`, in their order, without collecting them. */
+  const insertNodes = (parentNode: unknown, rendered: Rendered, ref: unknown): void => {
+    switch (rendered._tag) {
+      case "Element":
+      case "Text":
+        return host.insertBefore(parentNode, rendered.node, ref)
+      case "Slot":
+        return insertNodes(parentNode, rendered.inner, ref)
+      case "Child": {
+        const items = rendered.inst.rendered
+        for (let index = 0; index < items.length; index++) insertNodes(parentNode, items[index]!, ref)
+      }
     }
   }
 
   const closeAll = (inst: Instance, rendered: Rendered): void => {
     switch (rendered._tag) {
       case "Child": {
-        inst.children.delete(rendered.inst.path)
+        inst.children.delete(rendered.inst)
         headDirty = true
         releaseWatches(rendered.inst)
         closeScope(rendered.inst.scope)
@@ -3953,9 +4231,16 @@ const setup = (
 
   /** Scope first: it interrupts in-flight work and unmounts descendants. Then the nodes go, once. */
   const destroy = (inst: Instance, rendered: Rendered) => {
+    if (rendered._tag === "Element" || rendered._tag === "Text") {
+      // One node, with nothing to collect.
+      closeAll(inst, rendered)
+      host.remove(rendered.node)
+      return
+    }
+    // Collected first: closing a child empties what it rendered.
     const nodes = nodesOf(rendered)
     closeAll(inst, rendered)
-    for (const node of nodes) host.remove(node)
+    for (let index = 0; index < nodes.length; index++) host.remove(nodes[index])
   }
 
   // -- root -----------------------------------------------------------------
@@ -4028,7 +4313,7 @@ const setup = (
       if (inst.closed || inst.failure !== undefined || inst.waiting) return
       const encoded = stateCodecOf(inst.component).encode(inst.model, inst.slots)
       if (Option.isSome(encoded)) out[inst.path] = encoded.value
-      for (const child of inst.children.values()) visit(child)
+      for (const child of inst.children) visit(child)
     }
     visit(root)
     return out
@@ -4057,7 +4342,7 @@ const setup = (
 
   const find = (path: string, from: Instance = root): Instance | undefined => {
     if (from.path === path) return from
-    for (const child of from.children.values()) {
+    for (const child of from.children) {
       const hit = find(path, child)
       if (hit !== undefined) return hit
     }
@@ -4150,7 +4435,7 @@ const setup = (
     inst.runs.map((run) => ({ path: inst.path, name: run.command.name, status: run.status, detached: run.detached }))
   const pendingOf = (inst: Instance): Array<Pending> => [
     ...runsOf(inst),
-    ...[...inst.children.values()].flatMap(pendingOf)
+    ...[...inst.children].flatMap(pendingOf)
   ]
 
   return {
@@ -4176,7 +4461,7 @@ const setup = (
       const out: Array<string> = []
       const visit = (inst: Instance) => {
         if (inst.waiting) out.push(inst.path)
-        for (const child of inst.children.values()) visit(child)
+        for (const child of inst.children) visit(child)
       }
       visit(root)
       return out

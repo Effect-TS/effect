@@ -191,4 +191,31 @@ describe("Head", () => {
       yield* TestHost.settle
       assert.strictEqual(root.head().title, "Note b")
     }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
+
+  it.effect("a component with a head that mounts after the first render sets it, and unmounting clears it", () =>
+    Effect.gen(function*() {
+      const Page = Component.define({ name: "Page", model: Schema.Null, message: Schema.Never }).make({
+        init: () => null,
+        update: (model) => model,
+        head: () => [Head.title("Page")],
+        view: (_, h) => h.text("page")
+      })
+      const App = Component.define({ name: "App", model: Schema.Boolean, message: Schema.Boolean }).make({
+        init: () => false,
+        update: (_, shown) => shown,
+        view: (shown, h) => h.el("main", shown ? h.child(Page, { key: "page", props: {} }) : "none")
+      })
+      const root = yield* TestHost.mount(App, {})
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, undefined)
+      root.send(true)
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, "Page")
+      root.send(false)
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, undefined)
+      root.send(true)
+      yield* TestHost.settle
+      assert.strictEqual(root.head().title, "Page")
+    }).pipe(Effect.scoped, Effect.provide(TestHost.layer())))
 })

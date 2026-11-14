@@ -170,6 +170,15 @@ export const tokenListAttributes: ReadonlySet<string> = new Set([
 const noOwned: ReadonlyArray<Owned> = []
 
 /**
+ * The attributes, properties, handlers and event options of a builder that
+ * has set none. One frozen record that every such builder shares, so the
+ * runtime and a host know an empty one by looking at it, without reading it.
+ *
+ * @internal
+ */
+export const noFields: Readonly<Record<string, never>> = Object.freeze({})
+
+/**
  * An element node, as data.
  *
  * **Details**
@@ -500,7 +509,25 @@ export const toNode = <Msg, R>(content: Content<Msg, R>): Node<Msg, R> =>
 export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg, any>>>(
   builder: ElementBuilder<Msg, R, any, any>,
   inputs: C
-): Element<Msg, R | Requirements<C[number]>> => ({
+): Element<Msg, R | Requirements<C[number]>> => buildWith(builder, inputs.length === 0 ? [] : children(inputs))
+
+/**
+ * `build`, for inputs the caller owns and is done with, such as a
+ * `children` method's rest arguments: the array is reused for the
+ * element's children where it can be. What a builder's `children` calls.
+ *
+ * @internal
+ */
+export const buildOwned = <Msg, R, const C extends ReadonlyArray<Input<Msg, any>>>(
+  builder: ElementBuilder<Msg, R, any, any>,
+  inputs: C
+): Element<Msg, R | Requirements<C[number]>> =>
+  buildWith(builder, inputs.length === 0 ? [] : childrenOf(inputs as unknown as Array<Input<Msg, any>>))
+
+const buildWith = <Msg, R>(
+  builder: ElementBuilder<Msg, any, any, any>,
+  children: Array<Node<Msg, any>>
+): Element<Msg, R> => ({
   _tag: "Element",
   tag: builder.tag,
   elementKey: builder.elementKey,
@@ -511,8 +538,40 @@ export const build = <Msg, R, const C extends ReadonlyArray<Input<Msg, any>>>(
   refKey: builder.refKey,
   mount: builder.mount,
   owned: builder.owned,
-  children: inputs.length === 0 ? [] : children(inputs)
+  children
 })
+
+/**
+ * `children`, for an array the caller owns, such as a method's rest
+ * arguments. While the inputs are nodes, builders and text that stands
+ * alone, each is turned into its node where it is, and the array itself is
+ * the result: no second array, and none with room to spare. The first input
+ * that needs more, a hole, a nested array or text to join, hands what's left
+ * to `children`.
+ */
+const childrenOf = <Msg>(inputs: Array<Input<Msg, any>>): Array<Node<Msg, any>> => {
+  let afterText = false
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]
+    if (typeof input === "string") {
+      if (input === "" || afterText) return children(inputs)
+      inputs[i] = text(input)
+      afterText = true
+    } else if (input === false || input === null || input === undefined || Array.isArray(input)) {
+      return children(inputs)
+    } else {
+      const node: Node<Msg, any> = toNode(input as Content<Msg, any>)
+      if (node._tag === "Text") {
+        if (node.text === "" || afterText) return children(inputs)
+        afterText = true
+      } else {
+        afterText = false
+      }
+      inputs[i] = node
+    }
+  }
+  return inputs as Array<Node<Msg, any>>
+}
 
 const withTokens = (
   attrs: Readonly<Record<string, string>>,
@@ -554,9 +613,72 @@ export const withFields = <B extends ElementBuilder<any, any, any, any>>(
   >
 ): B => Object.assign(copyBuilder(builder), fields)
 
-/** A copy of a builder, with its class and every field it holds. */
-const copyBuilder = <B extends ElementBuilder<any, any, any, any>>(builder: B): B =>
-  Object.assign(Object.create(Object.getPrototypeOf(builder)), builder)
+/**
+ * A copy of a builder, with its class and every field it holds.
+ *
+ * A view copies a builder for each chain call, so the copy is what building a
+ * view costs most. A builder that holds only the base class's fields is
+ * copied by a constructor made for its class, which stores them one by one:
+ * several times faster than a generic copy. A builder whose class adds
+ * fields of its own is copied generically.
+ */
+const copyBuilder = <B extends ElementBuilder<any, any, any, any>>(builder: B): B => {
+  // Counted in place: `Object.keys` would make an array for every copy.
+  let fields = 0
+  for (const _ in builder) fields++
+  // A field under a symbol isn't counted, so it is asked for.
+  if (fields === builderFields.length && Object.getOwnPropertySymbols(builder).length === 0) {
+    const proto = Object.getPrototypeOf(builder)
+    let copier = copiers.get(proto)
+    if (copier === undefined) {
+      copier = makeCopier(proto, builder)
+      copiers.set(proto, copier)
+    }
+    if (copier !== null) return new copier(builder) as B
+  }
+  return Object.assign(Object.create(Object.getPrototypeOf(builder)), builder)
+}
+
+const builderFields = [
+  "elementKey",
+  "attrs",
+  "props",
+  "handlers",
+  "eventOptions",
+  "refKey",
+  "mount",
+  "owned",
+  "tag"
+] as const
+
+type Copier = new(builder: ElementBuilder<any, any, any, any>) => ElementBuilder<any, any, any, any>
+
+/** A class's copier by its prototype, or `null` for a class whose builders are copied generically. */
+const copiers = new WeakMap<object, Copier | null>()
+
+/**
+ * A constructor that copies the base fields of a builder of the class with
+ * `proto`. `null` when `first`, the first builder of the class to be copied,
+ * lacks a base field, which a count of its keys doesn't show.
+ */
+const makeCopier = (proto: object, first: ElementBuilder<any, any, any, any>): Copier | null => {
+  for (const field of builderFields) {
+    if (!Object.hasOwn(first, field)) return null
+  }
+  const copier = function(this: Mutable<ElementBuilder<any, any, any, any>>, from: ElementBuilder<any, any, any, any>) {
+    this.elementKey = from.elementKey
+    this.attrs = from.attrs
+    this.props = from.props
+    this.handlers = from.handlers
+    this.eventOptions = from.eventOptions
+    this.refKey = from.refKey
+    this.mount = from.mount
+    this.owned = from.owned
+    this.tag = from.tag
+  }
+  copier.prototype = proto
+  return copier as unknown as Copier
+}
 
 /**
  * A part of a headless component: it takes the builder of an element the
@@ -693,7 +815,8 @@ const withEntry = <A>(
  * literal with a computed key is several times slower.
  */
 const assoc = <A>(record: Readonly<Record<string, A>>, name: string, value: A): Readonly<Record<string, A>> => {
-  const out: Record<string, A> = { ...record }
+  // The first entry of most records: nothing to copy.
+  const out: Record<string, A> = record === noFields ? {} : { ...record }
   put(out, name, value)
   return out
 }
@@ -711,10 +834,10 @@ type Mutable<A> = { -readonly [K in keyof A]: A[K] }
 
 const blankFields = {
   elementKey: undefined,
-  attrs: {},
-  props: {},
-  handlers: {},
-  eventOptions: {},
+  attrs: noFields,
+  props: noFields,
+  handlers: noFields,
+  eventOptions: noFields,
   refKey: undefined,
   mount: undefined,
   owned: noOwned
@@ -774,25 +897,25 @@ export class ElementBuilder<
    *
    * @since 4.1.5
    */
-  readonly attrs: Readonly<Record<string, string>> = {}
+  readonly attrs: Readonly<Record<string, string>> = noFields
   /**
    * The properties set with `prop`.
    *
    * @since 4.1.5
    */
-  readonly props: Readonly<Record<string, unknown>> = {}
+  readonly props: Readonly<Record<string, unknown>> = noFields
   /**
    * The handlers set with `on`, by event name.
    *
    * @since 4.1.5
    */
-  readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = {}
+  readonly handlers: Readonly<Record<string, Handler<Msg, any>>> = noFields
   /**
    * The options set with `on`, by event name.
    *
    * @since 4.1.5
    */
-  readonly eventOptions: Readonly<Record<string, EventOptions>> = {}
+  readonly eventOptions: Readonly<Record<string, EventOptions>> = noFields
   /**
    * The ref set with `ref`, if any.
    *
@@ -862,8 +985,11 @@ export class ElementBuilder<
   ): this {
     const out = copyBuilder(this) as Mutable<this>
     out.handlers = assoc(this.handlers, event, handler)
-    if (options !== undefined || Object.hasOwn(this.eventOptions, event)) {
-      out.eventOptions = withEntry(this.eventOptions, event, options)
+    const eventOptions = this.eventOptions
+    if (eventOptions === noFields) {
+      if (options !== undefined) out.eventOptions = assoc(eventOptions, event, options)
+    } else if (options !== undefined || Object.hasOwn(eventOptions, event)) {
+      out.eventOptions = withEntry(eventOptions, event, options)
     }
     return out
   }
@@ -884,8 +1010,13 @@ export class ElementBuilder<
    */
   attr(name: string, value: string | undefined): this {
     const out = copyBuilder(this) as Mutable<this>
-    // Removing an attribute that isn't set leaves the record as it is.
-    if (value !== undefined || Object.hasOwn(this.attrs, name)) out.attrs = withEntry(this.attrs, name, value)
+    const attrs = this.attrs
+    if (attrs === noFields) {
+      if (value !== undefined) out.attrs = assoc(attrs, name, value)
+      // Removing an attribute that isn't set leaves the record as it is.
+    } else if (value !== undefined || Object.hasOwn(attrs, name)) {
+      out.attrs = withEntry(attrs, name, value)
+    }
     return out
   }
   /**
@@ -998,7 +1129,7 @@ export class ContainerBuilder<
    * @since 4.1.5
    */
   children<const C extends ReadonlyArray<Input<Msg, any>>>(...inputs: C): Element<Msg, R | Requirements<C[number]>> {
-    return build(this, inputs)
+    return buildOwned(this, inputs)
   }
 }
 
