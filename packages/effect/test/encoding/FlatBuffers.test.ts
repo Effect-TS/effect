@@ -202,13 +202,30 @@ describe("FlatBuffers", () => {
     usage(() => root.struct(0, 12)!.float32(12))
     usage(() => root.struct(0, 12)!.float32(-4))
     usage(() => root.struct(0, 12)!.float32(NaN))
+    usage(() => root.int32(-1))
+    usage(() => root.has(0.5))
     usage(() => FlatBuffers.decode(monster, (root) => root.has(0), { identifier: "TOOLONG" }))
   })
 
-  it("reads back a UTF-8 file identifier", () => {
+  it("keeps UTF-8 strings and identifiers intact, byte order mark included", () => {
     const b = FlatBuffers.makeBuilder()
-    b.startTable(0)
-    assert.strictEqual(FlatBuffers.identifier(b.finish(b.endTable(), { identifier: "é12" })), "é12")
+    const s = b.createString("\ufeffhello")
+    b.startTable(1)
+    b.addFieldOffset(0, s)
+    const bytes = b.finish(b.endTable(), { identifier: "\ufeffA" })
+    assert.strictEqual(FlatBuffers.root(bytes).string(0), "\ufeffhello")
+    assert.strictEqual(FlatBuffers.identifier(bytes), "\ufeffA")
+  })
+
+  it("forceDefaults writes scalar defaults but leaves absent references absent", () => {
+    const b = FlatBuffers.makeBuilder({ forceDefaults: true })
+    b.startTable(2)
+    b.addFieldOffset(0, 0)
+    b.addFieldInt32(1, 0)
+    const root = FlatBuffers.root(b.finish(b.endTable()))
+    assert.isFalse(root.has(0))
+    assert.strictEqual(root.string(0), undefined)
+    assert.isTrue(root.has(1))
   })
 
   it("Builder rejects misuse", () => {
@@ -259,5 +276,12 @@ describe("FlatBuffers", () => {
       b.finish(table)
     })
     builder((b) => b.startVector(1, 1, 3))
+    builder((b) => b.startVector(1, 1, 1.5))
+    builder((b) => b.startVector(1, -1, 1))
+    builder((b) => b.startVector(1, 0.5, 1))
+    builder((b) => {
+      b.startTable(1)
+      b.addFieldInt32(0.5, 111)
+    })
   })
 })

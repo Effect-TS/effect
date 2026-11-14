@@ -56,6 +56,7 @@
  * @since 4.1.5
  */
 import * as Data from "../Data.ts"
+import * as Utf8 from "../internal/utf8.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
 
@@ -74,10 +75,12 @@ const FlatBuffersErrorTypeId = "~effect/encoding/FlatBuffers/FlatBuffersError"
  * - `Identifier`: the buffer's file identifier is not the expected one.
  * - `Limit`: tables are nested deeper than `maxDepth`.
  * - `Usage`: a bug in the caller: the builder was called out of order (a
- *   table inside a table, a struct that isn't the last thing written, an
- *   identifier that isn't four bytes), a table or buffer would outgrow the
- *   format, or a read doesn't match the shape it asked for (a vector read at
- *   another width, a struct read past its size).
+ *   table inside a table, a struct that isn't the last thing written), got an
+ *   invalid argument (a slot, length or alignment that isn't a valid integer,
+ *   an identifier that isn't four bytes), a table or buffer would outgrow the
+ *   format, or a read doesn't match the shape it asked for (a negative or
+ *   fractional slot, a vector read at another width, a struct read past its
+ *   size).
  *
  * @stability experimental
  * @category errors
@@ -114,8 +117,8 @@ const positive = (name: string, n: number): void => {
   if (!Number.isInteger(n) || n < 1) fail("Usage", `${name} must be a positive integer, got ${n}`)
 }
 
-const utf8 = new TextDecoder("utf-8", { fatal: true })
-const lenientUtf8 = new TextDecoder()
+// Keeps a leading U+FEFF, which is part of the identifier.
+const lenientUtf8 = new TextDecoder("utf-8", { ignoreBOM: true })
 const encoder = new TextEncoder()
 
 /** The buffer every reader of one {@link root} shares. */
@@ -141,11 +144,8 @@ const readString = (source: Source, start: number): string => {
   check(source.view, start, 4)
   const length = source.view.getUint32(start, true)
   check(source.view, start + 4, length)
-  try {
-    return utf8.decode(source.bytes.subarray(start + 4, start + 4 + length))
-  } catch {
-    return fail("InvalidUtf8", `the string at ${start} is not valid UTF-8`)
-  }
+  return Utf8.decode(source.bytes, start + 4, start + 4 + length) ??
+    fail("InvalidUtf8", `the string at ${start} is not valid UTF-8`)
 }
 
 // -----------------------------------------------------------------------------
@@ -376,7 +376,8 @@ class VectorImpl implements Vector {
 
 /**
  * A table: fields by slot number, read on demand. Absent fields read as
- * the given default.
+ * the given default, including slots past the end of the table's vtable
+ * (fields added to the schema after the buffer was written).
  *
  * @stability experimental
  * @category reading
@@ -452,8 +453,10 @@ class TableImpl implements Table {
 
   /** The position of field `slot`, or -1 when it is absent. */
   private field(slot: number, size: number): number {
+    if (!Number.isInteger(slot) || slot < 0) fail("Usage", `a slot is a non-negative integer, got ${slot}`)
     const entry = 4 + slot * 2
-    if (!Number.isInteger(slot) || slot < 0 || entry >= this.vtableSize) return -1
+    // A slot past the vtable was added after the buffer was written: absent.
+    if (entry >= this.vtableSize) return -1
     const relative = this.source.view.getUint16(this.vtable + entry, true)
     if (relative === 0) return -1
     const at = this.position + relative
@@ -738,7 +741,9 @@ export class Builder {
    * bytes, is aligned to `size`; makes room for both.
    */
   prep(size: number, additional: number): void {
-    if (size < 1 || (size & (size - 1)) !== 0) fail("Usage", `an alignment must be a power of two, got ${size}`)
+    if (!Number.isInteger(size) || size < 1 || (size & (size - 1)) !== 0) {
+      fail("Usage", `an alignment must be a power of two, got ${size}`)
+    }
     if (size > this.minAlign) this.minAlign = size
     const alignSize = (~(this.bytes.length - this.head + additional) + 1) & (size - 1)
     while (this.head < alignSize + size + additional) this.grow()
@@ -850,6 +855,10 @@ export class Builder {
    */
   startVector(elementSize: number, length: number, alignment: number): void {
     this.notNested("startVector")
+    positive("elementSize", elementSize)
+    if (!Number.isInteger(length) || length < 0 || length > 0xffffffff) {
+      fail("Usage", `a vector length is a 32-bit unsigned integer, got ${length}`)
+    }
     this.nested = true
     this.vectorLength = length
     this.prep(4, elementSize * length)
@@ -884,7 +893,7 @@ export class Builder {
 
   private slot(slot: number): void {
     if (this.vtable === undefined) fail("Usage", "a field outside startTable/endTable")
-    if (slot < 0 || slot >= this.vtable!.length) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.vtable!.length) {
       fail("Usage", `slot ${slot} is outside the table's ${this.vtable!.length} slots`)
     }
     this.vtable![slot] = this.offset
@@ -967,9 +976,13 @@ export class Builder {
       this.slot(slot)
     }
   }
-  /** Adds a field pointing to a string, vector or table (a union's value too). */
+  /**
+   * Adds a field pointing to a string, vector or table (a union's value too).
+   * A `target` of 0 (nothing) leaves the field absent, even with
+   * `forceDefaults`.
+   */
   addFieldOffset(slot: number, target: Offset): void {
-    if (target !== 0 || this.forceDefaults) {
+    if (target !== 0) {
       this.addOffset(target)
       this.slot(slot)
     }
