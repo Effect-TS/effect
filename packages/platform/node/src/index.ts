@@ -96,6 +96,12 @@ export * as NodeMultipart from "./NodeMultipart.ts"
 export * as NodeMultipartParser from "./NodeMultipartParser.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as NodeOpenSsh from "./NodeOpenSsh.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
