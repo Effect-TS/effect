@@ -311,6 +311,52 @@ describe("Chat", () => {
     )
   })
 
+  it.effect("preserves approval results when streaming with tool call resolution disabled", () => {
+    let executions = 0
+    const toolkit = Toolkit.make(Tool.make("Counter", {
+      success: Schema.Number,
+      needsApproval: true
+    }))
+
+    return Effect.gen(function*() {
+      const chat = yield* Chat.empty
+      const initial = yield* chat.generateText({ prompt: "Run the counters", toolkit }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [
+            { type: "tool-call", id: "approved", name: "Counter", params: {} },
+            { type: "tool-call", id: "denied", name: "Counter", params: {} }
+          ]
+        })
+      )
+      const parts = yield* chat.streamText({
+        toolkit,
+        disableToolCallResolution: true,
+        prompt: [Prompt.toolMessage({
+          content: initial.content.filter((part) => part.type === "tool-approval-request").map((part) =>
+            Prompt.toolApprovalResponsePart({
+              approvalId: part.approvalId,
+              approved: part.toolCallId === "approved"
+            })
+          )
+        })]
+      }).pipe(Stream.runCollect)
+
+      assert.deepStrictEqual(parts.map((part) => part.type === "tool-result" ? part.id : part.type), [
+        "approved",
+        "denied",
+        "finish"
+      ])
+      assert.strictEqual(executions, 1)
+
+      yield* chat.streamText({ prompt: "Continue", toolkit, disableToolCallResolution: true }).pipe(Stream.runDrain)
+
+      assert.strictEqual(executions, 1)
+    }).pipe(
+      withRounds([]).provide,
+      Effect.provide(toolkit.toLayer({ Counter: () => Effect.sync(() => ++executions) }))
+    )
+  })
+
   it.effect("should persist chat history to the backing persistence store", () =>
     Effect.gen(function*() {
       const storeId = "chat"
