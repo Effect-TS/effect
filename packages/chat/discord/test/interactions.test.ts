@@ -6,14 +6,22 @@
  */
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { assert, describe, it } from "@effect/vitest"
+import * as DiscordConfig from "dfx/DiscordConfig"
+import { DiscordRESTLive } from "dfx/DiscordREST"
+import { MemoryRateLimitStoreLive } from "dfx/RateLimit"
 import * as Chat from "effect/chat/Chat"
 import type { ChatError } from "effect/chat/ChatError"
 import * as ChatInteraction from "effect/chat/ChatInteraction"
 import { checkInteraction } from "effect/chat/ChatTest"
+import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Redacted from "effect/Redacted"
 import * as TestClock from "effect/testing/TestClock"
 import {
   answer,
@@ -523,18 +531,45 @@ describe("followUp", () => {
       assert.strictEqual(spent.called("updateOriginalWebhookMessage").length, 1)
     }))
 
-  it.effect("sends one request on a 429 just before 15 minutes, and fails RateLimited without retrying", () =>
+  it.effect("sends one HTTP request through dfx's layers on a 429 just before 15 minutes, and fails RateLimited", () =>
     Effect.gen(function*() {
       const issued = Number((BigInt("1570700000000000900") >> 22n) + 1420070400000n)
-      const limited = makeFake({
-        updateOriginalWebhookMessage: () =>
-          Effect.fail(errorResponse(429, { message: "You are being rate limited.", retry_after: 0.6, global: false }))
-      })
+      const attempts: Array<{ readonly url: string; readonly authorized: boolean; readonly at: number }> = []
+      const http = HttpClient.make((request) =>
+        Effect.map(Clock.currentTimeMillis, (at) => {
+          attempts.push({ url: request.url, authorized: "authorization" in request.headers, at: at - issued })
+          return HttpClientResponse.fromWeb(
+            request,
+            Response.json({ message: "You are being rate limited.", retry_after: 0.6, global: false }, {
+              status: 429,
+              headers: { "retry-after": "0.6" }
+            })
+          )
+        })
+      )
+      // dfx's own REST layers, which wait out a 429 and send again, over an HTTP client that counts.
+      const layer = DiscordChat.layer.pipe(
+        Layer.provideMerge(Chat.layer),
+        Layer.provide(DiscordRESTLive),
+        Layer.provide([
+          DiscordConfig.layer({ token: Redacted.make("bot-token"), rest: { baseUrl: "https://discord.test/api" } }),
+          MemoryRateLimitStoreLive,
+          Layer.succeed(HttpClient.HttpClient, http)
+        ])
+      )
       yield* TestClock.setTime(issued + Duration.toMillis(Duration.minutes(15)) - 300)
-      const fiber = yield* Effect.forkChild(Effect.flip(followUp(limited, deferred("public"))))
+      const fiber = yield* Effect.forkChild(Effect.flip(
+        Effect.flatMap(Chat.Chat, (chat) => chat.followUp(deferred("public"), { markdown: "Done" })).pipe(
+          Effect.provide(layer)
+        )
+      ))
       yield* TestClock.adjust(Duration.seconds(10))
       const error = yield* Fiber.join(fiber)
       assert.deepStrictEqual([error.op, error.reason._tag], ["followUp", "RateLimited"])
-      assert.strictEqual(limited.called("updateOriginalWebhookMessage").length, 1)
+      assert.deepStrictEqual(attempts, [{
+        url: `https://discord.test/api/webhooks/${botUserId}/token/messages/@original`,
+        authorized: false,
+        at: Duration.toMillis(Duration.minutes(15)) - 300
+      }])
     }))
 })

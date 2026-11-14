@@ -5,6 +5,7 @@ import type { ChatAdapter } from "effect/chat/ChatAdapter"
 import { Registry } from "effect/chat/ChatAdapter"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
+import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as fs from "node:fs"
@@ -121,7 +122,27 @@ export const makeFake = (handlers: Record<string, Handler>): Fake => {
 
 const getMyUser = () => Effect.succeed({ id: botUserId, username: "Janitor", bot: true })
 
-/** `DiscordChat.layer` over a fake, with `Chat` and an `HttpClient` that answers `download`. */
+const originalResponse = /\/webhooks\/([^/]+)\/([^/]+)\/messages\/@original$/
+
+/**
+ * The fake's `updateOriginalWebhookMessage` as Discord's HTTP answer, for
+ * `followUp`, which sends over the plain `HttpClient`.
+ */
+const webhookEdit = (fake: Fake, request: HttpClientRequest.HttpClientRequest, path: RegExpExecArray) =>
+  fake.service.updateOriginalWebhookMessage(decodeURIComponent(path[1]), decodeURIComponent(path[2]), {
+    payload: request.body._tag === "Uint8Array" ? JSON.parse(new TextDecoder().decode(request.body.body)) : undefined
+  }).pipe(
+    Effect.match({
+      onSuccess: (body) => Response.json(body),
+      onFailure: (error: any) => Response.json(error.data ?? {}, { status: error.response.status })
+    }),
+    Effect.map((response) => HttpClientResponse.fromWeb(request, response))
+  )
+
+/**
+ * `DiscordChat.layer` over a fake, with `Chat` and an `HttpClient` that
+ * answers `download`, and an original response's edit from the fake.
+ */
 export const discordLayer = (fake: Fake, options?: { readonly download?: Uint8Array | undefined }) =>
   DiscordChat.layer.pipe(
     Layer.provideMerge(Chat.layer),
@@ -133,9 +154,12 @@ export const discordLayer = (fake: Fake, options?: { readonly download?: Uint8Ar
     )),
     Layer.provide(Layer.succeed(
       HttpClient.HttpClient,
-      HttpClient.make((request) =>
-        Effect.succeed(HttpClientResponse.fromWeb(request, new Response(new Uint8Array(options?.download ?? []))))
-      )
+      HttpClient.make((request) => {
+        const path = request.method === "PATCH" ? originalResponse.exec(request.url) : null
+        return path !== null
+          ? webhookEdit(fake, request, path)
+          : Effect.succeed(HttpClientResponse.fromWeb(request, new Response(new Uint8Array(options?.download ?? []))))
+      })
     ))
   )
 
