@@ -33,12 +33,6 @@ export * as Expr from "./Expr.ts"
  * @stability experimental
  * @since 4.1.5
  */
-export * as Parallel from "./Parallel.ts"
-
-/**
- * @stability experimental
- * @since 4.1.5
- */
 export * as Plan from "./Plan.ts"
 
 /**

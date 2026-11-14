@@ -4,33 +4,23 @@
  *
  *   python benchmark/dataframe/h2o.py generate --rows 1000000
  *   python benchmark/dataframe/h2o.py run --rows 1000000
- *   node benchmark/dataframe/h2o.ts [--rows=1000000] [--reps=3] [--workers=0] [--only=<substring>] [--out=<file.json>]
+ *   node benchmark/dataframe/h2o.ts [--rows=1000000] [--reps=3] [--only=<substring>] [--out=<file.json>]
  *
  * Every query reads the same Arrow IPC files as the Python baseline, and runs
  * as a lazy query (so the time includes optimising the plan). Before
  * its time counts, each result's checksum (row count and the sum of its
  * numeric columns) has to match the Polars result, so a fast wrong answer
  * can't win. Times are the best of `--reps` runs, in milliseconds.
- *
- * `--workers=N` runs the queries with a `Parallel` pool of N Node worker
- * threads (worker.ts); the input files are then read into shared memory, so
- * columns reach the workers without copies. `node --expose-gc h2o.ts --gc`
+ `node --expose-gc h2o.ts --gc`
  * collects garbage before every timed run, so earlier queries' garbage
  * doesn't count against later ones.
  */
-import { Effect, Layer, ManagedRuntime } from "effect"
+import { Effect } from "effect"
 import { ArrowIpc } from "effect/arrow"
-import { DataFrame, Expr, Parallel, Query } from "effect/dataframe"
+import { DataFrame, Expr, Query } from "effect/dataframe"
 import * as Result from "effect/Result"
-import type * as WorkerPlatform from "effect/workers/Worker"
 import * as Fs from "node:fs"
 import * as Path from "node:path"
-import { Worker } from "node:worker_threads"
-
-/** @effect/platform-node's NodeWorker, loaded at run time (not a dependency of effect). */
-const NodeWorker: {
-  readonly layer: (spawn: (id: number) => Worker) => Layer.Layer<WorkerPlatform.WorkerPlatform | WorkerPlatform.Spawner>
-} = await import(new URL("../../../platform/node/src/NodeWorker.ts", import.meta.url).href)
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3)
 const rows = Number(arg("rows") ?? 1_000_000)
@@ -38,23 +28,12 @@ const reps = Number(arg("reps") ?? 3)
 const only = arg("only")
 const out = arg("out")
 const data = arg("data") ?? Path.join(import.meta.dirname, ".data")
-const workers = Number(arg("workers") ?? 0)
 /** With `node --expose-gc ... --gc`, collect garbage before every timed run. */
 const gc = process.argv.includes("--gc") ? (globalThis as { gc?: () => void }).gc : undefined
 
-/** The file's bytes, in shared memory when workers will read them. */
-const read = (file: string): Uint8Array => {
-  if (workers === 0) return new Uint8Array(Fs.readFileSync(file))
-  const fd = Fs.openSync(file, "r")
-  const bytes = new Uint8Array(new SharedArrayBuffer(Fs.fstatSync(fd).size))
-  Fs.readSync(fd, bytes)
-  Fs.closeSync(fd)
-  return bytes
-}
-
 const load = (name: string) => {
   const start = performance.now()
-  const bytes = read(Path.join(data, `${name}-${rows}.arrow`))
+  const bytes = new Uint8Array(Fs.readFileSync(Path.join(data, `${name}-${rows}.arrow`)))
   const table = Result.getOrThrow(ArrowIpc.decodeFile(bytes))
   const df = DataFrame.fromArrowTable(table)
   return { df: df as DataFrame.DataFrame<any>, ms: performance.now() - start }
@@ -143,15 +122,6 @@ const baselinePath = Path.join(data, `baseline-${rows}.json`)
 const baseline = Fs.existsSync(baselinePath) ? JSON.parse(Fs.readFileSync(baselinePath, "utf8")) : undefined
 if (baseline === undefined) console.warn(`no baseline at ${baselinePath}: run h2o.py run --rows ${rows}`)
 
-const poolStart = performance.now()
-const runtime = ManagedRuntime.make(
-  workers === 0 ? Layer.empty : Parallel.layer({ size: workers }).pipe(
-    Layer.provide(NodeWorker.layer(() => new Worker(new URL("./worker.ts", import.meta.url))))
-  )
-)
-await runtime.runPromise(Effect.void)
-if (workers > 0) console.log(`pool: ${workers} workers ready in ${(performance.now() - poolStart).toFixed(0)} ms`)
-
 const results: Record<string, unknown> = {}
 const fmt = (ms: number | undefined) => (ms === undefined ? "—" : ms.toFixed(1)).padStart(9)
 const ratio = (a: number, b: number | undefined) => (b === undefined ? "" : `${(a / b).toFixed(2)}x`).padStart(7)
@@ -159,7 +129,7 @@ const ratio = (a: number, b: number | undefined) => (b === undefined ? "" : `${(
 console.log(
   `effect/dataframe vs Polars ${baseline?.polars.version ?? "?"} (${
     baseline?.polars.threads ?? "?"
-  } threads) and pandas ${baseline?.pandas.version ?? "?"}, ${rows} rows, best of ${reps}, ${workers} workers`
+  } threads) and pandas ${baseline?.pandas.version ?? "?"}, ${rows} rows, best of ${reps}`
 )
 console.log(
   `load (IPC decode + DataFrame): ${Object.entries(loads).map(([k, v]) => `${k} ${v.ms.toFixed(1)} ms`).join(", ")}`
@@ -178,7 +148,7 @@ for (const [name, query] of Object.entries(queries)) {
     result = undefined
     gc?.()
     const start = performance.now()
-    result = await runtime.runPromise(query())
+    result = Effect.runSync(query())
     force(result)
     const ms = performance.now() - start
     if (r === 0) first = ms
@@ -201,5 +171,5 @@ for (const [name, query] of Object.entries(queries)) {
   )
   results[name] = { ms: best, first, checksum: sum, ok, polars: pl, polars1: pl1, pandas: pd }
 }
-await runtime.dispose()
+
 if (out !== undefined) Fs.writeFileSync(out, JSON.stringify({ rows, reps, results }, null, 2) + "\n")

@@ -52,10 +52,6 @@ export class Column {
     if (this.gathered === undefined) this.gathered = V.take(this.vector, this.selection)
     return this.gathered
   }
-  /** The gathered values if they were already read. */
-  peek(): V.Vector | undefined {
-    return this.selection === undefined ? this.vector : this.gathered
-  }
   rename(name: string): Column {
     const c = new Column(name, this.vector, this.selection, this.nullable)
     c.gathered = this.gathered

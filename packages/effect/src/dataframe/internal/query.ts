@@ -20,7 +20,6 @@ import { DataFrameError } from "../DataFrame.ts"
 import type * as Plan from "../Plan.ts"
 import * as E from "./expr.ts"
 import * as F from "./frame.ts"
-import * as P from "./parallel.ts"
 import { conform } from "./schema.ts"
 import * as Streaming from "./stream.ts"
 import * as V from "./vector.ts"
@@ -597,49 +596,21 @@ export const step = (node: Node, inputs: ReadonlyArray<F.Frame>): F.Frame => {
 /** Yield to other fibers when an operation ran for longer than this (ms). */
 const SLICE = 10
 
-/** Turns kernel failures thrown inside an effect into `DataFrameError`s. */
-const guard = <A>(effect: Effect.Effect<A, DataFrameError>): Effect.Effect<A, DataFrameError> =>
-  Effect.catchDefect(
-    effect,
-    (defect) => defect instanceof V.DataFrameDefect ? Effect.fail(toError(defect)) : Effect.die(defect)
-  )
-
-/** Runs one operation on the pool, or `undefined` to run it here. */
-const parallelStep = (
-  pool: P.Pool,
-  node: Node,
-  inputs: ReadonlyArray<F.Frame>
-): Effect.Effect<F.Frame, DataFrameError> | undefined => {
-  if (node._tag === "GroupBy" && P.worthIt(pool, inputs[0].length)) {
-    return guard(P.groupBy(pool, inputs[0], node.keys, node.aggregates))
-  }
-  if (node._tag === "Sort" && P.worthIt(pool, inputs[0].length)) {
-    return guard(P.sort(pool, inputs[0], node.keys, node.nullsLast))
-  }
-  return undefined
-}
-
-/**
- * Runs a resolved plan, yielding between long-running operations. With a
- * pool, operations that have a parallel form run on it, and the result's
- * columns are gathered on it.
- *
- * @internal
- */
-export const execute = (plan: Node, pool: P.Pool = P.sequential): Effect.Effect<F.Frame, DataFrameError> => {
+/** Runs a resolved plan, yielding between long-running operations. @internal */
+export const execute = (plan: Node): Effect.Effect<F.Frame, DataFrameError> => {
   let last = performance.now()
   const run = (node: Node): Effect.Effect<F.Frame, DataFrameError> =>
     Effect.flatMap(
       Effect.forEach(children(node), run),
       (inputs) => {
-        const result = parallelStep(pool, node, inputs) ?? attempt(() => step(node, inputs))
+        const result = attempt(() => step(node, inputs))
         const now = performance.now()
         if (now - last < SLICE) return result
         last = now
         return Effect.tap(result, () => Effect.yieldNow)
       }
     )
-  return pool.size === 0 ? run(plan) : Effect.flatMap(run(plan), (frame) => guard(P.materialize(pool, frame)))
+  return run(plan)
 }
 
 /** The names of the tables a plan reads. @internal */
@@ -659,31 +630,18 @@ export const tables = (plan: Plan.Node): Set<string> => {
  *
  * @internal
  */
-export const collect = (
-  plan: Plan.Node,
-  catalog: Catalog.Service,
-  pool: P.Pool = P.sequential
-): Effect.Effect<F.Frame, DataFrameError> =>
+export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> =>
   [...tables(plan)].some(catalog.streaming)
     ? Streaming.collect(plan, catalog).pipe(
       Effect.withSpan("dataframe.Query", {
         attributes: { "dataframe.operations": count(plan), "dataframe.streaming": true }
       })
     )
-    : collectResolved(plan, catalog, pool)
-
-const collectResolved = (
-  plan: Plan.Node,
-  catalog: Catalog.Service,
-  pool: P.Pool
-): Effect.Effect<F.Frame, DataFrameError> =>
-  resolve(plan, catalog).pipe(
-    Effect.flatMap((resolved) => attempt(() => optimize(resolved))),
-    Effect.flatMap((optimized) => execute(optimized, pool)),
-    Effect.withSpan("dataframe.Query", {
-      attributes: { "dataframe.operations": count(plan), "dataframe.workers": pool.size }
-    })
-  )
+    : resolve(plan, catalog).pipe(
+      Effect.flatMap((resolved) => attempt(() => optimize(resolved))),
+      Effect.flatMap(execute),
+      Effect.withSpan("dataframe.Query", { attributes: { "dataframe.operations": count(plan) } })
+    )
 
 /** The optimised plan, as text. @internal */
 export const explain = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<string, DataFrameError> =>

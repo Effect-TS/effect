@@ -8,8 +8,7 @@
  * - A query is a `Plan.Node`. Running it (`yield* query`, `Query.stream`,
  *   `Query.explain`) hands the plan to the {@link Engine} in the context.
  * - The {@link memory} engine runs plans in this process: it reads tables
- *   from the `Catalog`, rewrites the plan, and runs it, on a
- *   `Parallel.Pool` when one is provided.
+ *   from the `Catalog`, rewrites the plan, and runs it.
  * - Other engines run the same plans elsewhere. Their results are frames
  *   like any other.
  *
@@ -22,10 +21,8 @@ import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import { Catalog } from "./Catalog.ts"
 import type { DataFrame, DataFrameError } from "./DataFrame.ts"
-import type * as P from "./internal/parallel.ts"
 import * as Q from "./internal/query.ts"
 import * as Streaming from "./internal/stream.ts"
-import { Pool } from "./Parallel.ts"
 import type * as Plan from "./Plan.ts"
 
 /**
@@ -59,8 +56,8 @@ const frame = <A>(effect: Effect.Effect<A, DataFrameError>): Effect.Effect<DataF
 
 /**
  * The in-memory engine: tables from the `Catalog`, the plan rewritten
- * (predicate, slice and projection pushdown, top-k), operations on the
- * `Parallel.Pool` when one is provided, streamed tables batch by batch.
+ * (predicate, slice and projection pushdown, top-k), streamed tables batch by
+ * batch.
  *
  * @stability experimental
  * @category engines
@@ -68,7 +65,7 @@ const frame = <A>(effect: Effect.Effect<A, DataFrameError>): Effect.Effect<DataF
  */
 export const memory: Engine.Service = {
   name: "memory",
-  collect: (plan) => Catalog.use((catalog) => Pool.use((pool) => frame(Q.collect(plan, catalog, pool as P.Pool)))),
+  collect: (plan) => Catalog.use((catalog) => frame(Q.collect(plan, catalog))),
   stream: (plan) =>
     Stream.unwrap(
       Catalog.use((catalog) =>
