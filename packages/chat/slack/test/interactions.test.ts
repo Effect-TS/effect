@@ -378,7 +378,7 @@ describe("layerInteractivity", () => {
         [...Object.entries(commandFields("/deploy", text)), ["text", "second"]] as Array<[string, string]>
       const answered = yield* send(undefined, { form: form("first") })
       assert.strictEqual(answered.status, 200)
-      assert.strictEqual((yield* Effect.promise(() => answered.json())).response_type, "in_channel")
+      assert.propertyVal(yield* Effect.promise(() => answered.json()), "response_type", "in_channel")
       assert.deepStrictEqual(seen, ["first"])
 
       handler.command = () => Effect.as(Effect.never, ChatInteraction.ack)
