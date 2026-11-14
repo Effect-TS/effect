@@ -371,7 +371,164 @@ describe("Xml", () => {
       }
       assert.throws(() => Xml.elements([]))
       assert.throws(() => Xml.elements(["a b"]))
+      assert.throws(() => Xml.decodeString({ namespaces: "lenient" } as unknown as Xml.DecodeOptions))
     })
+  })
+
+  describe("namespaces", () => {
+    const strict: Xml.DecodeOptions = { namespaces: "strict" }
+
+    const nsStart = (name: string, namespace: string, attributes: Record<string, string> = {}): Xml.Event => ({
+      _tag: "StartElement",
+      name,
+      attributes,
+      namespace,
+      localName: name.slice(name.indexOf(":") + 1)
+    })
+    const nsEnd = (name: string, namespace: string): Xml.Event => ({
+      _tag: "EndElement",
+      name,
+      namespace,
+      localName: name.slice(name.indexOf(":") + 1)
+    })
+
+    it.effect("resolves element names", () =>
+      Effect.gen(function*() {
+        const document = "<e:r xmlns:e=\"urn:e\" xmlns=\"urn:d\"><b a=\"1\" e:b=\"2\">" +
+          "<p:c xmlns:p=\"urn:p\" xml:lang=\"en\"><d xmlns=\"\"/></p:c></b></e:r>"
+        const expected = [
+          nsStart("e:r", "urn:e", { "xmlns:e": "urn:e", xmlns: "urn:d" }),
+          nsStart("b", "urn:d", { a: "1", "e:b": "2" }),
+          nsStart("p:c", "urn:p", { "xmlns:p": "urn:p", "xml:lang": "en" }),
+          nsStart("d", "", { xmlns: "" }),
+          nsEnd("d", ""),
+          nsEnd("p:c", "urn:p"),
+          nsEnd("b", "urn:d"),
+          nsEnd("e:r", "urn:e")
+        ]
+        for (const chunks of splits(document)) {
+          assert.deepStrictEqual(yield* decodeString(chunks, strict), expected)
+        }
+        const events = yield* decodeBytes([textEncoder.encode(document)], strict)
+        assert.deepStrictEqual(events, expected)
+        // The encoders write names as written, so the events round trip
+        assert.deepStrictEqual(yield* decodeString([yield* encodeString(events)], strict), expected)
+      }))
+
+    it.effect("adds positions to namespaced start tags", () =>
+      Effect.gen(function*() {
+        const events = yield* decodeString(["<a xmlns:p=\"urn:p\">\n  <p:b/>\n</a>"], {
+          namespaces: "strict",
+          positions: true
+        })
+        const b = events[2] as Xml.StartElement
+        assert.deepStrictEqual([b.namespace, b.localName, b.line, b.column], ["urn:p", "b", 2, 3])
+      }))
+
+    it.effect("shadows bindings in nested scopes and restores them", () =>
+      Effect.gen(function*() {
+        const document = "<r xmlns:p=\"urn:a\" xmlns=\"urn:d\"><p:s xmlns:p=\"urn:b\"><u xmlns=\"\"><v/></u></p:s>" +
+          "<p:s/><v/></r>"
+        const starts = (yield* decodeString([document], strict)).filter((event) => event._tag === "StartElement")
+        assert.deepStrictEqual(starts.map((event) => [event.name, event.namespace]), [
+          ["r", "urn:d"],
+          ["p:s", "urn:b"],
+          ["u", ""],
+          ["v", ""],
+          ["p:s", "urn:a"],
+          ["v", "urn:d"]
+        ])
+        // A self-closing tag's declarations end with it
+        const selfClosing = "<r xmlns=\"urn:d\" xmlns:p=\"urn:a\"><s xmlns=\"\" xmlns:p=\"urn:b\"/><p:t/><u/></r>"
+        const events = (yield* decodeString([selfClosing], strict)).filter((event) => event._tag === "StartElement")
+        assert.deepStrictEqual(events.map((event) => event.namespace), ["urn:d", "", "urn:a", "urn:d"])
+      }))
+
+    it.effect("accepts the xml prefix, repeated bindings and unusual prefixes", () =>
+      Effect.gen(function*() {
+        const events = yield* decodeString([
+          "<r xmlns:xml=\"http://www.w3.org/XML/1998/namespace\" xmlns:__proto__=\"urn:p\">" +
+          "<__proto__:a xmlns:__proto__=\"urn:p\" xml:space=\"preserve\"/><xml:c/>" +
+          "<d xmlns=\"urn:d\" xmlns:q=\"urn:d\" x=\"1\" q:x=\"2\"/></r>"
+        ], strict)
+        const starts = events.filter((event) => event._tag === "StartElement")
+        assert.deepStrictEqual(starts.map((event) => event.namespace), [
+          "",
+          "urn:p",
+          "http://www.w3.org/XML/1998/namespace",
+          "urn:d"
+        ])
+      }))
+
+    it.effect("rejects documents that are not namespace-well-formed", () =>
+      Effect.gen(function*() {
+        const cases: ReadonlyArray<readonly [string, number, number]> = [
+          ["<a:b/>", 1, 1],
+          ["<a b:c=\"1\"/>", 1, 1],
+          ["<a>\n  <b:c/>\n</a>", 2, 3],
+          ["<xmlns:a/>", 1, 1],
+          ["<a:b:c xmlns:a=\"urn:a\"/>", 1, 1],
+          ["<a:1 xmlns:a=\"urn:a\"/>", 1, 1],
+          ["<a xmlns:1=\"urn:a\"/>", 1, 1],
+          ["<a xmlns:b:c=\"urn:a\"/>", 1, 1],
+          ["<a :b=\"1\"/>", 1, 1],
+          ["<a xmlns:b=\"\"/>", 1, 1],
+          ["<a xmlns:xml=\"urn:x\"/>", 1, 1],
+          ["<a xmlns:xmlns=\"urn:x\"/>", 1, 1],
+          ["<a xmlns:b=\"http://www.w3.org/2000/xmlns/\"/>", 1, 1],
+          ["<a xmlns=\"http://www.w3.org/XML/1998/namespace\"/>", 1, 1],
+          ["<a xmlns:b=\"urn:x\" xmlns:c=\"urn:x\" b:d=\"1\" c:d=\"2\"/>", 1, 1],
+          ["<a><?b:c?></a>", 1, 4],
+          ["<r><a xmlns:p=\"urn:p\"/><p:b/></r>", 1, 24],
+          ["<r><a xmlns:p=\"urn:p\"></a><p:b/></r>", 1, 27],
+          ["<r xmlns:p=\"urn:x\" xmlns:q=\"urn:x\"><e p:a=\"1\" q:a=\"2\"/></r>", 1, 36],
+          ["<r><a xmlns:p=\"urn:x\"/><b xmlns:q=\"urn:x\" xmlns:s=\"urn:x\" q:x=\"1\" s:x=\"2\"/></r>", 1, 24],
+          [
+            "<r xmlns:p=\"urn:x\"><a xmlns:p=\"urn:y\"/><a xmlns:q=\"urn:x\"/><b xmlns:s=\"urn:x\" p:x=\"1\" s:x=\"2\"/></r>",
+            1,
+            60
+          ]
+        ]
+        for (const [document, line, column] of cases) {
+          for (const chunks of splits(document)) {
+            assert.deepStrictEqual(yield* failure(decodeString(chunks, strict)), ["Syntax", line, column], document)
+          }
+          // Without namespace processing each is well-formed
+          assert.isTrue((yield* decodeString([document])).length > 0)
+        }
+        // A DTD can declare a prefix with a default attribute value, which is not applied
+        for (
+          const document of [
+            "<!DOCTYPE a:b [<!ATTLIST a:b xmlns:a CDATA #FIXED \"urn:a\">]><a:b/>",
+            "<!DOCTYPE a><a p:x=\"1\"/>"
+          ]
+        ) {
+          assert.deepStrictEqual(
+            yield* failure(decodeString([document], strict)),
+            ["Unsupported", 1, document.lastIndexOf("<") + 1]
+          )
+        }
+      }))
+
+    it.effect("bounds the declarations of open elements and releases them on close", () =>
+      Effect.gen(function*() {
+        const tag = (name: string) => `<${name} xmlns:${name}="0123456789">`
+        const options: Xml.DecodeOptions = { namespaces: "strict", maxTokenSize: 40 }
+        // Each tag declares 11 characters, and three open tags fit in 40
+        const accepted = [
+          "<a>" + tag("p") + tag("q") + "</q>" + tag("r") + "</r>" + tag("s") + "</s></p></a>",
+          "<a>" + tag("p") + tag("q") + tag("r") + "<s xmlns:s=\"0123456789\"/></r></q></p></a>"
+        ]
+        for (const document of accepted) {
+          for (const chunks of splits(document)) {
+            assert.isTrue((yield* decodeString(chunks, options)).length > 0)
+          }
+        }
+        const nested = "<a>" + tag("p") + tag("q") + tag("r") + tag("s") + "</s></r></q></p></a>"
+        for (const chunks of splits(nested)) {
+          assert.deepStrictEqual(yield* failure(decodeString(chunks, options)), ["Limit", 1, 76])
+        }
+      }))
   })
 
   describe("encode", () => {
