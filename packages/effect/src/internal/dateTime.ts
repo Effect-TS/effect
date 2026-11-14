@@ -228,7 +228,8 @@ export const clamp: {
 // constructors
 // =============================================================================
 
-const makeUtc = (epochMillis: number): DateTime.Utc => {
+/** @internal */
+export const makeUtc = (epochMillis: number): DateTime.Utc => {
   const self = Object.create(ProtoUtc)
   self.epochMilliseconds = epochMillis
   return self
