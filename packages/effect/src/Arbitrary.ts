@@ -6,9 +6,11 @@
  */
 import * as Cause from "./Cause.ts"
 import type * as Effect from "./Effect.ts"
+import type * as Exit from "./Exit.ts"
 import type * as Filter from "./Filter.ts"
 import * as Formatter from "./Formatter.ts"
 import { dual } from "./Function.ts"
+import * as InternalCommands from "./internal/arbitrary/commands.ts"
 import type * as Model from "./internal/arbitrary/model.ts"
 import * as Internal from "./internal/arbitrary/runner.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -683,3 +685,435 @@ export function checkEffect<A, E = never, R = never>(
 ): Effect.Effect<CheckResult<A, E>, never, R> {
   return Internal.checkEffect(self, property, options)
 }
+
+/**
+ * Placeholder for the value that an earlier command returned, used by later commands in a {@link Commands} sequence.
+ *
+ * **When to use**
+ *
+ * Use when a command needs a value that only exists once the system runs, such as an id or a handle created by an
+ * earlier command. Store the reference that {@link Command.next} receives in the model, and generate arguments that
+ * contain it.
+ *
+ * **Details**
+ *
+ * Generation, shrinking, preconditions, and next-state steps only see the placeholder. While {@link runCommands}
+ * executes a sequence, {@link Command.run}, {@link Command.postcondition}, and the invariant receive a {@link Resolve}
+ * function that returns the success value of the command that defined a reference. `id` is the position of the
+ * defining command in the originally generated sequence, so it stays stable while shrinking removes commands. A
+ * reference formats as `$<id>`.
+ *
+ * **Gotchas**
+ *
+ * References are compared by identity. Use them as `Map` keys or with `===`, and never construct them yourself.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface Reference<out A> {
+  readonly "~effect/arbitrary/Reference": "~effect/arbitrary/Reference"
+  readonly "~A": Types.Covariant<A>
+  readonly id: number
+}
+
+/**
+ * Returns the value behind a {@link Reference} while {@link runCommands} executes a sequence.
+ *
+ * **Details**
+ *
+ * The value is the success value of the command that defined the reference. {@link Command.run},
+ * {@link Command.postcondition}, and the invariant of {@link CommandsOptions} receive this function, so a command
+ * resolves exactly the references it needs, wherever its arguments or model keep them.
+ *
+ * **Gotchas**
+ *
+ * Resolving a reference whose command failed throws. A model can only produce such a reference by accepting the
+ * failure in a postcondition while keeping the reference. The throw is a defect of the command, or the cause of the
+ * failing postcondition or invariant.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export type Resolve = <A>(reference: Reference<A>) => A
+
+/**
+ * Describes one operation of a model-based test: how to generate it from the model state, when it is allowed, how
+ * it changes the model, how to run it against the real system, and which results are correct.
+ *
+ * **When to use**
+ *
+ * Use with {@link commands} to generate sequences of operations, and {@link command} to infer the type parameters.
+ *
+ * **Details**
+ *
+ * - `args` returns the Arbitrary for the arguments in the current model state, or `undefined` when the command is not
+ *   available in that state. Omit it for a command without arguments.
+ * - `precondition` decides whether the command is allowed with these arguments in this model state. Generation retries
+ *   rejected candidates.
+ * - `next` returns the model after the command. It receives a {@link Reference} to the command's result. Omit it for a
+ *   command that does not change the model.
+ * - `run` receives the generated arguments and a {@link Resolve} function for the references they contain.
+ * - `postcondition` receives the model before the command, the arguments, the command's `Exit`, and a
+ *   {@link Resolve} function, so it can compare results with values returned by earlier commands. It returns a boolean
+ *   or an Effect, which can observe the real system again through its requirements, such as reading back a record
+ *   after an update. Omit it to require success. Interruption is never passed to the postcondition; it interrupts the
+ *   run.
+ *
+ * Availability and the precondition together decide whether a command is valid in a model state, during generation
+ * and again during shrinking after earlier commands are removed. They describe whether a command makes sense to
+ * attempt, not whether it should succeed: an operation that the system must reject, such as overdrawing an account,
+ * stays valid, and its postcondition expects the failure.
+ *
+ * A postcondition can explain a failure instead of returning `false`: a thrown error, such as a failed assertion with
+ * expected and actual values, or a failure of the returned Effect becomes the `cause` of {@link CommandsFailure},
+ * separate from the command's own `Exit`.
+ *
+ * **Gotchas**
+ *
+ * The model is symbolic: it is computed during generation without running anything, so `next` only sees references,
+ * never results. `args`, `precondition`, and `next` must be synchronous, deterministic, and free of mutation. Models
+ * and arguments must be treated as immutable because shrinking reuses them.
+ *
+ * Shrinking rechecks that `args` is available and that `precondition` holds in the replayed model, but not that the
+ * arguments could still be generated by the Arbitrary that `args` returns there. A shrunk sequence can keep a
+ * reference to an entity that an earlier command removed from the model, for example a deposit into an account that
+ * is now closed. State such membership in `precondition`.
+ *
+ * The methods of this interface are bivariant so that commands with different argument, result, and error types fit
+ * in one list. Define commands with {@link command}, which checks the callbacks strictly.
+ *
+ * @see {@link command} for defining a command
+ * @see {@link commands} for generating command sequences
+ * @see {@link runCommands} for running a sequence against the real system
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface Command<M, Args, A, E, R> {
+  readonly name: string
+  // Method signatures are bivariant, so commands with different `Args`, `A` and `E` fit in one list.
+  // `command` checks callbacks strictly through `CommandOptions`.
+  args?(model: M): Arbitrary<Args> | undefined
+  precondition?(model: M, args: Args): boolean
+  next?(model: M, args: Args, result: Reference<A>): M
+  run(args: Args, resolve: Resolve): Effect.Effect<A, E, R>
+  postcondition?(
+    model: M,
+    args: Args,
+    exit: Exit.Exit<A, E>,
+    resolve: Resolve
+  ): boolean | Effect.Effect<boolean, unknown, R>
+}
+
+/**
+ * Configures {@link commands}.
+ *
+ * **Details**
+ *
+ * - `initial` is the model before the first command.
+ * - `commands` lists the available commands. Their names must be unique.
+ * - `invariant` is checked before the first command and after every command, over the current model. It receives a
+ *   {@link Resolve} function and can be an Effect that inspects the real system through its requirements. Returning
+ *   anything but `true`, failing, or throwing fails the run.
+ * - `maxCommands` caps the sequence length, which otherwise follows the check's `size`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandsOptions<M, R> {
+  readonly initial: M
+  readonly commands: ReadonlyArray<Command<M, any, any, any, R>>
+  readonly invariant?: ((model: M, resolve: Resolve) => boolean | Effect.Effect<boolean, unknown, R>) | undefined
+  readonly maxCommands?: number | undefined
+}
+
+/**
+ * One generated command in a {@link Commands} sequence.
+ *
+ * **Details**
+ *
+ * `args` are the symbolic arguments and may contain references. `reference` is the placeholder for this command's
+ * result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandCall {
+  readonly command: string
+  readonly args: unknown
+  readonly reference: Reference<unknown>
+}
+
+/**
+ * A generated sequence of commands that the model allows, produced by {@link commands} and run by
+ * {@link runCommands}.
+ *
+ * **Details**
+ *
+ * A sequence formats as one line per command, `$<id> = name(args)`, so counterexamples read as programs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface Commands<out M, out R> {
+  readonly "~M": Types.Covariant<M>
+  readonly "~R": Types.Covariant<R>
+  readonly steps: ReadonlyArray<CommandCall>
+}
+
+/**
+ * One executed command in the trace of {@link runCommands}.
+ *
+ * **Details**
+ *
+ * `model` is the model before the command and `exit` is the command's result.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandStep<out M> extends CommandCall {
+  readonly model: M
+  readonly exit: Exit.Exit<unknown, unknown>
+}
+
+/**
+ * Reports a sequence whose every postcondition and invariant held.
+ *
+ * **Details**
+ *
+ * `steps` is the executed trace and `model` is the final model.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandsRun<out M> {
+  readonly steps: ReadonlyArray<CommandStep<M>>
+  readonly model: M
+}
+
+/**
+ * Reports the command whose postcondition, or the invariant after it, failed.
+ *
+ * **Details**
+ *
+ * `steps` is the executed trace ending with the failing command, and `model` is the model after it. When the invariant
+ * fails before the first command, `steps` is empty and `model` is the initial model. `cause` is present when the
+ * postcondition or invariant threw, or when its Effect failed.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.3
+ */
+export interface CommandsFailure<out M> extends CommandsRun<M> {
+  readonly _tag: "CommandsFailure"
+  readonly reason: "Postcondition" | "Invariant"
+  readonly cause?: Cause.Cause<unknown> | undefined
+}
+
+/**
+ * Options of {@link command}, the strictly checked form of a {@link Command}.
+ *
+ * **Details**
+ *
+ * The fields have the meaning described on {@link Command}. Unlike the methods of {@link Command}, every callback must
+ * accept all the arguments that `args` can generate. `args` is required here; {@link command} also accepts options
+ * without `args` for a command whose arguments are `undefined`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.3
+ */
+export interface CommandOptions<M, Args, A, E, R> {
+  readonly name: string
+  readonly args: (model: M) => Arbitrary<Args> | undefined
+  readonly precondition?: ((model: M, args: Args) => boolean) | undefined
+  readonly next?: ((model: M, args: Args, result: Reference<A>) => M) | undefined
+  readonly run: (args: Args, resolve: Resolve) => Effect.Effect<A, E, R>
+  readonly postcondition?:
+    | ((model: M, args: Args, exit: Exit.Exit<A, E>, resolve: Resolve) => boolean | Effect.Effect<boolean, unknown, R>)
+    | undefined
+}
+
+/**
+ * Defines a {@link Command} and infers its type parameters.
+ *
+ * **When to use**
+ *
+ * Use to declare each command once with full inference, then pass the commands to {@link commands}. Annotate the
+ * model parameter of one callback so the model type is known.
+ *
+ * **Details**
+ *
+ * Without `args`, the command has no arguments and its callbacks receive `undefined`. With `args`, the argument type
+ * is inferred from the Arbitrary it returns, and every callback must accept all of those values.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.3
+ */
+export function command<M, A = void, E = never, R = never>(
+  options: Omit<CommandOptions<M, undefined, A, E, R>, "args"> & { readonly args?: undefined }
+): Command<M, undefined, A, E, R>
+export function command<M, Args, A = void, E = never, R = never>(
+  options: CommandOptions<M, Args, A, E, R>
+): Command<M, Args, A, E, R>
+export function command(
+  options: Omit<CommandOptions<any, any, any, any, any>, "args"> & {
+    readonly args?: CommandOptions<any, any, any, any, any>["args"] | undefined
+  }
+): Command<any, any, any, any, any> {
+  // Copy fields by name, skipping `undefined`, so inherited callbacks are kept.
+  const out: Record<string, unknown> = { name: options.name, run: options.run }
+  for (const key of ["args", "precondition", "next", "postcondition"] as const) {
+    if (options[key] !== undefined) out[key] = options[key]
+  }
+  return out as unknown as Command<any, any, any, any, any>
+}
+
+/**
+ * Generates sequences of commands that the model allows, for model-based testing of a stateful system.
+ *
+ * **When to use**
+ *
+ * Use when a system is easier to describe by a small model than by laws: the check generates operation sequences,
+ * {@link runCommands} runs them against the real system, and every result is compared with the model.
+ *
+ * **Details**
+ *
+ * The sequence length grows with the check's `size` and is capped by `maxCommands`. Each position draws a command
+ * whose `args` is available in the current model, generates its arguments, and retries candidates that the argument
+ * Arbitrary discards or the precondition rejects. Every accepted command advances the model with `next` and defines a
+ * {@link Reference} to its result.
+ *
+ * Shrinking removes commands, in progressively smaller blocks at each position, and shrinks the arguments of the
+ * remaining commands. After every change it replays the model from `initial`, drops each command that is no longer
+ * available, whose precondition fails, or whose arguments use a reference that is no longer defined, and continues
+ * with the commands after it. References are found in arrays, `Map` and `Set` entries, and the own enumerable
+ * properties of objects in the arguments.
+ *
+ * Pass the sequence to {@link checkEffect} with {@link runCommands} as the property, so replay tokens and
+ * concurrency work as for any other property.
+ *
+ * **Gotchas**
+ *
+ * Each position draws at most 100 candidates. When none of them is accepted, the sequence ends early at that position
+ * instead of being discarded, so preconditions that reject most candidates silently shorten sequences rather than
+ * exhausting the check. Express static bounds in the argument Arbitrary and keep preconditions for constraints that
+ * depend on the model.
+ *
+ * Invalid options and duplicate command names throw when this function is called. Each evaluation must run against
+ * a fresh system, for example by providing a new layer inside the property. A reference kept only in a closure or a
+ * private field is not found while shrinking, so its command may be removed while the reference is still used.
+ *
+ * **Example** (Finding a lost update in a counter store)
+ *
+ * ```ts import.meta.vitest
+ * import { Arbitrary, Context, Effect, Exit, Schema } from "effect"
+ *
+ * class Store extends Context.Service<Store, {
+ *   readonly create: Effect.Effect<number>
+ *   readonly increment: (id: number) => Effect.Effect<void>
+ *   readonly get: (id: number) => Effect.Effect<number>
+ * }>()("Store") {}
+ *
+ * // The bug: the store stops counting after two increments.
+ * const makeStore = () => {
+ *   const counters: Array<number> = []
+ *   return Store.of({
+ *     create: Effect.sync(() => counters.push(0) - 1),
+ *     increment: (id) =>
+ *       Effect.sync(() => {
+ *         counters[id] = Math.min(counters[id] + 1, 2)
+ *       }),
+ *     get: (id) => Effect.sync(() => counters[id])
+ *   })
+ * }
+ *
+ * type Model = ReadonlyMap<Arbitrary.Reference<number>, number>
+ * const counter = (model: Model) =>
+ *   model.size === 0
+ *     ? undefined
+ *     : Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: model.size - 1 }))).pipe(
+ *       Arbitrary.map((index) => [...model.keys()][index])
+ *     )
+ *
+ * const commands = Arbitrary.commands({
+ *   initial: new Map() as Model,
+ *   commands: [
+ *     Arbitrary.command({
+ *       name: "create",
+ *       next: (model: Model, _, id) => new Map(model).set(id, 0),
+ *       run: () => Store.use((store) => store.create)
+ *     }),
+ *     Arbitrary.command({
+ *       name: "increment",
+ *       args: counter,
+ *       next: (model: Model, id) => new Map(model).set(id, model.get(id)! + 1),
+ *       run: (id, resolve) => Store.use((store) => store.increment(resolve(id)))
+ *     }),
+ *     Arbitrary.command({
+ *       name: "get",
+ *       args: counter,
+ *       run: (id, resolve) => Store.use((store) => store.get(resolve(id))),
+ *       postcondition: (model: Model, id, exit) => Exit.isSuccess(exit) && exit.value === model.get(id)
+ *     })
+ *   ]
+ * })
+ *
+ * const result = await Effect.runPromise(
+ *   Arbitrary.checkEffect(commands, (sequence) =>
+ *     Arbitrary.runCommands(sequence).pipe(
+ *       Effect.as(true),
+ *       Effect.provideService(Store, makeStore())
+ *     ), { seed: 0, size: 20 })
+ * )
+ *
+ * result._tag // => "Falsified"
+ * if (result._tag === "Falsified") {
+ *   const names = result.shrunkInput.steps.map((step) => step.command)
+ *   names // => ["create", "increment", "increment", "increment", "get"]
+ * }
+ * ```
+ *
+ * @see {@link runCommands} for running a generated sequence
+ * @see {@link array} for sequences without a model
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.3
+ */
+export const commands: <M, R = never>(options: CommandsOptions<M, R>) => Arbitrary<Commands<M, R>> =
+  InternalCommands.commands
+
+/**
+ * Runs a generated command sequence against the real system and checks every result against the model.
+ *
+ * **When to use**
+ *
+ * Use as the property of {@link checkEffect} for a sequence generated by {@link commands}, mapping its success to
+ * `true`.
+ *
+ * **Details**
+ *
+ * The invariant is checked on the initial model, then commands run in order. Each command receives its generated
+ * arguments and a {@link Resolve} function for the references they contain. After each command, its postcondition
+ * and then the invariant are checked. The first failure fails with {@link CommandsFailure}, whose trace ends at the
+ * failing command. A successful run returns the trace and the final model.
+ *
+ * **Gotchas**
+ *
+ * Interruption of a command or invariant interrupts the run instead of becoming a result.
+ *
+ * @see {@link commands} for generating sequences
+ * @stability unstable
+ * @category running
+ * @since 4.1.3
+ */
+export const runCommands: <M, R>(commands: Commands<M, R>) => Effect.Effect<CommandsRun<M>, CommandsFailure<M>, R> =
+  InternalCommands.runCommands
