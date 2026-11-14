@@ -44,6 +44,14 @@ export interface RecordedCall {
 }
 
 /** The REST calls of a fixture in `fixtures/recorded`. */
+/**
+ * The slash commands recorded in EFF-3802, `fixtures/recorded/commands.json`.
+ * The built command payloads start from these.
+ */
+export const recordedCommands: any = JSON.parse(
+  fs.readFileSync(new URL("./fixtures/recorded/commands.json", import.meta.url), "utf8")
+)
+
 export const recorded = (name: string): ReadonlyArray<RecordedCall> =>
   JSON.parse(fs.readFileSync(new URL(`./fixtures/recorded/${name}.json`, import.meta.url), "utf8")).calls
 

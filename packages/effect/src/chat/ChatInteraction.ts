@@ -81,9 +81,13 @@ const origin = {
  *
  * **Gotchas**
  *
- * On a command's private answer, `messageId` names where the click came
- * from, not a message: `edit`, `delete` and `fetchMessage` can't reach
- * it. Only `raw` tells the two apart.
+ * On a command's private answer, `messageId` still tells which answer was
+ * clicked, but no message op works with it: `edit`, `delete` and
+ * `fetchMessage` can't reach a private answer. On Slack `chat.update` on it
+ * answered `message_not_found` live, and `edit` fails `NotFound`. On
+ * Discord only the interaction's token reaches it, which is from Discord's
+ * docs and was not run. Only `raw` tells the two apart: Slack's
+ * `container.is_ephemeral`, Discord's `message.flags` with 64.
  *
  * @stability unstable
  * @category events
@@ -106,8 +110,9 @@ export type ButtonClicked = typeof ButtonClicked.Type
 
 /**
  * Schema for a choice in a select on a message. `value` is the chosen
- * option's value, still encoded. `messageId` is as on `ButtonClicked`, and
- * on a command's private answer it is not a message either.
+ * option's value, still encoded. `messageId` is as on `ButtonClicked`: on a
+ * command's private answer it tells which answer it was, and no message op
+ * works with it.
  *
  * @stability unstable
  * @category events
@@ -135,7 +140,9 @@ export type SelectChanged = typeof SelectChanged.Type
  *
  * - `thread` and `messageId` are those of the click that opened the modal.
  *   A modal a command opened carries the command's `thread` and no
- *   `messageId`.
+ *   `messageId`. A modal opened from a command's private answer carries
+ *   that answer's id, which no message op works with, as on
+ *   `ButtonClicked`.
  * - `metadata` is still encoded.
  * - `values` are by field id, still encoded. An optional field left empty
  *   has no key.
@@ -352,10 +359,12 @@ export type Visibility = typeof Visibility.Type
  * **Details**
  *
  * `markdown` and `actions` are rendered and checked the way `post` renders
- * and checks them, with the default post options, so a mention in it
- * notifies nobody. The message gets no id: it cannot be edited, deleted or
- * fetched afterwards. A click on its elements carries a `messageId`, which
- * for a private answer names the click's origin and no message.
+ * and checks them, with the default post options. `withPostOptions` does
+ * not reach it, so it never mentions anyone: on Slack a mention token is
+ * escaped and shows as text, and on Discord it renders and notifies nobody.
+ * The message gets no id: it cannot be edited, deleted or fetched
+ * afterwards. A click on its elements carries a `messageId`, which for a
+ * private answer tells which answer it was and works with no message op.
  *
  * @stability unstable
  * @category replies
@@ -384,8 +393,9 @@ export type Respond = typeof Respond.Type
  *
  * - It is plain data, so it can go on a queue to another process.
  * - `visibility` is fixed here. `followUp` has none of its own.
- * - Send one `followUp` for it. A second one is not portable: Slack posts
- *   another message and Discord replaces the first.
+ * - The first `followUp` for it is the answer. A second one is
+ *   platform-specific: Slack posts another message, up to five, and Discord
+ *   overwrites the first. Neither adapter stops it.
  *
  * **Gotchas**
  *
@@ -528,7 +538,10 @@ export const respond = (options: {
  *
  * **Details**
  *
- * `visibility` defaults to `"ephemeral"`, and holds for the follow-up.
+ * - `visibility` defaults to `"ephemeral"`, and holds for the follow-up.
+ * - One `Chat.followUp` per deferral is the portable contract. The first
+ *   call is the answer. A second is platform-specific: a new message on
+ *   Slack, up to five, and an overwrite of the first on Discord.
  *
  * @stability unstable
  * @category replies

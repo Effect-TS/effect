@@ -124,6 +124,8 @@ const isSlackHost = (host: string): boolean =>
 /**
  * What a spent `response_url` answers, as plain text with a 404: `used_url`
  * after five posts, `expired_url` after 30 minutes. Recorded in EFF-3802.
+ * The same strings in a JSON `error`, and a 410, are from Slack's docs and
+ * were never seen; they stay mapped.
  */
 const spentResponseUrl = new Set(["expired_url", "used_url"])
 

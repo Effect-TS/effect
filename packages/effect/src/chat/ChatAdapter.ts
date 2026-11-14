@@ -206,9 +206,10 @@ export interface User {
  *   removes them.
  * - `followUp` sends the answer a command's `Defer` promised, to whoever
  *   its `visibility` names. It is routed by `deferred.command.thread` and
- *   never retried. It takes no files. The contract is one call per
- *   deferral: a second posts another message on Slack and replaces the
- *   first on Discord, and `ChatTest`'s fake fails it. It fails
+ *   never retried. It takes no files, and `withPostOptions` does not reach
+ *   it. The contract is one call per deferral: a second posts another
+ *   message on Slack and replaces the first on Discord. An adapter does not
+ *   stop it, and `ChatTest`'s fake fails it. It fails
  *   `NotFound` with detail `interaction_expired` past `limits.followUpAge`,
  *   and `Unsupported` without `commands`.
  *

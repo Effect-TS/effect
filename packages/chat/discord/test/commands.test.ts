@@ -11,10 +11,16 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as TestClock from "effect/testing/TestClock"
-import * as fs from "node:fs"
-import { botUserId, discordLayer, errorResponse, type Fake, makeFake, test, tim } from "./utils.ts"
-
-const recorded = JSON.parse(fs.readFileSync(new URL("./fixtures/recorded/commands.json", import.meta.url), "utf8"))
+import {
+  botUserId,
+  discordLayer,
+  errorResponse,
+  type Fake,
+  makeFake,
+  recordedCommands as recorded,
+  test,
+  tim
+} from "./utils.ts"
 
 // The definitions the capture ran, from eff-3802-capture.ts.
 const AckButton = ChatInteraction.button("cap-ack", { label: "Ack" })
@@ -169,8 +175,9 @@ describe("recorded slash commands", () => {
         [[botUserId, "<redacted>", recorded.followUp.request]]
       )
 
-      // What Discord answered at 15.5 minutes, here returned early so the
-      // mapping is reached before the adapter's own refusal.
+      // What Discord answered at 15.5 minutes, 401 with 50027, here returned
+      // early so the mapping is reached before the adapter's own refusal. The
+      // live run refused before sending, so only this reaches the mapping.
       const { body, status } = recorded.expired.edit
       assert.deepStrictEqual([status, body.code], [401, 50027])
       const spent = makeFake({ updateOriginalWebhookMessage: () => Effect.fail(errorResponse(status, body)) })

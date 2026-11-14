@@ -1,7 +1,7 @@
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { type Interactions, NoSuchElement } from "effect/chat/ChatTest"
 import * as Effect from "effect/Effect"
-import { answer, botUserId, errorResponse, type Fake, guild, makeFake, step, tim } from "./utils.ts"
+import { answer, botUserId, errorResponse, type Fake, guild, makeFake, recordedCommands, step, tim } from "./utils.ts"
 
 /** The join between an id and its value in a `custom_id`, as the adapter writes it. */
 const join = "\u241F"
@@ -13,9 +13,9 @@ const idOf = (customId: string): string => customId.split(join)[0]
  * components, and records every interaction callback and every edit of an
  * original response. `interactions` is the conformance hook: it builds
  * Discord's `INTERACTION_CREATE` payload from what was posted, or a slash
- * command's, and sends it through `DiscordChat.interaction`. The command
- * and its modal's submit without a message are built with the shapes
- * recorded in `fixtures/recorded/commands.json`.
+ * command's, and sends it through `DiscordChat.interaction`. A command
+ * starts from the one recorded in `fixtures/recorded/commands.json`, and so
+ * does the submit of the modal it opened, which has no message.
  */
 export const makeDiscord = (channelType = 0) => {
   const messages = new Map<string, any>()
@@ -140,6 +140,8 @@ export const makeDiscord = (channelType = 0) => {
     command: Effect.fnUntraced(function*(thread, id, options) {
       const text = options?.text ?? ""
       const answer = yield* deliver({
+        ...recordedCommands.commands.private,
+        channel: { ...recordedCommands.commands.private.channel, id: thread.id, type: channelType },
         ...base(thread.id),
         type: 2,
         data: {
@@ -166,6 +168,7 @@ export const makeDiscord = (channelType = 0) => {
         }
       })
       yield* deliver({
+        ...(message === undefined ? recordedCommands.commandModal.submitClose : {}),
         ...base(channelId, message),
         type: 5,
         data: { custom_id: data.custom_id, components }

@@ -1,8 +1,8 @@
 /**
  * Interactions: the normaliser, the callbacks `DiscordChat.interaction`
  * answers with, `commandRequests` and a command's `followUp`. The slash
- * command payloads here are built from Discord's docs. The recorded ones are
- * in `commands.test.ts`.
+ * command payloads here start from the ones recorded in EFF-3802, which
+ * `commands.test.ts` runs as they are.
  */
 import * as DiscordChat from "@effect/chat-discord/DiscordChat"
 import { assert, describe, it } from "@effect/vitest"
@@ -23,6 +23,7 @@ import {
   type Fake,
   guild,
   makeFake,
+  recordedCommands,
   scratch,
   step,
   tim
@@ -47,13 +48,28 @@ const click = (data: Record<string, unknown>, extra: Record<string, unknown> = {
 const submit = (customId: string, components: ReadonlyArray<unknown>) =>
   click({ custom_id: customId, components }, { type: 5 })
 
+/** A recorded interaction moved to scratch, with its own id and token. */
+const fromRecorded = (recorded: any, data: Record<string, unknown>) => ({
+  ...recorded,
+  id: "1570700000000000100",
+  token: "token",
+  channel_id: scratch,
+  channel: { ...recorded.channel, id: scratch },
+  data
+})
+
 const slash = (name: string, options?: ReadonlyArray<unknown>, data: Record<string, unknown> = {}) =>
-  omit(
-    click({ id: "1570700000000000900", name, type: 1, ...(options === undefined ? {} : { options }), ...data }, {
-      type: 2
-    }),
-    "message"
-  )
+  fromRecorded(recordedCommands.commands.private, {
+    id: "1570700000000000900",
+    name,
+    type: 1,
+    ...(options === undefined ? {} : { options }),
+    ...data
+  })
+
+/** The submit of a modal a command opened, which has no message. */
+const commandSubmit = (customId: string, components: ReadonlyArray<unknown>) =>
+  fromRecorded(recordedCommands.commandModal.submitClose, { custom_id: customId, components })
 
 const omit = (raw: Record<string, unknown>, key: string) => {
   const { [key]: _, ...rest } = raw
@@ -156,7 +172,7 @@ describe("normalizeInteraction", () => {
 
   it.effect("a submit with no message, from a modal a command opened, has no messageId", () =>
     Effect.gen(function*() {
-      const submitted = some(omit(submit("form", []), "message"))
+      const submitted = some(commandSubmit("form", []))
       assert.strictEqual(submitted._tag, "ModalSubmitted")
       assert.isFalse("messageId" in submitted)
       assert.deepStrictEqual(submitted.thread, DiscordChat.thread(scratch))

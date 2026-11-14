@@ -81,15 +81,24 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   9, each with the ephemeral flag when private. An `Ack`, which is what a
  *   command nobody handles gets, sends nothing, so a command another library
  *   owns is left to it. `withPostOptions` does not reach a command's
- *   answer: a mention in it renders and notifies nobody.
+ *   answer, `respond` or `followUp`: a mention in it renders and notifies
+ *   nobody.
+ * - Commands were recorded in a guild channel over the gateway. A command
+ *   in a direct is from Discord's docs and was not run.
  * - A click on a private answer carries the message, with the ephemeral flag
- *   (64). Only the interaction's token reaches that message, so its
- *   `messageId` is not one `Chat.edit`, `delete` or `fetchMessage` can use.
+ *   (64). Its `messageId` tells which answer was clicked. Discord's docs
+ *   reach an interaction's messages only through its token, under
+ *   `/webhooks`, and say nothing of the channel routes `Chat.edit`,
+ *   `delete` and `fetchMessage` use on an ephemeral message. Treat the id
+ *   as one no message op works with. This is from the docs: no op on it was
+ *   run.
  * - `followUp` edits the deferred command's original response, with the
  *   application id and token from its `raw`, so a second call replaces the
  *   first answer. It fails `NotFound` with detail `interaction_expired`
  *   from 15 minutes after the command, read from the interaction's id,
- *   without calling Discord. Past that Discord answers 401 with code 50027.
+ *   without calling Discord. Past that Discord answers 401 with code 50027,
+ *   which is mapped the same if a call gets there. Code 10015 is mapped
+ *   from the docs and was not seen.
  * - A modal that can't be built, a reply to a command that fails the checks
  *   of a `post`, or a callback that fails, goes to `Handler.refused`. A
  *   callback that comes back 404 `Unknown interaction` was late: that is
