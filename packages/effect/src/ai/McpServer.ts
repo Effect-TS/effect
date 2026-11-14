@@ -196,14 +196,33 @@ const requestServiceKeys = new Set<string>([
   Tracer.ParentSpan.key
 ])
 
-const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
-  const services = new Map<string, any>()
-  for (const [key, value] of context.mapUnsafe) {
-    if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
-      services.set(key, value)
+const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> =>
+  prepareContext(context as Context.Context<never>).services as Context.Context<Services>
+
+// What a registration takes from the context it was made in: its services
+// without request services, and its middleware. A context is immutable, so
+// this is derived once per context and shared by every registration made in
+// it. Every tool of a toolkit shares one context that holds all of the
+// toolkit's handlers, so deriving it per tool would copy it once per tool,
+// which grows with the square of the toolkit's size.
+const preparedContexts = new WeakMap<Context.Context<never>, {
+  readonly services: Context.Context<never>
+  readonly localMiddleware: ReadonlyArray<AnyMiddlewareFn>
+}>()
+
+const prepareContext = (context: Context.Context<never>) => {
+  let prepared = preparedContexts.get(context)
+  if (prepared === undefined) {
+    const services = new Map<string, any>()
+    for (const [key, value] of context.mapUnsafe) {
+      if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
+        services.set(key, value)
+      }
     }
+    prepared = { services: Context.makeUnsafe(services), localMiddleware: getMiddleware(context) }
+    preparedContexts.set(context, prepared)
   }
-  return Context.makeUnsafe(services)
+  return prepared
 }
 
 const provideInvocationContext = <A, E, R>(
@@ -914,8 +933,9 @@ const makeInvoke = (
   context: Context.Context<never> | undefined,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
 ) => {
-  const services = context === undefined ? Context.empty() : omitRequestServices(context)
-  const localMiddleware = context === undefined ? [] : getMiddleware(context)
+  const { localMiddleware, services } = context === undefined
+    ? { services: Context.empty(), localMiddleware: [] }
+    : prepareContext(context)
   const invoke = <A, E, M extends CallMethod>(
     handler: Effect.Effect<A, E, any>,
     invocation: McpCore.McpInvocation,
