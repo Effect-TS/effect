@@ -258,7 +258,7 @@ describe("Html", () => {
     expect(Bare).type.toBe<Component.Component<"Bare", {}, null, Msg, never, Logger, Html.Elements>>()
   })
 
-  it("onMount may end with no message, and an input mount gets a typed Stream of changes", () => {
+  it("onMount may end with Component.noop, and an input mount gets a typed Stream of changes", () => {
     const Chart = Component.define({
       name: "Chart",
       model: Schema.Array(Schema.Number),
@@ -268,11 +268,13 @@ describe("Html", () => {
       init: (): ReadonlyArray<number> => [],
       update: (points) => points,
       view: (points, h) =>
-        h.div.onMount("hello", () => Effect.void).children(
+        h.div.onMount("hello", () => Effect.succeed(Component.noop)).children(
           h.canvas.onMount("chart", points, (node, changes) => {
             expect(node).type.toBe<HTMLCanvasElement>()
             expect(changes).type.toBe<Stream.Stream<ReadonlyArray<number>>>()
-            return Stream.runForEach(changes, () => Logger.use((logger) => logger.log("draw")))
+            return Stream.runForEach(changes, () => Logger.use((logger) => logger.log("draw"))).pipe(
+              Effect.as(Component.noop)
+            )
           })
         )
     })
@@ -283,6 +285,30 @@ describe("Html", () => {
     expect(div.onMount).type.toBeCallableWith("done", () => Effect.succeed(Msg.make({ _tag: "Mounted" })))
     expect(div.onMount).type.not.toBeCallableWith("wrong", () => Effect.succeed("not a message"))
     expect(div.onMount).type.not.toBeCallableWith("wrong", 1, () => Effect.succeed("not a message"))
+  })
+
+  it("onMount ends with a message or Component.noop, never with void or undefined", () => {
+    const div = new Html.Element<Msg>("div")
+    const input = new Html.VoidElement<Msg>("input")
+    const silent = Effect.succeed(Component.noop)
+    const mixed = Effect.gen(function*() {
+      const ok = yield* Effect.succeed(true)
+      return ok ? Msg.make({ _tag: "Mounted" }) : Component.noop
+    })
+    expect(div.onMount).type.toBeCallableWith("silent", () => silent)
+    expect(div.onMount).type.toBeCallableWith("silent", 1, () => Effect.void.pipe(Effect.as(Component.noop)))
+    expect(div.onMount).type.toBeCallableWith("mixed", () => mixed)
+    expect(input.onMount).type.toBeCallableWith("silent", () => silent)
+
+    const holdsAValue: Effect.Effect<void> = Effect.succeed("not a message")
+    for (const builder of [div, input]) {
+      expect(builder.onMount).type.not.toBeCallableWith("void", () => Effect.void)
+      expect(builder.onMount).type.not.toBeCallableWith("void", 1, () => Effect.void)
+      expect(builder.onMount).type.not.toBeCallableWith("holds", () => holdsAValue)
+      expect(builder.onMount).type.not.toBeCallableWith("undefined", () => Effect.succeed(undefined))
+      expect(builder.onMount).type.not.toBeCallableWith("undefined", 1, () => Effect.succeed(undefined))
+      expect(builder.onMount).type.not.toBeCallableWith("symbol", () => Effect.succeed(Symbol.for("other")))
+    }
   })
 
   it("View.Input keeps what a child requires", () => {

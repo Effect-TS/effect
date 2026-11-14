@@ -12,8 +12,7 @@ const searchRoute = AppRoute.make({ _tag: "Search", query: {} })
 
 export const AppMessage = Schema.TaggedUnion({
   RouteChanged: { route: AppRoute },
-  GoHome: {},
-  Navigated: {}
+  GoHome: {}
 })
 
 // The root needs no domain Layers of its own, because each page provides
@@ -29,14 +28,14 @@ export const App = Component.define({
   message: AppMessage
 }).make({
   init: ($) => ({ route: $.props.route }),
-  update: (model, message, $) =>
+  update: (_model, message, $) =>
     AppMessage.match(message, {
       RouteChanged: ({ route }) => ({ route }),
-      // Navigating from `update` is a Command that can't fail, so it takes
-      // `Command.map`.
-      GoHome: () =>
-        $.run(Router.push(AppRoute, indexRoute).pipe(Command.map(() => AppMessage.make({ _tag: "Navigated" })))),
-      Navigated: () => model
+      // The new route comes back through the Router subscription, so the
+      // navigation sends nothing. `Command.asNoop` ends it with no message,
+      // and with no no-op variant in `AppMessage`. It also hides a
+      // navigation a guard blocked, which this one has no use for.
+      GoHome: () => $.run(Router.push(AppRoute, indexRoute).pipe(Command.asNoop))
     }),
   subscriptions: (model) => [
     Router.subscription(AppRoute, model.route, (route) => AppMessage.make({ _tag: "RouteChanged", route }))

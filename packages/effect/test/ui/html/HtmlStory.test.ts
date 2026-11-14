@@ -50,7 +50,7 @@ describe("HtmlStory", () => {
     }).make({
       init: () => [1, 2],
       update: (points) => points,
-      view: (points, h) => h.div.onMount("draw", points, () => Effect.void).children("chart")
+      view: (points, h) => h.div.onMount("draw", points, () => Effect.succeed(Component.noop)).children("chart")
     })
     const story = Story.make(Chart, {}, () => {})
     const mount = (story.view() as View.Element<never, never>).mount

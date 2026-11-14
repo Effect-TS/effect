@@ -9,7 +9,8 @@ import type * as Command from "../Command.ts"
 
 /**
  * A run the scheduler knows about: a Command that is running, waiting to run,
- * or awaiting: its fiber has exited and its message hasn't been delivered.
+ * or awaiting: its fiber has exited and its result hasn't been delivered. A
+ * result of `Component.noop` is delivered as nothing, but awaits all the same.
  *
  * @internal
  */
@@ -24,9 +25,9 @@ export interface Entry<A> {
 
 /**
  * Where a run is: `running`, `queued` behind a running run of its group, or
- * `awaiting`: its fiber exited and its message waits, on its own
- * `Command.afterRefetch` wait or, under `queue`, behind an earlier message
- * of its group.
+ * `awaiting`: its fiber exited and its result (a message or `Component.noop`)
+ * waits, on its own `Command.afterRefetch` wait or, under `queue`, behind an
+ * earlier result of its group.
  *
  * @internal
  */
@@ -97,7 +98,7 @@ export const next = <A>(remaining: ReadonlyArray<Entry<A>>, ended: Entry<A>): En
 }
 
 /**
- * Returns the next awaiting run whose message is ready to deliver. Under
+ * Returns the next awaiting run whose result is ready to deliver. Under
  * `queue`, selects the group's oldest awaiting run to preserve issue order;
  * otherwise selects `entry`. Returns nothing until the selected run's own
  * wait has ended (`ready`).

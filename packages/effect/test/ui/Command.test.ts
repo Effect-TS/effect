@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Data, Effect, Exit, Layer, Schema, Stream } from "effect"
 import { KeyValueStore } from "effect/persistence"
 import { Loader } from "effect/reactivity"
-import { Command } from "effect/ui"
+import { Command, Component } from "effect/ui"
 import * as schedule from "effect/ui/internal/schedule"
 import { SaveTodo, Search, TodoItemMessage, Upload } from "./fixtures/components.ts"
 
@@ -254,6 +254,40 @@ describe("Command", () => {
         const interrupt = Command.interrupt(Ticks)
         assert.strictEqual(Command.as(interrupt, message), interrupt)
       }).pipe(Effect.provide(Ticks.layer), Effect.provide(Save.layer)))
+  })
+
+  describe("asNoop", () => {
+    it.effect("replaces every result with Component.noop, keeping the issued Command", () =>
+      Effect.gen(function*() {
+        const silent = Search({ text: "x" }).pipe(Command.asNoop)
+        assert.deepStrictEqual([silent.name, silent.args, silent.mode], ["Search", { text: "x" }, "switch"])
+        assert.strictEqual(yield* silent.effect, Component.noop)
+        assert.strictEqual(silent.resolve({ _tag: "Results", items: [] }), Component.noop)
+        const stream = Command.asNoop(Ticks.make({ n: 2 }))
+        assert.deepStrictEqual(yield* Stream.runCollect(stream.stream), [Component.noop, Component.noop])
+        const matched = Save.make({ title: "" }).pipe(
+          Command.match({ onSuccess: () => "ok", onFailure: () => "failed" }),
+          Command.asNoop
+        )
+        assert.strictEqual(matched.reject?.(new SaveFailed({ reason: "empty" })), Component.noop)
+        const interrupt = Command.interrupt(Ticks)
+        assert.strictEqual(Command.asNoop(interrupt), interrupt)
+      }).pipe(Effect.provide(Ticks.layer), Effect.provide(Save.layer)))
+
+    it("Component.noop is a frozen object holding only its type id, and isNoop checks the type id", () => {
+      assert.deepStrictEqual(Object.entries(Component.noop), [[
+        "~effect/ui/Component/Noop",
+        "~effect/ui/Component/Noop"
+      ]])
+      assert.isTrue(Object.isFrozen(Component.noop))
+      assert.isTrue(Component.isNoop(Component.noop))
+      // A copy from another copy of effect is a different object with the same type id.
+      assert.isTrue(Component.isNoop({ "~effect/ui/Component/Noop": "~effect/ui/Component/Noop" }))
+      assert.isFalse(Component.isNoop({ "~effect/ui/Component/Noop": true }))
+      assert.isFalse(Component.isNoop(Symbol.for("~effect/ui/Component/Noop")))
+      assert.isFalse(Component.isNoop(undefined))
+      assert.isFalse(Component.isNoop({ _tag: "Done" }))
+    })
   })
 
   describe("schedule", () => {

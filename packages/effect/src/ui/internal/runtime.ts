@@ -35,6 +35,7 @@ import * as Subscription from "../Subscription.ts"
 import * as View from "../View.ts"
 import * as Executor from "./executor.ts"
 import * as loaders from "./loaders.ts"
+import { isNoop } from "./noop.ts"
 import { checkAuthorRefs, checkChildPaths, checkFallbackPaths, type ChildPaths, segment } from "./paths.ts"
 import * as schedule from "./schedule.ts"
 import * as serverHost from "./serverHost.ts"
@@ -238,8 +239,19 @@ interface Run {
   status: schedule.Status
   fiber: Fiber.Fiber<unknown, unknown> | undefined
   done: boolean
-  /** From fiber exit until delivery: the message an awaiting run holds, and its source. */
+  /**
+   * From fiber exit until delivery: the result an awaiting run holds, and its source. A silent result
+   * (`Component.noop`) is held like a message, so `held !== undefined` always means awaiting.
+   */
   held: { readonly message: unknown; readonly source: MessageLog.Source } | undefined
+  /**
+   * Whether every result the run has had so far (its Effect's result, each Stream element, a mapped
+   * failure) was `Component.noop`. `undefined` until the first result.
+   */
+  silent: boolean | undefined
+  /** The run's span, once it began: for `CommandEnded` and `CommandInterrupted`. */
+  spanId: string | undefined
+  traceId: string | undefined
   /** Whether the run's own `Command.afterRefetch` wait is going on. */
   waiting: boolean
   /** How the run's own wait ended, and what it still awaited then. */
@@ -2020,6 +2032,9 @@ const setup = (
           fiber: undefined,
           done: false,
           held: undefined,
+          silent: undefined,
+          spanId: undefined,
+          traceId: undefined,
           waiting: false,
           waited: undefined,
           cancelWait: undefined
@@ -2159,8 +2174,12 @@ const setup = (
         spanId: undefined,
         traceId: undefined
       }
+      // A Stream element: `Component.noop` sends nothing, and the Stream carries on.
       const send = (message: unknown) => {
-        if (!run.done) inst.dispatch(message, source)
+        if (run.done) return
+        const silent = isNoop(message)
+        run.silent = silent && run.silent !== false
+        if (!silent) inst.dispatch(message, source)
       }
       // The fiber runs the definition's own work, so its exit tells a success from a typed failure.
       const program = Effect.useSpan(
@@ -2169,6 +2188,9 @@ const setup = (
         (span): Effect.Effect<unknown, unknown, any> => {
           // Stopped before the first step: the work never begins.
           if (run.done) return Effect.interrupt
+          // Kept on the run as well, for the end entries of a run that sends no message.
+          run.spanId = span.spanId
+          run.traceId = span.traceId
           source = {
             _tag: "Command",
             name: command.name,
@@ -2267,6 +2289,8 @@ const setup = (
       command.name
     )
     if (message === undefined || run.done) return
+    // Known now, though applied at delivery: a silent result is held like a message.
+    run.silent = isNoop(message.value) && run.silent !== false
     // From here until delivery the run is awaiting: on its own wait, or under `queue` behind an earlier
     // message of its group. Either way the next queued run starts now, before any `update` this
     // delivers can issue another run of the group, which would otherwise start ahead of it.
@@ -2332,11 +2356,14 @@ const setup = (
       deliver(inst, next.value)
     }
   }
-  /** Sends an awaiting run's message. The run is still in the schedule while `update` handles it. */
+  /**
+   * Sends an awaiting run's message, or nothing for `Component.noop`. The run is still in the schedule
+   * while `update` handles it.
+   */
   const deliver = (inst: Instance, run: Run) => {
     const held = run.held!
     run.held = undefined
-    inst.dispatch(held.message, held.source)
+    if (!isNoop(held.message)) inst.dispatch(held.message, held.source)
     if (run.done) return
     removeRun(inst, run)
     recordEnded(inst, run)
@@ -2350,6 +2377,9 @@ const setup = (
       name: run.command.name,
       issued: run.issued,
       detached: run.detached,
+      spanId: run.spanId,
+      traceId: run.traceId,
+      ...(run.silent === true ? { silent: true } : undefined),
       ...run.waited
     })
   const recordInterrupted = (inst: Instance, run: Run) =>
@@ -2358,7 +2388,9 @@ const setup = (
       path: inst.path,
       name: run.command.name,
       issued: run.issued,
-      detached: run.detached
+      detached: run.detached,
+      spanId: run.spanId,
+      traceId: run.traceId
     })
 
   /** `h.isRunning` for one instance: a run of the Command, of the group if given, queued or running. */
@@ -3117,8 +3149,8 @@ const setup = (
         const fiber = forkNow(
           withCache(Context.add(Context.add(envCtx, Scope.Scope, mountScope), services.Refs, refsOf(inst))),
           Effect.flatMap(Effect.suspend(() => mount.run(node, changes)), (message) =>
-            // A mount that ends with `undefined` sends nothing, and logs nothing.
-            message === undefined ? Effect.void : Effect.sync(() => inst.dispatch(message, source)))
+            // A mount that ends with `Component.noop` sends nothing, and logs nothing.
+            isNoop(message) ? Effect.void : Effect.sync(() => inst.dispatch(message, source)))
         )
         interruptOnClose(mountScope, fiber)
         fiber.addObserver((exit) => {

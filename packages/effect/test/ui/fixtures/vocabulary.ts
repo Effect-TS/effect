@@ -4,6 +4,7 @@
  * own node type for refs and mounts.
  */
 import type { Effect, Stream } from "effect"
+import type { Component } from "effect/ui"
 import { View } from "effect/ui"
 
 export interface TinyField {
@@ -22,13 +23,22 @@ export class TinyVoid<out Msg, out R = never, in out Handlers = Record<string, u
   }
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): TinyVoid<Msg, R | R2, Handlers, Node>
   override onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): TinyVoid<Msg, R | R2, Handlers, Node>
+  override onMount(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
+  override onMount<I>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
   override onMount(name: string, ...args: ReadonlyArray<any>): any {
     return (super.onMount as any)(name, ...args)
   }
@@ -39,13 +49,22 @@ export class TinyElement<out Msg, out R = never, in out Handlers = Record<string
 {
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): TinyElement<Msg, R | R2, Handlers, Node>
   override onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): TinyElement<Msg, R | R2, Handlers, Node>
+  override onMount(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
+  override onMount<I>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
   override onMount(name: string, ...args: ReadonlyArray<any>): any {
     return (super.onMount as any)(name, ...args)
   }

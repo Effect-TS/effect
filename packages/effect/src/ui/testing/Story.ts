@@ -70,6 +70,7 @@ import * as Command from "../Command.ts"
 import type * as Component from "../Component.ts"
 import type * as Head from "../Head.ts"
 import * as loaders from "../internal/loaders.ts"
+import { isNoop } from "../internal/noop.ts"
 import { checkAuthorRefs, checkChildPaths, checkFallbackPaths, segment } from "../internal/paths.ts"
 import * as schedule from "../internal/schedule.ts"
 import * as MessageLog from "../MessageLog.ts"
@@ -92,10 +93,12 @@ import * as Query from "./Query.ts"
  * @since 4.1.5
  */
 export interface Pending<Msg> {
-  readonly command: Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">
+  readonly command:
+    | Command.Issued<Msg | Component.Noop, any, never, "Effect">
+    | Command.Issued<Msg | Component.Noop, any, never, "Stream">
   readonly status: "running" | "queued" | "awaiting"
-  /** On an awaiting run: the message it delivers when its wait ends. */
-  readonly message?: Msg | undefined
+  /** On an awaiting run: the message it delivers when its wait ends, or `Component.noop` for none. */
+  readonly message?: Msg | Component.Noop | undefined
   /** On an awaiting run: the loaders its wait is still on, each at the args it awaits. */
   readonly awaiting?: ReadonlyArray<AwaitedLoader> | undefined
 }
@@ -150,10 +153,14 @@ export interface Story<Props, Model, Msg, Events, Loaded = { readonly [name: str
    * An awaiting run that is cut delivers its message instead, and isn't here.
    */
   readonly interrupted: ReadonlyArray<
-    Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">
+    | Command.Issued<Msg | Component.Noop, any, never, "Effect">
+    | Command.Issued<Msg | Component.Noop, any, never, "Stream">
   >
   /** Commands ignored by `mode: "drop"`. */
-  readonly dropped: ReadonlyArray<Command.Issued<Msg, any, never, "Effect"> | Command.Issued<Msg, any, never, "Stream">>
+  readonly dropped: ReadonlyArray<
+    | Command.Issued<Msg | Component.Noop, any, never, "Effect">
+    | Command.Issued<Msg | Component.Noop, any, never, "Stream">
+  >
   /** The list loaders with a load more `update` issued and no step has settled yet. */
   readonly loadingMore: ReadonlyArray<string>
   /**
@@ -1313,9 +1320,12 @@ const handle = <Msg, Payload>(handler: View.Handler<Msg, Payload>, payload: Payl
 
 const dispatch = <Props, Model, Msg, Events>(
   story: Story<Props, Model, Msg, Events>,
-  message: Msg | undefined
+  message: Msg | Component.Noop | undefined
 ): Story<Props, Model, Msg, Events> =>
-  message === undefined ? story : apply(story, story.component.update(story.model, message, story.props, story.slots))
+  // `undefined` is a handler's "no message", and `Component.noop` a Command's or a mount's.
+  message === undefined || isNoop(message)
+    ? story
+    : apply(story, story.component.update(story.model, message, story.props, story.slots))
 
 /** `node` and its ancestors in `root`, innermost first, or `undefined` when `node` isn't in `root`. */
 const pathTo = (root: View.Node<any, any>, node: Query.Node): Array<View.Node<any, any>> | undefined => {

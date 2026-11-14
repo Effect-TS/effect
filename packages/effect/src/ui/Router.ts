@@ -53,8 +53,7 @@
  *
  * const Message = Schema.TaggedUnion({
  *   ChangedRoute: { route: AppRoute },
- *   Go: { route: AppRoute },
- *   Navigated: {}
+ *   Go: { route: AppRoute }
  * })
  *
  * const App = Component.define({
@@ -64,12 +63,11 @@
  *   message: Message
  * }).make({
  *   init: ($) => ({ route: $.props.route }),
- *   update: (model, message, $) =>
+ *   update: (_model, message, $) =>
  *     Message.match(message, {
  *       ChangedRoute: ({ route }) => ({ route }),
- *       Go: ({ route }) =>
- *         $.run(Router.push(AppRoute, route).pipe(Command.map(() => Message.make({ _tag: "Navigated" })))),
- *       Navigated: () => model
+ *       // The new route comes back through the subscription: the push itself sends nothing.
+ *       Go: ({ route }) => $.run(Router.push(AppRoute, route).pipe(Command.asNoop))
  *     }),
  *   subscriptions: (model) => [Router.subscription(AppRoute, model.route, (route) => Message.make({ _tag: "ChangedRoute", route }))],
  *   view: (model, h) => h.el("p", model.route._tag)
@@ -287,8 +285,9 @@ export class Replace extends Command.Service<Replace>()(
  * `routes.make`; pass the union given to the Router Layer or one of its
  * subsets. A route equal to the current one does nothing. It returns
  * `"blocked"` without navigating while a `Router.blocked` Subscription holds
- * a block. Map the outcome to a message with `Command.map`. The component
- * requires `Push`.
+ * a block. Map the outcome to a message with `Command.map`, or end it with
+ * no message with `Command.asNoop`, which also hides a `"blocked"`
+ * outcome. The component requires `Push`.
  *
  * @stability experimental
  * @category commands
@@ -397,7 +396,7 @@ export class PatchQuery extends Command.Service<PatchQuery>()(
  * const SearchRoute = AppRoute.subset(["Search"])
  *
  * const typed = (route: typeof SearchRoute.Type, text: string) =>
- *   Router.patchQuery(AppRoute, route, { q: text || undefined }).pipe(Command.map(() => ({ _tag: "Patched" as const })))
+ *   Router.patchQuery(AppRoute, route, { q: text || undefined }).pipe(Command.asNoop)
  * ```
  *
  * @see {@link replace} to navigate to a whole route value instead

@@ -1,5 +1,5 @@
 import { Context, Data, Effect, Schema, Stream } from "effect"
-import { Command, type Component, Renderer } from "effect/ui"
+import { Command, Component, Renderer } from "effect/ui"
 import { describe, expect, it } from "tstyche"
 
 const Message = Schema.TaggedUnion({ Got: { n: Schema.Number } })
@@ -22,6 +22,8 @@ class Save extends Command.Service<Save>()(
 ) {}
 declare const condition: boolean
 declare const $: Component.Update<{}, typeof Message.Type, never, {}>
+declare const $init: Component.Init<{}, typeof Message.Type, never, {}>
+declare const $never: Component.Update<{}, never, never, {}>
 
 describe("Command", () => {
   describe("Issued", () => {
@@ -273,6 +275,83 @@ describe("Command", () => {
       expect($.run).type.toBeCallableWith(
         Hold().pipe(Command.map((): typeof Message.Type => Message.make({ _tag: "Got", n: 1 })))
       )
+    })
+  })
+  describe("Component.noop", () => {
+    type Msg = typeof Message.Type
+    const got = Message.make({ _tag: "Got", n: 1 })
+    const Quiet = Command.make("Quiet", { args: {} }, () => Effect.succeed(Component.noop))
+    const QuietAs = Command.make("QuietAs", { args: {} }, () => Effect.succeed(1).pipe(Effect.as(Component.noop)))
+    const QuietMap = Command.make("QuietMap", { args: {} }, () => Effect.map(Effect.succeed(1), () => Component.noop))
+    const Either = Command.make("Either", { args: {} }, () =>
+      Effect.gen(function*() {
+        const n = yield* Effect.succeed(1)
+        if (n > 0) return Component.noop
+        return got
+      }))
+    const QuietStream = Command.make("QuietStream", { args: {}, stream: true }, () => Stream.make(Component.noop, got))
+
+    it("a body, a generator and a mapper may end with it, and keep its type", () => {
+      expect(Quiet()).type.toBe<Command.Issued<Component.Noop, never, Component.Noop, "Effect">>()
+      expect(QuietAs()).type.toBe<Command.Issued<Component.Noop, never, Component.Noop, "Effect">>()
+      expect(QuietMap()).type.toBe<Command.Issued<Component.Noop, never, Component.Noop, "Effect">>()
+      expect<Command.Issued<Msg | Component.Noop, never, Msg | Component.Noop, "Effect">>().type.toBeAssignableFrom(
+        Either()
+      )
+      expect(Fx().pipe(Command.map(() => Component.noop))).type.toBe<
+        Command.Issued<Component.Noop, never, string, "Effect">
+      >()
+    })
+
+    it("$.run takes a Command ending in a message, Component.noop or either, in update and init", () => {
+      for (const command of [Quiet(), QuietAs(), QuietMap(), Either(), QuietStream()]) {
+        expect($.run).type.toBeCallableWith(command)
+        expect($init.set({}).run).type.toBeCallableWith(command)
+      }
+      expect($.run).type.toBeCallableWith(Quiet(), Fx().pipe(Command.as(got)))
+    })
+
+    it("a component whose Message is Schema.Never runs a silent Command, and nothing else", () => {
+      expect($never.run).type.toBeCallableWith(Quiet())
+      expect($never.run).type.toBeCallableWith(Fx().pipe(Command.asNoop))
+      expect($never.run).type.not.toBeCallableWith(Either())
+    })
+
+    it("$.run rejects the value itself, alone or in a union with a Command, and other results", () => {
+      expect($.run).type.not.toBeCallableWith(Component.noop)
+      expect($init.set({}).run).type.not.toBeCallableWith(Component.noop)
+      const maybe = condition ? Quiet() : Component.noop
+      expect($.run).type.not.toBeCallableWith(maybe)
+      expect($init.set({}).run).type.not.toBeCallableWith(maybe)
+      expect($.run).type.not.toBeCallableWith(Command.make("V", { args: {} }, () => Effect.void)())
+      expect($.run).type.not.toBeCallableWith(Command.make("U", { args: {} }, () => Effect.succeed(undefined))())
+      expect($.run).type.not.toBeCallableWith(Command.make("S", { args: {} }, () => Effect.succeed(Symbol.for("x")))())
+      expect($.run).type.not.toBeCallableWith(Command.make("O", { args: {} }, () => Effect.succeed({}))())
+      expect($.run).type.not.toBeCallableWith(Fx())
+    })
+
+    it("asNoop keeps the kind, source and requirements, in both forms, and takes no Unmatched Command", () => {
+      expect(Fx().pipe(Command.asNoop)).type.toBe<Command.Issued<Component.Noop, never, string, "Effect">>()
+      expect(Command.asNoop(St())).type.toBe<Command.Issued<Component.Noop, never, string, "Stream">>()
+      expect(SA.make().pipe(Command.asNoop)).type.toBe<Command.Issued<Component.Noop, SA, string, "Effect">>()
+      expect(Command.asNoop).type.not.toBeCallableWith(Save.make({ id: "t1", title: "milk" }))
+      expect(Command.asNoop).type.not.toBeCallableWith(Component.noop)
+    })
+
+    it("a match branch may end with it", () => {
+      const quietOnSuccess = Save.make({ id: "t1", title: "milk" }).pipe(Command.match({
+        onSuccess: () => Component.noop,
+        onFailure: (error) => Message.make({ _tag: "Got", n: error.reason.length })
+      }))
+      expect($.run).type.toBeCallableWith(quietOnSuccess)
+      expect($never.run).type.not.toBeCallableWith(quietOnSuccess)
+    })
+
+    it("isNoop narrows both branches, and === only the true one", () => {
+      const result = {} as string | Component.Noop
+      if (Component.isNoop(result)) expect(result).type.toBe<Component.Noop>()
+      else expect(result).type.toBe<string>()
+      if (result !== Component.noop) expect(result).type.toBe<string | Component.Noop>()
     })
   })
 })

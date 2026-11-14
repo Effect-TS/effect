@@ -111,6 +111,7 @@ import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Stream from "../../Stream.ts"
 import * as Command from "../Command.ts"
+import type * as Component from "../Component.ts"
 import * as Renderer from "../Renderer.ts"
 import * as View from "../View.ts"
 
@@ -526,13 +527,28 @@ export class VoidElement<
    */
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): VoidElement<Msg, R | R2, E, Node, Tag>
   override onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): VoidElement<Msg, R | R2, E, Node, Tag>
+  /**
+   * Rejects any other mount result, with a type error that says what to end
+   * it with.
+   *
+   * @since 4.1.5
+   */
+  override onMount(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
+  override onMount<I>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
   override onMount(name: string, ...args: ReadonlyArray<any>): any {
     return (super.onMount as any)(name, ...args)
   }
@@ -939,13 +955,28 @@ export class Element<
    */
   override onMount<R2>(
     name: string,
-    run: (node: Node) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): Element<Msg, R | R2, E, Node, Tag>
   override onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): Element<Msg, R | R2, E, Node, Tag>
+  /**
+   * Rejects any other mount result, with a type error that says what to end
+   * it with.
+   *
+   * @since 4.1.5
+   */
+  override onMount(
+    name: string,
+    run: (node: Node) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
+  override onMount<I>(
+    name: string,
+    input: I,
+    run: (node: Node, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | View.MountHint, never, any>
+  ): never
   override onMount(name: string, ...args: ReadonlyArray<any>): any {
     return (super.onMount as any)(name, ...args)
   }
