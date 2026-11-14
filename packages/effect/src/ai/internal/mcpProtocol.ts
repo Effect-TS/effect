@@ -133,11 +133,16 @@ export const invocationFromRequestContext = (
  */
 export const requireCompleteOperation = <A>(
   protocolVersion: PublicMcpProtocol.ProtocolVersion,
-  outcome: McpCore.OperationOutcome<A>
+  outcome: McpCore.OperationOutcome<A> | McpCore.TaskCreated
 ): Effect.Effect<A, McpCore.UnsupportedByProtocol> =>
   outcome._tag === "Complete"
     ? Effect.succeed(outcome.value)
-    : Effect.fail(new McpCore.UnsupportedByProtocol({ protocolVersion, feature: "Client input" }))
+    : Effect.fail(
+      new McpCore.UnsupportedByProtocol({
+        protocolVersion,
+        feature: outcome._tag === "Task" ? "Tasks" : "Client input"
+      })
+    )
 
 /**
  * Projects boolean property schemas to equivalent objects for pre-June adapters.
