@@ -8,6 +8,7 @@
  * @stability stable
  * @since 4.0.0
  */
+import type * as Brand from "./Brand.ts"
 import * as Cause from "./Cause.ts"
 import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
@@ -16,6 +17,8 @@ import * as Effectable from "./Effectable.ts"
 import { dual, memoize } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as LogLevel_ from "./LogLevel.ts"
+import type * as Newtype from "./Newtype.ts"
+import type * as Optic from "./Optic.ts"
 import * as Option from "./Option.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rec from "./Record.ts"
@@ -531,6 +534,128 @@ export const withDefault: {
  */
 export const option = <A>(self: Config<A>): Config<Option.Option<A>> =>
   self.pipe(map(Option.some), withDefault(Option.none()))
+
+/**
+ * Brands the parsed value of a config.
+ *
+ * **When to use**
+ *
+ * Use when a config value should be typed as a branded value, such as a
+ * `string & Brand<"UserId">`.
+ *
+ * **Details**
+ *
+ * When given a brand key, the brand is applied only at the type level and the
+ * parsed value is returned unchanged.
+ *
+ * When given a `Brand.Constructor`, its unbranded type must be a supertype of
+ * the config value, and the constructor's checks run on every successfully
+ * parsed value. A failed check is a validation failure, not semantic absence,
+ * so {@link withDefault} and {@link option} do not recover it. Constructors
+ * without checks, such as `Brand.nominal`, behave like the brand-key form.
+ *
+ * **Gotchas**
+ *
+ * The checks run after parsing, so their failures are not annotated with the
+ * config path. To report the path, brand the schema instead:
+ * `Config.schema(Schema.String.pipe(Schema.fromBrand("UserId", UserId)), "USER_ID")`.
+ *
+ * **Example** (Branding a config value)
+ *
+ * ```ts import.meta.vitest
+ * import { Brand, Config, ConfigProvider, Effect } from "effect"
+ *
+ * type PoolSize = number & Brand.Brand<"PoolSize">
+ * const PoolSize = Brand.make<PoolSize>((n) => n >= 1 && n <= 100)
+ *
+ * const poolSize = Config.Int("POOL_SIZE").pipe(Config.withBrand(PoolSize))
+ * const userId = Config.String("USER_ID").pipe(Config.withBrand("UserId"))
+ *
+ * const provider = ConfigProvider.fromUnknown({ POOL_SIZE: "10", USER_ID: "u1" })
+ * Effect.runSync(poolSize.parse(provider)) // => 10
+ * Effect.runSync(userId.parse(provider)) // => "u1"
+ * ```
+ *
+ * @stability stable
+ * @category combinators
+ * @since 4.1.3
+ */
+export const withBrand: {
+  <const K extends string>(brand: K): <A>(self: Config<A>) => Config<Brand.Branded<A, K>>
+  <B extends Brand.Brand<any>>(
+    ctor: Brand.Constructor<B>
+  ): <A extends Brand.Brand.Unbranded<B>>(self: Config<A>) => Config<A & Brand.Brand.Brands<B>>
+  <A, const K extends string>(self: Config<A>, brand: K): Config<Brand.Branded<A, K>>
+  <A extends Brand.Brand.Unbranded<B>, B extends Brand.Brand<any>>(
+    self: Config<A>,
+    ctor: Brand.Constructor<B>
+  ): Config<A & Brand.Brand.Brands<B>>
+} = dual(2, <A>(self: Config<A>, brand: string | Brand.Constructor<any>): Config<A> => {
+  const checks = typeof brand === "string" ? undefined : brand.checks
+  if (checks === undefined) {
+    return self
+  }
+  return mapEffect(self, (value) =>
+    Result.match(SchemaAST.runChecks(checks, value), {
+      onSuccess: () => Effect.succeed(value),
+      onFailure: (issue) => Effect.fail(new ConfigError(new Schema.SchemaError(issue)))
+    }))
+})
+
+/**
+ * Wraps the parsed value of a config in a newtype.
+ *
+ * **When to use**
+ *
+ * Use when a config value should be typed as a `Newtype`, such as an
+ * `interface UserId extends Newtype.Newtype<"UserId", string> {}`.
+ *
+ * **Details**
+ *
+ * In both forms the config value must match the newtype's carrier type.
+ *
+ * Called with only a type argument, `withNewtype<N>()` applies the newtype at
+ * the type level and returns the parsed value unchanged.
+ *
+ * When given an `Optic.Iso`, such as one created with `Newtype.makeIso`, the
+ * iso's `set` wraps every successfully parsed value.
+ *
+ * **Example** (Wrapping a config value in a newtype)
+ *
+ * ```ts import.meta.vitest
+ * import { Config, ConfigProvider, Effect, Newtype } from "effect"
+ *
+ * interface UserId extends Newtype.Newtype<"UserId", string> {}
+ *
+ * const userId = Config.String("USER_ID").pipe(Config.withNewtype(Newtype.makeIso<UserId>()))
+ * interface TenantId extends Newtype.Newtype<"TenantId", string> {}
+ *
+ * const tenantId = Config.String("TENANT_ID").pipe(Config.withNewtype<TenantId>())
+ *
+ * const provider = ConfigProvider.fromUnknown({ USER_ID: "u1", TENANT_ID: "t1" })
+ * Effect.runSync(userId.parse(provider)) // => "u1"
+ * Effect.runSync(tenantId.parse(provider)) // => "t1"
+ * ```
+ *
+ * @see {@link withBrand} – brand the parsed value instead
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.3
+ */
+export const withNewtype: {
+  <N extends Newtype.Newtype.Any>(): (self: Config<Newtype.Newtype.Carrier<N>>) => Config<N>
+  <N extends Newtype.Newtype.Any>(
+    iso: Optic.Iso<N, Newtype.Newtype.Carrier<N>>
+  ): (self: Config<Newtype.Newtype.Carrier<N>>) => Config<N>
+  <N extends Newtype.Newtype.Any>(
+    self: Config<Newtype.Newtype.Carrier<N>>,
+    iso: Optic.Iso<N, Newtype.Newtype.Carrier<N>>
+  ): Config<N>
+} = dual(
+  (args) => isConfig(args[0]),
+  <A>(self: Config<A>, iso?: Optic.Iso<any, A>): Config<any> => iso === undefined ? self : map(self, iso.set)
+)
 
 /**
  * Extracts the successfully parsed value type from a `Config`.
