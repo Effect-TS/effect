@@ -51,6 +51,20 @@ function arbitraryError(what: string, path: ReadonlyArray<PropertyKey>) {
   return errorWithPath(`Unable to derive an arbitrary for ${what}`, path)
 }
 
+function recordUnsupportedPatterns(
+  { diagnosticPath: path, diagnostics }: Model.GenerationState,
+  patterns: ReadonlyArray<Schema.Annotations.ToArbitrary.Pattern>
+): void {
+  if (diagnostics === undefined) return
+  for (const { flags, source } of patterns) {
+    const seen = diagnostics.some((diagnostic) =>
+      diagnostic._tag === "UnsupportedPattern" && diagnostic.source === source && diagnostic.flags === flags &&
+      diagnostic.path.length === path.length && diagnostic.path.every((key, index) => key === path[index])
+    )
+    if (!seen) diagnostics.push({ _tag: "UnsupportedPattern", path, source, flags })
+  }
+}
+
 function sumCosts(costs: Iterable<number>): number {
   let out = 0
   for (const cost of costs) {
@@ -1027,6 +1041,26 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
   const nodes: Array<Model.Compiled<any>> = []
   const suspendBodies = new Map<Model.Compiled<any>, Model.Compiled<any>>()
   const pending: Array<() => void> = []
+  let hasUnsupportedPatterns = false
+  const pathNodes: Array<readonly [Model.Compiled<any>, Model.Compiled<any>]> = []
+  const atPath = (compiled: Model.Compiled<any>, key: PropertyKey): Model.Compiled<any> => {
+    const node = Model.makeCompiled(
+      [compiled],
+      () => compiled.minCost,
+      (state) =>
+        compiled.generate(
+          state.diagnostics === undefined ? state : {
+            ...state,
+            diagnosticPath: [...state.diagnosticPath, key]
+          }
+        )
+    )
+    // Scalar index-signature specializations can also be compiled during generation.
+    node.minCost = compiled.minCost
+    nodes.push(node)
+    pathNodes.push([node, compiled])
+    return node
+  }
   const recur = (
     ast: SchemaAST.AST,
     path: ReadonlyArray<PropertyKey>,
@@ -1072,6 +1106,13 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     return placeholder
   }
 
+  const recurAt = (
+    ast: SchemaAST.AST,
+    path: ReadonlyArray<PropertyKey>,
+    key: PropertyKey,
+    inherited?: FilterConstraint
+  ): Model.Compiled<any> => atPath(recur(ast, [...path, key], inherited), key)
+
   const compileBase = (
     ast: SchemaAST.AST,
     path: ReadonlyArray<PropertyKey>,
@@ -1103,10 +1144,13 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         )
       case "String": {
         const patterns: Array<Regexp.Compiled> = []
+        const unsupported: Array<Schema.Annotations.ToArbitrary.Pattern> = []
         for (const candidate of constraint?.patterns ?? []) {
           const pattern = Regexp.compile(candidate)
           if (pattern !== undefined) patterns.push(pattern)
+          else unsupported.push(candidate)
         }
+        if (unsupported.length > 0) hasUnsupportedPatterns = true
         let [minimum, maximum = infinity] = lengthBounds(constraint, ["minLength", "maxLength"], path, "string")
         const hasCodePoints = constraint?.minCodePoints !== undefined || constraint?.maxCodePoints !== undefined
         let [minCodePoints, maxCodePoints = infinity] = lengthBounds(
@@ -1128,6 +1172,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
           [],
           () => 0,
           (state) => {
+            recordUnsupportedPatterns(state, unsupported)
             const pattern = patterns.length === 0
               ? undefined
               : patterns.length === 1
@@ -1259,7 +1304,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
         )
       }
       case "TemplateLiteral": {
-        const parts = ast.parts.map((part, index) => recur(part, [...path, index], finiteNumberConstraint))
+        const parts = ast.parts.map((part, index) => recurAt(part, path, index, finiteNumberConstraint))
         return Model.makeCompiled(
           parts,
           () => sumCosts(parts.map((part) => part.minCost)),
@@ -1330,12 +1375,12 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const uniqueBy = constraint?.uniqueBy
     const elements = ast.elements.map((element, index) => ({
       optional: SchemaAST.isOptional(element),
-      compiled: recur(element, [...path, index])
+      compiled: recurAt(element, path, index)
     }))
     const requiredCount = elements.findIndex((element) => element.optional)
     const required = requiredCount === -1 ? elements.length : requiredCount
     const optional = elements.length - required
-    const rest = ast.rest.map((element, index) => recur(element, [...path, elements.length + index]))
+    const rest = ast.rest.map((element, index) => recurAt(element, path, elements.length + index))
     const head = rest[0]
     const tail = rest.slice(1)
     const [minimum, maximum] = lengthBounds(constraint, ["minLength", "maxLength"], path, "array")
@@ -1487,16 +1532,17 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       const constraint = collectChecks(index.type.checks, undefined).constraint
       return constraint === undefined ? [] : [{ index, position, constraint }]
     })
-    const compileIndexedValue = (type: SchemaAST.AST, path: ReadonlyArray<PropertyKey>) => {
-      const compiled = recur(type, path)
+    const compileIndexedValue = (type: SchemaAST.AST, schemaKey: PropertyKey) => {
+      const valuePath = [...path, schemaKey]
+      const compiled = recurAt(type, path, schemaKey)
       // Scalar specializations have no recursive dependencies and keep the same minimum cost.
       const candidates = type._tag === "String" || type._tag === "Number" || type._tag === "BigInt"
         ? constrainedIndexes.filter(({ index }) => index.type !== type && index.type._tag === type._tag)
         : []
       const specializations = new Map<string, Model.Compiled<any>>()
-      const forKey = (key: PropertyKey): Model.Compiled<any> => {
+      const forKey = (propertyKey: PropertyKey): Model.Compiled<any> => {
         if (candidates.length === 0) return compiled
-        const input = { [key]: undefined }
+        const input = { [propertyKey]: undefined }
         const matching = candidates.filter(({ index }) =>
           SchemaAST.getIndexSignatureKeys(input, index.parameter).length > 0
         )
@@ -1509,9 +1555,10 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
           let inherited: FilterConstraint | undefined
           for (const match of matching) inherited = mergeConstraint(inherited, match.constraint)
           const checks = collectChecks(type.checks, inherited)
-          specialized = compileBase(type, path, checks.constraint)
+          specialized = compileBase(type, valuePath, checks.constraint)
           specialized.minCost = 0
           applyFilters(specialized, type, checks.filters)
+          specialized = atPath(specialized, schemaKey)
         } catch {
           // Incompatible scalar constraints keep the original generator and indexed validation.
         }
@@ -1526,7 +1573,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     const properties = ast.propertySignatures.map((property) => ({
       property,
       optional: SchemaAST.isOptional(property.type),
-      compiled: compileIndexedValue(property.type, [...path, property.name]).forKey(property.name)
+      compiled: compileIndexedValue(property.type, property.name).forKey(property.name)
     }))
     const propertyNames = new Set<PropertyKey>(
       properties.map(({ property }) =>
@@ -1534,9 +1581,9 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
       )
     )
     const indexes = ast.indexSignatures.map((index, position) => {
-      const value = compileIndexedValue(index.type, [...path, `index-${position}-value`])
+      const value = compileIndexedValue(index.type, `index-${position}-value`)
       return {
-        parameter: recur(index.parameter, [...path, `index-${position}-key`]),
+        parameter: recurAt(index.parameter, path, `index-${position}-key`),
         value: value.compiled,
         valueForKey: value.forKey
       }
@@ -1671,7 +1718,7 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
     constraint: FilterConstraint | undefined
   ): Model.Compiled<any> => {
     validateConstraint(constraint, path)
-    const typeParameters = ast.typeParameters.map((parameter, index) => recur(parameter, [...path, index]))
+    const typeParameters = ast.typeParameters.map((parameter, index) => recurAt(parameter, path, index))
     const parameters = ast.typeParameters.map((parameter) => Schema.make(SchemaAST.toType(parameter)))
     const getArbitrary = ast.annotations?.toCodecArbitrary
     const representation = (ast.annotations as Schema.Annotations.Declaration<any> | undefined)?.representation
@@ -1729,6 +1776,10 @@ export function compile<S extends Schema.Constraint>(schema: S): Model.Compiled<
 
   const root = recur(rootAst, [])
   for (let index = 0; index < pending.length; index++) pending[index]()
+  // Schemas without unsupported patterns need no path tracking while generating values.
+  if (!hasUnsupportedPatterns) {
+    for (const [node, compiled] of pathNodes) node.generate = compiled.generate
+  }
   const dependents = analyzeDependencyGraph(nodes, suspendBodies)
   const recursiveQueue = nodes.filter((node) => node.recursive)
   for (let index = 0; index < recursiveQueue.length; index++) {

@@ -126,12 +126,50 @@ export interface SampleOptions {
 }
 
 /**
+ * Describes a generation limitation encountered during sampling or property checking.
+ *
+ * **Details**
+ *
+ * Use `_tag` to distinguish diagnostic variants and access their specific fields.
+ *
+ * @see {@link UnsupportedPatternDiagnostic}
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type GenerationDiagnostic = UnsupportedPatternDiagnostic
+
+/**
+ * Describes a pattern that could not guide construction at a visited schema location.
+ *
+ * **Details**
+ *
+ * The pattern remains a validation filter. Its presence does not prove that it caused exhaustion. Paths are relative
+ * to the schema passed to `Arbitrary.schema`; an empty path denotes its root. Array and tuple path segments identify
+ * schema elements rather than generated element indexes, and recursive schemas can produce repeated path segments.
+ * Arbitrary composition does not prepend its own keys or indexes to these paths.
+ *
+ * @see {@link GenerationDiagnostic}
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export interface UnsupportedPatternDiagnostic {
+  readonly _tag: "UnsupportedPattern"
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly source: string
+  readonly flags: string
+}
+
+/**
  * Describes sampling exhaustion before the requested number of values was generated.
  *
  * **Details**
  *
  * The effective `seed` can be passed to {@link sampleEffect} to reproduce the exhausted run, including when sampling
  * originally selected a seed from the Effect `Random` service.
+ * `diagnostics` contains deduplicated generation limitations encountered during this execution, or an empty array
+ * when none were encountered.
  *
  * @stability unstable
  * @category errors
@@ -142,6 +180,7 @@ export interface SampleError {
   readonly generated: number
   readonly discards: number
   readonly seed: string | number
+  readonly diagnostics: ReadonlyArray<GenerationDiagnostic>
 }
 
 /**
@@ -317,6 +356,8 @@ export interface Falsified<out A, out E> {
  *
  * The effective `seed` can be passed to {@link checkEffect} to reproduce the exhausted run, including when checking
  * originally selected a seed from the Effect `Random` service.
+ * `diagnostics` contains deduplicated generation limitations encountered during this execution, or an empty array
+ * when none were encountered.
  *
  * @stability unstable
  * @category models
@@ -327,6 +368,7 @@ export interface Exhausted {
   readonly runs: number
   readonly discards: number
   readonly seed: string | number
+  readonly diagnostics: ReadonlyArray<GenerationDiagnostic>
 }
 
 /**
@@ -390,9 +432,22 @@ export function formatCheckFailure<A, E>(result: CheckResult<A, E>): string | un
         `Replay: ${result.replay}`
     case "Exhausted":
       return `Property exhausted after ${result.runs} run(s) and ${result.discards} discard(s)\n` +
-        `Seed: ${Formatter.format(result.seed, { space: 2 })}`
+        `Seed: ${Formatter.format(result.seed, { space: 2 })}` +
+        result.diagnostics.map(formatGenerationDiagnostic).join("")
     case "ReplayMismatch":
       return `Property replay failed: ${result.reason}`
+  }
+}
+
+function formatGenerationDiagnostic(diagnostic: GenerationDiagnostic): string {
+  switch (diagnostic._tag) {
+    case "UnsupportedPattern":
+      return `\n\nPattern unavailable for constructive generation at ${
+        diagnostic.path.length === 0 ? "<root>" : Formatter.formatPath(diagnostic.path)
+      }:\n` +
+        `  /${diagnostic.source}/${diagnostic.flags}\n` +
+        "The pattern remains a validation filter.\n" +
+        "Consider adding a supported pattern to guide generation."
   }
 }
 

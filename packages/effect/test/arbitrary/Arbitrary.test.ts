@@ -1003,6 +1003,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [{ _tag: "UnsupportedPattern", path: [], source: "^(?=a)b$", flags: "" }],
             generated: 0,
             discards: 3,
             seed: "unsupported-pattern"
@@ -1047,6 +1048,7 @@ describe("Arbitrary", () => {
           if (Result.isFailure(result)) {
             assert.deepStrictEqual(result.failure, {
               _tag: "SampleError",
+              diagnostics: [],
               generated: 0,
               discards: 3,
               seed: "incompatible-pattern-length"
@@ -2142,6 +2144,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "structural-unique"
@@ -2329,6 +2332,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "uninhabited-one-of"
@@ -3107,6 +3111,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "exhaustion"
@@ -3267,6 +3272,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(sampled)) {
           assert.deepStrictEqual(sampled.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "filter-exhaustion"
@@ -3274,6 +3280,7 @@ describe("Arbitrary", () => {
         }
         assert.deepStrictEqual(checked, {
           _tag: "Exhausted",
+          diagnostics: [],
           runs: 0,
           discards: 3,
           seed: "filter-exhaustion"
@@ -3475,6 +3482,7 @@ describe("Arbitrary", () => {
           if (Result.isFailure(sampled)) {
             assert.deepStrictEqual(sampled.failure, {
               _tag: "SampleError",
+              diagnostics: [],
               generated: 0,
               discards: 3,
               seed: "flat-map-discard"
@@ -3482,6 +3490,7 @@ describe("Arbitrary", () => {
           }
           assert.deepStrictEqual(checked, {
             _tag: "Exhausted",
+            diagnostics: [],
             runs: 0,
             discards: 3,
             seed: "flat-map-discard"
@@ -3790,6 +3799,7 @@ describe("Arbitrary", () => {
       })
       const exhausted = Arbitrary.formatCheckFailure({
         _tag: "Exhausted",
+        diagnostics: [],
         runs: 0,
         discards: 1,
         seed: "seed"
