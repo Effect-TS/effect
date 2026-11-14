@@ -1,5 +1,5 @@
 /**
- * The conformance rules for files, buttons and modals, against the adapter
+ * The conformance rules for files, buttons, modals and commands, against the adapter
  * over a stubbed `DiscordREST` that keeps what was posted. Clicks and
  * submits are built from the posted components and go through
  * `DiscordChat.interaction`, so the callback answers are tested too.
@@ -17,9 +17,12 @@ const portable = (name: string) =>
   name.startsWith("modal/") ||
   name.startsWith("edit/") && name.endsWith("Actions") ||
   name.startsWith("descriptor/measure") && name.endsWith("Actions") ||
+  name.startsWith("command/") ||
   name === "unsupported/buttons" ||
   name === "unsupported/selects" ||
-  name === "unsupported/modals"
+  name === "unsupported/modals" ||
+  name === "unsupported/commands" ||
+  name === "unsupported/ephemeral"
 
 describe("conformance over the stubbed DiscordREST", () => {
   const names = Object.keys(conformance({
@@ -28,7 +31,7 @@ describe("conformance over the stubbed DiscordREST", () => {
     userPosts: () => Effect.die("unused"),
     parseMention: DiscordChat.parseMention,
     refuseFiles: () => Effect.void,
-    interactions: { click: () => Effect.void, submit: () => Effect.void }
+    interactions: { click: () => Effect.void, submit: () => Effect.void, command: () => Effect.void }
   })).filter(portable)
 
   for (const name of names) {

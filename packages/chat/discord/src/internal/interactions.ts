@@ -34,6 +34,7 @@ const labelLength = 45
 /** Discord's interaction callback types. */
 const DEFERRED_UPDATE_MESSAGE = 6
 const CHANNEL_MESSAGE_WITH_SOURCE = 4
+const DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
 const MODAL = 9
 const EPHEMERAL = 1 << 6
 
@@ -201,6 +202,33 @@ export const errorsCallback = (errors: Readonly<Record<string, string>>): Callba
   }
 })
 
+/**
+ * The answer to a `respond` reply: the message a `post` sends, with the
+ * ephemeral flag when private.
+ *
+ * @internal
+ */
+export const respondCallback = (message: {
+  readonly content: string
+  readonly allowed_mentions: Discord.MessageAllowedMentionsRequest
+  readonly flags: number
+  readonly components?: ReadonlyArray<Row> | undefined
+}, visibility: ChatInteraction.Visibility): Callback => ({
+  type: CHANNEL_MESSAGE_WITH_SOURCE,
+  data: { ...message, flags: message.flags | (visibility === "ephemeral" ? EPHEMERAL : 0) }
+})
+
+/**
+ * The answer to a `defer` reply. The visibility is fixed here and holds for
+ * the edit that follows.
+ *
+ * @internal
+ */
+export const deferCallback = (visibility: ChatInteraction.Visibility): Callback => ({
+  type: DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  ...(visibility === "ephemeral" ? { data: { flags: EPHEMERAL } } : {})
+})
+
 // Inbound
 
 const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
@@ -218,8 +246,15 @@ const ModalComponent = Schema.Struct({
   components: optional(Schema.Array(Input))
 })
 
+const CommandOption = Schema.Struct({
+  type: Schema.Number,
+  name: optional(Schema.String),
+  value: optional(Schema.Unknown)
+})
+
 const InteractionFields = Schema.Struct({
   id: Schema.String,
+  application_id: optional(Schema.String),
   type: Schema.Number,
   token: Schema.String,
   channel_id: optional(Schema.String),
@@ -227,18 +262,25 @@ const InteractionFields = Schema.Struct({
   user: optional(Schema.Struct({ id: Schema.String })),
   message: optional(Schema.Struct({ id: Schema.String, channel_id: optional(Schema.String) })),
   data: Schema.Struct({
-    custom_id: Schema.String,
+    custom_id: optional(Schema.String),
     component_type: optional(Schema.Number),
     values: optional(Schema.Array(Schema.String)),
-    components: optional(Schema.Array(ModalComponent))
+    components: optional(Schema.Array(ModalComponent)),
+    name: optional(Schema.String),
+    type: optional(Schema.Number),
+    options: optional(Schema.Array(CommandOption))
   })
 })
 
 const decodeFields = Schema.decodeUnknownOption(InteractionFields)
 
-/** Discord's interaction types for a component click and a modal submit. */
+/** Discord's interaction types for a command, a component click and a modal submit. */
+const APPLICATION_COMMAND = 2
 const MESSAGE_COMPONENT = 3
 const MODAL_SUBMIT = 5
+/** Discord's command type for a slash command, and its option type for a string. */
+const CHAT_INPUT = 1
+const STRING = 3
 
 /**
  * The id and token to answer an interaction with, read from its payload.
@@ -249,9 +291,35 @@ export const answerTo = (raw: unknown): { readonly id: string; readonly token: s
   Option.getOrUndefined(Option.map(decodeFields(raw), ({ id, token }) => ({ id, token })))
 
 /**
+ * The application id and token a deferred command's response is edited
+ * with, and the interaction's id, read from its payload.
+ *
+ * @internal
+ */
+export const followUpTo = (
+  raw: unknown
+): { readonly id: string; readonly applicationId: string; readonly token: string } | undefined =>
+  Option.getOrUndefined(
+    Option.flatMap(decodeFields(raw), ({ application_id, id, token }) =>
+      typeof application_id === "string" && application_id !== ""
+        ? Option.some({ id, applicationId: application_id, token })
+        : Option.none())
+  )
+
+/**
+ * The text of a slash command's options: none, or one string. Undefined for
+ * anything else.
+ */
+const commandText = (options: ReadonlyArray<typeof CommandOption.Type> | null | undefined): string | undefined => {
+  if (options === null || options === undefined || options.length === 0) return ""
+  const [option] = options
+  return options.length === 1 && option.type === STRING && typeof option.value === "string" ? option.value : undefined
+}
+
+/**
  * The interaction a payload is, when it is a click on a button or string
- * select, or a submit of a modal opened from a message. Anything else, a
- * slash command for one, is none.
+ * select, a submit of a modal, or a slash command with at most one string
+ * option. Anything else, a message or user command for one, is none.
  *
  * @internal
  */
@@ -262,49 +330,124 @@ export const normalize = (raw: unknown): Option.Option<ChatInteraction.Interacti
   const message = fields.message
   const userId = fields.member?.user?.id ?? fields.user?.id
   const channelId = message?.channel_id ?? fields.channel_id
-  if (
-    message === null || message === undefined || userId === undefined || channelId === null || channelId === undefined
-  ) {
-    return Option.none()
-  }
-  const origin = { thread: Normalize.thread(channelId), messageId: message.id, userId, raw: raw as Schema.Json }
+  if (userId === undefined || channelId === null || channelId === undefined) return Option.none()
   const { data } = fields
+  if (fields.type === APPLICATION_COMMAND) {
+    const text = commandText(data.options)
+    // A missing command type is taken as a slash command, which is Discord's default.
+    return (data.type ?? CHAT_INPUT) !== CHAT_INPUT || typeof data.name !== "string" || data.name === "" ||
+        text === undefined
+      ? Option.none()
+      : Option.some(ChatInteraction.CommandInvoked.make({
+        id: data.name,
+        text,
+        thread: Normalize.thread(channelId),
+        userId,
+        raw: raw as Schema.Json
+      }))
+  }
+  const customIdValue = data.custom_id
+  if (customIdValue === null || customIdValue === undefined) return Option.none()
+  if (fields.type === MODAL_SUBMIT) return submitted(fields, customIdValue, channelId, userId, raw)
+  if (message === null || message === undefined) return Option.none()
+  const origin = { thread: Normalize.thread(channelId), messageId: message.id, userId, raw: raw as Schema.Json }
   if (fields.type === MESSAGE_COMPONENT && data.component_type === 2) {
-    const { id, value } = splitCustomId(data.custom_id)
+    const { id, value } = splitCustomId(customIdValue)
     return Option.some(ChatInteraction.ButtonClicked.make({ id, ...(value === undefined ? {} : { value }), ...origin }))
   }
   if (fields.type === MESSAGE_COMPONENT && data.component_type === 3) {
     const value = data.values?.[0]
     return value === undefined
       ? Option.none()
-      : Option.some(ChatInteraction.SelectChanged.make({ id: data.custom_id, value, ...origin }))
-  }
-  if (fields.type === MODAL_SUBMIT) {
-    const values: Record<string, string> = {}
-    for (const component of data.components ?? []) {
-      const inputs = component.component === null || component.component === undefined
-        ? component.components ?? []
-        : [component.component]
-      for (const input of inputs) {
-        const value = input.value ?? input.values?.[0]
-        if (typeof input.custom_id === "string" && value !== null && value !== undefined && value !== "") {
-          // An own property, so an id such as `__proto__` keeps its answer.
-          Object.defineProperty(values, input.custom_id, {
-            value,
-            enumerable: true,
-            writable: true,
-            configurable: true
-          })
-        }
-      }
-    }
-    const { id, value: metadata } = splitCustomId(data.custom_id)
-    return Option.some(ChatInteraction.ModalSubmitted.make({
-      id,
-      ...(metadata === undefined ? {} : { metadata }),
-      values,
-      ...origin
-    }))
+      : Option.some(ChatInteraction.SelectChanged.make({ id: customIdValue, value, ...origin }))
   }
   return Option.none()
+}
+
+/** A modal's submit. One a command opened has no `message`, and no `messageId`. */
+const submitted = (
+  fields: typeof InteractionFields.Type,
+  customIdValue: string,
+  channelId: string,
+  userId: string,
+  raw: unknown
+): Option.Option<ChatInteraction.Interaction> => {
+  const values: Record<string, string> = {}
+  for (const component of fields.data.components ?? []) {
+    const inputs = component.component === null || component.component === undefined
+      ? component.components ?? []
+      : [component.component]
+    for (const input of inputs) {
+      const value = input.value ?? input.values?.[0]
+      if (typeof input.custom_id === "string" && value !== null && value !== undefined && value !== "") {
+        // An own property, so an id such as `__proto__` keeps its answer.
+        Object.defineProperty(values, input.custom_id, {
+          value,
+          enumerable: true,
+          writable: true,
+          configurable: true
+        })
+      }
+    }
+  }
+  const { id, value: metadata } = splitCustomId(customIdValue)
+  const message = fields.message
+  return Option.some(ChatInteraction.ModalSubmitted.make({
+    id,
+    ...(metadata === undefined ? {} : { metadata }),
+    values,
+    thread: Normalize.thread(channelId),
+    ...(message === null || message === undefined ? {} : { messageId: message.id }),
+    userId,
+    raw: raw as Schema.Json
+  }))
+}
+
+/**
+ * The create payload of each command in `group`, in the group's order.
+ *
+ * @internal
+ */
+export const commandRequests = (group: ChatInteraction.Group<any>): ReadonlyArray<{
+  readonly type: 1
+  readonly name: string
+  readonly description: string
+  readonly options?:
+    | ReadonlyArray<{
+      readonly type: 3
+      readonly name: string
+      readonly description: string
+      readonly required: boolean
+    }>
+    | undefined
+}> => {
+  const out: Array<{
+    readonly type: 1
+    readonly name: string
+    readonly description: string
+    readonly options?: ReadonlyArray<{
+      readonly type: 3
+      readonly name: string
+      readonly description: string
+      readonly required: boolean
+    }>
+  }> = []
+  for (const definition of (group.definitions as ReadonlyMap<string, ChatInteraction.Definition>).values()) {
+    if (definition.kind !== "command") continue
+    const { argument } = definition
+    out.push({
+      type: CHAT_INPUT,
+      name: definition.id,
+      description: definition.description,
+      ...(argument === undefined ? {} : {
+        options: [{
+          type: STRING,
+          name: argument.name,
+          description: argument.description,
+          required: argument.required
+        }]
+      })
+    })
+  }
+  return out
 }

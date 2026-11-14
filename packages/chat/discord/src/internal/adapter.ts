@@ -23,6 +23,7 @@ import * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type * as ChatThread from "effect/chat/ChatThread"
 import type { Action } from "effect/chat/ChatUi"
+import * as Clock from "effect/Clock"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -58,7 +59,9 @@ export const descriptor: Descriptor = {
     "getUser",
     "buttons",
     "selects",
-    "modals"
+    "modals",
+    "commands",
+    "ephemeral"
   ]),
   // Components sit beside `content`, so the elements cost nothing here.
   measure: (markdown) => Length.codePoints(markdown),
@@ -67,6 +70,7 @@ export const descriptor: Descriptor = {
     filesPerMessage: 10,
     uploadBytes: 10 * 1024 * 1024,
     minWriteInterval: Duration.millis(1500),
+    followUpAge: Duration.minutes(15),
     ...Interactions.limits
   }
 }
@@ -79,6 +83,17 @@ const THREAD_ALREADY_CREATED = 160004
 const WRONG_CHANNEL_TYPE = 50024
 /** Discord's code for "unknown interaction": a callback after the 3 seconds. */
 const UNKNOWN_INTERACTION = 10062
+/**
+ * Discord's codes for an interaction token it no longer takes: "invalid
+ * webhook token" and "unknown webhook". Taken from the docs' list, not
+ * captured after 15 minutes.
+ */
+const SPENT_TOKEN = [50027, 10015]
+/** The start of Discord's snowflake clock, in Unix milliseconds. */
+const DISCORD_EPOCH = 1_420_070_400_000
+
+/** When a snowflake was made, in Unix milliseconds. */
+const snowflakeMillis = (id: string): number => Number(BigInt(id) >> BigInt("22")) + DISCORD_EPOCH
 
 const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
 
@@ -465,10 +480,63 @@ export const make = Effect.fnUntraced(function*(options: {
       )
     }))
 
+  /**
+   * The message a `post` of the same content sends with the default post
+   * options, after the same checks: no mentions and no embeds.
+   * `withPostOptions` does not reach a command's answer.
+   */
+  const message = Effect.fnUntraced(function*(
+    op: string,
+    content: { readonly markdown: string; readonly actions?: ReadonlyArray<Action> | undefined }
+  ) {
+    const rows = yield* components(op, content.actions)
+    yield* checkMessageLength(descriptor, op, content.markdown)
+    return {
+      content: content.markdown,
+      allowed_mentions: allowedMentions(undefined),
+      flags: flags({}),
+      ...(rows.length === 0 ? {} : { components: rows })
+    }
+  })
+
+  /**
+   * Edits the original response of a deferred command, once. Refused before
+   * the call past `followUpAge`, read from the interaction's id. A token
+   * Discord no longer takes is `interaction_expired` too.
+   */
+  const followUp: ChatAdapter["followUp"] = Effect.fnUntraced(function*(deferred, content) {
+    const op = "followUp"
+    const to = deferred.command.thread.platform === Normalize.platform && snowflake.test(deferred.command.thread.id)
+      ? Interactions.followUpTo(deferred.command.raw)
+      : undefined
+    if (to === undefined || !snowflake.test(to.id)) return yield* fail(op, Errors.invalidRequest("invalid_interaction"))
+    const expired = new NotFound({ detail: interactionExpired })
+    const now = yield* Clock.currentTimeMillis
+    if (now - snowflakeMillis(to.id) >= Duration.toMillis(descriptor.limits.followUpAge!)) {
+      return yield* fail(op, expired)
+    }
+    const body = yield* message(op, content)
+    const ephemeral = deferred.visibility === "ephemeral" ? 1 << 6 : 0
+    yield* call(
+      op,
+      rest.updateOriginalWebhookMessage(to.applicationId, to.token, {
+        payload: { ...body, flags: body.flags | ephemeral }
+      }),
+      true
+    ).pipe(
+      Effect.mapError((error) =>
+        SPENT_TOKEN.some((code) => Errors.hasCode(code)(error))
+          ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
+          : error
+      )
+    )
+  })
+
   const adapter: ChatAdapter = {
     descriptor,
     post,
     edit,
+    followUp,
     delete: Effect.fnUntraced(function*(thread, messageId) {
       const channelId = yield* resolve("delete", thread)
       yield* call("delete", rest.deleteMessage(channelId, messageId), true)
@@ -525,33 +593,66 @@ export const make = Effect.fnUntraced(function*(options: {
           return
         case "Ack":
         case "Close":
+          // Type 6 is no answer to a command, so an unhandled one is left to whoever owns it.
+          if (event.value._tag === "CommandInvoked") return
           return yield* logged(callback("ack", to, Interactions.ackCallback))
         case "Errors":
           return yield* logged(callback("errors", to, Interactions.errorsCallback(reply.errors)))
         case "OpenModal": {
-          const click = event.value as ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
-          const handler = yield* ChatInteraction.Handler
+          const from = event.value as
+            | ChatInteraction.ButtonClicked
+            | ChatInteraction.SelectChanged
+            | ChatInteraction.CommandInvoked
           const data = Interactions.modalData(reply.modal)
           if (!("custom_id" in data)) {
-            // The click is still answered, so the person sees no failure for a modal that could not be built.
-            yield* logged(callback("ack", to, Interactions.ackCallback))
-            return yield* handler.refused(click, Errors.chatError("openModal", data))
+            // A click is still answered, so the person sees no failure for a modal that could not be built.
+            // A command has no silent answer, so it gets none, and Discord shows its own failure.
+            if (from._tag !== "CommandInvoked") yield* logged(callback("ack", to, Interactions.ackCallback))
+            const handler = yield* ChatInteraction.Handler
+            return yield* handler.refused(from, Errors.chatError("openModal", data))
           }
-          yield* callback("openModal", to, Interactions.modalCallback(data)).pipe(
-            Effect.catch((error) =>
-              handler.refused(
-                click,
-                Errors.hasCode(UNKNOWN_INTERACTION)(error)
-                  ? Errors.chatError(
-                    "openModal",
-                    new NotFound({ detail: interactionExpired, cause: error.reason })
-                  )
-                  : error
-              )
-            )
-          )
+          return yield* answer(from, "openModal", to, Effect.succeed(Interactions.modalCallback(data)))
         }
+        case "Respond":
+          return yield* answer(
+            event.value as ChatInteraction.CommandInvoked,
+            "respond",
+            to,
+            Effect.map(message("respond", reply), (body) => Interactions.respondCallback(body, reply.visibility))
+          )
+        case "Defer":
+          return yield* answer(
+            event.value as ChatInteraction.CommandInvoked,
+            "defer",
+            to,
+            Effect.succeed(Interactions.deferCallback(reply.visibility))
+          )
       }
+    })
+
+  /**
+   * Sends a reply that must land, or tells `Handler.refused`: a reply that
+   * fails its checks sends nothing, and a callback that comes back
+   * `Unknown interaction` was late, which is `interaction_expired`.
+   */
+  const answer = (
+    event: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged | ChatInteraction.CommandInvoked,
+    op: string,
+    to: { readonly id: string; readonly token: string },
+    payload: Effect.Effect<Discord.CreateInteractionResponseRequest, ChatError>
+  ): Effect.Effect<void, never, ChatInteraction.Handler> =>
+    Effect.gen(function*() {
+      const handler = yield* ChatInteraction.Handler
+      yield* Effect.flatMap(payload, (built) => callback(op, to, built)).pipe(
+        Effect.catch((error) =>
+          handler.refused(
+            event,
+            Errors.hasCode(UNKNOWN_INTERACTION)(error)
+              ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
+              : error
+          )
+        )
+      )
     })
 
   return { adapter, guild, channelType, interaction }
