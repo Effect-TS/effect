@@ -85,18 +85,21 @@ const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]
 
 const makeSocketProtocol = Effect.gen(function*() {
   const frames = yield* Queue.unbounded<string>()
+  const sent = yield* Queue.unbounded<RpcMessage.FromClientEncoded>()
+  const write = (data: string | Uint8Array | Socket.CloseEvent) =>
+    typeof data === "string" ? Effect.asVoid(Queue.offer(sent, JSON.parse(data))) : Effect.void
   const socket = Socket.make({
     reader: Effect.succeed({
       pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
       upgrade: Socket.SocketUpgradeError.unsupported
     }),
-    writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+    writer: Effect.succeed({ write, writeAll: () => Effect.void })
   })
   const protocol = yield* RpcClient.makeProtocolSocket().pipe(
     Effect.provideService(Socket.Socket, socket),
     Effect.provideService(RpcSerialization.RpcSerialization, RpcSerialization.json)
   )
-  return { protocol, frames }
+  return { protocol, frames, sent }
 })
 
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
@@ -362,7 +365,8 @@ describe("RpcClient", () => {
         const caller = yield* client.Ping().pipe(Effect.forkChild)
         const requestId = takeRequestId(yield* Queue.take(sent))
         yield* Effect.yieldNow
-        yield* handle(terminal)
+        // a repeated id is completed once
+        yield* handle(terminal._tag === "Defect" ? terminal : { ...terminal, requestIds: [requestId, requestId] })
         const exit = caller.pollUnsafe()
         assert(exit !== undefined, "terminal delivery must complete the caller before client shutdown")
         assert(Exit.isFailure(exit))
@@ -475,6 +479,83 @@ describe("RpcClient", () => {
       yield* Queue.offer(frames, JSON.stringify([{ _tag: "Defect", defect: "boom" }, reply]))
       assert.deepStrictEqual(yield* Queue.take(received), reply)
     }))
+
+  it.effect("reads other socket responses while a stream chunk waits for buffer space", () =>
+    Effect.gen(function*() {
+      const { protocol, frames, sent } = yield* makeSocketProtocol
+      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const resume = yield* Latch.make()
+      const received: Array<string> = []
+      const stream = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach((value) => resume.whenOpen(Effect.sync(() => received.push(value)))),
+        Effect.forkChild
+      )
+      const streamId = takeRequestId(yield* Queue.take(sent))
+      yield* Queue.offerAll(frames, [
+        JSON.stringify({ _tag: "Chunk", requestId: streamId, values: ["a", "b", "c"] }),
+        JSON.stringify({ _tag: "Exit", requestId: streamId, exit: { _tag: "Success", value: null } })
+      ])
+
+      const unary = yield* client.Unary().pipe(Effect.forkChild)
+      const unaryId = takeRequestId(yield* Queue.take(sent))
+      yield* Queue.offer(
+        frames,
+        JSON.stringify({ _tag: "Exit", requestId: unaryId, exit: { _tag: "Success", value: "ok" } })
+      )
+      assert.strictEqual(yield* Fiber.join(unary), "ok")
+
+      // the stream's Exit is delivered after the waiting values
+      yield* resume.open
+      yield* Fiber.join(stream)
+      assert.deepStrictEqual(received, ["a", "b", "c"])
+    }))
+
+  for (const end of ["is cancelled", "completes", "fails to send"] as const) {
+    it.effect(`interrupts pending Acks when their request ${end}`, () =>
+      Effect.gen(function*() {
+        const interruptedAcks = yield* Queue.unbounded<string | number>()
+        const failRequest = yield* Deferred.make<void, RpcClientError>()
+        const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+        const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+        const protocol = RpcClient.Protocol.of({
+          codecFor: RpcSerialization.json.codecFor,
+          supportsAck: true,
+          supportsTransferables: false,
+          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+          send: (_clientId, message) =>
+            message._tag === "Ack"
+              ? Effect.onInterrupt(Effect.never, () => Queue.offer(interruptedAcks, message.requestId))
+              : Queue.offer(sent, message).pipe(
+                Effect.andThen(end === "fails to send" ? Deferred.await(failRequest) : Effect.void)
+              )
+        })
+        const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+        const handle = yield* Deferred.await(received)
+        const scope = yield* Scope.make()
+        const queue = yield* client.Good(undefined, { asQueue: true }).pipe(Scope.provide(scope))
+        const requestId = takeRequestId(yield* Queue.take(sent))
+        // the transport has not finished sending the first Ack when the next chunk arrives
+        yield* handle({ _tag: "Chunk", requestId, values: ["a"] })
+        yield* handle({ _tag: "Chunk", requestId, values: ["b"] })
+
+        if (end === "is cancelled") {
+          yield* Scope.close(scope, Exit.void)
+          assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
+        } else if (end === "completes") {
+          yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: null } })
+          assert.deepStrictEqual(yield* Queue.collect(queue), ["a", "b"])
+        } else {
+          // the peer can reply before the local send of the request fails
+          const error = new RpcClientError({
+            reason: new RpcClientDefect({ message: "send failed", cause: undefined })
+          })
+          yield* Deferred.fail(failRequest, error)
+          assert.deepStrictEqual(yield* Queue.takeN(queue, 2), ["a", "b"])
+          assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), error)
+        }
+        assert.deepStrictEqual(yield* Queue.takeN(interruptedAcks, 2), [requestId, requestId])
+      }))
+  }
 
   it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
     Effect.gen(function*() {
