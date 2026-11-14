@@ -37191,6 +37191,14 @@ export const ListWorkspaceBudgetsResponse = Schema.Struct({
   "identifier": "ListWorkspaceBudgetsResponse"
 })
 
+export type WorkspaceBudgetInterval = "daily" | "weekly" | "monthly" | "lifetime"
+
+export const WorkspaceBudgetInterval = Schema.Literals(["daily", "weekly", "monthly", "lifetime"]).annotate({
+  "description": "Budget reset interval. Use \"lifetime\" for a one-time budget that never resets.",
+  "examples": ["monthly"],
+  "identifier": "WorkspaceBudgetInterval"
+})
+
 export type GetWorkspaceBudgetResponse = {
   readonly "data": WorkspaceBudget
   readonly "include_byok_in_budgets"?: boolean
@@ -38237,6 +38245,15 @@ export const GetBatchesParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetBatchesPathParams = { readonly "id": string }
+
+export const GetBatchesPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The batch job id returned from submit.",
+    "examples": ["batch_abc123"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type GetBatches200 = BatchObject
 
 export const GetBatches200 = BatchObject
@@ -38279,6 +38296,15 @@ export const DeleteBatchParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteBatchPathParams = { readonly "id": string }
+
+export const DeleteBatchPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The batch job id returned from submit.",
+    "examples": ["batch_abc123"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 })
 
 export type DeleteBatch200 = BatchDeletedObject
@@ -38780,6 +38806,16 @@ export const GetBYOKKeyParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetBYOKKeyPathParams = { readonly "id": string }
+
+export const GetBYOKKeyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The BYOK credential ID (UUID).",
+    "examples": ["11111111-2222-3333-4444-555555555555"],
+    "format": "uuid"
+  })
+})
+
 export type GetBYOKKey200 = GetBYOKKeyResponse
 
 export const GetBYOKKey200 = GetBYOKKeyResponse
@@ -38812,6 +38848,16 @@ export const DeleteBYOKKeyParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteBYOKKeyPathParams = { readonly "id": string }
+
+export const DeleteBYOKKeyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The BYOK credential ID (UUID).",
+    "examples": ["11111111-2222-3333-4444-555555555555"],
+    "format": "uuid"
+  })
+})
+
 export type DeleteBYOKKey200 = DeleteBYOKKeyResponse
 
 export const DeleteBYOKKey200 = DeleteBYOKKeyResponse
@@ -38842,6 +38888,16 @@ export const UpdateBYOKKeyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateBYOKKeyPathParams = { readonly "id": string }
+
+export const UpdateBYOKKeyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The BYOK credential ID (UUID).",
+    "examples": ["11111111-2222-3333-4444-555555555555"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateBYOKKeyRequestJson = UpdateBYOKKeyRequest
@@ -39025,6 +39081,16 @@ export const ListContainerFilesParams = Schema.Struct({
   }))
 })
 
+export type ListContainerFilesPathParams = { readonly "container_id": string }
+
+export const ListContainerFilesPathParams = Schema.Struct({
+  "container_id": Schema.String.annotate({
+    "description":
+      "The canonical container id, exactly as returned in a bash/shell tool result — a restarted session has its own `-r<nonce>`-suffixed id. A session-derived id is always `sess_` + the sanitized session key, which is not necessarily the raw session id that was sent.",
+    "examples": ["sess_abc123"]
+  })
+})
+
 export type ListContainerFiles200 = ContainerFileListResponse
 
 export const ListContainerFiles200 = ContainerFileListResponse
@@ -39063,6 +39129,20 @@ export const GetContainerFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type GetContainerFilePathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const GetContainerFilePathParams = Schema.Struct({
+  "container_id": Schema.String.annotate({
+    "description":
+      "The canonical container id, exactly as returned in a bash/shell tool result — a restarted session has its own `-r<nonce>`-suffixed id. A session-derived id is always `sess_` + the sanitized session key, which is not necessarily the raw session id that was sent.",
+    "examples": ["sess_abc123"]
+  }),
+  "file_id": Schema.String.annotate({
+    "description": "Container file id (`cfile_` + base64url of the file path).",
+    "examples": ["cfile_b3V0L3JlcG9ydC5jc3Y"]
+  })
 })
 
 export type GetContainerFile200 = ContainerFile
@@ -39109,6 +39189,20 @@ export const DownloadContainerFileContentParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DownloadContainerFileContentPathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const DownloadContainerFileContentPathParams = Schema.Struct({
+  "container_id": Schema.String.annotate({
+    "description":
+      "The canonical container id, exactly as returned in a bash/shell tool result — a restarted session has its own `-r<nonce>`-suffixed id. A session-derived id is always `sess_` + the sanitized session key, which is not necessarily the raw session id that was sent.",
+    "examples": ["sess_abc123"]
+  }),
+  "file_id": Schema.String.annotate({
+    "description": "Container file id (`cfile_` + base64url of the file path).",
+    "examples": ["cfile_b3V0L3JlcG9ydC5jc3Y"]
+  })
+})
+
 export type DownloadContainerFileContent400 = BadRequestResponse
 
 export const DownloadContainerFileContent400 = BadRequestResponse
@@ -39147,6 +39241,20 @@ export const PromoteContainerFileParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type PromoteContainerFilePathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const PromoteContainerFilePathParams = Schema.Struct({
+  "container_id": Schema.String.annotate({
+    "description":
+      "The canonical container id, exactly as returned in a bash/shell tool result — a restarted session has its own `-r<nonce>`-suffixed id. A session-derived id is always `sess_` + the sanitized session key, which is not necessarily the raw session id that was sent.",
+    "examples": ["sess_abc123"]
+  }),
+  "file_id": Schema.String.annotate({
+    "description": "Container file id (`cfile_` + base64url of the file path).",
+    "examples": ["cfile_b3V0L3JlcG9ydC5jc3Y"]
+  })
 })
 
 export type PromoteContainerFile200 = FileResponse
@@ -39323,6 +39431,16 @@ export const ListCreditsPurchasesParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ListCreditsPurchasesPathParams = { readonly "id": string }
+
+export const ListCreditsPurchasesPathParams = Schema.Struct({
+  "id": Schema.String.check(
+    Schema.isPattern(new globalThis.RegExp("^pi_[A-Za-z0-9]{1,64}$", "u")).annotate({
+      "expected": "a string matching the RegExp ^pi_[A-Za-z0-9]{1,64}$"
+    })
+  )
 })
 
 export type ListCreditsPurchases200 = CreditPurchaseResponse
@@ -40174,6 +40292,22 @@ export const GetExternalUserParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetExternalUserPathParams = { readonly "user": string }
+
+export const GetExternalUserPathParams = Schema.Struct({
+  "user": Schema.String.annotate({
+    "description":
+      "Immutable case-sensitive tracking string supplied as user on inference requests or as external.user on API keys: 1 to 512 characters, well-formed Unicode, no NUL, no surrounding whitespace. URL-encode it in resource paths; an ID of `.` or `..` cannot be addressed by path, so look it up with the list filter.",
+    "examples": ["employee_123"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(512).annotate({ "expected": "a string with at most 512 code points" })
+  ).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$"
+    })
+  )
+})
+
 export type GetExternalUser200 = ExternalUserResponse
 
 export const GetExternalUser200 = ExternalUserResponse
@@ -40210,6 +40344,22 @@ export const DeleteExternalUserParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteExternalUserPathParams = { readonly "user": string }
+
+export const DeleteExternalUserPathParams = Schema.Struct({
+  "user": Schema.String.annotate({
+    "description":
+      "Immutable case-sensitive tracking string supplied as user on inference requests or as external.user on API keys: 1 to 512 characters, well-formed Unicode, no NUL, no surrounding whitespace. URL-encode it in resource paths; an ID of `.` or `..` cannot be addressed by path, so look it up with the list filter.",
+    "examples": ["employee_123"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(512).annotate({ "expected": "a string with at most 512 code points" })
+  ).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$"
+    })
+  )
+})
+
 export type DeleteExternalUser400 = BadRequestResponse
 
 export const DeleteExternalUser400 = BadRequestResponse
@@ -40236,6 +40386,22 @@ export const UpdateExternalUserParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateExternalUserPathParams = { readonly "user": string }
+
+export const UpdateExternalUserPathParams = Schema.Struct({
+  "user": Schema.String.annotate({
+    "description":
+      "Immutable case-sensitive tracking string supplied as user on inference requests or as external.user on API keys: 1 to 512 characters, well-formed Unicode, no NUL, no surrounding whitespace. URL-encode it in resource paths; an ID of `.` or `..` cannot be addressed by path, so look it up with the list filter.",
+    "examples": ["employee_123"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(512).annotate({ "expected": "a string with at most 512 code points" })
+  ).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000]+$"
+    })
+  )
 })
 
 export type UpdateExternalUserRequestJson = UpdateExternalUserRequest
@@ -40447,6 +40613,18 @@ export const GetFileMetadataParams = Schema.Struct({
   "provider": Schema.optionalKey(FileProvider)
 })
 
+export type GetFileMetadataPathParams = { readonly "file_id": string }
+
+export const GetFileMetadataPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "examples": ["or_file_011CNha8iCJcU1wXNR6q4V8w"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  ).check(Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" })).check(
+    Schema.isPattern(new globalThis.RegExp("^[\\w-]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^[\\w-]+$"
+    })
+  )
+})
+
 export type GetFileMetadata200 = FileResponse
 
 export const GetFileMetadata200 = FileResponse
@@ -40501,6 +40679,18 @@ export const DeleteFileParams = Schema.Struct({
   "provider": Schema.optionalKey(FileProvider)
 })
 
+export type DeleteFilePathParams = { readonly "file_id": string }
+
+export const DeleteFilePathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "examples": ["or_file_011CNha8iCJcU1wXNR6q4V8w"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  ).check(Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" })).check(
+    Schema.isPattern(new globalThis.RegExp("^[\\w-]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^[\\w-]+$"
+    })
+  )
+})
+
 export type DeleteFile200 = FileDeleteResponse
 
 export const DeleteFile200 = FileDeleteResponse
@@ -40553,6 +40743,18 @@ export const DownloadFileContentParams = Schema.Struct({
     })
   ),
   "provider": Schema.optionalKey(FileProvider)
+})
+
+export type DownloadFileContentPathParams = { readonly "file_id": string }
+
+export const DownloadFileContentPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "examples": ["or_file_011CNha8iCJcU1wXNR6q4V8w"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  ).check(Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" })).check(
+    Schema.isPattern(new globalThis.RegExp("^[\\w-]+$", "u")).annotate({
+      "expected": "a string matching the RegExp ^[\\w-]+$"
+    })
+  )
 })
 
 export type DownloadFileContent400 = BadRequestResponse
@@ -40866,6 +41068,16 @@ export const GetGuardrailParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetGuardrailPathParams = { readonly "id": string }
+
+export const GetGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail to retrieve",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type GetGuardrail200 = GetGuardrailResponse
 
 export const GetGuardrail200 = GetGuardrailResponse
@@ -40898,6 +41110,16 @@ export const DeleteGuardrailParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteGuardrailPathParams = { readonly "id": string }
+
+export const DeleteGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail to delete",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type DeleteGuardrail200 = DeleteGuardrailResponse
 
 export const DeleteGuardrail200 = DeleteGuardrailResponse
@@ -40928,6 +41150,16 @@ export const UpdateGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateGuardrailPathParams = { readonly "id": string }
+
+export const UpdateGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail to update",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateGuardrailRequestJson = UpdateGuardrailRequest
@@ -40989,6 +41221,16 @@ export const ListGuardrailKeyAssignmentsParams = Schema.Struct({
   )
 })
 
+export type ListGuardrailKeyAssignmentsPathParams = { readonly "id": string }
+
+export const ListGuardrailKeyAssignmentsPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type ListGuardrailKeyAssignments200 = ListKeyAssignmentsResponse
 
 export const ListGuardrailKeyAssignments200 = ListKeyAssignmentsResponse
@@ -41019,6 +41261,16 @@ export const BulkAssignKeysToGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type BulkAssignKeysToGuardrailPathParams = { readonly "id": string }
+
+export const BulkAssignKeysToGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type BulkAssignKeysToGuardrailRequestJson = BulkAssignKeysRequest
@@ -41059,6 +41311,16 @@ export const BulkUnassignKeysFromGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type BulkUnassignKeysFromGuardrailPathParams = { readonly "id": string }
+
+export const BulkUnassignKeysFromGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type BulkUnassignKeysFromGuardrailRequestJson = BulkUnassignKeysRequest
@@ -41116,6 +41378,16 @@ export const ListGuardrailMemberAssignmentsParams = Schema.Struct({
   )
 })
 
+export type ListGuardrailMemberAssignmentsPathParams = { readonly "id": string }
+
+export const ListGuardrailMemberAssignmentsPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type ListGuardrailMemberAssignments200 = ListMemberAssignmentsResponse
 
 export const ListGuardrailMemberAssignments200 = ListMemberAssignmentsResponse
@@ -41146,6 +41418,16 @@ export const BulkAssignMembersToGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type BulkAssignMembersToGuardrailPathParams = { readonly "id": string }
+
+export const BulkAssignMembersToGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type BulkAssignMembersToGuardrailRequestJson = BulkAssignMembersRequest
@@ -41186,6 +41468,16 @@ export const BulkUnassignMembersFromGuardrailParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type BulkUnassignMembersFromGuardrailPathParams = { readonly "id": string }
+
+export const BulkUnassignMembersFromGuardrailPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The unique identifier of the guardrail",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type BulkUnassignMembersFromGuardrailRequestJson = BulkUnassignMembersRequest
@@ -41430,6 +41722,16 @@ export const UpdateAccountPolicyParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type UpdateAccountPolicyPathParams = { readonly "id": string }
+
+export const UpdateAccountPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type UpdateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
 
 export const UpdateAccountPolicyRequestJson = AccountGuardrailPolicyRequest
@@ -41472,6 +41774,16 @@ export const DeleteAccountPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteAccountPolicyPathParams = { readonly "id": string }
+
+export const DeleteAccountPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type DeleteAccountPolicy200 = DeleteGuardrailPolicyResponse
@@ -41525,6 +41837,15 @@ export const GetApiKeyPolicyAssignmentParams = Schema.Struct({
   })
 })
 
+export type GetApiKeyPolicyAssignmentPathParams = { readonly "hash": string }
+
+export const GetApiKeyPolicyAssignmentPathParams = Schema.Struct({
+  "hash": Schema.String.annotate({
+    "description": "API key hash",
+    "examples": ["c56454edb818d6b14bc0d61c46025f1450b0f4012d12304ab40aacb519fcbc93"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type GetApiKeyPolicyAssignment200 = GuardrailPolicyAssignmentResponse
 
 export const GetApiKeyPolicyAssignment200 = GuardrailPolicyAssignmentResponse
@@ -41559,6 +41880,15 @@ export const ChangeApiKeyPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ChangeApiKeyPolicyAssignmentPathParams = { readonly "hash": string }
+
+export const ChangeApiKeyPolicyAssignmentPathParams = Schema.Struct({
+  "hash": Schema.String.annotate({
+    "description": "API key hash",
+    "examples": ["c56454edb818d6b14bc0d61c46025f1450b0f4012d12304ab40aacb519fcbc93"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 })
 
 export type ChangeApiKeyPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
@@ -41616,6 +41946,15 @@ export const GetMemberPolicyAssignmentParams = Schema.Struct({
   })
 })
 
+export type GetMemberPolicyAssignmentPathParams = { readonly "member_id": string }
+
+export const GetMemberPolicyAssignmentPathParams = Schema.Struct({
+  "member_id": Schema.String.annotate({
+    "description": "Organization member user ID",
+    "examples": ["user_2abcDEFghiJKLmnoPQRstu"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type GetMemberPolicyAssignment200 = GuardrailPolicyAssignmentResponse
 
 export const GetMemberPolicyAssignment200 = GuardrailPolicyAssignmentResponse
@@ -41650,6 +41989,15 @@ export const ChangeMemberPolicyAssignmentParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ChangeMemberPolicyAssignmentPathParams = { readonly "member_id": string }
+
+export const ChangeMemberPolicyAssignmentPathParams = Schema.Struct({
+  "member_id": Schema.String.annotate({
+    "description": "Organization member user ID",
+    "examples": ["user_2abcDEFghiJKLmnoPQRstu"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 })
 
 export type ChangeMemberPolicyAssignmentRequestJson = ChangeGuardrailPolicyAssignmentRequest
@@ -41808,6 +42156,16 @@ export const GetBudgetPolicyParams = Schema.Struct({
   })
 })
 
+export type GetBudgetPolicyPathParams = { readonly "id": string }
+
+export const GetBudgetPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type GetBudgetPolicy200 = BudgetGuardrailPolicyDetailResponse
 
 export const GetBudgetPolicy200 = BudgetGuardrailPolicyDetailResponse
@@ -41842,6 +42200,16 @@ export const UpdateBudgetPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateBudgetPolicyPathParams = { readonly "id": string }
+
+export const UpdateBudgetPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateBudgetPolicyRequestJson = UpdateBudgetGuardrailPolicyRequest
@@ -41890,6 +42258,16 @@ export const DeleteBudgetPolicyParams = Schema.Struct({
   "workspace_id": Schema.String.annotate({
     "description": "Workspace the policy belongs to",
     "examples": ["0df9e665-d932-5740-b2c7-b52af166bc11"],
+    "format": "uuid"
+  })
+})
+
+export type DeleteBudgetPolicyPathParams = { readonly "id": string }
+
+export const DeleteBudgetPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
     "format": "uuid"
   })
 })
@@ -42046,6 +42424,16 @@ export const GetModelAvailabilityPolicyParams = Schema.Struct({
   })
 })
 
+export type GetModelAvailabilityPolicyPathParams = { readonly "id": string }
+
+export const GetModelAvailabilityPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type GetModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyDetailResponse
 
 export const GetModelAvailabilityPolicy200 = ModelAvailabilityGuardrailPolicyDetailResponse
@@ -42080,6 +42468,16 @@ export const UpdateModelAvailabilityPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateModelAvailabilityPolicyPathParams = { readonly "id": string }
+
+export const UpdateModelAvailabilityPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateModelAvailabilityPolicyRequestJson = UpdateModelAvailabilityGuardrailPolicyRequest
@@ -42128,6 +42526,16 @@ export const DeleteModelAvailabilityPolicyParams = Schema.Struct({
   "workspace_id": Schema.String.annotate({
     "description": "Workspace the policy belongs to",
     "examples": ["0df9e665-d932-5740-b2c7-b52af166bc11"],
+    "format": "uuid"
+  })
+})
+
+export type DeleteModelAvailabilityPolicyPathParams = { readonly "id": string }
+
+export const DeleteModelAvailabilityPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
     "format": "uuid"
   })
 })
@@ -42284,6 +42692,16 @@ export const GetModerationPolicyParams = Schema.Struct({
   })
 })
 
+export type GetModerationPolicyPathParams = { readonly "id": string }
+
+export const GetModerationPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
+})
+
 export type GetModerationPolicy200 = ModerationGuardrailPolicyDetailResponse
 
 export const GetModerationPolicy200 = ModerationGuardrailPolicyDetailResponse
@@ -42318,6 +42736,16 @@ export const UpdateModerationPolicyParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateModerationPolicyPathParams = { readonly "id": string }
+
+export const UpdateModerationPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateModerationPolicyRequestJson = UpdateModerationGuardrailPolicyRequest
@@ -42366,6 +42794,16 @@ export const DeleteModerationPolicyParams = Schema.Struct({
   "workspace_id": Schema.String.annotate({
     "description": "Workspace the policy belongs to",
     "examples": ["0df9e665-d932-5740-b2c7-b52af166bc11"],
+    "format": "uuid"
+  })
+})
+
+export type DeleteModerationPolicyPathParams = { readonly "id": string }
+
+export const DeleteModerationPolicyPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Policy ID",
+    "examples": ["550e8400-e29b-41d4-a716-446655440000"],
     "format": "uuid"
   })
 })
@@ -42496,6 +42934,13 @@ export const ListImageModelEndpointsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ListImageModelEndpointsPathParams = { readonly "author": string; readonly "slug": string }
+
+export const ListImageModelEndpointsPathParams = Schema.Struct({
+  "author": Schema.String.annotate({ "description": "Model author/organization", "examples": ["bytedance-seed"] }),
+  "slug": Schema.String.annotate({ "description": "Model slug", "examples": ["seedream-4.5"] })
 })
 
 export type ListImageModelEndpoints200 = ImageModelEndpointsResponse
@@ -43280,6 +43725,15 @@ export const GetKeyParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetKeyPathParams = { readonly "hash": string }
+
+export const GetKeyPathParams = Schema.Struct({
+  "hash": Schema.String.annotate({
+    "description": "The hash identifier of the API key to retrieve",
+    "examples": ["f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943"]
+  })
+})
+
 export type GetKey200 = {
   readonly "data": {
     readonly "byok_usage": number
@@ -43502,6 +43956,15 @@ export const DeleteKeysParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteKeysPathParams = { readonly "hash": string }
+
+export const DeleteKeysPathParams = Schema.Struct({
+  "hash": Schema.String.annotate({
+    "description": "The hash identifier of the API key to delete",
+    "examples": ["f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943"]
+  })
+})
+
 export type DeleteKeys200 = { readonly "deleted": true }
 
 export const DeleteKeys200 = Schema.Struct({
@@ -43541,6 +44004,15 @@ export const UpdateKeysParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateKeysPathParams = { readonly "hash": string }
+
+export const UpdateKeysPathParams = Schema.Struct({
+  "hash": Schema.String.annotate({
+    "description": "The hash identifier of the API key to update",
+    "examples": ["f01d52606dc8f0a8303a7b5cc3fa07109c2e346cec7c0a16b40de462992ce943"]
+  })
 })
 
 export type UpdateKeysRequestJson = {
@@ -43881,6 +44353,16 @@ export const GetModelParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type GetModelPathParams = { readonly "author": string; readonly "slug": string }
+
+export const GetModelPathParams = Schema.Struct({
+  "author": Schema.String.annotate({ "description": "The author/organization of the model", "examples": ["openai"] }),
+  "slug": Schema.String.annotate({
+    "description": "The model slug, optionally including a variant suffix (e.g. gpt-4 or gpt-4:free)",
+    "examples": ["gpt-4"]
+  })
 })
 
 export type GetModel200 = ModelResponse
@@ -44256,6 +44738,13 @@ export const ListEndpointsParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type ListEndpointsPathParams = { readonly "author": string; readonly "slug": string }
+
+export const ListEndpointsPathParams = Schema.Struct({
+  "author": Schema.String.annotate({ "description": "The author/organization of the model", "examples": ["openai"] }),
+  "slug": Schema.String.annotate({ "description": "The model slug", "examples": ["gpt-4"] })
+})
+
 export type ListEndpoints200 = { readonly "data": ListEndpointsResponse }
 
 export const ListEndpoints200 = Schema.Struct({ "data": ListEndpointsResponse })
@@ -44593,6 +45082,16 @@ export const GetObservabilityDestinationParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetObservabilityDestinationPathParams = { readonly "id": string }
+
+export const GetObservabilityDestinationPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The destination ID (UUID).",
+    "examples": ["99999999-aaaa-bbbb-cccc-dddddddddddd"],
+    "format": "uuid"
+  })
+})
+
 export type GetObservabilityDestination200 = GetObservabilityDestinationResponse
 
 export const GetObservabilityDestination200 = GetObservabilityDestinationResponse
@@ -44625,6 +45124,16 @@ export const DeleteObservabilityDestinationParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteObservabilityDestinationPathParams = { readonly "id": string }
+
+export const DeleteObservabilityDestinationPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The destination ID (UUID).",
+    "examples": ["99999999-aaaa-bbbb-cccc-dddddddddddd"],
+    "format": "uuid"
+  })
+})
+
 export type DeleteObservabilityDestination200 = DeleteObservabilityDestinationResponse
 
 export const DeleteObservabilityDestination200 = DeleteObservabilityDestinationResponse
@@ -44655,6 +45164,16 @@ export const UpdateObservabilityDestinationParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateObservabilityDestinationPathParams = { readonly "id": string }
+
+export const UpdateObservabilityDestinationPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "The destination ID (UUID).",
+    "examples": ["99999999-aaaa-bbbb-cccc-dddddddddddd"],
+    "format": "uuid"
+  })
 })
 
 export type UpdateObservabilityDestinationRequestJson = UpdateObservabilityDestinationRequest
@@ -44928,6 +45447,13 @@ export const GetPresetParams = Schema.Struct({
   }))
 })
 
+export type GetPresetPathParams = { readonly "slug": string }
+
+export const GetPresetPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "description": "URL-safe slug identifying the preset.", "examples": ["my-preset"] })
+    .check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type GetPreset200 = GetPresetResponse
 
 export const GetPreset200 = GetPresetResponse
@@ -44975,6 +45501,13 @@ export const DeletePresetParams = Schema.Struct({
   }))
 })
 
+export type DeletePresetPathParams = { readonly "slug": string }
+
+export const DeletePresetPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "description": "URL-safe slug identifying the preset.", "examples": ["my-preset"] })
+    .check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type DeletePreset200 = GetPresetResponse
 
 export const DeletePreset200 = GetPresetResponse
@@ -45020,6 +45553,15 @@ export const CreatePresetsChatCompletionsParams = Schema.Struct({
     "examples": ["750e8400-e29b-41d4-a716-446655440002"],
     "format": "uuid"
   }))
+})
+
+export type CreatePresetsChatCompletionsPathParams = { readonly "slug": string }
+
+export const CreatePresetsChatCompletionsPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({
+    "description": "URL-safe slug identifying the preset. Created if it does not exist.",
+    "examples": ["my-preset"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 })
 
 export type CreatePresetsChatCompletionsRequestJson = ChatRequest
@@ -45073,6 +45615,15 @@ export const CreatePresetsMessagesParams = Schema.Struct({
   }))
 })
 
+export type CreatePresetsMessagesPathParams = { readonly "slug": string }
+
+export const CreatePresetsMessagesPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({
+    "description": "URL-safe slug identifying the preset. Created if it does not exist.",
+    "examples": ["my-preset"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type CreatePresetsMessagesRequestJson = MessagesRequest
 
 export const CreatePresetsMessagesRequestJson = MessagesRequest
@@ -45124,6 +45675,15 @@ export const CreatePresetsResponsesParams = Schema.Struct({
   }))
 })
 
+export type CreatePresetsResponsesPathParams = { readonly "slug": string }
+
+export const CreatePresetsResponsesPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({
+    "description": "URL-safe slug identifying the preset. Created if it does not exist.",
+    "examples": ["my-preset"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type CreatePresetsResponsesRequestJson = ResponsesRequest
 
 export const CreatePresetsResponsesRequestJson = ResponsesRequest
@@ -45173,6 +45733,13 @@ export const RestorePresetParams = Schema.Struct({
     "examples": ["750e8400-e29b-41d4-a716-446655440002"],
     "format": "uuid"
   }))
+})
+
+export type RestorePresetPathParams = { readonly "slug": string }
+
+export const RestorePresetPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "description": "URL-safe slug identifying the preset.", "examples": ["my-preset"] })
+    .check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
 })
 
 export type RestorePreset200 = GetPresetResponse
@@ -45237,6 +45804,13 @@ export const ListPresetVersionsParams = Schema.Struct({
   }))
 })
 
+export type ListPresetVersionsPathParams = { readonly "slug": string }
+
+export const ListPresetVersionsPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "description": "URL-safe slug identifying the preset.", "examples": ["my-preset"] })
+    .check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type ListPresetVersions200 = ListPresetVersionsResponse
 
 export const ListPresetVersions200 = ListPresetVersionsResponse
@@ -45282,6 +45856,16 @@ export const GetPresetVersionParams = Schema.Struct({
     "examples": ["750e8400-e29b-41d4-a716-446655440002"],
     "format": "uuid"
   }))
+})
+
+export type GetPresetVersionPathParams = { readonly "slug": string; readonly "version": string }
+
+export const GetPresetVersionPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "description": "URL-safe slug identifying the preset.", "examples": ["my-preset"] })
+    .check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
+  "version": Schema.String.annotate({ "description": "Version number of the preset.", "examples": ["1"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
 })
 
 export type GetPresetVersion200 = GetPresetVersionResponse
@@ -45431,6 +46015,16 @@ export const GetPrivateEndpointParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetPrivateEndpointPathParams = { readonly "id": string }
+
+export const GetPrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
+})
+
 export type GetPrivateEndpoint200 = PrivateEndpointResponse
 
 export const GetPrivateEndpoint200 = PrivateEndpointResponse
@@ -45471,6 +46065,16 @@ export const DeletePrivateEndpointParams = Schema.Struct({
       "description": "When `true`, only delete the endpoint if it is still a draft (409 otherwise)."
     })
   )
+})
+
+export type DeletePrivateEndpointPathParams = { readonly "id": string }
+
+export const DeletePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
 })
 
 export type DeletePrivateEndpoint200 = DeletePrivateEndpointResponse
@@ -45523,6 +46127,16 @@ export const UpdatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdatePrivateEndpointPathParams = { readonly "id": string }
+
+export const UpdatePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
 })
 
 export type UpdatePrivateEndpointRequestJson = UpdatePrivateEndpointRequest
@@ -45581,6 +46195,16 @@ export const ActivatePrivateEndpointParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type ActivatePrivateEndpointPathParams = { readonly "id": string }
+
+export const ActivatePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
+})
+
 export type ActivatePrivateEndpoint200 = ManagedPrivateEndpointResponse
 
 export const ActivatePrivateEndpoint200 = ManagedPrivateEndpointResponse
@@ -45631,6 +46255,16 @@ export const DisablePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DisablePrivateEndpointPathParams = { readonly "id": string }
+
+export const DisablePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
 })
 
 export type DisablePrivateEndpoint200 = ManagedPrivateEndpointResponse
@@ -45685,6 +46319,16 @@ export const EnablePrivateEndpointParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type EnablePrivateEndpointPathParams = { readonly "id": string }
+
+export const EnablePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
+})
+
 export type EnablePrivateEndpoint200 = ManagedPrivateEndpointResponse
 
 export const EnablePrivateEndpoint200 = ManagedPrivateEndpointResponse
@@ -45735,6 +46379,16 @@ export const ValidatePrivateEndpointParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ValidatePrivateEndpointPathParams = { readonly "id": string }
+
+export const ValidatePrivateEndpointPathParams = Schema.Struct({
+  "id": Schema.String.annotate({
+    "description": "Stable identifier of the private endpoint.",
+    "examples": ["5b1c4c4e-7d0a-4a8e-9f3a-2d6c1b0e8a11"],
+    "format": "uuid"
+  })
 })
 
 export type ValidatePrivateEndpointRequestJson = ValidatePrivateEndpointRequest
@@ -45881,6 +46535,10 @@ export const GetPrivateProviderParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetPrivateProviderPathParams = { readonly "slug": string }
+
+export const GetPrivateProviderPathParams = Schema.Struct({ "slug": Schema.String.annotate({ "examples": ["acme"] }) })
+
 export type GetPrivateProvider200 = { readonly "data": PrivateProvider }
 
 export const GetPrivateProvider200 = Schema.Struct({ "data": PrivateProvider })
@@ -45911,6 +46569,12 @@ export const DeletePrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DeletePrivateProviderPathParams = { readonly "slug": string }
+
+export const DeletePrivateProviderPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "examples": ["acme"] })
 })
 
 export type DeletePrivateProvider200 = { readonly "data": { readonly "slug": string } }
@@ -45975,6 +46639,12 @@ export const UpdatePrivateProviderParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdatePrivateProviderPathParams = { readonly "slug": string }
+
+export const UpdatePrivateProviderPathParams = Schema.Struct({
+  "slug": Schema.String.annotate({ "examples": ["acme"] })
 })
 
 export type UpdatePrivateProviderRequestJson = UpdatePrivateProviderRequest
@@ -47551,6 +48221,10 @@ export const GetScimGroupMappingParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetScimGroupMappingPathParams = { readonly "id": string }
+
+export const GetScimGroupMappingPathParams = Schema.Struct({ "id": Schema.String.annotate({ "format": "uuid" }) })
+
 export type GetScimGroupMapping200 = GetScimGroupMappingResponse
 
 export const GetScimGroupMapping200 = GetScimGroupMappingResponse
@@ -47589,6 +48263,10 @@ export const DeleteScimGroupMappingParams = Schema.Struct({
   })
 })
 
+export type DeleteScimGroupMappingPathParams = { readonly "id": string }
+
+export const DeleteScimGroupMappingPathParams = Schema.Struct({ "id": Schema.String.annotate({ "format": "uuid" }) })
+
 export type DeleteScimGroupMapping200 = DeleteScimGroupMappingResponse
 
 export const DeleteScimGroupMapping200 = DeleteScimGroupMappingResponse
@@ -47624,6 +48302,10 @@ export const UpdateScimGroupMappingParams = Schema.Struct({
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
+export type UpdateScimGroupMappingPathParams = { readonly "id": string }
+
+export const UpdateScimGroupMappingPathParams = Schema.Struct({ "id": Schema.String.annotate({ "format": "uuid" }) })
 
 export type UpdateScimGroupMappingRequestJson = UpdateScimGroupMappingRequest
 
@@ -47757,6 +48439,10 @@ export const GetScimSyncJobParams = Schema.Struct({
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
+
+export type GetScimSyncJobPathParams = { readonly "id": string }
+
+export const GetScimSyncJobPathParams = Schema.Struct({ "id": Schema.String.annotate({ "format": "uuid" }) })
 
 export type GetScimSyncJob200 = GetScimSyncJobResponse
 
@@ -47918,6 +48604,15 @@ export const GetToolParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetToolPathParams = { readonly "name": string }
+
+export const GetToolPathParams = Schema.Struct({
+  "name": Schema.String.annotate({
+    "description": "Canonical `openrouter:*` name or any accepted `tools[].type` alias",
+    "examples": ["openrouter:web_search"]
+  })
+})
+
 export type GetTool200 = GetToolResponse
 
 export const GetTool200 = GetToolResponse
@@ -47948,6 +48643,16 @@ export const ListInternConnectionsParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type ListInternConnectionsPathParams = { readonly "internId": string }
+
+export const ListInternConnectionsPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  })
 })
 
 export type ListInternConnections200 = {
@@ -48032,6 +48737,16 @@ export const ListInternEffectiveVaultSecretsParams = Schema.Struct({
   )
 })
 
+export type ListInternEffectiveVaultSecretsPathParams = { readonly "internId": string }
+
+export const ListInternEffectiveVaultSecretsPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  })
+})
+
 export type ListInternEffectiveVaultSecrets200 = VaultEffectiveSecretListResponse
 
 export const ListInternEffectiveVaultSecrets200 = VaultEffectiveSecretListResponse
@@ -48103,6 +48818,16 @@ export const ListInternVaultSecretsParams = Schema.Struct({
   )
 })
 
+export type ListInternVaultSecretsPathParams = { readonly "internId": string }
+
+export const ListInternVaultSecretsPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  })
+})
+
 export type ListInternVaultSecrets200 = VaultSecretListResponse
 
 export const ListInternVaultSecrets200 = VaultSecretListResponse
@@ -48157,6 +48882,27 @@ export const StoreInternVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type StoreInternVaultSecretPathParams = { readonly "internId": string; readonly "name": string }
+
+export const StoreInternVaultSecretPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  }),
+  "name": Schema.String.annotate({
+    "description":
+      "Secret name. Lowercase letters, digits and single underscores, starting with a letter and not ending with an underscore, 1 to 255 characters.",
+    "examples": ["github_token"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })
+  ).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$"
+    })
+  )
 })
 
 export type StoreInternVaultSecretRequestJson = VaultSecretWriteRequest
@@ -48227,6 +48973,25 @@ export const DeleteInternVaultSecretParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteInternVaultSecretPathParams = { readonly "internId": string; readonly "name": string }
+
+export const DeleteInternVaultSecretPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  }),
+  "name": Schema.String.annotate({
+    "description":
+      "Existing secret name. Accepts legacy names stored before the 255-character write bound; new writes still require the documented name format.",
+    "examples": ["github_token"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$"
+    })
+  )
+})
+
 export type DeleteInternVaultSecret400 = BadRequestResponse
 
 export const DeleteInternVaultSecret400 = BadRequestResponse
@@ -48281,6 +49046,16 @@ export const CopyVaultSecretsToInternParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type CopyVaultSecretsToInternPathParams = { readonly "internId": string }
+
+export const CopyVaultSecretsToInternPathParams = Schema.Struct({
+  "internId": Schema.String.annotate({
+    "description": "UUID of an intern in the workspace selected by the API key.",
+    "examples": ["7c9e6679-7425-40de-944b-e07fc1f90ae7"],
+    "format": "uuid"
+  })
 })
 
 export type CopyVaultSecretsToInternRequestJson = VaultSecretCopyRequest
@@ -48422,6 +49197,22 @@ export const StoreVaultSecretParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type StoreVaultSecretPathParams = { readonly "name": string }
+
+export const StoreVaultSecretPathParams = Schema.Struct({
+  "name": Schema.String.annotate({
+    "description":
+      "Secret name. Lowercase letters, digits and single underscores, starting with a letter and not ending with an underscore, 1 to 255 characters.",
+    "examples": ["github_token"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isMaxCodePoints(255).annotate({ "expected": "a string with at most 255 code points" })
+  ).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$"
+    })
+  )
+})
+
 export type StoreVaultSecretRequestJson = VaultSecretWriteRequest
 
 export const StoreVaultSecretRequestJson = VaultSecretWriteRequest
@@ -48488,6 +49279,20 @@ export const DeleteVaultSecretParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteVaultSecretPathParams = { readonly "name": string }
+
+export const DeleteVaultSecretPathParams = Schema.Struct({
+  "name": Schema.String.annotate({
+    "description":
+      "Existing secret name. Accepts legacy names stored before the 255-character write bound; new writes still require the documented name format.",
+    "examples": ["github_token"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })).check(
+    Schema.isPattern(new globalThis.RegExp("^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$", "u")).annotate({
+      "expected": "a string matching the RegExp ^(?!.*__)[a-z]([a-z0-9_]*[a-z0-9])?$"
+    })
+  )
 })
 
 export type DeleteVaultSecret400 = BadRequestResponse
@@ -48606,6 +49411,14 @@ export const GetVideosParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetVideosPathParams = { readonly "jobId": string }
+
+export const GetVideosPathParams = Schema.Struct({
+  "jobId": Schema.String.annotate({ "examples": ["job-abc123"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
+})
+
 export type GetVideos200 = VideoGenerationResponse
 
 export const GetVideos200 = VideoGenerationResponse
@@ -48642,6 +49455,14 @@ export const ListVideosContentParams = Schema.Struct({
       Schema.Int.check(Schema.isGreaterThanOrEqualTo(0).annotate({ "expected": "a value greater than or equal to 0" })),
       Schema.Null
     ]).annotate({ "examples": [0] })
+  )
+})
+
+export type ListVideosContentPathParams = { readonly "jobId": string }
+
+export const ListVideosContentPathParams = Schema.Struct({
+  "jobId": Schema.String.annotate({ "examples": ["job-abc123"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
   )
 })
 
@@ -48792,6 +49613,14 @@ export const GetWorkspaceParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type GetWorkspacePathParams = { readonly "id": string }
+
+export const GetWorkspacePathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
+})
+
 export type GetWorkspace200 = GetWorkspaceResponse
 
 export const GetWorkspace200 = GetWorkspaceResponse
@@ -48830,6 +49659,14 @@ export const DeleteWorkspaceParams = Schema.Struct({
   }))
 })
 
+export type DeleteWorkspacePathParams = { readonly "id": string }
+
+export const DeleteWorkspacePathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
+})
+
 export type DeleteWorkspace200 = DeleteWorkspaceResponse
 
 export const DeleteWorkspace200 = DeleteWorkspaceResponse
@@ -48864,6 +49701,14 @@ export const UpdateWorkspaceParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpdateWorkspacePathParams = { readonly "id": string }
+
+export const UpdateWorkspacePathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
 })
 
 export type UpdateWorkspaceRequestJson = UpdateWorkspaceRequest
@@ -48921,6 +49766,14 @@ export const ListWorkspaceMembersParams = Schema.Struct({
   )
 })
 
+export type ListWorkspaceMembersPathParams = { readonly "id": string }
+
+export const ListWorkspaceMembersPathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
+})
+
 export type ListWorkspaceMembers200 = ListWorkspaceMembersResponse
 
 export const ListWorkspaceMembers200 = ListWorkspaceMembersResponse
@@ -48951,6 +49804,14 @@ export const BulkAddWorkspaceMembersParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type BulkAddWorkspaceMembersPathParams = { readonly "id": string }
+
+export const BulkAddWorkspaceMembersPathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
 })
 
 export type BulkAddWorkspaceMembersRequestJson = BulkAddWorkspaceMembersRequest
@@ -48993,6 +49854,14 @@ export const BulkRemoveWorkspaceMembersParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type BulkRemoveWorkspaceMembersPathParams = { readonly "id": string }
+
+export const BulkRemoveWorkspaceMembersPathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "The workspace ID (UUID) or slug", "examples": ["production"] }).check(
+    Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })
+  )
+})
+
 export type BulkRemoveWorkspaceMembersRequestJson = BulkRemoveWorkspaceMembersRequest
 
 export const BulkRemoveWorkspaceMembersRequestJson = BulkRemoveWorkspaceMembersRequest
@@ -49033,6 +49902,15 @@ export const ListWorkspaceBudgetsParams = Schema.Struct({
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
 })
 
+export type ListWorkspaceBudgetsPathParams = { readonly "workspace_ref": string }
+
+export const ListWorkspaceBudgetsPathParams = Schema.Struct({
+  "workspace_ref": Schema.String.annotate({
+    "description": "The workspace ID (UUID) or slug",
+    "examples": ["production"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" }))
+})
+
 export type ListWorkspaceBudgets200 = ListWorkspaceBudgetsResponse
 
 export const ListWorkspaceBudgets200 = ListWorkspaceBudgetsResponse
@@ -49063,6 +49941,19 @@ export const GetWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type GetWorkspaceBudgetPathParams = {
+  readonly "workspace_ref": string
+  readonly "interval": WorkspaceBudgetInterval
+}
+
+export const GetWorkspaceBudgetPathParams = Schema.Struct({
+  "workspace_ref": Schema.String.annotate({
+    "description": "The workspace ID (UUID) or slug",
+    "examples": ["production"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
+  "interval": WorkspaceBudgetInterval
 })
 
 export type GetWorkspaceBudget200 = GetWorkspaceBudgetResponse
@@ -49099,6 +49990,19 @@ export const UpsertWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type UpsertWorkspaceBudgetPathParams = {
+  readonly "workspace_ref": string
+  readonly "interval": WorkspaceBudgetInterval
+}
+
+export const UpsertWorkspaceBudgetPathParams = Schema.Struct({
+  "workspace_ref": Schema.String.annotate({
+    "description": "The workspace ID (UUID) or slug",
+    "examples": ["production"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
+  "interval": WorkspaceBudgetInterval
 })
 
 export type UpsertWorkspaceBudgetRequestJson = UpsertWorkspaceBudgetRequest
@@ -49139,6 +50043,19 @@ export const DeleteWorkspaceBudgetParams = Schema.Struct({
   "HTTP-Referer": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Title": Schema.optionalKey(Schema.String),
   "X-OpenRouter-Categories": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteWorkspaceBudgetPathParams = {
+  readonly "workspace_ref": string
+  readonly "interval": WorkspaceBudgetInterval
+}
+
+export const DeleteWorkspaceBudgetPathParams = Schema.Struct({
+  "workspace_ref": Schema.String.annotate({
+    "description": "The workspace ID (UUID) or slug",
+    "examples": ["production"]
+  }).check(Schema.isMinLength(1).annotate({ "expected": "a value with a length of at least 1" })),
+  "interval": WorkspaceBudgetInterval
 })
 
 export type DeleteWorkspaceBudget200 = DeleteWorkspaceBudgetResponse
@@ -49228,10 +50145,42 @@ export const make = <E, R>(
         )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = encodeURIComponent
+  const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(
+        /[!'()*]/g,
+        (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase()
+      )
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label":
+        return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string
   ) =>
     Effect.suspend(() => {
@@ -49245,7 +50194,7 @@ export const make = <E, R>(
             })
           })
         )
-      if (parameters.some((value) => value === "" || /^(?:\.|%2e){1,2}$/i.test(value))) {
+      if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\.|%2e){1,2}$/i.test(value)))) {
         return fail("Path parameters must be non-empty and cannot be dot segments")
       }
       let path: string
@@ -49557,7 +50506,11 @@ export const make = <E, R>(
         }))
       ),
     "getBatches": (id, options: Parameters<OpenRouterClient["getBatches"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/batches/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/batches/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -49580,7 +50533,11 @@ export const make = <E, R>(
         )
       ),
     "deleteBatch": (id, options: Parameters<OpenRouterClient["deleteBatch"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/batches/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/batches/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -49668,27 +50625,32 @@ export const make = <E, R>(
         }))
       ),
     "getBYOKKey": (id, options: Parameters<OpenRouterClient["getBYOKKey"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/byok/" + __encodePathParam(id) + "").pipe(
-        Effect.flatMap((request) =>
-          request.pipe(
-            HttpClientRequest.setHeaders({
-              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-            }),
-            withResponse(options?.config)(HttpClientResponse.matchStatus({
-              "2xx": decodeSuccess(GetBYOKKey200),
-              "401": decodeError("GetBYOKKey401", GetBYOKKey401),
-              "403": decodeError("GetBYOKKey403", GetBYOKKey403),
-              "404": decodeError("GetBYOKKey404", GetBYOKKey404),
-              "500": decodeError("GetBYOKKey500", GetBYOKKey500),
-              orElse: unexpectedStatus
-            }))
+      __makePathRequest(HttpClientRequest.get, [id], () => "/byok/" + __encodePathParam("id", id, "simple", false) + "")
+        .pipe(
+          Effect.flatMap((request) =>
+            request.pipe(
+              HttpClientRequest.setHeaders({
+                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+              }),
+              withResponse(options?.config)(HttpClientResponse.matchStatus({
+                "2xx": decodeSuccess(GetBYOKKey200),
+                "401": decodeError("GetBYOKKey401", GetBYOKKey401),
+                "403": decodeError("GetBYOKKey403", GetBYOKKey403),
+                "404": decodeError("GetBYOKKey404", GetBYOKKey404),
+                "500": decodeError("GetBYOKKey500", GetBYOKKey500),
+                orElse: unexpectedStatus
+              }))
+            )
           )
-        )
-      ),
+        ),
     "deleteBYOKKey": (id, options: Parameters<OpenRouterClient["deleteBYOKKey"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/byok/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/byok/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -49708,7 +50670,11 @@ export const make = <E, R>(
         )
       ),
     "updateBYOKKey": (id, options: Parameters<OpenRouterClient["updateBYOKKey"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [id], () => "/byok/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [id],
+        () => "/byok/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -49790,7 +50756,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files"
+        () => "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -49820,7 +50786,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -49851,7 +50819,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + "/content"
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -49877,7 +50847,8 @@ export const make = <E, R>(
     "downloadContainerFileContentStream": (containerId, fileId, options) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [containerId, fileId], () =>
-          "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + "/content").pipe(
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setHeaders({
@@ -49894,7 +50865,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + "/promote"
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/promote"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -49971,7 +50944,11 @@ export const make = <E, R>(
         }))
       ),
     "listCreditsPurchases": (id, options: Parameters<OpenRouterClient["listCreditsPurchases"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/credits/purchases/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/credits/purchases/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50179,7 +51156,11 @@ export const make = <E, R>(
         }))
       ),
     "getExternalUser": (user, options: Parameters<OpenRouterClient["getExternalUser"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [user], () => "/external-users/" + __encodePathParam(user) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [user],
+        () => "/external-users/" + __encodePathParam("user", user, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50200,7 +51181,11 @@ export const make = <E, R>(
         )
       ),
     "deleteExternalUser": (user, options: Parameters<OpenRouterClient["deleteExternalUser"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [user], () => "/external-users/" + __encodePathParam(user) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [user],
+        () => "/external-users/" + __encodePathParam("user", user, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50220,7 +51205,11 @@ export const make = <E, R>(
         )
       ),
     "updateExternalUser": (user, options: Parameters<OpenRouterClient["updateExternalUser"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [user], () => "/external-users/" + __encodePathParam(user) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [user],
+        () => "/external-users/" + __encodePathParam("user", user, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50296,7 +51285,11 @@ export const make = <E, R>(
         }))
       ),
     "getFileMetadata": (fileId, options: Parameters<OpenRouterClient["getFileMetadata"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -50323,7 +51316,11 @@ export const make = <E, R>(
         )
       ),
     "deleteFile": (fileId, options: Parameters<OpenRouterClient["deleteFile"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [fileId], () => "/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -50350,7 +51347,11 @@ export const make = <E, R>(
         )
       ),
     "downloadFileContent": (fileId, options: Parameters<OpenRouterClient["downloadFileContent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "/content").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -50379,8 +51380,8 @@ export const make = <E, R>(
       ),
     "downloadFileContentStream": (fileId, options) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [fileId], () =>
+          "/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setUrlParams({
@@ -50502,7 +51503,11 @@ export const make = <E, R>(
         }))
       ),
     "getGuardrail": (id, options: Parameters<OpenRouterClient["getGuardrail"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/guardrails/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50522,7 +51527,11 @@ export const make = <E, R>(
         )
       ),
     "deleteGuardrail": (id, options: Parameters<OpenRouterClient["deleteGuardrail"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/guardrails/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50542,7 +51551,11 @@ export const make = <E, R>(
         )
       ),
     "updateGuardrail": (id, options: Parameters<OpenRouterClient["updateGuardrail"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [id], () => "/guardrails/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [id],
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -50565,35 +51578,38 @@ export const make = <E, R>(
         )
       ),
     "listGuardrailKeyAssignments": (id, options: Parameters<OpenRouterClient["listGuardrailKeyAssignments"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/guardrails/" + __encodePathParam(id) + "/assignments/keys")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({
-                "offset": options?.params?.["offset"] as any,
-                "limit": options?.params?.["limit"] as any
-              }),
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ListGuardrailKeyAssignments200),
-                "401": decodeError("ListGuardrailKeyAssignments401", ListGuardrailKeyAssignments401),
-                "403": decodeError("ListGuardrailKeyAssignments403", ListGuardrailKeyAssignments403),
-                "404": decodeError("ListGuardrailKeyAssignments404", ListGuardrailKeyAssignments404),
-                "500": decodeError("ListGuardrailKeyAssignments500", ListGuardrailKeyAssignments500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/keys"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({
+              "offset": options?.params?.["offset"] as any,
+              "limit": options?.params?.["limit"] as any
+            }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ListGuardrailKeyAssignments200),
+              "401": decodeError("ListGuardrailKeyAssignments401", ListGuardrailKeyAssignments401),
+              "403": decodeError("ListGuardrailKeyAssignments403", ListGuardrailKeyAssignments403),
+              "404": decodeError("ListGuardrailKeyAssignments404", ListGuardrailKeyAssignments404),
+              "500": decodeError("ListGuardrailKeyAssignments500", ListGuardrailKeyAssignments500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "bulkAssignKeysToGuardrail": (id, options: Parameters<OpenRouterClient["bulkAssignKeysToGuardrail"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.post,
         [id],
-        () => "/guardrails/" + __encodePathParam(id) + "/assignments/keys"
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/keys"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50619,7 +51635,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [id],
-        () => "/guardrails/" + __encodePathParam(id) + "/assignments/keys/remove"
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/keys/remove"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50648,7 +51664,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [id],
-        () => "/guardrails/" + __encodePathParam(id) + "/assignments/members"
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/members"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50676,7 +51692,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [id],
-        () => "/guardrails/" + __encodePathParam(id) + "/assignments/members"
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/members"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50705,7 +51721,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [id],
-        () => "/guardrails/" + __encodePathParam(id) + "/assignments/members/remove"
+        () => "/guardrails/" + __encodePathParam("id", id, "simple", false) + "/assignments/members/remove"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50810,34 +51826,37 @@ export const make = <E, R>(
         }))
       ),
     "updateAccountPolicy": (id, options: Parameters<OpenRouterClient["updateAccountPolicy"]>[1]) =>
-      __makePathRequest(HttpClientRequest.put, [id], () => "/guardrails/policies/account/" + __encodePathParam(id) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(UpdateAccountPolicy200),
-                "400": decodeError("UpdateAccountPolicy400", UpdateAccountPolicy400),
-                "401": decodeError("UpdateAccountPolicy401", UpdateAccountPolicy401),
-                "403": decodeError("UpdateAccountPolicy403", UpdateAccountPolicy403),
-                "404": decodeError("UpdateAccountPolicy404", UpdateAccountPolicy404),
-                "409": decodeError("UpdateAccountPolicy409", UpdateAccountPolicy409),
-                "500": decodeError("UpdateAccountPolicy500", UpdateAccountPolicy500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.put,
+        [id],
+        () => "/guardrails/policies/account/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(UpdateAccountPolicy200),
+              "400": decodeError("UpdateAccountPolicy400", UpdateAccountPolicy400),
+              "401": decodeError("UpdateAccountPolicy401", UpdateAccountPolicy401),
+              "403": decodeError("UpdateAccountPolicy403", UpdateAccountPolicy403),
+              "404": decodeError("UpdateAccountPolicy404", UpdateAccountPolicy404),
+              "409": decodeError("UpdateAccountPolicy409", UpdateAccountPolicy409),
+              "500": decodeError("UpdateAccountPolicy500", UpdateAccountPolicy500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteAccountPolicy": (id, options: Parameters<OpenRouterClient["deleteAccountPolicy"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [id],
-        () => "/guardrails/policies/account/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/account/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50863,7 +51882,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [hash],
-        () => "/guardrails/policies/assignments/api-keys/" + __encodePathParam(hash) + ""
+        () => "/guardrails/policies/assignments/api-keys/" + __encodePathParam("hash", hash, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50892,7 +51911,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [hash],
-        () => "/guardrails/policies/assignments/api-keys/" + __encodePathParam(hash) + ""
+        () => "/guardrails/policies/assignments/api-keys/" + __encodePathParam("hash", hash, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50919,7 +51938,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [memberId],
-        () => "/guardrails/policies/assignments/members/" + __encodePathParam(memberId) + ""
+        () =>
+          "/guardrails/policies/assignments/members/" + __encodePathParam("member_id", memberId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -50951,7 +51971,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [memberId],
-        () => "/guardrails/policies/assignments/members/" + __encodePathParam(memberId) + ""
+        () =>
+          "/guardrails/policies/assignments/members/" + __encodePathParam("member_id", memberId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51016,57 +52037,63 @@ export const make = <E, R>(
         }))
       ),
     "getBudgetPolicy": (id, options: Parameters<OpenRouterClient["getBudgetPolicy"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/guardrails/policies/budget/" + __encodePathParam(id) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({ "workspace_id": options.params["workspace_id"] as any }),
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(GetBudgetPolicy200),
-                "400": decodeError("GetBudgetPolicy400", GetBudgetPolicy400),
-                "401": decodeError("GetBudgetPolicy401", GetBudgetPolicy401),
-                "403": decodeError("GetBudgetPolicy403", GetBudgetPolicy403),
-                "404": decodeError("GetBudgetPolicy404", GetBudgetPolicy404),
-                "500": decodeError("GetBudgetPolicy500", GetBudgetPolicy500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/guardrails/policies/budget/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options.params["workspace_id"] as any }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(GetBudgetPolicy200),
+              "400": decodeError("GetBudgetPolicy400", GetBudgetPolicy400),
+              "401": decodeError("GetBudgetPolicy401", GetBudgetPolicy401),
+              "403": decodeError("GetBudgetPolicy403", GetBudgetPolicy403),
+              "404": decodeError("GetBudgetPolicy404", GetBudgetPolicy404),
+              "500": decodeError("GetBudgetPolicy500", GetBudgetPolicy500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "updateBudgetPolicy": (id, options: Parameters<OpenRouterClient["updateBudgetPolicy"]>[1]) =>
-      __makePathRequest(HttpClientRequest.put, [id], () => "/guardrails/policies/budget/" + __encodePathParam(id) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(UpdateBudgetPolicy200),
-                "400": decodeError("UpdateBudgetPolicy400", UpdateBudgetPolicy400),
-                "401": decodeError("UpdateBudgetPolicy401", UpdateBudgetPolicy401),
-                "403": decodeError("UpdateBudgetPolicy403", UpdateBudgetPolicy403),
-                "404": decodeError("UpdateBudgetPolicy404", UpdateBudgetPolicy404),
-                "409": decodeError("UpdateBudgetPolicy409", UpdateBudgetPolicy409),
-                "500": decodeError("UpdateBudgetPolicy500", UpdateBudgetPolicy500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.put,
+        [id],
+        () => "/guardrails/policies/budget/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(UpdateBudgetPolicy200),
+              "400": decodeError("UpdateBudgetPolicy400", UpdateBudgetPolicy400),
+              "401": decodeError("UpdateBudgetPolicy401", UpdateBudgetPolicy401),
+              "403": decodeError("UpdateBudgetPolicy403", UpdateBudgetPolicy403),
+              "404": decodeError("UpdateBudgetPolicy404", UpdateBudgetPolicy404),
+              "409": decodeError("UpdateBudgetPolicy409", UpdateBudgetPolicy409),
+              "500": decodeError("UpdateBudgetPolicy500", UpdateBudgetPolicy500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteBudgetPolicy": (id, options: Parameters<OpenRouterClient["deleteBudgetPolicy"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [id],
-        () => "/guardrails/policies/budget/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/budget/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51134,7 +52161,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [id],
-        () => "/guardrails/policies/model-availability/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/model-availability/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51160,7 +52187,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [id],
-        () => "/guardrails/policies/model-availability/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/model-availability/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51187,7 +52214,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [id],
-        () => "/guardrails/policies/model-availability/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/model-availability/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51255,7 +52282,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [id],
-        () => "/guardrails/policies/moderation/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/moderation/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51281,7 +52308,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [id],
-        () => "/guardrails/policies/moderation/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/moderation/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51308,7 +52335,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [id],
-        () => "/guardrails/policies/moderation/" + __encodePathParam(id) + ""
+        () => "/guardrails/policies/moderation/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51382,7 +52409,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [author, slug],
-        () => "/images/models/" + __encodePathParam(author) + "/" + __encodePathParam(slug) + "/endpoints"
+        () =>
+          "/images/models/" + __encodePathParam("author", author, "simple", false) + "/" +
+          __encodePathParam("slug", slug, "simple", false) + "/endpoints"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51457,7 +52486,11 @@ export const make = <E, R>(
         }))
       ),
     "getKey": (hash, options: Parameters<OpenRouterClient["getKey"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [hash], () => "/keys/" + __encodePathParam(hash) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [hash],
+        () => "/keys/" + __encodePathParam("hash", hash, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -51478,7 +52511,11 @@ export const make = <E, R>(
         )
       ),
     "deleteKeys": (hash, options: Parameters<OpenRouterClient["deleteKeys"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [hash], () => "/keys/" + __encodePathParam(hash) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [hash],
+        () => "/keys/" + __encodePathParam("hash", hash, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -51499,7 +52536,11 @@ export const make = <E, R>(
         )
       ),
     "updateKeys": (hash, options: Parameters<OpenRouterClient["updateKeys"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [hash], () => "/keys/" + __encodePathParam(hash) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [hash],
+        () => "/keys/" + __encodePathParam("hash", hash, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -51559,7 +52600,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [author, slug],
-        () => "/model/" + __encodePathParam(author) + "/" + __encodePathParam(slug) + ""
+        () =>
+          "/model/" + __encodePathParam("author", author, "simple", false) + "/" +
+          __encodePathParam("slug", slug, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51635,7 +52678,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [author, slug],
-        () => "/models/" + __encodePathParam(author) + "/" + __encodePathParam(slug) + "/endpoints"
+        () =>
+          "/models/" + __encodePathParam("author", author, "simple", false) + "/" +
+          __encodePathParam("slug", slug, "simple", false) + "/endpoints"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51768,26 +52813,29 @@ export const make = <E, R>(
         }))
       ),
     "getObservabilityDestination": (id, options: Parameters<OpenRouterClient["getObservabilityDestination"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/observability/destinations/" + __encodePathParam(id) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(GetObservabilityDestination200),
-                "401": decodeError("GetObservabilityDestination401", GetObservabilityDestination401),
-                "403": decodeError("GetObservabilityDestination403", GetObservabilityDestination403),
-                "404": decodeError("GetObservabilityDestination404", GetObservabilityDestination404),
-                "500": decodeError("GetObservabilityDestination500", GetObservabilityDestination500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/observability/destinations/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(GetObservabilityDestination200),
+              "401": decodeError("GetObservabilityDestination401", GetObservabilityDestination401),
+              "403": decodeError("GetObservabilityDestination403", GetObservabilityDestination403),
+              "404": decodeError("GetObservabilityDestination404", GetObservabilityDestination404),
+              "500": decodeError("GetObservabilityDestination500", GetObservabilityDestination500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteObservabilityDestination": (
       id,
       options: Parameters<OpenRouterClient["deleteObservabilityDestination"]>[1]
@@ -51795,7 +52843,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [id],
-        () => "/observability/destinations/" + __encodePathParam(id) + ""
+        () => "/observability/destinations/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51822,7 +52870,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.patch,
         [id],
-        () => "/observability/destinations/" + __encodePathParam(id) + ""
+        () => "/observability/destinations/" + __encodePathParam("id", id, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51923,7 +52971,11 @@ export const make = <E, R>(
         }))
       ),
     "getPreset": (slug, options: Parameters<OpenRouterClient["getPreset"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [slug], () => "/presets/" + __encodePathParam(slug) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
@@ -51946,7 +52998,11 @@ export const make = <E, R>(
         )
       ),
     "deletePreset": (slug, options: Parameters<OpenRouterClient["deletePreset"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [slug], () => "/presets/" + __encodePathParam(slug) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
@@ -51972,7 +53028,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [slug],
-        () => "/presets/" + __encodePathParam(slug) + "/chat/completions"
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/chat/completions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -51997,7 +53053,11 @@ export const make = <E, R>(
         )
       ),
     "createPresetsMessages": (slug, options: Parameters<OpenRouterClient["createPresetsMessages"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [slug], () => "/presets/" + __encodePathParam(slug) + "/messages").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/messages"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "workspace_id": options.params?.["workspace_id"] as any }),
@@ -52021,32 +53081,39 @@ export const make = <E, R>(
         )
       ),
     "createPresetsResponses": (slug, options: Parameters<OpenRouterClient["createPresetsResponses"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [slug], () => "/presets/" + __encodePathParam(slug) + "/responses")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({ "workspace_id": options.params?.["workspace_id"] as any }),
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CreatePresetsResponses200),
-                "400": decodeError("CreatePresetsResponses400", CreatePresetsResponses400),
-                "401": decodeError("CreatePresetsResponses401", CreatePresetsResponses401),
-                "403": decodeError("CreatePresetsResponses403", CreatePresetsResponses403),
-                "404": decodeError("CreatePresetsResponses404", CreatePresetsResponses404),
-                "409": decodeError("CreatePresetsResponses409", CreatePresetsResponses409),
-                "500": decodeError("CreatePresetsResponses500", CreatePresetsResponses500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/responses"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "workspace_id": options.params?.["workspace_id"] as any }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CreatePresetsResponses200),
+              "400": decodeError("CreatePresetsResponses400", CreatePresetsResponses400),
+              "401": decodeError("CreatePresetsResponses401", CreatePresetsResponses401),
+              "403": decodeError("CreatePresetsResponses403", CreatePresetsResponses403),
+              "404": decodeError("CreatePresetsResponses404", CreatePresetsResponses404),
+              "409": decodeError("CreatePresetsResponses409", CreatePresetsResponses409),
+              "500": decodeError("CreatePresetsResponses500", CreatePresetsResponses500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "restorePreset": (slug, options: Parameters<OpenRouterClient["restorePreset"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [slug], () => "/presets/" + __encodePathParam(slug) + "/restore").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/restore"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "workspace_id": options?.params?.["workspace_id"] as any }),
@@ -52069,7 +53136,11 @@ export const make = <E, R>(
         )
       ),
     "listPresetVersions": (slug, options: Parameters<OpenRouterClient["listPresetVersions"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [slug], () => "/presets/" + __encodePathParam(slug) + "/versions").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [slug],
+        () => "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/versions"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -52099,7 +53170,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [slug, version],
-        () => "/presets/" + __encodePathParam(slug) + "/versions/" + __encodePathParam(version) + ""
+        () =>
+          "/presets/" + __encodePathParam("slug", slug, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52162,7 +53235,11 @@ export const make = <E, R>(
         }))
       ),
     "getPrivateEndpoint": (id, options: Parameters<OpenRouterClient["getPrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/private-endpoints/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52183,7 +53260,11 @@ export const make = <E, R>(
         )
       ),
     "deletePrivateEndpoint": (id, options: Parameters<OpenRouterClient["deletePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/private-endpoints/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "draft_only": options?.params?.["draft_only"] as any }),
@@ -52209,7 +53290,11 @@ export const make = <E, R>(
         )
       ),
     "updatePrivateEndpoint": (id, options: Parameters<OpenRouterClient["updatePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [id], () => "/private-endpoints/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52235,110 +53320,122 @@ export const make = <E, R>(
         )
       ),
     "activatePrivateEndpoint": (id, options: Parameters<OpenRouterClient["activatePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/private-endpoints/" + __encodePathParam(id) + "/activate")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ActivatePrivateEndpoint200),
-                "400": decodeError("ActivatePrivateEndpoint400", ActivatePrivateEndpoint400),
-                "401": decodeError("ActivatePrivateEndpoint401", ActivatePrivateEndpoint401),
-                "403": decodeError("ActivatePrivateEndpoint403", ActivatePrivateEndpoint403),
-                "404": decodeError("ActivatePrivateEndpoint404", ActivatePrivateEndpoint404),
-                "408": decodeError("ActivatePrivateEndpoint408", ActivatePrivateEndpoint408),
-                "409": decodeError("ActivatePrivateEndpoint409", ActivatePrivateEndpoint409),
-                "422": decodeError("ActivatePrivateEndpoint422", ActivatePrivateEndpoint422),
-                "500": decodeError("ActivatePrivateEndpoint500", ActivatePrivateEndpoint500),
-                "502": decodeError("ActivatePrivateEndpoint502", ActivatePrivateEndpoint502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + "/activate"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ActivatePrivateEndpoint200),
+              "400": decodeError("ActivatePrivateEndpoint400", ActivatePrivateEndpoint400),
+              "401": decodeError("ActivatePrivateEndpoint401", ActivatePrivateEndpoint401),
+              "403": decodeError("ActivatePrivateEndpoint403", ActivatePrivateEndpoint403),
+              "404": decodeError("ActivatePrivateEndpoint404", ActivatePrivateEndpoint404),
+              "408": decodeError("ActivatePrivateEndpoint408", ActivatePrivateEndpoint408),
+              "409": decodeError("ActivatePrivateEndpoint409", ActivatePrivateEndpoint409),
+              "422": decodeError("ActivatePrivateEndpoint422", ActivatePrivateEndpoint422),
+              "500": decodeError("ActivatePrivateEndpoint500", ActivatePrivateEndpoint500),
+              "502": decodeError("ActivatePrivateEndpoint502", ActivatePrivateEndpoint502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "disablePrivateEndpoint": (id, options: Parameters<OpenRouterClient["disablePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/private-endpoints/" + __encodePathParam(id) + "/disable")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(DisablePrivateEndpoint200),
-                "400": decodeError("DisablePrivateEndpoint400", DisablePrivateEndpoint400),
-                "401": decodeError("DisablePrivateEndpoint401", DisablePrivateEndpoint401),
-                "403": decodeError("DisablePrivateEndpoint403", DisablePrivateEndpoint403),
-                "404": decodeError("DisablePrivateEndpoint404", DisablePrivateEndpoint404),
-                "408": decodeError("DisablePrivateEndpoint408", DisablePrivateEndpoint408),
-                "409": decodeError("DisablePrivateEndpoint409", DisablePrivateEndpoint409),
-                "422": decodeError("DisablePrivateEndpoint422", DisablePrivateEndpoint422),
-                "500": decodeError("DisablePrivateEndpoint500", DisablePrivateEndpoint500),
-                "502": decodeError("DisablePrivateEndpoint502", DisablePrivateEndpoint502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + "/disable"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DisablePrivateEndpoint200),
+              "400": decodeError("DisablePrivateEndpoint400", DisablePrivateEndpoint400),
+              "401": decodeError("DisablePrivateEndpoint401", DisablePrivateEndpoint401),
+              "403": decodeError("DisablePrivateEndpoint403", DisablePrivateEndpoint403),
+              "404": decodeError("DisablePrivateEndpoint404", DisablePrivateEndpoint404),
+              "408": decodeError("DisablePrivateEndpoint408", DisablePrivateEndpoint408),
+              "409": decodeError("DisablePrivateEndpoint409", DisablePrivateEndpoint409),
+              "422": decodeError("DisablePrivateEndpoint422", DisablePrivateEndpoint422),
+              "500": decodeError("DisablePrivateEndpoint500", DisablePrivateEndpoint500),
+              "502": decodeError("DisablePrivateEndpoint502", DisablePrivateEndpoint502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "enablePrivateEndpoint": (id, options: Parameters<OpenRouterClient["enablePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/private-endpoints/" + __encodePathParam(id) + "/enable")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(EnablePrivateEndpoint200),
-                "400": decodeError("EnablePrivateEndpoint400", EnablePrivateEndpoint400),
-                "401": decodeError("EnablePrivateEndpoint401", EnablePrivateEndpoint401),
-                "403": decodeError("EnablePrivateEndpoint403", EnablePrivateEndpoint403),
-                "404": decodeError("EnablePrivateEndpoint404", EnablePrivateEndpoint404),
-                "408": decodeError("EnablePrivateEndpoint408", EnablePrivateEndpoint408),
-                "409": decodeError("EnablePrivateEndpoint409", EnablePrivateEndpoint409),
-                "422": decodeError("EnablePrivateEndpoint422", EnablePrivateEndpoint422),
-                "500": decodeError("EnablePrivateEndpoint500", EnablePrivateEndpoint500),
-                "502": decodeError("EnablePrivateEndpoint502", EnablePrivateEndpoint502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + "/enable"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(EnablePrivateEndpoint200),
+              "400": decodeError("EnablePrivateEndpoint400", EnablePrivateEndpoint400),
+              "401": decodeError("EnablePrivateEndpoint401", EnablePrivateEndpoint401),
+              "403": decodeError("EnablePrivateEndpoint403", EnablePrivateEndpoint403),
+              "404": decodeError("EnablePrivateEndpoint404", EnablePrivateEndpoint404),
+              "408": decodeError("EnablePrivateEndpoint408", EnablePrivateEndpoint408),
+              "409": decodeError("EnablePrivateEndpoint409", EnablePrivateEndpoint409),
+              "422": decodeError("EnablePrivateEndpoint422", EnablePrivateEndpoint422),
+              "500": decodeError("EnablePrivateEndpoint500", EnablePrivateEndpoint500),
+              "502": decodeError("EnablePrivateEndpoint502", EnablePrivateEndpoint502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "validatePrivateEndpoint": (id, options: Parameters<OpenRouterClient["validatePrivateEndpoint"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/private-endpoints/" + __encodePathParam(id) + "/validate")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ValidatePrivateEndpoint200),
-                "400": decodeError("ValidatePrivateEndpoint400", ValidatePrivateEndpoint400),
-                "401": decodeError("ValidatePrivateEndpoint401", ValidatePrivateEndpoint401),
-                "403": decodeError("ValidatePrivateEndpoint403", ValidatePrivateEndpoint403),
-                "404": decodeError("ValidatePrivateEndpoint404", ValidatePrivateEndpoint404),
-                "408": decodeError("ValidatePrivateEndpoint408", ValidatePrivateEndpoint408),
-                "409": decodeError("ValidatePrivateEndpoint409", ValidatePrivateEndpoint409),
-                "422": decodeError("ValidatePrivateEndpoint422", ValidatePrivateEndpoint422),
-                "500": decodeError("ValidatePrivateEndpoint500", ValidatePrivateEndpoint500),
-                "502": decodeError("ValidatePrivateEndpoint502", ValidatePrivateEndpoint502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/private-endpoints/" + __encodePathParam("id", id, "simple", false) + "/validate"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ValidatePrivateEndpoint200),
+              "400": decodeError("ValidatePrivateEndpoint400", ValidatePrivateEndpoint400),
+              "401": decodeError("ValidatePrivateEndpoint401", ValidatePrivateEndpoint401),
+              "403": decodeError("ValidatePrivateEndpoint403", ValidatePrivateEndpoint403),
+              "404": decodeError("ValidatePrivateEndpoint404", ValidatePrivateEndpoint404),
+              "408": decodeError("ValidatePrivateEndpoint408", ValidatePrivateEndpoint408),
+              "409": decodeError("ValidatePrivateEndpoint409", ValidatePrivateEndpoint409),
+              "422": decodeError("ValidatePrivateEndpoint422", ValidatePrivateEndpoint422),
+              "500": decodeError("ValidatePrivateEndpoint500", ValidatePrivateEndpoint500),
+              "502": decodeError("ValidatePrivateEndpoint502", ValidatePrivateEndpoint502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listPrivateProviders": (options: Parameters<OpenRouterClient["listPrivateProviders"]>[0]) =>
       HttpClientRequest.get("/private-providers").pipe(
         HttpClientRequest.setHeaders({
@@ -52378,7 +53475,11 @@ export const make = <E, R>(
         }))
       ),
     "getPrivateProvider": (slug, options: Parameters<OpenRouterClient["getPrivateProvider"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [slug], () => "/private-providers/" + __encodePathParam(slug) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [slug],
+        () => "/private-providers/" + __encodePathParam("slug", slug, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52398,60 +53499,66 @@ export const make = <E, R>(
         )
       ),
     "deletePrivateProvider": (slug, options: Parameters<OpenRouterClient["deletePrivateProvider"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [slug], () => "/private-providers/" + __encodePathParam(slug) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(DeletePrivateProvider200),
-                "400": decodeError("DeletePrivateProvider400", DeletePrivateProvider400),
-                "401": decodeError("DeletePrivateProvider401", DeletePrivateProvider401),
-                "403": decodeError("DeletePrivateProvider403", DeletePrivateProvider403),
-                "404": decodeError("DeletePrivateProvider404", DeletePrivateProvider404),
-                "408": decodeError("DeletePrivateProvider408", DeletePrivateProvider408),
-                "409": decodeError("DeletePrivateProvider409", DeletePrivateProvider409),
-                "422": decodeError("DeletePrivateProvider422", DeletePrivateProvider422),
-                "429": decodeError("DeletePrivateProvider429", DeletePrivateProvider429),
-                "500": decodeError("DeletePrivateProvider500", DeletePrivateProvider500),
-                "502": decodeError("DeletePrivateProvider502", DeletePrivateProvider502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [slug],
+        () => "/private-providers/" + __encodePathParam("slug", slug, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options?.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options?.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options?.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DeletePrivateProvider200),
+              "400": decodeError("DeletePrivateProvider400", DeletePrivateProvider400),
+              "401": decodeError("DeletePrivateProvider401", DeletePrivateProvider401),
+              "403": decodeError("DeletePrivateProvider403", DeletePrivateProvider403),
+              "404": decodeError("DeletePrivateProvider404", DeletePrivateProvider404),
+              "408": decodeError("DeletePrivateProvider408", DeletePrivateProvider408),
+              "409": decodeError("DeletePrivateProvider409", DeletePrivateProvider409),
+              "422": decodeError("DeletePrivateProvider422", DeletePrivateProvider422),
+              "429": decodeError("DeletePrivateProvider429", DeletePrivateProvider429),
+              "500": decodeError("DeletePrivateProvider500", DeletePrivateProvider500),
+              "502": decodeError("DeletePrivateProvider502", DeletePrivateProvider502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "updatePrivateProvider": (slug, options: Parameters<OpenRouterClient["updatePrivateProvider"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [slug], () => "/private-providers/" + __encodePathParam(slug) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(UpdatePrivateProvider200),
-                "400": decodeError("UpdatePrivateProvider400", UpdatePrivateProvider400),
-                "401": decodeError("UpdatePrivateProvider401", UpdatePrivateProvider401),
-                "403": decodeError("UpdatePrivateProvider403", UpdatePrivateProvider403),
-                "404": decodeError("UpdatePrivateProvider404", UpdatePrivateProvider404),
-                "408": decodeError("UpdatePrivateProvider408", UpdatePrivateProvider408),
-                "409": decodeError("UpdatePrivateProvider409", UpdatePrivateProvider409),
-                "422": decodeError("UpdatePrivateProvider422", UpdatePrivateProvider422),
-                "429": decodeError("UpdatePrivateProvider429", UpdatePrivateProvider429),
-                "500": decodeError("UpdatePrivateProvider500", UpdatePrivateProvider500),
-                "502": decodeError("UpdatePrivateProvider502", UpdatePrivateProvider502),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [slug],
+        () => "/private-providers/" + __encodePathParam("slug", slug, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(UpdatePrivateProvider200),
+              "400": decodeError("UpdatePrivateProvider400", UpdatePrivateProvider400),
+              "401": decodeError("UpdatePrivateProvider401", UpdatePrivateProvider401),
+              "403": decodeError("UpdatePrivateProvider403", UpdatePrivateProvider403),
+              "404": decodeError("UpdatePrivateProvider404", UpdatePrivateProvider404),
+              "408": decodeError("UpdatePrivateProvider408", UpdatePrivateProvider408),
+              "409": decodeError("UpdatePrivateProvider409", UpdatePrivateProvider409),
+              "422": decodeError("UpdatePrivateProvider422", UpdatePrivateProvider422),
+              "429": decodeError("UpdatePrivateProvider429", UpdatePrivateProvider429),
+              "500": decodeError("UpdatePrivateProvider500", UpdatePrivateProvider500),
+              "502": decodeError("UpdatePrivateProvider502", UpdatePrivateProvider502),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listProviders": (options: Parameters<OpenRouterClient["listProviders"]>[0]) =>
       HttpClientRequest.get("/providers").pipe(
         HttpClientRequest.setHeaders({
@@ -52579,7 +53686,11 @@ export const make = <E, R>(
         }))
       ),
     "getScimGroupMapping": (id, options: Parameters<OpenRouterClient["getScimGroupMapping"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/scim/group-mappings/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/scim/group-mappings/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52599,30 +53710,37 @@ export const make = <E, R>(
         )
       ),
     "deleteScimGroupMapping": (id, options: Parameters<OpenRouterClient["deleteScimGroupMapping"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/scim/group-mappings/" + __encodePathParam(id) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({ "keep_members": options.params["keep_members"] as any }),
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params["X-OpenRouter-Categories"] ?? undefined
-              }),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(DeleteScimGroupMapping200),
-                "400": decodeError("DeleteScimGroupMapping400", DeleteScimGroupMapping400),
-                "401": decodeError("DeleteScimGroupMapping401", DeleteScimGroupMapping401),
-                "403": decodeError("DeleteScimGroupMapping403", DeleteScimGroupMapping403),
-                "404": decodeError("DeleteScimGroupMapping404", DeleteScimGroupMapping404),
-                "500": decodeError("DeleteScimGroupMapping500", DeleteScimGroupMapping500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/scim/group-mappings/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "keep_members": options.params["keep_members"] as any }),
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params["X-OpenRouter-Categories"] ?? undefined
+            }),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DeleteScimGroupMapping200),
+              "400": decodeError("DeleteScimGroupMapping400", DeleteScimGroupMapping400),
+              "401": decodeError("DeleteScimGroupMapping401", DeleteScimGroupMapping401),
+              "403": decodeError("DeleteScimGroupMapping403", DeleteScimGroupMapping403),
+              "404": decodeError("DeleteScimGroupMapping404", DeleteScimGroupMapping404),
+              "500": decodeError("DeleteScimGroupMapping500", DeleteScimGroupMapping500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "updateScimGroupMapping": (id, options: Parameters<OpenRouterClient["updateScimGroupMapping"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [id], () => "/scim/group-mappings/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [id],
+        () => "/scim/group-mappings/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52682,7 +53800,11 @@ export const make = <E, R>(
         }))
       ),
     "getScimSyncJob": (id, options: Parameters<OpenRouterClient["getScimSyncJob"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/scim/sync-jobs/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/scim/sync-jobs/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52748,7 +53870,11 @@ export const make = <E, R>(
         }))
       ),
     "getTool": (name, options: Parameters<OpenRouterClient["getTool"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [name], () => "/tools/" + __encodePathParam(name) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [name],
+        () => "/tools/" + __encodePathParam("name", name, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -52772,7 +53898,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [internId],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/connections"
+        () => "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/connections"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52805,7 +53931,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [internId],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/effective-secrets"
+        () => "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/effective-secrets"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52839,7 +53965,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [internId],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/secrets"
+        () => "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/secrets"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52873,7 +53999,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [internId, name],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/secrets/" + __encodePathParam(name) + ""
+        () =>
+          "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/secrets/" +
+          __encodePathParam("name", name, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52906,7 +54034,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [internId, name],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/secrets/" + __encodePathParam(name) + ""
+        () =>
+          "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/secrets/" +
+          __encodePathParam("name", name, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52937,7 +54067,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [internId],
-        () => "/vault/interns/" + __encodePathParam(internId) + "/secrets/copy"
+        () => "/vault/interns/" + __encodePathParam("internId", internId, "simple", false) + "/secrets/copy"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -52993,7 +54123,11 @@ export const make = <E, R>(
         }))
       ),
     "storeVaultSecret": (name, options: Parameters<OpenRouterClient["storeVaultSecret"]>[1]) =>
-      __makePathRequest(HttpClientRequest.put, [name], () => "/vault/secrets/" + __encodePathParam(name) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.put,
+        [name],
+        () => "/vault/secrets/" + __encodePathParam("name", name, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -53022,7 +54156,11 @@ export const make = <E, R>(
         )
       ),
     "deleteVaultSecret": (name, options: Parameters<OpenRouterClient["deleteVaultSecret"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [name], () => "/vault/secrets/" + __encodePathParam(name) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [name],
+        () => "/vault/secrets/" + __encodePathParam("name", name, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -53072,7 +54210,11 @@ export const make = <E, R>(
         }))
       ),
     "getVideos": (jobId, options: Parameters<OpenRouterClient["getVideos"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [jobId], () => "/videos/" + __encodePathParam(jobId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [jobId],
+        () => "/videos/" + __encodePathParam("jobId", jobId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -53092,7 +54234,11 @@ export const make = <E, R>(
         )
       ),
     "listVideosContent": (jobId, options: Parameters<OpenRouterClient["listVideosContent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [jobId], () => "/videos/" + __encodePathParam(jobId) + "/content").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [jobId],
+        () => "/videos/" + __encodePathParam("jobId", jobId, "simple", false) + "/content"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({ "index": options?.params?.["index"] as any }),
@@ -53118,8 +54264,8 @@ export const make = <E, R>(
       ),
     "listVideosContentStream": (jobId, options) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [jobId], () => "/videos/" + __encodePathParam(jobId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [jobId], () =>
+          "/videos/" + __encodePathParam("jobId", jobId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setUrlParams({ "index": options?.params?.["index"] as any }),
@@ -53184,7 +54330,11 @@ export const make = <E, R>(
         }))
       ),
     "getWorkspace": (id, options: Parameters<OpenRouterClient["getWorkspace"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/workspaces/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -53204,7 +54354,11 @@ export const make = <E, R>(
         )
       ),
     "deleteWorkspace": (id, options: Parameters<OpenRouterClient["deleteWorkspace"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [id], () => "/workspaces/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -53228,7 +54382,11 @@ export const make = <E, R>(
         )
       ),
     "updateWorkspace": (id, options: Parameters<OpenRouterClient["updateWorkspace"]>[1]) =>
-      __makePathRequest(HttpClientRequest.patch, [id], () => "/workspaces/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.patch,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -53250,7 +54408,11 @@ export const make = <E, R>(
         )
       ),
     "listWorkspaceMembers": (id, options: Parameters<OpenRouterClient["listWorkspaceMembers"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/workspaces/" + __encodePathParam(id) + "/members").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + "/members"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -53274,56 +54436,62 @@ export const make = <E, R>(
         )
       ),
     "bulkAddWorkspaceMembers": (id, options: Parameters<OpenRouterClient["bulkAddWorkspaceMembers"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/workspaces/" + __encodePathParam(id) + "/members/add")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(BulkAddWorkspaceMembers200),
-                "400": decodeError("BulkAddWorkspaceMembers400", BulkAddWorkspaceMembers400),
-                "401": decodeError("BulkAddWorkspaceMembers401", BulkAddWorkspaceMembers401),
-                "403": decodeError("BulkAddWorkspaceMembers403", BulkAddWorkspaceMembers403),
-                "404": decodeError("BulkAddWorkspaceMembers404", BulkAddWorkspaceMembers404),
-                "500": decodeError("BulkAddWorkspaceMembers500", BulkAddWorkspaceMembers500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + "/members/add"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(BulkAddWorkspaceMembers200),
+              "400": decodeError("BulkAddWorkspaceMembers400", BulkAddWorkspaceMembers400),
+              "401": decodeError("BulkAddWorkspaceMembers401", BulkAddWorkspaceMembers401),
+              "403": decodeError("BulkAddWorkspaceMembers403", BulkAddWorkspaceMembers403),
+              "404": decodeError("BulkAddWorkspaceMembers404", BulkAddWorkspaceMembers404),
+              "500": decodeError("BulkAddWorkspaceMembers500", BulkAddWorkspaceMembers500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "bulkRemoveWorkspaceMembers": (id, options: Parameters<OpenRouterClient["bulkRemoveWorkspaceMembers"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [id], () => "/workspaces/" + __encodePathParam(id) + "/members/remove")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
-                "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
-                "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
-              }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(BulkRemoveWorkspaceMembers200),
-                "400": decodeError("BulkRemoveWorkspaceMembers400", BulkRemoveWorkspaceMembers400),
-                "401": decodeError("BulkRemoveWorkspaceMembers401", BulkRemoveWorkspaceMembers401),
-                "403": decodeError("BulkRemoveWorkspaceMembers403", BulkRemoveWorkspaceMembers403),
-                "404": decodeError("BulkRemoveWorkspaceMembers404", BulkRemoveWorkspaceMembers404),
-                "500": decodeError("BulkRemoveWorkspaceMembers500", BulkRemoveWorkspaceMembers500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [id],
+        () => "/workspaces/" + __encodePathParam("id", id, "simple", false) + "/members/remove"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "HTTP-Referer": options.params?.["HTTP-Referer"] ?? undefined,
+              "X-OpenRouter-Title": options.params?.["X-OpenRouter-Title"] ?? undefined,
+              "X-OpenRouter-Categories": options.params?.["X-OpenRouter-Categories"] ?? undefined
+            }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(BulkRemoveWorkspaceMembers200),
+              "400": decodeError("BulkRemoveWorkspaceMembers400", BulkRemoveWorkspaceMembers400),
+              "401": decodeError("BulkRemoveWorkspaceMembers401", BulkRemoveWorkspaceMembers401),
+              "403": decodeError("BulkRemoveWorkspaceMembers403", BulkRemoveWorkspaceMembers403),
+              "404": decodeError("BulkRemoveWorkspaceMembers404", BulkRemoveWorkspaceMembers404),
+              "500": decodeError("BulkRemoveWorkspaceMembers500", BulkRemoveWorkspaceMembers500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listWorkspaceBudgets": (workspaceRef, options: Parameters<OpenRouterClient["listWorkspaceBudgets"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.get,
         [workspaceRef],
-        () => "/workspaces/" + __encodePathParam(workspaceRef) + "/budgets"
+        () => "/workspaces/" + __encodePathParam("workspace_ref", workspaceRef, "simple", false) + "/budgets"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -53347,7 +54515,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [workspaceRef, interval],
-        () => "/workspaces/" + __encodePathParam(workspaceRef) + "/budgets/" + __encodePathParam(interval) + ""
+        () =>
+          "/workspaces/" + __encodePathParam("workspace_ref", workspaceRef, "simple", false) + "/budgets/" +
+          __encodePathParam("interval", interval, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -53376,7 +54546,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.put,
         [workspaceRef, interval],
-        () => "/workspaces/" + __encodePathParam(workspaceRef) + "/budgets/" + __encodePathParam(interval) + ""
+        () =>
+          "/workspaces/" + __encodePathParam("workspace_ref", workspaceRef, "simple", false) + "/budgets/" +
+          __encodePathParam("interval", interval, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -53406,7 +54578,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [workspaceRef, interval],
-        () => "/workspaces/" + __encodePathParam(workspaceRef) + "/budgets/" + __encodePathParam(interval) + ""
+        () =>
+          "/workspaces/" + __encodePathParam("workspace_ref", workspaceRef, "simple", false) + "/budgets/" +
+          __encodePathParam("interval", interval, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -53943,7 +55117,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getBatches": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBatchesPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetBatchesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetBatches200, Config>,
@@ -53960,7 +55134,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBatchesPathParams.Encoded)["id"],
       options:
         | { readonly params?: typeof GetBatchesParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -53984,7 +55158,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBatchPathParams.Encoded)["id"],
       options: { readonly params?: typeof DeleteBatchParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteBatch200, Config>,
@@ -54000,7 +55174,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBatchPathParams.Encoded)["id"],
       options:
         | { readonly params?: typeof DeleteBatchParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -54129,7 +55303,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getBYOKKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBYOKKeyPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetBYOKKeyParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetBYOKKey200, Config>,
@@ -54143,7 +55317,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBYOKKeyPathParams.Encoded)["id"],
       options:
         | { readonly params?: typeof GetBYOKKeyParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -54164,7 +55338,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteBYOKKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBYOKKeyPathParams.Encoded)["id"],
       options: { readonly params?: typeof DeleteBYOKKeyParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteBYOKKey200, Config>,
@@ -54178,7 +55352,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBYOKKeyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteBYOKKeyParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -54200,7 +55374,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateBYOKKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateBYOKKeyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateBYOKKeyParams.Encoded | undefined
         readonly payload: typeof UpdateBYOKKeyRequestJson.Encoded
@@ -54220,7 +55394,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateBYOKKeyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateBYOKKeyParams.Encoded | undefined
         readonly payload: typeof UpdateBYOKKeyRequestJson.Encoded
@@ -54369,7 +55543,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listContainerFiles": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof ListContainerFilesPathParams.Encoded)["container_id"],
       options: { readonly params?: typeof ListContainerFilesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListContainerFiles200, Config>,
@@ -54385,7 +55559,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof ListContainerFilesPathParams.Encoded)["container_id"],
       options: {
         readonly params?: typeof ListContainerFilesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -54409,8 +55583,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getContainerFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof GetContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof GetContainerFilePathParams.Encoded)["file_id"],
       options: { readonly params?: typeof GetContainerFileParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetContainerFile200, Config>,
@@ -54427,8 +55601,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof GetContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof GetContainerFilePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof GetContainerFileParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -54453,8 +55627,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "downloadContainerFileContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof DownloadContainerFileContentPathParams.Encoded)["container_id"],
+      fileId: (typeof DownloadContainerFileContentPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DownloadContainerFileContentParams.Encoded | undefined
         readonly config: Config
@@ -54474,8 +55648,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof DownloadContainerFileContentPathParams.Encoded)["container_id"],
+      fileId: (typeof DownloadContainerFileContentPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DownloadContainerFileContentParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -54499,8 +55673,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    * Streams the raw bytes of a file in a container.
    */
   readonly "downloadContainerFileContentStream": (
-    containerId: string,
-    fileId: string,
+    containerId: (typeof DownloadContainerFileContentPathParams.Encoded)["container_id"],
+    fileId: (typeof DownloadContainerFileContentPathParams.Encoded)["file_id"],
     options: { readonly params?: typeof DownloadContainerFileContentParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -54508,8 +55682,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "promoteContainerFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof PromoteContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof PromoteContainerFilePathParams.Encoded)["file_id"],
       options: { readonly params?: typeof PromoteContainerFileParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<PromoteContainerFile200, Config>,
@@ -54528,8 +55702,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof PromoteContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof PromoteContainerFilePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof PromoteContainerFileParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -54664,7 +55838,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listCreditsPurchases": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListCreditsPurchasesPathParams.Encoded)["id"],
       options: { readonly params?: typeof ListCreditsPurchasesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListCreditsPurchases200, Config>,
@@ -54681,7 +55855,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListCreditsPurchasesPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListCreditsPurchasesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55080,7 +56254,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getExternalUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof GetExternalUserPathParams.Encoded)["user"],
       options: { readonly params?: typeof GetExternalUserParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetExternalUser200, Config>,
@@ -55095,7 +56269,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof GetExternalUserPathParams.Encoded)["user"],
       options: {
         readonly params?: typeof GetExternalUserParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55118,7 +56292,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteExternalUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof DeleteExternalUserPathParams.Encoded)["user"],
       options: { readonly params?: typeof DeleteExternalUserParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -55132,7 +56306,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof DeleteExternalUserPathParams.Encoded)["user"],
       options: {
         readonly params?: typeof DeleteExternalUserParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55154,7 +56328,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateExternalUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof UpdateExternalUserPathParams.Encoded)["user"],
       options: {
         readonly params?: typeof UpdateExternalUserParams.Encoded | undefined
         readonly payload: typeof UpdateExternalUserRequestJson.Encoded
@@ -55172,7 +56346,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      user: string,
+      user: (typeof UpdateExternalUserPathParams.Encoded)["user"],
       options: {
         readonly params?: typeof UpdateExternalUserParams.Encoded | undefined
         readonly payload: typeof UpdateExternalUserRequestJson.Encoded
@@ -55283,7 +56457,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getFileMetadata": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof GetFileMetadataPathParams.Encoded)["file_id"],
       options: { readonly params?: typeof GetFileMetadataParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetFileMetadata200, Config>,
@@ -55300,7 +56474,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof GetFileMetadataPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof GetFileMetadataParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55325,7 +56499,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFilePathParams.Encoded)["file_id"],
       options: { readonly params?: typeof DeleteFileParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteFile200, Config>,
@@ -55342,7 +56516,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFilePathParams.Encoded)["file_id"],
       options:
         | { readonly params?: typeof DeleteFileParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -55366,7 +56540,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "downloadFileContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFileContentPathParams.Encoded)["file_id"],
       options: { readonly params?: typeof DownloadFileContentParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -55384,7 +56558,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFileContentPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DownloadFileContentParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55409,7 +56583,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    * Downloads the raw bytes of a file. Only files created server-side are downloadable; uploaded files return 400.
    */
   readonly "downloadFileContentStream": (
-    fileId: string,
+    fileId: (typeof DownloadFileContentPathParams.Encoded)["file_id"],
     options: { readonly params?: typeof DownloadFileContentParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -55621,7 +56795,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetGuardrailPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetGuardrailParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetGuardrail200, Config>,
@@ -55635,7 +56809,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetGuardrailPathParams.Encoded)["id"],
       options:
         | { readonly params?: typeof GetGuardrailParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -55656,7 +56830,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteGuardrailPathParams.Encoded)["id"],
       options: { readonly params?: typeof DeleteGuardrailParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteGuardrail200, Config>,
@@ -55670,7 +56844,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteGuardrailParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55692,7 +56866,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateGuardrailParams.Encoded | undefined
         readonly payload: typeof UpdateGuardrailRequestJson.Encoded
@@ -55712,7 +56886,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateGuardrailParams.Encoded | undefined
         readonly payload: typeof UpdateGuardrailRequestJson.Encoded
@@ -55737,7 +56911,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listGuardrailKeyAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListGuardrailKeyAssignmentsPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListGuardrailKeyAssignmentsParams.Encoded | undefined
         readonly config: Config
@@ -55754,7 +56928,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListGuardrailKeyAssignmentsPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListGuardrailKeyAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55776,7 +56950,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkAssignKeysToGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAssignKeysToGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAssignKeysToGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkAssignKeysToGuardrailRequestJson.Encoded
@@ -55795,7 +56969,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAssignKeysToGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAssignKeysToGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkAssignKeysToGuardrailRequestJson.Encoded
@@ -55819,7 +56993,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkUnassignKeysFromGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkUnassignKeysFromGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkUnassignKeysFromGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkUnassignKeysFromGuardrailRequestJson.Encoded
@@ -55838,7 +57012,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkUnassignKeysFromGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkUnassignKeysFromGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkUnassignKeysFromGuardrailRequestJson.Encoded
@@ -55862,7 +57036,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listGuardrailMemberAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListGuardrailMemberAssignmentsPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListGuardrailMemberAssignmentsParams.Encoded | undefined
         readonly config: Config
@@ -55879,7 +57053,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListGuardrailMemberAssignmentsPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListGuardrailMemberAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -55901,7 +57075,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkAssignMembersToGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAssignMembersToGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAssignMembersToGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkAssignMembersToGuardrailRequestJson.Encoded
@@ -55920,7 +57094,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAssignMembersToGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAssignMembersToGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkAssignMembersToGuardrailRequestJson.Encoded
@@ -55944,7 +57118,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkUnassignMembersFromGuardrail": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkUnassignMembersFromGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkUnassignMembersFromGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkUnassignMembersFromGuardrailRequestJson.Encoded
@@ -55963,7 +57137,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkUnassignMembersFromGuardrailPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkUnassignMembersFromGuardrailParams.Encoded | undefined
         readonly payload: typeof BulkUnassignMembersFromGuardrailRequestJson.Encoded
@@ -56138,7 +57312,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateAccountPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateAccountPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateAccountPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateAccountPolicyRequestJson.Encoded
@@ -56158,7 +57332,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateAccountPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateAccountPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateAccountPolicyRequestJson.Encoded
@@ -56183,7 +57357,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteAccountPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteAccountPolicyPathParams.Encoded)["id"],
       options: { readonly params?: typeof DeleteAccountPolicyParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAccountPolicy200, Config>,
@@ -56199,7 +57373,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteAccountPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteAccountPolicyParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -56223,7 +57397,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getApiKeyPolicyAssignment": {
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof GetApiKeyPolicyAssignmentPathParams.Encoded)["hash"],
       options: { readonly params: typeof GetApiKeyPolicyAssignmentParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetApiKeyPolicyAssignment200, Config>,
@@ -56238,7 +57412,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof GetApiKeyPolicyAssignmentPathParams.Encoded)["hash"],
       options: { readonly params: typeof GetApiKeyPolicyAssignmentParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<GetApiKeyPolicyAssignment200, Config | undefined>,
@@ -56258,7 +57432,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "changeApiKeyPolicyAssignment": {
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof ChangeApiKeyPolicyAssignmentPathParams.Encoded)["hash"],
       options: {
         readonly params?: typeof ChangeApiKeyPolicyAssignmentParams.Encoded | undefined
         readonly payload: typeof ChangeApiKeyPolicyAssignmentRequestJson.Encoded
@@ -56278,7 +57452,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof ChangeApiKeyPolicyAssignmentPathParams.Encoded)["hash"],
       options: {
         readonly params?: typeof ChangeApiKeyPolicyAssignmentParams.Encoded | undefined
         readonly payload: typeof ChangeApiKeyPolicyAssignmentRequestJson.Encoded
@@ -56303,7 +57477,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getMemberPolicyAssignment": {
     <Config extends OperationConfig | undefined = undefined>(
-      memberId: string,
+      memberId: (typeof GetMemberPolicyAssignmentPathParams.Encoded)["member_id"],
       options: { readonly params: typeof GetMemberPolicyAssignmentParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetMemberPolicyAssignment200, Config>,
@@ -56318,7 +57492,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      memberId: string,
+      memberId: (typeof GetMemberPolicyAssignmentPathParams.Encoded)["member_id"],
       options: { readonly params: typeof GetMemberPolicyAssignmentParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<GetMemberPolicyAssignment200, Config | undefined>,
@@ -56338,7 +57512,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "changeMemberPolicyAssignment": {
     <Config extends OperationConfig | undefined = undefined>(
-      memberId: string,
+      memberId: (typeof ChangeMemberPolicyAssignmentPathParams.Encoded)["member_id"],
       options: {
         readonly params?: typeof ChangeMemberPolicyAssignmentParams.Encoded | undefined
         readonly payload: typeof ChangeMemberPolicyAssignmentRequestJson.Encoded
@@ -56358,7 +57532,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      memberId: string,
+      memberId: (typeof ChangeMemberPolicyAssignmentPathParams.Encoded)["member_id"],
       options: {
         readonly params?: typeof ChangeMemberPolicyAssignmentParams.Encoded | undefined
         readonly payload: typeof ChangeMemberPolicyAssignmentRequestJson.Encoded
@@ -56459,7 +57633,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getBudgetPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBudgetPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof GetBudgetPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetBudgetPolicy200, Config>,
@@ -56474,7 +57648,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetBudgetPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof GetBudgetPolicyParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<GetBudgetPolicy200, Config | undefined>,
@@ -56494,7 +57668,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateBudgetPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateBudgetPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateBudgetPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateBudgetPolicyRequestJson.Encoded
@@ -56514,7 +57688,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateBudgetPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateBudgetPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateBudgetPolicyRequestJson.Encoded
@@ -56539,7 +57713,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteBudgetPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBudgetPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteBudgetPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteBudgetPolicy200, Config>,
@@ -56555,7 +57729,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteBudgetPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteBudgetPolicyParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<DeleteBudgetPolicy200, Config | undefined>,
@@ -56655,7 +57829,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getModelAvailabilityPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof GetModelAvailabilityPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetModelAvailabilityPolicy200, Config>,
@@ -56670,7 +57844,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: {
         readonly params: typeof GetModelAvailabilityPolicyParams.Encoded
         readonly config?: Config | undefined
@@ -56693,7 +57867,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateModelAvailabilityPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateModelAvailabilityPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateModelAvailabilityPolicyRequestJson.Encoded
@@ -56713,7 +57887,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateModelAvailabilityPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateModelAvailabilityPolicyRequestJson.Encoded
@@ -56738,7 +57912,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteModelAvailabilityPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteModelAvailabilityPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteModelAvailabilityPolicy200, Config>,
@@ -56754,7 +57928,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteModelAvailabilityPolicyPathParams.Encoded)["id"],
       options: {
         readonly params: typeof DeleteModelAvailabilityPolicyParams.Encoded
         readonly config?: Config | undefined
@@ -56854,7 +58028,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getModerationPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetModerationPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof GetModerationPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetModerationPolicy200, Config>,
@@ -56869,7 +58043,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetModerationPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof GetModerationPolicyParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<GetModerationPolicy200, Config | undefined>,
@@ -56889,7 +58063,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateModerationPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateModerationPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateModerationPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateModerationPolicyRequestJson.Encoded
@@ -56909,7 +58083,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateModerationPolicyPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateModerationPolicyParams.Encoded | undefined
         readonly payload: typeof UpdateModerationPolicyRequestJson.Encoded
@@ -56934,7 +58108,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteModerationPolicy": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteModerationPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteModerationPolicyParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteModerationPolicy200, Config>,
@@ -56950,7 +58124,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteModerationPolicyPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteModerationPolicyParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<DeleteModerationPolicy200, Config | undefined>,
@@ -57065,8 +58239,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listImageModelEndpoints": {
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof ListImageModelEndpointsPathParams.Encoded)["author"],
+      slug: (typeof ListImageModelEndpointsPathParams.Encoded)["slug"],
       options: { readonly params?: typeof ListImageModelEndpointsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListImageModelEndpoints200, Config>,
@@ -57078,8 +58252,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof ListImageModelEndpointsPathParams.Encoded)["author"],
+      slug: (typeof ListImageModelEndpointsPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof ListImageModelEndpointsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -57207,7 +58381,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof GetKeyPathParams.Encoded)["hash"],
       options: { readonly params?: typeof GetKeyParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetKey200, Config>,
@@ -57222,7 +58396,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof GetKeyPathParams.Encoded)["hash"],
       options:
         | { readonly params?: typeof GetKeyParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -57244,7 +58418,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteKeys": {
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof DeleteKeysPathParams.Encoded)["hash"],
       options: { readonly params?: typeof DeleteKeysParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteKeys200, Config>,
@@ -57259,7 +58433,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof DeleteKeysPathParams.Encoded)["hash"],
       options:
         | { readonly params?: typeof DeleteKeysParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -57287,7 +58461,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateKeys": {
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof UpdateKeysPathParams.Encoded)["hash"],
       options: {
         readonly params?: typeof UpdateKeysParams.Encoded | undefined
         readonly payload: typeof UpdateKeysRequestJson.Encoded
@@ -57308,7 +58482,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      hash: string,
+      hash: (typeof UpdateKeysPathParams.Encoded)["hash"],
       options: {
         readonly params?: typeof UpdateKeysParams.Encoded | undefined
         readonly payload: typeof UpdateKeysRequestJson.Encoded
@@ -57394,8 +58568,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getModel": {
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof GetModelPathParams.Encoded)["author"],
+      slug: (typeof GetModelPathParams.Encoded)["slug"],
       options: { readonly params?: typeof GetModelParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetModel200, Config>,
@@ -57408,8 +58582,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof GetModelPathParams.Encoded)["author"],
+      slug: (typeof GetModelPathParams.Encoded)["slug"],
       options:
         | { readonly params?: typeof GetModelParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -57472,8 +58646,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listEndpoints": {
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof ListEndpointsPathParams.Encoded)["author"],
+      slug: (typeof ListEndpointsPathParams.Encoded)["slug"],
       options: { readonly params?: typeof ListEndpointsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListEndpoints200, Config>,
@@ -57487,8 +58661,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      author: string,
-      slug: string,
+      author: (typeof ListEndpointsPathParams.Encoded)["author"],
+      slug: (typeof ListEndpointsPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof ListEndpointsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -57723,7 +58897,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getObservabilityDestination": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof GetObservabilityDestinationParams.Encoded | undefined
         readonly config: Config
@@ -57740,7 +58914,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof GetObservabilityDestinationParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -57762,7 +58936,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteObservabilityDestination": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteObservabilityDestinationParams.Encoded | undefined
         readonly config: Config
@@ -57779,7 +58953,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteObservabilityDestinationParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -57801,7 +58975,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateObservabilityDestination": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateObservabilityDestinationParams.Encoded | undefined
         readonly payload: typeof UpdateObservabilityDestinationRequestJson.Encoded
@@ -57821,7 +58995,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateObservabilityDestinationPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateObservabilityDestinationParams.Encoded | undefined
         readonly payload: typeof UpdateObservabilityDestinationRequestJson.Encoded
@@ -57992,7 +59166,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getPreset": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof GetPresetPathParams.Encoded)["slug"],
       options: { readonly params?: typeof GetPresetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetPreset200, Config>,
@@ -58008,7 +59182,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof GetPresetPathParams.Encoded)["slug"],
       options:
         | { readonly params?: typeof GetPresetParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -58031,7 +59205,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deletePreset": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof DeletePresetPathParams.Encoded)["slug"],
       options: { readonly params?: typeof DeletePresetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeletePreset200, Config>,
@@ -58047,7 +59221,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof DeletePresetPathParams.Encoded)["slug"],
       options:
         | { readonly params?: typeof DeletePresetParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -58070,7 +59244,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "createPresetsChatCompletions": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsChatCompletionsPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsChatCompletionsParams.Encoded | undefined
         readonly payload: typeof CreatePresetsChatCompletionsRequestJson.Encoded
@@ -58090,7 +59264,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsChatCompletionsPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsChatCompletionsParams.Encoded | undefined
         readonly payload: typeof CreatePresetsChatCompletionsRequestJson.Encoded
@@ -58115,7 +59289,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "createPresetsMessages": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsMessagesPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsMessagesParams.Encoded | undefined
         readonly payload: typeof CreatePresetsMessagesRequestJson.Encoded
@@ -58135,7 +59309,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsMessagesPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsMessagesParams.Encoded | undefined
         readonly payload: typeof CreatePresetsMessagesRequestJson.Encoded
@@ -58160,7 +59334,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "createPresetsResponses": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsResponsesPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsResponsesParams.Encoded | undefined
         readonly payload: typeof CreatePresetsResponsesRequestJson.Encoded
@@ -58180,7 +59354,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof CreatePresetsResponsesPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof CreatePresetsResponsesParams.Encoded | undefined
         readonly payload: typeof CreatePresetsResponsesRequestJson.Encoded
@@ -58205,7 +59379,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "restorePreset": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof RestorePresetPathParams.Encoded)["slug"],
       options: { readonly params?: typeof RestorePresetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RestorePreset200, Config>,
@@ -58221,7 +59395,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof RestorePresetPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof RestorePresetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58245,7 +59419,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listPresetVersions": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof ListPresetVersionsPathParams.Encoded)["slug"],
       options: { readonly params?: typeof ListPresetVersionsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListPresetVersions200, Config>,
@@ -58261,7 +59435,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof ListPresetVersionsPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof ListPresetVersionsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58285,8 +59459,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getPresetVersion": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
-      version: string,
+      slug: (typeof GetPresetVersionPathParams.Encoded)["slug"],
+      version: (typeof GetPresetVersionPathParams.Encoded)["version"],
       options: { readonly params?: typeof GetPresetVersionParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetPresetVersion200, Config>,
@@ -58302,8 +59476,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
-      version: string,
+      slug: (typeof GetPresetVersionPathParams.Encoded)["slug"],
+      version: (typeof GetPresetVersionPathParams.Encoded)["version"],
       options: {
         readonly params?: typeof GetPresetVersionParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58410,7 +59584,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getPrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetPrivateEndpointPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetPrivateEndpointParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetPrivateEndpoint200, Config>,
@@ -58425,7 +59599,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetPrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof GetPrivateEndpointParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58448,7 +59622,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deletePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeletePrivateEndpointPathParams.Encoded)["id"],
       options: { readonly params?: typeof DeletePrivateEndpointParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeletePrivateEndpoint200, Config>,
@@ -58467,7 +59641,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeletePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeletePrivateEndpointParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58494,7 +59668,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updatePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdatePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdatePrivateEndpointParams.Encoded | undefined
         readonly payload: typeof UpdatePrivateEndpointRequestJson.Encoded
@@ -58517,7 +59691,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdatePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdatePrivateEndpointParams.Encoded | undefined
         readonly payload: typeof UpdatePrivateEndpointRequestJson.Encoded
@@ -58545,7 +59719,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "activatePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ActivatePrivateEndpointPathParams.Encoded)["id"],
       options: { readonly params?: typeof ActivatePrivateEndpointParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ActivatePrivateEndpoint200, Config>,
@@ -58564,7 +59738,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ActivatePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ActivatePrivateEndpointParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58591,7 +59765,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "disablePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DisablePrivateEndpointPathParams.Encoded)["id"],
       options: { readonly params?: typeof DisablePrivateEndpointParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DisablePrivateEndpoint200, Config>,
@@ -58610,7 +59784,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DisablePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DisablePrivateEndpointParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58637,7 +59811,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "enablePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof EnablePrivateEndpointPathParams.Encoded)["id"],
       options: { readonly params?: typeof EnablePrivateEndpointParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<EnablePrivateEndpoint200, Config>,
@@ -58656,7 +59830,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof EnablePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof EnablePrivateEndpointParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58683,7 +59857,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "validatePrivateEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ValidatePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ValidatePrivateEndpointParams.Encoded | undefined
         readonly payload: typeof ValidatePrivateEndpointRequestJson.Encoded
@@ -58706,7 +59880,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ValidatePrivateEndpointPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ValidatePrivateEndpointParams.Encoded | undefined
         readonly payload: typeof ValidatePrivateEndpointRequestJson.Encoded
@@ -58817,7 +59991,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getPrivateProvider": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof GetPrivateProviderPathParams.Encoded)["slug"],
       options: { readonly params?: typeof GetPrivateProviderParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetPrivateProvider200, Config>,
@@ -58831,7 +60005,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof GetPrivateProviderPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof GetPrivateProviderParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58853,7 +60027,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deletePrivateProvider": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof DeletePrivateProviderPathParams.Encoded)["slug"],
       options: { readonly params?: typeof DeletePrivateProviderParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeletePrivateProvider200, Config>,
@@ -58873,7 +60047,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof DeletePrivateProviderPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof DeletePrivateProviderParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -58901,7 +60075,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updatePrivateProvider": {
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof UpdatePrivateProviderPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof UpdatePrivateProviderParams.Encoded | undefined
         readonly payload: typeof UpdatePrivateProviderRequestJson.Encoded
@@ -58925,7 +60099,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      slug: string,
+      slug: (typeof UpdatePrivateProviderPathParams.Encoded)["slug"],
       options: {
         readonly params?: typeof UpdatePrivateProviderParams.Encoded | undefined
         readonly payload: typeof UpdatePrivateProviderRequestJson.Encoded
@@ -59193,7 +60367,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getScimGroupMapping": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetScimGroupMappingPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetScimGroupMappingParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetScimGroupMapping200, Config>,
@@ -59207,7 +60381,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetScimGroupMappingPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof GetScimGroupMappingParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59229,7 +60403,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteScimGroupMapping": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteScimGroupMappingPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteScimGroupMappingParams.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteScimGroupMapping200, Config>,
@@ -59244,7 +60418,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteScimGroupMappingPathParams.Encoded)["id"],
       options: { readonly params: typeof DeleteScimGroupMappingParams.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<DeleteScimGroupMapping200, Config | undefined>,
@@ -59264,7 +60438,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateScimGroupMapping": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateScimGroupMappingPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateScimGroupMappingParams.Encoded | undefined
         readonly payload: typeof UpdateScimGroupMappingRequestJson.Encoded
@@ -59283,7 +60457,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateScimGroupMappingPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateScimGroupMappingParams.Encoded | undefined
         readonly payload: typeof UpdateScimGroupMappingRequestJson.Encoded
@@ -59375,7 +60549,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getScimSyncJob": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetScimSyncJobPathParams.Encoded)["id"],
       options: { readonly params?: typeof GetScimSyncJobParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetScimSyncJob200, Config>,
@@ -59389,7 +60563,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetScimSyncJobPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof GetScimSyncJobParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59499,7 +60673,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getTool": {
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof GetToolPathParams.Encoded)["name"],
       options: { readonly params?: typeof GetToolParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetTool200 | void, Config>,
@@ -59513,7 +60687,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof GetToolPathParams.Encoded)["name"],
       options:
         | { readonly params?: typeof GetToolParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -59534,7 +60708,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listInternConnections": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternConnectionsPathParams.Encoded)["internId"],
       options: { readonly params?: typeof ListInternConnectionsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListInternConnections200, Config>,
@@ -59554,7 +60728,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternConnectionsPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof ListInternConnectionsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59582,7 +60756,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listInternEffectiveVaultSecrets": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternEffectiveVaultSecretsPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof ListInternEffectiveVaultSecretsParams.Encoded | undefined
         readonly config: Config
@@ -59605,7 +60779,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternEffectiveVaultSecretsPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof ListInternEffectiveVaultSecretsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59633,7 +60807,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listInternVaultSecrets": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternVaultSecretsPathParams.Encoded)["internId"],
       options: { readonly params?: typeof ListInternVaultSecretsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListInternVaultSecrets200, Config>,
@@ -59653,7 +60827,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof ListInternVaultSecretsPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof ListInternVaultSecretsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59681,8 +60855,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "storeInternVaultSecret": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
-      name: string,
+      internId: (typeof StoreInternVaultSecretPathParams.Encoded)["internId"],
+      name: (typeof StoreInternVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof StoreInternVaultSecretParams.Encoded | undefined
         readonly payload: typeof StoreInternVaultSecretRequestJson.Encoded
@@ -59708,8 +60882,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
-      name: string,
+      internId: (typeof StoreInternVaultSecretPathParams.Encoded)["internId"],
+      name: (typeof StoreInternVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof StoreInternVaultSecretParams.Encoded | undefined
         readonly payload: typeof StoreInternVaultSecretRequestJson.Encoded
@@ -59740,8 +60914,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteInternVaultSecret": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
-      name: string,
+      internId: (typeof DeleteInternVaultSecretPathParams.Encoded)["internId"],
+      name: (typeof DeleteInternVaultSecretPathParams.Encoded)["name"],
       options: { readonly params?: typeof DeleteInternVaultSecretParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -59762,8 +60936,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
-      name: string,
+      internId: (typeof DeleteInternVaultSecretPathParams.Encoded)["internId"],
+      name: (typeof DeleteInternVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof DeleteInternVaultSecretParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -59792,7 +60966,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "copyVaultSecretsToIntern": {
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof CopyVaultSecretsToInternPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof CopyVaultSecretsToInternParams.Encoded | undefined
         readonly payload: typeof CopyVaultSecretsToInternRequestJson.Encoded
@@ -59818,7 +60992,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      internId: string,
+      internId: (typeof CopyVaultSecretsToInternPathParams.Encoded)["internId"],
       options: {
         readonly params?: typeof CopyVaultSecretsToInternParams.Encoded | undefined
         readonly payload: typeof CopyVaultSecretsToInternRequestJson.Encoded
@@ -59895,7 +61069,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "storeVaultSecret": {
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof StoreVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof StoreVaultSecretParams.Encoded | undefined
         readonly payload: typeof StoreVaultSecretRequestJson.Encoded
@@ -59921,7 +61095,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof StoreVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof StoreVaultSecretParams.Encoded | undefined
         readonly payload: typeof StoreVaultSecretRequestJson.Encoded
@@ -59952,7 +61126,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteVaultSecret": {
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof DeleteVaultSecretPathParams.Encoded)["name"],
       options: { readonly params?: typeof DeleteVaultSecretParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -59973,7 +61147,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      name: string,
+      name: (typeof DeleteVaultSecretPathParams.Encoded)["name"],
       options: {
         readonly params?: typeof DeleteVaultSecretParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60053,7 +61227,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getVideos": {
     <Config extends OperationConfig | undefined = undefined>(
-      jobId: string,
+      jobId: (typeof GetVideosPathParams.Encoded)["jobId"],
       options: { readonly params?: typeof GetVideosParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVideos200, Config>,
@@ -60067,7 +61241,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      jobId: string,
+      jobId: (typeof GetVideosPathParams.Encoded)["jobId"],
       options:
         | { readonly params?: typeof GetVideosParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -60088,7 +61262,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listVideosContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      jobId: string,
+      jobId: (typeof ListVideosContentPathParams.Encoded)["jobId"],
       options: { readonly params?: typeof ListVideosContentParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -60106,7 +61280,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      jobId: string,
+      jobId: (typeof ListVideosContentPathParams.Encoded)["jobId"],
       options: {
         readonly params?: typeof ListVideosContentParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60131,7 +61305,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    * Streams the generated video content from the upstream provider
    */
   readonly "listVideosContentStream": (
-    jobId: string,
+    jobId: (typeof ListVideosContentPathParams.Encoded)["jobId"],
     options: { readonly params?: typeof ListVideosContentParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -60240,7 +61414,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getWorkspace": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetWorkspacePathParams.Encoded)["id"],
       options: { readonly params?: typeof GetWorkspaceParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetWorkspace200, Config>,
@@ -60254,7 +61428,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetWorkspacePathParams.Encoded)["id"],
       options:
         | { readonly params?: typeof GetWorkspaceParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -60275,7 +61449,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteWorkspace": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteWorkspacePathParams.Encoded)["id"],
       options: { readonly params?: typeof DeleteWorkspaceParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteWorkspace200, Config>,
@@ -60290,7 +61464,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof DeleteWorkspacePathParams.Encoded)["id"],
       options: {
         readonly params?: typeof DeleteWorkspaceParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60313,7 +61487,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "updateWorkspace": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateWorkspacePathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateWorkspaceParams.Encoded | undefined
         readonly payload: typeof UpdateWorkspaceRequestJson.Encoded
@@ -60332,7 +61506,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof UpdateWorkspacePathParams.Encoded)["id"],
       options: {
         readonly params?: typeof UpdateWorkspaceParams.Encoded | undefined
         readonly payload: typeof UpdateWorkspaceRequestJson.Encoded
@@ -60356,7 +61530,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listWorkspaceMembers": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListWorkspaceMembersPathParams.Encoded)["id"],
       options: { readonly params?: typeof ListWorkspaceMembersParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListWorkspaceMembers200, Config>,
@@ -60370,7 +61544,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof ListWorkspaceMembersPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof ListWorkspaceMembersParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60392,7 +61566,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkAddWorkspaceMembers": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAddWorkspaceMembersPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAddWorkspaceMembersParams.Encoded | undefined
         readonly payload: typeof BulkAddWorkspaceMembersRequestJson.Encoded
@@ -60411,7 +61585,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkAddWorkspaceMembersPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkAddWorkspaceMembersParams.Encoded | undefined
         readonly payload: typeof BulkAddWorkspaceMembersRequestJson.Encoded
@@ -60435,7 +61609,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "bulkRemoveWorkspaceMembers": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkRemoveWorkspaceMembersPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkRemoveWorkspaceMembersParams.Encoded | undefined
         readonly payload: typeof BulkRemoveWorkspaceMembersRequestJson.Encoded
@@ -60454,7 +61628,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof BulkRemoveWorkspaceMembersPathParams.Encoded)["id"],
       options: {
         readonly params?: typeof BulkRemoveWorkspaceMembersParams.Encoded | undefined
         readonly payload: typeof BulkRemoveWorkspaceMembersRequestJson.Encoded
@@ -60478,7 +61652,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "listWorkspaceBudgets": {
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
+      workspaceRef: (typeof ListWorkspaceBudgetsPathParams.Encoded)["workspace_ref"],
       options: { readonly params?: typeof ListWorkspaceBudgetsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListWorkspaceBudgets200, Config>,
@@ -60492,7 +61666,7 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
+      workspaceRef: (typeof ListWorkspaceBudgetsPathParams.Encoded)["workspace_ref"],
       options: {
         readonly params?: typeof ListWorkspaceBudgetsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60514,8 +61688,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "getWorkspaceBudget": {
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof GetWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof GetWorkspaceBudgetPathParams.Encoded)["interval"],
       options: { readonly params?: typeof GetWorkspaceBudgetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetWorkspaceBudget200, Config>,
@@ -60530,8 +61704,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof GetWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof GetWorkspaceBudgetPathParams.Encoded)["interval"],
       options: {
         readonly params?: typeof GetWorkspaceBudgetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -60554,8 +61728,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "upsertWorkspaceBudget": {
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof UpsertWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof UpsertWorkspaceBudgetPathParams.Encoded)["interval"],
       options: {
         readonly params?: typeof UpsertWorkspaceBudgetParams.Encoded | undefined
         readonly payload: typeof UpsertWorkspaceBudgetRequestJson.Encoded
@@ -60574,8 +61748,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof UpsertWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof UpsertWorkspaceBudgetPathParams.Encoded)["interval"],
       options: {
         readonly params?: typeof UpsertWorkspaceBudgetParams.Encoded | undefined
         readonly payload: typeof UpsertWorkspaceBudgetRequestJson.Encoded
@@ -60599,8 +61773,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
    */
   readonly "deleteWorkspaceBudget": {
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof DeleteWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof DeleteWorkspaceBudgetPathParams.Encoded)["interval"],
       options: { readonly params?: typeof DeleteWorkspaceBudgetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteWorkspaceBudget200, Config>,
@@ -60615,8 +61789,8 @@ export interface OpenRouterClient<E = HttpClientError.HttpClientError, R = never
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      workspaceRef: string,
-      interval: string,
+      workspaceRef: (typeof DeleteWorkspaceBudgetPathParams.Encoded)["workspace_ref"],
+      interval: (typeof DeleteWorkspaceBudgetPathParams.Encoded)["interval"],
       options: {
         readonly params?: typeof DeleteWorkspaceBudgetParams.Encoded | undefined
         readonly config?: Config | undefined

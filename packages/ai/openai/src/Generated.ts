@@ -49393,6 +49393,10 @@ export type CreateAssistant429 = ErrorResponse
 
 export const CreateAssistant429 = ErrorResponse
 
+export type GetAssistantPathParams = { readonly "assistant_id": string }
+
+export const GetAssistantPathParams = Schema.Struct({ "assistant_id": Schema.String })
+
 export type GetAssistant200 = AssistantObject
 
 export const GetAssistant200 = AssistantObject
@@ -49400,6 +49404,10 @@ export const GetAssistant200 = AssistantObject
 export type GetAssistant429 = ErrorResponse
 
 export const GetAssistant429 = ErrorResponse
+
+export type ModifyAssistantPathParams = { readonly "assistant_id": string }
+
+export const ModifyAssistantPathParams = Schema.Struct({ "assistant_id": Schema.String })
 
 export type ModifyAssistantRequestJson = ModifyAssistantRequest
 
@@ -49412,6 +49420,10 @@ export const ModifyAssistant200 = AssistantObject
 export type ModifyAssistant429 = ErrorResponse
 
 export const ModifyAssistant429 = ErrorResponse
+
+export type DeleteAssistantPathParams = { readonly "assistant_id": string }
+
+export const DeleteAssistantPathParams = Schema.Struct({ "assistant_id": Schema.String })
 
 export type DeleteAssistant200 = DeleteAssistantResponse
 
@@ -49570,6 +49582,10 @@ export type CreateVoiceConsent404 = ErrorResponse
 
 export const CreateVoiceConsent404 = ErrorResponse
 
+export type GetVoiceConsentPathParams = { readonly "consent_id": string }
+
+export const GetVoiceConsentPathParams = Schema.Struct({ "consent_id": Schema.String })
+
 export type GetVoiceConsent200 = VoiceConsentResource
 
 export const GetVoiceConsent200 = VoiceConsentResource
@@ -49581,6 +49597,10 @@ export const GetVoiceConsent400 = ErrorResponse
 export type GetVoiceConsent404 = ErrorResponse
 
 export const GetVoiceConsent404 = ErrorResponse
+
+export type UpdateVoiceConsentPathParams = { readonly "consent_id": string }
+
+export const UpdateVoiceConsentPathParams = Schema.Struct({ "consent_id": Schema.String })
 
 export type UpdateVoiceConsentRequestJson = UpdateVoiceConsentRequest
 
@@ -49597,6 +49617,10 @@ export const UpdateVoiceConsent400 = ErrorResponse
 export type UpdateVoiceConsent404 = ErrorResponse
 
 export const UpdateVoiceConsent404 = ErrorResponse
+
+export type DeleteVoiceConsentPathParams = { readonly "consent_id": string }
+
+export const DeleteVoiceConsentPathParams = Schema.Struct({ "consent_id": Schema.String })
 
 export type DeleteVoiceConsent200 = VoiceConsentDeletedResource
 
@@ -49677,6 +49701,10 @@ export type CreateBatch503 = ErrorResponse
 
 export const CreateBatch503 = ErrorResponse
 
+export type RetrieveBatchPathParams = { readonly "batch_id": string }
+
+export const RetrieveBatchPathParams = Schema.Struct({ "batch_id": Schema.String })
+
 export type RetrieveBatch200 = Batch
 
 export const RetrieveBatch200 = Batch
@@ -49692,6 +49720,10 @@ export const RetrieveBatch404 = ErrorResponse
 export type RetrieveBatch429 = ErrorResponse
 
 export const RetrieveBatch429 = ErrorResponse
+
+export type CancelBatchPathParams = { readonly "batch_id": string }
+
+export const CancelBatchPathParams = Schema.Struct({ "batch_id": Schema.String })
 
 export type CancelBatch200 = Batch
 
@@ -49781,6 +49813,10 @@ export type CreateChatCompletion503 = ErrorResponse
 
 export const CreateChatCompletion503 = ErrorResponse
 
+export type GetChatCompletionPathParams = { readonly "completion_id": string }
+
+export const GetChatCompletionPathParams = Schema.Struct({ "completion_id": Schema.String })
+
 export type GetChatCompletion200 = CreateChatCompletionResponse
 
 export const GetChatCompletion200 = CreateChatCompletionResponse
@@ -49796,6 +49832,10 @@ export const GetChatCompletion429 = ErrorResponse
 export type GetChatCompletion500 = ErrorResponse
 
 export const GetChatCompletion500 = ErrorResponse
+
+export type UpdateChatCompletionPathParams = { readonly "completion_id": string }
+
+export const UpdateChatCompletionPathParams = Schema.Struct({ "completion_id": Schema.String })
 
 export type UpdateChatCompletionRequestJson = { readonly "metadata": Metadata }
 
@@ -49820,6 +49860,10 @@ export const UpdateChatCompletion429 = ErrorResponse
 export type UpdateChatCompletion500 = ErrorResponse
 
 export const UpdateChatCompletion500 = ErrorResponse
+
+export type DeleteChatCompletionPathParams = { readonly "completion_id": string }
+
+export const DeleteChatCompletionPathParams = Schema.Struct({ "completion_id": Schema.String })
 
 export type DeleteChatCompletion200 = ChatCompletionDeleted
 
@@ -49848,6 +49892,10 @@ export const GetChatCompletionMessagesParams = Schema.Struct({
   "limit": Schema.optionalKey(Schema.Int),
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
+
+export type GetChatCompletionMessagesPathParams = { readonly "completion_id": string }
+
+export const GetChatCompletionMessagesPathParams = Schema.Struct({ "completion_id": Schema.String })
 
 export type GetChatCompletionMessages200 = ChatCompletionMessageList
 
@@ -49943,6 +49991,10 @@ export type CreateContainer429 = ErrorResponse
 
 export const CreateContainer429 = ErrorResponse
 
+export type RetrieveContainerPathParams = { readonly "container_id": string }
+
+export const RetrieveContainerPathParams = Schema.Struct({ "container_id": Schema.String })
+
 export type RetrieveContainer200 = ContainerResource
 
 export const RetrieveContainer200 = ContainerResource
@@ -49954,6 +50006,10 @@ export const RetrieveContainer404 = ErrorResponse
 export type RetrieveContainer429 = ErrorResponse
 
 export const RetrieveContainer429 = ErrorResponse
+
+export type DeleteContainerPathParams = { readonly "container_id": string }
+
+export const DeleteContainerPathParams = Schema.Struct({ "container_id": Schema.String })
 
 export type DeleteContainer200 = {
   readonly "object": "container.deleted"
@@ -49987,6 +50043,10 @@ export const ListContainerFilesParams = Schema.Struct({
   "after": Schema.optionalKey(Schema.String)
 })
 
+export type ListContainerFilesPathParams = { readonly "container_id": string }
+
+export const ListContainerFilesPathParams = Schema.Struct({ "container_id": Schema.String })
+
 export type ListContainerFiles200 = ContainerFileListResource
 
 export const ListContainerFiles200 = ContainerFileListResource
@@ -49998,6 +50058,10 @@ export const ListContainerFiles404 = ErrorResponse
 export type ListContainerFiles429 = ErrorResponse
 
 export const ListContainerFiles429 = ErrorResponse
+
+export type CreateContainerFilePathParams = { readonly "container_id": string }
+
+export const CreateContainerFilePathParams = Schema.Struct({ "container_id": Schema.String })
 
 export type CreateContainerFileRequestJson = CreateContainerFileBody
 
@@ -50023,6 +50087,13 @@ export type CreateContainerFile429 = ErrorResponse
 
 export const CreateContainerFile429 = ErrorResponse
 
+export type RetrieveContainerFilePathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const RetrieveContainerFilePathParams = Schema.Struct({
+  "container_id": Schema.String,
+  "file_id": Schema.String
+})
+
 export type RetrieveContainerFile200 = ContainerFileResource
 
 export const RetrieveContainerFile200 = ContainerFileResource
@@ -50034,6 +50105,10 @@ export const RetrieveContainerFile404 = ErrorResponse
 export type RetrieveContainerFile429 = ErrorResponse
 
 export const RetrieveContainerFile429 = ErrorResponse
+
+export type DeleteContainerFilePathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const DeleteContainerFilePathParams = Schema.Struct({ "container_id": Schema.String, "file_id": Schema.String })
 
 export type DeleteContainerFile200 = {
   readonly "object": "container.file.deleted"
@@ -50054,6 +50129,13 @@ export const DeleteContainerFile404 = ErrorResponse
 export type DeleteContainerFile429 = ErrorResponse
 
 export const DeleteContainerFile429 = ErrorResponse
+
+export type RetrieveContainerFileContentPathParams = { readonly "container_id": string; readonly "file_id": string }
+
+export const RetrieveContainerFileContentPathParams = Schema.Struct({
+  "container_id": Schema.String,
+  "file_id": Schema.String
+})
 
 export type RetrieveContainerFileContent404 = ErrorResponse
 
@@ -50077,6 +50159,10 @@ export const ListConversationItemsParams = Schema.Struct({
   "include": Schema.optionalKey(Schema.Array(IncludeEnum))
 })
 
+export type ListConversationItemsPathParams = { readonly "conversation_id": string }
+
+export const ListConversationItemsPathParams = Schema.Struct({ "conversation_id": Schema.String })
+
 export type ListConversationItems200 = ConversationItemList
 
 export const ListConversationItems200 = ConversationItemList
@@ -50096,6 +50182,10 @@ export const ListConversationItems429 = ErrorResponse
 export type CreateConversationItemsParams = { readonly "include"?: globalThis.ReadonlyArray<IncludeEnum> }
 
 export const CreateConversationItemsParams = Schema.Struct({ "include": Schema.optionalKey(Schema.Array(IncludeEnum)) })
+
+export type CreateConversationItemsPathParams = { readonly "conversation_id": string }
+
+export const CreateConversationItemsPathParams = Schema.Struct({ "conversation_id": Schema.String })
 
 export type CreateConversationItemsRequestJson = null | string | number | boolean | {
   readonly "items": globalThis.ReadonlyArray<InputItem>
@@ -50138,6 +50228,13 @@ export type GetConversationItemParams = { readonly "include"?: globalThis.Readon
 
 export const GetConversationItemParams = Schema.Struct({ "include": Schema.optionalKey(Schema.Array(IncludeEnum)) })
 
+export type GetConversationItemPathParams = { readonly "conversation_id": string; readonly "item_id": string }
+
+export const GetConversationItemPathParams = Schema.Struct({
+  "conversation_id": Schema.String,
+  "item_id": Schema.String
+})
+
 export type GetConversationItem200 = ConversationItem
 
 export const GetConversationItem200 = ConversationItem
@@ -50149,6 +50246,13 @@ export const GetConversationItem404 = ErrorResponse
 export type GetConversationItem429 = ErrorResponse
 
 export const GetConversationItem429 = ErrorResponse
+
+export type DeleteConversationItemPathParams = { readonly "conversation_id": string; readonly "item_id": string }
+
+export const DeleteConversationItemPathParams = Schema.Struct({
+  "conversation_id": Schema.String,
+  "item_id": Schema.String
+})
 
 export type DeleteConversationItem200 = ConversationResource
 
@@ -50236,6 +50340,10 @@ export type CreateEval429 = ErrorResponse
 
 export const CreateEval429 = ErrorResponse
 
+export type GetEvalPathParams = { readonly "eval_id": string }
+
+export const GetEvalPathParams = Schema.Struct({ "eval_id": Schema.String })
+
 export type GetEval200 = Eval
 
 export const GetEval200 = Eval
@@ -50247,6 +50355,10 @@ export const GetEval404 = ErrorResponse
 export type GetEval429 = ErrorResponse
 
 export const GetEval429 = ErrorResponse
+
+export type UpdateEvalPathParams = { readonly "eval_id": string }
+
+export const UpdateEvalPathParams = Schema.Struct({ "eval_id": Schema.String })
 
 export type UpdateEvalRequestJson = { readonly "name"?: string; readonly "metadata"?: Metadata }
 
@@ -50270,6 +50382,10 @@ export const UpdateEval404 = ErrorResponse
 export type UpdateEval429 = ErrorResponse
 
 export const UpdateEval429 = ErrorResponse
+
+export type DeleteEvalPathParams = { readonly "eval_id": string }
+
+export const DeleteEvalPathParams = Schema.Struct({ "eval_id": Schema.String })
 
 export type DeleteEval200 = { readonly "object": string; readonly "deleted": boolean; readonly "eval_id": string }
 
@@ -50305,6 +50421,10 @@ export const GetEvalRunsParams = Schema.Struct({
   "status": Schema.optionalKey(Schema.Literals(["queued", "in_progress", "completed", "canceled", "failed"]))
 })
 
+export type GetEvalRunsPathParams = { readonly "eval_id": string }
+
+export const GetEvalRunsPathParams = Schema.Struct({ "eval_id": Schema.String })
+
 export type GetEvalRuns200 = EvalRunList
 
 export const GetEvalRuns200 = EvalRunList
@@ -50320,6 +50440,10 @@ export const GetEvalRuns404 = ErrorResponse
 export type GetEvalRuns429 = ErrorResponse
 
 export const GetEvalRuns429 = ErrorResponse
+
+export type CreateEvalRunPathParams = { readonly "eval_id": string }
+
+export const CreateEvalRunPathParams = Schema.Struct({ "eval_id": Schema.String })
 
 export type CreateEvalRunRequestJson = CreateEvalRunRequest
 
@@ -50345,6 +50469,10 @@ export type CreateEvalRun500 = ErrorResponse
 
 export const CreateEvalRun500 = ErrorResponse
 
+export type GetEvalRunPathParams = { readonly "eval_id": string; readonly "run_id": string }
+
+export const GetEvalRunPathParams = Schema.Struct({ "eval_id": Schema.String, "run_id": Schema.String })
+
 export type GetEvalRun200 = EvalRun
 
 export const GetEvalRun200 = EvalRun
@@ -50360,6 +50488,10 @@ export const GetEvalRun404 = ErrorResponse
 export type GetEvalRun429 = ErrorResponse
 
 export const GetEvalRun429 = ErrorResponse
+
+export type DeleteEvalRunPathParams = { readonly "eval_id": string; readonly "run_id": string }
+
+export const DeleteEvalRunPathParams = Schema.Struct({ "eval_id": Schema.String, "run_id": Schema.String })
 
 export type DeleteEvalRun200 = { readonly "object"?: string; readonly "deleted"?: boolean; readonly "run_id"?: string }
 
@@ -50380,6 +50512,10 @@ export const DeleteEvalRun404 = ErrorResponse
 export type DeleteEvalRun429 = ErrorResponse
 
 export const DeleteEvalRun429 = ErrorResponse
+
+export type CancelEvalRunPathParams = { readonly "eval_id": string; readonly "run_id": string }
+
+export const CancelEvalRunPathParams = Schema.Struct({ "eval_id": Schema.String, "run_id": Schema.String })
 
 export type CancelEvalRun200 = EvalRun
 
@@ -50403,6 +50539,10 @@ export const GetEvalRunOutputItemsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type GetEvalRunOutputItemsPathParams = { readonly "eval_id": string; readonly "run_id": string }
+
+export const GetEvalRunOutputItemsPathParams = Schema.Struct({ "eval_id": Schema.String, "run_id": Schema.String })
+
 export type GetEvalRunOutputItems200 = EvalRunOutputItemList
 
 export const GetEvalRunOutputItems200 = EvalRunOutputItemList
@@ -50418,6 +50558,18 @@ export const GetEvalRunOutputItems404 = ErrorResponse
 export type GetEvalRunOutputItems429 = ErrorResponse
 
 export const GetEvalRunOutputItems429 = ErrorResponse
+
+export type GetEvalRunOutputItemPathParams = {
+  readonly "eval_id": string
+  readonly "run_id": string
+  readonly "output_item_id": string
+}
+
+export const GetEvalRunOutputItemPathParams = Schema.Struct({
+  "eval_id": Schema.String,
+  "run_id": Schema.String,
+  "output_item_id": Schema.String
+})
 
 export type GetEvalRunOutputItem200 = EvalRunOutputItem
 
@@ -50485,6 +50637,10 @@ export type CreateFile500 = ErrorResponse
 
 export const CreateFile500 = ErrorResponse
 
+export type RetrieveFilePathParams = { readonly "file_id": string }
+
+export const RetrieveFilePathParams = Schema.Struct({ "file_id": Schema.String })
+
 export type RetrieveFile200 = OpenAIFile
 
 export const RetrieveFile200 = OpenAIFile
@@ -50497,6 +50653,10 @@ export type RetrieveFile429 = ErrorResponse
 
 export const RetrieveFile429 = ErrorResponse
 
+export type DeleteFilePathParams = { readonly "file_id": string }
+
+export const DeleteFilePathParams = Schema.Struct({ "file_id": Schema.String })
+
 export type DeleteFile200 = DeleteFileResponse
 
 export const DeleteFile200 = DeleteFileResponse
@@ -50508,6 +50668,10 @@ export const DeleteFile404 = ErrorResponse
 export type DeleteFile429 = ErrorResponse
 
 export const DeleteFile429 = ErrorResponse
+
+export type DownloadFilePathParams = { readonly "file_id": string }
+
+export const DownloadFilePathParams = Schema.Struct({ "file_id": Schema.String })
 
 export type DownloadFile400 = ErrorResponse
 
@@ -50571,6 +50735,12 @@ export const ListFineTuningCheckpointPermissionsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["ascending", "descending"]))
 })
 
+export type ListFineTuningCheckpointPermissionsPathParams = { readonly "fine_tuned_model_checkpoint": string }
+
+export const ListFineTuningCheckpointPermissionsPathParams = Schema.Struct({
+  "fine_tuned_model_checkpoint": Schema.String
+})
+
 export type ListFineTuningCheckpointPermissions200 = ListFineTuningCheckpointPermissionResponse
 
 export const ListFineTuningCheckpointPermissions200 = ListFineTuningCheckpointPermissionResponse
@@ -50582,6 +50752,12 @@ export const ListFineTuningCheckpointPermissions400 = ErrorResponse
 export type ListFineTuningCheckpointPermissions429 = ErrorResponse
 
 export const ListFineTuningCheckpointPermissions429 = ErrorResponse
+
+export type CreateFineTuningCheckpointPermissionPathParams = { readonly "fine_tuned_model_checkpoint": string }
+
+export const CreateFineTuningCheckpointPermissionPathParams = Schema.Struct({
+  "fine_tuned_model_checkpoint": Schema.String
+})
 
 export type CreateFineTuningCheckpointPermissionRequestJson = CreateFineTuningCheckpointPermissionRequest
 
@@ -50602,6 +50778,16 @@ export const CreateFineTuningCheckpointPermission404 = ErrorResponse
 export type CreateFineTuningCheckpointPermission429 = ErrorResponse
 
 export const CreateFineTuningCheckpointPermission429 = ErrorResponse
+
+export type DeleteFineTuningCheckpointPermissionPathParams = {
+  readonly "fine_tuned_model_checkpoint": string
+  readonly "permission_id": string
+}
+
+export const DeleteFineTuningCheckpointPermissionPathParams = Schema.Struct({
+  "fine_tuned_model_checkpoint": Schema.String,
+  "permission_id": Schema.String
+})
 
 export type DeleteFineTuningCheckpointPermission200 = DeleteFineTuningCheckpointPermissionResponse
 
@@ -50659,6 +50845,10 @@ export type CreateFineTuningJob429 = ErrorResponse
 
 export const CreateFineTuningJob429 = ErrorResponse
 
+export type RetrieveFineTuningJobPathParams = { readonly "fine_tuning_job_id": string }
+
+export const RetrieveFineTuningJobPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
+
 export type RetrieveFineTuningJob200 = FineTuningJob
 
 export const RetrieveFineTuningJob200 = FineTuningJob
@@ -50670,6 +50860,10 @@ export const RetrieveFineTuningJob404 = ErrorResponse
 export type RetrieveFineTuningJob429 = ErrorResponse
 
 export const RetrieveFineTuningJob429 = ErrorResponse
+
+export type CancelFineTuningJobPathParams = { readonly "fine_tuning_job_id": string }
+
+export const CancelFineTuningJobPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
 
 export type CancelFineTuningJob200 = FineTuningJob
 
@@ -50694,6 +50888,10 @@ export const ListFineTuningJobCheckpointsParams = Schema.Struct({
   "limit": Schema.optionalKey(Schema.Int)
 })
 
+export type ListFineTuningJobCheckpointsPathParams = { readonly "fine_tuning_job_id": string }
+
+export const ListFineTuningJobCheckpointsPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
+
 export type ListFineTuningJobCheckpoints200 = ListFineTuningJobCheckpointsResponse
 
 export const ListFineTuningJobCheckpoints200 = ListFineTuningJobCheckpointsResponse
@@ -50717,6 +50915,10 @@ export const ListFineTuningEventsParams = Schema.Struct({
   "limit": Schema.optionalKey(Schema.Int)
 })
 
+export type ListFineTuningEventsPathParams = { readonly "fine_tuning_job_id": string }
+
+export const ListFineTuningEventsPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
+
 export type ListFineTuningEvents200 = ListFineTuningJobEventsResponse
 
 export const ListFineTuningEvents200 = ListFineTuningJobEventsResponse
@@ -50733,6 +50935,10 @@ export type ListFineTuningEvents429 = ErrorResponse
 
 export const ListFineTuningEvents429 = ErrorResponse
 
+export type PauseFineTuningJobPathParams = { readonly "fine_tuning_job_id": string }
+
+export const PauseFineTuningJobPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
+
 export type PauseFineTuningJob200 = FineTuningJob
 
 export const PauseFineTuningJob200 = FineTuningJob
@@ -50748,6 +50954,10 @@ export const PauseFineTuningJob404 = ErrorResponse
 export type PauseFineTuningJob429 = ErrorResponse
 
 export const PauseFineTuningJob429 = ErrorResponse
+
+export type ResumeFineTuningJobPathParams = { readonly "fine_tuning_job_id": string }
+
+export const ResumeFineTuningJobPathParams = Schema.Struct({ "fine_tuning_job_id": Schema.String })
 
 export type ResumeFineTuningJob200 = FineTuningJob
 
@@ -50897,6 +51107,10 @@ export type CreateLive504 = ErrorResponse
 
 export const CreateLive504 = ErrorResponse
 
+export type AcceptLiveSessionPathParams = { readonly "session_id": string }
+
+export const AcceptLiveSessionPathParams = Schema.Struct({ "session_id": Schema.String })
+
 export type AcceptLiveSessionRequestJson = LiveCallAcceptRequest
 
 export const AcceptLiveSessionRequestJson = LiveCallAcceptRequest
@@ -50920,6 +51134,10 @@ export const AcceptLiveSession429 = ErrorResponse
 export type AcceptLiveSession503 = ErrorResponse
 
 export const AcceptLiveSession503 = ErrorResponse
+
+export type ForkLiveSessionPathParams = { readonly "session_id": string }
+
+export const ForkLiveSessionPathParams = Schema.Struct({ "session_id": Schema.String })
 
 export type ForkLiveSessionRequestJson = LiveForkRequest
 
@@ -50945,9 +51163,17 @@ export type ForkLiveSession503 = ErrorResponse
 
 export const ForkLiveSession503 = ErrorResponse
 
+export type HangupLiveSessionPathParams = { readonly "session_id": string }
+
+export const HangupLiveSessionPathParams = Schema.Struct({ "session_id": Schema.String })
+
 export type HangupLiveSession404 = ErrorResponse
 
 export const HangupLiveSession404 = ErrorResponse
+
+export type ReferLiveSessionPathParams = { readonly "session_id": string }
+
+export const ReferLiveSessionPathParams = Schema.Struct({ "session_id": Schema.String })
 
 export type ReferLiveSessionRequestJson = LiveCallReferRequest
 
@@ -50960,6 +51186,10 @@ export const ReferLiveSession400 = ErrorResponse
 export type ReferLiveSession404 = ErrorResponse
 
 export const ReferLiveSession404 = ErrorResponse
+
+export type RejectLiveSessionPathParams = { readonly "session_id": string }
+
+export const RejectLiveSessionPathParams = Schema.Struct({ "session_id": Schema.String })
 
 export type RejectLiveSessionRequestJson = LiveCallRejectRequest
 
@@ -50985,6 +51215,10 @@ export type ListModels403 = PermissionErrorResponse
 
 export const ListModels403 = PermissionErrorResponse
 
+export type RetrieveModelPathParams = { readonly "model": string }
+
+export const RetrieveModelPathParams = Schema.Struct({ "model": Schema.String })
+
 export type RetrieveModel200 = Model
 
 export const RetrieveModel200 = Model
@@ -50996,6 +51230,10 @@ export const RetrieveModel403 = PermissionErrorResponse
 export type RetrieveModel404 = ErrorResponse
 
 export const RetrieveModel404 = ErrorResponse
+
+export type DeleteModelPathParams = { readonly "model": string }
+
+export const DeleteModelPathParams = Schema.Struct({ "model": Schema.String })
 
 export type DeleteModel200 = DeleteModelResponse
 
@@ -51102,6 +51340,12 @@ export type AdminApiKeysCreate404 = ErrorResponse
 
 export const AdminApiKeysCreate404 = ErrorResponse
 
+export type AdminApiKeysGetPathParams = { readonly "key_id": string }
+
+export const AdminApiKeysGetPathParams = Schema.Struct({
+  "key_id": Schema.String.annotate({ "description": "The ID of the API key." })
+})
+
 export type AdminApiKeysGet200 = AdminApiKey
 
 export const AdminApiKeysGet200 = AdminApiKey
@@ -51113,6 +51357,12 @@ export const AdminApiKeysGet403 = PermissionErrorResponse
 export type AdminApiKeysGet404 = ErrorResponse
 
 export const AdminApiKeysGet404 = ErrorResponse
+
+export type AdminApiKeysDeletePathParams = { readonly "key_id": string }
+
+export const AdminApiKeysDeletePathParams = Schema.Struct({
+  "key_id": Schema.String.annotate({ "description": "The ID of the API key to be deleted." })
+})
 
 export type AdminApiKeysDelete200 = {
   readonly "id": string
@@ -51308,6 +51558,10 @@ export const GetCertificateParams = Schema.Struct({
   "include": Schema.optionalKey(Schema.Array(Schema.Literal("content")))
 })
 
+export type GetCertificatePathParams = { readonly "certificate_id": string }
+
+export const GetCertificatePathParams = Schema.Struct({ "certificate_id": Schema.String })
+
 export type GetCertificate200 = Certificate
 
 export const GetCertificate200 = Certificate
@@ -51327,6 +51581,10 @@ export const GetCertificate404 = ErrorResponse
 export type GetCertificate429 = ErrorResponse
 
 export const GetCertificate429 = ErrorResponse
+
+export type ModifyCertificatePathParams = { readonly "certificate_id": string }
+
+export const ModifyCertificatePathParams = Schema.Struct({ "certificate_id": Schema.String })
 
 export type ModifyCertificateRequestJson = ModifyCertificateRequest
 
@@ -51355,6 +51613,10 @@ export const ModifyCertificate429 = ErrorResponse
 export type ModifyCertificate500 = ErrorResponse
 
 export const ModifyCertificate500 = ErrorResponse
+
+export type DeleteCertificatePathParams = { readonly "certificate_id": string }
+
+export const DeleteCertificatePathParams = Schema.Struct({ "certificate_id": Schema.String })
 
 export type DeleteCertificate200 = DeleteCertificateResponse
 
@@ -51517,6 +51779,10 @@ export type CreateGroup500 = ErrorResponse
 
 export const CreateGroup500 = ErrorResponse
 
+export type RetrieveGroupPathParams = { readonly "group_id": string }
+
+export const RetrieveGroupPathParams = Schema.Struct({ "group_id": Schema.String })
+
 export type RetrieveGroup200 = GroupResponse
 
 export const RetrieveGroup200 = GroupResponse
@@ -51540,6 +51806,10 @@ export const RetrieveGroup429 = ErrorResponse
 export type RetrieveGroup500 = ErrorResponse
 
 export const RetrieveGroup500 = ErrorResponse
+
+export type UpdateGroupPathParams = { readonly "group_id": string }
+
+export const UpdateGroupPathParams = Schema.Struct({ "group_id": Schema.String })
 
 export type UpdateGroupRequestJson = UpdateGroupBody
 
@@ -51568,6 +51838,10 @@ export const UpdateGroup429 = ErrorResponse
 export type UpdateGroup500 = ErrorResponse
 
 export const UpdateGroup500 = ErrorResponse
+
+export type DeleteGroupPathParams = { readonly "group_id": string }
+
+export const DeleteGroupPathParams = Schema.Struct({ "group_id": Schema.String })
 
 export type DeleteGroup200 = GroupDeletedResource
 
@@ -51604,6 +51878,10 @@ export const ListGroupRoleAssignmentsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListGroupRoleAssignmentsPathParams = { readonly "group_id": string }
+
+export const ListGroupRoleAssignmentsPathParams = Schema.Struct({ "group_id": Schema.String })
+
 export type ListGroupRoleAssignments200 = RoleListResource
 
 export const ListGroupRoleAssignments200 = RoleListResource
@@ -51623,6 +51901,10 @@ export const ListGroupRoleAssignments404 = ErrorResponse
 export type ListGroupRoleAssignments429 = ErrorResponse
 
 export const ListGroupRoleAssignments429 = ErrorResponse
+
+export type AssignGroupRolePathParams = { readonly "group_id": string }
+
+export const AssignGroupRolePathParams = Schema.Struct({ "group_id": Schema.String })
 
 export type AssignGroupRoleRequestJson = PublicAssignOrganizationGroupRoleBody
 
@@ -51648,6 +51930,10 @@ export type AssignGroupRole429 = ErrorResponse
 
 export const AssignGroupRole429 = ErrorResponse
 
+export type RetrieveGroupRolePathParams = { readonly "group_id": string; readonly "role_id": string }
+
+export const RetrieveGroupRolePathParams = Schema.Struct({ "group_id": Schema.String, "role_id": Schema.String })
+
 export type RetrieveGroupRole200 = AssignedRoleDetails
 
 export const RetrieveGroupRole200 = AssignedRoleDetails
@@ -51667,6 +51953,10 @@ export const RetrieveGroupRole404 = ErrorResponse
 export type RetrieveGroupRole429 = ErrorResponse
 
 export const RetrieveGroupRole429 = ErrorResponse
+
+export type UnassignGroupRolePathParams = { readonly "group_id": string; readonly "role_id": string }
+
+export const UnassignGroupRolePathParams = Schema.Struct({ "group_id": Schema.String, "role_id": Schema.String })
 
 export type UnassignGroupRole200 = DeletedRoleAssignmentResource
 
@@ -51703,6 +51993,10 @@ export const ListGroupUsersParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListGroupUsersPathParams = { readonly "group_id": string }
+
+export const ListGroupUsersPathParams = Schema.Struct({ "group_id": Schema.String })
+
 export type ListGroupUsers200 = UserListResource
 
 export const ListGroupUsers200 = UserListResource
@@ -51726,6 +52020,10 @@ export const ListGroupUsers429 = ErrorResponse
 export type ListGroupUsers502 = ErrorResponse
 
 export const ListGroupUsers502 = ErrorResponse
+
+export type AddGroupUserPathParams = { readonly "group_id": string }
+
+export const AddGroupUserPathParams = Schema.Struct({ "group_id": Schema.String })
 
 export type AddGroupUserRequestJson = CreateGroupUserBody
 
@@ -51755,6 +52053,10 @@ export type AddGroupUser429 = ErrorResponse
 
 export const AddGroupUser429 = ErrorResponse
 
+export type RetrieveGroupUserPathParams = { readonly "group_id": string; readonly "user_id": string }
+
+export const RetrieveGroupUserPathParams = Schema.Struct({ "group_id": Schema.String, "user_id": Schema.String })
+
 export type RetrieveGroupUser200 = GroupMemberUser
 
 export const RetrieveGroupUser200 = GroupMemberUser
@@ -51774,6 +52076,10 @@ export const RetrieveGroupUser404 = ErrorResponse
 export type RetrieveGroupUser429 = ErrorResponse
 
 export const RetrieveGroupUser429 = ErrorResponse
+
+export type RemoveGroupUserPathParams = { readonly "group_id": string; readonly "user_id": string }
+
+export const RemoveGroupUserPathParams = Schema.Struct({ "group_id": Schema.String, "user_id": Schema.String })
 
 export type RemoveGroupUser200 = GroupUserDeletedResource
 
@@ -51850,6 +52156,10 @@ export type InviteUser429 = ErrorResponse
 
 export const InviteUser429 = ErrorResponse
 
+export type RetrieveInvitePathParams = { readonly "invite_id": string }
+
+export const RetrieveInvitePathParams = Schema.Struct({ "invite_id": Schema.String })
+
 export type RetrieveInvite200 = Invite
 
 export const RetrieveInvite200 = Invite
@@ -51873,6 +52183,10 @@ export const RetrieveInvite429 = ErrorResponse
 export type RetrieveInvite500 = ErrorResponse
 
 export const RetrieveInvite500 = ErrorResponse
+
+export type DeleteInvitePathParams = { readonly "invite_id": string }
+
+export const DeleteInvitePathParams = Schema.Struct({ "invite_id": Schema.String })
 
 export type DeleteInvite200 = InviteDeleteResponse
 
@@ -51950,6 +52264,10 @@ export type CreateProject429 = ErrorResponse
 
 export const CreateProject429 = ErrorResponse
 
+export type RetrieveProjectPathParams = { readonly "project_id": string }
+
+export const RetrieveProjectPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type RetrieveProject200 = Project
 
 export const RetrieveProject200 = Project
@@ -51965,6 +52283,10 @@ export const RetrieveProject404 = ErrorResponse
 export type RetrieveProject429 = ErrorResponse
 
 export const RetrieveProject429 = ErrorResponse
+
+export type ModifyProjectPathParams = { readonly "project_id": string }
+
+export const ModifyProjectPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type ModifyProjectRequestJson = ProjectUpdateRequest
 
@@ -52002,6 +52324,10 @@ export const ListProjectApiKeysParams = Schema.Struct({
   "owner_project_access": Schema.optionalKey(Schema.Literals(["active", "inactive", "any"]))
 })
 
+export type ListProjectApiKeysPathParams = { readonly "project_id": string }
+
+export const ListProjectApiKeysPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectApiKeys200 = ProjectApiKeyListResponse
 
 export const ListProjectApiKeys200 = ProjectApiKeyListResponse
@@ -52021,6 +52347,13 @@ export const ListProjectApiKeys404 = ErrorResponse
 export type ListProjectApiKeys429 = ErrorResponse
 
 export const ListProjectApiKeys429 = ErrorResponse
+
+export type RetrieveProjectApiKeyPathParams = { readonly "project_id": string; readonly "api_key_id": string }
+
+export const RetrieveProjectApiKeyPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "api_key_id": Schema.String
+})
 
 export type RetrieveProjectApiKey200 = ProjectApiKey
 
@@ -52042,6 +52375,10 @@ export type RetrieveProjectApiKey429 = ErrorResponse
 
 export const RetrieveProjectApiKey429 = ErrorResponse
 
+export type DeleteProjectApiKeyPathParams = { readonly "project_id": string; readonly "api_key_id": string }
+
+export const DeleteProjectApiKeyPathParams = Schema.Struct({ "project_id": Schema.String, "api_key_id": Schema.String })
+
 export type DeleteProjectApiKey200 = ProjectApiKeyDeleteResponse
 
 export const DeleteProjectApiKey200 = ProjectApiKeyDeleteResponse
@@ -52061,6 +52398,10 @@ export const DeleteProjectApiKey404 = ErrorResponse
 export type DeleteProjectApiKey429 = ErrorResponse
 
 export const DeleteProjectApiKey429 = ErrorResponse
+
+export type ArchiveProjectPathParams = { readonly "project_id": string }
+
+export const ArchiveProjectPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type ArchiveProject200 = Project
 
@@ -52094,6 +52435,10 @@ export const ListProjectCertificatesParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListProjectCertificatesPathParams = { readonly "project_id": string }
+
+export const ListProjectCertificatesPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectCertificates200 = ListProjectCertificatesResponse
 
 export const ListProjectCertificates200 = ListProjectCertificatesResponse
@@ -52109,6 +52454,10 @@ export const ListProjectCertificates403 = PermissionErrorResponse
 export type ListProjectCertificates429 = ErrorResponse
 
 export const ListProjectCertificates429 = ErrorResponse
+
+export type ActivateProjectCertificatesPathParams = { readonly "project_id": string }
+
+export const ActivateProjectCertificatesPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type ActivateProjectCertificatesRequestJson = ToggleCertificatesRequest
 
@@ -52138,6 +52487,10 @@ export type ActivateProjectCertificates500 = ErrorResponse
 
 export const ActivateProjectCertificates500 = ErrorResponse
 
+export type DeactivateProjectCertificatesPathParams = { readonly "project_id": string }
+
+export const DeactivateProjectCertificatesPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type DeactivateProjectCertificatesRequestJson = ToggleCertificatesRequest
 
 export const DeactivateProjectCertificatesRequestJson = ToggleCertificatesRequest
@@ -52166,6 +52519,10 @@ export type DeactivateProjectCertificates500 = ErrorResponse
 
 export const DeactivateProjectCertificates500 = ErrorResponse
 
+export type RetrieveProjectDataRetentionPathParams = { readonly "project_id": string }
+
+export const RetrieveProjectDataRetentionPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type RetrieveProjectDataRetention200 = ProjectDataRetention
 
 export const RetrieveProjectDataRetention200 = ProjectDataRetention
@@ -52181,6 +52538,10 @@ export const RetrieveProjectDataRetention403 = PermissionErrorResponse
 export type RetrieveProjectDataRetention404 = ErrorResponse
 
 export const RetrieveProjectDataRetention404 = ErrorResponse
+
+export type UpdateProjectDataRetentionPathParams = { readonly "project_id": string }
+
+export const UpdateProjectDataRetentionPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type UpdateProjectDataRetentionRequestJson = UpdateProjectDataRetentionBody
 
@@ -52217,6 +52578,10 @@ export const ListProjectGroupsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListProjectGroupsPathParams = { readonly "project_id": string }
+
+export const ListProjectGroupsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectGroups200 = ProjectGroupListResource
 
 export const ListProjectGroups200 = ProjectGroupListResource
@@ -52236,6 +52601,10 @@ export const ListProjectGroups404 = ErrorResponse
 export type ListProjectGroups429 = ErrorResponse
 
 export const ListProjectGroups429 = ErrorResponse
+
+export type AddProjectGroupPathParams = { readonly "project_id": string }
+
+export const AddProjectGroupPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type AddProjectGroupRequestJson = InviteProjectGroupBody
 
@@ -52271,6 +52640,10 @@ export const RetrieveProjectGroupParams = Schema.Struct({
   "group_type": Schema.optionalKey(Schema.Literals(["group", "tenant_group"]))
 })
 
+export type RetrieveProjectGroupPathParams = { readonly "project_id": string; readonly "group_id": string }
+
+export const RetrieveProjectGroupPathParams = Schema.Struct({ "project_id": Schema.String, "group_id": Schema.String })
+
 export type RetrieveProjectGroup200 = ProjectGroup
 
 export const RetrieveProjectGroup200 = ProjectGroup
@@ -52290,6 +52663,10 @@ export const RetrieveProjectGroup404 = ErrorResponse
 export type RetrieveProjectGroup429 = ErrorResponse
 
 export const RetrieveProjectGroup429 = ErrorResponse
+
+export type RemoveProjectGroupPathParams = { readonly "project_id": string; readonly "group_id": string }
+
+export const RemoveProjectGroupPathParams = Schema.Struct({ "project_id": Schema.String, "group_id": Schema.String })
 
 export type RemoveProjectGroup200 = ProjectGroupDeletedResource
 
@@ -52311,6 +52688,10 @@ export type RemoveProjectGroup429 = ErrorResponse
 
 export const RemoveProjectGroup429 = ErrorResponse
 
+export type RetrieveProjectHostedToolPermissionsPathParams = { readonly "project_id": string }
+
+export const RetrieveProjectHostedToolPermissionsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type RetrieveProjectHostedToolPermissions200 = ProjectHostedToolPermissions
 
 export const RetrieveProjectHostedToolPermissions200 = ProjectHostedToolPermissions
@@ -52330,6 +52711,10 @@ export const RetrieveProjectHostedToolPermissions404 = ErrorResponse
 export type RetrieveProjectHostedToolPermissions429 = ErrorResponse
 
 export const RetrieveProjectHostedToolPermissions429 = ErrorResponse
+
+export type UpdateProjectHostedToolPermissionsPathParams = { readonly "project_id": string }
+
+export const UpdateProjectHostedToolPermissionsPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type UpdateProjectHostedToolPermissionsRequestJson = ProjectHostedToolPermissionsUpdateRequest
 
@@ -52359,6 +52744,10 @@ export type UpdateProjectHostedToolPermissions429 = ErrorResponse
 
 export const UpdateProjectHostedToolPermissions429 = ErrorResponse
 
+export type RetrieveProjectModelPermissionsPathParams = { readonly "project_id": string }
+
+export const RetrieveProjectModelPermissionsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type RetrieveProjectModelPermissions200 = ProjectModelPermissions
 
 export const RetrieveProjectModelPermissions200 = ProjectModelPermissions
@@ -52378,6 +52767,10 @@ export const RetrieveProjectModelPermissions404 = ErrorResponse
 export type RetrieveProjectModelPermissions429 = ErrorResponse
 
 export const RetrieveProjectModelPermissions429 = ErrorResponse
+
+export type UpdateProjectModelPermissionsPathParams = { readonly "project_id": string }
+
+export const UpdateProjectModelPermissionsPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type UpdateProjectModelPermissionsRequestJson = ProjectModelPermissionsUpdateRequest
 
@@ -52402,6 +52795,10 @@ export const UpdateProjectModelPermissions404 = ErrorResponse
 export type UpdateProjectModelPermissions429 = ErrorResponse
 
 export const UpdateProjectModelPermissions429 = ErrorResponse
+
+export type DeleteProjectModelPermissionsPathParams = { readonly "project_id": string }
+
+export const DeleteProjectModelPermissionsPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type DeleteProjectModelPermissions200 = ProjectModelPermissionsDeleteResponse
 
@@ -52435,6 +52832,10 @@ export const ListProjectRateLimitsParams = Schema.Struct({
   "before": Schema.optionalKey(Schema.String)
 })
 
+export type ListProjectRateLimitsPathParams = { readonly "project_id": string }
+
+export const ListProjectRateLimitsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectRateLimits200 = ProjectRateLimitListResponse
 
 export const ListProjectRateLimits200 = ProjectRateLimitListResponse
@@ -52450,6 +52851,13 @@ export const ListProjectRateLimits403 = PermissionErrorResponse
 export type ListProjectRateLimits404 = ErrorResponse
 
 export const ListProjectRateLimits404 = ErrorResponse
+
+export type UpdateProjectRateLimitsPathParams = { readonly "project_id": string; readonly "rate_limit_id": string }
+
+export const UpdateProjectRateLimitsPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "rate_limit_id": Schema.String
+})
 
 export type UpdateProjectRateLimitsRequestJson = ProjectRateLimitUpdateRequest
 
@@ -52478,6 +52886,10 @@ export const ListProjectServiceAccountsParams = Schema.Struct({
   "after": Schema.optionalKey(Schema.String)
 })
 
+export type ListProjectServiceAccountsPathParams = { readonly "project_id": string }
+
+export const ListProjectServiceAccountsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectServiceAccounts200 = ProjectServiceAccountListResponse
 
 export const ListProjectServiceAccounts200 = ProjectServiceAccountListResponse
@@ -52497,6 +52909,10 @@ export const ListProjectServiceAccounts404 = ErrorResponse
 export type ListProjectServiceAccounts429 = ErrorResponse
 
 export const ListProjectServiceAccounts429 = ErrorResponse
+
+export type CreateProjectServiceAccountPathParams = { readonly "project_id": string }
+
+export const CreateProjectServiceAccountPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type CreateProjectServiceAccountRequestJson = ProjectServiceAccountCreateRequest
 
@@ -52526,6 +52942,16 @@ export type CreateProjectServiceAccount429 = ErrorResponse
 
 export const CreateProjectServiceAccount429 = ErrorResponse
 
+export type RetrieveProjectServiceAccountPathParams = {
+  readonly "project_id": string
+  readonly "service_account_id": string
+}
+
+export const RetrieveProjectServiceAccountPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "service_account_id": Schema.String
+})
+
 export type RetrieveProjectServiceAccount200 = ProjectServiceAccount
 
 export const RetrieveProjectServiceAccount200 = ProjectServiceAccount
@@ -52545,6 +52971,16 @@ export const RetrieveProjectServiceAccount404 = ErrorResponse
 export type RetrieveProjectServiceAccount429 = ErrorResponse
 
 export const RetrieveProjectServiceAccount429 = ErrorResponse
+
+export type UpdateProjectServiceAccountPathParams = {
+  readonly "project_id": string
+  readonly "service_account_id": string
+}
+
+export const UpdateProjectServiceAccountPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "service_account_id": Schema.String
+})
 
 export type UpdateProjectServiceAccountRequestJson = UpdateProjectServiceAccountBody
 
@@ -52569,6 +53005,16 @@ export const UpdateProjectServiceAccount404 = ErrorResponse
 export type UpdateProjectServiceAccount429 = ErrorResponse
 
 export const UpdateProjectServiceAccount429 = ErrorResponse
+
+export type DeleteProjectServiceAccountPathParams = {
+  readonly "project_id": string
+  readonly "service_account_id": string
+}
+
+export const DeleteProjectServiceAccountPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "service_account_id": Schema.String
+})
 
 export type DeleteProjectServiceAccount200 = ProjectServiceAccountDeleteResponse
 
@@ -52607,6 +53053,10 @@ export const ListProjectSpendAlertsParams = Schema.Struct({
   "before": Schema.optionalKey(Schema.String)
 })
 
+export type ListProjectSpendAlertsPathParams = { readonly "project_id": string }
+
+export const ListProjectSpendAlertsPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectSpendAlerts200 = ProjectSpendAlertListResource
 
 export const ListProjectSpendAlerts200 = ProjectSpendAlertListResource
@@ -52622,6 +53072,10 @@ export const ListProjectSpendAlerts403 = PermissionErrorResponse
 export type ListProjectSpendAlerts404 = ErrorResponse
 
 export const ListProjectSpendAlerts404 = ErrorResponse
+
+export type CreateProjectSpendAlertPathParams = { readonly "project_id": string }
+
+export const CreateProjectSpendAlertPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type CreateProjectSpendAlertRequestJson = CreateSpendAlertBody
 
@@ -52643,6 +53097,13 @@ export type CreateProjectSpendAlert404 = ErrorResponse
 
 export const CreateProjectSpendAlert404 = ErrorResponse
 
+export type RetrieveProjectSpendAlertPathParams = { readonly "project_id": string; readonly "alert_id": string }
+
+export const RetrieveProjectSpendAlertPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "alert_id": Schema.String
+})
+
 export type RetrieveProjectSpendAlert200 = ProjectSpendAlert
 
 export const RetrieveProjectSpendAlert200 = ProjectSpendAlert
@@ -52658,6 +53119,13 @@ export const RetrieveProjectSpendAlert403 = PermissionErrorResponse
 export type RetrieveProjectSpendAlert404 = ErrorResponse
 
 export const RetrieveProjectSpendAlert404 = ErrorResponse
+
+export type UpdateProjectSpendAlertPathParams = { readonly "project_id": string; readonly "alert_id": string }
+
+export const UpdateProjectSpendAlertPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "alert_id": Schema.String
+})
 
 export type UpdateProjectSpendAlertRequestJson = CreateSpendAlertBody
 
@@ -52678,6 +53146,13 @@ export const UpdateProjectSpendAlert403 = PermissionErrorResponse
 export type UpdateProjectSpendAlert404 = ErrorResponse
 
 export const UpdateProjectSpendAlert404 = ErrorResponse
+
+export type DeleteProjectSpendAlertPathParams = { readonly "project_id": string; readonly "alert_id": string }
+
+export const DeleteProjectSpendAlertPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "alert_id": Schema.String
+})
 
 export type DeleteProjectSpendAlert200 = ProjectSpendAlertDeletedResource
 
@@ -52702,6 +53177,10 @@ export const ListProjectUsersParams = Schema.Struct({
   "after": Schema.optionalKey(Schema.String)
 })
 
+export type ListProjectUsersPathParams = { readonly "project_id": string }
+
+export const ListProjectUsersPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectUsers200 = ProjectUserListResponse
 
 export const ListProjectUsers200 = ProjectUserListResponse
@@ -52721,6 +53200,10 @@ export const ListProjectUsers404 = ErrorResponse
 export type ListProjectUsers429 = ErrorResponse
 
 export const ListProjectUsers429 = ErrorResponse
+
+export type CreateProjectUserPathParams = { readonly "project_id": string }
+
+export const CreateProjectUserPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type CreateProjectUserRequestJson = ProjectUserCreateRequest
 
@@ -52754,6 +53237,10 @@ export type CreateProjectUser429 = ErrorResponse
 
 export const CreateProjectUser429 = ErrorResponse
 
+export type RetrieveProjectUserPathParams = { readonly "project_id": string; readonly "user_id": string }
+
+export const RetrieveProjectUserPathParams = Schema.Struct({ "project_id": Schema.String, "user_id": Schema.String })
+
 export type RetrieveProjectUser200 = ProjectUser
 
 export const RetrieveProjectUser200 = ProjectUser
@@ -52773,6 +53260,10 @@ export const RetrieveProjectUser404 = ErrorResponse
 export type RetrieveProjectUser429 = ErrorResponse
 
 export const RetrieveProjectUser429 = ErrorResponse
+
+export type ModifyProjectUserPathParams = { readonly "project_id": string; readonly "user_id": string }
+
+export const ModifyProjectUserPathParams = Schema.Struct({ "project_id": Schema.String, "user_id": Schema.String })
 
 export type ModifyProjectUserRequestJson = ProjectUserUpdateRequest
 
@@ -52797,6 +53288,10 @@ export const ModifyProjectUser404 = ErrorResponse
 export type ModifyProjectUser429 = ErrorResponse
 
 export const ModifyProjectUser429 = ErrorResponse
+
+export type DeleteProjectUserPathParams = { readonly "project_id": string; readonly "user_id": string }
+
+export const DeleteProjectUserPathParams = Schema.Struct({ "project_id": Schema.String, "user_id": Schema.String })
 
 export type DeleteProjectUser200 = ProjectUserDeleteResponse
 
@@ -52877,6 +53372,10 @@ export type CreateRole429 = ErrorResponse
 
 export const CreateRole429 = ErrorResponse
 
+export type RetrieveRolePathParams = { readonly "role_id": string }
+
+export const RetrieveRolePathParams = Schema.Struct({ "role_id": Schema.String })
+
 export type RetrieveRole200 = Role
 
 export const RetrieveRole200 = Role
@@ -52892,6 +53391,10 @@ export const RetrieveRole404 = ErrorResponse
 export type RetrieveRole429 = ErrorResponse
 
 export const RetrieveRole429 = ErrorResponse
+
+export type UpdateRolePathParams = { readonly "role_id": string }
+
+export const UpdateRolePathParams = Schema.Struct({ "role_id": Schema.String })
 
 export type UpdateRoleRequestJson = PublicUpdateOrganizationRoleBody
 
@@ -52916,6 +53419,10 @@ export const UpdateRole404 = ErrorResponse
 export type UpdateRole429 = ErrorResponse
 
 export const UpdateRole429 = ErrorResponse
+
+export type DeleteRolePathParams = { readonly "role_id": string }
+
+export const DeleteRolePathParams = Schema.Struct({ "role_id": Schema.String })
 
 export type DeleteRole200 = RoleDeletedResource
 
@@ -52986,6 +53493,10 @@ export type CreateOrganizationSpendAlert403 = PermissionErrorResponse
 
 export const CreateOrganizationSpendAlert403 = PermissionErrorResponse
 
+export type RetrieveOrganizationSpendAlertPathParams = { readonly "alert_id": string }
+
+export const RetrieveOrganizationSpendAlertPathParams = Schema.Struct({ "alert_id": Schema.String })
+
 export type RetrieveOrganizationSpendAlert200 = OrganizationSpendAlert
 
 export const RetrieveOrganizationSpendAlert200 = OrganizationSpendAlert
@@ -52997,6 +53508,10 @@ export const RetrieveOrganizationSpendAlert403 = PermissionErrorResponse
 export type RetrieveOrganizationSpendAlert404 = ErrorResponse
 
 export const RetrieveOrganizationSpendAlert404 = ErrorResponse
+
+export type UpdateOrganizationSpendAlertPathParams = { readonly "alert_id": string }
+
+export const UpdateOrganizationSpendAlertPathParams = Schema.Struct({ "alert_id": Schema.String })
 
 export type UpdateOrganizationSpendAlertRequestJson = CreateSpendAlertBody
 
@@ -53017,6 +53532,10 @@ export const UpdateOrganizationSpendAlert403 = PermissionErrorResponse
 export type UpdateOrganizationSpendAlert404 = ErrorResponse
 
 export const UpdateOrganizationSpendAlert404 = ErrorResponse
+
+export type DeleteOrganizationSpendAlertPathParams = { readonly "alert_id": string }
+
+export const DeleteOrganizationSpendAlertPathParams = Schema.Struct({ "alert_id": Schema.String })
 
 export type DeleteOrganizationSpendAlert200 = OrganizationSpendAlertDeletedResource
 
@@ -53490,6 +54009,10 @@ export type ListUsers429 = ErrorResponse
 
 export const ListUsers429 = ErrorResponse
 
+export type RetrieveUserPathParams = { readonly "user_id": string }
+
+export const RetrieveUserPathParams = Schema.Struct({ "user_id": Schema.String })
+
 export type RetrieveUser200 = User
 
 export const RetrieveUser200 = User
@@ -53505,6 +54028,10 @@ export const RetrieveUser404 = ErrorResponse
 export type RetrieveUser429 = ErrorResponse
 
 export const RetrieveUser429 = ErrorResponse
+
+export type ModifyUserPathParams = { readonly "user_id": string }
+
+export const ModifyUserPathParams = Schema.Struct({ "user_id": Schema.String })
 
 export type ModifyUserRequestJson = UserRoleUpdateRequest
 
@@ -53529,6 +54056,10 @@ export const ModifyUser404 = ErrorResponse
 export type ModifyUser429 = ErrorResponse
 
 export const ModifyUser429 = ErrorResponse
+
+export type DeleteUserPathParams = { readonly "user_id": string }
+
+export const DeleteUserPathParams = Schema.Struct({ "user_id": Schema.String })
 
 export type DeleteUser200 = UserDeleteResponse
 
@@ -53565,6 +54096,10 @@ export const ListUserRoleAssignmentsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListUserRoleAssignmentsPathParams = { readonly "user_id": string }
+
+export const ListUserRoleAssignmentsPathParams = Schema.Struct({ "user_id": Schema.String })
+
 export type ListUserRoleAssignments200 = RoleListResource
 
 export const ListUserRoleAssignments200 = RoleListResource
@@ -53584,6 +54119,10 @@ export const ListUserRoleAssignments404 = ErrorResponse
 export type ListUserRoleAssignments429 = ErrorResponse
 
 export const ListUserRoleAssignments429 = ErrorResponse
+
+export type AssignUserRolePathParams = { readonly "user_id": string }
+
+export const AssignUserRolePathParams = Schema.Struct({ "user_id": Schema.String })
 
 export type AssignUserRoleRequestJson = PublicAssignOrganizationGroupRoleBody
 
@@ -53609,6 +54148,10 @@ export type AssignUserRole429 = ErrorResponse
 
 export const AssignUserRole429 = ErrorResponse
 
+export type RetrieveUserRolePathParams = { readonly "user_id": string; readonly "role_id": string }
+
+export const RetrieveUserRolePathParams = Schema.Struct({ "user_id": Schema.String, "role_id": Schema.String })
+
 export type RetrieveUserRole200 = AssignedRoleDetails
 
 export const RetrieveUserRole200 = AssignedRoleDetails
@@ -53628,6 +54171,10 @@ export const RetrieveUserRole404 = ErrorResponse
 export type RetrieveUserRole429 = ErrorResponse
 
 export const RetrieveUserRole429 = ErrorResponse
+
+export type UnassignUserRolePathParams = { readonly "user_id": string; readonly "role_id": string }
+
+export const UnassignUserRolePathParams = Schema.Struct({ "user_id": Schema.String, "role_id": Schema.String })
 
 export type UnassignUserRole200 = DeletedRoleAssignmentResource
 
@@ -53664,6 +54211,13 @@ export const ListProjectGroupRoleAssignmentsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListProjectGroupRoleAssignmentsPathParams = { readonly "project_id": string; readonly "group_id": string }
+
+export const ListProjectGroupRoleAssignmentsPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "group_id": Schema.String
+})
+
 export type ListProjectGroupRoleAssignments200 = RoleListResource
 
 export const ListProjectGroupRoleAssignments200 = RoleListResource
@@ -53683,6 +54237,13 @@ export const ListProjectGroupRoleAssignments404 = ErrorResponse
 export type ListProjectGroupRoleAssignments429 = ErrorResponse
 
 export const ListProjectGroupRoleAssignments429 = ErrorResponse
+
+export type AssignProjectGroupRolePathParams = { readonly "project_id": string; readonly "group_id": string }
+
+export const AssignProjectGroupRolePathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "group_id": Schema.String
+})
 
 export type AssignProjectGroupRoleRequestJson = PublicAssignOrganizationGroupRoleBody
 
@@ -53708,6 +54269,18 @@ export type AssignProjectGroupRole429 = ErrorResponse
 
 export const AssignProjectGroupRole429 = ErrorResponse
 
+export type RetrieveProjectGroupRolePathParams = {
+  readonly "project_id": string
+  readonly "group_id": string
+  readonly "role_id": string
+}
+
+export const RetrieveProjectGroupRolePathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "group_id": Schema.String,
+  "role_id": Schema.String
+})
+
 export type RetrieveProjectGroupRole200 = AssignedRoleDetails
 
 export const RetrieveProjectGroupRole200 = AssignedRoleDetails
@@ -53727,6 +54300,18 @@ export const RetrieveProjectGroupRole404 = ErrorResponse
 export type RetrieveProjectGroupRole429 = ErrorResponse
 
 export const RetrieveProjectGroupRole429 = ErrorResponse
+
+export type UnassignProjectGroupRolePathParams = {
+  readonly "project_id": string
+  readonly "group_id": string
+  readonly "role_id": string
+}
+
+export const UnassignProjectGroupRolePathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "group_id": Schema.String,
+  "role_id": Schema.String
+})
 
 export type UnassignProjectGroupRole200 = DeletedRoleAssignmentResource
 
@@ -53763,6 +54348,10 @@ export const ListProjectRolesParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListProjectRolesPathParams = { readonly "project_id": string }
+
+export const ListProjectRolesPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type ListProjectRoles200 = PublicRoleListResource
 
 export const ListProjectRoles200 = PublicRoleListResource
@@ -53782,6 +54371,10 @@ export const ListProjectRoles404 = ErrorResponse
 export type ListProjectRoles429 = ErrorResponse
 
 export const ListProjectRoles429 = ErrorResponse
+
+export type CreateProjectRolePathParams = { readonly "project_id": string }
+
+export const CreateProjectRolePathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type CreateProjectRoleRequestJson = PublicCreateOrganizationRoleBody
 
@@ -53807,6 +54400,10 @@ export type CreateProjectRole429 = ErrorResponse
 
 export const CreateProjectRole429 = ErrorResponse
 
+export type RetrieveProjectRolePathParams = { readonly "project_id": string; readonly "role_id": string }
+
+export const RetrieveProjectRolePathParams = Schema.Struct({ "project_id": Schema.String, "role_id": Schema.String })
+
 export type RetrieveProjectRole200 = Role
 
 export const RetrieveProjectRole200 = Role
@@ -53822,6 +54419,10 @@ export const RetrieveProjectRole404 = ErrorResponse
 export type RetrieveProjectRole429 = ErrorResponse
 
 export const RetrieveProjectRole429 = ErrorResponse
+
+export type UpdateProjectRolePathParams = { readonly "project_id": string; readonly "role_id": string }
+
+export const UpdateProjectRolePathParams = Schema.Struct({ "project_id": Schema.String, "role_id": Schema.String })
 
 export type UpdateProjectRoleRequestJson = PublicUpdateOrganizationRoleBody
 
@@ -53846,6 +54447,10 @@ export const UpdateProjectRole404 = ErrorResponse
 export type UpdateProjectRole429 = ErrorResponse
 
 export const UpdateProjectRole429 = ErrorResponse
+
+export type DeleteProjectRolePathParams = { readonly "project_id": string; readonly "role_id": string }
+
+export const DeleteProjectRolePathParams = Schema.Struct({ "project_id": Schema.String, "role_id": Schema.String })
 
 export type DeleteProjectRole200 = RoleDeletedResource
 
@@ -53882,6 +54487,13 @@ export const ListProjectUserRoleAssignmentsParams = Schema.Struct({
   "order": Schema.optionalKey(Schema.Literals(["asc", "desc"]))
 })
 
+export type ListProjectUserRoleAssignmentsPathParams = { readonly "project_id": string; readonly "user_id": string }
+
+export const ListProjectUserRoleAssignmentsPathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "user_id": Schema.String
+})
+
 export type ListProjectUserRoleAssignments200 = RoleListResource
 
 export const ListProjectUserRoleAssignments200 = RoleListResource
@@ -53901,6 +54513,10 @@ export const ListProjectUserRoleAssignments404 = ErrorResponse
 export type ListProjectUserRoleAssignments429 = ErrorResponse
 
 export const ListProjectUserRoleAssignments429 = ErrorResponse
+
+export type AssignProjectUserRolePathParams = { readonly "project_id": string; readonly "user_id": string }
+
+export const AssignProjectUserRolePathParams = Schema.Struct({ "project_id": Schema.String, "user_id": Schema.String })
 
 export type AssignProjectUserRoleRequestJson = PublicAssignOrganizationGroupRoleBody
 
@@ -53926,6 +54542,18 @@ export type AssignProjectUserRole429 = ErrorResponse
 
 export const AssignProjectUserRole429 = ErrorResponse
 
+export type RetrieveProjectUserRolePathParams = {
+  readonly "project_id": string
+  readonly "user_id": string
+  readonly "role_id": string
+}
+
+export const RetrieveProjectUserRolePathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "user_id": Schema.String,
+  "role_id": Schema.String
+})
+
 export type RetrieveProjectUserRole200 = AssignedRoleDetails
 
 export const RetrieveProjectUserRole200 = AssignedRoleDetails
@@ -53945,6 +54573,18 @@ export const RetrieveProjectUserRole404 = ErrorResponse
 export type RetrieveProjectUserRole429 = ErrorResponse
 
 export const RetrieveProjectUserRole429 = ErrorResponse
+
+export type UnassignProjectUserRolePathParams = {
+  readonly "project_id": string
+  readonly "user_id": string
+  readonly "role_id": string
+}
+
+export const UnassignProjectUserRolePathParams = Schema.Struct({
+  "project_id": Schema.String,
+  "user_id": Schema.String,
+  "role_id": Schema.String
+})
 
 export type UnassignProjectUserRole200 = DeletedRoleAssignmentResource
 
@@ -53970,6 +54610,10 @@ export type CreateRealtimeCallRequestFormData = RealtimeCallCreateRequest
 
 export const CreateRealtimeCallRequestFormData = RealtimeCallCreateRequest
 
+export type AcceptRealtimeCallPathParams = { readonly "call_id": string }
+
+export const AcceptRealtimeCallPathParams = Schema.Struct({ "call_id": Schema.String })
+
 export type AcceptRealtimeCallRequestJson = RealtimeSessionCreateRequestGA
 
 export const AcceptRealtimeCallRequestJson = RealtimeSessionCreateRequestGA
@@ -53982,9 +54626,17 @@ export type AcceptRealtimeCall409 = ErrorResponse
 
 export const AcceptRealtimeCall409 = ErrorResponse
 
+export type HangupRealtimeCallPathParams = { readonly "call_id": string }
+
+export const HangupRealtimeCallPathParams = Schema.Struct({ "call_id": Schema.String })
+
 export type HangupRealtimeCall404 = ErrorResponse
 
 export const HangupRealtimeCall404 = ErrorResponse
+
+export type ReferRealtimeCallPathParams = { readonly "call_id": string }
+
+export const ReferRealtimeCallPathParams = Schema.Struct({ "call_id": Schema.String })
 
 export type ReferRealtimeCallRequestJson = RealtimeCallReferRequest
 
@@ -53993,6 +54645,10 @@ export const ReferRealtimeCallRequestJson = RealtimeCallReferRequest
 export type ReferRealtimeCall404 = ErrorResponse
 
 export const ReferRealtimeCall404 = ErrorResponse
+
+export type RejectRealtimeCallPathParams = { readonly "call_id": string }
+
+export const RejectRealtimeCallPathParams = Schema.Struct({ "call_id": Schema.String })
 
 export type RejectRealtimeCallRequestJson = RealtimeCallRejectRequest
 
@@ -54104,6 +54760,10 @@ export const GetResponseParams = Schema.Struct({
   "include_obfuscation": Schema.optionalKey(Schema.Boolean)
 })
 
+export type GetResponsePathParams = { readonly "response_id": string }
+
+export const GetResponsePathParams = Schema.Struct({ "response_id": Schema.String })
+
 export type GetResponse200 = Response
 
 export const GetResponse200 = Response
@@ -54115,6 +54775,10 @@ export const GetResponse404 = ErrorResponse
 export type GetResponse429 = ErrorResponse
 
 export const GetResponse429 = ErrorResponse
+
+export type DeleteResponsePathParams = { readonly "response_id": string }
+
+export const DeleteResponsePathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type DeleteResponse200 = {
   readonly "object": "response.deleted"
@@ -54135,6 +54799,10 @@ export const DeleteResponse404 = ErrorResponse
 export type DeleteResponse429 = ErrorResponse
 
 export const DeleteResponse429 = ErrorResponse
+
+export type CancelResponsePathParams = { readonly "response_id": string }
+
+export const CancelResponsePathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type CancelResponse200 = Response
 
@@ -54161,6 +54829,10 @@ export const ListInputItemsParams = Schema.Struct({
   "after": Schema.optionalKey(Schema.String),
   "include": Schema.optionalKey(Schema.Array(IncludeEnum))
 })
+
+export type ListInputItemsPathParams = { readonly "response_id": string }
+
+export const ListInputItemsPathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type ListInputItems200 = ResponseItemList
 
@@ -54202,6 +54874,10 @@ export type CreateThreadAndRun429 = ErrorResponse
 
 export const CreateThreadAndRun429 = ErrorResponse
 
+export type GetThreadPathParams = { readonly "thread_id": string }
+
+export const GetThreadPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type GetThread200 = ThreadObject
 
 export const GetThread200 = ThreadObject
@@ -54209,6 +54885,10 @@ export const GetThread200 = ThreadObject
 export type GetThread429 = ErrorResponse
 
 export const GetThread429 = ErrorResponse
+
+export type ModifyThreadPathParams = { readonly "thread_id": string }
+
+export const ModifyThreadPathParams = Schema.Struct({ "thread_id": Schema.String })
 
 export type ModifyThreadRequestJson = ModifyThreadRequest
 
@@ -54221,6 +54901,10 @@ export const ModifyThread200 = ThreadObject
 export type ModifyThread429 = ErrorResponse
 
 export const ModifyThread429 = ErrorResponse
+
+export type DeleteThreadPathParams = { readonly "thread_id": string }
+
+export const DeleteThreadPathParams = Schema.Struct({ "thread_id": Schema.String })
 
 export type DeleteThread200 = DeleteThreadResponse
 
@@ -54246,6 +54930,10 @@ export const ListMessagesParams = Schema.Struct({
   "run_id": Schema.optionalKey(Schema.String)
 })
 
+export type ListMessagesPathParams = { readonly "thread_id": string }
+
+export const ListMessagesPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type ListMessages200 = ListMessagesResponse
 
 export const ListMessages200 = ListMessagesResponse
@@ -54253,6 +54941,10 @@ export const ListMessages200 = ListMessagesResponse
 export type ListMessages429 = ErrorResponse
 
 export const ListMessages429 = ErrorResponse
+
+export type CreateMessagePathParams = { readonly "thread_id": string }
+
+export const CreateMessagePathParams = Schema.Struct({ "thread_id": Schema.String })
 
 export type CreateMessageRequestJson = CreateMessageRequest
 
@@ -54266,6 +54958,10 @@ export type CreateMessage429 = ErrorResponse
 
 export const CreateMessage429 = ErrorResponse
 
+export type GetMessagePathParams = { readonly "thread_id": string; readonly "message_id": string }
+
+export const GetMessagePathParams = Schema.Struct({ "thread_id": Schema.String, "message_id": Schema.String })
+
 export type GetMessage200 = MessageObject
 
 export const GetMessage200 = MessageObject
@@ -54273,6 +54969,10 @@ export const GetMessage200 = MessageObject
 export type GetMessage429 = ErrorResponse
 
 export const GetMessage429 = ErrorResponse
+
+export type ModifyMessagePathParams = { readonly "thread_id": string; readonly "message_id": string }
+
+export const ModifyMessagePathParams = Schema.Struct({ "thread_id": Schema.String, "message_id": Schema.String })
 
 export type ModifyMessageRequestJson = ModifyMessageRequest
 
@@ -54285,6 +54985,10 @@ export const ModifyMessage200 = MessageObject
 export type ModifyMessage429 = ErrorResponse
 
 export const ModifyMessage429 = ErrorResponse
+
+export type DeleteMessagePathParams = { readonly "thread_id": string; readonly "message_id": string }
+
+export const DeleteMessagePathParams = Schema.Struct({ "thread_id": Schema.String, "message_id": Schema.String })
 
 export type DeleteMessage200 = DeleteMessageResponse
 
@@ -54308,6 +55012,10 @@ export const ListRunsParams = Schema.Struct({
   "before": Schema.optionalKey(Schema.String)
 })
 
+export type ListRunsPathParams = { readonly "thread_id": string }
+
+export const ListRunsPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type ListRuns200 = ListRunsResponse
 
 export const ListRuns200 = ListRunsResponse
@@ -54326,6 +55034,10 @@ export const CreateRunParams = Schema.Struct({
   )
 })
 
+export type CreateRunPathParams = { readonly "thread_id": string }
+
+export const CreateRunPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type CreateRunRequestJson = CreateRunRequest
 
 export const CreateRunRequestJson = CreateRunRequest
@@ -54342,6 +55054,10 @@ export type CreateRun429 = ErrorResponse
 
 export const CreateRun429 = ErrorResponse
 
+export type GetRunPathParams = { readonly "thread_id": string; readonly "run_id": string }
+
+export const GetRunPathParams = Schema.Struct({ "thread_id": Schema.String, "run_id": Schema.String })
+
 export type GetRun200 = RunObject
 
 export const GetRun200 = RunObject
@@ -54349,6 +55065,10 @@ export const GetRun200 = RunObject
 export type GetRun429 = ErrorResponse
 
 export const GetRun429 = ErrorResponse
+
+export type ModifyRunPathParams = { readonly "thread_id": string; readonly "run_id": string }
+
+export const ModifyRunPathParams = Schema.Struct({ "thread_id": Schema.String, "run_id": Schema.String })
 
 export type ModifyRunRequestJson = ModifyRunRequest
 
@@ -54361,6 +55081,10 @@ export const ModifyRun200 = RunObject
 export type ModifyRun429 = ErrorResponse
 
 export const ModifyRun429 = ErrorResponse
+
+export type CancelRunPathParams = { readonly "thread_id": string; readonly "run_id": string }
+
+export const CancelRunPathParams = Schema.Struct({ "thread_id": Schema.String, "run_id": Schema.String })
 
 export type CancelRun200 = RunObject
 
@@ -54388,6 +55112,10 @@ export const ListRunStepsParams = Schema.Struct({
   )
 })
 
+export type ListRunStepsPathParams = { readonly "thread_id": string; readonly "run_id": string }
+
+export const ListRunStepsPathParams = Schema.Struct({ "thread_id": Schema.String, "run_id": Schema.String })
+
 export type ListRunSteps200 = ListRunStepsResponse
 
 export const ListRunSteps200 = ListRunStepsResponse
@@ -54406,6 +55134,18 @@ export const GetRunStepParams = Schema.Struct({
   )
 })
 
+export type GetRunStepPathParams = {
+  readonly "thread_id": string
+  readonly "run_id": string
+  readonly "step_id": string
+}
+
+export const GetRunStepPathParams = Schema.Struct({
+  "thread_id": Schema.String,
+  "run_id": Schema.String,
+  "step_id": Schema.String
+})
+
 export type GetRunStep200 = RunStepObject
 
 export const GetRunStep200 = RunStepObject
@@ -54413,6 +55153,10 @@ export const GetRunStep200 = RunStepObject
 export type GetRunStep429 = ErrorResponse
 
 export const GetRunStep429 = ErrorResponse
+
+export type SubmitToolOuputsToRunPathParams = { readonly "thread_id": string; readonly "run_id": string }
+
+export const SubmitToolOuputsToRunPathParams = Schema.Struct({ "thread_id": Schema.String, "run_id": Schema.String })
 
 export type SubmitToolOuputsToRunRequestJson = SubmitToolOutputsRunRequest
 
@@ -54446,6 +55190,10 @@ export type CreateUpload429 = ErrorResponse
 
 export const CreateUpload429 = ErrorResponse
 
+export type CancelUploadPathParams = { readonly "upload_id": string }
+
+export const CancelUploadPathParams = Schema.Struct({ "upload_id": Schema.String })
+
 export type CancelUpload200 = Upload
 
 export const CancelUpload200 = Upload
@@ -54465,6 +55213,10 @@ export const CancelUpload410 = ErrorResponse
 export type CancelUpload429 = ErrorResponse
 
 export const CancelUpload429 = ErrorResponse
+
+export type CompleteUploadPathParams = { readonly "upload_id": string }
+
+export const CompleteUploadPathParams = Schema.Struct({ "upload_id": Schema.String })
 
 export type CompleteUploadRequestJson = CompleteUploadRequest
 
@@ -54493,6 +55245,10 @@ export const CompleteUpload429 = ErrorResponse
 export type CompleteUpload500 = ErrorResponse
 
 export const CompleteUpload500 = ErrorResponse
+
+export type AddUploadPartPathParams = { readonly "upload_id": string }
+
+export const AddUploadPartPathParams = Schema.Struct({ "upload_id": Schema.String })
 
 export type AddUploadPartRequestFormData = AddUploadPartRequestMultipart
 
@@ -54568,6 +55324,10 @@ export type CreateVectorStore429 = ErrorResponse
 
 export const CreateVectorStore429 = ErrorResponse
 
+export type GetVectorStorePathParams = { readonly "vector_store_id": string }
+
+export const GetVectorStorePathParams = Schema.Struct({ "vector_store_id": Schema.String })
+
 export type GetVectorStore200 = VectorStoreObject
 
 export const GetVectorStore200 = VectorStoreObject
@@ -54579,6 +55339,10 @@ export const GetVectorStore404 = ErrorResponse
 export type GetVectorStore429 = ErrorResponse
 
 export const GetVectorStore429 = ErrorResponse
+
+export type ModifyVectorStorePathParams = { readonly "vector_store_id": string }
+
+export const ModifyVectorStorePathParams = Schema.Struct({ "vector_store_id": Schema.String })
 
 export type ModifyVectorStoreRequestJson = UpdateVectorStoreRequest
 
@@ -54604,6 +55368,10 @@ export type ModifyVectorStore429 = ErrorResponse
 
 export const ModifyVectorStore429 = ErrorResponse
 
+export type DeleteVectorStorePathParams = { readonly "vector_store_id": string }
+
+export const DeleteVectorStorePathParams = Schema.Struct({ "vector_store_id": Schema.String })
+
 export type DeleteVectorStore200 = DeleteVectorStoreResponse
 
 export const DeleteVectorStore200 = DeleteVectorStoreResponse
@@ -54619,6 +55387,10 @@ export const DeleteVectorStore409 = ErrorResponse
 export type DeleteVectorStore429 = ErrorResponse
 
 export const DeleteVectorStore429 = ErrorResponse
+
+export type CreateVectorStoreFileBatchPathParams = { readonly "vector_store_id": string }
+
+export const CreateVectorStoreFileBatchPathParams = Schema.Struct({ "vector_store_id": Schema.String })
 
 export type CreateVectorStoreFileBatchRequestJson = CreateVectorStoreFileBatchRequest
 
@@ -54648,6 +55420,13 @@ export type CreateVectorStoreFileBatch500 = ErrorResponse
 
 export const CreateVectorStoreFileBatch500 = ErrorResponse
 
+export type GetVectorStoreFileBatchPathParams = { readonly "vector_store_id": string; readonly "batch_id": string }
+
+export const GetVectorStoreFileBatchPathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "batch_id": Schema.String
+})
+
 export type GetVectorStoreFileBatch200 = VectorStoreFileBatchObject
 
 export const GetVectorStoreFileBatch200 = VectorStoreFileBatchObject
@@ -54663,6 +55442,13 @@ export const GetVectorStoreFileBatch404 = ErrorResponse
 export type GetVectorStoreFileBatch429 = ErrorResponse
 
 export const GetVectorStoreFileBatch429 = ErrorResponse
+
+export type CancelVectorStoreFileBatchPathParams = { readonly "vector_store_id": string; readonly "batch_id": string }
+
+export const CancelVectorStoreFileBatchPathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "batch_id": Schema.String
+})
 
 export type CancelVectorStoreFileBatch200 = VectorStoreFileBatchObject
 
@@ -54700,6 +55486,13 @@ export const ListFilesInVectorStoreBatchParams = Schema.Struct({
   "filter": Schema.optionalKey(Schema.Literals(["in_progress", "completed", "failed", "cancelled"]))
 })
 
+export type ListFilesInVectorStoreBatchPathParams = { readonly "vector_store_id": string; readonly "batch_id": string }
+
+export const ListFilesInVectorStoreBatchPathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "batch_id": Schema.String
+})
+
 export type ListFilesInVectorStoreBatch200 = ListVectorStoreFilesResponse
 
 export const ListFilesInVectorStoreBatch200 = ListVectorStoreFilesResponse
@@ -54732,6 +55525,10 @@ export const ListVectorStoreFilesParams = Schema.Struct({
   "filter": Schema.optionalKey(Schema.Literals(["in_progress", "completed", "failed", "cancelled"]))
 })
 
+export type ListVectorStoreFilesPathParams = { readonly "vector_store_id": string }
+
+export const ListVectorStoreFilesPathParams = Schema.Struct({ "vector_store_id": Schema.String })
+
 export type ListVectorStoreFiles200 = ListVectorStoreFilesResponse
 
 export const ListVectorStoreFiles200 = ListVectorStoreFilesResponse
@@ -54747,6 +55544,10 @@ export const ListVectorStoreFiles404 = ErrorResponse
 export type ListVectorStoreFiles429 = ErrorResponse
 
 export const ListVectorStoreFiles429 = ErrorResponse
+
+export type CreateVectorStoreFilePathParams = { readonly "vector_store_id": string }
+
+export const CreateVectorStoreFilePathParams = Schema.Struct({ "vector_store_id": Schema.String })
 
 export type CreateVectorStoreFileRequestJson = CreateVectorStoreFileRequest
 
@@ -54776,6 +55577,13 @@ export type CreateVectorStoreFile500 = ErrorResponse
 
 export const CreateVectorStoreFile500 = ErrorResponse
 
+export type GetVectorStoreFilePathParams = { readonly "vector_store_id": string; readonly "file_id": string }
+
+export const GetVectorStoreFilePathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "file_id": Schema.String
+})
+
 export type GetVectorStoreFile200 = VectorStoreFileObject
 
 export const GetVectorStoreFile200 = VectorStoreFileObject
@@ -54791,6 +55599,16 @@ export const GetVectorStoreFile429 = ErrorResponse
 export type GetVectorStoreFile500 = ErrorResponse
 
 export const GetVectorStoreFile500 = ErrorResponse
+
+export type UpdateVectorStoreFileAttributesPathParams = {
+  readonly "vector_store_id": string
+  readonly "file_id": string
+}
+
+export const UpdateVectorStoreFileAttributesPathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "file_id": Schema.String
+})
 
 export type UpdateVectorStoreFileAttributesRequestJson = UpdateVectorStoreFileAttributesRequest
 
@@ -54820,6 +55638,13 @@ export type UpdateVectorStoreFileAttributes500 = ErrorResponse
 
 export const UpdateVectorStoreFileAttributes500 = ErrorResponse
 
+export type DeleteVectorStoreFilePathParams = { readonly "vector_store_id": string; readonly "file_id": string }
+
+export const DeleteVectorStoreFilePathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "file_id": Schema.String
+})
+
 export type DeleteVectorStoreFile200 = DeleteVectorStoreFileResponse
 
 export const DeleteVectorStoreFile200 = DeleteVectorStoreFileResponse
@@ -54844,6 +55669,16 @@ export type DeleteVectorStoreFile500 = ErrorResponse
 
 export const DeleteVectorStoreFile500 = ErrorResponse
 
+export type RetrieveVectorStoreFileContentPathParams = {
+  readonly "vector_store_id": string
+  readonly "file_id": string
+}
+
+export const RetrieveVectorStoreFileContentPathParams = Schema.Struct({
+  "vector_store_id": Schema.String,
+  "file_id": Schema.String
+})
+
 export type RetrieveVectorStoreFileContent200 = VectorStoreFileContentResponse
 
 export const RetrieveVectorStoreFileContent200 = VectorStoreFileContentResponse
@@ -54863,6 +55698,10 @@ export const RetrieveVectorStoreFileContent429 = ErrorResponse
 export type RetrieveVectorStoreFileContent500 = ErrorResponse
 
 export const RetrieveVectorStoreFileContent500 = ErrorResponse
+
+export type SearchVectorStorePathParams = { readonly "vector_store_id": string }
+
+export const SearchVectorStorePathParams = Schema.Struct({ "vector_store_id": Schema.String })
 
 export type SearchVectorStoreRequestJson = VectorStoreSearchRequest
 
@@ -54904,6 +55743,10 @@ export type CreateConversation500 = ErrorResponse
 
 export const CreateConversation500 = ErrorResponse
 
+export type GetConversationPathParams = { readonly "conversation_id": string }
+
+export const GetConversationPathParams = Schema.Struct({ "conversation_id": Schema.String })
+
 export type GetConversation200 = ConversationResource
 
 export const GetConversation200 = ConversationResource
@@ -54915,6 +55758,10 @@ export const GetConversation404 = ErrorResponse
 export type GetConversation429 = ErrorResponse
 
 export const GetConversation429 = ErrorResponse
+
+export type UpdateConversationPathParams = { readonly "conversation_id": string }
+
+export const UpdateConversationPathParams = Schema.Struct({ "conversation_id": Schema.String })
 
 export type UpdateConversationRequestJson = UpdateConversationBody
 
@@ -54940,6 +55787,10 @@ export type UpdateConversation500 = ErrorResponse
 
 export const UpdateConversation500 = ErrorResponse
 
+export type DeleteConversationPathParams = { readonly "conversation_id": string }
+
+export const DeleteConversationPathParams = Schema.Struct({ "conversation_id": Schema.String })
+
 export type DeleteConversation200 = DeletedConversationResource
 
 export const DeleteConversation200 = DeletedConversationResource
@@ -54951,6 +55802,14 @@ export const DeleteConversation404 = ErrorResponse
 export type DeleteConversation429 = ErrorResponse
 
 export const DeleteConversation429 = ErrorResponse
+
+export type GetsafetycasePathParams = { readonly "id": string }
+
+export const GetsafetycasePathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "Safety case ID" }).check(
+    Schema.isMaxCodePoints(128).annotate({ "expected": "a string with at most 128 code points" })
+  )
+})
 
 export type Getsafetycase200 = SafetyCaseResource
 
@@ -54976,6 +55835,14 @@ export type Getsafetycase503 = ErrorResponse
 
 export const Getsafetycase503 = ErrorResponse
 
+export type GetprojectsafetyalertPathParams = { readonly "id": string }
+
+export const GetprojectsafetyalertPathParams = Schema.Struct({
+  "id": Schema.String.annotate({ "description": "Project safety alert ID" }).check(
+    Schema.isMaxCodePoints(38).annotate({ "expected": "a string with at most 38 code points" })
+  )
+})
+
 export type Getprojectsafetyalert200 = SafetyAlertResource
 
 export const Getprojectsafetyalert200 = SafetyAlertResource
@@ -54995,6 +55862,19 @@ export const Getprojectsafetyalert429 = ErrorResponse
 export type Getprojectsafetyalert503 = ErrorResponse
 
 export const Getprojectsafetyalert503 = ErrorResponse
+
+export type DownloadLiveRecordingPathParams = { readonly "session_id": string }
+
+export const DownloadLiveRecordingPathParams = Schema.Struct({
+  "session_id": Schema.String.annotate({
+    "description":
+      "The ID of the stored Live session to download. Use the session ID returned when the session started with storage enabled."
+  }).check(
+    Schema.isPattern(new globalThis.RegExp("^live_[A-Za-z0-9_-]{1,128}$", "u")).annotate({
+      "expected": "a string matching the RegExp ^live_[A-Za-z0-9_-]{1,128}$"
+    })
+  )
+})
 
 export type DownloadLiveRecording400 = ErrorResponse
 
@@ -55174,6 +56054,10 @@ export type Createanexternalstorageconfiguration503 = ErrorResponse
 
 export const Createanexternalstorageconfiguration503 = ErrorResponse
 
+export type GetanexternalstorageconfigurationPathParams = { readonly "external_storage_id": string }
+
+export const GetanexternalstorageconfigurationPathParams = Schema.Struct({ "external_storage_id": Schema.String })
+
 export type Getanexternalstorageconfiguration200 = ExternalStorageResponse
 
 export const Getanexternalstorageconfiguration200 = ExternalStorageResponse
@@ -55190,6 +56074,10 @@ export type Getanexternalstorageconfiguration404 = ErrorResponse
 
 export const Getanexternalstorageconfiguration404 = ErrorResponse
 
+export type DeleteanexternalstorageconfigurationPathParams = { readonly "external_storage_id": string }
+
+export const DeleteanexternalstorageconfigurationPathParams = Schema.Struct({ "external_storage_id": Schema.String })
+
 export type Deleteanexternalstorageconfiguration200 = ExternalStorageDeletedResource
 
 export const Deleteanexternalstorageconfiguration200 = ExternalStorageDeletedResource
@@ -55205,6 +56093,10 @@ export const Deleteanexternalstorageconfiguration403 = ErrorResponse
 export type Deleteanexternalstorageconfiguration404 = ErrorResponse
 
 export const Deleteanexternalstorageconfiguration404 = ErrorResponse
+
+export type ValidateanexternalstorageconfigurationPathParams = { readonly "external_storage_id": string }
+
+export const ValidateanexternalstorageconfigurationPathParams = Schema.Struct({ "external_storage_id": Schema.String })
 
 export type Validateanexternalstorageconfiguration200 = ExternalStorageResponse
 
@@ -55266,6 +56158,10 @@ export type Deleteorganizationspendlimit404 = ErrorResponse
 
 export const Deleteorganizationspendlimit404 = ErrorResponse
 
+export type GetprojectspendlimitPathParams = { readonly "project_id": string }
+
+export const GetprojectspendlimitPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type Getprojectspendlimit200 = ProjectSpendLimitResource
 
 export const Getprojectspendlimit200 = ProjectSpendLimitResource
@@ -55281,6 +56177,10 @@ export const Getprojectspendlimit403 = PermissionErrorResponse
 export type Getprojectspendlimit404 = ErrorResponse
 
 export const Getprojectspendlimit404 = ErrorResponse
+
+export type UpdateprojectspendlimitPathParams = { readonly "project_id": string }
+
+export const UpdateprojectspendlimitPathParams = Schema.Struct({ "project_id": Schema.String })
 
 export type UpdateprojectspendlimitRequestJson = UpdateProjectSpendLimitBody
 
@@ -55302,6 +56202,10 @@ export type Updateprojectspendlimit404 = ErrorResponse
 
 export const Updateprojectspendlimit404 = ErrorResponse
 
+export type DeleteprojectspendlimitPathParams = { readonly "project_id": string }
+
+export const DeleteprojectspendlimitPathParams = Schema.Struct({ "project_id": Schema.String })
+
 export type Deleteprojectspendlimit200 = ProjectSpendLimitDeletedResource
 
 export const Deleteprojectspendlimit200 = ProjectSpendLimitDeletedResource
@@ -55317,6 +56221,16 @@ export const Deleteprojectspendlimit403 = PermissionErrorResponse
 export type Deleteprojectspendlimit404 = ErrorResponse
 
 export const Deleteprojectspendlimit404 = ErrorResponse
+
+export type CreateanAPIkeyforaserviceaccountPathParams = {
+  readonly "project_id": string
+  readonly "service_account_id": string
+}
+
+export const CreateanAPIkeyforaserviceaccountPathParams = Schema.Struct({
+  "project_id": Schema.String.annotate({ "description": "The ID of the project." }),
+  "service_account_id": Schema.String.annotate({ "description": "The ID of the service account." })
+})
 
 export type CreateanAPIkeyforaserviceaccountRequestJson = CreateProjectServiceAccountApiKeyBody
 
@@ -55455,6 +56369,10 @@ export type CreateVideoCharacter504 = ErrorResponse
 
 export const CreateVideoCharacter504 = ErrorResponse
 
+export type GetVideoCharacterPathParams = { readonly "character_id": string }
+
+export const GetVideoCharacterPathParams = Schema.Struct({ "character_id": Schema.String })
+
 export type GetVideoCharacter200 = VideoCharacterResource
 
 export const GetVideoCharacter200 = VideoCharacterResource
@@ -55531,6 +56449,10 @@ export type CreateVideoExtend503 = ErrorResponse
 
 export const CreateVideoExtend503 = ErrorResponse
 
+export type GetVideoPathParams = { readonly "video_id": string }
+
+export const GetVideoPathParams = Schema.Struct({ "video_id": Schema.String })
+
 export type GetVideo200 = VideoResource
 
 export const GetVideo200 = VideoResource
@@ -55542,6 +56464,10 @@ export const GetVideo400 = ErrorResponse
 export type GetVideo404 = ErrorResponse
 
 export const GetVideo404 = ErrorResponse
+
+export type DeleteVideoPathParams = { readonly "video_id": string }
+
+export const DeleteVideoPathParams = Schema.Struct({ "video_id": Schema.String })
 
 export type DeleteVideo200 = DeletedVideoResource
 
@@ -55563,6 +56489,10 @@ export type RetrieveVideoContentParams = { readonly "variant"?: VideoContentVari
 
 export const RetrieveVideoContentParams = Schema.Struct({ "variant": Schema.optionalKey(VideoContentVariant) })
 
+export type RetrieveVideoContentPathParams = { readonly "video_id": string }
+
+export const RetrieveVideoContentPathParams = Schema.Struct({ "video_id": Schema.String })
+
 export type RetrieveVideoContent200 = string
 
 export const RetrieveVideoContent200 = Schema.String
@@ -55578,6 +56508,10 @@ export const RetrieveVideoContent404 = ErrorResponse
 export type RetrieveVideoContent500 = ErrorResponse
 
 export const RetrieveVideoContent500 = ErrorResponse
+
+export type CreateVideoRemixPathParams = { readonly "video_id": string }
+
+export const CreateVideoRemixPathParams = Schema.Struct({ "video_id": Schema.String })
 
 export type CreateVideoRemixRequestJson = CreateVideoRemixBody
 
@@ -55696,6 +56630,10 @@ export type CreateSkill500 = ErrorResponse
 
 export const CreateSkill500 = ErrorResponse
 
+export type GetSkillPathParams = { readonly "skill_id": string }
+
+export const GetSkillPathParams = Schema.Struct({ "skill_id": Schema.String })
+
 export type GetSkill200 = SkillResource
 
 export const GetSkill200 = SkillResource
@@ -55707,6 +56645,10 @@ export const GetSkill404 = ErrorResponse
 export type GetSkill429 = ErrorResponse
 
 export const GetSkill429 = ErrorResponse
+
+export type UpdateSkillDefaultVersionPathParams = { readonly "skill_id": string }
+
+export const UpdateSkillDefaultVersionPathParams = Schema.Struct({ "skill_id": Schema.String })
 
 export type UpdateSkillDefaultVersionRequestJson = SetDefaultSkillVersionBody
 
@@ -55728,6 +56670,10 @@ export type UpdateSkillDefaultVersion429 = ErrorResponse
 
 export const UpdateSkillDefaultVersion429 = ErrorResponse
 
+export type DeleteSkillPathParams = { readonly "skill_id": string }
+
+export const DeleteSkillPathParams = Schema.Struct({ "skill_id": Schema.String })
+
 export type DeleteSkill200 = DeletedSkillResource
 
 export const DeleteSkill200 = DeletedSkillResource
@@ -55739,6 +56685,10 @@ export const DeleteSkill404 = ErrorResponse
 export type DeleteSkill429 = ErrorResponse
 
 export const DeleteSkill429 = ErrorResponse
+
+export type GetSkillContentPathParams = { readonly "skill_id": string }
+
+export const GetSkillContentPathParams = Schema.Struct({ "skill_id": Schema.String })
 
 export type GetSkillContent200 = string
 
@@ -55767,6 +56717,10 @@ export const ListSkillVersionsParams = Schema.Struct({
   "after": Schema.optionalKey(Schema.String)
 })
 
+export type ListSkillVersionsPathParams = { readonly "skill_id": string }
+
+export const ListSkillVersionsPathParams = Schema.Struct({ "skill_id": Schema.String })
+
 export type ListSkillVersions200 = SkillVersionListResource
 
 export const ListSkillVersions200 = SkillVersionListResource
@@ -55782,6 +56736,10 @@ export const ListSkillVersions404 = ErrorResponse
 export type ListSkillVersions429 = ErrorResponse
 
 export const ListSkillVersions429 = ErrorResponse
+
+export type CreateSkillVersionPathParams = { readonly "skill_id": string }
+
+export const CreateSkillVersionPathParams = Schema.Struct({ "skill_id": Schema.String })
 
 export type CreateSkillVersionRequestJson = CreateSkillVersionBody
 
@@ -55811,6 +56769,13 @@ export type CreateSkillVersion500 = ErrorResponse
 
 export const CreateSkillVersion500 = ErrorResponse
 
+export type GetSkillVersionPathParams = { readonly "skill_id": string; readonly "version": string }
+
+export const GetSkillVersionPathParams = Schema.Struct({
+  "skill_id": Schema.String,
+  "version": Schema.String.annotate({ "description": "The version number to retrieve." })
+})
+
 export type GetSkillVersion200 = SkillVersionResource
 
 export const GetSkillVersion200 = SkillVersionResource
@@ -55826,6 +56791,13 @@ export const GetSkillVersion404 = ErrorResponse
 export type GetSkillVersion429 = ErrorResponse
 
 export const GetSkillVersion429 = ErrorResponse
+
+export type DeleteSkillVersionPathParams = { readonly "skill_id": string; readonly "version": string }
+
+export const DeleteSkillVersionPathParams = Schema.Struct({
+  "skill_id": Schema.String,
+  "version": Schema.String.annotate({ "description": "The skill version number." })
+})
 
 export type DeleteSkillVersion200 = DeletedSkillVersionResource
 
@@ -55843,6 +56815,13 @@ export type DeleteSkillVersion429 = ErrorResponse
 
 export const DeleteSkillVersion429 = ErrorResponse
 
+export type GetSkillVersionContentPathParams = { readonly "skill_id": string; readonly "version": string }
+
+export const GetSkillVersionContentPathParams = Schema.Struct({
+  "skill_id": Schema.String,
+  "version": Schema.String.annotate({ "description": "The skill version number." })
+})
+
 export type GetSkillVersionContent200 = string
 
 export const GetSkillVersionContent200 = Schema.String
@@ -55858,6 +56837,10 @@ export const GetSkillVersionContent404 = ErrorResponse
 export type GetSkillVersionContent429 = ErrorResponse
 
 export const GetSkillVersionContent429 = ErrorResponse
+
+export type CancelChatSessionMethodPathParams = { readonly "session_id": string }
+
+export const CancelChatSessionMethodPathParams = Schema.Struct({ "session_id": Schema.String })
 
 export type CancelChatSessionMethod200 = ChatSessionResource
 
@@ -55920,6 +56903,10 @@ export const ListThreadItemsMethodParams = Schema.Struct({
   )
 })
 
+export type ListThreadItemsMethodPathParams = { readonly "thread_id": string }
+
+export const ListThreadItemsMethodPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type ListThreadItemsMethod200 = ThreadItemListResource
 
 export const ListThreadItemsMethod200 = ThreadItemListResource
@@ -55936,6 +56923,10 @@ export type ListThreadItemsMethod429 = ErrorResponse
 
 export const ListThreadItemsMethod429 = ErrorResponse
 
+export type GetThreadMethodPathParams = { readonly "thread_id": string }
+
+export const GetThreadMethodPathParams = Schema.Struct({ "thread_id": Schema.String })
+
 export type GetThreadMethod200 = ThreadResource
 
 export const GetThreadMethod200 = ThreadResource
@@ -55951,6 +56942,10 @@ export const GetThreadMethod404 = ErrorResponse
 export type GetThreadMethod429 = ErrorResponse
 
 export const GetThreadMethod429 = ErrorResponse
+
+export type DeleteThreadMethodPathParams = { readonly "thread_id": string }
+
+export const DeleteThreadMethodPathParams = Schema.Struct({ "thread_id": Schema.String })
 
 export type DeleteThreadMethod200 = DeletedThreadResource
 
@@ -56130,6 +57125,14 @@ export type CreateAgentEnvironment503 = ErrorResponse_2
 
 export const CreateAgentEnvironment503 = ErrorResponse_2
 
+export type RetrieveAgentEnvironmentPathParams = { readonly "environment_id": string }
+
+export const RetrieveAgentEnvironmentPathParams = Schema.Struct({
+  "environment_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentEnvironment200 = PublicEnvironmentResource
 
 export const RetrieveAgentEnvironment200 = PublicEnvironmentResource
@@ -56191,6 +57194,14 @@ export const ListAgentEnvironmentFilesParams = Schema.Struct({
   )
 })
 
+export type ListAgentEnvironmentFilesPathParams = { readonly "environment_id": string }
+
+export const ListAgentEnvironmentFilesPathParams = Schema.Struct({
+  "environment_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListAgentEnvironmentFiles200 = EnvironmentFileListResource
 
 export const ListAgentEnvironmentFiles200 = EnvironmentFileListResource
@@ -56222,6 +57233,14 @@ export const ListAgentEnvironmentFiles500 = ErrorResponse_2
 export type ListAgentEnvironmentFiles503 = ErrorResponse_2
 
 export const ListAgentEnvironmentFiles503 = ErrorResponse_2
+
+export type CreateAgentEnvironmentFilePathParams = { readonly "environment_id": string }
+
+export const CreateAgentEnvironmentFilePathParams = Schema.Struct({
+  "environment_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type CreateAgentEnvironmentFileRequestJson = HostedEnvironmentFileParam
 
@@ -56280,6 +57299,14 @@ export const ListAgentSessionSubagentsParams = Schema.Struct({
     Schema.String.check(Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" }))
       .check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
   )
+})
+
+export type ListAgentSessionSubagentsPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionSubagentsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type ListAgentSessionSubagents200 = {
@@ -56341,6 +57368,17 @@ export type ListAgentSessionSubagents503 = ErrorResponse_2
 
 export const ListAgentSessionSubagents503 = ErrorResponse_2
 
+export type RetrieveAgentSessionSubagentPathParams = { readonly "session_id": string; readonly "subagent_id": string }
+
+export const RetrieveAgentSessionSubagentPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "subagent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentSessionSubagent200 = SubagentResource
 
 export const RetrieveAgentSessionSubagent200 = SubagentResource
@@ -56390,6 +57428,17 @@ export const ListAgentSessionSubagentItemsParams = Schema.Struct({
     Schema.String.check(Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" }))
       .check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
   )
+})
+
+export type ListAgentSessionSubagentItemsPathParams = { readonly "session_id": string; readonly "subagent_id": string }
+
+export const ListAgentSessionSubagentItemsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "subagent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type ListAgentSessionSubagentItems200 = SessionItemListResource
@@ -56443,6 +57492,17 @@ export const ListAgentSessionSubagentTurnsParams = Schema.Struct({
   )
 })
 
+export type ListAgentSessionSubagentTurnsPathParams = { readonly "session_id": string; readonly "subagent_id": string }
+
+export const ListAgentSessionSubagentTurnsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "subagent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListAgentSessionSubagentTurns200 = SessionTurnListResource
 
 export const ListAgentSessionSubagentTurns200 = Schema.suspend((): Schema.Codec<SessionTurnListResource> =>
@@ -56476,6 +57536,24 @@ export const ListAgentSessionSubagentTurns500 = ErrorResponse_2
 export type ListAgentSessionSubagentTurns503 = ErrorResponse_2
 
 export const ListAgentSessionSubagentTurns503 = ErrorResponse_2
+
+export type RetrieveAgentSessionSubagentTurnPathParams = {
+  readonly "session_id": string
+  readonly "subagent_id": string
+  readonly "turn_id": string
+}
+
+export const RetrieveAgentSessionSubagentTurnPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "subagent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "turn_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type RetrieveAgentSessionSubagentTurn200 = TurnResource
 
@@ -56526,6 +57604,24 @@ export const ListAgentSessionSubagentTurnItemsParams = Schema.Struct({
     Schema.String.check(Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" }))
       .check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
   )
+})
+
+export type ListAgentSessionSubagentTurnItemsPathParams = {
+  readonly "session_id": string
+  readonly "subagent_id": string
+  readonly "turn_id": string
+}
+
+export const ListAgentSessionSubagentTurnItemsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "subagent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "turn_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type ListAgentSessionSubagentTurnItems200 = SessionItemListResource
@@ -56649,6 +57745,14 @@ export type CreateAgent503 = ErrorResponse_2
 
 export const CreateAgent503 = ErrorResponse_2
 
+export type RetrieveAgentPathParams = { readonly "agent_id": string }
+
+export const RetrieveAgentPathParams = Schema.Struct({
+  "agent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgent200 = AgentResource
 
 export const RetrieveAgent200 = AgentResource
@@ -56680,6 +57784,14 @@ export const RetrieveAgent500 = ErrorResponse_2
 export type RetrieveAgent503 = ErrorResponse_2
 
 export const RetrieveAgent503 = ErrorResponse_2
+
+export type UpdateAgentPathParams = { readonly "agent_id": string }
+
+export const UpdateAgentPathParams = Schema.Struct({
+  "agent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type UpdateAgentRequestJson = UpdateAgentParams
 
@@ -56716,6 +57828,14 @@ export const UpdateAgent500 = ErrorResponse_2
 export type UpdateAgent503 = ErrorResponse_2
 
 export const UpdateAgent503 = ErrorResponse_2
+
+export type DeleteAgentPathParams = { readonly "agent_id": string }
+
+export const DeleteAgentPathParams = Schema.Struct({
+  "agent_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteAgent200 = DeletedAgentResource
 
@@ -56830,6 +57950,14 @@ export type CreateAgentEnvironmentTemplate503 = ErrorResponse_2
 
 export const CreateAgentEnvironmentTemplate503 = ErrorResponse_2
 
+export type RetrieveAgentEnvironmentTemplatePathParams = { readonly "environment_template_id": string }
+
+export const RetrieveAgentEnvironmentTemplatePathParams = Schema.Struct({
+  "environment_template_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentEnvironmentTemplate200 = EnvironmentTemplateResource
 
 export const RetrieveAgentEnvironmentTemplate200 = EnvironmentTemplateResource
@@ -56857,6 +57985,14 @@ export const RetrieveAgentEnvironmentTemplate500 = ErrorResponse_2
 export type RetrieveAgentEnvironmentTemplate503 = ErrorResponse_2
 
 export const RetrieveAgentEnvironmentTemplate503 = ErrorResponse_2
+
+export type UpdateAgentEnvironmentTemplatePathParams = { readonly "environment_template_id": string }
+
+export const UpdateAgentEnvironmentTemplatePathParams = Schema.Struct({
+  "environment_template_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type UpdateAgentEnvironmentTemplateRequestJson = UpdateEnvironmentTemplateParams
 
@@ -56893,6 +58029,14 @@ export const UpdateAgentEnvironmentTemplate500 = ErrorResponse_2
 export type UpdateAgentEnvironmentTemplate503 = ErrorResponse_2
 
 export const UpdateAgentEnvironmentTemplate503 = ErrorResponse_2
+
+export type DeleteAgentEnvironmentTemplatePathParams = { readonly "environment_template_id": string }
+
+export const DeleteAgentEnvironmentTemplatePathParams = Schema.Struct({
+  "environment_template_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteAgentEnvironmentTemplate200 = DeletedEnvironmentTemplateResource
 
@@ -57027,6 +58171,14 @@ export type CreateAgentSession503 = ErrorResponse_2
 
 export const CreateAgentSession503 = ErrorResponse_2
 
+export type RetrieveAgentSessionPathParams = { readonly "session_id": string }
+
+export const RetrieveAgentSessionPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentSession200 = SessionResource
 
 export const RetrieveAgentSession200 = SessionResource
@@ -57058,6 +58210,14 @@ export const RetrieveAgentSession500 = ErrorResponse_2
 export type RetrieveAgentSession503 = ErrorResponse_2
 
 export const RetrieveAgentSession503 = ErrorResponse_2
+
+export type UpdateAgentSessionPathParams = { readonly "session_id": string }
+
+export const UpdateAgentSessionPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type UpdateAgentSessionRequestJson = UpdateAgentSessionParams
 
@@ -57094,6 +58254,14 @@ export const UpdateAgentSession500 = ErrorResponse_2
 export type UpdateAgentSession503 = ErrorResponse_2
 
 export const UpdateAgentSession503 = ErrorResponse_2
+
+export type DeleteAgentSessionPathParams = { readonly "session_id": string }
+
+export const DeleteAgentSessionPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteAgentSession200 = DeletedSessionResource
 
@@ -57154,6 +58322,14 @@ export const ListAgentSessionArtifactsParams = Schema.Struct({
   )
 })
 
+export type ListAgentSessionArtifactsPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionArtifactsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListAgentSessionArtifacts200 = SessionArtifactListResource
 
 export const ListAgentSessionArtifacts200 = Schema.suspend((): Schema.Codec<SessionArtifactListResource> =>
@@ -57188,6 +58364,17 @@ export type ListAgentSessionArtifacts503 = ErrorResponse_2
 
 export const ListAgentSessionArtifacts503 = ErrorResponse_2
 
+export type RetrieveAgentSessionArtifactPathParams = { readonly "session_id": string; readonly "artifact_id": string }
+
+export const RetrieveAgentSessionArtifactPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "artifact_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentSessionArtifact200 = SessionArtifactResource
 
 export const RetrieveAgentSessionArtifact200 = SessionArtifactResource
@@ -57219,6 +58406,17 @@ export const RetrieveAgentSessionArtifact500 = ErrorResponse_2
 export type RetrieveAgentSessionArtifact503 = ErrorResponse_2
 
 export const RetrieveAgentSessionArtifact503 = ErrorResponse_2
+
+export type DeleteAgentSessionArtifactPathParams = { readonly "session_id": string; readonly "artifact_id": string }
+
+export const DeleteAgentSessionArtifactPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "artifact_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteAgentSessionArtifact200 = DeletedSessionArtifactResource
 
@@ -57252,6 +58450,20 @@ export type DeleteAgentSessionArtifact503 = ErrorResponse_2
 
 export const DeleteAgentSessionArtifact503 = ErrorResponse_2
 
+export type RetrieveAgentSessionArtifactContentPathParams = {
+  readonly "session_id": string
+  readonly "artifact_id": string
+}
+
+export const RetrieveAgentSessionArtifactContentPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "artifact_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveAgentSessionArtifactContent400 = ErrorResponse_2
 
 export const RetrieveAgentSessionArtifactContent400 = ErrorResponse_2
@@ -57279,6 +58491,14 @@ export const RetrieveAgentSessionArtifactContent500 = ErrorResponse_2
 export type RetrieveAgentSessionArtifactContent503 = ErrorResponse_2
 
 export const RetrieveAgentSessionArtifactContent503 = ErrorResponse_2
+
+export type ListAgentSessionEventsPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionEventsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type ListAgentSessionEvents200Sse = SessionEvent
 
@@ -57320,6 +58540,14 @@ export const CreateAgentSessionEventsParams = Schema.Struct({
       Schema.isMaxCodePoints(256).annotate({ "expected": "a string with at most 256 code points" })
     )
   )
+})
+
+export type CreateAgentSessionEventsPathParams = { readonly "session_id": string }
+
+export const CreateAgentSessionEventsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type CreateAgentSessionEventsRequestJson = CreateSessionEventsParams
@@ -57373,6 +58601,14 @@ export const ListAgentSessionItemsParams = Schema.Struct({
   )
 })
 
+export type ListAgentSessionItemsPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionItemsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListAgentSessionItems200 = SessionItemListResource
 
 export const ListAgentSessionItems200 = SessionItemListResource
@@ -57422,6 +58658,14 @@ export const ListAgentSessionTracesParams = Schema.Struct({
     Schema.String.check(Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" }))
       .check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
   )
+})
+
+export type ListAgentSessionTracesPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionTracesPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type ListAgentSessionTraces200 = SessionTraceListResource
@@ -57477,6 +58721,14 @@ export const ListAgentSessionTurnsParams = Schema.Struct({
   )
 })
 
+export type ListAgentSessionTurnsPathParams = { readonly "session_id": string }
+
+export const ListAgentSessionTurnsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListAgentSessionTurns200 = SessionTurnListResource
 
 export const ListAgentSessionTurns200 = Schema.suspend((): Schema.Codec<SessionTurnListResource> =>
@@ -57510,6 +58762,17 @@ export const ListAgentSessionTurns500 = ErrorResponse_2
 export type ListAgentSessionTurns503 = ErrorResponse_2
 
 export const ListAgentSessionTurns503 = ErrorResponse_2
+
+export type RetrieveAgentSessionTurnPathParams = { readonly "session_id": string; readonly "turn_id": string }
+
+export const RetrieveAgentSessionTurnPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "turn_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type RetrieveAgentSessionTurn200 = TurnResource
 
@@ -57560,6 +58823,17 @@ export const ListAgentSessionTurnItemsParams = Schema.Struct({
     Schema.String.check(Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" }))
       .check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
   )
+})
+
+export type ListAgentSessionTurnItemsPathParams = { readonly "session_id": string; readonly "turn_id": string }
+
+export const ListAgentSessionTurnItemsPathParams = Schema.Struct({
+  "session_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "turn_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
 })
 
 export type ListAgentSessionTurnItems200 = SessionItemListResource
@@ -57700,6 +58974,14 @@ export type CreateVault503 = ErrorResponse_2
 
 export const CreateVault503 = ErrorResponse_2
 
+export type RetrieveVaultPathParams = { readonly "vault_id": string }
+
+export const RetrieveVaultPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveVault200 = VaultResource
 
 export const RetrieveVault200 = VaultResource
@@ -57731,6 +59013,14 @@ export const RetrieveVault500 = ErrorResponse_2
 export type RetrieveVault503 = ErrorResponse_2
 
 export const RetrieveVault503 = ErrorResponse_2
+
+export type UpdateVaultPathParams = { readonly "vault_id": string }
+
+export const UpdateVaultPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type UpdateVaultRequestJson = UpdateVaultParams
 
@@ -57767,6 +59057,14 @@ export const UpdateVault500 = ErrorResponse_2
 export type UpdateVault503 = ErrorResponse_2
 
 export const UpdateVault503 = ErrorResponse_2
+
+export type DeleteVaultPathParams = { readonly "vault_id": string }
+
+export const DeleteVaultPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteVault200 = DeletedVaultResource
 
@@ -57836,6 +59134,14 @@ export const ListVaultCredentialsParams = Schema.Struct({
   "status": Schema.optionalKey(VaultStatusFilterParam)
 })
 
+export type ListVaultCredentialsPathParams = { readonly "vault_id": string }
+
+export const ListVaultCredentialsPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type ListVaultCredentials200 = VaultCredentialListResource
 
 export const ListVaultCredentials200 = Schema.suspend((): Schema.Codec<VaultCredentialListResource> =>
@@ -57869,6 +59175,14 @@ export const ListVaultCredentials500 = ErrorResponse_2
 export type ListVaultCredentials503 = ErrorResponse_2
 
 export const ListVaultCredentials503 = ErrorResponse_2
+
+export type CreateVaultCredentialPathParams = { readonly "vault_id": string }
+
+export const CreateVaultCredentialPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type CreateVaultCredentialRequestJson = CreateVaultCredentialParams
 
@@ -57906,6 +59220,17 @@ export type CreateVaultCredential503 = ErrorResponse_2
 
 export const CreateVaultCredential503 = ErrorResponse_2
 
+export type RetrieveVaultCredentialPathParams = { readonly "vault_id": string; readonly "credential_id": string }
+
+export const RetrieveVaultCredentialPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "credential_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
+
 export type RetrieveVaultCredential200 = VaultCredentialResource
 
 export const RetrieveVaultCredential200 = VaultCredentialResource
@@ -57937,6 +59262,17 @@ export const RetrieveVaultCredential500 = ErrorResponse_2
 export type RetrieveVaultCredential503 = ErrorResponse_2
 
 export const RetrieveVaultCredential503 = ErrorResponse_2
+
+export type RotateVaultCredentialPathParams = { readonly "vault_id": string; readonly "credential_id": string }
+
+export const RotateVaultCredentialPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "credential_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type RotateVaultCredentialRequestJson = RotateVaultCredentialParams
 
@@ -57973,6 +59309,17 @@ export const RotateVaultCredential500 = ErrorResponse_2
 export type RotateVaultCredential503 = ErrorResponse_2
 
 export const RotateVaultCredential503 = ErrorResponse_2
+
+export type DeleteVaultCredentialPathParams = { readonly "vault_id": string; readonly "credential_id": string }
+
+export const DeleteVaultCredentialPathParams = Schema.Struct({
+  "vault_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" })),
+  "credential_id": Schema.String.check(
+    Schema.isMinCodePoints(0).annotate({ "expected": "a string with at least 0 code points" })
+  ).check(Schema.isMaxCodePoints(1048576).annotate({ "expected": "a string with at most 1048576 code points" }))
+})
 
 export type DeleteVaultCredential200 = DeletedVaultCredentialResource
 
@@ -58040,6 +59387,10 @@ export type CreateWebhookEndpoint400 = ErrorResponse
 
 export const CreateWebhookEndpoint400 = ErrorResponse
 
+export type RetrieveWebhookEndpointPathParams = { readonly "webhook_endpoint_id": string }
+
+export const RetrieveWebhookEndpointPathParams = Schema.Struct({ "webhook_endpoint_id": Schema.String })
+
 export type RetrieveWebhookEndpoint200 = WebhookEndpointBody
 
 export const RetrieveWebhookEndpoint200 = WebhookEndpointBody
@@ -58051,6 +59402,10 @@ export const RetrieveWebhookEndpoint400 = ErrorResponse
 export type RetrieveWebhookEndpoint404 = ErrorResponse
 
 export const RetrieveWebhookEndpoint404 = ErrorResponse
+
+export type UpdateWebhookEndpointPathParams = { readonly "webhook_endpoint_id": string }
+
+export const UpdateWebhookEndpointPathParams = Schema.Struct({ "webhook_endpoint_id": Schema.String })
 
 export type UpdateWebhookEndpointRequestJson = PublicUpdateEndpointBody
 
@@ -58068,6 +59423,10 @@ export type UpdateWebhookEndpoint404 = ErrorResponse
 
 export const UpdateWebhookEndpoint404 = ErrorResponse
 
+export type DeleteWebhookEndpointPathParams = { readonly "webhook_endpoint_id": string }
+
+export const DeleteWebhookEndpointPathParams = Schema.Struct({ "webhook_endpoint_id": Schema.String })
+
 export type DeleteWebhookEndpoint200 = DeletedWebhookEndpointResource
 
 export const DeleteWebhookEndpoint200 = DeletedWebhookEndpointResource
@@ -58079,6 +59438,10 @@ export const DeleteWebhookEndpoint400 = ErrorResponse
 export type DeleteWebhookEndpoint404 = ErrorResponse
 
 export const DeleteWebhookEndpoint404 = ErrorResponse
+
+export type RotateWebhookEndpointSigningSecretPathParams = { readonly "webhook_endpoint_id": string }
+
+export const RotateWebhookEndpointSigningSecretPathParams = Schema.Struct({ "webhook_endpoint_id": Schema.String })
 
 export type RotateWebhookEndpointSigningSecretRequestJson = PublicRotateSecretBody
 
@@ -58095,6 +59458,10 @@ export const RotateWebhookEndpointSigningSecret400 = ErrorResponse
 export type RotateWebhookEndpointSigningSecret404 = ErrorResponse
 
 export const RotateWebhookEndpointSigningSecret404 = ErrorResponse
+
+export type TestWebhookEndpointPathParams = { readonly "webhook_endpoint_id": string }
+
+export const TestWebhookEndpointPathParams = Schema.Struct({ "webhook_endpoint_id": Schema.String })
 
 export type TestWebhookEndpointRequestJson = PublicTestEndpointBody
 
@@ -58174,6 +59541,10 @@ export const BetaGetResponseParams = Schema.Struct({
   "openai-beta": Schema.optionalKey(Schema.Array(Schema.Literal("responses_multi_agent=v1")))
 })
 
+export type BetaGetResponsePathParams = { readonly "response_id": string }
+
+export const BetaGetResponsePathParams = Schema.Struct({ "response_id": Schema.String })
+
 export type BetaGetResponse200 = BetaResponse
 
 export const BetaGetResponse200 = BetaResponse
@@ -58191,6 +59562,10 @@ export type BetaDeleteResponseParams = { readonly "openai-beta"?: globalThis.Rea
 export const BetaDeleteResponseParams = Schema.Struct({
   "openai-beta": Schema.optionalKey(Schema.Array(Schema.Literal("responses_multi_agent=v1")))
 })
+
+export type BetaDeleteResponsePathParams = { readonly "response_id": string }
+
+export const BetaDeleteResponsePathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type BetaDeleteResponse200 = {
   readonly "object": "response.deleted"
@@ -58217,6 +59592,10 @@ export type BetaCancelResponseParams = { readonly "openai-beta"?: globalThis.Rea
 export const BetaCancelResponseParams = Schema.Struct({
   "openai-beta": Schema.optionalKey(Schema.Array(Schema.Literal("responses_multi_agent=v1")))
 })
+
+export type BetaCancelResponsePathParams = { readonly "response_id": string }
+
+export const BetaCancelResponsePathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type BetaCancelResponse200 = BetaResponse
 
@@ -58273,6 +59652,10 @@ export const BetaListInputItemsParams = Schema.Struct({
   "include": Schema.optionalKey(Schema.Array(BetaIncludeEnum)),
   "openai-beta": Schema.optionalKey(Schema.Array(Schema.Literal("responses_multi_agent=v1")))
 })
+
+export type BetaListInputItemsPathParams = { readonly "response_id": string }
+
+export const BetaListInputItemsPathParams = Schema.Struct({ "response_id": Schema.String })
 
 export type BetaListInputItems200 = BetaResponseItemList
 
@@ -58373,10 +59756,42 @@ export const make = <E, R>(
         )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = encodeURIComponent
+  const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(
+        /[!'()*]/g,
+        (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase()
+      )
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label":
+        return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string
   ) =>
     Effect.suspend(() => {
@@ -58390,7 +59805,7 @@ export const make = <E, R>(
             })
           })
         )
-      if (parameters.some((value) => value === "" || /^(?:\.|%2e){1,2}$/i.test(value))) {
+      if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\.|%2e){1,2}$/i.test(value)))) {
         return fail("Path parameters must be non-empty and cannot be dot segments")
       }
       let path: string
@@ -58478,7 +59893,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [assistantId],
-        () => "/assistants/" + __encodePathParam(assistantId) + ""
+        () => "/assistants/" + __encodePathParam("assistant_id", assistantId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58494,7 +59909,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [assistantId],
-        () => "/assistants/" + __encodePathParam(assistantId) + ""
+        () => "/assistants/" + __encodePathParam("assistant_id", assistantId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58511,7 +59926,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [assistantId],
-        () => "/assistants/" + __encodePathParam(assistantId) + ""
+        () => "/assistants/" + __encodePathParam("assistant_id", assistantId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58608,7 +60023,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [consentId],
-        () => "/audio/voice_consents/" + __encodePathParam(consentId) + ""
+        () => "/audio/voice_consents/" + __encodePathParam("consent_id", consentId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58625,7 +60040,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [consentId],
-        () => "/audio/voice_consents/" + __encodePathParam(consentId) + ""
+        () => "/audio/voice_consents/" + __encodePathParam("consent_id", consentId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58643,7 +60058,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [consentId],
-        () => "/audio/voice_consents/" + __encodePathParam(consentId) + ""
+        () => "/audio/voice_consents/" + __encodePathParam("consent_id", consentId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58694,7 +60109,11 @@ export const make = <E, R>(
         }))
       ),
     "retrieveBatch": (batchId, options: Parameters<OpenAiClient["retrieveBatch"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [batchId], () => "/batches/" + __encodePathParam(batchId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [batchId],
+        () => "/batches/" + __encodePathParam("batch_id", batchId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -58708,21 +60127,24 @@ export const make = <E, R>(
         )
       ),
     "cancelBatch": (batchId, options: Parameters<OpenAiClient["cancelBatch"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [batchId], () => "/batches/" + __encodePathParam(batchId) + "/cancel")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CancelBatch200),
-                "400": decodeError("CancelBatch400", CancelBatch400),
-                "404": decodeError("CancelBatch404", CancelBatch404),
-                "409": decodeError("CancelBatch409", CancelBatch409),
-                "429": decodeError("CancelBatch429", CancelBatch429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [batchId],
+        () => "/batches/" + __encodePathParam("batch_id", batchId, "simple", false) + "/cancel"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CancelBatch200),
+              "400": decodeError("CancelBatch400", CancelBatch400),
+              "404": decodeError("CancelBatch404", CancelBatch404),
+              "409": decodeError("CancelBatch409", CancelBatch409),
+              "429": decodeError("CancelBatch429", CancelBatch429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listChatCompletions": (options: Parameters<OpenAiClient["listChatCompletions"]>[0]) =>
       HttpClientRequest.get("/chat/completions").pipe(
         HttpClientRequest.setUrlParams({
@@ -58763,7 +60185,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [completionId],
-        () => "/chat/completions/" + __encodePathParam(completionId) + ""
+        () => "/chat/completions/" + __encodePathParam("completion_id", completionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58781,7 +60203,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [completionId],
-        () => "/chat/completions/" + __encodePathParam(completionId) + ""
+        () => "/chat/completions/" + __encodePathParam("completion_id", completionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58801,7 +60223,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [completionId],
-        () => "/chat/completions/" + __encodePathParam(completionId) + ""
+        () => "/chat/completions/" + __encodePathParam("completion_id", completionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58819,7 +60241,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [completionId],
-        () => "/chat/completions/" + __encodePathParam(completionId) + "/messages"
+        () => "/chat/completions/" + __encodePathParam("completion_id", completionId, "simple", false) + "/messages"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58882,7 +60304,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId],
-        () => "/containers/" + __encodePathParam(containerId) + ""
+        () => "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58899,7 +60321,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [containerId],
-        () => "/containers/" + __encodePathParam(containerId) + ""
+        () => "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58916,7 +60338,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files"
+        () => "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58938,7 +60360,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [containerId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files"
+        () => "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58957,7 +60379,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58974,7 +60398,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -58995,7 +60421,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [containerId, fileId],
-        () => "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + "/content"
+        () =>
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59011,7 +60439,8 @@ export const make = <E, R>(
     "RetrieveContainerFileContentStream": (containerId, fileId) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [containerId, fileId], () =>
-          "/containers/" + __encodePathParam(containerId) + "/files/" + __encodePathParam(fileId) + "/content").pipe(
+          "/containers/" + __encodePathParam("container_id", containerId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -59023,7 +60452,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [conversationId],
-        () => "/conversations/" + __encodePathParam(conversationId) + "/items"
+        () => "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59047,7 +60476,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [conversationId],
-        () => "/conversations/" + __encodePathParam(conversationId) + "/items"
+        () => "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59068,7 +60497,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [conversationId, itemId],
-        () => "/conversations/" + __encodePathParam(conversationId) + "/items/" + __encodePathParam(itemId) + ""
+        () =>
+          "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + "/items/" +
+          __encodePathParam("item_id", itemId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59090,7 +60521,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [conversationId, itemId],
-        () => "/conversations/" + __encodePathParam(conversationId) + "/items/" + __encodePathParam(itemId) + ""
+        () =>
+          "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + "/items/" +
+          __encodePathParam("item_id", itemId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59143,7 +60576,11 @@ export const make = <E, R>(
         }))
       ),
     "getEval": (evalId, options: Parameters<OpenAiClient["getEval"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [evalId], () => "/evals/" + __encodePathParam(evalId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [evalId],
+        () => "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59156,7 +60593,11 @@ export const make = <E, R>(
         )
       ),
     "updateEval": (evalId, options: Parameters<OpenAiClient["updateEval"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [evalId], () => "/evals/" + __encodePathParam(evalId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [evalId],
+        () => "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -59171,7 +60612,11 @@ export const make = <E, R>(
         )
       ),
     "deleteEval": (evalId, options: Parameters<OpenAiClient["deleteEval"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [evalId], () => "/evals/" + __encodePathParam(evalId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [evalId],
+        () => "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59185,7 +60630,11 @@ export const make = <E, R>(
         )
       ),
     "getEvalRuns": (evalId, options: Parameters<OpenAiClient["getEvalRuns"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [evalId], () => "/evals/" + __encodePathParam(evalId) + "/runs").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [evalId],
+        () => "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setUrlParams({
@@ -59205,7 +60654,11 @@ export const make = <E, R>(
         )
       ),
     "createEvalRun": (evalId, options: Parameters<OpenAiClient["createEvalRun"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [evalId], () => "/evals/" + __encodePathParam(evalId) + "/runs").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [evalId],
+        () => "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -59224,7 +60677,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [evalId, runId],
-        () => "/evals/" + __encodePathParam(evalId) + "/runs/" + __encodePathParam(runId) + ""
+        () =>
+          "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59242,7 +60697,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [evalId, runId],
-        () => "/evals/" + __encodePathParam(evalId) + "/runs/" + __encodePathParam(runId) + ""
+        () =>
+          "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59260,7 +60717,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [evalId, runId],
-        () => "/evals/" + __encodePathParam(evalId) + "/runs/" + __encodePathParam(runId) + "/cancel"
+        () =>
+          "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59276,7 +60735,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [evalId, runId],
-        () => "/evals/" + __encodePathParam(evalId) + "/runs/" + __encodePathParam(runId) + "/output_items"
+        () =>
+          "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/output_items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59306,8 +60767,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [evalId, runId, outputItemId],
         () =>
-          "/evals/" + __encodePathParam(evalId) + "/runs/" + __encodePathParam(runId) + "/output_items/" +
-          __encodePathParam(outputItemId) + ""
+          "/evals/" + __encodePathParam("eval_id", evalId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/output_items/" +
+          __encodePathParam("output_item_id", outputItemId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59349,7 +60811,11 @@ export const make = <E, R>(
         }))
       ),
     "retrieveFile": (fileId, options: Parameters<OpenAiClient["retrieveFile"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59362,7 +60828,11 @@ export const make = <E, R>(
         )
       ),
     "deleteFile": (fileId, options: Parameters<OpenAiClient["deleteFile"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [fileId], () => "/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59375,7 +60845,11 @@ export const make = <E, R>(
         )
       ),
     "downloadFile": (fileId, options: Parameters<OpenAiClient["downloadFile"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "/content").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content"
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59391,8 +60865,8 @@ export const make = <E, R>(
       ),
     "downloadFileStream": (fileId) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [fileId], () => "/files/" + __encodePathParam(fileId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [fileId], () =>
+          "/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -59427,7 +60901,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [fineTunedModelCheckpoint],
-        () => "/fine_tuning/checkpoints/" + __encodePathParam(fineTunedModelCheckpoint) + "/permissions"
+        () =>
+          "/fine_tuning/checkpoints/" +
+          __encodePathParam("fine_tuned_model_checkpoint", fineTunedModelCheckpoint, "simple", false) + "/permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59453,7 +60929,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [fineTunedModelCheckpoint],
-        () => "/fine_tuning/checkpoints/" + __encodePathParam(fineTunedModelCheckpoint) + "/permissions"
+        () =>
+          "/fine_tuning/checkpoints/" +
+          __encodePathParam("fine_tuned_model_checkpoint", fineTunedModelCheckpoint, "simple", false) + "/permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59477,8 +60955,9 @@ export const make = <E, R>(
         HttpClientRequest.delete,
         [fineTunedModelCheckpoint, permissionId],
         () =>
-          "/fine_tuning/checkpoints/" + __encodePathParam(fineTunedModelCheckpoint) + "/permissions/" +
-          __encodePathParam(permissionId) + ""
+          "/fine_tuning/checkpoints/" +
+          __encodePathParam("fine_tuned_model_checkpoint", fineTunedModelCheckpoint, "simple", false) +
+          "/permissions/" + __encodePathParam("permission_id", permissionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59520,7 +60999,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + ""
+        () => "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59537,7 +61016,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + "/cancel"
+        () =>
+          "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59558,7 +61038,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + "/checkpoints"
+        () =>
+          "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) +
+          "/checkpoints"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59580,7 +61062,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + "/events"
+        () =>
+          "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) + "/events"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59602,7 +61085,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + "/pause"
+        () =>
+          "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) + "/pause"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59620,7 +61104,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [fineTuningJobId],
-        () => "/fine_tuning/jobs/" + __encodePathParam(fineTuningJobId) + "/resume"
+        () =>
+          "/fine_tuning/jobs/" + __encodePathParam("fine_tuning_job_id", fineTuningJobId, "simple", false) + "/resume"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59702,7 +61187,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/accept"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/accept"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59723,7 +61208,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/fork"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/fork"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59743,7 +61228,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/hangup"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/hangup"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59759,7 +61244,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/refer"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/refer"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59777,7 +61262,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/reject"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/reject"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59801,7 +61286,11 @@ export const make = <E, R>(
         }))
       ),
     "retrieveModel": (model, options: Parameters<OpenAiClient["retrieveModel"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [model], () => "/models/" + __encodePathParam(model) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [model],
+        () => "/models/" + __encodePathParam("model", model, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59814,7 +61303,11 @@ export const make = <E, R>(
         )
       ),
     "deleteModel": (model, options: Parameters<OpenAiClient["deleteModel"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [model], () => "/models/" + __encodePathParam(model) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [model],
+        () => "/models/" + __encodePathParam("model", model, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -59868,7 +61361,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [keyId],
-        () => "/organization/admin_api_keys/" + __encodePathParam(keyId) + ""
+        () => "/organization/admin_api_keys/" + __encodePathParam("key_id", keyId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59885,7 +61378,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [keyId],
-        () => "/organization/admin_api_keys/" + __encodePathParam(keyId) + ""
+        () => "/organization/admin_api_keys/" + __encodePathParam("key_id", keyId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -59981,7 +61474,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [certificateId],
-        () => "/organization/certificates/" + __encodePathParam(certificateId) + ""
+        () => "/organization/certificates/" + __encodePathParam("certificate_id", certificateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60001,7 +61494,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [certificateId],
-        () => "/organization/certificates/" + __encodePathParam(certificateId) + ""
+        () => "/organization/certificates/" + __encodePathParam("certificate_id", certificateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60022,7 +61515,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [certificateId],
-        () => "/organization/certificates/" + __encodePathParam(certificateId) + ""
+        () => "/organization/certificates/" + __encodePathParam("certificate_id", certificateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60112,7 +61605,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + ""
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60132,7 +61625,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + ""
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60153,7 +61646,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + ""
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60172,7 +61665,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/roles"
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60196,7 +61689,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/roles"
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60216,7 +61709,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [groupId, roleId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60235,7 +61730,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [groupId, roleId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60254,7 +61751,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/users"
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/users"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60279,7 +61776,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [groupId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/users"
+        () => "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/users"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60300,7 +61797,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [groupId, userId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/users/" + __encodePathParam(userId) + ""
+        () =>
+          "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60319,7 +61818,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [groupId, userId],
-        () => "/organization/groups/" + __encodePathParam(groupId) + "/users/" + __encodePathParam(userId) + ""
+        () =>
+          "/organization/groups/" + __encodePathParam("group_id", groupId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60366,7 +61867,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [inviteId],
-        () => "/organization/invites/" + __encodePathParam(inviteId) + ""
+        () => "/organization/invites/" + __encodePathParam("invite_id", inviteId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60386,7 +61887,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [inviteId],
-        () => "/organization/invites/" + __encodePathParam(inviteId) + ""
+        () => "/organization/invites/" + __encodePathParam("invite_id", inviteId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60433,7 +61934,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + ""
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60451,7 +61952,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + ""
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60471,7 +61972,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/api_keys"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/api_keys"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60495,7 +61996,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, apiKeyId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/api_keys/" + __encodePathParam(apiKeyId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/api_keys/" +
+          __encodePathParam("api_key_id", apiKeyId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60514,7 +62017,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId, apiKeyId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/api_keys/" + __encodePathParam(apiKeyId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/api_keys/" +
+          __encodePathParam("api_key_id", apiKeyId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60533,7 +62038,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/archive"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/archive"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60552,7 +62057,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/certificates"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/certificates"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60575,7 +62080,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/certificates/activate"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/certificates/activate"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60599,7 +62106,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/certificates/deactivate"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/certificates/deactivate"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60620,7 +62129,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/data_retention"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/data_retention"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60638,7 +62148,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/data_retention"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/data_retention"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60657,7 +62168,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/groups"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60681,7 +62192,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/groups"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60702,7 +62213,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, groupId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60722,7 +62235,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId, groupId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60744,7 +62259,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/hosted_tool_permissions"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/hosted_tool_permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60766,7 +62283,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/hosted_tool_permissions"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/hosted_tool_permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60790,7 +62309,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/model_permissions"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/model_permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60812,7 +62332,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/model_permissions"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/model_permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60835,7 +62356,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/model_permissions"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/model_permissions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60854,7 +62376,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/rate_limits"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/rate_limits"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60882,8 +62404,8 @@ export const make = <E, R>(
         HttpClientRequest.post,
         [projectId, rateLimitId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/rate_limits/" + __encodePathParam(rateLimitId) +
-          ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/rate_limits/" +
+          __encodePathParam("rate_limit_id", rateLimitId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60902,7 +62424,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/service_accounts"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60925,7 +62448,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts"
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/service_accounts"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60951,8 +62475,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [projectId, serviceAccountId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts/" +
-          __encodePathParam(serviceAccountId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/service_accounts/" + __encodePathParam("service_account_id", serviceAccountId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -60976,8 +62500,8 @@ export const make = <E, R>(
         HttpClientRequest.post,
         [projectId, serviceAccountId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts/" +
-          __encodePathParam(serviceAccountId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/service_accounts/" + __encodePathParam("service_account_id", serviceAccountId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61002,8 +62526,8 @@ export const make = <E, R>(
         HttpClientRequest.delete,
         [projectId, serviceAccountId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts/" +
-          __encodePathParam(serviceAccountId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/service_accounts/" + __encodePathParam("service_account_id", serviceAccountId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61022,7 +62546,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/spend_alerts"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_alerts"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61046,7 +62570,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/spend_alerts"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_alerts"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61070,7 +62594,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [projectId, alertId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/spend_alerts/" + __encodePathParam(alertId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_alerts/" +
+          __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61089,7 +62614,8 @@ export const make = <E, R>(
         HttpClientRequest.post,
         [projectId, alertId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/spend_alerts/" + __encodePathParam(alertId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_alerts/" +
+          __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61109,7 +62635,8 @@ export const make = <E, R>(
         HttpClientRequest.delete,
         [projectId, alertId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/spend_alerts/" + __encodePathParam(alertId) + ""
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_alerts/" +
+          __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61127,7 +62654,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/users"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61150,7 +62677,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/users"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61172,7 +62699,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, userId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61191,7 +62720,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId, userId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61211,7 +62742,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId, userId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + ""
+        () =>
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61255,42 +62788,48 @@ export const make = <E, R>(
         }))
       ),
     "retrieveRole": (roleId, options: Parameters<OpenAiClient["retrieveRole"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [roleId], () => "/organization/roles/" + __encodePathParam(roleId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(RetrieveRole200),
-                "403": decodeError("RetrieveRole403", RetrieveRole403),
-                "404": decodeError("RetrieveRole404", RetrieveRole404),
-                "429": decodeError("RetrieveRole429", RetrieveRole429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [roleId],
+        () => "/organization/roles/" + __encodePathParam("role_id", roleId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(RetrieveRole200),
+              "403": decodeError("RetrieveRole403", RetrieveRole403),
+              "404": decodeError("RetrieveRole404", RetrieveRole404),
+              "429": decodeError("RetrieveRole429", RetrieveRole429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "updateRole": (roleId, options: Parameters<OpenAiClient["updateRole"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [roleId], () => "/organization/roles/" + __encodePathParam(roleId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(UpdateRole200),
-                "400": decodeError("UpdateRole400", UpdateRole400),
-                "403": decodeError("UpdateRole403", UpdateRole403),
-                "404": decodeError("UpdateRole404", UpdateRole404),
-                "429": decodeError("UpdateRole429", UpdateRole429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [roleId],
+        () => "/organization/roles/" + __encodePathParam("role_id", roleId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(UpdateRole200),
+              "400": decodeError("UpdateRole400", UpdateRole400),
+              "403": decodeError("UpdateRole403", UpdateRole403),
+              "404": decodeError("UpdateRole404", UpdateRole404),
+              "429": decodeError("UpdateRole429", UpdateRole429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteRole": (roleId, options: Parameters<OpenAiClient["deleteRole"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [roleId],
-        () => "/organization/roles/" + __encodePathParam(roleId) + ""
+        () => "/organization/roles/" + __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61338,7 +62877,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [alertId],
-        () => "/organization/spend_alerts/" + __encodePathParam(alertId) + ""
+        () => "/organization/spend_alerts/" + __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61355,7 +62894,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [alertId],
-        () => "/organization/spend_alerts/" + __encodePathParam(alertId) + ""
+        () => "/organization/spend_alerts/" + __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61374,7 +62913,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [alertId],
-        () => "/organization/spend_alerts/" + __encodePathParam(alertId) + ""
+        () => "/organization/spend_alerts/" + __encodePathParam("alert_id", alertId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61621,42 +63160,48 @@ export const make = <E, R>(
         }))
       ),
     "retrieveUser": (userId, options: Parameters<OpenAiClient["retrieveUser"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [userId], () => "/organization/users/" + __encodePathParam(userId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(RetrieveUser200),
-                "403": decodeError("RetrieveUser403", RetrieveUser403),
-                "404": decodeError("RetrieveUser404", RetrieveUser404),
-                "429": decodeError("RetrieveUser429", RetrieveUser429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [userId],
+        () => "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(RetrieveUser200),
+              "403": decodeError("RetrieveUser403", RetrieveUser403),
+              "404": decodeError("RetrieveUser404", RetrieveUser404),
+              "429": decodeError("RetrieveUser429", RetrieveUser429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "modifyUser": (userId, options: Parameters<OpenAiClient["modifyUser"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [userId], () => "/organization/users/" + __encodePathParam(userId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ModifyUser200),
-                "400": decodeError("ModifyUser400", ModifyUser400),
-                "403": decodeError("ModifyUser403", ModifyUser403),
-                "404": decodeError("ModifyUser404", ModifyUser404),
-                "429": decodeError("ModifyUser429", ModifyUser429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [userId],
+        () => "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ModifyUser200),
+              "400": decodeError("ModifyUser400", ModifyUser400),
+              "403": decodeError("ModifyUser403", ModifyUser403),
+              "404": decodeError("ModifyUser404", ModifyUser404),
+              "429": decodeError("ModifyUser429", ModifyUser429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteUser": (userId, options: Parameters<OpenAiClient["deleteUser"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [userId],
-        () => "/organization/users/" + __encodePathParam(userId) + ""
+        () => "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61675,7 +63220,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [userId],
-        () => "/organization/users/" + __encodePathParam(userId) + "/roles"
+        () => "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61699,7 +63244,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [userId],
-        () => "/organization/users/" + __encodePathParam(userId) + "/roles"
+        () => "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61719,7 +63264,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [userId, roleId],
-        () => "/organization/users/" + __encodePathParam(userId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61738,7 +63285,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [userId, roleId],
-        () => "/organization/users/" + __encodePathParam(userId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/organization/users/" + __encodePathParam("user_id", userId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61761,7 +63310,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, groupId],
-        () => "/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + "/roles"
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61785,7 +63336,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId, groupId],
-        () => "/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + "/roles"
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61811,8 +63364,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [projectId, groupId, roleId],
         () =>
-          "/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + "/roles/" +
-          __encodePathParam(roleId) + ""
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61837,8 +63391,9 @@ export const make = <E, R>(
         HttpClientRequest.delete,
         [projectId, groupId, roleId],
         () =>
-          "/projects/" + __encodePathParam(projectId) + "/groups/" + __encodePathParam(groupId) + "/roles/" +
-          __encodePathParam(roleId) + ""
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/groups/" +
+          __encodePathParam("group_id", groupId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61857,7 +63412,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/projects/" + __encodePathParam(projectId) + "/roles"
+        () => "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61881,7 +63436,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/projects/" + __encodePathParam(projectId) + "/roles"
+        () => "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61901,7 +63456,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, roleId],
-        () => "/projects/" + __encodePathParam(projectId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61919,7 +63476,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId, roleId],
-        () => "/projects/" + __encodePathParam(projectId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61939,7 +63498,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId, roleId],
-        () => "/projects/" + __encodePathParam(projectId) + "/roles/" + __encodePathParam(roleId) + ""
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61962,7 +63523,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId, userId],
-        () => "/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + "/roles"
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -61986,7 +63549,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId, userId],
-        () => "/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + "/roles"
+        () =>
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + "/roles"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62012,8 +63577,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [projectId, userId, roleId],
         () =>
-          "/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + "/roles/" +
-          __encodePathParam(roleId) + ""
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62038,8 +63604,9 @@ export const make = <E, R>(
         HttpClientRequest.delete,
         [projectId, userId, roleId],
         () =>
-          "/projects/" + __encodePathParam(projectId) + "/users/" + __encodePathParam(userId) + "/roles/" +
-          __encodePathParam(roleId) + ""
+          "/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/users/" +
+          __encodePathParam("user_id", userId, "simple", false) + "/roles/" +
+          __encodePathParam("role_id", roleId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62065,7 +63632,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [callId],
-        () => "/realtime/calls/" + __encodePathParam(callId) + "/accept"
+        () => "/realtime/calls/" + __encodePathParam("call_id", callId, "simple", false) + "/accept"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62083,7 +63650,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [callId],
-        () => "/realtime/calls/" + __encodePathParam(callId) + "/hangup"
+        () => "/realtime/calls/" + __encodePathParam("call_id", callId, "simple", false) + "/hangup"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62099,7 +63666,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [callId],
-        () => "/realtime/calls/" + __encodePathParam(callId) + "/refer"
+        () => "/realtime/calls/" + __encodePathParam("call_id", callId, "simple", false) + "/refer"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62116,7 +63683,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [callId],
-        () => "/realtime/calls/" + __encodePathParam(callId) + "/reject"
+        () => "/realtime/calls/" + __encodePathParam("call_id", callId, "simple", false) + "/reject"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62190,30 +63757,33 @@ export const make = <E, R>(
         sseRequest(CreateResponse200Sse)
       ),
     "getResponse": (responseId, options: Parameters<OpenAiClient["getResponse"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [responseId], () => "/responses/" + __encodePathParam(responseId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({
-                "include": options?.params?.["include"] as any,
-                "stream": options?.params?.["stream"] as any,
-                "starting_after": options?.params?.["starting_after"] as any,
-                "include_obfuscation": options?.params?.["include_obfuscation"] as any
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(GetResponse200),
-                "404": decodeError("GetResponse404", GetResponse404),
-                "429": decodeError("GetResponse429", GetResponse429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [responseId],
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({
+              "include": options?.params?.["include"] as any,
+              "stream": options?.params?.["stream"] as any,
+              "starting_after": options?.params?.["starting_after"] as any,
+              "include_obfuscation": options?.params?.["include_obfuscation"] as any
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(GetResponse200),
+              "404": decodeError("GetResponse404", GetResponse404),
+              "429": decodeError("GetResponse429", GetResponse429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "deleteResponse": (responseId, options: Parameters<OpenAiClient["deleteResponse"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + ""
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62230,7 +63800,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "/cancel"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62247,7 +63817,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "/input_items"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "/input_items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62290,7 +63860,11 @@ export const make = <E, R>(
         sseRequest(CreateThreadAndRun200Sse)
       ),
     "getThread": (threadId, options: Parameters<OpenAiClient["getThread"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [threadId], () => "/threads/" + __encodePathParam(threadId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [threadId],
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -62302,7 +63876,11 @@ export const make = <E, R>(
         )
       ),
     "modifyThread": (threadId, options: Parameters<OpenAiClient["modifyThread"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [threadId], () => "/threads/" + __encodePathParam(threadId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [threadId],
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -62315,23 +63893,26 @@ export const make = <E, R>(
         )
       ),
     "deleteThread": (threadId, options: Parameters<OpenAiClient["deleteThread"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [threadId], () => "/threads/" + __encodePathParam(threadId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(DeleteThread200),
-                "429": decodeError("DeleteThread429", DeleteThread429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [threadId],
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DeleteThread200),
+              "429": decodeError("DeleteThread429", DeleteThread429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listMessages": (threadId, options: Parameters<OpenAiClient["listMessages"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.get,
         [threadId],
-        () => "/threads/" + __encodePathParam(threadId) + "/messages"
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/messages"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62354,7 +63935,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [threadId],
-        () => "/threads/" + __encodePathParam(threadId) + "/messages"
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/messages"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62371,7 +63952,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [threadId, messageId],
-        () => "/threads/" + __encodePathParam(threadId) + "/messages/" + __encodePathParam(messageId) + ""
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/messages/" +
+          __encodePathParam("message_id", messageId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62387,7 +63970,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [threadId, messageId],
-        () => "/threads/" + __encodePathParam(threadId) + "/messages/" + __encodePathParam(messageId) + ""
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/messages/" +
+          __encodePathParam("message_id", messageId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62404,7 +63989,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [threadId, messageId],
-        () => "/threads/" + __encodePathParam(threadId) + "/messages/" + __encodePathParam(messageId) + ""
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/messages/" +
+          __encodePathParam("message_id", messageId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62417,43 +64004,49 @@ export const make = <E, R>(
         )
       ),
     "listRuns": (threadId, options: Parameters<OpenAiClient["listRuns"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [threadId], () => "/threads/" + __encodePathParam(threadId) + "/runs")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({
-                "limit": options?.params?.["limit"] as any,
-                "order": options?.params?.["order"] as any,
-                "after": options?.params?.["after"] as any,
-                "before": options?.params?.["before"] as any
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ListRuns200),
-                "429": decodeError("ListRuns429", ListRuns429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [threadId],
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({
+              "limit": options?.params?.["limit"] as any,
+              "order": options?.params?.["order"] as any,
+              "after": options?.params?.["after"] as any,
+              "before": options?.params?.["before"] as any
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ListRuns200),
+              "429": decodeError("ListRuns429", ListRuns429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "createRun": (threadId, options: Parameters<OpenAiClient["createRun"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [threadId], () => "/threads/" + __encodePathParam(threadId) + "/runs")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({ "include[]": options.params?.["include[]"] as any }),
-              HttpClientRequest.bodyJsonUnsafe(options.payload),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CreateRun200),
-                "429": decodeError("CreateRun429", CreateRun429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [threadId],
+        () => "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "include[]": options.params?.["include[]"] as any }),
+            HttpClientRequest.bodyJsonUnsafe(options.payload),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CreateRun200),
+              "429": decodeError("CreateRun429", CreateRun429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "createRunSse": (threadId, options) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.post, [threadId], () => "/threads/" + __encodePathParam(threadId) + "/runs")
-          .pipe(
+        __makePathRequest(HttpClientRequest.post, [threadId], () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setUrlParams({ "include[]": options.params?.["include[]"] as any }),
@@ -62467,7 +64060,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [threadId, runId],
-        () => "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + ""
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62483,7 +64078,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [threadId, runId],
-        () => "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + ""
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62500,7 +64097,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [threadId, runId],
-        () => "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + "/cancel"
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62516,7 +64115,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [threadId, runId],
-        () => "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + "/steps"
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/steps"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62540,8 +64141,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [threadId, runId, stepId],
         () =>
-          "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + "/steps/" +
-          __encodePathParam(stepId) + ""
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/steps/" +
+          __encodePathParam("step_id", stepId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62558,7 +64160,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [threadId, runId],
-        () => "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + "/submit_tool_outputs"
+        () =>
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/submit_tool_outputs"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62574,8 +64178,8 @@ export const make = <E, R>(
     "submitToolOuputsToRunSse": (threadId, runId, options) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.post, [threadId, runId], () =>
-          "/threads/" + __encodePathParam(threadId) + "/runs/" + __encodePathParam(runId) + "/submit_tool_outputs")
-          .pipe(
+          "/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/runs/" +
+          __encodePathParam("run_id", runId, "simple", false) + "/submit_tool_outputs").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -62595,26 +64199,29 @@ export const make = <E, R>(
         }))
       ),
     "cancelUpload": (uploadId, options: Parameters<OpenAiClient["cancelUpload"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [uploadId], () => "/uploads/" + __encodePathParam(uploadId) + "/cancel")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CancelUpload200),
-                "400": decodeError("CancelUpload400", CancelUpload400),
-                "404": decodeError("CancelUpload404", CancelUpload404),
-                "410": decodeError("CancelUpload410", CancelUpload410),
-                "429": decodeError("CancelUpload429", CancelUpload429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [uploadId],
+        () => "/uploads/" + __encodePathParam("upload_id", uploadId, "simple", false) + "/cancel"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CancelUpload200),
+              "400": decodeError("CancelUpload400", CancelUpload400),
+              "404": decodeError("CancelUpload404", CancelUpload404),
+              "410": decodeError("CancelUpload410", CancelUpload410),
+              "429": decodeError("CancelUpload429", CancelUpload429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "completeUpload": (uploadId, options: Parameters<OpenAiClient["completeUpload"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.post,
         [uploadId],
-        () => "/uploads/" + __encodePathParam(uploadId) + "/complete"
+        () => "/uploads/" + __encodePathParam("upload_id", uploadId, "simple", false) + "/complete"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62632,23 +64239,26 @@ export const make = <E, R>(
         )
       ),
     "addUploadPart": (uploadId, options: Parameters<OpenAiClient["addUploadPart"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [uploadId], () => "/uploads/" + __encodePathParam(uploadId) + "/parts")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.bodyFormDataRecord(options.payload as any),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(AddUploadPart200),
-                "400": decodeError("AddUploadPart400", AddUploadPart400),
-                "404": decodeError("AddUploadPart404", AddUploadPart404),
-                "410": decodeError("AddUploadPart410", AddUploadPart410),
-                "429": decodeError("AddUploadPart429", AddUploadPart429),
-                "500": decodeError("AddUploadPart500", AddUploadPart500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [uploadId],
+        () => "/uploads/" + __encodePathParam("upload_id", uploadId, "simple", false) + "/parts"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.bodyFormDataRecord(options.payload as any),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(AddUploadPart200),
+              "400": decodeError("AddUploadPart400", AddUploadPart400),
+              "404": decodeError("AddUploadPart404", AddUploadPart404),
+              "410": decodeError("AddUploadPart410", AddUploadPart410),
+              "429": decodeError("AddUploadPart429", AddUploadPart429),
+              "500": decodeError("AddUploadPart500", AddUploadPart500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listVectorStores": (options: Parameters<OpenAiClient["listVectorStores"]>[0]) =>
       HttpClientRequest.get("/vector_stores").pipe(
         HttpClientRequest.setUrlParams({
@@ -62679,7 +64289,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + ""
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62696,7 +64306,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + ""
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62716,7 +64326,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + ""
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62734,7 +64344,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/file_batches"
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/file_batches"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62759,7 +64369,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vectorStoreId, batchId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/file_batches/" + __encodePathParam(batchId) + ""
+        () =>
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/file_batches/" +
+          __encodePathParam("batch_id", batchId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62782,8 +64394,8 @@ export const make = <E, R>(
         HttpClientRequest.post,
         [vectorStoreId, batchId],
         () =>
-          "/vector_stores/" + __encodePathParam(vectorStoreId) + "/file_batches/" + __encodePathParam(batchId) +
-          "/cancel"
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/file_batches/" +
+          __encodePathParam("batch_id", batchId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62807,8 +64419,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [vectorStoreId, batchId],
         () =>
-          "/vector_stores/" + __encodePathParam(vectorStoreId) + "/file_batches/" + __encodePathParam(batchId) +
-          "/files"
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/file_batches/" +
+          __encodePathParam("batch_id", batchId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62833,7 +64445,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files"
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62858,7 +64470,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files"
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62879,7 +64491,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vectorStoreId, fileId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62901,7 +64515,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vectorStoreId, fileId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62922,7 +64538,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [vectorStoreId, fileId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files/" + __encodePathParam(fileId) + ""
+        () =>
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62946,7 +64564,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vectorStoreId, fileId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/files/" + __encodePathParam(fileId) + "/content"
+        () =>
+          "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/files/" +
+          __encodePathParam("file_id", fileId, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62965,7 +64585,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vectorStoreId],
-        () => "/vector_stores/" + __encodePathParam(vectorStoreId) + "/search"
+        () => "/vector_stores/" + __encodePathParam("vector_store_id", vectorStoreId, "simple", false) + "/search"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -62995,7 +64615,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [conversationId],
-        () => "/conversations/" + __encodePathParam(conversationId) + ""
+        () => "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63012,7 +64632,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [conversationId],
-        () => "/conversations/" + __encodePathParam(conversationId) + ""
+        () => "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63032,7 +64652,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [conversationId],
-        () => "/conversations/" + __encodePathParam(conversationId) + ""
+        () => "/conversations/" + __encodePathParam("conversation_id", conversationId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63046,7 +64666,11 @@ export const make = <E, R>(
         )
       ),
     "Getsafetycase": (id, options: Parameters<OpenAiClient["Getsafetycase"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/safety/cases/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/safety/cases/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63062,7 +64686,11 @@ export const make = <E, R>(
         )
       ),
     "Getprojectsafetyalert": (id, options: Parameters<OpenAiClient["Getprojectsafetyalert"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [id], () => "/safety/alerts/" + __encodePathParam(id) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [id],
+        () => "/safety/alerts/" + __encodePathParam("id", id, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63080,7 +64708,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/live/sessions/" + __encodePathParam(sessionId) + "/content"
+        () => "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63099,7 +64727,7 @@ export const make = <E, R>(
     "downloadLiveRecordingStream": (sessionId) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [sessionId], () =>
-          "/live/sessions/" + __encodePathParam(sessionId) + "/content").pipe(
+          "/live/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -63167,7 +64795,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [externalStorageId],
-        () => "/organization/external_storage/" + __encodePathParam(externalStorageId) + ""
+        () =>
+          "/organization/external_storage/" +
+          __encodePathParam("external_storage_id", externalStorageId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63188,7 +64818,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [externalStorageId],
-        () => "/organization/external_storage/" + __encodePathParam(externalStorageId) + ""
+        () =>
+          "/organization/external_storage/" +
+          __encodePathParam("external_storage_id", externalStorageId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63209,7 +64841,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [externalStorageId],
-        () => "/organization/external_storage/" + __encodePathParam(externalStorageId) + "/validate"
+        () =>
+          "/organization/external_storage/" +
+          __encodePathParam("external_storage_id", externalStorageId, "simple", false) + "/validate"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63268,7 +64902,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/spend_limit"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_limit"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63286,7 +64920,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/spend_limit"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_limit"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63305,7 +64939,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [projectId],
-        () => "/organization/projects/" + __encodePathParam(projectId) + "/spend_limit"
+        () => "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) + "/spend_limit"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63328,8 +64962,9 @@ export const make = <E, R>(
         HttpClientRequest.post,
         [projectId, serviceAccountId],
         () =>
-          "/organization/projects/" + __encodePathParam(projectId) + "/service_accounts/" +
-          __encodePathParam(serviceAccountId) + "/api_keys"
+          "/organization/projects/" + __encodePathParam("project_id", projectId, "simple", false) +
+          "/service_accounts/" + __encodePathParam("service_account_id", serviceAccountId, "simple", false) +
+          "/api_keys"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63402,7 +65037,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [characterId],
-        () => "/videos/characters/" + __encodePathParam(characterId) + ""
+        () => "/videos/characters/" + __encodePathParam("character_id", characterId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63442,7 +65077,11 @@ export const make = <E, R>(
         }))
       ),
     "GetVideo": (videoId, options: Parameters<OpenAiClient["GetVideo"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [videoId], () => "/videos/" + __encodePathParam(videoId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [videoId],
+        () => "/videos/" + __encodePathParam("video_id", videoId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63455,7 +65094,11 @@ export const make = <E, R>(
         )
       ),
     "DeleteVideo": (videoId, options: Parameters<OpenAiClient["DeleteVideo"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [videoId], () => "/videos/" + __encodePathParam(videoId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [videoId],
+        () => "/videos/" + __encodePathParam("video_id", videoId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63469,25 +65112,28 @@ export const make = <E, R>(
         )
       ),
     "RetrieveVideoContent": (videoId, options: Parameters<OpenAiClient["RetrieveVideoContent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [videoId], () => "/videos/" + __encodePathParam(videoId) + "/content")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({ "variant": options?.params?.["variant"] as any }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeBinary,
-                "400": decodeError("RetrieveVideoContent400", RetrieveVideoContent400),
-                "404": decodeError("RetrieveVideoContent404", RetrieveVideoContent404),
-                "500": decodeError("RetrieveVideoContent500", RetrieveVideoContent500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [videoId],
+        () => "/videos/" + __encodePathParam("video_id", videoId, "simple", false) + "/content"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({ "variant": options?.params?.["variant"] as any }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeBinary,
+              "400": decodeError("RetrieveVideoContent400", RetrieveVideoContent400),
+              "404": decodeError("RetrieveVideoContent404", RetrieveVideoContent404),
+              "500": decodeError("RetrieveVideoContent500", RetrieveVideoContent500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "RetrieveVideoContentStream": (videoId, options) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [videoId], () => "/videos/" + __encodePathParam(videoId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [videoId], () =>
+          "/videos/" + __encodePathParam("video_id", videoId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setUrlParams({ "variant": options?.params?.["variant"] as any }),
@@ -63497,23 +65143,26 @@ export const make = <E, R>(
           )
       ),
     "CreateVideoRemix": (videoId, options: Parameters<OpenAiClient["CreateVideoRemix"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [videoId], () => "/videos/" + __encodePathParam(videoId) + "/remix")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.bodyFormDataRecord(options.payload as any),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CreateVideoRemix200),
-                "400": decodeError("CreateVideoRemix400", CreateVideoRemix400),
-                "404": decodeError("CreateVideoRemix404", CreateVideoRemix404),
-                "429": decodeError("CreateVideoRemix429", CreateVideoRemix429),
-                "500": decodeError("CreateVideoRemix500", CreateVideoRemix500),
-                "503": decodeError("CreateVideoRemix503", CreateVideoRemix503),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [videoId],
+        () => "/videos/" + __encodePathParam("video_id", videoId, "simple", false) + "/remix"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.bodyFormDataRecord(options.payload as any),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CreateVideoRemix200),
+              "400": decodeError("CreateVideoRemix400", CreateVideoRemix400),
+              "404": decodeError("CreateVideoRemix404", CreateVideoRemix404),
+              "429": decodeError("CreateVideoRemix429", CreateVideoRemix429),
+              "500": decodeError("CreateVideoRemix500", CreateVideoRemix500),
+              "503": decodeError("CreateVideoRemix503", CreateVideoRemix503),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "Getinputtokencounts": (options: Parameters<OpenAiClient["Getinputtokencounts"]>[0]) =>
       HttpClientRequest.post("/responses/input_tokens").pipe(
         HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -63561,7 +65210,11 @@ export const make = <E, R>(
         }))
       ),
     "GetSkill": (skillId, options: Parameters<OpenAiClient["GetSkill"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [skillId], () => "/skills/" + __encodePathParam(skillId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63574,7 +65227,11 @@ export const make = <E, R>(
         )
       ),
     "UpdateSkillDefaultVersion": (skillId, options: Parameters<OpenAiClient["UpdateSkillDefaultVersion"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [skillId], () => "/skills/" + __encodePathParam(skillId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -63589,7 +65246,11 @@ export const make = <E, R>(
         )
       ),
     "DeleteSkill": (skillId, options: Parameters<OpenAiClient["DeleteSkill"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [skillId], () => "/skills/" + __encodePathParam(skillId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -63602,23 +65263,26 @@ export const make = <E, R>(
         )
       ),
     "GetSkillContent": (skillId, options: Parameters<OpenAiClient["GetSkillContent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [skillId], () => "/skills/" + __encodePathParam(skillId) + "/content")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeBinary,
-                "404": decodeError("GetSkillContent404", GetSkillContent404),
-                "429": decodeError("GetSkillContent429", GetSkillContent429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/content"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeBinary,
+              "404": decodeError("GetSkillContent404", GetSkillContent404),
+              "429": decodeError("GetSkillContent429", GetSkillContent429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "GetSkillContentStream": (skillId) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [skillId], () => "/skills/" + __encodePathParam(skillId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [skillId], () =>
+          "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -63627,47 +65291,55 @@ export const make = <E, R>(
           )
       ),
     "ListSkillVersions": (skillId, options: Parameters<OpenAiClient["ListSkillVersions"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [skillId], () => "/skills/" + __encodePathParam(skillId) + "/versions")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setUrlParams({
-                "limit": options?.params?.["limit"] as any,
-                "order": options?.params?.["order"] as any,
-                "after": options?.params?.["after"] as any
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(ListSkillVersions200),
-                "400": decodeError("ListSkillVersions400", ListSkillVersions400),
-                "404": decodeError("ListSkillVersions404", ListSkillVersions404),
-                "429": decodeError("ListSkillVersions429", ListSkillVersions429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setUrlParams({
+              "limit": options?.params?.["limit"] as any,
+              "order": options?.params?.["order"] as any,
+              "after": options?.params?.["after"] as any
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(ListSkillVersions200),
+              "400": decodeError("ListSkillVersions400", ListSkillVersions400),
+              "404": decodeError("ListSkillVersions404", ListSkillVersions404),
+              "429": decodeError("ListSkillVersions429", ListSkillVersions429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "CreateSkillVersion": (skillId, options: Parameters<OpenAiClient["CreateSkillVersion"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [skillId], () => "/skills/" + __encodePathParam(skillId) + "/versions")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.bodyFormDataRecord(options.payload as any),
-              withResponse(options.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(CreateSkillVersion200),
-                "400": decodeError("CreateSkillVersion400", CreateSkillVersion400),
-                "404": decodeError("CreateSkillVersion404", CreateSkillVersion404),
-                "429": decodeError("CreateSkillVersion429", CreateSkillVersion429),
-                "500": decodeError("CreateSkillVersion500", CreateSkillVersion500),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.post,
+        [skillId],
+        () => "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.bodyFormDataRecord(options.payload as any),
+            withResponse(options.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(CreateSkillVersion200),
+              "400": decodeError("CreateSkillVersion400", CreateSkillVersion400),
+              "404": decodeError("CreateSkillVersion404", CreateSkillVersion404),
+              "429": decodeError("CreateSkillVersion429", CreateSkillVersion429),
+              "500": decodeError("CreateSkillVersion500", CreateSkillVersion500),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "GetSkillVersion": (skillId, version, options: Parameters<OpenAiClient["GetSkillVersion"]>[2]) =>
       __makePathRequest(
         HttpClientRequest.get,
         [skillId, version],
-        () => "/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + ""
+        () =>
+          "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63685,7 +65357,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [skillId, version],
-        () => "/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + ""
+        () =>
+          "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63703,7 +65377,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId, version],
-        () => "/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + "/content"
+        () =>
+          "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63720,7 +65396,8 @@ export const make = <E, R>(
     "GetSkillVersionContentStream": (skillId, version) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [skillId, version], () =>
-          "/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + "/content").pipe(
+          "/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -63732,7 +65409,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/chatkit/sessions/" + __encodePathParam(sessionId) + "/cancel"
+        () => "/chatkit/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63761,7 +65438,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [threadId],
-        () => "/chatkit/threads/" + __encodePathParam(threadId) + "/items"
+        () => "/chatkit/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63782,25 +65459,28 @@ export const make = <E, R>(
         )
       ),
     "GetThreadMethod": (threadId, options: Parameters<OpenAiClient["GetThreadMethod"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [threadId], () => "/chatkit/threads/" + __encodePathParam(threadId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(GetThreadMethod200),
-                "400": decodeError("GetThreadMethod400", GetThreadMethod400),
-                "404": decodeError("GetThreadMethod404", GetThreadMethod404),
-                "429": decodeError("GetThreadMethod429", GetThreadMethod429),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [threadId],
+        () => "/chatkit/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(GetThreadMethod200),
+              "400": decodeError("GetThreadMethod400", GetThreadMethod400),
+              "404": decodeError("GetThreadMethod404", GetThreadMethod404),
+              "429": decodeError("GetThreadMethod429", GetThreadMethod429),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "DeleteThreadMethod": (threadId, options: Parameters<OpenAiClient["DeleteThreadMethod"]>[1]) =>
       __makePathRequest(
         HttpClientRequest.delete,
         [threadId],
-        () => "/chatkit/threads/" + __encodePathParam(threadId) + ""
+        () => "/chatkit/threads/" + __encodePathParam("thread_id", threadId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63880,7 +65560,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [environmentId],
-        () => "/agents/environments/" + __encodePathParam(environmentId) + ""
+        () => "/agents/environments/" + __encodePathParam("environment_id", environmentId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63902,7 +65582,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [environmentId],
-        () => "/agents/environments/" + __encodePathParam(environmentId) + "/files"
+        () => "/agents/environments/" + __encodePathParam("environment_id", environmentId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63930,7 +65610,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [environmentId],
-        () => "/agents/environments/" + __encodePathParam(environmentId) + "/files"
+        () => "/agents/environments/" + __encodePathParam("environment_id", environmentId, "simple", false) + "/files"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63954,7 +65634,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -63985,7 +65665,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId, subagentId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents/" + __encodePathParam(subagentId) + ""
+        () =>
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents/" +
+          __encodePathParam("subagent_id", subagentId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64012,7 +65694,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [sessionId, subagentId],
         () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents/" + __encodePathParam(subagentId) + "/items"
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents/" +
+          __encodePathParam("subagent_id", subagentId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64044,7 +65727,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [sessionId, subagentId],
         () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents/" + __encodePathParam(subagentId) + "/turns"
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents/" +
+          __encodePathParam("subagent_id", subagentId, "simple", false) + "/turns"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64077,8 +65761,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [sessionId, subagentId, turnId],
         () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents/" + __encodePathParam(subagentId) +
-          "/turns/" + __encodePathParam(turnId) + ""
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents/" +
+          __encodePathParam("subagent_id", subagentId, "simple", false) + "/turns/" +
+          __encodePathParam("turn_id", turnId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64106,8 +65791,9 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [sessionId, subagentId, turnId],
         () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/subagents/" + __encodePathParam(subagentId) +
-          "/turns/" + __encodePathParam(turnId) + "/items"
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/subagents/" +
+          __encodePathParam("subagent_id", subagentId, "simple", false) + "/turns/" +
+          __encodePathParam("turn_id", turnId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64165,7 +65851,11 @@ export const make = <E, R>(
         }))
       ),
     "retrieveAgent": (agentId, options: Parameters<OpenAiClient["retrieveAgent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [agentId], () => "/agents/" + __encodePathParam(agentId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [agentId],
+        () => "/agents/" + __encodePathParam("agent_id", agentId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -64183,7 +65873,11 @@ export const make = <E, R>(
         )
       ),
     "updateAgent": (agentId, options: Parameters<OpenAiClient["updateAgent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [agentId], () => "/agents/" + __encodePathParam(agentId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [agentId],
+        () => "/agents/" + __encodePathParam("agent_id", agentId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -64202,7 +65896,11 @@ export const make = <E, R>(
         )
       ),
     "deleteAgent": (agentId, options: Parameters<OpenAiClient["deleteAgent"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [agentId], () => "/agents/" + __encodePathParam(agentId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [agentId],
+        () => "/agents/" + __encodePathParam("agent_id", agentId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -64258,7 +65956,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [environmentTemplateId],
-        () => "/agents/environments/templates/" + __encodePathParam(environmentTemplateId) + ""
+        () =>
+          "/agents/environments/templates/" +
+          __encodePathParam("environment_template_id", environmentTemplateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64282,7 +65982,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [environmentTemplateId],
-        () => "/agents/environments/templates/" + __encodePathParam(environmentTemplateId) + ""
+        () =>
+          "/agents/environments/templates/" +
+          __encodePathParam("environment_template_id", environmentTemplateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64308,7 +66010,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [environmentTemplateId],
-        () => "/agents/environments/templates/" + __encodePathParam(environmentTemplateId) + ""
+        () =>
+          "/agents/environments/templates/" +
+          __encodePathParam("environment_template_id", environmentTemplateId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64371,7 +66075,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + ""
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64393,7 +66097,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + ""
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64416,7 +66120,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + ""
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64438,7 +66142,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/artifacts"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/artifacts"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64470,7 +66174,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId, artifactId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/artifacts/" + __encodePathParam(artifactId) + ""
+        () =>
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/artifacts/" +
+          __encodePathParam("artifact_id", artifactId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64496,7 +66202,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [sessionId, artifactId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/artifacts/" + __encodePathParam(artifactId) + ""
+        () =>
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/artifacts/" +
+          __encodePathParam("artifact_id", artifactId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64523,8 +66231,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [sessionId, artifactId],
         () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/artifacts/" + __encodePathParam(artifactId) +
-          "/content"
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/artifacts/" +
+          __encodePathParam("artifact_id", artifactId, "simple", false) + "/content"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64545,8 +66253,8 @@ export const make = <E, R>(
     "retrieveAgentSessionArtifactContentStream": (sessionId, artifactId) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [sessionId, artifactId], () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/artifacts/" + __encodePathParam(artifactId) +
-          "/content").pipe(
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/artifacts/" +
+          __encodePathParam("artifact_id", artifactId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 binaryRequest
@@ -64558,7 +66266,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/events"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/events"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64578,7 +66286,7 @@ export const make = <E, R>(
     "listAgentSessionEventsSse": (sessionId) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [sessionId], () =>
-          "/agents/sessions/" + __encodePathParam(sessionId) + "/events").pipe(
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/events").pipe(
             Effect.map((request) =>
               request.pipe(
                 sseRequest(ListAgentSessionEvents200Sse)
@@ -64590,7 +66298,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/events"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/events"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64614,7 +66322,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/items"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64641,7 +66349,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/traces"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/traces"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64668,7 +66376,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/turns"
+        () => "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/turns"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64695,7 +66403,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId, turnId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/turns/" + __encodePathParam(turnId) + ""
+        () =>
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/turns/" +
+          __encodePathParam("turn_id", turnId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64721,7 +66431,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [sessionId, turnId],
-        () => "/agents/sessions/" + __encodePathParam(sessionId) + "/turns/" + __encodePathParam(turnId) + "/items"
+        () =>
+          "/agents/sessions/" + __encodePathParam("session_id", sessionId, "simple", false) + "/turns/" +
+          __encodePathParam("turn_id", turnId, "simple", false) + "/items"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64781,7 +66493,11 @@ export const make = <E, R>(
         }))
       ),
     "retrieveVault": (vaultId, options: Parameters<OpenAiClient["retrieveVault"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [vaultId], () => "/vaults/" + __encodePathParam(vaultId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [vaultId],
+        () => "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -64799,7 +66515,11 @@ export const make = <E, R>(
         )
       ),
     "updateVault": (vaultId, options: Parameters<OpenAiClient["updateVault"]>[1]) =>
-      __makePathRequest(HttpClientRequest.post, [vaultId], () => "/vaults/" + __encodePathParam(vaultId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.post,
+        [vaultId],
+        () => "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.bodyJsonUnsafe(options.payload),
@@ -64818,7 +66538,11 @@ export const make = <E, R>(
         )
       ),
     "deleteVault": (vaultId, options: Parameters<OpenAiClient["deleteVault"]>[1]) =>
-      __makePathRequest(HttpClientRequest.delete, [vaultId], () => "/vaults/" + __encodePathParam(vaultId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [vaultId],
+        () => "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             withResponse(options?.config)(HttpClientResponse.matchStatus({
@@ -64839,7 +66563,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vaultId],
-        () => "/vaults/" + __encodePathParam(vaultId) + "/credentials"
+        () => "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + "/credentials"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64868,7 +66592,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vaultId],
-        () => "/vaults/" + __encodePathParam(vaultId) + "/credentials"
+        () => "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + "/credentials"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64895,7 +66619,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [vaultId, credentialId],
-        () => "/vaults/" + __encodePathParam(vaultId) + "/credentials/" + __encodePathParam(credentialId) + ""
+        () =>
+          "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + "/credentials/" +
+          __encodePathParam("credential_id", credentialId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64917,7 +66643,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [vaultId, credentialId],
-        () => "/vaults/" + __encodePathParam(vaultId) + "/credentials/" + __encodePathParam(credentialId) + ""
+        () =>
+          "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + "/credentials/" +
+          __encodePathParam("credential_id", credentialId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64940,7 +66668,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [vaultId, credentialId],
-        () => "/vaults/" + __encodePathParam(vaultId) + "/credentials/" + __encodePathParam(credentialId) + ""
+        () =>
+          "/vaults/" + __encodePathParam("vault_id", vaultId, "simple", false) + "/credentials/" +
+          __encodePathParam("credential_id", credentialId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -64984,7 +66714,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [webhookEndpointId],
-        () => "/webhook_endpoints/" + __encodePathParam(webhookEndpointId) + ""
+        () => "/webhook_endpoints/" + __encodePathParam("webhook_endpoint_id", webhookEndpointId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65001,7 +66731,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [webhookEndpointId],
-        () => "/webhook_endpoints/" + __encodePathParam(webhookEndpointId) + ""
+        () => "/webhook_endpoints/" + __encodePathParam("webhook_endpoint_id", webhookEndpointId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65019,7 +66749,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [webhookEndpointId],
-        () => "/webhook_endpoints/" + __encodePathParam(webhookEndpointId) + ""
+        () => "/webhook_endpoints/" + __encodePathParam("webhook_endpoint_id", webhookEndpointId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65039,7 +66769,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [webhookEndpointId],
-        () => "/webhook_endpoints/" + __encodePathParam(webhookEndpointId) + "/rotate_secret"
+        () =>
+          "/webhook_endpoints/" + __encodePathParam("webhook_endpoint_id", webhookEndpointId, "simple", false) +
+          "/rotate_secret"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65057,7 +66789,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [webhookEndpointId],
-        () => "/webhook_endpoints/" + __encodePathParam(webhookEndpointId) + "/test"
+        () =>
+          "/webhook_endpoints/" + __encodePathParam("webhook_endpoint_id", webhookEndpointId, "simple", false) + "/test"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65103,7 +66836,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "?beta=true"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65127,7 +66860,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "?beta=true"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65145,7 +66878,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "/cancel?beta=true"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "/cancel?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65175,7 +66908,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [responseId],
-        () => "/responses/" + __encodePathParam(responseId) + "/input_items?beta=true"
+        () => "/responses/" + __encodePathParam("response_id", responseId, "simple", false) + "/input_items?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -65257,7 +66990,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getAssistant": {
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof GetAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetAssistant200, Config>,
@@ -65265,7 +66998,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof GetAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetAssistant200, Config | undefined>,
@@ -65278,7 +67011,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyAssistant": {
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof ModifyAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly payload: typeof ModifyAssistantRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyAssistant200, Config>,
@@ -65286,7 +67019,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof ModifyAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly payload: typeof ModifyAssistantRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyAssistant200, Config | undefined>,
@@ -65299,7 +67032,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteAssistant": {
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof DeleteAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAssistant200, Config>,
@@ -65307,7 +67040,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      assistantId: string,
+      assistantId: (typeof DeleteAssistantPathParams.Encoded)["assistant_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteAssistant200, Config | undefined>,
@@ -65533,7 +67266,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getVoiceConsent": {
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof GetVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVoiceConsent200, Config>,
@@ -65545,7 +67278,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof GetVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVoiceConsent200, Config | undefined>,
@@ -65562,7 +67295,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateVoiceConsent": {
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof UpdateVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly payload: typeof UpdateVoiceConsentRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateVoiceConsent200, Config>,
@@ -65574,7 +67307,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof UpdateVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly payload: typeof UpdateVoiceConsentRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateVoiceConsent200, Config | undefined>,
@@ -65591,7 +67324,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteVoiceConsent": {
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof DeleteVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVoiceConsent200, Config>,
@@ -65603,7 +67336,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      consentId: string,
+      consentId: (typeof DeleteVoiceConsentPathParams.Encoded)["consent_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVoiceConsent200, Config | undefined>,
@@ -65715,7 +67448,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      batchId: string,
+      batchId: (typeof RetrieveBatchPathParams.Encoded)["batch_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveBatch200, Config>,
@@ -65728,7 +67461,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      batchId: string,
+      batchId: (typeof RetrieveBatchPathParams.Encoded)["batch_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveBatch200, Config | undefined>,
@@ -65746,7 +67479,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      batchId: string,
+      batchId: (typeof CancelBatchPathParams.Encoded)["batch_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelBatch200, Config>,
@@ -65760,7 +67493,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      batchId: string,
+      batchId: (typeof CancelBatchPathParams.Encoded)["batch_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelBatch200, Config | undefined>,
@@ -65895,7 +67628,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getChatCompletion": {
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof GetChatCompletionPathParams.Encoded)["completion_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetChatCompletion200, Config>,
@@ -65908,7 +67641,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof GetChatCompletionPathParams.Encoded)["completion_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetChatCompletion200, Config | undefined>,
@@ -65928,7 +67661,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateChatCompletion": {
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof UpdateChatCompletionPathParams.Encoded)["completion_id"],
       options: { readonly payload: typeof UpdateChatCompletionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateChatCompletion200, Config>,
@@ -65942,7 +67675,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof UpdateChatCompletionPathParams.Encoded)["completion_id"],
       options: {
         readonly payload: typeof UpdateChatCompletionRequestJson.Encoded
         readonly config?: Config | undefined
@@ -65965,7 +67698,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteChatCompletion": {
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof DeleteChatCompletionPathParams.Encoded)["completion_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteChatCompletion200, Config>,
@@ -65978,7 +67711,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof DeleteChatCompletionPathParams.Encoded)["completion_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteChatCompletion200, Config | undefined>,
@@ -65998,7 +67731,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getChatCompletionMessages": {
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof GetChatCompletionMessagesPathParams.Encoded)["completion_id"],
       options: { readonly params?: typeof GetChatCompletionMessagesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetChatCompletionMessages200, Config>,
@@ -66012,7 +67745,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      completionId: string,
+      completionId: (typeof GetChatCompletionMessagesPathParams.Encoded)["completion_id"],
       options: {
         readonly params?: typeof GetChatCompletionMessagesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -66128,7 +67861,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RetrieveContainer": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof RetrieveContainerPathParams.Encoded)["container_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveContainer200, Config>,
@@ -66140,7 +67873,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof RetrieveContainerPathParams.Encoded)["container_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveContainer200, Config | undefined>,
@@ -66157,7 +67890,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteContainer": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof DeleteContainerPathParams.Encoded)["container_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteContainer200, Config>,
@@ -66169,7 +67902,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof DeleteContainerPathParams.Encoded)["container_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteContainer200, Config | undefined>,
@@ -66186,7 +67919,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "ListContainerFiles": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof ListContainerFilesPathParams.Encoded)["container_id"],
       options: { readonly params?: typeof ListContainerFilesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListContainerFiles200, Config>,
@@ -66198,7 +67931,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof ListContainerFilesPathParams.Encoded)["container_id"],
       options: {
         readonly params?: typeof ListContainerFilesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -66220,7 +67953,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "CreateContainerFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof CreateContainerFilePathParams.Encoded)["container_id"],
       options: { readonly payload: typeof CreateContainerFileRequestFormData.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateContainerFile200, Config>,
@@ -66233,7 +67966,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
+      containerId: (typeof CreateContainerFilePathParams.Encoded)["container_id"],
       options: {
         readonly payload: typeof CreateContainerFileRequestFormData.Encoded
         readonly config?: Config | undefined
@@ -66254,8 +67987,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RetrieveContainerFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof RetrieveContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof RetrieveContainerFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveContainerFile200, Config>,
@@ -66267,8 +68000,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof RetrieveContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof RetrieveContainerFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveContainerFile200, Config | undefined>,
@@ -66285,8 +68018,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteContainerFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof DeleteContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof DeleteContainerFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteContainerFile200, Config>,
@@ -66298,8 +68031,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof DeleteContainerFilePathParams.Encoded)["container_id"],
+      fileId: (typeof DeleteContainerFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteContainerFile200, Config | undefined>,
@@ -66316,8 +68049,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RetrieveContainerFileContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof RetrieveContainerFileContentPathParams.Encoded)["container_id"],
+      fileId: (typeof RetrieveContainerFileContentPathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -66329,8 +68062,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      containerId: string,
-      fileId: string,
+      containerId: (typeof RetrieveContainerFileContentPathParams.Encoded)["container_id"],
+      fileId: (typeof RetrieveContainerFileContentPathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -66346,15 +68079,15 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Retrieve Container File Content
    */
   readonly "RetrieveContainerFileContentStream": (
-    containerId: string,
-    fileId: string
+    containerId: (typeof RetrieveContainerFileContentPathParams.Encoded)["container_id"],
+    fileId: (typeof RetrieveContainerFileContentPathParams.Encoded)["file_id"]
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * List all items for a conversation with the given ID.
    */
   readonly "listConversationItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof ListConversationItemsPathParams.Encoded)["conversation_id"],
       options: { readonly params?: typeof ListConversationItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListConversationItems200, Config>,
@@ -66367,7 +68100,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof ListConversationItemsPathParams.Encoded)["conversation_id"],
       options: {
         readonly params?: typeof ListConversationItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -66388,7 +68121,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createConversationItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof CreateConversationItemsPathParams.Encoded)["conversation_id"],
       options: {
         readonly params?: typeof CreateConversationItemsParams.Encoded | undefined
         readonly payload: typeof CreateConversationItemsRequestJson.Encoded
@@ -66406,7 +68139,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof CreateConversationItemsPathParams.Encoded)["conversation_id"],
       options: {
         readonly params?: typeof CreateConversationItemsParams.Encoded | undefined
         readonly payload: typeof CreateConversationItemsRequestJson.Encoded
@@ -66429,8 +68162,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getConversationItem": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
-      itemId: string,
+      conversationId: (typeof GetConversationItemPathParams.Encoded)["conversation_id"],
+      itemId: (typeof GetConversationItemPathParams.Encoded)["item_id"],
       options: { readonly params?: typeof GetConversationItemParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetConversationItem200, Config>,
@@ -66442,8 +68175,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
-      itemId: string,
+      conversationId: (typeof GetConversationItemPathParams.Encoded)["conversation_id"],
+      itemId: (typeof GetConversationItemPathParams.Encoded)["item_id"],
       options: {
         readonly params?: typeof GetConversationItemParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -66463,8 +68196,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteConversationItem": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
-      itemId: string,
+      conversationId: (typeof DeleteConversationItemPathParams.Encoded)["conversation_id"],
+      itemId: (typeof DeleteConversationItemPathParams.Encoded)["item_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteConversationItem200, Config>,
@@ -66478,8 +68211,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
-      itemId: string,
+      conversationId: (typeof DeleteConversationItemPathParams.Encoded)["conversation_id"],
+      itemId: (typeof DeleteConversationItemPathParams.Encoded)["item_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteConversationItem200, Config | undefined>,
@@ -66581,7 +68314,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getEval": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof GetEvalPathParams.Encoded)["eval_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetEval200, Config>,
@@ -66593,7 +68326,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof GetEvalPathParams.Encoded)["eval_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetEval200, Config | undefined>,
@@ -66610,7 +68343,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateEval": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof UpdateEvalPathParams.Encoded)["eval_id"],
       options: { readonly payload: typeof UpdateEvalRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateEval200, Config>,
@@ -66623,7 +68356,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof UpdateEvalPathParams.Encoded)["eval_id"],
       options: { readonly payload: typeof UpdateEvalRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateEval200, Config | undefined>,
@@ -66641,7 +68374,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteEval": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof DeleteEvalPathParams.Encoded)["eval_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteEval200, Config>,
@@ -66654,7 +68387,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof DeleteEvalPathParams.Encoded)["eval_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteEval200, Config | undefined>,
@@ -66672,7 +68405,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getEvalRuns": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof GetEvalRunsPathParams.Encoded)["eval_id"],
       options: { readonly params?: typeof GetEvalRunsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRuns200, Config>,
@@ -66685,7 +68418,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof GetEvalRunsPathParams.Encoded)["eval_id"],
       options:
         | { readonly params?: typeof GetEvalRunsParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -66705,7 +68438,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createEvalRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof CreateEvalRunPathParams.Encoded)["eval_id"],
       options: { readonly payload: typeof CreateEvalRunRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateEvalRun201, Config>,
@@ -66719,7 +68452,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
+      evalId: (typeof CreateEvalRunPathParams.Encoded)["eval_id"],
       options: { readonly payload: typeof CreateEvalRunRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<CreateEvalRun201, Config | undefined>,
@@ -66738,8 +68471,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getEvalRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof GetEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRun200, Config>,
@@ -66752,8 +68485,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof GetEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRun200, Config | undefined>,
@@ -66771,8 +68504,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteEvalRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof DeleteEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof DeleteEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteEvalRun200, Config>,
@@ -66785,8 +68518,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof DeleteEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof DeleteEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteEvalRun200, Config | undefined>,
@@ -66804,8 +68537,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelEvalRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof CancelEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof CancelEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelEvalRun200, Config>,
@@ -66813,8 +68546,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof CancelEvalRunPathParams.Encoded)["eval_id"],
+      runId: (typeof CancelEvalRunPathParams.Encoded)["run_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelEvalRun200, Config | undefined>,
@@ -66827,8 +68560,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getEvalRunOutputItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof GetEvalRunOutputItemsPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunOutputItemsPathParams.Encoded)["run_id"],
       options: { readonly params?: typeof GetEvalRunOutputItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRunOutputItems200, Config>,
@@ -66841,8 +68574,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
+      evalId: (typeof GetEvalRunOutputItemsPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunOutputItemsPathParams.Encoded)["run_id"],
       options: {
         readonly params?: typeof GetEvalRunOutputItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -66863,9 +68596,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getEvalRunOutputItem": {
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
-      outputItemId: string,
+      evalId: (typeof GetEvalRunOutputItemPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunOutputItemPathParams.Encoded)["run_id"],
+      outputItemId: (typeof GetEvalRunOutputItemPathParams.Encoded)["output_item_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRunOutputItem200, Config>,
@@ -66878,9 +68611,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      evalId: string,
-      runId: string,
-      outputItemId: string,
+      evalId: (typeof GetEvalRunOutputItemPathParams.Encoded)["eval_id"],
+      runId: (typeof GetEvalRunOutputItemPathParams.Encoded)["run_id"],
+      outputItemId: (typeof GetEvalRunOutputItemPathParams.Encoded)["output_item_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetEvalRunOutputItem200, Config | undefined>,
@@ -66982,7 +68715,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof RetrieveFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveFile200, Config>,
@@ -66994,7 +68727,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof RetrieveFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveFile200, Config | undefined>,
@@ -67011,7 +68744,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteFile200, Config>,
@@ -67023,7 +68756,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteFile200, Config | undefined>,
@@ -67040,7 +68773,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "downloadFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -67054,7 +68787,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -67071,7 +68804,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
   /**
    * Returns a response containing the contents of the specified file.
    */
-  readonly "downloadFileStream": (fileId: string) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
+  readonly "downloadFileStream": (
+    fileId: (typeof DownloadFilePathParams.Encoded)["file_id"]
+  ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Run a grader.
    */
@@ -67133,7 +68868,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listFineTuningCheckpointPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
+      fineTunedModelCheckpoint:
+        (typeof ListFineTuningCheckpointPermissionsPathParams.Encoded)["fine_tuned_model_checkpoint"],
       options: {
         readonly params?: typeof ListFineTuningCheckpointPermissionsParams.Encoded | undefined
         readonly config: Config
@@ -67148,7 +68884,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
+      fineTunedModelCheckpoint:
+        (typeof ListFineTuningCheckpointPermissionsPathParams.Encoded)["fine_tuned_model_checkpoint"],
       options: {
         readonly params?: typeof ListFineTuningCheckpointPermissionsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -67170,7 +68907,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createFineTuningCheckpointPermission": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
+      fineTunedModelCheckpoint:
+        (typeof CreateFineTuningCheckpointPermissionPathParams.Encoded)["fine_tuned_model_checkpoint"],
       options: {
         readonly payload: typeof CreateFineTuningCheckpointPermissionRequestJson.Encoded
         readonly config: Config
@@ -67186,7 +68924,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
+      fineTunedModelCheckpoint:
+        (typeof CreateFineTuningCheckpointPermissionPathParams.Encoded)["fine_tuned_model_checkpoint"],
       options: {
         readonly payload: typeof CreateFineTuningCheckpointPermissionRequestJson.Encoded
         readonly config?: Config | undefined
@@ -67209,8 +68948,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteFineTuningCheckpointPermission": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
-      permissionId: string,
+      fineTunedModelCheckpoint:
+        (typeof DeleteFineTuningCheckpointPermissionPathParams.Encoded)["fine_tuned_model_checkpoint"],
+      permissionId: (typeof DeleteFineTuningCheckpointPermissionPathParams.Encoded)["permission_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteFineTuningCheckpointPermission200, Config>,
@@ -67223,8 +68963,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTunedModelCheckpoint: string,
-      permissionId: string,
+      fineTunedModelCheckpoint:
+        (typeof DeleteFineTuningCheckpointPermissionPathParams.Encoded)["fine_tuned_model_checkpoint"],
+      permissionId: (typeof DeleteFineTuningCheckpointPermissionPathParams.Encoded)["permission_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteFineTuningCheckpointPermission200, Config | undefined>,
@@ -67308,7 +69049,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveFineTuningJob": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof RetrieveFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveFineTuningJob200, Config>,
@@ -67320,7 +69061,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof RetrieveFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveFineTuningJob200, Config | undefined>,
@@ -67337,7 +69078,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelFineTuningJob": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof CancelFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelFineTuningJob200, Config>,
@@ -67350,7 +69091,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof CancelFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelFineTuningJob200, Config | undefined>,
@@ -67368,7 +69109,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listFineTuningJobCheckpoints": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ListFineTuningJobCheckpointsPathParams.Encoded)["fine_tuning_job_id"],
       options: {
         readonly params?: typeof ListFineTuningJobCheckpointsParams.Encoded | undefined
         readonly config: Config
@@ -67384,7 +69125,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ListFineTuningJobCheckpointsPathParams.Encoded)["fine_tuning_job_id"],
       options: {
         readonly params?: typeof ListFineTuningJobCheckpointsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -67405,7 +69146,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listFineTuningEvents": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ListFineTuningEventsPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly params?: typeof ListFineTuningEventsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListFineTuningEvents200, Config>,
@@ -67418,7 +69159,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ListFineTuningEventsPathParams.Encoded)["fine_tuning_job_id"],
       options: {
         readonly params?: typeof ListFineTuningEventsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -67439,7 +69180,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "pauseFineTuningJob": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof PauseFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<PauseFineTuningJob200, Config>,
@@ -67452,7 +69193,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof PauseFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<PauseFineTuningJob200, Config | undefined>,
@@ -67470,7 +69211,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "resumeFineTuningJob": {
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ResumeFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ResumeFineTuningJob200, Config>,
@@ -67483,7 +69224,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fineTuningJobId: string,
+      fineTuningJobId: (typeof ResumeFineTuningJobPathParams.Encoded)["fine_tuning_job_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<ResumeFineTuningJob200, Config | undefined>,
@@ -67677,7 +69418,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "acceptLiveSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof AcceptLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof AcceptLiveSessionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -67692,7 +69433,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof AcceptLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof AcceptLiveSessionRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -67712,7 +69453,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "forkLiveSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ForkLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof ForkLiveSessionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ForkLiveSession201, Config>,
@@ -67726,7 +69467,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ForkLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof ForkLiveSessionRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ForkLiveSession201, Config | undefined>,
@@ -67745,7 +69486,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "hangupLiveSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof HangupLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -67756,7 +69497,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof HangupLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -67772,7 +69513,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "referLiveSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ReferLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof ReferLiveSessionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -67784,7 +69525,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ReferLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof ReferLiveSessionRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -67801,7 +69542,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "rejectLiveSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof RejectLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof RejectLiveSessionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -67814,7 +69555,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof RejectLiveSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof RejectLiveSessionRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -67851,7 +69592,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveModel": {
     <Config extends OperationConfig | undefined = undefined>(
-      model: string,
+      model: (typeof RetrieveModelPathParams.Encoded)["model"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveModel200, Config>,
@@ -67863,7 +69604,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      model: string,
+      model: (typeof RetrieveModelPathParams.Encoded)["model"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveModel200, Config | undefined>,
@@ -67880,7 +69621,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteModel": {
     <Config extends OperationConfig | undefined = undefined>(
-      model: string,
+      model: (typeof DeleteModelPathParams.Encoded)["model"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteModel200, Config>,
@@ -67892,7 +69633,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      model: string,
+      model: (typeof DeleteModelPathParams.Encoded)["model"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteModel200, Config | undefined>,
@@ -68002,7 +69743,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "adminApiKeysGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      keyId: string,
+      keyId: (typeof AdminApiKeysGetPathParams.Encoded)["key_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AdminApiKeysGet200, Config>,
@@ -68014,7 +69755,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      keyId: string,
+      keyId: (typeof AdminApiKeysGetPathParams.Encoded)["key_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<AdminApiKeysGet200, Config | undefined>,
@@ -68031,7 +69772,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "adminApiKeysDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      keyId: string,
+      keyId: (typeof AdminApiKeysDeletePathParams.Encoded)["key_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AdminApiKeysDelete200, Config>,
@@ -68043,7 +69784,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      keyId: string,
+      keyId: (typeof AdminApiKeysDeletePathParams.Encoded)["key_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<AdminApiKeysDelete200, Config | undefined>,
@@ -68239,7 +69980,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getCertificate": {
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof GetCertificatePathParams.Encoded)["certificate_id"],
       options: { readonly params?: typeof GetCertificateParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetCertificate200, Config>,
@@ -68253,7 +69994,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof GetCertificatePathParams.Encoded)["certificate_id"],
       options: {
         readonly params?: typeof GetCertificateParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -68275,7 +70016,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyCertificate": {
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof ModifyCertificatePathParams.Encoded)["certificate_id"],
       options: { readonly payload: typeof ModifyCertificateRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyCertificate200, Config>,
@@ -68290,7 +70031,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof ModifyCertificatePathParams.Encoded)["certificate_id"],
       options: { readonly payload: typeof ModifyCertificateRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyCertificate200, Config | undefined>,
@@ -68312,7 +70053,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteCertificate": {
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof DeleteCertificatePathParams.Encoded)["certificate_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteCertificate200, Config>,
@@ -68326,7 +70067,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      certificateId: string,
+      certificateId: (typeof DeleteCertificatePathParams.Encoded)["certificate_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteCertificate200, Config | undefined>,
@@ -68501,7 +70242,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof RetrieveGroupPathParams.Encoded)["group_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroup200, Config>,
@@ -68516,7 +70257,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof RetrieveGroupPathParams.Encoded)["group_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroup200, Config | undefined>,
@@ -68536,7 +70277,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof UpdateGroupPathParams.Encoded)["group_id"],
       options: { readonly payload: typeof UpdateGroupRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateGroup200, Config>,
@@ -68551,7 +70292,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof UpdateGroupPathParams.Encoded)["group_id"],
       options: { readonly payload: typeof UpdateGroupRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateGroup200, Config | undefined>,
@@ -68571,7 +70312,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof DeleteGroupPathParams.Encoded)["group_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteGroup200, Config>,
@@ -68585,7 +70326,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof DeleteGroupPathParams.Encoded)["group_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteGroup200, Config | undefined>,
@@ -68604,7 +70345,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listGroupRoleAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof ListGroupRoleAssignmentsPathParams.Encoded)["group_id"],
       options: { readonly params?: typeof ListGroupRoleAssignmentsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListGroupRoleAssignments200, Config>,
@@ -68618,7 +70359,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof ListGroupRoleAssignmentsPathParams.Encoded)["group_id"],
       options: {
         readonly params?: typeof ListGroupRoleAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -68640,7 +70381,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "assignGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof AssignGroupRolePathParams.Encoded)["group_id"],
       options: { readonly payload: typeof AssignGroupRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AssignGroupRole200, Config>,
@@ -68654,7 +70395,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof AssignGroupRolePathParams.Encoded)["group_id"],
       options: { readonly payload: typeof AssignGroupRoleRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<AssignGroupRole200, Config | undefined>,
@@ -68673,8 +70414,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      roleId: string,
+      groupId: (typeof RetrieveGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof RetrieveGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroupRole200, Config>,
@@ -68688,8 +70429,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      roleId: string,
+      groupId: (typeof RetrieveGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof RetrieveGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroupRole200, Config | undefined>,
@@ -68708,8 +70449,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "unassignGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      roleId: string,
+      groupId: (typeof UnassignGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof UnassignGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UnassignGroupRole200, Config>,
@@ -68723,8 +70464,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      roleId: string,
+      groupId: (typeof UnassignGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof UnassignGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<UnassignGroupRole200, Config | undefined>,
@@ -68743,7 +70484,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listGroupUsers": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof ListGroupUsersPathParams.Encoded)["group_id"],
       options: { readonly params?: typeof ListGroupUsersParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListGroupUsers200, Config>,
@@ -68758,7 +70499,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof ListGroupUsersPathParams.Encoded)["group_id"],
       options: {
         readonly params?: typeof ListGroupUsersParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -68781,7 +70522,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "addGroupUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof AddGroupUserPathParams.Encoded)["group_id"],
       options: { readonly payload: typeof AddGroupUserRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AddGroupUser200, Config>,
@@ -68796,7 +70537,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
+      groupId: (typeof AddGroupUserPathParams.Encoded)["group_id"],
       options: { readonly payload: typeof AddGroupUserRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<AddGroupUser200, Config | undefined>,
@@ -68816,8 +70557,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveGroupUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      userId: string,
+      groupId: (typeof RetrieveGroupUserPathParams.Encoded)["group_id"],
+      userId: (typeof RetrieveGroupUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroupUser200, Config>,
@@ -68831,8 +70572,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      userId: string,
+      groupId: (typeof RetrieveGroupUserPathParams.Encoded)["group_id"],
+      userId: (typeof RetrieveGroupUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveGroupUser200, Config | undefined>,
@@ -68851,8 +70592,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "removeGroupUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      userId: string,
+      groupId: (typeof RemoveGroupUserPathParams.Encoded)["group_id"],
+      userId: (typeof RemoveGroupUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RemoveGroupUser200, Config>,
@@ -68867,8 +70608,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      groupId: string,
-      userId: string,
+      groupId: (typeof RemoveGroupUserPathParams.Encoded)["group_id"],
+      userId: (typeof RemoveGroupUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RemoveGroupUser200, Config | undefined>,
@@ -68950,7 +70691,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveInvite": {
     <Config extends OperationConfig | undefined = undefined>(
-      inviteId: string,
+      inviteId: (typeof RetrieveInvitePathParams.Encoded)["invite_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveInvite200, Config>,
@@ -68965,7 +70706,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      inviteId: string,
+      inviteId: (typeof RetrieveInvitePathParams.Encoded)["invite_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveInvite200, Config | undefined>,
@@ -68985,7 +70726,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteInvite": {
     <Config extends OperationConfig | undefined = undefined>(
-      inviteId: string,
+      inviteId: (typeof DeleteInvitePathParams.Encoded)["invite_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteInvite200, Config>,
@@ -68999,7 +70740,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      inviteId: string,
+      inviteId: (typeof DeleteInvitePathParams.Encoded)["invite_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteInvite200, Config | undefined>,
@@ -69080,7 +70821,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProject": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProject200, Config>,
@@ -69093,7 +70834,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProject200, Config | undefined>,
@@ -69111,7 +70852,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyProject": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ModifyProjectPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof ModifyProjectRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyProject200, Config>,
@@ -69125,7 +70866,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ModifyProjectPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof ModifyProjectRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyProject200, Config | undefined>,
@@ -69144,7 +70885,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectApiKeys": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectApiKeysPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectApiKeysParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectApiKeys200, Config>,
@@ -69158,7 +70899,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectApiKeysPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectApiKeysParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69180,8 +70921,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectApiKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      apiKeyId: string,
+      projectId: (typeof RetrieveProjectApiKeyPathParams.Encoded)["project_id"],
+      apiKeyId: (typeof RetrieveProjectApiKeyPathParams.Encoded)["api_key_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectApiKey200, Config>,
@@ -69195,8 +70936,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      apiKeyId: string,
+      projectId: (typeof RetrieveProjectApiKeyPathParams.Encoded)["project_id"],
+      apiKeyId: (typeof RetrieveProjectApiKeyPathParams.Encoded)["api_key_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectApiKey200, Config | undefined>,
@@ -69218,8 +70959,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectApiKey": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      apiKeyId: string,
+      projectId: (typeof DeleteProjectApiKeyPathParams.Encoded)["project_id"],
+      apiKeyId: (typeof DeleteProjectApiKeyPathParams.Encoded)["api_key_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectApiKey200, Config>,
@@ -69233,8 +70974,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      apiKeyId: string,
+      projectId: (typeof DeleteProjectApiKeyPathParams.Encoded)["project_id"],
+      apiKeyId: (typeof DeleteProjectApiKeyPathParams.Encoded)["api_key_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectApiKey200, Config | undefined>,
@@ -69253,7 +70994,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "archiveProject": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ArchiveProjectPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ArchiveProject200, Config>,
@@ -69267,7 +71008,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ArchiveProjectPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<ArchiveProject200, Config | undefined>,
@@ -69286,7 +71027,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectCertificates": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectCertificatesPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectCertificatesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectCertificates200, Config>,
@@ -69299,7 +71040,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectCertificatesPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectCertificatesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69322,7 +71063,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "activateProjectCertificates": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ActivateProjectCertificatesPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof ActivateProjectCertificatesRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ActivateProjectCertificates200, Config>,
@@ -69337,7 +71078,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ActivateProjectCertificatesPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof ActivateProjectCertificatesRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69361,7 +71102,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deactivateProjectCertificates": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeactivateProjectCertificatesPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof DeactivateProjectCertificatesRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeactivateProjectCertificates200, Config>,
@@ -69376,7 +71117,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeactivateProjectCertificatesPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof DeactivateProjectCertificatesRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69399,7 +71140,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectDataRetention": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectDataRetentionPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectDataRetention200, Config>,
@@ -69412,7 +71153,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectDataRetentionPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectDataRetention200, Config | undefined>,
@@ -69430,7 +71171,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectDataRetention": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectDataRetentionPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof UpdateProjectDataRetentionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectDataRetention200, Config>,
@@ -69443,7 +71184,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectDataRetentionPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof UpdateProjectDataRetentionRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69464,7 +71205,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectGroups": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectGroupsPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectGroupsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectGroups200, Config>,
@@ -69478,7 +71219,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectGroupsPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectGroupsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69500,7 +71241,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "addProjectGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof AddProjectGroupPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof AddProjectGroupRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AddProjectGroup200, Config>,
@@ -69515,7 +71256,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof AddProjectGroupPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof AddProjectGroupRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<AddProjectGroup200, Config | undefined>,
@@ -69535,8 +71276,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof RetrieveProjectGroupPathParams.Encoded)["project_id"],
+      groupId: (typeof RetrieveProjectGroupPathParams.Encoded)["group_id"],
       options: { readonly params?: typeof RetrieveProjectGroupParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectGroup200, Config>,
@@ -69550,8 +71291,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof RetrieveProjectGroupPathParams.Encoded)["project_id"],
+      groupId: (typeof RetrieveProjectGroupPathParams.Encoded)["group_id"],
       options: {
         readonly params?: typeof RetrieveProjectGroupParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69573,8 +71314,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "removeProjectGroup": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof RemoveProjectGroupPathParams.Encoded)["project_id"],
+      groupId: (typeof RemoveProjectGroupPathParams.Encoded)["group_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RemoveProjectGroup200, Config>,
@@ -69588,8 +71329,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof RemoveProjectGroupPathParams.Encoded)["project_id"],
+      groupId: (typeof RemoveProjectGroupPathParams.Encoded)["group_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RemoveProjectGroup200, Config | undefined>,
@@ -69608,7 +71349,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectHostedToolPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectHostedToolPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectHostedToolPermissions200, Config>,
@@ -69622,7 +71363,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectHostedToolPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectHostedToolPermissions200, Config | undefined>,
@@ -69641,7 +71382,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectHostedToolPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectHostedToolPermissionsPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof UpdateProjectHostedToolPermissionsRequestJson.Encoded
         readonly config: Config
@@ -69659,7 +71400,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectHostedToolPermissionsPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof UpdateProjectHostedToolPermissionsRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69682,7 +71423,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectModelPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectModelPermissions200, Config>,
@@ -69696,7 +71437,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof RetrieveProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectModelPermissions200, Config | undefined>,
@@ -69715,7 +71456,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectModelPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof UpdateProjectModelPermissionsRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectModelPermissions200, Config>,
@@ -69729,7 +71470,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof UpdateProjectModelPermissionsRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69751,7 +71492,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectModelPermissions": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeleteProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectModelPermissions200, Config>,
@@ -69765,7 +71506,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeleteProjectModelPermissionsPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectModelPermissions200, Config | undefined>,
@@ -69784,7 +71525,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectRateLimits": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectRateLimitsPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectRateLimitsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectRateLimits200, Config>,
@@ -69797,7 +71538,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectRateLimitsPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectRateLimitsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69818,8 +71559,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectRateLimits": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      rateLimitId: string,
+      projectId: (typeof UpdateProjectRateLimitsPathParams.Encoded)["project_id"],
+      rateLimitId: (typeof UpdateProjectRateLimitsPathParams.Encoded)["rate_limit_id"],
       options: { readonly payload: typeof UpdateProjectRateLimitsRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectRateLimits200, Config>,
@@ -69832,8 +71573,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      rateLimitId: string,
+      projectId: (typeof UpdateProjectRateLimitsPathParams.Encoded)["project_id"],
+      rateLimitId: (typeof UpdateProjectRateLimitsPathParams.Encoded)["rate_limit_id"],
       options: {
         readonly payload: typeof UpdateProjectRateLimitsRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69854,7 +71595,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectServiceAccounts": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectServiceAccountsPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectServiceAccountsParams.Encoded | undefined
         readonly config: Config
@@ -69871,7 +71612,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectServiceAccountsPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectServiceAccountsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -69893,7 +71634,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createProjectServiceAccount": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectServiceAccountPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectServiceAccountRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectServiceAccount200 | CreateProjectServiceAccount201, Config>,
@@ -69907,7 +71648,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectServiceAccountPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof CreateProjectServiceAccountRequestJson.Encoded
         readonly config?: Config | undefined
@@ -69929,8 +71670,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectServiceAccount": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof RetrieveProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof RetrieveProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectServiceAccount200, Config>,
@@ -69944,8 +71685,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof RetrieveProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof RetrieveProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectServiceAccount200, Config | undefined>,
@@ -69964,8 +71705,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectServiceAccount": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof UpdateProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof UpdateProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: { readonly payload: typeof UpdateProjectServiceAccountRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectServiceAccount200, Config>,
@@ -69979,8 +71720,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof UpdateProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof UpdateProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: {
         readonly payload: typeof UpdateProjectServiceAccountRequestJson.Encoded
         readonly config?: Config | undefined
@@ -70005,8 +71746,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectServiceAccount": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof DeleteProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof DeleteProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectServiceAccount200, Config>,
@@ -70020,8 +71761,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof DeleteProjectServiceAccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof DeleteProjectServiceAccountPathParams.Encoded)["service_account_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectServiceAccount200, Config | undefined>,
@@ -70040,7 +71781,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectSpendAlerts": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectSpendAlertsPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectSpendAlertsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectSpendAlerts200, Config>,
@@ -70053,7 +71794,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectSpendAlertsPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectSpendAlertsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -70074,7 +71815,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createProjectSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectSpendAlertPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectSpendAlertRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectSpendAlert200, Config>,
@@ -70087,7 +71828,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectSpendAlertPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof CreateProjectSpendAlertRequestJson.Encoded
         readonly config?: Config | undefined
@@ -70108,8 +71849,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof RetrieveProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof RetrieveProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectSpendAlert200, Config>,
@@ -70122,8 +71863,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof RetrieveProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof RetrieveProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectSpendAlert200, Config | undefined>,
@@ -70141,8 +71882,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof UpdateProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof UpdateProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly payload: typeof UpdateProjectSpendAlertRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectSpendAlert200, Config>,
@@ -70155,8 +71896,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof UpdateProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof UpdateProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: {
         readonly payload: typeof UpdateProjectSpendAlertRequestJson.Encoded
         readonly config?: Config | undefined
@@ -70177,8 +71918,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof DeleteProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof DeleteProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectSpendAlert200, Config>,
@@ -70191,8 +71932,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      alertId: string,
+      projectId: (typeof DeleteProjectSpendAlertPathParams.Encoded)["project_id"],
+      alertId: (typeof DeleteProjectSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectSpendAlert200, Config | undefined>,
@@ -70210,7 +71951,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectUsers": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectUsersPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectUsersParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectUsers200, Config>,
@@ -70224,7 +71965,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectUsersPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectUsersParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -70246,7 +71987,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createProjectUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectUserPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectUserRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectUser200 | CreateProjectUser201, Config>,
@@ -70261,7 +72002,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectUserPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectUserRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectUser200 | CreateProjectUser201, Config | undefined>,
@@ -70281,8 +72022,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof RetrieveProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof RetrieveProjectUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectUser200, Config>,
@@ -70296,8 +72037,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof RetrieveProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof RetrieveProjectUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectUser200, Config | undefined>,
@@ -70316,8 +72057,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyProjectUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof ModifyProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof ModifyProjectUserPathParams.Encoded)["user_id"],
       options: { readonly payload: typeof ModifyProjectUserRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyProjectUser200, Config>,
@@ -70331,8 +72072,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof ModifyProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof ModifyProjectUserPathParams.Encoded)["user_id"],
       options: { readonly payload: typeof ModifyProjectUserRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyProjectUser200, Config | undefined>,
@@ -70354,8 +72095,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof DeleteProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof DeleteProjectUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectUser200, Config>,
@@ -70369,8 +72110,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof DeleteProjectUserPathParams.Encoded)["project_id"],
+      userId: (typeof DeleteProjectUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectUser200, Config | undefined>,
@@ -70453,7 +72194,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof RetrieveRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveRole200, Config>,
@@ -70466,7 +72207,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof RetrieveRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveRole200, Config | undefined>,
@@ -70484,7 +72225,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof UpdateRolePathParams.Encoded)["role_id"],
       options: { readonly payload: typeof UpdateRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateRole200, Config>,
@@ -70498,7 +72239,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof UpdateRolePathParams.Encoded)["role_id"],
       options: { readonly payload: typeof UpdateRoleRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateRole200, Config | undefined>,
@@ -70517,7 +72258,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof DeleteRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteRole200, Config>,
@@ -70531,7 +72272,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      roleId: string,
+      roleId: (typeof DeleteRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteRole200, Config | undefined>,
@@ -70615,7 +72356,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveOrganizationSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof RetrieveOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveOrganizationSpendAlert200, Config>,
@@ -70627,7 +72368,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof RetrieveOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveOrganizationSpendAlert200, Config | undefined>,
@@ -70644,7 +72385,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateOrganizationSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof UpdateOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly payload: typeof UpdateOrganizationSpendAlertRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateOrganizationSpendAlert200, Config>,
@@ -70657,7 +72398,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof UpdateOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: {
         readonly payload: typeof UpdateOrganizationSpendAlertRequestJson.Encoded
         readonly config?: Config | undefined
@@ -70678,7 +72419,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteOrganizationSpendAlert": {
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof DeleteOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteOrganizationSpendAlert200, Config>,
@@ -70690,7 +72431,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      alertId: string,
+      alertId: (typeof DeleteOrganizationSpendAlertPathParams.Encoded)["alert_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteOrganizationSpendAlert200, Config | undefined>,
@@ -71031,7 +72772,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof RetrieveUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveUser200, Config>,
@@ -71044,7 +72785,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof RetrieveUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveUser200, Config | undefined>,
@@ -71062,7 +72803,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof ModifyUserPathParams.Encoded)["user_id"],
       options: { readonly payload: typeof ModifyUserRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyUser200, Config>,
@@ -71076,7 +72817,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof ModifyUserPathParams.Encoded)["user_id"],
       options: { readonly payload: typeof ModifyUserRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyUser200, Config | undefined>,
@@ -71095,7 +72836,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteUser": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof DeleteUserPathParams.Encoded)["user_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteUser200, Config>,
@@ -71109,7 +72850,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof DeleteUserPathParams.Encoded)["user_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteUser200, Config | undefined>,
@@ -71128,7 +72869,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listUserRoleAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof ListUserRoleAssignmentsPathParams.Encoded)["user_id"],
       options: { readonly params?: typeof ListUserRoleAssignmentsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListUserRoleAssignments200, Config>,
@@ -71142,7 +72883,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof ListUserRoleAssignmentsPathParams.Encoded)["user_id"],
       options: {
         readonly params?: typeof ListUserRoleAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -71164,7 +72905,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "assignUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof AssignUserRolePathParams.Encoded)["user_id"],
       options: { readonly payload: typeof AssignUserRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AssignUserRole200, Config>,
@@ -71178,7 +72919,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
+      userId: (typeof AssignUserRolePathParams.Encoded)["user_id"],
       options: { readonly payload: typeof AssignUserRoleRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<AssignUserRole200, Config | undefined>,
@@ -71197,8 +72938,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
-      roleId: string,
+      userId: (typeof RetrieveUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof RetrieveUserRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveUserRole200, Config>,
@@ -71212,8 +72953,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
-      roleId: string,
+      userId: (typeof RetrieveUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof RetrieveUserRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveUserRole200, Config | undefined>,
@@ -71232,8 +72973,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "unassignUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
-      roleId: string,
+      userId: (typeof UnassignUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof UnassignUserRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UnassignUserRole200, Config>,
@@ -71247,8 +72988,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      userId: string,
-      roleId: string,
+      userId: (typeof UnassignUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof UnassignUserRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<UnassignUserRole200, Config | undefined>,
@@ -71267,8 +73008,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectGroupRoleAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof ListProjectGroupRoleAssignmentsPathParams.Encoded)["project_id"],
+      groupId: (typeof ListProjectGroupRoleAssignmentsPathParams.Encoded)["group_id"],
       options: {
         readonly params?: typeof ListProjectGroupRoleAssignmentsParams.Encoded | undefined
         readonly config: Config
@@ -71285,8 +73026,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof ListProjectGroupRoleAssignmentsPathParams.Encoded)["project_id"],
+      groupId: (typeof ListProjectGroupRoleAssignmentsPathParams.Encoded)["group_id"],
       options: {
         readonly params?: typeof ListProjectGroupRoleAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -71308,8 +73049,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "assignProjectGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof AssignProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof AssignProjectGroupRolePathParams.Encoded)["group_id"],
       options: { readonly payload: typeof AssignProjectGroupRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AssignProjectGroupRole200, Config>,
@@ -71323,8 +73064,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
+      projectId: (typeof AssignProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof AssignProjectGroupRolePathParams.Encoded)["group_id"],
       options: {
         readonly payload: typeof AssignProjectGroupRoleRequestJson.Encoded
         readonly config?: Config | undefined
@@ -71346,9 +73087,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectGroupRole200, Config>,
@@ -71362,9 +73103,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof RetrieveProjectGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectGroupRole200, Config | undefined>,
@@ -71383,9 +73124,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "unassignProjectGroupRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
-      roleId: string,
+      projectId: (typeof UnassignProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof UnassignProjectGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof UnassignProjectGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UnassignProjectGroupRole200, Config>,
@@ -71399,9 +73140,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      groupId: string,
-      roleId: string,
+      projectId: (typeof UnassignProjectGroupRolePathParams.Encoded)["project_id"],
+      groupId: (typeof UnassignProjectGroupRolePathParams.Encoded)["group_id"],
+      roleId: (typeof UnassignProjectGroupRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<UnassignProjectGroupRole200, Config | undefined>,
@@ -71420,7 +73161,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectRoles": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectRolesPathParams.Encoded)["project_id"],
       options: { readonly params?: typeof ListProjectRolesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListProjectRoles200, Config>,
@@ -71434,7 +73175,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof ListProjectRolesPathParams.Encoded)["project_id"],
       options: {
         readonly params?: typeof ListProjectRolesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -71456,7 +73197,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createProjectRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectRolePathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectRole200, Config>,
@@ -71470,7 +73211,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof CreateProjectRolePathParams.Encoded)["project_id"],
       options: { readonly payload: typeof CreateProjectRoleRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<CreateProjectRole200, Config | undefined>,
@@ -71489,8 +73230,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof RetrieveProjectRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectRole200, Config>,
@@ -71503,8 +73244,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof RetrieveProjectRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectRole200, Config | undefined>,
@@ -71522,8 +73263,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateProjectRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof UpdateProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof UpdateProjectRolePathParams.Encoded)["role_id"],
       options: { readonly payload: typeof UpdateProjectRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectRole200, Config>,
@@ -71537,8 +73278,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof UpdateProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof UpdateProjectRolePathParams.Encoded)["role_id"],
       options: { readonly payload: typeof UpdateProjectRoleRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateProjectRole200, Config | undefined>,
@@ -71557,8 +73298,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteProjectRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof DeleteProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof DeleteProjectRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectRole200, Config>,
@@ -71572,8 +73313,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      roleId: string,
+      projectId: (typeof DeleteProjectRolePathParams.Encoded)["project_id"],
+      roleId: (typeof DeleteProjectRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteProjectRole200, Config | undefined>,
@@ -71592,8 +73333,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listProjectUserRoleAssignments": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof ListProjectUserRoleAssignmentsPathParams.Encoded)["project_id"],
+      userId: (typeof ListProjectUserRoleAssignmentsPathParams.Encoded)["user_id"],
       options: {
         readonly params?: typeof ListProjectUserRoleAssignmentsParams.Encoded | undefined
         readonly config: Config
@@ -71610,8 +73351,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof ListProjectUserRoleAssignmentsPathParams.Encoded)["project_id"],
+      userId: (typeof ListProjectUserRoleAssignmentsPathParams.Encoded)["user_id"],
       options: {
         readonly params?: typeof ListProjectUserRoleAssignmentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -71633,8 +73374,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "assignProjectUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof AssignProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof AssignProjectUserRolePathParams.Encoded)["user_id"],
       options: { readonly payload: typeof AssignProjectUserRoleRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AssignProjectUserRole200, Config>,
@@ -71648,8 +73389,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
+      projectId: (typeof AssignProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof AssignProjectUserRolePathParams.Encoded)["user_id"],
       options: {
         readonly payload: typeof AssignProjectUserRoleRequestJson.Encoded
         readonly config?: Config | undefined
@@ -71671,9 +73412,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveProjectUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof RetrieveProjectUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof RetrieveProjectUserRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectUserRole200, Config>,
@@ -71687,9 +73428,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
-      roleId: string,
+      projectId: (typeof RetrieveProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof RetrieveProjectUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof RetrieveProjectUserRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveProjectUserRole200, Config | undefined>,
@@ -71708,9 +73449,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "unassignProjectUserRole": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
-      roleId: string,
+      projectId: (typeof UnassignProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof UnassignProjectUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof UnassignProjectUserRolePathParams.Encoded)["role_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UnassignProjectUserRole200, Config>,
@@ -71724,9 +73465,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      userId: string,
-      roleId: string,
+      projectId: (typeof UnassignProjectUserRolePathParams.Encoded)["project_id"],
+      userId: (typeof UnassignProjectUserRolePathParams.Encoded)["user_id"],
+      roleId: (typeof UnassignProjectUserRolePathParams.Encoded)["role_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<UnassignProjectUserRole200, Config | undefined>,
@@ -71765,7 +73506,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "acceptRealtimeCall": {
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof AcceptRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof AcceptRealtimeCallRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -71777,7 +73518,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof AcceptRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof AcceptRealtimeCallRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -71795,7 +73536,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "hangupRealtimeCall": {
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof HangupRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -71806,7 +73547,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof HangupRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -71822,7 +73563,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "referRealtimeCall": {
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof ReferRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof ReferRealtimeCallRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -71833,7 +73574,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof ReferRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof ReferRealtimeCallRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -71849,7 +73590,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "rejectRealtimeCall": {
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof RejectRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof RejectRealtimeCallRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -71861,7 +73602,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      callId: string,
+      callId: (typeof RejectRealtimeCallPathParams.Encoded)["call_id"],
       options: { readonly payload: typeof RejectRealtimeCallRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -72081,7 +73822,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof GetResponsePathParams.Encoded)["response_id"],
       options: { readonly params?: typeof GetResponseParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetResponse200, Config>,
@@ -72093,7 +73834,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof GetResponsePathParams.Encoded)["response_id"],
       options:
         | { readonly params?: typeof GetResponseParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -72112,7 +73853,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof DeleteResponsePathParams.Encoded)["response_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteResponse200, Config>,
@@ -72124,7 +73865,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof DeleteResponsePathParams.Encoded)["response_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteResponse200, Config | undefined>,
@@ -72143,7 +73884,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof CancelResponsePathParams.Encoded)["response_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelResponse200, Config>,
@@ -72155,7 +73896,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof CancelResponsePathParams.Encoded)["response_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelResponse200, Config | undefined>,
@@ -72172,7 +73913,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listInputItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof ListInputItemsPathParams.Encoded)["response_id"],
       options: { readonly params?: typeof ListInputItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListInputItems200, Config>,
@@ -72184,7 +73925,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof ListInputItemsPathParams.Encoded)["response_id"],
       options: {
         readonly params?: typeof ListInputItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -72258,7 +73999,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getThread": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof GetThreadPathParams.Encoded)["thread_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetThread200, Config>,
@@ -72266,7 +74007,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof GetThreadPathParams.Encoded)["thread_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetThread200, Config | undefined>,
@@ -72279,7 +74020,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyThread": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ModifyThreadPathParams.Encoded)["thread_id"],
       options: { readonly payload: typeof ModifyThreadRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyThread200, Config>,
@@ -72287,7 +74028,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ModifyThreadPathParams.Encoded)["thread_id"],
       options: { readonly payload: typeof ModifyThreadRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyThread200, Config | undefined>,
@@ -72300,7 +74041,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteThread": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof DeleteThreadPathParams.Encoded)["thread_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteThread200, Config>,
@@ -72308,7 +74049,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof DeleteThreadPathParams.Encoded)["thread_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteThread200, Config | undefined>,
@@ -72321,7 +74062,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listMessages": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListMessagesPathParams.Encoded)["thread_id"],
       options: { readonly params?: typeof ListMessagesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListMessages200, Config>,
@@ -72329,7 +74070,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListMessagesPathParams.Encoded)["thread_id"],
       options:
         | { readonly params?: typeof ListMessagesParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -72344,7 +74085,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createMessage": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof CreateMessagePathParams.Encoded)["thread_id"],
       options: { readonly payload: typeof CreateMessageRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateMessage200, Config>,
@@ -72352,7 +74093,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof CreateMessagePathParams.Encoded)["thread_id"],
       options: { readonly payload: typeof CreateMessageRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<CreateMessage200, Config | undefined>,
@@ -72365,8 +74106,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getMessage": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof GetMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof GetMessagePathParams.Encoded)["message_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetMessage200, Config>,
@@ -72374,8 +74115,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof GetMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof GetMessagePathParams.Encoded)["message_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetMessage200, Config | undefined>,
@@ -72388,8 +74129,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyMessage": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof ModifyMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof ModifyMessagePathParams.Encoded)["message_id"],
       options: { readonly payload: typeof ModifyMessageRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyMessage200, Config>,
@@ -72397,8 +74138,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof ModifyMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof ModifyMessagePathParams.Encoded)["message_id"],
       options: { readonly payload: typeof ModifyMessageRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyMessage200, Config | undefined>,
@@ -72411,8 +74152,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteMessage": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof DeleteMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof DeleteMessagePathParams.Encoded)["message_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteMessage200, Config>,
@@ -72420,8 +74161,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      messageId: string,
+      threadId: (typeof DeleteMessagePathParams.Encoded)["thread_id"],
+      messageId: (typeof DeleteMessagePathParams.Encoded)["message_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteMessage200, Config | undefined>,
@@ -72434,7 +74175,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listRuns": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListRunsPathParams.Encoded)["thread_id"],
       options: { readonly params?: typeof ListRunsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListRuns200, Config>,
@@ -72442,7 +74183,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListRunsPathParams.Encoded)["thread_id"],
       options:
         | { readonly params?: typeof ListRunsParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -72457,7 +74198,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof CreateRunPathParams.Encoded)["thread_id"],
       options: {
         readonly params?: typeof CreateRunParams.Encoded | undefined
         readonly payload: typeof CreateRunRequestJson.Encoded
@@ -72469,7 +74210,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof CreateRunPathParams.Encoded)["thread_id"],
       options: {
         readonly params?: typeof CreateRunParams.Encoded | undefined
         readonly payload: typeof CreateRunRequestJson.Encoded
@@ -72485,7 +74226,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Create a run.
    */
   readonly "createRunSse": (
-    threadId: string,
+    threadId: (typeof CreateRunPathParams.Encoded)["thread_id"],
     options: {
       readonly params?: typeof CreateRunParams.Encoded | undefined
       readonly payload: typeof CreateRunRequestJson.Encoded
@@ -72500,8 +74241,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof GetRunPathParams.Encoded)["thread_id"],
+      runId: (typeof GetRunPathParams.Encoded)["run_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetRun200, Config>,
@@ -72509,8 +74250,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof GetRunPathParams.Encoded)["thread_id"],
+      runId: (typeof GetRunPathParams.Encoded)["run_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetRun200, Config | undefined>,
@@ -72523,8 +74264,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof ModifyRunPathParams.Encoded)["thread_id"],
+      runId: (typeof ModifyRunPathParams.Encoded)["run_id"],
       options: { readonly payload: typeof ModifyRunRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyRun200, Config>,
@@ -72532,8 +74273,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof ModifyRunPathParams.Encoded)["thread_id"],
+      runId: (typeof ModifyRunPathParams.Encoded)["run_id"],
       options: { readonly payload: typeof ModifyRunRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyRun200, Config | undefined>,
@@ -72546,8 +74287,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof CancelRunPathParams.Encoded)["thread_id"],
+      runId: (typeof CancelRunPathParams.Encoded)["run_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelRun200, Config>,
@@ -72555,8 +74296,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof CancelRunPathParams.Encoded)["thread_id"],
+      runId: (typeof CancelRunPathParams.Encoded)["run_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelRun200, Config | undefined>,
@@ -72569,8 +74310,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listRunSteps": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof ListRunStepsPathParams.Encoded)["thread_id"],
+      runId: (typeof ListRunStepsPathParams.Encoded)["run_id"],
       options: { readonly params?: typeof ListRunStepsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListRunSteps200, Config>,
@@ -72578,8 +74319,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof ListRunStepsPathParams.Encoded)["thread_id"],
+      runId: (typeof ListRunStepsPathParams.Encoded)["run_id"],
       options:
         | { readonly params?: typeof ListRunStepsParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -72594,9 +74335,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getRunStep": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
-      stepId: string,
+      threadId: (typeof GetRunStepPathParams.Encoded)["thread_id"],
+      runId: (typeof GetRunStepPathParams.Encoded)["run_id"],
+      stepId: (typeof GetRunStepPathParams.Encoded)["step_id"],
       options: { readonly params?: typeof GetRunStepParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetRunStep200, Config>,
@@ -72604,9 +74345,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
-      stepId: string,
+      threadId: (typeof GetRunStepPathParams.Encoded)["thread_id"],
+      runId: (typeof GetRunStepPathParams.Encoded)["run_id"],
+      stepId: (typeof GetRunStepPathParams.Encoded)["step_id"],
       options:
         | { readonly params?: typeof GetRunStepParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -72621,8 +74362,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "submitToolOuputsToRun": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["thread_id"],
+      runId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["run_id"],
       options: { readonly payload: typeof SubmitToolOuputsToRunRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<SubmitToolOuputsToRun200, Config>,
@@ -72633,8 +74374,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
-      runId: string,
+      threadId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["thread_id"],
+      runId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["run_id"],
       options: {
         readonly payload: typeof SubmitToolOuputsToRunRequestJson.Encoded
         readonly config?: Config | undefined
@@ -72652,8 +74393,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * When a run has the `status: "requires_action"` and `required_action.type` is `submit_tool_outputs`, this endpoint can be used to submit the outputs from the tool calls once they're all completed. All outputs must be submitted in a single request.
    */
   readonly "submitToolOuputsToRunSse": (
-    threadId: string,
-    runId: string,
+    threadId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["thread_id"],
+    runId: (typeof SubmitToolOuputsToRunPathParams.Encoded)["run_id"],
     options: { readonly payload: typeof SubmitToolOuputsToRunRequestJson.Encoded }
   ) => Stream.Stream<
     { readonly event: string; readonly id: string | undefined; readonly data: SubmitToolOuputsToRun200Sse },
@@ -72712,7 +74453,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelUpload": {
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof CancelUploadPathParams.Encoded)["upload_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelUpload200, Config>,
@@ -72726,7 +74467,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof CancelUploadPathParams.Encoded)["upload_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelUpload200, Config | undefined>,
@@ -72752,7 +74493,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "completeUpload": {
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof CompleteUploadPathParams.Encoded)["upload_id"],
       options: { readonly payload: typeof CompleteUploadRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CompleteUpload200, Config>,
@@ -72767,7 +74508,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof CompleteUploadPathParams.Encoded)["upload_id"],
       options: { readonly payload: typeof CompleteUploadRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<CompleteUpload200, Config | undefined>,
@@ -72791,7 +74532,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "addUploadPart": {
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof AddUploadPartPathParams.Encoded)["upload_id"],
       options: { readonly payload: typeof AddUploadPartRequestFormData.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<AddUploadPart200, Config>,
@@ -72806,7 +74547,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      uploadId: string,
+      uploadId: (typeof AddUploadPartPathParams.Encoded)["upload_id"],
       options: { readonly payload: typeof AddUploadPartRequestFormData.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<AddUploadPart200, Config | undefined>,
@@ -72885,7 +74626,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getVectorStore": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof GetVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStore200, Config>,
@@ -72897,7 +74638,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof GetVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStore200, Config | undefined>,
@@ -72914,7 +74655,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "modifyVectorStore": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof ModifyVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof ModifyVectorStoreRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModifyVectorStore200, Config>,
@@ -72928,7 +74669,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof ModifyVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof ModifyVectorStoreRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<ModifyVectorStore200, Config | undefined>,
@@ -72947,7 +74688,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteVectorStore": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof DeleteVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVectorStore200, Config>,
@@ -72960,7 +74701,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof DeleteVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVectorStore200, Config | undefined>,
@@ -72978,7 +74719,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createVectorStoreFileBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof CreateVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof CreateVectorStoreFileBatchRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateVectorStoreFileBatch200, Config>,
@@ -72993,7 +74734,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof CreateVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
       options: {
         readonly payload: typeof CreateVectorStoreFileBatchRequestJson.Encoded
         readonly config?: Config | undefined
@@ -73016,8 +74757,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getVectorStoreFileBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof GetVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof GetVectorStoreFileBatchPathParams.Encoded)["batch_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStoreFileBatch200, Config>,
@@ -73030,8 +74771,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof GetVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof GetVectorStoreFileBatchPathParams.Encoded)["batch_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStoreFileBatch200, Config | undefined>,
@@ -73049,8 +74790,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "cancelVectorStoreFileBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof CancelVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof CancelVectorStoreFileBatchPathParams.Encoded)["batch_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelVectorStoreFileBatch200, Config>,
@@ -73064,8 +74805,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof CancelVectorStoreFileBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof CancelVectorStoreFileBatchPathParams.Encoded)["batch_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelVectorStoreFileBatch200, Config | undefined>,
@@ -73084,8 +74825,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listFilesInVectorStoreBatch": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof ListFilesInVectorStoreBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof ListFilesInVectorStoreBatchPathParams.Encoded)["batch_id"],
       options: {
         readonly params?: typeof ListFilesInVectorStoreBatchParams.Encoded | undefined
         readonly config: Config
@@ -73101,8 +74842,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      batchId: string,
+      vectorStoreId: (typeof ListFilesInVectorStoreBatchPathParams.Encoded)["vector_store_id"],
+      batchId: (typeof ListFilesInVectorStoreBatchPathParams.Encoded)["batch_id"],
       options: {
         readonly params?: typeof ListFilesInVectorStoreBatchParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -73123,7 +74864,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listVectorStoreFiles": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof ListVectorStoreFilesPathParams.Encoded)["vector_store_id"],
       options: { readonly params?: typeof ListVectorStoreFilesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListVectorStoreFiles200, Config>,
@@ -73136,7 +74877,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof ListVectorStoreFilesPathParams.Encoded)["vector_store_id"],
       options: {
         readonly params?: typeof ListVectorStoreFilesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -73157,7 +74898,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createVectorStoreFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof CreateVectorStoreFilePathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof CreateVectorStoreFileRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateVectorStoreFile200, Config>,
@@ -73172,7 +74913,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof CreateVectorStoreFilePathParams.Encoded)["vector_store_id"],
       options: {
         readonly payload: typeof CreateVectorStoreFileRequestJson.Encoded
         readonly config?: Config | undefined
@@ -73195,8 +74936,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getVectorStoreFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof GetVectorStoreFilePathParams.Encoded)["vector_store_id"],
+      fileId: (typeof GetVectorStoreFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStoreFile200, Config>,
@@ -73209,8 +74950,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof GetVectorStoreFilePathParams.Encoded)["vector_store_id"],
+      fileId: (typeof GetVectorStoreFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVectorStoreFile200, Config | undefined>,
@@ -73228,8 +74969,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateVectorStoreFileAttributes": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof UpdateVectorStoreFileAttributesPathParams.Encoded)["vector_store_id"],
+      fileId: (typeof UpdateVectorStoreFileAttributesPathParams.Encoded)["file_id"],
       options: { readonly payload: typeof UpdateVectorStoreFileAttributesRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateVectorStoreFileAttributes200, Config>,
@@ -73244,8 +74985,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof UpdateVectorStoreFileAttributesPathParams.Encoded)["vector_store_id"],
+      fileId: (typeof UpdateVectorStoreFileAttributesPathParams.Encoded)["file_id"],
       options: {
         readonly payload: typeof UpdateVectorStoreFileAttributesRequestJson.Encoded
         readonly config?: Config | undefined
@@ -73268,8 +75009,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteVectorStoreFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof DeleteVectorStoreFilePathParams.Encoded)["vector_store_id"],
+      fileId: (typeof DeleteVectorStoreFilePathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVectorStoreFile200, Config>,
@@ -73284,8 +75025,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof DeleteVectorStoreFilePathParams.Encoded)["vector_store_id"],
+      fileId: (typeof DeleteVectorStoreFilePathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVectorStoreFile200, Config | undefined>,
@@ -73305,8 +75046,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveVectorStoreFileContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof RetrieveVectorStoreFileContentPathParams.Encoded)["vector_store_id"],
+      fileId: (typeof RetrieveVectorStoreFileContentPathParams.Encoded)["file_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVectorStoreFileContent200, Config>,
@@ -73320,8 +75061,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
-      fileId: string,
+      vectorStoreId: (typeof RetrieveVectorStoreFileContentPathParams.Encoded)["vector_store_id"],
+      fileId: (typeof RetrieveVectorStoreFileContentPathParams.Encoded)["file_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVectorStoreFileContent200, Config | undefined>,
@@ -73340,7 +75081,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "searchVectorStore": {
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof SearchVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof SearchVectorStoreRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<SearchVectorStore200, Config>,
@@ -73353,7 +75094,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vectorStoreId: string,
+      vectorStoreId: (typeof SearchVectorStorePathParams.Encoded)["vector_store_id"],
       options: { readonly payload: typeof SearchVectorStoreRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<SearchVectorStore200, Config | undefined>,
@@ -73400,7 +75141,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "getConversation": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof GetConversationPathParams.Encoded)["conversation_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetConversation200, Config>,
@@ -73412,7 +75153,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof GetConversationPathParams.Encoded)["conversation_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetConversation200, Config | undefined>,
@@ -73429,7 +75170,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateConversation": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof UpdateConversationPathParams.Encoded)["conversation_id"],
       options: { readonly payload: typeof UpdateConversationRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateConversation200, Config>,
@@ -73443,7 +75184,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof UpdateConversationPathParams.Encoded)["conversation_id"],
       options: { readonly payload: typeof UpdateConversationRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateConversation200, Config | undefined>,
@@ -73462,7 +75203,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteConversation": {
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof DeleteConversationPathParams.Encoded)["conversation_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteConversation200, Config>,
@@ -73474,7 +75215,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      conversationId: string,
+      conversationId: (typeof DeleteConversationPathParams.Encoded)["conversation_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteConversation200, Config | undefined>,
@@ -73491,7 +75232,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Getsafetycase": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetsafetycasePathParams.Encoded)["id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Getsafetycase200, Config>,
@@ -73506,7 +75247,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetsafetycasePathParams.Encoded)["id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Getsafetycase200, Config | undefined>,
@@ -73526,7 +75267,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Getprojectsafetyalert": {
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetprojectsafetyalertPathParams.Encoded)["id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Getprojectsafetyalert200, Config>,
@@ -73540,7 +75281,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      id: string,
+      id: (typeof GetprojectsafetyalertPathParams.Encoded)["id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Getprojectsafetyalert200, Config | undefined>,
@@ -73559,7 +75300,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "downloadLiveRecording": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof DownloadLiveRecordingPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -73574,7 +75315,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof DownloadLiveRecordingPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -73593,7 +75334,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Get Live session content
    */
   readonly "downloadLiveRecordingStream": (
-    sessionId: string
+    sessionId: (typeof DownloadLiveRecordingPathParams.Encoded)["session_id"]
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Get Decisions API usage details for the organization.
@@ -73704,7 +75445,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Getanexternalstorageconfiguration": {
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof GetanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Getanexternalstorageconfiguration200, Config>,
@@ -73717,7 +75458,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof GetanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Getanexternalstorageconfiguration200, Config | undefined>,
@@ -73735,7 +75476,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Deleteanexternalstorageconfiguration": {
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof DeleteanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Deleteanexternalstorageconfiguration200, Config>,
@@ -73748,7 +75489,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof DeleteanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Deleteanexternalstorageconfiguration200, Config | undefined>,
@@ -73766,7 +75507,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Validateanexternalstorageconfiguration": {
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof ValidateanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Validateanexternalstorageconfiguration200, Config>,
@@ -73780,7 +75521,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      externalStorageId: string,
+      externalStorageId: (typeof ValidateanexternalstorageconfigurationPathParams.Encoded)["external_storage_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Validateanexternalstorageconfiguration200, Config | undefined>,
@@ -73883,7 +75624,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Getprojectspendlimit": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof GetprojectspendlimitPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Getprojectspendlimit200, Config>,
@@ -73896,7 +75637,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof GetprojectspendlimitPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Getprojectspendlimit200, Config | undefined>,
@@ -73914,7 +75655,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Updateprojectspendlimit": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateprojectspendlimitPathParams.Encoded)["project_id"],
       options: { readonly payload: typeof UpdateprojectspendlimitRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Updateprojectspendlimit200, Config>,
@@ -73927,7 +75668,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof UpdateprojectspendlimitPathParams.Encoded)["project_id"],
       options: {
         readonly payload: typeof UpdateprojectspendlimitRequestJson.Encoded
         readonly config?: Config | undefined
@@ -73948,7 +75689,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "Deleteprojectspendlimit": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeleteprojectspendlimitPathParams.Encoded)["project_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Deleteprojectspendlimit200, Config>,
@@ -73961,7 +75702,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
+      projectId: (typeof DeleteprojectspendlimitPathParams.Encoded)["project_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Deleteprojectspendlimit200, Config | undefined>,
@@ -73979,8 +75720,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "CreateanAPIkeyforaserviceaccount": {
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof CreateanAPIkeyforaserviceaccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof CreateanAPIkeyforaserviceaccountPathParams.Encoded)["service_account_id"],
       options: { readonly payload: typeof CreateanAPIkeyforaserviceaccountRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateanAPIkeyforaserviceaccount200, Config>,
@@ -73995,8 +75736,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      projectId: string,
-      serviceAccountId: string,
+      projectId: (typeof CreateanAPIkeyforaserviceaccountPathParams.Encoded)["project_id"],
+      serviceAccountId: (typeof CreateanAPIkeyforaserviceaccountPathParams.Encoded)["service_account_id"],
       options: {
         readonly payload: typeof CreateanAPIkeyforaserviceaccountRequestJson.Encoded
         readonly config?: Config | undefined
@@ -74153,7 +75894,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetVideoCharacter": {
     <Config extends OperationConfig | undefined = undefined>(
-      characterId: string,
+      characterId: (typeof GetVideoCharacterPathParams.Encoded)["character_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVideoCharacter200, Config>,
@@ -74165,7 +75906,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      characterId: string,
+      characterId: (typeof GetVideoCharacterPathParams.Encoded)["character_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVideoCharacter200, Config | undefined>,
@@ -74251,7 +75992,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetVideo": {
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof GetVideoPathParams.Encoded)["video_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetVideo200, Config>,
@@ -74263,7 +76004,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof GetVideoPathParams.Encoded)["video_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetVideo200, Config | undefined>,
@@ -74280,7 +76021,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteVideo": {
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof DeleteVideoPathParams.Encoded)["video_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVideo200, Config>,
@@ -74293,7 +76034,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof DeleteVideoPathParams.Encoded)["video_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVideo200, Config | undefined>,
@@ -74313,7 +76054,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RetrieveVideoContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof RetrieveVideoContentPathParams.Encoded)["video_id"],
       options: { readonly params?: typeof RetrieveVideoContentParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -74326,7 +76067,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof RetrieveVideoContentPathParams.Encoded)["video_id"],
       options: {
         readonly params?: typeof RetrieveVideoContentParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -74348,7 +76089,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Streams the rendered video content for the specified video job.
    */
   readonly "RetrieveVideoContentStream": (
-    videoId: string,
+    videoId: (typeof RetrieveVideoContentPathParams.Encoded)["video_id"],
     options: { readonly params?: typeof RetrieveVideoContentParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -74356,7 +76097,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "CreateVideoRemix": {
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof CreateVideoRemixPathParams.Encoded)["video_id"],
       options: { readonly payload: typeof CreateVideoRemixRequestFormData.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateVideoRemix200, Config>,
@@ -74371,7 +76112,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      videoId: string,
+      videoId: (typeof CreateVideoRemixPathParams.Encoded)["video_id"],
       options: {
         readonly payload: typeof CreateVideoRemixRequestFormData.Encoded
         readonly config?: Config | undefined
@@ -74512,7 +76253,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetSkill": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillPathParams.Encoded)["skill_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetSkill200, Config>,
@@ -74524,7 +76265,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillPathParams.Encoded)["skill_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetSkill200, Config | undefined>,
@@ -74541,7 +76282,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "UpdateSkillDefaultVersion": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof UpdateSkillDefaultVersionPathParams.Encoded)["skill_id"],
       options: { readonly payload: typeof UpdateSkillDefaultVersionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateSkillDefaultVersion200, Config>,
@@ -74554,7 +76295,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof UpdateSkillDefaultVersionPathParams.Encoded)["skill_id"],
       options: {
         readonly payload: typeof UpdateSkillDefaultVersionRequestJson.Encoded
         readonly config?: Config | undefined
@@ -74575,7 +76316,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteSkill": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof DeleteSkillPathParams.Encoded)["skill_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteSkill200, Config>,
@@ -74587,7 +76328,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof DeleteSkillPathParams.Encoded)["skill_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteSkill200, Config | undefined>,
@@ -74604,7 +76345,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetSkillContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillContentPathParams.Encoded)["skill_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -74616,7 +76357,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillContentPathParams.Encoded)["skill_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -74632,14 +76373,14 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Download a skill zip bundle by its ID.
    */
   readonly "GetSkillContentStream": (
-    skillId: string
+    skillId: (typeof GetSkillContentPathParams.Encoded)["skill_id"]
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * List skill versions for a skill.
    */
   readonly "ListSkillVersions": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof ListSkillVersionsPathParams.Encoded)["skill_id"],
       options: { readonly params?: typeof ListSkillVersionsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListSkillVersions200, Config>,
@@ -74652,7 +76393,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof ListSkillVersionsPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof ListSkillVersionsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -74673,7 +76414,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "CreateSkillVersion": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof CreateSkillVersionPathParams.Encoded)["skill_id"],
       options: { readonly payload: typeof CreateSkillVersionRequestFormData.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateSkillVersion200, Config>,
@@ -74687,7 +76428,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof CreateSkillVersionPathParams.Encoded)["skill_id"],
       options: {
         readonly payload: typeof CreateSkillVersionRequestFormData.Encoded
         readonly config?: Config | undefined
@@ -74709,8 +76450,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetSkillVersion": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionPathParams.Encoded)["version"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetSkillVersion200, Config>,
@@ -74723,8 +76464,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionPathParams.Encoded)["version"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetSkillVersion200, Config | undefined>,
@@ -74742,8 +76483,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteSkillVersion": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof DeleteSkillVersionPathParams.Encoded)["skill_id"],
+      version: (typeof DeleteSkillVersionPathParams.Encoded)["version"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteSkillVersion200, Config>,
@@ -74756,8 +76497,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof DeleteSkillVersionPathParams.Encoded)["skill_id"],
+      version: (typeof DeleteSkillVersionPathParams.Encoded)["version"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteSkillVersion200, Config | undefined>,
@@ -74775,8 +76516,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetSkillVersionContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionContentPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionContentPathParams.Encoded)["version"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -74789,8 +76530,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionContentPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionContentPathParams.Encoded)["version"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -74807,8 +76548,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Download a skill version zip bundle.
    */
   readonly "GetSkillVersionContentStream": (
-    skillId: string,
-    version: string
+    skillId: (typeof GetSkillVersionContentPathParams.Encoded)["skill_id"],
+    version: (typeof GetSkillVersionContentPathParams.Encoded)["version"]
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Cancel an active ChatKit session and return its most recent metadata.
@@ -74817,7 +76558,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "CancelChatSessionMethod": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof CancelChatSessionMethodPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CancelChatSessionMethod200, Config>,
@@ -74830,7 +76571,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof CancelChatSessionMethodPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<CancelChatSessionMethod200, Config | undefined>,
@@ -74880,7 +76621,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "ListThreadItemsMethod": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListThreadItemsMethodPathParams.Encoded)["thread_id"],
       options: { readonly params?: typeof ListThreadItemsMethodParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListThreadItemsMethod200, Config>,
@@ -74893,7 +76634,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof ListThreadItemsMethodPathParams.Encoded)["thread_id"],
       options: {
         readonly params?: typeof ListThreadItemsMethodParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -74914,7 +76655,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "GetThreadMethod": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof GetThreadMethodPathParams.Encoded)["thread_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<GetThreadMethod200, Config>,
@@ -74927,7 +76668,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof GetThreadMethodPathParams.Encoded)["thread_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<GetThreadMethod200, Config | undefined>,
@@ -74945,7 +76686,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteThreadMethod": {
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof DeleteThreadMethodPathParams.Encoded)["thread_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteThreadMethod200, Config>,
@@ -74958,7 +76699,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      threadId: string,
+      threadId: (typeof DeleteThreadMethodPathParams.Encoded)["thread_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteThreadMethod200, Config | undefined>,
@@ -75118,7 +76859,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentEnvironment": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof RetrieveAgentEnvironmentPathParams.Encoded)["environment_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentEnvironment200, Config>,
@@ -75135,7 +76876,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof RetrieveAgentEnvironmentPathParams.Encoded)["environment_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentEnvironment200, Config | undefined>,
@@ -75157,7 +76898,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentEnvironmentFiles": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof ListAgentEnvironmentFilesPathParams.Encoded)["environment_id"],
       options: { readonly params?: typeof ListAgentEnvironmentFilesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentEnvironmentFiles200, Config>,
@@ -75174,7 +76915,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof ListAgentEnvironmentFilesPathParams.Encoded)["environment_id"],
       options: {
         readonly params?: typeof ListAgentEnvironmentFilesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -75199,7 +76940,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createAgentEnvironmentFile": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof CreateAgentEnvironmentFilePathParams.Encoded)["environment_id"],
       options: { readonly payload: typeof CreateAgentEnvironmentFileRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateAgentEnvironmentFile201, Config>,
@@ -75217,7 +76958,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentId: string,
+      environmentId: (typeof CreateAgentEnvironmentFilePathParams.Encoded)["environment_id"],
       options: {
         readonly payload: typeof CreateAgentEnvironmentFileRequestJson.Encoded
         readonly config?: Config | undefined
@@ -75243,7 +76984,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionSubagents": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionSubagentsPathParams.Encoded)["session_id"],
       options: { readonly params?: typeof ListAgentSessionSubagentsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionSubagents200, Config>,
@@ -75260,7 +77001,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionSubagentsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -75285,8 +77026,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSessionSubagent": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof RetrieveAgentSessionSubagentPathParams.Encoded)["session_id"],
+      subagentId: (typeof RetrieveAgentSessionSubagentPathParams.Encoded)["subagent_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionSubagent200, Config>,
@@ -75303,8 +77044,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof RetrieveAgentSessionSubagentPathParams.Encoded)["session_id"],
+      subagentId: (typeof RetrieveAgentSessionSubagentPathParams.Encoded)["subagent_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionSubagent200, Config | undefined>,
@@ -75326,8 +77067,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionSubagentItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof ListAgentSessionSubagentItemsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentItemsPathParams.Encoded)["subagent_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentItemsParams.Encoded | undefined
         readonly config: Config
@@ -75347,8 +77088,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof ListAgentSessionSubagentItemsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentItemsPathParams.Encoded)["subagent_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -75373,8 +77114,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionSubagentTurns": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof ListAgentSessionSubagentTurnsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentTurnsPathParams.Encoded)["subagent_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentTurnsParams.Encoded | undefined
         readonly config: Config
@@ -75394,8 +77135,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
+      sessionId: (typeof ListAgentSessionSubagentTurnsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentTurnsPathParams.Encoded)["subagent_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentTurnsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -75420,9 +77161,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSessionSubagentTurn": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
-      turnId: string,
+      sessionId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["session_id"],
+      subagentId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["subagent_id"],
+      turnId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["turn_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionSubagentTurn200, Config>,
@@ -75439,9 +77180,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
-      turnId: string,
+      sessionId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["session_id"],
+      subagentId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["subagent_id"],
+      turnId: (typeof RetrieveAgentSessionSubagentTurnPathParams.Encoded)["turn_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionSubagentTurn200, Config | undefined>,
@@ -75463,9 +77204,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionSubagentTurnItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
-      turnId: string,
+      sessionId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["subagent_id"],
+      turnId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["turn_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentTurnItemsParams.Encoded | undefined
         readonly config: Config
@@ -75485,9 +77226,9 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      subagentId: string,
-      turnId: string,
+      sessionId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["session_id"],
+      subagentId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["subagent_id"],
+      turnId: (typeof ListAgentSessionSubagentTurnItemsPathParams.Encoded)["turn_id"],
       options: {
         readonly params?: typeof ListAgentSessionSubagentTurnItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -75588,7 +77329,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgent": {
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof RetrieveAgentPathParams.Encoded)["agent_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgent200, Config>,
@@ -75605,7 +77346,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof RetrieveAgentPathParams.Encoded)["agent_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgent200, Config | undefined>,
@@ -75627,7 +77368,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateAgent": {
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof UpdateAgentPathParams.Encoded)["agent_id"],
       options: { readonly payload: typeof UpdateAgentRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateAgent200, Config>,
@@ -75644,7 +77385,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof UpdateAgentPathParams.Encoded)["agent_id"],
       options: { readonly payload: typeof UpdateAgentRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateAgent200, Config | undefined>,
@@ -75666,7 +77407,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteAgent": {
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof DeleteAgentPathParams.Encoded)["agent_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgent200, Config>,
@@ -75683,7 +77424,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      agentId: string,
+      agentId: (typeof DeleteAgentPathParams.Encoded)["agent_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgent200, Config | undefined>,
@@ -75784,7 +77525,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentEnvironmentTemplate": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof RetrieveAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentEnvironmentTemplate200, Config>,
@@ -75800,7 +77541,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof RetrieveAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentEnvironmentTemplate200, Config | undefined>,
@@ -75821,7 +77562,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateAgentEnvironmentTemplate": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof UpdateAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: { readonly payload: typeof UpdateAgentEnvironmentTemplateRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateAgentEnvironmentTemplate200, Config>,
@@ -75838,7 +77579,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof UpdateAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: {
         readonly payload: typeof UpdateAgentEnvironmentTemplateRequestJson.Encoded
         readonly config?: Config | undefined
@@ -75863,7 +77604,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteAgentEnvironmentTemplate": {
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof DeleteAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentEnvironmentTemplate200, Config>,
@@ -75880,7 +77621,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      environmentTemplateId: string,
+      environmentTemplateId: (typeof DeleteAgentEnvironmentTemplatePathParams.Encoded)["environment_template_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentEnvironmentTemplate200, Config | undefined>,
@@ -75991,7 +77732,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof RetrieveAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSession200, Config>,
@@ -76008,7 +77749,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof RetrieveAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSession200, Config | undefined>,
@@ -76030,7 +77771,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateAgentSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof UpdateAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof UpdateAgentSessionRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateAgentSession200, Config>,
@@ -76047,7 +77788,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof UpdateAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly payload: typeof UpdateAgentSessionRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateAgentSession200, Config | undefined>,
@@ -76069,7 +77810,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteAgentSession": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof DeleteAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentSession200, Config>,
@@ -76086,7 +77827,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof DeleteAgentSessionPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentSession200, Config | undefined>,
@@ -76108,7 +77849,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionArtifacts": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionArtifactsPathParams.Encoded)["session_id"],
       options: { readonly params?: typeof ListAgentSessionArtifactsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionArtifacts200, Config>,
@@ -76125,7 +77866,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionArtifactsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof ListAgentSessionArtifactsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76150,8 +77891,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSessionArtifact": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof RetrieveAgentSessionArtifactPathParams.Encoded)["session_id"],
+      artifactId: (typeof RetrieveAgentSessionArtifactPathParams.Encoded)["artifact_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionArtifact200, Config>,
@@ -76168,8 +77909,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof RetrieveAgentSessionArtifactPathParams.Encoded)["session_id"],
+      artifactId: (typeof RetrieveAgentSessionArtifactPathParams.Encoded)["artifact_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionArtifact200, Config | undefined>,
@@ -76191,8 +77932,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteAgentSessionArtifact": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof DeleteAgentSessionArtifactPathParams.Encoded)["session_id"],
+      artifactId: (typeof DeleteAgentSessionArtifactPathParams.Encoded)["artifact_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentSessionArtifact200, Config>,
@@ -76209,8 +77950,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof DeleteAgentSessionArtifactPathParams.Encoded)["session_id"],
+      artifactId: (typeof DeleteAgentSessionArtifactPathParams.Encoded)["artifact_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteAgentSessionArtifact200, Config | undefined>,
@@ -76232,8 +77973,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSessionArtifactContent": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["session_id"],
+      artifactId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["artifact_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -76250,8 +77991,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      artifactId: string,
+      sessionId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["session_id"],
+      artifactId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["artifact_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config | undefined>,
@@ -76272,15 +78013,15 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Downloads immutable session artifact bytes after the execution environment expires. See [session artifacts](https://developers.openai.com/api/docs/guides/agents-api/environments/files#openai-hosted-artifacts).
    */
   readonly "retrieveAgentSessionArtifactContentStream": (
-    sessionId: string,
-    artifactId: string
+    sessionId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["session_id"],
+    artifactId: (typeof RetrieveAgentSessionArtifactContentPathParams.Encoded)["artifact_id"]
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
    * Streams live events for an agent session. See [session events](https://developers.openai.com/api/docs/guides/agents-api/sessions/events).
    */
   readonly "listAgentSessionEvents": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionEventsPathParams.Encoded)["session_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<void, Config>,
@@ -76297,7 +78038,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionEventsPathParams.Encoded)["session_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<void, Config | undefined>,
@@ -76318,7 +78059,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    * Streams live events for an agent session. See [session events](https://developers.openai.com/api/docs/guides/agents-api/sessions/events).
    */
   readonly "listAgentSessionEventsSse": (
-    sessionId: string
+    sessionId: (typeof ListAgentSessionEventsPathParams.Encoded)["session_id"]
   ) => Stream.Stream<
     { readonly event: string; readonly id: string | undefined; readonly data: ListAgentSessionEvents200Sse },
     E | HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
@@ -76329,7 +78070,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createAgentSessionEvents": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof CreateAgentSessionEventsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof CreateAgentSessionEventsParams.Encoded | undefined
         readonly payload: typeof CreateAgentSessionEventsRequestJson.Encoded
@@ -76350,7 +78091,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof CreateAgentSessionEventsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof CreateAgentSessionEventsParams.Encoded | undefined
         readonly payload: typeof CreateAgentSessionEventsRequestJson.Encoded
@@ -76376,7 +78117,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionItemsPathParams.Encoded)["session_id"],
       options: { readonly params?: typeof ListAgentSessionItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionItems200, Config>,
@@ -76393,7 +78134,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionItemsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof ListAgentSessionItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76418,7 +78159,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionTraces": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionTracesPathParams.Encoded)["session_id"],
       options: { readonly params?: typeof ListAgentSessionTracesParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionTraces200, Config>,
@@ -76435,7 +78176,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionTracesPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof ListAgentSessionTracesParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76460,7 +78201,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionTurns": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionTurnsPathParams.Encoded)["session_id"],
       options: { readonly params?: typeof ListAgentSessionTurnsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionTurns200, Config>,
@@ -76477,7 +78218,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
+      sessionId: (typeof ListAgentSessionTurnsPathParams.Encoded)["session_id"],
       options: {
         readonly params?: typeof ListAgentSessionTurnsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76502,8 +78243,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveAgentSessionTurn": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      turnId: string,
+      sessionId: (typeof RetrieveAgentSessionTurnPathParams.Encoded)["session_id"],
+      turnId: (typeof RetrieveAgentSessionTurnPathParams.Encoded)["turn_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionTurn200, Config>,
@@ -76520,8 +78261,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      turnId: string,
+      sessionId: (typeof RetrieveAgentSessionTurnPathParams.Encoded)["session_id"],
+      turnId: (typeof RetrieveAgentSessionTurnPathParams.Encoded)["turn_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveAgentSessionTurn200, Config | undefined>,
@@ -76543,8 +78284,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listAgentSessionTurnItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      turnId: string,
+      sessionId: (typeof ListAgentSessionTurnItemsPathParams.Encoded)["session_id"],
+      turnId: (typeof ListAgentSessionTurnItemsPathParams.Encoded)["turn_id"],
       options: { readonly params?: typeof ListAgentSessionTurnItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListAgentSessionTurnItems200, Config>,
@@ -76561,8 +78302,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      sessionId: string,
-      turnId: string,
+      sessionId: (typeof ListAgentSessionTurnItemsPathParams.Encoded)["session_id"],
+      turnId: (typeof ListAgentSessionTurnItemsPathParams.Encoded)["turn_id"],
       options: {
         readonly params?: typeof ListAgentSessionTurnItemsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76663,7 +78404,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveVault": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof RetrieveVaultPathParams.Encoded)["vault_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVault200, Config>,
@@ -76680,7 +78421,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof RetrieveVaultPathParams.Encoded)["vault_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVault200, Config | undefined>,
@@ -76702,7 +78443,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "updateVault": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof UpdateVaultPathParams.Encoded)["vault_id"],
       options: { readonly payload: typeof UpdateVaultRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateVault200, Config>,
@@ -76719,7 +78460,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof UpdateVaultPathParams.Encoded)["vault_id"],
       options: { readonly payload: typeof UpdateVaultRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<UpdateVault200, Config | undefined>,
@@ -76741,7 +78482,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteVault": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof DeleteVaultPathParams.Encoded)["vault_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVault200, Config>,
@@ -76758,7 +78499,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof DeleteVaultPathParams.Encoded)["vault_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVault200, Config | undefined>,
@@ -76780,7 +78521,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "listVaultCredentials": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof ListVaultCredentialsPathParams.Encoded)["vault_id"],
       options: { readonly params?: typeof ListVaultCredentialsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ListVaultCredentials200, Config>,
@@ -76797,7 +78538,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof ListVaultCredentialsPathParams.Encoded)["vault_id"],
       options: {
         readonly params?: typeof ListVaultCredentialsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -76822,7 +78563,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "createVaultCredential": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof CreateVaultCredentialPathParams.Encoded)["vault_id"],
       options: { readonly payload: typeof CreateVaultCredentialRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<CreateVaultCredential201, Config>,
@@ -76839,7 +78580,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
+      vaultId: (typeof CreateVaultCredentialPathParams.Encoded)["vault_id"],
       options: {
         readonly payload: typeof CreateVaultCredentialRequestJson.Encoded
         readonly config?: Config | undefined
@@ -76864,8 +78605,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "retrieveVaultCredential": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof RetrieveVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof RetrieveVaultCredentialPathParams.Encoded)["credential_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVaultCredential200, Config>,
@@ -76882,8 +78623,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof RetrieveVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof RetrieveVaultCredentialPathParams.Encoded)["credential_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveVaultCredential200, Config | undefined>,
@@ -76905,8 +78646,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "rotateVaultCredential": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof RotateVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof RotateVaultCredentialPathParams.Encoded)["credential_id"],
       options: { readonly payload: typeof RotateVaultCredentialRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RotateVaultCredential200, Config>,
@@ -76923,8 +78664,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof RotateVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof RotateVaultCredentialPathParams.Encoded)["credential_id"],
       options: {
         readonly payload: typeof RotateVaultCredentialRequestJson.Encoded
         readonly config?: Config | undefined
@@ -76949,8 +78690,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "deleteVaultCredential": {
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof DeleteVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof DeleteVaultCredentialPathParams.Encoded)["credential_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteVaultCredential200, Config>,
@@ -76967,8 +78708,8 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      vaultId: string,
-      credentialId: string,
+      vaultId: (typeof DeleteVaultCredentialPathParams.Encoded)["vault_id"],
+      credentialId: (typeof DeleteVaultCredentialPathParams.Encoded)["credential_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteVaultCredential200, Config | undefined>,
@@ -77048,7 +78789,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RetrieveWebhookEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof RetrieveWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<RetrieveWebhookEndpoint200, Config>,
@@ -77060,7 +78801,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof RetrieveWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<RetrieveWebhookEndpoint200, Config | undefined>,
@@ -77077,7 +78818,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "UpdateWebhookEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof UpdateWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly payload: typeof UpdateWebhookEndpointRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<UpdateWebhookEndpoint200, Config>,
@@ -77089,7 +78830,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof UpdateWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: {
         readonly payload: typeof UpdateWebhookEndpointRequestJson.Encoded
         readonly config?: Config | undefined
@@ -77109,7 +78850,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "DeleteWebhookEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof DeleteWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<DeleteWebhookEndpoint200, Config>,
@@ -77121,7 +78862,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof DeleteWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly config?: Config | undefined } | undefined
     ): Effect.Effect<
       WithOptionalResponse<DeleteWebhookEndpoint200, Config | undefined>,
@@ -77138,7 +78879,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "RotateWebhookEndpointSigningSecret": {
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof RotateWebhookEndpointSigningSecretPathParams.Encoded)["webhook_endpoint_id"],
       options: {
         readonly payload: typeof RotateWebhookEndpointSigningSecretRequestJson.Encoded
         readonly config: Config
@@ -77153,7 +78894,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof RotateWebhookEndpointSigningSecretPathParams.Encoded)["webhook_endpoint_id"],
       options: {
         readonly payload: typeof RotateWebhookEndpointSigningSecretRequestJson.Encoded
         readonly config?: Config | undefined
@@ -77173,7 +78914,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "TestWebhookEndpoint": {
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof TestWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly payload: typeof TestWebhookEndpointRequestJson.Encoded; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<TestWebhookEndpoint200, Config>,
@@ -77186,7 +78927,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      webhookEndpointId: string,
+      webhookEndpointId: (typeof TestWebhookEndpointPathParams.Encoded)["webhook_endpoint_id"],
       options: { readonly payload: typeof TestWebhookEndpointRequestJson.Encoded; readonly config?: Config | undefined }
     ): Effect.Effect<
       WithOptionalResponse<TestWebhookEndpoint200, Config | undefined>,
@@ -77293,7 +79034,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "betaGetResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaGetResponsePathParams.Encoded)["response_id"],
       options: { readonly params?: typeof BetaGetResponseParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaGetResponse200, Config>,
@@ -77305,7 +79046,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaGetResponsePathParams.Encoded)["response_id"],
       options: {
         readonly params?: typeof BetaGetResponseParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -77325,7 +79066,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "betaDeleteResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaDeleteResponsePathParams.Encoded)["response_id"],
       options: { readonly params?: typeof BetaDeleteResponseParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaDeleteResponse200, Config>,
@@ -77337,7 +79078,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaDeleteResponsePathParams.Encoded)["response_id"],
       options: {
         readonly params?: typeof BetaDeleteResponseParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -77359,7 +79100,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "betaCancelResponse": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaCancelResponsePathParams.Encoded)["response_id"],
       options: { readonly params?: typeof BetaCancelResponseParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaCancelResponse200, Config>,
@@ -77371,7 +79112,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaCancelResponsePathParams.Encoded)["response_id"],
       options: {
         readonly params?: typeof BetaCancelResponseParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -77430,7 +79171,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
    */
   readonly "betaListInputItems": {
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaListInputItemsPathParams.Encoded)["response_id"],
       options: { readonly params?: typeof BetaListInputItemsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaListInputItems200, Config>,
@@ -77442,7 +79183,7 @@ export interface OpenAiClient<E = HttpClientError.HttpClientError, R = never> {
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      responseId: string,
+      responseId: (typeof BetaListInputItemsPathParams.Encoded)["response_id"],
       options: {
         readonly params?: typeof BetaListInputItemsParams.Encoded | undefined
         readonly config?: Config | undefined
