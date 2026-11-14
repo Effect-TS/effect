@@ -138,21 +138,21 @@ export const authTest = { ok: true, user_id: botUserId, team_id: team }
 export const responseUrl = `https://hooks.slack.com/commands/${team}/1794600000/abcdef`
 
 /**
- * A slash command's form fields, with the names and shapes of the ones
- * recorded in `fixtures/recorded/commands.json` and values made up.
+ * A slash command's form fields: the form recorded in
+ * `fixtures/recorded/commands.json`, with the command, its text, the
+ * channel, and a `response_url` and `trigger_id` the tests can use.
  */
-export const commandFields = (command: string, text: string, overrides?: Record<string, string>) => ({
+export const commandFields = (
+  command: string,
+  text: string,
+  overrides?: Record<string, string>
+): Record<string, string> => ({
+  ...fixture("commands").commands.private,
   token: "verification",
-  team_id: team,
-  team_domain: "effectfulworkspace",
   channel_id: channel,
   channel_name: "scratch",
-  user_id: "U080YLYB277",
-  user_name: "tim",
   command,
   text,
-  api_app_id: appId,
-  is_enterprise_install: "false",
   response_url: responseUrl,
   trigger_id: "trigger-command",
   ...overrides

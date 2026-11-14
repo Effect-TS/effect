@@ -42,7 +42,11 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *   `thread.platform`, failing with `NoAdapter` when there is none.
  * - `getUser` takes the platform first, because a bare user id names none.
  * - `followUp` is routed by the platform of the deferred command's thread.
- *   Call it once per deferral: what a second call does differs by platform.
+ *   One call per deferral is the portable contract: the first is the
+ *   answer, and a second is platform-specific, a new message on Slack (up to
+ *   five) and an overwrite of the first on Discord. It is rendered as
+ *   `respond` is, so it never mentions anyone: Slack shows the token as
+ *   text and Discord renders it and notifies nobody.
  * - `descriptor` returns a platform's capabilities and limits.
  * - Each call runs in a `Chat.{op}` span whose attributes are the platform, the
  *   op and, on failure, the error reason and retry value.

@@ -25,6 +25,8 @@
  *   and the manifest's description and usage hint are what Slack shows.
  *   With Socket Mode on, commands come as `slash_commands` envelopes: pass
  *   the envelope's `payload` to `SlackChat.interaction` in the same way.
+ *   That path is from Slack's docs and was not run, nor were commands in
+ *   Slack Connect channels or directs.
  * - A command can't be run inside a thread: Slack doesn't offer it there.
  *   A command that acts on a thread has to be told which one. Command names are shared by every app
  *   in a workspace. "Escape channels, users, and links" is off by default;
@@ -120,8 +122,9 @@ export interface SlackUser {
  *   For a command answered with `respond` that body is the message, with
  *   `response_type` `ephemeral` or `in_channel`, after the checks of a
  *   `post`; one that fails them goes to `Handler.refused`. A command's
- *   answer mentions nobody: `withPostOptions` does not reach it, so
- *   `<@U…>` goes out escaped and shows as text. There is no way to allow a
+ *   answer, `respond` or `followUp`, mentions nobody: `withPostOptions`
+ *   does not reach it, so `<@U…>` goes out escaped and shows as text, as a
+ *   `post` without `withPostOptions` does. There is no way to allow a
  *   mention in it.
  *   `undefined` is an empty answer: an ack, a close, a late click, a
  *   deferred command, a command that opened a modal, a command nobody
@@ -139,10 +142,12 @@ export interface SlackUser {
  *   `HttpClient`. It is a write and is not retried. Slack takes five posts
  *   to one `response_url` within 30 minutes, each a new message. A spent
  *   or expired one answers 404 `used_url` or `expired_url`, which is
- *   `NotFound` with detail `interaction_expired`.
+ *   `NotFound` with detail `interaction_expired`. A 410 or a JSON `error`
+ *   with either string is mapped the same, from the docs: neither was seen.
  * - A click on a private answer has no `message`. Its `messageId` is the
- *   answer's `container.message_ts`, which no Web API method reaches:
- *   `chat.update` on it answers `message_not_found`. `raw` has
+ *   answer's `container.message_ts`, which tells which answer was clicked
+ *   and which no Web API method reaches: `chat.update` on it answers
+ *   `message_not_found`, so `edit` fails `NotFound`. `raw` has
  *   `container.is_ephemeral`. A public answer reads back as a
  *   `bot_message` whose `bot_id` is not the app's own, so it is not
  *   `isSelf`.

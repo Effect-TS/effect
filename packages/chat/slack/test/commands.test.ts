@@ -153,6 +153,20 @@ describe("recorded slash commands", () => {
     assert.isFalse((publicClick.raw as any).container.is_ephemeral)
   })
 
+  it.effect("fails Chat.edit NotFound on a private answer's messageId, as Slack answered chat.update", () =>
+    Effect.gen(function*() {
+      const click = normalize(recorded.clicks.privateAnswer) as ChatInteraction.ButtonClicked
+      const fake = makeFake({ "auth.test": authTest, "chat.update": { ok: false, error: "message_not_found" } })
+      const error = yield* Effect.flip(
+        Effect.flatMap(Chat.Chat, (chat) => chat.edit(click.thread, click.messageId, { markdown: "Edited" })).pipe(
+          Effect.provide(slackLayer(fake))
+        )
+      )
+      assert.deepStrictEqual([error.op, error.reason._tag], ["edit", "NotFound"])
+      const [{ params }] = fake.called("chat.update")
+      assert.deepStrictEqual([params.channel, params.ts], [channel, recorded.clicks.privateAnswer.container.message_ts])
+    }))
+
   it.effect("follows up with the body Slack rendered, and maps a spent and an expired response_url", () =>
     Effect.gen(function*() {
       const command = normalize(recorded.commands.defer) as ChatInteraction.CommandInvoked
