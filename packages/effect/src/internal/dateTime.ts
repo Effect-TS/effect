@@ -271,9 +271,38 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
  * such as `pdt` in any case. Only that trailing match is case-insensitive, so lowercase
  * letters in a comment like "(xyz)" do not count as a zone.
+ * A zone after the time can also be followed by a parenthesized comment or whitespace,
+ * as in "... 17:14:06 -0500 (EST)".
  */
-const hasZone = (input: string): boolean =>
+const hasZone = (input: string): boolean => {
+  if (matchesZone(input)) return true
+  // Only a comment or trailing whitespace can hide a zone from the check above
+  if (!/\(|\s$/.test(input)) return false
+  const text = withoutComments(input).trimEnd()
+  const time = /\d:\d{2}(?::\d{2}(?:\.\d+)?)?/.exec(text)
+  if (time === null) return false
+  const suffix = text.slice(time.index + time[0].length)
+  // A digit before the minus marks the end of a date, as in "12:00:00 2024-01-01"
+  return matchesZone(suffix) && !/\d-\d{2}(?::?\d{2})?$/.test(suffix)
+}
+
+const matchesZone = (input: string): boolean =>
   /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
+
+const withoutComments = (input: string): string => {
+  let text = ""
+  let depth = 0
+  for (const char of input) {
+    if (char === "(") {
+      depth++
+    } else if (char === ")" && depth > 0) {
+      depth--
+    } else if (depth === 0) {
+      text += char
+    }
+  }
+  return text
+}
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)

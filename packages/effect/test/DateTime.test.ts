@@ -771,6 +771,20 @@ describe("DateTime", () => {
       strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
       assertSomeIso(DateTime.make(input), expected)
     })
+
+    it.each([
+      ["Tue, 27 Jan 2026 17:14:06 -0500 (EST)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 +0530 (India Standard Time)", "2026-01-27T11:44:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -05 ", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 05:14:06 PM EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -0500 EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["17:14:06 Jan 27 2026+0530 (note)", "2026-01-27T11:44:06.000Z"],
+      ["12:00:00 2024-01-01 (note)", "2024-01-01T12:00:00.000Z"],
+      ["2024-01-01 ", "2024-01-01T00:00:00.000Z"],
+      ["01-01-2024 (note)", "2024-01-01T00:00:00.000Z"]
+    ])("preserves zone interpretation before comments or whitespace: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
+    })
   })
 
   describe("Disambiguation", () => {
