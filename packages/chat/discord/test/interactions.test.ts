@@ -522,4 +522,19 @@ describe("followUp", () => {
       )
       assert.strictEqual(spent.called("updateOriginalWebhookMessage").length, 1)
     }))
+
+  it.effect("sends one request on a 429 just before 15 minutes, and fails RateLimited without retrying", () =>
+    Effect.gen(function*() {
+      const issued = Number((BigInt("1570700000000000900") >> 22n) + 1420070400000n)
+      const limited = makeFake({
+        updateOriginalWebhookMessage: () =>
+          Effect.fail(errorResponse(429, { message: "You are being rate limited.", retry_after: 0.6, global: false }))
+      })
+      yield* TestClock.setTime(issued + Duration.toMillis(Duration.minutes(15)) - 300)
+      const fiber = yield* Effect.forkChild(Effect.flip(followUp(limited, deferred("public"))))
+      yield* TestClock.adjust(Duration.seconds(10))
+      const error = yield* Fiber.join(fiber)
+      assert.deepStrictEqual([error.op, error.reason._tag], ["followUp", "RateLimited"])
+      assert.strictEqual(limited.called("updateOriginalWebhookMessage").length, 1)
+    }))
 })
