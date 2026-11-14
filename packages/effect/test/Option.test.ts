@@ -74,6 +74,67 @@ describe("Option", () => {
     assertSome(g, "testContext")
   })
 
+  it.each([Option.some(1), Option.none()])("gen runs cleanup before returning a short-circuit (%o)", (cleanup) => {
+    const order: Array<string> = []
+    const result = Option.gen(function*() {
+      using resource = { [Symbol.dispose]: () => order.push("dispose") }
+      void resource
+      try {
+        try {
+          yield* Option.none()
+          order.push("unreachable")
+        } catch {
+          order.push("catch")
+        } finally {
+          order.push("inner")
+          strictEqual(yield* cleanup, 1)
+        }
+      } finally {
+        order.push("outer")
+      }
+    })
+    assertNone(result)
+    deepStrictEqual(order, ["inner", "outer", "dispose"])
+  })
+
+  it("gen lets cleanup short-circuit a pending normal return", () => {
+    const result = Option.gen(function*() {
+      try {
+        return 1
+      } finally {
+        yield* Option.none()
+      }
+    })
+    assertNone(result)
+  })
+
+  it.each([undefined, 1])("gen lets return %s after a cleanup yield replace a short-circuit", (value) => {
+    const result = Option.gen(function*() {
+      try {
+        yield* Option.none()
+      } finally {
+        yield* Option.some(1)
+        // oxlint-disable-next-line no-unsafe-finally
+        return value
+      }
+    })
+    assertSome(result, value)
+  })
+
+  it("gen propagates disposal errors on a short-circuit", () => {
+    const error = new Error("dispose")
+    throws(() =>
+      Option.gen(function*() {
+        using resource = {
+          [Symbol.dispose]: () => {
+            throw error
+          }
+        }
+        void resource
+        yield* Option.none()
+      }), error)
+  })
+
   it("toString", () => {
     strictEqual(
       String(Option.none()),

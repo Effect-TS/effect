@@ -2399,6 +2399,12 @@ export const Do: Option<{}> = some({})
  * - The return value is wrapped in `Some`
  * - No `Effect` runtime is needed
  *
+ * **Gotchas**
+ *
+ * A yielded `None` skips `catch` blocks but still runs `finally` blocks and
+ * `using` disposal. If a `finally` block returns, even `undefined`, the result
+ * is `Some` of that value instead of `None`.
+ *
  * **Example** (Sequencing Option computations with generator syntax)
  *
  * ```ts import.meta.vitest
@@ -2426,13 +2432,15 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
   let state: IteratorResult<any> = iterator.next()
   while (!state.done) {
     const current = state.value
-    if (isNone(current)) {
-      return current
-    }
-    state = iterator.next(current.value as never)
+    state = isNone(current)
+      ? iterator.return(genCloseSentinel as never)
+      : iterator.next(current.value as never)
   }
-  return some(state.value)
+  return state.value === genCloseSentinel ? none() : some(state.value)
 }
+
+// Tells an unchanged short-circuit apart from a `finally` that returns, even `undefined`
+const genCloseSentinel = Symbol("~effect/Option/gen/CloseSentinel")
 
 /**
  * Creates a `Reducer` for `Option<A>` that prioritizes the first non-`None`
