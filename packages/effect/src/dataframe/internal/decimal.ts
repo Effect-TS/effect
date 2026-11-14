@@ -7,6 +7,7 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
+import * as BigDecimal from "../../BigDecimal.ts"
 import * as V from "./vector.ts"
 
 const powers: Array<bigint> = []
@@ -40,16 +41,9 @@ export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined 
 
 const checked = (x: bigint): bigint => (x > MAX || x < MIN ? V.fail("decimal value does not fit 18 digits") : x)
 
-/** Rounds `x / 10^k` half to even. */
-const divRound = (x: bigint, k: number): bigint => {
-  if (k === 0) return x
-  const d = pow10(k)
-  let q = x / d
-  const r = x - q * d
-  const twice = (r < BigInt(0) ? -r : r) * BigInt(2)
-  if (twice > d || (twice === d && q % BigInt(2) !== BigInt(0))) q += x < BigInt(0) ? BigInt(-1) : BigInt(1)
-  return q
-}
+/** Rounds `x / 10^k` half to even (`BigDecimal.round`). */
+const divRound = (x: bigint, k: number): bigint =>
+  k === 0 ? x : BigDecimal.round(BigDecimal.make(x, k), { scale: 0, mode: "half-even" }).value
 
 /** `unscaled / 10^scale` as a decimal string, all `scale` digits shown. @internal */
 export const format = (unscaled: bigint, scale: number): string => {

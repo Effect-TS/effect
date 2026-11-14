@@ -1036,6 +1036,8 @@ def extended_cases():
                                      "s": fn("cast", col("fee"), to="utf8"), "d": fn("cast", col("x"), to="decimal[10,2]"),
                                      "r": fn("cast", col("price"), to="decimal[12,1]")}}])
     add("decimal/sort", "sort by a decimal", D, [{"op": "sort", "keys": [{"expr": col("price"), "descending": True}], "nullsLast": True}])
+    add("decimal/round-ties", "narrowing the scale rounds exact ties", {"left": table([("t", "decimal[6,3]")], {"t": ["0.250", "0.350", "-0.250", "-0.350", "1.050", "2.500", "0.249"]})},
+        [{"op": "select", "exprs": {"one": fn("cast", col("t"), to="decimal[6,1]"), "zero": fn("cast", col("t"), to="decimal[6,0]")}}])
     return out
 
 
