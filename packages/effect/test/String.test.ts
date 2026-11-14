@@ -795,6 +795,174 @@ describe("String", () => {
     })
   })
 
+  describe("unicode case conversion helpers", () => {
+    const latinAccented = "ÄpfelBaum"
+    const latinSnake = "café_au_lait"
+    const cyrillic = "привет_мир"
+    const cjk = "日本語_テキスト"
+    const mixedScript = "hello_世界Foo"
+    const asciiAcronym = "XMLHttpRequest"
+
+    it("preserves Latin accented letters in camelCase", () => {
+      strictEqual(S.camelCase(latinAccented), "äpfelBaum")
+      strictEqual(S.camelCase(latinSnake), "caféAuLait")
+    })
+
+    it("preserves Latin accented letters in pascalCase", () => {
+      strictEqual(S.pascalCase(latinAccented), "ÄpfelBaum")
+      strictEqual(S.pascalCase(latinSnake), "CaféAuLait")
+    })
+
+    it("preserves Latin accented letters in snakeCase", () => {
+      strictEqual(S.snakeCase(latinAccented), "äpfel_baum")
+      strictEqual(S.snakeCase(latinSnake), "café_au_lait")
+    })
+
+    it("preserves Latin accented letters in kebabCase", () => {
+      strictEqual(S.kebabCase(latinAccented), "äpfel-baum")
+      strictEqual(S.kebabCase(latinSnake), "café-au-lait")
+    })
+
+    it("preserves Latin accented letters in constantCase", () => {
+      strictEqual(S.constantCase(latinAccented), "ÄPFEL_BAUM")
+      strictEqual(S.constantCase(latinSnake), "CAFÉ_AU_LAIT")
+    })
+
+    it("preserves Latin accented letters in noCase", () => {
+      strictEqual(S.noCase(latinAccented), "äpfel baum")
+      strictEqual(S.noCase(latinSnake), "café au lait")
+    })
+
+    it("preserves Latin accented letters in configCase", () => {
+      strictEqual(S.configCase(latinSnake), "CAFÉ_AU_LAIT")
+      strictEqual(S.configCase("helloWorld CAFÉ"), "HELLO_WORLD_CAFÉ")
+    })
+
+    it("preserves Cyrillic letters in all case helpers", () => {
+      strictEqual(S.camelCase(cyrillic), "приветМир")
+      strictEqual(S.pascalCase(cyrillic), "ПриветМир")
+      strictEqual(S.snakeCase(cyrillic), "привет_мир")
+      strictEqual(S.kebabCase(cyrillic), "привет-мир")
+      strictEqual(S.constantCase(cyrillic), "ПРИВЕТ_МИР")
+      strictEqual(S.noCase(cyrillic), "привет мир")
+      strictEqual(S.configCase(cyrillic), "ПРИВЕТ_МИР")
+    })
+
+    it("preserves CJK letters in all case helpers", () => {
+      strictEqual(S.camelCase(cjk), "日本語テキスト")
+      strictEqual(S.pascalCase(cjk), "日本語テキスト")
+      strictEqual(S.snakeCase(cjk), "日本語_テキスト")
+      strictEqual(S.kebabCase(cjk), "日本語-テキスト")
+      strictEqual(S.constantCase(cjk), "日本語_テキスト")
+      strictEqual(S.noCase(cjk), "日本語 テキスト")
+      strictEqual(S.configCase(cjk), "日本語_テキスト")
+    })
+
+    it("preserves mixed-script identifiers", () => {
+      strictEqual(S.camelCase(mixedScript), "hello世界foo")
+      strictEqual(S.snakeCase(mixedScript), "hello_世界foo")
+      strictEqual(S.constantCase(mixedScript), "HELLO_世界FOO")
+    })
+
+    it("keeps existing ASCII acronym and digit-boundary behavior", () => {
+      strictEqual(S.camelCase(asciiAcronym), "xmlHttpRequest")
+      strictEqual(S.constantCase("api-v2 xml"), "API_V_2_XML")
+      strictEqual(S.constantCase("field2Value"), "FIELD_2_VALUE")
+      strictEqual(S.configCase("api-v2 xml"), "API_V2_XML")
+      strictEqual(S.configCase("field2Value"), "FIELD2_VALUE")
+    })
+
+    it("trims leading and trailing separators for Unicode input", () => {
+      strictEqual(S.camelCase("_Äpfel_"), "äpfel")
+      strictEqual(S.snakeCase("__café__"), "café")
+      strictEqual(S.kebabCase("---日本語---"), "日本語")
+    })
+
+    it("returns an empty string for empty and separator-only Unicode input", () => {
+      strictEqual(S.camelCase(""), "")
+      strictEqual(S.pascalCase("___"), "")
+      strictEqual(S.snakeCase("---"), "")
+      strictEqual(S.noCase("…"), "")
+    })
+
+    it("splits digits adjacent to letters across scripts", () => {
+      strictEqual(S.camelCase("field2Value"), "field2Value")
+      strictEqual(S.noCase("field2Value"), "field 2 value")
+      strictEqual(S.snakeCase("field2value"), "field_2_value")
+      strictEqual(S.snakeCase("v2api"), "v_2_api")
+    })
+  })
+
+  describe("ascii case conversion equivalence", () => {
+    const OLD_SPLIT_REGEXP = [/([a-z0-9])([A-Z])/g, /([A-Z])([A-Z][a-z])/g, /([A-Z])([0-9])/gi, /([0-9])([A-Z])/gi]
+    const OLD_CONFIG_SPLIT_REGEXP = [/([a-z0-9])([A-Z])/g, /([A-Z])([A-Z][a-z])/g]
+    const OLD_STRIP_REGEXP = /[^A-Z0-9]+/gi
+
+    const normalizeAsciiCase = (
+      input: string,
+      splitRegExp: ReadonlyArray<RegExp>,
+      delimiter: string,
+      transform: (part: string, index: number) => string
+    ): string => {
+      let result = input
+      for (const regexp of splitRegExp) {
+        result = result.replace(regexp, "$1\0$2")
+      }
+      for (const regexp of [OLD_STRIP_REGEXP]) {
+        result = result.replace(regexp, "\0")
+      }
+      let start = 0
+      let end = result.length
+      while (result.charAt(start) === "\0") {
+        start++
+      }
+      while (result.charAt(end - 1) === "\0") {
+        end--
+      }
+      if (start >= end) return ""
+      return result.slice(start, end).split("\0").map(transform).join(delimiter)
+    }
+
+    const oldCamelCase = (input: string): string =>
+      normalizeAsciiCase(
+        input,
+        OLD_SPLIT_REGEXP,
+        "",
+        (part, index) =>
+          index === 0 ? part.toLowerCase() : `${part.charAt(0).toUpperCase()}${part.substring(1).toLowerCase()}`
+      )
+
+    const asciiChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_- "
+    const sampleSize = 4000
+
+    it(`matches legacy ASCII behavior for ${sampleSize} random strings`, () => {
+      let seed = 0x5f3759df
+      const randomAscii = (): string => {
+        const length = (seed = (seed * 1664525 + 1013904223) >>> 0) % 24
+        let output = ""
+        for (let index = 0; index < length; index++) {
+          seed = (seed * 1664525 + 1013904223) >>> 0
+          output += asciiChars[seed % asciiChars.length]!
+        }
+        return output
+      }
+
+      for (let index = 0; index < sampleSize; index++) {
+        const input = randomAscii()
+        strictEqual(S.camelCase(input), oldCamelCase(input))
+        strictEqual(S.snakeCase(input), normalizeAsciiCase(input, OLD_SPLIT_REGEXP, "_", (part) => part.toLowerCase()))
+        strictEqual(
+          S.constantCase(input),
+          normalizeAsciiCase(input, OLD_SPLIT_REGEXP, "_", (part) => part.toUpperCase())
+        )
+        strictEqual(
+          S.configCase(input),
+          normalizeAsciiCase(input, OLD_CONFIG_SPLIT_REGEXP, "_", (part) => part.toUpperCase())
+        )
+      }
+    })
+  })
+
   describe("ReducerConcat", () => {
     it("combines strings", () => {
       strictEqual(S.ReducerConcat.combine("a", "b"), "ab")

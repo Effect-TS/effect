@@ -1420,13 +1420,18 @@ const normalizeCase = (
 
 // Support camel case ("camelCase" -> "camel Case" and "CAMELCase" -> "CAMEL Case")
 // and digit boundaries ("camel2case" -> "camel 2 case").
-const SPLIT_REGEXP = [/([a-z0-9])([A-Z])/g, /([A-Z])([A-Z][a-z])/g, /([A-Z])([0-9])/gi, /([0-9])([A-Z])/gi]
+const SPLIT_REGEXP = [
+  /([\p{Ll}\p{N}])(\p{Lu})/gu,
+  /(\p{Lu})(\p{Lu}\p{Ll})/gu,
+  /([\p{L}])(\p{N})/gu,
+  /(\p{N})(\p{L})/gu
+]
 
 // Config paths preserve digit groups such as "v2" while still supporting camel case.
-const CONFIG_SPLIT_REGEXP = [/([a-z0-9])([A-Z])/g, /([A-Z])([A-Z][a-z])/g]
+const CONFIG_SPLIT_REGEXP = [/([\p{Ll}\p{N}])(\p{Lu})/gu, /(\p{Lu})(\p{Lu}\p{Ll})/gu]
 
 // Remove all non-word characters.
-const STRIP_REGEXP = /[^A-Z0-9]+/gi
+const STRIP_REGEXP = /[^\p{L}\p{N}]+/gu
 
 const pascalCaseTransform = (input: string): string => {
   const firstChar = input.charAt(0)
