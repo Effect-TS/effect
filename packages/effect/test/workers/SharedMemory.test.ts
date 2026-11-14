@@ -20,16 +20,6 @@ describe("SharedMemory", () => {
     })
   }
 
-  it("share caches the first snapshot of a view", () => {
-    const values = Int32Array.of(1, 2, 3).subarray(1)
-    const shared = SharedMemory.share(values)
-    assert.isTrue(SharedMemory.isShared(shared))
-    assert.deepStrictEqual(Array.from(shared), [2, 3])
-    values[0] = 9
-    assert.strictEqual(SharedMemory.share(values), shared)
-    assert.strictEqual(shared[0], 2)
-  })
-
   describe("schema", () => {
     const Ints = SharedMemory.schema(Int32Array)
 

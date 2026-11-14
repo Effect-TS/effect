@@ -7,9 +7,8 @@
  *   `SharedArrayBuffer`. The worker receives a view of the same memory.
  *   Every worker can read it, and writes from any thread are visible to all
  *   others.
- * - {@link make} allocates a typed array in shared memory. {@link share}
- *   copies an existing typed array into shared memory. It copies each array
- *   once and returns the same copy on later calls.
+ * - {@link make} allocates a typed array in shared memory. To copy existing
+ *   values, allocate a shared array and call its `set` method.
  * - {@link schema} describes a shared typed array in a message schema, such
  *   as an RPC payload. Worker codecs pass it through to `postMessage`
  *   untouched, and decoding fails unless it arrived as shared memory.
@@ -81,8 +80,8 @@
  * @since 4.1.5
  */
 import * as Data from "../Data.ts"
+import { passthroughLink } from "../internal/schema/passthrough.ts"
 import * as Schema from "../Schema.ts"
-import * as SchemaGetter from "../SchemaGetter.ts"
 
 /**
  * The typed arrays that can live in shared memory.
@@ -148,7 +147,7 @@ interface SharedByName {
 export type Shared<A extends TypedArray> = SharedByName[A[typeof Symbol.toStringTag]]
 
 /**
- * Thrown by {@link make} and {@link share} when shared memory is unavailable
+ * Thrown by {@link make} when shared memory is unavailable
  * (see {@link isAvailable}).
  *
  * @stability unstable
@@ -229,57 +228,6 @@ export const make = <C extends TypedArrayConstructor>(
   return new Ctor(new SharedArrayBuffer(length * constructor.BYTES_PER_ELEMENT)) as any
 }
 
-const copies = new WeakMap<TypedArray, TypedArray>()
-
-/**
- * Returns the typed array in shared memory. That is the array itself when it
- * is already shared, and otherwise a copy, made once per array.
- *
- * **When to use**
- *
- * Use to give workers an existing array that many requests read. The first
- * call copies it, and later calls with the same array return the same copy.
- *
- * **Gotchas**
- *
- * - The copy is a snapshot. Changing `view` afterwards doesn't change the
- *   copy, and later calls still return it. Share arrays you no longer write
- *   to, or write to the shared copy instead.
- * - A copy of a `subarray` holds only the subarray's elements.
- * - Throws {@link SharedMemoryError} when shared memory is unavailable and
- *   `view` isn't shared already.
- *
- * **Example** (Copying once)
- *
- * ```ts import.meta.vitest
- * import { SharedMemory } from "effect/workers"
- *
- * const values = Float64Array.of(1, 2, 3)
- * const shared = SharedMemory.share(values)
- *
- * SharedMemory.isShared(shared) // => true
- * SharedMemory.share(values) === shared // => true
- * ```
- *
- * @stability unstable
- * @category constructors
- * @since 4.1.5
- */
-export const share = <A extends TypedArray>(view: A): Shared<A> => {
-  if (isShared(view)) return view as any
-  const cached = copies.get(view)
-  if (cached !== undefined) return cached as any
-  const copy = make(view.constructor as TypedArrayConstructor, view.length)
-  copy.set(view as any)
-  copies.set(view, copy)
-  return copy as any
-}
-
-const passthrough = Schema.link()(Schema.Any, {
-  decode: SchemaGetter.passthrough(),
-  encode: SchemaGetter.passthrough()
-})
-
 /**
  * A schema for typed arrays of one kind in shared memory, for worker
  * messages.
@@ -320,5 +268,5 @@ export const schema = <C extends TypedArrayConstructor>(
 ): Schema.declare<Shared<InstanceType<C>>> =>
   Schema.declare((u): u is Shared<InstanceType<C>> => u instanceof constructor && isShared(u), {
     expected: `${constructor.name} in shared memory`,
-    toCodecJson: () => passthrough
+    toCodecJson: () => passthroughLink
   })
