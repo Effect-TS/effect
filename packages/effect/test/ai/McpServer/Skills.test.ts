@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
+import * as Skill from "effect/ai/Skill"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -407,6 +408,62 @@ describe("McpServer skills", () => {
           "skills/get skill://acme/admin/SKILL.md",
           "resources/directory/read skill://acme/admin/SKILL.md"
         ])
+      }))
+  })
+
+  describe("prepared skills", () => {
+    it.effect("should publish the same snapshot at separate addresses when using either registration API", () =>
+      Effect.gen(function*() {
+        const markdown = `\uFEFF${REFUNDS_SKILL_MD.replace(/\n/g, "\r\n")}`
+        const prepared = yield* Skill.fromFiles({
+          "SKILL.md": markdown,
+          "references/policy.md": "Approval required.\n",
+          "assets/logo.png": PNG
+        })
+        const roots = ["skill://billing/refunds", "skill://support/refunds"]
+        const harness = yield* modernHarness(Layer.merge(
+          McpServer.skill(prepared, { uri: `${roots[0]}/SKILL.md` }),
+          Layer.effectDiscard(McpServer.registerSkill(prepared, { uri: `${roots[1]}/SKILL.md` }))
+        ))
+        for (const root of roots) {
+          const { message } = yield* call(harness, "skills/get", { uri: `${root}/SKILL.md` })
+          assert.deepStrictEqual(message.result.skill.frontmatter, prepared.frontmatter)
+          assert.strictEqual((yield* readBytes(harness, `${root}/SKILL.md`)).toString("utf8"), markdown)
+          assert.deepStrictEqual(new Uint8Array(yield* readBytes(harness, `${root}/assets/logo.png`)), PNG)
+        }
+      }))
+
+    it.effect("should enforce MCP file and byte limits when a local bundle allows more", () =>
+      Effect.gen(function*() {
+        const many = yield* Skill.fromFiles({
+          "SKILL.md": REFUNDS_SKILL_MD,
+          ...Object.fromEntries(Array.from({ length: 512 }, (_, i) => [`file-${i}`, ""]))
+        }, { limits: { maxFiles: 1024 } })
+        const large = yield* Skill.fromFiles({
+          "SKILL.md": REFUNDS_SKILL_MD,
+          "large.bin": new Uint8Array(16 * 1024 * 1024)
+        }, { limits: { maxBytes: "32 MiB" } })
+        for (const [prepared, limit] of [[many, /limit is 512/], [large, /limit is 16777216/]] as const) {
+          const error = yield* McpServer.registerSkill(prepared, { uri: "skill://refunds/SKILL.md" }).pipe(
+            Effect.provide(McpServer.McpServer.layer),
+            Effect.flip
+          )
+          assert.match(error.message, limit)
+        }
+      }))
+
+    it.effect("should honor publication annotations when registering a prepared skill", () =>
+      Effect.gen(function*() {
+        const prepared = yield* Skill.fromFiles({ "SKILL.md": REFUNDS_SKILL_MD })
+        const harness = yield* modernHarness(McpServer.skill(prepared, {
+          uri: "skill://refunds/SKILL.md",
+          annotations: Context.make(McpSchema.EnabledWhen, () => false)
+        }))
+        assert.deepStrictEqual((yield* call(harness, "skills/list")).message.result.skills, [])
+        assert.strictEqual(
+          (yield* call(harness, "resources/read", { uri: "skill://refunds/SKILL.md" })).message.error.code,
+          -32602
+        )
       }))
   })
 
