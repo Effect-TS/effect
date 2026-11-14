@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
+import { throws } from "@effect/vitest/utils"
 import { Result } from "effect"
 import * as FlatBuffers from "effect/encoding/FlatBuffers"
+import * as Hex from "effect/encoding/Hex"
 
-const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16))
-const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+const fromHex = (hex: string) => Result.getOrThrow(Hex.decode(hex))
 
 // The expected bytes were written by the official FlatBuffers Python builder
 // (`flatbuffers` 25.12.19 from PyPI) making the same calls as the builders below.
@@ -67,6 +68,7 @@ const buildPrefixed = () => {
 
 const readMonster = (root: FlatBuffers.Table) => {
   const pos = root.struct(0, 12)
+  const inventory = root.bytes(4)
   const weapons = root.vector(5, 4)
   const path = root.vector(6, 16)
   return {
@@ -74,7 +76,7 @@ const readMonster = (root: FlatBuffers.Table) => {
     mana: [root.has(1), root.int16(1, 100)],
     hp: root.int16(2, 100),
     name: root.string(3),
-    inventory: root.bytes(4) && Array.from(root.bytes(4)!),
+    inventory: inventory && Array.from(inventory),
     weapons: weapons && Array.from({ length: weapons.length }, (_, i) => {
       const weapon = weapons.table(i)
       return [weapon.string(0), weapon.int16(1)]
@@ -87,21 +89,15 @@ const readMonster = (root: FlatBuffers.Table) => {
   }
 }
 
-const usage = (f: () => unknown) => {
-  try {
-    f()
-  } catch (error) {
-    assert.isTrue(FlatBuffers.isFlatBuffersError(error))
-    assert.strictEqual((error as FlatBuffers.FlatBuffersError).kind, "Usage")
-    return
-  }
-  assert.fail("expected a Usage FlatBuffersError")
-}
+const usage = (f: () => unknown) =>
+  throws(f, (error) => {
+    assert.strictEqual(FlatBuffers.isFlatBuffersError(error) && error.kind, "Usage")
+  })
 
 describe("FlatBuffers", () => {
   it("builds the bytes the official builder builds", () => {
-    assert.strictEqual(toHex(buildMonster()), MONSTER)
-    assert.strictEqual(toHex(buildPrefixed()), PREFIXED)
+    assert.strictEqual(Hex.encode(buildMonster()), MONSTER)
+    assert.strictEqual(Hex.encode(buildPrefixed()), PREFIXED)
   })
 
   it("reads the official builder's bytes", () => {
@@ -141,7 +137,6 @@ describe("FlatBuffers", () => {
   it("decode returns a failure for malformed input", () => {
     const failure = (bytes: Uint8Array, options?: Parameters<typeof FlatBuffers.decode>[2]) => {
       const result = FlatBuffers.decode(bytes, (root) => root.string(0), options)
-      assert.isTrue(Result.isFailure(result))
       return Result.isFailure(result) ? result.failure.kind : undefined
     }
     assert.strictEqual(failure(new Uint8Array(2)), "OutOfBounds")
@@ -188,7 +183,10 @@ describe("FlatBuffers", () => {
       table = b.endTable()
     }
     const bytes = b.finish(table)
-    const depth = (t: FlatBuffers.Table): number => 1 + (t.table(0) === undefined ? 0 : depth(t.table(0)!))
+    const depth = (t: FlatBuffers.Table): number => {
+      const child = t.table(0)
+      return child === undefined ? 1 : 1 + depth(child)
+    }
     const result = FlatBuffers.decode(bytes, depth)
     assert.isTrue(Result.isFailure(result) && result.failure.kind === "Limit")
     assert.deepStrictEqual(FlatBuffers.decode(bytes, depth, { maxDepth: 65 }), Result.succeed(65))

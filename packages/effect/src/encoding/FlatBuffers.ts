@@ -109,7 +109,7 @@ export class FlatBuffersError extends Data.TaggedError("FlatBuffersError")<{
 export const isFlatBuffersError = (u: unknown): u is FlatBuffersError =>
   Predicate.hasProperty(u, FlatBuffersErrorTypeId)
 
-const fail = (kind: FlatBuffersError["kind"], message: string): never => {
+function fail(kind: FlatBuffersError["kind"], message: string): never {
   throw new FlatBuffersError({ kind, message })
 }
 
@@ -606,12 +606,11 @@ export const root = (bytes: Uint8Array, options?: {
   if (expected !== undefined) {
     const actual = data.subarray(4, 8)
     if (actual.length !== 4 || actual.some((b, i) => b !== expected[i])) {
-      fail("Identifier", `expected file identifier ${JSON.stringify(options!.identifier)}`)
+      fail("Identifier", `expected file identifier ${JSON.stringify(options?.identifier)}`)
     }
   }
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
-  check(view, 0, 4)
-  return new TableImpl({ bytes: data, view, maxDepth }, view.getUint32(0, true), 1)
+  return new TableImpl({ bytes: data, view, maxDepth }, indirect(view, 0), 1)
 }
 
 /**
@@ -701,10 +700,9 @@ export class Builder {
   private vtable: Array<number> | undefined = undefined
   private objectEnd = 0
   private readonly vtables = new Map<string, number>()
-  private nested = false
+  private vectorLength: number | undefined = undefined
   private finished = false
-  private vectorLength = 0
-  private sharedStrings: Map<string, Offset> | undefined = undefined
+  private readonly sharedStrings = new Map<string, Offset>()
   private readonly forceDefaults: boolean
 
   constructor(options?: { readonly initialSize?: number | undefined; readonly forceDefaults?: boolean | undefined }) {
@@ -814,7 +812,9 @@ export class Builder {
   }
 
   private notNested(what: string): void {
-    if (this.nested) fail("Usage", `${what} inside a table or vector that isn't finished`)
+    if (this.vtable !== undefined || this.vectorLength !== undefined) {
+      fail("Usage", `${what} inside a table or vector that isn't finished`)
+    }
   }
 
   /** Writes a string (UTF-8, or the given bytes) and returns its offset. */
@@ -831,7 +831,6 @@ export class Builder {
 
   /** Like {@link createString}, but writes each distinct string once. */
   createSharedString(value: string): Offset {
-    this.sharedStrings ??= new Map()
     const existing = this.sharedStrings.get(value)
     if (existing !== undefined) return existing
     const offset = this.createString(value)
@@ -859,7 +858,6 @@ export class Builder {
     if (!Number.isInteger(length) || length < 0 || length > 0xffffffff) {
       fail("Usage", `a vector length is a 32-bit unsigned integer, got ${length}`)
     }
-    this.nested = true
     this.vectorLength = length
     this.prep(4, elementSize * length)
     this.prep(alignment, elementSize * length)
@@ -867,9 +865,10 @@ export class Builder {
 
   /** Finishes the vector started with {@link startVector} and returns its offset. */
   endVector(): Offset {
-    if (!this.nested || this.vtable !== undefined) fail("Usage", "endVector without startVector")
-    this.nested = false
-    this.view.setUint32(this.head -= 4, this.vectorLength, true)
+    const length = this.vectorLength
+    if (length === undefined) fail("Usage", "endVector without startVector")
+    this.vectorLength = undefined
+    this.view.setUint32(this.head -= 4, length, true)
     return this.offset
   }
 
@@ -886,17 +885,16 @@ export class Builder {
     if (!Number.isInteger(fields) || fields < 0 || fields > MAX_SLOTS) {
       fail("Usage", `a table has 0 to ${MAX_SLOTS} slots, got ${fields}`)
     }
-    this.nested = true
     this.vtable = new Array(fields).fill(0)
     this.objectEnd = this.offset
   }
 
   private slot(slot: number): void {
     if (this.vtable === undefined) fail("Usage", "a field outside startTable/endTable")
-    if (!Number.isInteger(slot) || slot < 0 || slot >= this.vtable!.length) {
-      fail("Usage", `slot ${slot} is outside the table's ${this.vtable!.length} slots`)
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.vtable.length) {
+      fail("Usage", `slot ${slot} is outside the table's ${this.vtable.length} slots`)
     }
-    this.vtable![slot] = this.offset
+    this.vtable[slot] = this.offset
   }
 
   /** Adds a `bool` field; skipped when equal to `fallback`. */
@@ -1001,31 +999,28 @@ export class Builder {
   /** Finishes the table started with {@link startTable} and returns its offset. */
   endTable(): Offset {
     const vtable = this.vtable
-    if (vtable === undefined) return fail("Usage", "endTable without startTable")
+    if (vtable === undefined) fail("Usage", "endTable without startTable")
     // Placeholder for the offset to the vtable.
     this.addInt32(0)
     const object = this.offset
-    let fields = vtable.length
-    while (fields > 0 && vtable[fields - 1] === 0) fields--
     const objectSize = object - this.objectEnd
     if (objectSize > 0xffff) {
       fail("Usage", `a table's inline data is ${objectSize} bytes, over the 65535 a vtable can address`)
     }
-    const entries = Array.from({ length: fields }, (_, i) => (vtable[i] === 0 ? 0 : object - vtable[i]))
+    // Trailing absent fields are left out of the vtable.
+    while (vtable.length > 0 && vtable[vtable.length - 1] === 0) vtable.pop()
+    const entries = vtable.map((at) => (at === 0 ? 0 : object - at))
     const key = `${objectSize}:${entries.join(",")}`
-    const existing = this.vtables.get(key)
-    if (existing === undefined) {
-      for (let i = fields - 1; i >= 0; i--) this.addInt16(entries[i])
+    let shared = this.vtables.get(key)
+    if (shared === undefined) {
+      for (let i = entries.length - 1; i >= 0; i--) this.addInt16(entries[i])
       this.addInt16(objectSize)
-      this.addInt16((fields + 2) * 2)
-      this.view.setInt32(this.bytes.length - object, this.offset - object, true)
-      this.vtables.set(key, this.offset)
-    } else {
-      this.head = this.bytes.length - object
-      this.view.setInt32(this.head, existing - object, true)
+      this.addInt16((entries.length + 2) * 2)
+      shared = this.offset
+      this.vtables.set(key, shared)
     }
+    this.view.setInt32(this.bytes.length - object, shared - object, true)
     this.vtable = undefined
-    this.nested = false
     return object
   }
 
