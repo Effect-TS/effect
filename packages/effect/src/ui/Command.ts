@@ -1298,9 +1298,8 @@ export const as: {
  *
  * **When to use**
  *
- * Use for fire-and-forget work whose result the component doesn't need, such
- * as a navigation or a focus, instead of adding a no-op variant to the
- * component's Message. It's shorthand for `Command.as(Component.noop)`.
+ * Use when a Command's result doesn't matter to the component, such as a
+ * navigation or a focus, instead of adding a no-op variant to its Message. It's shorthand for `Command.as(Component.noop)`.
  *
  * **Details**
  *

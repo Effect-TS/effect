@@ -311,6 +311,19 @@ describe("Html", () => {
     }
   })
 
+  it("a rejected onMount result shows View.MountHint", () => {
+    const div = new Html.Element<Msg>("div")
+    const input = new Html.VoidElement<Msg>("input")
+    // @ts-expect-error A mount with nothing to send ends with Effect.as(Component.noop)
+    div.onMount("void", () => Effect.void)
+    // @ts-expect-error A mount with nothing to send ends with Effect.as(Component.noop)
+    div.onMount("void", 1, () => Effect.void)
+    // @ts-expect-error A mount with nothing to send ends with Effect.as(Component.noop)
+    input.onMount("void", () => Effect.void)
+    // @ts-expect-error A mount with nothing to send ends with Effect.as(Component.noop)
+    input.onMount("void", 1, () => Effect.void)
+  })
+
   it("View.Input keeps what a child requires", () => {
     const PageDef = Component.define({ name: "Page", model: Schema.Null, message: Msg, elements: Html })
     const ticker = {} as View.Node<Msg, Clock>

@@ -167,4 +167,48 @@ describe("Component.noop", () => {
     })
     Story.make(Silent, {}, (s) => s.resolve(Quiet, Component.noop).expectNone())
   })
+
+  it.effect("a detached run that ends after its instance closed doesn't map its result and isn't silent", () =>
+    run(Effect.gen(function*() {
+      class Slow extends Command.Service<Slow>()(
+        "test/Slow",
+        { args: {}, invalidates: () => [] },
+        Effect.succeed(() => Effect.sleep("1 second"))
+      ) {}
+      let mapped = 0
+      const Child = Component.define({ name: "Child", model: Schema.Null, message: Schema.Never }).make({
+        init: ($) =>
+          $.set(null).run(
+            Slow.make({}).pipe(Command.map(() => {
+              mapped++
+              return Component.noop
+            }))
+          ),
+        update: (model) => model,
+        view: (_, h) => h.text("child")
+      })
+      const Close = Schema.TaggedUnion({ Close: {} })
+      // The service is provided above the child, so its run outlives the child.
+      const Parent = Component.provide(
+        Component.define({ name: "Parent", model: Schema.Boolean, message: Close }).make({
+          init: () => true,
+          update: () => false,
+          view: (open, h) => h.el("div", [open ? h.child(Child, { key: "child", props: {} }) : null])
+        }),
+        Slow.layer
+      )
+      const root = yield* TestHost.mount(Parent, {})
+      yield* TestHost.settle
+      root.send(Close.make({ _tag: "Close" }))
+      yield* TestHost.settle
+      assert.deepStrictEqual(root.pending().map((entry) => entry._tag === "Command" && entry.detached), [true])
+      yield* TestClock.adjust("1 second")
+      yield* TestHost.settle
+      assert.deepStrictEqual(root.pending(), [])
+      assert.strictEqual(mapped, 0)
+      const [entry] = ended(root)
+      assert.deepStrictEqual([entry.name, entry.detached, entry.silent], ["test/Slow", true, undefined])
+      assert.strictEqual(typeof entry.spanId, "string")
+      assert.strictEqual(typeof entry.traceId, "string")
+    })))
 })

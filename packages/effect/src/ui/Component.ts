@@ -133,9 +133,9 @@ export interface Noop {
  *
  * **When to use**
  *
- * Return it from a Command body, a `Command.map` mapper, a `Command.match`
- * branch or an `onMount` Effect when there's nothing to tell the component,
- * instead of adding a no-op variant to its Message. `Command.asNoop` is
+ * Use as the result of a Command body, a `Command.map` mapper, a
+ * `Command.match` branch or an `onMount` Effect when there's nothing to tell
+ * the component, instead of adding a no-op variant to its Message. `Command.asNoop` is
  * shorthand for `Command.as(Component.noop)`.
  *
  * **Details**
