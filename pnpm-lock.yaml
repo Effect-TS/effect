@@ -220,6 +220,9 @@ importers:
       '@effect/sql-sqlite-wasm':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-wasm
+      '@effect/sql-trino':
+        specifier: workspace:*
+        version: link:../packages/sql/trino
       '@effect/vitest':
         specifier: workspace:*
         version: link:../packages/vitest
@@ -707,6 +710,15 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/sql/trino:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+      testcontainers:
+        specifier: ^12.2.1
+        version: 12.2.1(supports-color@10.2.2)
+
   packages/tools/ai-codegen:
     dependencies:
       '@effect/openapi-generator':
@@ -1100,6 +1112,9 @@ importers:
       '@effect/sql-sqlite-wasm':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-wasm
+      '@effect/sql-trino':
+        specifier: workspace:*
+        version: link:../packages/sql/trino
       effect:
         specifier: workspace:*
         version: link:../packages/effect
@@ -1145,6 +1160,9 @@ importers:
       '@effect/sql-sqlite-wasm':
         specifier: workspace:*
         version: link:../packages/sql/sqlite-wasm
+      '@effect/sql-trino':
+        specifier: workspace:*
+        version: link:../packages/sql/trino
       effect:
         specifier: workspace:*
         version: link:../packages/effect

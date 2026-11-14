@@ -77,7 +77,8 @@ describe("ClickhouseClient", { concurrent: false }, () => {
         pg: () => "pg",
         mysql: () => "mysql",
         mssql: () => "mssql",
-        clickhouse: () => "clickhouse"
+        clickhouse: () => "clickhouse",
+        trino: () => "trino"
       }),
       "clickhouse"
     )

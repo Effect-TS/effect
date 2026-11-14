@@ -219,6 +219,23 @@ export default defineConfig({
       ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", isNode || isDeno),
       ...project("@effect/sql-sqlite-react-native", "packages/sql/sqlite-react-native"),
       ...project("@effect/sql-sqlite-wasm", "packages/sql/sqlite-wasm"),
+      // One Trino coordinator serves every integration suite, started once per run, so the JVM starts once.
+      ...project(
+        "@effect/sql-trino",
+        "packages/sql/trino",
+        true,
+        integrationTestsEnabled
+          ? {
+            test: {
+              globalSetup: [path.join(import.meta.dirname, "packages/sql/trino/test/globalSetup.ts")],
+              fileParallelism: false,
+              sequence: {
+                groupOrder: 2
+              }
+            }
+          }
+          : {}
+      ),
       ...project("@effect/ai-codegen", "packages/tools/ai-codegen", isNode),
       ...project("@effect/api-diff", "packages/tools/api-diff"),
       ...project("@effect/bundle", "packages/tools/bundle"),

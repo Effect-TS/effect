@@ -17,6 +17,7 @@
     "@effect/sql-sqlite-do": "workspace:*",
     "@effect/sql-sqlite-node": "workspace:*",
     "@effect/sql-sqlite-react-native": "workspace:*",
-    "@effect/sql-sqlite-wasm": "workspace:*"
+    "@effect/sql-sqlite-wasm": "workspace:*",
+    "@effect/sql-trino": "workspace:*"
   }
 }
