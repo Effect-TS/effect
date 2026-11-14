@@ -1,5 +1,71 @@
 # effect
 
+## 4.1.5
+
+### Patch Changes
+
+- [#10639](https://github.com/Effect-TS/effect/pull/10639) [`3e2030b`](https://github.com/Effect-TS/effect/commit/3e2030b43e86a60113f2f32671076ff3b1d84ce4) Thanks @gcanti! - Report unsupported regex patterns and their schema paths when Arbitrary sampling or property checking exhausts its discard budget.
+  
+  When constructing `Arbitrary.SampleError` or `Arbitrary.Exhausted` values, include the required `diagnostics` array; use `[]` when there are no diagnostics.
+
+- [#10401](https://github.com/Effect-TS/effect/pull/10401) [`f9f5f9d`](https://github.com/Effect-TS/effect/commit/f9f5f9de9431a6ac47b249a443ba999c67c35ac2) Thanks @fubhy! - Shrink `Arbitrary` string counterexamples by deleting characters anywhere, and defer shrinking work until a property fails. Existing string replay tokens may need to be recorded again.
+
+- [#10557](https://github.com/Effect-TS/effect/pull/10557) [`ddd142f`](https://github.com/Effect-TS/effect/commit/ddd142f75ac67d3f77ebf5dfe54fc20fd1773069) Thanks @fubhy! - Add `Base64.encodeUnpadded` for standard Base64 without `=` padding, and `Base64.decodeLenient` for input in either Base64 alphabet, with or without padding.
+
+- [#10555](https://github.com/Effect-TS/effect/pull/10555) [`2bd41fe`](https://github.com/Effect-TS/effect/commit/2bd41fe10f14f3b99b08fba0bfe4755fd40952fe) Thanks @filipfalcon! - Add `BigInt.nthRoot` for integer n-th roots and `Rational.nthRoot` for exact n-th roots, each with a `nthRootUnsafe` variant.
+
+- [#10601](https://github.com/Effect-TS/effect/pull/10601) [`36e335a`](https://github.com/Effect-TS/effect/commit/36e335a520db6e94efde0d951f34cbb99b56e7ce) Thanks @filipfalcon! - Speed up `BigInt.sqrt` and `BigInt.sqrtUnsafe` on large inputs.
+
+- [#10562](https://github.com/Effect-TS/effect/pull/10562) [`cda1466`](https://github.com/Effect-TS/effect/commit/cda1466a5a3bdb43b3ff5c7e465b1e605e79deb7) Thanks @asssslay! - Fix `DateTime.make` rejecting date strings that end in `UT`, `UTC` or a US time zone abbreviation such as `PDT`.
+
+- [#10583](https://github.com/Effect-TS/effect/pull/10583) [`19c76ab`](https://github.com/Effect-TS/effect/commit/19c76abd6c31179a00b98c697a4660a1019abfc3) Thanks @brandon-julio-t! - Fix `Atom.searchParam` overwriting the restored URL when Back or Forward is pressed before a debounced write flushes.
+
+- [#10585](https://github.com/Effect-TS/effect/pull/10585) [`c282e64`](https://github.com/Effect-TS/effect/commit/c282e6480e90fb0b15632775191b9c37a9e8669d) Thanks @tylergibbs1! - Fix an interrupted fiber losing its exit, such as a finalizer defect, when a child fiber does not stop immediately.
+
+- [#10619](https://github.com/Effect-TS/effect/pull/10619) [`77fa72a`](https://github.com/Effect-TS/effect/commit/77fa72ae50488a3ce393c3e90f685d90072f1dab) Thanks @effect-bot! - Fix slow `FindMyWay` and `HttpRouter` lookups for request paths containing many encoded percent signs.
+
+- [#10627](https://github.com/Effect-TS/effect/pull/10627) [`c49caf7`](https://github.com/Effect-TS/effect/commit/c49caf7ab81dcd2771ff30e91810aeb0824489ed) Thanks @effect-bot! - Fix `HttpClient` sending invalid trace headers when tracing is disabled with `Effect.withTracerEnabled(false)`.
+
+- [#10567](https://github.com/Effect-TS/effect/pull/10567) [`7e155df`](https://github.com/Effect-TS/effect/commit/7e155df14693b80bbddaa685adeaa32aa5c31c42) Thanks @effect-bot! - Fix `ConfigProvider.fromEnv()` capturing the environment when called instead of at its first lookup, which ignored variables set after import.
+  
+  Variables removed before the first lookup are no longer captured; use `ConfigProvider.fromEnvRecord({ ...process.env })` to snapshot at a chosen moment.
+
+- [#10558](https://github.com/Effect-TS/effect/pull/10558) [`7f2919f`](https://github.com/Effect-TS/effect/commit/7f2919f9dac4a17a4cdc77da818887e3f9bbff32) Thanks @Ishkirat-Singh! - Fix `Prompt.Int` and `Prompt.Number` dropping the minus sign when a zero follows it, so typing `-0.05` no longer submits `0.05`.
+
+- [#10556](https://github.com/Effect-TS/effect/pull/10556) [`8a4ef37`](https://github.com/Effect-TS/effect/commit/8a4ef37ec40cd7431001cf67993a887f9174b942) Thanks @dv-waynehaffenden! - Fix OTLP exporters retaining a background fiber when `exportInterval` is infinite.
+
+- [#10543](https://github.com/Effect-TS/effect/pull/10543) [`acfbe1b`](https://github.com/Effect-TS/effect/commit/acfbe1b19d0a4015af9bc9a5ad243fb104daf109) Thanks @effect-bot! - Fix `Pool.makeWithTTL` usage-based expiration retaining idle excess resources beyond their configured time to live.
+
+- [#10554](https://github.com/Effect-TS/effect/pull/10554) [`5662efa`](https://github.com/Effect-TS/effect/commit/5662efac6c96a80f89625355b2468abfb9c8caaa) Thanks @fubhy! - Add `effect/protobuf` with `ProtobufReader` and `ProtobufWriter`, a Schema-independent reader and writer of the protobuf wire format, and speed up OTLP protobuf serialization, which now writes log record trace and span ids given as a `Uint8Array` as those bytes instead of corrupting them.
+
+- [#10616](https://github.com/Effect-TS/effect/pull/10616) [`f18320b`](https://github.com/Effect-TS/effect/commit/f18320b2b84f77a197037fdccaf41808d8c82d4b) Thanks @effect-bot! - Add `useSemicolonDelimiter` and `decodeStaticPath` options to `FindMyWay.RouterConfig`, and a `FindMyWay.strictConfig` preset that turns off path normalization and matches static route text literally.
+
+- [#10551](https://github.com/Effect-TS/effect/pull/10551) [`3fcc7fa`](https://github.com/Effect-TS/effect/commit/3fcc7fa7373a42e29786970a340a06cb587fd7c7) Thanks @fubhy! - Speed up failed `SchemaBinary` decoding and encoding.
+
+- [#10569](https://github.com/Effect-TS/effect/pull/10569) [`2402fe3`](https://github.com/Effect-TS/effect/commit/2402fe3baf815836bd0ca75035b51b209b46fd6b) Thanks @gcanti! - Add the experimental `Codegen.Module` builder and fix recursive initialization, name collisions, generated types, and symbol identity in schema and OpenAPI generation.
+  
+  Remove `SchemaRepresentation.toCodeDocument`, `CodeDocument`, `Artifact`, and `makeCode`. Generate schema source with `Codegen.Module.addSchemas` and `print`; construct `{ runtime, Type }` directly instead of calling `makeCode`.
+  
+  Custom `toCode` callbacks must interpolate supplied argument strings unchanged and return supported schema/type expressions. Move unsupported code, such as functions with local declarations, into imported helpers.
+  
+  The `@effect/openapi-generator/OpenApiTransformer` module is removed. Use the `OpenApiGenerator` service to generate from an OpenAPI spec, selecting the output with `format`.
+  
+  Some nullable OpenAI objects, such as `Batch.errors`, now strip undeclared fields and no longer expose index signatures; use their declared fields instead.
+
+- [#10595](https://github.com/Effect-TS/effect/pull/10595) [`d28a692`](https://github.com/Effect-TS/effect/commit/d28a69209beecbdab98e092e4986b32a64d6b8f2) Thanks @RhysSullivan! - Fix `Semaphore` taking quadratic time to drain a long queue of equally sized permit requests.
+
+- [#10563](https://github.com/Effect-TS/effect/pull/10563) [`7ed0880`](https://github.com/Effect-TS/effect/commit/7ed08807b6d6bbf49e38e1100572bcf37810cc5a) Thanks @asssslay! - Fix SQL Server updates failing in repositories created by `SqlModel.makeRepository`.
+
+- [#10561](https://github.com/Effect-TS/effect/pull/10561) [`101e58b`](https://github.com/Effect-TS/effect/commit/101e58b7fa08b97eb9bf41e2ed7512161b441f0c) Thanks @asssslay! - Fix `Stream.filterEffect` predicate indices restarting at each chunk instead of counting across the whole stream.
+
+- [#10549](https://github.com/Effect-TS/effect/pull/10549) [`fc69670`](https://github.com/Effect-TS/effect/commit/fc69670972df62cc3aca014c9cbf32a783d40e93) Thanks @fubhy! - Add `String.isWellFormed` and `String.toWellFormed`, which check for and replace unpaired UTF-16 surrogates with the native ES2024 methods when the runtime has them.
+
+- [#10576](https://github.com/Effect-TS/effect/pull/10576) [`3ec2199`](https://github.com/Effect-TS/effect/commit/3ec2199688bc2d3c5d85fce5132cc3d1eb4a1663) Thanks @jasonkuhrt! - Accept `Schema.Enum` parts in `Schema.TemplateLiteral` and `Schema.TemplateLiteralParser`, which threw "Invalid TemplateLiteral part Enum" although their types accepted them.
+
+- [#10517](https://github.com/Effect-TS/effect/pull/10517) [`88d028e`](https://github.com/Effect-TS/effect/commit/88d028e4ec6a8c7aafedeba9237d0981802c369c) Thanks @fubhy! - Add `TextDiff.hunks`, which groups a line diff into `diff -u` style hunks as data, optionally with the ranges that differ within changed lines.
+
+- [#10574](https://github.com/Effect-TS/effect/pull/10574) [`ff34753`](https://github.com/Effect-TS/effect/commit/ff34753c7b7645d86ecf8cc05ceb79cd64d097c3) Thanks @jpowersdev! - Fix `Xml.decode` to fail with a `Syntax` error instead of `Unsupported` when an encoding declaration contradicts the bytes, and to reject a US-ASCII declaration after a UTF-8 byte order mark instead of accepting it.
+
 ## 4.1.4
 
 ### Patch Changes
