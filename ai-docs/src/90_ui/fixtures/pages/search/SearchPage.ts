@@ -16,11 +16,8 @@ const noteUrl = (id: string) => AppRoute.print(AppRoute.make({ _tag: "Note", par
 export const SearchPageMessage = Schema.TaggedUnion({
   Typed: { text: Schema.String },
   Sorted: { sort: NoteSort },
-  PageChosen: { page: Schema.Number },
-  Patched: {}
+  PageChosen: { page: Schema.Number }
 })
-
-const patched = Command.map(() => SearchPageMessage.make({ _tag: "Patched" }))
 
 export const SearchPageNoDeps = Component.define({
   name: "SearchPage",
@@ -47,24 +44,26 @@ export const SearchPageNoDeps = Component.define({
   }
 }).make({
   init: () => ({}),
-  update: (model, message, $) =>
+  update: (_model, message, $) =>
     SearchPageMessage.match(message, {
       // `patchQuery` writes some of the query and keeps the rest. It
       // replaces the history entry by default, so typing doesn't fill the
       // back button. `undefined` removes a param or resets it to its
-      // default, so a new search starts on page 1.
+      // default, so a new search starts on page 1. The new route comes back
+      // as props, through the root, so the Command sends nothing.
       Typed: ({ text }) =>
-        $.run(Router.patchQuery(AppRoute, $.props.route, { q: text || undefined, page: undefined }).pipe(patched)),
-      Sorted: ({ sort }) => $.run(Router.patchQuery(AppRoute, $.props.route, { sort, page: undefined }).pipe(patched)),
+        $.run(
+          Router.patchQuery(AppRoute, $.props.route, { q: text || undefined, page: undefined }).pipe(Command.asNoop)
+        ),
+      Sorted: ({ sort }) =>
+        $.run(Router.patchQuery(AppRoute, $.props.route, { sort, page: undefined }).pipe(Command.asNoop)),
       // A page change is worth a history entry, so it pushes, and it
       // scrolls to the top like a new page would. Unlike a link to
       // `?page=2`, it isn't announced and focus stays on the button.
       PageChosen: ({ page }) =>
         $.run(
-          Router.patchQuery(AppRoute, $.props.route, { page }, { history: "push", scroll: true }).pipe(patched)
-        ),
-      // The new route comes back as props, through the root.
-      Patched: () => model
+          Router.patchQuery(AppRoute, $.props.route, { page }, { history: "push", scroll: true }).pipe(Command.asNoop)
+        )
     }),
   head: () => [Head.title("Search notes")],
   view: (_model, h) => {

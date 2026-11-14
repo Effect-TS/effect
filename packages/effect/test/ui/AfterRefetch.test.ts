@@ -23,6 +23,8 @@ const makeApp = (options?: {
   readonly chain?: string | undefined
   /** How long the run's Scope takes to close after the body: a finalizer. */
   readonly cleanup?: Duration.Input | undefined
+  /** A rename to one of these names ends with no message, through a value made apart from `Component.noop`. */
+  readonly silent?: ReadonlyArray<string> | undefined
 }) => {
   const db = {
     names: new Map<string, string>([["1", "Ann"], ["2", "Bea"]]),
@@ -82,7 +84,11 @@ const makeApp = (options?: {
   const rename = (id: string, name: string) => {
     const matched = RenameUser.make({ id, name }).pipe(
       Command.match({
-        onSuccess: (name) => CardMessage.make({ _tag: "Renamed", name }),
+        onSuccess: (name) =>
+          options?.silent?.includes(name)
+            // Made here, not `Component.noop`: the runtime recognises it by its type id, not by identity.
+            ? { [Component.NoopTypeId]: Component.NoopTypeId }
+            : CardMessage.make({ _tag: "Renamed", name }),
         onFailure: () => CardMessage.make({ _tag: "Failed", name })
       })
     )
@@ -184,7 +190,8 @@ const commandLog = (root: Root) =>
           _tag: entry._tag,
           ...(entry.waitEnded === undefined
             ? undefined
-            : { waitEnded: entry.waitEnded, outstanding: entry.outstanding })
+            : { waitEnded: entry.waitEnded, outstanding: entry.outstanding }),
+          ...(entry._tag === "CommandEnded" && entry.silent === true ? { silent: true } : undefined)
         }]
       case "CommandDropped":
         return [{ _tag: entry._tag, reason: entry.reason }]
@@ -570,6 +577,87 @@ describe("Command.afterRefetch", () => {
           { _tag: "CommandEnded", waitEnded: "settled", outstanding: [] },
           { _tag: "CommandEnded", waitEnded: "settled", outstanding: [] }
         ])
+      })
+    )
+  })
+
+  it.effect("a silent run stays running until the refetch settles, then ends with no message", () => {
+    const app = makeApp({ silent: ["Bob"] })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        renameOn(root, app, "Bob")
+        yield* tick
+        assert.strictEqual(root.text(), "a=Bob~… saving;")
+        assert.deepStrictEqual(statuses(root), ["awaiting"])
+        app.order.length = 0
+        yield* tick
+        assert.deepStrictEqual(app.order, ["update a UserChanged", "view a=Bob;"])
+        assert.deepStrictEqual(statuses(root), [])
+        assert.deepStrictEqual(commandLog(root), [
+          { _tag: "CommandAwaiting", entries: [user1] },
+          { _tag: "CommandEnded", waitEnded: "settled", outstanding: [], silent: true }
+        ])
+      })
+    )
+  })
+
+  it.effect("queue: a silent run held behind its group keeps issue order and sends nothing", () => {
+    const app = makeApp({ mode: "queue", silent: ["Bob"] })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        renameOn(root, app, "Bob")
+        renameOn(root, app, "Cy")
+        renameOn(root, app, "Dan")
+        yield* tick
+        yield* tick
+        yield* tick
+        assert.deepStrictEqual(statuses(root), ["awaiting", "awaiting", "awaiting"])
+        app.order.length = 0
+        yield* tick
+        assert.deepStrictEqual(app.order.filter((line) => line.startsWith("update")), [
+          "update a UserChanged",
+          "update a Renamed Cy",
+          "update a Renamed Dan"
+        ])
+        assert.strictEqual(root.text(), "a=Dan [Cy,Dan];")
+        assert.deepStrictEqual(commandLog(root).filter((entry) => entry._tag === "CommandEnded"), [
+          { _tag: "CommandEnded", waitEnded: "settled", outstanding: [], silent: true },
+          { _tag: "CommandEnded", waitEnded: "settled", outstanding: [] },
+          { _tag: "CommandEnded", waitEnded: "settled", outstanding: [] }
+        ])
+      })
+    )
+  })
+
+  it.effect("switch cutting a waiting silent run delivers nothing inside the update that cut it", () => {
+    const app = makeApp({ mode: "switch", silent: ["Bob"] })
+    return run(
+      app.layer,
+      Effect.gen(function*() {
+        const root = yield* TestHost.mount(app.Card, { id: "1", tag: "a" })
+        yield* tick
+        app.db.delay.set("1", 1000)
+        renameOn(root, app, "Bob")
+        yield* tick
+        app.order.length = 0
+        renameOn(root, app, "Cy")
+        assert.deepStrictEqual(app.order.filter((line) => line.startsWith("update")), [
+          "update a Rename Cy",
+          "update a UserChanged"
+        ])
+        assert.deepStrictEqual(commandLog(root), [
+          { _tag: "CommandAwaiting", entries: [user1] },
+          { _tag: "CommandEnded", waitEnded: "switch", outstanding: [user1], silent: true }
+        ])
+        yield* tick
+        yield* TestClock.adjust("1 second")
+        assert.strictEqual(root.text(), "a=Cy [Cy];")
       })
     )
   })

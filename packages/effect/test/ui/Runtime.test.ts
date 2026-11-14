@@ -2543,14 +2543,15 @@ describe("Runtime", () => {
         assert.strictEqual(root.text(), "waiting")
       })))
 
-    it.effect("a mount that ends with undefined sends nothing and logs no update", () =>
+    it.effect("a mount that ends with Component.noop sends nothing and logs no update", () =>
       Effect.gen(function*() {
         let ran = 0
         const Quiet = Component.define({ name: "Quiet", model: Schema.Null, message: Schema.Never, elements: Tiny })
           .make({
             init: () => null,
             update: (model) => model,
-            view: (_, h) => h.box(h.field.onMount("focus", () => Effect.sync(() => void ran++)))
+            view: (_, h) =>
+              h.box(h.field.onMount("focus", () => Effect.sync(() => void ran++).pipe(Effect.as(Component.noop))))
           })
         const root = yield* TestHost.mount(Quiet, {})
         yield* TestHost.settle
@@ -2589,6 +2590,7 @@ describe("Runtime", () => {
                     runs.push(model.n)
                     yield* Effect.addFinalizer(() => Effect.sync(() => closed++))
                     yield* Stream.runForEach(changes, (n) => Effect.sync(() => seen.push(n)))
+                    return Component.noop
                   }))
                 : null
             )
@@ -2637,7 +2639,7 @@ describe("Runtime", () => {
                     if (value === 0) {
                       yield* Deferred.await(gate)
                     }
-                  })))
+                  })).pipe(Effect.as(Component.noop)))
           })
         const root = yield* TestHost.mount(Chart, {})
         yield* TestHost.settle

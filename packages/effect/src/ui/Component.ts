@@ -69,6 +69,7 @@ import type * as Types from "../Types.ts"
 import * as Command from "./Command.ts"
 import type * as Head from "./Head.ts"
 import * as loaders from "./internal/loaders.ts"
+import * as internalNoop from "./internal/noop.ts"
 import * as childRef from "./internal/ref.ts"
 import type * as Subscription from "./Subscription.ts"
 import * as View from "./View.ts"
@@ -90,6 +91,107 @@ export const TypeId = "~effect/ui/Component" as const
  * @since 4.1.5
  */
 export type TypeId = typeof TypeId
+
+/**
+ * Identifies `Component.noop`.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export const NoopTypeId = "~effect/ui/Component/Noop" as const
+
+/**
+ * Identifies `Component.noop`.
+ *
+ * @stability experimental
+ * @category type ids
+ * @since 4.1.5
+ */
+export type NoopTypeId = typeof NoopTypeId
+
+/**
+ * The type of `Component.noop`, the message value that sends nothing.
+ *
+ * **Details**
+ *
+ * An opaque interface rather than a `unique symbol`: TypeScript widens a
+ * unique symbol to `symbol` when it's the inferred return type of a function,
+ * so a Command body such as `Effect.map(effect, () => Component.noop)` would
+ * be rejected. An interface doesn't widen.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface Noop {
+  readonly [NoopTypeId]: NoopTypeId
+}
+
+/**
+ * The message value that sends nothing.
+ *
+ * **When to use**
+ *
+ * Use as the result of a Command body, a `Command.map` mapper, a
+ * `Command.match` branch or an `onMount` Effect when there's nothing to tell
+ * the component, instead of adding a no-op variant to its Message. `Command.asNoop` is
+ * shorthand for `Command.as(Component.noop)`.
+ *
+ * **Details**
+ *
+ * A frozen object whose only property is its type id. The runtime recognises
+ * it with `Component.isNoop`, by the type id and not by identity, so two
+ * copies of `effect` in one bundle agree on it. When the final result of a
+ * Command run, after every mapper, or of a mount is `Component.noop`, the
+ * runtime sends nothing and logs no `Update`, and `CommandEnded` records the
+ * run as `silent`. `$.run` takes a Command whose result is the Message,
+ * `Component.Noop` or a union of the two, so a component whose Message is
+ * `Schema.Never` can run one.
+ *
+ * **Gotchas**
+ *
+ * It's a message value, not a Command: `$.run(Component.noop)` doesn't
+ * compile. Test for it with `Component.isNoop`, never `===`: the runtime
+ * doesn't compare by identity, and `!==` doesn't narrow a union. View
+ * handlers keep `undefined` for "no message".
+ *
+ * **Example** (Silent on success, a message on failure)
+ *
+ * ```ts import.meta.vitest
+ * import { Command, Component } from "effect/ui"
+ * import { Effect, Schema } from "effect"
+ *
+ * const Message = Schema.TaggedUnion({ DeleteFailed: { reason: Schema.String } })
+ *
+ * const Delete = Command.make("Delete", { args: { key: Schema.String } }, ({ key }) =>
+ *   (key === "" ? Effect.fail("empty key") : Effect.void).pipe(
+ *     Effect.as(Component.noop),
+ *     Effect.catch((reason) => Effect.succeed(Message.make({ _tag: "DeleteFailed", reason })))
+ *   ))
+ * ```
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const noop: Noop = internalNoop.noop
+
+/**
+ * Tells whether a value is `Component.noop`, by its type id.
+ *
+ * **When to use**
+ *
+ * Use to narrow a result typed `A | Component.Noop`, such as in a mapper over
+ * a Command that can be silent. `=== Component.noop` doesn't narrow the
+ * other branch, and misses a copy of the value made by another copy of
+ * `effect`.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.1.5
+ */
+export const isNoop: (u: unknown) => u is Noop = internalNoop.isNoop
 
 /**
  * Identifies a step.
@@ -119,7 +221,7 @@ export type StepTypeId = typeof StepTypeId
  */
 export interface Next<out Model, out Msg, out Events, out R = never> {
   readonly model: Model
-  readonly commands: ReadonlyArray<Command.Command<Msg, R>>
+  readonly commands: ReadonlyArray<Command.Command<Msg | Noop, R>>
   readonly events: ReadonlyArray<Events>
   /** The load mores and resets of list loaders `update` issued, in order. */
   readonly lists?: ReadonlyArray<ListIssue> | undefined
@@ -296,14 +398,14 @@ export interface ListIssue {
 export interface InitStep<in out Model, in out Msg, in out Events, out R = never> extends Pipeable.Pipeable {
   readonly [StepTypeId]: StepTypeId
   readonly model: Model
-  readonly commands: ReadonlyArray<Command.Command<Msg, R>>
+  readonly commands: ReadonlyArray<Command.Command<Msg | Noop, R>>
   readonly emitted: ReadonlyArray<Events>
   /** Replaces the Model. */
   set(model: Model): InitStep<Model, Msg, Events, R>
   /** Changes the Model with a function of the current one. */
   modify(f: (model: Model) => Model): InitStep<Model, Msg, Events, R>
   /** Runs Commands in this instance's Scope, as `Step.run` does. */
-  run<const C extends ReadonlyArray<Command.Command<Msg, any>>>(
+  run<const C extends ReadonlyArray<Command.Command<Msg | Noop, any>>>(
     ...commands: C
   ): InitStep<Model, Msg, Events, R | Command.Requirements<C[number]>>
   /** Reports to the parent. */
@@ -338,10 +440,10 @@ export interface Step<in out Model, in out Msg, in out Events, out R = never, L 
   modify(f: (model: Model) => Model): Step<Model, Msg, Events, R, L>
   /**
    * Runs Commands in this instance's Scope. Their results come back as
-   * messages, so a Command whose result isn't this component's message is
-   * rejected.
+   * messages, so a Command whose result isn't this component's message or
+   * `Component.noop` is rejected. A result of `Component.noop` sends nothing.
    */
-  run<const C extends ReadonlyArray<Command.Command<Msg, any>>>(
+  run<const C extends ReadonlyArray<Command.Command<Msg | Noop, any>>>(
     ...commands: C
   ): Step<Model, Msg, Events, R | Command.Requirements<C[number]>, L>
   /** Reports to the parent. */

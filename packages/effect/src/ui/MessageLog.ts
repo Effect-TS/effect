@@ -298,6 +298,12 @@ export interface SubscriptionChanged extends Base {
  * A Command run ended with a result, or was interrupted (by unmount, `switch`,
  * the interrupt Command or a handled Layer failure) and dispatched nothing.
  *
+ * **Details**
+ *
+ * `spanId` and `traceId` are the run's span, `undefined` when its span never
+ * began. They're here because a run that sends no message has no `Update`
+ * entry whose source would carry them.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -309,9 +315,23 @@ export interface CommandSettled extends Base {
   /**
    * Whether the run was detached: an Effect-shaped `Command.Service` run
    * outside `switch`, owned by its Layer build. When its instance was gone
-   * by then, its message was dropped, and this entry is all that reports it.
+   * by then, its result was discarded without being mapped, and this entry is
+   * all that reports it.
    */
   readonly detached: boolean
+  /** The run's span id, or `undefined` when its span never began. */
+  readonly spanId: string | undefined
+  /** The run's trace id, or `undefined` when its span never began. */
+  readonly traceId: string | undefined
+  /**
+   * On `CommandEnded` only: `true` when the run had at least one result (its
+   * Effect's result, each Stream element, a typed failure `onFailure` mapped)
+   * and every one was `Component.noop`, so it ended without a message by
+   * design. Absent when it sent any message, when a Stream ended with no
+   * elements, and when a detached run ended after its instance closed, since
+   * its result wasn't mapped.
+   */
+  readonly silent?: true | undefined
   /**
    * For a run issued with `Command.afterRefetch` that succeeded, how its wait
    * ended: `"settled"` when every awaited entry refetched, `"nothing"` when
@@ -683,6 +703,9 @@ export const Wire = Schema.Union([
     name: Schema.String,
     issued: IssuedWire,
     detached: Schema.Boolean,
+    spanId: Schema.NullOr(Schema.String),
+    traceId: Schema.NullOr(Schema.String),
+    silent: Schema.optionalKey(Schema.Literal(true)),
     waitEnded: Schema.optionalKey(Schema.Literals(["settled", "nothing", "budget", "switch", "interrupt", "closed"])),
     outstanding: Schema.optionalKey(Schema.Array(AwaitedEntryWire))
   }),
@@ -890,6 +913,9 @@ export const makeEncoder = (options?: {
             name: entry.name,
             issued: entry.issued,
             detached: entry.detached,
+            spanId: entry.spanId ?? null,
+            traceId: entry.traceId ?? null,
+            ...(entry.silent === true ? { silent: true as const } : undefined),
             ...(entry.waitEnded === undefined ? undefined : { waitEnded: entry.waitEnded }),
             ...(entry.outstanding === undefined ? undefined : { outstanding: entry.outstanding })
           }

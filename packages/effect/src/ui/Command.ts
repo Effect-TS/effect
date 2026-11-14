@@ -3,7 +3,9 @@
  *
  * `update` and `init` return Commands as data. The runtime runs each one and
  * feeds its result back to the instance as a message, so `update` stays pure
- * and a story test can read what was issued without running anything.
+ * and a story test can read what was issued without running anything. A
+ * Command with nothing to tell the component ends with `Component.noop`, or
+ * is piped through `Command.asNoop`, and sends nothing.
  *
  * Both constructors take a name, options with a required `args` Schema, and
  * a body that receives the args as one struct:
@@ -63,6 +65,8 @@ import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
+import type * as Component from "./Component.ts"
+import * as internalNoop from "./internal/noop.ts"
 import type * as Renderer from "./Renderer.ts"
 
 /**
@@ -1288,6 +1292,48 @@ export const as: {
   ) => Mapped<Issued<A, R, Source, K, SourceE>, B>
   <C extends Command<any, any>, B>(self: C, message: B): Mapped<C, B>
 } = dual(2, <A, R, B>(self: Command<A, R>, message: B): Command<B, R> => map(self, () => message))
+
+/**
+ * Makes a Command send nothing when it finishes.
+ *
+ * **When to use**
+ *
+ * Use when a Command's result doesn't matter to the component, such as a
+ * navigation or a focus, instead of adding a no-op variant to its Message. It's shorthand for `Command.as(Component.noop)`.
+ *
+ * **Details**
+ *
+ * Every result is replaced with `Component.noop`, so the run ends with no
+ * message and `CommandEnded` records it as `silent`. A Stream Command's
+ * elements are all silenced. It keeps the name, args, options, source type
+ * and requirements, like `as`, and leaves an `Interrupt` unchanged.
+ *
+ * **Gotchas**
+ *
+ * It takes issued Commands only, never an `Unmatched` one, so a typed failure
+ * can't be dropped by accident. After `match` it silences both channels: to
+ * keep the failure message, write
+ * `match({ onSuccess: () => Component.noop, onFailure })`. On a navigation
+ * Command it also hides a `"blocked"` outcome.
+ *
+ * **Example** (Tracking an event without a message)
+ *
+ * ```ts import.meta.vitest
+ * import { Command } from "effect/ui"
+ * import { Effect, Schema } from "effect"
+ *
+ * const Track = Command.make("Track", { args: { event: Schema.String } }, () => Effect.succeed(200))
+ *
+ * const track = Track({ event: "opened" }).pipe(Command.asNoop)
+ * ```
+ *
+ * @see as
+ * @stability experimental
+ * @category mapping
+ * @since 4.1.5
+ */
+export const asNoop = <C extends Command<any, any>>(self: C): Mapped<C, Component.Noop> =>
+  as(self, internalNoop.noop) as any
 
 /**
  * Maps both channels of a Command whose body can fail to messages.

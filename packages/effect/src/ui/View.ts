@@ -230,10 +230,21 @@ export interface Element<out Msg, out R = never> {
  */
 export interface Mount<out Msg> {
   readonly name: string
-  readonly run: (node: any, changes: Stream.Stream<any>) => Effect.Effect<Msg | void, never, any>
+  readonly run: (node: any, changes: Stream.Stream<any>) => Effect.Effect<Msg | Component.Noop, never, any>
   /** The input given to `onMount(name, input, run)`. */
   readonly input?: unknown
 }
+
+/**
+ * The text of the type error `onMount` gives for an Effect that doesn't end
+ * with a message or `Component.noop`, such as an `Effect<void>`.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export type MountHint =
+  "onMount's Effect ends with a message or Component.noop. A mount with nothing to send ends with Effect.as(Component.noop)"
 
 /**
  * A child component slot declared with `h.child`.
@@ -1044,8 +1055,9 @@ export class ElementBuilder<
   /**
    * Runs `run` with this element's host node after it's committed, in a Scope
    * that closes when the element goes and survives patches. A message it
-   * returns comes back to the component, and one that ends with `undefined`
-   * sends nothing. Its requirements join the component's.
+   * ends with comes back to the component, and one that ends with
+   * `Component.noop` sends nothing and logs no `Update`. Its requirements
+   * join the component's.
    *
    * **Details**
    *
@@ -1064,20 +1076,37 @@ export class ElementBuilder<
    * **Gotchas**
    *
    * A mount returns one message, so a running mount can't send messages as
-   * it goes. A mount that forgets `Effect.as(message)` still compiles, and
-   * sends nothing.
+   * it goes. Its Effect ends with a message or `Component.noop`: an
+   * `Effect<void>` doesn't compile, because a `void` type can hold any value,
+   * which would be sent as a message. End a mount with nothing to send with
+   * `Effect.as(Component.noop)`.
    *
    * @since 4.1.5
    */
   onMount<R2>(
     name: string,
-    run: (node: HostNode) => Effect.Effect<Msg | void, never, R2>
+    run: (node: HostNode) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag>
   onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): ElementBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  /**
+   * Rejects any other mount result, with a type error that says what to end
+   * it with.
+   *
+   * @since 4.1.5
+   */
+  onMount(
+    name: string,
+    run: (node: HostNode) => Effect.Effect<Msg | Component.Noop | MountHint, never, any>
+  ): never
+  onMount<I>(
+    name: string,
+    input: I,
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | MountHint, never, any>
+  ): never
   onMount(name: string, ...args: ReadonlyArray<any>): any {
     return withFields(this, {
       mount: args.length === 1 ? { name, run: args[0] } : { name, input: args[0], run: args[1] }
@@ -1111,13 +1140,28 @@ export class ContainerBuilder<
    */
   override onMount<R2>(
     name: string,
-    run: (node: HostNode) => Effect.Effect<Msg | void, never, R2>
+    run: (node: HostNode) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag>
   override onMount<I, R2>(
     name: string,
     input: I,
-    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | void, never, R2>
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop, never, R2>
   ): ContainerBuilder<Msg, R | R2, Handlers, HostNode, Tag>
+  /**
+   * Rejects any other mount result, with a type error that says what to end
+   * it with.
+   *
+   * @since 4.1.5
+   */
+  override onMount(
+    name: string,
+    run: (node: HostNode) => Effect.Effect<Msg | Component.Noop | MountHint, never, any>
+  ): never
+  override onMount<I>(
+    name: string,
+    input: I,
+    run: (node: HostNode, changes: Stream.Stream<I>) => Effect.Effect<Msg | Component.Noop | MountHint, never, any>
+  ): never
   override onMount(name: string, ...args: ReadonlyArray<any>): any {
     return (super.onMount as any)(name, ...args)
   }

@@ -880,7 +880,9 @@ export const formatLog = (entries: ReadonlyArray<MessageLog.Entry>): string =>
         return `${head} ${entry.key}`
       case "CommandEnded":
       case "CommandInterrupted":
-        return `${head} ${entry.name}${entry.waitEnded === undefined ? "" : ` (wait ${entry.waitEnded})`}`
+        return `${head} ${entry.name}${entry.silent === true ? " (silent)" : ""}${
+          entry.waitEnded === undefined ? "" : ` (wait ${entry.waitEnded})`
+        }`
       case "CommandAwaiting":
         return `${head} ${entry.name} on ${
           entry.entries.map((awaited) => `${awaited.read} ${awaited.logKey}`).join(", ")
