@@ -69,7 +69,8 @@ export const messageEnvelope = (
 
 export interface FakeCall {
   readonly method: string
-  readonly params: Record<string, string>
+  /** The form fields of a Web API call, or the JSON body of a `response_url` post with its `url`. */
+  readonly params: Record<string, any>
 }
 
 export type Answer =
@@ -93,10 +94,12 @@ export const makeFake = (
     if (Array.isArray(answer)) queues.set(method, [...answer])
   }
   const respond = (request: HttpClientRequest.HttpClientRequest, url: URL): Response | typeof hang => {
-    const method = url.pathname.replace(/^\/api\//, "")
+    // A command's `response_url` takes JSON, and is recorded as one method.
+    const responseUrl = url.pathname.startsWith("/commands/")
+    const method = responseUrl ? "response_url" : url.pathname.replace(/^\/api\//, "")
     const body = request.body
     const text = body._tag === "Uint8Array" ? body.text ?? new TextDecoder().decode(body.body) : ""
-    const params = Object.fromEntries(new URLSearchParams(text))
+    const params = responseUrl ? { url: url.href, ...JSON.parse(text) } : Object.fromEntries(new URLSearchParams(text))
     calls.push({ method, params })
     const entry = script[method]
     let answer: Answer
@@ -128,6 +131,30 @@ export const makeFake = (
 }
 
 export const authTest = { ok: true, user_id: botUserId, team_id: team }
+
+/** A command's `response_url`, on Slack's host as the adapter requires. */
+export const responseUrl = `https://hooks.slack.com/commands/${team}/1794600000/abcdef`
+
+/**
+ * A slash command's form fields, as Slack's docs list them. Built, not
+ * captured: no command has been recorded from Slack yet.
+ */
+export const commandFields = (command: string, text: string, overrides?: Record<string, string>) => ({
+  token: "verification",
+  team_id: team,
+  team_domain: "effectfulworkspace",
+  channel_id: channel,
+  channel_name: "scratch",
+  user_id: "U080YLYB277",
+  user_name: "tim",
+  command,
+  text,
+  api_app_id: appId,
+  is_enterprise_install: "false",
+  response_url: responseUrl,
+  trigger_id: "trigger-command",
+  ...overrides
+})
 
 /** `Chat`, `Registry` and the Slack adapter on a fake. */
 export const slackLayer = (fake: ReturnType<typeof makeFake>) =>

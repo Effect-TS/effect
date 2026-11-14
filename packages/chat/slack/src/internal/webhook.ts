@@ -99,6 +99,10 @@ export const readBody = (
 
 const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
+/** An own property, so a field such as `__proto__` stays a field. */
+const setOwn = (record: Record<string, string>, key: string, value: string) =>
+  Object.defineProperty(record, key, { value, enumerable: true, writable: true, configurable: true })
+
 const ok = HttpServerResponse.empty({ status: 200 })
 const status = (code: number) => HttpServerResponse.empty({ status: code })
 
@@ -195,11 +199,11 @@ const isLate = Schema.is(ChatInteraction.Late)
 
 /**
  * One Interactivity request: a form-encoded body whose `payload` field
- * holds the JSON.
+ * holds the JSON, or a slash command's, whose fields are the payload.
  *
  * - 413 past the body limit, 401 for a bad signature, 400 for a body with
- *   no `payload` that is a JSON object.
- * - A payload for another app is answered 200 and dropped.
+ *   neither a `payload` that is a JSON object nor a `command`.
+ * - A payload or command for another app is answered 200 and dropped.
  * - `Late` is answered 503, which keeps a modal open. Anything else is a
  *   200, with the body as JSON when there is one.
  *
@@ -213,12 +217,20 @@ export const handleInteractivity = (
     const body = yield* readBody(request, options.maxBodyBytes)
     if (Option.isNone(body)) return status(413)
     if (!(yield* options.verify(request.headers, body.value))) return status(401)
-    const field = new URLSearchParams(new TextDecoder().decode(body.value)).get("payload")
+    const form = new URLSearchParams(new TextDecoder().decode(body.value))
+    const field = form.get("payload")
     let payload: unknown
-    try {
-      payload = field === null ? undefined : JSON.parse(field)
-    } catch {
-      return status(400)
+    if (field === null && form.has("command")) {
+      // A slash command: its fields are the payload. A repeated field keeps its first value.
+      const fields: Record<string, string> = {}
+      for (const [key, value] of form) if (!Object.hasOwn(fields, key)) setOwn(fields, key, value)
+      payload = fields
+    } else {
+      try {
+        payload = field === null ? undefined : JSON.parse(field)
+      } catch {
+        return status(400)
+      }
     }
     if (!isObject(payload)) return status(400)
     if (payload.api_app_id !== options.appId) return ok

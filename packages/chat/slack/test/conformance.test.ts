@@ -1,5 +1,5 @@
 /**
- * The conformance rules for buttons, selects and modals, against the adapter
+ * The conformance rules for buttons, selects, modals and commands, against the adapter
  * over a stubbed Web API that keeps what was posted. Clicks and submits are
  * built from the posted blocks and the opened views and go through
  * `SlackChat.interaction`, so the answers are tested too.
@@ -18,9 +18,12 @@ const portable = (name: string) =>
   name.startsWith("modal/") ||
   name.startsWith("edit/") && name.endsWith("Actions") ||
   name.startsWith("descriptor/measure") && name.endsWith("Actions") ||
+  name.startsWith("command/") ||
   name === "unsupported/buttons" ||
   name === "unsupported/selects" ||
-  name === "unsupported/modals"
+  name === "unsupported/modals" ||
+  name === "unsupported/commands" ||
+  name === "unsupported/ephemeral"
 
 const options = {
   platform: "slack",
@@ -32,7 +35,7 @@ const options = {
 describe("conformance over the stubbed Web API", () => {
   const names = Object.keys(conformance({
     ...options,
-    interactions: { click: () => Effect.void, submit: () => Effect.void }
+    interactions: { click: () => Effect.void, submit: () => Effect.void, command: () => Effect.void }
   })).filter(portable)
 
   for (const name of names) {

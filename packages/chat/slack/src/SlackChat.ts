@@ -18,6 +18,17 @@
  *   path. With Socket Mode on, Slack sends interactions over the socket and
  *   never to the URL: pass each payload to `SlackChat.interaction` and send
  *   its result as the envelope ack's `payload`.
+ * - Slash commands need the `commands` scope. Declare each in the app
+ *   manifest under `features.slash_commands`, or in the app settings under
+ *   Slash Commands, with its Request URL set to `layerInteractivity`'s path.
+ *   The name, less its slash, is the id of the `ChatInteraction.command`,
+ *   and the manifest's description and usage hint are what Slack shows.
+ *   With Socket Mode on, commands come as `slash_commands` envelopes: pass
+ *   the envelope's `payload` to `SlackChat.interaction` in the same way.
+ * - A command can't be run inside a thread, so a command that acts on a
+ *   thread has to be told which one. Command names are shared by every app
+ *   in a workspace. "Escape channels, users, and links" is off by default;
+ *   with it on, `text` carries `<@U…|name>` and `<#C…|name>` tokens.
  * - Slack's stop button also needs the app declared as an agent with
  *   `features.agent_view` in the manifest. Slack documents that declaration
  *   as irreversible. Without it the adapter's session status calls answer
@@ -91,7 +102,9 @@ export interface SlackUser {
  * - `user` calls `users.info` each time. Nothing is cached.
  * - `interaction` is the entry for a decoded Interactivity `payload`
  *   (`block_actions` or `view_submission`), as `DiscordChat.interaction`
- *   is for Discord. It normalises with `normalizeInteraction`, calls the
+ *   is for Discord, and for a slash command: the form fields of its
+ *   request, or the `payload` of a `slash_commands` envelope, as one
+ *   object. It normalises with `normalizeInteraction`, calls the
  *   handler through `ChatInteraction.handle` inside `deadline` (2.5
  *   seconds by default, the handler's share of Slack's 3), opens a modal
  *   with `views.open` and calls `Handler.refused` when it can't.
@@ -104,14 +117,22 @@ export interface SlackUser {
  *   it.
  * - It succeeds with the body to answer Slack with: the JSON of the 200 on
  *   the Request URL, or the `payload` of the envelope ack on Socket Mode.
- *   `undefined` is an empty answer: an ack, a close, a late click, or a
- *   payload that is not from an element this adapter built.
- * - `Late` is a submit whose handler ran past the deadline and was
- *   interrupted. It is not an answer, since an empty one would close the
- *   modal: `layerInteractivity` answers 503 for it, which keeps the modal
- *   open, and a caller on Socket Mode sends no ack. `Late` is itself a
- *   JSON value, so test for it with `Schema.is(ChatInteraction.Late)`
+ *   For a command answered with `respond` that body is the message, with
+ *   `response_type` `ephemeral` or `in_channel`, after the checks of a
+ *   `post`; one that fails them goes to `Handler.refused`.
+ *   `undefined` is an empty answer: an ack, a close, a late click, a
+ *   deferred command, a command that opened a modal, a command nobody
+ *   handles, or a payload that is not from an element this adapter built.
+ * - `Late` is a submit or a command whose handler ran past the deadline
+ *   and was interrupted. It is not an answer, since an empty one would close
+ *   the modal, or tell the user the command worked: `layerInteractivity`
+ *   answers 503 for it, and a caller on Socket Mode sends no ack. `Late` is
+ *   itself a JSON value, so test for it with `Schema.is(ChatInteraction.Late)`
  *   before treating the result as a body.
+ * - `Chat.followUp` on a deferred command posts once to the command's
+ *   `response_url`, which must be on a Slack host, through the layer's
+ *   `HttpClient`. It is a write and is not retried. Slack takes it for 30
+ *   minutes.
  * - `interaction` checks no signature and no app id: that is the
  *   transport's job. It needs `ChatInteraction.Handler` where it is
  *   called, so the layer does not need it.
@@ -254,7 +275,7 @@ export const layer = (options: {
           })
         )
       })
-      const { adapter, user } = Adapter.make({
+      const { adapter, answer, user } = Adapter.make({
         api,
         http,
         botToken: options.botToken,
@@ -263,7 +284,7 @@ export const layer = (options: {
         attachFailed: (fields) => new SlackAttachFailed(fields)
       })
       yield* registry.register(adapter)
-      const interaction = Interactions.make({ api, teamId: options.teamId })
+      const interaction = Interactions.make({ api, teamId: options.teamId, answer })
       return SlackChat.of({ teamId: options.teamId, botUserId, user, interaction })
     })
   ).pipe(Layer.provideMerge(WebApi.layer({ botToken: options.botToken })))
@@ -383,6 +404,10 @@ export const layerWebhook = (options: {
  *
  * - Checks the `v0` signature as `layerWebhook` does, decodes the form's
  *   `payload` and drops one for another app with a 200.
+ * - It is also the Request URL of a slash command. A command's form has no
+ *   `payload` field and has a `command` field, which is how the route tells
+ *   the two apart. Its fields go to `SlackChat.interaction` as one object,
+ *   after the same signature and app checks.
  * - Hands the payload to `SlackChat.interaction` with `deadline` (2.5
  *   seconds by default). Its body is the response, and `Late` is answered
  *   with a 503, so the modal stays open with Slack's own error. Answers 413
@@ -422,15 +447,20 @@ export const layerInteractivity = (options: {
  * **Details**
  *
  * - Pure: takes the decoded `payload` of a `block_actions` or
- *   `view_submission` request.
+ *   `view_submission` request, or the fields of a slash command.
  * - None for any other payload, and for one that is not from an element
  *   this adapter built: a block of the consumer's own, a link button, or a
  *   view the adapter did not open.
+ * - Every command gives a `CommandInvoked`, known or not: the registry
+ *   decides that later. `id` is `command` less its slash, `text` is `text`
+ *   or the empty string, and the thread is the channel's.
  * - A submit's thread and message are those of the click that opened the
  *   modal, which the adapter packed into `private_metadata` beside the
- *   consumer's metadata.
+ *   consumer's metadata. A modal a command opened has no message, so its
+ *   submit has no `messageId`.
  * - The team in an address is `context.teamId`. `raw` is the payload
- *   without its verification `token`.
+ *   without its verification `token`. A command's holds its `response_url`,
+ *   so it is a credential for 30 minutes.
  *
  * @stability unstable
  * @category normalization
