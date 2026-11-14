@@ -2,4 +2,5 @@
 
 Effect's AI modules provide a provider-agnostic interface for language models.
 You can generate text, decode structured objects with `Schema` and stream partial
-responses.
+responses. `DecisionModel` answers classification, rating, and probability
+questions with probabilities.
