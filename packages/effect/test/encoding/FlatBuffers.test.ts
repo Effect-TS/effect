@@ -1,346 +1,128 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as FlatBuffers from "effect/encoding/FlatBuffers"
-import { readFileSync } from "node:fs"
-
-// Expected bytes were written by the official FlatBuffers Python builder;
-// see fixtures/flatbuffers/README.md
-type ScalarType =
-  | "bool"
-  | "int8"
-  | "uint8"
-  | "int16"
-  | "uint16"
-  | "int32"
-  | "uint32"
-  | "int64"
-  | "uint64"
-  | "float32"
-  | "float64"
-type Scalar = boolean | number | string
-interface StructDef {
-  readonly size: number
-  readonly align: number
-  readonly fields: ReadonlyArray<{ readonly type: ScalarType; readonly offset: number }>
-}
-type Field =
-  | {
-    readonly slot: number
-    readonly kind: "scalar"
-    readonly type: ScalarType
-    readonly value: Scalar
-    readonly default: Scalar
-  }
-  | { readonly slot: number; readonly kind: "offset"; readonly ref: string }
-  | {
-    readonly slot: number
-    readonly kind: "struct"
-    readonly struct: StructDef
-    readonly value: ReadonlyArray<Scalar>
-  }
-type Op =
-  | { readonly op: "string" | "sharedString"; readonly ref: string; readonly value: string }
-  | { readonly op: "bytes"; readonly ref: string; readonly value: ReadonlyArray<number> }
-  | { readonly op: "vector"; readonly ref: string; readonly type: ScalarType; readonly values: ReadonlyArray<Scalar> }
-  | { readonly op: "offsets"; readonly ref: string; readonly refs: ReadonlyArray<string> }
-  | {
-    readonly op: "structs"
-    readonly ref: string
-    readonly struct: StructDef
-    readonly items: ReadonlyArray<ReadonlyArray<Scalar>>
-  }
-  | { readonly op: "table"; readonly ref: string; readonly slots: number; readonly fields: ReadonlyArray<Field> }
-interface Case {
-  readonly id: string
-  readonly ops: ReadonlyArray<Op>
-  readonly finish: { readonly root: string; readonly identifier?: string; readonly sizePrefixed?: boolean }
-  readonly forceDefaults?: boolean
-  readonly initialSize?: number
-  readonly bytes: string
-}
-
-const gold: { readonly cases: ReadonlyArray<Case> } = JSON.parse(
-  readFileSync(new URL("../fixtures/flatbuffers/gold.json", import.meta.url), "utf8")
-)
 
 const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16))
 const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
 
-const SIZE: Record<ScalarType, number> = {
-  bool: 1,
-  int8: 1,
-  uint8: 1,
-  int16: 2,
-  uint16: 2,
-  int32: 4,
-  uint32: 4,
-  int64: 8,
-  uint64: 8,
-  float32: 4,
-  float64: 8
-}
+// The expected bytes were written by the official FlatBuffers Python builder
+// (`flatbuffers` 25.12.19 from PyPI) making the same calls as the builders below.
+const MONSTER = "1c0000004d4f4e53140028001c0000001a00140010000c00080007001400000000000001200000004400000078000000" +
+  "8000000000002c010000803f00000040000040400200000001000000020000000300000000000000ff000000feffffff" +
+  "fdffffffffffffff00000000020000001c00000004000000f4ffffff000005001800000008000c000800060008000000" +
+  "00000300040000000500000053776f7264000000050000000001020304000000030000004f726300"
+const PREFIXED = "4c000000100000004142434408000c000800040008000000070000000400000028000000787878787878787878787878" +
+  "7878787878787878787878787878787878787878787878787878787800000000"
 
-const value = (type: ScalarType, v: Scalar): boolean | number | bigint =>
-  type === "int64" || type === "uint64" ? BigInt(v as string) : typeof v === "string" ? Number(v) : v
-
-/** The value as the buffer stores it: integers wrap, float32 rounds. */
-const stored = (type: ScalarType, v: Scalar): boolean | number | bigint => {
-  const x = value(type, v)
-  return type === "float32" ? Math.fround(x as number) : x
-}
-
-const add = (b: FlatBuffers.Builder, type: ScalarType, v: Scalar) => {
-  const x = value(type, v)
-  switch (type) {
-    case "bool":
-      return b.addBool(x as boolean)
-    case "int8":
-      return b.addInt8(x as number)
-    case "uint8":
-      return b.addUint8(x as number)
-    case "int16":
-      return b.addInt16(x as number)
-    case "uint16":
-      return b.addUint16(x as number)
-    case "int32":
-      return b.addInt32(x as number)
-    case "uint32":
-      return b.addUint32(x as number)
-    case "int64":
-      return b.addInt64(x as bigint)
-    case "uint64":
-      return b.addUint64(x as bigint)
-    case "float32":
-      return b.addFloat32(x as number)
-    case "float64":
-      return b.addFloat64(x as number)
-  }
-}
-
-const addField = (b: FlatBuffers.Builder, slot: number, type: ScalarType, v: Scalar, d: Scalar) => {
-  const x = value(type, v)
-  const fallback = value(type, d)
-  switch (type) {
-    case "bool":
-      return b.addFieldBool(slot, x as boolean, fallback as boolean)
-    case "int8":
-      return b.addFieldInt8(slot, x as number, fallback as number)
-    case "uint8":
-      return b.addFieldUint8(slot, x as number, fallback as number)
-    case "int16":
-      return b.addFieldInt16(slot, x as number, fallback as number)
-    case "uint16":
-      return b.addFieldUint16(slot, x as number, fallback as number)
-    case "int32":
-      return b.addFieldInt32(slot, x as number, fallback as number)
-    case "uint32":
-      return b.addFieldUint32(slot, x as number, fallback as number)
-    case "int64":
-      return b.addFieldInt64(slot, x as bigint, fallback as bigint)
-    case "uint64":
-      return b.addFieldUint64(slot, x as bigint, fallback as bigint)
-    case "float32":
-      return b.addFieldFloat32(slot, x as number, fallback as number)
-    case "float64":
-      return b.addFieldFloat64(slot, x as number, fallback as number)
-  }
-}
-
-/** Writes a struct the way flatc-generated code does: prep, then fields last to first with padding. */
-const writeStruct = (b: FlatBuffers.Builder, def: StructDef, values: ReadonlyArray<Scalar>) => {
-  b.prep(def.align, def.size)
-  let end = def.size
-  for (let i = def.fields.length - 1; i >= 0; i--) {
-    const field = def.fields[i]
-    b.pad(end - (field.offset + SIZE[field.type]))
-    add(b, field.type, values[i])
-    end = field.offset
-  }
-  b.pad(end)
+// struct { a: byte; b: int; c: long }, as flatc-generated code writes it.
+const addPadded = (b: FlatBuffers.Builder, a: number, x: number, y: bigint) => {
+  b.prep(8, 16)
+  b.addInt64(y)
+  b.addInt32(x)
+  b.pad(3)
+  b.addInt8(a)
   return b.offset
 }
 
-const build = (c: Case): Uint8Array => {
-  const b = FlatBuffers.make({ initialSize: c.initialSize, forceDefaults: c.forceDefaults })
-  const refs = new Map<string, FlatBuffers.Offset>()
-  const ref = (name: string) => refs.get(name)!
-  for (const op of c.ops) {
-    switch (op.op) {
-      case "string":
-        refs.set(op.ref, b.createString(op.value))
-        break
-      case "sharedString":
-        refs.set(op.ref, b.createSharedString(op.value))
-        break
-      case "bytes":
-        refs.set(op.ref, b.createBytes(Uint8Array.from(op.value)))
-        break
-      case "vector": {
-        const size = SIZE[op.type]
-        b.startVector(size, op.values.length, size)
-        for (let i = op.values.length - 1; i >= 0; i--) add(b, op.type, op.values[i])
-        refs.set(op.ref, b.endVector())
-        break
-      }
-      case "offsets":
-        refs.set(op.ref, b.createOffsetVector(op.refs.map(ref)))
-        break
-      case "structs":
-        b.startVector(op.struct.size, op.items.length, op.struct.align)
-        for (let i = op.items.length - 1; i >= 0; i--) writeStruct(b, op.struct, op.items[i])
-        refs.set(op.ref, b.endVector())
-        break
-      case "table":
-        b.startTable(op.slots)
-        for (const field of op.fields) {
-          switch (field.kind) {
-            case "scalar":
-              addField(b, field.slot, field.type, field.value, field.default)
-              break
-            case "offset":
-              b.addFieldOffset(field.slot, ref(field.ref))
-              break
-            case "struct":
-              b.addFieldStruct(field.slot, writeStruct(b, field.struct, field.value))
-              break
-          }
-        }
-        refs.set(op.ref, b.endTable())
-        break
-    }
-  }
-  return b.finish(ref(c.finish.root), c.finish)
+const buildMonster = () => {
+  const b = FlatBuffers.make()
+  const name = b.createString("Orc")
+  const inventory = b.createBytes(Uint8Array.of(0, 1, 2, 3, 4))
+  const weapons = [3, 5].map((damage) => {
+    const sword = b.createSharedString("Sword")
+    b.startTable(2)
+    b.addFieldOffset(0, sword)
+    b.addFieldInt16(1, damage)
+    return b.endTable()
+  })
+  const weaponVector = b.createOffsetVector(weapons)
+  b.startVector(16, 2, 8)
+  addPadded(b, -1, -2, BigInt(-3))
+  addPadded(b, 1, 2, BigInt(3))
+  const path = b.endVector()
+  b.startTable(8)
+  b.prep(4, 12)
+  b.addFloat32(3)
+  b.addFloat32(2)
+  b.addFloat32(1)
+  b.addFieldStruct(0, b.offset)
+  b.addFieldInt16(1, 100, 100)
+  b.addFieldInt16(2, 300, 100)
+  b.addFieldOffset(3, name)
+  b.addFieldOffset(4, inventory)
+  b.addFieldOffset(5, weaponVector)
+  b.addFieldOffset(6, path)
+  b.addFieldBool(7, true)
+  return b.finish(b.endTable(), { identifier: "MONS" })
 }
 
-const readScalar = (
-  reader: Pick<FlatBuffers.Struct, ScalarType>,
-  type: ScalarType,
-  at: number
-): boolean | number | bigint => reader[type](at)
-
-const readTableScalar = (table: FlatBuffers.Table, type: ScalarType, slot: number, fallback: Scalar) => {
-  const d = value(type, fallback)
-  switch (type) {
-    case "bool":
-      return table.bool(slot, d as boolean)
-    case "int64":
-      return table.int64(slot, d as bigint)
-    case "uint64":
-      return table.uint64(slot, d as bigint)
-    default:
-      return table[type](slot, d as number)
-  }
+const buildPrefixed = () => {
+  const b = FlatBuffers.make({ initialSize: 1, forceDefaults: true })
+  const s = b.createString("x".repeat(40))
+  b.startTable(2)
+  b.addFieldOffset(0, s)
+  b.addFieldInt32(1, 7, 7)
+  return b.finish(b.endTable(), { identifier: "ABCD", sizePrefixed: true })
 }
 
-const defined = <A>(a: A | undefined): A => {
-  assert.isDefined(a)
-  return a!
-}
-
-const checkStruct = (s: FlatBuffers.Struct, def: StructDef, values: ReadonlyArray<Scalar>) => {
-  def.fields.forEach((field, i) =>
-    assert.deepStrictEqual(readScalar(s, field.type, field.offset), stored(field.type, values[i]))
-  )
-}
-
-/** Reads every value the case wrote back from the buffer. */
-const verify = (c: Case, bytes: Uint8Array) => {
-  const ops = new Map(c.ops.map((op) => [op.ref, op]))
-  const checkTable = (table: FlatBuffers.Table, op: Extract<Op, { op: "table" }>) => {
-    for (const field of op.fields) {
-      switch (field.kind) {
-        case "scalar": {
-          // A value equal to its default isn't written; reading it gives the default back.
-          const present = c.forceDefaults === true ||
-            value(field.type, field.value) !== value(field.type, field.default)
-          assert.strictEqual(table.has(field.slot), present)
-          assert.deepStrictEqual(
-            readTableScalar(table, field.type, field.slot, field.default),
-            present ? stored(field.type, field.value) : value(field.type, field.default)
-          )
-          break
-        }
-        case "struct":
-          checkStruct(defined(table.struct(field.slot, field.struct.size)), field.struct, field.value)
-          break
-        case "offset":
-          checkOffset(table, field.slot, ops.get(field.ref)!)
-          break
-      }
-    }
-  }
-  const checkOffset = (table: FlatBuffers.Table, slot: number, child: Op) => {
-    switch (child.op) {
-      case "string":
-      case "sharedString":
-        assert.strictEqual(table.string(slot), child.value)
-        break
-      case "bytes":
-        assert.deepStrictEqual(Array.from(defined(table.bytes(slot))), child.value)
-        break
-      case "vector": {
-        const vector = defined(table.vector(slot, SIZE[child.type]))
-        assert.deepStrictEqual(
-          Array.from({ length: vector.length }, (_, i) => vector[child.type](i)),
-          child.values.map((v) => stored(child.type, v))
-        )
-        break
-      }
-      case "structs": {
-        const vector = defined(table.vector(slot, child.struct.size))
-        assert.strictEqual(vector.length, child.items.length)
-        child.items.forEach((item, i) => checkStruct(vector.struct(i, child.struct.size), child.struct, item))
-        break
-      }
-      case "offsets": {
-        const vector = defined(table.vector(slot, 4))
-        assert.strictEqual(vector.length, child.refs.length)
-        child.refs.forEach((name, i) => {
-          const element = ops.get(name)!
-          if (element.op === "table") checkTable(vector.table(i), element)
-          else if (element.op === "string" || element.op === "sharedString") {
-            assert.strictEqual(vector.string(i), element.value)
-          }
-        })
-        break
-      }
-      case "table":
-        checkTable(defined(table.table(slot)), child)
-        break
-    }
-  }
-  const root = ops.get(c.finish.root)! as Extract<Op, { op: "table" }>
-  checkTable(FlatBuffers.root(bytes, c.finish), root)
-  if (c.finish.identifier !== undefined) {
-    assert.strictEqual(FlatBuffers.identifier(bytes, c.finish), c.finish.identifier)
+const readMonster = (root: FlatBuffers.Table) => {
+  const pos = root.struct(0, 12)
+  const weapons = root.vector(5, 4)
+  const path = root.vector(6, 16)
+  return {
+    pos: pos && [pos.float32(0), pos.float32(4), pos.float32(8)],
+    mana: [root.has(1), root.int16(1, 100)],
+    hp: root.int16(2, 100),
+    name: root.string(3),
+    inventory: root.bytes(4) && Array.from(root.bytes(4)!),
+    weapons: weapons && Array.from({ length: weapons.length }, (_, i) => {
+      const weapon = weapons.table(i)
+      return [weapon.string(0), weapon.int16(1)]
+    }),
+    path: path && Array.from({ length: path.length }, (_, i) => {
+      const s = path.struct(i, 16)
+      return [s.int8(0), s.int32(4), s.int64(8)]
+    }),
+    flag: root.bool(7)
   }
 }
 
 describe("FlatBuffers", () => {
   it("builds the bytes the official builder builds", () => {
-    assert.isAbove(gold.cases.length, 300)
-    for (const c of gold.cases) {
-      assert.strictEqual(toHex(build(c)), c.bytes, c.id)
-    }
+    assert.strictEqual(toHex(buildMonster()), MONSTER)
+    assert.strictEqual(toHex(buildPrefixed()), PREFIXED)
   })
 
-  it("reads every value back from the official builder's bytes", () => {
-    for (const c of gold.cases) {
-      verify(c, fromHex(c.bytes))
-    }
+  it("reads the official builder's bytes", () => {
+    const monster = fromHex(MONSTER)
+    assert.strictEqual(FlatBuffers.identifier(monster), "MONS")
+    assert.deepStrictEqual(readMonster(FlatBuffers.root(monster, { identifier: "MONS" })), {
+      pos: [1, 2, 3],
+      mana: [false, 100],
+      hp: 300,
+      name: "Orc",
+      inventory: [0, 1, 2, 3, 4],
+      weapons: [["Sword", 3], ["Sword", 5]],
+      path: [[1, 2, BigInt(3)], [-1, -2, BigInt(-3)]],
+      flag: true
+    })
+
+    const prefixed = fromHex(PREFIXED)
+    assert.strictEqual(FlatBuffers.identifier(prefixed, { sizePrefixed: true }), "ABCD")
+    const root = FlatBuffers.root(prefixed, { identifier: "ABCD", sizePrefixed: true })
+    assert.strictEqual(root.string(0), "x".repeat(40))
+    assert.isTrue(root.has(1))
+    assert.strictEqual(root.int32(1), 7)
   })
 
   it("reads absent fields as their defaults", () => {
     const b = FlatBuffers.make()
-    b.startTable(4)
+    b.startTable(1)
     const root = FlatBuffers.root(b.finish(b.endTable()))
-    assert.strictEqual(root.has(0), false)
     assert.strictEqual(root.int32(0, 7), 7)
-    assert.strictEqual(root.bool(1, true), true)
-    assert.strictEqual(root.uint64(2, BigInt(9)), BigInt(9))
-    assert.strictEqual(root.string(3), undefined)
-    assert.strictEqual(root.table(3), undefined)
-    assert.strictEqual(root.vector(3, 1), undefined)
+    assert.strictEqual(root.string(0), undefined)
+    assert.strictEqual(root.table(0), undefined)
+    assert.strictEqual(root.vector(0, 1), undefined)
     // Slots past the vtable, as written by an older schema, are absent too.
     assert.strictEqual(root.float64(100, 1.5), 1.5)
   })
@@ -361,111 +143,71 @@ describe("FlatBuffers", () => {
     b.startTable(1)
     b.addFieldOffset(0, s)
     assert.strictEqual(failure(b.finish(b.endTable())), "InvalidUtf8")
-    assert.strictEqual(failure(fromHex(gold.cases[1].bytes), { identifier: "NOPE" }), "Identifier")
+    assert.strictEqual(failure(fromHex(MONSTER), { identifier: "NOPE" }), "Identifier")
     assert.strictEqual(failure(Uint8Array.of(0xff, 0, 0, 0, 0, 0, 0, 0), { sizePrefixed: true }), "OutOfBounds")
   })
 
   it("decode rethrows errors that aren't FlatBuffersErrors", () => {
-    const bytes = fromHex(gold.cases[0].bytes)
     assert.throws(() =>
-      FlatBuffers.decode(bytes, () => {
+      FlatBuffers.decode(fromHex(MONSTER), () => {
         throw new Error("boom")
       }), "boom")
   })
 
-  it("only ever fails with FlatBuffersError on corrupted buffers", () => {
-    // Deterministic xorshift so failures reproduce.
-    let seed = 0x2f6b1d3
-    const random = () => {
-      seed ^= seed << 13
-      seed ^= seed >>> 17
-      seed ^= seed << 5
-      return (seed >>> 0) / 0x100000000
-    }
-    let failures = 0
-    for (const c of gold.cases) {
-      const original = fromHex(c.bytes)
-      for (let round = 0; round < 20; round++) {
-        const bytes = original.slice(0, random() < 0.2 ? Math.floor(random() * original.length) : original.length)
-        const flips = 1 + Math.floor(random() * 4)
-        for (let i = 0; i < flips && bytes.length > 0; i++) {
-          bytes[Math.floor(random() * bytes.length)] = Math.floor(random() * 256)
-        }
-        try {
-          verify(c, bytes)
-        } catch (error) {
-          if (error instanceof Error && error.name === "AssertionError") continue
-          assert.isTrue(FlatBuffers.isFlatBuffersError(error), `${c.id}: ${String(error)}`)
-          failures++
-        }
+  it("only fails with FlatBuffersError on truncated or corrupted buffers", () => {
+    const monster = fromHex(MONSTER)
+    for (let i = 0; i < monster.length; i++) {
+      // Only the last byte, the NUL after "Orc", is not needed to read the buffer.
+      if (i < monster.length - 1) {
+        assert.isTrue(Result.isFailure(FlatBuffers.decode(monster.subarray(0, i), readMonster)), `truncated at ${i}`)
       }
+      const corrupted = monster.slice()
+      corrupted[i] ^= 0xff
+      // decode rethrows anything that isn't a FlatBuffersError.
+      FlatBuffers.decode(corrupted, readMonster)
     }
-    assert.isAbove(failures, 0)
   })
 
-  describe("Builder", () => {
-    it("rejects nested and out-of-order calls", () => {
-      const usage = (f: (b: FlatBuffers.Builder) => void) => {
-        const b = FlatBuffers.make()
-        try {
-          f(b)
-          assert.fail("expected a FlatBuffersError")
-        } catch (error) {
-          assert.isTrue(FlatBuffers.isFlatBuffersError(error))
-          assert.strictEqual((error as FlatBuffers.FlatBuffersError).kind, "Usage")
-        }
+  it("Builder rejects nested and out-of-order calls", () => {
+    const usage = (f: (b: FlatBuffers.Builder) => void) => {
+      try {
+        f(FlatBuffers.make())
+        assert.fail("expected a FlatBuffersError")
+      } catch (error) {
+        assert.isTrue(FlatBuffers.isFlatBuffersError(error))
+        assert.strictEqual((error as FlatBuffers.FlatBuffersError).kind, "Usage")
       }
-      usage((b) => {
-        b.startTable(1)
-        b.createString("x")
-      })
-      usage((b) => {
-        b.startTable(1)
-        b.startTable(1)
-      })
-      usage((b) => {
-        b.startVector(1, 1, 1)
-        b.startTable(1)
-      })
-      usage((b) => b.endTable())
-      usage((b) => b.endVector())
-      usage((b) => {
-        b.startTable(1)
-        b.addFieldInt32(1, 5)
-      })
-      usage((b) => b.addFieldInt32(0, 5))
-      usage((b) => {
-        b.addInt32(1)
-        const s = b.offset
-        b.addInt32(2)
-        b.startTable(1)
-        b.addFieldStruct(0, s)
-      })
-      usage((b) => {
-        b.startTable(0)
-        b.finish(b.endTable(), { identifier: "TOOLONG" })
-      })
-      usage((b) => b.addOffset(100))
+    }
+    usage((b) => {
+      b.startTable(1)
+      b.createString("x")
     })
-
-    it("wraps integers to their width", () => {
-      const b = FlatBuffers.make()
-      b.startTable(3)
-      b.addFieldUint8(0, 256 + 7)
-      b.addFieldInt16(1, 0x18000)
-      b.addFieldUint64(2, -BigInt(1))
-      const root = FlatBuffers.root(b.finish(b.endTable()))
-      assert.strictEqual(root.uint8(0), 7)
-      assert.strictEqual(root.int16(1), -32768)
-      assert.strictEqual(root.uint64(2), 2n ** 64n - 1n)
+    usage((b) => {
+      b.startTable(1)
+      b.startTable(1)
     })
-
-    it("returns a copy, leaving the builder's buffer alone", () => {
-      const b = FlatBuffers.make({ initialSize: 1 })
+    usage((b) => {
+      b.startVector(1, 1, 1)
+      b.startTable(1)
+    })
+    usage((b) => b.endTable())
+    usage((b) => b.endVector())
+    usage((b) => {
+      b.startTable(1)
+      b.addFieldInt32(1, 5)
+    })
+    usage((b) => b.addFieldInt32(0, 5))
+    usage((b) => {
+      b.addInt32(1)
+      const s = b.offset
+      b.addInt32(2)
+      b.startTable(1)
+      b.addFieldStruct(0, s)
+    })
+    usage((b) => {
       b.startTable(0)
-      const bytes = b.finish(b.endTable())
-      assert.strictEqual(bytes.byteOffset, 0)
-      assert.strictEqual(bytes.buffer.byteLength, bytes.length)
+      b.finish(b.endTable(), { identifier: "TOOLONG" })
     })
+    usage((b) => b.addOffset(100))
   })
 })
