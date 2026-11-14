@@ -6076,7 +6076,8 @@ export const noopSpan = (options: {
   readonly annotations: Context.Context<never>
 }): Tracer.Span => Object.assign(Object.create(NoopSpanProto), options)
 
-const filterDisablePropagation = (span: Tracer.AnySpan | undefined): Option.Option<Tracer.AnySpan> => {
+/** @internal */
+export const filterDisablePropagation = (span: Tracer.AnySpan | undefined): Option.Option<Tracer.AnySpan> => {
   if (!span) return Option.none()
   return Context.get(span.annotations, Tracer.DisablePropagation)
     ? span._tag === "Span" ? filterDisablePropagation(Option.getOrUndefined(span.parent)) : Option.none()
