@@ -4,7 +4,7 @@
  *
  * **Mental model**
  *
- * - A FlatBuffer is a tree of tables. A table's fields are numbered slots;
+ * - A FlatBuffer links tables through offsets. Fields are numbered slots;
  *   a small vtable records where each present field is, so absent fields cost
  *   nothing and read as their default.
  * - This module knows nothing about schemas. The caller decides what each
@@ -12,9 +12,7 @@
  *   a string, slot 1 as a table, and so on.
  * - {@link Builder} writes a buffer back to front, children first: create
  *   strings, vectors and child tables, then the table that refers to them,
- *   and {@link Builder.finish} with the root table. The bytes it produces
- *   are the bytes the official FlatBuffers builders produce for the same
- *   calls.
+ *   and call {@link Builder.finish} with the root table.
  * - {@link root} gives the root {@link Table} of a buffer; its accessors read
  *   from the bytes on demand. {@link decode} runs a reading function and
  *   returns a `Result`.
@@ -46,11 +44,10 @@
  *
  * **Details**
  *
- * Every read is bounds-checked: malformed or hostile input throws a
- * {@link FlatBuffersError} (or makes {@link decode} fail) instead of reading
- * outside the buffer or the vector or struct being read. Tables nested deeper
- * than `maxDepth` fail too. Strings must be valid UTF-8. 64-bit integers are
- * `bigint`s.
+ * Reads are bounds-checked, not a complete schema verification. Invalid reads
+ * throw a {@link FlatBuffersError}; {@link decode} catches data errors made
+ * inside its callback. Table nesting is limited by `maxDepth`. Strings must
+ * be valid UTF-8, and 64-bit integers are `bigint`s.
  *
  * @stability experimental
  * @since 4.1.5
@@ -63,7 +60,7 @@ import * as Result from "../Result.ts"
 const FlatBuffersErrorTypeId = "~effect/encoding/FlatBuffers/FlatBuffersError"
 
 /**
- * Error raised for a malformed buffer or a misused {@link Builder}.
+ * Error raised for malformed data, excessive nesting or reader/builder misuse.
  *
  * **Details**
  *
@@ -74,13 +71,9 @@ const FlatBuffersErrorTypeId = "~effect/encoding/FlatBuffers/FlatBuffersError"
  * - `InvalidUtf8`: a string is not valid UTF-8.
  * - `Identifier`: the buffer's file identifier is not the expected one.
  * - `Limit`: tables are nested deeper than `maxDepth`.
- * - `Usage`: a bug in the caller: the builder was called out of order (a
- *   table inside a table, a struct that isn't the last thing written), got an
- *   invalid argument (a slot, length or alignment that isn't a valid integer,
- *   an identifier that isn't four bytes), a table or buffer would outgrow the
- *   format, or a read doesn't match the shape it asked for (a negative or
- *   fractional slot, a vector read at another width, a struct read past its
- *   size).
+ * - `Usage`: invalid arguments, out-of-order builder calls, format size
+ *   limits, or reads outside the declared struct size or at the wrong vector width.
+ *   {@link decode} rethrows these caller errors.
  *
  * @stability experimental
  * @category errors
@@ -121,7 +114,6 @@ const positive = (name: string, n: number): void => {
 const lenientUtf8 = new TextDecoder("utf-8", { ignoreBOM: true })
 const encoder = new TextEncoder()
 
-/** The buffer every reader of one {@link root} shares. */
 interface Source {
   readonly bytes: Uint8Array
   readonly view: DataView
@@ -455,7 +447,6 @@ class TableImpl implements Table {
   private field(slot: number, size: number): number {
     if (!Number.isInteger(slot) || slot < 0) fail("Usage", `a slot is a non-negative integer, got ${slot}`)
     const entry = 4 + slot * 2
-    // A slot past the vtable was added after the buffer was written: absent.
     if (entry >= this.vtableSize) return -1
     const relative = this.source.view.getUint16(this.vtable + entry, true)
     if (relative === 0) return -1
@@ -548,13 +539,13 @@ const identifierBytes = (identifier: string): Uint8Array => {
 }
 
 /**
- * The four bytes where a file identifier goes (after the root offset),
- * decoded as UTF-8, or `undefined` when the buffer is too short.
+ * Returns the four bytes after the root offset decoded as UTF-8, or
+ * `undefined` when the buffer is too short.
  *
  * **Details**
  *
- * A buffer doesn't record whether it has an identifier: without one, these
- * bytes belong to the root table. Compare the result with the identifier you
+ * A buffer does not record whether it has an identifier. Without one, these
+ * bytes are other buffer data. Compare the result with the identifier you
  * expect, or pass `identifier` to {@link root} or {@link decode}.
  *
  * @stability experimental
@@ -570,18 +561,21 @@ export const identifier = (
 }
 
 /**
- * The root table of a buffer. Throws a {@link FlatBuffersError} when the
- * buffer is malformed or carries another file identifier; its accessors
- * throw for malformed fields.
+ * Returns the root table, throwing a {@link FlatBuffersError} for invalid
+ * root data or a mismatched file identifier. Fields are checked on access.
  *
  * **Details**
  *
- * `identifier` is the four-character file identifier the buffer must carry,
- * and `sizePrefixed` says the buffer starts with its size. Reaching a table
- * nested more than `maxDepth` tables deep (default 64, the official
- * verifier's default) throws a `Limit` error, so a recursive reader can't
- * overflow the stack on hostile input.
+ * `identifier` must encode to exactly four UTF-8 bytes. `sizePrefixed` reads
+ * the leading size and confines reads to that payload. `maxDepth` is a
+ * positive integer (default 64); the root has depth 1, and exceeding the
+ * limit throws a `Limit` error.
  *
+ * **Gotchas**
+ *
+ * Raising `maxDepth` can expose recursive readers to stack overflow.
+ *
+ * @see decode for reading into a `Result`
  * @stability experimental
  * @category reading
  * @since 4.1.5
@@ -618,13 +612,11 @@ export const root = (bytes: Uint8Array, options?: {
  * becomes a failed `Result` instead of an exception; options are those of
  * {@link root}.
  *
- * **Details**
+ * **Gotchas**
  *
- * Reads are lazy, so only the reads made inside `read` are covered: a
+ * Reads are lazy, so only reads made inside `read` are covered: a
  * {@link Table} or {@link Vector} returned from it can still throw later.
- * `Usage` errors are bugs in the caller (a misshapen identifier, a read of
- * the wrong width) and are thrown, as are errors that aren't
- * {@link FlatBuffersError}s.
+ * `Usage` errors and errors other than {@link FlatBuffersError} are rethrown.
  *
  * Many offsets may point at one string or vector, so what a reader
  * materialises is not bounded by the size of the buffer: 1,000 offsets to
@@ -670,8 +662,7 @@ const MAX_SIZE = 2 ** 31
 const MAX_SLOTS = 32765
 
 /**
- * Writes a FlatBuffer back to front, as the official builders do: the same
- * calls give the same bytes.
+ * Writes FlatBuffers tables, structs, vectors and strings back to front.
  *
  * **Details**
  *
@@ -1048,7 +1039,7 @@ export class Builder {
 }
 
 /**
- * A new {@link Builder}. `forceDefaults` writes scalar fields even when they
+ * Creates a {@link Builder}. `forceDefaults` writes scalar fields even when they
  * equal their default; `initialSize` is the first buffer size (it grows as
  * needed).
  *
