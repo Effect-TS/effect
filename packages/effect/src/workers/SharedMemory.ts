@@ -171,8 +171,7 @@ export class SharedMemoryError extends Data.TaggedError("SharedMemoryError")<{
  * @since 4.1.5
  */
 export const isAvailable = (): boolean =>
-  typeof SharedArrayBuffer === "function" &&
-  (globalThis as { readonly crossOriginIsolated?: boolean }).crossOriginIsolated !== false
+  typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated !== false
 
 /**
  * Returns whether the view's memory is a `SharedArrayBuffer`.
@@ -192,12 +191,6 @@ export const isAvailable = (): boolean =>
  */
 export const isShared = (view: ArrayBufferView): boolean =>
   typeof SharedArrayBuffer === "function" && view.buffer instanceof SharedArrayBuffer
-
-const unavailable = (): SharedMemoryError =>
-  new SharedMemoryError({
-    message: "SharedArrayBuffer is unavailable. In browsers it needs a cross-origin isolated page, served with " +
-      "`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`."
-  })
 
 /**
  * Allocates a typed array of `length` elements, all zero, in shared memory.
@@ -223,9 +216,14 @@ export const make = <C extends TypedArrayConstructor>(
   constructor: C,
   length: number
 ): Shared<InstanceType<C>> => {
-  if (!isAvailable()) throw unavailable()
-  const Ctor = constructor as new(buffer: SharedArrayBuffer) => TypedArray
-  return new Ctor(new SharedArrayBuffer(length * constructor.BYTES_PER_ELEMENT)) as any
+  if (!isAvailable()) {
+    throw new SharedMemoryError({
+      message: "SharedArrayBuffer is unavailable. In browsers it needs a cross-origin isolated page, served with " +
+        "`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`."
+    })
+  }
+  const Ctor = constructor as new(buffer: SharedArrayBuffer) => any
+  return new Ctor(new SharedArrayBuffer(length * constructor.BYTES_PER_ELEMENT))
 }
 
 /**

@@ -32,7 +32,7 @@ describe("SharedMemory", () => {
       for (const data of [new Int32Array(2), SharedMemory.make(Uint32Array, 2), { 0: 0, 1: 0 }]) {
         assert.throws(() => Schema.decodeUnknownSync(Ints)(data), "Int32Array in shared memory")
       }
-      assert.throws(() => Schema.encodeSync(Ints)(new Int32Array(1) as any))
+      assert.throws(() => Schema.encodeUnknownSync(Ints)(new Int32Array(1)))
     })
 
     it("passes values through the JSON codec untouched", () => {
