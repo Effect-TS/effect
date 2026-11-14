@@ -158,6 +158,28 @@ describe("Runtime", () => {
         assert.deepStrictEqual(root.container.children, [])
       }).pipe(Effect.provide(TestHost.layer())))
 
+    it.effect("a child made again at its path before the old one closes is still its parent's child", () =>
+      provideHost(Effect.gen(function*() {
+        const Wrap = Component.define({ name: "Wrap", model: Schema.Boolean, message: Schema.Boolean }).make({
+          init: () => false,
+          update: (_, changed) => changed,
+          // A wrapper with another tag is a new element: the row in it mounts before the old one closes.
+          view: (changed, h) => h.el(changed ? "section" : "div", h.child(Row, { key: "a", props: { id: "a" } }))
+        })
+        const root = yield* TestHost.mount(Wrap, {})
+        yield* TestHost.settle
+        assert.deepStrictEqual(root.pending().map((p) => p.path), ["/Wrap/Row[a]"])
+        root.send(true)
+        yield* TestHost.settle
+        assert.strictEqual(root.text(), "a:0")
+        assert.deepStrictEqual(
+          tags(root, "/Wrap/Row[a]").filter((tag) => tag === "Mounted" || tag === "Unmounted"),
+          ["Mounted", "Mounted", "Unmounted"]
+        )
+        // The new row's Command, which the parent finds through its children.
+        assert.deepStrictEqual(root.pending().map((p) => p.path), ["/Wrap/Row[a]"])
+      })))
+
     const RowsMessage = Schema.TaggedUnion({
       Show: { ids: Schema.Array(Schema.String) },
       Select: { id: Schema.String }
