@@ -10,13 +10,17 @@ const idOf = (customId: string): string => customId.split(join)[0]
 
 /**
  * A Discord that keeps the messages the adapter posts, with their
- * components, and records every interaction callback. `interactions` is the
- * conformance hook: it builds Discord's `INTERACTION_CREATE` payload from
- * what was posted and sends it through `DiscordChat.interaction`.
+ * components, and records every interaction callback and every edit of an
+ * original response. `interactions` is the conformance hook: it builds
+ * Discord's `INTERACTION_CREATE` payload from what was posted, or a slash
+ * command's, and sends it through `DiscordChat.interaction`. The command
+ * and its modal's submit without a message are built from Discord's docs,
+ * not captured.
  */
 export const makeDiscord = (channelType = 0) => {
   const messages = new Map<string, any>()
   const callbacks: Array<{ readonly id: string; readonly token: string; readonly payload: any }> = []
+  const originals: Array<{ readonly applicationId: string; readonly token: string; readonly payload: any }> = []
   let next = 1570700000000000000n
   let refuse = 0
   let interactionCount = 0
@@ -73,11 +77,22 @@ export const makeDiscord = (channelType = 0) => {
     createInteractionResponse: (id: string, token: string, options: { payload: any }) => {
       callbacks.push({ id, token, payload: options.payload })
       return Effect.succeed(null)
+    },
+    updateOriginalWebhookMessage: (applicationId: string, token: string, options: { payload: any }) => {
+      // Only a token a type 5 callback answered has an original response to edit.
+      if (!callbacks.some((callback) => callback.token === token && callback.payload.type === 5)) {
+        return Effect.fail(errorResponse(404, { code: 10015, message: "Unknown Webhook" }))
+      }
+      originals.push({ applicationId, token, payload: options.payload })
+      return Effect.succeed({ id: nextId(), content: options.payload.content })
     }
   })
 
-  /** The modal the last click opened, with the message it was opened from. */
-  let opened: { readonly data: any; readonly message: any } | undefined
+  /**
+   * The modal the last click or command opened, with the message it was
+   * opened from, which a command has none of.
+   */
+  let opened: { readonly data: any; readonly channelId: string; readonly message?: any } | undefined
 
   /** The service the hook delivers through, set by `bind`. */
   let service: DiscordChat.DiscordChat["Service"] | undefined
@@ -88,17 +103,17 @@ export const makeDiscord = (channelType = 0) => {
     return callbacks.slice(before).find((callback) => callback.id === payload.id)?.payload
   })
 
-  const base = (message: any) => {
+  const base = (channelId: string, message?: any) => {
     const n = ++interactionCount
     return {
       id: "9" + String(n).padStart(18, "0"),
       application_id: botUserId,
       token: "token-" + n,
       version: 1,
-      channel_id: message.channel_id,
+      channel_id: channelId,
       guild_id: guild,
       member: { user: { id: tim, username: "tim" }, roles: [] },
-      message
+      ...(message === undefined ? {} : { message })
     }
   }
 
@@ -112,7 +127,7 @@ export const makeDiscord = (channelType = 0) => {
       if (component === undefined) return yield* Effect.fail(new NoSuchElement({ messageId, id }))
       const value = component.type === 3 ? options?.option ?? component.options[0].value : undefined
       const answer = yield* deliver({
-        ...base(message),
+        ...base(message.channel_id, message),
         type: 3,
         data: {
           custom_id: component.custom_id,
@@ -120,11 +135,25 @@ export const makeDiscord = (channelType = 0) => {
           ...(value === undefined ? {} : { values: [value] })
         }
       })
-      opened = answer?.type === 9 ? { data: answer.data, message } : undefined
+      opened = answer?.type === 9 ? { data: answer.data, channelId: message.channel_id, message } : undefined
+    }),
+    command: Effect.fnUntraced(function*(thread, id, options) {
+      const text = options?.text ?? ""
+      const answer = yield* deliver({
+        ...base(thread.id),
+        type: 2,
+        data: {
+          id: "1570700000000000999",
+          name: id,
+          type: 1,
+          ...(text === "" ? {} : { options: [{ type: 3, name: "text", value: text }] })
+        }
+      })
+      opened = answer?.type === 9 ? { data: answer.data, channelId: thread.id } : undefined
     }),
     submit: Effect.fnUntraced(function*(values) {
       if (opened === undefined) return
-      const { data, message } = opened
+      const { channelId, data, message } = opened
       const components = data.components.map((component: any) => {
         if (component.type !== 18) return { type: component.type }
         const input = component.component
@@ -137,7 +166,7 @@ export const makeDiscord = (channelType = 0) => {
         }
       })
       yield* deliver({
-        ...base(message),
+        ...base(channelId, message),
         type: 5,
         data: { custom_id: data.custom_id, components }
       })
@@ -154,6 +183,7 @@ export const makeDiscord = (channelType = 0) => {
       })),
     messages,
     callbacks,
+    originals,
     interactions,
     refuseFiles: () =>
       Effect.sync(() => {

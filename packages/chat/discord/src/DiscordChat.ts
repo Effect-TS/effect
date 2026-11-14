@@ -15,6 +15,8 @@
  *   missing.
  * - Bot permissions: View Channel, Send Messages, Send Messages in Threads,
  *   Create Public Threads, Read Message History and Attach Files.
+ * - Slash commands need the `applications.commands` scope, and are
+ *   registered by the consumer with the payloads `commandRequests` gives.
  *
  * @stability unstable
  * @since 4.1.5
@@ -63,20 +65,30 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   way again, such as a deleted channel, is logged and the event dropped.
  * - `interaction` takes one `INTERACTION_CREATE` payload, from the gateway
  *   or from an HTTP interactions endpoint. It reads it with a Schema, so it
- *   takes no dfx type, and ignores an interaction that is not from an
- *   element this adapter built, a slash command for one. It calls the
- *   handler through `ChatInteraction.handle` and answers through the
- *   interaction callback endpoint, which has to land inside Discord's 3
- *   seconds: `deadline` is the handler's share, 2 seconds by default.
+ *   takes no dfx type, and ignores an interaction it can't express: a
+ *   message or user command, an autocomplete request, a slash command with
+ *   anything but at most one string option. It calls the handler through
+ *   `ChatInteraction.handle` and answers through the interaction callback
+ *   endpoint, which has to land inside Discord's 3 seconds: `deadline` is
+ *   the handler's share, 2 seconds by default.
  * - A click is answered with callback type 6, or type 9 for `OpenModal`.
  *   A submit's `close` is type 6. An `errors` reply is type 4 with the
  *   ephemeral flag, listing each message as plain text, and the modal closes: Discord
  *   can't show an error inside a modal, so the descriptor has no
  *   `modalErrors`.
- * - A modal that can't be built, or whose callback fails, goes to
- *   `Handler.refused`. A callback that comes back 404 `Unknown interaction`
- *   was late: for a modal that is `NotFound` with detail
- *   `interaction_expired`. A failed ack is logged.
+ * - A slash command goes to `Handler.command`. `respond` is callback type
+ *   4 with the message a `post` sends, `defer` type 5 and `OpenModal` type
+ *   9, each with the ephemeral flag when private. An `Ack`, which is what a
+ *   command nobody handles gets, sends nothing, so a command another library
+ *   owns is left to it.
+ * - `followUp` edits the deferred command's original response, with the
+ *   application id and token from its `raw`. It fails `NotFound` with detail
+ *   `interaction_expired` from 15 minutes after the command, read from the
+ *   interaction's id, without calling Discord.
+ * - A modal that can't be built, a reply to a command that fails the checks
+ *   of a `post`, or a callback that fails, goes to `Handler.refused`. A
+ *   callback that comes back 404 `Unknown interaction` was late: that is
+ *   `NotFound` with detail `interaction_expired`. A failed ack is logged.
  * - `guild` reads the channel, cached. `None` for a direct.
  *
  * @stability unstable
@@ -507,12 +519,17 @@ export const layerGatewayInteractions: Layer.Layer<
  *   `custom_id`.
  * - The thread and message come from the `message` Discord sends with the
  *   interaction, so a modal's submit carries the message whose element
- *   opened it.
+ *   opened it. A modal a command opened has no message, so its submit has
+ *   no `messageId`, and its thread is the channel.
  * - A submit's `values` hold each answered input by id. An input left
  *   empty is absent.
- * - Anything else, a slash command or an interaction with no message, is
- *   `None`.
- * - `raw` is the payload, undecoded.
+ * - A slash command with no options, or one string option, gives
+ *   `CommandInvoked`: `id` is its name and `text` the option's value or
+ *   the empty string.
+ * - Anything else, a message or user command, a slash command with other
+ *   options, or a click with no message, is `None`.
+ * - `raw` is the payload, undecoded. For a command it holds the token that
+ *   answers it, so it is a credential for 15 minutes.
  *
  * @stability unstable
  * @category normalization
@@ -520,6 +537,67 @@ export const layerGatewayInteractions: Layer.Layer<
  */
 export const normalizeInteraction: (interaction: unknown) => Option.Option<ChatInteraction.Interaction> =
   Interactions.normalize
+
+/**
+ * The create payload of each command in `group`, in the group's order, for
+ * Discord's application commands endpoint.
+ *
+ * **Details**
+ *
+ * - Each is a `CHAT_INPUT` command with the definition's name and
+ *   description, and one `STRING` option when it has an `argument`. Each
+ *   fits dfx's `ApplicationCommandCreateRequest`.
+ * - The definitions in `group` that are not commands are skipped.
+ *
+ * **Gotchas**
+ *
+ * - The adapter registers nothing. Discord's bulk overwrite replaces the
+ *   application's whole list, so the consumer sends these beside its other
+ *   commands, in one call.
+ * - dfx's gateway runner syncs its own commands the same way when it
+ *   starts, which would delete these. A consumer running both adds these to
+ *   that list, or switches the sync off with `setInteractionsSync(false)`.
+ * - A field the definition lacks, such as `default_member_permissions`, is
+ *   spread onto the payload by the consumer.
+ *
+ * **Example** (Registering the commands beside dfx's own)
+ *
+ * ```ts import.meta.vitest
+ * import { DiscordChat } from "@effect/chat-discord"
+ * import { DiscordREST } from "dfx/DiscordREST"
+ * import { Effect } from "effect"
+ * import { ChatInteraction } from "effect/chat"
+ *
+ * const Commands = ChatInteraction.group(
+ *   ChatInteraction.command("summarize", { description: "Summarize this thread" })
+ * )
+ *
+ * export const register = Effect.gen(function*() {
+ *   const rest = yield* DiscordREST
+ *   const app = yield* rest.getMyApplication()
+ *   yield* rest.bulkSetApplicationCommands(app.id, [...DiscordChat.commandRequests(Commands)])
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category commands
+ * @since 4.1.5
+ */
+export const commandRequests: (group: ChatInteraction.Group<any>) => ReadonlyArray<{
+  /** `CHAT_INPUT`. */
+  readonly type: 1
+  readonly name: string
+  readonly description: string
+  /** One `STRING` option when the command has an `argument`, absent otherwise. */
+  readonly options?:
+    | ReadonlyArray<{
+      readonly type: 3
+      readonly name: string
+      readonly description: string
+      readonly required: boolean
+    }>
+    | undefined
+}> = Interactions.commandRequests
 
 /**
  * Discord options for every write inside an effect.
