@@ -25,7 +25,7 @@ const addPadded = (b: FlatBuffers.Builder, a: number, x: number, y: bigint) => {
 }
 
 const buildMonster = () => {
-  const b = FlatBuffers.make()
+  const b = FlatBuffers.makeBuilder()
   const name = b.createString("Orc")
   const inventory = b.createBytes(Uint8Array.of(0, 1, 2, 3, 4))
   const weapons = [3, 5].map((damage) => {
@@ -57,7 +57,7 @@ const buildMonster = () => {
 }
 
 const buildPrefixed = () => {
-  const b = FlatBuffers.make({ initialSize: 1, forceDefaults: true })
+  const b = FlatBuffers.makeBuilder({ initialSize: 1, forceDefaults: true })
   const s = b.createString("x".repeat(40))
   b.startTable(2)
   b.addFieldOffset(0, s)
@@ -80,11 +80,22 @@ const readMonster = (root: FlatBuffers.Table) => {
       return [weapon.string(0), weapon.int16(1)]
     }),
     path: path && Array.from({ length: path.length }, (_, i) => {
-      const s = path.struct(i, 16)
+      const s = path.struct(i)
       return [s.int8(0), s.int32(4), s.int64(8)]
     }),
     flag: root.bool(7)
   }
+}
+
+const usage = (f: () => unknown) => {
+  try {
+    f()
+  } catch (error) {
+    assert.isTrue(FlatBuffers.isFlatBuffersError(error))
+    assert.strictEqual((error as FlatBuffers.FlatBuffersError).kind, "Usage")
+    return
+  }
+  assert.fail("expected a Usage FlatBuffersError")
 }
 
 describe("FlatBuffers", () => {
@@ -116,7 +127,7 @@ describe("FlatBuffers", () => {
   })
 
   it("reads absent fields as their defaults", () => {
-    const b = FlatBuffers.make()
+    const b = FlatBuffers.makeBuilder()
     b.startTable(1)
     const root = FlatBuffers.root(b.finish(b.endTable()))
     assert.strictEqual(root.int32(0, 7), 7)
@@ -128,7 +139,7 @@ describe("FlatBuffers", () => {
   })
 
   it("decode returns a failure for malformed input", () => {
-    const failure = (bytes: Uint8Array, options?: FlatBuffers.Options) => {
+    const failure = (bytes: Uint8Array, options?: Parameters<typeof FlatBuffers.decode>[2]) => {
       const result = FlatBuffers.decode(bytes, (root) => root.string(0), options)
       assert.isTrue(Result.isFailure(result))
       return Result.isFailure(result) ? result.failure.kind : undefined
@@ -138,7 +149,7 @@ describe("FlatBuffers", () => {
     // A vtable of size 1.
     assert.strictEqual(failure(Uint8Array.of(8, 0, 0, 0, 1, 0, 4, 0, 4, 0, 0, 0)), "InvalidVtable")
     // A string field with an invalid UTF-8 byte.
-    const b = FlatBuffers.make()
+    const b = FlatBuffers.makeBuilder()
     const s = b.createString(Uint8Array.of(0xc3, 0x28))
     b.startTable(1)
     b.addFieldOffset(0, s)
@@ -168,46 +179,85 @@ describe("FlatBuffers", () => {
     }
   })
 
-  it("Builder rejects nested and out-of-order calls", () => {
-    const usage = (f: (b: FlatBuffers.Builder) => void) => {
-      try {
-        f(FlatBuffers.make())
-        assert.fail("expected a FlatBuffersError")
-      } catch (error) {
-        assert.isTrue(FlatBuffers.isFlatBuffersError(error))
-        assert.strictEqual((error as FlatBuffers.FlatBuffersError).kind, "Usage")
-      }
+  it("fails tables nested deeper than maxDepth", () => {
+    const b = FlatBuffers.makeBuilder()
+    let table = 0
+    for (let i = 0; i < 65; i++) {
+      b.startTable(1)
+      b.addFieldOffset(0, table)
+      table = b.endTable()
     }
-    usage((b) => {
+    const bytes = b.finish(table)
+    const depth = (t: FlatBuffers.Table): number => 1 + (t.table(0) === undefined ? 0 : depth(t.table(0)!))
+    const result = FlatBuffers.decode(bytes, depth)
+    assert.isTrue(Result.isFailure(result) && result.failure.kind === "Limit")
+    assert.deepStrictEqual(FlatBuffers.decode(bytes, depth, { maxDepth: 65 }), Result.succeed(65))
+  })
+
+  it("throws for reads that don't match the shape asked for, even inside decode", () => {
+    const monster = fromHex(MONSTER)
+    const root = FlatBuffers.root(monster)
+    usage(() => FlatBuffers.decode(monster, (root) => root.vector(4, 1)!.int32(0)))
+    usage(() => root.vector(4, 0))
+    usage(() => root.struct(0, 12)!.float32(12))
+    usage(() => root.struct(0, 12)!.float32(-4))
+    usage(() => root.struct(0, 12)!.float32(NaN))
+    usage(() => FlatBuffers.decode(monster, (root) => root.has(0), { identifier: "TOOLONG" }))
+  })
+
+  it("reads back a UTF-8 file identifier", () => {
+    const b = FlatBuffers.makeBuilder()
+    b.startTable(0)
+    assert.strictEqual(FlatBuffers.identifier(b.finish(b.endTable(), { identifier: "é12" })), "é12")
+  })
+
+  it("Builder rejects misuse", () => {
+    const builder = (f: (b: FlatBuffers.Builder) => void) => usage(() => f(FlatBuffers.makeBuilder()))
+    builder((b) => {
       b.startTable(1)
       b.createString("x")
     })
-    usage((b) => {
+    builder((b) => {
       b.startTable(1)
       b.startTable(1)
     })
-    usage((b) => {
+    builder((b) => {
       b.startVector(1, 1, 1)
       b.startTable(1)
     })
-    usage((b) => b.endTable())
-    usage((b) => b.endVector())
-    usage((b) => {
+    builder((b) => b.endTable())
+    builder((b) => b.endVector())
+    builder((b) => {
       b.startTable(1)
       b.addFieldInt32(1, 5)
     })
-    usage((b) => b.addFieldInt32(0, 5))
-    usage((b) => {
+    builder((b) => b.addFieldInt32(0, 5))
+    builder((b) => {
       b.addInt32(1)
       const s = b.offset
       b.addInt32(2)
       b.startTable(1)
       b.addFieldStruct(0, s)
     })
-    usage((b) => {
+    builder((b) => {
       b.startTable(0)
       b.finish(b.endTable(), { identifier: "TOOLONG" })
     })
-    usage((b) => b.addOffset(100))
+    builder((b) => b.addOffset(100))
+    builder((b) => b.startTable(32766))
+    builder((b) => {
+      // 64 KiB of inline data is more than a vtable entry can address.
+      b.startTable(1)
+      b.pad(0x10000)
+      b.addFieldInt32(0, 1)
+      b.endTable()
+    })
+    builder((b) => {
+      b.startTable(0)
+      const table = b.endTable()
+      b.finish(table)
+      b.finish(table)
+    })
+    builder((b) => b.startVector(1, 1, 3))
   })
 })
