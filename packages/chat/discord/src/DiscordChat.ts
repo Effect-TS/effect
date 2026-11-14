@@ -21,6 +21,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import { DiscordConfig } from "dfx/DiscordConfig"
 import { DiscordGateway } from "dfx/DiscordGateway"
 import { DispatchHook } from "dfx/DiscordGateway/Shard/DispatchHook"
 import { DiscordREST } from "dfx/DiscordREST"
@@ -96,11 +97,11 @@ import { CurrentPostOptions } from "./internal/options.ts"
  *   application id and token from its `raw`, so a second call replaces the
  *   first answer. It fails `NotFound` with detail `interaction_expired`
  *   from 15 minutes after the command, read from the interaction's id,
- *   without calling Discord. It sends one request and the adapter never
- *   retries it: a 429 that reaches the adapter fails `RateLimited`, for the
- *   caller to retry or not. dfx's own REST client waits out a 429 and sends
- *   again below the adapter, so with it a request can still land after 15
- *   minutes. Past that Discord answers 401 with code 50027, which is
+ *   without calling Discord. Otherwise it makes one HTTP request, through
+ *   the layer's `HttpClient` and not dfx's client, and never sends it
+ *   again, unless that `HttpClient` retries by itself: a 429 fails
+ *   `RateLimited`, for the caller to retry or not.
+ *   Discord answers 401 with code 50027 past 15 minutes, which is
  *   `interaction_expired` too. Code 10015 is mapped from the docs and was
  *   not seen.
  * - A modal that can't be built, a reply to a command that fails the checks
@@ -136,10 +137,14 @@ const lookupTimeout = Duration.seconds(5)
  *
  * **Details**
  *
- * - Every REST call goes through the `DiscordREST` in context. dfx waits on
- *   its rate-limit buckets and sends again after a 429, so a rate limit
- *   shows up as a slower call. `HttpClient` is used only to download
- *   attachments from Discord's CDN, with no token.
+ * - Every REST call but `followUp` goes through the `DiscordREST` in
+ *   context. dfx waits on its rate-limit buckets and sends again after a
+ *   429, so a rate limit shows up as a slower call.
+ * - `HttpClient` downloads attachments from Discord's CDN, with no token,
+ *   and sends `followUp`'s edit, which needs no bot token either. That edit
+ *   skips dfx's client so a 429 is not sent again past the 15 minutes. It
+ *   goes to the `rest.baseUrl` of the `DiscordConfig` in context, or
+ *   Discord's own API when there is none.
  * - Content goes out as written: Discord reads Markdown itself. Every write
  *   sends `allowed_mentions: { parse: [] }` and the `SUPPRESS_EMBEDS`
  *   flag, on the post and on every edit, unless `withPostOptions` says
@@ -222,7 +227,9 @@ export const layer: Layer.Layer<DiscordChat, never, DiscordREST | HttpClient.Htt
         })
       )
     })
-    const { adapter, channelType, guild, interaction } = yield* Adapter.make({ rest, http, botUserId })
+    const config = yield* Effect.serviceOption(DiscordConfig)
+    const baseUrl = Option.match(config, { onNone: () => Adapter.defaultBaseUrl, onSome: (_) => _.rest.baseUrl })
+    const { adapter, channelType, guild, interaction } = yield* Adapter.make({ rest, http, baseUrl, botUserId })
     yield* registry.register(adapter)
 
     const refuse = (message: string, error: ChatError) =>

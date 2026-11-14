@@ -1,4 +1,5 @@
 import type { DiscordREST } from "dfx/DiscordREST"
+import * as Generated from "dfx/DiscordREST/Generated"
 import type * as Discord from "dfx/types"
 import * as Cache from "effect/Cache"
 import {
@@ -28,7 +29,8 @@ import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import type * as HttpClient from "effect/http/HttpClient"
+import { flow } from "effect/Function"
+import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -136,13 +138,37 @@ const isObject = (u: unknown): u is Record<string, Json> => typeof u === "object
 
 const snowflake = /^\d{1,20}$/
 
+/**
+ * Discord's API, as dfx's `DiscordConfig` has it by default.
+ *
+ * @internal
+ */
+export const defaultBaseUrl = "https://discord.com/api/v10"
+
 /** @internal */
 export const make = Effect.fnUntraced(function*(options: {
   readonly rest: Rest
   readonly http: HttpClient.HttpClient
+  readonly baseUrl: string
   readonly botUserId: Effect.Effect<string, ChatError>
 }) {
   const { rest } = options
+
+  /**
+   * dfx's requests for the interaction webhook, over the plain `HttpClient`.
+   * dfx's own client sends a request again after a 429, which for
+   * `followUp` could land past the 15 minutes the expiry check ran on. The
+   * webhook takes the interaction's token and no bot token.
+   */
+  const webhooks = Generated.make(
+    HttpClient.mapRequest(
+      options.http,
+      flow(
+        HttpClientRequest.prependUrl(options.baseUrl),
+        HttpClientRequest.setHeader("User-Agent", "DiscordBot (https://effect.website, 1)")
+      )
+    )
+  )
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
@@ -500,10 +526,11 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   /**
-   * Edits the original response of a deferred command, in one attempt: not
-   * through `call`, whose retries would send again after the expiry check.
-   * Refused before the call past `followUpAge`, read from the interaction's
-   * id. A token Discord no longer takes is `interaction_expired` too.
+   * Edits the original response of a deferred command in one HTTP request:
+   * not through `call`, nor dfx's client, whose retries would send again
+   * after the expiry check. Refused before the call past `followUpAge`,
+   * read from the interaction's id. A token Discord no longer takes is
+   * `interaction_expired` too.
    */
   const followUp: ChatAdapter["followUp"] = Effect.fnUntraced(function*(deferred, content) {
     const op = "followUp"
@@ -518,7 +545,7 @@ export const make = Effect.fnUntraced(function*(options: {
     }
     const body = yield* message(op, content)
     const ephemeral = deferred.visibility === "ephemeral" ? 1 << 6 : 0
-    yield* rest.updateOriginalWebhookMessage(to.applicationId, to.token, {
+    yield* webhooks.updateOriginalWebhookMessage(to.applicationId, to.token, {
       payload: { ...body, flags: body.flags | ephemeral }
     }).pipe(Effect.mapError((cause) => {
       const error = Errors.chatError(op, Errors.reasonForRestError(cause, { write: true }))
