@@ -1,7 +1,7 @@
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { type Interactions, NoSuchElement } from "effect/chat/ChatTest"
 import * as Effect from "effect/Effect"
-import { appId, authTest, botUserId, makeFake, team } from "./utils.ts"
+import { appId, authTest, botUserId, commandFields, makeFake, team } from "./utils.ts"
 
 const tim = "U080YLYB277"
 
@@ -9,8 +9,9 @@ const tim = "U080YLYB277"
  * A Slack that keeps the messages the adapter posts, with their blocks, and
  * records every view it opens. `interactions` is the conformance hook: it
  * builds Slack's `block_actions` and `view_submission` payloads from what
- * was posted and opened, sends them through `SlackChat.interaction` and
- * keeps the answers.
+ * was posted and opened, and a slash command's form fields, sends them
+ * through `SlackChat.interaction` and keeps the answers. A command's
+ * `response_url` answers `ok`.
  */
 export const makeSlack = () => {
   const messages = new Map<string, any>()
@@ -53,7 +54,8 @@ export const makeSlack = () => {
       const view = { ...JSON.parse(params.view), id: "V" + ++viewCount }
       views.push(view)
       return { ok: true, view }
-    }
+    },
+    "response_url": { status: 200, body: "ok" }
   })
 
   /** The view the last click opened, until a submit closes it. */
@@ -71,6 +73,14 @@ export const makeSlack = () => {
   const user = { id: tim, username: "tim", name: "tim", team_id: team }
 
   const interactions: Interactions = {
+    command: Effect.fnUntraced(function*(thread, id, options) {
+      const parts = SlackChat.parts(thread)
+      if (parts._tag === "None") return
+      const before = views.length
+      const { token: _, ...fields } = commandFields("/" + id, options?.text ?? "", { channel_id: parts.value.channel })
+      yield* deliver(fields)
+      opened = views.length > before ? views[views.length - 1] : undefined
+    }),
     click: Effect.fnUntraced(function*(messageId, id, options) {
       const message = messages.get(messageId)
       const block = message?.blocks.find((block: any) => block.type === "actions")

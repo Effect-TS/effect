@@ -1,6 +1,8 @@
 /**
  * Interactivity: the normaliser on recorded and built payloads, the answers
- * `SlackChat.interaction` gives, and `layerInteractivity` over HTTP.
+ * `SlackChat.interaction` gives, `layerInteractivity` over HTTP, and a
+ * command's `followUp`. The command payloads are built from Slack's docs:
+ * none has been captured yet.
  */
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { assert, describe, it } from "@effect/vitest"
@@ -14,7 +16,7 @@ import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
-import { appId, authTest, channel, fixture, makeFake, slackLayer, team } from "./utils.ts"
+import { appId, authTest, channel, commandFields, fixture, makeFake, responseUrl, slackLayer, team } from "./utils.ts"
 
 const recorded = fixture("interactivity").cases
 const join = "\u241F"
@@ -107,6 +109,26 @@ describe("normalizeInteraction", () => {
     const bare = Option.getOrThrow(normalize(submit(["chat1", channel, "", "1794600001.000100"].join(join), {})))
     assert.isFalse("metadata" in bare)
     assert.strictEqual(bare.thread.id, `${team}/${channel}`)
+    // A modal a command opened packs an empty message slot, and its submit has no messageId.
+    const fromCommand = Option.getOrThrow(normalize(submit(["chat1", channel, "", ""].join(join), {})))
+    assert.isFalse("messageId" in fromCommand)
+    assert.strictEqual(fromCommand.thread.id, `${team}/${channel}`)
+  })
+
+  it("gives a command its name without the slash, its text and the channel, known or not", () => {
+    const event = Option.getOrThrow(normalize(commandFields("/deploy", "v1 <@U1>")))
+    assert.strictEqual(event._tag, "CommandInvoked")
+    if (event._tag !== "CommandInvoked") return
+    assert.deepStrictEqual(
+      [event.id, event.text, event.userId, event.thread.id],
+      ["deploy", "v1 <@U1>", "U080YLYB277", `${team}/${channel}`]
+    )
+    assert.isFalse("token" in (event.raw as object))
+    assert.strictEqual((event.raw as any).response_url, responseUrl)
+    const { text: _, ...noText } = commandFields("/deploy", "")
+    assert.strictEqual((Option.getOrThrow(normalize(noText)) as ChatInteraction.CommandInvoked).text, "")
+    assert.isTrue(Option.isNone(normalize(commandFields("/", ""))))
+    assert.isTrue(Option.isNone(normalize(commandFields("/deploy", "", { channel_id: "" }))))
   })
 })
 
@@ -114,6 +136,8 @@ const recording = () => {
   const refused: Array<ChatError> = []
   let onClick: () => Effect.Effect<ChatInteraction.ClickReply> = () => Effect.succeed(ChatInteraction.ack)
   let onSubmit: () => Effect.Effect<ChatInteraction.SubmitReply> = () => Effect.succeed(ChatInteraction.close)
+  let onCommand: (command: ChatInteraction.CommandInvoked) => Effect.Effect<ChatInteraction.CommandReply> = () =>
+    Effect.succeed(ChatInteraction.ack)
   return {
     refused,
     set click(f: typeof onClick) {
@@ -122,9 +146,13 @@ const recording = () => {
     set submit(f: typeof onSubmit) {
       onSubmit = f
     },
+    set command(f: typeof onCommand) {
+      onCommand = f
+    },
     layer: Layer.succeed(ChatInteraction.Handler, {
       click: () => onClick(),
       submit: () => onSubmit(),
+      command: (command) => onCommand(command),
       refused: (_, error) => Effect.sync(() => void refused.push(error))
     })
   }
@@ -207,6 +235,86 @@ describe("SlackChat.interaction", () => {
       )
       assert.strictEqual(fake.called("views.open").length, 1)
     }))
+
+  it.live("answers a command with the message a post sends, privately by default, or refuses it", () =>
+    Effect.gen(function*() {
+      const fake = makeFake({ "auth.test": authTest, "views.open": { ok: true, view: { id: "V1" } } })
+      const handler = recording()
+      const command = commandFields("/deploy", "v1")
+      handler.command = (event) =>
+        Effect.succeed(ChatInteraction.respond({ markdown: "Deploying **" + event.text + "**" }))
+      const answer: any = yield* interact(fake, handler, command)
+      assert.deepStrictEqual(
+        [answer.response_type, answer.text, answer.blocks[0].type, answer.blocks[0].text, answer.unfurl_links],
+        ["ephemeral", "Deploying **v1**", "markdown", "Deploying **v1**", false]
+      )
+      handler.command = () => Effect.succeed(ChatInteraction.respond({ markdown: "Hi", visibility: "public" }))
+      assert.strictEqual(((yield* interact(fake, handler, command)) as any).response_type, "in_channel")
+      // Nothing is answered for a deferral, a modal or a refused answer.
+      handler.command = (event) => Effect.succeed(ChatInteraction.defer(event))
+      assert.isUndefined(yield* interact(fake, handler, command))
+      handler.command = () => Effect.succeed(ChatInteraction.OpenModal.make({ modal: modal("m") }))
+      assert.isUndefined(yield* interact(fake, handler, command))
+      const [call] = fake.called("views.open")
+      assert.strictEqual(call.params.trigger_id, "trigger-command")
+      assert.strictEqual(JSON.parse(call.params.view).private_metadata, ["chat1", channel, "", "", "m"].join(join))
+      handler.command = () => Effect.succeed(ChatInteraction.respond({ markdown: "x".repeat(12_001) }))
+      assert.isUndefined(yield* interact(fake, handler, command))
+      assert.deepStrictEqual(handler.refused.map((error) => [error.op, error.reason._tag]), [["respond", "TooLarge"]])
+    }))
+})
+
+describe("followUp", () => {
+  const deferred = (raw: Record<string, unknown>, visibility: ChatInteraction.Visibility) =>
+    ChatInteraction.defer(
+      ChatInteraction.CommandInvoked.make({
+        id: "summarize",
+        text: "",
+        thread: SlackChat.thread({ team, channel }),
+        userId: "U080YLYB277",
+        raw: raw as any
+      }),
+      { visibility }
+    )
+
+  it.effect("posts once to the response_url with the deferral's response_type", () =>
+    Effect.gen(function*() {
+      const fake = makeFake({ "auth.test": authTest, "response_url": { status: 200, body: "ok" } })
+      const { token: _, ...raw } = commandFields("/summarize", "")
+      yield* Effect.flatMap(Chat.Chat, (chat) => chat.followUp(deferred(raw, "public"), { markdown: "Done" })).pipe(
+        Effect.provide(slackLayer(fake))
+      )
+      const calls = fake.called("response_url")
+      assert.deepStrictEqual(
+        calls.map(({ params }) => [params.url, params.response_type, params.text]),
+        [[responseUrl, "in_channel", "Done"]]
+      )
+    }))
+
+  it.effect("refuses a response_url off Slack, and maps a spent one to interaction_expired", () =>
+    Effect.gen(function*() {
+      const fake = makeFake({
+        "auth.test": authTest,
+        "response_url": { status: 404, body: { ok: false, error: "expired_url" } }
+      })
+      const failure = (raw: Record<string, unknown>) =>
+        Effect.flip(Effect.flatMap(Chat.Chat, (chat) => chat.followUp(deferred(raw, "ephemeral"), { markdown: "x" })))
+          .pipe(
+            Effect.provide(slackLayer(fake))
+          )
+      const offSlack = yield* failure({ response_url: "https://hooks.slack.com.evil.test/commands/1" })
+      const plain = yield* failure({ response_url: responseUrl.replace("https:", "http:") })
+      const spent = yield* failure({ response_url: responseUrl })
+      assert.deepStrictEqual(
+        [offSlack, plain, spent].map((error) => [error.op, error.reason._tag, error.reason.detail]),
+        [
+          ["followUp", "InvalidRequest", "invalid_response_url"],
+          ["followUp", "InvalidRequest", "invalid_response_url"],
+          ["followUp", "NotFound", "interaction_expired"]
+        ]
+      )
+      assert.strictEqual(fake.called("response_url").length, 1)
+    }))
 })
 
 describe("layerInteractivity", () => {
@@ -221,8 +329,11 @@ describe("layerInteractivity", () => {
     return "v0=" + Array.from(mac, (byte) => byte.toString(16).padStart(2, "0")).join("")
   }
 
-  const post = async (payload: unknown, options?: { readonly signature?: string }) => {
-    const body = new URLSearchParams({ payload: JSON.stringify(payload) }).toString()
+  const post = async (
+    payload: unknown,
+    options?: { readonly signature?: string; readonly form?: Array<[string, string]> }
+  ) => {
+    const body = new URLSearchParams(options?.form ?? { payload: JSON.stringify(payload) }).toString()
     const timestamp = String(Math.floor(Date.now() / 1000))
     return new Request("http://localhost/slack/interactivity", {
       method: "POST",
@@ -234,6 +345,45 @@ describe("layerInteractivity", () => {
       }
     })
   }
+
+  const serve = (handler: ReturnType<typeof recording>) => {
+    const app = SlackChat.layerInteractivity({
+      path: "/slack/interactivity",
+      signingSecret: Redacted.make(secret),
+      appId,
+      deadline: Duration.millis(50)
+    }).pipe(
+      Layer.provide(SlackChat.layer({ botToken: Redacted.make("xoxb-test"), teamId: team })),
+      Layer.provide(Chat.layer),
+      Layer.provide(handler.layer),
+      Layer.provide(makeFake({ "auth.test": authTest }).layer)
+    )
+    const { dispose, handler: web } = HttpRouter.toWebHandler(app, { disableLogger: true })
+    const send = (payload: unknown, options?: Parameters<typeof post>[1]) =>
+      Effect.promise(() => post(payload, options).then(web))
+    return { dispose: Effect.promise(() => dispose()), send }
+  }
+
+  it.live("takes a command's form, keeping a repeated field's first value, and answers a late one 503", () =>
+    Effect.gen(function*() {
+      const handler = recording()
+      const { dispose, send } = serve(handler)
+      const seen: Array<string> = []
+      handler.command = (event) =>
+        Effect.sync(() => seen.push(event.text)).pipe(
+          Effect.as(ChatInteraction.respond({ markdown: "Hi", visibility: "public" }))
+        )
+      const form = (text: string) =>
+        [...Object.entries(commandFields("/deploy", text)), ["text", "second"]] as Array<[string, string]>
+      const answered = yield* send(undefined, { form: form("first") })
+      assert.strictEqual(answered.status, 200)
+      assert.strictEqual((yield* Effect.promise(() => answered.json())).response_type, "in_channel")
+      assert.deepStrictEqual(seen, ["first"])
+
+      handler.command = () => Effect.as(Effect.never, ChatInteraction.ack)
+      assert.strictEqual((yield* send(undefined, { form: form("late") })).status, 503)
+      yield* dispose
+    }))
 
   it.live("answers a late submit 503, errors as JSON, and a bad signature 401", () =>
     Effect.gen(function*() {

@@ -1,6 +1,7 @@
 /**
- * Slack's side of buttons, selects and modals: the checks on a message's
- * elements, the view a modal opens as, and the interactivity payloads.
+ * Slack's side of buttons, selects, modals and slash commands: the checks on
+ * a message's elements, the view a modal opens as, and the interactivity
+ * payloads and command forms.
  */
 import {
   type ChatError,
@@ -72,29 +73,38 @@ export const checkActions = (actions: ReadonlyArray<ChatUi.Action>): ChatErrorRe
 /** Marks a `private_metadata` the adapter packed. */
 const metadataTag = "chat1"
 
-/** Where a click happened, which a submit gives back. */
+/** Where a click or a command happened, which a submit gives back. A command has no message. */
 interface Origin {
   readonly channel: string
   readonly threadTs?: string | undefined
-  readonly messageId: string
+  readonly messageId?: string | undefined
 }
 
 /**
- * The tag, the channel, the thread's ts or nothing, the message's ts and,
- * when there is one, the consumer's metadata, joined. The metadata is last,
- * so it may hold the join.
+ * The tag, the channel, the thread's ts or nothing, the message's ts or
+ * nothing and, when there is one, the consumer's metadata, joined. The
+ * metadata is last, so it may hold the join.
  */
 const packMetadata = (origin: Origin, metadata: string | undefined): string =>
-  [metadataTag, origin.channel, origin.threadTs ?? "", origin.messageId, ...(metadata === undefined ? [] : [metadata])]
-    .join(Actions.join)
+  [
+    metadataTag,
+    origin.channel,
+    origin.threadTs ?? "",
+    origin.messageId ?? "",
+    ...(metadata === undefined ? [] : [metadata])
+  ].join(Actions.join)
 
 const unpackMetadata = (
   packed: string
 ): { readonly origin: Origin; readonly metadata: string | undefined } | undefined => {
   const parts = packed.split(Actions.join)
-  if (parts.length < 4 || parts[0] !== metadataTag || parts[1] === "" || parts[3] === "") return undefined
+  if (parts.length < 4 || parts[0] !== metadataTag || parts[1] === "") return undefined
   return {
-    origin: { channel: parts[1], threadTs: parts[2] === "" ? undefined : parts[2], messageId: parts[3] },
+    origin: {
+      channel: parts[1],
+      threadTs: parts[2] === "" ? undefined : parts[2],
+      messageId: parts[3] === "" ? undefined : parts[3]
+    },
     metadata: parts.length === 4 ? undefined : parts.slice(4).join(Actions.join)
   }
 }
@@ -126,12 +136,13 @@ const inputBlock = (element: ChatUi.TextInput | ChatUi.SelectInput) => ({
 })
 
 /**
- * The view that opens `modal` from `click`, or why it can't open.
+ * The view that opens `modal` from `from`, or why it can't open.
  *
  * - Inputs are `input` blocks whose `block_id` is the field id, and a
  *   `Text` is a `section` of plain text.
  * - The modal's id is the `callback_id`. `private_metadata` holds the
- *   click's channel, thread and message beside the consumer's metadata.
+ *   click's channel, thread and message beside the consumer's metadata. For
+ *   a command the message slot is empty.
  * - The modal's id plus its metadata is held to 2,800 code points, the id to
  *   255, the title to 24 and each label to 2,000.
  *
@@ -139,7 +150,7 @@ const inputBlock = (element: ChatUi.TextInput | ChatUi.SelectInput) => ({
  */
 export const view = (
   modal: ChatUi.Modal,
-  click: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
+  from: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged | ChatInteraction.CommandInvoked
 ): { readonly view: Readonly<Record<string, unknown>> } | { readonly refusal: ChatErrorReason } => {
   const refuse = (refusal: ChatErrorReason) => ({ refusal })
   const id = codePoints(modal.id)
@@ -149,7 +160,7 @@ export const view = (
   if (id > idLength) return refuse(new TooLarge({ detail: "modal_id_too_long" }))
   if (modal.elements.length > limits.modalFields) return refuse(new TooLarge({ detail: "too_many_fields" }))
   if (codePoints(modal.title) > titleLength) return refuse(new TooLarge({ detail: "title_too_long" }))
-  const parts = Address.parts(click.thread)
+  const parts = Address.parts(from.thread)
   if (Option.isNone(parts)) return refuse(new InvalidRequest({ detail: "invalid_thread" }))
   const blocks: Array<unknown> = []
   for (const element of modal.elements) {
@@ -166,7 +177,10 @@ export const view = (
       callback_id: modal.id,
       title: plainText(modal.title),
       submit: plainText(modal.submitLabel ?? defaultSubmitLabel),
-      private_metadata: packMetadata({ ...parts.value, messageId: click.messageId }, modal.metadata),
+      private_metadata: packMetadata(
+        { ...parts.value, messageId: from._tag === "CommandInvoked" ? undefined : from.messageId },
+        modal.metadata
+      ),
       blocks
     }
   }
@@ -261,7 +275,28 @@ const submitted = (payload: JsonObject, teamId: string): Option.Option<ChatInter
     ...(metadata === undefined ? {} : { metadata }),
     values,
     thread: threadOf(teamId, origin),
-    messageId: origin.messageId,
+    ...(origin.messageId === undefined ? {} : { messageId: origin.messageId }),
+    userId,
+    raw: raw(payload)
+  }))
+}
+
+/** Whether `payload` is a slash command's fields: a `command` and no `type`. @internal */
+export const isCommand = (payload: unknown): boolean =>
+  isObject(payload) && payload.type === undefined && typeof payload.command === "string"
+
+const invoked = (payload: JsonObject, teamId: string): Option.Option<ChatInteraction.Interaction> => {
+  const command = string(payload, "command")
+  const channel = string(payload, "channel_id")
+  const userId = string(payload, "user_id")
+  const id = command?.startsWith("/") === true ? command.slice(1) : command
+  if (id === undefined || id === "" || channel === undefined || userId === undefined) return Option.none()
+  const text = typeof payload.text === "string" ? payload.text : ""
+  return Option.some(ChatInteraction.CommandInvoked.make({
+    id,
+    text,
+    // A command can't be typed in a thread, so its address is the channel's.
+    thread: Address.thread({ team: teamId, channel }),
     userId,
     raw: raw(payload)
   }))
@@ -269,9 +304,9 @@ const submitted = (payload: JsonObject, teamId: string): Option.Option<ChatInter
 
 /**
  * The interaction a decoded `payload` is: a click on a button or select in
- * an `actions` block the adapter built, or a submit of a view it opened.
- * Anything else, a link button's click and a value that is not JSON
- * included, is none.
+ * an `actions` block the adapter built, a submit of a view it opened, or a
+ * slash command's fields. Anything else, a link button's click and a value
+ * that is not JSON included, is none.
  *
  * @internal
  */
@@ -282,6 +317,7 @@ export const normalize = (
   if (!isObject(payload) || !isJson(payload)) return Option.none()
   if (payload.type === "block_actions") return clicked(payload, context.teamId)
   if (payload.type === "view_submission") return submitted(payload, context.teamId)
+  if (isCommand(payload)) return invoked(payload, context.teamId)
   return Option.none()
 }
 
@@ -304,17 +340,28 @@ const expired = (error: ChatError): ChatError =>
  * `SlackChat.interaction`: normalises, calls the handler through
  * `ChatInteraction.handle` and gives the body to answer with.
  *
- * - An ack, a close, a late click and a payload that is not the adapter's
- *   give `undefined`, an empty answer.
+ * - An ack, a close, a late click, a deferral and a payload that is not the
+ *   adapter's give `undefined`, an empty answer.
  * - `errors` gives `response_action: "errors"`, keyed by field id.
- * - A late submit gives `Late`.
- * - `OpenModal` calls `views.open` with the click's `trigger_id` before
- *   answering. A modal that can't be built, or that Slack refuses, goes to
- *   `Handler.refused`, and the click is still acked.
+ * - A late submit or command gives `Late`.
+ * - `OpenModal` calls `views.open` with the click's or command's
+ *   `trigger_id` before answering. A modal that can't be built, or that
+ *   Slack refuses, goes to `Handler.refused`, and the click is still acked.
+ * - `Respond` gives the message as the body, with its `response_type`. One
+ *   that fails the checks of a `post` goes to `Handler.refused` and gives
+ *   an empty answer.
  *
  * @internal
  */
-export const make = (options: { readonly api: Api; readonly teamId: string }) =>
+export const make = (options: {
+  readonly api: Api
+  readonly teamId: string
+  readonly answer: (
+    op: string,
+    content: { readonly markdown: string; readonly actions?: ReadonlyArray<ChatUi.Action> | undefined },
+    visibility: ChatInteraction.Visibility
+  ) => Effect.Effect<Readonly<Record<string, unknown>>, ChatError>
+}) =>
 (
   payload: unknown,
   interactionOptions?: { readonly deadline?: Duration.Duration | undefined }
@@ -326,14 +373,27 @@ export const make = (options: { readonly api: Api; readonly teamId: string }) =>
     switch (reply._tag) {
       case "Late":
         // A late click is acked: its handler runs on and `handle` refuses a modal it opens.
-        return event.value._tag === "ModalSubmitted" ? reply : undefined
+        return event.value._tag === "ButtonClicked" || event.value._tag === "SelectChanged" ? undefined : reply
       case "Ack":
       case "Close":
+      case "Defer":
         return undefined
       case "Errors":
         return { response_action: "errors", errors: reply.errors }
+      case "Respond": {
+        const command = event.value as ChatInteraction.CommandInvoked
+        const handler = yield* ChatInteraction.Handler
+        return yield* options.answer("respond", reply, reply.visibility).pipe(
+          // The body is a post's, which is JSON.
+          Effect.map((body): Json | undefined => body as Json),
+          Effect.catch((error) => Effect.as(handler.refused(command, error), undefined))
+        )
+      }
       case "OpenModal": {
-        const click = event.value as ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
+        const click = event.value as
+          | ChatInteraction.ButtonClicked
+          | ChatInteraction.SelectChanged
+          | ChatInteraction.CommandInvoked
         const handler = yield* ChatInteraction.Handler
         const built = view(reply.modal, click)
         if ("refusal" in built) {

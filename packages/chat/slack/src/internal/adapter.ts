@@ -10,10 +10,13 @@ import {
   type ChatError,
   type ChatErrorReason,
   fileRefused,
+  interactionExpired,
+  NotFound,
   TooLarge,
   Unknown,
   Unsupported
 } from "effect/chat/ChatError"
+import type { Defer, Visibility } from "effect/chat/ChatInteraction"
 import type { ChatMessage } from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
 import type { Action } from "effect/chat/ChatUi"
@@ -92,7 +95,9 @@ export const descriptor: Descriptor = {
     "buttons",
     "selects",
     "modals",
-    "modalErrors"
+    "modalErrors",
+    "commands",
+    "ephemeral"
   ]),
   measure: Length.measure,
   limits: {
@@ -102,11 +107,25 @@ export const descriptor: Descriptor = {
     minWriteInterval: Duration.seconds(1),
     streamLength: Length.messageLength,
     streamAge: Duration.minutes(10),
+    followUpAge: Duration.minutes(30),
     ...Interactions.limits
   }
 }
 
 const pageSize = 200
+
+/**
+ * The hosts a command's `response_url` may point at. A deferral is data that
+ * may have crossed a queue, so the adapter posts only to Slack.
+ */
+const isSlackHost = (host: string): boolean =>
+  host === "slack.com" || host.endsWith(".slack.com") || host === "slack-gov.com" || host.endsWith(".slack-gov.com")
+
+/** What Slack is taken to answer for a `response_url` that is spent: assumed, not captured. */
+const spentResponseUrl = new Set(["expired_url", "used_url"])
+
+/** The `response_type` of a command's answer. */
+const responseType = (visibility: Visibility) => visibility === "ephemeral" ? "ephemeral" : "in_channel"
 
 /** The bound on each call of a file post from `chat.postMessage` on: the post, each attach and the rollback. */
 const fileCallTimeout = Duration.seconds(30)
@@ -812,9 +831,65 @@ export const make = (options: {
     return { id: found.id, name: found.name, isBot: found.isBot, isSelf: found.id === botUserId, raw: found.raw }
   })
 
+  /**
+   * The body of a command's answer, `Respond` or `followUp`: what a `post`
+   * of the same content sends with the default post options, after the same
+   * checks, with its `response_type`. `withPostOptions` does not reach it,
+   * so it notifies nobody and unfurls nothing.
+   */
+  const answer = Effect.fnUntraced(function*(
+    op: string,
+    content: { readonly markdown: string; readonly actions?: ReadonlyArray<Action> | undefined },
+    visibility: Visibility
+  ) {
+    const actions = content.actions ?? []
+    yield* checkActions(op, actions)
+    const body = yield* messageContent(op, Text.body(content.markdown, {}, Text.postBudget, actions))
+    return { response_type: responseType(visibility), ...body, unfurl_links: false, unfurl_media: false }
+  })
+
+  const responseUrl = (op: string, deferred: Defer): Effect.Effect<URL, ChatError> => {
+    const raw = deferred.command.raw
+    const value = isObject(raw) ? string(raw, "response_url") : undefined
+    const url = value === undefined || !URL.canParse(value) ? undefined : new URL(value)
+    return url !== undefined && url.protocol === "https:" && isSlackHost(url.hostname)
+      ? Effect.succeed(url)
+      : fail(op, Errors.invalidRequest("invalid_response_url"))
+  }
+
+  /**
+   * One POST to the command's `response_url`, never retried. A spent URL is
+   * `NotFound` with detail `interaction_expired`.
+   */
+  const followUp: ChatAdapter["followUp"] = Effect.fnUntraced(function*(deferred, content) {
+    const op = "followUp"
+    const url = yield* responseUrl(op, deferred)
+    const body = yield* answer(op, content, deferred.visibility)
+    const response = yield* options.http.execute(
+      HttpClientRequest.post(url).pipe(HttpClientRequest.bodyJsonUnsafe(body))
+    ).pipe(Effect.mapError((error) => Errors.chatError(op, Errors.transport(true, error.reason._tag, error))))
+    if (response.status >= 200 && response.status < 300) return
+    const text = yield* Effect.orElseSucceed(response.text, () => "")
+    let code: string | undefined
+    try {
+      const parsed: unknown = JSON.parse(text)
+      code = isObject(parsed) ? string(parsed, "error") : undefined
+    } catch {
+      code = text.trim() === "" ? undefined : text.trim()
+    }
+    if (response.status === 404 || response.status === 410 || (code !== undefined && spentResponseUrl.has(code))) {
+      return yield* fail(
+        op,
+        new NotFound({ detail: interactionExpired, ...(code === undefined ? {} : { cause: code }) })
+      )
+    }
+    return yield* fail(op, Errors.reasonForStatus(response.status, { write: true, cause: code }))
+  })
+
   const adapter: ChatAdapter = {
     descriptor,
     nativeStream,
+    followUp,
     post: Effect.fnUntraced(function*(thread, content) {
       const parts = yield* resolve("post", thread)
       if (content.replyTo !== undefined) return yield* fail("post", new Unsupported({ capability: "replyTo" }))
@@ -948,5 +1023,5 @@ export const make = (options: {
     getUser
   }
 
-  return { adapter, user }
+  return { adapter, user, answer }
 }
