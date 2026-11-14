@@ -466,9 +466,10 @@ export const makeEncodedStorage: (options?: {
     orElse: () => sql.literal("FOR UPDATE SKIP LOCKED")
   })
   // Writes to a request's replies lock its row first, in deleteProcessed's
-  // order, so they cannot deadlock. An empty result means it was deleted.
-  const lockRequest = (requestId: string) =>
-    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${forUpdate}`
+  // order, so they cannot deadlock. An empty result means it was deleted, or
+  // does not match the filter.
+  const lockRequest = (requestId: string, filter: Fragment = emptyFragment) =>
+    sql`SELECT 1 FROM ${messagesTableSql} ${updateLock} WHERE id = ${requestId} ${filter} ${forUpdate}`
   // mssql can scan the clustered index on small tables and deadlock on other
   // requests' rows, so these statements force the request_id indexes
   const markAcksProcessed: (requestId: string) => Effect.Effect<unknown, SqlError> = sql.onDialectOrElse({
@@ -786,25 +787,20 @@ export const makeEncodedStorage: (options?: {
 
     clearReplies: Effect.fnUntraced(
       function*(requestId, options) {
-        const expectedReplyId = options?.expectedReplyId
-        yield* lockRequest(String(requestId))
-        if (expectedReplyId === undefined) {
-          yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
-          yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
-            String(requestId)
-          } AND kind = ${messageKindInterrupt}`
-          yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
-            String(requestId)
-          }`
-          return
-        }
         const id = String(requestId)
-        const expected = String(expectedReplyId)
-        // Check at the storage boundary, not at the earlier workflow read.
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0
-          AND EXISTS (SELECT 1 FROM ${messagesTableSql} WHERE id = ${id} AND last_reply_id = ${expected})`
+        const expectedReplyId = options?.expectedReplyId
+        // A guarded reset only touches rows stamped by the expected reply, so
+        // interrupts received after it are kept.
+        const stamped = expectedReplyId === undefined
+          ? emptyFragment
+          : sql`AND last_reply_id = ${String(expectedReplyId)}`
+        // Lock and check the current reply before mutating any of the request family.
+        const current = yield* lockRequest(id, stamped)
+        if (expectedReplyId !== undefined && current.length === 0) return
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${id} AND kind = 0`
+        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${id} AND kind = ${messageKindInterrupt} ${stamped}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL
-          WHERE request_id = ${id} AND last_reply_id = ${expected}`
+          WHERE request_id = ${id} ${stamped}`
       },
       sql.withTransaction,
       PersistenceError.refail,

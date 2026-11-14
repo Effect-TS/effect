@@ -274,6 +274,39 @@ describe("SqlMessageStorage", () => {
             ))
           }).pipe(TestClock.withLive), { timeout: 30_000 })
 
+        it.effect(
+          "guarded clearReplies preserves a concurrently saved reply in either lock order",
+          () =>
+            Effect.gen(function*() {
+              const sql = yield* SqlClient.SqlClient
+              const storage = yield* MessageStorage.MessageStorage
+              for (const saveFirst of [false, true]) {
+                yield* truncate
+                const request = yield* makeRequest()
+                const oldReply = yield* makeReply(request)
+                const newReply = yield* makeReply(request)
+                yield* storage.saveRequest(request)
+                yield* storage.saveReply(oldReply)
+                const reset = storage.clearReplies(request.envelope.requestId, { expectedReplyId: oldReply.reply.id })
+                const save = storage.saveReply(newReply)
+                // A competing runner resets the old completion before saving its new reply.
+                const [first, second] = saveFirst ? [Effect.andThen(reset, save), reset] : [reset, save]
+                // Hold the first operation's lock while the second connection starts.
+                const fiber = yield* Effect.andThen(first, sql`SELECT pg_sleep(2)`).pipe(
+                  sql.withTransaction,
+                  Effect.forkChild
+                )
+                yield* waitForPgSleep
+                yield* second
+                yield* Fiber.join(fiber)
+                const replies = yield* storage.repliesFor([request])
+                assert.strictEqual(replies.at(-1)?.id, newReply.reply.id)
+                assert.deepStrictEqual(yield* storage.unprocessedMessages([request.envelope.address.shardId]), [])
+              }
+            }).pipe(TestClock.withLive),
+          { timeout: 30_000 }
+        )
+
         it.effect("clearReplies does not deadlock with a concurrent deleteProcessed", () =>
           Effect.gen(function*() {
             yield* truncate
@@ -631,17 +664,34 @@ describe("SqlMessageStorage", () => {
           yield* truncate
         }))
 
-      it.effect("clearReplies requeues when the expected reply is current", () =>
+      it.effect("clearReplies requeues the request without replaying consumed interrupts", () =>
         Effect.gen(function*() {
           yield* truncate
           const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
           const request = yield* makeRequest()
           const reply = yield* makeReply(request)
+          const interrupt = () =>
+            Message.OutgoingEnvelope.interrupt({
+              id: snowflake.nextUnsafe(),
+              requestId: request.envelope.requestId,
+              address: request.envelope.address
+            })
           yield* storage.saveRequest(request)
+          yield* storage.saveEnvelope(interrupt())
           yield* storage.saveReply(reply)
+          // An interrupt received after completion belongs to the next execution.
+          const pending = interrupt()
+          yield* storage.saveEnvelope(pending)
           yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
-          expect(yield* storage.repliesFor([request])).toHaveLength(0)
-          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toHaveLength(1)
+          // A duplicate reset must not remove that pending interrupt either.
+          yield* storage.clearReplies(request.envelope.requestId, { expectedReplyId: reply.reply.id })
+          assert.deepStrictEqual(yield* storage.repliesFor([request]), [])
+          const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+          assert.deepStrictEqual(
+            messages.map(({ envelope }) => envelope._tag === "Request" ? envelope.requestId : envelope.id),
+            [request.envelope.requestId, pending.envelope.id]
+          )
         }))
 
       it.effect("clearReplies with a stale expected reply preserves a newer completion and processed state", () =>
