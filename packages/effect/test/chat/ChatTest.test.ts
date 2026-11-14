@@ -22,26 +22,29 @@ const parseMention: ChatTest.ParseMention = (slice) => {
 /** The conformance click hook, over the fake's own entry. */
 const interactionsFor = (test: ChatTest.ChatTest["Service"]): ChatTest.Interactions => {
   let open: {
-    readonly click: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged
+    readonly from: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged | ChatInteraction.CommandInvoked
     readonly opened: ChatInteraction.OpenModal
   } | undefined
+  const deliver = Effect.fnUntraced(function*(
+    from: ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged | ChatInteraction.CommandInvoked
+  ) {
+    const handler = yield* ChatInteraction.Handler
+    let refused = false
+    const reply = yield* test.interact(from as ChatInteraction.CommandInvoked).pipe(
+      Effect.provideService(ChatInteraction.Handler, {
+        ...handler,
+        refused: (event, error) =>
+          Effect.andThen(Effect.sync(() => void (refused = true)), handler.refused(event, error))
+      })
+    )
+    open = reply._tag === "OpenModal" && !refused ? { from, opened: reply } : undefined
+  })
   return {
-    click: Effect.fnUntraced(function*(messageId, id, options) {
-      const click = yield* test.click(messageId, id, options)
-      const handler = yield* ChatInteraction.Handler
-      let refused = false
-      const reply = yield* test.interact(click).pipe(
-        Effect.provideService(ChatInteraction.Handler, {
-          ...handler,
-          refused: (event, error) =>
-            Effect.andThen(Effect.sync(() => void (refused = true)), handler.refused(event, error))
-        })
-      )
-      open = reply._tag === "OpenModal" && !refused ? { click, opened: reply } : undefined
-    }),
+    click: (messageId, id, options) => Effect.flatMap(test.click(messageId, id, options), deliver),
+    command: (thread, id, options) => Effect.flatMap(test.command(thread, id, options), deliver),
     submit: Effect.fnUntraced(function*(values) {
       if (open === undefined) return
-      const reply = yield* test.interact(yield* test.submit(open.click, open.opened, values))
+      const reply = yield* test.interact(yield* test.submit(open.from, open.opened, values))
       if (reply._tag !== "Errors") open = undefined
     })
   }
@@ -70,7 +73,7 @@ const ruleNames = Object.keys(ChatTest.conformance({
   parseMention,
   refuseFiles: () => Effect.void,
   failNext: () => Effect.void,
-  interactions: { click: () => Effect.void, submit: () => Effect.void }
+  interactions: { click: () => Effect.void, submit: () => Effect.void, command: () => Effect.void }
 }))
 
 const capabilities = ChatError.Capability.literals
@@ -238,6 +241,7 @@ describe("ChatTest", () => {
       ChatInteraction.Handler.of({
         click: () => Effect.succeed(reply),
         submit: () => Effect.succeed(ChatInteraction.close),
+        command: () => Effect.succeed(ChatInteraction.ack),
         refused: (_, error) => Effect.sync(() => void refused.push(error))
       })
 
@@ -253,7 +257,7 @@ describe("ChatTest", () => {
       ) {
         assert.include(withoutHook, name)
       }
-      for (const name of ["actions/valueRoundTrips", "modal/origin", "unsupported/modals"]) {
+      for (const name of ["actions/valueRoundTrips", "modal/origin", "unsupported/modals", "command/arrives"]) {
         assert.notInclude(withoutHook, name)
         assert.include(ruleNames, name)
       }
@@ -370,7 +374,23 @@ describe("ChatTest", () => {
         assert.strictEqual(reason?._tag === "Unsupported" && reason.capability, "modals")
       }).pipe(Effect.provide(ChatTest.layer({ capabilities: capabilities.filter((c) => c !== "modals") }))))
 
-    it.effect("checkInteraction rejects a submit with no messageId and a foreign platform", () =>
+    it("lists the command rules only with the hook's command, and unsupported/commands always", () => {
+      const withoutCommand = Object.keys(ChatTest.conformance({
+        platform: "test",
+        thread: ChatThread.make("test", "c0"),
+        userPosts: () => Effect.die("unused"),
+        parseMention,
+        interactions: { click: () => Effect.void, submit: () => Effect.void }
+      }))
+      assert.include(withoutCommand, "unsupported/commands")
+      assert.include(withoutCommand, "modal/origin")
+      for (const name of ["command/followUp", "command/modalOrigin", "unsupported/ephemeral"]) {
+        assert.notInclude(withoutCommand, name)
+        assert.include(ruleNames, name)
+      }
+    })
+
+    it.effect("checkInteraction rejects a submit with an empty messageId and a foreign platform", () =>
       Effect.gen(function*() {
         const submitted = ChatInteraction.ModalSubmitted.make({
           id: "ask",

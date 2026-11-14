@@ -31,6 +31,7 @@ import type * as Stream from "../Stream.ts"
 import type { Capability } from "./ChatError.ts"
 import { ChatError, TooLarge } from "./ChatError.ts"
 import type { ThreadKind } from "./ChatEvent.ts"
+import type { Defer } from "./ChatInteraction.ts"
 import type { Attachment, ChatMessage, ReplyTo } from "./ChatMessage.ts"
 import type { ChatThread } from "./ChatThread.ts"
 import type { Action } from "./ChatUi.ts"
@@ -71,6 +72,8 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *   as `messageLength` is. The adapter checks them exactly and fails
  *   `TooLarge`: before the call for a message's elements, and before it
  *   opens a modal.
+ * - `limits.followUpAge` is there exactly when `commands` is: how long after
+ *   a command its `followUp` still works.
  *
  * **Gotchas**
  *
@@ -100,6 +103,8 @@ export interface Descriptor {
     readonly modalMetadataLength?: number | undefined
     /** How many inputs and texts one modal may hold. */
     readonly modalFields?: number | undefined
+    /** How long after a command its `followUp` still works. */
+    readonly followUpAge?: Duration.Duration | undefined
   }
 }
 
@@ -199,6 +204,11 @@ export interface User {
  *   `Unsupported` before the call, naming `buttons` or `selects`. An
  *   `edit` replaces the whole message, so an edit without `actions`
  *   removes them.
+ * - `followUp` sends the answer a command's `Defer` promised, to whoever
+ *   its `visibility` names. It is routed by `deferred.command.thread`, sent
+ *   once per deferral and never retried. It takes no files. It fails
+ *   `NotFound` with detail `interaction_expired` past `limits.followUpAge`,
+ *   and `Unsupported` without `commands`.
  *
  * @stability unstable
  * @category models
@@ -241,6 +251,10 @@ export interface Ops {
     id: string,
     options?: { readonly in?: ChatThread | undefined }
   ) => Effect.Effect<User, ChatError>
+  readonly followUp: (deferred: Defer, content: {
+    readonly markdown: string
+    readonly actions?: ReadonlyArray<Action> | undefined
+  }) => Effect.Effect<void, ChatError>
 }
 
 /**

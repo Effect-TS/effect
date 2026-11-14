@@ -1,6 +1,6 @@
 /**
- * Typed buttons, selects and modals, and the service that receives their
- * clicks.
+ * Typed buttons, selects, modals and slash commands, and the service that
+ * receives their clicks, submits and commands.
  *
  * A definition carries an element's id and the schemas of its values. It
  * builds the element to post (`of`, `open`) and gives the typed slot of its
@@ -36,11 +36,11 @@
  *
  * **Details**
  *
- * - Clicks and submits are not `ChatEvent`s. They need an answer inside the
- *   platform's 3 seconds, so they go to `Handler`, which answers by return
- *   value and has no error channel.
- * - Neither platform redelivers a click or a submit, so interactions carry no
- *   dedupe key.
+ * - Clicks, submits and commands are not `ChatEvent`s. They need an answer
+ *   inside the platform's 3 seconds, so they go to `Handler`, which answers
+ *   by return value and has no error channel.
+ * - Neither platform redelivers a click, a submit or a command, so
+ *   interactions carry no dedupe key.
  *
  * @stability unstable
  * @since 4.1.5
@@ -126,8 +126,9 @@ export type SelectChanged = typeof SelectChanged.Type
  *
  * **Details**
  *
- * - `thread` and `messageId` are those of the click that opened the modal. A
- *   modal only opens from a click, so they are always there.
+ * - `thread` and `messageId` are those of the click that opened the modal.
+ *   A modal a command opened carries the command's `thread` and no
+ *   `messageId`.
  * - `metadata` is still encoded.
  * - `values` are by field id, still encoded. An optional field left empty
  *   has no key.
@@ -140,7 +141,10 @@ export const ModalSubmitted = Schema.TaggedStruct("ModalSubmitted", {
   id: Schema.String,
   metadata: Schema.optionalKey(Schema.String),
   values: Schema.Record(Schema.String, Schema.String),
-  ...origin
+  thread: ChatThread,
+  messageId: Schema.optionalKey(Schema.String),
+  userId: Schema.String,
+  raw: Schema.Json
 })
 
 /**
@@ -151,6 +155,41 @@ export const ModalSubmitted = Schema.TaggedStruct("ModalSubmitted", {
  * @since 4.1.5
  */
 export type ModalSubmitted = typeof ModalSubmitted.Type
+
+/**
+ * Schema for a slash command.
+ *
+ * **Details**
+ *
+ * - `id` is the command's name, without the slash.
+ * - `text` is what was typed after the name, as the platform sent it, and
+ *   empty when nothing was. It is not normalised.
+ * - `thread` is where the command was typed. On Slack that is always a
+ *   channel or a direct: Slack does not deliver an app's command typed in a
+ *   thread. There is no `messageId`, since a command comes from no message.
+ * - `raw` is the platform's payload. It holds what `Chat.followUp` needs,
+ *   so it is a credential for as long as `limits.followUpAge`.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.5
+ */
+export const CommandInvoked = Schema.TaggedStruct("CommandInvoked", {
+  id: Schema.String,
+  text: Schema.String,
+  thread: ChatThread,
+  userId: Schema.String,
+  raw: Schema.Json
+})
+
+/**
+ * A slash command.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.5
+ */
+export type CommandInvoked = typeof CommandInvoked.Type
 
 /**
  * Schema for what an adapter hands to `Handler`.
@@ -164,10 +203,10 @@ export type ModalSubmitted = typeof ModalSubmitted.Type
  * @category events
  * @since 4.1.5
  */
-export const Interaction = Schema.Union([ButtonClicked, SelectChanged, ModalSubmitted])
+export const Interaction = Schema.Union([ButtonClicked, SelectChanged, ModalSubmitted, CommandInvoked])
 
 /**
- * A click, a select choice or a modal submit.
+ * A click, a select choice, a modal submit or a slash command.
  *
  * @stability unstable
  * @category events
@@ -180,7 +219,9 @@ export type Interaction = typeof Interaction.Type
 // -----------------------------------------------------------------------------
 
 /**
- * Schema for the reply that acknowledges a click.
+ * Schema for the reply that acknowledges a click. It is also what the handler
+ * service answers a command with no definition, which the adapter sends
+ * nothing for.
  *
  * @stability unstable
  * @category replies
@@ -198,7 +239,8 @@ export const Ack = Schema.TaggedStruct("Ack", {})
 export type Ack = typeof Ack.Type
 
 /**
- * Schema for the reply that opens a modal. Only a click can return it.
+ * Schema for the reply that opens a modal. A click or a command can return
+ * it.
  *
  * @stability unstable
  * @category replies
@@ -279,6 +321,99 @@ export type ClickReply = Ack | OpenModal
 export type SubmitReply = Close | Errors
 
 /**
+ * Schema for who sees the answer to a command: `"ephemeral"` for the person
+ * who ran it, `"public"` for the channel.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export const Visibility = Schema.Literals(["ephemeral", "public"])
+
+/**
+ * Who sees the answer to a command.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export type Visibility = typeof Visibility.Type
+
+/**
+ * Schema for the reply that answers a command with a message, at once.
+ *
+ * **Details**
+ *
+ * `markdown` and `actions` are rendered and checked the way `post` renders
+ * and checks them. The message gets no id: it cannot be edited, deleted or
+ * fetched afterwards.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export const Respond = Schema.TaggedStruct("Respond", {
+  markdown: Schema.String,
+  actions: Schema.optionalKey(Schema.Array(ChatUi.Action)),
+  visibility: Visibility
+})
+
+/**
+ * The reply that answers a command with a message.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export type Respond = typeof Respond.Type
+
+/**
+ * Schema for the reply that says a command's answer comes later, and the
+ * value `Chat.followUp` takes to send it.
+ *
+ * **Details**
+ *
+ * - It is plain data, so it can go on a queue to another process.
+ * - `visibility` is fixed here. `followUp` has none of its own.
+ *
+ * **Gotchas**
+ *
+ * It holds the command's `raw`, which is a credential for as long as
+ * `limits.followUpAge`.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export const Defer = Schema.TaggedStruct("Defer", {
+  command: CommandInvoked,
+  visibility: Visibility
+})
+
+/**
+ * The reply that says a command's answer comes later.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export type Defer = typeof Defer.Type
+
+/**
+ * What the handler service may answer a command with.
+ *
+ * **Details**
+ *
+ * `Ack` is what a command with no definition gets, and the adapter sends
+ * nothing for it. A typed command handler cannot return it.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export type CommandReply = Ack | Respond | OpenModal | Defer
+
+/**
  * Schema for what `handle` gives when the handler ran past the deadline.
  *
  * **Gotchas**
@@ -347,6 +482,51 @@ export const errors = <const E extends { readonly [field: string]: string }>(
   errors: E
 ): FieldErrors<keyof E & string> => Errors.make({ errors })
 
+/**
+ * Answers a command with a message, at once.
+ *
+ * **Details**
+ *
+ * `visibility` defaults to `"ephemeral"`: only the person who ran the
+ * command sees it. A platform without `ephemeral` refuses a private answer
+ * and sends nothing. It never sends it publicly instead.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export const respond = (options: {
+  readonly markdown: string
+  readonly actions?: ReadonlyArray<ChatUi.Action> | undefined
+  readonly visibility?: Visibility | undefined
+}): Respond =>
+  Respond.make({
+    markdown: options.markdown,
+    ...optional("actions", options.actions),
+    visibility: options.visibility ?? "ephemeral"
+  })
+
+/**
+ * Answers a command with a promise of a later answer, sent with
+ * `Chat.followUp`.
+ *
+ * **When to use**
+ *
+ * Use when the work does not fit in the deadline. The handler returns the
+ * deferral and hands it to whatever does the work.
+ *
+ * **Details**
+ *
+ * `visibility` defaults to `"ephemeral"`, and holds for the follow-up.
+ *
+ * @stability unstable
+ * @category replies
+ * @since 4.1.5
+ */
+export const defer = (command: CommandInvoked, options?: {
+  readonly visibility?: Visibility | undefined
+}): Defer => Defer.make({ command, visibility: options?.visibility ?? "ephemeral" })
+
 // -----------------------------------------------------------------------------
 // typed events
 // -----------------------------------------------------------------------------
@@ -395,8 +575,10 @@ export interface Selected<out Value> {
  *
  * **Details**
  *
- * `values` has one key per input and none for `text`. An optional input left
- * empty is `undefined`.
+ * - `values` has one key per input and none for `text`. An optional input
+ *   left empty is `undefined`.
+ * - `messageId` is the message whose element opened the modal, and
+ *   `undefined` when a command opened it.
  *
  * @stability unstable
  * @category models
@@ -407,7 +589,7 @@ export interface Submit<out Metadata, out Values> {
   readonly metadata: Metadata
   readonly values: Values
   readonly thread: ChatThread
-  readonly messageId: string
+  readonly messageId: string | undefined
   readonly userId: string
   readonly raw: Schema.Json
 }
@@ -936,7 +1118,8 @@ export type OpenOptions<Metadata extends ValueSchema | undefined, Fs extends Fie
  *
  * **Details**
  *
- * `open` gives the reply that opens the modal. Only a click can return it.
+ * `open` gives the reply that opens the modal. A click's or a command's
+ * handler can return it.
  *
  * **Gotchas**
  *
@@ -975,8 +1158,8 @@ export interface Modal<
  *
  * **Gotchas**
  *
- * A modal the platform will not take can only fail after the click's handler
- * returned it: the adapter acks the click, opens nothing and calls
+ * A modal the platform will not take can only fail after the click's or
+ * command's handler returned it: the adapter opens nothing and calls
  * `Handler.refused`. A portable modal has a title of 24 or less, labels of 45
  * or less, at most 5 fields, and an id plus metadata under 100 characters.
  *
@@ -1067,13 +1250,78 @@ export const modal = <
 }
 
 /**
+ * A slash command definition: a name and at most one text argument.
+ *
+ * **Details**
+ *
+ * `description` and `argument` are what registration needs. Slack reads its
+ * own from the app manifest, so there they are documentation.
+ *
+ * @stability unstable
+ * @category definitions
+ * @since 4.1.5
+ */
+export interface Command<out Id extends string> {
+  readonly [TypeId]: typeof TypeId
+  readonly kind: "command"
+  readonly id: Id
+  readonly description: string
+  readonly argument: {
+    readonly name: string
+    readonly description: string
+    readonly required: boolean
+  } | undefined
+}
+
+/**
+ * Defines a slash command.
+ *
+ * **Details**
+ *
+ * - The id is the command's name without the slash. It shares the registry's
+ *   id space with buttons, selects and modals.
+ * - Slack sends everything typed after the name as one string. Discord gets
+ *   one `STRING` option named `argument.name`, and a command with no
+ *   `argument` has no options.
+ * - `argument.required` defaults to false. Discord's client enforces it.
+ *   Slack cannot, so a portable handler still checks for an empty `text`.
+ *
+ * **Gotchas**
+ *
+ * A portable name matches `^[a-z0-9_-]{1,31}$` and a portable description is
+ * 100 characters or less. Neither is checked here.
+ *
+ * @stability unstable
+ * @category definitions
+ * @since 4.1.5
+ */
+export const command = <const Id extends string>(id: Id, options: {
+  readonly description: string
+  readonly argument?: {
+    readonly name: string
+    readonly description: string
+    readonly required?: boolean | undefined
+  } | undefined
+}): Command<Id> => ({
+  [TypeId]: TypeId,
+  kind: "command",
+  id,
+  description: options.description,
+  argument: options.argument === undefined ? undefined : {
+    name: options.argument.name,
+    description: options.argument.description,
+    required: options.argument.required ?? false
+  }
+})
+
+/**
  * Any definition that has a handler.
  *
  * @stability unstable
  * @category definitions
  * @since 4.1.5
  */
-export type Definition = Button<string, any> | Select<string, any> | Modal<string, any, any>
+export type Definition = Button<string, any> | Select<string, any> | Modal<string, any, any> | Command<string>
 
 // -----------------------------------------------------------------------------
 // decoding
@@ -1087,6 +1335,8 @@ const matches = (definition: Definition, event: Interaction): boolean => {
       return definition.kind === "select"
     case "ModalSubmitted":
       return definition.kind === "modal"
+    case "CommandInvoked":
+      return definition.kind === "command"
   }
 }
 
@@ -1132,7 +1382,7 @@ const decodeSubmit = (definition: Modal<string, any, any>, event: ModalSubmitted
   return Option.some({ ...base(event), metadata, values })
 }
 
-const base = (event: Interaction) => ({
+const base = (event: ButtonClicked | SelectChanged | ModalSubmitted) => ({
   id: event.id,
   thread: event.thread,
   messageId: event.messageId,
@@ -1157,10 +1407,13 @@ const decodeEvent = (definition: Definition, event: Interaction): Option.Option<
     case "ModalSubmitted": {
       return definition.kind === "modal" ? decodeSubmit(definition, event) : Option.none()
     }
+    case "CommandInvoked": {
+      return definition.kind === "command" ? Option.some(event) : Option.none()
+    }
   }
 }
 
-const fallback = (event: Interaction): ClickReply | SubmitReply => event._tag === "ModalSubmitted" ? close : ack
+const fallback = (event: Interaction): Ack | Close => event._tag === "ModalSubmitted" ? close : ack
 
 // -----------------------------------------------------------------------------
 // groups
@@ -1172,7 +1425,9 @@ const fallback = (event: Interaction): ClickReply | SubmitReply => event._tag ==
  * **Details**
  *
  * A button or a select answers `ack` or a modal to open. A modal answers
- * `close` or `errors` naming its own inputs.
+ * `close` or `errors` naming its own inputs. A command answers `respond`,
+ * a modal to open or `defer`, and never `ack`: Discord has no silent answer
+ * to a command.
  *
  * @stability unstable
  * @category groups
@@ -1185,6 +1440,7 @@ export type HandlerFor<D extends Definition> = D extends Button<any, infer Value
   : D extends Modal<any, infer Metadata, infer Fs> ? (
       submit: Submit<TypeOf<Metadata, undefined>, Values<Fs>>
     ) => Effect.Effect<Close | FieldErrors<keyof Values<Fs> & string>, never, any>
+  : D extends Command<any> ? (command: CommandInvoked) => Effect.Effect<Respond | OpenModal | Defer, never, any>
   : never
 
 /**
@@ -1267,9 +1523,10 @@ const makeGroup = <D extends Definition>(list: ReadonlyArray<D>): Group<D> => {
     merge: (...groups) => makeGroup([...list, ...groups.flatMap((group) => groupLists.get(group) ?? [])]) as any,
     toLayer: (build) =>
       Layer.effectDiscard(Effect.gen(function*() {
-        const handlers: Record<string, (event: any) => Effect.Effect<ClickReply | SubmitReply>> = Effect.isEffect(build)
-          ? yield* build
-          : build as any
+        const handlers: Record<string, (event: any) => Effect.Effect<ClickReply | SubmitReply | CommandReply>> =
+          Effect.isEffect(build)
+            ? yield* build
+            : build as any
         const context = yield* Effect.context<never>()
         const registry = yield* Registry
         yield* registry.register(list.map((definition): Registered => ({
@@ -1316,8 +1573,15 @@ export const group = <const Definitions extends ReadonlyArray<Definition>>(
  *   has no `modals`, the modal's id plus metadata is over
  *   `limits.modalMetadataLength`, it has more than `limits.modalFields`
  *   fields, a title or label is too long, or the platform refused the call)
- *   or by `handle` (the reply came after the deadline). Only a click can be
- *   refused: a submit's replies always have an answer the adapter can give.
+ *   or by `handle` (the reply came after the deadline).
+ * - A command's reply can be refused too: a private answer without
+ *   `ephemeral`, an element the platform lacks, an answer over
+ *   `limits.messageLength` or an element limit, a modal that cannot open,
+ *   or a refusal by the platform. A submit's replies always have an answer
+ *   the adapter can give.
+ * - `command` answers `Ack` for a command it has no definition for, and the
+ *   adapter sends nothing for that. On Discord another library in the same
+ *   process can still answer it.
  *
  * **Gotchas**
  *
@@ -1334,7 +1598,11 @@ export const group = <const Definitions extends ReadonlyArray<Definition>>(
 export class Handler extends Context.Service<Handler, {
   readonly click: (event: ButtonClicked | SelectChanged) => Effect.Effect<ClickReply>
   readonly submit: (event: ModalSubmitted) => Effect.Effect<SubmitReply>
-  readonly refused: (event: ButtonClicked | SelectChanged, error: ChatError) => Effect.Effect<void>
+  readonly command: (event: CommandInvoked) => Effect.Effect<CommandReply>
+  readonly refused: (
+    event: ButtonClicked | SelectChanged | CommandInvoked,
+    error: ChatError
+  ) => Effect.Effect<void>
 }>()("effect/chat/ChatInteraction/Handler") {}
 
 const lateClick = (event: ButtonClicked | SelectChanged) =>
@@ -1345,8 +1613,8 @@ const lateClick = (event: ButtonClicked | SelectChanged) =>
   })
 
 /**
- * Calls `Handler.click` or `Handler.submit` and gives the reply, or `Late`
- * when `deadline` passes first.
+ * Calls `Handler.click`, `Handler.submit` or `Handler.command` and gives
+ * the reply, or `Late` when `deadline` passes first.
  *
  * **When to use**
  *
@@ -1360,8 +1628,9 @@ const lateClick = (event: ButtonClicked | SelectChanged) =>
  *   it later returns `OpenModal`, the modal is dropped and `Handler.refused`
  *   is called with a `ChatError` whose reason is `NotFound`, op `openModal`,
  *   detail `interaction_expired`, platform `event.thread.platform`.
- * - A late submit interrupts its handler. `Late` is given at the deadline,
- *   without waiting for the handler's finalizers to finish.
+ * - A late submit or command interrupts its handler. `Late` is given at the
+ *   deadline, without waiting for the handler's finalizers to finish. A
+ *   command handler that cannot answer in time returns `defer` first.
  * - `deadline` is the handler's share of the platform's 3 seconds, not the 3
  *   seconds. The adapter subtracts what its own answer costs. This function
  *   knows no platform.
@@ -1379,20 +1648,28 @@ const lateClick = (event: ButtonClicked | SelectChanged) =>
 export const handle: {
   (event: ButtonClicked | SelectChanged, deadline: Duration.Duration): Effect.Effect<ClickReply | Late, never, Handler>
   (event: ModalSubmitted, deadline: Duration.Duration): Effect.Effect<SubmitReply | Late, never, Handler>
-  (event: Interaction, deadline: Duration.Duration): Effect.Effect<ClickReply | SubmitReply | Late, never, Handler>
+  (event: CommandInvoked, deadline: Duration.Duration): Effect.Effect<CommandReply | Late, never, Handler>
+  (
+    event: Interaction,
+    deadline: Duration.Duration
+  ): Effect.Effect<ClickReply | SubmitReply | CommandReply | Late, never, Handler>
 } = (event: Interaction, deadline: Duration.Duration): Effect.Effect<any, never, Handler> =>
   Effect.gen(function*() {
     const handler = yield* Handler
     // Detached, so the reply at the deadline waits for neither a late click nor a late submit's cleanup.
-    const fiber: Fiber.Fiber<ClickReply | SubmitReply> = yield* Effect.forkDetach(
-      event._tag === "ModalSubmitted" ? handler.submit(event) : handler.click(event)
+    const fiber: Fiber.Fiber<ClickReply | SubmitReply | CommandReply> = yield* Effect.forkDetach(
+      event._tag === "ModalSubmitted"
+        ? handler.submit(event)
+        : event._tag === "CommandInvoked"
+        ? handler.command(event)
+        : handler.click(event)
     )
     const exit = yield* Effect.onInterrupt(
       Effect.timeoutOption(Fiber.await(fiber), deadline),
       () => Fiber.interrupt(fiber)
     )
     if (Option.isSome(exit)) return yield* exit.value
-    if (event._tag === "ModalSubmitted") {
+    if (event._tag === "ModalSubmitted" || event._tag === "CommandInvoked") {
       // Requests the interrupt without waiting for it to finish.
       yield* Effect.forkDetach(Fiber.interrupt(fiber))
       return late
@@ -1413,7 +1690,8 @@ const late: Late = Late.make({})
  * **Details**
  *
  * `handle` answers `ack` or `close` without calling the handler when the
- * event does not match the definition or its value no longer decodes.
+ * event does not match the definition or its value no longer decodes. A
+ * command that does not match is answered `ack`.
  *
  * @stability unstable
  * @category services
@@ -1421,7 +1699,7 @@ const late: Late = Late.make({})
  */
 export interface Registered {
   readonly definition: Definition
-  readonly handle: (event: Interaction) => Effect.Effect<ClickReply | SubmitReply>
+  readonly handle: (event: Interaction) => Effect.Effect<ClickReply | SubmitReply | CommandReply>
 }
 
 /**
@@ -1469,6 +1747,9 @@ export type Unhandled =
  * - An interaction with an unknown id, or with a value that no longer
  *   decodes, is logged and answered `ack` or `close`. `unhandled` sees it
  *   first. It cannot change the answer.
+ * - A command with an unknown id is answered `ack`, which the adapter sends
+ *   nothing for, and logged at debug level: on Discord it may belong to
+ *   another library in the same process.
  * - `Handler.refused` is routed to `unhandled` too, as `ReplyRefused`, and
  *   logged.
  *
@@ -1485,13 +1766,15 @@ export const layer = <R = never>(options?: {
     const report = (event: Interaction, why: Unhandled, message: string): Effect.Effect<void> =>
       Effect.andThen(
         options?.unhandled === undefined ? Effect.void : Effect.provideContext(options.unhandled(event, why), context),
-        Effect.logWarning(message).pipe(Effect.annotateLogs({
-          "chat.platform": event.thread.platform,
-          "chat.interaction.id": event.id,
-          "chat.interaction.reason": why.reason
-        }))
+        (event._tag === "CommandInvoked" && why.reason === "UnknownId"
+          ? Effect.logDebug(message)
+          : Effect.logWarning(message)).pipe(Effect.annotateLogs({
+            "chat.platform": event.thread.platform,
+            "chat.interaction.id": event.id,
+            "chat.interaction.reason": why.reason
+          }))
       )
-    const route = (event: Interaction): Effect.Effect<ClickReply | SubmitReply> =>
+    const route = (event: Interaction): Effect.Effect<ClickReply | SubmitReply | CommandReply> =>
       Effect.suspend(() => {
         const entry = entries.get(event.id)
         if (entry === undefined || !matches(entry.definition, event)) {
@@ -1527,6 +1810,7 @@ export const layer = <R = never>(options?: {
     const handler = Handler.of({
       click: (event) => route(event) as Effect.Effect<ClickReply>,
       submit: (event) => route(event) as Effect.Effect<SubmitReply>,
+      command: (event) => route(event) as Effect.Effect<CommandReply>,
       refused: (event, error) =>
         report(event, { reason: "ReplyRefused", error }, "ChatInteraction: the reply was not carried out").pipe(
           Effect.annotateLogs("chat.error", error.message)
