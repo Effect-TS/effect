@@ -133,6 +133,12 @@ export default defineConfig({
       ...project("@effect/ai-typesafe", "packages/ai/typesafe"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
       ...project("@effect/ai-openrouter", "packages/ai/openrouter"),
+      ...project("@effect/chat-slack", "packages/chat/slack"),
+      // dfx imports `effect`, which has to be the same instance as the tests'
+      // for things like `Redacted` to work, so vite resolves it too.
+      ...project("@effect/chat-discord", "packages/chat/discord", true, {
+        test: { server: { deps: { inline: ["dfx"] } } }
+      }),
       ...project("@effect/atom-react", "packages/atom/react", true, {
         test: {
           environment: "jsdom",

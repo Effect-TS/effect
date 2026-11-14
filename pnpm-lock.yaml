@@ -349,6 +349,21 @@ importers:
         specifier: ^3.5.45
         version: 3.5.45(typescript@7.0.2)
 
+  packages/chat/discord:
+    devDependencies:
+      dfx:
+        specifier: ^1.1.1
+        version: 1.1.1(effect@packages+effect)
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
+  packages/chat/slack:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
   packages/effect:
     devDependencies:
       '@types/node':
@@ -476,10 +491,10 @@ importers:
     devDependencies:
       '@alchemy.run/cloudflare':
         specifier: 2.0.0-beta.85
-        version: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@effect/sql-libsql@4.1.2(effect@packages+effect))(@effect/sql-mysql2@4.1.2(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.2(effect@packages+effect))(@types/node@26.6.6)(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@effect/sql-libsql@4.1.4(effect@packages+effect))(@effect/sql-mysql2@4.1.4(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.4(effect@packages+effect))(@types/node@26.6.6)(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
       alchemy:
         specifier: 2.0.0-beta.85
-        version: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
+        version: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -2129,22 +2144,22 @@ packages:
     engines: {node: '>=0.10.0'}
     hasBin: true
 
-  '@effect/platform-bun@4.1.2':
-    resolution: {integrity: sha512-waEAa84CITqjctgw9VdhlL9PyXRHICG3KAWTFRDPUE2XL/pfMPhO7V9oFdfx22dbAhhUzV+MHs0d9hnmy/DQ7w==}
+  '@effect/platform-bun@4.1.4':
+    resolution: {integrity: sha512-Vdq82GOrD5HVF43aXVwHeX+4uIOrgAnjju9MEyizzFZ3yt3A6x9prtmHej1q/zAOaeNddtkpPr2ExHEvZ13S6Q==}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
 
-  '@effect/platform-node-shared@4.1.2':
-    resolution: {integrity: sha512-wSwl9A/G1hcVvF8nLI+YfB3EyOIDvWS6+lsTZBkmgDnPBL7m8YWZF+1HD+mdEsb52SUGfukip46Q3gRwSdk3QA==}
+  '@effect/platform-node-shared@4.1.4':
+    resolution: {integrity: sha512-DWdfphHGOFJNj/mYadgpT3jIm8aRXDcPrQiGXFBH4p2H4XmA7iYMrPsI8NxVgZ7kNX0q1+FGJZJama0tINHRAg==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
 
-  '@effect/platform-node@4.1.2':
-    resolution: {integrity: sha512-ye0UjxORdd5Qu3paZ1LljgGOALWHt7muP9VTpjUSCNfcesiB/Hm7wPJIvZeu4gnwpTe5BtEnO1VHngWqjJp8mA==}
+  '@effect/platform-node@4.1.4':
+    resolution: {integrity: sha512-h7QExTPq/RfYtHP/8tMlgfBvqYsuJKhxfkU6w0+NaF/ihqQ8Y3GH9t28ltupQjoqMM7P6W5gy8rOji7F0qVrmg==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
       redis: '>=5.1.0 <7.0.0'
 
   '@effect/sql-d1@4.1.2':
@@ -2152,20 +2167,20 @@ packages:
     peerDependencies:
       effect: ^4.1.2
 
-  '@effect/sql-libsql@4.1.2':
-    resolution: {integrity: sha512-1VIaOiP0w8r63hUuNSF5VHoqL2/yrvf7C38FRuSTG7NV21vI5eJx1eo7/11X59SdWSr9Zc4N0B/AAhci/EfzNQ==}
+  '@effect/sql-libsql@4.1.4':
+    resolution: {integrity: sha512-JRjiJhA5fsCtjBNbjl9iZOrd45b8dKFT2K/4q3uierqGF6VQMcwBrEKgDw5qDdz1gExWDO8HNpKa1ugP9bBIEA==}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
 
-  '@effect/sql-mysql2@4.1.2':
-    resolution: {integrity: sha512-cRxIZkV/f5wT5n3ojRQLtoG0FEFCscTK7fBD4gT/LChHrEP6I76HxMr8TkPIlgbLpE++vS86qvgPNeggSHtmNg==}
+  '@effect/sql-mysql2@4.1.4':
+    resolution: {integrity: sha512-RZ/j8m3d8742q80rZn5YfWwoPUos7fkRPGnJv8XapKgGhAk7O1wxH6yHoB2aR+pVaMdrzG/MN856OIF5BPxzNQ==}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
 
-  '@effect/sql-pg@4.1.2':
-    resolution: {integrity: sha512-0UehR7B5W8dC+dX6fDeWStLbVbBb2M4pk4HBATEeH0cmV4Odl2lckTg0jFmLuadekTLa4OyB+bZQo1yTG1y2Mw==}
+  '@effect/sql-pg@4.1.4':
+    resolution: {integrity: sha512-DHsmpIfJeCYiJVk3JwMQFAWaQAmKV/elUbBCjHFP7qeZtJ8dViUV/y/AHdUaZ+OmMwtr8J7ZXA7AlsKZ9hPiQA==}
     peerDependencies:
-      effect: ^4.1.2
+      effect: ^4.1.4
 
   '@effect/tsgo-darwin-arm64@0.67.5':
     resolution: {integrity: sha512-wCtc/UafbsiWDZlDboVqW6qZI4PdlJzWnK1M29KgJVrey0E6yvGA9YV0ak+38cVqcAaXm1azL9qgI0IKwgNk8A==}
@@ -4270,11 +4285,17 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/body-parser@1.19.6':
+    resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
+
   '@types/bun@1.4.4':
     resolution: {integrity: sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
+
+  '@types/connect@3.4.38':
+    resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
@@ -4294,11 +4315,20 @@ packages:
   '@types/estree@1.0.10':
     resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
 
+  '@types/express-serve-static-core@4.19.9':
+    resolution: {integrity: sha512-QP2ESEe/ImWY0HDwNAnK9PvEffUyhLTnWkk7KXzHfyeWAnlrDe1fN77bXl6ia8KT3wPlmA7t9/VPRpnf4Ex9sg==}
+
+  '@types/express@4.17.25':
+    resolution: {integrity: sha512-dVd04UKsfpINUnK0yBoYHDF3xu7xVH4BuDotC/xGuycx4CgbP48X/KF/586bcObxT0HENHXEU8Nqtu6NR+eKhw==}
+
   '@types/gensync@1.0.5':
     resolution: {integrity: sha512-MbsRCT7mTikHwKZ0X+LVUTLRrZZRLipTuXEO9qOYO+zmjMVk81axyClMROf6uoPD9MRVu46bx8zoR0Ad9q3NAg==}
 
   '@types/graceful-fs@4.1.9':
     resolution: {integrity: sha512-olP3sd1qOEe5dXTSaFvQG+02VdRXcdytWLAZsAq1PecU8uqQAhkrnbli7DagjtXKW/Bl7YJbUsa8MPcuc8LHEQ==}
+
+  '@types/http-errors@2.0.5':
+    resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -4315,11 +4345,20 @@ packages:
   '@types/jsesc@2.5.1':
     resolution: {integrity: sha512-9VN+6yxLOPLOav+7PwjZbxiID2bVaeq0ED4qSQmdQTdjnXJSaCVKTR58t15oqH1H5t8Ng2ZX1SabJVoN9Q34bw==}
 
+  '@types/mime@1.3.5':
+    resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
+
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
   '@types/nodemailer@8.0.2':
     resolution: {integrity: sha512-c7M5ox8p0nEOfbJ2E9Qcmt8/QCu/VzsiAhzBiZbvky2PhKZDHpKB3sQHBM5MEZNkCfBOaS6S9//AGPRTNB7IaA==}
+
+  '@types/qs@6.15.1':
+    resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
+
+  '@types/range-parser@1.2.7':
+    resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
 
   '@types/react-dom@19.3.0':
     resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
@@ -4340,6 +4379,15 @@ packages:
 
   '@types/semver@7.8.0':
     resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
+
+  '@types/send@0.17.6':
+    resolution: {integrity: sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og==}
+
+  '@types/send@1.2.1':
+    resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
+
+  '@types/serve-static@1.15.10':
+    resolution: {integrity: sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==}
 
   '@types/ssh2-streams@0.1.13':
     resolution: {integrity: sha512-faHyY3brO9oLEA0QlcO8N2wT7R0+1sHWZvQ+y3rMLwdY1ZyS1z0W3t65j9PqT4HmQ6ALzNe7RZlNuCNE0wBSWA==}
@@ -5200,9 +5248,21 @@ packages:
     peerDependencies:
       typescript: ^5.4.4 || ^6.0.2
 
+  dfx@1.1.1:
+    resolution: {integrity: sha512-g22vKD6+WtOX6a6PoUjZoryJGp3Ut//ve6jjvEFQ8ONB0zNRkDGdf4IVitNmzZcW8G9Ewsr1FR47A98UWWbmIA==}
+    peerDependencies:
+      effect: ^4.0.0
+
   diacritics-map@0.1.0:
     resolution: {integrity: sha512-3omnDTYrGigU0i4cJjvaKwD52B8aoqyX/NEIkukFFkogBemsIbhSa1O414fpTp5nuszJG6lvQ5vBvDVNCbSsaQ==}
     engines: {node: '>=0.8.0'}
+
+  discord-api-types@0.38.58:
+    resolution: {integrity: sha512-6utghVho47hBzmx8nIp+pKEDDNIlVk6On/J5Y1Q529payNLZjBsrw+mt+G5Y3NYRE3kgta6eBx5hRYVyfHGdOA==}
+
+  discord-verify@1.2.0:
+    resolution: {integrity: sha512-8qlrMROW8DhpzWWzgNq9kpeLDxKanWa4EDVoj/ASVv2nr+dSr4JPmu2tFSydf3hAGI/OIJTnZyD0JulMYIxx4w==}
+    engines: {node: '>=16'}
 
   docker-compose@1.5.0:
     resolution: {integrity: sha512-O+eD6c63+BJORUWddXA7uAlI6H1KLDPd/aS14k73nXYpFliM48C3xrrKB3sXsR1Fp/rHUZQe7+fJ+QA7+jepyw==}
@@ -7808,13 +7868,13 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
-  '@alchemy.run/acme@2.0.0-beta.85(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)':
+  '@alchemy.run/acme@2.0.0-beta.85(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)':
     dependencies:
       '@distilled.cloud/acme': 1.0.0-rc.18(effect@packages+effect)
-      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
+      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
       effect: link:packages/effect
 
-  '@alchemy.run/cloudflare-runtime@2.0.0-beta.85(@distilled.cloud/cloudflare@1.0.0-rc.18(effect@packages+effect))(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/node@26.6.6)(effect@packages+effect)(rolldown@1.2.13)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))':
+  '@alchemy.run/cloudflare-runtime@2.0.0-beta.85(@distilled.cloud/cloudflare@1.0.0-rc.18(effect@packages+effect))(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/node@26.6.6)(effect@packages+effect)(rolldown@1.2.13)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@alchemy.run/node-utils': 2.0.0-beta.85
       '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261026.1)
@@ -7829,8 +7889,8 @@ snapshots:
       workerd: 1.20261026.1
       yauzl: 3.4.0
     optionalDependencies:
-      '@effect/platform-bun': 4.1.2(effect@packages+effect)
-      '@effect/platform-node': 4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
+      '@effect/platform-bun': 4.1.4(effect@packages+effect)
+      '@effect/platform-node': 4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
       rolldown: 1.2.13
       vite: 8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
     transitivePeerDependencies:
@@ -7838,27 +7898,27 @@ snapshots:
       - proxy-agent
       - typescript
 
-  '@alchemy.run/cloudflare@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@effect/sql-libsql@4.1.2(effect@packages+effect))(@effect/sql-mysql2@4.1.2(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.2(effect@packages+effect))(@types/node@26.6.6)(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))':
+  '@alchemy.run/cloudflare@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@effect/sql-libsql@4.1.4(effect@packages+effect))(@effect/sql-mysql2@4.1.4(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.4(effect@packages+effect))(@types/node@26.6.6)(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
-      '@alchemy.run/acme': 2.0.0-beta.85(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)
-      '@alchemy.run/cloudflare-runtime': 2.0.0-beta.85(@distilled.cloud/cloudflare@1.0.0-rc.18(effect@packages+effect))(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/node@26.6.6)(effect@packages+effect)(rolldown@1.2.13)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
-      '@alchemy.run/docker': 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)
-      '@alchemy.run/sql': 2.0.0-beta.85(@effect/sql-libsql@4.1.2(effect@packages+effect))(@effect/sql-mysql2@4.1.2(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.2(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))
+      '@alchemy.run/acme': 2.0.0-beta.85(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)
+      '@alchemy.run/cloudflare-runtime': 2.0.0-beta.85(@distilled.cloud/cloudflare@1.0.0-rc.18(effect@packages+effect))(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/node@26.6.6)(effect@packages+effect)(rolldown@1.2.13)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      '@alchemy.run/docker': 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)
+      '@alchemy.run/sql': 2.0.0-beta.85(@effect/sql-libsql@4.1.4(effect@packages+effect))(@effect/sql-mysql2@4.1.4(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.4(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))
       '@distilled.cloud/aws': 1.0.0-rc.18(effect@packages+effect)
       '@distilled.cloud/aws4signer': 1.0.0-rc.18(effect@packages+effect)
       '@distilled.cloud/cloudflare': 1.0.0-rc.18(effect@packages+effect)
       '@distilled.cloud/core': 1.0.0-rc.18(effect@packages+effect)
       '@distilled.cloud/iceberg': 1.0.0-rc.18(effect@packages+effect)
       '@effect/sql-d1': 4.1.2(effect@packages+effect)
-      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
+      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
       effect: link:packages/effect
       pathe: 2.0.3
       picomatch: 4.0.7
       rolldown: 1.2.13
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@effect/platform-bun': 4.1.2(effect@packages+effect)
-      '@effect/platform-node': 4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
+      '@effect/platform-bun': 4.1.4(effect@packages+effect)
+      '@effect/platform-node': 4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
       vite: 8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
     transitivePeerDependencies:
       - '@effect/sql-libsql'
@@ -7870,13 +7930,13 @@ snapshots:
       - proxy-agent
       - typescript
 
-  '@alchemy.run/docker@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)':
+  '@alchemy.run/docker@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)':
     dependencies:
-      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
+      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
       effect: link:packages/effect
       rolldown: 1.2.13
     optionalDependencies:
-      '@effect/platform-bun': 4.1.2(effect@packages+effect)
+      '@effect/platform-bun': 4.1.4(effect@packages+effect)
 
   '@alchemy.run/node-utils@2.0.0-beta.85':
     dependencies:
@@ -7888,14 +7948,14 @@ snapshots:
       '@types/react': 19.3.0
       react-devtools-core: 6.1.5
 
-  '@alchemy.run/sql@2.0.0-beta.85(@effect/sql-libsql@4.1.2(effect@packages+effect))(@effect/sql-mysql2@4.1.2(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.2(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))':
+  '@alchemy.run/sql@2.0.0-beta.85(@effect/sql-libsql@4.1.4(effect@packages+effect))(@effect/sql-mysql2@4.1.4(@types/node@26.6.6)(effect@packages+effect))(@effect/sql-pg@4.1.4(effect@packages+effect))(alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1))(effect@packages+effect)(mysql2@3.24.6(@types/node@26.6.6))':
     dependencies:
-      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
+      alchemy: 2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1)
       effect: link:packages/effect
     optionalDependencies:
-      '@effect/sql-libsql': 4.1.2(effect@packages+effect)
-      '@effect/sql-mysql2': 4.1.2(@types/node@26.6.6)(effect@packages+effect)
-      '@effect/sql-pg': 4.1.2(effect@packages+effect)
+      '@effect/sql-libsql': 4.1.4(effect@packages+effect)
+      '@effect/sql-mysql2': 4.1.4(@types/node@26.6.6)(effect@packages+effect)
+      '@effect/sql-pg': 4.1.4(effect@packages+effect)
       mysql2: 3.24.6(@types/node@26.6.6)
 
   '@asamuzakjp/css-color@6.0.7':
@@ -8864,16 +8924,16 @@ snapshots:
       repeat-string: 1.6.1
       strip-color: 0.1.0
 
-  '@effect/platform-bun@4.1.2(effect@packages+effect)':
+  '@effect/platform-bun@4.1.4(effect@packages+effect)':
     dependencies:
-      '@effect/platform-node-shared': 4.1.2(effect@packages+effect)
+      '@effect/platform-node-shared': 4.1.4(effect@packages+effect)
       effect: link:packages/effect
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
     optional: true
 
-  '@effect/platform-node-shared@4.1.2(effect@packages+effect)':
+  '@effect/platform-node-shared@4.1.4(effect@packages+effect)':
     dependencies:
       '@types/ws': 8.18.2
       effect: link:packages/effect
@@ -8883,9 +8943,9 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))':
+  '@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))':
     dependencies:
-      '@effect/platform-node-shared': 4.1.2(effect@packages+effect)
+      '@effect/platform-node-shared': 4.1.4(effect@packages+effect)
       effect: link:packages/effect
       redis: 6.3.1(@opentelemetry/api@1.10.0)
       undici: 8.12.4
@@ -8899,7 +8959,7 @@ snapshots:
       '@cloudflare/workers-types': 5.20261107.1
       effect: link:packages/effect
 
-  '@effect/sql-libsql@4.1.2(effect@packages+effect)':
+  '@effect/sql-libsql@4.1.4(effect@packages+effect)':
     dependencies:
       '@libsql/client': 0.18.0
       effect: link:packages/effect
@@ -8908,7 +8968,7 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@effect/sql-mysql2@4.1.2(@types/node@26.6.6)(effect@packages+effect)':
+  '@effect/sql-mysql2@4.1.4(@types/node@26.6.6)(effect@packages+effect)':
     dependencies:
       effect: link:packages/effect
       mysql2: 3.24.6(@types/node@26.6.6)
@@ -8916,7 +8976,7 @@ snapshots:
       - '@types/node'
     optional: true
 
-  '@effect/sql-pg@4.1.2(effect@packages+effect)':
+  '@effect/sql-pg@4.1.4(effect@packages+effect)':
     dependencies:
       effect: link:packages/effect
     optional: true
@@ -10470,6 +10530,12 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.11
 
+  '@types/body-parser@1.19.6':
+    dependencies:
+      '@types/connect': 3.4.38
+      '@types/node': 26.6.6
+    optional: true
+
   '@types/bun@1.4.4':
     dependencies:
       bun-types: 1.4.4
@@ -10478,6 +10544,11 @@ snapshots:
     dependencies:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
+
+  '@types/connect@3.4.38':
+    dependencies:
+      '@types/node': 26.6.6
+    optional: true
 
   '@types/deep-eql@4.0.2': {}
 
@@ -10498,11 +10569,30 @@ snapshots:
 
   '@types/estree@1.0.10': {}
 
+  '@types/express-serve-static-core@4.19.9':
+    dependencies:
+      '@types/node': 26.6.6
+      '@types/qs': 6.15.1
+      '@types/range-parser': 1.2.7
+      '@types/send': 1.2.1
+    optional: true
+
+  '@types/express@4.17.25':
+    dependencies:
+      '@types/body-parser': 1.19.6
+      '@types/express-serve-static-core': 4.19.9
+      '@types/qs': 6.15.1
+      '@types/serve-static': 1.15.10
+    optional: true
+
   '@types/gensync@1.0.5': {}
 
   '@types/graceful-fs@4.1.9':
     dependencies:
       '@types/node': 26.6.6
+
+  '@types/http-errors@2.0.5':
+    optional: true
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -10521,6 +10611,9 @@ snapshots:
 
   '@types/jsesc@2.5.1': {}
 
+  '@types/mime@1.3.5':
+    optional: true
+
   '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
@@ -10528,6 +10621,12 @@ snapshots:
   '@types/nodemailer@8.0.2':
     dependencies:
       '@types/node': 26.6.6
+
+  '@types/qs@6.15.1':
+    optional: true
+
+  '@types/range-parser@1.2.7':
+    optional: true
 
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
     dependencies:
@@ -10546,6 +10645,24 @@ snapshots:
   '@types/scheduler@0.28.0': {}
 
   '@types/semver@7.8.0': {}
+
+  '@types/send@0.17.6':
+    dependencies:
+      '@types/mime': 1.3.5
+      '@types/node': 26.6.6
+    optional: true
+
+  '@types/send@1.2.1':
+    dependencies:
+      '@types/node': 26.6.6
+    optional: true
+
+  '@types/serve-static@1.15.10':
+    dependencies:
+      '@types/http-errors': 2.0.5
+      '@types/node': 26.6.6
+      '@types/send': 0.17.6
+    optional: true
 
   '@types/ssh2-streams@0.1.13':
     dependencies:
@@ -10797,7 +10914,7 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
-  alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.2(effect@packages+effect))(@effect/platform-node@4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1):
+  alchemy@2.0.0-beta.85(@effect/platform-bun@4.1.4(effect@packages+effect))(@effect/platform-node@4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0)))(@types/react@19.3.0)(effect@packages+effect)(react-devtools-core@6.1.5)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(ws@8.22.1):
     dependencies:
       '@alchemy.run/node-utils': 2.0.0-beta.85
       '@alchemy.run/sigil': 0.1.0-alpha.1(@types/react@19.3.0)(react-devtools-core@6.1.5)
@@ -10810,8 +10927,8 @@ snapshots:
       tinyglobby: 0.2.17
       yaml: 2.9.1
     optionalDependencies:
-      '@effect/platform-bun': 4.1.2(effect@packages+effect)
-      '@effect/platform-node': 4.1.2(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
+      '@effect/platform-bun': 4.1.4(effect@packages+effect)
+      '@effect/platform-node': 4.1.4(effect@packages+effect)(redis@6.3.1(@opentelemetry/api@1.10.0))
       vite: 8.3.6(@types/node@26.6.6)(esbuild@0.25.12)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
       ws: 8.22.1
     transitivePeerDependencies:
@@ -11390,7 +11507,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  dfx@1.1.1(effect@packages+effect):
+    dependencies:
+      discord-api-types: 0.38.58
+      effect: link:packages/effect
+    optionalDependencies:
+      discord-verify: 1.2.0
+
   diacritics-map@0.1.0: {}
+
+  discord-api-types@0.38.58: {}
+
+  discord-verify@1.2.0:
+    dependencies:
+      '@types/express': 4.17.25
+    optional: true
 
   docker-compose@1.5.0:
     dependencies:

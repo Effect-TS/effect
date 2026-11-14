@@ -1,0 +1,150 @@
+{
+  "case": "conversations.info for the private test channel and the app DM",
+  "recordedAt": "2026-11-12T18:43:05.527Z",
+  "calls": [
+    {
+      "method": "conversations.info",
+      "encoding": "form",
+      "request": {
+        "channel": "C0CH1LGJ4F3"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": {
+          "id": "C0CH1LGJ4F3",
+          "created": 1794446158,
+          "creator": "U080YLYB277",
+          "is_org_shared": false,
+          "is_im": false,
+          "context_team_id": "T05479Z6JBW",
+          "updated": 1794446158426,
+          "name": "chat-testing-123",
+          "name_normalized": "chat-testing-123",
+          "is_channel": true,
+          "is_group": false,
+          "is_mpim": false,
+          "is_private": true,
+          "is_archived": false,
+          "is_general": false,
+          "is_shared": false,
+          "is_ext_shared": false,
+          "unlinked": 0,
+          "is_pending_ext_shared": false,
+          "pending_shared": [],
+          "parent_conversation": null,
+          "purpose": {
+            "value": "",
+            "creator": "",
+            "last_set": 0
+          },
+          "topic": {
+            "value": "",
+            "creator": "",
+            "last_set": 0
+          },
+          "shared_team_ids": [
+            "T05479Z6JBW"
+          ],
+          "pending_connected_team_ids": [],
+          "is_member": true,
+          "is_open": true,
+          "last_read": "1794446158.561359",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "method": "conversations.info",
+      "encoding": "json",
+      "note": "same call with a JSON body",
+      "request": {
+        "channel": "C0CH1LGJ4F3"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": false,
+        "error": "invalid_arguments",
+        "response_metadata": {
+          "messages": [
+            "[ERROR] missing required field: channel"
+          ]
+        }
+      }
+    },
+    {
+      "method": "conversations.info",
+      "encoding": "form",
+      "request": {
+        "channel": "D0CCGDG0E75"
+      },
+      "httpStatus": 200,
+      "response": {
+        "ok": true,
+        "channel": {
+          "id": "D0CCGDG0E75",
+          "created": 1793134568,
+          "is_org_shared": false,
+          "is_im": true,
+          "is_archived": false,
+          "context_team_id": "T05479Z6JBW",
+          "updated": 1793134568873,
+          "user": "U080YLYB277",
+          "last_read": "0000000000.000000",
+          "is_open": true,
+          "priority": 0,
+          "unread_count": 8,
+          "unread_count_display": 2,
+          "latest": {
+            "user": "U0CCLMD4S1L",
+            "type": "message",
+            "ts": "1794454526.283939",
+            "bot_id": "B0CCQH77VA5",
+            "app_id": "A0CCHBHDK7X",
+            "text": "G3 stream started. tick 2 after-click",
+            "team": "T05479Z6JBW",
+            "bot_profile": {
+              "id": "B0CCQH77VA5",
+              "deleted": false,
+              "name": "Janitor",
+              "updated": 1793135255,
+              "app_id": "A0CCHBHDK7X",
+              "user_id": "U0CCLMD4S1L",
+              "icons": {
+                "image_36": "https://scrubbed.invalid/image_36",
+                "image_48": "https://scrubbed.invalid/image_48",
+                "image_72": "https://scrubbed.invalid/image_72"
+              },
+              "team_id": "T05479Z6JBW"
+            },
+            "thread_ts": "1794454526.171439",
+            "parent_user_id": "U0CCLMD4S1L",
+            "blocks": [
+              {
+                "type": "rich_text",
+                "block_id": "qmE9gL",
+                "elements": [
+                  {
+                    "type": "rich_text_section",
+                    "elements": [
+                      {
+                        "type": "text",
+                        "text": "G3 stream started. tick 2 after-click"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "ai_context": {
+              "type": "default",
+              "result_status": "stopped_by_user",
+              "stopped_by_user_id": "U080YLYB277"
+            },
+            "streaming_state": "completed"
+          }
+        }
+      }
+    }
+  ]
+}
