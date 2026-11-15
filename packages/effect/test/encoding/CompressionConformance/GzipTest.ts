@@ -34,11 +34,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Compression from "effect/encoding/Compression"
-
-type Kind = Compression.CompressionError["kind"]
-
-const hex = (s: string): Uint8Array => Uint8Array.from(s.match(/../g) ?? [], (byte) => parseInt(byte, 16))
-const text = (s: string): Uint8Array => new TextEncoder().encode(s)
+import { ascii, assertions, concat, hex, xorshift } from "./CompressionConformance.ts"
 
 // generate.py output
 const fixtures = {
@@ -66,20 +62,14 @@ const fixtures = {
 const dynamicText = "Dynamic Huffman codes adapt to the data. ".repeat(4) +
   "The quick brown fox jumps over the lazy dog."
 
-// A member header without optional fields
-const HEADER = "1f8b08000000000000ff"
+// The fixed part of a member header, with the given FLG
+const header = (flg = "00"): string => `1f8b08${flg}0000000000ff`
 
 // A member with `deflate` as its data; the decoder fails before the trailer
-const withDeflate = (deflate: string): Uint8Array => hex(HEADER + deflate + "0000000000000000")
+const withDeflate = (deflate: string): Uint8Array => hex(header() + deflate + "0000000000000000")
 
 // The stored fixture behind another header
-const withHeader = (header: string): Uint8Array => {
-  const bytes = hex(header)
-  const out = new Uint8Array(bytes.length + fixtures.stored.length - 10)
-  out.set(bytes)
-  out.set(fixtures.stored.subarray(10), bytes.length)
-  return out
-}
+const withHeader = (replacement: string): Uint8Array => concat(hex(replacement), fixtures.stored.subarray(10))
 
 const patch = (bytes: Uint8Array, index: number, value: number): Uint8Array => {
   const out = bytes.slice()
@@ -87,39 +77,14 @@ const patch = (bytes: Uint8Array, index: number, value: number): Uint8Array => {
   return out
 }
 
-const decode = (input: Uint8Array, options: Compression.DecompressOptions = { maxOutputSize: 1 << 24 }) =>
-  Compression.decompressGzip(input, options)
-
-const assertDecodes = (input: Uint8Array, expected: Uint8Array, options?: Compression.DecompressOptions): void => {
-  const result = decode(input, options)
-  if (Result.isFailure(result)) return assert.fail(`${result.failure.kind}: ${result.failure.message}`)
-  assert.deepStrictEqual(result.success, expected)
-}
-
-const assertFails = (input: Uint8Array, kind: Kind, options?: Compression.DecompressOptions): void => {
-  const result = decode(input, options)
-  if (Result.isSuccess(result)) return assert.fail(`expected ${kind}, decoded ${result.success.length} bytes`)
-  assert.strictEqual(result.failure.kind, kind, result.failure.message)
-  assert.strictEqual(result.failure.codec, "Gzip")
-}
+const { decodes: assertDecodes, fails: assertFails } = assertions(Compression.decompressGzip, "Gzip", {
+  maxOutputSize: 1 << 24
+})
 
 const compress = async (data: Uint8Array): Promise<Uint8Array> =>
   new Uint8Array(
     await new Response(new Blob([data.slice()]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer()
   )
-
-// Deterministic pseudo-random bytes (xorshift32)
-const randomBytes = (length: number, seed: number): Uint8Array => {
-  const out = new Uint8Array(length)
-  let x = seed
-  for (let i = 0; i < length; i++) {
-    x ^= x << 13
-    x ^= x >>> 17
-    x ^= x << 5
-    out[i] = x
-  }
-  return out
-}
 
 export const suite = (): void => {
   describe("Gzip (RFC 1952 v4.3, RFC 1951 v1.3)", () => {
@@ -127,7 +92,7 @@ export const suite = (): void => {
     describe("File format (RFC 1952 §2.2)", () => {
       it("decodes a series of members as the concatenation of their data", () => {
         // "one " + an empty member + "two"
-        assertDecodes(fixtures.members, text("one two"))
+        assertDecodes(fixtures.members, "one two")
       })
 
       it("decodes a member with no data", () => {
@@ -157,33 +122,30 @@ export const suite = (): void => {
 
       it("ignores FTEXT, MTIME, XFL and OS", () => {
         // FLG FTEXT, MTIME 2^32 - 1, XFL 4 (fastest), OS 11 (NTFS)
-        assertDecodes(withHeader("1f8b0801ffffffff040b"), text("stored block"))
+        assertDecodes(withHeader("1f8b0801ffffffff040b"), "stored block")
       })
 
       // https://www.rfc-editor.org/rfc/rfc1952#section-2.3.1.1
       it("skips an FEXTRA field of XLEN bytes, whatever its bytes", () => {
-        assertDecodes(withHeader(HEADER.slice(0, 6) + "04" + HEADER.slice(8) + "0000"), text("stored block"))
+        assertDecodes(withHeader(header("04") + "0000"), "stored block")
         // Bytes that look like a terminator or a new member
-        assertDecodes(
-          withHeader(HEADER.slice(0, 6) + "04" + HEADER.slice(8) + "0600001f8b080000"),
-          text("stored block")
-        )
+        assertDecodes(withHeader(header("04") + "0600001f8b080000"), "stored block")
       })
 
       it("skips a zero-terminated FNAME", () => {
-        assertDecodes(fixtures.name, text("hello, name"))
+        assertDecodes(fixtures.name, "hello, name")
       })
 
       it("skips a zero-terminated FCOMMENT of ISO 8859-1 text", () => {
-        assertDecodes(withHeader(HEADER.slice(0, 6) + "10" + HEADER.slice(8) + "e9200a00"), text("stored block"))
+        assertDecodes(withHeader(header("10") + "e9200a00"), "stored block")
       })
 
       it("reads the optional fields in the order FEXTRA, FNAME, FCOMMENT, FHCRC", () => {
-        assertDecodes(fixtures.allFlags, text("hello, header"))
+        assertDecodes(fixtures.allFlags, "hello, header")
       })
 
       it("accepts an FHCRC equal to the low 16 bits of the CRC-32 of the header", () => {
-        assertDecodes(fixtures.headerCrc, text("hello, header CRC"))
+        assertDecodes(fixtures.headerCrc, "hello, header CRC")
       })
 
       it("rejects an FHCRC that does not match the header", () => {
@@ -232,7 +194,7 @@ export const suite = (): void => {
     describe("Deflate data (RFC 1951 §3.2)", () => {
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.4
       it("decodes a non-compressed block (BTYPE 00)", () => {
-        assertDecodes(fixtures.stored, text("stored block"))
+        assertDecodes(fixtures.stored, "stored block")
       })
 
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.4
@@ -242,18 +204,18 @@ export const suite = (): void => {
 
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.6
       it("decodes a block compressed with fixed Huffman codes (BTYPE 01)", () => {
-        assertDecodes(fixtures.fixed, text("fixed Huffman codes, fixed Huffman codes"))
+        assertDecodes(fixtures.fixed, "fixed Huffman codes, fixed Huffman codes")
       })
 
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.7
       it("decodes a block compressed with dynamic Huffman codes (BTYPE 10)", () => {
-        assertDecodes(fixtures.dynamic, text(dynamicText))
+        assertDecodes(fixtures.dynamic, dynamicText)
       })
 
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.3
       it("decodes blocks up to the one with BFINAL set", () => {
         // A block, an empty non-compressed block from a full flush, the last block
-        assertDecodes(fixtures.multiBlock, text("first block, last block"))
+        assertDecodes(fixtures.multiBlock, "first block, last block")
       })
 
       // https://www.rfc-editor.org/rfc/rfc1951#section-3.2.3
@@ -279,8 +241,7 @@ export const suite = (): void => {
     describe("Trailing data (decoder policy)", () => {
       it("rejects bytes after the last member that do not form a member", () => {
         for (const trailing of [[0], [0, 0, 0, 0], [0x1f, 0x00], [0x42]]) {
-          const input = new Uint8Array([...fixtures.stored, ...trailing])
-          assertFails(input, "Malformed")
+          assertFails(concat(fixtures.stored, trailing), "Malformed")
         }
       })
     })
@@ -288,17 +249,13 @@ export const suite = (): void => {
     describe("Interoperability", () => {
       // https://compression.spec.whatwg.org/#compression-stream
       it("decodes the output of CompressionStream(\"gzip\")", async () => {
-        const words = text("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ")
+        const words = ascii("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ")
         const prose = new Uint8Array(300_000)
-        const random = randomBytes(300_000, 1)
+        const random = xorshift(300_000, 1)
         // Repeated text whose matches cross the inflater's 64 KiB output chunks
         for (let i = 0; i < prose.length; i++) prose[i] = words[(i * 7 + (i >>> 10)) % words.length]
-        const mixed = new Uint8Array([
-          ...prose.subarray(0, 50_000),
-          ...random.subarray(0, 50_000),
-          ...new Uint8Array(200_000)
-        ])
-        for (const data of [new Uint8Array(0), text("a"), prose, random, new Uint8Array(1 << 20), mixed]) {
+        const mixed = concat(prose.subarray(0, 50_000), random.subarray(0, 50_000), new Uint8Array(200_000))
+        for (const data of [new Uint8Array(0), ascii("a"), prose, random, new Uint8Array(1 << 20), mixed]) {
           assertDecodes(await compress(data), data)
         }
       })
@@ -321,7 +278,7 @@ export const suite = (): void => {
       })
 
       it("returns output that does not share memory with the input", () => {
-        const result = decode(fixtures.stored)
+        const result = Compression.decompressGzip(fixtures.stored, { maxOutputSize: 1 << 24 })
         assert.isTrue(Result.isSuccess(result))
         if (Result.isSuccess(result)) assert.notStrictEqual(result.success.buffer, fixtures.stored.buffer)
       })

@@ -41,53 +41,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Compression from "effect/encoding/Compression"
-import { readFileSync } from "node:fs"
-
-type Kind = Compression.CompressionError["kind"]
-
-const hex = (s: string): Uint8Array => Uint8Array.from(s.match(/../g) ?? [], (byte) => parseInt(byte, 16))
-const ascii = (s: string): Uint8Array => new TextEncoder().encode(s)
-
-const concat = (...parts: ReadonlyArray<ArrayLike<number>>): Uint8Array => {
-  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0))
-  let offset = 0
-  for (const part of parts) {
-    out.set(part, offset)
-    offset += part.length
-  }
-  return out
-}
-
-// Deterministic pseudo-random bytes (xorshift32), as in generate.py
-const random = (length: number, seed: number): Uint8Array => {
-  const out = new Uint8Array(length)
-  let x = seed
-  for (let i = 0; i < length; i++) {
-    x ^= x << 13
-    x ^= x >>> 17
-    x ^= x << 5
-    out[i] = x
-  }
-  return out
-}
-
-// As in generate.py
-const text = (lines: number): Uint8Array => {
-  let s = ""
-  for (let i = 0; i < lines; i++) {
-    s += `line ${String(i).padStart(4, "0")}: the quick brown fox jumps over the lazy dog\n`
-  }
-  return ascii(s)
-}
-
-const mixed = (): Uint8Array => {
-  const t = text(200)
-  const r = random(2048, 1)
-  return concat(t, r, new Uint8Array(5000).fill(0x61), t, r)
-}
-
-const fixture = (name: string): Uint8Array =>
-  new Uint8Array(readFileSync(new URL(`../../fixtures/compression/lz4/${name}`, import.meta.url)))
+import { ascii, assertions, concat, fixture, hex, le, mixed, xorshift } from "./CompressionConformance.ts"
 
 // Frame headers (magic number and frame descriptor) from generate.py
 const HEADER = {
@@ -112,7 +66,7 @@ const HEADER = {
 const XXH32_HELLO = hex("f97700fb")
 const XXH32_EMPTY = hex("055dcc02")
 
-const u32 = (n: number): Array<number> => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24]
+const u32 = (n: number): Array<number> => le(n, 4)
 const END_MARK = u32(0)
 const uncompressed = (data: Uint8Array): Uint8Array => concat(u32((data.length | 0x80000000) >>> 0), data)
 const compressed = (block: ArrayLike<number>): Uint8Array => concat(u32(block.length), block)
@@ -122,43 +76,8 @@ const skippable = (nibble: number, data: Uint8Array): Uint8Array =>
   concat(u32(0x184d2a50 + nibble), u32(data.length), data)
 const hello = (header: string): Uint8Array => frame(header, uncompressed(ascii("hello")))
 
-const options: Compression.DecompressOptions = { maxOutputSize: 1 << 20 }
-
-const assertDecodes = (
-  decode: typeof Compression.decompressLz4Block,
-  input: Uint8Array,
-  expected: Uint8Array,
-  options_ = options
-): void => {
-  const result = decode(input, options_)
-  if (Result.isFailure(result)) return assert.fail(`${result.failure.kind}: ${result.failure.message}`)
-  assert.deepStrictEqual(result.success, expected)
-}
-
-const assertFails = (
-  decode: typeof Compression.decompressLz4Block,
-  input: Uint8Array,
-  kind: Kind,
-  options_ = options
-): void => {
-  const result = decode(input, options_)
-  if (Result.isSuccess(result)) return assert.fail(`expected ${kind}, decoded ${result.success.length} bytes`)
-  assert.strictEqual(result.failure.kind, kind, result.failure.message)
-  assert.strictEqual(result.failure.codec, decode === Compression.decompressLz4Block ? "Lz4Block" : "Lz4Frame")
-}
-
-const block = {
-  decodes: (input: ArrayLike<number>, expected: Uint8Array, options_?: Compression.DecompressOptions) =>
-    assertDecodes(Compression.decompressLz4Block, Uint8Array.from(input), expected, options_),
-  fails: (input: ArrayLike<number>, kind: Kind, options_?: Compression.DecompressOptions) =>
-    assertFails(Compression.decompressLz4Block, Uint8Array.from(input), kind, options_)
-}
-const frames = {
-  decodes: (input: Uint8Array, expected: Uint8Array, options_?: Compression.DecompressOptions) =>
-    assertDecodes(Compression.decompressLz4Frame, input, expected, options_),
-  fails: (input: Uint8Array, kind: Kind, options_?: Compression.DecompressOptions) =>
-    assertFails(Compression.decompressLz4Frame, input, kind, options_)
-}
+const block = assertions(Compression.decompressLz4Block, "Lz4Block")
+const frames = assertions(Compression.decompressLz4Frame, "Lz4Frame")
 
 const A = 0x61
 // "a", then a match at offset 1 of 19 plus the extension bytes
@@ -179,7 +98,7 @@ export const suite = (): void => {
       it("decodes literal lengths of 15 or more from the extension bytes", () => {
         // The spec's examples: 15 = 15 + 0, 48 = 15 + 33, 280 = 15 + 255 + 10
         for (const [length, extensions] of [[15, [0]], [48, [33]], [280, [255, 10]]] as const) {
-          const data = random(length, length)
+          const data = xorshift(length, length)
           block.decodes([0xf0, ...extensions, ...data], data)
         }
       })
@@ -234,7 +153,7 @@ export const suite = (): void => {
 
     describe("Block: interoperability (python-lz4 4.4.4, liblz4 1.9.4)", () => {
       it("decodes a block compressed by the reference encoder", () => {
-        block.decodes(fixture("block.lz4"), mixed())
+        block.decodes(fixture("lz4/block.lz4"), mixed())
       })
     })
 
@@ -434,11 +353,11 @@ export const suite = (): void => {
       }
 
       it("decodes linked 64 KB blocks with Content Size and Content Checksum", () => {
-        frames.decodes(fixture("frame-linked.lz4"), big())
+        frames.decodes(fixture("lz4/frame-linked.lz4"), big())
       })
 
       it("decodes independent 64 KB blocks with Block Checksums", () => {
-        frames.decodes(fixture("frame-independent.lz4"), big())
+        frames.decodes(fixture("lz4/frame-independent.lz4"), big())
       })
 
       it("decodes an incompressible frame stored as an uncompressed block", () => {
@@ -446,7 +365,7 @@ export const suite = (): void => {
           "04224d186440a740000080420282061a2359b62a3bca3d09243efebfff359b88e88a99e764043520d9c377d17b3d6a22a7e5dd" +
             "548515b622035c344cf39a704caaf783607991f9cd8f7cc20000000006c65a72"
         )
-        frames.decodes(input, random(64, 2))
+        frames.decodes(input, xorshift(64, 2))
       })
     })
 
@@ -458,7 +377,7 @@ export const suite = (): void => {
 
       it("returns a buffer that does not share memory with the input", () => {
         const input = hello(HEADER.independent)
-        const result = Compression.decompressLz4Frame(input, options)
+        const result = Compression.decompressLz4Frame(input, { maxOutputSize: 1 << 20 })
         assert.isTrue(Result.isSuccess(result))
         if (Result.isSuccess(result)) assert.notStrictEqual(result.success.buffer, input.buffer)
       })

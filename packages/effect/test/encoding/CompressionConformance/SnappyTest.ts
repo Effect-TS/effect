@@ -27,69 +27,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Compression from "effect/encoding/Compression"
-import { readFileSync } from "node:fs"
+import { ascii, assertions, concat, fixture, hex, le, mixed, xorshift } from "./CompressionConformance.ts"
 
-type Kind = Compression.CompressionError["kind"]
-
-const hex = (s: string): Uint8Array => Uint8Array.from(s.match(/../g) ?? [], (byte) => parseInt(byte, 16))
-const ascii = (s: string): Uint8Array => new TextEncoder().encode(s)
-
-const concat = (...parts: ReadonlyArray<ArrayLike<number>>): Uint8Array => {
-  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0))
-  let offset = 0
-  for (const part of parts) {
-    out.set(part, offset)
-    offset += part.length
-  }
-  return out
-}
-
-// Deterministic pseudo-random bytes (xorshift32), as in generate.py
-const random = (length: number, seed: number): Uint8Array => {
-  const out = new Uint8Array(length)
-  let x = seed
-  for (let i = 0; i < length; i++) {
-    x ^= x << 13
-    x ^= x >>> 17
-    x ^= x << 5
-    out[i] = x
-  }
-  return out
-}
-
-// As in generate.py
-const text = (lines: number): Uint8Array => {
-  let s = ""
-  for (let i = 0; i < lines; i++) {
-    s += `line ${String(i).padStart(4, "0")}: the quick brown fox jumps over the lazy dog\n`
-  }
-  return ascii(s)
-}
-
-const mixed = (): Uint8Array => {
-  const t = text(200)
-  const r = random(2048, 1)
-  return concat(t, r, new Uint8Array(5000).fill(0x61), t, r)
-}
-
-const fixture = (name: string): Uint8Array =>
-  new Uint8Array(readFileSync(new URL(`../../fixtures/compression/snappy/${name}`, import.meta.url)))
-
-const decode = (input: Uint8Array, options: Compression.DecompressOptions = { maxOutputSize: 1 << 20 }) =>
-  Compression.decompressSnappy(input, options)
-
-const assertDecodes = (input: Uint8Array, expected: Uint8Array, options?: Compression.DecompressOptions): void => {
-  const result = decode(input, options)
-  if (Result.isFailure(result)) return assert.fail(`${result.failure.kind}: ${result.failure.message}`)
-  assert.deepStrictEqual(result.success, expected)
-}
-
-const assertFails = (input: Uint8Array, kind: Kind, options?: Compression.DecompressOptions): void => {
-  const result = decode(input, options)
-  if (Result.isSuccess(result)) return assert.fail(`expected ${kind}, decoded ${result.success.length} bytes`)
-  assert.strictEqual(result.failure.kind, kind, result.failure.message)
-  assert.strictEqual(result.failure.codec, "Snappy")
-}
+const { decodes: assertDecodes, fails: assertFails } = assertions(Compression.decompressSnappy, "Snappy")
 
 const varint = (n: number): Array<number> => {
   const out: Array<number> = []
@@ -106,18 +46,11 @@ const literal = (data: Uint8Array): Uint8Array => {
   const n = data.length - 1
   if (n < 60) return concat([n << 2], data)
   const bytes = n < 0x100 ? 1 : n < 0x10000 ? 2 : n < 0x1000000 ? 3 : 4
-  const length = [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24].slice(0, bytes)
-  return concat([(59 + bytes) << 2], length, data)
+  return concat([(59 + bytes) << 2], le(n, bytes), data)
 }
 const copy1 = (length: number, offset: number) => [((offset >>> 8) << 5) | ((length - 4) << 2) | 1, offset & 0xff]
-const copy2 = (length: number, offset: number) => [((length - 1) << 2) | 2, offset & 0xff, offset >>> 8]
-const copy4 = (length: number, offset: number) => [
-  ((length - 1) << 2) | 3,
-  offset & 0xff,
-  (offset >>> 8) & 0xff,
-  (offset >>> 16) & 0xff,
-  offset >>> 24
-]
+const copy2 = (length: number, offset: number) => [((length - 1) << 2) | 2, ...le(offset, 2)]
+const copy4 = (length: number, offset: number) => [((length - 1) << 2) | 3, ...le(offset, 4)]
 
 export const suite = (): void => {
   describe("Snappy (format_description.txt, google/snappy 1.2.2)", () => {
@@ -125,7 +58,7 @@ export const suite = (): void => {
     describe("Preamble (§1)", () => {
       it("decodes the uncompressed length as a little-endian varint", () => {
         // 200 = 0xc8 0x01
-        const data = random(200, 3)
+        const data = xorshift(200, 3)
         assertDecodes(concat([0xc8, 0x01], literal(data)), data)
       })
 
@@ -171,13 +104,13 @@ export const suite = (): void => {
     // https://github.com/google/snappy/blob/1.2.2/format_description.txt#L46
     describe("Literals (§2.1)", () => {
       it("decodes a literal of up to 60 bytes with its length in the tag", () => {
-        const data = random(60, 4)
+        const data = xorshift(60, 4)
         assertDecodes(concat([60], literal(data)), data)
       })
 
       it("decodes a literal with 1, 2, 3 or 4 extra length bytes", () => {
         for (const length of [61, 300, 70_000]) {
-          const data = random(length, length)
+          const data = xorshift(length, length)
           assertDecodes(concat(varint(length), literal(data)), data)
         }
         // A 4-byte length is only needed above 16 MiB; the format does not
@@ -208,13 +141,13 @@ export const suite = (): void => {
 
       // https://github.com/google/snappy/blob/1.2.2/format_description.txt#L89
       it("decodes a copy with a 1-byte offset: 11-bit offset, length 4 to 11", () => {
-        const data = random(261, 5)
+        const data = xorshift(261, 5)
         assertDecodes(concat(varint(272), literal(data), copy1(11, 261)), concat(data, data.subarray(0, 11)))
       })
 
       // https://github.com/google/snappy/blob/1.2.2/format_description.txt#L98
       it("decodes a copy with a 2-byte offset: length 1 to 64", () => {
-        const data = random(300, 6)
+        const data = xorshift(300, 6)
         assertDecodes(
           concat(varint(365), literal(data), copy2(64, 300), copy2(1, 1)),
           concat(data, data.subarray(0, 64), data.subarray(63, 64))
@@ -223,20 +156,20 @@ export const suite = (): void => {
 
       // https://github.com/google/snappy/blob/1.2.2/format_description.txt#L106
       it("decodes a copy with a 4-byte offset", () => {
-        const data = random(70_000, 7)
+        const data = xorshift(70_000, 7)
         assertDecodes(concat(varint(70_010), literal(data), copy4(10, 70_000)), concat(data, data.subarray(0, 10)))
       })
     })
 
     describe("Interoperability (cramjam 2.11.0)", () => {
       it("decodes data compressed by the reference encoder", () => {
-        assertDecodes(fixture("mixed.snappy"), mixed())
+        assertDecodes(fixture("snappy/mixed.snappy"), mixed())
         assertDecodes(
           hex(
             "64f063420282061a2359b62a3bca3d09243efebfff359b88e88a99e764043520d9c377d17b3d6a22a7e5dd548515b622035c34" +
               "4cf39a704caaf783607991f9cd8f7cc226308256198de773dc9e353b5d9ad1d60ca243aadd835351ef8e58b7ffb240424d483dc7"
           ),
-          random(100, 2)
+          xorshift(100, 2)
         )
       })
     })
@@ -253,7 +186,7 @@ export const suite = (): void => {
 
       it("returns a buffer that does not share memory with the input", () => {
         const input = concat([5], literal(ascii("hello")))
-        const result = decode(input)
+        const result = Compression.decompressSnappy(input, { maxOutputSize: 1 << 20 })
         assert.isTrue(Result.isSuccess(result))
         if (Result.isSuccess(result)) assert.notStrictEqual(result.success.buffer, input.buffer)
       })
