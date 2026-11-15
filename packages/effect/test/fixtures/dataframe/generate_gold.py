@@ -901,6 +901,9 @@ def extended_cases():
         {"left": table([("n", "u32"), ("d", "u32")], {"n": [7, 0, 5], "d": [0, 0, 2]})},
         [{"op": "select", "exprs": {"q": fn("floorDiv", col("n"), col("d")), "m": fn("mod", col("n"), col("d")),
                                      "qs": fn("floorDiv", col("n"), lit(0, "u32")), "ms": fn("mod", col("n"), lit(0, "u32"))}}])
+    for offset, length in [(-5, 1), (-5, 3), (-5, 4), (-2, 5), (-5, None), (1, 0)]:
+        add(f"slice/clip{offset}{'' if length is None else f'+{length}'}", "slices reaching before the first row clip from the unclamped start",
+            {"left": table([("x", "i32")], {"x": [1, 2, 3]})}, [{"op": "slice", "offset": offset, **({} if length is None else {"length": length})}])
     # windows see exactly the rows of their input, whatever runs before or after them
     W = {"left": table([("g", "i32"), ("h", "i32"), ("x", "f64")], {"g": [1, 2, 1, 2], "h": [1, 1, 2, 2], "x": [3.0, 1.0, 2.0, 4.0]}),
          "right": table([("g", "i32"), ("name", "utf8")], {"g": [1], "name": ["one"]})}

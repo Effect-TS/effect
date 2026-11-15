@@ -366,6 +366,12 @@ export const sort: {
  * `length` rows (all remaining when omitted) starting at `offset`; a negative
  * offset counts from the end.
  *
+ * **Details**
+ *
+ * As in Polars, the slice covers `offset` up to `offset + length` and is then
+ * clipped to the rows there are: over 3 rows, `slice(-5, 3)` keeps the first
+ * row and `slice(-5, 1)` none.
+ *
  * @stability experimental
  * @category slicing
  * @since 4.1.5

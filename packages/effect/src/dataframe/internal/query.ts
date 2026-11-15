@@ -568,8 +568,10 @@ export const step = (node: Node, inputs: ReadonlyArray<F.Frame>): F.Frame => {
       return F.sort(input, sortKeys(node.keys), node.nullsLast, node.limit)
     case "Slice": {
       const n = input.length
-      const start = node.offset < 0 ? Math.max(0, n + node.offset) : Math.min(node.offset, n)
-      return F.slice(input, start, node.length === undefined ? n : start + node.length)
+      const from = node.offset < 0 ? n + node.offset : node.offset
+      const start = Math.min(Math.max(from, 0), n)
+      const end = node.length === undefined ? n : Math.min(Math.max(from + node.length, start), n)
+      return F.slice(input, start, end)
     }
     case "Unique":
       return F.unique(input, node.columns)
