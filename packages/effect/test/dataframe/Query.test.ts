@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, Effect, Exit, Result, Schema, Stream } from "effect"
+import { BigDecimal, type DateTime, type Duration, Effect, Exit, Result, Schema, Stream } from "effect"
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Plan, Query } from "effect/dataframe"
 import * as Compare from "./oracle/Compare.ts"
@@ -195,6 +195,78 @@ describe("Query", () => {
           })))
         )
         assert.deepStrictEqual(casts, [{ fromFloat: null, fromUInt64: null, toUInt64: null }])
+      }))
+
+    it.effect("temporal operands of mixed units meet in the coarser unit, as in Polars", () =>
+      Effect.gen(function*() {
+        // Expected values from Polars 2.1.0: timestamps round down, durations toward zero.
+        const df = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
+          ArrowSchema.make([
+            ArrowSchema.field("t", ArrowSchema.timestamp("millisecond")),
+            ArrowSchema.field("s", ArrowSchema.timestamp("microsecond")),
+            ArrowSchema.field("d", ArrowSchema.duration("millisecond")),
+            ArrowSchema.field("e", ArrowSchema.duration("microsecond"))
+          ]),
+          [[1n, -1n, 2n], [1500n, 1500n, -1n], [1n, -1n, 2n], [1500n, 1500n, -1n]]
+        ))) as DataFrame.DataFrame<unknown> as DataFrame.DataFrame<{
+          t: DateTime.Utc
+          s: DateTime.Utc
+          d: Duration.Duration
+          e: Duration.Duration
+        }>
+        const int = (x: Expr.Expr<unknown>) => Expr.cast(x, "Int64")
+        const result = yield* rows(
+          Query.from(df).pipe(Query.select((c) => ({
+            tMinusS: int(Expr.subtract(c.t, c.s)),
+            tPlusE: int(Expr.add(c.t, c.e)),
+            tMinusE: int(Expr.subtract(c.t, c.e)),
+            dPlusE: int(Expr.add(c.d, c.e)),
+            dMinusE: int(Expr.subtract(c.d, c.e)),
+            eq: Expr.eq(c.t, c.s),
+            lt: Expr.lt(c.t, c.s),
+            durationsEq: Expr.eq(c.d, c.e),
+            s: int(Expr.cast(c.s, "Timestamp[ms]")),
+            e: int(Expr.cast(c.e, "Duration[ms]"))
+          })))
+        )
+        assert.deepStrictEqual(result, [
+          {
+            tMinusS: 0n,
+            tPlusE: 2n,
+            tMinusE: 0n,
+            dPlusE: 2n,
+            dMinusE: 0n,
+            eq: true,
+            lt: false,
+            durationsEq: true,
+            s: 1n,
+            e: 1n
+          },
+          {
+            tMinusS: -2n,
+            tPlusE: 0n,
+            tMinusE: -2n,
+            dPlusE: 0n,
+            dMinusE: -2n,
+            eq: false,
+            lt: true,
+            durationsEq: false,
+            s: 1n,
+            e: 1n
+          },
+          {
+            tMinusS: 3n,
+            tPlusE: 2n,
+            tMinusE: 2n,
+            dPlusE: 2n,
+            dMinusE: 2n,
+            eq: false,
+            lt: false,
+            durationsEq: false,
+            s: -1n,
+            e: 0n
+          }
+        ])
       }))
   })
 

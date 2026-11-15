@@ -53,8 +53,11 @@ const floorDiv = (a: bigint, b: bigint): bigint => {
   return (a % b !== BigInt(0)) && ((a < BigInt(0)) !== (b < BigInt(0))) ? q - BigInt(1) : q
 }
 
-/** Rescales integer counts of `from` units to `to` units (flooring). */
-const rescale = (values: BigInt64Array, from: S.TimeUnit, to: S.TimeUnit): BigInt64Array => {
+/**
+ * Rescales integer counts of `from` units to `to` units, rounding down
+ * (toward zero when `truncate`, as Polars rescales durations).
+ */
+const rescale = (values: BigInt64Array, from: S.TimeUnit, to: S.TimeUnit, truncate = false): BigInt64Array => {
   if (from === to) return values
   const out = new BigInt64Array(values.length)
   if (fineness[to] > fineness[from]) {
@@ -62,7 +65,7 @@ const rescale = (values: BigInt64Array, from: S.TimeUnit, to: S.TimeUnit): BigIn
     for (let i = 0; i < values.length; i++) out[i] = BigInt.asIntN(64, values[i] * f)
   } else {
     const f = BigInt(perSecond[from] / perSecond[to])
-    for (let i = 0; i < values.length; i++) out[i] = floorDiv(values[i], f)
+    for (let i = 0; i < values.length; i++) out[i] = truncate ? values[i] / f : floorDiv(values[i], f)
   }
   return out
 }
@@ -296,7 +299,7 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
     return V.i64(target, rescale(asI64(v), from.unit, target.unit), v.valid)
   }
   if (from._tag === "Duration" && target._tag === "Duration") {
-    return V.i64(target, rescale(asI64(v), from.unit, target.unit), v.valid)
+    return V.i64(target, rescale(asI64(v), from.unit, target.unit, true), v.valid)
   }
   if (from._tag === "Timestamp" && target._tag === "Date") {
     return target.unit === "day"
