@@ -260,6 +260,10 @@ describe("Thrift", () => {
       ["an i32 varint over 32 bits", "ffffffff1f", (r) => r.readI32(), "Malformed"],
       ["an i64 varint over 10 bytes", "ffffffffffffffffff8101", (r) => r.readI64(), "Malformed"],
       ["an i64 varint over 64 bits", "ffffffffffffffffff02", (r) => r.readI64(), "Malformed"],
+      // Other readers wrap these to 16 bits or keep them, so fields would alias.
+      ["an i16 over 16 bits", "808004", (r) => r.readI16(), "Malformed"],
+      ["a field id over 16 bits", "0580800400", struct, "Malformed"],
+      ["a field id delta past 32767", "05feff0300f50000", struct, "Malformed"],
       ["an unknown field type", "1e", struct, "Malformed"],
       ["an unknown list element type", "1e", (r) => r.readListBegin(), "Malformed"],
       ["a non-empty list of Stop", "10", (r) => r.readListBegin(), "Malformed"],

@@ -93,8 +93,10 @@ const ThriftErrorTypeId = "~effect/encoding/Thrift/ThriftError"
  *
  * - `Truncated`: the input ends inside a value, or a length or container
  *   size is larger than the bytes that remain.
- * - `Malformed`: an unknown type code, a varint that is too long, or a value
- *   of type `Stop`.
+ * - `Malformed`: an unknown type code, a varint longer than its type
+ *   allows (5 bytes and 32 bits for `i32` and sizes, 16 bits for `i16` and
+ *   field ids, 10 bytes and 64 bits for `i64`), a field id over 32767, or a
+ *   non-empty container of `Stop`.
  * - `InvalidUtf8`: a string is not valid UTF-8.
  * - `Range`: an `i64` read with {@link Reader.readI64Number} is not a safe
  *   integer.
@@ -398,6 +400,13 @@ export class Reader {
     return this.truncated(what)
   }
 
+  /** A zigzag varint of at most 16 bits. */
+  private varint16(what: string): number {
+    const n = this.varint32(what)
+    if (n > 0xffff) fail("Malformed", `${what} before byte ${this.pos} is longer than 16 bits`)
+    return (n >>> 1) ^ -(n & 1)
+  }
+
   /**
    * A zigzag varint of at most 64 bits as a number: returns the magnitude
    * `|v|` for v >= 0 or `|v| - 1` for v < 0 (exact up to 2^53) and sets
@@ -475,10 +484,10 @@ export class Reader {
     const delta = header >> 4
     let id: number
     if (delta === 0) {
-      const n = this.varint32("a field id")
-      id = (((n >>> 1) ^ -(n & 1)) << 16) >> 16
+      id = this.varint16("a field id")
     } else {
       id = this.lastFieldId + delta
+      if (id > 32767) fail("Malformed", `the field header at byte ${this.pos - 1} has id ${id}, over 32767`)
     }
     this.lastFieldId = id
     this.fieldId = id
@@ -542,8 +551,7 @@ export class Reader {
 
   /** Reads an `i16`. */
   readI16(): number {
-    const n = this.varint32("an i16")
-    return (((n >>> 1) ^ -(n & 1)) << 16) >> 16
+    return this.varint16("an i16")
   }
 
   /** Reads an `i32`. */
@@ -628,8 +636,10 @@ export class Reader {
         this.advance(1, "an i8")
         return
       case Type.I16:
+        this.varint16("an i16")
+        return
       case Type.I32:
-        this.varint32("an integer")
+        this.varint32("an i32")
         return
       case Type.I64:
         this.varint64("an i64")
