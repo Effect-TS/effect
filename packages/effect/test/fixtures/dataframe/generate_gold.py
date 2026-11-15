@@ -8,14 +8,14 @@ public effect/dataframe API and compares the result with the Polars output.
 
     uv run --with polars==2.1.0 python generate_gold.py   # writes gold/spec.json and gold/extended.json
 
-Needs polars (tested with 2.1). Polars is the semantic reference: where
-effect/dataframe deliberately differs, the case is left out here and the
-difference is listed in DEVIATIONS below.
+Polars is the semantic reference. Cases avoid the differences listed in
+DEVIATIONS; differences in result types alone are listed in oracle/Compare.ts.
 """
 
 import json
 import math
-import sys
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import polars as pl
@@ -48,7 +48,6 @@ DTYPES = {
     "f32": pl.Float32,
     "f64": pl.Float64,
     "utf8": pl.String,
-    "null": pl.Null,
     "date": pl.Date,
     "datetime[us]": pl.Datetime("us"),
     "datetime[ms]": pl.Datetime("ms"),
@@ -79,6 +78,10 @@ def split_top(s):
     return parts
 
 
+def struct_fields(t):
+    return [f.split(":", 1) for f in split_top(t[7:-1])]
+
+
 def dtype_of(name):
     if name.startswith("decimal["):
         p, sc = name[8:-1].split(",")
@@ -86,7 +89,7 @@ def dtype_of(name):
     if name.startswith("list<"):
         return pl.List(dtype_of(name[5:-1]))
     if name.startswith("struct<"):
-        return pl.Struct({f.split(":", 1)[0]: dtype_of(f.split(":", 1)[1]) for f in split_top(name[7:-1])})
+        return pl.Struct({n: dtype_of(ft) for n, ft in struct_fields(name)})
     return DTYPES[name]
 
 
@@ -111,8 +114,7 @@ def encode_value(value, t):
     if t.startswith("list<"):
         return [encode_value(v, t[5:-1]) for v in value]
     if t.startswith("struct<"):
-        fields = [f.split(":", 1) for f in split_top(t[7:-1])]
-        return {n: encode_value(value.get(n), ft) for n, ft in fields}
+        return {n: encode_value(value.get(n), ft) for n, ft in struct_fields(t)}
     if t in ("f32", "f64"):
         if math.isnan(value):
             return "NaN"
@@ -130,13 +132,11 @@ def decode_value(value, t):
     if value is None:
         return None
     if t.startswith("decimal["):
-        from decimal import Decimal as PyDecimal
-        return PyDecimal(value)
+        return Decimal(value)
     if t.startswith("list<"):
         return [decode_value(v, t[5:-1]) for v in value]
     if t.startswith("struct<"):
-        fields = [f.split(":", 1) for f in split_top(t[7:-1])]
-        return {n: decode_value(value.get(n), ft) for n, ft in fields}
+        return {n: decode_value(value.get(n), ft) for n, ft in struct_fields(t)}
     if t in ("f32", "f64"):
         if isinstance(value, str):
             return {"NaN": float("nan"), "Infinity": float("inf"), "-Infinity": float("-inf"), "-0": -0.0}[value]
@@ -179,10 +179,7 @@ def from_polars(df):
 
 
 def lit(value, t=None):
-    out = {"lit": encode_value(value, t or ("f64" if isinstance(value, float) else "")) if value is not None else None}
-    if t is not None:
-        out["type"] = t
-    return out
+    return {"lit": value} if t is None else {"lit": encode_value(value, t), "type": t}
 
 
 def col(name):
@@ -199,16 +196,12 @@ def agg(name, arg=None):
 
 def p_lit(e):
     t = e.get("type")
-    v = e["lit"]
-    if t is not None and t.startswith("decimal["):
-        return pl.lit(decode_value(v, t), dtype=dtype_of(t))
-    if t is not None and t in TEMPORAL:
-        return pl.lit(decode_value(v, t), dtype=TEMPORAL[t]).cast(DTYPES[t])
-    if t is not None:
-        return pl.lit(decode_value(v, t), dtype=DTYPES[t])
-    if isinstance(v, str) and v in ("NaN", "Infinity", "-Infinity", "-0"):
-        return pl.lit(decode_value(v, "f64"))
-    return pl.lit(v)
+    if t is None:
+        return pl.lit(e["lit"])
+    value = decode_value(e["lit"], t)
+    if t in TEMPORAL:
+        return pl.lit(value, dtype=TEMPORAL[t]).cast(DTYPES[t])
+    return pl.lit(value, dtype=dtype_of(t))
 
 
 def p_expr(e):
@@ -261,7 +254,7 @@ def p_expr(e):
     if f == "cast":
         return a[0].cast(dtype_of(e["to"]), strict=False)
     if f == "isIn":
-        return a[0].is_in([decode_value(v, e.get("type", "")) for v in e["values"]])
+        return a[0].is_in(e["values"])
     if f == "between":
         return a[0].is_between(a[1], a[2])
     if f == "round":
@@ -406,11 +399,12 @@ def run(inputs, ops):
         elif kind == "dropNulls":
             df = df.drop_nulls(subset=op.get("columns"))
         elif kind == "pivot":
+            source = df
             df = df.pivot(on=op["on"], index=op["index"], values=op["values"], aggregate_function=op["aggregate"], sort_columns=False)
             if "columns" in op:
                 # Declared columns that never occur are cells without rows:
                 # the aggregate of an empty set (0 for sums and counts).
-                empty = run({"left": inputs["left"]}, [o for o in ops[: ops.index(op)]]).clear().select(
+                empty = source.clear().select(
                     p_agg(agg(op["aggregate"], col(op["values"])) if op["aggregate"] != "len" else agg("len")).alias("v")
                 )
                 for c in op["columns"]:
@@ -703,8 +697,6 @@ series = table(
     },
 )
 
-from datetime import datetime, date, timedelta
-
 EPOCH = datetime(1970, 1, 1)
 
 
@@ -825,7 +817,6 @@ def extended_cases():
         [{"op": "pick", "columns": ["region", "quarter"]},
          {"op": "unpivot", "index": [], "on": ["region", "quarter"], "variable": "field", "value": "text"}])
     T = {"left": times, "right": holidays}
-    us = lambda dt: int((dt - EPOCH).total_seconds() * 1_000_000)
     add("temporal/extract", "calendar fields of timestamps and dates", T,
         [{"op": "select", "exprs": {"y": fn("year", col("ts")), "mo": fn("month", col("ts")), "d": fn("day", col("ts")),
                                      "h": fn("hour", col("ts")), "mi": fn("minute", col("ts")), "s": fn("second", col("ts")),
@@ -847,7 +838,7 @@ def extended_cases():
                                      "us": fn("cast", col("ts"), to="i64"), "days": fn("cast", col("d"), to="i32"),
                                      "ms": fn("cast", col("ts"), to="datetime[ms]")}}])
     add("temporal/compare", "comparisons with timestamp literals and between units", T,
-        [{"op": "filter", "predicate": fn("and", fn("gte", col("ts"), lit(us(datetime(2024, 3, 1)), "datetime[us]")), fn("lt", col("ms"), col("ts")))}])
+        [{"op": "filter", "predicate": fn("and", fn("gte", col("ts"), lit(_us(datetime(2024, 3, 1)), "datetime[us]")), fn("lt", col("ms"), col("ts")))}])
     add("temporal/group-sort", "group by date, aggregate timestamps, sort", T,
         [{"op": "groupBy", "keys": ["d"], "aggs": {"first": agg("min", col("ts")), "last": agg("max", col("ts")), "n": agg("len"),
                                                      "total": agg("sum", col("dur"))}},

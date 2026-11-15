@@ -18,7 +18,6 @@ export type TypeName =
   | "f32"
   | "f64"
   | "utf8"
-  | "null"
   | "date"
   | "datetime[us]"
   | "datetime[ms]"
@@ -33,11 +32,19 @@ export interface Table {
   readonly columns: { readonly [name: string]: ReadonlyArray<unknown> }
 }
 
+export const rowCount = (table: Table): number => Object.values(table.columns)[0]?.length ?? 0
+
+export interface Call {
+  readonly fn: string
+  readonly args: ReadonlyArray<Expr>
+  readonly [option: string]: unknown
+}
+
 export type Expr =
   | { readonly over: Expr; readonly partitionBy: ReadonlyArray<Expr> }
   | { readonly col: string }
   | { readonly lit: unknown; readonly type?: TypeName }
-  | { readonly fn: string; readonly args: ReadonlyArray<Expr>; readonly [option: string]: unknown }
+  | Call
   | { readonly agg: string; readonly arg?: Expr }
 
 export type Op =
@@ -87,20 +94,14 @@ export interface Case {
   readonly expected: Table
 }
 
-export interface Corpus {
-  readonly polars: string
-  readonly deviations: ReadonlyArray<string>
-  readonly cases: ReadonlyArray<Case>
-}
+const load = (name: string): ReadonlyArray<Case> =>
+  JSON.parse(Fs.readFileSync(new URL(`../../fixtures/dataframe/gold/${name}.json`, import.meta.url), "utf8")).cases
 
-const load = (name: string): Corpus =>
-  JSON.parse(Fs.readFileSync(new URL(`../../fixtures/dataframe/gold/${name}.json`, import.meta.url), "utf8"))
-
-export const spec = (): Corpus => load("spec")
-export const extended = (): Corpus => load("extended")
+/** The cases of gold/spec.json and gold/extended.json. */
+export const cases = (): ReadonlyArray<Case> => [...load("spec"), ...load("extended")]
 
 /** Splits `a:x,b:list<y>` on top-level commas. */
-export const splitTop = (s: string): Array<string> => {
+const splitTop = (s: string): Array<string> => {
   const parts: Array<string> = []
   let depth = 0
   let current = ""

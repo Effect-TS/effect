@@ -69,13 +69,7 @@ describe("DataFrame", () => {
       }
       const Tree: Schema.Codec<Tree> = Schema.Struct({ children: Schema.Array(Schema.suspend(() => Tree)) })
       for (const xs of [Schema.Record(Schema.String, Schema.Number), Tree]) {
-        try {
-          DataFrame.fromRows(Schema.Struct({ xs }), [])
-          assert.fail("expected an error")
-        } catch (e) {
-          assert.instanceOf(e, DataFrame.DataFrameError)
-          assert.include((e as DataFrame.DataFrameError).message, `"xs`)
-        }
+        assert.throws(() => DataFrame.fromRows(Schema.Struct({ xs }), []), DataFrame.DataFrameError, `"xs`)
       }
     })
 
@@ -98,12 +92,12 @@ describe("DataFrame", () => {
 
   describe("validate", () => {
     const untyped = DataFrame.fromArrowTable(DataFrame.toArrowTable(readings))
-    const column = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown>) =>
-      DataFrame.fromArrowTable(
-        Result.getOrThrow(
-          ArrowTable.fromRows(ArrowSchema.make([ArrowSchema.field("t", type)]), values.map((t) => ({ t })))
-        )
-      )
+    const arrowFrame = (columns: Record<string, readonly [ArrowSchema.DataType, ReadonlyArray<unknown>]>) =>
+      DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
+        ArrowSchema.make(Object.entries(columns).map(([name, [type]]) => ArrowSchema.field(name, type))),
+        Object.values(columns).map(([, values]) => values)
+      )))
+    const column = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown>) => arrowFrame({ t: [type, values] })
     const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
 
     it("returns the frame typed by the schema, in schema order", () => {
@@ -191,7 +185,6 @@ describe("DataFrame", () => {
       ]
       for (const [df, schema, message] of cases) {
         const result = DataFrame.validate(df, schema)
-        assert.isTrue(Result.isFailure(result))
         assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
       }
     })
@@ -210,14 +203,11 @@ describe("DataFrame", () => {
 
     it("converts columns to the types fromRows gives the schema, exactly", () => {
       const Row = Schema.Struct({ n: Schema.Number, d: Schema.BigDecimal, t: Schema.DateTimeUtc })
-      const df = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(
-        ArrowSchema.make([
-          ArrowSchema.field("n", ArrowSchema.int32),
-          ArrowSchema.field("d", ArrowSchema.decimal(18, 1)),
-          ArrowSchema.field("t", ArrowSchema.timestamp("millisecond"))
-        ]),
-        [{ n: 1, d: BigDecimal.fromStringUnsafe("1.2"), t: 1n }]
-      )))
+      const df = arrowFrame({
+        n: [ArrowSchema.int32, [1]],
+        d: [ArrowSchema.decimal(18, 1), [BigDecimal.fromStringUnsafe("1.2")]],
+        t: [ArrowSchema.timestamp("millisecond"), [1n]]
+      })
       const types = { d: ArrowSchema.decimal(18, 2) }
       const validated = Result.getOrThrow(DataFrame.validate(df, Row, { types }))
       assert.deepStrictEqual(validated.schema, DataFrame.empty(Row, { types }).schema)
@@ -255,16 +245,16 @@ describe("DataFrame", () => {
         for (const frame of frames) assert.isTrue(Equal.equals(frame, readings))
       }))
 
-    it("exports late-selected columns", () => {
-      const df = Query.from(readings).pipe(
-        Query.filter((c) => Expr.isNotNull(c.rain)),
-        Query.sort((c) => [c.temp]),
-        Effect.runSync
-      )
-      const table = DataFrame.toArrowTable(df)
-      assert.strictEqual(table.batches[0].length, 2)
-      assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(table)), DataFrame.toRows(df))
-    })
+    it.effect("exports late-selected columns", () =>
+      Effect.gen(function*() {
+        const df = yield* Query.from(readings).pipe(
+          Query.filter((c) => Expr.isNotNull(c.rain)),
+          Query.sort((c) => [c.temp])
+        )
+        const table = DataFrame.toArrowTable(df)
+        assert.strictEqual(table.batches[0].length, 2)
+        assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(table)), DataFrame.toRows(df))
+      }))
 
     it("imports a table without batches with the nullability of its fields", () => {
       const schema = ArrowSchema.make([
@@ -277,22 +267,22 @@ describe("DataFrame", () => {
       ])
     })
 
-    it("imports sliced list columns with only their own elements", () => {
-      const Lists = Schema.Struct({ xs: Schema.Array(Schema.Number) })
-      const df = DataFrame.fromRows(Lists, [{ xs: [1] }, { xs: [2] }, { xs: [3] }])
-      const table = DataFrame.toArrowTable(df)
-      const sliced = DataFrame.fromArrowTable(ArrowTable.slice(table, 0, 1))
-      const sums = Query.from(sliced).pipe(
-        Query.select((c) => ({ s: Expr.listSum(c.xs as Expr.Expr<ReadonlyArray<number>>) })),
-        Effect.runSync
-      )
-      assert.deepStrictEqual(DataFrame.toRows(sums), [{ s: 1 }])
-      const two = ArrowTable.make(table.schema, [
-        ...ArrowTable.slice(table, 0, 1).batches,
-        ...ArrowTable.slice(table, 2, 3).batches
-      ])
-      assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(two)), [{ xs: [1] }, { xs: [3] }])
-    })
+    it.effect("imports sliced list columns with only their own elements", () =>
+      Effect.gen(function*() {
+        const Lists = Schema.Struct({ xs: Schema.Array(Schema.Number) })
+        const df = DataFrame.fromRows(Lists, [{ xs: [1] }, { xs: [2] }, { xs: [3] }])
+        const table = DataFrame.toArrowTable(df)
+        const sliced = DataFrame.fromArrowTable(ArrowTable.slice(table, 0, 1))
+        const sums = yield* Query.from(sliced).pipe(
+          Query.select((c) => ({ s: Expr.listSum(c.xs as Expr.Expr<ReadonlyArray<number>>) }))
+        )
+        assert.deepStrictEqual(DataFrame.toRows(sums), [{ s: 1 }])
+        const two = ArrowTable.make(table.schema, [
+          ...ArrowTable.slice(table, 0, 1).batches,
+          ...ArrowTable.slice(table, 2, 3).batches
+        ])
+        assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(two)), [{ xs: [1] }, { xs: [3] }])
+      }))
   })
 
   describe("values", () => {

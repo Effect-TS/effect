@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, type DateTime, type Duration, Effect, Exit, Result, Schema, Stream } from "effect"
+import { BigDecimal, type DateTime, type Duration, Effect, Result, Schema, Stream } from "effect"
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Plan, Query } from "effect/dataframe"
 import * as Compare from "./oracle/Compare.ts"
@@ -27,6 +27,19 @@ const cities = DataFrame.fromRows(City, [
 const tables = Catalog.layer({ readings, cities })
 
 const rows = <R>(query: Query.Query<R>) => Effect.map(query, DataFrame.toRows)
+
+/** A frame of Arrow-typed columns. */
+const arrowFrame = <R = unknown>(columns: Record<string, readonly [ArrowSchema.DataType, ReadonlyArray<unknown>]>) =>
+  DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
+    ArrowSchema.make(Object.entries(columns).map(([name, [type]]) => ArrowSchema.field(name, type))),
+    Object.values(columns).map(([, values]) => values)
+  ))) as DataFrame.DataFrame<R>
+
+const Price = Schema.Struct({ d: Schema.BigDecimal })
+const price = (d: string, precision: number, scale: number) =>
+  DataFrame.fromRows(Price, [{ d: BigDecimal.fromStringUnsafe(d) }], {
+    types: { d: ArrowSchema.decimal(precision, scale) }
+  })
 
 describe("Query", () => {
   describe("running", () => {
@@ -76,10 +89,13 @@ describe("Query", () => {
         const Range = Schema.Struct({ lo: Schema.Number, hi: Schema.Number }).check(
           Schema.makeFilter((row) => row.lo < row.hi || "lo must be below hi")
         )
+        const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
+        const berlin = arrowFrame({ t: [ArrowSchema.timestamp("millisecond", "Europe/Berlin"), [0n]] })
         for (
           const [schema, frame, message] of [
             [Kind, DataFrame.fromColumns({ kind: ["a", "c"] }), `column "kind" has values its schema rejects`],
-            [Range, DataFrame.fromColumns({ lo: [1, 2], hi: [2, 1] }), "rows have values their schema rejects"]
+            [Range, DataFrame.fromColumns({ lo: [1, 2], hi: [2, 1] }), "rows have values their schema rejects"],
+            [Utc, berlin, `column "t" has time zone Europe/Berlin, expected UTC timestamps`]
           ] as const
         ) {
           for (const t of [frame, Stream.make(frame)]) {
@@ -91,15 +107,6 @@ describe("Query", () => {
           Effect.provide(Catalog.layer({ t: DataFrame.fromColumns({ lo: [1], hi: [2] }) }))
         )
         assert.deepStrictEqual(DataFrame.toRows(yield* ranges), [{ lo: 1, hi: 2 }])
-        const berlin = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(
-          ArrowSchema.make([ArrowSchema.field("t", ArrowSchema.timestamp("millisecond", "Europe/Berlin"))]),
-          [{ t: 0n }]
-        )))
-        const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
-        for (const t of [berlin, Stream.make(berlin)]) {
-          const error = yield* Effect.flip(Query.table("t", Utc).pipe(Effect.provide(Catalog.layer({ t }))))
-          assert.strictEqual(error.message, `column "t" has time zone Europe/Berlin, expected UTC timestamps`)
-        }
       }))
 
     it.effect("narrows tables to their declared columns", () =>
@@ -111,10 +118,7 @@ describe("Query", () => {
 
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {
-        const query = Query.from(readings).pipe(Query.filter((c) => c.city as any))
-        const exit = yield* Effect.exit(query)
-        assert.isTrue(Exit.isFailure(exit))
-        const error = yield* Effect.flip(query)
+        const error = yield* Effect.flip(Query.from(readings).pipe(Query.filter((c) => c.city as any)))
         assert.instanceOf(error, DataFrame.DataFrameError)
         assert.strictEqual(error.message, "filter predicate must be boolean, got Utf8")
       }))
@@ -209,14 +213,11 @@ describe("Query", () => {
         )
         assert.deepStrictEqual(casts, [{ fromFloat: null, fromUInt64: null, toUInt64: null }])
         // Expected values from Polars 2.1.0 non-strict casts.
-        const temporal = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
-          ArrowSchema.make([
-            ArrowSchema.field("t", ArrowSchema.timestamp("millisecond")),
-            ArrowSchema.field("d", ArrowSchema.duration("millisecond")),
-            ArrowSchema.field("i", ArrowSchema.int64)
-          ]),
-          [[10n ** 17n], [10n ** 17n], [2n ** 40n]]
-        ))) as DataFrame.DataFrame<unknown> as DataFrame.DataFrame<{ t: DateTime.Utc; d: Duration.Duration; i: bigint }>
+        const temporal = arrowFrame<{ t: DateTime.Utc; d: Duration.Duration; i: bigint }>({
+          t: [ArrowSchema.timestamp("millisecond"), [10n ** 17n]],
+          d: [ArrowSchema.duration("millisecond"), [10n ** 17n]],
+          i: [ArrowSchema.int64, [2n ** 40n]]
+        })
         const overflows = yield* rows(
           Query.from(temporal).pipe(Query.select((c) => ({
             t: Expr.cast(c.t, "Timestamp[ns]"),
@@ -229,11 +230,6 @@ describe("Query", () => {
 
     it.effect("implicit conversions to a common type fail on values it can't hold", () =>
       Effect.gen(function*() {
-        const Price = Schema.Struct({ d: Schema.BigDecimal })
-        const price = (d: string, precision: number, scale: number) =>
-          DataFrame.fromRows(Price, [{ d: BigDecimal.fromStringUnsafe(d) }], {
-            types: { d: ArrowSchema.decimal(precision, scale) }
-          })
         const big = Query.from(price("6000000000000000000", 19, 0))
         const small = Query.from(price("1.20", 18, 2))
         const failures: ReadonlyArray<Effect.Effect<unknown, DataFrame.DataFrameError>> = [
@@ -268,16 +264,15 @@ describe("Query", () => {
           ["coalesce(null, 300, x)", (c) => Expr.coalesce(null, 300, c.x), int16, [300, 300]],
           ["coalesce(x, null, 300)", (c) => Expr.coalesce(c.x, null, 300), int16, [300, 5]],
           ["coalesce(x, 300, 70000)", (c) => Expr.coalesce(c.x, 300, 70000), int32, [300, 5]],
-          // Polars 2.1.0 gives Int16, which can't hold 70000.
+          // Polars gives Int16, which can't hold 70000.
           ["coalesce(300, 70000, x)", (c) => Expr.coalesce(300, 70000, c.x), int32, [300, 300]],
           ["coalesce(1, x)", (c) => Expr.coalesce(1, c.x), int8, [1, 1]],
           ["coalesce(300, 1.5, x)", (c) => Expr.coalesce(300, 1.5, c.x), float64, [300, 300]],
           ["coalesce(u, -1)", (c) => Expr.coalesce(c.u, -1), int16, [-1, 5]],
           ["coalesce(-1, u)", (c) => Expr.coalesce(-1, c.u), int16, [-1, -1]],
           ["x + cast(5, Int32)", (c) => Expr.add(c.x, Expr.cast(Expr.lit(5), "Int32")), int32, [null, 10]],
-          // Every literal of an operand built from literals is fitted, whichever
-          // rows select it (w is when(x is null, 1, 300)); Polars 2.1.0 gives
-          // Int8, making 5 + 300 null and (100 + 1) * 2 wrap to -54.
+          // Literal-only operands are fitted as a whole (w is when(x is null, 1, 300));
+          // Polars gives Int8, making 5 + 300 null and (100 + 1) * 2 wrap to -54.
           ["x + w", (c) => Expr.add(c.x, w(c.x)), int16, [null, 305]],
           [
             "(coalesce(x, 100) + w) * 2",
@@ -285,8 +280,8 @@ describe("Query", () => {
             int16,
             [202, 610]
           ],
-          // Other operands computed from literals count as Int32; Polars 2.1.0
-          // gives Int8 with nulls.
+          // Other operands computed from literals count as Int32; Polars gives
+          // Int8 with nulls.
           ["x + -w", (c) => Expr.add(c.x, Expr.negate(w(c.x))), int32, [null, -295]]
         ]
         // x is Int8 and u UInt8, both [null, 5]: whole, streamed a row at a
@@ -318,20 +313,12 @@ describe("Query", () => {
     it.effect("temporal operands of mixed units meet in the coarser unit, as in Polars", () =>
       Effect.gen(function*() {
         // Expected values from Polars 2.1.0: timestamps round down, durations toward zero.
-        const df = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
-          ArrowSchema.make([
-            ArrowSchema.field("t", ArrowSchema.timestamp("millisecond")),
-            ArrowSchema.field("s", ArrowSchema.timestamp("microsecond")),
-            ArrowSchema.field("d", ArrowSchema.duration("millisecond")),
-            ArrowSchema.field("e", ArrowSchema.duration("microsecond"))
-          ]),
-          [[1n, -1n, 2n], [1500n, 1500n, -1n], [1n, -1n, 2n], [1500n, 1500n, -1n]]
-        ))) as DataFrame.DataFrame<unknown> as DataFrame.DataFrame<{
-          t: DateTime.Utc
-          s: DateTime.Utc
-          d: Duration.Duration
-          e: Duration.Duration
-        }>
+        const df = arrowFrame<{ t: DateTime.Utc; s: DateTime.Utc; d: Duration.Duration; e: Duration.Duration }>({
+          t: [ArrowSchema.timestamp("millisecond"), [1n, -1n, 2n]],
+          s: [ArrowSchema.timestamp("microsecond"), [1500n, 1500n, -1n]],
+          d: [ArrowSchema.duration("millisecond"), [1n, -1n, 2n]],
+          e: [ArrowSchema.duration("microsecond"), [1500n, 1500n, -1n]]
+        })
         const int = (x: Expr.Expr<unknown>) => Expr.cast(x, "Int64")
         const result = yield* rows(
           Query.from(df).pipe(Query.select((c) => ({
@@ -560,13 +547,15 @@ describe("Query", () => {
   // Every case of the Polars gold corpus (test/fixtures/dataframe/gold), with
   // its inputs inline, as catalog frames and as streams of small batches.
   describe("Polars oracle", () => {
-    const cases = [...Gold.spec().cases, ...Gold.extended().cases]
+    const cases = Gold.cases()
     for (const source of ["values", "frames", "batches"] as const) {
       describe(source, () => {
         for (const c of cases) {
-          it(`${c.id}: ${c.description}`, () => {
-            assert.strictEqual(Compare.diff(c.id, Oracle.run(c, source), c.expected), undefined)
-          })
+          it.effect(`${c.id}: ${c.description}`, () =>
+            Effect.gen(function*() {
+              const df = yield* Oracle.run(c, source)
+              assert.strictEqual(yield* Compare.diff(c.id, df, c.expected), undefined)
+            }))
         }
       })
     }
@@ -601,12 +590,7 @@ describe("Query", () => {
 
     it.effect("batches convert to the declared column types; undeclared, they must share their columns", () =>
       Effect.gen(function*() {
-        const Price = Schema.Struct({ d: Schema.BigDecimal })
-        const price = (d: string, scale: number) =>
-          DataFrame.fromRows(Price, [{ d: BigDecimal.fromStringUnsafe(d) }], {
-            types: { d: ArrowSchema.decimal(18, scale) }
-          })
-        const source = Stream.make(price("1.2", 1), price("1.23", 2), price("1.2", 2))
+        const source = Stream.make(price("1.2", 18, 1), price("1.23", 18, 2), price("1.2", 18, 2))
         const declared = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 2) } })
         const d = (s: string) => BigDecimal.fromStringUnsafe(s)
         const totals = declared.pipe(
@@ -647,9 +631,8 @@ describe("Query", () => {
           DataFrame.fromRows(Row, values.map((x) => ({ x })), { types: { x: type } })
         const wide = (values: BigUint64Array | BigInt64Array) =>
           DataFrame.fromColumns({ x: values }) as unknown as Frame
-        const Price = Schema.Struct({ x: Schema.BigDecimal })
-        const price = (d: string, precision: number, scale: number) =>
-          DataFrame.fromRows(Price, [{ x: BigDecimal.fromStringUnsafe(d) }], {
+        const decimal = (d: string, precision: number, scale: number) =>
+          DataFrame.fromRows(Schema.Struct({ x: Schema.BigDecimal }), [{ x: BigDecimal.fromStringUnsafe(d) }], {
             types: { x: ArrowSchema.decimal(precision, scale) }
           }) as unknown as Frame
         // A query over the frames concatenated: in memory, and streamed with
@@ -722,7 +705,7 @@ describe("Query", () => {
             [[[2 ** 63, 1], [-1, 1], [0.5, 1]], [[0.5, 1], [-1, 1], [2 ** 63, 1]]]
           ],
           [
-            [price("6000000000000000000", 19, 0), price("1.20", 18, 2), x(float64, [0.5])],
+            [decimal("6000000000000000000", 19, 0), decimal("1.20", 18, 2), x(float64, [0.5])],
             { sum: 6e18, mean: 2e18, min: 0.5, max: 6e18, count: 3 },
             [[6e18, 0.5], [0.5, 6e18]],
             [[[6e18, 1], [1.2, 1], [0.5, 1]], [[0.5, 1], [1.2, 1], [6e18, 1]]]
@@ -756,7 +739,7 @@ describe("Query", () => {
             }
           }
         }
-        // Row-wise operations see the common type too, as in Polars 2.1.0: Int8
+        // Row-wise operations see the common type too, as in Polars: Int8
         // 100 doubles to 200 in Int64, where doubling in Int8 wraps to -56.
         const small = [DataFrame.fromColumns({ x: Int8Array.of(100) }), wide(BigInt64Array.of(1n))]
         const rowWise: ReadonlyArray<readonly [(table: typeof t) => Query.Query<unknown>, ReadonlyArray<unknown>]> = [
@@ -777,7 +760,7 @@ describe("Query", () => {
             "UInt64 values don't fit their common type Int64"
           ],
           [
-            [price("6000000000000000000", 19, 0), price("1.20", 18, 2)],
+            [decimal("6000000000000000000", 19, 0), decimal("1.20", 18, 2)],
             "Decimal[19, 0] values don't fit their common type Decimal[38, 2]"
           ]
         ]
@@ -810,7 +793,6 @@ describe("Query", () => {
         const untyped = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
           Query.filter((c) => Expr.gt(c.x as Expr.Expr<number>, 5))
         )
-        const Price = Schema.Struct({ d: Schema.BigDecimal })
         const prices = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 2) } }).pipe(
           Query.aggregate((c) => ({ total: Expr.sum(c.d), r: Expr.max(Expr.round(c.d, 1)) }))
         )
@@ -928,7 +910,7 @@ describe("Query", () => {
       Effect.gen(function*() {
         let pulled = 0
         const source = Stream.fromIterable(batches).pipe(Stream.tap(() => Effect.sync(() => pulled++)))
-        const df = yield* Query.table("t", Row).pipe(
+        const df = yield* t.pipe(
           Query.filter((c) => Expr.gt(c.x, 0)),
           Query.head(2),
           Effect.provide(Catalog.layer({ t: source }))
@@ -939,7 +921,7 @@ describe("Query", () => {
 
     it.effect("Query.stream emits a frame per non-empty batch", () =>
       Effect.gen(function*() {
-        const sizes = yield* Query.table("t", Row).pipe(
+        const sizes = yield* t.pipe(
           Query.filter((c) => Expr.lt(c.x, 5)),
           Query.stream,
           Stream.map((frame) => frame.length),
@@ -962,13 +944,6 @@ describe("Query", () => {
     }
     type Key = { readonly name: keyof Row; readonly descending: boolean }
 
-    const schema = ArrowSchema.make([
-      ArrowSchema.field("f", ArrowSchema.float64),
-      ArrowSchema.field("i", ArrowSchema.int32),
-      ArrowSchema.field("b", ArrowSchema.int64),
-      ArrowSchema.field("s", ArrowSchema.utf8),
-      ArrowSchema.field("p", ArrowSchema.bool)
-    ])
     const strings = ["a", "b", "ab", "B", "é", "😀", "\uffff", "", "zz", "a\u0000"]
 
     const generate = (seed: number, n: number, cardinality: number): Array<Row> => {
@@ -1028,8 +1003,7 @@ describe("Query", () => {
       const keyOf = (values: ReadonlyArray<unknown>) =>
         JSON.stringify(
           values,
-          (_, v) =>
-            typeof v === "bigint" ? `${v}n` : typeof v === "number" && !Number.isFinite(v) ? String(v) : v === 0 ? 0 : v
+          (_, v) => typeof v === "bigint" ? `${v}n` : typeof v === "number" && !Number.isFinite(v) ? String(v) : v
         )
       const groups = new Map<string, Array<Row>>()
       for (const r of rows) {
@@ -1041,95 +1015,105 @@ describe("Query", () => {
       return [...groups.values()]
     }
 
-    const rows = generate(0x2545f491, 6000, 3000)
-    const df = Query.from(
-      DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(schema, rows as any))) as DataFrame.DataFrame<Row>
-    )
-    const rowsOf = <R>(query: Query.Query<R>): Array<R> => DataFrame.toRows(Effect.runSync(query))
+    const data = generate(0x2545f491, 6000, 3000)
+    const df = Query.from(arrowFrame<Row>({
+      f: [ArrowSchema.float64, data.map((r) => r.f)],
+      i: [ArrowSchema.int32, data.map((r) => r.i)],
+      b: [ArrowSchema.int64, data.map((r) => r.b)],
+      s: [ArrowSchema.utf8, data.map((r) => r.s)],
+      p: [ArrowSchema.bool, data.map((r) => r.p)]
+    }))
     const sortKey = (c: { readonly [K in keyof Row]: Expr.Expr<Row[K]> }, key: Key) =>
       key.descending ? Expr.desc(c[key.name] as Expr.Expr<unknown>) : Expr.asc(c[key.name] as Expr.Expr<unknown>)
 
-    it("sorts by every column type, in both directions, nulls first or last", () => {
-      for (const name of ["f", "i", "b", "s", "p"] as const) {
-        for (const descending of [false, true]) {
-          for (const nullsLast of [false, true]) {
-            const sorted = Query.sort(df, (c) => [sortKey(c, { name, descending })], { nullsLast })
-            assert.deepStrictEqual(rowsOf(sorted), referenceSort(rows, [{ name, descending }], nullsLast))
+    it.effect("sorts by every column type, in both directions, nulls first or last", () =>
+      Effect.gen(function*() {
+        for (const name of ["f", "i", "b", "s", "p"] as const) {
+          for (const descending of [false, true]) {
+            for (const nullsLast of [false, true]) {
+              const sorted = Query.sort(df, (c) => [sortKey(c, { name, descending })], { nullsLast })
+              assert.deepStrictEqual(yield* rows(sorted), referenceSort(data, [{ name, descending }], nullsLast))
+            }
           }
         }
-      }
-    })
+      }))
 
-    it("sorts stably by several keys, also when sliced (top-k)", () => {
-      const keys: ReadonlyArray<Key> = [
-        { name: "p", descending: true },
-        { name: "s", descending: false },
-        { name: "f", descending: true }
-      ]
-      const sorted = Query.sort(df, (c) => keys.map((key) => sortKey(c, key)))
-      assert.deepStrictEqual(rowsOf(sorted), referenceSort(rows, keys, false))
-      for (
-        const [name, descending, nullsLast, offset, length] of [
-          ["f", true, false, 0, 10],
-          ["i", false, true, 0, 1],
-          ["s", false, false, 5, 20],
-          ["b", true, true, 0, 700]
-        ] as const
-      ) {
-        const top = df.pipe(
-          Query.sort((c) => [sortKey(c, { name, descending }), Expr.asc(c.i)], { nullsLast }),
-          Query.slice(offset, length)
+    it.effect("sorts stably by several keys, also when sliced (top-k)", () =>
+      Effect.gen(function*() {
+        const keys: ReadonlyArray<Key> = [
+          { name: "p", descending: true },
+          { name: "s", descending: false },
+          { name: "f", descending: true }
+        ]
+        const sorted = Query.sort(df, (c) => keys.map((key) => sortKey(c, key)))
+        assert.deepStrictEqual(yield* rows(sorted), referenceSort(data, keys, false))
+        for (
+          const [name, descending, nullsLast, offset, length] of [
+            ["f", true, false, 0, 10],
+            ["i", false, true, 0, 1],
+            ["s", false, false, 5, 20],
+            ["b", true, true, 0, 700]
+          ] as const
+        ) {
+          const top = df.pipe(
+            Query.sort((c) => [sortKey(c, { name, descending }), Expr.asc(c.i)], { nullsLast }),
+            Query.slice(offset, length)
+          )
+          const expected = referenceSort(data, [{ name, descending }, { name: "i", descending: false }], nullsLast)
+          assert.deepStrictEqual(yield* rows(top), expected.slice(offset, offset + length))
+        }
+      }))
+
+    it.effect("groups by keys of every type", () =>
+      Effect.gen(function*() {
+        for (const keys of [["f"], ["b"], ["p", "i"], ["s", "b", "p"]] as const) {
+          const result = df.pipe(
+            Query.groupBy(...keys),
+            Query.agg((c) => ({ n: Expr.count(), ni: Expr.count(c.i), max: Expr.max(c.s), first: Expr.first(c.b) }))
+          )
+          const expected = referenceGroups(data, keys).map((g) => {
+            const out: Record<string, unknown> = {}
+            for (const k of keys) out[k] = g[0][k]
+            const present = g.map((r) => r.s).filter((s): s is string => s !== null)
+            out.n = g.length
+            out.ni = g.filter((r) => r.i !== null).length
+            out.max = present.length === 0 ? null : present.reduce((a, b) => (compareCodePoints(a, b) >= 0 ? a : b))
+            out.first = g[0].b
+            return out
+          })
+          assert.deepStrictEqual(yield* rows(result), expected)
+        }
+        assert.deepStrictEqual(
+          yield* rows(Query.unique(df, ["i", "p"])),
+          referenceGroups(data, ["i", "p"]).map((g) => g[0])
         )
-        const expected = referenceSort(rows, [{ name, descending }, { name: "i", descending: false }], nullsLast)
-        assert.deepStrictEqual(rowsOf(top), expected.slice(offset, offset + length))
-      }
-    })
+      }))
 
-    it("groups by keys of every type", () => {
-      for (const keys of [["f"], ["b"], ["p", "i"], ["s", "b", "p"]] as const) {
-        const result = df.pipe(
-          Query.groupBy(...keys),
-          Query.agg((c) => ({ n: Expr.count(), ni: Expr.count(c.i), max: Expr.max(c.s), first: Expr.first(c.b) }))
-        )
-        const expected = referenceGroups(rows, keys).map((g) => {
-          const out: Record<string, unknown> = {}
-          for (const k of keys) out[k] = g[0][k]
-          const present = g.map((r) => r.s).filter((s): s is string => s !== null)
-          out.n = g.length
-          out.ni = g.filter((r) => r.i !== null).length
-          out.max = present.length === 0 ? null : present.reduce((a, b) => (compareCodePoints(a, b) >= 0 ? a : b))
-          out.first = g[0].b
-          return out
-        })
-        assert.deepStrictEqual(rowsOf(result), expected)
-      }
-      assert.deepStrictEqual(rowsOf(Query.unique(df, ["i", "p"])), referenceGroups(rows, ["i", "p"]).map((g) => g[0]))
-    })
-
-    it("joins on a high-cardinality key", () => {
-      const right = generate(0x1b873593, 4000, 3000).map((r) => ({ i: r.i ?? 0, rs: r.s }))
-      const rightFrame = DataFrame.fromColumns({ i: Int32Array.from(right, (r) => r.i), rs: right.map((r) => r.rs) })
-      const byKey = new Map<number, Array<string | null>>()
-      for (const r of right) byKey.set(r.i, [...(byKey.get(r.i) ?? []), r.rs])
-      for (const how of ["inner", "left", "semi", "anti"] as const) {
-        const result = Query.join(df.pipe(Query.pick("i", "s")), Query.from(rightFrame), { on: "i", how })
-        const expected = rows.flatMap((r) => {
-          const matches = r.i === null ? [] : byKey.get(r.i) ?? []
-          switch (how) {
-            case "inner":
-              return matches.map((rs) => ({ i: r.i, s: r.s, rs }))
-            case "left":
-              return matches.length === 0
-                ? [{ i: r.i, s: r.s, rs: null }]
-                : matches.map((rs) => ({ i: r.i, s: r.s, rs }))
-            case "semi":
-              return matches.length > 0 ? [{ i: r.i, s: r.s }] : []
-            case "anti":
-              return matches.length === 0 ? [{ i: r.i, s: r.s }] : []
-          }
-        })
-        assert.deepStrictEqual(rowsOf(result), expected)
-      }
-    })
+    it.effect("joins on a high-cardinality key", () =>
+      Effect.gen(function*() {
+        const right = generate(0x1b873593, 4000, 3000).map((r) => ({ i: r.i ?? 0, rs: r.s }))
+        const rightFrame = DataFrame.fromColumns({ i: Int32Array.from(right, (r) => r.i), rs: right.map((r) => r.rs) })
+        const byKey = new Map<number, Array<string | null>>()
+        for (const r of right) byKey.set(r.i, [...(byKey.get(r.i) ?? []), r.rs])
+        for (const how of ["inner", "left", "semi", "anti"] as const) {
+          const result = Query.join(df.pipe(Query.pick("i", "s")), Query.from(rightFrame), { on: "i", how })
+          const expected = data.flatMap((r) => {
+            const matches = r.i === null ? [] : byKey.get(r.i) ?? []
+            switch (how) {
+              case "inner":
+                return matches.map((rs) => ({ i: r.i, s: r.s, rs }))
+              case "left":
+                return matches.length === 0
+                  ? [{ i: r.i, s: r.s, rs: null }]
+                  : matches.map((rs) => ({ i: r.i, s: r.s, rs }))
+              case "semi":
+                return matches.length > 0 ? [{ i: r.i, s: r.s }] : []
+              case "anti":
+                return matches.length === 0 ? [{ i: r.i, s: r.s }] : []
+            }
+          })
+          assert.deepStrictEqual(yield* rows(result), expected)
+        }
+      }))
   })
 })

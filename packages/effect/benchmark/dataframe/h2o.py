@@ -26,12 +26,13 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 DEFAULT_DATA = HERE / ".data"
+# Table keys of the queries, and their file names (as <name>-<rows>.arrow).
+TABLES = {"g": "groupby", "x": "join-x", "small": "join-small", "medium": "join-medium", "big": "join-big"}
 
 
 def generate(rows, data):
     import numpy as np
     import pyarrow as pa
-    import pyarrow.ipc as ipc
 
     rng = np.random.default_rng(20261114)
     n = rows
@@ -138,8 +139,6 @@ def pandas_queries(pd):
 def checksum_polars(df):
     import polars as pl
 
-    if not isinstance(df, pl.DataFrame):
-        return {"rows": 1, "sum": float(df)}
     total = 0.0
     for name, dtype in df.schema.items():
         if dtype.is_numeric():
@@ -148,15 +147,8 @@ def checksum_polars(df):
     return {"rows": df.height, "sum": total}
 
 
-def load_polars(pl, data, rows):
-    read = lambda name: pl.read_ipc(data / name)
-    return {
-        "g": read(f"groupby-{rows}.arrow"),
-        "x": read(f"join-x-{rows}.arrow"),
-        "small": read(f"join-small-{rows}.arrow"),
-        "medium": read(f"join-medium-{rows}.arrow"),
-        "big": read(f"join-big-{rows}.arrow"),
-    }
+def load(read, data, rows):
+    return {key: read(data / f"{name}-{rows}.arrow") for key, name in TABLES.items()}
 
 
 def time_best(f, reps):
@@ -172,7 +164,7 @@ def time_best(f, reps):
 def run_polars(data, rows, reps):
     import polars as pl
 
-    tables = load_polars(pl, data, rows)
+    tables = load(pl.read_ipc, data, rows)
     out = {"version": pl.__version__, "threads": pl.thread_pool_size(), "queries": {}}
     for name, q in polars_queries(pl).items():
         ms, result = time_best(lambda: q(tables), reps)
@@ -184,14 +176,7 @@ def run_pandas(data, rows, reps):
     import pandas as pd
     import pyarrow.ipc as ipc
 
-    read = lambda name: ipc.open_file(str(data / name)).read_all().to_pandas()
-    tables = {
-        "g": read(f"groupby-{rows}.arrow"),
-        "x": read(f"join-x-{rows}.arrow"),
-        "small": read(f"join-small-{rows}.arrow"),
-        "medium": read(f"join-medium-{rows}.arrow"),
-        "big": read(f"join-big-{rows}.arrow"),
-    }
+    tables = load(lambda path: ipc.open_file(str(path)).read_all().to_pandas(), data, rows)
     out = {"version": pd.__version__, "queries": {}}
     for name, q in pandas_queries(pd).items():
         ms, _ = time_best(lambda: q(tables), reps)

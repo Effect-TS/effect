@@ -14,13 +14,9 @@ import * as Plan from "./Plan.ts"
  * Deliberate differences from Polars, by case id: the column types
  * effect/dataframe produces instead. Values still have to match.
  */
-export const deviations: {
-  readonly [id: string]: { readonly reason: string; readonly types: { readonly [column: string]: string } }
-} = {
-  "group/small-ints": {
-    reason: "sums of 8/16-bit integers are Int32 (Polars: Int64, which would be a bigint in TypeScript)",
-    types: { i8: "i32", u8: "i32" }
-  }
+const deviations: { readonly [id: string]: { readonly [column: string]: string } } = {
+  // Sums of 8/16-bit integers are Int32 (Polars: Int64, which would be a bigint in TypeScript).
+  "group/small-ints": { i8: "i32", u8: "i32" }
 }
 
 const close = (a: number, b: number): boolean => {
@@ -58,8 +54,8 @@ const show = (u: unknown): string =>
     : JSON.stringify(u) ?? String(u)
 
 /** `undefined` when equal, otherwise a description of the first difference. */
-export const diff = (id: string, actual: DataFrame.DataFrame<any>, expected: Gold.Table): string | undefined => {
-  const names = actual.schema.fields.map((f) => f.name)
+export const diff = Effect.fnUntraced(function*(id: string, actual: DataFrame.DataFrame<any>, expected: Gold.Table) {
+  const names = DataFrame.columnNames(actual)
   const expectedNames = expected.fields.map((f) => f.name)
   if (JSON.stringify(names) !== JSON.stringify(expectedNames)) {
     return `columns: got ${JSON.stringify(names)}, expected ${JSON.stringify(expectedNames)}`
@@ -67,14 +63,14 @@ export const diff = (id: string, actual: DataFrame.DataFrame<any>, expected: Gol
   const deviation = deviations[id]
   for (const [i, f] of expected.fields.entries()) {
     const got = Plan.typeName(actual.schema.fields[i].type)
-    const want = deviation?.types[f.name] ?? f.type
+    const want = deviation?.[f.name] ?? f.type
     if (got !== want) return `column ${f.name}: type ${got}, expected ${want}`
   }
-  const length = expected.fields.length === 0 ? 0 : expected.columns[expected.fields[0].name].length
+  const length = Gold.rowCount(expected)
   if (actual.length !== length) return `length ${actual.length}, expected ${length}`
   // Temporal columns compare through their integers (days or units since the epoch).
-  const rows = DataFrame.toRows(Effect.runSync(
-    Query.from(actual).pipe(Query.select((c: any) => {
+  const rows = DataFrame.toRows(
+    yield* Query.from(actual).pipe(Query.select((c: any) => {
       const out: Record<string, Expr.Expr<unknown>> = {}
       for (const f of expected.fields) {
         const t = Plan.temporal[f.type]
@@ -82,7 +78,7 @@ export const diff = (id: string, actual: DataFrame.DataFrame<any>, expected: Gol
       }
       return out
     }))
-  ))
+  )
   for (const f of expected.fields) {
     const column = expected.columns[f.name]
     for (let i = 0; i < length; i++) {
@@ -92,4 +88,4 @@ export const diff = (id: string, actual: DataFrame.DataFrame<any>, expected: Gol
     }
   }
   return undefined
-}
+})

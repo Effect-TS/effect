@@ -1,19 +1,17 @@
 /**
- * effect/dataframe performance against Polars and pandas: the performance
- * half of the dataframe oracle.
+ * effect/dataframe against Polars and pandas on H2O db-benchmark style queries.
  *
  *   python benchmark/dataframe/h2o.py generate --rows 1000000
  *   python benchmark/dataframe/h2o.py run --rows 1000000
- *   node benchmark/dataframe/h2o.ts [--rows=1000000] [--reps=3] [--only=<substring>] [--out=<file.json>]
+ *   node [--expose-gc] benchmark/dataframe/h2o.ts [--rows=1000000] [--reps=3] [--only=<substring>]
+ *     [--out=<file.json>] [--data=<dir>] [--gc]
  *
- * Every query reads the same Arrow IPC files as the Python baseline, and runs
- * as a lazy query (so the time includes optimising the plan). Before
- * its time counts, each result's checksum (row count and the sum of its
- * numeric columns) has to match the Polars result, so a fast wrong answer
- * can't win. Times are the best of `--reps` runs, in milliseconds.
- `node --expose-gc h2o.ts --gc`
- * collects garbage before every timed run, so earlier queries' garbage
- * doesn't count against later ones.
+ * Every query reads the same Arrow IPC files as the Python baseline and runs
+ * as a lazy query, so the time includes optimising the plan. A result's
+ * checksum (row count and the sum of its numeric columns) must match Polars
+ * before its time counts. Times are the best of `--reps` runs, in
+ * milliseconds. `--gc` (with `node --expose-gc`) collects garbage before
+ * every timed run.
  */
 import { Effect } from "effect"
 import { ArrowIpc } from "effect/arrow"
@@ -28,7 +26,6 @@ const reps = Number(arg("reps") ?? 3)
 const only = arg("only")
 const out = arg("out")
 const data = arg("data") ?? Path.join(import.meta.dirname, ".data")
-/** With `node --expose-gc ... --gc`, collect garbage before every timed run. */
 const gc = process.argv.includes("--gc") ? (globalThis as { gc?: () => void }).gc : undefined
 
 const load = (name: string) => {
@@ -115,9 +112,6 @@ const checksum = (df: DataFrame.DataFrame<any>) => {
   return { rows: df.length, sum }
 }
 
-/** Forces every column of a result without converting values to JS. */
-const force = (df: DataFrame.DataFrame<any>) => DataFrame.toArrowTable(df)
-
 const baselinePath = Path.join(data, `baseline-${rows}.json`)
 const baseline = Fs.existsSync(baselinePath) ? JSON.parse(Fs.readFileSync(baselinePath, "utf8")) : undefined
 if (baseline === undefined) console.warn(`no baseline at ${baselinePath}: run h2o.py run --rows ${rows}`)
@@ -149,7 +143,8 @@ for (const [name, query] of Object.entries(queries)) {
     gc?.()
     const start = performance.now()
     result = Effect.runSync(query())
-    force(result)
+    // Forces every column of the result without converting values to JS.
+    DataFrame.toArrowTable(result)
     const ms = performance.now() - start
     if (r === 0) first = ms
     best = Math.min(best, ms)
