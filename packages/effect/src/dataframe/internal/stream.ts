@@ -84,7 +84,8 @@ const collectFrames = (batches: Batches, node: Q.Node): Effect.Effect<F.Frame, D
       ? runEmpty(node)
       : Q.attempt(() => frames.length === 1 ? frames[0] : F.concat(frames)))
 
-const isRowWise = (node: Q.Node): boolean => {
+/** Each output row depends only on its input row, so the node runs per batch. */
+const perBatch = (node: Q.Node): boolean => {
   switch (node._tag) {
     case "Filter":
       return E.isRowWise(node.predicate)
@@ -190,7 +191,7 @@ const slice = (input: Batches, offset: number, length: number | undefined): Batc
 
 /** The batches of a node's result. @internal */
 export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
-  if (isRowWise(node)) {
+  if (perBatch(node)) {
     return Stream.mapEffect(
       batches((node as { readonly input: Q.Node }).input, catalog),
       (batch) => Q.attempt(() => Q.step(node, [batch]))

@@ -312,7 +312,8 @@ const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
   }
 }
 
-const isRowWise = (node: Node): boolean =>
+/** One output row per input row, in order, so a slice can move below it. */
+const keepsRows = (node: Node): boolean =>
   ((node._tag === "Select" || node._tag === "WithColumns") && node.columns.every((c) => E.isRowWise(c.expression))) ||
   node._tag === "Rename" || node._tag === "Pick" || node._tag === "Omit"
 
@@ -322,7 +323,7 @@ const pushSlices = (node: Node): Node => {
 }
 
 const slice = (input: Node, offset: number, length: number | undefined): Node => {
-  if (isRowWise(input)) {
+  if (keepsRows(input)) {
     return { ...input, input: slice((input as { readonly input: Node }).input, offset, length) } as Node
   }
   if (input._tag === "Slice" && input.offset >= 0 && offset >= 0) {
