@@ -17,6 +17,12 @@ const rows = [
 // Two rows per batch: [1, 2], [3, 4], [5]
 const table = Result.getOrThrow(ArrowTable.fromRows(schema, rows, { batchSize: 2 }))
 
+const nested = S.make([
+  S.field("id", S.int32),
+  S.field("s", S.struct([S.field("a", S.int8)])),
+  S.field("l", S.list(S.field("item", S.int8)))
+])
+
 describe("ArrowTable", () => {
   it("fromRows splits rows into batches that toRows reads back", () => {
     const built = Result.getOrThrow(
@@ -52,6 +58,8 @@ describe("ArrowTable", () => {
       [ArrowTable.fromRows(schema, [...rows.slice(0, 3), { id: null }], { batchSize: 2 }), [3, "id"]],
       [ArrowTable.fromColumns(schema, { id: [1, 2], name: ["a"], tag: ["x", "y"] }), ["name"]],
       [ArrowTable.fromColumns(schema, { id: [1], name: ["a"] }), ["tag"]],
+      [ArrowTable.fromRows(nested, [{ id: 1 }, { id: 2 }, { id: 3, s: { a: 300 } }], { batchSize: 2 }), [2, "s", "a"]],
+      [ArrowTable.fromRows(nested, [{ l: [1] }, { l: [] }, { l: [2, 300] }], { batchSize: 2 }), [2, "l", 1]],
       [ArrowTable.fromColumns(S.make([S.field("u", S.union("sparse", [S.field("a", S.int8)], [-1]))]), { u: [] }), [
         "u"
       ]]

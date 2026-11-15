@@ -232,14 +232,7 @@ const buildBatch = (
         [f.name]
       )
     }
-    try {
-      return Builders.build(f, columns[c], session)
-    } catch (e) {
-      if (e instanceof Builders.BuildFailure && typeof e.path[0] === "number") {
-        throw new Builders.BuildFailure(e.message, [e.path[0] + rowOffset, f.name, ...e.path.slice(1)])
-      }
-      throw e
-    }
+    return Builders.build(f, columns[c], session, (i) => [rowOffset + i, f.name])
   })
   return { schema, length, columns: data }
 }

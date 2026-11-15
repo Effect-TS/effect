@@ -190,7 +190,8 @@ const ArrowBuildErrorTypeId = "~effect/arrow/ArrowColumn/ArrowBuildError"
 /**
  * The error returned when values cannot be stored in a field: a value of the
  * wrong kind, out of range, or null in a non-nullable field. `path` locates
- * the value (row index, member names, …).
+ * the value from the top of the input: its index (for tables, its row index
+ * and column name), then struct member names, list item indices and so on.
  *
  * **Example** (A value out of range)
  *
@@ -201,6 +202,11 @@ const ArrowBuildErrorTypeId = "~effect/arrow/ArrowColumn/ArrowBuildError"
  * const result = ArrowColumn.fromValues(ArrowSchema.field("n", ArrowSchema.int8), [1, 300])
  *
  * Result.isFailure(result) && result.failure.path // => [1]
+ *
+ * const field = ArrowSchema.field("xs", ArrowSchema.list(ArrowSchema.field("item", ArrowSchema.int8)))
+ * const nested = ArrowColumn.fromValues(field, [[1], [2, 300]])
+ *
+ * Result.isFailure(nested) && nested.failure.path // => [1, 1]
  * ```
  *
  * @stability experimental
@@ -245,7 +251,7 @@ export const fromValues = (
     Builders.checkType(field.type, [])
     const session = Builders.session(Values.options(options))
     const data = Builders.finish(
-      Builders.build(field, Array.isArray(values) ? values : Array.from(values), session),
+      Builders.build(field, Array.isArray(values) ? values : Array.from(values), session, (i) => [i]),
       session
     )
     return Result.succeed(make(field, [data], options))

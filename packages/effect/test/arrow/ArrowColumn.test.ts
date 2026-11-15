@@ -100,10 +100,11 @@ const cases: ReadonlyArray<
   ]]
 ]
 
+const int8Member = S.struct([S.field("a", S.int8)])
 const twoInts = [S.field("a", S.int32), S.field("b", S.int32)]
 
 const rejections: ReadonlyArray<
-  readonly [label: string, field: S.Field, values: ReadonlyArray<unknown>, path: ReadonlyArray<number>]
+  readonly [label: string, field: S.Field, values: ReadonlyArray<unknown>, path: ReadonlyArray<string | number>]
 > = [
   ["out of range", S.field("n", S.int8), [1, 300], [1]],
   ["negative unsigned", S.field("n", S.uint64), [-1n], [0]],
@@ -115,7 +116,30 @@ const rejections: ReadonlyArray<
   ["wrong list size", S.field("l", S.fixedSizeList(item(S.int8), 2)), [[1]], [0]],
   ["no union member accepts it", S.field("u", S.union("sparse", [S.field("int", S.int32)])), ["s"], [0]],
   ["duplicate union type ids", S.field("u", S.union("sparse", twoInts, [0, 0])), [ArrowColumn.unionValue(0, 5)], []],
-  ["union type id above 127", S.field("u", S.union("dense", [S.field("a", S.int32)], [200])), [], []]
+  ["union type id above 127", S.field("u", S.union("dense", [S.field("a", S.int32)], [200])), [], []],
+  // Temporal storage is int32 or int64
+  ["timestamp beyond int64", S.field("t", S.timestamp("millisecond")), [1, 1n << 64n], [1]],
+  ["DateTime beyond int64 nanoseconds", S.field("t", S.timestamp("nanosecond")), [utc("2300-01-01T00:00:00Z")], [0]],
+  ["date (days) beyond int32", S.field("d", S.date("day")), [2 ** 32], [0]],
+  ["time32 beyond int32", S.field("t", S.time("second")), [2 ** 32], [0]],
+  ["duration beyond int64", S.field("d", S.duration("nanosecond")), [Duration.nanos(1n << 64n)], [0]],
+  ["interval nanoseconds beyond int64", S.field("i", S.interval("monthDayNano")), [{ nanoseconds: 1n << 64n }], [
+    0,
+    "nanoseconds"
+  ]],
+  // Nested values are located by row, then member name or item index
+  ["list item", S.field("l", S.list(item(S.int8))), [[1], null, [], [2, 300]], [3, 1]],
+  ["largeListView item", S.field("l", S.largeListView(item(S.int8))), [[1], [2, 300]], [1, 1]],
+  ["fixed-size list item", S.field("l", S.fixedSizeList(item(S.int8), 2)), [[1, 2], [3, 300]], [1, 1]],
+  ["struct member", S.field("s", int8Member), [{ a: 1 }, { a: 300 }], [1, "a"]],
+  ["map value", S.field("m", S.map(S.field("k", S.utf8), S.field("v", S.int8))), [
+    new Map([["k", 1]]),
+    new Map([["k", 2], ["l", 300]])
+  ], [1, 1, 1]],
+  ["null map key", S.field("m", S.map(S.field("k", S.utf8), S.field("v", S.int8))), [[["k", 1], [null, 2]]], [0, 1]],
+  ["dense union member", S.field("u", S.union("dense", [S.field("s", int8Member)])), [{ a: 1 }, { a: 300 }], [1, "a"]],
+  ["run-end encoded value", S.field("r", S.runEndEncoded(S.int16, S.field("v", S.int8))), [1, 1, 300], [2]],
+  ["dictionary value", S.field("d", S.dictionary(int8Member)), [{ a: 1 }, { a: 1 }, { a: 300 }], [2, "a"]]
 ]
 
 describe("ArrowColumn", () => {

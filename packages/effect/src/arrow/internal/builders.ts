@@ -19,6 +19,9 @@ interface DictionaryState {
   readonly valueType: S.DataType
   readonly unique: Map<string, number>
   readonly values: Array<unknown>
+  /** Where each value first occurred: `at[k](slot[k])`. */
+  readonly at: Array<At>
+  readonly slot: Array<number>
   built?: ArrowData.ArrowData
 }
 
@@ -41,7 +44,7 @@ const builtDictionary = (state: DictionaryState, options: Options): ArrowData.Ar
   if (state.built === undefined) {
     const inner = session(options)
     const field: S.Field = { name: "", type: state.valueType, nullable: true, metadata: new Map() }
-    state.built = finish(build(field, state.values, inner, ["dictionary"]), inner)
+    state.built = finish(build(field, state.values, inner, (k) => state.at[k](state.slot[k])), inner)
   }
   return state.built
 }
@@ -80,12 +83,17 @@ export const isUnionValue = (u: unknown): u is UnionValue => Predicate.isTagged(
 
 type Path = ReadonlyArray<string | number>
 
+/**
+ * Locates value `index` of the array being built, from the top of the input
+ * (row, column, members, item indices). Only called on failure. @internal
+ */
+export type At = (index: number) => Path
+
 const fail = (path: Path, message: string): never => {
   throw new BuildFailure(message, path)
 }
 
-/** Fails at `path` + `index`; the path array is only built on failure. */
-const failAt = (path: Path, index: number, message: string): never => fail([...path, index], message)
+const failAt = (at: At, index: number, message: string): never => fail(at(index), message)
 
 /** Fails with a `BuildFailure` at `path` when `type` is invalid (union type ids). @internal */
 export const checkType = (type: S.DataType, path: Path): void =>
@@ -155,28 +163,31 @@ const intRange = (t: S.Int): readonly [bigint, bigint] => {
     : [BigInt(0), (BigInt(1) << bits) - BigInt(1)]
 }
 
-const toBigInt = (v: unknown, path: Path, index: number, what: string): bigint => {
+const toBigInt = (v: unknown, at: At, index: number, what: string): bigint => {
   if (typeof v === "bigint") return v
   if (typeof v === "number" && Number.isInteger(v)) return BigInt(v)
-  return failAt(path, index, `expected an integer (${what}), got ${describe(v)}`)
+  return failAt(at, index, `expected an integer (${what}), got ${describe(v)}`)
 }
 
-const outOfRange = (t: S.Int, v: unknown, path: Path, index: number): never =>
-  failAt(path, index, `${v} is outside the range of ${t.signed ? "" : "u"}int${t.bitWidth}`)
+const outOfRange = (t: S.Int, v: unknown, at: At, index: number): never =>
+  failAt(at, index, `${v} is outside the range of ${t.signed ? "" : "u"}int${t.bitWidth}`)
 
-const zeroBig = BigInt(0)
+const int32: S.Int = { _tag: "Int", bitWidth: 32, signed: true }
+const int64: S.Int = { _tag: "Int", bitWidth: 64, signed: true }
 
-const intBuffer = (t: S.Int, values: ReadonlyArray<unknown>, path: Path): Uint8Array => {
+/** `big`, failing when it does not fit `t`. */
+const checked = (t: S.Int, big: bigint, at: At, index: number): bigint => {
+  const [min, max] = intRange(t)
+  return big < min || big > max ? outOfRange(t, big, at, index) : big
+}
+
+const intBuffer = (t: S.Int, values: ReadonlyArray<unknown>, at: At): Uint8Array => {
   const n = values.length
   if (t.bitWidth === 64) {
-    const [min, max] = intRange(t)
     const a = t.signed ? new BigInt64Array(n) : new BigUint64Array(n)
     for (let i = 0; i < n; i++) {
       const v = values[i]
-      if (isNull(v)) continue
-      const big = toBigInt(v, path, i, "int64")
-      if (big < min || big > max) outOfRange(t, v, path, i)
-      a[i] = big
+      if (!isNull(v)) a[i] = checked(t, toBigInt(v, at, i, "int64"), at, i)
     }
     return asBytes(a)
   }
@@ -193,41 +204,43 @@ const intBuffer = (t: S.Int, values: ReadonlyArray<unknown>, path: Path): Uint8A
     const v = values[i]
     if (typeof v === "number") {
       if (!(Number.isInteger(v) && v >= min && v <= max)) {
-        if (Number.isInteger(v)) outOfRange(t, v, path, i)
-        failAt(path, i, `expected an integer (int${t.bitWidth}), got ${describe(v)}`)
+        if (Number.isInteger(v)) outOfRange(t, v, at, i)
+        failAt(at, i, `expected an integer (int${t.bitWidth}), got ${describe(v)}`)
       }
       a[i] = v
     } else if (!isNull(v)) {
-      const big = toBigInt(v, path, i, `int${t.bitWidth}`)
-      if (big < bigMin || big > bigMax) outOfRange(t, v, path, i)
+      const big = toBigInt(v, at, i, `int${t.bitWidth}`)
+      if (big < bigMin || big > bigMax) outOfRange(t, v, at, i)
       a[i] = Number(big)
     }
   }
   return asBytes(a)
 }
 
+/** Signed 64-bit storage of non-null values through `f`, range-checked. */
 const int64Buffer = (
   values: ReadonlyArray<unknown>,
-  f: (v: unknown, path: Path, index: number) => bigint,
-  path: Path
+  f: (v: unknown, at: At, index: number) => bigint,
+  at: At
 ) => {
   const a = new BigInt64Array(values.length)
   for (let i = 0; i < values.length; i++) {
     const v = values[i]
-    a[i] = isNull(v) ? zeroBig : f(v, path, i)
+    if (!isNull(v)) a[i] = checked(int64, f(v, at, i), at, i)
   }
   return asBytes(a)
 }
 
+/** Signed 32-bit storage of non-null values through `f`, range-checked. */
 const int32Buffer = (
   values: ReadonlyArray<unknown>,
-  f: (v: unknown, path: Path, index: number) => number,
-  path: Path
+  f: (v: unknown, at: At, index: number) => bigint,
+  at: At
 ) => {
   const a = new Int32Array(values.length)
   for (let i = 0; i < values.length; i++) {
     const v = values[i]
-    a[i] = isNull(v) ? 0 : f(v, path, i)
+    if (!isNull(v)) a[i] = Number(checked(int32, f(v, at, i), at, i))
   }
   return asBytes(a)
 }
@@ -245,15 +258,14 @@ const floorDiv = (a: bigint, b: bigint) => {
 }
 
 /** A DateTime as an integer count of `unit`, or a raw integer already in `unit`. */
-const instant = (unit: S.TimeUnit, v: unknown, path: Path, index: number): bigint => {
+const instant = (unit: S.TimeUnit, v: unknown, at: At, index: number): bigint => {
   if (DateTime.isDateTime(v)) {
     return floorDiv(BigInt(DateTime.toEpochMillis(v)) * unitNanos.millisecond, unitNanos[unit])
   }
-  return toBigInt(v, path, index, `a DateTime or an integer in ${unit}s`)
+  return toBigInt(v, at, index, `a DateTime or an integer in ${unit}s`)
 }
 
-const decimalWords = (t: S.Decimal, v: unknown, at: Path): bigint => {
-  const path = at
+const decimalWords = (t: S.Decimal, v: unknown, path: Path): bigint => {
   if (!BigDecimal.isBigDecimal(v)) return fail(path, `expected a BigDecimal, got ${describe(v)}`)
   let unscaled: bigint
   if (v.scale <= t.scale) {
@@ -269,14 +281,14 @@ const decimalWords = (t: S.Decimal, v: unknown, at: Path): bigint => {
   return unscaled
 }
 
-const decimalBuffer = (t: S.Decimal, values: ReadonlyArray<unknown>, path: Path): Uint8Array => {
+const decimalBuffer = (t: S.Decimal, values: ReadonlyArray<unknown>, at: At): Uint8Array => {
   const width = t.bitWidth / 8
   const out = new Uint8Array(values.length * width)
   const view = new DataView(out.buffer)
   const mask = (BigInt(1) << BigInt(64)) - BigInt(1)
   values.forEach((v, i) => {
     if (isNull(v)) return
-    let n = BigInt.asUintN(t.bitWidth, decimalWords(t, v, path.concat(i)))
+    let n = BigInt.asUintN(t.bitWidth, decimalWords(t, v, at(i)))
     if (width === 4) {
       view.setUint32(i * 4, Number(n), true)
       return
@@ -289,34 +301,32 @@ const decimalBuffer = (t: S.Decimal, values: ReadonlyArray<unknown>, path: Path)
   return out
 }
 
-const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, path: Path): Uint8Array => {
+const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): Uint8Array => {
   const width = t.unit === "yearMonth" ? 4 : t.unit === "dayTime" ? 8 : 16
   const out = new Uint8Array(values.length * width)
   const view = new DataView(out.buffer)
   values.forEach((v, i) => {
     if (isNull(v)) return
-    const p = [...path, i]
-    const o = (typeof v === "object" ? v : fail(p, `expected an interval object, got ${describe(v)}`)) as Record<
+    const o = (typeof v === "object" ? v : failAt(at, i, `expected an interval object, got ${describe(v)}`)) as Record<
       string,
       unknown
     >
-    const int32 = (k: string) => {
-      const n = Number(toBigInt(o[k] ?? 0, [...p, k], 0, "int32"))
-      if (n < -2147483648 || n > 2147483647) fail([...p, k], `${n} does not fit 32 bits`)
-      return n
+    const part = (type: S.Int, k: string) => {
+      const partAt = () => [...at(i), k]
+      return checked(type, toBigInt(o[k] ?? 0, partAt, 0, `int${type.bitWidth}`), partAt, 0)
     }
     switch (t.unit) {
       case "yearMonth":
-        view.setInt32(i * 4, int32("months"), true)
+        view.setInt32(i * 4, Number(part(int32, "months")), true)
         break
       case "dayTime":
-        view.setInt32(i * 8, int32("days"), true)
-        view.setInt32(i * 8 + 4, int32("milliseconds"), true)
+        view.setInt32(i * 8, Number(part(int32, "days")), true)
+        view.setInt32(i * 8 + 4, Number(part(int32, "milliseconds")), true)
         break
       case "monthDayNano":
-        view.setInt32(i * 16, int32("months"), true)
-        view.setInt32(i * 16 + 4, int32("days"), true)
-        view.setBigInt64(i * 16 + 8, toBigInt(o.nanoseconds ?? 0, [...p, "nanoseconds"], 0, "int64"), true)
+        view.setInt32(i * 16, Number(part(int32, "months")), true)
+        view.setInt32(i * 16 + 4, Number(part(int32, "days")), true)
+        view.setBigInt64(i * 16 + 8, part(int64, "nanoseconds"), true)
         break
     }
   })
@@ -376,18 +386,38 @@ const data = (
 
 const noNulls = { validity: undefined, nullCount: 0 }
 
-const asIterable = (v: unknown, path: Path, index: number, what: string): ReadonlyArray<unknown> => {
+const asIterable = (v: unknown, at: At, index: number, what: string): ReadonlyArray<unknown> => {
   if (Array.isArray(v)) return v
   if (typeof v === "object" && v !== null && Symbol.iterator in v) return Array.from(v as Iterable<unknown>)
-  return failAt(path, index, `expected ${what}, got ${describe(v)}`)
+  return failAt(at, index, `expected ${what}, got ${describe(v)}`)
 }
 
-/** Builds one array of `field` from `values`. @internal */
+/** The slot `i` with `offsets[i] <= item < offsets[i + 1]`. */
+const slotOf = (offsets: ArrayLike<number>, item: number): number => {
+  let lo = 0
+  let hi = offsets.length - 2
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1
+    if (offsets[mid] <= item) lo = mid
+    else hi = mid - 1
+  }
+  return lo
+}
+
+/** Locates item `j` of lists laid out by `offsets` as its slot's location plus its index in the list. */
+const itemAt = (at: At, offsets: ArrayLike<number>): At => (j) => {
+  const i = slotOf(offsets, j)
+  return [...at(i), j - offsets[i]]
+}
+
+const memberAt = (at: At, name: string | number): At => (i) => [...at(i), name]
+
+/** Builds one array of `field` from `values`; `at` locates each value in the input. @internal */
 export const build = (
   field: S.Field,
   values: ReadonlyArray<unknown>,
   options: Session,
-  path: Path = []
+  at: At
 ): ArrowData.ArrowData => {
   const extensionName = field.metadata.get("ARROW:extension:name")
   const extension = extensionName === undefined ? undefined : options.extensions.get(extensionName)
@@ -397,41 +427,38 @@ export const build = (
   }
   if (!field.nullable && field.type._tag !== "Null") {
     const i = values.findIndex(isNull)
-    if (i !== -1) fail([...path, i], `null in non-nullable field ${JSON.stringify(field.name)}`)
+    if (i !== -1) failAt(at, i, `null in non-nullable field ${JSON.stringify(field.name)}`)
   }
-  return buildType(field.type, values, options, path)
+  return buildType(field.type, values, options, at)
 }
-
-const childField = (f: S.Field, values: ReadonlyArray<unknown>, options: Session, path: Path) =>
-  build(f, values, options, path)
 
 const buildType = (
   type: S.DataType,
   values: ReadonlyArray<unknown>,
   options: Session,
-  path: Path
+  at: At
 ): ArrowData.ArrowData => {
   const n = values.length
   switch (type._tag) {
     case "Null": {
       const i = values.findIndex((v) => !isNull(v))
-      if (i !== -1) fail([...path, i], `expected null, got ${describe(values[i])}`)
+      if (i !== -1) failAt(at, i, `expected null, got ${describe(values[i])}`)
       return data(type, n, { validity: undefined, nullCount: n }, [])
     }
     case "Bool": {
       const bits = new Uint8Array(Math.ceil(n / 8))
       values.forEach((v, i) => {
         if (isNull(v)) return
-        if (typeof v !== "boolean") fail([...path, i], `expected a boolean, got ${describe(v)}`)
+        if (typeof v !== "boolean") failAt(at, i, `expected a boolean, got ${describe(v)}`)
         if (v) bits[i >> 3] |= 1 << (i & 7)
       })
       return data(type, n, validityOf(values), [bits])
     }
     case "Int":
-      return data(type, n, validityOf(values), [intBuffer(type, values, path)])
+      return data(type, n, validityOf(values), [intBuffer(type, values, at)])
     case "Float": {
       const check = (v: unknown, i: number) =>
-        typeof v === "number" ? v : fail([...path, i], `expected a number, got ${describe(v)}`)
+        typeof v === "number" ? v : failAt(at, i, `expected a number, got ${describe(v)}`)
       if (type.bitWidth === 16) {
         const out = new Uint8Array(n * 2)
         const view = new DataView(out.buffer)
@@ -443,49 +470,49 @@ const buildType = (
       return data(type, n, validityOf(values), [asBytes(a)])
     }
     case "Decimal":
-      return data(type, n, validityOf(values), [decimalBuffer(type, values, path)])
+      return data(type, n, validityOf(values), [decimalBuffer(type, values, at)])
     case "Date":
       return type.unit === "day"
         ? data(type, n, validityOf(values), [
-          int32Buffer(values, (v, p, i) =>
+          int32Buffer(values, (v, a, i) =>
             DateTime.isDateTime(v)
-              ? Math.floor(DateTime.toEpochMillis(v) / 86_400_000)
-              : Number(toBigInt(v, p, i, "a DateTime or days since the epoch")), path)
+              ? BigInt(Math.floor(DateTime.toEpochMillis(v) / 86_400_000))
+              : toBigInt(v, a, i, "a DateTime or days since the epoch"), at)
         ])
         : data(type, n, validityOf(values), [
-          int64Buffer(values, (v, p, i) =>
+          int64Buffer(values, (v, a, i) =>
             DateTime.isDateTime(v)
               ? BigInt(DateTime.toEpochMillis(v))
-              : toBigInt(v, p, i, "a DateTime or milliseconds since the epoch"), path)
+              : toBigInt(v, a, i, "a DateTime or milliseconds since the epoch"), at)
         ])
     case "Timestamp":
-      return data(type, n, validityOf(values), [int64Buffer(values, (v, p, i) => instant(type.unit, v, p, i), path)])
+      return data(type, n, validityOf(values), [int64Buffer(values, (v, a, i) => instant(type.unit, v, a, i), at)])
     case "Time":
       return type.bitWidth === 32
         ? data(type, n, validityOf(values), [
-          int32Buffer(values, (v, p, i) => Number(toBigInt(v, p, i, "int32")), path)
+          int32Buffer(values, (v, a, i) => toBigInt(v, a, i, "int32"), at)
         ])
-        : data(type, n, validityOf(values), [int64Buffer(values, (v, p, i) => toBigInt(v, p, i, "int64"), path)])
+        : data(type, n, validityOf(values), [int64Buffer(values, (v, a, i) => toBigInt(v, a, i, "int64"), at)])
     case "Duration":
       return data(type, n, validityOf(values), [
-        int64Buffer(values, (v, p, i) => {
+        int64Buffer(values, (v, a, i) => {
           if (Duration.isDuration(v)) {
             const nanos = Option.getOrUndefined(Duration.toNanos(v))
-            if (nanos === undefined) return failAt(p, i, "infinite durations cannot be stored")
+            if (nanos === undefined) return failAt(a, i, "infinite durations cannot be stored")
             return floorDiv(nanos, unitNanos[type.unit])
           }
-          return toBigInt(v, p, i, `a Duration or an integer in ${type.unit}s`)
-        }, path)
+          return toBigInt(v, a, i, `a Duration or an integer in ${type.unit}s`)
+        }, at)
       ])
     case "Interval":
-      return data(type, n, validityOf(values), [intervalBuffer(type, values, path)])
+      return data(type, n, validityOf(values), [intervalBuffer(type, values, at)])
     case "FixedSizeBinary": {
       const out = new Uint8Array(n * type.byteWidth)
       values.forEach((v, i) => {
         if (isNull(v)) return
-        if (!(v instanceof Uint8Array)) fail([...path, i], `expected a Uint8Array, got ${describe(v)}`)
+        if (!(v instanceof Uint8Array)) failAt(at, i, `expected a Uint8Array, got ${describe(v)}`)
         if ((v as Uint8Array).length !== type.byteWidth) {
-          fail([...path, i], `expected ${type.byteWidth} bytes, got ${(v as Uint8Array).length}`)
+          failAt(at, i, `expected ${type.byteWidth} bytes, got ${(v as Uint8Array).length}`)
         }
         out.set(v as Uint8Array, i * type.byteWidth)
       })
@@ -502,12 +529,12 @@ const buildType = (
       values.forEach((v, i) => {
         if (!isNull(v)) {
           if (isString ? typeof v !== "string" : !(v instanceof Uint8Array)) {
-            fail([...path, i], `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
+            failAt(at, i, `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
           }
           if (isString) bytes.pushString(v as string)
           else bytes.push(v as Uint8Array)
         }
-        if (!large && bytes.length > 2147483647) fail([...path, i], "more than 2 GiB of data needs a Large type")
+        if (!large && bytes.length > 2147483647) failAt(at, i, "more than 2 GiB of data needs a Large type")
         offsets[i + 1] = large ? BigInt(bytes.length) : bytes.length as never
       })
       return data(type, n, validityOf(values), [asBytes(offsets), bytes.finish()])
@@ -521,7 +548,7 @@ const buildType = (
       values.forEach((v, i) => {
         if (isNull(v)) return
         if (isString ? typeof v !== "string" : !(v instanceof Uint8Array)) {
-          fail([...path, i], `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
+          failAt(at, i, `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
         }
         const b = isString ? encoder.encode(v as string) : v as Uint8Array
         view.setInt32(i * 16, b.length, true)
@@ -541,22 +568,24 @@ const buildType = (
     case "LargeList":
     case "ListView":
     case "LargeListView": {
-      const large = type._tag === "LargeList" || type._tag === "LargeListView"
       const items: Array<unknown> = []
-      const offsets = large ? new BigInt64Array(n + 1) : new Int32Array(n + 1)
-      const sizes = large ? new BigInt64Array(n) : new Int32Array(n)
-      const starts = large ? new BigInt64Array(n) : new Int32Array(n)
+      const offsets = new Float64Array(n + 1)
       values.forEach((v, i) => {
-        const start = items.length
-        if (!isNull(v)) { for (const x of asIterable(v, path, i, "an array")) items.push(x) }
-        offsets[i + 1] = (large ? BigInt(items.length) : items.length) as never
-        starts[i] = (large ? BigInt(start) : start) as never
-        sizes[i] = (large ? BigInt(items.length - start) : items.length - start) as never
+        if (!isNull(v)) { for (const x of asIterable(v, at, i, "an array")) items.push(x) }
+        offsets[i + 1] = items.length
       })
-      const child = childField(type.child, items, options, [...path, "items"])
-      return type._tag === "List" || type._tag === "LargeList"
-        ? data(type, n, validityOf(values), [asBytes(offsets)], [child])
-        : data(type, n, validityOf(values), [asBytes(starts), asBytes(sizes)], [child])
+      const child = build(type.child, items, options, itemAt(at, offsets))
+      const ints = (a: Float64Array) =>
+        asBytes(
+          type._tag === "LargeList" || type._tag === "LargeListView"
+            ? BigInt64Array.from(a, BigInt)
+            : Int32Array.from(a)
+        )
+      if (type._tag === "List" || type._tag === "LargeList") {
+        return data(type, n, validityOf(values), [ints(offsets)], [child])
+      }
+      const sizes = offsets.subarray(1).map((end, i) => end - offsets[i])
+      return data(type, n, validityOf(values), [ints(offsets.subarray(0, n)), ints(sizes)], [child])
     }
     case "FixedSizeList": {
       const items: Array<unknown> = []
@@ -565,19 +594,20 @@ const buildType = (
           for (let k = 0; k < type.listSize; k++) items.push(null)
           return
         }
-        const list = asIterable(v, path, i, "an array")
-        if (list.length !== type.listSize) fail([...path, i], `expected ${type.listSize} items, got ${list.length}`)
+        const list = asIterable(v, at, i, "an array")
+        if (list.length !== type.listSize) failAt(at, i, `expected ${type.listSize} items, got ${list.length}`)
         items.push(...list)
       })
       // Items of null lists are null too; only items of valid lists must respect the child's nullability.
       const itemsOfValidLists = values.every((v, i) =>
         isNull(v) || items.slice(i * type.listSize, (i + 1) * type.listSize).every((x) => !isNull(x))
       )
-      const child = childField(
+      const size = type.listSize
+      const child = build(
         { ...type.child, nullable: type.child.nullable || itemsOfValidLists },
         items,
         options,
-        [...path, "items"]
+        (j) => [...at(Math.floor(j / size)), j % size]
       )
       return data(type, n, validityOf(values), [], [child])
     }
@@ -592,13 +622,13 @@ const buildType = (
           type.fields.forEach((_, k) => (columns[k][i] = v[k] ?? null))
           return
         }
-        if (typeof v !== "object") fail([...path, i], `expected an object, got ${describe(v)}`)
+        if (typeof v !== "object") failAt(at, i, `expected an object, got ${describe(v)}`)
         type.fields.forEach((f, k) => (columns[k][i] = (v as Record<string, unknown>)[f.name] ?? null))
       })
       const nullable = (f: S.Field, k: number) =>
         // Members of null structs are null too; only check members of valid slots.
         f.nullable ? f : { ...f, nullable: !values.some((v, i) => !isNull(v) && isNull(columns[k][i])) }
-      const children = type.fields.map((f, k) => childField(nullable(f, k), columns[k], options, [...path, f.name]))
+      const children = type.fields.map((f, k) => build(nullable(f, k), columns[k], options, memberAt(at, f.name)))
       return data(type, n, validityOf(values), [], children)
     }
     case "Map": {
@@ -606,27 +636,31 @@ const buildType = (
       const keys: Array<unknown> = []
       const items: Array<unknown> = []
       const offsets = new Int32Array(n + 1)
+      let slot = 0
+      const inSlot: At = (j) => [...at(slot), j - offsets[slot]]
       values.forEach((v, i) => {
+        slot = i
         if (!isNull(v)) {
-          const entries = v instanceof Map ? Array.from(v) : asIterable(v, path, i, "a ReadonlyMap")
+          const entries = v instanceof Map ? Array.from(v) : asIterable(v, at, i, "a ReadonlyMap")
           for (const e of entries) {
-            const [k, x] = asIterable(e, path, i, "a [key, value] entry")
-            if (isNull(k)) fail([...path, i], "map keys must not be null")
+            const [k, x] = asIterable(e, inSlot, keys.length, "a [key, value] entry")
+            if (isNull(k)) failAt(inSlot, keys.length, "map keys must not be null")
             keys.push(k)
             items.push(x)
           }
         }
         offsets[i + 1] = keys.length
       })
+      const entryAt = itemAt(at, offsets)
       const [keyField, valueField] = entriesType.fields
       const entries = data(type.entries.type, keys.length, noNulls, [], [
-        childField(keyField, keys, options, [...path, "keys"]),
-        childField(valueField, items, options, [...path, "values"])
+        build(keyField, keys, options, memberAt(entryAt, 0)),
+        build(valueField, items, options, memberAt(entryAt, 1))
       ])
       return data(type, n, validityOf(values), [asBytes(offsets)], [entries])
     }
     case "Union":
-      return buildUnion(type, values, options, path)
+      return buildUnion(type, values, options, at)
     case "RunEndEncoded": {
       const runEnds: Array<number> = []
       const runValues: Array<unknown> = []
@@ -641,19 +675,21 @@ const buildType = (
           previous = key
         }
       })
+      // Run `r` starts where the previous run ends.
+      const runAt: At = (r) => at(r === 0 ? 0 : runEnds[r - 1])
       return data(type, n, noNulls, [], [
-        childField(type.runEnds, runEnds, options, [...path, "runEnds"]),
-        childField(type.values, runValues, options, [...path, "values"])
+        build(type.runEnds, runEnds, options, runAt),
+        build(type.values, runValues, options, runAt)
       ])
     }
     case "Dictionary": {
       let state = options.dictionaries.get(type.id)
       if (state === undefined) {
-        state = { valueType: type.valueType, unique: new Map(), values: [] }
+        state = { valueType: type.valueType, unique: new Map(), values: [], at: [], slot: [] }
         options.dictionaries.set(type.id, state)
       }
       const s = state
-      const indices = values.map((v) => {
+      const indices = values.map((v, i) => {
         if (isNull(v)) return null
         const key = keyOf(v)
         let index = s.unique.get(key)
@@ -661,10 +697,12 @@ const buildType = (
           index = s.values.length
           s.unique.set(key, index)
           s.values.push(v)
+          s.at.push(at)
+          s.slot.push(i)
         }
         return index
       })
-      const indexBuffer = intBuffer(type.indexType, indices.map((x) => x ?? 0), path)
+      const indexBuffer = intBuffer(type.indexType, indices.map((x) => x ?? 0), at)
       const placeholder: ArrowData.ArrowData = {
         type: type.valueType,
         length: 0,
@@ -730,28 +768,28 @@ const buildUnion = (
   type: S.Union,
   values: ReadonlyArray<unknown>,
   options: Session,
-  path: Path
+  at: At
 ): ArrowData.ArrowData => {
   const n = values.length
   const typeIds = new Int8Array(n)
   const members = values.map((v, i) => {
     if (isUnionValue(v)) {
       const member = type.typeIds.indexOf(v.typeId)
-      if (member === -1) fail([...path, i], `type id ${v.typeId} is not a member of the union`)
+      if (member === -1) failAt(at, i, `type id ${v.typeId} is not a member of the union`)
       return member
     }
     // A null slot goes to the first nullable member; other values to the first member that accepts them.
     const member = isNull(v)
       ? type.fields.findIndex((f) => f.nullable)
       : type.fields.findIndex((f) => accepts(f.type, v))
-    if (member === -1) fail([...path, i], `no union member accepts ${describe(v)}`)
+    if (member === -1) failAt(at, i, `no union member accepts ${describe(v)}`)
     return member
   })
   const plain = values.map((v) => isUnionValue(v) ? v.value : v)
   members.forEach((m, i) => (typeIds[i] = type.typeIds[m]))
   if (type.mode === "sparse") {
     const children = type.fields.map((f, k) =>
-      build({ ...f, nullable: true }, plain.map((v, i) => members[i] === k ? v : null), options, [...path, f.name])
+      build({ ...f, nullable: true }, plain.map((v, i) => members[i] === k ? v : null), options, at)
     )
     return data(type, n, noNulls, [asBytes(typeIds)], children)
   }
@@ -761,6 +799,9 @@ const buildUnion = (
     offsets[i] = perMember[members[i]].length
     perMember[members[i]].push(v)
   })
-  const children = type.fields.map((f, k) => build(f, perMember[k], options, [...path, f.name]))
+  // Value `j` of member `k` comes from the slot that holds member `k` at offset `j`.
+  const children = type.fields.map((f, k) =>
+    build(f, perMember[k], options, (j) => at(members.findIndex((m, i) => m === k && offsets[i] === j)))
+  )
   return data(type, n, noNulls, [asBytes(typeIds), asBytes(offsets)], children)
 }
