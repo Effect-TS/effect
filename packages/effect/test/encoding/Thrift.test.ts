@@ -413,7 +413,9 @@ describe("Thrift", () => {
       [
         "a list element of another type",
         (w) => w.writeValue({ _tag: "List", elementType: "I32", elements: [{ _tag: "I8", value: 1 }] })
-      ]
+      ],
+      // Used to write nothing.
+      ["a value of no Thrift type", (w) => w.writeValue({ _tag: "Text", value: "a" } as unknown as Thrift.Value)]
     ]
     for (const [name, f] of usage) {
       it(`rejects ${name}`, () => assert.strictEqual(thrown(() => f(Thrift.makeWriter())), "Usage"))

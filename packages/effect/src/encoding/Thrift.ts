@@ -1133,6 +1133,8 @@ export class Writer {
         }
         return
       }
+      default:
+        fail("Usage", `${String((value as { readonly _tag: unknown })._tag)} is not a Thrift value`)
     }
   }
 
