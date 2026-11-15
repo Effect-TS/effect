@@ -7,6 +7,7 @@
  */
 import * as S from "../../arrow/ArrowSchema.ts"
 import type * as Plan from "../Plan.ts"
+import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import { compareBytes } from "./kernels.ts"
 import * as Sort from "./sort.ts"
@@ -78,8 +79,9 @@ export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
       const x = v.values
       const acc = new BigInt64Array(p.count)
       const out = new BigInt64Array(n)
+      const fit = Dec.isDecimal(type) ? Dec.checked : (x: bigint) => BigInt.asIntN(64, x)
       for (let i = 0; i < n; i++) {
-        if (valid === undefined || valid[i] === 1) out[i] = acc[ids[i]] = BigInt.asIntN(64, acc[ids[i]] + x[i])
+        if (valid === undefined || valid[i] === 1) out[i] = acc[ids[i]] = fit(acc[ids[i]] + x[i])
       }
       return V.i64(type, out, valid)
     }

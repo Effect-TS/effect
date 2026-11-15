@@ -97,6 +97,29 @@ describe("Query", () => {
         assert.strictEqual(error.message, "filter predicate must be boolean, got Utf8")
       }))
 
+    it.effect("decimal sums fail instead of overflowing 64 bits", () =>
+      Effect.gen(function*() {
+        const nines = (rows: number) =>
+          DataFrame.fromColumns({ s: Array.from({ length: rows }, () => "999999999999999999") })
+        const d = (c: Query.Columns<{ readonly s: string }>) => Expr.castDecimal(c.s, 18, 0)
+        const overflow = (query: Effect.Effect<unknown, DataFrame.DataFrameError>) =>
+          Effect.map(Effect.flip(query), (error) => error.message)
+        const ten = Query.from(nines(10))
+        assert.strictEqual(
+          yield* overflow(Query.aggregate(ten, (c) => ({ total: Expr.sum(d(c)) }))),
+          "decimal value overflows 64 bits"
+        )
+        assert.strictEqual(
+          yield* overflow(Query.select(ten, (c) => ({ running: Expr.cumSum(d(c)) }))),
+          "decimal value overflows 64 bits"
+        )
+        const streamed = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
+          Query.aggregate((c) => ({ total: Expr.sum(Expr.castDecimal(c.s as Expr.Expr<string>, 18, 0)) })),
+          Effect.provide(Catalog.layer({ t: Stream.make(nines(5), nines(5)) }))
+        )
+        assert.strictEqual(yield* overflow(streamed), "decimal value overflows 64 bits")
+      }))
+
     it.effect("round rejects negative or fractional places", () =>
       Effect.gen(function*() {
         for (const places of [-1, 0.5]) {

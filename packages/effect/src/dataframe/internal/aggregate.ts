@@ -156,7 +156,8 @@ const sum = (v: V.Vector, g: Grouping): V.Vector => {
       const valid = v.valid
       for (let i = 0; i < n; i++) if (valid === undefined || valid[i] === 1) acc[ids[i]] += x[i]
       const out = new BigInt64Array(groups)
-      for (let k = 0; k < groups; k++) out[k] = BigInt.asIntN(64, acc[k])
+      const fit = Dec.isDecimal(type) ? Dec.checked : (x: bigint) => BigInt.asIntN(64, x)
+      for (let k = 0; k < groups; k++) out[k] = fit(acc[k])
       return V.i64(type, out)
     }
     default:

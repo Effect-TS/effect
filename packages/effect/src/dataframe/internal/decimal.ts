@@ -1,8 +1,8 @@
 /**
  * Decimals: unscaled 64-bit integers with a scale (`value / 10^scale`), so
  * up to 18 significant digits. Arithmetic follows Polars' result types
- * (precision 38, scales added for products, the larger scale for sums) and
- * fails instead of overflowing 64 bits. Rescaling down rounds half to even.
+ * (precision 38, scales added for products, the larger scale for sums);
+ * arithmetic, sums and running sums fail instead of overflowing 64 bits. Rescaling down rounds half to even.
  *
  * @internal
  */
@@ -39,7 +39,8 @@ export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined 
   return undefined
 }
 
-const checked = (x: bigint): bigint => (x > MAX || x < MIN ? V.fail("decimal value does not fit 18 digits") : x)
+/** `x`, or a failure when it overflows 64-bit decimal storage. @internal */
+export const checked = (x: bigint): bigint => (x > MAX || x < MIN ? V.fail("decimal value overflows 64 bits") : x)
 
 /** Rounds `x / 10^k` half to even (`BigDecimal.round`). */
 const divRound = (x: bigint, k: number): bigint =>
