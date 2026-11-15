@@ -866,7 +866,10 @@ const collectDictionaries = (
   return out
 }
 
-const schemaMessage = (schema: S.Schema) => frame({ _tag: "Schema", schema }, 0, [])
+const schemaMessage = (schema: S.Schema) => {
+  for (const f of schema.fields) Layout.checkUnions(f.type, invalid)
+  return frame({ _tag: "Schema", schema }, 0, [])
+}
 
 const dictionaryMessage = (id: number, values: ArrowData.ArrowData) =>
   frame({ _tag: "DictionaryBatch", id }, values.length, [values])

@@ -402,7 +402,8 @@ export interface Map {
 
 /**
  * Values that are one of several member types. `typeIds[i]` is the type code
- * that marks a slot as holding member `fields[i]`.
+ * that marks a slot as holding member `fields[i]`; the codes are unique and
+ * in 0..127.
  *
  * @stability experimental
  * @category models
@@ -822,6 +823,11 @@ export const map = (key: Field, value: Field, options?: { readonly keysSorted?: 
 
 /**
  * Creates a union type. Type codes default to the member positions.
+ *
+ * **Gotchas**
+ *
+ * - The type codes are not checked here: building values or encoding IPC
+ *   fails when they are not one unique code in 0..127 per member.
  *
  * @stability experimental
  * @category constructors

@@ -242,6 +242,7 @@ export const fromValues = (
   options?: Options
 ): Result.Result<ArrowColumn, ArrowBuildError> => {
   try {
+    Builders.checkType(field.type, [])
     const session = Builders.session(Values.options(options))
     const data = Builders.finish(
       Builders.build(field, Array.isArray(values) ? values : Array.from(values), session),

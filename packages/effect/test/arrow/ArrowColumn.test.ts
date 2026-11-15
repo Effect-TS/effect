@@ -100,6 +100,8 @@ const cases: ReadonlyArray<
   ]]
 ]
 
+const twoInts = [S.field("a", S.int32), S.field("b", S.int32)]
+
 const rejections: ReadonlyArray<
   readonly [label: string, field: S.Field, values: ReadonlyArray<unknown>, path: ReadonlyArray<number>]
 > = [
@@ -111,7 +113,9 @@ const rejections: ReadonlyArray<
   ["more decimal places than the scale", S.field("d", S.decimal(5, 2)), [dec("1.234")], [0]],
   ["wrong byte width", S.field("b", S.fixedSizeBinary(2)), [bytes(1)], [0]],
   ["wrong list size", S.field("l", S.fixedSizeList(item(S.int8), 2)), [[1]], [0]],
-  ["no union member accepts it", S.field("u", S.union("sparse", [S.field("int", S.int32)])), ["s"], [0]]
+  ["no union member accepts it", S.field("u", S.union("sparse", [S.field("int", S.int32)])), ["s"], [0]],
+  ["duplicate union type ids", S.field("u", S.union("sparse", twoInts, [0, 0])), [ArrowColumn.unionValue(0, 5)], []],
+  ["union type id above 127", S.field("u", S.union("dense", [S.field("a", S.int32)], [200])), [], []]
 ]
 
 describe("ArrowColumn", () => {

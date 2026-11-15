@@ -260,6 +260,23 @@ describe("ArrowIpc", () => {
     ])
   })
 
+  it("rejects union type ids that are not unique or not in 0..127", () => {
+    const union = (typeIds: ReadonlyArray<number>) =>
+      S.make([S.field("u", S.union("sparse", [S.field("a", S.int32), S.field("b", S.int32)], typeIds))])
+    // The schema's type id vector, [5, 6], rewritten
+    const valid = Result.getOrThrow(ArrowIpc.encodeStream(ArrowTable.make(union([5, 6]), [])))
+    const typeIdVector = [2, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0]
+    const at = valid.findIndex((_, i) => typeIdVector.every((b, k) => valid[i + k] === b))
+    assert.isAtLeast(at, 0)
+    for (const typeIds of [[5, 5], [5, 128]]) {
+      const patched = valid.slice()
+      patched[at + 8] = typeIds[1]
+      assertIpcError(ArrowIpc.decodeStream(patched))
+      assertIpcError(ArrowIpc.encodeStream(ArrowTable.make(union(typeIds), [])))
+      assertIpcError(ArrowIpc.encodeFile(ArrowTable.make(union(typeIds), [])))
+    }
+  })
+
   it("does not write unions with null slots of their own", () => {
     // Pre-V5 unions had a validity bitmap; V5, which the writer emits, has none
     const type = S.union("sparse", [S.field("i", S.int32)])

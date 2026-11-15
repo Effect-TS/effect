@@ -271,6 +271,7 @@ const buildTable = (
   batches: Iterable<ReadonlyArray<ReadonlyArray<unknown>>>,
   options: ArrowColumn.Options | undefined
 ): Table => {
+  for (const f of schema.fields) Builders.checkType(f.type, [f.name])
   const session = Builders.session(Values.options(options))
   const built: Array<RecordBatch> = []
   let rowOffset = 0

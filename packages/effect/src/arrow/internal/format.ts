@@ -8,6 +8,7 @@
 import * as Fb from "../../encoding/FlatBuffers.ts"
 import * as Result from "../../Result.ts"
 import type * as S from "../ArrowSchema.ts"
+import * as Layout from "./layout.ts"
 
 /** Why IPC input or a table was declined. @internal */
 export type Kind = "BigEndian" | "Compression" | "Invalid" | "Unsupported"
@@ -293,10 +294,7 @@ const decodeType = (
       const mode = u.int16(0)
       if (mode !== 0 && mode !== 1) fail(`invalid union mode ${mode}`)
       const typeIds = int32s(u, 1) ?? children.map((_, i) => i)
-      if (typeIds.length !== children.length) {
-        fail(`union has ${children.length} members but ${typeIds.length} type ids`)
-      }
-      for (const id of typeIds) if (id < 0 || id > 127) fail(`invalid union type id ${id}`)
+      Layout.checkUnionTypeIds(typeIds, children.length, fail)
       return { _tag: "Union", mode: mode === 0 ? "sparse" : "dense", fields: children, typeIds }
     }
     case TypeId.FixedSizeBinary: {

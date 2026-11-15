@@ -51,7 +51,10 @@ describe("ArrowTable", () => {
     > = [
       [ArrowTable.fromRows(schema, [...rows.slice(0, 3), { id: null }], { batchSize: 2 }), [3, "id"]],
       [ArrowTable.fromColumns(schema, { id: [1, 2], name: ["a"], tag: ["x", "y"] }), ["name"]],
-      [ArrowTable.fromColumns(schema, { id: [1], name: ["a"] }), ["tag"]]
+      [ArrowTable.fromColumns(schema, { id: [1], name: ["a"] }), ["tag"]],
+      [ArrowTable.fromColumns(S.make([S.field("u", S.union("sparse", [S.field("a", S.int8)], [-1]))]), { u: [] }), [
+        "u"
+      ]]
     ]
     for (const [result, path] of failures) {
       assert.isTrue(Result.isFailure(result))

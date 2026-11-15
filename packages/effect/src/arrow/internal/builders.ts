@@ -12,6 +12,7 @@ import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as ArrowData from "../ArrowData.ts"
 import type * as S from "../ArrowSchema.ts"
+import * as Layout from "./layout.ts"
 import type { Options } from "./values.ts"
 
 interface DictionaryState {
@@ -85,6 +86,10 @@ const fail = (path: Path, message: string): never => {
 
 /** Fails at `path` + `index`; the path array is only built on failure. */
 const failAt = (path: Path, index: number, message: string): never => fail([...path, index], message)
+
+/** Fails with a `BuildFailure` at `path` when `type` is invalid (union type ids). @internal */
+export const checkType = (type: S.DataType, path: Path): void =>
+  Layout.checkUnions(type, (message) => fail(path, message))
 
 const describe = (v: unknown) =>
   v === null ? "null" : typeof v === "object" ? (v.constructor?.name ?? "object") : `${typeof v} ${String(v)}`

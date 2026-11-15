@@ -1,7 +1,8 @@
 /**
  * Layout operations on `ArrowData`: slicing (free), normalising to offset 0
  * (for writing), and concatenating (for delta dictionaries). They follow the
- * Columnar format's rules for how each layout's buffers and children relate.
+ * Columnar format's rules for how each layout's buffers and children relate,
+ * and check the rules a type must follow (union type ids).
  *
  * @internal
  */
@@ -95,6 +96,50 @@ const rebaseOffsets = (buffer: Uint8Array, large: boolean, start: number, length
   const view = viewOf(buffer)
   for (let i = 0; i <= length; i++) out[i] = view.getInt32((start + i) * 4, true) - first
   return { offsets: new Uint8Array(out.buffer), first, last }
+}
+
+// -----------------------------------------------------------------------------
+// Type rules
+// -----------------------------------------------------------------------------
+
+/** Calls `fail` unless `typeIds` holds one unique id in 0..127 per member. @internal */
+export const checkUnionTypeIds = (
+  typeIds: ReadonlyArray<number>,
+  members: number,
+  fail: (message: string) => never
+): void => {
+  if (typeIds.length !== members) fail(`union has ${members} members but ${typeIds.length} type ids`)
+  const seen = new Set<number>()
+  for (const id of typeIds) {
+    if (!(Number.isInteger(id) && id >= 0 && id <= 127)) fail(`invalid union type id ${id}`)
+    if (seen.has(id)) fail(`duplicate union type id ${id}`)
+    seen.add(id)
+  }
+}
+
+/** Checks the type ids of every union in `type`, including nested ones. @internal */
+export const checkUnions = (type: S.DataType, fail: (message: string) => never): void => {
+  switch (type._tag) {
+    case "Union":
+      checkUnionTypeIds(type.typeIds, type.fields.length, fail)
+      for (const f of type.fields) checkUnions(f.type, fail)
+      return
+    case "Struct":
+      for (const f of type.fields) checkUnions(f.type, fail)
+      return
+    case "List":
+    case "LargeList":
+    case "ListView":
+    case "LargeListView":
+    case "FixedSizeList":
+      return checkUnions(type.child.type, fail)
+    case "Map":
+      return checkUnions(type.entries.type, fail)
+    case "RunEndEncoded":
+      return checkUnions(type.values.type, fail)
+    case "Dictionary":
+      return checkUnions(type.valueType, fail)
+  }
 }
 
 // -----------------------------------------------------------------------------
