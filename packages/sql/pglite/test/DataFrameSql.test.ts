@@ -448,6 +448,12 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     Query.from(DataFrame.fromColumns({ x: Int32Array.of(5, -15, 25) })).pipe(
       Query.select((c) => ({ r0: Expr.round(c.x), r1: Expr.round(c.x, 1) }))
     )
+  ],
+  [
+    "integer literals fitted whichever rows select them",
+    Query.from(DataFrame.fromColumns({ x: Int8Array.of(100, 0) })).pipe(
+      Query.select((c) => ({ r: Expr.multiply(Expr.add(c.x, Expr.when(Expr.eq(c.x, 0), 300, 1)), 2) }))
+    )
   ]
 ]
 

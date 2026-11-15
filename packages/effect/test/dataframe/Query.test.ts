@@ -248,6 +248,7 @@ describe("Query", () => {
         // Integer literals a column's type can't hold widen it, wherever they
         // appear among the operands. Expected values from Polars 2.1.0 unless noted.
         const { bool, float64, int8, int16, int32 } = ArrowSchema
+        const w = (x: Expr.Expr<number | null>) => Expr.when(Expr.isNull(x), 1, 300)
         const literals: ReadonlyArray<
           readonly [
             string,
@@ -273,24 +274,43 @@ describe("Query", () => {
           ["coalesce(300, 1.5, x)", (c) => Expr.coalesce(300, 1.5, c.x), float64, [300, 300]],
           ["coalesce(u, -1)", (c) => Expr.coalesce(c.u, -1), int16, [-1, 5]],
           ["coalesce(-1, u)", (c) => Expr.coalesce(-1, c.u), int16, [-1, -1]],
-          // Every value of an operand built from literals is fitted, not only
-          // the first row's; Polars 2.1.0 gives Int8, making 5 + 300 null.
-          ["x + when(x is null, 1, 300)", (c) => Expr.add(c.x, Expr.when(Expr.isNull(c.x), 1, 300)), int16, [null, 305]]
+          // Every literal of an operand built from literals is fitted, whichever
+          // rows select it (w is when(x is null, 1, 300)); Polars 2.1.0 gives
+          // Int8, making 5 + 300 null and (100 + 1) * 2 wrap to -54.
+          ["x + w", (c) => Expr.add(c.x, w(c.x)), int16, [null, 305]],
+          [
+            "(coalesce(x, 100) + w) * 2",
+            (c) => Expr.multiply(Expr.add(Expr.coalesce(c.x, 100), w(c.x)), 2),
+            int16,
+            [202, 610]
+          ],
+          // Other operands computed from literals count as Int32; Polars 2.1.0
+          // gives Int8 with nulls.
+          ["x + -w", (c) => Expr.add(c.x, Expr.negate(w(c.x))), int32, [null, -295]]
         ]
-        // x is Int8 and u UInt8, both [null, 5].
-        const ints = Query.from(DataFrame.fromColumns({ x: Int8Array.of(0, 5), u: Uint8Array.of(0, 5) })).pipe(
-          Query.withColumns((c) => ({
+        // x is Int8 and u UInt8, both [null, 5]: whole, streamed a row at a
+        // time and sliced to the first row, results have the same types.
+        const ints = (xs: ReadonlyArray<number>) =>
+          DataFrame.fromColumns({ x: Int8Array.from(xs), u: Uint8Array.from(xs) })
+        const nullable = (input: Query.Query<{ readonly x: number; readonly u: number }>) =>
+          Query.withColumns(input, (c) => ({
             x: Expr.when(Expr.gt(c.x, 0), c.x, null),
             u: Expr.when(Expr.gt(c.u, 0), c.u, null)
           }))
+        const whole = nullable(Query.from(ints([0, 5])))
+        const streamed = nullable(
+          Query.table("t", Schema.Struct({ x: Schema.Number, u: Schema.Number }), {
+            types: { x: ArrowSchema.int8, u: ArrowSchema.uint8 }
+          })
         )
+        const batches = Catalog.layer({ t: Stream.make(ints([0]), ints([5])) })
+        const result = (query: Query.Query<{ readonly r: unknown }>) =>
+          Effect.map(query, (df) => [df.schema.fields[0].type, DataFrame.toArray(df, "r")])
         for (const [name, expr, type, values] of literals) {
-          const df = yield* Query.select(ints, (c) => ({ r: expr(c) }))
-          assert.deepStrictEqual(
-            [df.schema.fields[0].type, DataFrame.toRows(df).map((row) => row.r)],
-            [type, values],
-            name
-          )
+          const select = (input: typeof whole) => Query.select(input, (c) => ({ r: expr(c) }))
+          assert.deepStrictEqual(yield* result(select(whole)), [type, values], name)
+          assert.deepStrictEqual(yield* result(select(streamed)).pipe(Effect.provide(batches)), [type, values], name)
+          assert.deepStrictEqual(yield* result(Query.head(select(whole), 1)), [type, values.slice(0, 1)], name)
         }
       }))
 

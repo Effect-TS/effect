@@ -33,6 +33,11 @@
  *   (`c.int8Column + 1` stays Int8) when the type holds it, and widens it
  *   otherwise (`c.int8Column + 300` is Int16), wherever it appears among
  *   the operands (`coalesce(300, 70000, c.int8Column)` is Int32).
+ *   A `when`, `coalesce` or `fillNull` of literals fits all its literals,
+ *   whichever rows select them (`c.int8Column + when(cond, 300, 1)` is
+ *   Int16), so result types never depend on the rows. Other values computed
+ *   from integer literals (`negate`, arithmetic) widen narrower columns to
+ *   Int32.
  * - Operands of different types meet in their common type. A value the
  *   common type can't hold fails the query with a `DataFrameError`; only
  *   an explicit {@link cast} makes it `null`.

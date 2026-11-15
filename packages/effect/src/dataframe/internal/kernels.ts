@@ -27,6 +27,12 @@ export interface Value {
   readonly vector: V.Vector
   readonly scalar: boolean
   readonly dynamic: D.Dynamic
+  /**
+   * For a dynamic integer column (a `when` or `coalesce` of literals), the
+   * bounds of its literals, known from the plan; Int32's when unknown. See
+   * {@link literalRange}.
+   */
+  readonly range?: readonly [number, number] | undefined
 }
 
 /** @internal */
@@ -326,23 +332,35 @@ const coerceValue = (value: Value, target: S.DataType): Value =>
 export type ArithOp = "add" | "sub" | "mul" | "div" | "floorDiv" | "mod"
 
 /**
+ * The bounds of a dynamic integer's values, from the plan alone, so that its
+ * type never depends on the rows (a batch, a slice of them): a scalar's
+ * value (built from literals only), or the {@link Value.range} of a column.
+ */
+const literalRange = (v: Value): readonly [number, number] => {
+  if (!v.scalar) return v.range ?? intRange(S.int32)
+  const x = (v.vector as V.I32).values[0]
+  return V.isValid(v.vector, 0) ? [x, x] : [0, 0]
+}
+
+/** The range of `when` or `coalesce` of `values` whose common type is `dynamic`. */
+const rangeOf = (values: ReadonlyArray<Value>, dynamic: D.Dynamic): readonly [number, number] | undefined => {
+  if (dynamic !== "int") return undefined
+  const ranges = values.flatMap((v) => v.dynamic === "int" ? [literalRange(v)] : [])
+  return [Math.min(...ranges.map((r) => r[0])), Math.max(...ranges.map((r) => r[1]))]
+}
+
+/**
  * The type and dynamism of an operand next to one of type `other`: integer
- * literals (every value of an operand built from them) that `other` can't
- * hold commit to the smallest signed integer type that holds them, instead
- * of adopting `other`, as in Polars (`Int8 + 300` is Int16).
+ * literals (every literal of an operand built from them, whichever rows
+ * select it) that `other` can't hold commit to the smallest signed integer
+ * type that holds them, instead of adopting `other`, as in Polars (`Int8 +
+ * 300` is Int16).
  */
 const operand = (v: Value, other: S.DataType): readonly [S.DataType, D.Dynamic] => {
-  const vector = v.vector
-  if (v.dynamic !== "int" || other._tag !== "Int" || vector.kind !== "i32") return [vector.type, v.dynamic]
-  let lo = 0
-  let hi = 0
-  for (let i = 0; i < vector.length; i++) {
-    if (!V.isValid(vector, i)) continue
-    lo = Math.min(lo, vector.values[i])
-    hi = Math.max(hi, vector.values[i])
-  }
+  if (v.dynamic !== "int" || other._tag !== "Int" || v.vector.kind !== "i32") return [v.vector.type, v.dynamic]
+  const [lo, hi] = literalRange(v)
   const [min, max] = intRange(other)
-  if (lo >= min && hi <= max) return [vector.type, v.dynamic]
+  if (lo >= min && hi <= max) return [v.vector.type, v.dynamic]
   return [lo >= -128 && hi <= 127 ? S.int8 : lo >= -32768 && hi <= 32767 ? S.int16 : S.int32, undefined]
 }
 
@@ -1092,7 +1110,12 @@ export const when = (cond: Value, then: Value, otherwise: Value, length: number)
   const ca = c.valid
   for (let i = 0; i < n; i++) mask[i] = (cv[i] & (ca === undefined ? 1 : ca[i])) === 1 ? 0 : 1
   const branches = [materialize(coerceValue(then, st.type), n), materialize(coerceValue(otherwise, st.type), n)]
-  return { vector: select(branches, mask), scalar: allScalar, dynamic: st.dynamic }
+  return {
+    vector: select(branches, mask),
+    scalar: allScalar,
+    dynamic: st.dynamic,
+    range: rangeOf([then, otherwise], st.dynamic)
+  }
 }
 
 /** Picks slot `i` from `branches[choice[i]]`; all branches share a type. @internal */
@@ -1161,7 +1184,7 @@ export const coalesce = (values: ReadonlyArray<Value>, length: number): Value =>
     while (k < vectors.length - 1 && !V.isValid(vectors[k], i)) k++
     choice[i] = k
   }
-  return { vector: select(vectors, choice), scalar: allScalar, dynamic: st.dynamic }
+  return { vector: select(vectors, choice), scalar: allScalar, dynamic: st.dynamic, range: rangeOf(values, st.dynamic) }
 }
 
 // -----------------------------------------------------------------------------
