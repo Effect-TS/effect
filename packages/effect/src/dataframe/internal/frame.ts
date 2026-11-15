@@ -115,6 +115,23 @@ export const make = (columns: ReadonlyArray<Column>, length: number): Frame => {
   return self
 }
 
+/**
+ * A frame without rows with the given columns. Its vectors have no validity
+ * bitmap, which would make a column nullable where it meets others.
+ *
+ * @internal
+ */
+export const empty = (
+  fields: ReadonlyArray<{ readonly name: string; readonly type: S.DataType; readonly nullable: boolean }>
+): Frame =>
+  make(
+    fields.map((f) => {
+      const vector = V.withValid(K.nullsOf(f.type, 0), undefined)
+      return new Column(f.name, vector, undefined, f.nullable || vector.kind === "null")
+    }),
+    0
+  )
+
 /** @internal */
 export const fromVectors = (names: ReadonlyArray<string>, vectors: ReadonlyArray<V.Vector>, length?: number): Frame => {
   const n = length ?? vectors[0]?.length ?? 0
@@ -142,10 +159,11 @@ export const context = (self: Frame): E.Context => ({
 
 /** @internal */
 export const fromArrowTable = (table: ArrowTable.Table): Frame => {
+  if (table.batches.length === 0) {
+    return empty(table.schema.fields.map((f) => ({ name: f.name, type: V.storageType(f.type), nullable: f.nullable })))
+  }
   const length = table.batches.reduce((s, b) => s + b.length, 0)
-  const vectors = table.batches.length === 0
-    ? table.schema.fields.map((f) => K.nullsOf(V.storageType(f.type), 0))
-    : table.schema.fields.map((_, c) => V.concat(table.batches.map((b) => V.fromArrowData(b.columns[c]))))
+  const vectors = table.schema.fields.map((_, c) => V.concat(table.batches.map((b) => V.fromArrowData(b.columns[c]))))
   return make(
     table.schema.fields.map((f, c) =>
       new Column(

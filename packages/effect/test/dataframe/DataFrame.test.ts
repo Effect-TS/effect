@@ -266,6 +266,17 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(table)), DataFrame.toRows(df))
     })
 
+    it("imports a table without batches with the nullability of its fields", () => {
+      const schema = ArrowSchema.make([
+        ArrowSchema.field("x", ArrowSchema.int8, { nullable: false }),
+        ArrowSchema.field("s", ArrowSchema.utf8)
+      ])
+      assert.deepStrictEqual(types(DataFrame.fromArrowTable(ArrowTable.make(schema, []))), [
+        "x:Int:false",
+        "s:Utf8:true"
+      ])
+    })
+
     it("imports sliced list columns with only their own elements", () => {
       const Lists = Schema.Struct({ xs: Schema.Array(Schema.Number) })
       const df = DataFrame.fromRows(Lists, [{ xs: [1] }, { xs: [2] }, { xs: [3] }])
