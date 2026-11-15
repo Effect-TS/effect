@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
 import { BigDecimal, DateTime, Duration, Effect, Option, Result, Stream } from "effect"
+import type { ArrowData } from "effect/arrow"
 import { ArrowColumn, ArrowIpc, ArrowSchema as S, ArrowTable } from "effect/arrow"
 import { FlatBuffers } from "effect/encoding"
 import { readFileSync } from "node:fs"
@@ -178,11 +179,11 @@ const sharedFieldsStream = () => {
   return stream
 }
 
-const assertIpcError = (result: Result.Result<unknown, ArrowIpc.ArrowIpcError>) => {
+const assertIpcError = (result: Result.Result<unknown, ArrowIpc.ArrowIpcError>, kind = "Invalid") => {
   assert.isTrue(Result.isFailure(result))
   if (Result.isFailure(result)) {
     assert.isTrue(ArrowIpc.isArrowIpcError(result.failure))
-    assert.strictEqual(result.failure.kind, "Invalid")
+    assert.strictEqual(result.failure.kind, kind)
   }
 }
 
@@ -257,6 +258,32 @@ describe("ArrowIpc", () => {
       { utf8: "a", largeBinary: bytes(1), list: [7] },
       { utf8: "b", largeBinary: bytes(2), list: [2] }
     ])
+  })
+
+  it("does not write unions with null slots of their own", () => {
+    // Pre-V5 unions had a validity bitmap; V5, which the writer emits, has none
+    const type = S.union("sparse", [S.field("i", S.int32)])
+    const schema = S.make([S.field("u", type)])
+    const data = (
+      type: S.DataType,
+      buffers: Array<Uint8Array>,
+      children: Array<ArrowData.ArrowData>,
+      validity?: Uint8Array
+    ) => ({
+      type,
+      length: 1,
+      offset: 0,
+      nullCount: validity === undefined ? 0 : 1,
+      validity,
+      buffers,
+      children,
+      dictionary: undefined
+    })
+    const union = data(type, [bytes(0)], [data(S.int32, [bytes(99, 0, 0, 0)], [])], bytes(0))
+    const table = ArrowTable.make(schema, [ArrowTable.recordBatch(schema, 1, [union])])
+    assert.deepStrictEqual(ArrowTable.toRows(table), [{ u: null }])
+    assertIpcError(ArrowIpc.encodeStream(table), "Unsupported")
+    assertIpcError(ArrowIpc.encodeFile(table), "Unsupported")
   })
 
   it.effect("decode fails with an ArrowIpcError when the input ends inside a message or holds no schema", () =>

@@ -765,6 +765,8 @@ const flatten = (d: ArrowData.ArrowData, out: BodyBuilder) => {
       out.nodes.push({ length: d.length, nullCount: d.length })
       return
     case "Union":
+      // V5, which this writer emits, has no union validity; only pre-V5 input has null union slots.
+      if (d.nullCount > 0) throw new IpcFailure("Unsupported", "unions with null slots of their own cannot be written")
       out.nodes.push({ length: d.length, nullCount: 0 })
       for (const b of d.buffers) out.buffers.push(b)
       for (const c of d.children) flatten(c, out)
