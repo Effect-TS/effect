@@ -10,8 +10,9 @@ import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
+import type { UnionValue } from "../ArrowColumn.ts"
 import type * as ArrowData from "../ArrowData.ts"
-import type * as S from "../ArrowSchema.ts"
+import * as S from "../ArrowSchema.ts"
 import * as Layout from "./layout.ts"
 import * as Values from "./values.ts"
 
@@ -28,7 +29,8 @@ interface DictionaryState {
 /**
  * One build: extensions plus the dictionaries being collected. All arrays
  * built in a session share one dictionary per id, which grows as values
- * arrive; {@link finish} attaches the final dictionaries. @internal
+ * arrive; {@link finish} attaches the final dictionaries, so it must be given
+ * the session the array was built in. @internal
  */
 export interface Session extends Values.Options {
   readonly dictionaries: Map<number, DictionaryState>
@@ -37,22 +39,20 @@ export interface Session extends Values.Options {
 /** @internal */
 export const session = (options: Values.Options): Session => ({ ...options, dictionaries: new Map() })
 
-/** Placeholders standing in for dictionaries until {@link finish}. */
-const pending = new WeakMap<ArrowData.ArrowData, DictionaryState>()
-
 const builtDictionary = (state: DictionaryState, s: Session): ArrowData.ArrowData => {
   if (state.built === undefined) {
-    const inner: Session = { ...s, dictionaries: new Map() }
-    const field: S.Field = { name: "", type: state.valueType, nullable: true, metadata: new Map() }
+    const inner = session(s)
+    const field = S.field("", state.valueType)
     state.built = finish(buildField(field, state.values, inner, (k) => state.at[k](state.slot[k])), inner)
   }
   return state.built
 }
 
-/** Replaces dictionary placeholders with the session's final dictionaries. @internal */
+/** Attaches the session's final dictionaries to `data` and its children. @internal */
 export const finish = (data: ArrowData.ArrowData, s: Session): ArrowData.ArrowData => {
-  const state = data.dictionary === undefined ? undefined : pending.get(data.dictionary)
-  const dictionary = state === undefined ? data.dictionary : builtDictionary(state, s)
+  const dictionary = data.type._tag === "Dictionary"
+    ? builtDictionary(s.dictionaries.get(data.type.id)!, s)
+    : data.dictionary
   let changed = dictionary !== data.dictionary
   const children = data.children.map((c) => {
     const next = finish(c, s)
@@ -72,14 +72,7 @@ export class BuildFailure extends Error {
 }
 
 /** @internal */
-export interface UnionValue {
-  readonly _tag: "UnionValue"
-  readonly typeId: number
-  readonly value: unknown
-}
-
-/** @internal */
-export const isUnionValue = (u: unknown): u is UnionValue => Predicate.isTagged(u, "UnionValue")
+export const isUnionValue = (u: unknown): u is UnionValue<unknown> => Predicate.isTagged(u, "UnionValue")
 
 type Path = ReadonlyArray<string | number>
 
@@ -172,9 +165,6 @@ const toBigInt = (v: unknown, at: At, index: number, what: string): bigint => {
 const outOfRange = (t: S.Int, v: unknown, at: At, index: number): never =>
   failAt(at, index, `${v} is outside the range of ${t.signed ? "" : "u"}int${t.bitWidth}`)
 
-const int32: S.Int = { _tag: "Int", bitWidth: 32, signed: true }
-const int64: S.Int = { _tag: "Int", bitWidth: 64, signed: true }
-
 /** `big`, failing when it does not fit `t`. */
 const checked = (t: S.Int, big: bigint, at: At, index: number): bigint => {
   const [min, max] = intRange(t)
@@ -202,11 +192,8 @@ const intBuffer = (t: S.Int, values: ReadonlyArray<unknown>, at: At): Uint8Array
     : (t.signed ? new Int32Array(n) : new Uint32Array(n))
   for (let i = 0; i < n; i++) {
     const v = values[i]
-    if (typeof v === "number") {
-      if (!(Number.isInteger(v) && v >= min && v <= max)) {
-        if (Number.isInteger(v)) outOfRange(t, v, at, i)
-        failAt(at, i, `expected an integer (int${t.bitWidth}), got ${describe(v)}`)
-      }
+    if (typeof v === "number" && Number.isInteger(v)) {
+      if (v < min || v > max) outOfRange(t, v, at, i)
       a[i] = v
     } else if (!isNull(v)) {
       const big = toBigInt(v, at, i, `int${t.bitWidth}`)
@@ -217,50 +204,31 @@ const intBuffer = (t: S.Int, values: ReadonlyArray<unknown>, at: At): Uint8Array
   return asBytes(a)
 }
 
-/** Signed 64-bit storage of non-null values through `f`, range-checked. */
-const int64Buffer = (
+/** Signed 32- or 64-bit storage (`t`) of non-null values through `f`, range-checked. */
+const storedInts = (
+  t: S.Int,
   values: ReadonlyArray<unknown>,
   f: (v: unknown, at: At, index: number) => bigint,
   at: At
 ) => {
-  const a = new BigInt64Array(values.length)
+  const a = t.bitWidth === 64 ? new BigInt64Array(values.length) : new Int32Array(values.length)
   for (let i = 0; i < values.length; i++) {
     const v = values[i]
-    if (!isNull(v)) a[i] = checked(int64, f(v, at, i), at, i)
+    if (!isNull(v)) {
+      const big = checked(t, f(v, at, i), at, i)
+      a[i] = (t.bitWidth === 64 ? big : Number(big)) as never
+    }
   }
   return asBytes(a)
-}
-
-/** Signed 32-bit storage of non-null values through `f`, range-checked. */
-const int32Buffer = (
-  values: ReadonlyArray<unknown>,
-  f: (v: unknown, at: At, index: number) => bigint,
-  at: At
-) => {
-  const a = new Int32Array(values.length)
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i]
-    if (!isNull(v)) a[i] = Number(checked(int32, f(v, at, i), at, i))
-  }
-  return asBytes(a)
-}
-
-const unitNanos: Record<S.TimeUnit, bigint> = {
-  second: BigInt(1_000_000_000),
-  millisecond: BigInt(1_000_000),
-  microsecond: BigInt(1000),
-  nanosecond: BigInt(1)
-}
-
-const floorDiv = (a: bigint, b: bigint) => {
-  const q = a / b
-  return a < BigInt(0) && q * b !== a ? q - BigInt(1) : q
 }
 
 /** A DateTime as an integer count of `unit`, or a raw integer already in `unit`. */
 const instant = (unit: S.TimeUnit, v: unknown, at: At, index: number): bigint => {
   if (DateTime.isDateTime(v)) {
-    return floorDiv(BigInt(DateTime.toEpochMillis(v)) * unitNanos.millisecond, unitNanos[unit])
+    return Values.floorDiv(
+      BigInt(DateTime.toEpochMillis(v)) * Values.nanosPerUnit.millisecond,
+      Values.nanosPerUnit[unit]
+    )
   }
   return toBigInt(v, at, index, `a DateTime or an integer in ${unit}s`)
 }
@@ -301,8 +269,16 @@ const decimalBuffer = (t: S.Decimal, values: ReadonlyArray<unknown>, at: At): Ui
   return out
 }
 
+/** The members of each interval unit and their storage, in layout order. */
+const intervalParts: Record<S.IntervalUnit, ReadonlyArray<readonly [string, S.Int]>> = {
+  yearMonth: [["months", S.int32]],
+  dayTime: [["days", S.int32], ["milliseconds", S.int32]],
+  monthDayNano: [["months", S.int32], ["days", S.int32], ["nanoseconds", S.int64]]
+}
+
 const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): Uint8Array => {
-  const width = t.unit === "yearMonth" ? 4 : t.unit === "dayTime" ? 8 : 16
+  const parts = intervalParts[t.unit]
+  const width = parts.reduce((w, [, type]) => w + type.bitWidth / 8, 0)
   const out = new Uint8Array(values.length * width)
   const view = new DataView(out.buffer)
   values.forEach((v, i) => {
@@ -311,23 +287,13 @@ const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): 
       string,
       unknown
     >
-    const part = (type: S.Int, k: string) => {
+    let position = i * width
+    for (const [k, type] of parts) {
       const partAt = () => [...at(i), k]
-      return checked(type, toBigInt(o[k] ?? 0, partAt, 0, `int${type.bitWidth}`), partAt, 0)
-    }
-    switch (t.unit) {
-      case "yearMonth":
-        view.setInt32(i * 4, Number(part(int32, "months")), true)
-        break
-      case "dayTime":
-        view.setInt32(i * 8, Number(part(int32, "days")), true)
-        view.setInt32(i * 8 + 4, Number(part(int32, "milliseconds")), true)
-        break
-      case "monthDayNano":
-        view.setInt32(i * 16, Number(part(int32, "months")), true)
-        view.setInt32(i * 16 + 4, Number(part(int32, "days")), true)
-        view.setBigInt64(i * 16 + 8, part(int64, "nanoseconds"), true)
-        break
+      const big = checked(type, toBigInt(o[k] ?? 0, partAt, 0, `int${type.bitWidth}`), partAt, 0)
+      if (type.bitWidth === 64) view.setBigInt64(position, big, true)
+      else view.setInt32(position, Number(big), true)
+      position += type.bitWidth / 8
     }
   })
   return out
@@ -346,12 +312,6 @@ const keyOf = (field: S.Field, v: unknown): string | undefined => isNull(v) ? "n
 
 const joinKeys = (keys: ReadonlyArray<string | undefined>): string | undefined =>
   keys.includes(undefined) ? undefined : JSON.stringify(keys)
-
-const intervalParts = {
-  yearMonth: ["months"],
-  dayTime: ["days", "milliseconds"],
-  monthDayNano: ["months", "days", "nanoseconds"]
-}
 
 /** The key of a non-null `v` built as `type`; see {@link keyOf}. */
 const typeKey = (type: S.DataType, v: unknown): string | undefined => {
@@ -382,7 +342,7 @@ const typeKey = (type: S.DataType, v: unknown): string | undefined => {
     }
     case "Interval":
       return typeof v === "object" && v !== null
-        ? joinKeys(intervalParts[type.unit].map((k) => scalarKey((v as Record<string, unknown>)[k] ?? 0)))
+        ? joinKeys(intervalParts[type.unit].map(([k]) => scalarKey((v as Record<string, unknown>)[k] ?? 0)))
         : undefined
     case "RunEndEncoded":
       return keyOf(type.values, v)
@@ -421,22 +381,19 @@ type Store = (v: unknown) => unknown
 
 /**
  * How to turn a value of `field` into its storage value, the only form the
- * builders read: extension values encoded and iterables read into arrays at
- * every level. Lists and maps become arrays (map entries `[key, value]`
- * arrays); structs and unions with members to convert become arrays of members
- * by position and `UnionValue`s. `undefined` when every value is its own
- * storage value. {@link build} converts each value once, so encoders run once
- * per value and one-shot iterables are read once, however often keying and
- * building read the result. Values that do not fit are kept for the builders
- * to reject.
+ * builders read: extension values encoded and iterables read into arrays, at
+ * every level. Structs and unions with members to convert become arrays of
+ * members by position and `UnionValue`s. `undefined` when every value is its
+ * own storage value. Values that do not fit are kept for the builders to
+ * reject.
  */
 const storeOf = (field: S.Field, s: Session): Store | undefined => {
-  const encode = encoderOf(field, s)
+  const ext = Values.extensionOf(field, s)
   const store = typeStoreOf(field.type, s)
-  if (encode === undefined) return store && ((v) => isNull(v) ? null : store(v))
+  if (ext === undefined) return store && ((v) => isNull(v) ? null : store(v))
   return (v) => {
     if (isNull(v)) return null
-    const encoded = encode(v)
+    const encoded = ext.extension.encode(v, ext.metadata)
     return store === undefined || isNull(encoded) ? encoded : store(encoded)
   }
 }
@@ -482,7 +439,7 @@ const typeStoreOf = (type: S.DataType, s: Session): Store | undefined => {
         const store = member === -1 ? undefined : members[member]
         if (store === undefined) return v
         const value = store(isUnionValue(v) ? v.value : v)
-        return { _tag: "UnionValue", typeId: type.typeIds[member], value } satisfies UnionValue
+        return { _tag: "UnionValue", typeId: type.typeIds[member], value } satisfies UnionValue<unknown>
       }
     }
     case "RunEndEncoded":
@@ -541,29 +498,17 @@ const asArray = (v: unknown, at: At, index: number, what: string): ReadonlyArray
 const memberValue = (v: object, f: S.Field, k: number): unknown =>
   (Array.isArray(v) ? v[k] : Values.getProperty(v, f.name)) ?? null
 
-const encoderOf = (field: S.Field, options: Values.Options): ((v: unknown) => unknown) | undefined => {
-  const name = field.metadata.get("ARROW:extension:name")
-  const extension = name === undefined ? undefined : options.extensions.get(name)
-  if (extension === undefined) return undefined
-  const metadata = field.metadata.get("ARROW:extension:metadata") ?? ""
-  return (v) => extension.encode(v, metadata)
-}
+/** Fails at slot `i` unless `v` is a string. */
+const expectString = (v: unknown, at: At, i: number): string =>
+  typeof v === "string" ? v : failAt(at, i, `expected a string, got ${describe(v)}`)
 
-/** The slot `i` with `offsets[i] <= item < offsets[i + 1]`. */
-const slotOf = (offsets: ArrayLike<number>, item: number): number => {
-  let lo = 0
-  let hi = offsets.length - 2
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >>> 1
-    if (offsets[mid] <= item) lo = mid
-    else hi = mid - 1
-  }
-  return lo
-}
+/** Fails at slot `i` unless `v` is a `Uint8Array`. */
+const expectBytes = (v: unknown, at: At, i: number): Uint8Array =>
+  v instanceof Uint8Array ? v : failAt(at, i, `expected a Uint8Array, got ${describe(v)}`)
 
 /** Locates item `j` of lists laid out by `offsets` as its slot's location plus its index in the list. */
 const itemAt = (at: At, offsets: ArrayLike<number>): At => (j) => {
-  const i = slotOf(offsets, j)
+  const i = Values.slotOf(offsets, j)
   return [...at(i), j - offsets[i]]
 }
 
@@ -605,6 +550,9 @@ const buildType = (
   at: At
 ): ArrowData.ArrowData => {
   const n = values.length
+  /** An array of `type` with the validity of `values`. */
+  const array = (buffers: ReadonlyArray<Uint8Array>, children?: ReadonlyArray<ArrowData.ArrowData>) =>
+    data(type, n, validityOf(values), buffers, children)
   switch (type._tag) {
     case "Null": {
       const i = values.findIndex((v) => !isNull(v))
@@ -618,10 +566,10 @@ const buildType = (
         if (typeof v !== "boolean") failAt(at, i, `expected a boolean, got ${describe(v)}`)
         if (v) bits[i >> 3] |= 1 << (i & 7)
       })
-      return data(type, n, validityOf(values), [bits])
+      return array([bits])
     }
     case "Int":
-      return data(type, n, validityOf(values), [intBuffer(type, values, at)])
+      return array([intBuffer(type, values, at)])
     case "Float": {
       const check = (v: unknown, i: number) =>
         typeof v === "number" ? v : failAt(at, i, `expected a number, got ${describe(v)}`)
@@ -629,60 +577,54 @@ const buildType = (
         const out = new Uint8Array(n * 2)
         const view = new DataView(out.buffer)
         values.forEach((v, i) => !isNull(v) && (view as any).setFloat16(i * 2, check(v, i), true))
-        return data(type, n, validityOf(values), [out])
+        return array([out])
       }
       const a = type.bitWidth === 32 ? new Float32Array(n) : new Float64Array(n)
       values.forEach((v, i) => (a[i] = isNull(v) ? 0 : check(v, i)))
-      return data(type, n, validityOf(values), [asBytes(a)])
+      return array([asBytes(a)])
     }
     case "Decimal":
-      return data(type, n, validityOf(values), [decimalBuffer(type, values, at)])
-    case "Date":
-      return type.unit === "day"
-        ? data(type, n, validityOf(values), [
-          int32Buffer(values, (v, a, i) =>
-            DateTime.isDateTime(v)
-              ? BigInt(Math.floor(DateTime.toEpochMillis(v) / 86_400_000))
-              : toBigInt(v, a, i, "a DateTime or days since the epoch"), at)
-        ])
-        : data(type, n, validityOf(values), [
-          int64Buffer(values, (v, a, i) =>
-            DateTime.isDateTime(v)
-              ? BigInt(DateTime.toEpochMillis(v))
-              : toBigInt(v, a, i, "a DateTime or milliseconds since the epoch"), at)
-        ])
+      return array([decimalBuffer(type, values, at)])
+    case "Date": {
+      const day = type.unit === "day"
+      return array([
+        storedInts(day ? S.int32 : S.int64, values, (v, a, i) => {
+          if (!DateTime.isDateTime(v)) {
+            return toBigInt(v, a, i, `a DateTime or ${day ? "days" : "milliseconds"} since the epoch`)
+          }
+          const ms = DateTime.toEpochMillis(v)
+          return BigInt(day ? Math.floor(ms / 86_400_000) : ms)
+        }, at)
+      ])
+    }
     case "Timestamp":
-      return data(type, n, validityOf(values), [int64Buffer(values, (v, a, i) => instant(type.unit, v, a, i), at)])
-    case "Time":
-      return type.bitWidth === 32
-        ? data(type, n, validityOf(values), [
-          int32Buffer(values, (v, a, i) => toBigInt(v, a, i, "int32"), at)
-        ])
-        : data(type, n, validityOf(values), [int64Buffer(values, (v, a, i) => toBigInt(v, a, i, "int64"), at)])
+      return array([storedInts(S.int64, values, (v, a, i) => instant(type.unit, v, a, i), at)])
+    case "Time": {
+      const storage = type.bitWidth === 32 ? S.int32 : S.int64
+      return array([storedInts(storage, values, (v, a, i) => toBigInt(v, a, i, `int${type.bitWidth}`), at)])
+    }
     case "Duration":
-      return data(type, n, validityOf(values), [
-        int64Buffer(values, (v, a, i) => {
+      return array([
+        storedInts(S.int64, values, (v, a, i) => {
           if (Duration.isDuration(v)) {
             const nanos = Option.getOrUndefined(Duration.toNanos(v))
             if (nanos === undefined) return failAt(a, i, "infinite durations cannot be stored")
-            return floorDiv(nanos, unitNanos[type.unit])
+            return Values.floorDiv(nanos, Values.nanosPerUnit[type.unit])
           }
           return toBigInt(v, a, i, `a Duration or an integer in ${type.unit}s`)
         }, at)
       ])
     case "Interval":
-      return data(type, n, validityOf(values), [intervalBuffer(type, values, at)])
+      return array([intervalBuffer(type, values, at)])
     case "FixedSizeBinary": {
       const out = new Uint8Array(n * type.byteWidth)
       values.forEach((v, i) => {
         if (isNull(v)) return
-        if (!(v instanceof Uint8Array)) failAt(at, i, `expected a Uint8Array, got ${describe(v)}`)
-        if ((v as Uint8Array).length !== type.byteWidth) {
-          failAt(at, i, `expected ${type.byteWidth} bytes, got ${(v as Uint8Array).length}`)
-        }
-        out.set(v as Uint8Array, i * type.byteWidth)
+        const b = expectBytes(v, at, i)
+        if (b.length !== type.byteWidth) failAt(at, i, `expected ${type.byteWidth} bytes, got ${b.length}`)
+        out.set(b, i * type.byteWidth)
       })
-      return data(type, n, validityOf(values), [out])
+      return array([out])
     }
     case "Binary":
     case "LargeBinary":
@@ -694,16 +636,13 @@ const buildType = (
       const offsets = large ? new BigInt64Array(n + 1) : new Int32Array(n + 1)
       values.forEach((v, i) => {
         if (!isNull(v)) {
-          if (isString ? typeof v !== "string" : !(v instanceof Uint8Array)) {
-            failAt(at, i, `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
-          }
-          if (isString) bytes.pushString(v as string)
-          else bytes.push(v as Uint8Array)
+          if (isString) bytes.pushString(expectString(v, at, i))
+          else bytes.push(expectBytes(v, at, i))
         }
         if (!large && bytes.length > 2147483647) failAt(at, i, "more than 2 GiB of data needs a Large type")
         offsets[i + 1] = large ? BigInt(bytes.length) : bytes.length as never
       })
-      return data(type, n, validityOf(values), [asBytes(offsets), bytes.finish()])
+      return array([asBytes(offsets), bytes.finish()])
     }
     case "BinaryView":
     case "Utf8View": {
@@ -713,10 +652,7 @@ const buildType = (
       const bytes = new Bytes()
       values.forEach((v, i) => {
         if (isNull(v)) return
-        if (isString ? typeof v !== "string" : !(v instanceof Uint8Array)) {
-          failAt(at, i, `expected a ${isString ? "string" : "Uint8Array"}, got ${describe(v)}`)
-        }
-        const b = isString ? encoder.encode(v as string) : v as Uint8Array
+        const b = isString ? encoder.encode(expectString(v, at, i)) : expectBytes(v, at, i)
         view.setInt32(i * 16, b.length, true)
         if (b.length <= 12) {
           views.set(b, i * 16 + 4)
@@ -728,7 +664,7 @@ const buildType = (
         }
       })
       const data_ = bytes.finish()
-      return data(type, n, validityOf(values), data_.length > 0 ? [views, data_] : [views])
+      return array(data_.length > 0 ? [views, data_] : [views])
     }
     case "List":
     case "LargeList":
@@ -748,10 +684,10 @@ const buildType = (
             : Int32Array.from(a)
         )
       if (type._tag === "List" || type._tag === "LargeList") {
-        return data(type, n, validityOf(values), [ints(offsets)], [child])
+        return array([ints(offsets)], [child])
       }
       const sizes = offsets.subarray(1).map((end, i) => end - offsets[i])
-      return data(type, n, validityOf(values), [ints(offsets.subarray(0, n)), ints(sizes)], [child])
+      return array([ints(offsets.subarray(0, n)), ints(sizes)], [child])
     }
     case "FixedSizeList": {
       const items: Array<unknown> = []
@@ -772,7 +708,7 @@ const buildType = (
         (j) => [...at(Math.floor(j / size)), j % size],
         (j) => !isNull(values[Math.floor(j / size)])
       )
-      return data(type, n, validityOf(values), [], [child])
+      return array([], [child])
     }
     case "Struct": {
       const columns = type.fields.map((): Array<unknown> => new Array(n))
@@ -787,7 +723,7 @@ const buildType = (
       const children = type.fields.map((f, k) =>
         buildField(f, columns[k], options, memberAt(at, f.name), (i) => !isNull(values[i]))
       )
-      return data(type, n, validityOf(values), [], children)
+      return array([], children)
     }
     case "Map": {
       const entriesType = type.entries.type as S.Struct
@@ -814,7 +750,7 @@ const buildType = (
         buildField(keyField, keys, options, memberAt(entryAt, 0)),
         buildField(valueField, items, options, memberAt(entryAt, 1))
       ])
-      return data(type, n, validityOf(values), [asBytes(offsets)], [entries])
+      return array([asBytes(offsets)], [entries])
     }
     case "Union":
       return buildUnion(type, values, options, at)
@@ -859,19 +795,7 @@ const buildType = (
         }
         return index
       })
-      const indexBuffer = intBuffer(type.indexType, indices.map((x) => x ?? 0), at)
-      const placeholder: ArrowData.ArrowData = {
-        type: type.valueType,
-        length: 0,
-        offset: 0,
-        nullCount: 0,
-        validity: undefined,
-        buffers: [],
-        children: [],
-        dictionary: undefined
-      }
-      pending.set(placeholder, s)
-      return data(type, n, validityOf(values), [indexBuffer], [], placeholder)
+      return array([intBuffer(type.indexType, indices, at)])
     }
   }
 }

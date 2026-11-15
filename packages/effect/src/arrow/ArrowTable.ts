@@ -178,12 +178,7 @@ const rowsOf = (self: Table, options?: ArrowColumn.Options): Iterable<Record<str
     const names = fields.map((f) => f.name)
     return Values.iterate(self.batches.length, (b) => self.batches[b].length, (b) => {
       const batch = self.batches[b]
-      const readers = fields.map((f, c) => Values.reader(f, batch.columns[c], resolved))
-      return (i) => {
-        const row: Record<string, unknown> = {}
-        for (let c = 0; c < names.length; c++) Values.setProperty(row, names[c], readers[c](i))
-        return row
-      }
+      return Values.record(names, fields.map((f, c) => Values.reader(f, batch.columns[c], resolved)), 0)
     })
   }
 })

@@ -250,12 +250,10 @@ export const fromValues = (
 ): Result.Result<ArrowColumn, ArrowBuildError> => {
   try {
     Builders.checkType(field.type, [])
-    const session = Builders.session(Values.options(options))
-    const data = Builders.finish(
-      Builders.build(field, values, session, (i) => [i]),
-      session
-    )
-    return Result.succeed(make(field, [data], options))
+    const resolved = Values.options(options)
+    const session = Builders.session(resolved)
+    const data = Builders.finish(Builders.build(field, values, session, (i) => [i]), session)
+    return Result.succeed(new Column(field, [data], resolved))
   } catch (e) {
     if (e instanceof Builders.BuildFailure) {
       return Result.fail(new ArrowBuildError({ message: e.message, path: e.path }))
@@ -295,4 +293,4 @@ export const unionValue = <A>(typeId: number, value: A): UnionValue<A> => ({ _ta
  * @category guards
  * @since 4.1.5
  */
-export const isUnionValue = (u: unknown): u is UnionValue<unknown> => Predicate.isTagged(u, "UnionValue")
+export const isUnionValue: (u: unknown) => u is UnionValue<unknown> = Builders.isUnionValue

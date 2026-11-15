@@ -11,8 +11,9 @@ import * as InternalDateTime from "../../internal/dateTime.ts"
 import * as Option from "../../Option.ts"
 import type * as ArrowData from "../ArrowData.ts"
 import type * as ArrowExtension from "../ArrowExtension.ts"
-import type * as S from "../ArrowSchema.ts"
+import * as S from "../ArrowSchema.ts"
 import * as Buffers from "./buffers.ts"
+import * as Layout from "./layout.ts"
 
 /** @internal */
 export type Reader = (index: number) => unknown
@@ -125,6 +126,7 @@ const utc = (ms: number, raw: number | bigint): DateTime.Utc | number | bigint =
 /** A `DateTime.Zoned`, or `raw` (the stored integer) outside the range `DateTime` accepts. */
 const zoned = (ms: number, zone: DateTime.TimeZone, raw: bigint): DateTime.Zoned | bigint =>
   ms >= minZonedMillis && ms <= maxZonedMillis ? InternalDateTime.makeZonedProto(ms, zone) : raw
+
 const bigThousand = BigInt(1000)
 const bigMillion = BigInt(1_000_000)
 
@@ -135,18 +137,21 @@ const toMillis = (unit: S.TimeUnit, raw: bigint): number => {
       return Number(raw) * 1000
     case "millisecond":
       return Number(raw)
-    case "microsecond": {
-      const q = raw / bigThousand
-      return Number(raw < 0 && q * bigThousand !== raw ? q - BigInt(1) : q)
-    }
-    case "nanosecond": {
-      const q = raw / bigMillion
-      return Number(raw < 0 && q * bigMillion !== raw ? q - BigInt(1) : q)
-    }
+    case "microsecond":
+      return Number(floorDiv(raw, bigThousand))
+    case "nanosecond":
+      return Number(floorDiv(raw, bigMillion))
   }
 }
 
-const nanosPerUnit: Record<S.TimeUnit, bigint> = {
+/** `a / b` rounded toward negative infinity, for `b > 0`. @internal */
+export const floorDiv = (a: bigint, b: bigint): bigint => {
+  const q = a / b
+  return a < BigInt(0) && q * b !== a ? q - BigInt(1) : q
+}
+
+/** @internal */
+export const nanosPerUnit: Record<S.TimeUnit, bigint> = {
   second: BigInt(1_000_000_000),
   millisecond: BigInt(1_000_000),
   microsecond: BigInt(1000),
@@ -191,14 +196,25 @@ const dictionaryValues = new WeakMap<Options, WeakMap<ArrowData.ArrowData, Reado
  */
 export const reader = (field: S.Field, data: ArrowData.ArrowData, options: Options): Reader => {
   const plain = readerFor(field.type, data, options)
-  const extensionName = field.metadata.get("ARROW:extension:name")
-  const extension = extensionName === undefined ? undefined : options.extensions.get(extensionName)
-  if (extension === undefined) return plain
-  const metadata = field.metadata.get("ARROW:extension:metadata") ?? ""
+  const ext = extensionOf(field, options)
+  if (ext === undefined) return plain
+  const { extension, metadata } = ext
   return (i) => {
     const v = plain(i)
     return v === null ? null : extension.decode(v, metadata)
   }
+}
+
+/** The extension registered in `options` for `field`, with the field's extension metadata. @internal */
+export const extensionOf = (
+  field: S.Field,
+  options: Options
+): { readonly extension: ArrowExtension.ArrowExtension<any, any>; readonly metadata: string } | undefined => {
+  const name = field.metadata.get("ARROW:extension:name")
+  const extension = name === undefined ? undefined : options.extensions.get(name)
+  return extension === undefined
+    ? undefined
+    : { extension, metadata: field.metadata.get("ARROW:extension:metadata") ?? "" }
 }
 
 const withValidity = (data: ArrowData.ArrowData, read: Reader): Reader => {
@@ -306,13 +322,7 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
     case "LargeList": {
       const at = offsetsOf(buffers[0], type._tag === "LargeList")
       const item = reader(type.child, data.children[0], options)
-      return withValidity(data, (i) => {
-        const start = at(i + offset)
-        const end = at(i + offset + 1)
-        const out: Array<unknown> = new Array(end > start ? end - start : 0)
-        for (let k = start; k < end; k++) out[k - start] = item(k)
-        return out
-      })
+      return withValidity(data, (i) => items(item, at(i + offset), at(i + offset + 1)))
     }
     case "ListView":
     case "LargeListView": {
@@ -322,30 +332,18 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       const item = reader(type.child, data.children[0], options)
       return withValidity(data, (i) => {
         const start = at(i + offset)
-        const end = start + size(i + offset)
-        const out: Array<unknown> = []
-        for (let k = start; k < end; k++) out.push(item(k))
-        return out
+        return items(item, start, start + size(i + offset))
       })
     }
     case "FixedSizeList": {
       const n = type.listSize
       const item = reader(type.child, data.children[0], options)
-      return withValidity(data, (i) => {
-        const out: Array<unknown> = new Array(n)
-        const start = (i + offset) * n
-        for (let k = 0; k < n; k++) out[k] = item(start + k)
-        return out
-      })
+      return withValidity(data, (i) => items(item, (i + offset) * n, (i + offset + 1) * n))
     }
     case "Struct": {
       const names = type.fields.map((f) => f.name)
       const members = type.fields.map((f, k) => reader(f, data.children[k], options))
-      return withValidity(data, (i) => {
-        const out: Record<string, unknown> = {}
-        for (let k = 0; k < names.length; k++) setProperty(out, names[k], members[k](i + offset))
-        return out
-      })
+      return withValidity(data, record(names, members, offset))
     }
     case "Map": {
       const at = offsetsOf(buffers[0], false)
@@ -376,22 +374,12 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       const runEnd = intAsNumber(type.runEnds.type as S.Int, runs.buffers[0], runs.offset)
       const value = reader(type.values, data.children[1], options)
       const n = runs.length
-      return (i) => {
-        const logical = i + offset
-        let lo = 0
-        let hi = n - 1
-        while (lo < hi) {
-          const mid = (lo + hi) >>> 1
-          if (runEnd(mid) <= logical) lo = mid + 1
-          else hi = mid
-        }
-        return value(lo)
-      }
+      return (i) => value(Layout.runOf(runEnd, n, i + offset))
     }
     case "Dictionary": {
       const dictionary = data.dictionary!
       const index = intAsNumber(type.indexType, buffers[0], offset)
-      const valueField: S.Field = { name: "", type: type.valueType, nullable: true, metadata: new Map() }
+      const valueField = S.field("", type.valueType)
       let cache = dictionaryValues.get(options)
       if (cache === undefined) dictionaryValues.set(options, cache = new WeakMap())
       const byDictionary = cache
@@ -410,6 +398,34 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       return withValidity(data, (i) => (values ?? resolve())[index(i)])
     }
   }
+}
+
+/** Items `start` (inclusive) to `end` (exclusive) through `item`. */
+const items = (item: Reader, start: number, end: number): Array<unknown> => {
+  const out = new Array(end > start ? end - start : 0)
+  for (let k = start; k < end; k++) out[k - start] = item(k)
+  return out
+}
+
+/** Reads slot `i` as an object with `names[k]` set to `members[k](i + offset)`. @internal */
+export const record =
+  (names: ReadonlyArray<string>, members: ReadonlyArray<Reader>, offset: number) =>
+  (i: number): Record<string, unknown> => {
+    const out: Record<string, unknown> = {}
+    for (let k = 0; k < names.length; k++) setProperty(out, names[k], members[k](i + offset))
+    return out
+  }
+
+/** The index `i` with `starts[i] <= x < starts[i + 1]` (the last one when several match). @internal */
+export const slotOf = (starts: ArrayLike<number>, x: number): number => {
+  let lo = 0
+  let hi = starts.length - 2
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1
+    if (starts[mid] <= x) lo = mid
+    else hi = mid - 1
+  }
+  return lo
 }
 
 /**

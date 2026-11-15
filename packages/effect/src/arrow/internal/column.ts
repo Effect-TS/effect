@@ -14,6 +14,7 @@ export class Column implements Iterable<unknown> {
   readonly chunks: ReadonlyArray<ArrowData.ArrowData>
   readonly length: number
   private readonly options: Values.Options
+  /** Where each chunk starts, then the total length. */
   private readonly starts: Array<number>
   private readonly readers: Array<Values.Reader | undefined>
 
@@ -21,13 +22,9 @@ export class Column implements Iterable<unknown> {
     this.field = field
     this.chunks = chunks
     this.options = options
-    this.starts = []
-    let length = 0
-    for (const chunk of chunks) {
-      this.starts.push(length)
-      length += chunk.length
-    }
-    this.length = length
+    this.starts = [0]
+    for (const chunk of chunks) this.starts.push(this.starts[this.starts.length - 1] + chunk.length)
+    this.length = this.starts[chunks.length]
     this.readers = new Array(chunks.length)
   }
 
@@ -37,15 +34,8 @@ export class Column implements Iterable<unknown> {
 
   /** The value at `index`, assuming `0 <= index < length`. */
   read(index: number): unknown {
-    const starts = this.starts
-    let lo = 0
-    let hi = starts.length - 1
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >>> 1
-      if (starts[mid] <= index) lo = mid
-      else hi = mid - 1
-    }
-    return this.readerAt(lo)(index - starts[lo])
+    const chunk = Values.slotOf(this.starts, index)
+    return this.readerAt(chunk)(index - this.starts[chunk])
   }
 
   [Symbol.iterator](): Iterator<unknown> {

@@ -165,8 +165,8 @@ export const slice = (data: ArrowData.ArrowData, start: number, end: number): Ar
 // Normalising
 // -----------------------------------------------------------------------------
 
-/** The run index holding logical slot `i` (first run whose end is past `i`). */
-const runOf = (ends: (r: number) => number, runs: number, i: number): number => {
+/** The run index holding logical slot `i` (first run whose end is past `i`). @internal */
+export const runOf = (ends: (r: number) => number, runs: number, i: number): number => {
   let lo = 0
   let hi = runs - 1
   while (lo < hi) {
