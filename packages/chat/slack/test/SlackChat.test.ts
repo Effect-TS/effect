@@ -502,9 +502,10 @@ describe("reads", () => {
         yield* checkMessage(message, checkOptions)
         assert.deepStrictEqual(message.thread, channelThread)
         assert.strictEqual(message.mentions.length, 2)
-        // Both bounds at the message, inclusive, or Slack leaves the message out.
-        const { latest, oldest, inclusive } = fake.called("conversations.replies")[0].params
-        assert.deepStrictEqual({ latest, oldest, inclusive }, {
+        // The thread's channel, with both bounds at the message, inclusive, or Slack leaves the message out.
+        const { channel: requested, latest, oldest, inclusive } = fake.called("conversations.replies")[0].params
+        assert.deepStrictEqual({ channel: requested, latest, oldest, inclusive }, {
+          channel,
           latest: "1794509003.143939",
           oldest: "1794509003.143939",
           inclusive: "true"
