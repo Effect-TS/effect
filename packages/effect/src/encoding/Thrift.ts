@@ -141,10 +141,17 @@ const fail = (kind: ThriftError["kind"], message: string): never => {
   throw new ThriftError({ kind, message })
 }
 
-const integerOption = (name: string, value: number | undefined, min: number, fallback: number): number => {
+const integerOption = (
+  name: string,
+  value: number | undefined,
+  min: number,
+  fallback: number,
+  max = Infinity
+): number => {
   if (value === undefined) return fallback
-  if (!Number.isInteger(value) || value < min) {
-    fail("Usage", `${name} must be an integer of at least ${min}, got ${value}`)
+  if (!Number.isInteger(value) || value < min || value > max) {
+    const range = max === Infinity ? `of at least ${min}` : `from ${min} to ${max}`
+    fail("Usage", `${name} must be an integer ${range}, got ${value}`)
   }
   return value
 }
@@ -264,12 +271,6 @@ export interface Field {
  * Limits for reading untrusted input. A value that isn't an integer in range
  * throws a {@link ThriftError} of kind `Usage`.
  *
- * **Gotchas**
- *
- * {@link Reader.skip} and {@link Reader.readValue} recurse, so a `maxDepth`
- * in the thousands can overflow the stack, which throws a `RangeError`
- * instead of a {@link ThriftError}.
- *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -278,8 +279,8 @@ export interface ReaderOptions {
   /**
    * How deep structs and containers may nest, counting each struct and each
    * container entered by {@link Reader.readStructBegin},
-   * {@link Reader.skip} or {@link Reader.readValue}. A positive integer;
-   * defaults to 64.
+   * {@link Reader.skip} or {@link Reader.readValue}. An integer from 1 to
+   * 1000, which keeps their recursion within the stack; defaults to 64.
    */
   readonly maxDepth?: number | undefined
   /** The longest binary or string value, in bytes: a non-negative integer. No limit by default. */
@@ -356,7 +357,7 @@ export class Reader {
     this.bytes = bytes
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     this.end = bytes.length
-    this.maxDepth = integerOption("maxDepth", options?.maxDepth, 1, 64)
+    this.maxDepth = integerOption("maxDepth", options?.maxDepth, 1, 64, 1000)
     this.maxBinaryLength = integerOption("maxBinaryLength", options?.maxBinaryLength, 0, Infinity)
     this.maxContainerSize = integerOption("maxContainerSize", options?.maxContainerSize, 0, Infinity)
   }

@@ -292,7 +292,7 @@ describe("Thrift", () => {
       it(`fails on ${name}`, () => assert.strictEqual(kindOf(Thrift.decode(fromHex(hex), read, options)), kind))
     }
 
-    it("limits nesting to 64 by default", () => {
+    it("limits nesting to 64 by default and 1000 at most", () => {
       const nest = (depth: number): Thrift.Value => {
         let v: Thrift.Value = { _tag: "Struct", fields: [] }
         for (let i = 1; i < depth; i++) v = { _tag: "Struct", fields: [{ id: 1, value: v }] }
@@ -302,6 +302,7 @@ describe("Thrift", () => {
       assert.isTrue(Result.isSuccess(readAll(bytesOf(64), "Struct")))
       assert.strictEqual(kindOf(readAll(bytesOf(65), "Struct")), "Limit")
       assert.strictEqual(kindOf(Thrift.decode(bytesOf(65), (r) => r.skip(Thrift.Type.Struct))), "Limit")
+      assert.strictEqual(kindOf(readAll(bytesOf(1001), "Struct", { maxDepth: 1000 })), "Limit")
     })
 
     it("fails every truncated gold case with Truncated", () => {
@@ -346,6 +347,7 @@ describe("Thrift", () => {
           { maxDepth: NaN },
           { maxDepth: 0 },
           { maxDepth: 1.5 },
+          { maxDepth: 1001 },
           { maxBinaryLength: -1 },
           { maxBinaryLength: NaN },
           { maxContainerSize: Infinity }
