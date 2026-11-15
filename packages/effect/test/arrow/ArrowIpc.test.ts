@@ -1,8 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
 import { BigDecimal, DateTime, Duration, Effect, Option, Result, Stream } from "effect"
-import type { ArrowData } from "effect/arrow"
-import { ArrowColumn, ArrowIpc, ArrowSchema as S, ArrowTable } from "effect/arrow"
+import { ArrowColumn, ArrowData, ArrowIpc, ArrowSchema as S, ArrowTable } from "effect/arrow"
 import { FlatBuffers } from "effect/encoding"
 import { readFileSync } from "node:fs"
 
@@ -286,22 +285,15 @@ describe("ArrowIpc", () => {
     // Pre-V5 unions had a validity bitmap; V5, which the writer emits, has none
     const type = S.union("sparse", [S.field("i", S.int32)])
     const schema = S.make([S.field("u", type)])
-    const data = (
-      type: S.DataType,
-      buffers: Array<Uint8Array>,
-      children: Array<ArrowData.ArrowData>,
-      validity?: Uint8Array
-    ) => ({
+    const child = ArrowData.make({ type: S.int32, length: 1, buffers: [bytes(99, 0, 0, 0)] })
+    const union = ArrowData.make({
       type,
       length: 1,
-      offset: 0,
-      nullCount: validity === undefined ? 0 : 1,
-      validity,
-      buffers,
-      children,
-      dictionary: undefined
+      nullCount: 1,
+      validity: bytes(0),
+      buffers: [bytes(0)],
+      children: [child]
     })
-    const union = data(type, [bytes(0)], [data(S.int32, [bytes(99, 0, 0, 0)], [])], bytes(0))
     const table = ArrowTable.make(schema, [ArrowTable.recordBatch(schema, 1, [union])])
     assert.deepStrictEqual(ArrowTable.toRows(table), [{ u: null }])
     assertIpcError(ArrowIpc.encodeStream(table), "Unsupported")

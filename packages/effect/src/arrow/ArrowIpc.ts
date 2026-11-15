@@ -9,8 +9,7 @@
  *   then an end-of-stream marker. A file wraps the same messages in `ARROW1`
  *   magic bytes and adds a footer that indexes them.
  * - Decoding returns a {@link ArrowTable.Table} whose buffers are views into
- *   the input bytes; nothing is copied. The table sees any later write to the
- *   input, so don't mutate the input while you use the table.
+ *   the input bytes. Don't mutate the input while you use the table.
  * - Decoding validates the input fully (offsets, indices, views, buffer
  *   sizes), so any slot of the result can be read safely.
  *
@@ -173,13 +172,21 @@ export const encodeStream = (table: ArrowTable.Table): Result.Result<Uint8Array,
 export const encodeFile = (table: ArrowTable.Table): Result.Result<Uint8Array, ArrowIpcError> =>
   run(() => internal.encodeFile(table))
 
-/** Runs `f`, turning IPC failures into a failed effect. */
-const attempt = <A>(f: () => A): Effect.Effect<A, ArrowIpcError> => {
+/**
+ * Runs `write` on a fresh array: emits it when non-empty, continues with
+ * `next` when empty, and turns IPC failures into a failed pull.
+ */
+const emit = <A, E, Done>(
+  write: (out: Array<A>) => void,
+  next: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, Done>
+): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, ArrowIpcError | E, Done> => {
+  const out: Array<A> = []
   try {
-    return Effect.succeed(f())
+    write(out)
   } catch (e) {
     return e instanceof IpcFailure ? Effect.fail(toError(e)) : Effect.die(e)
   }
+  return Arr.isArrayNonEmpty(out) ? Effect.succeed(out) : next
 }
 
 /**
@@ -230,27 +237,22 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
   Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
       const decoder = new internal.StreamDecoder()
-      let done: { readonly leftover: Done } | undefined
+      let done: Pull.Pull<never, never, Done> | undefined
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<ArrowTable.RecordBatch>, ArrowIpcError | IE, Done> = Effect
         .suspend(() => {
-          if (done !== undefined) return Cause.done(done.leftover)
+          if (done !== undefined) return done
           return Pull.matchEffect(upstream, {
             onSuccess: (chunks) =>
-              Effect.flatMap(
-                attempt(() => {
-                  const out: Array<ArrowTable.RecordBatch> = []
-                  for (const chunk of chunks) {
-                    decoder.push(chunk)
-                    decoder.drain(out)
-                  }
-                  return out
-                }),
-                (out) => Arr.isArrayNonEmpty(out) ? Effect.succeed(out) : pull
-              ),
+              emit((out) => {
+                for (const chunk of chunks) {
+                  decoder.push(chunk)
+                  decoder.drain(out)
+                }
+              }, pull),
             onFailure: Effect.failCause,
             onDone: (leftover) => {
-              done = { leftover }
-              return Effect.flatMap(attempt(() => decoder.finish()), () => Cause.done(leftover))
+              done = Cause.done(leftover)
+              return emit(() => decoder.finish(), pull)
             }
           })
         })
@@ -304,31 +306,21 @@ export const encode = <IE = never, Done = unknown>(schema: ArrowSchema.Schema): 
   Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
       const encoder = new internal.StreamEncoder(schema)
-      let done: { readonly leftover: Done } | undefined
-      type Out = Arr.NonEmptyReadonlyArray<Uint8Array>
-      const pull: Pull.Pull<Out, ArrowIpcError | IE, Done> = Effect.suspend(
-        (): Pull.Pull<Out, ArrowIpcError | IE, Done> => {
-          if (done !== undefined) return Cause.done(done.leftover)
-          return Pull.matchEffect(upstream, {
-            // Every write emits at least the batch message, so `out` is never empty.
-            onSuccess: (batches) =>
-              attempt(() => {
-                const out: Array<Uint8Array> = []
-                for (const batch of batches) encoder.write(batch, out)
-                return out as unknown as Out
-              }),
-            onFailure: Effect.failCause,
-            onDone: (leftover) => {
-              done = { leftover }
-              return attempt(() => {
-                const out: Array<Uint8Array> = []
-                encoder.end(out)
-                return out as unknown as Out
-              })
-            }
-          })
-        }
-      )
+      let done: Pull.Pull<never, never, Done> | undefined
+      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, ArrowIpcError | IE, Done> = Effect.suspend(() => {
+        if (done !== undefined) return done
+        return Pull.matchEffect(upstream, {
+          onSuccess: (batches) =>
+            emit((out) => {
+              for (const batch of batches) encoder.write(batch, out)
+            }, pull),
+          onFailure: Effect.failCause,
+          onDone: (leftover) => {
+            done = Cause.done(leftover)
+            return emit((out) => encoder.end(out), pull)
+          }
+        })
+      })
       return pull
     })
   )

@@ -10,8 +10,8 @@ import * as Result from "../../Result.ts"
 import type * as S from "../ArrowSchema.ts"
 import * as Layout from "./layout.ts"
 
-/** Why IPC input or a table was declined. @internal */
-export type Kind = "BigEndian" | "Compression" | "Invalid" | "Unsupported"
+/** Why IPC input or a table was declined. */
+type Kind = "BigEndian" | "Compression" | "Invalid" | "Unsupported"
 
 /** @internal */
 export class IpcFailure extends Error {
@@ -25,8 +25,7 @@ export class IpcFailure extends Error {
 /** @internal */
 export const MetadataVersion = { V1: 0, V2: 1, V3: 2, V4: 3, V5: 4 } as const
 
-/** @internal */
-export const MessageHeader = {
+const MessageHeader = {
   None: 0,
   Schema: 1,
   DictionaryBatch: 2,
@@ -35,8 +34,8 @@ export const MessageHeader = {
   SparseTensor: 5
 } as const
 
-/** Schema.fbs `union Type` indices. @internal */
-export const TypeId = {
+/** Schema.fbs `union Type` indices. */
+const TypeId = {
   Null: 1,
   Int: 2,
   FloatingPoint: 3,
@@ -69,12 +68,13 @@ const timeUnits: ReadonlyArray<S.TimeUnit> = ["second", "millisecond", "microsec
 const dateUnits: ReadonlyArray<S.DateUnit> = ["day", "millisecond"]
 const intervalUnits: ReadonlyArray<S.IntervalUnit> = ["yearMonth", "dayTime", "monthDayNano"]
 
-const fail = (message: string): never => {
+/** Throws an `Invalid` failure. Annotated so that calls narrow like `throw`. @internal */
+export const invalid: (message: string) => never = (message) => {
   throw new IpcFailure("Invalid", message)
 }
 
 const enumValue = <A>(values: ReadonlyArray<A>, n: number, what: string): A =>
-  n >= 0 && n < values.length ? values[n] : fail(`unknown ${what} ${n}`)
+  n >= 0 && n < values.length ? values[n] : invalid(`unknown ${what} ${n}`)
 
 // -----------------------------------------------------------------------------
 // Decoded structures
@@ -168,7 +168,7 @@ interface Budget {
 
 const spend = (budget: Budget, cost: number): void => {
   budget.remaining -= cost
-  if (budget.remaining < 0) fail("metadata refers to the same tables or strings too many times")
+  if (budget.remaining < 0) invalid("metadata refers to the same tables or strings too many times")
 }
 
 const stringOf = (budget: Budget, table: Fb.Table, slot: number): string | undefined => {
@@ -195,22 +195,25 @@ const decodeFlatBuffer = <A>(bytes: Uint8Array, what: string, read: (table: Fb.T
 const int53 = (n: bigint, what: string): number =>
   n >= BigInt(Number.MIN_SAFE_INTEGER) && n <= BigInt(Number.MAX_SAFE_INTEGER)
     ? Number(n)
-    : fail(`${what} ${n} is out of the safe integer range`)
+    : invalid(`${what} ${n} is out of the safe integer range`)
 
-const tables = (table: Fb.Table, slot: number): Array<Fb.Table> => {
-  const v = table.vector(slot, 4)
-  return v === undefined ? [] : Array.from({ length: v.length }, (_, i) => v.table(i))
+/** A vector of `size`-byte items read with `read`, or `undefined` when absent. */
+const vectorOf = <A>(
+  table: Fb.Table,
+  slot: number,
+  size: number,
+  read: (v: Fb.Vector, i: number) => A
+): Array<A> | undefined => {
+  const v = table.vector(slot, size)
+  return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => read(v, i))
 }
 
-const int32s = (table: Fb.Table, slot: number): Array<number> | undefined => {
-  const v = table.vector(slot, 4)
-  return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => v.int32(i))
-}
+const tables = (table: Fb.Table, slot: number): Array<Fb.Table> => vectorOf(table, slot, 4, (v, i) => v.table(i)) ?? []
 
-const int64s = (table: Fb.Table, slot: number, what: string): Array<number> | undefined => {
-  const v = table.vector(slot, 8)
-  return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => int53(v.int64(i), what))
-}
+const int32s = (table: Fb.Table, slot: number) => vectorOf(table, slot, 4, (v, i) => v.int32(i))
+
+const int64s = (table: Fb.Table, slot: number, what: string) =>
+  vectorOf(table, slot, 8, (v, i) => int53(v.int64(i), what))
 
 const metadataOf = (table: Fb.Table, slot: number, budget: Budget): ReadonlyMap<string, string> => {
   const out = new Map<string, string>()
@@ -222,14 +225,16 @@ const metadataOf = (table: Fb.Table, slot: number, budget: Budget): ReadonlyMap<
 }
 
 const intType = (t: Fb.Table | undefined): S.Int => {
-  if (t === undefined) return fail("missing Int table")
+  if (t === undefined) return invalid("missing Int table")
   const bitWidth = t.int32(0)
-  if (bitWidth !== 8 && bitWidth !== 16 && bitWidth !== 32 && bitWidth !== 64) fail(`invalid int bit width ${bitWidth}`)
-  return { _tag: "Int", bitWidth: bitWidth as S.Int["bitWidth"], signed: t.bool(1) }
+  if (bitWidth !== 8 && bitWidth !== 16 && bitWidth !== 32 && bitWidth !== 64) {
+    invalid(`invalid int bit width ${bitWidth}`)
+  }
+  return { _tag: "Int", bitWidth, signed: t.bool(1) }
 }
 
 const one = (children: ReadonlyArray<S.Field>, what: string): S.Field =>
-  children.length === 1 ? children[0] : fail(`${what} needs exactly one child, got ${children.length}`)
+  children.length === 1 ? children[0] : invalid(`${what} needs exactly one child, got ${children.length}`)
 
 const decodeType = (
   typeId: number,
@@ -237,7 +242,7 @@ const decodeType = (
   children: ReadonlyArray<S.Field>,
   budget: Budget
 ): S.DataType => {
-  const table = () => t ?? fail(`missing type table for type ${typeId}`)
+  const table = () => t ?? invalid(`missing type table for type ${typeId}`)
   switch (typeId) {
     case TypeId.Null:
       return { _tag: "Null" }
@@ -251,7 +256,7 @@ const decodeType = (
         ? 32
         : precision === 2
         ? 64
-        : fail(`invalid precision ${precision}`)
+        : invalid(`invalid precision ${precision}`)
       return { _tag: "Float", bitWidth }
     }
     case TypeId.Binary:
@@ -264,9 +269,9 @@ const decodeType = (
       const d = table()
       const bitWidth = d.int32(2, 128)
       if (bitWidth !== 32 && bitWidth !== 64 && bitWidth !== 128 && bitWidth !== 256) {
-        fail(`invalid decimal bit width ${bitWidth}`)
+        invalid(`invalid decimal bit width ${bitWidth}`)
       }
-      return { _tag: "Decimal", precision: d.int32(0), scale: d.int32(1), bitWidth: bitWidth as S.Decimal["bitWidth"] }
+      return { _tag: "Decimal", precision: d.int32(0), scale: d.int32(1), bitWidth }
     }
     case TypeId.Date:
       return { _tag: "Date", unit: enumValue(dateUnits, table().int16(0, 1), "date unit") }
@@ -275,7 +280,7 @@ const decodeType = (
       const unit = enumValue(timeUnits, tt.int16(0, 1), "time unit")
       const bitWidth = tt.int32(1, 32)
       const expected = unit === "second" || unit === "millisecond" ? 32 : 64
-      if (bitWidth !== expected) fail(`time ${unit} needs bit width ${expected}, got ${bitWidth}`)
+      if (bitWidth !== expected) invalid(`time ${unit} needs bit width ${expected}, got ${bitWidth}`)
       return { _tag: "Time", unit, bitWidth: expected }
     }
     case TypeId.Timestamp: {
@@ -292,25 +297,25 @@ const decodeType = (
     case TypeId.Union: {
       const u = table()
       const mode = u.int16(0)
-      if (mode !== 0 && mode !== 1) fail(`invalid union mode ${mode}`)
+      if (mode !== 0 && mode !== 1) invalid(`invalid union mode ${mode}`)
       const typeIds = int32s(u, 1) ?? children.map((_, i) => i)
-      Layout.checkUnionTypeIds(typeIds, children.length, fail)
+      Layout.checkUnionTypeIds(typeIds, children.length, invalid)
       return { _tag: "Union", mode: mode === 0 ? "sparse" : "dense", fields: children, typeIds }
     }
     case TypeId.FixedSizeBinary: {
       const byteWidth = table().int32(0)
-      if (byteWidth < 0) fail(`invalid byte width ${byteWidth}`)
+      if (byteWidth < 0) invalid(`invalid byte width ${byteWidth}`)
       return { _tag: "FixedSizeBinary", byteWidth }
     }
     case TypeId.FixedSizeList: {
       const listSize = table().int32(0)
-      if (listSize < 0) fail(`invalid list size ${listSize}`)
+      if (listSize < 0) invalid(`invalid list size ${listSize}`)
       return { _tag: "FixedSizeList", child: one(children, "FixedSizeList"), listSize }
     }
     case TypeId.Map: {
       const entries = one(children, "Map")
       if (entries.type._tag !== "Struct" || entries.type.fields.length !== 2) {
-        fail("Map entries must be a struct of two fields")
+        invalid("Map entries must be a struct of two fields")
       }
       return { _tag: "Map", entries, keysSorted: table().bool(0) }
     }
@@ -323,10 +328,10 @@ const decodeType = (
     case TypeId.LargeList:
       return { _tag: "LargeList", child: one(children, "LargeList") }
     case TypeId.RunEndEncoded: {
-      if (children.length !== 2) fail(`RunEndEncoded needs two children, got ${children.length}`)
+      if (children.length !== 2) invalid(`RunEndEncoded needs two children, got ${children.length}`)
       const runEnds = children[0].type
       if (runEnds._tag !== "Int" || !runEnds.signed || runEnds.bitWidth === 8) {
-        fail("run ends must be int16, int32 or int64")
+        invalid("run ends must be int16, int32 or int64")
       }
       return { _tag: "RunEndEncoded", runEnds: children[0], values: children[1] }
     }
@@ -339,12 +344,12 @@ const decodeType = (
     case TypeId.LargeListView:
       return { _tag: "LargeListView", child: one(children, "LargeListView") }
     default:
-      return fail(`unknown type id ${typeId}`)
+      return invalid(`unknown type id ${typeId}`)
   }
 }
 
 const decodeField = (t: Fb.Table, depth: number, budget: Budget): S.Field => {
-  if (depth > maxDepth) fail(`fields nested deeper than ${maxDepth}`)
+  if (depth > maxDepth) invalid(`fields nested deeper than ${maxDepth}`)
   spend(budget, 1)
   const children = tables(t, 5).map((c) => decodeField(c, depth + 1, budget))
   let type = decodeType(t.uint8(2), t.table(3), children, budget)
@@ -370,11 +375,8 @@ const decodeSchema = (t: Fb.Table, budget: Budget): SchemaMessage => {
   }
 }
 
-/** A vector of structs of `size` bytes, read with `read`. */
-const structs = <A>(table: Fb.Table, slot: number, size: number, read: (s: Fb.Struct) => A): Array<A> => {
-  const v = table.vector(slot, size)
-  return v === undefined ? [] : Array.from({ length: v.length }, (_, i) => read(v.struct(i)))
-}
+const structs = <A>(table: Fb.Table, slot: number, size: number, read: (s: Fb.Struct) => A): Array<A> =>
+  vectorOf(table, slot, size, (v, i) => read(v.struct(i))) ?? []
 
 const decodeRecordBatch = (t: Fb.Table): RecordBatchMessage => {
   const nodes = structs(t, 1, 16, (s): FieldNode => ({
@@ -389,7 +391,7 @@ const decodeRecordBatch = (t: Fb.Table): RecordBatchMessage => {
   let codec: RecordBatchMessage["compression"]
   if (compression !== undefined) {
     const c = compression.uint8(0)
-    codec = c === 0 ? "lz4Frame" : c === 1 ? "zstd" : fail(`unknown compression codec ${c}`)
+    codec = c === 0 ? "lz4Frame" : c === 1 ? "zstd" : invalid(`unknown compression codec ${c}`)
   }
   return {
     _tag: "RecordBatch",
@@ -407,17 +409,17 @@ const messageOf = (t: Fb.Table, budget: Budget): Message => {
   let header: Message["header"]
   switch (headerType) {
     case MessageHeader.Schema:
-      header = decodeSchema(headerTable ?? fail("missing Schema header"), budget)
+      header = decodeSchema(headerTable ?? invalid("missing Schema header"), budget)
       break
     case MessageHeader.RecordBatch:
-      header = decodeRecordBatch(headerTable ?? fail("missing RecordBatch header"))
+      header = decodeRecordBatch(headerTable ?? invalid("missing RecordBatch header"))
       break
     case MessageHeader.DictionaryBatch: {
-      const d = headerTable ?? fail("missing DictionaryBatch header")
+      const d = headerTable ?? invalid("missing DictionaryBatch header")
       header = {
         _tag: "DictionaryBatch",
         id: int53(d.int64(0), "dictionary id"),
-        data: decodeRecordBatch(d.table(1) ?? fail("missing dictionary data")),
+        data: decodeRecordBatch(d.table(1) ?? invalid("missing dictionary data")),
         isDelta: d.bool(2)
       }
       break
@@ -445,7 +447,7 @@ const footerOf = (t: Fb.Table, budget: Budget): Footer => {
     }))
   return {
     version: t.int16(0),
-    schema: decodeSchema(t.table(1) ?? fail("footer without schema"), budget),
+    schema: decodeSchema(t.table(1) ?? invalid("footer without schema"), budget),
     dictionaries: blocks(2),
     recordBatches: blocks(3),
     metadata: metadataOf(t, 4, budget)
@@ -480,97 +482,88 @@ const encodeInt = (b: Fb.Builder, t: S.Int): Fb.Offset => {
   return b.endTable()
 }
 
-const emptyTable = (b: Fb.Builder): Fb.Offset => {
-  b.startTable(0)
-  return b.endTable()
-}
+/** The Schema.fbs `union Type` index of `type` (a dictionary's is its value type's). */
+const typeIdOf = (type: S.DataType): number =>
+  type._tag === "Dictionary"
+    ? typeIdOf(type.valueType)
+    : type._tag === "Float"
+    ? TypeId.FloatingPoint
+    : TypeId[type._tag]
 
-/** Writes the type table and returns `[typeId, offset]`. */
-const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, Fb.Offset] => {
+/** Writes the type table of `type` (a dictionary's is its value type's). */
+const encodeType = (b: Fb.Builder, type: S.DataType): Fb.Offset => {
   switch (type._tag) {
     case "Null":
-      return [TypeId.Null, emptyTable(b)]
+    case "Binary":
+    case "Utf8":
+    case "Bool":
+    case "LargeBinary":
+    case "BinaryView":
+    case "LargeUtf8":
+    case "Utf8View":
+    case "List":
+    case "LargeList":
+    case "ListView":
+    case "LargeListView":
+    case "Struct":
+    case "RunEndEncoded":
+      b.startTable(0)
+      return b.endTable()
     case "Int":
-      return [TypeId.Int, encodeInt(b, type)]
+      return encodeInt(b, type)
     case "Float":
       b.startTable(1)
       b.addFieldInt16(0, type.bitWidth === 16 ? 0 : type.bitWidth === 32 ? 1 : 2)
-      return [TypeId.FloatingPoint, b.endTable()]
-    case "Binary":
-      return [TypeId.Binary, emptyTable(b)]
-    case "Utf8":
-      return [TypeId.Utf8, emptyTable(b)]
-    case "Bool":
-      return [TypeId.Bool, emptyTable(b)]
+      return b.endTable()
     case "Decimal":
       b.startTable(3)
       b.addFieldInt32(0, type.precision)
       b.addFieldInt32(1, type.scale)
       b.addFieldInt32(2, type.bitWidth, 128)
-      return [TypeId.Decimal, b.endTable()]
+      return b.endTable()
     case "Date":
       b.startTable(1)
       b.addFieldInt16(0, dateUnits.indexOf(type.unit), 1)
-      return [TypeId.Date, b.endTable()]
+      return b.endTable()
     case "Time":
       b.startTable(2)
       b.addFieldInt16(0, timeUnits.indexOf(type.unit), 1)
       b.addFieldInt32(1, type.bitWidth, 32)
-      return [TypeId.Time, b.endTable()]
+      return b.endTable()
     case "Timestamp": {
       const tz = type.timezone === undefined ? 0 : b.createString(type.timezone)
       b.startTable(2)
       b.addFieldInt16(0, timeUnits.indexOf(type.unit))
       b.addFieldOffset(1, tz)
-      return [TypeId.Timestamp, b.endTable()]
+      return b.endTable()
     }
     case "Duration":
       b.startTable(1)
       b.addFieldInt16(0, timeUnits.indexOf(type.unit), 1)
-      return [TypeId.Duration, b.endTable()]
+      return b.endTable()
     case "Interval":
       b.startTable(1)
       b.addFieldInt16(0, intervalUnits.indexOf(type.unit))
-      return [TypeId.Interval, b.endTable()]
-    case "LargeBinary":
-      return [TypeId.LargeBinary, emptyTable(b)]
-    case "BinaryView":
-      return [TypeId.BinaryView, emptyTable(b)]
+      return b.endTable()
     case "FixedSizeBinary":
       b.startTable(1)
       b.addFieldInt32(0, type.byteWidth)
-      return [TypeId.FixedSizeBinary, b.endTable()]
-    case "LargeUtf8":
-      return [TypeId.LargeUtf8, emptyTable(b)]
-    case "Utf8View":
-      return [TypeId.Utf8View, emptyTable(b)]
-    case "List":
-      return [TypeId.List, emptyTable(b)]
-    case "LargeList":
-      return [TypeId.LargeList, emptyTable(b)]
-    case "ListView":
-      return [TypeId.ListView, emptyTable(b)]
-    case "LargeListView":
-      return [TypeId.LargeListView, emptyTable(b)]
+      return b.endTable()
     case "FixedSizeList":
       b.startTable(1)
       b.addFieldInt32(0, type.listSize)
-      return [TypeId.FixedSizeList, b.endTable()]
-    case "Struct":
-      return [TypeId.Struct, emptyTable(b)]
+      return b.endTable()
     case "Map":
       b.startTable(1)
       b.addFieldBool(0, type.keysSorted)
-      return [TypeId.Map, b.endTable()]
+      return b.endTable()
     case "Union": {
       const typeIds = createVector(b, type.typeIds, 4, (id) => b.addInt32(id))
       b.startTable(2)
       b.addFieldInt16(0, type.mode === "sparse" ? 0 : 1)
       b.addFieldOffset(1, typeIds)
-      return [TypeId.Union, b.endTable()]
+      return b.endTable()
     }
-    case "RunEndEncoded":
-      return [TypeId.RunEndEncoded, emptyTable(b)]
     case "Dictionary":
       return encodeType(b, type.valueType)
   }
@@ -601,7 +594,7 @@ export const childFields = (type: S.DataType): ReadonlyArray<S.Field> => {
 
 const encodeField = (b: Fb.Builder, field: S.Field): Fb.Offset => {
   const name = b.createString(field.name)
-  const [typeId, typeOffset] = encodeType(b, field.type)
+  const typeOffset = encodeType(b, field.type)
   let dictionary = 0
   if (field.type._tag === "Dictionary") {
     const indexType = encodeInt(b, field.type.indexType)
@@ -616,7 +609,7 @@ const encodeField = (b: Fb.Builder, field: S.Field): Fb.Offset => {
   b.startTable(7)
   b.addFieldOffset(0, name)
   b.addFieldBool(1, field.nullable)
-  b.addFieldUint8(2, typeId)
+  b.addFieldUint8(2, typeIdOf(field.type))
   b.addFieldOffset(3, typeOffset)
   b.addFieldOffset(4, dictionary)
   b.addFieldOffset(5, children)
@@ -635,12 +628,7 @@ const encodeSchema = (b: Fb.Builder, schema: S.Schema): Fb.Offset => {
 }
 
 /** @internal */
-export interface RecordBatchHeader {
-  readonly length: number
-  readonly nodes: ReadonlyArray<FieldNode>
-  readonly buffers: ReadonlyArray<BufferRef>
-  readonly variadicBufferCounts: ReadonlyArray<number>
-}
+export type RecordBatchHeader = Omit<RecordBatchMessage, "_tag" | "compression">
 
 /** Writes a vector of `size`-byte scalars or structs; `write` writes one item, last field first. */
 const createVector = <A>(
@@ -679,12 +667,7 @@ const encodeRecordBatch = (b: Fb.Builder, r: RecordBatchHeader): Fb.Offset => {
 export type EncodeHeader =
   | { readonly _tag: "Schema"; readonly schema: S.Schema }
   | { readonly _tag: "RecordBatch"; readonly batch: RecordBatchHeader }
-  | {
-    readonly _tag: "DictionaryBatch"
-    readonly id: number
-    readonly batch: RecordBatchHeader
-    readonly isDelta: boolean
-  }
+  | { readonly _tag: "DictionaryBatch"; readonly id: number; readonly batch: RecordBatchHeader }
 
 /** Encodes an IPC `Message` FlatBuffer (version V5). @internal */
 export const encodeMessage = (header: EncodeHeader, bodyLength: number): Uint8Array => {
@@ -705,7 +688,6 @@ export const encodeMessage = (header: EncodeHeader, bodyLength: number): Uint8Ar
       b.startTable(3)
       b.addFieldInt64(0, BigInt(header.id))
       b.addFieldOffset(1, data)
-      b.addFieldBool(2, header.isDelta)
       headerType = MessageHeader.DictionaryBatch
       headerOffset = b.endTable()
       break

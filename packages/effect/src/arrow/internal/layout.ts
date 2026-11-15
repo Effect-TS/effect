@@ -51,7 +51,8 @@ const appendBits = (
   return out
 }
 
-const fixedWidth = (type: S.DataType): number => {
+/** The byte width of one value of a fixed-width type, or 0 for other types. @internal */
+export const fixedWidth = (type: S.DataType): number => {
   switch (type._tag) {
     case "Int":
     case "Float":

@@ -1,21 +1,18 @@
 /**
  * Arrow IPC stream and file formats: reading (with full validation of
- * untrusted input) and writing. See docs/source/format/Columnar.rst,
- * "Serialization and Interprocess Communication (IPC)".
+ * untrusted input) and writing. See "Serialization and Interprocess
+ * Communication (IPC)" in Arrow's Columnar.rst.
  *
  * @internal
  */
+import * as Bytes from "../../Bytes.ts"
 import type * as ArrowData from "../ArrowData.ts"
 import type * as S from "../ArrowSchema.ts"
 import type * as ArrowTable from "../ArrowTable.ts"
 import * as Buffers from "./buffers.ts"
 import * as Format from "./format.ts"
-import { IpcFailure } from "./format.ts"
+import { invalid, IpcFailure } from "./format.ts"
 import * as Layout from "./layout.ts"
-
-const invalid = (message: string): never => {
-  throw new IpcFailure("Invalid", message)
-}
 
 const CONTINUATION = 0xFFFFFFFF
 const MAGIC = new Uint8Array([0x41, 0x52, 0x52, 0x4F, 0x57, 0x31]) // "ARROW1"
@@ -27,7 +24,6 @@ const MAGIC = new Uint8Array([0x41, 0x52, 0x52, 0x4F, 0x57, 0x31]) // "ARROW1"
 interface Encapsulated {
   readonly message: Format.Message
   readonly body: Uint8Array
-  readonly end: number
 }
 
 /** Reads the encapsulated message at `position`, or `undefined` at end of stream. */
@@ -36,7 +32,7 @@ const readMessage = (bytes: Uint8Array, view: DataView, position: number): Encap
   if (position + 4 > bytes.length) return invalid(`truncated message prefix at ${position}`)
   let metadataLength = view.getInt32(position, true)
   let start = position + 4
-  if (metadataLength === -1 || view.getUint32(position, true) === CONTINUATION) {
+  if (metadataLength === -1) {
     if (position + 8 > bytes.length) return invalid(`truncated message length at ${position}`)
     metadataLength = view.getInt32(position + 4, true)
     start = position + 8
@@ -50,11 +46,7 @@ const readMessage = (bytes: Uint8Array, view: DataView, position: number): Encap
   if (message.bodyLength < 0 || bodyStart + message.bodyLength > bytes.length) {
     return invalid(`message body of ${message.bodyLength} bytes at ${bodyStart} is out of range`)
   }
-  return {
-    message,
-    body: bytes.subarray(bodyStart, bodyStart + message.bodyLength),
-    end: bodyStart + message.bodyLength
-  }
+  return { message, body: bytes.subarray(bodyStart, bodyStart + message.bodyLength) }
 }
 
 const checkVersion = (version: number) => {
@@ -132,21 +124,36 @@ const data = (
   dictionary
 })
 
+/** Buffers after the validity bitmap, for the layouts `loadField` reads generically. */
+const bufferCount = (type: S.DataType): number => {
+  switch (type._tag) {
+    case "Struct":
+    case "FixedSizeList":
+      return 0
+    case "Binary":
+    case "Utf8":
+    case "LargeBinary":
+    case "LargeUtf8":
+    case "ListView":
+    case "LargeListView":
+      return 2
+    default:
+      return 1
+  }
+}
+
 const loadField = (type: S.DataType, ctx: LoadContext): ArrowData.ArrowData => {
+  const node = nextNode(ctx)
   switch (type._tag) {
     case "Dictionary": {
-      const node = nextNode(ctx)
       const validity = validityOf(node, nextBuffer(ctx))
       const indices = nextBuffer(ctx)
       const dictionary = ctx.dictionaries.get(type.id) ?? invalid(`dictionary ${type.id} is used before it is defined`)
       return data(type, node, validity, [indices], [], dictionary)
     }
-    case "Null": {
-      const node = nextNode(ctx)
+    case "Null":
       return data(type, { length: node.length, nullCount: node.length }, undefined, [])
-    }
     case "Union": {
-      const node = nextNode(ctx)
       // Before V5, unions had a validity bitmap of their own.
       const validity = ctx.version < Format.MetadataVersion.V5 ? validityOf(node, nextBuffer(ctx)) : undefined
       const buffers = type.mode === "sparse" ? [nextBuffer(ctx)] : [nextBuffer(ctx), nextBuffer(ctx)]
@@ -160,52 +167,11 @@ const loadField = (type: S.DataType, ctx: LoadContext): ArrowData.ArrowData => {
       )
     }
     case "RunEndEncoded": {
-      const node = nextNode(ctx)
       const children = [loadField(type.runEnds.type, ctx), loadField(type.values.type, ctx)]
       return data(type, { length: node.length, nullCount: 0 }, undefined, [], children)
     }
-    case "Struct": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      return data(type, node, validity, [], type.fields.map((f) => loadField(f.type, ctx)))
-    }
-    case "FixedSizeList": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      return data(type, node, validity, [], [loadField(type.child.type, ctx)])
-    }
-    case "List":
-    case "LargeList": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      const offsets = nextBuffer(ctx)
-      return data(type, node, validity, [offsets], [loadField(type.child.type, ctx)])
-    }
-    case "Map": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      const offsets = nextBuffer(ctx)
-      return data(type, node, validity, [offsets], [loadField(type.entries.type, ctx)])
-    }
-    case "ListView":
-    case "LargeListView": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      const offsets = nextBuffer(ctx)
-      const sizes = nextBuffer(ctx)
-      return data(type, node, validity, [offsets, sizes], [loadField(type.child.type, ctx)])
-    }
-    case "Binary":
-    case "Utf8":
-    case "LargeBinary":
-    case "LargeUtf8": {
-      const node = nextNode(ctx)
-      const validity = validityOf(node, nextBuffer(ctx))
-      return data(type, node, validity, [nextBuffer(ctx), nextBuffer(ctx)])
-    }
     case "BinaryView":
     case "Utf8View": {
-      const node = nextNode(ctx)
       const validity = validityOf(node, nextBuffer(ctx))
       const views = nextBuffer(ctx)
       const count = ctx.batch.variadicBufferCounts[ctx.variadic++] ??
@@ -216,9 +182,9 @@ const loadField = (type: S.DataType, ctx: LoadContext): ArrowData.ArrowData => {
       return data(type, node, validity, buffers)
     }
     default: {
-      const node = nextNode(ctx)
       const validity = validityOf(node, nextBuffer(ctx))
-      return data(type, node, validity, [nextBuffer(ctx)])
+      const buffers = Array.from({ length: bufferCount(type) }, () => nextBuffer(ctx))
+      return data(type, node, validity, buffers, Format.childFields(type).map((f) => loadField(f.type, ctx)))
     }
   }
 }
@@ -240,11 +206,11 @@ const loadColumns = (
 }
 
 /** Every dictionary id in the schema, mapped to its value type. */
-const dictionaryTypes = (fields: ReadonlyArray<S.Field>, out = new Map<number, S.DataType>()) => {
+const dictionaryTypes = (fields: ReadonlyArray<S.Field>) => {
+  const out = new Map<number, S.DataType>()
   const visit = (type: S.DataType) => {
     if (type._tag === "Dictionary") {
-      const existing = out.get(type.id)
-      if (existing === undefined) out.set(type.id, type.valueType)
+      if (!out.has(type.id)) out.set(type.id, type.valueType)
       visit(type.valueType)
       return
     }
@@ -282,32 +248,10 @@ const applyDictionary = (
 // Validation
 // -----------------------------------------------------------------------------
 
-const fixedWidth = (type: S.DataType): number => {
-  switch (type._tag) {
-    case "Int":
-    case "Float":
-    case "Decimal":
-      return type.bitWidth / 8
-    case "Date":
-      return type.unit === "day" ? 4 : 8
-    case "Time":
-      return type.bitWidth / 8
-    case "Timestamp":
-    case "Duration":
-      return 8
-    case "Interval":
-      return type.unit === "yearMonth" ? 4 : type.unit === "dayTime" ? 8 : 16
-    case "FixedSizeBinary":
-      return type.byteWidth
-    default:
-      return 0
-  }
-}
-
 const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
 const zero = BigInt(0)
 
-/** Offsets as a typed array (64-bit offsets checked to fit a number). */
+/** Offsets as a typed array. */
 const offsetsOf = (buffer: Uint8Array, large: boolean): Int32Array | BigInt64Array =>
   large ? Buffers.typed(BigInt64Array, buffer) : Buffers.typed(Int32Array, buffer)
 
@@ -368,7 +312,7 @@ const firstBadIndex = (a: ArrayLike<number>, from: number, to: number, size: num
 const isSlotValid = (d: ArrowData.ArrowData, i: number) =>
   d.validity === undefined || (d.validity[(d.offset + i) >> 3] & (1 << ((d.offset + i) & 7))) !== 0
 
-/** The typed array for `n`-byte signed or unsigned integers. */
+/** The typed array matching an integer type. */
 const intArray = (type: S.Int, bytes: Uint8Array) => {
   switch (type.bitWidth) {
     case 8:
@@ -384,9 +328,9 @@ const intArray = (type: S.Int, bytes: Uint8Array) => {
 
 /**
  * Checks that every buffer is large enough and every offset, index and view
- * stays in range, so that reading any slot is safe. @internal
+ * stays in range, so that reading any slot is safe.
  */
-export const validate = (d: ArrowData.ArrowData): void => {
+const validate = (d: ArrowData.ArrowData): void => {
   const type = d.type
   const end = d.offset + d.length
   switch (type._tag) {
@@ -404,7 +348,7 @@ export const validate = (d: ArrowData.ArrowData): void => {
     case "Duration":
     case "Interval":
     case "FixedSizeBinary":
-      needBytes(d.buffers[0], end * fixedWidth(type), `${type._tag} values`)
+      needBytes(d.buffers[0], end * Layout.fixedWidth(type), `${type._tag} values`)
       return
     case "Binary":
     case "Utf8":
@@ -427,7 +371,7 @@ export const validate = (d: ArrowData.ArrowData): void => {
           const offset = views[at + 3]
           const buffer = d.buffers[1 + index]
           if (index < 0 || buffer === undefined) invalid(`view refers to missing data buffer ${index}`)
-          if (offset < 0 || offset + size > buffer!.length) invalid(`view ${offset}+${size} is outside its data buffer`)
+          if (offset < 0 || offset + size > buffer.length) invalid(`view ${offset}+${size} is outside its data buffer`)
         }
       }
       return
@@ -498,15 +442,15 @@ export const validate = (d: ArrowData.ArrowData): void => {
     case "RunEndEncoded": {
       const [runs, values] = d.children
       if (runs === undefined || values === undefined) invalid("run-end encoded data needs two children")
-      if (runs!.nullCount !== 0) invalid("run ends must not be null")
-      if (runs!.length !== values!.length) invalid("run ends and values differ in length")
-      validate(runs!)
-      validate(values!)
+      if (runs.nullCount !== 0) invalid("run ends must not be null")
+      if (runs.length !== values.length) invalid("run ends and values differ in length")
+      validate(runs)
+      validate(values)
       if (d.length === 0) return
-      const ends = intArray(runs!.type as S.Int, runs!.buffers[0])
+      const ends = intArray(runs.type as S.Int, runs.buffers[0])
       let previous = 0
-      for (let i = 0; i < runs!.length; i++) {
-        const run = Number(ends[runs!.offset + i])
+      for (let i = 0; i < runs.length; i++) {
+        const run = Number(ends[runs.offset + i])
         if (run <= previous) invalid("run ends must be positive and strictly increasing")
         previous = run
       }
@@ -517,8 +461,9 @@ export const validate = (d: ArrowData.ArrowData): void => {
       const dictionary = d.dictionary ?? invalid("dictionary-encoded data without a dictionary")
       const width = type.indexType.bitWidth / 8
       needBytes(d.buffers[0], end * width, "dictionary indices")
-      const size = dictionary!.length
+      const size = dictionary.length
       const indices = intArray(type.indexType, d.buffers[0])
+      // Null slots may hold any index, so an out-of-range index only fails in a valid slot.
       if (width === 8) {
         const limit = BigInt(size)
         for (let i = 0; i < d.length; i++) {
@@ -529,7 +474,6 @@ export const validate = (d: ArrowData.ArrowData): void => {
         }
         return
       }
-      // Null slots may hold any index, so an out-of-range index only fails in a valid slot.
       const check = indices instanceof Int32Array ? firstBadIndex32 : firstBadIndex
       let from = d.offset
       for (;;) {
@@ -548,7 +492,34 @@ export const validate = (d: ArrowData.ArrowData): void => {
 // Decoding
 // -----------------------------------------------------------------------------
 
-const makeTable = (schema: S.Schema, batches: Array<ArrowTable.RecordBatch>): ArrowTable.Table => ({ schema, batches })
+interface ReadState {
+  readonly schema: S.Schema
+  readonly types: ReadonlyMap<number, S.DataType>
+  readonly fieldTypes: ReadonlyArray<S.DataType>
+  readonly dictionaries: Map<number, ArrowData.ArrowData>
+}
+
+const readState = (message: Format.SchemaMessage): ReadState => {
+  checkSchema(message)
+  const schema = message.schema
+  return {
+    schema,
+    types: dictionaryTypes(schema.fields),
+    fieldTypes: schema.fields.map((f) => f.type),
+    dictionaries: new Map()
+  }
+}
+
+const readBatch = (
+  state: ReadState,
+  header: Format.RecordBatchMessage,
+  body: Uint8Array,
+  version: number
+): ArrowTable.RecordBatch => {
+  checkCompression(header)
+  const columns = loadColumns(state.fieldTypes, header, body, version, state.dictionaries)
+  return { schema: state.schema, length: header.length, columns }
+}
 
 /**
  * Decodes the IPC stream format incrementally: bytes are pushed in chunks of
@@ -560,19 +531,7 @@ export class StreamDecoder {
   private chunks: Array<Uint8Array> = []
   private available = 0
   private ended = false
-  private sawMessage = false
-  private state:
-    | {
-      readonly schema: S.Schema
-      readonly types: ReadonlyMap<number, S.DataType>
-      readonly fieldTypes: ReadonlyArray<S.DataType>
-      readonly dictionaries: Map<number, ArrowData.ArrowData>
-    }
-    | undefined
-
-  get schema(): S.Schema | undefined {
-    return this.state?.schema
-  }
+  private state: ReadState | undefined
 
   push(chunk: Uint8Array): void {
     if (this.ended || chunk.length === 0) return
@@ -623,7 +582,6 @@ export class StreamDecoder {
       }
       if (metadataLength === 0) {
         this.ended = true
-        this.consume(start)
         this.chunks = []
         this.available = 0
         return
@@ -644,31 +602,19 @@ export class StreamDecoder {
   private apply(message: Format.Message, body: Uint8Array, out: Array<ArrowTable.RecordBatch>): void {
     const { header, version } = message
     checkVersion(version)
-    this.sawMessage = true
     const state = this.state
     if (state === undefined) {
       if (header._tag !== "Schema") invalid(`stream starts with ${header._tag}, not Schema`)
-      const schemaMessage = header as Format.SchemaMessage
-      checkSchema(schemaMessage)
-      const schema = schemaMessage.schema
-      this.state = {
-        schema,
-        types: dictionaryTypes(schema.fields),
-        fieldTypes: schema.fields.map((f) => f.type),
-        dictionaries: new Map()
-      }
+      this.state = readState(header)
       return
     }
     switch (header._tag) {
       case "DictionaryBatch":
         applyDictionary(header, body, version, state.types, state.dictionaries)
         return
-      case "RecordBatch": {
-        checkCompression(header)
-        const columns = loadColumns(state.fieldTypes, header, body, version, state.dictionaries)
-        out.push({ schema: state.schema, length: header.length, columns })
+      case "RecordBatch":
+        out.push(readBatch(state, header, body, version))
         return
-      }
       case "Schema":
         return invalid("a stream holds exactly one Schema message")
       default:
@@ -676,21 +622,24 @@ export class StreamDecoder {
     }
   }
 
-  /** Call when the input has ended: fails on an empty stream or a partial message. */
-  finish(): void {
-    if (!this.sawMessage) invalid("empty stream")
+  /**
+   * Call when the input has ended: returns the schema, or fails on an empty
+   * stream or a partial message.
+   */
+  finish(): S.Schema {
+    const state = this.state ?? invalid("empty stream")
     if (!this.ended && this.available > 0) invalid(`stream ends inside a message (${this.available} bytes left)`)
+    return state.schema
   }
 }
 
-/** Decodes the IPC stream format. @internal */
+/** @internal */
 export const decodeStream = (bytes: Uint8Array): ArrowTable.Table => {
   const decoder = new StreamDecoder()
   const batches: Array<ArrowTable.RecordBatch> = []
   decoder.push(bytes)
   decoder.drain(batches)
-  decoder.finish()
-  return makeTable(decoder.schema!, batches)
+  return { schema: decoder.finish(), batches }
 }
 
 const hasMagic = (bytes: Uint8Array, at: number) => {
@@ -698,7 +647,7 @@ const hasMagic = (bytes: Uint8Array, at: number) => {
   return true
 }
 
-/** Decodes the IPC file format. @internal */
+/** @internal */
 export const decodeFile = (bytes: Uint8Array): ArrowTable.Table => {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   if (bytes.length < 6 + 2 + 4 + 6 || !hasMagic(bytes, 0) || !hasMagic(bytes, bytes.length - 6)) {
@@ -710,11 +659,7 @@ export const decodeFile = (bytes: Uint8Array): ArrowTable.Table => {
   const footer = Format.decodeFooter(bytes.subarray(footerStart, footerStart + footerLength))
   // The footer version is not checked: older writers left it unset (V1) and
   // versioned only the messages, which are checked one by one.
-  checkSchema(footer.schema)
-  const schema = footer.schema.schema
-  const types = dictionaryTypes(schema.fields)
-  const dictionaries = new Map<number, ArrowData.ArrowData>()
-  const fieldTypes = schema.fields.map((f) => f.type)
+  const state = readState(footer.schema)
   const blockMessage = (block: Format.Block) => {
     if (block.offset < 8 || block.offset + block.metaDataLength + block.bodyLength > footerStart) {
       invalid(`block at ${block.offset} is outside the file`)
@@ -726,19 +671,17 @@ export const decodeFile = (bytes: Uint8Array): ArrowTable.Table => {
   }
   for (const block of footer.dictionaries) {
     const { body, message } = blockMessage(block)
-    if (message.header._tag !== "DictionaryBatch") invalid(`dictionary block holds ${message.header._tag}`)
-    applyDictionary(message.header as Format.DictionaryBatchMessage, body, message.version, types, dictionaries)
+    const header = message.header
+    if (header._tag !== "DictionaryBatch") invalid(`dictionary block holds ${header._tag}`)
+    applyDictionary(header, body, message.version, state.types, state.dictionaries)
   }
-  const batches: Array<ArrowTable.RecordBatch> = []
-  for (const block of footer.recordBatches) {
+  const batches = footer.recordBatches.map((block) => {
     const { body, message } = blockMessage(block)
     const header = message.header
     if (header._tag !== "RecordBatch") invalid(`record batch block holds ${header._tag}`)
-    checkCompression(header as Format.RecordBatchMessage)
-    const columns = loadColumns(fieldTypes, header as Format.RecordBatchMessage, body, message.version, dictionaries)
-    batches.push({ schema, length: (header as Format.RecordBatchMessage).length, columns })
-  }
-  return makeTable(schema, batches)
+    return readBatch(state, header, body, message.version)
+  })
+  return { schema: state.schema, batches }
 }
 
 // -----------------------------------------------------------------------------
@@ -790,19 +733,13 @@ const flatten = (d: ArrowData.ArrowData, out: BodyBuilder) => {
   }
 }
 
-type FrameKind =
-  | { readonly _tag: "Schema"; readonly schema: S.Schema }
-  | { readonly _tag: "RecordBatch" }
-  | { readonly _tag: "DictionaryBatch"; readonly id: number }
-
 /**
  * An encoded message as parts: the framed metadata, then each body buffer
  * (a view of the table's own bytes, not a copy) followed by its padding to
- * eight bytes. The output is assembled with a single copy.
+ * eight bytes.
  */
 interface Frame {
   readonly parts: ReadonlyArray<Uint8Array>
-  readonly size: number
   readonly metaDataLength: number
   readonly bodyLength: number
 }
@@ -810,7 +747,11 @@ interface Frame {
 const padding = [0, 1, 2, 3, 4, 5, 6, 7].map((n) => new Uint8Array(n))
 
 /** Frames one message: continuation, metadata length, padded metadata, padded body. */
-const frame = (kind: FrameKind, length: number, columns: ReadonlyArray<ArrowData.ArrowData>): Frame => {
+const frame = (
+  length: number,
+  columns: ReadonlyArray<ArrowData.ArrowData>,
+  header: (batch: Format.RecordBatchHeader) => Format.EncodeHeader
+): Frame => {
   const body: BodyBuilder = { nodes: [], buffers: [], variadicBufferCounts: [] }
   for (const c of columns) flatten(c, body)
   const refs: Array<Format.BufferRef> = []
@@ -819,18 +760,10 @@ const frame = (kind: FrameKind, length: number, columns: ReadonlyArray<ArrowData
     refs.push({ offset: bodyLength, length: b.length })
     bodyLength += pad8(b.length)
   }
-  const batch: Format.RecordBatchHeader = {
-    length,
-    nodes: body.nodes,
-    buffers: refs,
-    variadicBufferCounts: body.variadicBufferCounts
-  }
-  const header: Format.EncodeHeader = kind._tag === "Schema"
-    ? kind
-    : kind._tag === "RecordBatch"
-    ? { _tag: "RecordBatch", batch }
-    : { _tag: "DictionaryBatch", id: kind.id, batch, isDelta: false }
-  const metadata = Format.encodeMessage(header, bodyLength)
+  const metadata = Format.encodeMessage(
+    header({ length, nodes: body.nodes, buffers: refs, variadicBufferCounts: body.variadicBufferCounts }),
+    bodyLength
+  )
   const metaDataLength = 8 + pad8(metadata.length)
   const prefix = new Uint8Array(metaDataLength)
   const view = new DataView(prefix.buffer)
@@ -843,14 +776,12 @@ const frame = (kind: FrameKind, length: number, columns: ReadonlyArray<ArrowData
     const pad = pad8(b.length) - b.length
     if (pad > 0) parts.push(padding[pad])
   }
-  return { parts, size: metaDataLength + bodyLength, metaDataLength, bodyLength }
+  return { parts, metaDataLength, bodyLength }
 }
 
 /** Dictionaries used by `columns` (nested ones first), by id. */
-const collectDictionaries = (
-  columns: ReadonlyArray<ArrowData.ArrowData>,
-  out: Map<number, ArrowData.ArrowData> = new Map()
-) => {
+const collectDictionaries = (columns: ReadonlyArray<ArrowData.ArrowData>) => {
+  const out = new Map<number, ArrowData.ArrowData>()
   const visit = (d: ArrowData.ArrowData) => {
     if (d.type._tag === "Dictionary" && d.dictionary !== undefined) {
       visit(d.dictionary)
@@ -868,42 +799,19 @@ const collectDictionaries = (
 
 const schemaMessage = (schema: S.Schema) => {
   for (const f of schema.fields) Layout.checkUnions(f.type, invalid)
-  return frame({ _tag: "Schema", schema }, 0, [])
+  return frame(0, [], () => ({ _tag: "Schema", schema }))
 }
 
 const dictionaryMessage = (id: number, values: ArrowData.ArrowData) =>
-  frame({ _tag: "DictionaryBatch", id }, values.length, [values])
+  frame(values.length, [values], (batch) => ({ _tag: "DictionaryBatch", id, batch }))
 
 const batchMessage = (length: number, columns: ReadonlyArray<ArrowData.ArrowData>) =>
-  frame({ _tag: "RecordBatch" }, length, columns)
+  frame(length, columns, (batch) => ({ _tag: "RecordBatch", batch }))
 
 /** A batch's columns with offset 0 throughout, as the IPC body needs. */
 const normalizedColumns = (batch: ArrowTable.RecordBatch) => batch.columns.map(Layout.normalize)
 
 const EOS = new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0])
-
-/** Collects parts and copies them into one buffer at the end. */
-class Output {
-  readonly parts: Array<Uint8Array> = []
-  size = 0
-  push(bytes: Uint8Array) {
-    this.parts.push(bytes)
-    this.size += bytes.length
-  }
-  frame(f: Frame) {
-    for (const p of f.parts) this.parts.push(p)
-    this.size += f.size
-  }
-  finish(): Uint8Array {
-    const out = new Uint8Array(this.size)
-    let at = 0
-    for (const p of this.parts) {
-      out.set(p, at)
-      at += p.length
-    }
-    return out
-  }
-}
 
 /**
  * Encodes the IPC stream format batch by batch, as parts that reference the
@@ -942,29 +850,24 @@ export class StreamEncoder {
   }
 }
 
-/** Encodes the IPC stream format. @internal */
+/** @internal */
 export const encodeStream = (table: ArrowTable.Table): Uint8Array => {
-  const out = new Output()
-  out.frame(schemaMessage(table.schema))
-  const written = new Map<number, ArrowData.ArrowData>()
-  for (const batch of table.batches) {
-    const columns = normalizedColumns(batch)
-    for (const [id, values] of collectDictionaries(columns)) {
-      if (written.get(id) === values) continue
-      out.frame(dictionaryMessage(id, values))
-      written.set(id, values)
-    }
-    out.frame(batchMessage(batch.length, columns))
-  }
-  out.push(EOS)
-  return out.finish()
+  const encoder = new StreamEncoder(table.schema)
+  const parts: Array<Uint8Array> = []
+  for (const batch of table.batches) encoder.write(batch, parts)
+  encoder.end(parts)
+  return Bytes.concat(parts)
 }
 
-/** Encodes the IPC file format. @internal */
+/** @internal */
 export const encodeFile = (table: ArrowTable.Table): Uint8Array => {
-  const out = new Output()
-  out.push(new Uint8Array([...MAGIC, 0, 0]))
-  out.frame(schemaMessage(table.schema))
+  const parts: Array<Uint8Array> = [new Uint8Array([...MAGIC, 0, 0])]
+  let offset = 8
+  const add = (f: Frame) => {
+    for (const p of f.parts) parts.push(p)
+    offset += f.metaDataLength + f.bodyLength
+  }
+  add(schemaMessage(table.schema))
   const dictionaries = new Map<number, ArrowData.ArrowData>()
   const batches = table.batches.map((batch) => ({ length: batch.length, columns: normalizedColumns(batch) }))
   for (const batch of batches) {
@@ -977,18 +880,16 @@ export const encodeFile = (table: ArrowTable.Table): Uint8Array => {
     }
   }
   const block = (f: Frame): Format.Block => {
-    const b = { offset: out.size, metaDataLength: f.metaDataLength, bodyLength: f.bodyLength }
-    out.frame(f)
+    const b = { offset, metaDataLength: f.metaDataLength, bodyLength: f.bodyLength }
+    add(f)
     return b
   }
   const dictionaryBlocks = Array.from(dictionaries, ([id, values]) => block(dictionaryMessage(id, values)))
   const batchBlocks = batches.map((batch) => block(batchMessage(batch.length, batch.columns)))
-  out.push(EOS)
   const footer = Format.encodeFooter(table.schema, dictionaryBlocks, batchBlocks)
-  out.push(footer)
   const tail = new Uint8Array(10)
   new DataView(tail.buffer).setInt32(0, footer.length, true)
   tail.set(MAGIC, 4)
-  out.push(tail)
-  return out.finish()
+  parts.push(EOS, footer, tail)
+  return Bytes.concat(parts)
 }
