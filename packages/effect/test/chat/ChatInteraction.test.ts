@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Duration, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
+import { Deferred, Duration, Effect, Exit, Fiber, Layer, Option, Scheduler, Schema } from "effect"
 import { Chat, ChatError, ChatInteraction, ChatTest, ChatThread } from "effect/chat"
 import { TestClock } from "effect/testing"
 
@@ -215,6 +215,38 @@ describe("ChatInteraction", () => {
         command: () => options.command ?? Effect.succeed(ChatInteraction.ack),
         refused: (_, error) => options.refused?.(error) ?? Effect.void
       })
+
+    it.effect("interrupts the handler when cancelled during startup", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<ChatInteraction.ClickReply>()
+        yield* Effect.gen(function*() {
+          // Cancel at successive scheduler yields, including between fork and cleanup registration.
+          for (let budget = 1; budget <= 40; budget++) {
+            let started = false
+            let stopped = false
+            const handler = handlerWith({
+              click: Effect.acquireUseRelease(
+                Effect.sync(() => {
+                  started = true
+                }),
+                () => Deferred.await(release),
+                () =>
+                  Effect.sync(() => {
+                    stopped = true
+                  })
+              )
+            })
+            const fiber = yield* ChatInteraction.handle(clicked("a"), deadline).pipe(
+              Effect.provideService(ChatInteraction.Handler, handler),
+              Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+              Effect.forkChild({ startImmediately: true })
+            )
+            yield* Fiber.interrupt(fiber)
+            yield* TestClock.adjust("1 millis")
+            assert.isFalse(started && !stopped, `MaxOpsBeforeYield ${budget}`)
+          }
+        }).pipe(Effect.ensuring(Deferred.succeed(release, ChatInteraction.ack)))
+      }))
 
     it.effect("gives Late for a late click, and refuses its modal with interaction_expired", () =>
       Effect.gen(function*() {

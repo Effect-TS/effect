@@ -1679,33 +1679,38 @@ export const handle: {
     deadline: Duration.Duration
   ): Effect.Effect<ClickReply | SubmitReply | CommandReply | Late, never, Handler>
 } = (event: Interaction, deadline: Duration.Duration): Effect.Effect<any, never, Handler> =>
-  Effect.gen(function*() {
-    const handler = yield* Handler
-    // Detached, so the reply at the deadline waits for neither a late click nor a late submit's cleanup.
-    const fiber: Fiber.Fiber<ClickReply | SubmitReply | CommandReply> = yield* Effect.forkDetach(
-      event._tag === "ModalSubmitted"
-        ? handler.submit(event)
-        : event._tag === "CommandInvoked"
-        ? handler.command(event)
-        : handler.click(event)
-    )
-    const exit = yield* Effect.onInterrupt(
-      Effect.timeoutOption(Fiber.await(fiber), deadline),
-      () => Fiber.interrupt(fiber)
-    )
-    if (Option.isSome(exit)) return yield* exit.value
-    if (event._tag === "ModalSubmitted" || event._tag === "CommandInvoked") {
-      // Interrupt without delaying the deadline reply.
-      yield* Effect.forkDetach(Fiber.interrupt(fiber))
+  // Keep startup and the deadline handoff atomic with respect to caller interruption.
+  Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function*() {
+      const handler = yield* Handler
+      // Detached, so the reply at the deadline waits for neither a late click nor a late submit's cleanup.
+      const fiber: Fiber.Fiber<ClickReply | SubmitReply | CommandReply> = yield* Effect.forkDetach(
+        event._tag === "ModalSubmitted"
+          ? handler.submit(event)
+          : event._tag === "CommandInvoked"
+          ? handler.command(event)
+          : handler.click(event)
+      )
+      const exit = yield* Effect.onInterrupt(
+        restore(Effect.timeoutOption(Fiber.await(fiber), deadline)),
+        () => Fiber.interrupt(fiber)
+      )
+      if (Option.isSome(exit)) return yield* exit.value
+      if (event._tag === "ModalSubmitted" || event._tag === "CommandInvoked") {
+        // Interrupt without delaying the deadline reply.
+        yield* Effect.forkDetach(Fiber.interrupt(fiber))
+        return late
+      }
+      yield* Effect.forkDetach(Effect.flatMap(
+        Fiber.await(fiber),
+        (exit) =>
+          Exit.isSuccess(exit) && exit.value._tag === "OpenModal"
+            ? handler.refused(event, lateClick(event))
+            : Effect.void
+      ))
       return late
-    }
-    yield* Effect.forkDetach(Effect.flatMap(
-      Fiber.await(fiber),
-      (exit) =>
-        Exit.isSuccess(exit) && exit.value._tag === "OpenModal" ? handler.refused(event, lateClick(event)) : Effect.void
-    ))
-    return late
-  })
+    })
+  )
 
 const late: Late = Late.make({})
 
