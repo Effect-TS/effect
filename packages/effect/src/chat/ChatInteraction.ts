@@ -1694,7 +1694,7 @@ export const handle: {
     )
     if (Option.isSome(exit)) return yield* exit.value
     if (event._tag === "ModalSubmitted" || event._tag === "CommandInvoked") {
-      // Requests the interrupt without waiting for it to finish.
+      // Interrupt without delaying the deadline reply.
       yield* Effect.forkDetach(Fiber.interrupt(fiber))
       return late
     }

@@ -81,9 +81,7 @@ interface Origin {
 }
 
 /**
- * The tag, the channel, the thread's ts or nothing, the message's ts or
- * nothing and, when there is one, the consumer's metadata, joined. The
- * metadata is last, so it may hold the join.
+ * Consumer metadata is last so it may contain the join delimiter.
  */
 const packMetadata = (origin: Origin, metadata: string | undefined): string =>
   [

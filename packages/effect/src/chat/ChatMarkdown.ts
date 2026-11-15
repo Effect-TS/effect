@@ -689,7 +689,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           }
         )
       const withoutFiles = () => {
-        // The platform may have refused the files: the last part goes out without them, ending in the note.
+        // Replace refused files with the unattached note.
         const text = unattachedNote!(files!)
         if (measureLast(markdown + text) <= limits.messageLength) {
           return Effect.asVoid(attempt(markdown + text, undefined, false, withActions))
@@ -811,10 +811,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           ? part.start + fitCut(measure, body, part.fence, part.prefix, limits.messageLength)
           : input.length
         if (!lastFits(cut)) {
-          // The cut would end the reply, and the actions don't fit beside its text. Only the last part
-          // makes room for them: this part is cut before the text's last grapheme cluster, so it isn't the
-          // last, and fills its whole budget. When not even that cluster fits beside the actions, they go
-          // in a message of their own.
+          // Reserve the last grapheme for a part with actions. If they cannot
+          // fit together, send the actions in their own message.
           const keep = lastContentStart(body)
           const tailStart = part.start + keep
           const tailFence = fenceAtInput(part, tailStart)
@@ -1001,7 +999,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           const error = firstError(exit)
           if (error === undefined) return
           if (error.reason._tag === "TooLarge") {
-            // A forced rollover: the next part starts with the chunk.
+            // Retry the chunk in the next part.
             rollNative(part, part.sent, false)
           } else if (error.retry === "retry") {
             part.retries++
@@ -1063,7 +1061,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           kind: "overflowFile",
           transport: "post"
         })
-        // The consumer's files go with the last message, which is this one.
+        // Attach consumer files to the final message.
         const attempt = (markdown: string, files: ReadonlyArray<File>, fallback: boolean) =>
           create(
             chat.post(thread, { markdown, files: [file, ...files], ...(hasActions ? { actions } : {}) }),

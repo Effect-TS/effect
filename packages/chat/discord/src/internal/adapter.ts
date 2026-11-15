@@ -291,7 +291,7 @@ export const make = Effect.fnUntraced(function*(options: {
         content: content.markdown,
         allowed_mentions: allowedMentions(postOptions.notify),
         flags: flags(postOptions),
-        // Always sent, so an edit without elements removes the ones there were.
+        // Send empty components to clear existing elements.
         components: rows
       }),
       true
@@ -425,7 +425,6 @@ export const make = Effect.fnUntraced(function*(options: {
     const name = kind === "direct" ? undefined : nonEmpty(found.name)
     const topic = nonEmpty(found.topic)
     const parent = kind === "thread" ? nonEmpty(found.parent_id) : undefined
-    // An unreadable creation time falls back to the id's.
     const created = Option.flatMap(
       Option.fromUndefinedOr(nonEmpty(found.thread_metadata?.create_timestamp)),
       DateTime.make

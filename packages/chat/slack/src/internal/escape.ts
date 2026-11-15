@@ -189,7 +189,6 @@ export const escape = (
           i = stop
           continue
         }
-        // A `<` outside code.
         const at = lineStart + i
         const rest = line.slice(i)
         const undecided = !flush && !complete && full.length - at <= holdBound && (

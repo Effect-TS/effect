@@ -274,7 +274,7 @@ const prefixLines = (writer: Writer, from: number, first: string, rest: string):
     position += line.length + 1
   })
   writer.out = writer.out.slice(0, from) + rewritten
-  // Move the mentions written in this span by the prefixes before them.
+  // Adjust mention offsets for inserted prefixes.
   for (let m = 0; m < writer.mentions.length; m++) {
     const mention = writer.mentions[m]
     if (mention.start < from) continue

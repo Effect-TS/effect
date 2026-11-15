@@ -754,7 +754,6 @@ export const make = (options: {
               Effect.as({ state: "stopped" as const, held: 0 })
             )
         ),
-        // Nothing was added.
         Effect.tapError((error) =>
           Effect.sync(() => {
             if (error.retry === "denied") streams.set(messageId, state)
@@ -791,14 +790,14 @@ export const make = (options: {
       const result = Option.isSome(answer) && isObject(answer.value) ? answer.value.result_status : undefined
       const stopped = state?.stopped === true || result === "stopped_by_user" ||
         (context !== undefined && context.result_status === "stopped_by_user")
-      // Remembered, so a stop sent again after a cut-off one, which Slack answers as not streaming, still ends the session.
+      // Remember stopped_by_user across interruptions, even if a retry finds no open stream.
       const current = streams.get(messageId)
       if (stopped && current !== undefined) streams.set(messageId, { ...current, stopped: true })
       yield* cleanup(op, parts.channel, messageId, postOptions.notify ?? {})
       if (stopped && stopOptions.end === "done") {
         yield* endSession(parts.channel, parts.threadTs, messageId, postOptions.sessionStatusAtEnd ?? "active")
       }
-      // Kept until now, so a stop sent again after a cut-off one still cleans up and ends the session.
+      // Retain stream state until cleanup and session completion finish.
       streams.delete(messageId)
       return { stopped }
     })

@@ -283,7 +283,7 @@ const CHAT_INPUT = 1
 const STRING = 3
 
 /**
- * The id and token to answer an interaction with, read from its payload.
+ * Credentials for answering an interaction.
  *
  * @internal
  */
@@ -291,8 +291,7 @@ export const answerTo = (raw: unknown): { readonly id: string; readonly token: s
   Option.getOrUndefined(Option.map(decodeFields(raw), ({ id, token }) => ({ id, token })))
 
 /**
- * The application id and token a deferred command's response is edited
- * with, and the interaction's id, read from its payload.
+ * Credentials for editing a deferred command's response.
  *
  * @internal
  */

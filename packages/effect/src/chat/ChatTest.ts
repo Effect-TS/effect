@@ -1652,7 +1652,7 @@ class Tester {
       case "selects":
         return expect(chat.post(thread, { markdown: text, actions: [conformanceSelect(this.rule)] }), track)
       case "modals":
-        // A modal opens only from a click, so without the hook or anything to click there is nothing to probe.
+        // Probing a modal requires the interaction hook and a clickable element.
         return this.options.interactions === undefined || !(this.has("buttons") || this.has("selects"))
           ? Effect.void
           : Effect.gen({ self: this }, function*() {
@@ -1689,7 +1689,7 @@ class Tester {
           { markdown: text }
         ))
       case "ephemeral":
-        // A private answer exists only as the answer to a command, so without the hook there is nothing to probe.
+        // Probing a private answer requires the command hook.
         return this.options.interactions?.command === undefined
           ? Effect.void
           : Effect.gen({ self: this }, function*() {
