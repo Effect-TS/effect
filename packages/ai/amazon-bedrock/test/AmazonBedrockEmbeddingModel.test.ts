@@ -6,7 +6,7 @@ import { Digest, Mac, SecureRandom } from "effect/crypto"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 
 describe("AmazonBedrockEmbeddingModel", () => {
-  it.effect("Titan sends one request per text in order and sums the token count headers", () =>
+  it.effect("Titan sends one request per text, keeps input order and sums the token count headers", () =>
     Effect.gen(function*() {
       const http = makeHttpClient((body) => ({
         body: { embedding: [body.inputText.length, 0], inputTextTokenCount: body.inputText.length },
@@ -27,7 +27,7 @@ describe("AmazonBedrockEmbeddingModel", () => {
 
       assert.deepStrictEqual(response.embeddings.map((embedding) => embedding.vector), [[1, 0], [2, 0], [3, 0]])
       assert.strictEqual(response.usage.inputTokens, 6)
-      assert.deepStrictEqual(http.requests.map((request) => request.body), [
+      assert.sameDeepMembers(http.requests.map((request) => request.body), [
         { dimensions: 256, normalize: true, inputText: "a" },
         { dimensions: 256, normalize: true, inputText: "bb" },
         { dimensions: 256, normalize: true, inputText: "ccc" }
@@ -62,7 +62,7 @@ describe("AmazonBedrockEmbeddingModel", () => {
         response.embeddings.map((embedding) => embedding.vector),
         inputs.map((input) => [Number(input)])
       )
-      assert.deepStrictEqual(http.requests.map((request) => request.body), [
+      assert.sameDeepMembers(http.requests.map((request) => request.body), [
         { input_type: "search_document", texts: inputs.slice(0, 96) },
         { input_type: "search_document", texts: ["96"] }
       ])
@@ -95,9 +95,10 @@ describe("AmazonBedrockEmbeddingModel", () => {
 
       assert.strictEqual(dimensions, 256)
       assert.deepStrictEqual(responses.map((response) => response.vector), [[97], [98], [99]])
-      assert.sameDeepMembers(http.requests.map((request) => request.body), [
-        { input_type: "search_query", truncate: "RIGHT", output_dimension: 256, texts: ["a", "c"] },
-        { input_type: "search_document", truncate: "RIGHT", output_dimension: 256, texts: ["b"] }
+      const url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/eu.cohere.embed-v4%3A0/invoke"
+      assert.sameDeepMembers(http.requests, [
+        { url, body: { input_type: "search_query", truncate: "RIGHT", output_dimension: 256, texts: ["a", "c"] } },
+        { url, body: { input_type: "search_document", truncate: "RIGHT", output_dimension: 256, texts: ["b"] } }
       ])
     }))
 
@@ -134,16 +135,16 @@ describe("AmazonBedrockEmbeddingModel", () => {
   it.effect("rejects incompatible Cohere v3 dimensions including scoped overrides", () =>
     Effect.gen(function*() {
       const http = makeHttpClient(() => ({ body: { embeddings: [[1]] } }))
-      const errors = yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
-          Effect.flip(model.embed("text")),
-          Effect.flip(model.embed("text").pipe(AmazonBedrockEmbeddingModel.withConfigOverride({ dimensions: 512 })))
-        ])
-      }).pipe(
-        Effect.provide(AmazonBedrockEmbeddingModel.model("cohere", { family: "cohere-embed-v3", dimensions: 256 })),
-        Effect.provide(http.layer)
-      )
+      const embed = Effect.flatMap(EmbeddingModel.EmbeddingModel, (model) => Effect.flip(model.embed("text")))
+      const model = (dimensions: number) =>
+        AmazonBedrockEmbeddingModel.model("cohere", { family: "cohere-embed-v3", dimensions })
+      const errors = yield* Effect.all([
+        embed.pipe(Effect.provide(model(256))),
+        embed.pipe(
+          AmazonBedrockEmbeddingModel.withConfigOverride({ dimensions: 512 }),
+          Effect.provide(model(1024))
+        )
+      ]).pipe(Effect.provide(http.layer))
       assert.deepStrictEqual(errors.map((error) => error.reason._tag), ["InvalidRequestError", "InvalidRequestError"])
       assert.deepStrictEqual(http.requests, [])
     }))

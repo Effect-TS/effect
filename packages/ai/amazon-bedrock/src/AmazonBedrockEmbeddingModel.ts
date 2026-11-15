@@ -63,14 +63,14 @@ export type Family = "titan-embed-text-v2" | "cohere-embed-v3" | "cohere-embed-v
 export class Config extends Context.Service<Config, {
   /**
    * The vector size. Titan sends it as `dimensions` and Cohere v4 as
-   * `output_dimension`. Cohere v3 requires 1024 when specified and does not send it.
+   * `output_dimension`. Cohere v3 is fixed at 1024 and does not send it.
    */
   readonly dimensions?: number | undefined
   /** Whether Titan normalizes the vector. */
   readonly normalize?: boolean | undefined
-  /** The kind of input, read by Cohere. Both v3 and v4 require it. */
+  /** The Cohere input type, required by v3 and v4. */
   readonly input_type?: "search_document" | "search_query" | "classification" | "clustering" | undefined
-  /** How Cohere truncates long text: v3 uses START/END, v4 uses LEFT/RIGHT. */
+  /** How Cohere truncates long text. v3 accepts `START` or `END`, v4 `LEFT` or `RIGHT`. */
   readonly truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT" | undefined
   readonly [x: string]: unknown
 }>()("@effect/ai-amazon-bedrock/AmazonBedrockEmbeddingModel/Config") {}
@@ -127,18 +127,17 @@ export const model = (
  *
  * The `model` option names the model in the InvokeModel URL, and `family`
  * selects the request body. Titan embeds one text per request and Cohere up to
- * 96, so a larger batch is split into several requests. Constructor `config`
- * supplies request fields, and scoped overrides from `withConfigOverride` are
- * merged last for each request. Usage is the sum of the
+ * 96, so a larger batch is split into requests that run up to 5 at a time.
+ * Constructor `config` supplies request fields, and scoped overrides from
+ * `withConfigOverride` are merged last. Usage is the sum of the
  * `x-amzn-bedrock-input-token-count` response headers, or `undefined` when a
  * response has a missing or invalid count.
  *
  * **Gotchas**
  *
  * Concurrent `embed` calls share a request when their `Config` and
- * `AmazonBedrockConfig` values are equal. Up to 5 requests of one batch run at
- * the same time. Other per-call context used by an injected HTTP client comes
- * from the first caller in a batch.
+ * `AmazonBedrockConfig` values are equal. Other per-call context used by an
+ * injected HTTP client comes from the first caller in a batch.
  *
  * @see {@link layer} for providing the embedding model service as a layer
  * @see {@link model} for creating an `AiModel` that also provides dimensions
@@ -169,14 +168,12 @@ export const make = Effect.fnUntraced(function*({ model, family, config: provide
     embedMany: Effect.fnUntraced(function*({ inputs }) {
       const config = yield* makeConfig
       if (family === "cohere-embed-v3" && config.dimensions !== undefined && config.dimensions !== 1024) {
-        return yield* Effect.fail(AiError.make({
-          module: "AmazonBedrockEmbeddingModel",
-          method: "embedMany",
-          reason: new AiError.InvalidRequestError({
+        return yield* fail(
+          new AiError.InvalidRequestError({
             parameter: "dimensions",
             description: "Cohere Embed v3 requires 1024 dimensions"
           })
-        }))
+        )
       }
       const responses = yield* Effect.forEach(
         Arr.chunksOf(inputs, row.textsPerRequest),
@@ -184,28 +181,22 @@ export const make = Effect.fnUntraced(function*({ model, family, config: provide
           const [body, response] = yield* invoke({ modelId: model, body: row.body(config, texts) })
           const results = vectors(body)
           if (results.length !== texts.length) {
-            return yield* Effect.fail(AiError.make({
-              module: "AmazonBedrockEmbeddingModel",
-              method: "embedMany",
-              reason: new AiError.InvalidOutputError({
+            return yield* fail(
+              new AiError.InvalidOutputError({
                 description: `Expected ${texts.length} embeddings, received ${results.length}`
               })
-            }))
+            )
           }
-          return [results, response] as const
+          // NaN marks a missing or malformed count and makes the total unknown.
+          const tokens = response.headers["x-amzn-bedrock-input-token-count"]
+          return [results, tokens !== undefined && /^\d+$/.test(tokens) ? Number(tokens) : NaN] as const
         }),
         { concurrency: 5 }
       )
+      const inputTokens = responses.reduce((total, [, tokens]) => total + tokens, 0)
       return {
         results: responses.flatMap(([results]) => results),
-        usage: {
-          inputTokens: responses.reduce<number | undefined>((total, [, response]) => {
-            const header = response.headers["x-amzn-bedrock-input-token-count"]
-            if (total === undefined || header === undefined || !/^\d+$/.test(header)) return undefined
-            const sum = total + Number(header)
-            return Number.isSafeInteger(sum) ? sum : undefined
-          }, 0)
-        }
+        usage: { inputTokens: Number.isSafeInteger(inputTokens) ? inputTokens : undefined }
       }
     })
   })
@@ -289,25 +280,20 @@ const families: Record<Family, Row> = {
   },
   "cohere-embed-v4": {
     textsPerRequest: 96,
-    body: ({ dimensions, ...config }, texts) => ({
-      ...config,
-      ...(dimensions === undefined ? {} : { output_dimension: dimensions }),
-      texts
-    })
+    body: ({ dimensions, ...config }, texts) => ({ ...config, output_dimension: dimensions, texts })
   }
 }
 
-const Vectors = Schema.Array(Schema.Array(Schema.Finite))
+const Vector = Schema.mutable(Schema.Array(Schema.Finite))
+const Vectors = Schema.mutable(Schema.Array(Vector))
 
 const InvokeModelResponse = Schema.Union([
-  Schema.Struct({ embedding: Schema.Array(Schema.Finite) }),
+  Schema.Struct({ embedding: Vector }),
   Schema.Struct({ embeddings: Schema.Union([Vectors, Schema.Struct({ float: Vectors })]) })
 ])
 
-const vectors = (body: typeof InvokeModelResponse.Type): Array<Array<number>> => {
-  if ("embedding" in body) {
-    return [[...body.embedding]]
-  }
-  const embeddings = "float" in body.embeddings ? body.embeddings.float : body.embeddings
-  return embeddings.map((vector) => [...vector])
-}
+const vectors = (body: typeof InvokeModelResponse.Type): Array<Array<number>> =>
+  "embedding" in body ? [body.embedding] : "float" in body.embeddings ? body.embeddings.float : body.embeddings
+
+const fail = (reason: AiError.AiErrorReason): AiError.AiError =>
+  AiError.make({ module: "AmazonBedrockEmbeddingModel", method: "embedMany", reason })
