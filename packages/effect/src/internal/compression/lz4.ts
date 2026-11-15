@@ -1,11 +1,8 @@
 // LZ4 block and frame formats:
 // https://github.com/lz4/lz4/blob/v1.10.0/doc/lz4_Block_format.md
 // https://github.com/lz4/lz4/blob/v1.10.0/doc/lz4_Frame_format.md
-import { type Decoder, fail, Output } from "./failure.ts"
+import { type Decoder, fail, failOutputLimit, Output, readUint32 } from "./failure.ts"
 import { xxh32 } from "./xxhash32.ts"
-
-const read32 = (b: Uint8Array, i: number): number =>
-  (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0
 
 const truncated = (what: string): never => fail("Truncated", `the input ends inside ${what}`)
 
@@ -13,7 +10,7 @@ const truncated = (what: string): never => fail("Truncated", `the input ends ins
 // is below it, a size recorded in the frame
 const overflow = (out: Output, needed: number): never =>
   needed > out.limit
-    ? fail("OutputLimit", `the output is larger than the limit of ${out.limit} bytes`)
+    ? failOutputLimit(out.limit)
     : fail("Malformed", "a block is larger than the block maximum size or the frame content size")
 
 // Decodes the block `src[ip, end)` onto `out`. Matches may reach back to
@@ -115,11 +112,11 @@ export const lz4Frame: Decoder = (input, limit, sizeHint) => {
   while (ip < end) {
     // Bytes after the last frame that cannot start another are not data
     if (ip + 4 > end) fail("Malformed", "bytes are left after the last frame")
-    const magic = read32(input, ip)
+    const magic = readUint32(input, ip)
     ip += 4
     if ((magic & 0xfffffff0) >>> 0 === SKIPPABLE_MAGIC) {
       if (ip + 4 > end) truncated("a skippable frame size")
-      const size = read32(input, ip)
+      const size = readUint32(input, ip)
       ip += 4
       if (size > end - ip) truncated("a skippable frame")
       ip += size
@@ -156,10 +153,8 @@ export const lz4Frame: Decoder = (input, limit, sizeHint) => {
     let frameCap = limit
     if (hasContentSize) {
       // Above 2^53 the value is inexact, but still larger than any limit
-      const contentSize = read32(input, start + 2) + read32(input, start + 6) * 2 ** 32
-      if (contentSize > limit - frameStart) {
-        fail("OutputLimit", `the output is larger than the limit of ${limit} bytes`)
-      }
+      const contentSize = readUint32(input, start + 2) + readUint32(input, start + 6) * 2 ** 32
+      if (contentSize > limit - frameStart) failOutputLimit(limit)
       frameCap = frameStart + contentSize
     }
     if (out === undefined) out = new Output(limit, sizeHint ?? (hasContentSize ? frameCap : undefined))
@@ -167,7 +162,7 @@ export const lz4Frame: Decoder = (input, limit, sizeHint) => {
     // Data blocks, up to the EndMark
     while (true) {
       if (ip + 4 > end) truncated("a block size")
-      const word = read32(input, ip)
+      const word = readUint32(input, ip)
       ip += 4
       if (word === 0) break
       const size = word & 0x7fffffff
@@ -175,7 +170,7 @@ export const lz4Frame: Decoder = (input, limit, sizeHint) => {
       const dataEnd = ip + size
       const blockEnd = dataEnd + (blockChecksum ? 4 : 0)
       if (blockEnd > end) truncated("a data block")
-      if (blockChecksum && xxh32(input, ip, dataEnd) !== read32(input, dataEnd)) {
+      if (blockChecksum && xxh32(input, ip, dataEnd) !== readUint32(input, dataEnd)) {
         fail("Checksum", "a block checksum does not match")
       }
       const blockStart = out.length
@@ -194,7 +189,7 @@ export const lz4Frame: Decoder = (input, limit, sizeHint) => {
 
     if (contentChecksum) {
       if (ip + 4 > end) truncated("a content checksum")
-      if (xxh32(out.buffer, frameStart, out.length) !== read32(input, ip)) {
+      if (xxh32(out.buffer, frameStart, out.length) !== readUint32(input, ip)) {
         fail("Checksum", "the content checksum does not match")
       }
       ip += 4

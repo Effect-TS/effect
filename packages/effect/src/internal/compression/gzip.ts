@@ -3,7 +3,7 @@
 
 import { crc32 } from "../crc32.ts"
 import { ByteQueue, InflateError, InflateMemory, Inflater, NeedInput } from "../inflate.ts"
-import { type Decoder, fail, Output } from "./failure.ts"
+import { type Decoder, fail, Output, readUint32 } from "./failure.ts"
 
 // FLG bits (RFC 1952, section 2.3.1)
 const FHCRC = 2
@@ -18,9 +18,6 @@ const MAX_RATIO = 1032
 
 // Decoding is synchronous, so one set of inflater arrays serves every call
 let memory: InflateMemory | undefined
-
-const readUint32 = (input: Uint8Array, offset: number): number =>
-  (input[offset] | (input[offset + 1] << 8) | (input[offset + 2] << 16) | (input[offset + 3] << 24)) >>> 0
 
 // Returns the offset of the deflate data of the member at `offset`
 const readHeader = (input: Uint8Array, offset: number): number => {

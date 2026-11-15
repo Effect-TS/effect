@@ -1,6 +1,6 @@
 // Snappy raw block format:
 // https://github.com/google/snappy/blob/1.2.2/format_description.txt
-import { type Decoder, fail } from "./failure.ts"
+import { type Decoder, fail, failOutputLimit, readUint32 } from "./failure.ts"
 
 const truncated = (): never => fail("Truncated", "the input ends inside a Snappy element")
 
@@ -22,7 +22,7 @@ export const snappy: Decoder = (input, limit) => {
     if (byte < 0x80) break
   }
   if (length > 0xffffffff) fail("Malformed", "the preamble is larger than 2^32 - 1")
-  if (length > limit) fail("OutputLimit", `the output is larger than the limit of ${limit} bytes`)
+  if (length > limit) failOutputLimit(limit)
 
   // The preamble is the exact size, so the output is allocated once
   const out = new Uint8Array(length)
@@ -67,7 +67,7 @@ export const snappy: Decoder = (input, limit) => {
     } else {
       if (ip + 4 > end) truncated()
       n = (tag >>> 2) + 1
-      offset = (input[ip] | (input[ip + 1] << 8) | (input[ip + 2] << 16) | (input[ip + 3] << 24)) >>> 0
+      offset = readUint32(input, ip)
       ip += 4
     }
     if (offset === 0) fail("Malformed", "a copy has offset 0")

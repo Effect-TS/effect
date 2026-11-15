@@ -26,6 +26,18 @@ export const fail = (kind: FailureKind, message: string): never => {
   throw new DecodeFailure(kind, message)
 }
 
+/** @internal */
+export const failOutputLimit = (limit: number): never =>
+  fail("OutputLimit", `the output is larger than the limit of ${limit} bytes`)
+
+/**
+ * Reads the little-endian unsigned 32-bit integer at `offset`.
+ *
+ * @internal
+ */
+export const readUint32 = (bytes: Uint8Array, offset: number): number =>
+  (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0
+
 /**
  * A byte buffer that grows as output is appended and fails with
  * `OutputLimit` before it would hold more than `limit` bytes. `sizeHint`,
@@ -46,9 +58,7 @@ export class Output {
   // Makes room for `n` more bytes
   reserve(n: number): void {
     const needed = this.length + n
-    if (needed > this.limit) {
-      fail("OutputLimit", `the output is larger than the limit of ${this.limit} bytes`)
-    }
+    if (needed > this.limit) failOutputLimit(this.limit)
     if (needed > this.buffer.length) {
       const next = new Uint8Array(Math.min(this.limit, Math.max(needed, this.buffer.length * 2)))
       next.set(this.buffer.subarray(0, this.length))
