@@ -138,6 +138,13 @@ describe("DataFrame", () => {
           `column "n" has values its schema rejects`
         ],
         [
+          DataFrame.fromColumns({ lo: [1, 2], hi: [2, 1] }),
+          Schema.Struct({ lo: Schema.Number, hi: Schema.Number }).check(
+            Schema.makeFilter((row) => row.lo < row.hi || "lo must be below hi")
+          ),
+          "rows have values their schema rejects"
+        ],
+        [
           DataFrame.fromRows(Schema.Struct({ s: Schema.Struct({ a: Schema.String }) }), [{ s: { a: "x" } }, {
             s: { a: "z" }
           }]),

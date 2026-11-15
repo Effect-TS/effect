@@ -1078,7 +1078,7 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
     if (held !== undefined) checks.push(any(`NOT (${held})`, `has values that ${D.describe(type)} can't hold exactly`))
     return checks
   }),
-  ...(table.schema === undefined ? [] : Schema_.valueChecks(table.schema)).map(([name, test]): Check => {
+  ...(table.schema === undefined ? [] : Schema_.columnChecks(table.schema)).map(([name, test]): Check => {
     const type = frame.columns.find((c) => c.name === name)!.type
     return {
       sql: `ARRAY_AGG(DISTINCT ${output(declared(table.columns!.find((c) => c.name === name)!), type)})`,

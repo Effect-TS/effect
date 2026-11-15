@@ -390,7 +390,8 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
  * declared type exactly: a decimal with more digits than the declared scale,
  * or a timestamp finer than the declared unit, fails. Values of fields the
  * schema constrains further (literals, enums, refinements, including inside
- * structs, arrays and union members) are checked against it.
+ * structs, arrays and union members) are checked against it, and so are the
+ * rows when the struct itself has checks (`Schema.Struct(...).check(...)`).
  *
  * **Gotchas**
  *

@@ -73,11 +73,24 @@ describe("Query", () => {
         const streamed = yield* Effect.flip(Query.table("t", City).pipe(Effect.provide(Catalog.layer({ t: bad }))))
         assert.strictEqual(streamed.message, `column "city" is Float64, expected Utf8`)
         const Kind = Schema.Struct({ kind: Schema.Literals(["a", "b"]) })
-        const kinds = DataFrame.fromColumns({ kind: ["a", "c"] })
-        for (const t of [kinds, Stream.make(kinds)]) {
-          const error = yield* Effect.flip(Query.table("t", Kind).pipe(Effect.provide(Catalog.layer({ t }))))
-          assert.strictEqual(error.message, `column "kind" has values its schema rejects`)
+        const Range = Schema.Struct({ lo: Schema.Number, hi: Schema.Number }).check(
+          Schema.makeFilter((row) => row.lo < row.hi || "lo must be below hi")
+        )
+        for (
+          const [schema, frame, message] of [
+            [Kind, DataFrame.fromColumns({ kind: ["a", "c"] }), `column "kind" has values its schema rejects`],
+            [Range, DataFrame.fromColumns({ lo: [1, 2], hi: [2, 1] }), "rows have values their schema rejects"]
+          ] as const
+        ) {
+          for (const t of [frame, Stream.make(frame)]) {
+            const error = yield* Effect.flip(Query.table("t", schema).pipe(Effect.provide(Catalog.layer({ t }))))
+            assert.strictEqual(error.message, message)
+          }
         }
+        const ranges = Query.table("t", Range).pipe(
+          Effect.provide(Catalog.layer({ t: DataFrame.fromColumns({ lo: [1], hi: [2] }) }))
+        )
+        assert.deepStrictEqual(DataFrame.toRows(yield* ranges), [{ lo: 1, hi: 2 }])
         const berlin = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(
           ArrowSchema.make([ArrowSchema.field("t", ArrowSchema.timestamp("millisecond", "Europe/Berlin"))]),
           [{ t: 0n }]

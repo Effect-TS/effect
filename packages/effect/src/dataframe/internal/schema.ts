@@ -500,11 +500,32 @@ export const valueChecks = (
     return test === undefined ? [] : [[String(ps.name), test] as const]
   })
 
+/** A test of whole rows against a struct schema's own checks; `undefined` without any. */
+const rowsCheck = (schema: { readonly ast: AST.AST }): ((row: unknown) => boolean) | undefined => {
+  const checks = structOf(schema).checks
+  return checks && ((row) => Result.isSuccess(AST.runChecks(checks, row)))
+}
+
+/**
+ * The {@link valueChecks} of a schema whose tables are checked column by
+ * column, as a SQL engine checks them: a schema with checks on whole rows
+ * (`Schema.Struct(...).check(...)`) fails.
+ *
+ * @internal
+ */
+export const columnChecks = (
+  schema: { readonly ast: AST.AST }
+): Array<readonly [name: string, test: (value: unknown) => boolean]> =>
+  rowsCheck(schema) === undefined
+    ? valueChecks(schema)
+    : V.fail("schemas with checks on whole rows aren't supported on SQL tables; check their fields instead")
+
 /**
  * Checks that a frame has the declared columns and narrows it to them, in
  * their order, converting each to its declared type (exactly: a value the
  * declared type can't hold fails). With a `schema`, the values of fields it
- * constrains beyond their column type are checked against it too.
+ * constrains beyond their column type, and its checks on whole rows, are
+ * checked against it too.
  *
  * @internal
  */
@@ -530,6 +551,8 @@ export const conform = (
         return V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
       }
     }
+    const rows = rowsCheck(schema)
+    if (rows !== undefined && !F.toRows(narrowed).every(rows)) return V.fail("rows have values their schema rejects")
   }
   return narrowed
 }

@@ -247,6 +247,9 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  * A table without the precision and scale of a `BigDecimal` field fails
  * when it is read.
  *
+ * A SQL engine can't check a struct's own checks on whole rows
+ * (`Schema.Struct(...).check(...)`): a query over such a table fails.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.5

@@ -474,6 +474,10 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
             [
               odd(Schema.Struct({ months: Schema.Duration })),
               `column "months" has durations in months, which have no fixed length`
+            ],
+            [
+              contract(Schema.Struct({ s: Schema.String }).check(Schema.makeFilter((row) => row.s !== ""))),
+              "schemas with checks on whole rows aren't supported on SQL tables; check their fields instead"
             ]
           ] as const
         ) {
