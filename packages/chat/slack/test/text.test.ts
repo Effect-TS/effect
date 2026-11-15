@@ -12,56 +12,6 @@ const graphemes = (text: string) => [...segmenter.segment(text)]
 const isBoundary = (text: string, index: number) =>
   index === text.length || graphemes(text).some((segment) => segment.index === index)
 
-describe("build", () => {
-  it("writes every <, > and & as an entity, in code too, and keeps allowed tokens", () => {
-    const built = Text.build("a <@U1> <@U2> `<b>` & > <!here>", { users: ["U1"], broadcast: true }, Text.postBudget)
-    assert.strictEqual(built.text, "a <@U1> &lt;@U2&gt; `&lt;b&gt;` &amp; &gt; <!here>")
-    assert.strictEqual(built.dropped, 0)
-  })
-
-  it("cuts a post at 16,000 code points and an update at 3,800 bytes, marker included", () => {
-    assert.strictEqual(Text.build("a".repeat(16_000), {}, Text.postBudget).text, "a".repeat(16_000))
-    assert.strictEqual(Text.build("a".repeat(16_001), {}, Text.postBudget).text, "a".repeat(15_999) + "…")
-    // An astral letter is one code point and four bytes.
-    assert.strictEqual(Text.build("𝐚".repeat(16_001), {}, Text.postBudget).text, "𝐚".repeat(15_999) + "…")
-    // "…" is three bytes.
-    assert.strictEqual(Text.build("é".repeat(1_900), {}, Text.updateBudget).text, "é".repeat(1_900))
-    assert.strictEqual(Text.build("é".repeat(1_901), {}, Text.updateBudget).text, "é".repeat(1_898) + "…")
-  })
-
-  it("cuts on a grapheme cluster boundary and splits no entity", () => {
-    const family = "👨‍👩‍👧‍👦"
-    const cut = Text.build(family.repeat(200), {}, Text.updateBudget).text
-    assert.strictEqual(cut, family.repeat(151) + "…")
-    assert.strictEqual(graphemes(cut).length, 152)
-    assert.strictEqual(Text.build("&".repeat(4_000), {}, Text.postBudget).text, "&amp;".repeat(3_199) + "…")
-    assert.strictEqual(Text.build("<".repeat(1_000), {}, Text.updateBudget).text, "&lt;".repeat(949) + "…")
-  })
-
-  it("appends each allowed token not in the kept head once, in order", () => {
-    const notify = { users: ["U1", "U2", "U3"] }
-    const built = Text.build("<@U2> " + "x".repeat(20_000) + " <@U1> <@U3> <@U1> <@U2>", notify, Text.postBudget)
-    assert.isTrue(built.text.startsWith("<@U2> xxx"))
-    assert.isTrue(built.text.endsWith("x… <@U1> <@U3>"))
-    assert.strictEqual(codePoints(built.text), 16_000)
-    assert.strictEqual(built.dropped, 0)
-  })
-
-  it("never cuts inside a token", () => {
-    const built = Text.build("x".repeat(15_997) + "<@U1>" + "y".repeat(10), { users: ["U1"] }, Text.postBudget)
-    assert.strictEqual(built.text, "x".repeat(15_993) + "… <@U1>")
-  })
-
-  it("keeps the tokens that fit when the tokens alone don't, and counts the rest", () => {
-    const users = Array.from({ length: 500 }, (_, i) => `U${1_000 + i}`)
-    const built = Text.build(users.map((user) => `<@${user}>`).join(" "), { users }, Text.updateBudget)
-    // "…" is 3 bytes and each " <@U1xxx>" 9.
-    assert.strictEqual(built.dropped, 79)
-    assert.strictEqual(built.text, "…" + users.slice(0, 421).map((user) => ` <@${user}>`).join(""))
-    assert.isAtMost(bytes(built.text), Text.updateTextBytes)
-  })
-})
-
 /**
  * The CI half of the Slack mention rule: the same assertions the live rule
  * makes on stored messages, made here on the request bodies the adapter

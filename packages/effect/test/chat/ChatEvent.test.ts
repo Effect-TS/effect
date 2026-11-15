@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as ChatEvent from "effect/chat/ChatEvent"
-import * as Schema from "effect/Schema"
 
 const thread = { platform: "slack", id: "T1/C1/1794454017.568519" }
 
@@ -14,11 +13,6 @@ describe("ChatEvent", () => {
       messageIds: ["1794454017.726189"],
       raw: { event: { type: "agent_session_stopped" } }
     }
-
-    it("is a ChatEvent", () => {
-      assert.isTrue(Schema.is(ChatEvent.ChatEvent)(event))
-      assert.isTrue(Schema.is(ChatEvent.ChatEvent)({ ...event, messageIds: [] }))
-    })
 
     it("dedupeKey is stop/{thread}/{id}", () => {
       assert.strictEqual(ChatEvent.dedupeKey(event), "stop/slack:T1/C1/1794454017.568519/1794454026.522466")

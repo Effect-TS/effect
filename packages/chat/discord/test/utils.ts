@@ -15,7 +15,6 @@ export const botUserId = "1564742987727118426"
 export const tim = "449108784879763458"
 export const guild = "840178841540362250"
 export const scratch = "1570607253965246584"
-export const forum = "1570607255684915302"
 export const test = "1570605581192929301"
 export const role = "1570607256838479964"
 export const webhook = "1570607260156297307"
@@ -44,7 +43,6 @@ export interface RecordedCall {
   readonly response: any
 }
 
-/** The REST calls of a fixture in `fixtures/recorded`. */
 /**
  * The slash commands recorded in EFF-3802, `fixtures/recorded/commands.json`.
  * The built command payloads start from these.
@@ -53,7 +51,8 @@ export const recordedCommands: any = JSON.parse(
   fs.readFileSync(new URL("./fixtures/recorded/commands.json", import.meta.url), "utf8")
 )
 
-export const recorded = (name: string): ReadonlyArray<RecordedCall> =>
+/** The REST calls of a fixture in `fixtures/recorded`. */
+const recorded = (name: string): ReadonlyArray<RecordedCall> =>
   JSON.parse(fs.readFileSync(new URL(`./fixtures/recorded/${name}.json`, import.meta.url), "utf8")).calls
 
 /** The one recorded call for `step`. */

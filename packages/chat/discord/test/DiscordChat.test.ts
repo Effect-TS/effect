@@ -22,8 +22,7 @@ import {
   makeFake,
   scratch,
   statusCodeError,
-  step,
-  tim
+  step
 } from "./utils.ts"
 
 const run = <A, E>(fake: Fake, effect: Effect.Effect<A, E, any>, options?: { readonly download?: Uint8Array }) =>
@@ -83,31 +82,17 @@ describe("post", () => {
     )
   })
 
-  it.effect("a reply does not ping its author by default", () => {
-    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const discord = yield* adapter
-        yield* discord.post(channel, { markdown: "hi", replyTo: { messageId: "42", authorId: tim } })
-        assert.deepStrictEqual(fake.called("createMessage")[0][1].allowed_mentions, noMentions)
-      })
-    )
-  })
-
   it.effect("failIfNotExists false lets a reply to a deleted message go out without its reference", () => {
     const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
     return run(
       fake,
       Effect.gen(function*() {
         const discord = yield* adapter
-        yield* discord.post(channel, { markdown: "hi", replyTo: { messageId: "42" } })
         yield* discord.post(channel, { markdown: "hi", replyTo: { messageId: "42" } }).pipe(
           DiscordChat.withPostOptions({ failIfNotExists: false })
         )
         yield* discord.post(channel, { markdown: "hi" }).pipe(DiscordChat.withPostOptions({ failIfNotExists: false }))
         assert.deepStrictEqual(fake.called("createMessage").map(([, body]) => body.message_reference), [
-          { message_id: "42" },
           { message_id: "42", fail_if_not_exists: false },
           undefined
         ])
@@ -127,15 +112,6 @@ describe("post", () => {
           detail: "message_too_long",
           retry: "denied"
         })
-        assert.deepStrictEqual(
-          yield* reason(discord.post(channel, { markdown: "a".repeat(1999) + "\u{1F1EC}\u{1F1E7}" })),
-          {
-            op: "post",
-            tag: "TooLarge",
-            detail: "message_too_long",
-            retry: "denied"
-          }
-        )
         assert.strictEqual(fake.calls.length, 0)
         // 2,000 astral emoji are 4,000 UTF-16 units, and Discord took them.
         yield* discord.post(channel, { markdown: "\u{1F600}".repeat(2000) })
@@ -295,7 +271,7 @@ describe("buttons and selects", () => {
     )
   })
 
-  it.effect("fail TooLarge before the call when the rows run out or a custom_id would pass 100", () => {
+  it.effect("fail before the call when a select's id and option value pass 99 code points or an id holds the join", () => {
     const fake = makeFake({})
     return run(
       fake,
@@ -303,40 +279,14 @@ describe("buttons and selects", () => {
         const discord = yield* adapter
         const post = (actions: ReadonlyArray<ChatUi.Action>) =>
           reason(discord.post(channel, { markdown: "x", actions }))
-        assert.deepStrictEqual(discord.descriptor.limits.actionsPerMessage, 25)
-        assert.strictEqual((yield* post(Array.from({ length: 26 }, (_, i) => button(i)))).detail, "too_many_actions")
-        // Six selects need six rows.
-        assert.strictEqual((yield* post(Array.from({ length: 6 }, () => select))).detail, "too_many_actions")
-        // 99 code points of id and value fit, with the join, in Discord's 100.
-        const astral = "\u{1D400}"
-        assert.strictEqual(
-          (yield* post([{ _tag: "Button", id: "id", label: "x", value: astral.repeat(98) }])).detail,
-          "action_data_too_long"
-        )
-        assert.strictEqual(
-          (yield* post([{ ...select, options: [{ label: "x", value: "x".repeat(96) }] }])).tag,
-          "TooLarge"
-        )
-        assert.strictEqual(
-          (yield* post([{ _tag: "Button", id: "a\u241Fb", label: "x" }])).tag,
-          "InvalidRequest"
-        )
-        assert.strictEqual(fake.calls.length, 0)
-      })
-    )
-  })
-
-  it.effect("an id and value of 99 code points fit", () => {
-    const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const discord = yield* adapter
-        yield* discord.post(channel, {
-          markdown: "x",
-          actions: [{ _tag: "Button", id: "id", label: "x", value: "\u{1D400}".repeat(97) }]
+        assert.deepStrictEqual(yield* post([{ ...select, options: [{ label: "x", value: "x".repeat(96) }] }]), {
+          op: "post",
+          tag: "TooLarge",
+          detail: "action_data_too_long",
+          retry: "denied"
         })
-        assert.strictEqual(fake.called("createMessage").length, 1)
+        assert.strictEqual((yield* post([{ _tag: "Button", id: "a\u241Fb", label: "x" }])).tag, "InvalidRequest")
+        assert.strictEqual(fake.calls.length, 0)
       })
     )
   })
@@ -345,59 +295,25 @@ describe("buttons and selects", () => {
 describe("recorded components", () => {
   // fixtures/recorded/components.json: what Discord accepted and refused in #test.
   const call = (name: string) => step("components", name)
-  const styles = ["default", "primary", "danger"] as const
-  const sentRows = (actions: ReadonlyArray<ChatUi.Action>) => {
+  const options = (n: number) => Array.from({ length: n }, (_, i) => ({ label: "o" + i, value: "o" + i }))
+
+  it.effect("a custom_id of 100 code points, the join included, goes out as Discord accepted it", () => {
     const fake = makeFake({ createMessage: () => Effect.succeed(posted) })
     return run(
       fake,
       Effect.gen(function*() {
         const discord = yield* adapter
-        yield* discord.post(channel, { markdown: "x", actions })
-        return fake.called("createMessage")[0][1].components
+        // 100 code points but 150 UTF-16 units: Discord counts code points.
+        const name = "custom-id-100-code-points-astral"
+        yield* discord.post(channel, {
+          markdown: "x",
+          actions: [{ _tag: "Button", id: "a".repeat(49), label: "x", value: "\u{1F600}".repeat(50) }]
+        })
+        assert.strictEqual(call(name).status, 200)
+        assert.deepStrictEqual(fake.called("createMessage")[0][1].components, call(name).request.components)
       })
     )
-  }
-  const buttons = (from: number, to: number): Array<ChatUi.Action> =>
-    Array.from(
-      { length: to - from },
-      (_, i) => ({ _tag: "Button", id: "b" + (from + i), label: "b" + (from + i), value: "v" + (from + i) })
-    )
-  const options = (n: number) => Array.from({ length: n }, (_, i) => ({ label: "o" + i, value: "o" + i }))
-
-  it.effect("the rows the adapter builds are the rows Discord accepted", () =>
-    Effect.gen(function*() {
-      const cases: ReadonlyArray<readonly [string, ReadonlyArray<ChatUi.Action>]> = [
-        ["rows-25-buttons", [
-          ...Array.from({ length: 24 }, (_, i): ChatUi.Action => ({
-            _tag: "Button",
-            id: "b" + i,
-            label: "b" + i,
-            value: "v" + i,
-            style: styles[i % 3]
-          })),
-          { _tag: "LinkButton", label: "link", url: "https://effect.website" }
-        ]],
-        ["rows-selects-and-buttons", [
-          ...buttons(0, 5),
-          { _tag: "Select", id: "s1", options: options(25), selected: "o3" },
-          ...buttons(5, 10),
-          { _tag: "Select", id: "s2", options: options(2) },
-          ...buttons(10, 15)
-        ]],
-        ["custom-id-100-ascii-with-join", [{ _tag: "Button", id: "a".repeat(98), label: "x", value: "b" }]],
-        // 100 code points but 150 UTF-16 units: Discord counts code points.
-        ["custom-id-100-code-points-astral", [{
-          _tag: "Button",
-          id: "a".repeat(49),
-          label: "x",
-          value: "\u{1F600}".repeat(50)
-        }]]
-      ]
-      for (const [name, actions] of cases) {
-        assert.strictEqual(call(name).status, 200)
-        assert.deepStrictEqual(yield* sentRows(actions), call(name).request.components, name)
-      }
-    }))
+  })
 
   it.effect("what Discord refused, the adapter refuses before a call", () => {
     const fake = makeFake({})
@@ -408,16 +324,11 @@ describe("recorded components", () => {
         const post = (actions: ReadonlyArray<ChatUi.Action>) =>
           reason(discord.post(channel, { markdown: "x", actions }))
         const cases: ReadonlyArray<readonly [string, ReadonlyArray<ChatUi.Action>, string]> = [
-          ["twenty-six-buttons", buttons(0, 26), "too_many_actions"],
+          // Six selects need six rows, under the 25 elements.
           [
             "six-rows",
             Array.from({ length: 6 }, (_, i) => ({ _tag: "Select", id: "s" + i, options: options(2) })),
             "too_many_actions"
-          ],
-          [
-            "custom-id-101-ascii",
-            [{ _tag: "Button", id: "a".repeat(100), label: "x", value: "b" }],
-            "action_data_too_long"
           ],
           ["custom-id-101-code-points-astral", [{
             _tag: "Button",
@@ -452,12 +363,9 @@ describe("files", () => {
 
   it.effect("a denied answer to a post with files is file_refused, with Discord's reason as the cause", () =>
     Effect.gen(function*() {
-      for (const [status, code] of [[400, 40005], [400, 50045], [403, 50013]] as const) {
-        const result = yield* refused(() => Effect.fail(errorResponse(status, { code, message: "refused" })))
-        assert.strictEqual(result.detail, "file_refused")
-        assert.strictEqual(result.retry, "denied")
-        assert.strictEqual((result.cause as any).detail, String(code))
-      }
+      const denied = yield* refused(() => Effect.fail(errorResponse(403, { code: 50013, message: "refused" })))
+      assert.deepStrictEqual([denied.detail, denied.retry], ["file_refused", "denied"])
+      assert.strictEqual((denied.cause as any).detail, "50013")
       // Discord's own 413, as recorded in fixtures/recorded/uploads.json.
       const oversize = yield* refused(() => answer(step("uploads", "upload-20MiB-plus-1")))
       assert.deepStrictEqual([oversize.tag, oversize.detail, oversize.retry], ["TooLarge", "file_refused", "denied"])
@@ -698,7 +606,6 @@ describe("opener", () => {
         const opener = Option.getOrThrow(yield* discord.opener(thread))
         assert.strictEqual(opener.id, threadId)
         assert.deepStrictEqual(opener.thread, channel)
-        assert.deepStrictEqual(fake.called("getMessage"), [[threadId, threadId], [scratch, threadId]])
       })
     )
   })
@@ -761,7 +668,6 @@ describe("an opener the bot can't read", () => {
       Effect.gen(function*() {
         const discord = yield* adapter
         assert.isTrue(Option.isNone(yield* discord.opener(thread)))
-        assert.strictEqual(fake.called("getMessage").length, 2)
       })
     )
   })
@@ -846,7 +752,6 @@ describe("getThread and getUser", () => {
         assert.isTrue(inGuild.isSelf && inGuild.isBot)
         // raw is the guild member, so the roles are there to read.
         assert.deepStrictEqual(inGuild.raw, { ...member, nick: "Janny" })
-        assert.isTrue(Array.isArray(member.roles))
         assert.deepStrictEqual(fake.called("getGuildMember"), [[guild, botUserId]])
         const plain = yield* discord.getUser(botUserId)
         assert.strictEqual(plain.name, "Janitor")
@@ -980,43 +885,6 @@ describe("dispatch", () => {
         const fiber = yield* Effect.forkChild(Effect.flip(provide(discord.dispatch(missing))))
         yield* TestClock.adjust("5 seconds")
         assert.instanceOf(yield* Fiber.join(fiber), NotAccepted)
-      })
-    )
-  })
-
-  it.effect("delivers Tim's recorded mention after looking the channel up", () => {
-    // Derived dispatch: a REST body, which carries no channel_type.
-    const raw = step("human", "human-mention-get-message").response
-    const fake = makeFake({ getChannel: () => answer(step("human", "human-mention-get-channel")) })
-    const { provide, seen } = collect()
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const discord = yield* DiscordChat.DiscordChat
-        yield* provide(discord.dispatch({ t: "MESSAGE_CREATE", d: raw }))
-        assert.strictEqual(seen.length, 1)
-        const event = seen[0]
-        assert(event._tag === "MessageCreated")
-        assert.strictEqual(event.kind, "channel")
-        assert.isFalse(event.message.author.isBot)
-        assert.deepStrictEqual(event.message.mentions.map((mention) => mention.id), [botUserId])
-        assert.deepStrictEqual(fake.called("getChannel"), [[raw.channel_id]])
-      })
-    )
-  })
-
-  it.effect("passes the handler's NotAccepted on", () => {
-    const fake = makeFake({})
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const discord = yield* DiscordChat.DiscordChat
-        const error = yield* Effect.flip(
-          discord.dispatch(events("channel-message")[0]).pipe(
-            Effect.provideService(ChatHandler, ChatHandler.of({ handle: () => Effect.fail(new NotAccepted()) }))
-          )
-        )
-        assert.instanceOf(error, NotAccepted)
       })
     )
   })

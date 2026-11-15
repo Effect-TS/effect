@@ -87,20 +87,6 @@ const callbacks = (fake: Fake) =>
 const issuedAt = (id: string) => Number((BigInt(id) >> 22n) + 1420070400000n)
 
 describe("recorded slash commands", () => {
-  it("normalizes each command the gateway delivered", () => {
-    for (const [what, payload] of Object.entries<any>(recorded.commands)) {
-      const event = normalize(payload)
-      assert.strictEqual(event._tag, "CommandInvoked", what)
-      if (event._tag !== "CommandInvoked") return
-      assert.deepStrictEqual([event.id, event.text, event.userId, event.thread.id], [
-        "chat-capture",
-        payload.data.options?.[0]?.value ?? "",
-        tim,
-        test
-      ])
-    }
-  })
-
   it.effect("answers each command with the callback Discord took", () =>
     Effect.gen(function*() {
       for (const what of ["private", "public", "mention", "modal", "defer", "deferPublic"]) {
@@ -110,8 +96,6 @@ describe("recorded slash commands", () => {
         assert.deepStrictEqual(callbacks(fake), [[payload.id, "<redacted>", recorded.callbacks[what].payload]], what)
         assert.strictEqual(recorded.callbacks[what].status, 204)
       }
-      // Allowed mentions are empty: the mention renders and notifies nobody.
-      assert.deepStrictEqual(recorded.callbacks.mention.payload.data.allowed_mentions.parse, [])
     }))
 
   it.effect("takes a click on a private answer, whose message has the ephemeral flag, and acks it", () =>

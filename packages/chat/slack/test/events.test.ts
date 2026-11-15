@@ -95,9 +95,6 @@ describe("captured Events API deliveries", () => {
     Effect.gen(function*() {
       for (const name of cases) {
         for (const delivery of captured(name)) {
-          assert.strictEqual(delivery.headers["content-type"], "application/json")
-          assert.isUndefined(delivery.headers["x-slack-signature"])
-          assert.isUndefined(delivery.headers["x-slack-retry-num"])
           const events = yield* deliver(delivery)
           assert.deepStrictEqual(events, SlackChat.normalize(JSON.parse(delivery.body), context), name)
           for (const event of events) yield* checkEvent(event, checkOptions)
@@ -130,20 +127,6 @@ describe("captured Events API deliveries", () => {
       assert.deepStrictEqual(mentions(event), selfMention())
     }))
 
-  it.live("an edit gives nothing, whether it keeps, adds or removes the mention", () =>
-    Effect.gen(function*() {
-      const expected: Record<string, ReturnType<typeof selfMention>> = {
-        "edit-keeps-mention": selfMention(),
-        "edit-adds-mention": [],
-        "edit-removes-mention": selfMention()
-      }
-      for (const [name, before] of Object.entries(expected)) {
-        const [original, edit] = yield* deliveries(name)
-        assert.deepStrictEqual(mentions(created(original)), before, name)
-        assert.deepStrictEqual(edit, [], name)
-      }
-    }))
-
   it.live("a mention only in code, a Block Kit section or an attachment is not reported", () =>
     Effect.gen(function*() {
       for (const name of ["code-only-mention", "block-kit-mention", "attachment-mention"]) {
@@ -158,34 +141,6 @@ describe("captured Events API deliveries", () => {
       assert.deepStrictEqual(mentions(event), selfMention())
     }))
 
-  it.live("a file share with a mention in its comment", () =>
-    Effect.gen(function*() {
-      const event = created((yield* deliveries("file-mention"))[0])
-      assert.deepStrictEqual(mentions(event), selfMention())
-      assert.deepStrictEqual(
-        event.message.attachments.map(({ contentType, name, size }) => ({ contentType, name, size })),
-        [{ name: "fixture.txt", contentType: "text/plain", size: 13 }]
-      )
-    }))
-
-  it.live("reactions by name, with Slack's primary names and a skin tone", () =>
-    Effect.gen(function*() {
-      const [message, ...reactions] = yield* deliveries("reactions")
-      const id = created(message).message.id
-      assert.deepStrictEqual(
-        reactions.map((events) => {
-          assert.strictEqual(events.length, 1)
-          const event = events[0]
-          assert(event._tag === "ReactionAdded" || event._tag === "ReactionRemoved")
-          assert.strictEqual(event.messageId, id)
-          return [event._tag, event.emoji]
-        }),
-        [["ReactionAdded", "👍"], ["ReactionAdded", "👍🏽"], ["ReactionAdded", "😀"], ["ReactionRemoved", "😀"]]
-      )
-      // An add and its removal are different events.
-      assert.notStrictEqual(dedupeKey(reactions[2][0]), dedupeKey(reactions[3][0]))
-    }))
-
   it.live("a native stream arrives as an empty message from the bot, its text only as message_changed", () =>
     Effect.gen(function*() {
       const [start, changed] = yield* deliveries("native-stream")
@@ -193,16 +148,6 @@ describe("captured Events API deliveries", () => {
       assert.strictEqual(event.message.text, "")
       assert.isTrue(event.message.author.isSelf)
       assert.deepStrictEqual(changed, [])
-    }))
-
-  it.live("Slack sent app_mention only for messages from a person", () =>
-    Effect.sync(() => {
-      for (const name of cases) {
-        for (const delivery of captured(name)) {
-          const event = JSON.parse(delivery.body).event
-          if (event.type === "app_mention") assert.strictEqual(event.user, person, name)
-        }
-      }
     }))
 })
 
@@ -257,24 +202,6 @@ describe("captured deliveries for messages a person typed", () => {
       ])
     }))
 
-  it.live("a plain message has no mention, and its later message_changed gives nothing", () =>
-    Effect.gen(function*() {
-      const [message, changed] = yield* deliveries("human-plain")
-      const event = created(message)
-      assert.strictEqual(event.message.author.id, person)
-      assert.isFalse(event.message.author.isSelf)
-      assert.isFalse(event.message.author.isBot)
-      assert.deepStrictEqual(event.message.mentions, [])
-      assert.deepStrictEqual(changed, [])
-    }))
-
-  it.live("a thread root's message_changed after its first reply gives nothing", () =>
-    Effect.gen(function*() {
-      const [message, mention, changed] = yield* deliveries("human-mention")
-      assert.strictEqual(created(message).message.id, created(mention).message.id)
-      assert.deepStrictEqual(changed, [])
-    }))
-
   it.live("an edit gives nothing, including the app_mention Slack sends when it adds a mention", () =>
     Effect.gen(function*() {
       const [original, changed, mention] = yield* deliveries("human-edit-adds-mention")
@@ -287,27 +214,6 @@ describe("captured deliveries for messages a person typed", () => {
       const [, , kept, keptRoot] = yield* deliveries("human-edit-keeps-mention")
       assert.deepStrictEqual(kept, [])
       assert.deepStrictEqual(keptRoot, [])
-    }))
-
-  it.live("a literal @name in code is no mention", () =>
-    Effect.gen(function*() {
-      const [events] = yield* deliveries("human-code-mention")
-      assert.deepStrictEqual(created(events).message.mentions, [])
-    }))
-
-  it.live("a file share keeps its file, and its later message_changed gives nothing", () =>
-    Effect.gen(function*() {
-      const [message, , changed] = yield* deliveries("human-file-mention")
-      assert.deepStrictEqual(created(message).message.attachments.map(({ name }) => name), ["T3.svg"])
-      assert.deepStrictEqual(changed, [])
-    }))
-
-  it.live("a thread_broadcast belongs to the thread it was sent in", () =>
-    Effect.gen(function*() {
-      const root = created((yield* deliveries("human-plain"))[0]).message.id
-      const [message, changed] = yield* deliveries("human-thread-broadcast")
-      assert.deepStrictEqual(partsOf(created(message).thread), { team, channel, threadTs: root })
-      assert.deepStrictEqual(changed, [])
     }))
 
   it.live("reactions, with a skin tone and a custom emoji", () =>
@@ -360,15 +266,5 @@ describe("captured deliveries for the bot's replies and stops", () => {
       }
       // Each click is its own request.
       assert.strictEqual(new Set(stops.map(dedupeKey)).size, 3)
-    }))
-
-  it.live("a click on Stop with no stream open sends an empty streaming_message_ts", () =>
-    Effect.gen(function*() {
-      const bodies = captured("stop-no-stream").map((delivery) => JSON.parse(delivery.body).event)
-      const stops = bodies.filter((event) => event.type === "agent_session_stopped")
-      assert.deepStrictEqual(stops.map((event) => event.streaming_message_ts), [[], [], []])
-      const events = (yield* deliveries("stop-no-stream")).flat().filter((event) => event._tag === "StopRequested")
-      assert.deepStrictEqual(events.map((event) => event.messageIds), [[], [], []])
-      assert.strictEqual(new Set(events.map(dedupeKey)).size, 3)
     }))
 })

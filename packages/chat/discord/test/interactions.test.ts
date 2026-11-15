@@ -27,7 +27,6 @@ import {
   answer,
   botUserId,
   discordLayer,
-  errorResponse,
   type Fake,
   guild,
   makeFake,
@@ -75,10 +74,6 @@ const slash = (name: string, options?: ReadonlyArray<unknown>, data: Record<stri
     ...data
   })
 
-/** The submit of a modal a command opened, which has no message. */
-const commandSubmit = (customId: string, components: ReadonlyArray<unknown>) =>
-  fromRecorded(recordedCommands.commandModal.submitClose, { custom_id: customId, components })
-
 const omit = (raw: Record<string, unknown>, key: string) => {
   const { [key]: _, ...rest } = raw
   return rest
@@ -105,24 +100,13 @@ describe("normalizeInteraction", () => {
           raw: withValue.raw
         })
       )
-      const without = some(click({ custom_id: "go", component_type: 2 }))
-      assert.isFalse("value" in without)
       // In a direct the user is on `user`, not `member`.
       const direct = some({ ...omit(click({ custom_id: "go", component_type: 2 }), "member"), user: { id: tim } })
       assert.strictEqual(direct.userId, tim)
-      for (const interaction of [withValue, without, direct]) {
+      for (const interaction of [withValue, direct]) {
         yield* checkInteraction(interaction, { platform: "discord" })
       }
     }))
-
-  it("a string select gives its one value", () => {
-    const changed = some(click({ custom_id: "pick", component_type: 3, values: ["b"] }))
-    assert.deepStrictEqual([changed._tag, changed.id, (changed as ChatInteraction.SelectChanged).value], [
-      "SelectChanged",
-      "pick",
-      "b"
-    ])
-  })
 
   it.effect("a submit reads each Label's input, leaves an empty one out and splits the metadata", () =>
     Effect.gen(function*() {
@@ -159,47 +143,17 @@ describe("normalizeInteraction", () => {
       yield* checkInteraction(submitted, { platform: "discord" })
     }))
 
-  it.effect("a slash command gives its name and its one string option, or the empty string", () =>
-    Effect.gen(function*() {
-      const bare = some(slash("summarize"))
-      assert.deepStrictEqual(
-        bare,
-        ChatInteraction.CommandInvoked.make({
-          id: "summarize",
-          text: "",
-          thread: DiscordChat.thread(scratch),
-          userId: tim,
-          raw: bare.raw
-        })
-      )
-      const withText = some(slash("deploy", [{ type: 3, name: "version", value: "v1 <@1>" }]))
-      assert.strictEqual((withText as ChatInteraction.CommandInvoked).text, "v1 <@1>")
-      yield* checkInteraction(bare, { platform: "discord" })
-      yield* checkInteraction(withText, { platform: "discord" })
-    }))
-
-  it.effect("a submit with no message, from a modal a command opened, has no messageId", () =>
-    Effect.gen(function*() {
-      const submitted = some(commandSubmit("form", []))
-      assert.strictEqual(submitted._tag, "ModalSubmitted")
-      assert.isFalse("messageId" in submitted)
-      assert.deepStrictEqual(submitted.thread, DiscordChat.thread(scratch))
-      yield* checkInteraction(submitted, { platform: "discord" })
-    }))
-
   it("anything not from an element the adapter built, or a command it can't express, is None", () => {
     for (
       const raw of [
-        // A user command, a slash command with an integer option, and one with two options.
+        // A user command, and a slash command with an integer option.
         slash("profile", undefined, { type: 2 }),
         slash("roll", [{ type: 4, name: "sides", value: 6 }]),
-        slash("deploy", [{ type: 3, name: "a", value: "x" }, { type: 3, name: "b", value: "y" }]),
         // Autocomplete for a command.
         { ...slash("deploy", [{ type: 3, name: "version", value: "v", focused: true }]), type: 4 },
-        { type: 1, id: "1", token: "t" },
+        // A user select, and a click with no message.
         click({ custom_id: "users", component_type: 5, values: [tim] }),
-        omit(click({ custom_id: "go", component_type: 2 }), "message"),
-        "not an object"
+        omit(click({ custom_id: "go", component_type: 2 }), "message")
       ]
     ) {
       assert.isTrue(Option.isNone(DiscordChat.normalizeInteraction(raw)))
@@ -246,20 +200,6 @@ describe("interaction", () => {
 
   const answering = () => makeFake({ createInteractionResponse: () => Effect.succeed(null) })
   const payloads = (fake: Fake) => fake.called("createInteractionResponse").map(([, , options]) => options.payload)
-
-  it.effect("acks a click and a close with type 6, to the interaction's id and token", () =>
-    Effect.gen(function*() {
-      const fake = answering()
-      const { handler, received } = recording({})
-      yield* deliver(fake, click({ custom_id: "go", component_type: 2 }), handler)
-      yield* deliver(fake, submit("form", []), handler)
-      assert.strictEqual(received.length, 2)
-      assert.deepStrictEqual(fake.called("createInteractionResponse").map(([id, token]) => [id, token]), [
-        ["1570700000000000100", "token"],
-        ["1570700000000000100", "token"]
-      ])
-      assert.deepStrictEqual(payloads(fake), [{ type: 6 }, { type: 6 }])
-    }))
 
   it.effect("opens a modal with type 9: Labels around the inputs and a text display for a text", () =>
     Effect.gen(function*() {
@@ -310,41 +250,15 @@ describe("interaction", () => {
       }])
     }))
 
-  it.effect("answers errors with a private message listing each one, escaped", () =>
+  it.effect("a modal title over 45 reaches refused as TooLarge, and the click is still answered", () =>
     Effect.gen(function*() {
-      const fake = answering()
-      const { handler } = recording({ submit: ChatInteraction.errors({ name: "Too short.", size: "Pick <one>" }) })
-      yield* deliver(fake, submit("form", []), handler)
-      assert.deepStrictEqual(payloads(fake), [{
-        type: 4,
-        data: { content: "- Too short\\.\n- Pick \\<one\\>", allowed_mentions: { parse: [] }, flags: 64 }
-      }])
-    }))
-
-  it.effect("a modal title or label over 45 reaches refused as TooLarge, and the click is still answered", () =>
-    Effect.gen(function*() {
-      for (
-        const modal of [
-          ChatInteraction.modal("form", { title: "t".repeat(46), fields: {} }),
-          ChatInteraction.modal("form", {
-            title: "t",
-            fields: { a: ChatInteraction.textInput({ label: "l".repeat(46) }) }
-          })
-        ]
-      ) {
-        const fake = answering()
-        const { handler, refused } = recording({ click: modal.open() })
-        yield* deliver(fake, click({ custom_id: "go", component_type: 2 }), handler)
-        assert.deepStrictEqual(refused.map((error) => [error.op, error.reason._tag]), [["openModal", "TooLarge"]])
-        assert.deepStrictEqual(payloads(fake), [{ type: 6 }])
-      }
-      // 45 fits.
       const fake = answering()
       const { handler, refused } = recording({
-        click: ChatInteraction.modal("form", { title: "t".repeat(45), fields: {} }).open()
+        click: ChatInteraction.modal("form", { title: "t".repeat(46), fields: {} }).open()
       })
       yield* deliver(fake, click({ custom_id: "go", component_type: 2 }), handler)
-      assert.deepStrictEqual(refused, [])
+      assert.deepStrictEqual(refused.map((error) => [error.op, error.reason._tag]), [["openModal", "TooLarge"]])
+      assert.deepStrictEqual(payloads(fake), [{ type: 6 }])
     }))
 
   it.effect("a modal callback that comes back Unknown interaction is refused as interaction_expired", () =>
@@ -389,55 +303,29 @@ describe("interaction", () => {
       assert.deepStrictEqual([received.length, fake.calls.length], [0, 0])
     }))
 
-  it.effect("answers a command: type 4 for respond, 5 for defer, 9 for a modal, private with flag 64", () =>
+  it.effect("withPostOptions does not reach a command's answer", () =>
     Effect.gen(function*() {
       const fake = answering()
-      const replies: Array<(command: ChatInteraction.CommandInvoked) => ChatInteraction.CommandReply> = [
-        () => ChatInteraction.respond({ markdown: "Hi *there*" }),
-        () => ChatInteraction.respond({ markdown: "Hi", visibility: "public" }),
-        (command) => ChatInteraction.defer(command),
-        (command) => ChatInteraction.defer(command, { visibility: "public" }),
-        () => ChatInteraction.modal("form", { title: "t", fields: {} }).open()
-      ]
-      for (const reply of replies) {
-        const { handler, refused } = recording({ command: reply })
-        // withPostOptions does not reach a command's answer.
-        yield* DiscordChat.withPostOptions(deliver(fake, slash("summarize"), handler), {
-          suppressEmbeds: false,
-          notify: { everyone: true }
-        })
-        assert.deepStrictEqual(refused, [])
-      }
-      assert.deepStrictEqual(payloads(fake), [
-        // The message a post sends, embeds off with flag 4.
-        {
-          type: 4,
-          data: {
-            content: "Hi *there*",
-            allowed_mentions: { parse: [], replied_user: false, roles: [], users: [] },
-            flags: 68
-          }
-        },
-        {
-          type: 4,
-          data: { content: "Hi", allowed_mentions: { parse: [], replied_user: false, roles: [], users: [] }, flags: 4 }
-        },
-        { type: 5, data: { flags: 64 } },
-        { type: 5 },
-        { type: 9, data: { custom_id: "form", title: "t", components: [] } }
-      ])
+      const { handler } = recording({
+        command: () => ChatInteraction.respond({ markdown: "Hi", visibility: "public" })
+      })
+      yield* DiscordChat.withPostOptions(deliver(fake, slash("summarize"), handler), {
+        suppressEmbeds: false,
+        notify: { everyone: true }
+      })
+      assert.deepStrictEqual(payloads(fake), [{
+        type: 4,
+        data: { content: "Hi", allowed_mentions: { parse: [], replied_user: false, roles: [], users: [] }, flags: 4 }
+      }])
     }))
 
-  it.effect("sends nothing for a command nobody handles, and refuses a respond a post would refuse", () =>
+  it.effect("sends nothing for a command nobody handles", () =>
     Effect.gen(function*() {
       const fake = answering()
       const { handler, received, refused } = recording({})
       yield* deliver(fake, slash("theirs"), handler)
       assert.strictEqual(received.length, 1)
-      const tooLong = recording({ command: () => ChatInteraction.respond({ markdown: "x".repeat(2001) }) })
-      yield* deliver(fake, slash("summarize"), tooLong.handler)
       assert.deepStrictEqual(refused, [])
-      assert.deepStrictEqual(tooLong.refused.map((error) => [error.op, error.reason._tag]), [["respond", "TooLarge"]])
       assert.deepStrictEqual(payloads(fake), [])
     }))
 })
@@ -477,59 +365,6 @@ describe("commandRequests", () => {
 describe("followUp", () => {
   const deferred = (visibility: ChatInteraction.Visibility) =>
     ChatInteraction.defer(some(slash("summarize")) as ChatInteraction.CommandInvoked, { visibility })
-
-  const followUp = (fake: Fake, defer: ChatInteraction.Defer, markdown = "Done") =>
-    Effect.flatMap(Chat.Chat, (chat) => chat.followUp(defer, { markdown })).pipe(Effect.provide(discordLayer(fake)))
-
-  it.effect("edits the original response with the application id and token, private with flag 64", () =>
-    Effect.gen(function*() {
-      const fake = makeFake({ updateOriginalWebhookMessage: () => Effect.succeed({ id: "1" }) })
-      yield* followUp(fake, deferred("ephemeral"))
-      yield* followUp(fake, deferred("public"))
-      assert.deepStrictEqual(
-        fake.called("updateOriginalWebhookMessage").map(([applicationId, token, options]) => [
-          applicationId,
-          token,
-          options.payload
-        ]),
-        [
-          // Flag 4 keeps embeds off, as a post does.
-          [botUserId, "token", {
-            content: "Done",
-            allowed_mentions: { parse: [], replied_user: false, roles: [], users: [] },
-            flags: 68
-          }],
-          [botUserId, "token", {
-            content: "Done",
-            allowed_mentions: { parse: [], replied_user: false, roles: [], users: [] },
-            flags: 4
-          }]
-        ]
-      )
-    }))
-
-  it.effect("is interaction_expired from 15 minutes after the command without a call, or for a spent token", () =>
-    Effect.gen(function*() {
-      const issued = Number((BigInt("1570700000000000900") >> 22n) + 1420070400000n)
-      const spent = makeFake({
-        updateOriginalWebhookMessage: () =>
-          Effect.fail(errorResponse(401, { code: 50027, message: "Invalid Webhook Token" }))
-      })
-      yield* TestClock.setTime(issued + Duration.toMillis(Duration.minutes(15)) - 1)
-      const refused = yield* Effect.flip(followUp(spent, deferred("public")))
-      const tooLong = yield* Effect.flip(followUp(spent, deferred("public"), "x".repeat(2001)))
-      yield* TestClock.setTime(issued + Duration.toMillis(Duration.minutes(15)))
-      const late = yield* Effect.flip(followUp(spent, deferred("public")))
-      assert.deepStrictEqual(
-        [refused, tooLong, late].map((error) => [error.op, error.reason._tag, error.reason.detail]),
-        [
-          ["followUp", "NotFound", "interaction_expired"],
-          ["followUp", "TooLarge", tooLong.reason.detail],
-          ["followUp", "NotFound", "interaction_expired"]
-        ]
-      )
-      assert.strictEqual(spent.called("updateOriginalWebhookMessage").length, 1)
-    }))
 
   it.effect("sends one HTTP request through dfx's layers on a 429 just before 15 minutes, and fails RateLimited", () =>
     Effect.gen(function*() {

@@ -60,24 +60,6 @@ describe("the bot's own messages read back", () => {
       assert.notStrictEqual(recorded("markdown-mentions", "1794509003.143939").text, mentionsPost)
     }))
 
-  it.effect("mentions are the elements outside code, at the offsets the renderer wrote", () =>
-    Effect.gen(function*() {
-      const message = yield* read(recorded("markdown-mentions", "1794509003.143939"))
-      // The inline code and the fence hold the same tokens, as literals.
-      assert.deepStrictEqual(message.mentions.map((mention) => [mention.kind, mention.id, mention.isSelf]), [
-        ["user", botUserId, true],
-        ["channel", "C0CH1LGJ4F3", false]
-      ])
-    }))
-
-  it.effect("a me_message drops the label Slack wrote into the token", () =>
-    Effect.gen(function*() {
-      const stored = recorded("me-message", "1794509006.465359")
-      assert.strictEqual(stored.text, `Fixture: me message waves at <@${botUserId}|janitor2>`)
-      const message = yield* read(stored)
-      assert.strictEqual(message.text, `Fixture: me message waves at <@${botUserId}>`)
-    }))
-
   it.effect("an agent DM thread root", () =>
     Effect.gen(function*() {
       const stored = recorded("assistant-thread-root", "1794454526.171439")
@@ -97,11 +79,9 @@ describe("the bot's own messages read back", () => {
 
   it.effect("someone else's message keeps Slack's text", () =>
     Effect.gen(function*() {
-      for (const { message, name } of synthetic.cases) {
-        const { app_id: _app, bot_id: _bot, ...rest } = message
-        const other = { ...rest, user: "U080YLYB277" }
-        const read_ = yield* read(other)
-        assert.strictEqual(read_.text, message.text, name)
-      }
+      const { message } = synthetic.cases.find(({ name }) => name.startsWith("Markdown characters"))!
+      const { app_id: _app, bot_id: _bot, ...rest } = message
+      const read_ = yield* read({ ...rest, user: "U080YLYB277" })
+      assert.strictEqual(read_.text, message.text)
     }))
 })

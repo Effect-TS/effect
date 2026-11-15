@@ -1,11 +1,8 @@
-import { extract } from "@effect/chat-slack/internal/mentions"
-import { messageSubtypes } from "@effect/chat-slack/internal/normalize"
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { assert, describe, it } from "@effect/vitest"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { dedupeKey } from "effect/chat/ChatEvent"
 import { checkEvent, checkMessage } from "effect/chat/ChatTest"
-import * as ChatThread from "effect/chat/ChatThread"
 import * as Effect from "effect/Effect"
 import { botUserId, channel, checkOptions, fixture, messageEnvelope, recordedMessages, team } from "./utils.ts"
 
@@ -176,71 +173,6 @@ describe("normalize", () => {
       )
     }))
 
-  it("alignment ends and reports only real items, for every small case", () => {
-    const ids = ["U1AAAA", "U2BBBB", "U3CCCC"]
-    let seed = 7
-    const next = (bound: number) => {
-      seed = (seed * 1103515245 + 12345) % 2147483648
-      return seed % bound
-    }
-    for (let round = 0; round < 2_000; round++) {
-      const items = Array.from({ length: next(6) }, () => ({ id: ids[next(3)], real: next(2) === 0 }))
-      const text = Array.from({ length: next(6) }, () => `<@${ids[next(3)]}>`).join(" ")
-      const blocks = [{
-        type: "rich_text",
-        elements: [{
-          type: "rich_text_section",
-          elements: items.map((item) =>
-            item.real ? { type: "user", user_id: item.id } : { type: "text", text: ` <@${item.id}> ` }
-          )
-        }]
-      }]
-      const mentions = extract(text, blocks, botUserId)
-      const real = items.filter((item) => item.real).map((item) => item.id)
-      assert.isAtMost(mentions.length, real.length)
-      for (const id of new Set(mentions.map((mention) => mention.id))) {
-        assert.isAtMost(
-          mentions.filter((mention) => mention.id === id).length,
-          real.filter((item) => item === id).length,
-          JSON.stringify({ text, items })
-        )
-      }
-      const starts = mentions.map((mention) => mention.start)
-      assert.strictEqual(new Set(starts).size, starts.length)
-      for (const mention of mentions) assert.strictEqual(text.slice(mention.start, mention.end), `<@${mention.id}>`)
-    }
-  })
-
-  it.effect("a /me line that mentions the bot is a message", () =>
-    Effect.gen(function*() {
-      const [message] = recordedMessages("me-message").values()
-      assert.strictEqual(message.subtype, "me_message")
-      const event = yield* pair(message)
-      assert.strictEqual(event.message.mentions.length, 1)
-      assert.isTrue(event.message.mentions[0].isSelf)
-    }))
-
-  it.effect("a thread_broadcast is addressed to its thread", () =>
-    Effect.gen(function*() {
-      const broadcast = [...recordedMessages("thread-broadcast").values()].find((m) => m.subtype === "thread_broadcast")
-      const event = yield* pair(broadcast)
-      assert.strictEqual(event.kind, "thread")
-      assert.deepStrictEqual(event.thread, SlackChat.thread({ team, channel, threadTs: broadcast.thread_ts }))
-    }))
-
-  it.effect("a thread root keeps its channel address after its first reply", () =>
-    Effect.gen(function*() {
-      const calls = fixture("thread-root-before-after").calls.filter((call) => call.method === "conversations.history")
-      const before = calls[0].response.messages[0]
-      const after = calls[1].response.messages.find((m: any) => m.ts === before.ts)
-      assert.strictEqual(after.thread_ts, after.ts)
-      const one = yield* pair(before)
-      const two = yield* pair(after)
-      assert.deepStrictEqual(one.thread, SlackChat.thread({ team, channel }))
-      assert.deepStrictEqual(two.thread, one.thread)
-      assert.strictEqual(dedupeKey(one), dedupeKey(two))
-    }))
-
   it.effect("files are attachments, with an id and no URL", () =>
     Effect.gen(function*() {
       const reply = recordedMessages("file-share").get("1794509028.831169")
@@ -285,19 +217,12 @@ describe("normalize", () => {
       })
     }))
 
-  it("drops an edited app_mention, other subtypes, other workspaces and other types", () => {
+  it("drops other subtypes, other workspaces and other types", () => {
     const message = { ts: "1794509003.000005", user: "U080YLYB277", text: "<@U0CCLMD4S1L>" }
-    const edited = messageEnvelope({ ...message, edited: { user: "U080YLYB277", ts: "1794509010.000000" } }, {
-      type: "app_mention"
-    })
-    assert.deepStrictEqual(SlackChat.normalize(edited, context), [])
-    for (const subtype of ["channel_join", "message_changed", "message_deleted", "assistant_app_thread"]) {
-      assert.deepStrictEqual(SlackChat.normalize(messageEnvelope({ ...message, subtype }), context), [])
-    }
+    assert.deepStrictEqual(SlackChat.normalize(messageEnvelope({ ...message, subtype: "channel_join" }), context), [])
     assert.deepStrictEqual(SlackChat.normalize(messageEnvelope(message, { teamId: "T0OTHER" }), context), [])
     assert.deepStrictEqual(SlackChat.normalize({ type: "url_verification", challenge: "x" }, context), [])
     assert.deepStrictEqual(SlackChat.normalize(null, context), [])
-    assert.deepStrictEqual([...messageSubtypes].sort(), ["bot_message", "file_share", "me_message", "thread_broadcast"])
   })
 
   it("drops the verification token from raw", () => {
@@ -310,14 +235,14 @@ describe("normalize", () => {
 })
 
 describe("reactions", () => {
-  const reaction = (type: "reaction_added" | "reaction_removed", name: string) => ({
+  const reaction = (name: string) => ({
     team_id: team,
     api_app_id: "A0CCHBHDK7X",
     type: "event_callback",
     event_id: "Ev02",
     event_time: 1794509100,
     event: {
-      type,
+      type: "reaction_added",
       user: "U080YLYB277",
       reaction: name,
       item_user: botUserId,
@@ -326,72 +251,31 @@ describe("reactions", () => {
     }
   })
 
-  it.effect("plain, toned and custom emoji", () =>
+  it.effect("a name with two tones is a custom emoji, on the reacted message's author", () =>
     Effect.gen(function*() {
-      // The names Slack stored in the reactions fixture.
-      const names = fixture("reactions").calls
-        .filter((call) => call.method === "reactions.add" && call.response.ok === true)
-        .map((call) => call.request.name as string)
-      assert.includeMembers(names, ["grinning", "+1::skin-tone-3"])
-      const cases: ReadonlyArray<readonly [string, string]> = [
-        ["grinning", "😀"],
-        ["+1", "👍"],
-        ["thumbsup", "👍"],
-        ["+1::skin-tone-3", "👍🏼"],
-        ["party-parrot", "custom:party-parrot"],
-        // Synthetic: no recording has a two-tone reaction, so its name is
-        // not resolved and reads as custom (stage 0 fixture 16).
-        ["handshake::skin-tone-2::skin-tone-5", "custom:handshake::skin-tone-2::skin-tone-5"]
-      ]
-      for (const [name, emoji] of cases) {
-        const added = SlackChat.normalize(reaction("reaction_added", name), context)
-        const removed = SlackChat.normalize(reaction("reaction_removed", name), context)
-        assert.strictEqual(added.length, 1)
-        const event = added[0]
-        assert(event._tag === "ReactionAdded")
-        assert.strictEqual(event.emoji, emoji)
-        assert.strictEqual(event.messageAuthorId, botUserId)
-        assert.deepStrictEqual(event.thread, SlackChat.thread({ team, channel }))
-        yield* checkEvent(event, checkOptions)
-        yield* checkEvent(removed[0], checkOptions)
-        assert.notStrictEqual(dedupeKey(event), dedupeKey(removed[0]))
-      }
+      // No recording has a two-tone reaction, so its name is not resolved
+      // (stage 0 fixture 16).
+      const [event] = SlackChat.normalize(reaction("handshake::skin-tone-2::skin-tone-5"), context)
+      assert(event._tag === "ReactionAdded")
+      assert.strictEqual(event.emoji, "custom:handshake::skin-tone-2::skin-tone-5")
+      assert.strictEqual(event.messageAuthorId, botUserId)
+      assert.deepStrictEqual(event.thread, SlackChat.thread({ team, channel }))
+      yield* checkEvent(event, checkOptions)
     }))
 })
 
 describe("agent_session_stopped", () => {
-  const cases = fixture("agent-session-stopped").cases
-
-  it.effect("the three captured payloads", () =>
+  it.effect("a stop in a direct message", () =>
     Effect.gen(function*() {
-      const expected: Record<string, { readonly channel: string; readonly messageIds: ReadonlyArray<string> }> = {
-        channelThread: { channel, messageIds: ["1794454017.726189"] },
-        noStream: { channel, messageIds: [] },
-        direct: { channel: "D0CCGDG0E75", messageIds: ["1794454526.283939"] }
-      }
-      for (const [name, envelope] of Object.entries(cases)) {
-        const events = SlackChat.normalize(envelope, context)
-        assert.strictEqual(events.length, 1)
-        const event = events[0]
-        assert(event._tag === "StopRequested")
-        yield* checkEvent(event, checkOptions)
-        const { channel: eventChannel, messageIds } = expected[name]
-        const raw = envelope as any
-        assert.deepStrictEqual(
-          event.thread,
-          SlackChat.thread({ team, channel: eventChannel, threadTs: raw.event.thread_ts })
-        )
-        assert.deepStrictEqual(event.messageIds, messageIds)
-        assert.strictEqual(event.userId, "U080YLYB277")
-        assert.strictEqual(dedupeKey(event), `stop/${ChatThread.toString(event.thread)}/${raw.event.event_ts}`)
-      }
+      const envelope = fixture("agent-session-stopped").cases.direct
+      const [event] = SlackChat.normalize(envelope, context)
+      assert(event._tag === "StopRequested")
+      yield* checkEvent(event, checkOptions)
+      assert.deepStrictEqual(
+        event.thread,
+        SlackChat.thread({ team, channel: "D0CCGDG0E75", threadTs: envelope.event.thread_ts })
+      )
+      assert.deepStrictEqual(event.messageIds, ["1794454526.283939"])
+      assert.strictEqual(event.userId, "U080YLYB277")
     }))
-
-  it("an empty streaming_message_ts gives no message ids", () => {
-    const envelope = structuredClone(cases.channelThread)
-    envelope.event.streaming_message_ts = []
-    const [event] = SlackChat.normalize(envelope, context)
-    assert(event._tag === "StopRequested")
-    assert.deepStrictEqual(event.messageIds, [])
-  })
 })

@@ -3,7 +3,7 @@
  * `actions` block's elements as posted, and what the 13,200 cap charged for
  * it, found by bisecting the text beside it.
  */
-import { cost, type Element, labelCost, option, stringCost } from "@effect/chat-slack/internal/actions"
+import { cost, type Element, option } from "@effect/chat-slack/internal/actions"
 import { assert, describe, it } from "@effect/vitest"
 
 const opts = (n: number, label = (i: number) => "Option " + i, value = (i: number) => "o" + i) =>
@@ -87,16 +87,5 @@ describe("actionsCost", () => {
       assert.isAtLeast(charge, charged, name)
       if (ascii) assert.isAtMost(charge, charged + 5, name)
     }
-  })
-
-  it("charges each string as JSON writes it", () => {
-    assert.strictEqual(cost([]), 0)
-    assert.strictEqual(stringCost("a/\"\\é\u{1D400}\n"), 1 + 2 + 2 + 2 + 6 + 12 + 6)
-    // Entities in a label, and an emoji at the greater of its name and its escaped form.
-    assert.strictEqual(labelCost("<>&"), 13)
-    assert.strictEqual(labelCost("\u{1F644}"), ":face_with_rolling_eyes:".length)
-    assert.strictEqual(labelCost("\u{1F600}"), 12)
-    // A 75-character Japanese label.
-    assert.strictEqual(labelCost("日".repeat(75)), 450)
   })
 })

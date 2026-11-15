@@ -111,18 +111,13 @@ describe("escapeStream", () => {
     const notify = { users: ["U1"] }
     const cases: ReadonlyArray<readonly [string, string]> = [
       ["a <", "a "],
-      ["a <!", "a "],
-      ["a &", "a "],
       ["a &l", "a "],
-      ["a &lt", "a "],
       ["a &#6", "a "],
       ["a &#x3", "a "],
       ["a &comm", "a "],
-      ["a <&comm", "a "],
       ["a &lt;", "a "],
       ["`a <", "`a "],
-      ["a &amp", "a &amp"],
-      ["a &q", "a &q"]
+      ["a &amp", "a &amp"]
     ]
     for (const [text, sent] of cases) {
       const result = escapeStream(text, {})

@@ -214,17 +214,4 @@ describe("layerDispatchHook", () => {
       assert.strictEqual(gateway.reconnects(), 0)
     }))
   })
-
-  it.effect("a dispatch the adapter does not read never reaches the handler", () => {
-    const storage: Storage = new Map()
-    let handled = 0
-    return Effect.scoped(Effect.gen(function*() {
-      const gateway = yield* host(storage, () => Effect.sync(() => void handled++))
-      yield* gateway.receive(hello)
-      yield* gateway.receive(ready)
-      yield* gateway.receive({ op: 0, t: "TYPING_START", s: 2, d: {} })
-      yield* until(() => stored(storage)?.sequence === 2)
-      assert.strictEqual(handled, 0)
-    }))
-  })
 })

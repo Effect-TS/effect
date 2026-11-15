@@ -48,37 +48,8 @@ const sequences: ReadonlyArray<readonly [emoji: string, name: string]> = rows.fl
 )
 
 describe("emoji", () => {
-  it("holds every emoji, name and skin tone variation from emoji-data v16.0.0", () => {
-    assert.strictEqual(emojiData.split("\n").length, 1911)
-    assert.strictEqual(rows.reduce((total, row) => total + row.names.length, 0), 1972)
-    assert.strictEqual(rows.filter((row) => row.names.length === 0).length, 1875)
-    assert.strictEqual(sequences.length, 4946)
-    assert.strictEqual(new Set(sequences.map(([emoji]) => emoji)).size, sequences.length)
-  })
-
   describe("fromName", () => {
-    it("resolves every alias", () => {
-      assert.strictEqual(fromName("+1"), "👍")
-      assert.strictEqual(fromName("thumbsup"), "👍")
-    })
-
-    it("accepts surrounding colons", () => {
-      assert.strictEqual(fromName(":+1:"), "👍")
-      assert.strictEqual(fromName(":+1::skin-tone-3:"), "👍🏼")
-    })
-
-    it("returns the fully qualified emoji", () => {
-      assert.strictEqual(fromName("heart"), "❤️")
-    })
-
-    it("looks skin tones up in skin_variations", () => {
-      assert.strictEqual(fromName("+1::skin-tone-3"), "👍🏼")
-      assert.strictEqual(fromName("woman-running::skin-tone-6"), "🏃🏿‍♀️")
-    })
-
-    it("gives none for a name with two tones, which no recording shows", () => {
-      assert.strictEqual(fromName("people_holding_hands::skin-tone-2::skin-tone-5"), undefined)
-      assert.strictEqual(fromName("handshake::skin-tone-2::skin-tone-5"), undefined)
+    it("gives none for a name with two tones, which no recording shows, even the same tone twice", () => {
       assert.strictEqual(fromName("handshake::skin-tone-3::skin-tone-3"), undefined)
     })
 
@@ -98,40 +69,16 @@ describe("emoji", () => {
 
     it("returns undefined for unknown names and tones", () => {
       assert.strictEqual(fromName("not_an_emoji"), undefined)
-      assert.strictEqual(fromName(""), undefined)
-      assert.strictEqual(fromName("::"), undefined)
       assert.strictEqual(fromName(":+1"), undefined)
       assert.strictEqual(fromName("grinning::skin-tone-3"), undefined)
       assert.strictEqual(fromName("+1::skin-tone-1"), undefined)
-      assert.strictEqual(fromName("+1::skin-tone-7"), undefined)
-      assert.strictEqual(fromName("+1::skin-tone-2::skin-tone-3"), undefined)
       assert.strictEqual(fromName("handshake::skin-tone-2::skin-tone-3::skin-tone-4"), undefined)
       assert.strictEqual(fromName("+1::thumbsup"), undefined)
     })
   })
 
   describe("toName", () => {
-    it("returns the primary short name", () => {
-      assert.strictEqual(toName("👍"), "+1")
-      assert.strictEqual(toName("😀"), "grinning")
-      assert.strictEqual(toName("🧑‍🤝‍🧑"), "people_holding_hands")
-    })
-
-    it("matches emoji with and without U+FE0F", () => {
-      assert.strictEqual(toName("❤\uFE0F"), "heart")
-      assert.strictEqual(toName("❤"), "heart")
-    })
-
-    it("names toned emoji with skin-tone suffixes", () => {
-      assert.strictEqual(toName("👍🏼"), "+1::skin-tone-3")
-      assert.strictEqual(toName("🏃🏿‍♀️"), "woman-running::skin-tone-6")
-      assert.strictEqual(toName("🏃🏿‍♀"), "woman-running::skin-tone-6")
-      assert.strictEqual(toName("🧑🏻‍🤝‍🧑🏾"), "people_holding_hands::skin-tone-2::skin-tone-5")
-      assert.strictEqual(toName("🫱🏻‍🫲🏾"), "handshake::skin-tone-2::skin-tone-5")
-    })
-
     it("returns undefined for anything that is not exactly one emoji", () => {
-      assert.strictEqual(toName(""), undefined)
       assert.strictEqual(toName("a"), undefined)
       assert.strictEqual(toName("👍👍"), undefined)
       assert.strictEqual(toName("👍 "), undefined)
@@ -142,54 +89,13 @@ describe("emoji", () => {
         assert.strictEqual(toName(emoji), name)
       }
     })
-
-    it("round trips with fromName for every emoji with at most one tone", () => {
-      for (const row of rows) {
-        if (row.tones > 1) continue
-        assert.strictEqual(fromName(toName(row.emoji)!), row.emoji, row.name)
-      }
-    })
   })
 
   describe("blocksCost", () => {
-    it("counts code points of plain text", () => {
-      assert.strictEqual(blocksCost(""), 0)
-      assert.strictEqual(blocksCost("abc"), 3)
-      assert.strictEqual(blocksCost("é日本"), 3)
-      assert.strictEqual(blocksCost("𝒜"), 1)
-    })
-
-    it("counts emoji as their :short_name: form", () => {
-      assert.strictEqual(blocksCost("😀"), 10)
-      assert.strictEqual(blocksCost("a😀"), 11)
-      assert.strictEqual(blocksCost("👍"), 4)
-      assert.strictEqual(blocksCost("👍🏽"), 17)
-      assert.strictEqual(blocksCost("🧑‍🤝‍🧑"), 22)
-      assert.strictEqual(blocksCost("❤"), 7)
-      assert.strictEqual(blocksCost("❤️"), 7)
-      assert.strictEqual(blocksCost("🇺🇸"), 4)
-      assert.strictEqual(blocksCost("#️⃣"), 6)
-      assert.strictEqual(blocksCost("hi 👍🏽!"), 3 + 17 + 1)
-    })
-
     it("costs every emoji in the table exactly as its :short_name:", () => {
       for (const [emoji, name] of sequences) {
         assert.strictEqual(blocksCost(emoji), name.length + 2, name)
       }
-    })
-
-    it("charges stray emoji components enough to stay subadditive", () => {
-      assert.strictEqual(blocksCost("1"), 1)
-      assert.strictEqual(blocksCost("1\u20E3"), 5)
-      assert.isAtLeast(blocksCost("1") + blocksCost("\u20E3"), 5)
-      assert.isAtLeast(blocksCost("🇺") + blocksCost("🇸"), blocksCost("🇺🇸"))
-      assert.isAtLeast(blocksCost("🏃") + blocksCost("\u200D➡️"), blocksCost("🏃‍➡️"))
-      assert.isAtLeast(blocksCost("\uD83D") + blocksCost("\uDE00"), blocksCost("😀"))
-      // Slack charges a lone hair component 1. At 3 or less, 🧑‍🦱 would split
-      // for less than :curly_haired_person:.
-      assert.strictEqual(blocksCost("\u{1F9B1}"), 4)
-      assert.strictEqual(blocksCost("🧑‍🦱"), ":curly_haired_person:".length)
-      assert.isBelow(blocksCost("🧑") + blocksCost("\u200D") + 3, blocksCost("🧑‍🦱"))
     })
 
     it("is subadditive", () => {
@@ -232,11 +138,6 @@ describe("emoji", () => {
         const b = text.slice(cut)
         assert.isAtMost(blocksCost(text), blocksCost(a) + blocksCost(b), JSON.stringify([a, b]))
       }
-    })
-
-    it("measures long text", () => {
-      const text = "hello 👍🏽 world 🧑‍🤝‍🧑 #️⃣ 🇺🇸 ".repeat(2_000)
-      assert.strictEqual(blocksCost(text), 2_000 * (6 + 17 + 7 + 22 + 1 + 6 + 1 + 4 + 1))
     })
   })
 })

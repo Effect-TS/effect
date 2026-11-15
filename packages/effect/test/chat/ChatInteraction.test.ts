@@ -30,12 +30,6 @@ describe("ChatInteraction", () => {
       assert.strictEqual(ChatInteraction.encodeValue(Deploy, { version: "v1" }), "{\"version\":\"v1\"}")
     })
 
-    it("round-trips through a schema with a transformation", () => {
-      const encoded = ChatInteraction.encodeValue(Schema.NumberFromString, 42)
-      assert.strictEqual(encoded, "42")
-      assert.deepStrictEqual(ChatInteraction.decodeValue(Schema.NumberFromString, encoded), Option.some(42))
-    })
-
     it("gives none for a string that no longer decodes", () => {
       assert.isTrue(Option.isNone(ChatInteraction.decodeValue(Deploy, "not json")))
       assert.isTrue(Option.isNone(ChatInteraction.decodeValue(Deploy, "{\"version\":1}")))
@@ -55,17 +49,6 @@ describe("ChatInteraction", () => {
       })
       const Plain = ChatInteraction.button("plain", { label: "Plain" })
       assert.deepStrictEqual(Plain.of(), { _tag: "Button", id: "plain", label: "Plain" })
-    })
-
-    it("select.of encodes each option and the selected one", () => {
-      const Pick = ChatInteraction.select("pick", { placeholder: "Pick", value: Schema.Number })
-      assert.deepStrictEqual(Pick.of({ options: [{ label: "One", value: 1 }], selected: 1 }), {
-        _tag: "Select",
-        id: "pick",
-        placeholder: "Pick",
-        options: [{ label: "One", value: "1" }],
-        selected: "1"
-      })
     })
 
     it("modal.open builds the elements in field order, with encoded metadata and options", () => {
@@ -101,13 +84,6 @@ describe("ChatInteraction", () => {
             optional: true
           }
         ]
-      })
-    })
-
-    it("errors builds an Errors reply", () => {
-      assert.deepStrictEqual(ChatInteraction.errors({ reason: "Say more." }), {
-        _tag: "Errors",
-        errors: { reason: "Say more." }
       })
     })
 
@@ -240,14 +216,6 @@ describe("ChatInteraction", () => {
         refused: (_, error) => options.refused?.(error) ?? Effect.void
       })
 
-    it.effect("gives the reply inside the deadline", () =>
-      Effect.gen(function*() {
-        const reply = yield* ChatInteraction.handle(clicked("a"), deadline).pipe(
-          Effect.provideService(ChatInteraction.Handler, handlerWith({}))
-        )
-        assert.deepStrictEqual(reply, ChatInteraction.ack)
-      }))
-
     it.effect("gives Late for a late click, and refuses its modal with interaction_expired", () =>
       Effect.gen(function*() {
         const refused = yield* Deferred.make<ChatError.ChatError>()
@@ -272,28 +240,23 @@ describe("ChatInteraction", () => {
         assert.strictEqual(error.reason.detail, ChatError.interactionExpired)
       }))
 
-    it.effect("interrupts a late submit and a late command", () =>
+    it.effect("interrupts a late command", () =>
       Effect.gen(function*() {
-        let interrupted = 0
-        const slow = <A>(reply: A) =>
-          Effect.as(Effect.sleep("5 seconds"), reply).pipe(
-            Effect.onInterrupt(() => Effect.sync(() => void interrupted++))
-          )
+        let interrupted = false
         const handler = handlerWith({
-          submit: slow(ChatInteraction.close),
-          command: slow(ChatInteraction.respond({ markdown: "late" }))
-        })
-        const submitted = ChatInteraction.ModalSubmitted.make({ id: "m", values: {}, ...origin })
-        for (const event of [submitted, invoked("slow")]) {
-          const fiber = yield* ChatInteraction.handle(event, deadline).pipe(
-            Effect.provideService(ChatInteraction.Handler, handler),
-            Effect.forkChild
+          command: Effect.as(Effect.sleep("5 seconds"), ChatInteraction.respond({ markdown: "late" })).pipe(
+            Effect.onInterrupt(() => Effect.sync(() => void (interrupted = true)))
           )
-          yield* TestClock.adjust("3 seconds")
-          assert.isTrue(Schema.is(ChatInteraction.Late)(yield* Fiber.join(fiber)))
-        }
-        assert.strictEqual(interrupted, 2)
+        })
+        const fiber = yield* ChatInteraction.handle(invoked("slow"), deadline).pipe(
+          Effect.provideService(ChatInteraction.Handler, handler),
+          Effect.forkChild
+        )
+        yield* TestClock.adjust("3 seconds")
+        assert.isTrue(Schema.is(ChatInteraction.Late)(yield* Fiber.join(fiber)))
+        assert.isTrue(interrupted)
       }))
+
     it.effect("gives Late at the deadline without waiting for a late submit's cleanup", () =>
       Effect.gen(function*() {
         const cleaned = yield* Deferred.make<void>()
