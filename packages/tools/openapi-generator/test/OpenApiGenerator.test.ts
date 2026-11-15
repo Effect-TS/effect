@@ -1785,25 +1785,16 @@ const unrelated: Events200Sse = { event: "unrelated", data: "payload" }
     it.effect("preserves SSE reference sibling constraints (httpclient-type-only)", () =>
       assertTypeOnlyIncludes(constrainedSseSpec, ["\"event\": \"first\"", "\"event\": \"second\""]))
 
-    for (const format of ["httpapi", "httpclient", "httpclient-type-only"] as const) {
+    const openApi30SseSpec = { ...constrainedSseSpec, openapi: "3.0.3" } as unknown as OpenAPISpec
+    for (
+      const [format, assertIncludes] of [
+        ["httpapi", assertHttpApiIncludes],
+        ["httpclient", assertRuntimeIncludes],
+        ["httpclient-type-only", assertTypeOnlyIncludes]
+      ] as const
+    ) {
       it.effect(`ignores OpenAPI 3.0 SSE reference siblings (${format})`, () =>
-        Effect.gen(function*() {
-          const generator = yield* OpenApiGenerator.OpenApiGenerator
-          const source = yield* generator.generate(
-            { ...constrainedSseSpec, openapi: "3.0.3" } as unknown as OpenAPISpec,
-            {
-              name: "TestClient",
-              format
-            }
-          )
-          assert.include(source, "\"event\": string")
-          assert.notInclude(source, "\"event\": \"first\"")
-          assert.notInclude(source, "\"event\": \"second\"")
-        }).pipe(Effect.provide(
-          format === "httpclient-type-only"
-            ? OpenApiGenerator.layerTransformerTs
-            : OpenApiGenerator.layerTransformerSchema
-        )))
+        assertIncludes(openApi30SseSpec, ["\"event\": string"], ["\"event\": \"first\"", "\"event\": \"second\""]))
     }
 
     it.effect("generates tagged groups with endpoint annotations and representable parameters", () =>
