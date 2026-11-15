@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Use Unicode property escapes in `String` case-conversion helpers so non-ASCII letters are preserved instead of stripped.
+Preserve Unicode letters, combining marks, and numbers in `String` word-case helpers, including non-ASCII config keys.

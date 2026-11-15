@@ -1343,7 +1343,8 @@ const linesSeparated = (self: string, stripped: boolean): LinesIterator => new L
 
 /**
  * Normalizes a string by splitting it into word parts, transforming each part,
- * and joining the parts with a configurable delimiter.
+ * and joining the parts with a configurable delimiter. By default, words contain
+ * Unicode letters, combining marks, and numbers; no Unicode normalization is applied.
  *
  * **When to use**
  *
@@ -1421,17 +1422,17 @@ const normalizeCase = (
 // Support camel case ("camelCase" -> "camel Case" and "CAMELCase" -> "CAMEL Case")
 // and digit boundaries ("camel2case" -> "camel 2 case").
 const SPLIT_REGEXP = [
-  /([\p{Ll}\p{N}])(\p{Lu})/gu,
-  /(\p{Lu})(\p{Lu}\p{Ll})/gu,
-  /([\p{L}])(\p{N})/gu,
-  /(\p{N})(\p{L})/gu
+  /([\p{Ll}\p{N}]\p{M}*)(\p{Lu})/gu,
+  /(\p{Lu}\p{M}*)(\p{Lu}\p{M}*\p{Ll})/gu,
+  /(\p{L}\p{M}*)(\p{N})/gu,
+  /(\p{N}\p{M}*)(\p{L})/gu
 ]
 
 // Config paths preserve digit groups such as "v2" while still supporting camel case.
-const CONFIG_SPLIT_REGEXP = [/([\p{Ll}\p{N}])(\p{Lu})/gu, /(\p{Lu})(\p{Lu}\p{Ll})/gu]
+const CONFIG_SPLIT_REGEXP = [/([\p{Ll}\p{N}]\p{M}*)(\p{Lu})/gu, /(\p{Lu}\p{M}*)(\p{Lu}\p{M}*\p{Ll})/gu]
 
 // Remove all non-word characters.
-const STRIP_REGEXP = /[^\p{L}\p{N}]+/gu
+const STRIP_REGEXP = /[^\p{L}\p{M}\p{N}]+/gu
 
 const pascalCaseTransform = (input: string): string => {
   const firstChar = input.charAt(0)
