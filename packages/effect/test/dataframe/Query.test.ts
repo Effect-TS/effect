@@ -1,7 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, type DateTime, type Duration, Effect, Result, Schema, Stream } from "effect"
+import {
+  BigDecimal,
+  type DateTime,
+  type Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Result,
+  Scheduler,
+  Schema,
+  Stream
+} from "effect"
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Plan, Query } from "effect/dataframe"
+import { vi } from "vitest"
 import * as Compare from "./oracle/Compare.ts"
 import * as Gold from "./oracle/Gold.ts"
 import * as Oracle from "./oracle/Plan.ts"
@@ -48,6 +60,63 @@ describe("Query", () => {
       Effect.gen(function*() {
         const df = yield* Query.from(readings).pipe(Query.filter((c) => Expr.gt(c.temp, 20)))
         assert.deepStrictEqual(DataFrame.toArray(df, "city"), ["Vienna", "Berlin"])
+      }))
+
+    // DF-Q042 (API contract): Query yields between operations; pinned source in README.md.
+    it.effect("yields a long query so another fiber can interrupt it", () =>
+      Effect.gen(function*() {
+        // Control elapsed time, not machine speed; disable automatic runtime yields
+        // so only the query's cooperative yielding can let the parent resume.
+        let now = 0
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => (now += 1_000))
+        const tasks: Array<() => void> = []
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          shouldYield: () => false,
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          })
+        }
+        let loaded = false
+        let completed = false
+        try {
+          const query = Query.table("readings", Reading).pipe(
+            Query.sort((c) => [Expr.asc(c.temp)]),
+            Query.select((c) => ({ temp: Expr.add(c.temp, 1) }))
+          )
+          const child = yield* query.pipe(
+            Effect.provideService(
+              Catalog.Catalog,
+              Catalog.make({
+                readings: Effect.sync(() => {
+                  loaded = true
+                  return readings
+                })
+              })
+            ),
+            Effect.tap(() =>
+              Effect.sync(() => {
+                completed = true
+              })
+            ),
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.forkChild({ startImmediately: true })
+          )
+          try {
+            assert.isTrue(loaded)
+            assert.isUndefined(child.pollUnsafe())
+          } finally {
+            child.interruptUnsafe()
+            while (tasks.length > 0) tasks.shift()!()
+          }
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+          assert.isFalse(completed)
+        } finally {
+          clock.mockRestore()
+        }
       }))
 
     // DF-Q002 (API contract): Query.select; pinned source in README.md.

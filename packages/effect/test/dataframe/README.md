@@ -39,6 +39,9 @@ The assertion column is the exact leaf test title. Combine it with the file and 
 | DF-C018 | C    | compare structurally, NaN included                                                    | [DataFrame.equals](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L478)            |
 | DF-C019 | C    | iterate as rows                                                                       | [DataFrame.DataFrame](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L81)          |
 | DF-C020 | P    | format as a text table                                                                | [DataFrame.format](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L467)            |
+| DF-C021 | C    | reuses compatible numeric buffers across Arrow conversion                             | [DataFrame layouts](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L6-L9)          |
+
+DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: import/export preserves the backing buffers, byte offsets and byte lengths, as well as values. It does not require typed-array wrapper identity or mutation-based aliasing. The compatible fixed-width layouts are described in Apache Arrow’s [Columnar format](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/docs/source/format/Columnar.rst#fixed-size-primitive-layout) and [Schema.fbs](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/format/Schema.fbs); the no-copy adapter promise is the Effect API contract, not a requirement that Arrow imposes on every adapter.
 
 ### `Query.test.ts`
 
@@ -85,6 +88,7 @@ The assertion column is the exact leaf test title. Combine it with the file and 
 | DF-Q039 | C    | sorts stably by several keys, also when sliced (top-k)                                         | [Query.sort](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L352)                   |
 | DF-Q040 | C    | groups by keys of every type                                                                   | [Query.groupBy](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L610)                |
 | DF-Q041 | C    | joins on a high-cardinality key                                                                | [Query.join](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L680)                   |
+| DF-Q042 | C    | yields a long query so another fiber can interrupt it                                          | [Query yielding](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L65-L66)            |
 
 ## Oracle provenance and differential assertions
 
@@ -171,7 +175,9 @@ Rejection assertions include unknown Arrow override fields (`DataFrame`), unknow
 - Polars corpus exclusions remain as recorded in `generate_gold.py:DEVIATIONS`: integral float literals, float-to-string formatting, automatic join suffixes, and mixed bigint/number arithmetic. No claim of universal Polars equivalence.
 - SQL intentionally excludes pivot/unpivot/explode/unnest and databases other than PostgreSQL. Overflow, division by zero, collation and sub-microsecond temporal behavior follow the documented SQL deviations, not unconditional parity. PGlite is not a live PostgreSQL server/version matrix.
 - The callback timing contract now has a direct test (DF-Q002); it supplements, rather than replaces, lazy loading and per-run catalog tests.
-- Dedicated coverage for public guards, every dual overload, cancellation/fairness, aliasing/zero-copy ownership, and every malformed plan/IPC input is not established by this inventory. Those are gaps, not passing assertions.
+- DF-Q042 controls the host monotonic clock and disables automatic scheduler yields, then verifies a started public query lets its parent resume and interrupt it before completion. It does not assert a yield interval, timeout behavior, fairness among many fibers, or interruption within an operation.
+- DF-C021 covers buffer reuse only for the compatible numeric layouts described above. Sliced/multi-batch inputs, validity buffers, other layouts and mutation/ownership guarantees remain outside that assertion.
+- Dedicated coverage for public guards, every dual overload, and every malformed plan/IPC input is not established by this inventory. Those are gaps, not passing assertions.
 - Compiler inference/rejection coverage is inventoried above and is not counted as runtime coverage. Exact diagnostic strings and explain/format layouts are local regression details even where a test also verifies a public failure or result contract.
 
 ## Validation

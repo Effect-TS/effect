@@ -98,6 +98,26 @@ describe("DataFrame", () => {
     })
   })
 
+  // DF-C021 (API contract): compatible Arrow layouts; pinned source in README.md.
+  it("reuses compatible numeric buffers across Arrow conversion", () => {
+    const schema = ArrowSchema.make([
+      ArrowSchema.field("i", ArrowSchema.int32),
+      ArrowSchema.field("n", ArrowSchema.float64)
+    ])
+    const input = Result.getOrThrow(ArrowTable.fromColumns(schema, [[1, -2, 3], [1.5, -2.5, 0]]))
+    const frame = DataFrame.fromArrowTable(input)
+    const output = DataFrame.toArrowTable(frame)
+    assert.deepStrictEqual(DataFrame.toRows(frame), [{ i: 1, n: 1.5 }, { i: -2, n: -2.5 }, { i: 3, n: 0 }])
+    assert.deepStrictEqual(ArrowTable.toRows(output), DataFrame.toRows(frame))
+    for (let i = 0; i < 2; i++) {
+      const before = input.batches[0].columns[i].buffers[0]
+      const after = output.batches[0].columns[i].buffers[0]
+      assert.strictEqual(after.buffer, before.buffer)
+      assert.strictEqual(after.byteOffset, before.byteOffset)
+      assert.strictEqual(after.byteLength, before.byteLength)
+    }
+  })
+
   describe("validate", () => {
     const untyped = DataFrame.fromArrowTable(DataFrame.toArrowTable(readings))
     const arrowFrame = (columns: Record<string, readonly [ArrowSchema.DataType, ReadonlyArray<unknown>]>) =>
