@@ -67,23 +67,19 @@ export const typeName = (type: ArrowSchema.DataType): string => {
   return type._tag
 }
 
-/** The table column type name of an Arrow type (nested types as Null: not checked). */
-const tableType = (t: ArrowSchema.DataType): Plan.TypeName => {
+/** The table column declaring a gold column of Arrow type `t`. */
+const tableColumn = (name: string, t: ArrowSchema.DataType): Plan.TableColumn => {
   switch (t._tag) {
     case "Int":
-      return `${t.signed ? "Int" : "UInt"}${t.bitWidth}` as Plan.TypeName
+      return { name, type: `${t.signed ? "Int" : "UInt"}${t.bitWidth}` as Plan.TypeName, nullable: true }
     case "Float":
-      return `Float${t.bitWidth}` as Plan.TypeName
-    case "Utf8":
-    case "Bool":
-    case "Date":
-    case "Timestamp":
-    case "Duration":
-    case "Null":
-    case "Decimal":
-      return t._tag
+      return { name, type: `Float${t.bitWidth}` as Plan.TypeName, nullable: true }
+    case "List":
+      return { name, type: "List", nullable: true, fields: [tableColumn("item", t.child.type)] }
+    case "Struct":
+      return { name, type: "Struct", nullable: true, fields: t.fields.map((f) => tableColumn(f.name, f.type)) }
     default:
-      return "Null"
+      return { name, type: t._tag as Plan.TypeName, nullable: true }
   }
 }
 
@@ -241,7 +237,7 @@ const named = (record: { readonly [name: string]: Gold.Expr }): Array<Plan.Named
  */
 export const plan = (gold: Gold.Case, inline: boolean, declare = false): Plan.Node => {
   const columns = (name: string): Array<Plan.TableColumn> =>
-    gold.inputs[name].fields.map((f) => ({ name: f.name, type: tableType(arrowType(f.type)), nullable: true }))
+    gold.inputs[name].fields.map((f) => tableColumn(f.name, arrowType(f.type)))
   const input = (name: string): Plan.Node =>
     inline
       ? { _tag: "Values", frame: frameOf(gold.inputs[name]) }

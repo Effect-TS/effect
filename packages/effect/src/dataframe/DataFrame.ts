@@ -41,6 +41,7 @@
 import * as ArrowIpc from "../arrow/ArrowIpc.ts"
 import * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import * as ArrowTable from "../arrow/ArrowTable.ts"
+import type * as BigDecimal from "../BigDecimal.ts"
 import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
@@ -95,7 +96,27 @@ export interface DataFrame<out Row> extends Pipeable, Inspectable, Equal.Equal, 
  */
 export type Row<F> = F extends DataFrame<infer R> ? R : never
 
+/**
+ * The rows a frame holds for rows of type `T`: optional fields become
+ * required and `undefined` becomes `null`, in nested structs and lists
+ * too, as frames store a missing value as `null`.
+ *
+ * @stability experimental
+ * @category type-level
+ * @since 4.1.5
+ */
+export type Normalize<T> = {
+  readonly [K in keyof T]-?: NormalizeValue<T[K]> | ({} extends Pick<T, K> ? null : never)
+}
+
 type Simplify<A> = { readonly [K in keyof A]: A[K] } extends infer B ? B : never
+
+type NormalizeValue<A> = A extends undefined ? null
+  : A extends BigDecimal.BigDecimal | DateTime.DateTime | Duration.Duration | Uint8Array ? A
+  : A extends Array<infer E> ? Array<NormalizeValue<E>>
+  : A extends ReadonlyArray<infer E> ? ReadonlyArray<NormalizeValue<E>>
+  : A extends object ? Normalize<A>
+  : A
 
 /**
  * Raised for invalid input that the types can't rule out: a row that doesn't
@@ -142,11 +163,15 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * from the schema's type side: `String` is Utf8, `Number` is Float64,
  * `Boolean` is Bool, `BigInt` is Int64, and `NullOr`/optional fields are
  * nullable. `options.types` overrides the Arrow type of individual columns
- * (for example `ArrowSchema.int32`).
+ * (for example `ArrowSchema.int32`); `BigDecimal` fields need one, with
+ * the decimal's precision and scale.
  *
  * **Details**
  *
- * Throws a {@link DataFrameError} when a value doesn't fit its column.
+ * Missing values read back as `null` (see {@link Normalize}).
+ *
+ * Throws a {@link DataFrameError} when a value doesn't fit its column, or an
+ * override can't hold its field's values.
  *
  * @stability experimental
  * @category constructors
@@ -156,7 +181,7 @@ export const fromRows = <S extends { readonly Type: object; readonly ast: any }>
   schema: S,
   rows: Iterable<S["Type"]>,
   options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
-): DataFrame<Simplify<S["Type"]>> =>
+): DataFrame<Normalize<S["Type"]>> =>
   unsafe(() => {
     const arrow = Schema_.toArrowSchema(schema, options?.types as any)
     const table = Result.getOrElse(
@@ -333,20 +358,31 @@ export const decodeArrowStream = <E, R>(
   )
 
 /**
- * An empty frame with the columns of a struct schema.
+ * An empty frame with the columns of a struct schema, typed as in
+ * {@link fromRows}, which also describes `options.types`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.1.5
  */
 export const empty = <S extends { readonly Type: object; readonly ast: any }>(
-  schema: S
-): DataFrame<Simplify<S["Type"]>> => fromRows(schema, [])
+  schema: S,
+  options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+): DataFrame<Normalize<S["Type"]>> => fromRows(schema, [], options)
 
 /**
  * Checks that a frame has the columns of a struct schema, with compatible
  * types, and returns it typed (with only the schema's columns, in its
- * order). Integer columns are accepted for `Number` fields.
+ * order).
+ *
+ * **Details**
+ *
+ * A column is compatible when its values read back as the field's: `Number`
+ * takes floats and integers below 64 bits, `BigInt` takes 64-bit integers,
+ * `BigDecimal` takes decimals of any precision and scale, `DateTimeUtc` and
+ * `Duration` take timestamps and durations in any unit, and structs and
+ * arrays need compatible fields and items. Values of fields the schema
+ * constrains further (literals, enums, refinements) are checked against it.
  *
  * @stability experimental
  * @category constructors
@@ -355,15 +391,14 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
 export const validate: {
   <S extends { readonly Type: object; readonly ast: any }>(
     schema: S
-  ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<Simplify<S["Type"]>>, DataFrameError>
+  ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
   <R, S extends { readonly Type: object; readonly ast: any }>(
     self: DataFrame<R>,
     schema: S
-  ): Result.Result<DataFrame<Simplify<S["Type"]>>, DataFrameError>
+  ): Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
 } = dual(2, (self: DataFrame<unknown>, schema: { readonly ast: any }) => {
   try {
-    const columns = Schema_.tableColumns(Schema_.toArrowSchema(schema, undefined))
-    return Result.succeed(wrap(Schema_.conform(frame(self), columns)))
+    return Result.succeed(wrap(Schema_.conform(frame(self), Schema_.columns(schema), schema)))
   } catch (cause) {
     return Result.fail(fromDefect(cause))
   }

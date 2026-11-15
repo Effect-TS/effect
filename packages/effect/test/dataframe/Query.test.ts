@@ -72,6 +72,12 @@ describe("Query", () => {
         const bad = Stream.make(DataFrame.fromColumns({ city: [1] }))
         const streamed = yield* Effect.flip(Query.table("t", City).pipe(Effect.provide(Catalog.layer({ t: bad }))))
         assert.strictEqual(streamed.message, `column "city" is Float64, expected Utf8`)
+        const Kind = Schema.Struct({ kind: Schema.Literals(["a", "b"]) })
+        const kinds = DataFrame.fromColumns({ kind: ["a", "c"] })
+        for (const t of [kinds, Stream.make(kinds)]) {
+          const error = yield* Effect.flip(Query.table("t", Kind).pipe(Effect.provide(Catalog.layer({ t }))))
+          assert.strictEqual(error.message, `column "kind" has values its schema rejects`)
+        }
       }))
 
     it.effect("narrows tables to their declared columns", () =>

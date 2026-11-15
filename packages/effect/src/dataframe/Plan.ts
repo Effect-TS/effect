@@ -667,11 +667,19 @@ export const TypeName = Schema.Literals([
   "Time",
   "Timestamp",
   "Duration",
-  "Decimal"
+  "Decimal",
+  "List",
+  "Struct"
 ])
 
 /**
  * A column a {@link Table} is expected to have.
+ *
+ * **Details**
+ *
+ * `fields` describes the children of a nested column: the single `item` of
+ * a `List`, or the fields of a `Struct`. Without it, a nested column's
+ * children are not checked.
  *
  * @stability experimental
  * @category models
@@ -681,6 +689,7 @@ export interface TableColumn {
   readonly name: string
   readonly type: TypeName
   readonly nullable: boolean
+  readonly fields?: ReadonlyArray<TableColumn> | undefined
 }
 
 /**
@@ -688,10 +697,21 @@ export interface TableColumn {
  *
  * **Details**
  *
- * When `columns` is given, the table must have these columns, with types of
- * the same kind (any integer width for an integer column, and integers below
- * 64 bits for a float column), and no nulls in non-nullable ones; the input
- * is narrowed to these columns, in this order.
+ * When `columns` is given, the table must have these columns and no nulls
+ * in non-nullable ones; the input is narrowed to these columns, in this
+ * order. A column's type must hold the declared values: integers below 64
+ * bits for floats and narrower integers, any 64-bit integer for `Int64`
+ * and `UInt64`, any decimal for `Decimal`, the same
+ * temporal type in any unit, and lists and structs with compatible children.
+ *
+ * `schema`, set by `Query.table`, is the struct schema the rows must
+ * satisfy: values of fields it constrains beyond their column type (literals,
+ * enums, refinements) are checked against it.
+ *
+ * **Gotchas**
+ *
+ * `schema` is not part of the JSON form: a plan decoded from JSON checks
+ * column types only.
  *
  * @stability experimental
  * @category models
@@ -701,6 +721,7 @@ export interface Table {
   readonly _tag: "Table"
   readonly name: string
   readonly columns?: ReadonlyArray<TableColumn> | undefined
+  readonly schema?: Schema.Top | undefined
 }
 
 /**
@@ -1002,6 +1023,13 @@ export interface Unnest {
   readonly column: string
 }
 
+const TableColumnSchema: Schema.Codec<TableColumn> = Schema.Struct({
+  name: Schema.String,
+  type: TypeName,
+  nullable: Schema.Boolean,
+  fields: Schema.optional(Schema.Array(Schema.suspend(() => TableColumnSchema)))
+})
+
 const NodeSchema = Schema.suspend((): Schema.Codec<Node, unknown> => NodeUnion)
 const Columns = Schema.Array(Schema.String)
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
@@ -1011,9 +1039,7 @@ const NodeUnion = Schema.Union([
   Schema.Struct({
     _tag: Schema.tag("Table"),
     name: Schema.String,
-    columns: Schema.optional(
-      Schema.Array(Schema.Struct({ name: Schema.String, type: TypeName, nullable: Schema.Boolean }))
-    )
+    columns: Schema.optional(Schema.Array(TableColumnSchema))
   }),
   Schema.Struct({ _tag: Schema.tag("Filter"), input: NodeSchema, predicate: ExpressionSchema }),
   Schema.Struct({ _tag: Schema.tag("Select"), input: NodeSchema, columns: Schema.Array(NamedSchema) }),

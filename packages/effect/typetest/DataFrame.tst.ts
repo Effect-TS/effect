@@ -1,4 +1,4 @@
-import type { BigDecimal, Stream } from "effect"
+import type { BigDecimal, Result, Stream } from "effect"
 import { DateTime, Duration, Effect, Schema } from "effect"
 import { DataFrame, Expr, Query } from "effect/dataframe"
 import { describe, expect, it } from "tstyche"
@@ -20,6 +20,25 @@ describe("DataFrame", () => {
     expect(DataFrame.fromRows(Station, [])).type.toBe<
       DataFrame.DataFrame<{ readonly station: string; readonly elevation: number }>
     >()
+  })
+
+  it("fromRows, empty, validate and Query.table read missing values back as null", () => {
+    const S = Schema.Struct({
+      s: Schema.optional(Schema.String),
+      u: Schema.UndefinedOr(Schema.String),
+      p: Schema.Struct({ x: Schema.optional(Schema.Number), xs: Schema.Array(Schema.UndefinedOr(Schema.Number)) })
+    })
+    type Row = {
+      readonly s: string | null
+      readonly u: string | null
+      readonly p: { readonly x: number | null; readonly xs: ReadonlyArray<number | null> }
+    }
+    expect(DataFrame.fromRows(S, [{ u: undefined, p: { xs: [undefined] } }])).type.toBe<DataFrame.DataFrame<Row>>()
+    expect(DataFrame.empty(S)).type.toBe<DataFrame.DataFrame<Row>>()
+    expect(DataFrame.validate(DataFrame.empty(S), S)).type.toBe<
+      Result.Result<DataFrame.DataFrame<Row>, DataFrame.DataFrameError>
+    >()
+    expect(Query.table("t", S)).type.toBe<Query.Query<Row>>()
   })
 
   it("fromColumns infers column types", () => {

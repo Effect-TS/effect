@@ -190,7 +190,7 @@ export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
       return Stream.suspend(() => catalog.stream(node.name)).pipe(
         Stream.mapEffect((frame) => {
           const batch = frame as unknown as F.Frame
-          return Q.attempt(() => (node.columns === undefined ? batch : conform(batch, node.columns)))
+          return Q.attempt(() => (node.columns === undefined ? batch : conform(batch, node.columns, node.schema)))
         })
       )
     case "Values":

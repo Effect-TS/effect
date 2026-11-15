@@ -73,9 +73,10 @@ import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import { dual } from "../Function.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
+import type * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
-import type { DataFrame, DataFrameError } from "./DataFrame.ts"
+import type { DataFrame, DataFrameError, Normalize } from "./DataFrame.ts"
 import { Engine } from "./Engine.ts"
 import type * as Expr from "./Expr.ts"
 import * as E from "./internal/expr.ts"
@@ -232,8 +233,9 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
 
 /**
  * A query over the table called `name`, provided by the `Catalog` when
- * the query runs. The table must have the columns of the struct schema (see
- * `DataFrame.validate`); the query sees only those, in the schema's order.
+ * the query runs. The table must have the columns of the struct schema, and
+ * its values must satisfy it, as with `DataFrame.validate`; the query sees
+ * only those columns, in the schema's order.
  *
  * @stability experimental
  * @category constructors
@@ -242,8 +244,8 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
 export const table = <S extends { readonly Type: object; readonly ast: any }>(
   name: string,
   schema: S
-): Query<Simplify<S["Type"]>> =>
-  make({ _tag: "Table", name, columns: Schema_.tableColumns(Schema_.toArrowSchema(schema, undefined)) })
+): Query<Normalize<S["Type"]>> =>
+  make({ _tag: "Table", name, columns: Schema_.columns(schema), schema: schema as unknown as Schema.Top })
 
 /**
  * A query from its plan, with untyped rows. Decode untrusted plans with

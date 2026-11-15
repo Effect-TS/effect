@@ -98,7 +98,7 @@ export const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effec
           switch (node._tag) {
             case "Table": {
               const frame = tables.get(node.name)!
-              return values(node.columns === undefined ? frame : conform(frame, node.columns))
+              return values(node.columns === undefined ? frame : conform(frame, node.columns, node.schema))
             }
             case "Values":
               return node
