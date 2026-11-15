@@ -39,3 +39,6 @@ scratchpad/**/*
 
 # Agent config
 opencode.json
+
+# Python bytecode (dev scripts)
+__pycache__/
