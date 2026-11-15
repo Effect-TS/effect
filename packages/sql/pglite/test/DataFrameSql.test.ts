@@ -62,8 +62,7 @@ const close = (a: unknown, b: unknown) =>
 const types = (df: DataFrame.DataFrame<unknown>) =>
   DataFrame.toArrowTable(df).schema.fields.map((f) => ({ name: f.name, type: f.type }))
 
-const sql = Sql.layer({ dialect: "postgres" })
-const onSql = <R>(query: Query.Query<R>) => query.pipe(Effect.provide(sql))
+const onSql = <R>(query: Query.Query<R>) => query.pipe(Effect.provide(Sql.layer))
 const rowsOnSql = <R>(query: Query.Query<R>) => Effect.map(onSql(query), DataFrame.toRows)
 
 const xs = Query.from(DataFrame.fromColumns({ x: [1, 2, 3] }))
@@ -279,7 +278,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
     it.effect("explain shows the SQL", () =>
       Effect.gen(function*() {
         const text = yield* Query.explain(table.pipe(Query.head(1))).pipe(
-          Effect.provide(Sql.layer({ dialect: "postgres" }))
+          Effect.provide(Sql.layer)
         )
         assert.include(text, `FROM "sales"`)
       }))

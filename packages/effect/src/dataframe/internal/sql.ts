@@ -33,11 +33,7 @@ import * as Q from "./query.ts"
 import { civil } from "./temporal.ts"
 import * as V from "./vector.ts"
 
-/** @internal */
-export type Dialect = "duckdb" | "postgres"
-
 interface Compiler {
-  readonly dialect: Dialect
   /** The engine's frame for every node of the plan, on zero-row inputs. */
   readonly frames: ReadonlyMap<Plan.Node, F.Frame>
   /** A quoted helper column name, disjoint from the plan's column names. */
@@ -51,21 +47,15 @@ export const quote = (name: string): string => `"${name.replaceAll(`"`, `""`)}"`
 
 const list = (names: ReadonlyArray<string>, prefix = "") => names.map((n) => `${prefix}${quote(n)}`).join(", ")
 
-const unsupported = (what: string, dialect: Dialect): never =>
-  V.fail(`${what} is not supported by the SQL engine (${dialect})`)
+const unsupported = (what: string): never => V.fail(`${what} is not supported by the SQL engine`)
 
 // -----------------------------------------------------------------------------
 // Types and literals
 // -----------------------------------------------------------------------------
 
-const sqlType = (t: S.DataType, dialect: Dialect): string => {
+const sqlType = (t: S.DataType): string => {
   switch (t._tag) {
     case "Int":
-      if (dialect === "duckdb") {
-        return `${t.signed ? "" : "U"}${
-          ({ 8: "TINYINT", 16: "SMALLINT", 32: "INTEGER", 64: "BIGINT" } as const)[t.bitWidth]
-        }`
-      }
       return t.bitWidth <= 16 && t.signed ? "SMALLINT" : t.bitWidth <= 16 || (t.bitWidth === 32 && t.signed)
         ? "INTEGER"
         : t.bitWidth === 32
@@ -78,11 +68,11 @@ const sqlType = (t: S.DataType, dialect: Dialect): string => {
     case "Utf8":
     case "LargeUtf8":
     case "Utf8View":
-      return dialect === "duckdb" ? "VARCHAR" : "TEXT"
+      return "TEXT"
     case "Binary":
     case "LargeBinary":
     case "BinaryView":
-      return dialect === "duckdb" ? "BLOB" : "BYTEA"
+      return "BYTEA"
     case "Bool":
       return "BOOLEAN"
     case "Date":
@@ -96,12 +86,12 @@ const sqlType = (t: S.DataType, dialect: Dialect): string => {
     case "Null":
       return "INTEGER"
     default:
-      return unsupported(`columns of type ${t._tag}`, dialect)
+      return unsupported(`columns of type ${t._tag}`)
   }
 }
 
 /** The type the SQL engine reads a declared table column as. */
-const tableType = (table: string, column: Plan.TableColumn, dialect: Dialect): S.DataType => {
+const tableType = (table: string, column: Plan.TableColumn): S.DataType => {
   switch (column.type) {
     case "Timestamp":
       return S.timestamp("microsecond")
@@ -113,8 +103,7 @@ const tableType = (table: string, column: Plan.TableColumn, dialect: Dialect): S
       return S.nullType
     default:
       return D.castTargets[column.type] ?? unsupported(
-        `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`,
-        dialect
+        `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
       )
   }
 }
@@ -147,7 +136,7 @@ const timestampText = (value: bigint, unit: Plan.TimeUnit): string => {
 
 const NAN = "CAST('NaN' AS DOUBLE PRECISION)"
 
-const literal = (value: unknown, type: Plan.LiteralType | undefined, dialect: Dialect): string => {
+const literal = (value: unknown, type: Plan.LiteralType | undefined): string => {
   if (value === null || value === undefined) return "NULL"
   if (type !== undefined) {
     const big = BigInt(value as number | bigint)
@@ -162,9 +151,7 @@ const literal = (value: unknown, type: Plan.LiteralType | undefined, dialect: Di
           : `TIMESTAMPTZ '${timestampText(big, type.unit)}+00'`
       case "Duration": {
         const micros = big * BigInt(1_000_000) / perSecond[type.unit]
-        return dialect === "duckdb"
-          ? `TO_MICROSECONDS(CAST(${micros} AS BIGINT))`
-          : `(${micros} * INTERVAL '1 microsecond')`
+        return `(${micros} * INTERVAL '1 microsecond')`
       }
       case "Decimal": {
         const negative = big < BigInt(0)
@@ -187,7 +174,7 @@ const literal = (value: unknown, type: Plan.LiteralType | undefined, dialect: Di
     case "string":
       return string(value)
     default:
-      return unsupported(`literals like ${String(value)}`, dialect)
+      return unsupported(`literals like ${String(value)}`)
   }
 }
 
@@ -215,10 +202,7 @@ const partitionBy = (scope: Scope, separator = ""): string =>
     ? ""
     : `PARTITION BY ${scope.partition.join(", ")}${separator}`
 
-const isNaNSql = (
-  x: string,
-  d: Dialect
-) => (d === "duckdb" ? `ISNAN(${x})` : `(${x} = ${NAN})`)
+const isNaNSql = (x: string) => `(${x} = ${NAN})`
 
 const window = (scope: Scope, frame?: string): string =>
   `OVER (${partitionBy(scope, " ")}ORDER BY ${scope.compiler.row}${frame === undefined ? "" : ` ${frame}`})`
@@ -235,7 +219,7 @@ const power = (k: number) => k >= 0 ? `1${"0".repeat(k)}` : `0.${"0".repeat(-k -
  * precision, decimals half to even at `d` places into the engine's result
  * type, integers unchanged.
  */
-const round = (x: string, type: S.DataType, result: S.DataType, decimals: number, d: Dialect): string => {
+const round = (x: string, type: S.DataType, result: S.DataType, decimals: number): string => {
   switch (type._tag) {
     case "Int":
     case "Null":
@@ -246,19 +230,17 @@ const round = (x: string, type: S.DataType, result: S.DataType, decimals: number
       const floor = `FLOOR(${scaled})`
       const up = `(${scaled} - ${floor} > 0.5 OR (${scaled} - ${floor} = 0.5 AND MOD(${floor}, 2) <> 0))`
       const rounded = `(CASE WHEN ${up} THEN ${floor} + 1 ELSE ${floor} END)`
-      return `CAST(${decimals === 0 ? rounded : `(${rounded} / ${power(decimals)})`} AS ${sqlType(result, d)})`
+      return `CAST(${decimals === 0 ? rounded : `(${rounded} / ${power(decimals)})`} AS ${sqlType(result)})`
     }
     default: {
-      const rint = (y: string) => d === "duckdb" ? `ROUND_EVEN(${y}, 0)` : `ROUND(${y})`
-      if (decimals === 0) return rint(float(x))
-      const scale = literal(10 ** decimals, undefined, d)
-      return `(${rint(`(${float(x)} * ${float(scale)})`)} / ${float(scale)})`
+      if (decimals === 0) return `ROUND(${float(x)})`
+      const scale = float(literal(10 ** decimals, undefined))
+      return `(ROUND(${float(x)} * ${scale}) / ${scale})`
     }
   }
 }
 
 const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefined): string => {
-  const d = scope.compiler.dialect
   const row = scope.compiler.row
   const inner = { ...scope, partition: undefined }
   const x = node.arg === undefined ? "" : expression(node.arg, inner)
@@ -268,11 +250,7 @@ const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefi
     case "count":
       return node.arg === undefined ? `COUNT(*)${o}` : `COUNT(${x})${o}`
     case "sum":
-      if (type === "Duration") {
-        return d === "duckdb"
-          ? `TO_MICROSECONDS(CAST(COALESCE(SUM(EXTRACT(EPOCH FROM ${x}) * 1000000)${o}, 0) AS BIGINT))`
-          : `COALESCE(SUM(${x})${o}, INTERVAL '0 seconds')`
-      }
+      if (type === "Duration") return `COALESCE(SUM(${x})${o}, INTERVAL '0 seconds')`
       return `COALESCE(SUM(${type === "Bool" ? `CAST(${x} AS INTEGER)` : x})${o}, 0)`
     case "mean":
       return `AVG(${x})${o}`
@@ -281,7 +259,7 @@ const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefi
       const fn = node.fn.toUpperCase()
       // Floats: NaN is skipped unless every value is NaN.
       return type === "Float"
-        ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(x, d)} THEN NULL ELSE ${x} END)${o}, ${fn}(${x})${o})`
+        ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(x)} THEN NULL ELSE ${x} END)${o}, ${fn}(${x})${o})`
         : `${fn}(${x})${o}`
     }
     case "std":
@@ -289,10 +267,10 @@ const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefi
     case "variance":
       return `VAR_SAMP(${x})${o}`
     case "median":
-      if (over !== undefined) return unsupported("median over partitions", d)
-      return d === "duckdb" ? `MEDIAN(${x})` : `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${x})`
+      if (over !== undefined) return unsupported("median over partitions")
+      return `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${x})`
     case "countDistinct":
-      if (over !== undefined) return unsupported("countDistinct over partitions", d)
+      if (over !== undefined) return unsupported("countDistinct over partitions")
       // Nulls count as one value.
       return `(COUNT(DISTINCT ${x}) + CASE WHEN COUNT(*) > COUNT(${x}) THEN 1 ELSE 0 END)`
     case "first":
@@ -302,13 +280,11 @@ const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefi
           partitionBy(scope, " ")
         }ORDER BY ${row} ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)`
       }
-      return d === "duckdb"
-        ? `${node.fn.toUpperCase()}(${x} ORDER BY ${row})`
-        : `(ARRAY_AGG(${x} ORDER BY ${row} ${node.fn === "first" ? "ASC" : "DESC"}))[1]`
+      return `(ARRAY_AGG(${x} ORDER BY ${row} ${node.fn === "first" ? "ASC" : "DESC"}))[1]`
     }
     case "list":
-      if (over !== undefined) return unsupported("list over partitions", d)
-      return d === "duckdb" ? `LIST(${x} ORDER BY ${row})` : `ARRAY_AGG(${x} ORDER BY ${row})`
+      if (over !== undefined) return unsupported("list over partitions")
+      return `ARRAY_AGG(${x} ORDER BY ${row})`
   }
 }
 
@@ -322,7 +298,6 @@ const totalSeconds: Record<string, number> = {
 }
 
 const call = (node: Plan.Call, scope: Scope): string => {
-  const d = scope.compiler.dialect
   const row = scope.compiler.row
   const a = node.args.map((x) => expression(x, scope))
   const k = node.args.map((x) => typeOf(x, scope)._tag)
@@ -342,7 +317,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
       return `(${float(a[0])} / ${a[1]})`
     case "floorDivide":
       return ints
-        ? `((${a[0]} - (${intMod()})) ${d === "duckdb" ? "//" : "/"} NULLIF(${a[1]}, 0))`
+        ? `((${a[0]} - (${intMod()})) / NULLIF(${a[1]}, 0))`
         : `FLOOR(${float(a[0])} / ${a[1]})`
     case "mod":
       return ints ? `(${intMod()})` : `(${a[0]} - ${a[1]} * FLOOR(${float(a[0])} / ${a[1]}))`
@@ -353,7 +328,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "sqrt":
       return `(CASE WHEN ${float(a[0])} < 0 THEN ${NAN} ELSE SQRT(${float(a[0])}) END)`
     case "round":
-      return round(a[0], typeOf(node.args[0], scope), typeOf(node, scope), o.decimals ?? 0, d)
+      return round(a[0], typeOf(node.args[0], scope), typeOf(node, scope), o.decimals ?? 0)
     case "eq":
       return `(${a[0]} = ${a[1]})`
     case "neq":
@@ -372,7 +347,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
       const values = (o.values ?? []).filter((v) => v !== null)
       return values.length === 0 ?
         `(${a[0]} IS NULL AND NULL)` :
-        `(${a[0]} IN (${values.map((v) => literal(v, undefined, d)).join(", ")}))`
+        `(${a[0]} IN (${values.map((v) => literal(v, undefined)).join(", ")}))`
     }
     case "and":
       return `(${a[0]} AND ${a[1]})`
@@ -385,7 +360,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "isNotNull":
       return `(${a[0]} IS NOT NULL)`
     case "isNaN":
-      return isNaNSql(a[0], d)
+      return isNaNSql(a[0])
     case "fillNull":
     case "coalesce":
       return `COALESCE(${a.join(", ")})`
@@ -395,18 +370,15 @@ const call = (node: Plan.Call, scope: Scope): string => {
       const to = o.to ?? ""
       const target = to === "Decimal"
         ? `DECIMAL(${o.precision}, ${o.scale})`
-        : sqlType(D.castTargets[to] ?? V.fail(`unknown cast target ${to}`), d)
+        : sqlType(D.castTargets[to] ?? V.fail(`unknown cast target ${to}`))
       const integer = to.startsWith("Int") || to.startsWith("UInt")
       let x = a[0]
       // Temporal values become their integers; floats and decimals truncate (as the engine does).
-      if (integer && k[0] === "Timestamp") {
-        x = d === "duckdb"
-          ? `EPOCH_US(${x})`
-          : `CAST(EXTRACT(EPOCH FROM ${x}) * 1000000 AS BIGINT)`
-      } else if (integer && k[0] === "Date") x = `(${x} - DATE '1970-01-01')`
+      if (integer && k[0] === "Timestamp") x = `CAST(EXTRACT(EPOCH FROM ${x}) * 1000000 AS BIGINT)`
+      else if (integer && k[0] === "Date") x = `(${x} - DATE '1970-01-01')`
       else if (integer && k[0] === "Duration") x = `CAST(EXTRACT(EPOCH FROM ${x}) * 1000000 AS BIGINT)`
       else if (integer && (k[0] === "Decimal" || k[0] === "Float")) x = `TRUNC(${x})`
-      return d === "duckdb" ? `TRY_CAST(${x} AS ${target})` : `CAST(${x} AS ${target})`
+      return `CAST(${x} AS ${target})`
     }
     case "length":
       return `LENGTH(${a[0]})`
@@ -431,9 +403,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
       const fn = node.fn === "cumMin" ? "MIN" : "MAX"
       // Floats: NaN is skipped (it stays only while no other value was seen).
       const value = k[0] === "Float"
-        ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(a[0], d)} THEN NULL ELSE ${a[0]} END) ${window(scope, running)}, ${
-          a[0]
-        })`
+        ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(a[0])} THEN NULL ELSE ${a[0]} END) ${window(scope, running)}, ${a[0]})`
         : `${fn}(${a[0]}) ${window(scope, running)}`
       return `(CASE WHEN ${a[0]} IS NULL THEN NULL ELSE ${value} END)`
     }
@@ -474,7 +444,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
       const enough = `COUNT(${a[0]}) ${window(scope, frame)} >= ${o.minPeriods ?? o.window ?? 1}`
       // Floats: a NaN in the window makes the minimum or maximum NaN.
       const value = k[0] === "Float" && (fn === "MIN" || fn === "MAX")
-        ? `CASE WHEN MAX(CASE WHEN ${isNaNSql(a[0], d)} THEN 1 ELSE 0 END) ${
+        ? `CASE WHEN MAX(CASE WHEN ${isNaNSql(a[0])} THEN 1 ELSE 0 END) ${
           window(scope, frame)
         } = 1 THEN ${NAN} ELSE ${fn}(${a[0]}) ${window(scope, frame)} END`
         : `${fn}(${a[0]}) ${window(scope, frame)}`
@@ -495,7 +465,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "ordinalDay":
       return `CAST(EXTRACT(DOY FROM ${a[0]}) AS INTEGER)`
     case "truncate": {
-      const unit = truncateUnits[o.every ?? ""] ?? unsupported(`truncate to ${o.every}`, d)
+      const unit = truncateUnits[o.every ?? ""] ?? unsupported(`truncate to ${o.every}`)
       return k[0] === "Date" ? `CAST(DATE_TRUNC('${unit}', ${a[0]}) AS DATE)` : `DATE_TRUNC('${unit}', ${a[0]})`
     }
     case "totalDays":
@@ -505,36 +475,21 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "totalMilliseconds":
       return `CAST(TRUNC(EXTRACT(EPOCH FROM ${a[0]}) / ${totalSeconds[node.fn]}) AS BIGINT)`
     case "listLength":
-      return d === "duckdb"
-        ? `CAST(LEN(${a[0]}) AS BIGINT)`
-        : `COALESCE(CARDINALITY(${a[0]}), CASE WHEN ${a[0]} IS NULL THEN NULL ELSE 0 END)`
+      return `COALESCE(CARDINALITY(${a[0]}), CASE WHEN ${a[0]} IS NULL THEN NULL ELSE 0 END)`
     case "listGet": {
       const i = o.index ?? 0
-      return d === "duckdb"
-        ? `${a[0]}[${i >= 0 ? i + 1 : i}]`
-        : `${a[0]}[${i >= 0 ? `${i + 1}` : `CARDINALITY(${a[0]}) + ${i + 1}`}]`
+      return `${a[0]}[${i >= 0 ? `${i + 1}` : `CARDINALITY(${a[0]}) + ${i + 1}`}]`
     }
     case "listSum":
     case "listMean":
     case "listMin":
-    case "listMax": {
-      if (d !== "duckdb") return unsupported(node.fn, d)
-      const fn = { listSum: "LIST_SUM", listMean: "LIST_AVG", listMin: "LIST_MIN", listMax: "LIST_MAX" }[node.fn]
-      return node.fn === "listSum"
-        ? `(CASE WHEN ${a[0]} IS NULL THEN NULL ELSE COALESCE(${fn}(${a[0]}), 0) END)`
-        : `${fn}(${a[0]})`
-    }
+    case "listMax":
+    case "struct":
+      return unsupported(node.fn)
     case "listContains":
-      return d === "duckdb"
-        ? `LIST_CONTAINS(${a[0]}, ${a[1]})`
-        : `(CASE WHEN ${a[0]} IS NULL THEN NULL ELSE ${a[1]} = ANY(${a[0]}) END)`
+      return `(CASE WHEN ${a[0]} IS NULL THEN NULL ELSE ${a[1]} = ANY(${a[0]}) END)`
     case "field":
       return `(${a[0]}).${quote(o.name ?? "")}`
-    case "struct": {
-      if (d !== "duckdb") return unsupported("struct", d)
-      const names = o.names ?? []
-      return `STRUCT_PACK(${a.map((x, i) => `${quote(names[i])} := ${x}`).join(", ")})`
-    }
   }
 }
 
@@ -543,7 +498,7 @@ const expression = (node: Plan.Expression, scope: Scope): string => {
     case "Column":
       return quote(node.name)
     case "Literal":
-      return literal(node.value, node.type, scope.compiler.dialect)
+      return literal(node.value, node.type)
     case "Call":
       return call(node, scope)
     case "AggregateCall":
@@ -568,24 +523,24 @@ const unsupportedNodes: ReadonlySet<Plan.Node["_tag"]> = new Set(["Pivot", "Unpi
  * Runs the plan through the in-memory engine on zero-row inputs (tables as
  * their declared columns), recording every node's frame.
  */
-const typed = (node: Plan.Node, frames: Map<Plan.Node, F.Frame>, dialect: Dialect): F.Frame => {
+const typed = (node: Plan.Node, frames: Map<Plan.Node, F.Frame>): F.Frame => {
   const known = frames.get(node)
   if (known !== undefined) return known
   let frame: F.Frame
-  if (unsupportedNodes.has(node._tag)) return unsupported(node._tag, dialect)
+  if (unsupportedNodes.has(node._tag)) return unsupported(node._tag)
   if (node._tag === "Table") {
     const columns = node.columns ?? V.fail(
       `the SQL engine needs the columns of table ${JSON.stringify(node.name)}: use Query.table with a schema`
     )
     frame = F.fromVectors(
       columns.map((c) => c.name),
-      columns.map((c) => K.nullsOf(tableType(node.name, c, dialect), 0)),
+      columns.map((c) => K.nullsOf(tableType(node.name, c), 0)),
       0
     )
   } else if (node._tag === "Values") {
     frame = F.slice(node.frame as unknown as F.Frame, 0, 0)
   } else {
-    const inputs = Q.children(node as Q.Node).map((n) => typed(n as Plan.Node, frames, dialect))
+    const inputs = Q.children(node as Q.Node).map((n) => typed(n as Plan.Node, frames))
     frame = Q.step(node as Q.Node, inputs)
   }
   frames.set(node, frame)
@@ -606,7 +561,6 @@ const scopeOf = (node: Plan.Node, compiler: Compiler): Scope => ({
 })
 
 const values = (frame: F.Frame, c: Compiler): string => {
-  const d = c.dialect
   const columns = frame.columns.map((col) => {
     const type = col.type
     const vector = col.values()
@@ -621,24 +575,24 @@ const values = (frame: F.Frame, c: Compiler): string => {
         case "Date":
           return literal(type.unit === "day" ? raw[i] : floorDiv(raw[i] as bigint, BigInt(86_400_000)), {
             _tag: "Date"
-          }, d)
+          })
         case "Timestamp":
-          return literal(raw[i], { _tag: "Timestamp", unit: type.unit, timezone: type.timezone }, d)
+          return literal(raw[i], { _tag: "Timestamp", unit: type.unit, timezone: type.timezone })
         case "Duration":
-          return literal(raw[i], { _tag: "Duration", unit: type.unit }, d)
+          return literal(raw[i], { _tag: "Duration", unit: type.unit })
         case "Decimal":
-          return literal(raw[i], { _tag: "Decimal", precision: type.precision, scale: type.scale }, d)
+          return literal(raw[i], { _tag: "Decimal", precision: type.precision, scale: type.scale })
         default: {
           const v = values![i]
-          return typeof v === "bigint" ? String(v) : literal(v, undefined, d)
+          return typeof v === "bigint" ? String(v) : literal(v, undefined)
         }
       }
     }
-    const sql = sqlType(type, d)
+    const sql = sqlType(type)
     return { name: quote(col.name), cell: (i: number) => `CAST(${V.isValid(vector, i) ? value(i) : "NULL"} AS ${sql})` }
   })
   if (frame.length === 0) {
-    const nulls = frame.columns.map((col, i) => `CAST(NULL AS ${sqlType(col.type, d)}) AS ${columns[i].name}`)
+    const nulls = frame.columns.map((col, i) => `CAST(NULL AS ${sqlType(col.type)}) AS ${columns[i].name}`)
     return `SELECT ${[...nulls, `CAST(0 AS BIGINT) AS ${c.row}`].join(", ")} WHERE FALSE`
   }
   const tuples = Array.from(
@@ -774,7 +728,7 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     case "Unpivot":
     case "Explode":
     case "Unnest":
-      return unsupported(node._tag, c.dialect)
+      return unsupported(node._tag)
   }
 }
 
@@ -783,20 +737,14 @@ const relation = (node: Plan.Node, c: Compiler): string => {
 // -----------------------------------------------------------------------------
 
 /** A temporal value as an integer in `unit` since the epoch (or as a length). */
-const epoch = (x: string, type: S.Timestamp | S.Duration, d: Dialect): string => {
-  if (d === "duckdb" && type._tag === "Timestamp") {
-    return type.unit === "second" ?
-      `CAST(FLOOR(EPOCH_MS(${x}) / 1000.0) AS BIGINT)` :
-      `EPOCH_${({ millisecond: "MS", microsecond: "US", nanosecond: "NS" } as const)[type.unit]}(${x})`
-  }
-  return `CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) * ${perSecond[type.unit]}) AS BIGINT)`
-}
+const epoch = (x: string, type: S.Timestamp | S.Duration): string =>
+  `CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) * ${perSecond[type.unit]}) AS BIGINT)`
 
 const scalars: ReadonlySet<S.DataType["_tag"]> = new Set(["Null", "Bool", "Int", "Float", "Decimal", "Utf8"])
 
 /** SQL that renders a result column of `type` in the form `reader` reads. */
-const output = (x: string, type: S.DataType, d: Dialect): string => {
-  const text = (y: string) => `CAST(${y} AS ${d === "duckdb" ? "VARCHAR" : "TEXT"})`
+const output = (x: string, type: S.DataType): string => {
+  const text = (y: string) => `CAST(${y} AS TEXT)`
   switch (type._tag) {
     case "Null":
       return "NULL"
@@ -805,18 +753,18 @@ const output = (x: string, type: S.DataType, d: Dialect): string => {
     case "Float":
     case "Decimal":
     case "Utf8":
-      return text(`CAST(${x} AS ${sqlType(type, d)})`)
+      return text(`CAST(${x} AS ${sqlType(type)})`)
     case "Date":
       return text(`(CAST(${x} AS DATE) - DATE '1970-01-01')${type.unit === "day" ? "" : " * 86400000"}`)
     case "Timestamp":
     case "Duration":
-      return text(epoch(x, type, d))
+      return text(epoch(x, type))
     case "Binary":
       return x
     case "List":
-      if (scalars.has(type.child.type._tag)) return `CAST(${x} AS ${d === "duckdb" ? "VARCHAR" : "TEXT"}[])`
+      if (scalars.has(type.child.type._tag)) return `CAST(${x} AS TEXT[])`
   }
-  return unsupported(`results of type ${D.describe(type)}`, d)
+  return unsupported(`results of type ${D.describe(type)}`)
 }
 
 const number = (s: string): number => {
@@ -857,17 +805,17 @@ export interface Compiled {
 }
 
 /** A plan as one SQL query, its rows in the plan's row order. @internal */
-export const compile = (plan: Plan.Node, dialect: Dialect): Compiled => {
+export const compile = (plan: Plan.Node): Compiled => {
   const frames = new Map<Plan.Node, F.Frame>()
-  const result = typed(plan, frames, dialect)
+  const result = typed(plan, frames)
   const used = new Set<string>()
   for (const frame of frames.values()) for (const col of frame.columns) used.add(col.name)
   let prefix = "__"
   while ([...used].some((name) => name.startsWith(prefix))) prefix += "_"
   const hidden = (name: string) => quote(prefix + name)
-  const compiler: Compiler = { dialect, frames, hidden, row: hidden("row") }
+  const compiler: Compiler = { frames, hidden, row: hidden("row") }
   const sql = relation(plan, compiler)
-  const columns = result.columns.map((col) => `${output(quote(col.name), col.type, dialect)} AS ${quote(col.name)}`)
+  const columns = result.columns.map((col) => `${output(quote(col.name), col.type)} AS ${quote(col.name)}`)
   return {
     sql: `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`,
     schema: S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
