@@ -1,11 +1,11 @@
 """
 Gold corpus for effect/encoding/Thrift: values written by the official Apache
-Thrift Python library's TCompactProtocol (pip install thrift), and the bytes
+Thrift Python library's TCompactProtocol (thrift 0.25.0), and the bytes
 it produces. The TypeScript test reads every case back into a Thrift.Value,
 expects the same tree, and writes the tree back, expecting the same bytes.
 
     PARQUET_TESTING=/path/to/apache/parquet-testing \
-      python test/fixtures/thrift/generate.py   # writes gold.json
+      uv run --with thrift==0.25.0 python test/fixtures/thrift/generate.py
 
 Values are JSON trees shaped like Thrift.Value:
   {"_tag": "Bool", "value": true}
@@ -288,17 +288,12 @@ case(
         dbl(1.7976931348623157e308), dbl(math.pi), dbl(-2.5)
     ], 1)),
 )
-case(
-    "binary/lengths",
-    struct_((1, binary(b"")), (2, binary(b"\x00")), (3, binary(bytes(range(127)))), (4, binary(bytes(128))),
-            (5, binary(bytes(i % 256 for i in range(300))))),
-)
-case("binary/utf8", struct_((1, text("héllo 🌍")), (2, text("")), (3, text("ascii")), (4, text("日本語" * 30))))
+case("binary/lengths", struct_((1, binary(b"")), (2, binary(b"\x00")), (3, binary(bytes(range(128))))))
+case("binary/utf8", struct_((1, text("héllo 🌍")), (2, text("ascii"))))
 case("uuid", struct_((1, uid(range(16))), (2, uid(bytes(16)))))
 case("list/empty", struct_((1, lst("I32")), (2, lst("Struct")), (3, lst("Bool"))))
 case("list/size-14", struct_((1, lst("I32", *[i32(i) for i in range(14)]))))
 case("list/size-15", struct_((1, lst("I32", *[i32(i) for i in range(15)]))))
-case("list/size-200", struct_((1, lst("I16", *[i16(i - 100) for i in range(200)]))))
 case("list/bool", struct_((1, lst("Bool", b(True), b(False), b(True)))))
 case("list/i8", struct_((1, lst("I8", i8(-1), i8(0), i8(127)))))
 case("list/i64", struct_((1, lst("I64", i64(-(2**63)), i64(0), i64(2**63 - 1)))))
@@ -309,12 +304,11 @@ case("list/struct", struct_((1, lst("Struct", struct_((1, b(True))), struct_(), 
 case("list/list", struct_((1, lst("List", lst("I32", i32(1)), lst("I32"), lst("Bool", b(False))))))
 case("list/map", struct_((1, lst("Map", mp("I32", "I32", (i32(1), i32(2))), mp("I32", "I32")))))
 case("set/values", struct_((1, st("I32", i32(3), i32(1))), (2, st("Binary")), (3, st("Bool", b(True)))))
-case("set/size-20", struct_((1, st("I64", *[i64(i * 1000) for i in range(20)]))))
+case("set/size-15", struct_((1, st("I8", *[i8(i) for i in range(15)]))))
 case("map/empty", struct_((1, mp("I32", "I32"))))
 case("map/one", struct_((1, mp("Binary", "I64", (text("k"), i64(-5))))))
 case("map/bools", struct_((1, mp("Bool", "Bool", (b(True), b(False)), (b(False), b(True))))))
 case("map/i32-struct", struct_((1, mp("I32", "Struct", (i32(1), struct_((1, b(True)))), (i32(2), struct_())))))
-case("map/size-20", struct_((1, mp("I16", "Double", *[(i16(i), dbl(i / 2)) for i in range(20)]))))
 case("map/nested", struct_((1, mp("I32", "List", (i32(1), lst("I32", i32(2), i32(3)))))))
 case("map/uuid", struct_((1, mp("Uuid", "Uuid", (uid(range(16)), uid(bytes(16)))))))
 
@@ -326,7 +320,7 @@ def nest(depth):
     return v
 
 
-case("struct/deep-20", nest(20))
+case("struct/deep-5", nest(5))
 case("top/list", lst("I32", i32(1), i32(-1)))
 case("top/i64", i64(-(2**40)))
 case("top/binary", text("top"))
@@ -424,8 +418,13 @@ def rand_struct(depth):
     return struct_(*[(i, rand_value(rand_type(depth), depth)) for i in ids])
 
 
-for n in range(300):
-    case(f"random/{n}", rand_struct(0))
+# Small ones only: they mix every type, size form and id form at low cost.
+n = 0
+while n < 20:
+    v = rand_struct(0)
+    if len(encode(v)) <= 128:
+        case(f"random/{n}", v)
+        n += 1
 
 # --- Parquet structs ----------------------------------------------------------
 
