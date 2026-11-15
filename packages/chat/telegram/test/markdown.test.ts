@@ -76,7 +76,12 @@ const hostile = fc.string({
     "|---|",
     "\\]",
     "\\<",
-    "\\`"
+    "\\`",
+    // whitespace that is not a blank line to CommonMark
+    "\u00a0",
+    "\u3000",
+    "\v",
+    "\f"
   ),
   maxLength: 60
 })
@@ -127,7 +132,10 @@ describe("render", () => {
         "_a_b ".repeat(17) + "x_" + " x_".repeat(16),
         // a footnote's text, or an indented delimiter row, is no table
         "[^a]: x|y\n---|---\n||secret||",
-        "x|y\n\t---|---"
+        "x|y\n\t---|---",
+        // a line of U+00A0 is text, so it ends no paragraph
+        ">".repeat(15) + " x\n\u00a0\n" + "_".repeat(14) + "x" + "_".repeat(14),
+        "[^a]: z\n\u00a0\nx|y\n---|---\n||secret||"
       ]
     ) assertInert(input)
     fc.assert(fc.property(hostile, (input) => assertInert(input)), { numRuns: 2000 })

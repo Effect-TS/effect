@@ -161,6 +161,12 @@ const cellCount = (line: string): number => {
   return count
 }
 
+/**
+ * A blank line as CommonMark defines it: only spaces and tabs. Other
+ * whitespace, such as U+00A0, is paragraph text and ends nothing.
+ */
+const isBlank = (line: string): boolean => /^[ \t]*$/.test(line)
+
 const hasPipe = (line: string) => cellCount(line) > 1 || line.trim().startsWith("|")
 
 /** The decoded form of a link destination, as a Markdown parser and then a URL parser read it. */
@@ -526,12 +532,12 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     // Neither row indented, nor the header after a line it could continue.
     if (/^\s/.test(lines[i]) || /^\s/.test(lines[i + 1])) continue
     const above = i === 0 ? "" : lines[i - 1]
-    if (above.trim() !== "" && !/^#{1,6}(?: |$)/.test(above)) continue
+    if (!isBlank(above) && !/^#{1,6}(?: |$)/.test(above)) continue
     if (!delimiterRow.test(lines[i + 1]) || !lines[i + 1].includes("|") || !hasPipe(lines[i])) continue
     const columns = cellCount(lines[i])
     if (columns !== cellCount(lines[i + 1])) continue
     let end = i + 2
-    while (end < lines.length && !fenced[end] && lines[end].trim() !== "" && !blockStart.test(lines[end])) end++
+    while (end < lines.length && !fenced[end] && !isBlank(lines[end]) && !blockStart.test(lines[end])) end++
     const rows = Array.from({ length: end - i }, (_, k) => i + k)
     for (const row of rows) tableRows.set(row, columns > maxColumns || cellCount(lines[row]) > maxColumns)
     i = end - 1
@@ -543,8 +549,8 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
   // it could be the lazy continuation of.
   let plain = true
   const out = lines.map((line, i) => {
-    const blank = line.trim() === ""
-    const setext = plain && i > 0 && lines[i - 1].trim() !== "" && /^ {0,3}=+[ \t]*$/.test(line)
+    const blank = isBlank(line)
+    const setext = plain && i > 0 && !isBlank(lines[i - 1]) && /^ {0,3}=+[ \t]*$/.test(line)
     plain = !fenced[i] && (blank || (plain && !/^\s/.test(line) && !blockStart.test(line) && !line.includes("|")))
     if (fenced[i]) return line
     const wide = tableRows.get(i)
