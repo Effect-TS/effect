@@ -312,11 +312,12 @@ export const concat = (parts: ReadonlyArray<V.Vector>): V.Vector => {
   return V.concat(parts.map((p) => coerce(p, type)))
 }
 
-/** Casts a value ({@link cast}), keeping its shape. @internal */
-export const castValue = (value: Value, target: S.DataType): Value =>
-  D.sameType(value.vector.type, target)
-    ? value
-    : { vector: cast(value.vector, target), scalar: value.scalar, dynamic: undefined }
+/** Casts a value ({@link cast}), keeping its shape; a cast literal has a fixed type. @internal */
+export const castValue = (value: Value, target: S.DataType): Value => ({
+  vector: D.sameType(value.vector.type, target) ? value.vector : cast(value.vector, target),
+  scalar: value.scalar,
+  dynamic: undefined
+})
 
 /** Coerces a value ({@link coerce}), keeping its shape. */
 const coerceValue = (value: Value, target: S.DataType): Value =>

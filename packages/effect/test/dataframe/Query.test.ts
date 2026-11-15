@@ -274,6 +274,7 @@ describe("Query", () => {
           ["coalesce(300, 1.5, x)", (c) => Expr.coalesce(300, 1.5, c.x), float64, [300, 300]],
           ["coalesce(u, -1)", (c) => Expr.coalesce(c.u, -1), int16, [-1, 5]],
           ["coalesce(-1, u)", (c) => Expr.coalesce(-1, c.u), int16, [-1, -1]],
+          ["x + cast(5, Int32)", (c) => Expr.add(c.x, Expr.cast(Expr.lit(5), "Int32")), int32, [null, 10]],
           // Every literal of an operand built from literals is fitted, whichever
           // rows select it (w is when(x is null, 1, 300)); Polars 2.1.0 gives
           // Int8, making 5 + 300 null and (100 + 1) * 2 wrap to -54.
