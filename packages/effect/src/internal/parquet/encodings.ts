@@ -7,6 +7,7 @@
  *
  * @internal
  */
+import * as Bytes from "../../Bytes.ts"
 
 /** @internal */
 export class Failure {
@@ -25,8 +26,8 @@ export const fail = (kind: Failure["kind"], message: string): never => {
 
 /**
  * How a physical type's values are held while decoding: `bool` one byte (0 or 1) per
- * value, `fixed` `width` bytes per value (INT96 and FIXED_LEN_BYTE_ARRAY), `bytes`
- * offsets into concatenated data (BYTE_ARRAY).
+ * value, `int96` 12 bytes and `fixed` `width` bytes per value (FIXED_LEN_BYTE_ARRAY),
+ * `bytes` offsets into concatenated data (BYTE_ARRAY).
  *
  * @internal
  */
@@ -34,8 +35,11 @@ export type Kind =
   | { readonly tag: "bool" }
   | { readonly tag: "i32" | "f32"; readonly width: 4 }
   | { readonly tag: "i64" | "f64"; readonly width: 8 }
+  | { readonly tag: "int96"; readonly width: 12 }
   | { readonly tag: "fixed"; readonly width: number }
   | { readonly tag: "bytes" }
+
+type Fixed = Extract<Kind, { readonly width: number }>
 
 /** @internal */
 export interface Binary {
@@ -46,13 +50,14 @@ export interface Binary {
 /** @internal */
 export type Dense = Uint8Array | Int32Array | BigInt64Array | Float32Array | Float64Array | Binary
 
-/** Bytes of BYTE_ARRAY data a column chunk may still produce. @internal */
+/** Bytes of binary values (BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY and INT96) a column chunk may still produce. @internal */
 export interface Budget {
   left: number
 }
 
-const spend = (budget: Budget, n: number): void => {
-  if (n > budget.left) fail("Limit", "the column chunk's BYTE_ARRAY values exceed maxBinaryLength")
+/** Takes `n` bytes from `budget`. @internal */
+export const spend = (budget: Budget, n: number): void => {
+  if (n > budget.left) fail("Limit", "the column chunk's binary values exceed maxBinaryLength")
   budget.left -= n
 }
 
@@ -61,37 +66,40 @@ for (let i = 0; i <= 64; i++) POW2.push(2 ** i)
 
 const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1
 
-/** Reads `n` little-endian values of `width` bytes into a fresh typed array. */
+/** The 4-byte little-endian unsigned integer at `at`. @internal */
+export const u32 = (bytes: Uint8Array, at: number): number =>
+  (bytes[at] | (bytes[at + 1] << 8) | (bytes[at + 2] << 16) | (bytes[at + 3] << 24)) >>> 0
+
+/** Views `n` little-endian values of `width` bytes in `owned`, a fresh copy, as a typed array. */
 const fixedLE = <A>(
-  bytes: Uint8Array,
-  pos: number,
+  owned: Uint8Array<ArrayBuffer>,
   n: number,
   width: number,
   make: (buffer: ArrayBuffer, length: number) => A,
   get: (view: DataView, at: number) => number | bigint
 ): A => {
-  const copy = bytes.slice(pos, pos + n * width)
-  const out = make(copy.buffer, n)
+  const out = make(owned.buffer, n)
   if (!littleEndian) {
-    const view = new DataView(copy.buffer)
+    const view = new DataView(owned.buffer)
     const target = out as unknown as Array<number | bigint>
     for (let i = 0; i < n; i++) target[i] = get(view, i * width)
   }
   return out
 }
 
-const fromLE = (kind: Kind, bytes: Uint8Array, pos: number, n: number): Dense => {
+/** The `n` little-endian values in `owned`, a fresh copy that the result may take over. */
+const fromLE = (kind: Fixed, owned: Uint8Array<ArrayBuffer>, n: number): Dense => {
   switch (kind.tag) {
     case "i32":
-      return fixedLE(bytes, pos, n, 4, (b, l) => new Int32Array(b, 0, l), (v, at) => v.getInt32(at, true))
+      return fixedLE(owned, n, 4, (b, l) => new Int32Array(b, 0, l), (v, at) => v.getInt32(at, true))
     case "f32":
-      return fixedLE(bytes, pos, n, 4, (b, l) => new Float32Array(b, 0, l), (v, at) => v.getFloat32(at, true))
+      return fixedLE(owned, n, 4, (b, l) => new Float32Array(b, 0, l), (v, at) => v.getFloat32(at, true))
     case "i64":
-      return fixedLE(bytes, pos, n, 8, (b, l) => new BigInt64Array(b, 0, l), (v, at) => v.getBigInt64(at, true))
+      return fixedLE(owned, n, 8, (b, l) => new BigInt64Array(b, 0, l), (v, at) => v.getBigInt64(at, true))
     case "f64":
-      return fixedLE(bytes, pos, n, 8, (b, l) => new Float64Array(b, 0, l), (v, at) => v.getFloat64(at, true))
+      return fixedLE(owned, n, 8, (b, l) => new Float64Array(b, 0, l), (v, at) => v.getFloat64(at, true))
     default:
-      return bytes.slice(pos, pos + n * (kind as { readonly width: number }).width)
+      return owned
   }
 }
 
@@ -138,6 +146,7 @@ const uleb32 = (bytes: Uint8Array, pos: number, end: number, what: string): read
 
 const BIG_7 = BigInt(7)
 const BIG_1 = BigInt(1)
+const BIG_32 = BigInt(32)
 const BIG_0x7f = BigInt(0x7f)
 
 /** A zigzag ULEB128 varint of at most 64 bits, and where it ends. */
@@ -156,9 +165,12 @@ const zigzag64 = (bytes: Uint8Array, pos: number, end: number, what: string): re
 /** The bit width of values from 0 to `max`. @internal */
 export const bitWidth = (max: number): number => max === 0 ? 0 : 32 - Math.clz32(max)
 
+const outOfRange = (what: string, value: number, max: number): never =>
+  fail("Malformed", `${what} include ${value}, out of range for a maximum of ${max}`)
+
 /**
- * Decodes `n` values of the RLE/bit-packed hybrid (no length prefix) into `out`, and
- * returns where the runs ended.
+ * Decodes `out.length` values from 0 to `max` of the RLE/bit-packed hybrid (no length
+ * prefix) into `out`.
  *
  * @internal
  */
@@ -167,10 +179,11 @@ export const hybrid = (
   pos: number,
   end: number,
   width: number,
-  n: number,
+  max: number,
   out: Uint8Array | Int32Array,
   what: string
-): number => {
+): void => {
+  const n = out.length
   const valueBytes = (width + 7) >> 3
   let i = 0
   while (i < n) {
@@ -183,25 +196,29 @@ export const hybrid = (
       const take = Math.min(runLength * 8, n - i)
       if (Math.ceil(take * width / 8) > end - start) fail("Malformed", `${what} has a truncated bit-packed run`)
       const reader = new BitReader(bytes, start)
-      for (let k = 0; k < take; k++) out[i++] = reader.read(width)
+      for (let k = 0; k < take; k++) {
+        const value = reader.read(width)
+        if (value > max) outOfRange(what, value, max)
+        out[i++] = value
+      }
       pos = Math.min(start + runLength * width, end)
     } else {
       if (valueBytes > end - start) fail("Malformed", `${what} has a truncated RLE run`)
       let value = 0
       for (let k = 0; k < valueBytes; k++) value += bytes[start + k] * POW2[8 * k]
       if (value >= POW2[width]) fail("Malformed", `${what} has an RLE value wider than ${width} bits`)
+      if (value > max) outOfRange(what, value, max)
       const stop = Math.min(i + runLength, n)
       out.fill(value, i, stop)
       i = stop
       pos = start + valueBytes
     }
   }
-  return pos
 }
 
 /**
- * Decodes `n` values of the deprecated BIT_PACKED level encoding (most significant bit
- * first, no runs), and returns where they end.
+ * Decodes `out.length` values from 0 to `max` of the deprecated BIT_PACKED level
+ * encoding (most significant bit first, no runs) into `out`, and returns where they end.
  *
  * @internal
  */
@@ -210,10 +227,11 @@ export const bitPacked = (
   pos: number,
   end: number,
   width: number,
-  n: number,
+  max: number,
   out: Uint8Array,
   what: string
 ): number => {
+  const n = out.length
   const size = Math.ceil(n * width / 8)
   if (size > end - pos) fail("Malformed", `${what} need ${size} bytes`)
   let at = pos
@@ -227,6 +245,7 @@ export const bitPacked = (
         at++
       }
     }
+    if (value > max) outOfRange(what, value, max)
     out[i] = value
   }
   return pos + size
@@ -235,13 +254,10 @@ export const bitPacked = (
 /** Reads the 4-byte little-endian length that prefixes some hybrid runs, and returns where the runs end. @internal */
 export const lengthPrefix = (bytes: Uint8Array, pos: number, end: number, what: string): number => {
   if (end - pos < 4) fail("Malformed", `${what} length is truncated`)
-  const length = (bytes[pos] | (bytes[pos + 1] << 8) | (bytes[pos + 2] << 16) | (bytes[pos + 3] << 24)) >>> 0
+  const length = u32(bytes, pos)
   if (length > end - pos - 4) fail("Malformed", `${what} of ${length} bytes is longer than the page`)
   return pos + 4 + length
 }
-
-const readLength = (bytes: Uint8Array, pos: number): number =>
-  (bytes[pos] | (bytes[pos + 1] << 8) | (bytes[pos + 2] << 16) | (bytes[pos + 3] << 24)) >>> 0
 
 /**
  * Decodes `n` PLAIN values.
@@ -261,7 +277,7 @@ export const plain = (kind: Kind, bytes: Uint8Array, pos: number, end: number, n
       let p = pos
       for (let i = 0; i < n; i++) {
         if (end - p < 4) fail("Malformed", `PLAIN BYTE_ARRAY value ${i} of ${n} is truncated`)
-        const length = readLength(bytes, p)
+        const length = u32(bytes, p)
         p += 4
         if (length > end - p) fail("Malformed", `PLAIN BYTE_ARRAY value ${i} of ${length} bytes is truncated`)
         p += length
@@ -272,7 +288,7 @@ export const plain = (kind: Kind, bytes: Uint8Array, pos: number, end: number, n
       const data = new Uint8Array(total)
       p = pos
       for (let i = 0, at = 0; i < n; i++) {
-        const length = readLength(bytes, p)
+        const length = u32(bytes, p)
         data.set(bytes.subarray(p + 4, p + 4 + length), at)
         p += 4 + length
         offsets[i + 1] = at += length
@@ -282,7 +298,7 @@ export const plain = (kind: Kind, bytes: Uint8Array, pos: number, end: number, n
     default: {
       const size = n * kind.width
       if (size > end - pos) fail("Malformed", `PLAIN values need ${size} bytes`)
-      return fromLE(kind, bytes, pos, n)
+      return fromLE(kind, bytes.slice(pos, pos + size), n)
     }
   }
 }
@@ -292,8 +308,8 @@ export const plain = (kind: Kind, bytes: Uint8Array, pos: number, end: number, n
  *
  * @internal
  */
-export const byteStreamSplit = (kind: Kind, bytes: Uint8Array, pos: number, end: number, n: number): Dense => {
-  const width = (kind as { readonly width: number }).width
+export const byteStreamSplit = (kind: Fixed, bytes: Uint8Array, pos: number, end: number, n: number): Dense => {
+  const width = kind.width
   if (end - pos !== n * width) {
     fail("Malformed", `BYTE_STREAM_SPLIT data of ${end - pos} bytes is not ${n} values of ${width} bytes`)
   }
@@ -302,7 +318,7 @@ export const byteStreamSplit = (kind: Kind, bytes: Uint8Array, pos: number, end:
     const stream = pos + k * n
     for (let i = 0; i < n; i++) joined[i * width + k] = bytes[stream + i]
   }
-  return fromLE(kind, joined, 0, n)
+  return fromLE(kind, joined, n)
 }
 
 /**
@@ -352,14 +368,25 @@ export const deltaBinaryPacked: {
       }
       const size = perMiniblock * width / 8
       if (size > end - pos) fail("Malformed", "DELTA_BINARY_PACKED miniblock is truncated")
-      const reader = new BitReader(bytes, pos)
       const take = Math.min(perMiniblock, n - i)
+      if (width === 0) {
+        // every delta is minDelta
+        if (wide) {
+          const target = out as BigInt64Array
+          for (let k = 0; k < take; k++) target[i++] = last64 = BigInt.asIntN(64, last64 + minDelta)
+        } else {
+          const target = out as Int32Array
+          for (let k = 0; k < take; k++) target[i++] = last32 = (last32 + minDelta32) | 0
+        }
+        continue
+      }
+      const reader = new BitReader(bytes, pos)
       if (wide) {
         const target = out as BigInt64Array
         for (let k = 0; k < take; k++) {
           const delta = width <= 32
             ? BigInt(reader.read(width))
-            : BigInt(reader.read(32)) | (BigInt(reader.read(width - 32)) << BigInt(32))
+            : BigInt(reader.read(32)) | (BigInt(reader.read(width - 32)) << BIG_32)
           target[i++] = last64 = BigInt.asIntN(64, last64 + minDelta + delta)
         }
       } else {
@@ -385,7 +412,23 @@ const lengths = (
 }
 
 /**
- * Decodes `n` DELTA_LENGTH_BYTE_ARRAY values, and returns them with where they end.
+ * Reads the lengths of `n` DELTA_LENGTH_BYTE_ARRAY values, checks that their bytes are
+ * there, and returns their offsets with where the bytes start.
+ */
+const lengthOffsets = (bytes: Uint8Array, pos: number, end: number, n: number): readonly [Int32Array, number] => {
+  const [sizes, start] = lengths(bytes, pos, end, n, "DELTA_LENGTH_BYTE_ARRAY length")
+  const offsets = new Int32Array(n + 1)
+  let total = 0
+  for (let i = 0; i < n; i++) {
+    total += sizes[i]
+    if (total > end - start) fail("Malformed", "DELTA_LENGTH_BYTE_ARRAY data is truncated")
+    offsets[i + 1] = total
+  }
+  return [offsets, start]
+}
+
+/**
+ * Decodes `n` DELTA_LENGTH_BYTE_ARRAY values.
  *
  * @internal
  */
@@ -395,27 +438,30 @@ export const deltaLengthByteArray = (
   end: number,
   n: number,
   budget: Budget
-): readonly [Binary, number] => {
-  const [sizes, start] = lengths(bytes, pos, end, n, "DELTA_LENGTH_BYTE_ARRAY length")
-  const offsets = new Int32Array(n + 1)
-  let total = 0
-  for (let i = 0; i < n; i++) {
-    total += sizes[i]
-    if (total > end - start) fail("Malformed", "DELTA_LENGTH_BYTE_ARRAY data is truncated")
-    offsets[i + 1] = total
-  }
-  spend(budget, total)
-  return [{ offsets, data: bytes.slice(start, start + total) }, start + total]
+): Binary => {
+  const [offsets, start] = lengthOffsets(bytes, pos, end, n)
+  spend(budget, offsets[n])
+  return { offsets, data: bytes.slice(start, start + offsets[n]) }
 }
 
 /**
  * Decodes `n` DELTA_BYTE_ARRAY values.
  *
+ * With a `width`, every value must be `width` bytes long (FIXED_LEN_BYTE_ARRAY), and the
+ * values are not taken from `budget`: the caller has already counted fixed-width values.
+ *
  * @internal
  */
-export const deltaByteArray = (bytes: Uint8Array, pos: number, end: number, n: number, budget: Budget): Binary => {
+export const deltaByteArray = (
+  bytes: Uint8Array,
+  pos: number,
+  end: number,
+  n: number,
+  budget: Budget,
+  width?: number
+): Binary => {
   const [prefixes, next] = lengths(bytes, pos, end, n, "DELTA_BYTE_ARRAY prefix length")
-  const [suffixes] = deltaLengthByteArray(bytes, next, end, n, budget)
+  const [suffixes, start] = lengthOffsets(bytes, next, end, n)
   const offsets = new Int32Array(n + 1)
   let total = 0
   for (let i = 0; i < n; i++) {
@@ -423,56 +469,60 @@ export const deltaByteArray = (bytes: Uint8Array, pos: number, end: number, n: n
     if (i === 0 ? prefix !== 0 : prefix > offsets[i] - offsets[i - 1]) {
       fail("Malformed", `DELTA_BYTE_ARRAY value ${i} has a prefix of ${prefix} bytes, longer than the value before it`)
     }
-    total += prefix + suffixes.offsets[i + 1] - suffixes.offsets[i]
-    offsets[i + 1] = total
+    const length = prefix + suffixes[i + 1] - suffixes[i]
+    if (width !== undefined && length !== width) {
+      fail("Malformed", `DELTA_BYTE_ARRAY value ${i} has ${length} bytes, not ${width}`)
+    }
+    offsets[i + 1] = total += length
   }
-  spend(budget, total - suffixes.data.length)
+  if (width === undefined) spend(budget, total)
   const out = new Uint8Array(total)
   for (let i = 0; i < n; i++) {
     const at = offsets[i]
     const prefix = prefixes[i]
     if (prefix > 0) out.copyWithin(at, offsets[i - 1], offsets[i - 1] + prefix)
-    out.set(suffixes.data.subarray(suffixes.offsets[i], suffixes.offsets[i + 1]), at + prefix)
+    out.set(bytes.subarray(start + suffixes[i], start + suffixes[i + 1]), at + prefix)
   }
   return { offsets, data: out }
-}
-
-/**
- * Converts BYTE_ARRAY values that must all be `width` bytes long to fixed-width values.
- *
- * @internal
- */
-export const toFixed = (values: Binary, width: number, what: string): Uint8Array => {
-  const n = values.offsets.length - 1
-  for (let i = 0; i < n; i++) {
-    const length = values.offsets[i + 1] - values.offsets[i]
-    if (length !== width) fail("Malformed", `${what} value ${i} has ${length} bytes, not ${width}`)
-  }
-  return values.data
 }
 
 /** The number of values in `dense`. @internal */
 export const lengthOf = (kind: Kind, dense: Dense): number =>
   kind.tag === "bytes"
     ? (dense as Binary).offsets.length - 1
-    : kind.tag === "fixed"
+    : kind.tag === "fixed" || kind.tag === "int96"
     ? (dense as Uint8Array).length / kind.width
     : (dense as Uint8Array).length
 
+/** `n` values of `kind`: zeros, or empty byte arrays. @internal */
+export const alloc = (kind: Kind, n: number): Dense => {
+  switch (kind.tag) {
+    case "bool":
+      return new Uint8Array(n)
+    case "i32":
+      return new Int32Array(n)
+    case "i64":
+      return new BigInt64Array(n)
+    case "f32":
+      return new Float32Array(n)
+    case "f64":
+      return new Float64Array(n)
+    case "int96":
+    case "fixed":
+      return new Uint8Array(n * kind.width)
+    case "bytes":
+      return { offsets: new Int32Array(n + 1), data: new Uint8Array(0) }
+  }
+}
+
 /**
- * Looks up dictionary `indices` in `dictionary`.
+ * Looks up dictionary `indices` in `dictionary`. The caller checks that they are in
+ * range.
  *
  * @internal
  */
 export const gather = (kind: Kind, dictionary: Dense, indices: Int32Array, budget: Budget): Dense => {
-  const size = lengthOf(kind, dictionary)
   const n = indices.length
-  for (let i = 0; i < n; i++) {
-    const index = indices[i]
-    if (index < 0 || index >= size) {
-      fail("Malformed", `dictionary index ${index >>> 0} is out of range for a dictionary of ${size} values`)
-    }
-  }
   switch (kind.tag) {
     case "bytes": {
       const dict = dictionary as Binary
@@ -486,16 +536,19 @@ export const gather = (kind: Kind, dictionary: Dense, indices: Int32Array, budge
       }
       return { offsets, data }
     }
+    case "int96":
     case "fixed": {
       const dict = dictionary as Uint8Array
       const width = kind.width
       const out = new Uint8Array(n * width)
-      for (let i = 0; i < n; i++) out.set(dict.subarray(indices[i] * width, (indices[i] + 1) * width), i * width)
+      for (let i = 0, at = 0; i < n; i++) {
+        for (let from = indices[i] * width, stop = from + width; from < stop; from++) out[at++] = dict[from]
+      }
       return out
     }
     default: {
       const dict = dictionary as Int32Array
-      const out = new (dict.constructor as Int32ArrayConstructor)(n)
+      const out = alloc(kind, n) as Int32Array
       for (let i = 0; i < n; i++) out[i] = dict[indices[i]]
       return out
     }
@@ -512,48 +565,24 @@ export const concat = (kind: Kind, chunks: ReadonlyArray<Dense>): Dense => {
   if (kind.tag === "bytes") {
     const parts = chunks as ReadonlyArray<Binary>
     let count = 0
-    let total = 0
-    for (const part of parts) {
-      count += part.offsets.length - 1
-      total += part.data.length
-    }
+    for (const part of parts) count += part.offsets.length - 1
     const offsets = new Int32Array(count + 1)
-    const data = new Uint8Array(total)
     let i = 0
     let at = 0
     for (const part of parts) {
       for (let k = 1; k < part.offsets.length; k++) offsets[++i] = at + part.offsets[k]
-      data.set(part.data, at)
       at += part.data.length
     }
-    return { offsets, data }
+    return { offsets, data: Bytes.concat(parts.map((part) => part.data)) }
   }
   const parts = chunks as ReadonlyArray<Int32Array>
   let total = 0
-  for (const part of parts) total += part.length
-  const out = new (empty(kind).constructor as Int32ArrayConstructor)(total)
+  for (const part of parts) total += lengthOf(kind, part)
+  const out = alloc(kind, total) as Int32Array
   let at = 0
   for (const part of parts) {
     out.set(part, at)
     at += part.length
   }
   return out
-}
-
-/** No values of `kind`. @internal */
-export const empty = (kind: Kind): Dense => {
-  switch (kind.tag) {
-    case "i32":
-      return new Int32Array(0)
-    case "i64":
-      return new BigInt64Array(0)
-    case "f32":
-      return new Float32Array(0)
-    case "f64":
-      return new Float64Array(0)
-    case "bytes":
-      return { offsets: new Int32Array(1), data: new Uint8Array(0) }
-    default:
-      return new Uint8Array(0)
-  }
 }

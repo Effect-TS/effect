@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit } from "effect"
+import { Bytes, Cause, Effect, Exit } from "effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Parquet from "effect/encoding/Parquet"
 import * as Thrift from "effect/encoding/Thrift"
@@ -85,11 +85,13 @@ const rows = (column: Parquet.Column): Array<Gold> => {
 // Synthetic files, written with the Thrift writer
 // ---------------------------------------------------------------------------
 
+const text = (s: string) => new TextEncoder().encode(s)
+
 type V = Thrift.Value
 const I32 = (value: number): V => ({ _tag: "I32", value })
 const I64 = (value: number): V => ({ _tag: "I64", value: BigInt(value) })
 const Bool = (value: boolean): V => ({ _tag: "Bool", value })
-const Str = (value: string): V => ({ _tag: "Binary", value: new TextEncoder().encode(value) })
+const Str = (value: string): V => ({ _tag: "Binary", value: text(value) })
 const List = (elementType: Thrift.TypeName, elements: ReadonlyArray<V>): V => ({ _tag: "List", elementType, elements })
 const Struct = (fields: { readonly [id: number]: V | undefined }): V => ({
   _tag: "Struct",
@@ -100,18 +102,10 @@ const thrift = (value: V): Uint8Array => {
   writer.writeValue(value)
   return writer.finish()
 }
-const bytes = (...parts: ReadonlyArray<Uint8Array | ReadonlyArray<number>>): Uint8Array => {
-  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0))
-  let at = 0
-  for (const part of parts) {
-    out.set(part, at)
-    at += part.length
-  }
-  return out
-}
+const bytes = (...parts: ReadonlyArray<Uint8Array | ReadonlyArray<number>>): Uint8Array =>
+  Bytes.concat(parts.map((part) => Uint8Array.from(part)))
 const u32 = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24]
 const uleb = (n: number): Array<number> => n < 0x80 ? [n] : [(n & 0x7f) | 0x80, ...uleb(Math.floor(n / 0x80))]
-const text = (s: string) => new TextEncoder().encode(s)
 const int32s = (...values: ReadonlyArray<number>) => new Uint8Array(Int32Array.from(values).buffer)
 const plainBinary = (...values: ReadonlyArray<string>) =>
   bytes(...values.flatMap((v) => [u32(text(v).length), text(v)]))
@@ -183,6 +177,8 @@ const dataPageV2 = (options: {
   readonly values: Uint8Array
   readonly compressed?: boolean | undefined
   readonly uncompressedSize?: number | undefined
+  /** Defaults to the length of `definition`. */
+  readonly definitionLength?: number | undefined
 }) => {
   const repetition = options.repetition ?? new Uint8Array(0)
   const definition = options.definition ?? new Uint8Array(0)
@@ -195,7 +191,7 @@ const dataPageV2 = (options: {
         2: I32(options.numNulls),
         3: I32(options.numRows),
         4: I32(options.encoding ?? PLAIN),
-        5: I32(definition.length),
+        5: I32(options.definitionLength ?? definition.length),
         6: I32(repetition.length),
         7: options.compressed === undefined ? undefined : Bool(options.compressed)
       })
@@ -214,7 +210,7 @@ interface Chunk {
   /** Whether the first page is a dictionary page. */
   readonly dictionary?: boolean | undefined
   readonly statistics?: V | undefined
-  readonly chunk?: { readonly [id: number]: V }
+  readonly chunk?: { readonly [id: number]: V } | undefined
 }
 
 /** Writes a Parquet file with one row group. */
@@ -222,7 +218,7 @@ const file = (options: {
   readonly schema: ReadonlyArray<V>
   readonly numRows: number
   readonly chunks: ReadonlyArray<Chunk>
-  readonly metadata?: { readonly [id: number]: V }
+  readonly metadata?: { readonly [id: number]: V } | undefined
 }): Uint8Array => {
   const body: Array<Uint8Array> = []
   let offset = 4
@@ -266,6 +262,9 @@ const flat = (options: {
   readonly typeLength?: number | undefined
   readonly codec?: number | undefined
   readonly dictionary?: boolean | undefined
+  readonly statistics?: V | undefined
+  readonly chunk?: { readonly [id: number]: V } | undefined
+  readonly metadata?: { readonly [id: number]: V } | undefined
 }) =>
   file({
     schema: [
@@ -273,8 +272,27 @@ const flat = (options: {
       element("x", { type: options.type, repetition: options.repetition, typeLength: options.typeLength })
     ],
     numRows: options.numRows,
-    chunks: [{ ...options, path: ["x"], numValues: options.numValues ?? options.numRows }]
+    chunks: [{ ...options, path: ["x"], numValues: options.numValues ?? options.numRows }],
+    metadata: options.metadata
   })
+
+/** A file with one required top-level column of `n` values in one data page. */
+const requiredColumn = (type: number, n: number, data: Uint8Array, options?: {
+  readonly encoding?: number | undefined
+  readonly typeLength?: number | undefined
+  readonly codec?: number | undefined
+  readonly uncompressedSize?: number | undefined
+}) =>
+  flat({
+    type,
+    repetition: REQUIRED,
+    numRows: n,
+    typeLength: options?.typeLength,
+    codec: options?.codec,
+    pages: [dataPage(n, data, options)]
+  })
+
+const int32s3 = requiredColumn(Type.INT32, 3, int32s(1, 2, 3))
 
 /** DELTA_BINARY_PACKED for at most 128 small values: one block of four miniblocks. */
 const delta = (values: ReadonlyArray<number>): Uint8Array => {
@@ -371,7 +389,6 @@ describe("Parquet", () => {
     }
   })
   describe("conformance (apache-parquet-format-2.14.0)", () => {
-    const int32s3 = flat({ type: Type.INT32, repetition: REQUIRED, numRows: 3, pages: [dataPage(3, int32s(1, 2, 3))] })
     const optionalInt32 = (pages: ReadonlyArray<Uint8Array>, numRows: number, codec?: number) =>
       flat({ type: Type.INT32, repetition: OPTIONAL, numRows, pages, codec })
     const repeatedInt32 = (pages: ReadonlyArray<Uint8Array>, numRows: number, numValues: number) =>
@@ -407,10 +424,11 @@ describe("Parquet", () => {
     describe("parquet.thrift FileMetaData", () => {
       it.effect("PQ-META-1 SHOULD accept versions 1 and 2 interchangeably (L1411-1413)", () =>
         Effect.gen(function*() {
-          const v2 = file({
-            schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+          const v2 = flat({
+            type: Type.INT32,
+            repetition: REQUIRED,
             numRows: 3,
-            chunks: [{ type: Type.INT32, path: ["x"], numValues: 3, pages: [dataPage(3, int32s(1, 2, 3))] }],
+            pages: [dataPage(3, int32s(1, 2, 3))],
             metadata: { 1: I32(2) }
           })
           assert.strictEqual((yield* metadataOf(v2)).version, 2)
@@ -638,11 +656,7 @@ describe("Parquet", () => {
 
     describe("parquet.thrift Statistics", () => {
       const withStatistics = (statistics: V) =>
-        file({
-          schema: [root(1), element("x", { type: Type.DOUBLE, repetition: REQUIRED })],
-          numRows: 0,
-          chunks: [{ type: Type.DOUBLE, path: ["x"], numValues: 0, pages: [], statistics }]
-        })
+        flat({ type: Type.DOUBLE, repetition: REQUIRED, numRows: 0, pages: [], statistics })
       const statisticsOf = (bytes: Uint8Array) =>
         Effect.map(metadataOf(bytes), (m) => m.rowGroups[0].columns[0].metaData?.statistics)
 
@@ -685,8 +699,7 @@ describe("Parquet", () => {
             [Type.FIXED_LEN_BYTE_ARRAY, 2, new Uint8Array([1, 2, 3, 4]), ["0102", "0304"], 2]
           ]
           for (const [type, n, data, expected, typeLength] of cases) {
-            const bytes = flat({ type, typeLength, repetition: REQUIRED, numRows: n, pages: [dataPage(n, data)] })
-            assert.deepStrictEqual(yield* values(bytes), expected)
+            assert.deepStrictEqual(yield* values(requiredColumn(type, n, data, { typeLength })), expected)
           }
         }))
     })
@@ -785,14 +798,7 @@ describe("Parquet", () => {
 
       it.effect("PQ-BP-2 MUST NOT read BIT_PACKED as a values encoding (L197-198)", () =>
         failsWith(
-          values(
-            flat({
-              type: Type.INT32,
-              repetition: REQUIRED,
-              numRows: 1,
-              pages: [dataPage(1, int32s(1), { encoding: BIT_PACKED })]
-            })
-          ),
+          values(requiredColumn(Type.INT32, 1, int32s(1), { encoding: BIT_PACKED })),
           "Malformed",
           /not an encoding/
         ))
@@ -800,14 +806,7 @@ describe("Parquet", () => {
 
     describe("Encodings.md#delta-encoding-delta_binary_packed--5", () => {
       const int32 = (data: Uint8Array, n: number) =>
-        values(
-          flat({
-            type: Type.INT32,
-            repetition: REQUIRED,
-            numRows: n,
-            pages: [dataPage(n, data, { encoding: DELTA_BINARY_PACKED })]
-          })
-        )
+        values(requiredColumn(Type.INT32, n, data, { encoding: DELTA_BINARY_PACKED }))
       // Example 2 (7, 5, 3, 1, 2, 3, 4, 5), with a valid block size of 128 and four miniblocks of 32
       const example2 = (widths: ReadonlyArray<number>, packed: ReadonlyArray<number>) =>
         bytes([0x80, 0x01, 4, 8, 14], [3], widths, packed)
@@ -842,14 +841,7 @@ describe("Parquet", () => {
           const max64 = [...Array(9).fill(0xff).map((b, i) => i === 0 ? 0xfe : b), 0x01]
           const i64 = bytes([0x80, 0x01, 4, 2], max64, [2], [0, 0, 0, 0])
           assert.deepStrictEqual(
-            yield* values(
-              flat({
-                type: Type.INT64,
-                repetition: REQUIRED,
-                numRows: 2,
-                pages: [dataPage(2, i64, { encoding: DELTA_BINARY_PACKED })]
-              })
-            ),
+            yield* values(requiredColumn(Type.INT64, 2, i64, { encoding: DELTA_BINARY_PACKED })),
             [String(2n ** 63n - 1n), String(-(2n ** 63n))]
           )
         }))
@@ -866,9 +858,8 @@ describe("Parquet", () => {
       it.effect("PQ-DLBA-1 MUST read delta-encoded lengths followed by the concatenated bytes (example)", () =>
         Effect.gen(function*() {
           const data = bytes(delta([5, 5, 6, 6]), text("HelloWorldFoobarABCDEF"))
-          const page = dataPage(4, data, { encoding: DELTA_LENGTH_BYTE_ARRAY })
           assert.deepStrictEqual(
-            yield* values(flat({ type: Type.BYTE_ARRAY, repetition: REQUIRED, numRows: 4, pages: [page] })),
+            yield* values(requiredColumn(Type.BYTE_ARRAY, 4, data, { encoding: DELTA_LENGTH_BYTE_ARRAY })),
             ["Hello", "World", "Foobar", "ABCDEF"].map((s) => Hex.encode(text(s)))
           )
         }))
@@ -878,9 +869,8 @@ describe("Parquet", () => {
       it.effect("PQ-DBA-1 MUST read prefix lengths then suffixes as DELTA_LENGTH_BYTE_ARRAY (example)", () =>
         Effect.gen(function*() {
           const data = bytes(delta([0, 2, 0, 3]), delta([4, 2, 6, 5]), text("axislebabbleyhood"))
-          const page = dataPage(4, data, { encoding: DELTA_BYTE_ARRAY })
           assert.deepStrictEqual(
-            yield* values(flat({ type: Type.BYTE_ARRAY, repetition: REQUIRED, numRows: 4, pages: [page] })),
+            yield* values(requiredColumn(Type.BYTE_ARRAY, 4, data, { encoding: DELTA_BYTE_ARRAY })),
             ["axis", "axle", "babble", "babyhood"].map((s) => Hex.encode(text(s)))
           )
         }))
@@ -888,13 +878,9 @@ describe("Parquet", () => {
       it.effect("PQ-DBA-2 MUST read FIXED_LEN_BYTE_ARRAY values with all their lengths encoded", () =>
         Effect.gen(function*() {
           const data = bytes(delta([0, 2, 1]), delta([4, 2, 3]), text("axislebcd"))
-          const page = dataPage(3, data, { encoding: DELTA_BYTE_ARRAY })
-          const file_ = flat({
-            type: Type.FIXED_LEN_BYTE_ARRAY,
-            typeLength: 4,
-            repetition: REQUIRED,
-            numRows: 3,
-            pages: [page]
+          const file_ = requiredColumn(Type.FIXED_LEN_BYTE_ARRAY, 3, data, {
+            encoding: DELTA_BYTE_ARRAY,
+            typeLength: 4
           })
           assert.deepStrictEqual(yield* values(file_), ["axis", "axle", "abcd"].map((s) => Hex.encode(text(s))))
         }))
@@ -902,13 +888,7 @@ describe("Parquet", () => {
 
     describe("Encodings.md#byte-stream-split-byte_stream_split--9", () => {
       const split = new Uint8Array([0xaa, 0x00, 0xa3, 0xbb, 0x11, 0xb4, 0xcc, 0x22, 0xc5, 0xdd, 0x33, 0xd6])
-      const make = (data: Uint8Array) =>
-        flat({
-          type: Type.FLOAT,
-          repetition: REQUIRED,
-          numRows: 3,
-          pages: [dataPage(3, data, { encoding: BYTE_STREAM_SPLIT })]
-        })
+      const make = (data: Uint8Array) => requiredColumn(Type.FLOAT, 3, data, { encoding: BYTE_STREAM_SPLIT })
 
       it.effect("PQ-BSS-1 MUST gather byte k of every value from stream k (example)", () =>
         Effect.gen(function*() {
@@ -923,13 +903,7 @@ describe("Parquet", () => {
     describe("Compression.md", () => {
       const body = int32s(1, 2, 3)
       const make = (data: Uint8Array, codec: number) =>
-        flat({
-          type: Type.INT32,
-          repetition: REQUIRED,
-          numRows: 3,
-          codec,
-          pages: [dataPage(3, data, { uncompressedSize: 12 })]
-        })
+        requiredColumn(Type.INT32, 3, data, { codec, uncompressedSize: 12 })
 
       it.effect("PQ-COMP-1 MUST decompress each page with the column chunk's codec", () =>
         Effect.gen(function*() {
@@ -959,16 +933,12 @@ describe("Parquet", () => {
 
       it.effect("PQ-UNSUP-2 fails with Unsupported on an encrypted column chunk", () =>
         failsWith(
-          read(file({
-            schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+          read(flat({
+            type: Type.INT32,
+            repetition: REQUIRED,
             numRows: 3,
-            chunks: [{
-              type: Type.INT32,
-              path: ["x"],
-              numValues: 3,
-              pages: [dataPage(3, int32s(1, 2, 3))],
-              chunk: { 8: Struct({ 1: Struct({}) }) }
-            }]
+            pages: [dataPage(3, int32s(1, 2, 3))],
+            chunk: { 8: Struct({ 1: Struct({}) }) }
           })),
           "Unsupported",
           /encrypted/
@@ -976,30 +946,19 @@ describe("Parquet", () => {
 
       it.effect("PQ-UNSUP-3 fails with Unsupported on the ALP encoding", () =>
         failsWith(
-          values(
-            flat({
-              type: Type.DOUBLE,
-              repetition: REQUIRED,
-              numRows: 1,
-              pages: [dataPage(1, new Uint8Array(8), { encoding: ALP })]
-            })
-          ),
+          values(requiredColumn(Type.DOUBLE, 1, new Uint8Array(8), { encoding: ALP })),
           "Unsupported",
           /ALP/
         ))
 
       it.effect("PQ-UNSUP-4 fails with Unsupported on a column chunk in another file", () =>
         failsWith(
-          read(file({
-            schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+          read(flat({
+            type: Type.INT32,
+            repetition: REQUIRED,
             numRows: 3,
-            chunks: [{
-              type: Type.INT32,
-              path: ["x"],
-              numValues: 3,
-              pages: [dataPage(3, int32s(1, 2, 3))],
-              chunk: { 1: Str("other.parquet") }
-            }]
+            pages: [dataPage(3, int32s(1, 2, 3))],
+            chunk: { 1: Str("other.parquet") }
           })),
           "Unsupported",
           /other\.parquet/
@@ -1008,27 +967,14 @@ describe("Parquet", () => {
       it.effect("PQ-UNSUP-5 fails with Unsupported on a codec without a Decompress, or unknown", () =>
         Effect.gen(function*() {
           for (const codec of [1, 3, 4, 5, 6, 7, 99]) {
-            const bytes_ = flat({
-              type: Type.INT32,
-              repetition: REQUIRED,
-              numRows: 3,
-              codec,
-              pages: [dataPage(3, int32s(1, 2, 3))]
-            })
-            yield* failsWith(values(bytes_), "Unsupported")
+            yield* failsWith(values(requiredColumn(Type.INT32, 3, int32s(1, 2, 3), { codec })), "Unsupported")
           }
         }))
     })
   })
 
   describe("hostile input", () => {
-    const int32s3 = flat({ type: Type.INT32, repetition: REQUIRED, numRows: 3, pages: [dataPage(3, int32s(1, 2, 3))] })
-    const strings = flat({
-      type: Type.BYTE_ARRAY,
-      repetition: REQUIRED,
-      numRows: 2,
-      pages: [dataPage(2, plainBinary("abc", "de"))]
-    })
+    const strings = requiredColumn(Type.BYTE_ARRAY, 2, plainBinary("abc", "de"))
 
     it.effect("enforces maxFooterLength, maxDepth, maxPageSize, maxValues and maxBinaryLength", () =>
       Effect.gen(function*() {
@@ -1089,14 +1035,14 @@ describe("Parquet", () => {
           }
         }
         const v2 = (definitionLength: number, uncompressedSize: number) =>
-          page(
-            3,
-            {
-              8: Struct({ 1: I32(1), 2: I32(0), 3: I32(1), 4: I32(PLAIN), 5: I32(definitionLength), 6: I32(0) })
-            },
-            new Uint8Array(4),
+          dataPageV2({
+            numValues: 1,
+            numNulls: 0,
+            numRows: 1,
+            values: new Uint8Array(4),
+            definitionLength,
             uncompressedSize
-          )
+          })
         const make = (page_: Uint8Array) =>
           flat({ type: Type.INT32, repetition: OPTIONAL, numRows: 1, codec: GZIP, pages: [page_] })
         yield* failsWith(
