@@ -101,8 +101,6 @@ export const measure = (markdown: string): number => {
 
 const punctuation = /[!-/:-@[-`{-~]/
 
-const isSpace = (c: string | undefined) => c === undefined || /\s/.test(c)
-
 /** A line that opens a fence: up to three spaces, then three or more backticks or tildes. */
 const fenceOpen = /^( {0,3})(`{3,}|~{3,})(.*)$/
 
@@ -127,7 +125,26 @@ const closes = (line: string, fence: Fence): boolean => {
 const container = /^[ \t>]*(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|^[ \t>]*\[\^/
 
 /** A line GFM may read as the start of another block, which ends a table and is no paragraph. */
-const blockStart = /^(?: {0,3}[#>\-*+_~`<=]| {0,3}\d{1,9}[.)]| {4}| {0,3}\t)/
+const blockStart = /^(?: {0,3}[#>\-*+_~`<=[]| {0,3}\d{1,9}[.)]| {4}| {0,3}\t)/
+
+/** Where a line's container markers end, as far as `startsBlock` needs to know. */
+const quotes = /^(?: {0,3}> ?)* {0,3}/
+
+/**
+ * Whether a line starts a block wherever it is, so that it can be no
+ * paragraph's continuation: an ATX heading, or a list item with content
+ * that may interrupt a paragraph (a bullet, or an ordered item numbered 1
+ * or following one of its list). Tabs and other lines say no, which is
+ * safe: the inline count goes on.
+ */
+const startsBlock = (line: string, previousItem: string | undefined): string | undefined | true => {
+  const rest = line.slice(quotes.exec(line)![0].length)
+  if (/^(?:#{1,6}(?: |$)|[-+*] +\S)/.test(rest)) return true
+  const item = /^(\d{1,9})([.)]) +\S/.exec(rest)
+  if (item === null) return undefined
+  const key = line.slice(0, line.length - rest.length) + item[2]
+  return item[1] === "1" || key === previousItem ? key : undefined
+}
 
 const delimiterRow = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
 
@@ -279,9 +296,17 @@ const bareUrl = /^(?:https?:\/\/|www\.)/i
 
 const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}):[^\s<>`]*>/
 
-/** The inline nesting carried through one paragraph, one entry per delimiter. */
+/**
+ * What one paragraph may already nest. `open` counts every delimiter that
+ * could open emphasis, and none is taken back for one that may close it:
+ * whether a run closes, and what, depends on flanking rules and links that
+ * this renderer does not follow, and a node needs at least one opener.
+ * `containers` is the most container depth of the paragraph's lines, as a
+ * lazy continuation line stays in containers it does not repeat.
+ */
 interface Inline {
-  readonly stack: Array<string>
+  open: number
+  containers: number
 }
 
 interface LineContext {
@@ -320,8 +345,9 @@ const renderPrefix = (line: string): { readonly text: string; readonly rest: num
 const renderLine = (line: string, context: LineContext): string => {
   const prefix = renderPrefix(line)
   const footnote = /^\[\^[\w-]+\]:/.test(line.slice(prefix.rest))
-  const limit = Math.max(0, maxDepth - 1 - prefix.depth)
-  const stack = context.inline.stack
+  const inline = context.inline
+  inline.containers = Math.max(inline.containers, prefix.depth)
+  const limit = Math.max(0, maxDepth - 1 - inline.containers)
   let out = prefix.text
   let urlEnd = -1
   let i = prefix.rest
@@ -410,23 +436,16 @@ const renderLine = (line: string, context: LineContext): string => {
         let end = i
         while (line[end] === c) end++
         const run = line.slice(i, end)
-        const before = i === 0 ? undefined : line[i - 1]
         const after = line[end]
-        let open = run.length
-        if (!isSpace(before) && stack[stack.length - 1] === c) {
-          while (open > 0 && stack[stack.length - 1] === c) {
-            stack.pop()
-            open--
-          }
-        }
-        // A run of n delimiters can nest n levels: `***a*b*c*` is three.
-        if (open > 0 && !isSpace(after)) {
-          if (stack.length + open > limit) {
+        // A run of n delimiters can open n levels: `***a*b*c*` is three.
+        // One followed by a space or the line's end can't open.
+        if (after !== undefined && after !== " " && after !== "\t") {
+          if (inline.open + run.length > limit) {
             out += run.split("").map((char) => "\\" + char).join("")
             i = end
             continue
           }
-          for (let k = 0; k < open; k++) stack.push(c)
+          inline.open += run.length
         }
         out += run
         i = end
@@ -458,16 +477,21 @@ export interface RenderOptions {
  * - `<` becomes `&lt;` unless it opens an http, https or mailto autolink,
  *   so there is no raw HTML, also after a bare URL, which would take a
  *   backslash with it. `$` and `=` are escaped (math, marks), except `=`
- *   under a paragraph line (a setext heading), as is `|` outside tables
+ *   under a paragraph of plain top-level lines (a setext heading), as is `|` outside tables
  *   (spoilers), and `!` before `[` (images).
  * - A link or reference definition whose destination, decoded as a
  *   Markdown parser and then a URL parser would, is not http, https or
  *   mailto has its `]` escaped, so it is text. A `tg://user` link stays
  *   for an id in `mentions`. A kept link's tail must end on its line and
  *   has its syntax characters escaped.
- * - Container markers and emphasis past 16 levels are escaped, counting a
- *   run of n delimiters as n levels, and a table wider than 20 columns has
- *   its pipes escaped. A table ends at a line that may start another block.
+ * - Container markers and emphasis past 16 levels are escaped. Every
+ *   delimiter that could open emphasis counts as a level until the
+ *   paragraph ends, at a blank line or a line that surely starts a block,
+ *   and a lazy continuation line keeps the paragraph's container depth.
+ * - A table keeps its pipes only when its header is at the start of a line
+ *   after a blank line, a heading or the start of the text, where it can
+ *   be no paragraph's continuation. A table wider than 20 columns has its
+ *   pipes escaped. A table ends at a line that may start another block.
  * - `files` references are added at the end, after closing a fence left
  *   open.
  *
@@ -499,6 +523,10 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
   const tableRows = new Map<number, boolean>()
   for (let i = 0; i + 1 < lines.length; i++) {
     if (fenced[i] || fenced[i + 1] || tableRows.has(i) || blockStart.test(lines[i])) continue
+    // Neither row indented, nor the header after a line it could continue.
+    if (/^\s/.test(lines[i]) || /^\s/.test(lines[i + 1])) continue
+    const above = i === 0 ? "" : lines[i - 1]
+    if (above.trim() !== "" && !/^#{1,6}(?: |$)/.test(above)) continue
     if (!delimiterRow.test(lines[i + 1]) || !lines[i + 1].includes("|") || !hasPipe(lines[i])) continue
     const columns = cellCount(lines[i])
     if (columns !== cellCount(lines[i + 1])) continue
@@ -508,14 +536,24 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     for (const row of rows) tableRows.set(row, columns > maxColumns || cellCount(lines[row]) > maxColumns)
     i = end - 1
   }
-  const inline: Inline = { stack: [] }
+  const inline: Inline = { open: 0, containers: 0 }
+  let item: string | undefined
+  // Whether every line since the last blank one is plain text at the top
+  // level: no container, definition, table or other block that a `=` under
+  // it could be the lazy continuation of.
+  let plain = true
   const out = lines.map((line, i) => {
+    const blank = line.trim() === ""
+    const setext = plain && i > 0 && lines[i - 1].trim() !== "" && /^ {0,3}=+[ \t]*$/.test(line)
+    plain = !fenced[i] && (blank || (plain && !/^\s/.test(line) && !blockStart.test(line) && !line.includes("|")))
     if (fenced[i]) return line
-    if (line.trim() === "") inline.stack.length = 0
     const wide = tableRows.get(i)
-    const above = i === 0 ? undefined : lines[i - 1]
-    const setext = /^ {0,3}=+[ \t]*$/.test(line) && above !== undefined && above.trim() !== "" && !fenced[i - 1] &&
-      !tableRows.has(i - 1) && !blockStart.test(above) && !/^ {0,3}\[/.test(above)
+    const starts = blank ? undefined : startsBlock(line, item)
+    item = typeof starts === "string" ? starts : undefined
+    if (blank || starts !== undefined || wide !== undefined) {
+      inline.open = 0
+      inline.containers = 0
+    }
     return renderLine(line, { tableRow: wide !== undefined, widePipes: wide === true, setext, inline, mentions })
   })
   let text = out.join("\n")

@@ -16,6 +16,9 @@ import { assert, describe, it } from "@effect/vitest"
 import * as fc from "fast-check"
 import { inspect } from "./gfm.ts"
 
+/** The most blocks Telegram renders in one message. */
+const maxBlocks = 500
+
 const cases: ReadonlyArray<readonly [string, string]> = [
   ["<b>hi</b> <https://e.com> <javascript:alert(1)>", "&lt;b>hi&lt;/b> <https://e.com> &lt;javascript:alert(1)>"],
   ["![a](https://e.com/a.png) ![b][r]", "\\![a](https://e.com/a.png) \\![b][r]"],
@@ -50,6 +53,7 @@ const assertInert = (input: string) => {
   assert.deepStrictEqual(found.active, [], context)
   assert.isAtMost(found.maxDepth, maxDepth, context)
   assert.isAtMost(found.maxColumns, maxColumns, context)
+  if (measure(input) <= messageLength) assert.isAtMost(found.blocks, maxBlocks, context)
 }
 
 const hostile = fc.string({
@@ -113,10 +117,44 @@ describe("render", () => {
         "| a | b |\n|---|---|\n# heading\n||secret||",
         // a backslash in a bare URL escapes nothing
         "https://e.com\\<b> ](https://e.com\\<a> )",
-        "[^]:<x> [^a]: x\n="
+        "[^]:<x> [^a]: x\n=",
+        // a lazy continuation line stays in the containers it does not repeat
+        ">".repeat(15) + " x\n" + "_".repeat(14) + "x" + "_".repeat(14),
+        "2. <\n x_\n=",
+        "[^a]: b\na\n=",
+        "|a|\n|-|\na\n=\n|a|\n|-|\na\n=",
+        // an intraword underscore closes nothing
+        "_a_b ".repeat(17) + "x_" + " x_".repeat(16),
+        // a footnote's text, or an indented delimiter row, is no table
+        "[^a]: x|y\n---|---\n||secret||",
+        "x|y\n\t---|---"
       ]
     ) assertInert(input)
     fc.assert(fc.property(hostile, (input) => assertInert(input)), { numRuns: 2000 })
+  })
+
+  it("keeps output within the budget under 500 blocks", () => {
+    const line = fc.constantFrom(
+      "- a\n",
+      "> - a\n",
+      "- - - a\n",
+      "1. a\n",
+      "# a\n",
+      "a\n",
+      "a\n=\n",
+      "___\n",
+      "|a|\n|-|\n",
+      "[^a]: b\n",
+      "```\n```\n"
+    )
+    fc.assert(
+      fc.property(fc.array(line, { minLength: 1, maxLength: 4 }), (lines) => {
+        let input = ""
+        for (let k = 0; measure(input + lines[k]) <= messageLength; k = (k + 1) % lines.length) input += lines[k]
+        assertInert(input)
+      }),
+      { numRuns: 40 }
+    )
   })
 
   it("escapes the pipes of a table wider than 20 columns", () => {

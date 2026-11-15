@@ -67,7 +67,7 @@ Updates from business connections, a channel's direct messages and guest mode ar
 
   const App = Webhook.pipe(Layer.provideMerge(RedactSecret))
   ```
-- Consumer Markdown is escaped so that it reaches no raw HTML, image, math, spoiler, or link outside `http`, `https` and `mailto`. A `tg://user` link stays only for users listed in `withPostOptions({ notify: { users } })`.
+- Consumer Markdown is escaped so that it reaches no raw HTML, image, math, spoiler, or link outside `http`, `https` and `mailto`. A `tg://user` link stays only for users listed in `withPostOptions({ notify: { users } })`. Where Markdown is ambiguous the escaping errs toward plain text: a table keeps its pipes only after a blank line or a heading, and past 15 delimiters that could open emphasis in one paragraph the rest are shown as written.
 - A click is dispatched only when its `data` matches a button in Telegram's own copy of the message. That shows the bot put the button there, not that it is still current or that this user may press it.
 
 ## Redelivery

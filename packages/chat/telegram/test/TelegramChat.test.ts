@@ -25,6 +25,7 @@ import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Semaphore from "effect/Semaphore"
+import * as TestClock from "effect/testing/TestClock"
 import * as Tracer from "effect/Tracer"
 import {
   apiError,
@@ -381,39 +382,38 @@ describe("acceptance", () => {
     }))
 })
 
-describe("durable acceptance", () => {
-  /**
-   * The README's recipe on an in-memory store. The key and its work item
-   * commit together, and an insert waits for the one in flight, as a unique
-   * constraint does. `beforeCommit` is where the handler's work can crash.
-   */
-  const makeRecipe = (beforeCommit: (attempt: number) => Effect.Effect<void>) => {
-    const recorder = makeRecorder()
-    const work = new Map<string, string>()
-    const log: Array<string> = []
-    const constraint = Semaphore.makeUnsafe(1)
-    let attempts = 0
-    const insert = (raw: Schema.Json, item: string) =>
-      constraint.withPermits(1)(Effect.suspend(() => {
-        const key = Option.getOrThrow(TelegramChat.deliveryKey(raw, { botId }))
-        if (work.has(key)) return Effect.sync(() => void log.push("repeat"))
-        return Effect.andThen(
-          beforeCommit(++attempts),
-          Effect.sync(() => {
-            work.set(key, item)
-            log.push("commit")
-          })
-        )
-      }))
-    const interactions = ChatInteraction.Handler.of({
-      ...recorder.interactions,
-      click: (event) => Effect.as(insert(event.raw, event.id), ChatInteraction.ack),
-      command: (event) =>
-        Effect.as(insert(event.raw, event.text), ChatInteraction.defer(event, { visibility: "public" }))
-    })
-    return { ...recorder, interactions, work, log, attempts: () => attempts }
-  }
+/**
+ * The README's recipe on an in-memory store. The key and its work item
+ * commit together, and an insert waits for the one in flight, as a unique
+ * constraint does. `beforeCommit` is where the handler's work can crash.
+ */
+const makeRecipe = (beforeCommit: (attempt: number) => Effect.Effect<void>) => {
+  const recorder = makeRecorder()
+  const work = new Map<string, string>()
+  const log: Array<string> = []
+  const constraint = Semaphore.makeUnsafe(1)
+  let attempts = 0
+  const insert = (raw: Schema.Json, item: string) =>
+    constraint.withPermits(1)(Effect.suspend(() => {
+      const key = Option.getOrThrow(TelegramChat.deliveryKey(raw, { botId }))
+      if (work.has(key)) return Effect.sync(() => void log.push("repeat"))
+      return Effect.andThen(
+        beforeCommit(++attempts),
+        Effect.sync(() => {
+          work.set(key, item)
+          log.push("commit")
+        })
+      )
+    }))
+  const interactions = ChatInteraction.Handler.of({
+    ...recorder.interactions,
+    click: (event) => Effect.as(insert(event.raw, event.id), ChatInteraction.ack),
+    command: (event) => Effect.as(insert(event.raw, event.text), ChatInteraction.defer(event, { visibility: "public" }))
+  })
+  return { ...recorder, interactions, work, log, attempts: () => attempts }
+}
 
+describe("durable acceptance", () => {
   const blocked = Effect.fnUntraced(function*(recipe: { readonly attempts: () => number }, n: number) {
     while (recipe.attempts() < n) yield* Effect.yieldNow
   })
@@ -469,6 +469,92 @@ describe("durable acceptance", () => {
       assert.deepStrictEqual(recipe.log, ["commit", "repeat", "commit", "repeat"])
       assert.strictEqual(recipe.events.length, 0)
       assert.strictEqual(api.sent("answerCallbackQuery").length, 2)
+    }))
+})
+
+describe("deadlines", () => {
+  const until = Effect.fnUntraced(function*(done: () => boolean) {
+    while (!done()) yield* Effect.yieldNow
+  })
+
+  it.effect("answers a click at its deadline and lets its handler run on, so a late commit is never repeated", () =>
+    Effect.gen(function*() {
+      const api = makeApi()
+      const release = yield* Deferred.make<void>()
+      const clicks: Array<string> = []
+      const recorder = makeRecorder()
+      const late = {
+        ...recorder,
+        interactions: ChatInteraction.Handler.of({
+          ...recorder.interactions,
+          click: () =>
+            Effect.as(
+              Effect.andThen(
+                Effect.sync(() => void clicks.push("started")),
+                Effect.andThen(Deferred.await(release), Effect.sync(() => void clicks.push("committed")))
+              ),
+              ChatInteraction.ack
+            )
+        })
+      }
+      const click = callbackUpdate({
+        message_id: 5,
+        date: 1_800_000_000,
+        chat: { id: chatId, type: "supergroup" },
+        text: "x",
+        reply_markup: { inline_keyboard: [[{ text: "Yes", callback_data: "approve" }]] }
+      }, "approve")
+      const fiber = yield* Effect.forkChild(receive(api, late, click))
+      yield* until(() => clicks.length > 0)
+      yield* TestClock.adjust("2499 millis")
+      assert.isUndefined(fiber.pollUnsafe())
+      assert.strictEqual(api.sent("answerCallbackQuery").length, 0)
+      yield* TestClock.adjust("1 millis")
+      assert.deepStrictEqual(yield* Fiber.join(fiber), ["accepted"])
+      assert.strictEqual(api.sent("answerCallbackQuery").length, 1)
+      assert.deepStrictEqual(clicks, ["started"])
+      yield* Deferred.succeed(release, void 0)
+      yield* until(() => clicks.length > 1)
+      assert.deepStrictEqual(clicks, ["started", "committed"])
+    }))
+
+  it.effect("refuses a message whose handler outlives its deadline, so Telegram redelivers it", () =>
+    Effect.gen(function*() {
+      const started: Array<string> = []
+      const stuck = {
+        ...makeRecorder(),
+        handler: ChatHandler.of({
+          handle: () => Effect.andThen(Effect.sync(() => void started.push("started")), Effect.never)
+        })
+      }
+      const fiber = yield* Effect.forkChild(receive(makeApi(), stuck, messageUpdate({ text: "hi" })))
+      yield* until(() => started.length > 0)
+      yield* TestClock.adjust("9999 millis")
+      assert.isUndefined(fiber.pollUnsafe())
+      yield* TestClock.adjust("1 millis")
+      assert.deepStrictEqual(yield* Fiber.join(fiber), ["notAccepted"])
+    }))
+
+  it.effect("interrupts a command at its deadline and still counts it answered, never as a message", () =>
+    Effect.gen(function*() {
+      const api = makeApi()
+      const steps: Array<string> = []
+      const recipe = makeRecipe(() =>
+        Effect.andThen(
+          Effect.sync(() => void steps.push("started")),
+          Effect.onInterrupt(Effect.never, () => Effect.sync(() => void steps.push("interrupted")))
+        )
+      )
+      const fiber = yield* Effect.forkChild(receive(api, recipe, commandUpdate("deploy", "prod")))
+      yield* until(() => steps.length > 0)
+      yield* TestClock.adjust("9999 millis")
+      assert.isUndefined(fiber.pollUnsafe())
+      yield* TestClock.adjust("1 millis")
+      assert.deepStrictEqual(yield* Fiber.join(fiber), ["accepted"])
+      yield* until(() => steps.length > 1)
+      assert.deepStrictEqual(steps, ["started", "interrupted"])
+      assert.strictEqual(recipe.work.size, 0)
+      assert.strictEqual(recipe.events.length + recipe.unhandled.length, 0)
     }))
 })
 
