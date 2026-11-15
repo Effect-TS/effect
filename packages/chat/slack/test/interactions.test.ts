@@ -171,7 +171,8 @@ describe("SlackChat.interaction", () => {
       assert.isUndefined(yield* interact(fake, handler, click({ type: "button", action_id: "go" })))
     }))
 
-  it.live("refuses a modal Slack refuses, or that is too large, to Handler.refused, still acking", () =>
+  // Keep validation and API error mapping independent of the handler's wall-clock deadline.
+  it.effect("refuses a modal Slack refuses, or that is too large, to Handler.refused, still acking", () =>
     Effect.gen(function*() {
       const fake = makeFake({ "auth.test": authTest, "views.open": { ok: false, error: "expired_trigger_id" } })
       const handler = recording()
