@@ -381,7 +381,7 @@ describe("Xml", () => {
     it.effect("resolves element names in nested scopes", () =>
       Effect.gen(function*() {
         const document = "<r xmlns:p=\"urn:a\" xmlns=\"urn:d\"><p:s xmlns:p=\"urn:b\" a=\"1\" p:a=\"2\">" +
-          "<u xmlns=\"\" xml:lang=\"en\"/></p:s><p:s/></r>"
+          "<u xmlns=\"\" xml:lang=\"en\"/><v/></p:s><p:s/></r>"
         const names = (events: ReadonlyArray<Xml.Event>) =>
           events.map((event) =>
             event._tag === "StartElement" || event._tag === "EndElement" ?
@@ -393,6 +393,8 @@ describe("Xml", () => {
           ["StartElement", "p:s", "urn:b", "s"],
           ["StartElement", "u", "", "u"],
           ["EndElement", "u", "", "u"],
+          ["StartElement", "v", "urn:d", "v"],
+          ["EndElement", "v", "urn:d", "v"],
           ["EndElement", "p:s", "urn:b", "s"],
           ["StartElement", "p:s", "urn:a", "s"],
           ["EndElement", "p:s", "urn:a", "s"],
@@ -420,6 +422,10 @@ describe("Xml", () => {
           ["<a b:c=\"1\"/>", 1],
           ["<r><a xmlns:p=\"urn:p\"/><p:b/></r>", 24],
           ["<a:b:c xmlns:a=\"urn:a\"/>", 1],
+          ["<a xmlns:1=\"urn:a\"/>", 1],
+          // Fails as Syntax even though a DTD could declare other prefixes
+          ["<!DOCTYPE a><xmlns:a/>", 13],
+          ["<a xmlns:xmlns=\"urn:x\"/>", 1],
           ["<a xmlns:b=\"\"/>", 1],
           ["<a xmlns:xml=\"urn:x\"/>", 1],
           ["<a xmlns=\"http://www.w3.org/XML/1998/namespace\"/>", 1],
