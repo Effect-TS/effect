@@ -396,6 +396,42 @@ describe("Query", () => {
         assert.deepStrictEqual(result, [{ total: BigDecimal.fromBigInt(0n) }])
       }))
 
+    it.effect("batches of different types combine in their common type", () =>
+      Effect.gen(function*() {
+        const Price = Schema.Struct({ d: Schema.BigDecimal })
+        const price = (d: string, scale: number) =>
+          DataFrame.fromRows(Price, [{ d: BigDecimal.fromStringUnsafe(d) }], {
+            types: { d: ArrowSchema.decimal(18, scale) }
+          })
+        const source = Stream.make(price("1.2", 1), price("1.23", 2), price("1.2", 2))
+        const declared = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 2) } })
+        const untyped = Query.fromPlan({ _tag: "Table", name: "t" }) as typeof declared
+        const d = (s: string) => BigDecimal.fromStringUnsafe(s)
+        for (const table of [declared, untyped]) {
+          const totals = table.pipe(
+            Query.aggregate((c) => ({ s: Expr.sum(c.d), lo: Expr.min(c.d), hi: Expr.max(c.d) }))
+          )
+          assert.deepStrictEqual(yield* streamed(totals, source), [{ s: d("3.63"), lo: d("1.20"), hi: d("1.23") }])
+          const groups = table.pipe(
+            Query.groupBy("d"),
+            Query.agg(() => ({ n: Expr.count() })),
+            Query.sort((c) => [c.d])
+          )
+          assert.deepStrictEqual(yield* streamed(groups, source), [{ d: d("1.20"), n: 2 }, { d: d("1.23"), n: 1 }])
+        }
+        const numbers = Stream.make(
+          DataFrame.fromRows(Row, [{ x: 1 }], { types: { x: ArrowSchema.int32 } }),
+          DataFrame.fromRows(Row, [{ x: 1.5 }])
+        )
+        const sum = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
+          Query.aggregate((c) => ({ s: Expr.sum(c.x as Expr.Expr<number>) }))
+        )
+        assert.deepStrictEqual(yield* streamed(sum, numbers), [{ s: 2.5 }])
+        const lossy = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 1) } })
+        const error = yield* Effect.flip(streamed(lossy, source))
+        assert.strictEqual(error.message, `column "d" has values that Decimal[18, 1] can't hold exactly`)
+      }))
+
     it.effect("zero-row batches aggregate like an empty table", () =>
       Effect.gen(function*() {
         const query = Query.aggregate(t, (c) => ({ n: Expr.count(), total: Expr.sum(c.x), mean: Expr.mean(c.x) }))

@@ -8,13 +8,17 @@
  * means and M2 (Chan et al.). Medians and distinct counts don't combine.
  * Sums of 64-bit integers and decimals stay exact until `finish`, so whether
  * a decimal sum fits 64 bits doesn't depend on how the rows are split.
+ * Parts may differ in type (stream batches of untyped tables): partials
+ * combine in their common type, as concatenated rows would.
  *
  * @internal
  */
 import type * as S from "../../arrow/ArrowSchema.ts"
 import * as Agg from "./aggregate.ts"
+import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
+import * as K from "./kernels.ts"
 import * as V from "./vector.ts"
 
 /** @internal */
@@ -36,6 +40,8 @@ interface Sums {
   readonly type: S.DataType
   readonly sums: ReadonlyArray<bigint>
 }
+
+const scaleOf = (t: S.DataType): number => (Dec.isDecimal(t) ? t.scale : 0)
 
 const reaggregated = new Set<Agg.AggFn>(["sum", "count", "len", "min", "max", "first", "last"])
 
@@ -71,18 +77,22 @@ export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping)
 export const combine = (fn: Agg.AggFn, parts: ReadonlyArray<Part>, ids: Int32Array, count: number): Part => {
   const grouping: Agg.Grouping = { ids, count }
   if (parts.every((p): p is Sums => p._tag === "sums")) {
+    const type = K.commonType(parts.map((p) => p.type))
     const sums = new Array<bigint>(count).fill(BigInt(0))
     let at = 0
     for (const p of parts) {
-      for (let j = 0; j < p.sums.length; j++) sums[ids[at + j]] += p.sums[j]
+      const factor = Dec.pow10(scaleOf(type) - scaleOf(p.type))
+      for (let j = 0; j < p.sums.length; j++) sums[ids[at + j]] += p.sums[j] * factor
       at += p.sums.length
     }
-    return { _tag: "sums", type: parts[0].type, sums }
+    return { _tag: "sums", type, sums }
   }
   if (reaggregated.has(fn)) {
-    const vectors = parts.map((p) => (p as Extract<Part, { _tag: "vector" }>).vector)
+    const vectors = parts.map((p) =>
+      p._tag === "sums" ? Agg.fromSums(p.type, p.sums) : (p as Extract<Part, { _tag: "vector" }>).vector
+    )
     const merge = fn === "count" || fn === "len" ? "sum" : fn
-    return { _tag: "vector", vector: Agg.aggregate(merge, V.concat(vectors), grouping) }
+    return { _tag: "vector", vector: Agg.aggregate(merge, K.concat(vectors), grouping) }
   }
   if (fn === "mean") {
     const sum = new Float64Array(count)
@@ -166,7 +176,7 @@ export const group = (
 export const merge = (fns: ReadonlyArray<Agg.AggFn>, states: ReadonlyArray<State>): State => {
   if (states.length === 1) return states[0]
   const total = states.reduce((s, x) => s + x.count, 0)
-  const keys = states[0].keys.map((_, k) => V.concat(states.map((s) => s.keys[k])))
+  const keys = states[0].keys.map((_, k) => K.concat(states.map((s) => s.keys[k])))
   const g = Hash.groups(keys, total)
   return {
     keys: keys.map((k) => V.take(k, g.firstRow)),

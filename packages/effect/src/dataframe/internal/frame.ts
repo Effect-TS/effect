@@ -557,14 +557,9 @@ export const dropNulls = (self: Frame, names: ReadonlyArray<string> | undefined)
 /** @internal */
 export const concat = (frames: ReadonlyArray<Frame>): Frame => {
   const first = frames[0]
-  const columns = first.columns.map((c) => {
-    const parts = frames.map((f) => column(f, c.name).values())
-    const type = parts.reduce<S.DataType>((t, p) => {
-      const st = D.supertype(t, undefined, p.type, undefined)
-      return st === undefined ? V.fail(`cannot concatenate ${D.describe(t)} with ${D.describe(p.type)}`) : st.type
-    }, parts[0].type)
-    return new Column(c.name, V.concat(parts.map((p) => K.cast(p, type))), undefined)
-  })
+  const columns = first.columns.map((c) =>
+    new Column(c.name, K.concat(frames.map((f) => column(f, c.name).values())), undefined)
+  )
   return make(columns, frames.reduce((s, f) => s + f.length, 0))
 }
 

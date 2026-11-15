@@ -267,6 +267,24 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector => {
     : V.f64(target, out as Float64Array, V.compactValid(valid))
 }
 
+/**
+ * The common type of values of `types` (the larger decimal scale, the finer
+ * time unit, …); fails when they have none.
+ *
+ * @internal
+ */
+export const commonType = (types: ReadonlyArray<S.DataType>): S.DataType =>
+  types.reduce((t, u) => {
+    const common = D.supertype(t, undefined, u, undefined)
+    return common === undefined ? V.fail(`cannot concatenate ${D.describe(t)} with ${D.describe(u)}`) : common.type
+  })
+
+/** Concatenates vectors, cast to their {@link commonType}. @internal */
+export const concat = (parts: ReadonlyArray<V.Vector>): V.Vector => {
+  const type = commonType(parts.map((p) => p.type))
+  return V.concat(parts.map((p) => cast(p, type)))
+}
+
 /** Casts a value, keeping its shape. @internal */
 export const castValue = (value: Value, target: S.DataType): Value =>
   D.sameType(value.vector.type, target)
