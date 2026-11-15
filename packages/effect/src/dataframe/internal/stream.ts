@@ -88,17 +88,15 @@ const collectFrames = (batches: Batches, node: Q.Node): Effect.Effect<F.Frame, D
 const perBatch = (node: Q.Node): boolean => {
   switch (node._tag) {
     case "Filter":
-      return E.isRowWise(node.predicate)
+    case "Select":
+    case "WithColumns":
     case "Pick":
     case "Omit":
     case "Rename":
     case "DropNulls":
     case "Explode":
     case "Unnest":
-      return true
-    case "Select":
-    case "WithColumns":
-      return node.columns.every((c) => E.isRowWise(c.expression))
+      return Q.isRowWise(node)
     default:
       return false
   }
@@ -124,7 +122,7 @@ const aggregate = (
     const fn: Agg.AggFn = expression.arg === undefined ? "len" : expression.fn
     return { name, fn, arg: expression.arg }
   })
-  if (!specs.every((s) => Partial.combinable(s.fn) && (s.arg === undefined || E.isRowWise(s.arg)))) {
+  if (!Q.isRowWise(node) || !specs.every((s) => Partial.combinable(s.fn))) {
     return collected(node, catalog)
   }
   const fns = specs.map((s) => s.fn)

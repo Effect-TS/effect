@@ -4,12 +4,17 @@
  * Execution is a post-order walk that calls the frame operations. Before it,
  * `optimize` rewrites the plan so less work happens:
  *
- * - row-wise predicates move below the operations they commute with
- *   (sorts, projections, derived columns they don't read, group keys, either
- *   side of a join, every input of a concat), and filters that meet merge;
- *   predicates with windows stay where they are;
- * - slices move below row-wise operations, and a slice of a sort becomes a
- *   top-k selection;
+ * - row-wise predicates move below the row-wise operations they commute
+ *   with (sorts, projections, derived columns they don't read, group keys,
+ *   either side of a join, every input of a concat), and filters that meet
+ *   merge;
+ * - slices move below row-wise operations that keep every row in place, and
+ *   a slice of a sort becomes a top-k selection.
+ *
+ * An operation is row-wise when its expressions are (see `isRowWise`): a
+ * window in a predicate, a sort key or a derived column sees every row of its
+ * input, so moving a filter or slice below it changes its result.
+ *
  * - columns nothing reads are dropped at the inputs, and derived columns and
  *   aggregates nothing reads are not computed.
  *
@@ -195,6 +200,36 @@ const computeNames = (node: Node): ReadonlyArray<string> | undefined => {
 // Optimisation
 // -----------------------------------------------------------------------------
 
+/** The expressions an operation evaluates over its input rows. */
+const expressions = (node: Node): ReadonlyArray<Plan.Expression> => {
+  switch (node._tag) {
+    case "Filter":
+      return [node.predicate]
+    case "Select":
+    case "WithColumns":
+      return node.columns.map((c) => c.expression)
+    case "Sort":
+    case "TopK":
+      return node.keys.map((k) => k.expression)
+    case "GroupBy":
+    case "Aggregate":
+      return node.aggregates.map((a) => a.expression._tag === "AggregateCall" ? a.expression.arg : a.expression)
+        .filter((e) => e !== undefined)
+    default:
+      return []
+  }
+}
+
+/**
+ * Whether an operation's expressions are row-wise (`E.isRowWise`; for
+ * aggregations, their arguments), so that each input row contributes the
+ * same values whichever other rows are present. Only row-wise operations
+ * let filters and slices move below them, and run batch by batch.
+ *
+ * @internal
+ */
+export const isRowWise = (node: Node): boolean => expressions(node).every(E.isRowWise)
+
 /** @internal */
 export const optimize = (plan: Node): Node => prune(pushSlices(pushFilters(plan)), undefined)
 
@@ -237,11 +272,12 @@ const filtered = (input: Node, predicates: ReadonlyArray<Plan.Expression>): Node
 /**
  * Places each predicate as deep as it can go below `node`. Predicates that
  * are not row-wise (windows) depend on exactly the rows they see, so a set
- * containing one stays where it is.
+ * containing one stays where it is, as do predicates above an operation that
+ * is not row-wise.
  */
 const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
   if (predicates.length === 0) return node
-  if (!predicates.every(E.isRowWise)) return filtered(node, predicates)
+  if (!predicates.every(E.isRowWise) || !isRowWise(node)) return filtered(node, predicates)
   const split = (canPush: (refs: Set<string>, p: Plan.Expression) => boolean) => {
     const down: Array<Plan.Expression> = []
     const here: Array<Plan.Expression> = []
@@ -264,13 +300,11 @@ const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
       return { ...node, input: push(node.input, renamed) }
     }
     case "WithColumns": {
-      if (!node.columns.every((c) => E.isRowWise(c.expression))) return filtered(node, predicates)
       const added = new Set(node.columns.map((c) => c.name))
       const { down, here } = split((refs) => [...refs].every((r) => !added.has(r)))
       return filtered({ ...node, input: push(node.input, down) }, here)
     }
     case "Select": {
-      if (!node.columns.every((c) => E.isRowWise(c.expression))) return filtered(node, predicates)
       const byName = new Map(node.columns.map((c) => [c.name, c.expression]))
       const { down, here } = split((refs) => [...refs].every((r) => byName.get(r)?._tag === "Column"))
       const inlined = down.map((p) => E.mapColumns(p, (name) => byName.get(name)!))
@@ -314,8 +348,8 @@ const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
 
 /** One output row per input row, in order, so a slice can move below it. */
 const keepsRows = (node: Node): boolean =>
-  ((node._tag === "Select" || node._tag === "WithColumns") && node.columns.every((c) => E.isRowWise(c.expression))) ||
-  node._tag === "Rename" || node._tag === "Pick" || node._tag === "Omit"
+  (node._tag === "Select" || node._tag === "WithColumns" || node._tag === "Rename" || node._tag === "Pick" ||
+    node._tag === "Omit") && isRowWise(node)
 
 const pushSlices = (node: Node): Node => {
   const optimized = mapChildren(node, pushSlices)

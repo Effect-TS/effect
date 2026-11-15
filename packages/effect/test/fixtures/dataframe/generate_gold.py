@@ -909,6 +909,9 @@ def extended_cases():
          "right": table([("g", "i32"), ("name", "utf8")], {"g": [1], "name": ["one"]})}
     add("window/filter-after-sort", "a window predicate sees the sorted rows", W,
         [{"op": "sort", "keys": [{"expr": col("x")}]}, {"op": "filter", "predicate": fn("gt", fn("cumSum", col("x")), lit(3.0))}])
+    add("window/filter-after-sort-by-window", "a filter after a sort by a window leaves the sort's order alone",
+        {"left": table([("x", "f64")], {"x": [-3.0, 5.0, -1.0]})},
+        [{"op": "sort", "keys": [{"expr": fn("cumSum", col("x"))}]}, {"op": "filter", "predicate": fn("neq", col("x"), lit(5.0))}])
     add("window/filter-after-filter", "a window predicate sees only the rows an earlier filter kept", W,
         [{"op": "filter", "predicate": fn("gt", col("x"), lit(1.0))}, {"op": "filter", "predicate": fn("gt", fn("shift", col("x")), lit(2.0))}])
     add("window/filter-after-concat", "a window predicate sees every input of a concat", W,
