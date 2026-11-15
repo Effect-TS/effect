@@ -1099,23 +1099,19 @@ describe("RpcClient", () => {
               writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true })
             })
           })
-          const protocol = yield* RpcClient.makeProtocolSocket({ retryTransientErrors: false }).pipe(
+          const protocol = yield* RpcClient.makeProtocolSocket().pipe(
             Effect.provideService(Socket.Socket, socket),
             Effect.provide(RpcSerialization.layerNdjson)
           )
           const client = yield* RpcClient.make(TestGroup).pipe(
             Effect.provideService(RpcClient.Protocol, protocol)
           )
-          const exit = yield* Effect.exit(
+          const error = yield* Effect.flip(
             failedMessage === "Request" ? Effect.asVoid(client.Ping()) : Stream.runDrain(client.Events())
           )
 
-          assert(Exit.isFailure(exit))
-          assert.lengthOf(exit.cause.reasons, 1)
-          const failure = exit.cause.reasons[0]
-          assert(Cause.isFailReason(failure))
-          assert.instanceOf(failure.error, RpcClientError)
-          assert.strictEqual(failure.error.reason, reason)
+          assert.instanceOf(error, RpcClientError)
+          assert.strictEqual(error.reason, reason)
         })
     )
   }
