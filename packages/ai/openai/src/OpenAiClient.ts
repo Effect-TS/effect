@@ -602,12 +602,12 @@ const makeSocket = Effect.gen(function*() {
         if (event.type === "error") {
           const status = "status" in event ? Number(event.status) : NaN
           const error = ("error" in event ? event.error : event) as {
-            readonly type?: string
-            readonly code?: string
-            readonly message: string
+            readonly type?: string | null
+            readonly code?: string | null
+            readonly message?: string
           }
           const errorType = error.code ??
-            (error.type === "api_error" && /^gRPC error: Response with id=\S+ not found$/.test(error.message)
+            (error.type === "api_error" && /^gRPC error: Response with id=\S+ not found$/.test(error.message ?? "")
               ? "previous_response_not_found"
               : error.type ?? "unknown")
           const json = JSON.stringify(error)
@@ -736,11 +736,14 @@ const ErrorEvent = Schema.Struct({
   ),
   status: Schema.optionalKey(Schema.Int),
   // xAI sends `code` in place of `type`, e.g. `previous_response_not_found`
-  error: Schema.Struct({
-    type: Schema.optional(Schema.String),
-    code: Schema.optional(Schema.String),
-    message: Schema.String
-  })
+  error: Schema.StructWithRest(
+    Schema.Struct({
+      type: Schema.optionalKey(Schema.NullOr(Schema.String)),
+      code: Schema.optionalKey(Schema.NullOr(Schema.String)),
+      message: Schema.optionalKey(Schema.String)
+    }),
+    [Schema.Record(Schema.String, Schema.Unknown)]
+  )
 })
 
 const errorTypeToStatus: Record<string, number> = {
