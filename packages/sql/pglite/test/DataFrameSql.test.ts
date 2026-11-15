@@ -83,6 +83,44 @@ const decimals = arrow<{ d: BigDecimal.BigDecimal | null }>(
     s === null ? null : BigDecimal.fromStringUnsafe(s)
   )]
 )
+const units = { s: "second", ms: "millisecond", us: "microsecond", ns: "nanosecond" } as const
+const unitNames = ["s", "ms", "us", "ns"] as const
+/** One column `v` of `type`, its integers microsecond multiples in every unit (PostgreSQL keeps microseconds). */
+const temporal = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown> = [1_001_000n, -1_500_000n, null]) =>
+  arrow<{ v: unknown }>([ArrowSchema.field("v", type)], [values])
+/** Casts in both directions between temporal types of every unit and integers. */
+const temporalCasts = unitNames.flatMap((u) => [
+  [
+    `casts of Timestamp[${u}]`,
+    temporal(ArrowSchema.timestamp(units[u])).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int64"),
+      date: Expr.cast(c.v, "Date"),
+      duration: Expr.cast(c.v, `Duration[${u}]`),
+      s: Expr.cast(c.v, "Timestamp[s]"),
+      ms: Expr.cast(c.v, "Timestamp[ms]"),
+      us: Expr.cast(c.v, "Timestamp[us]"),
+      ns: Expr.cast(c.v, "Timestamp[ns]")
+    })))
+  ] as const,
+  [
+    `casts of Duration[${u}]`,
+    temporal(ArrowSchema.duration(units[u])).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int64"),
+      timestamp: Expr.cast(c.v, `Timestamp[${u}]`),
+      s: Expr.cast(c.v, "Duration[s]"),
+      ms: Expr.cast(c.v, "Duration[ms]"),
+      us: Expr.cast(c.v, "Duration[us]"),
+      ns: Expr.cast(c.v, "Duration[ns]")
+    })))
+  ] as const,
+  [
+    `casts of integers to Timestamp[${u}] and Duration[${u}]`,
+    temporal(ArrowSchema.int64).pipe(Query.select((c) => ({
+      timestamp: Expr.cast(c.v, `Timestamp[${u}]`),
+      duration: Expr.cast(c.v, `Duration[${u}]`)
+    })))
+  ] as const
+])
 
 /** Queries whose SQL result must equal the in-memory result, column types included. */
 const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
@@ -124,6 +162,30 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
       [19_000, -1, null],
       [BigDecimal.fromStringUnsafe("12.34"), BigDecimal.fromStringUnsafe("-0.05"), null]
     ]).pipe(Query.withColumns((c) => ({ s: Expr.totalSeconds(c.d), year: Expr.year(c.t) })))
+  ],
+  ...temporalCasts,
+  [
+    "casts of integers beyond double precision to Timestamp[us] and Duration[us]",
+    temporal(ArrowSchema.int64, [253_402_300_799_999_999n, -62_135_596_800_000_001n, 9_007_199_254_740_993n]).pipe(
+      Query.select((c) => ({ timestamp: Expr.cast(c.v, "Timestamp[us]"), duration: Expr.cast(c.v, "Duration[us]") }))
+    )
+  ],
+  [
+    "casts of zoned timestamps",
+    temporal(ArrowSchema.timestamp("microsecond", "UTC")).pipe(
+      Query.select((c) => ({ int: Expr.cast(c.v, "Int64"), s: Expr.cast(c.v, "Timestamp[s]") }))
+    )
+  ],
+  [
+    "casts of dates",
+    temporal(ArrowSchema.date("day"), [19_000, -1, null]).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int32"),
+      long: Expr.cast(c.v, "Int64"),
+      text: Expr.cast(c.v, "Utf8"),
+      s: Expr.cast(c.v, "Timestamp[s]"),
+      ns: Expr.cast(c.v, "Timestamp[ns]"),
+      date: Expr.cast(Expr.cast(c.v, "Int32"), "Date")
+    })))
   ],
   [
     "durations",

@@ -150,10 +150,8 @@ const literal = (value: unknown, type: Plan.LiteralType | undefined): string => 
         return type.timezone === undefined
           ? `TIMESTAMP '${timestampText(big, type.unit)}'`
           : `TIMESTAMPTZ '${timestampText(big, type.unit)}+00'`
-      case "Duration": {
-        const micros = big * BigInt(1_000_000) / perSecond[type.unit]
-        return `(${micros} * INTERVAL '1 microsecond')`
-      }
+      case "Duration":
+        return fromInteger(`CAST(${big} AS BIGINT)`, S.duration(type.unit))
       case "Decimal": {
         const negative = big < BigInt(0)
         const digits = (negative ? -big : big).toString().padStart(type.scale + 1, "0")
@@ -177,6 +175,75 @@ const literal = (value: unknown, type: Plan.LiteralType | undefined): string => 
     default:
       return unsupported(`literals like ${String(value)}`)
   }
+}
+
+// -----------------------------------------------------------------------------
+// Temporal values and casts
+// -----------------------------------------------------------------------------
+
+type Temporal = S.Date | S.Timestamp | S.Duration
+
+const isTemporal = (t: S.DataType): t is Temporal =>
+  t._tag === "Date" || t._tag === "Timestamp" || t._tag === "Duration"
+
+/** The integer type of a temporal type's values. */
+const integerOf = (t: Temporal): S.Int => (t._tag === "Date" && t.unit === "day" ? S.int32 : S.int64)
+
+/**
+ * A temporal value as its integer: its `unit`s (its own by default) since
+ * the epoch, or its length in them, rounded down.
+ */
+const toInteger = (x: string, type: Temporal, unit?: Plan.TimeUnit): string => {
+  if (type._tag !== "Date") {
+    return `CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) * ${perSecond[unit ?? type.unit]}) AS BIGINT)`
+  }
+  const days = `(CAST(${x} AS DATE) - DATE '1970-01-01')`
+  return type.unit === "day" ? days : `(CAST(${days} AS BIGINT) * 86400000)`
+}
+
+/**
+ * An interval of `micros` (a BIGINT) microseconds. Intervals multiply in
+ * double precision, so whole hours and the remaining microseconds are
+ * multiplied separately, each exactly.
+ */
+const interval = (micros: string): string =>
+  `((${micros}) / 3600000000 * INTERVAL '1 hour' + (${micros}) % 3600000000 * INTERVAL '1 microsecond')`
+
+/** The temporal value of `type` whose integer (see {@link toInteger}) is `x`, of type {@link integerOf}. */
+const fromInteger = (x: string, type: Temporal): string => {
+  if (type._tag === "Date") {
+    return `(DATE '1970-01-01' + CAST(${type.unit === "day" ? x : `FLOOR(${x} / 86400000.0)`} AS INTEGER))`
+  }
+  const micros = type.unit === "nanosecond"
+    ? `CAST(FLOOR(${x} / 1000.0) AS BIGINT)`
+    : `(${x} * ${perSecond.microsecond / perSecond[type.unit]})`
+  if (type._tag === "Duration") return interval(micros)
+  const epoch = type.timezone === undefined ? "TIMESTAMP '1970-01-01 00:00:00'" : "TIMESTAMPTZ '1970-01-01 00:00:00+00'"
+  return `(${epoch} + ${interval(micros)})`
+}
+
+/**
+ * `x` converted from `from` to `to` as the engine converts: timestamps
+ * and durations rescale to the target unit (rounding down), timestamps and
+ * dates convert at midnight, and other temporal values convert as their
+ * integers.
+ */
+const cast = (x: string, from: S.DataType, to: S.DataType): string => {
+  if (isTemporal(from) && isTemporal(to)) {
+    if (from._tag !== "Date" && from._tag === to._tag) return fromInteger(toInteger(x, from, to.unit), to)
+    if (from._tag === "Timestamp" && to._tag === "Date") {
+      return fromInteger(`CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) / 86400) AS BIGINT)`, S.date("day"))
+    }
+    if (from._tag === "Date" && to._tag === "Timestamp") {
+      return fromInteger(`CAST(${toInteger(x, S.date("day"))} AS BIGINT) * ${BigInt(86400) * perSecond[to.unit]}`, to)
+    }
+    return fromInteger(cast(toInteger(x, from), integerOf(from), integerOf(to)), to)
+  }
+  if (isTemporal(from)) return cast(toInteger(x, from), integerOf(from), to)
+  if (isTemporal(to)) return fromInteger(cast(x, from, integerOf(to)), to)
+  // Floats and decimals truncate towards zero.
+  const truncated = to._tag === "Int" && (from._tag === "Decimal" || from._tag === "Float") ? `TRUNC(${x})` : x
+  return `CAST(${truncated} AS ${sqlType(to)})`
 }
 
 // -----------------------------------------------------------------------------
@@ -367,20 +434,8 @@ const call = (node: Plan.Call, scope: Scope): string => {
       return `COALESCE(${a.join(", ")})`
     case "when":
       return `(CASE WHEN ${a[0]} THEN ${a[1]} ELSE ${a[2]} END)`
-    case "cast": {
-      const to = o.to ?? ""
-      const target = to === "Decimal"
-        ? `DECIMAL(${o.precision}, ${o.scale})`
-        : sqlType(D.castTargets[to] ?? V.fail(`unknown cast target ${to}`))
-      const integer = to.startsWith("Int") || to.startsWith("UInt")
-      let x = a[0]
-      // Temporal values become their integers; floats and decimals truncate (as the engine does).
-      if (integer && k[0] === "Timestamp") x = `CAST(EXTRACT(EPOCH FROM ${x}) * 1000000 AS BIGINT)`
-      else if (integer && k[0] === "Date") x = `(${x} - DATE '1970-01-01')`
-      else if (integer && k[0] === "Duration") x = `CAST(EXTRACT(EPOCH FROM ${x}) * 1000000 AS BIGINT)`
-      else if (integer && (k[0] === "Decimal" || k[0] === "Float")) x = `TRUNC(${x})`
-      return `CAST(${x} AS ${target})`
-    }
+    case "cast":
+      return cast(a[0], typeOf(node.args[0], scope), typeOf(node, scope))
     case "length":
       return `LENGTH(${a[0]})`
     case "toLowerCase":
@@ -737,10 +792,6 @@ const relation = (node: Plan.Node, c: Compiler): string => {
 // Results
 // -----------------------------------------------------------------------------
 
-/** A temporal value as an integer in `unit` since the epoch (or as a length). */
-const epoch = (x: string, type: S.Timestamp | S.Duration): string =>
-  `CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) * ${perSecond[type.unit]}) AS BIGINT)`
-
 const scalars: ReadonlySet<S.DataType["_tag"]> = new Set(["Null", "Bool", "Int", "Float", "Decimal", "Utf8"])
 
 /** SQL that renders a result column of `type` in the form `reader` reads. */
@@ -756,10 +807,9 @@ const output = (x: string, type: S.DataType): string => {
     case "Utf8":
       return text(`CAST(${x} AS ${sqlType(type)})`)
     case "Date":
-      return text(`(CAST(${x} AS DATE) - DATE '1970-01-01')${type.unit === "day" ? "" : " * 86400000"}`)
     case "Timestamp":
     case "Duration":
-      return text(epoch(x, type))
+      return text(toInteger(x, type))
     case "Binary":
       return x
     case "List":

@@ -35,11 +35,12 @@
  * Results have the column types the in-memory engine gives for the same
  * plan (see {@link Compiled}). Values follow the database's semantics where
  * they differ from the in-memory engine's: integer overflow raises an error
- * instead of wrapping, division by zero follows the database, and string
- * order follows its collation. Pivots, unpivots, `explode` and `unnest`
- * are not supported yet; tables need declared columns (`Query.table` with a
- * schema), and {@link engine} checks that tables satisfy them, as the
- * in-memory engine does.
+ * instead of wrapping, division by zero follows the database, string order
+ * follows its collation, and timestamps and durations keep PostgreSQL's
+ * microseconds (finer values round down). Pivots, unpivots, `explode` and
+ * `unnest` are not supported yet; tables need declared columns
+ * (`Query.table` with a schema), and {@link engine} checks that tables
+ * satisfy them, as the in-memory engine does.
  *
  * @stability experimental
  * @since 4.1.5
