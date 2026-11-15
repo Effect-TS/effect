@@ -146,6 +146,12 @@ const checkSize = (name: string, value: number): void => {
   }
 }
 
+const failure = (
+  codec: Codec,
+  kind: CompressionError["kind"],
+  message: string
+): Result.Result<never, CompressionError> => Result.fail(new CompressionError({ codec, kind, message }))
+
 const run = (
   codec: Codec,
   decoder: Decoder,
@@ -157,35 +163,25 @@ const run = (
   if (expectedSize !== undefined) {
     checkSize("expectedSize", expectedSize)
     if (expectedSize > maxOutputSize) {
-      return Result.fail(
-        new CompressionError({
-          codec,
-          kind: "OutputLimit",
-          message: `the expected size of ${expectedSize} bytes is larger than the limit of ${maxOutputSize} bytes`
-        })
+      return failure(
+        codec,
+        "OutputLimit",
+        `the expected size of ${expectedSize} bytes is larger than the limit of ${maxOutputSize} bytes`
       )
     }
   }
   try {
     const output = decoder(input, expectedSize ?? maxOutputSize, expectedSize)
     if (expectedSize !== undefined && output.length !== expectedSize) {
-      return Result.fail(
-        new CompressionError({
-          codec,
-          kind: "SizeMismatch",
-          message: `expected ${expectedSize} bytes of output, got ${output.length}`
-        })
-      )
+      return failure(codec, "SizeMismatch", `expected ${expectedSize} bytes of output, got ${output.length}`)
     }
     return Result.succeed(output)
   } catch (error) {
     if (!(error instanceof DecodeFailure)) throw error
     // With an expected size, more output than that is a size mismatch
-    const kind = error.kind === "OutputLimit" && expectedSize !== undefined ? "SizeMismatch" : error.kind
-    const message = kind === "SizeMismatch"
-      ? `the output is larger than the expected ${expectedSize} bytes`
-      : error.message
-    return Result.fail(new CompressionError({ codec, kind, message }))
+    return error.kind === "OutputLimit" && expectedSize !== undefined
+      ? failure(codec, "SizeMismatch", `the output is larger than the expected ${expectedSize} bytes`)
+      : failure(codec, error.kind, error.message)
   }
 }
 
