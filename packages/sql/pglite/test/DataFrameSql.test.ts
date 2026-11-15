@@ -36,6 +36,7 @@ const Setup = Layer.effectDiscard(
     const sql = yield* SqlClient
     yield* sql`DROP TABLE IF EXISTS sales`
     yield* sql`DROP TABLE IF EXISTS regions`
+    yield* sql`DROP TABLE IF EXISTS contract`
     yield* sql`CREATE TABLE sales (id DOUBLE PRECISION, region TEXT, units DOUBLE PRECISION, price DOUBLE PRECISION, at TIMESTAMP)`
     yield* sql`CREATE TABLE regions (region TEXT, manager TEXT)`
     for (const s of sales) {
@@ -44,6 +45,8 @@ const Setup = Layer.effectDiscard(
       })`
     }
     for (const r of regions) yield* sql`INSERT INTO regions VALUES (${r.region}, ${r.manager})`
+    yield* sql`CREATE TABLE contract (s TEXT, n DOUBLE PRECISION)`
+    yield* sql`INSERT INTO contract VALUES ('bad', NULL), ('good', 1)`
   })
 )
 
@@ -211,6 +214,34 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(onSql(ints.pipe(Query.select((c) => ({ y: Expr.add(c.x, 2147483647) })))))
         assert.include(error.message, "integer out of range")
+      }))
+
+    it.effect("tables must satisfy their schema, as in memory", () =>
+      Effect.gen(function*() {
+        const contract = <S extends Schema.Top & { readonly Type: object }>(schema: S) =>
+          Query.table("contract", schema)
+        const rejects = (query: Query.Query<any>) => Effect.map(Effect.flip(onSql(query)), (e) => e.message)
+        assert.strictEqual(
+          yield* rejects(contract(Schema.Struct({ s: Schema.Literal("good") }))),
+          `column "s" has values its schema rejects`
+        )
+        assert.strictEqual(
+          yield* rejects(contract(Schema.Struct({ n: Schema.Number }))),
+          `column "n" has missing values`
+        )
+        // Columns the query doesn't read are checked too.
+        assert.strictEqual(
+          yield* rejects(
+            contract(Schema.Struct({ s: Schema.Literal("good"), n: Schema.NullOr(Schema.Number) })).pipe(
+              Query.pick("n")
+            )
+          ),
+          `column "s" has values its schema rejects`
+        )
+        assert.deepStrictEqual(
+          yield* rowsOnSql(contract(Schema.Struct({ s: Schema.Literals(["bad", "good"]) }))),
+          [{ s: "bad" }, { s: "good" }]
+        )
       }))
 
     it.effect("filters, derives and sorts", () =>

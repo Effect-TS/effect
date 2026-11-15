@@ -36,9 +36,10 @@
  * plan (see {@link Compiled}). Values follow the database's semantics where
  * they differ from the in-memory engine's: integer overflow raises an error
  * instead of wrapping, division by zero follows the database, and string
- * order follows its collation. Pivots, unpivots,
- * `explode` and `unnest` are not supported yet; tables need declared
- * columns (`Query.table` with a schema).
+ * order follows its collation. Pivots, unpivots, `explode` and `unnest`
+ * are not supported yet; tables need declared columns (`Query.table` with a
+ * schema), and {@link engine} checks that tables satisfy them, as the
+ * in-memory engine does.
  *
  * @stability experimental
  * @since 4.1.5
@@ -67,6 +68,11 @@ import type * as Plan from "./Plan.ts"
  * type, so its raw rows are meant for that decoding rather than for direct
  * use.
  *
+ * **Gotchas**
+ *
+ * The query doesn't check that the tables satisfy their declared columns and
+ * schemas: {@link engine} runs those checks as separate queries first.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -93,9 +99,12 @@ const toError = (cause: unknown) => {
  * @category compiling
  * @since 4.1.5
  */
-export const compile = (plan: Plan.Node): Result.Result<Compiled, DataFrameError> => {
+export const compile = (plan: Plan.Node): Result.Result<Compiled, DataFrameError> =>
+  Result.map(attempt(() => internal.compile(plan)), ({ schema, sql }) => ({ sql, schema }))
+
+const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
   try {
-    return Result.succeed(internal.compile(plan))
+    return Result.succeed(f())
   } catch (cause) {
     if (cause instanceof V.DataFrameDefect) return Result.fail(toError(cause))
     throw cause
@@ -106,17 +115,38 @@ export const compile = (plan: Plan.Node): Result.Result<Compiled, DataFrameError
  * An engine that compiles queries to SQL and runs them with the
  * `SqlClient` in the context.
  *
+ * **Details**
+ *
+ * Tables must satisfy their declared columns and schemas, as with the
+ * in-memory engine: before the query, the engine queries every table of the
+ * plan for nulls in its non-nullable columns and for the distinct values of
+ * the columns its schema constrains beyond their type (literals, enums,
+ * refinements), tests those values with the schema, and fails if the table
+ * breaks either. Columns the query doesn't read are checked too. `explain`
+ * shows these queries before the query itself.
+ *
+ * **Gotchas**
+ *
+ * The checks and the query are separate statements: rows written between
+ * them are not checked. Run the query inside a `REPEATABLE READ`
+ * transaction when the tables may change concurrently.
+ *
  * @stability experimental
  * @category engines
  * @since 4.1.5
  */
 export const engine: Effect.Effect<Engine.Service, never, SqlClient> = Effect.gen(function*() {
   const sql = yield* SqlClient
-  const compiled = (plan: Plan.Node) => Effect.fromResult(compile(plan))
+  const compiled = (plan: Plan.Node) => Effect.fromResult(attempt(() => internal.compile(plan)))
+  const run = (query: string) => sql.unsafe(query).values.pipe(Effect.mapError(toError))
   const collect = (plan: Plan.Node): Effect.Effect<DataFrame<unknown>, DataFrameError> =>
     Effect.gen(function*() {
       const query = yield* compiled(plan)
-      const rows = yield* sql.unsafe(query.sql).values.pipe(Effect.mapError(toError))
+      for (const check of query.checks) {
+        const rows = yield* run(check.sql)
+        yield* Effect.fromResult(attempt(() => check.verify(rows)))
+      }
+      const rows = yield* run(query.sql)
       return yield* Effect.try({
         try: () => internal.decode(query.schema, rows) as unknown as DataFrame<unknown>,
         catch: toError
@@ -126,13 +156,14 @@ export const engine: Effect.Effect<Engine.Service, never, SqlClient> = Effect.ge
     name: "sql (postgres)",
     collect,
     stream: (plan) => Stream.fromEffect(collect(plan)),
-    explain: (plan) => Effect.map(compiled(plan), (c) => c.sql)
+    explain: (plan) => Effect.map(compiled(plan), (c) => [...c.checks.map((check) => check.sql), c.sql].join(";\n"))
   } satisfies Engine.Service
 })
 
 /**
  * A layer that runs queries on the database of the `SqlClient` in the
- * context.
+ * context, with {@link engine} (tables are checked against their schemas
+ * first).
  *
  * @stability experimental
  * @category layers

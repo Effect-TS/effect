@@ -30,6 +30,7 @@ import * as E from "./expr.ts"
 import * as F from "./frame.ts"
 import * as K from "./kernels.ts"
 import * as Q from "./query.ts"
+import * as Schema_ from "./schema.ts"
 import { civil } from "./temporal.ts"
 import * as V from "./vector.ts"
 
@@ -798,13 +799,66 @@ const reader = (type: S.DataType): (value: unknown) => unknown => {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Table checks
+// -----------------------------------------------------------------------------
+
+/**
+ * A query over a table, and a test of its rows that fails when the table
+ * breaks its declared columns or schema.
+ *
+ * @internal
+ */
+export interface Check {
+  readonly sql: string
+  readonly verify: (rows: ReadonlyArray<ReadonlyArray<unknown>>) => void
+}
+
+/**
+ * The checks of a table that its result's casts to the column types don't
+ * make: no nulls in non-nullable columns, and the values of fields its schema
+ * constrains (literals, enums, refinements) accepted by the schema, tested
+ * on each such column's distinct values.
+ */
+const tableChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => {
+  const from = quote(table.name)
+  const checks: Array<Check> = []
+  const required = (table.columns ?? []).filter((c) => !c.nullable)
+  if (required.length > 0) {
+    const read = reader(S.bool)
+    checks.push({
+      sql: `SELECT ${
+        required.map((c) => output(`EXISTS (SELECT 1 FROM ${from} WHERE ${quote(c.name)} IS NULL)`, S.bool)).join(", ")
+      }`,
+      verify: (rows) => {
+        const missing = required.find((_, i) => read(rows[0][i]))
+        if (missing !== undefined) V.fail(`column ${JSON.stringify(missing.name)} has missing values`)
+      }
+    })
+  }
+  for (const [name, test] of table.schema === undefined ? [] : Schema_.valueChecks(table.schema)) {
+    const type = frame.columns.find((c) => c.name === name)!.type
+    checks.push({
+      sql: `SELECT DISTINCT ${output(quote(name), type)} FROM ${from}`,
+      verify: (rows) => {
+        if (!F.toArray(decode(S.make([S.field(name, type, { nullable: true })]), rows), name).every(test)) {
+          V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
+        }
+      }
+    })
+  }
+  return checks
+}
+
 /** @internal */
 export interface Compiled {
   readonly sql: string
   readonly schema: S.Schema
+  /** The checks of the plan's tables, to run before the query. */
+  readonly checks: ReadonlyArray<Check>
 }
 
-/** A plan as one SQL query, its rows in the plan's row order. @internal */
+/** A plan as one SQL query, its rows in the plan's row order, and the checks of its tables. @internal */
 export const compile = (plan: Plan.Node): Compiled => {
   const frames = new Map<Plan.Node, F.Frame>()
   const result = typed(plan, frames)
@@ -818,7 +872,8 @@ export const compile = (plan: Plan.Node): Compiled => {
   const columns = result.columns.map((col) => `${output(quote(col.name), col.type)} AS ${quote(col.name)}`)
   return {
     sql: `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`,
-    schema: S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
+    schema: S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true }))),
+    checks: [...frames].flatMap(([node, frame]) => node._tag === "Table" ? tableChecks(node, frame) : [])
   }
 }
 

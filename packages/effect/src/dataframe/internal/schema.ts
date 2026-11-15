@@ -366,8 +366,23 @@ const valuesCheck = (ast: AST.AST): ((value: unknown) => boolean) | undefined =>
 }
 
 /**
+ * The fields of a struct schema whose values it constrains beyond their
+ * column type, each with its test for those values.
+ *
+ * @internal
+ */
+export const valueChecks = (
+  schema: { readonly ast: AST.AST }
+): Array<readonly [name: string, test: (value: unknown) => boolean]> =>
+  structOf(schema).propertySignatures.flatMap((ps) => {
+    const test = valuesCheck(ps.type)
+    return test === undefined ? [] : [[String(ps.name), test] as const]
+  })
+
+/**
  * Checks that a frame has the expected columns and narrows it to them,
- * dropping UTC time zones from timestamps. With a `schema`, the values of fields it constrains beyond their column type are
+ * dropping UTC time zones from timestamps. With a `schema`, the values of
+ * fields it constrains beyond their column type are
  * checked against it too.
  *
  * @internal
@@ -388,10 +403,8 @@ export const conform = (
     frame.length
   )
   if (schema !== undefined) {
-    for (const ps of structOf(schema).propertySignatures) {
-      const test = valuesCheck(ps.type)
-      const name = String(ps.name)
-      if (test !== undefined && !F.toArray(narrowed, name).every(test)) {
+    for (const [name, test] of valueChecks(schema)) {
+      if (!F.toArray(narrowed, name).every(test)) {
         return V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
       }
     }
