@@ -274,7 +274,8 @@ export interface Options {
   readonly maxContainerSize?: number | undefined
 }
 
-const utf8 = new TextDecoder("utf-8", { fatal: true })
+// Keeps a leading U+FEFF, which is part of the string.
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 const MAX_SAFE = Number.MAX_SAFE_INTEGER
 const BIGINT_1 = BigInt(1)
 const BIGINT_7 = BigInt(7)

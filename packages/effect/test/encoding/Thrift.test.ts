@@ -209,6 +209,10 @@ describe("Thrift", () => {
       assert.strictEqual(roundTrip((w) => w.writeString(s), (r) => r.readString()), expected)
     })
 
+    it("keeps a leading byte order mark in a string", () => {
+      assert.strictEqual(roundTrip((w) => w.writeString("\uFEFFa"), (r) => r.readString()), "\uFEFFa")
+    })
+
     it("reads i64 as a number only when it is a safe integer", () => {
       const max = BigInt(Number.MAX_SAFE_INTEGER)
       const asNumber = (n: bigint) => Thrift.decode(write((w) => w.writeI64(n)), (r) => r.readI64Number())
