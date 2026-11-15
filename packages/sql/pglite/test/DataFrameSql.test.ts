@@ -17,6 +17,9 @@ const Sale = Schema.Struct({
   at: Schema.DateTimeUtc
 })
 const Region = Schema.Struct({ region: Schema.String, manager: Schema.String })
+/** Table names starting like the compiler's names: 63 bytes, the most PostgreSQL keeps, and 57. */
+const long = "_".repeat(62) + "a"
+const underscores = "_".repeat(57)
 
 const sales = Array.from({ length: 40 }, (_, i) => ({
   id: i,
@@ -57,6 +60,11 @@ const Setup = Layer.effectDiscard(
     yield* sql`INSERT INTO "__table0" VALUES ('bad')`
     yield* sql`CREATE TABLE "__table1" (s TEXT)`
     yield* sql`INSERT INTO "__table1" VALUES ('bad')`
+    for (const name of [long, underscores]) {
+      yield* sql.unsafe(`DROP TABLE IF EXISTS "${name}"`)
+      yield* sql.unsafe(`CREATE TABLE "${name}" (s TEXT)`)
+      yield* sql.unsafe(`INSERT INTO "${name}" VALUES ('${name.length}')`)
+    }
     yield* sql`DROP TABLE IF EXISTS "a.b"`
     yield* sql`CREATE TABLE "a.b" (s TEXT)`
     yield* sql`INSERT INTO "a.b" VALUES ('good')`
@@ -377,7 +385,14 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     "columns named like helpers",
     Query.from(DataFrame.fromColumns({ __row: [1, 2], __n: [3, 4], __source: ["a", "b"] }))
   ],
-  ["tail of a column named __n", Query.from(DataFrame.fromColumns({ __n: [1, 2] })).pipe(Query.tail(1))],
+  [
+    "tail of columns named __n and long",
+    Query.from(DataFrame.fromColumns({ __n: [1, 2], [long]: [3, 4] })).pipe(Query.tail(1))
+  ],
+  [
+    "columns of 63 bytes, multi-byte characters included",
+    Query.from(DataFrame.fromColumns({ ["é".repeat(31) + "a"]: [1], ["é".repeat(31) + "b"]: [2] }))
+  ],
   [
     "concat of a column named __source",
     Query.concat([
@@ -656,6 +671,9 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         ])))
         assert.strictEqual(error.message, `column "s" has values its schema rejects`)
         assert.deepStrictEqual(yield* rowsOnSql(s("a.b")), [{ s: "good" }])
+        assert.deepStrictEqual(yield* rowsOnSql(s(long)), [{ s: "63" }])
+        const two = Query.concat([s(underscores), s("second")])
+        assert.deepStrictEqual(yield* rowsOnSql(two), [{ s: "57" }, { s: "good" }])
       }))
 
     it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>

@@ -16,9 +16,9 @@
  * and `decode` reads the rows back as columns of those types.
  *
  * The names the compiler invents (helper columns like the row key, the
- * sources of tables) share one prefix, chosen per plan so that no name the
- * plan supplies (its tables' and its columns') starts with it (see
- * {@link inventor}).
+ * sources of tables) are short and share one prefix, chosen per plan so
+ * that no name the plan supplies (its tables' and its columns') starts with
+ * it (see {@link inventor}).
  *
  * @internal
  */
@@ -1168,8 +1168,13 @@ const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
  * hide a column, and a source can't shadow a table it reads (a common table
  * expression shadows the table of its name in every `FROM` in its scope,
  * the other sources' included; qualifying the tables' names with their
- * schema is no way out, as the schema isn't known). Names PostgreSQL
- * truncates keep their start, so this holds for them too.
+ * schema is no way out, as the schema isn't known).
+ *
+ * The prefix is `__`, or else the first `__1_`, `__2_`, … that no name
+ * starts with: a name starts with at most one of those, so the prefix stays
+ * short, and so do the invented names. PostgreSQL keeps them whole (it
+ * keeps 63 bytes of a name), and a name it truncates keeps its start, so
+ * they stay distinct from each other and from the plan's names.
  */
 const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => string => {
   const names = [...frames].flatMap(([node, frame]) => [
@@ -1177,7 +1182,7 @@ const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => st
     ...frame.columns.map((col) => col.name)
   ])
   let prefix = "__"
-  while (names.some((name) => name.startsWith(prefix))) prefix += "_"
+  for (let k = 1; names.some((name) => name.startsWith(prefix)); k++) prefix = `__${k}_`
   return (name) => quote(prefix + name)
 }
 
