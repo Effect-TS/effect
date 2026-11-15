@@ -1,12 +1,25 @@
 /**
  * The Arrow IPC metadata tables (format/Schema.fbs, Message.fbs, File.fbs),
- * decoded from and encoded to FlatBuffers by hand. Field slots follow the
- * declaration order in the .fbs files.
+ * read and written by hand with `effect/encoding/FlatBuffers`. Field slots
+ * follow the declaration order in the .fbs files.
  *
  * @internal
  */
+import * as Fb from "../../encoding/FlatBuffers.ts"
+import * as Result from "../../Result.ts"
 import type * as S from "../ArrowSchema.ts"
-import * as Fb from "./flatbuffers.ts"
+
+/** Why IPC input or a table was declined. @internal */
+export type Kind = "BigEndian" | "Compression" | "Invalid" | "Unsupported"
+
+/** @internal */
+export class IpcFailure extends Error {
+  readonly kind: Kind
+  constructor(kind: Kind, message: string, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause })
+    this.kind = kind
+  }
+}
 
 /** @internal */
 export const MetadataVersion = { V1: 0, V2: 1, V3: 2, V4: 3, V5: 4 } as const
@@ -56,7 +69,7 @@ const dateUnits: ReadonlyArray<S.DateUnit> = ["day", "millisecond"]
 const intervalUnits: ReadonlyArray<S.IntervalUnit> = ["yearMonth", "dayTime", "monthDayNano"]
 
 const fail = (message: string): never => {
-  throw new Fb.FlatBufferError(message)
+  throw new IpcFailure("Invalid", message)
 }
 
 const enumValue = <A>(values: ReadonlyArray<A>, n: number, what: string): A =>
@@ -142,10 +155,43 @@ export interface Footer {
 /** Nested fields deeper than this are rejected, so hostile metadata can't exhaust the stack. */
 const maxDepth = 64
 
+/**
+ * Reads a metadata FlatBuffer with `read`, failing with `Invalid` for
+ * malformed bytes. The table depth limit is the one Arrow C++ verifies
+ * metadata with, above the nesting that `maxDepth` allows for fields.
+ */
+const decodeFlatBuffer = <A>(bytes: Uint8Array, what: string, read: (table: Fb.Table) => A): A => {
+  const result = Fb.decode(bytes, read, { maxDepth: 128 })
+  if (Result.isFailure(result)) {
+    throw new IpcFailure("Invalid", `invalid ${what}: ${result.failure.message}`, result.failure)
+  }
+  return result.success
+}
+
+/** A 64-bit value that must be a safe JavaScript integer. */
+const int53 = (n: bigint, what: string): number =>
+  n >= BigInt(Number.MIN_SAFE_INTEGER) && n <= BigInt(Number.MAX_SAFE_INTEGER)
+    ? Number(n)
+    : fail(`${what} ${n} is out of the safe integer range`)
+
+const tables = (table: Fb.Table, slot: number): Array<Fb.Table> => {
+  const v = table.vector(slot, 4)
+  return v === undefined ? [] : Array.from({ length: v.length }, (_, i) => v.table(i))
+}
+
+const int32s = (table: Fb.Table, slot: number): Array<number> | undefined => {
+  const v = table.vector(slot, 4)
+  return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => v.int32(i))
+}
+
+const int64s = (table: Fb.Table, slot: number, what: string): Array<number> | undefined => {
+  const v = table.vector(slot, 8)
+  return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => int53(v.int64(i), what))
+}
+
 const metadataOf = (table: Fb.Table, slot: number): ReadonlyMap<string, string> => {
-  const pairs = table.tables(slot)
   const out = new Map<string, string>()
-  for (const kv of pairs) out.set(kv.string(0) ?? "", kv.string(1) ?? "")
+  for (const kv of tables(table, slot)) out.set(kv.string(0) ?? "", kv.string(1) ?? "")
   return out
 }
 
@@ -215,7 +261,7 @@ const decodeType = (typeId: number, t: Fb.Table | undefined, children: ReadonlyA
       const u = table()
       const mode = u.int16(0)
       if (mode !== 0 && mode !== 1) fail(`invalid union mode ${mode}`)
-      const typeIds = u.int32s(1) ?? children.map((_, i) => i)
+      const typeIds = int32s(u, 1) ?? children.map((_, i) => i)
       if (typeIds.length !== children.length) {
         fail(`union has ${children.length} members but ${typeIds.length} type ids`)
       }
@@ -270,46 +316,45 @@ const decodeType = (typeId: number, t: Fb.Table | undefined, children: ReadonlyA
 
 const decodeField = (t: Fb.Table, depth: number): S.Field => {
   if (depth > maxDepth) fail(`fields nested deeper than ${maxDepth}`)
-  const children = t.tables(5).map((c) => decodeField(c, depth + 1))
+  const children = tables(t, 5).map((c) => decodeField(c, depth + 1))
   let type = decodeType(t.uint8(2), t.table(3), children)
   const dict = t.table(4)
   if (dict !== undefined) {
     const indexType = dict.has(1)
       ? intType(dict.table(1))
       : { _tag: "Int" as const, bitWidth: 32 as const, signed: true }
-    type = { _tag: "Dictionary", id: dict.int64(0), indexType, valueType: type, ordered: dict.bool(2) }
+    const id = int53(dict.int64(0), "dictionary id")
+    type = { _tag: "Dictionary", id, indexType, valueType: type, ordered: dict.bool(2) }
   }
   return { name: t.string(0) ?? "", type, nullable: t.bool(1), metadata: metadataOf(t, 6) }
 }
 
 const decodeSchema = (t: Fb.Table): SchemaMessage => {
   const endianness = t.int16(0)
-  const features = t.int64s(3) ?? []
+  const features = int64s(t, 3, "feature") ?? []
   return {
     _tag: "Schema",
-    schema: { fields: t.tables(1).map((f) => decodeField(f, 0)), metadata: metadataOf(t, 2) },
+    schema: { fields: tables(t, 1).map((f) => decodeField(f, 0)), metadata: metadataOf(t, 2) },
     endianness: endianness === 1 ? "big" : "little",
     features
   }
 }
 
+/** A vector of structs of `size` bytes, read with `read`. */
+const structs = <A>(table: Fb.Table, slot: number, size: number, read: (s: Fb.Struct) => A): Array<A> => {
+  const v = table.vector(slot, size)
+  return v === undefined ? [] : Array.from({ length: v.length }, (_, i) => read(v.struct(i)))
+}
+
 const decodeRecordBatch = (t: Fb.Table): RecordBatchMessage => {
-  const nodesVector = t.vector(1, 16)
-  const nodes: Array<FieldNode> = []
-  if (nodesVector !== undefined) {
-    for (let i = 0; i < nodesVector.length; i++) {
-      const at = nodesVector.start + i * 16
-      nodes.push({ length: Fb.structInt64(t.view, at), nullCount: Fb.structInt64(t.view, at + 8) })
-    }
-  }
-  const buffersVector = t.vector(2, 16)
-  const buffers: Array<BufferRef> = []
-  if (buffersVector !== undefined) {
-    for (let i = 0; i < buffersVector.length; i++) {
-      const at = buffersVector.start + i * 16
-      buffers.push({ offset: Fb.structInt64(t.view, at), length: Fb.structInt64(t.view, at + 8) })
-    }
-  }
+  const nodes = structs(t, 1, 16, (s): FieldNode => ({
+    length: int53(s.int64(0), "field node length"),
+    nullCount: int53(s.int64(8), "field node null count")
+  }))
+  const buffers = structs(t, 2, 16, (s): BufferRef => ({
+    offset: int53(s.int64(0), "buffer offset"),
+    length: int53(s.int64(8), "buffer length")
+  }))
   const compression = t.table(3)
   let codec: RecordBatchMessage["compression"]
   if (compression !== undefined) {
@@ -318,17 +363,15 @@ const decodeRecordBatch = (t: Fb.Table): RecordBatchMessage => {
   }
   return {
     _tag: "RecordBatch",
-    length: t.int64(0),
+    length: int53(t.int64(0), "record batch length"),
     nodes,
     buffers,
     compression: codec,
-    variadicBufferCounts: t.int64s(4) ?? []
+    variadicBufferCounts: int64s(t, 4, "variadic buffer count") ?? []
   }
 }
 
-/** Decodes an IPC `Message` FlatBuffer. @internal */
-export const decodeMessage = (bytes: Uint8Array): Message => {
-  const t = Fb.root(bytes)
+const messageOf = (t: Fb.Table): Message => {
   const headerType = t.uint8(1)
   const headerTable = t.table(2)
   let header: Message["header"]
@@ -343,7 +386,7 @@ export const decodeMessage = (bytes: Uint8Array): Message => {
       const d = headerTable ?? fail("missing DictionaryBatch header")
       header = {
         _tag: "DictionaryBatch",
-        id: d.int64(0),
+        id: int53(d.int64(0), "dictionary id"),
         data: decodeRecordBatch(d.table(1) ?? fail("missing dictionary data")),
         isDelta: d.bool(2)
       }
@@ -352,26 +395,24 @@ export const decodeMessage = (bytes: Uint8Array): Message => {
     default:
       header = { _tag: "Other", headerType }
   }
-  return { version: t.int16(0), header, bodyLength: t.int64(3), metadata: metadataOf(t, 4) }
+  return {
+    version: t.int16(0),
+    header,
+    bodyLength: int53(t.int64(3), "body length"),
+    metadata: metadataOf(t, 4)
+  }
 }
 
-/** Decodes an IPC file `Footer` FlatBuffer. @internal */
-export const decodeFooter = (bytes: Uint8Array): Footer => {
-  const t = Fb.root(bytes)
-  const blocks = (slot: number): Array<Block> => {
-    const v = t.vector(slot, 24)
-    const out: Array<Block> = []
-    if (v === undefined) return out
-    for (let i = 0; i < v.length; i++) {
-      const at = v.start + i * 24
-      out.push({
-        offset: Fb.structInt64(t.view, at),
-        metaDataLength: t.view.getInt32(at + 8, true),
-        bodyLength: Fb.structInt64(t.view, at + 16)
-      })
-    }
-    return out
-  }
+/** Decodes an IPC `Message` FlatBuffer. @internal */
+export const decodeMessage = (bytes: Uint8Array): Message => decodeFlatBuffer(bytes, "message metadata", messageOf)
+
+const footerOf = (t: Fb.Table): Footer => {
+  const blocks = (slot: number) =>
+    structs(t, slot, 24, (s): Block => ({
+      offset: int53(s.int64(0), "block offset"),
+      metaDataLength: s.int32(8),
+      bodyLength: int53(s.int64(16), "block body length")
+    }))
   return {
     version: t.int16(0),
     schema: decodeSchema(t.table(1) ?? fail("footer without schema")),
@@ -381,38 +422,41 @@ export const decodeFooter = (bytes: Uint8Array): Footer => {
   }
 }
 
+/** Decodes an IPC file `Footer` FlatBuffer. @internal */
+export const decodeFooter = (bytes: Uint8Array): Footer => decodeFlatBuffer(bytes, "footer", footerOf)
+
 // -----------------------------------------------------------------------------
 // Encoding
 // -----------------------------------------------------------------------------
 
-const encodeMetadata = (b: Fb.Builder, metadata: ReadonlyMap<string, string>): number | undefined => {
-  if (metadata.size === 0) return undefined
-  const pairs: Array<number> = []
+const encodeMetadata = (b: Fb.Builder, metadata: ReadonlyMap<string, string>): Fb.Offset => {
+  if (metadata.size === 0) return 0
+  const pairs: Array<Fb.Offset> = []
   for (const [k, v] of metadata) {
-    const key = b.string(k)
-    const value = b.string(v)
+    const key = b.createString(k)
+    const value = b.createString(v)
     b.startTable(2)
-    b.fieldOffset(0, key)
-    b.fieldOffset(1, value)
+    b.addFieldOffset(0, key)
+    b.addFieldOffset(1, value)
     pairs.push(b.endTable())
   }
-  return b.offsetVector(pairs)
+  return b.createOffsetVector(pairs)
 }
 
-const encodeInt = (b: Fb.Builder, t: S.Int): number => {
+const encodeInt = (b: Fb.Builder, t: S.Int): Fb.Offset => {
   b.startTable(2)
-  b.fieldInt32(0, t.bitWidth, 0)
-  b.fieldBool(1, t.signed, false)
+  b.addFieldInt32(0, t.bitWidth)
+  b.addFieldBool(1, t.signed)
   return b.endTable()
 }
 
-const emptyTable = (b: Fb.Builder): number => {
+const emptyTable = (b: Fb.Builder): Fb.Offset => {
   b.startTable(0)
   return b.endTable()
 }
 
 /** Writes the type table and returns `[typeId, offset]`. */
-const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, number] => {
+const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, Fb.Offset] => {
   switch (type._tag) {
     case "Null":
       return [TypeId.Null, emptyTable(b)]
@@ -420,7 +464,7 @@ const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, number] 
       return [TypeId.Int, encodeInt(b, type)]
     case "Float":
       b.startTable(1)
-      b.fieldInt16(0, type.bitWidth === 16 ? 0 : type.bitWidth === 32 ? 1 : 2, 0)
+      b.addFieldInt16(0, type.bitWidth === 16 ? 0 : type.bitWidth === 32 ? 1 : 2)
       return [TypeId.FloatingPoint, b.endTable()]
     case "Binary":
       return [TypeId.Binary, emptyTable(b)]
@@ -430,33 +474,33 @@ const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, number] 
       return [TypeId.Bool, emptyTable(b)]
     case "Decimal":
       b.startTable(3)
-      b.fieldInt32(0, type.precision, 0)
-      b.fieldInt32(1, type.scale, 0)
-      b.fieldInt32(2, type.bitWidth, 128)
+      b.addFieldInt32(0, type.precision)
+      b.addFieldInt32(1, type.scale)
+      b.addFieldInt32(2, type.bitWidth, 128)
       return [TypeId.Decimal, b.endTable()]
     case "Date":
       b.startTable(1)
-      b.fieldInt16(0, dateUnits.indexOf(type.unit), 1)
+      b.addFieldInt16(0, dateUnits.indexOf(type.unit), 1)
       return [TypeId.Date, b.endTable()]
     case "Time":
       b.startTable(2)
-      b.fieldInt16(0, timeUnits.indexOf(type.unit), 1)
-      b.fieldInt32(1, type.bitWidth, 32)
+      b.addFieldInt16(0, timeUnits.indexOf(type.unit), 1)
+      b.addFieldInt32(1, type.bitWidth, 32)
       return [TypeId.Time, b.endTable()]
     case "Timestamp": {
-      const tz = type.timezone === undefined ? undefined : b.string(type.timezone)
+      const tz = type.timezone === undefined ? 0 : b.createString(type.timezone)
       b.startTable(2)
-      b.fieldInt16(0, timeUnits.indexOf(type.unit), 0)
-      b.fieldOffset(1, tz)
+      b.addFieldInt16(0, timeUnits.indexOf(type.unit))
+      b.addFieldOffset(1, tz)
       return [TypeId.Timestamp, b.endTable()]
     }
     case "Duration":
       b.startTable(1)
-      b.fieldInt16(0, timeUnits.indexOf(type.unit), 1)
+      b.addFieldInt16(0, timeUnits.indexOf(type.unit), 1)
       return [TypeId.Duration, b.endTable()]
     case "Interval":
       b.startTable(1)
-      b.fieldInt16(0, intervalUnits.indexOf(type.unit), 0)
+      b.addFieldInt16(0, intervalUnits.indexOf(type.unit))
       return [TypeId.Interval, b.endTable()]
     case "LargeBinary":
       return [TypeId.LargeBinary, emptyTable(b)]
@@ -464,7 +508,7 @@ const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, number] 
       return [TypeId.BinaryView, emptyTable(b)]
     case "FixedSizeBinary":
       b.startTable(1)
-      b.fieldInt32(0, type.byteWidth, 0)
+      b.addFieldInt32(0, type.byteWidth)
       return [TypeId.FixedSizeBinary, b.endTable()]
     case "LargeUtf8":
       return [TypeId.LargeUtf8, emptyTable(b)]
@@ -480,19 +524,19 @@ const encodeType = (b: Fb.Builder, type: S.DataType): readonly [number, number] 
       return [TypeId.LargeListView, emptyTable(b)]
     case "FixedSizeList":
       b.startTable(1)
-      b.fieldInt32(0, type.listSize, 0)
+      b.addFieldInt32(0, type.listSize)
       return [TypeId.FixedSizeList, b.endTable()]
     case "Struct":
       return [TypeId.Struct, emptyTable(b)]
     case "Map":
       b.startTable(1)
-      b.fieldBool(0, type.keysSorted, false)
+      b.addFieldBool(0, type.keysSorted)
       return [TypeId.Map, b.endTable()]
     case "Union": {
-      const typeIds = b.int32Vector(type.typeIds)
+      const typeIds = createVector(b, type.typeIds, 4, (id) => b.addInt32(id))
       b.startTable(2)
-      b.fieldInt16(0, type.mode === "sparse" ? 0 : 1, 0)
-      b.fieldOffset(1, typeIds)
+      b.addFieldInt16(0, type.mode === "sparse" ? 0 : 1)
+      b.addFieldOffset(1, typeIds)
       return [TypeId.Union, b.endTable()]
     }
     case "RunEndEncoded":
@@ -525,38 +569,38 @@ export const childFields = (type: S.DataType): ReadonlyArray<S.Field> => {
   }
 }
 
-const encodeField = (b: Fb.Builder, field: S.Field): number => {
-  const name = b.string(field.name)
+const encodeField = (b: Fb.Builder, field: S.Field): Fb.Offset => {
+  const name = b.createString(field.name)
   const [typeId, typeOffset] = encodeType(b, field.type)
-  let dictionary: number | undefined
+  let dictionary = 0
   if (field.type._tag === "Dictionary") {
     const indexType = encodeInt(b, field.type.indexType)
     b.startTable(4)
-    b.fieldInt64(0, field.type.id, 0)
-    b.fieldOffset(1, indexType)
-    b.fieldBool(2, field.type.ordered, false)
+    b.addFieldInt64(0, BigInt(field.type.id))
+    b.addFieldOffset(1, indexType)
+    b.addFieldBool(2, field.type.ordered)
     dictionary = b.endTable()
   }
-  const children = b.offsetVector(childFields(field.type).map((c) => encodeField(b, c)))
+  const children = b.createOffsetVector(childFields(field.type).map((c) => encodeField(b, c)))
   const metadata = encodeMetadata(b, field.metadata)
   b.startTable(7)
-  b.fieldOffset(0, name)
-  b.fieldBool(1, field.nullable, false)
-  b.fieldInt8(2, typeId, 0)
-  b.fieldOffset(3, typeOffset)
-  b.fieldOffset(4, dictionary)
-  b.fieldOffset(5, children)
-  b.fieldOffset(6, metadata)
+  b.addFieldOffset(0, name)
+  b.addFieldBool(1, field.nullable)
+  b.addFieldUint8(2, typeId)
+  b.addFieldOffset(3, typeOffset)
+  b.addFieldOffset(4, dictionary)
+  b.addFieldOffset(5, children)
+  b.addFieldOffset(6, metadata)
   return b.endTable()
 }
 
-const encodeSchema = (b: Fb.Builder, schema: S.Schema): number => {
-  const fields = b.offsetVector(schema.fields.map((f) => encodeField(b, f)))
+const encodeSchema = (b: Fb.Builder, schema: S.Schema): Fb.Offset => {
+  const fields = b.createOffsetVector(schema.fields.map((f) => encodeField(b, f)))
   const metadata = encodeMetadata(b, schema.metadata)
+  // Endianness (slot 0) is left at its default, little-endian.
   b.startTable(4)
-  b.fieldInt16(0, 0, 0) // little endian
-  b.fieldOffset(1, fields)
-  b.fieldOffset(2, metadata)
+  b.addFieldOffset(1, fields)
+  b.addFieldOffset(2, metadata)
   return b.endTable()
 }
 
@@ -568,21 +612,36 @@ export interface RecordBatchHeader {
   readonly variadicBufferCounts: ReadonlyArray<number>
 }
 
-const encodeRecordBatch = (b: Fb.Builder, r: RecordBatchHeader): number => {
-  const nodes = b.structVector(r.nodes, 16, 8, (n) => {
-    b.structInt64(n.nullCount)
-    b.structInt64(n.length)
+/** Writes a vector of `size`-byte scalars or structs; `write` writes one item, last field first. */
+const createVector = <A>(
+  b: Fb.Builder,
+  items: ReadonlyArray<A>,
+  size: number,
+  write: (item: A) => void
+): Fb.Offset => {
+  b.startVector(size, items.length, Math.min(size, 8))
+  for (let i = items.length - 1; i >= 0; i--) write(items[i])
+  return b.endVector()
+}
+
+const encodeRecordBatch = (b: Fb.Builder, r: RecordBatchHeader): Fb.Offset => {
+  const nodes = createVector(b, r.nodes, 16, (n) => {
+    b.addInt64(BigInt(n.nullCount))
+    b.addInt64(BigInt(n.length))
   })
-  const buffers = b.structVector(r.buffers, 16, 8, (buf) => {
-    b.structInt64(buf.length)
-    b.structInt64(buf.offset)
+  const buffers = createVector(b, r.buffers, 16, (buf) => {
+    b.addInt64(BigInt(buf.length))
+    b.addInt64(BigInt(buf.offset))
   })
-  const variadic = r.variadicBufferCounts.length > 0 ? b.int64Vector(r.variadicBufferCounts) : undefined
+  let variadic = 0
+  if (r.variadicBufferCounts.length > 0) {
+    variadic = createVector(b, r.variadicBufferCounts, 8, (n) => b.addInt64(BigInt(n)))
+  }
   b.startTable(5)
-  b.fieldInt64(0, r.length, 0)
-  b.fieldOffset(1, nodes)
-  b.fieldOffset(2, buffers)
-  b.fieldOffset(4, variadic)
+  b.addFieldInt64(0, BigInt(r.length))
+  b.addFieldOffset(1, nodes)
+  b.addFieldOffset(2, buffers)
+  b.addFieldOffset(4, variadic)
   return b.endTable()
 }
 
@@ -599,9 +658,9 @@ export type EncodeHeader =
 
 /** Encodes an IPC `Message` FlatBuffer (version V5). @internal */
 export const encodeMessage = (header: EncodeHeader, bodyLength: number): Uint8Array => {
-  const b = new Fb.Builder()
+  const b = Fb.makeBuilder()
   let headerType: number
-  let headerOffset: number
+  let headerOffset: Fb.Offset
   switch (header._tag) {
     case "Schema":
       headerType = MessageHeader.Schema
@@ -614,19 +673,19 @@ export const encodeMessage = (header: EncodeHeader, bodyLength: number): Uint8Ar
     case "DictionaryBatch": {
       const data = encodeRecordBatch(b, header.batch)
       b.startTable(3)
-      b.fieldInt64(0, header.id, 0)
-      b.fieldOffset(1, data)
-      b.fieldBool(2, header.isDelta, false)
+      b.addFieldInt64(0, BigInt(header.id))
+      b.addFieldOffset(1, data)
+      b.addFieldBool(2, header.isDelta)
       headerType = MessageHeader.DictionaryBatch
       headerOffset = b.endTable()
       break
     }
   }
   b.startTable(5)
-  b.fieldInt16(0, MetadataVersion.V5, 0)
-  b.fieldInt8(1, headerType, 0)
-  b.fieldOffset(2, headerOffset)
-  b.fieldInt64(3, bodyLength, 0)
+  b.addFieldInt16(0, MetadataVersion.V5)
+  b.addFieldUint8(1, headerType)
+  b.addFieldOffset(2, headerOffset)
+  b.addFieldInt64(3, BigInt(bodyLength))
   return b.finish(b.endTable())
 }
 
@@ -636,20 +695,20 @@ export const encodeFooter = (
   dictionaries: ReadonlyArray<Block>,
   recordBatches: ReadonlyArray<Block>
 ): Uint8Array => {
-  const b = new Fb.Builder()
+  const b = Fb.makeBuilder()
   const schemaOffset = encodeSchema(b, schema)
   const block = (blk: Block) => {
-    b.structInt64(blk.bodyLength)
-    b.structPad(4)
-    b.structInt32(blk.metaDataLength)
-    b.structInt64(blk.offset)
+    b.addInt64(BigInt(blk.bodyLength))
+    b.pad(4)
+    b.addInt32(blk.metaDataLength)
+    b.addInt64(BigInt(blk.offset))
   }
-  const dicts = b.structVector(dictionaries, 24, 8, block)
-  const batches = b.structVector(recordBatches, 24, 8, block)
+  const dicts = createVector(b, dictionaries, 24, block)
+  const batches = createVector(b, recordBatches, 24, block)
   b.startTable(5)
-  b.fieldInt16(0, MetadataVersion.V5, 0)
-  b.fieldOffset(1, schemaOffset)
-  b.fieldOffset(2, dicts)
-  b.fieldOffset(3, batches)
+  b.addFieldInt16(0, MetadataVersion.V5)
+  b.addFieldOffset(1, schemaOffset)
+  b.addFieldOffset(2, dicts)
+  b.addFieldOffset(3, batches)
   return b.finish(b.endTable())
 }

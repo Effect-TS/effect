@@ -9,34 +9,12 @@ import type * as ArrowData from "../ArrowData.ts"
 import type * as S from "../ArrowSchema.ts"
 import type * as ArrowTable from "../ArrowTable.ts"
 import * as Buffers from "./buffers.ts"
-import * as Fb from "./flatbuffers.ts"
 import * as Format from "./format.ts"
+import { IpcFailure } from "./format.ts"
 import * as Layout from "./layout.ts"
-
-/** Why input was declined. @internal */
-export type Kind = "BigEndian" | "Compression" | "Invalid" | "Unsupported"
-
-/** @internal */
-export class IpcFailure extends Error {
-  readonly kind: Kind
-  constructor(kind: Kind, message: string) {
-    super(message)
-    this.kind = kind
-  }
-}
 
 const invalid = (message: string): never => {
   throw new IpcFailure("Invalid", message)
-}
-
-/** Runs `f`, turning FlatBuffer errors into `Invalid` failures. @internal */
-export const guard = <A>(f: () => A): A => {
-  try {
-    return f()
-  } catch (e) {
-    if (e instanceof Fb.FlatBufferError) throw new IpcFailure("Invalid", e.message)
-    throw e
-  }
 }
 
 const CONTINUATION = 0xFFFFFFFF
@@ -633,36 +611,34 @@ export class StreamDecoder {
 
   /** Decodes every complete message, adding record batches to `out`. */
   drain(out: Array<ArrowTable.RecordBatch>): void {
-    guard(() => {
-      while (!this.ended && this.available >= 4) {
-        const head = this.contiguous(Math.min(8, this.available))
-        const view = new DataView(head.buffer, head.byteOffset, head.byteLength)
-        let metadataLength = view.getInt32(0, true)
-        let start = 4
-        if (metadataLength === -1) {
-          if (head.length < 8) return
-          metadataLength = view.getInt32(4, true)
-          start = 8
-        }
-        if (metadataLength === 0) {
-          this.ended = true
-          this.consume(start)
-          this.chunks = []
-          this.available = 0
-          return
-        }
-        if (metadataLength < 0) invalid(`invalid message metadata length ${metadataLength}`)
-        if (this.available < start + metadataLength) return
-        const metadata = this.contiguous(start + metadataLength).subarray(start)
-        const message = Format.decodeMessage(metadata)
-        if (message.bodyLength < 0) invalid(`invalid body length ${message.bodyLength}`)
-        const total = start + metadataLength + message.bodyLength
-        if (this.available < total) return
-        const body = this.contiguous(total).subarray(start + metadataLength)
-        this.consume(total)
-        this.apply(message, body, out)
+    while (!this.ended && this.available >= 4) {
+      const head = this.contiguous(Math.min(8, this.available))
+      const view = new DataView(head.buffer, head.byteOffset, head.byteLength)
+      let metadataLength = view.getInt32(0, true)
+      let start = 4
+      if (metadataLength === -1) {
+        if (head.length < 8) return
+        metadataLength = view.getInt32(4, true)
+        start = 8
       }
-    })
+      if (metadataLength === 0) {
+        this.ended = true
+        this.consume(start)
+        this.chunks = []
+        this.available = 0
+        return
+      }
+      if (metadataLength < 0) invalid(`invalid message metadata length ${metadataLength}`)
+      if (this.available < start + metadataLength) return
+      const metadata = this.contiguous(start + metadataLength).subarray(start)
+      const message = Format.decodeMessage(metadata)
+      if (message.bodyLength < 0) invalid(`invalid body length ${message.bodyLength}`)
+      const total = start + metadataLength + message.bodyLength
+      if (this.available < total) return
+      const body = this.contiguous(total).subarray(start + metadataLength)
+      this.consume(total)
+      this.apply(message, body, out)
+    }
   }
 
   private apply(message: Format.Message, body: Uint8Array, out: Array<ArrowTable.RecordBatch>): void {
@@ -723,48 +699,47 @@ const hasMagic = (bytes: Uint8Array, at: number) => {
 }
 
 /** Decodes the IPC file format. @internal */
-export const decodeFile = (bytes: Uint8Array): ArrowTable.Table =>
-  guard(() => {
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-    if (bytes.length < 6 + 2 + 4 + 6 || !hasMagic(bytes, 0) || !hasMagic(bytes, bytes.length - 6)) {
-      invalid("missing ARROW1 magic")
+export const decodeFile = (bytes: Uint8Array): ArrowTable.Table => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  if (bytes.length < 6 + 2 + 4 + 6 || !hasMagic(bytes, 0) || !hasMagic(bytes, bytes.length - 6)) {
+    invalid("missing ARROW1 magic")
+  }
+  const footerLength = view.getInt32(bytes.length - 10, true)
+  const footerStart = bytes.length - 10 - footerLength
+  if (footerLength <= 0 || footerStart < 8) invalid(`invalid footer length ${footerLength}`)
+  const footer = Format.decodeFooter(bytes.subarray(footerStart, footerStart + footerLength))
+  // The footer version is not checked: older writers left it unset (V1) and
+  // versioned only the messages, which are checked one by one.
+  checkSchema(footer.schema)
+  const schema = footer.schema.schema
+  const types = dictionaryTypes(schema.fields)
+  const dictionaries = new Map<number, ArrowData.ArrowData>()
+  const fieldTypes = schema.fields.map((f) => f.type)
+  const blockMessage = (block: Format.Block) => {
+    if (block.offset < 8 || block.offset + block.metaDataLength + block.bodyLength > footerStart) {
+      invalid(`block at ${block.offset} is outside the file`)
     }
-    const footerLength = view.getInt32(bytes.length - 10, true)
-    const footerStart = bytes.length - 10 - footerLength
-    if (footerLength <= 0 || footerStart < 8) invalid(`invalid footer length ${footerLength}`)
-    const footer = Format.decodeFooter(bytes.subarray(footerStart, footerStart + footerLength))
-    // The footer version is not checked: older writers left it unset (V1) and
-    // versioned only the messages, which are checked one by one.
-    checkSchema(footer.schema)
-    const schema = footer.schema.schema
-    const types = dictionaryTypes(schema.fields)
-    const dictionaries = new Map<number, ArrowData.ArrowData>()
-    const fieldTypes = schema.fields.map((f) => f.type)
-    const blockMessage = (block: Format.Block) => {
-      if (block.offset < 8 || block.offset + block.metaDataLength + block.bodyLength > footerStart) {
-        invalid(`block at ${block.offset} is outside the file`)
-      }
-      const message = readMessage(bytes.subarray(0, footerStart), view, block.offset) ??
-        invalid(`no message at ${block.offset}`)
-      checkVersion(message.message.version)
-      return message
-    }
-    for (const block of footer.dictionaries) {
-      const { body, message } = blockMessage(block)
-      if (message.header._tag !== "DictionaryBatch") invalid(`dictionary block holds ${message.header._tag}`)
-      applyDictionary(message.header as Format.DictionaryBatchMessage, body, message.version, types, dictionaries)
-    }
-    const batches: Array<ArrowTable.RecordBatch> = []
-    for (const block of footer.recordBatches) {
-      const { body, message } = blockMessage(block)
-      const header = message.header
-      if (header._tag !== "RecordBatch") invalid(`record batch block holds ${header._tag}`)
-      checkCompression(header as Format.RecordBatchMessage)
-      const columns = loadColumns(fieldTypes, header as Format.RecordBatchMessage, body, message.version, dictionaries)
-      batches.push({ schema, length: (header as Format.RecordBatchMessage).length, columns })
-    }
-    return makeTable(schema, batches)
-  })
+    const message = readMessage(bytes.subarray(0, footerStart), view, block.offset) ??
+      invalid(`no message at ${block.offset}`)
+    checkVersion(message.message.version)
+    return message
+  }
+  for (const block of footer.dictionaries) {
+    const { body, message } = blockMessage(block)
+    if (message.header._tag !== "DictionaryBatch") invalid(`dictionary block holds ${message.header._tag}`)
+    applyDictionary(message.header as Format.DictionaryBatchMessage, body, message.version, types, dictionaries)
+  }
+  const batches: Array<ArrowTable.RecordBatch> = []
+  for (const block of footer.recordBatches) {
+    const { body, message } = blockMessage(block)
+    const header = message.header
+    if (header._tag !== "RecordBatch") invalid(`record batch block holds ${header._tag}`)
+    checkCompression(header as Format.RecordBatchMessage)
+    const columns = loadColumns(fieldTypes, header as Format.RecordBatchMessage, body, message.version, dictionaries)
+    batches.push({ schema, length: (header as Format.RecordBatchMessage).length, columns })
+  }
+  return makeTable(schema, batches)
+}
 
 // -----------------------------------------------------------------------------
 // Writing

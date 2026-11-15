@@ -9,8 +9,8 @@
  *   then an end-of-stream marker. A file wraps the same messages in `ARROW1`
  *   magic bytes and adds a footer that indexes them.
  * - Decoding returns a {@link ArrowTable.Table} whose buffers are views into
- *   the input bytes; nothing is copied. Keep the input alive while you use the
- *   table, and don't mutate it.
+ *   the input bytes; nothing is copied. The table sees any later write to the
+ *   input, so don't mutate the input while you use the table.
  * - Decoding validates the input fully (offsets, indices, views, buffer
  *   sizes), so any slot of the result can be read safely.
  *
@@ -50,6 +50,7 @@ import * as Pull from "../Pull.ts"
 import * as Result from "../Result.ts"
 import type * as ArrowSchema from "./ArrowSchema.ts"
 import type * as ArrowTable from "./ArrowTable.ts"
+import { IpcFailure } from "./internal/format.ts"
 import * as internal from "./internal/ipc.ts"
 
 const ArrowIpcErrorTypeId = "~effect/arrow/ArrowIpc/ArrowIpcError"
@@ -62,7 +63,8 @@ const ArrowIpcErrorTypeId = "~effect/arrow/ArrowIpc/ArrowIpcError"
  *
  * The `kind` field identifies the failure:
  *
- * - `Invalid`: the bytes are not valid Arrow IPC.
+ * - `Invalid`: the bytes are not valid Arrow IPC. When the FlatBuffers
+ *   metadata itself is malformed, `cause` holds the `FlatBuffersError`.
  * - `BigEndian`: the data is big-endian, which is not supported.
  * - `Compression`: record batch bodies are compressed, which is not supported.
  * - `Unsupported`: valid input or data that uses a feature this
@@ -86,6 +88,7 @@ const ArrowIpcErrorTypeId = "~effect/arrow/ArrowIpc/ArrowIpcError"
 export class ArrowIpcError extends Data.TaggedError("ArrowIpcError")<{
   readonly kind: "Invalid" | "BigEndian" | "Compression" | "Unsupported"
   readonly message: string
+  readonly cause?: unknown
 }> {
   /**
    * Marks this value as an `ArrowIpcError` for {@link isArrowIpcError}.
@@ -104,13 +107,16 @@ export class ArrowIpcError extends Data.TaggedError("ArrowIpcError")<{
  */
 export const isArrowIpcError = (u: unknown): u is ArrowIpcError => Predicate.hasProperty(u, ArrowIpcErrorTypeId)
 
-const toError = (e: internal.IpcFailure) => new ArrowIpcError({ kind: e.kind, message: e.message })
+const toError = (e: IpcFailure) =>
+  new ArrowIpcError(
+    e.cause === undefined ? { kind: e.kind, message: e.message } : { kind: e.kind, message: e.message, cause: e.cause }
+  )
 
 const run = <A>(f: () => A): Result.Result<A, ArrowIpcError> => {
   try {
     return Result.succeed(f())
   } catch (e) {
-    if (e instanceof internal.IpcFailure) {
+    if (e instanceof IpcFailure) {
       return Result.fail(toError(e))
     }
     throw e
@@ -165,7 +171,7 @@ const attempt = <A>(f: () => A): Effect.Effect<A, ArrowIpcError> => {
   try {
     return Effect.succeed(f())
   } catch (e) {
-    return e instanceof internal.IpcFailure ? Effect.fail(toError(e)) : Effect.die(e)
+    return e instanceof IpcFailure ? Effect.fail(toError(e)) : Effect.die(e)
   }
 }
 

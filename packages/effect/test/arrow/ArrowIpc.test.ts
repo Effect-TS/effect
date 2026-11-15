@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
 import { BigDecimal, DateTime, Duration, Effect, Option, Result, Stream } from "effect"
 import { ArrowColumn, ArrowIpc, ArrowSchema as S, ArrowTable } from "effect/arrow"
+import { FlatBuffers } from "effect/encoding"
 import { readFileSync } from "node:fs"
 
 // Written by pyarrow; see fixtures/arrow/generate.py
@@ -185,6 +186,16 @@ describe("ArrowIpc", () => {
       assertIpcError(ArrowIpc.decodeFile(garbage))
     }
     assertIpcError(ArrowIpc.decodeFile(streamBytes))
+
+    // A schema message whose root offset points past its metadata
+    const corrupt = streamBytes.slice()
+    new DataView(corrupt.buffer).setUint32(8, 0xfffffff0, true)
+    const result = ArrowIpc.decodeStream(corrupt)
+    assertIpcError(result)
+    if (Result.isFailure(result)) {
+      const cause = result.failure.cause
+      assert.isTrue(FlatBuffers.isFlatBuffersError(cause) && cause.kind === "OutOfBounds")
+    }
 
     // Every proper prefix of a file lacks its footer
     for (let cut = 0; cut < fileBytes.length; cut++) {
