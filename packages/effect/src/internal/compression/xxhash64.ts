@@ -50,21 +50,31 @@ const rotlH = (r: number): void => {
   h[1] = (al << r) | (ah >>> (32 - r))
 }
 
-// Returns round(0, input) = rotl(input * P2, 31) * P1 in h
-const roundH = (ih: number, il: number): void => {
-  h[0] = ih
-  h[1] = il
+// h = h + rotl(v, r) for 0 < r < 32
+const addRotlH = (vh: number, vl: number, r: number): void =>
+  addH((vh << r) | (vl >>> (32 - r)), ((vl << r) | (vh >>> (32 - r))) >>> 0)
+
+// h = h ^ (v * (ph:pl)) for an unsigned 32-bit v
+const xorMulH = (v: number, ph: number, pl: number): void => {
+  h[0] ^= hi32(v, pl) + Math.imul(v, ph)
+  h[1] ^= Math.imul(v, pl)
+}
+
+// h = h ^ round(0, v), where round(0, v) = rotl(v * P2, 31) * P1
+const xorRoundH = (vh: number, vl: number): void => {
+  const ah = h[0], al = h[1]
+  h[0] = vh
+  h[1] = vl
   mulH(P2H, P2L)
   rotlH(31)
   mulH(P1H, P1L)
+  h[0] ^= ah
+  h[1] ^= al
 }
 
 // h = (h ^ round(0, v)) * P1 + P4
 const mergeH = (vh: number, vl: number): void => {
-  const ah = h[0], al = h[1]
-  roundH(vh, vl)
-  h[0] ^= ah
-  h[1] ^= al
+  xorRoundH(vh, vl)
   mulH(P1H, P1L)
   addH(P4H, P4L)
 }
@@ -82,8 +92,8 @@ export const xxhash64 = (data: Uint8Array): { readonly high: number; readonly lo
   let p = 0
   if (length >= 32) {
     // v1 = P1 + P2, v2 = P2, v3 = 0, v4 = -P1. Each 8-byte lane is
-    // v = rotl(v + input * P2, 31) * P1, written out for speed
-    // The lanes hold signed 32-bit halves, which V8 keeps unboxed
+    // v = rotl(v + input * P2, 31) * P1, written out for speed. The lanes
+    // hold signed 32-bit halves, which V8 keeps unboxed.
     let v1h = 0x60EA27EE, v1l = 0xADC0B5D6 | 0
     let v2h = P2H | 0, v2l = P2L
     let v3h = 0, v3l = 0
@@ -132,24 +142,11 @@ export const xxhash64 = (data: Uint8Array): { readonly high: number; readonly lo
       }
     }
     // h = rotl(v1, 1) + rotl(v2, 7) + rotl(v3, 12) + rotl(v4, 18)
-    h[0] = v1h
-    h[1] = v1l
-    rotlH(1)
-    const ah = h[0], al = h[1]
-    h[0] = v2h
-    h[1] = v2l
-    rotlH(7)
-    addH(ah, al)
-    const bh = h[0], bl = h[1]
-    h[0] = v3h
-    h[1] = v3l
-    rotlH(12)
-    addH(bh, bl)
-    const ch = h[0], cl = h[1]
-    h[0] = v4h
-    h[1] = v4l
-    rotlH(18)
-    addH(ch, cl)
+    h[0] = h[1] = 0
+    addRotlH(v1h, v1l, 1)
+    addRotlH(v2h, v2l, 7)
+    addRotlH(v3h, v3l, 12)
+    addRotlH(v4h, v4l, 18)
     mergeH(v1h, v1l)
     mergeH(v2h, v2l)
     mergeH(v3h, v3l)
@@ -160,33 +157,20 @@ export const xxhash64 = (data: Uint8Array): { readonly high: number; readonly lo
   }
   addH(Math.floor(length / 0x100000000), length >>> 0)
   for (; p + 8 <= length; p += 8) {
-    const ah = h[0], al = h[1]
-    roundH(u32(data, p + 4), u32(data, p))
-    h[0] ^= ah
-    h[1] ^= al
+    xorRoundH(u32(data, p + 4), u32(data, p))
     rotlH(27)
     mulH(P1H, P1L)
     addH(P4H, P4L)
   }
   if (p + 4 <= length) {
-    const ah = h[0], al = h[1]
-    h[0] = 0
-    h[1] = u32(data, p)
-    mulH(P1H, P1L)
-    h[0] ^= ah
-    h[1] ^= al
+    xorMulH(u32(data, p), P1H, P1L)
     rotlH(23)
     mulH(P2H, P2L)
     addH(P3H, P3L)
     p += 4
   }
   for (; p < length; p++) {
-    const ah = h[0], al = h[1]
-    h[0] = 0
-    h[1] = data[p]
-    mulH(P5H, P5L)
-    h[0] ^= ah
-    h[1] ^= al
+    xorMulH(data[p], P5H, P5L)
     rotlH(11)
     mulH(P1H, P1L)
   }
