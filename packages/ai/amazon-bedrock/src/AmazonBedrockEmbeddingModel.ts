@@ -6,7 +6,7 @@
  * values, and supports scoped request configuration overrides.
  *
  * @stability unstable
- * @since 4.1.5
+ * @since 4.2.0
  */
 import * as AiError from "effect/ai/AiError"
 import * as EmbeddingModel from "effect/ai/EmbeddingModel"
@@ -26,7 +26,7 @@ import { AmazonBedrockConfig } from "./AmazonBedrockConfig.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.1.5
+ * @since 4.2.0
  */
 export type Model = string
 
@@ -36,7 +36,7 @@ export type Model = string
  *
  * @stability unstable
  * @category models
- * @since 4.1.5
+ * @since 4.2.0
  */
 export type Family = "titan-embed-text-v2" | "cohere-embed-v3" | "cohere-embed-v4"
 
@@ -58,7 +58,7 @@ export type Family = "titan-embed-text-v2" | "cohere-embed-v3" | "cohere-embed-v
  *
  * @stability unstable
  * @category services
- * @since 4.1.5
+ * @since 4.2.0
  */
 export class Config extends Context.Service<Config, {
   /**
@@ -89,7 +89,7 @@ export class Config extends Context.Service<Config, {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.5
+ * @since 4.2.0
  */
 export const model = (
   model: Model,
@@ -145,7 +145,7 @@ export const model = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.5
+ * @since 4.2.0
  */
 export const make = Effect.fnUntraced(function*({ model, family, config: providerConfig }: {
   readonly model: Model
@@ -216,7 +216,7 @@ export const make = Effect.fnUntraced(function*({ model, family, config: provide
  *
  * @stability unstable
  * @category layers
- * @since 4.1.5
+ * @since 4.2.0
  */
 export const layer = (options: {
   readonly model: Model
@@ -244,7 +244,7 @@ export const layer = (options: {
  *
  * @stability unstable
  * @category configuration
- * @since 4.1.5
+ * @since 4.2.0
  */
 export const withConfigOverride: {
   (overrides: typeof Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Config>>
@@ -280,7 +280,11 @@ const families: Record<Family, Row> = {
   },
   "cohere-embed-v4": {
     textsPerRequest: 96,
-    body: ({ dimensions, ...config }, texts) => ({ ...config, output_dimension: dimensions, texts })
+    body: ({ dimensions, ...config }, texts) => ({
+      ...config,
+      output_dimension: dimensions ?? config.output_dimension,
+      texts
+    })
   }
 }
 

@@ -102,6 +102,22 @@ describe("AmazonBedrockEmbeddingModel", () => {
       ])
     }))
 
+  it.effect("Cohere v4 keeps a native output_dimension when dimensions is not set", () =>
+    Effect.gen(function*() {
+      const http = makeHttpClient(() => ({ body: { embeddings: { float: [[1]] } } }))
+      yield* Effect.flatMap(EmbeddingModel.EmbeddingModel, (model) => model.embed("text")).pipe(
+        Effect.provide(AmazonBedrockEmbeddingModel.layer({
+          model: "cohere",
+          family: "cohere-embed-v4",
+          config: { input_type: "search_document", output_dimension: 256 }
+        })),
+        Effect.provide(http.layer)
+      )
+      assert.deepStrictEqual(http.requests.map((request) => request.body), [
+        { input_type: "search_document", output_dimension: 256, texts: ["text"] }
+      ])
+    }))
+
   it.effect("rejects chunk count mismatches even when the total count matches", () =>
     Effect.gen(function*() {
       const http = makeHttpClient((body) => ({
