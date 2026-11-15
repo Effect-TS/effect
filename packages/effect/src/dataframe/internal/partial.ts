@@ -6,16 +6,21 @@
  * Sums, counts, minima, maxima, firsts and lasts combine by aggregating the
  * partials again; means combine from sums and counts; variances from counts,
  * means and M2 (Chan et al.). Medians and distinct counts don't combine.
+ * Sums of 64-bit integers and decimals stay exact until `finish`, so whether
+ * a decimal sum fits 64 bits doesn't depend on how the rows are split.
  *
  * @internal
  */
+import type * as S from "../../arrow/ArrowSchema.ts"
 import * as Agg from "./aggregate.ts"
+import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
 import * as V from "./vector.ts"
 
 /** @internal */
 export type Part =
   | { readonly _tag: "vector"; readonly vector: V.Vector }
+  | Sums
   | { readonly _tag: "mean"; readonly sum: Float64Array; readonly count: Float64Array }
   | {
     readonly _tag: "moments"
@@ -25,6 +30,13 @@ export type Part =
   }
   | { readonly _tag: "none" }
 
+/** Exact sums of 64-bit integers or decimals, and the type of their sum. */
+interface Sums {
+  readonly _tag: "sums"
+  readonly type: S.DataType
+  readonly sums: ReadonlyArray<bigint>
+}
+
 const reaggregated = new Set<Agg.AggFn>(["sum", "count", "len", "min", "max", "first", "last"])
 
 /** Whether partial aggregates of `fn` combine. @internal */
@@ -33,6 +45,7 @@ export const combinable = (fn: Agg.AggFn): boolean =>
 
 /** The partial aggregate of `fn` over `v` grouped by `g`. @internal */
 export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping): Part => {
+  if (fn === "sum" && v?.kind === "i64") return { _tag: "sums", type: D.sumType(v.type), sums: Agg.exactSums(v, g) }
   if (reaggregated.has(fn)) return { _tag: "vector", vector: Agg.aggregate(fn, v, g) }
   if (v === undefined) return V.fail(`${fn} needs an argument`)
   switch (fn) {
@@ -57,6 +70,15 @@ export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping)
  */
 export const combine = (fn: Agg.AggFn, parts: ReadonlyArray<Part>, ids: Int32Array, count: number): Part => {
   const grouping: Agg.Grouping = { ids, count }
+  if (parts.every((p): p is Sums => p._tag === "sums")) {
+    const sums = new Array<bigint>(count).fill(BigInt(0))
+    let at = 0
+    for (const p of parts) {
+      for (let j = 0; j < p.sums.length; j++) sums[ids[at + j]] += p.sums[j]
+      at += p.sums.length
+    }
+    return { _tag: "sums", type: parts[0].type, sums }
+  }
   if (reaggregated.has(fn)) {
     const vectors = parts.map((p) => (p as Extract<Part, { _tag: "vector" }>).vector)
     const merge = fn === "count" || fn === "len" ? "sum" : fn
@@ -104,6 +126,8 @@ export const finish = (fn: Agg.AggFn, part: Part, input: V.Vector | undefined): 
   switch (part._tag) {
     case "vector":
       return part.vector
+    case "sums":
+      return Agg.fromSums(part.type, part.sums)
     case "mean":
       return Agg.meanFrom(input!.type, part.sum, part.count)
     case "moments":

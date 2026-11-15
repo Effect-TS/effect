@@ -376,6 +376,17 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* streamed(Query.head(t, 0), Stream.die("pulled")), [])
       }))
 
+    it.effect("decimal sums don't depend on batch boundaries", () =>
+      Effect.gen(function*() {
+        const query = Query.table("t", Schema.Struct({ s: Schema.String })).pipe(
+          Query.aggregate((c) => ({ total: Expr.sum(Expr.castDecimal(c.s, 19, 0)) }))
+        )
+        const big = DataFrame.fromColumns({ s: ["6000000000000000000", "6000000000000000000"] })
+        const negative = DataFrame.fromColumns({ s: ["-6000000000000000000", "-6000000000000000000"] })
+        const result = yield* streamed(query, Stream.make(big, negative))
+        assert.deepStrictEqual(result, [{ total: BigDecimal.fromBigInt(0n) }])
+      }))
+
     it.effect("zero-row batches aggregate like an empty table", () =>
       Effect.gen(function*() {
         const query = Query.aggregate(t, (c) => ({ n: Expr.count(), total: Expr.sum(c.x), mean: Expr.mean(c.x) }))
