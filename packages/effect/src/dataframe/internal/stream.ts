@@ -94,7 +94,7 @@ const unknownColumns = (node: Q.Node): Effect.Effect<never, DataFrameError> =>
   Q.attempt(() =>
     V.fail(
       `the columns of a result without rows are unknown, as no batch they depend on was read: ` +
-        `declare the columns of ${undeclared(node).join(" and ")}`
+        `declare the columns of ${[...new Set(undeclared(node))].join(" and ")}`
     )
   )
 
@@ -289,28 +289,27 @@ export const batches = (node: Q.Node, catalog: Tables): Batches => {
 }
 
 /**
- * The optimised plan, and its tables with those it names more than once
- * read into memory: each run reads each table once.
+ * The optimised plan, and its tables with those it names more than once read
+ * into memory on first use: each run reads each table at most once, and only
+ * if a node needs its batches.
  */
 const prepare = (
   plan: Plan.Node,
   catalog: Catalog.Service
-): Effect.Effect<readonly [Q.Node, Tables], DataFrameError> => {
-  const repeated = [...Q.tables(plan)].flatMap(([name, n]) => n > 1 ? [name] : [])
-  return Effect.forEach(
-    repeated,
-    (name) => Effect.map(Stream.runCollect(catalog.stream(name)), (frames) => [name, frames] as const)
-  ).pipe(
-    Effect.flatMap((entries) => {
-      const read = new Map(entries)
-      const stream = (name: string) => {
-        const frames = read.get(name)
-        return frames === undefined ? catalog.stream(name) : Stream.fromIterable(frames)
+): Effect.Effect<readonly [Q.Node, Tables], DataFrameError> =>
+  Effect.gen(function*() {
+    const optimized = yield* Q.attempt(() => Q.optimize(plan as Q.Node))
+    const read = new Map<string, ReturnType<Tables["stream"]>>()
+    for (const [name, n] of Q.tables(optimized as Plan.Node)) {
+      if (n > 1) {
+        read.set(
+          name,
+          Stream.unwrap(Effect.map(yield* Effect.cached(Stream.runCollect(catalog.stream(name))), Stream.fromIterable))
+        )
       }
-      return Q.attempt(() => [Q.optimize(plan as Q.Node), { stream }] as const)
-    })
-  )
-}
+    }
+    return [optimized, { stream: (name: string) => read.get(name) ?? catalog.stream(name) }] as const
+  })
 
 /** The non-empty batches of a plan's result, after optimisation. @internal */
 export const stream = (plan: Plan.Node, catalog: Catalog.Service): Batches =>

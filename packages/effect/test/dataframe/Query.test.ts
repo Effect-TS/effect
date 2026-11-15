@@ -854,6 +854,7 @@ describe("Query", () => {
         const cases: ReadonlyArray<readonly [Query.Query<unknown>, Array<unknown>, string?]> = [
           [Query.concat([Query.head(u, 0), Query.from(x(9))]), [{ x: 9 }], declare(`table "u"`)],
           [Query.head(u, 0), [], declare(`table "u"`)],
+          [Query.head(Query.concat([u, u]), 0), [], declare(`table "u"`)],
           [Query.unique(Query.head(u, 0)), [], declare(`table "u"`)],
           [sums(Query.head(u, 0)), [{ n: 0, s: 0 }], declare(`table "u"`)],
           [Query.join(d, Query.head(r, 0), { on: "x" }), [], declare(`table "r"`)],
@@ -888,19 +889,31 @@ describe("Query", () => {
         }
       }))
 
-    it.effect("reads a table named twice once per run", () =>
+    it.effect("reads a table named twice once per run, only if its batches are needed", () =>
       Effect.gen(function*() {
         let loads = 0
         const load = Effect.sync(() => DataFrame.fromColumns({ x: [++loads] }))
-        assert.deepStrictEqual(yield* streamed(Query.concat([t, t]), Stream.fromEffect(load)), [{ x: 1 }, { x: 1 }])
-        assert.strictEqual(loads, 1)
+        const cases: ReadonlyArray<readonly [Query.Query<unknown>, Array<unknown>, number]> = [
+          [Query.concat([t, t]), [{ x: 1 }, { x: 1 }], 1],
+          [Query.join(t, t, { on: "x" }), [{ x: 1 }], 1],
+          [Query.concat([t, Query.head(t, 0)]), [{ x: 1 }], 1],
+          [Query.head(Query.concat([t, t]), 0), [], 0],
+          [Query.concat([Query.head(t, 0), Query.head(t, 0)]), [], 0],
+          [Query.head(Query.sort(Query.concat([t, t]), (c) => [c.x]), 0), [], 0]
+        ]
+        for (const [query, expected, reads] of cases) {
+          loads = 0
+          assert.deepStrictEqual(yield* streamed(query, Stream.fromEffect(load)), expected)
+          assert.strictEqual(loads, reads)
+        }
+        loads = 0
         const frames = yield* Query.concat([t, t]).pipe(
           Query.stream,
           Stream.runCollect,
           Effect.provide(Catalog.layer({ t: load }))
         )
-        assert.deepStrictEqual(frames.flatMap((frame) => DataFrame.toArray(frame, "x")), [2, 2])
-        assert.strictEqual(loads, 2)
+        assert.deepStrictEqual(frames.flatMap((frame) => DataFrame.toArray(frame, "x")), [1, 1])
+        assert.strictEqual(loads, 1)
       }))
 
     it.effect("explain shows the plan without reading the stream", () =>
