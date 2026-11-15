@@ -538,6 +538,8 @@ export default {
 
 The tracer needs `tracing.startSpan` and `tracing.withActiveSpan`. `withActiveSpan` arrived in workerd `1.20261113.1` and is not in Cloudflare's custom spans docs yet. `@cloudflare/workers-types` types it from `5.20261107.1`, and local development needs a Wrangler or Miniflare release that bundles workerd `1.20261113.1` or later.
 
+The tracer also needs `AsyncLocalStorage` from `process.getBuiltinModule`. Workers provide it with the `nodejs_compat` flag, or with a `compatibility_date` of `2026-08-04` or later. Building the tracer layer fails without it.
+
 Cloudflare's spans are simpler than Effect's, so some span data does not carry over:
 
 - A span's Cloudflare parent comes from the async context. An Effect span created with `root: true`, or under a parent from another tracer such as an incoming `traceparent`, still nests under the active Cloudflare span.

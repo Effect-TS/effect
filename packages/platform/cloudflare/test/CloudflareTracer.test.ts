@@ -1,6 +1,6 @@
 import * as CloudflareTracer from "@effect/platform-cloudflare/CloudflareTracer"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Cause, Effect, Exit, Option } from "effect"
 import { HttpTraceContext } from "effect/http"
 import { AsyncLocalStorage } from "node:async_hooks"
 
@@ -233,6 +233,23 @@ describe("CloudflareTracer", () => {
         "request-1 > outer > inner > kv_get",
         "request-1 > outer > kv_get"
       ])
+    }))
+
+  it.effect("fails to build without AsyncLocalStorage from process.getBuiltinModule", () =>
+    Effect.gen(function*() {
+      const cloudflare = makeTracing()
+      const getBuiltinModule = process.getBuiltinModule
+      ;(process as { getBuiltinModule?: unknown }).getBuiltinModule = undefined
+      const exit = yield* Effect.void.pipe(
+        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing })),
+        Effect.exit,
+        Effect.ensuring(Effect.sync(() => {
+          process.getBuiltinModule = getBuiltinModule
+        }))
+      )
+
+      assert.isTrue(Exit.isFailure(exit) && Exit.hasDies(exit))
+      assert.include(String(Exit.isFailure(exit) && Cause.squash(exit.cause)), "nodejs_compat")
     }))
 
   it.effect("keeps running an effect whose span outlived its invocation", () =>

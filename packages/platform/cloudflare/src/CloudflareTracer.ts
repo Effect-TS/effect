@@ -21,6 +21,10 @@
  * from `5.20261107.1`. Local development needs a Wrangler or Miniflare release
  * that bundles that workerd or later.
  *
+ * It also needs `AsyncLocalStorage` from `process.getBuiltinModule`, which
+ * Workers provide with the `nodejs_compat` flag or a compatibility date of
+ * `2026-08-04` or later. Building the layer fails without it.
+ *
  * **Limitations**
  *
  * - Cloudflare decides a span's parent from the async context, so an Effect
@@ -90,6 +94,10 @@ export interface TracingSpan {
  * attribute; any other failure records each error as an exception and sets an
  * error status.
  *
+ * Throws when `AsyncLocalStorage` is not available through
+ * `process.getBuiltinModule`, as on Workers with a compatibility date before
+ * `2026-08-04` and without `nodejs_compat`.
+ *
  * @see {@link layer} for providing the tracer as a layer
  *
  * @stability experimental
@@ -98,6 +106,14 @@ export interface TracingSpan {
  */
 export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
   const tracing = options.tracing
+  const AsyncLocalStorage = (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage
+  if (typeof AsyncLocalStorage?.snapshot !== "function") {
+    throw new Error(
+      "CloudflareTracer needs AsyncLocalStorage from process.getBuiltinModule. " +
+        "Enable the nodejs_compat compatibility flag or use a compatibility date of 2026-08-04 or later."
+    )
+  }
+  const snapshot = (): <A>(f: () => A) => A => AsyncLocalStorage.snapshot()
 
   // `withActiveSpan` is too slow to call for every primitive. Instead, each
   // fiber takes an AsyncLocalStorage snapshot with its span active, inside its
@@ -123,7 +139,7 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
       return f()
     }
     try {
-      if (fiber === undefined || snapshot === undefined) {
+      if (fiber === undefined) {
         return tracing.withActiveSpan(active, body)
       }
       let cached = fiberEnters.get(fiber)
@@ -190,16 +206,7 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
  * @since 4.1.5
  */
 export const layer = (options: { readonly tracing: Tracing }): Layer.Layer<never> =>
-  Layer.succeed(Tracer.Tracer, make(options))
-
-const snapshot: (() => <A>(f: () => A) => A) | undefined = (() => {
-  try {
-    const AsyncLocalStorage = (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage
-    return typeof AsyncLocalStorage?.snapshot === "function" ? () => AsyncLocalStorage.snapshot() : undefined
-  } catch {
-    return undefined
-  }
-})()
+  Layer.sync(Tracer.Tracer, () => make(options))
 
 // Cloudflare gives spans it does not record all-zero ids.
 const isValidId = (id: string | undefined): id is string => id !== undefined && /[^0]/.test(id)
