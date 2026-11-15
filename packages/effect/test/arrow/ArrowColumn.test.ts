@@ -9,6 +9,7 @@ const dec = BigDecimal.fromStringUnsafe
 const utc = (input: string | number) => DateTime.makeUnsafe(input)
 const paris = (millis: number) => DateTime.makeZonedUnsafe(millis, { timeZone: "Europe/Paris" })
 const item = (type: S.DataType) => S.field("item", type)
+const intMap = S.map(S.field("key", S.utf8), S.field("value", S.int32))
 
 // Values given to fromValues, and the values read back when they differ
 const cases: ReadonlyArray<
@@ -97,7 +98,22 @@ const cases: ReadonlyArray<
   ["dictionary of structs that print alike", S.dictionary(S.struct([S.field("a", S.utf8), S.field("b", S.utf8)])), [
     { a: "x,\"b\":sy", b: "z" },
     { a: "x", b: "y,\"b\":sz" }
-  ]]
+  ]],
+  // Equal values are found in every form the builder reads
+  ["dictionary of maps given as iterables", S.dictionary(intMap), [new Set([["k", 1]]), new Set([["k", 2]])], [
+    new Map([["k", 1]]),
+    new Map([["k", 2]])
+  ]],
+  ["runEndEncoded maps given as iterables", S.runEndEncoded(S.int16, S.field("v", intMap)), [
+    new Set([["k", 1]]),
+    new Set([["k", 2]])
+  ], [new Map([["k", 1]]), new Map([["k", 2]])]],
+  ["dictionary of lists with holes", S.dictionary(S.list(item(S.int32))), [[], new Array(1)], [[], [null]]],
+  ["dictionary of lists given as one-shot iterables", S.dictionary(S.list(item(S.int32))), [
+    [1].values(),
+    [1].values(),
+    [2].values()
+  ], [[1], [1], [2]]]
 ]
 
 const int8Member = S.struct([S.field("a", S.int8)])

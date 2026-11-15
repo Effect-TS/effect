@@ -32,17 +32,19 @@ interface DictionaryState {
  */
 export interface Session extends Options {
   readonly dictionaries: Map<number, DictionaryState>
+  /** The items of each non-array iterable read so far, so one-shot iterables can be read again. */
+  readonly items: WeakMap<object, ReadonlyArray<unknown>>
 }
 
 /** @internal */
-export const session = (options: Options): Session => ({ ...options, dictionaries: new Map() })
+export const session = (options: Options): Session => ({ ...options, dictionaries: new Map(), items: new WeakMap() })
 
 /** Placeholders standing in for dictionaries until {@link finish}. */
 const pending = new WeakMap<ArrowData.ArrowData, DictionaryState>()
 
-const builtDictionary = (state: DictionaryState, options: Options): ArrowData.ArrowData => {
+const builtDictionary = (state: DictionaryState, s: Session): ArrowData.ArrowData => {
   if (state.built === undefined) {
-    const inner = session(options)
+    const inner: Session = { ...s, dictionaries: new Map() }
     const field: S.Field = { name: "", type: state.valueType, nullable: true, metadata: new Map() }
     state.built = finish(build(field, state.values, inner, (k) => state.at[k](state.slot[k])), inner)
   }
@@ -337,9 +339,68 @@ const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): 
 // Equality keys (dictionaries, run-end encoding)
 // -----------------------------------------------------------------------------
 
-/** A string that is equal for equal values of one type. */
-const keyOf = (v: unknown): string => {
-  if (isNull(v)) return "null"
+/**
+ * A key for building `v` as `field`, read as {@link build} reads it: values
+ * with equal keys are stored alike. Values that cannot be read as `field` have
+ * none, so they are never merged with another.
+ */
+const keyOf = (field: S.Field, v: unknown, s: Session): string | undefined => {
+  const encode = encoderOf(field, s)
+  return isNull(v) ? "null" : typeKey(field.type, encode === undefined ? v : encode(v), s)
+}
+
+const joinKeys = (keys: ReadonlyArray<string | undefined>): string | undefined =>
+  keys.includes(undefined) ? undefined : JSON.stringify(keys)
+
+const intervalParts = {
+  yearMonth: ["months"],
+  dayTime: ["days", "milliseconds"],
+  monthDayNano: ["months", "days", "nanoseconds"]
+}
+
+/** The key of a non-null `v` built as `type`; see {@link keyOf}. */
+const typeKey = (type: S.DataType, v: unknown, s: Session): string | undefined => {
+  switch (type._tag) {
+    case "List":
+    case "LargeList":
+    case "ListView":
+    case "LargeListView":
+    case "FixedSizeList": {
+      const items = itemsOf(v, s)
+      return items && joinKeys(Array.from(items, (x) => keyOf(type.child, x, s)))
+    }
+    case "Map": {
+      const [keyField, valueField] = (type.entries.type as S.Struct).fields
+      const entries = itemsOf(v, s)
+      return entries && joinKeys(Array.from(entries, (e) => {
+        const entry = itemsOf(e, s)
+        return entry && joinKeys([keyOf(keyField, entry[0], s), keyOf(valueField, entry[1], s)])
+      }))
+    }
+    case "Struct":
+      return typeof v === "object" && v !== null
+        ? joinKeys(type.fields.map((f, k) => keyOf(f, memberValue(v, f, k), s)))
+        : undefined
+    case "Union": {
+      const member = memberOf(type, v)
+      return member === -1
+        ? undefined
+        : joinKeys([String(member), keyOf(type.fields[member], isUnionValue(v) ? v.value : v, s)])
+    }
+    case "Interval":
+      return typeof v === "object" && v !== null
+        ? joinKeys(intervalParts[type.unit].map((k) => scalarKey((v as Record<string, unknown>)[k] ?? 0)))
+        : undefined
+    case "RunEndEncoded":
+      return keyOf(type.values, v, s)
+    case "Dictionary":
+      return typeKey(type.valueType, v, s)
+    default:
+      return scalarKey(v)
+  }
+}
+
+const scalarKey = (v: unknown): string | undefined => {
   switch (typeof v) {
     case "string":
       return `s${JSON.stringify(v)}`
@@ -356,10 +417,7 @@ const keyOf = (v: unknown): string => {
   }
   if (BigDecimal.isBigDecimal(v)) return `D${BigDecimal.format(BigDecimal.normalize(v))}`
   if (Duration.isDuration(v)) return `T${String(Duration.toNanos(v))}`
-  if (v instanceof Map) return `m[${Array.from(v, ([k, x]) => `${keyOf(k)}:${keyOf(x)}`).join(",")}]`
-  if (Array.isArray(v)) return `a[${v.map(keyOf).join(",")}]`
-  if (isUnionValue(v)) return `U${v.typeId}:${keyOf(v.value)}`
-  return `o{${Object.entries(v as object).map(([k, x]) => `${JSON.stringify(k)}:${keyOf(x)}`).join(",")}}`
+  return undefined
 }
 
 // -----------------------------------------------------------------------------
@@ -386,10 +444,28 @@ const data = (
 
 const noNulls = { validity: undefined, nullCount: 0 }
 
-const asIterable = (v: unknown, at: At, index: number, what: string): ReadonlyArray<unknown> => {
+/** The items of an array or other iterable object, each iterable read once per session. */
+const itemsOf = (v: unknown, s: Session): ReadonlyArray<unknown> | undefined => {
   if (Array.isArray(v)) return v
-  if (typeof v === "object" && v !== null && Symbol.iterator in v) return Array.from(v as Iterable<unknown>)
-  return failAt(at, index, `expected ${what}, got ${describe(v)}`)
+  if (typeof v !== "object" || v === null || !(Symbol.iterator in v)) return undefined
+  let items = s.items.get(v)
+  if (items === undefined) s.items.set(v, items = Array.from(v as Iterable<unknown>))
+  return items
+}
+
+const asIterable = (v: unknown, s: Session, at: At, index: number, what: string): ReadonlyArray<unknown> =>
+  itemsOf(v, s) ?? failAt(at, index, `expected ${what}, got ${describe(v)}`)
+
+/** Member `k`, named by `f`, of the struct value `v` (an object, or an array by position). */
+const memberValue = (v: object, f: S.Field, k: number): unknown =>
+  (Array.isArray(v) ? v[k] : (v as Record<string, unknown>)[f.name]) ?? null
+
+const encoderOf = (field: S.Field, options: Options): ((v: unknown) => unknown) | undefined => {
+  const name = field.metadata.get("ARROW:extension:name")
+  const extension = name === undefined ? undefined : options.extensions.get(name)
+  if (extension === undefined) return undefined
+  const metadata = field.metadata.get("ARROW:extension:metadata") ?? ""
+  return (v) => extension.encode(v, metadata)
 }
 
 /** The slot `i` with `offsets[i] <= item < offsets[i + 1]`. */
@@ -425,12 +501,8 @@ export const build = (
   at: At,
   used: (index: number) => boolean = () => true
 ): ArrowData.ArrowData => {
-  const extensionName = field.metadata.get("ARROW:extension:name")
-  const extension = extensionName === undefined ? undefined : options.extensions.get(extensionName)
-  if (extension !== undefined) {
-    const metadata = field.metadata.get("ARROW:extension:metadata") ?? ""
-    values = values.map((v) => isNull(v) ? null : extension.encode(v, metadata))
-  }
+  const encode = encoderOf(field, options)
+  if (encode !== undefined) values = values.map((v) => isNull(v) ? null : encode(v))
   if (!field.nullable && field.type._tag !== "Null") {
     const i = values.findIndex((v, i) => isNull(v) && used(i))
     if (i !== -1) failAt(at, i, `null in non-nullable field ${JSON.stringify(field.name)}`)
@@ -577,7 +649,7 @@ const buildType = (
       const items: Array<unknown> = []
       const offsets = new Float64Array(n + 1)
       values.forEach((v, i) => {
-        if (!isNull(v)) { for (const x of asIterable(v, at, i, "an array")) items.push(x) }
+        if (!isNull(v)) { for (const x of asIterable(v, options, at, i, "an array")) items.push(x) }
         offsets[i + 1] = items.length
       })
       const child = build(type.child, items, options, itemAt(at, offsets))
@@ -600,7 +672,7 @@ const buildType = (
           for (let k = 0; k < type.listSize; k++) items.push(null)
           return
         }
-        const list = asIterable(v, at, i, "an array")
+        const list = asIterable(v, options, at, i, "an array")
         if (list.length !== type.listSize) failAt(at, i, `expected ${type.listSize} items, got ${list.length}`)
         items.push(...list)
       })
@@ -621,12 +693,8 @@ const buildType = (
           for (const c of columns) c[i] = null
           return
         }
-        if (Array.isArray(v)) {
-          type.fields.forEach((_, k) => (columns[k][i] = v[k] ?? null))
-          return
-        }
         if (typeof v !== "object") failAt(at, i, `expected an object, got ${describe(v)}`)
-        type.fields.forEach((f, k) => (columns[k][i] = (v as Record<string, unknown>)[f.name] ?? null))
+        type.fields.forEach((f, k) => (columns[k][i] = memberValue(v as object, f, k)))
       })
       const children = type.fields.map((f, k) =>
         build(f, columns[k], options, memberAt(at, f.name), (i) => !isNull(values[i]))
@@ -643,9 +711,8 @@ const buildType = (
       values.forEach((v, i) => {
         slot = i
         if (!isNull(v)) {
-          const entries = v instanceof Map ? Array.from(v) : asIterable(v, at, i, "a ReadonlyMap")
-          for (const e of entries) {
-            const [k, x] = asIterable(e, inSlot, keys.length, "a [key, value] entry")
+          for (const e of asIterable(v, options, at, i, "a ReadonlyMap")) {
+            const [k, x] = asIterable(e, options, inSlot, keys.length, "a [key, value] entry")
             if (isNull(k)) failAt(inSlot, keys.length, "map keys must not be null")
             keys.push(k)
             items.push(x)
@@ -668,8 +735,8 @@ const buildType = (
       const runValues: Array<unknown> = []
       let previous: string | undefined
       values.forEach((v, i) => {
-        const key = keyOf(v)
-        if (key === previous) {
+        const key = keyOf(type.values, v, options)
+        if (key !== undefined && key === previous) {
           runEnds[runEnds.length - 1] = i + 1
         } else {
           runEnds.push(i + 1)
@@ -693,11 +760,11 @@ const buildType = (
       const s = state
       const indices = values.map((v, i) => {
         if (isNull(v)) return null
-        const key = keyOf(v)
-        let index = s.unique.get(key)
+        const key = typeKey(type.valueType, v, options)
+        let index = key === undefined ? undefined : s.unique.get(key)
         if (index === undefined) {
           index = s.values.length
-          s.unique.set(key, index)
+          if (key !== undefined) s.unique.set(key, index)
           s.values.push(v)
           s.at.push(at)
           s.slot.push(i)
@@ -766,6 +833,18 @@ const accepts = (type: S.DataType, v: unknown): boolean => {
   }
 }
 
+/**
+ * The member a union slot holds: the one a `UnionValue` names, the first
+ * nullable member for null, otherwise the first member that accepts `v`;
+ * -1 when there is none.
+ */
+const memberOf = (type: S.Union, v: unknown): number =>
+  isUnionValue(v)
+    ? type.typeIds.indexOf(v.typeId)
+    : isNull(v)
+    ? type.fields.findIndex((f) => f.nullable)
+    : type.fields.findIndex((f) => accepts(f.type, v))
+
 const buildUnion = (
   type: S.Union,
   values: ReadonlyArray<unknown>,
@@ -775,17 +854,13 @@ const buildUnion = (
   const n = values.length
   const typeIds = new Int8Array(n)
   const members = values.map((v, i) => {
-    if (isUnionValue(v)) {
-      const member = type.typeIds.indexOf(v.typeId)
-      if (member === -1) failAt(at, i, `type id ${v.typeId} is not a member of the union`)
-      return member
-    }
-    // A null slot goes to the first nullable member; other values to the first member that accepts them.
-    const member = isNull(v)
-      ? type.fields.findIndex((f) => f.nullable)
-      : type.fields.findIndex((f) => accepts(f.type, v))
-    if (member === -1) failAt(at, i, `no union member accepts ${describe(v)}`)
-    return member
+    const member = memberOf(type, v)
+    if (member !== -1) return member
+    return failAt(
+      at,
+      i,
+      isUnionValue(v) ? `type id ${v.typeId} is not a member of the union` : `no union member accepts ${describe(v)}`
+    )
   })
   const plain = values.map((v) => isUnionValue(v) ? v.value : v)
   members.forEach((m, i) => (typeIds[i] = type.typeIds[m]))

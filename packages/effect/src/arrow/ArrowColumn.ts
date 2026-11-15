@@ -56,7 +56,8 @@
  *   the type's unit (`number` or `bigint`), which keeps full precision.
  * - `Struct` also accepts an array of member values by position, for structs
  *   with repeated member names.
- * - `Map` also accepts an iterable of `[key, value]` entries.
+ * - List types also accept any iterable of items, and `Map` any iterable of
+ *   `[key, value]` entries.
  * - A `Union` value goes to the first member whose type accepts it; use
  *   {@link unionValue} to choose the member.
  * - `Decimal` values must fit the type's scale without rounding and its bit
