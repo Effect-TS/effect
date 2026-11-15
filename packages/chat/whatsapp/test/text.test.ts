@@ -28,7 +28,12 @@ const cases: ReadonlyArray<readonly [string, string]> = [
   ["[**x**] and ![**y**]\n\n[**x**]: https://e.com", "[**x**] and ![**y**]\n\n[**x**]: https://e.com"],
   ["[r]:\n  <https://e.com>\n  \"**t**\"\n\n**x**", "[r]:\n  <https://e.com>\n  \"**t**\"\n\n*x*"],
   ["> ~~~js\n> **x**\n> ~~~\n\n**y**", "> ~~~js\n> **x**\n> ~~~\n\n*y*"],
-  ["- ```\n  **x**\n  ```", "- ```\n  **x**\n  ```"]
+  ["- ```\n  **x**\n  ```", "- ```\n  **x**\n  ```"],
+  ["> ~~~js\n> > ~~~\n> **x**\n> ~~~\n\n**y**", "> ~~~js\n> > ~~~\n> **x**\n> ~~~\n\n*y*"],
+  ["- > ~~~\n  >       ~~~\n  > **x**\n  > ~~~", "- > ~~~\n  >       ~~~\n  > **x**\n  > ~~~"],
+  ["> ~~~\n> **x**\n\n**y**", "> ~~~\n> **x**\n\n*y*"],
+  ["[r]: /url\n~~~js\n\n**x**\n~~~", "[r]: /url\n```\n\n**x**\n```"],
+  ["| a |\n|---|\n~~~\n\n**x**\n~~~", "| a |\n```\n\n**x**\n```"]
 ]
 
 const longer = (input: string) => {
@@ -77,7 +82,11 @@ describe("render", () => {
       "&#",
       "&nGt;",
       "~~~",
-      "x"
+      "x",
+      "> ",
+      "- ",
+      "  ",
+      "[r]: u"
     )
     fc.assert(fc.property(fc.array(token, { maxLength: 40 }), (tokens) => longer(tokens.join("")) === undefined))
   })

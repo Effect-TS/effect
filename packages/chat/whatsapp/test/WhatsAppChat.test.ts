@@ -14,8 +14,10 @@ import type { Action } from "effect/chat/ChatUi"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Redacted from "effect/Redacted"
+import * as Scheduler from "effect/Scheduler"
 import {
   bsuid,
   graphError,
@@ -323,6 +325,33 @@ describe("webhook", () => {
       })
       assert.strictEqual(result.status, 503)
       assert.isBelow(Date.now() - start, 2000)
+    }))
+
+  it.live("interrupts the worker when the request is cancelled at any step", () =>
+    Effect.gen(function*() {
+      // Each budget makes the request yield, and be cancelled, at a different step.
+      for (let budget = 1; budget <= 40; budget++) {
+        let started = false
+        let stopped = false
+        const request = handleRequest(
+          HttpServerRequest.fromWeb(new Request("http://localhost/whatsapp", { method: "POST", body: "{}" })),
+          {
+            verify: () =>
+              Effect.andThen(
+                Effect.sync(() => (started = true)),
+                Effect.onInterrupt(Effect.never, () => Effect.sync(() => (stopped = true)))
+              ),
+            normalize: () => [],
+            handle: () => Effect.void,
+            deadline: Duration.seconds(4),
+            maxBodyBytes: 1024
+          }
+        ).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget))
+        const fiber = yield* Effect.forkChild(request, { startImmediately: true })
+        yield* Fiber.interrupt(fiber)
+        yield* Effect.sleep("20 millis")
+        assert.isFalse(started && !stopped, `MaxOpsBeforeYield ${budget}`)
+      }
     }))
 
   it.live("hands a click to the handler and refuses a modal as Unsupported", () =>

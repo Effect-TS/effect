@@ -184,17 +184,23 @@ export const handleRequest = (
   request: HttpServerRequest.HttpServerRequest,
   options: Options
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
-  Effect.gen(function*() {
-    const fiber = yield* Effect.forkDetach(work(request, options))
-    const response = yield* Effect.onInterrupt(
-      Effect.timeoutOption(Fiber.join(fiber), options.deadline),
-      () => Fiber.interrupt(fiber)
-    )
-    if (Option.isSome(response)) return response.value
-    yield* Effect.forkDetach(Fiber.interrupt(fiber))
-    yield* Effect.logWarning(logged.deadline)
-    return status(503)
-  })
+  // Masked, so a cancellation can't land between forking the worker and
+  // arranging its interruption; only the wait itself is interruptible.
+  Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function*() {
+      const fiber = yield* Effect.forkDetach(work(request, options))
+      // Interrupted without being awaited, here and at the deadline, so no finalizer delays the answer.
+      const stop = Effect.asVoid(Effect.forkDetach(Fiber.interrupt(fiber)))
+      const response = yield* Effect.onInterrupt(
+        restore(Effect.timeoutOption(Fiber.join(fiber), options.deadline)),
+        () => stop
+      )
+      if (Option.isSome(response)) return response.value
+      yield* stop
+      yield* Effect.logWarning(logged.deadline)
+      return status(503)
+    })
+  )
 
 const work = (
   request: HttpServerRequest.HttpServerRequest,

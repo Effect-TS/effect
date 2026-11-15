@@ -327,11 +327,63 @@ const thematicBreak = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
 const definition = /^ {0,3}\[[^\]]+\]:/
 const blockStart = /^(?: {4}|\t| {0,3}(?:[>#|]|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|`{3}|~{3}))/
 const tableDelimiter = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
-const containerPrefix = /^((?: {0,3}>[ \t]?)*)( {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+)?/
+const quoteMarker = /^ {0,3}>[ \t]?/
+const listMarker = /^( {0,3}(?:[-*+]|\d{1,9}[.)]))([ \t]+|$)/
 
 const cells = (row: string) => row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length
 
 const isBlank = (line: string) => line.trim() === ""
+
+/**
+ * The quotes and list items a line opens, outermost first, and the rest of
+ * the line. A quote is 0, and a list item the indentation its content needs.
+ */
+const containers = (line: string): { readonly stack: ReadonlyArray<number>; readonly rest: string } => {
+  const stack: Array<number> = []
+  let rest = line
+  while (true) {
+    const quote = quoteMarker.exec(rest)
+    if (quote !== null) {
+      stack.push(0)
+      rest = rest.slice(quote[0].length)
+      continue
+    }
+    const item = listMarker.exec(rest)
+    if (item === null || thematicBreak.test(rest)) break
+    // Five spaces or more after the marker start indented code, whose content starts after one.
+    const width = item[2] === "" || item[2].length >= 5 ? item[1].length + 1 : item[0].length
+    stack.push(width)
+    rest = rest.slice(Math.min(width, item[0].length))
+  }
+  return { stack, rest }
+}
+
+/** What is left of a line inside the containers of `stack`, or `undefined` when the line ends one of them. */
+const inside = (line: string, stack: ReadonlyArray<number>): string | undefined => {
+  let rest = line
+  for (const width of stack) {
+    if (width === 0) {
+      const quote = quoteMarker.exec(rest)
+      if (quote === null) return undefined
+      rest = rest.slice(quote[0].length)
+      continue
+    }
+    if (isBlank(rest)) return ""
+    let column = 0
+    let k = 0
+    while (column < width && (rest[k] === " " || rest[k] === "\t")) {
+      column += rest[k] === "\t" ? 4 - (column % 4) : 1
+      k++
+    }
+    if (column < width) return undefined
+    rest = rest.slice(k)
+  }
+  return rest
+}
+
+/** Whether a line starts a block, which ends a definition or a table that was being kept as typed. */
+const opensBlock = (line: string) =>
+  fenceOpen.test(line) || atxHeading.test(line) || thematicBreak.test(line) || containers(line).stack.length > 0
 
 /**
  * Markdown as WhatsApp text, never longer than the Markdown in code points,
@@ -347,33 +399,42 @@ export const render = (markdown: string): string => {
   let i = 0
   while (i < lines.length) {
     const line = body(i)
-    const prefix = containerPrefix.exec(line)![0]
-    const rest = line.slice(prefix.length)
+    const { rest, stack } = containers(line)
     const fence = fenceOpen.exec(rest)
     if (fence !== null && !(fence[2][0] === "`" && fence[3].includes("`"))) {
-      // A fence inside a quote or list item closes on any line whose container markers precede the fence.
-      const nested = prefix !== ""
-      const char = fence[2][0]
-      const closing = new RegExp(
-        (nested ? "^[ \\t>]*" : "^ {0,3}") + (char === "~" ? "~" : "`") + "{" + fence[2].length + ",}[ \\t]*$"
-      )
+      // The closer is matched inside the opener's quotes and list items. A line outside them ends the code too.
+      const closing = new RegExp("^ {0,3}" + (fence[2][0] === "~" ? "~" : "`") + "{" + fence[2].length + ",}[ \\t]*$")
       let j = i + 1
-      while (j < lines.length && !closing.test(body(j))) j++
-      if (j >= lines.length) {
-        out += lines.slice(i).join("")
-        break
+      let closed = false
+      for (; j < lines.length; j++) {
+        const code = inside(body(j), stack)
+        if (code === undefined) break
+        if (closing.test(code)) {
+          closed = true
+          break
+        }
+      }
+      if (!closed) {
+        out += lines.slice(i, j).join("")
+        i = j
+        continue
       }
       const content = lines.slice(i + 1, j).join("")
       const source = lines.slice(i, j + 1).join("")
       const candidate = "```" + eol(i) + content + "```" + eol(j)
-      out += nested || content.includes("```") ? source : pick(candidate, source)
+      out += stack.length > 0 || content.includes("```") ? source : pick(candidate, source)
       i = j + 1
       continue
     }
     if (definition.test(rest)) {
-      // A definition's destination and title may continue on the next lines.
-      let j = i
-      while (j < lines.length && !isBlank(body(j).slice(containerPrefix.exec(body(j))![0].length))) out += lines[j++]
+      // A destination or title may continue on the next lines, up to a blank line or the start of a block.
+      out += lines[i]
+      let j = i + 1
+      while (j < lines.length) {
+        const next = inside(body(j), stack) ?? body(j)
+        if (isBlank(next) || opensBlock(next)) break
+        out += lines[j++]
+      }
       i = j
       continue
     }
@@ -381,7 +442,7 @@ export const render = (markdown: string): string => {
       if (cells(line) === cells(body(i + 1))) {
         out += lines[i]
         let j = i + 2
-        while (j < lines.length && !isBlank(body(j))) out += lines[j++]
+        while (j < lines.length && !isBlank(body(j)) && !opensBlock(body(j))) out += lines[j++]
         i = j
         continue
       }
@@ -407,7 +468,7 @@ export const render = (markdown: string): string => {
       i++
       continue
     }
-    out += prefix + inline(rest) + eol(i)
+    out += line.slice(0, line.length - rest.length) + inline(rest) + eol(i)
     i++
   }
   return out
