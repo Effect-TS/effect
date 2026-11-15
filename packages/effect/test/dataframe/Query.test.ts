@@ -195,6 +195,32 @@ describe("Query", () => {
           })))
         )
         assert.deepStrictEqual(casts, [{ fromFloat: null, fromUInt64: null, toUInt64: null }])
+        // Expected values from Polars 2.1.0 non-strict casts.
+        const temporal = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(
+          ArrowSchema.make([
+            ArrowSchema.field("t", ArrowSchema.timestamp("millisecond")),
+            ArrowSchema.field("d", ArrowSchema.duration("millisecond")),
+            ArrowSchema.field("i", ArrowSchema.int64)
+          ]),
+          [[10n ** 17n], [10n ** 17n], [2n ** 40n]]
+        ))) as DataFrame.DataFrame<unknown> as DataFrame.DataFrame<{ t: DateTime.Utc; d: Duration.Duration; i: bigint }>
+        const overflows = yield* rows(
+          Query.from(temporal).pipe(Query.select((c) => ({
+            t: Expr.cast(c.t, "Timestamp[ns]"),
+            d: Expr.cast(c.d, "Duration[ns]"),
+            i: Expr.cast(c.i, "Date")
+          })))
+        )
+        assert.deepStrictEqual(overflows, [{ t: null, d: null, i: null }])
+      }))
+        )
+        assert.deepStrictEqual(DataFrame.toRows(df), [{ sum: 301, gt: false, when: 1, coalesce: 1 }])
+        assert.deepStrictEqual(df.schema.fields.map((f) => f.type), [
+          ArrowSchema.int16,
+          ArrowSchema.bool,
+          ArrowSchema.int16,
+          ArrowSchema.int16
+        ])
       }))
 
     it.effect("temporal operands of mixed units meet in the coarser unit, as in Polars", () =>

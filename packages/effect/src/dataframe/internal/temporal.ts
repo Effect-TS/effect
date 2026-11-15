@@ -53,21 +53,28 @@ const floorDiv = (a: bigint, b: bigint): bigint => {
   return (a % b !== BigInt(0)) && ((a < BigInt(0)) !== (b < BigInt(0))) ? q - BigInt(1) : q
 }
 
-/**
- * Rescales integer counts of `from` units to `to` units, rounding down
- * (toward zero when `truncate`, as Polars rescales durations).
- */
-const rescale = (values: BigInt64Array, from: S.TimeUnit, to: S.TimeUnit, truncate = false): BigInt64Array => {
-  if (from === to) return values
-  const out = new BigInt64Array(values.length)
-  if (fineness[to] > fineness[from]) {
-    const f = BigInt(perSecond[to] / perSecond[from])
-    for (let i = 0; i < values.length; i++) out[i] = BigInt.asIntN(64, values[i] * f)
-  } else {
-    const f = BigInt(perSecond[from] / perSecond[to])
-    for (let i = 0; i < values.length; i++) out[i] = truncate ? values[i] / f : floorDiv(values[i], f)
+/** `v`'s integers times `factor` as `target`; null where the product leaves 64 bits. */
+const multiply = (v: V.Vector, factor: bigint, target: S.DataType): V.Vector => {
+  const x = asI64(v)
+  const out = new BigInt64Array(x.length)
+  const valid = new Uint8Array(x.length)
+  for (let i = 0; i < x.length; i++) {
+    const y = x[i] * factor
+    out[i] = BigInt.asIntN(64, y)
+    valid[i] = V.isValid(v, i) && out[i] === y ? 1 : 0
   }
-  return out
+  return V.i64(target, out, V.compactValid(valid))
+}
+
+/**
+ * Rescales integer counts of `from` units to `to` units as `target`,
+ * rounding down (toward zero when `truncate`, as Polars rescales
+ * durations); counts that leave 64 bits become null.
+ */
+const rescale = (v: V.Vector, from: S.TimeUnit, to: S.TimeUnit, target: S.DataType, truncate = false): V.Vector => {
+  if (fineness[to] > fineness[from]) return multiply(v, BigInt(perSecond[to] / perSecond[from]), target)
+  const f = BigInt(perSecond[from] / perSecond[to])
+  return V.i64(target, BigInt64Array.from(asI64(v), (x) => (truncate ? x / f : floorDiv(x, f))), v.valid)
 }
 
 const dayUnits = (unit: S.TimeUnit): bigint => BigInt(86_400 * perSecond[unit])
@@ -288,27 +295,24 @@ const asI64 = (v: V.Vector): BigInt64Array =>
 
 /**
  * Casts between dates, timestamps, durations and their integers; `undefined`
- * when neither side is temporal.
+ * when neither side is temporal. Values the target can't hold become null.
  *
  * @internal
  */
 export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
   const from = v.type
   if (!isTemporal(from) && !isTemporal(target)) return undefined
-  if (from._tag === "Timestamp" && target._tag === "Timestamp") {
-    return V.i64(target, rescale(asI64(v), from.unit, target.unit), v.valid)
-  }
-  if (from._tag === "Duration" && target._tag === "Duration") {
-    return V.i64(target, rescale(asI64(v), from.unit, target.unit, true), v.valid)
-  }
+  if (from._tag === "Timestamp" && target._tag === "Timestamp") return rescale(v, from.unit, target.unit, target)
+  if (from._tag === "Duration" && target._tag === "Duration") return rescale(v, from.unit, target.unit, target, true)
   if (from._tag === "Timestamp" && target._tag === "Date") {
     return target.unit === "day"
       ? V.i32(target, Int32Array.from(days(v)), v.valid)
-      : V.i64(target, rescale(asI64(v), from.unit, "millisecond"), v.valid)
+      : rescale(v, from.unit, "millisecond", target)
   }
   if (from._tag === "Date" && target._tag === "Timestamp") {
-    const per = from.unit === "day" ? dayUnits(target.unit) : BigInt(perSecond[target.unit] / 1000)
-    return V.i64(target, BigInt64Array.from(asI64(v), (x) => BigInt.asIntN(64, x * per)), v.valid)
+    return from.unit === "day"
+      ? multiply(v, dayUnits(target.unit), target)
+      : rescale(v, "millisecond", target.unit, target)
   }
   // Integers and temporal values of the same width reinterpret each other.
   if (target._tag === "Int" || isTemporal(target)) {
@@ -316,7 +320,13 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
     if (kind === "i64") return V.i64(target, asI64(v), v.valid)
     if (kind === "i32" && v.kind === "i32") return V.i32(target, v.values, v.valid)
     if (kind === "i32" && v.kind === "i64") {
-      return V.i32(target, Int32Array.from(v.values, (x) => Number(BigInt.asIntN(32, x))), v.valid)
+      const valid = new Uint8Array(v.length)
+      const out = Int32Array.from(v.values, (x, i) => {
+        const y = Number(BigInt.asIntN(32, x))
+        valid[i] = V.isValid(v, i) && BigInt(y) === x ? 1 : 0
+        return y
+      })
+      return V.i32(target, out, V.compactValid(valid))
     }
   }
   return undefined
