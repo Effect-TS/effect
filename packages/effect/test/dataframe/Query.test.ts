@@ -213,6 +213,39 @@ describe("Query", () => {
         )
         assert.deepStrictEqual(overflows, [{ t: null, d: null, i: null }])
       }))
+
+    it.effect("implicit conversions to a common type fail on values it can't hold", () =>
+      Effect.gen(function*() {
+        const Price = Schema.Struct({ d: Schema.BigDecimal })
+        const price = (d: string, precision: number, scale: number) =>
+          DataFrame.fromRows(Price, [{ d: BigDecimal.fromStringUnsafe(d) }], {
+            types: { d: ArrowSchema.decimal(precision, scale) }
+          })
+        const big = Query.from(price("6000000000000000000", 19, 0))
+        const small = Query.from(price("1.20", 18, 2))
+        const groups = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
+          Query.groupBy("d"),
+          Query.agg(() => ({ n: Expr.count() })),
+          Effect.provide(Catalog.layer({ t: Stream.make(price("6000000000000000000", 19, 0), price("1.20", 18, 2)) }))
+        )
+        const failures: ReadonlyArray<Effect.Effect<unknown, DataFrame.DataFrameError>> = [
+          Query.concat([big, small]),
+          groups,
+          Query.join(big, small, { on: "d", how: "left" }),
+          Query.filter(big, (c) => Expr.eq(c.d, BigDecimal.fromStringUnsafe("1.20")))
+        ]
+        for (const query of failures) {
+          const error = yield* Effect.flip(query)
+          assert.strictEqual(error.message, "Decimal[19, 0] values don't fit their common type Decimal[38, 2]")
+        }
+        // An integer literal a column's type can't hold widens it, as in Polars 2.1.0.
+        const df = yield* Query.from(DataFrame.fromColumns({ x: Int8Array.of(1) })).pipe(
+          Query.select((c) => ({
+            sum: Expr.add(c.x, 300),
+            gt: Expr.gt(c.x, 1000),
+            when: Expr.when(Expr.gt(c.x, 0), c.x, 1000),
+            coalesce: Expr.coalesce(c.x, 1000)
+          }))
         )
         assert.deepStrictEqual(DataFrame.toRows(df), [{ sum: 301, gt: false, when: 1, coalesce: 1 }])
         assert.deepStrictEqual(df.schema.fields.map((f) => f.type), [

@@ -379,7 +379,7 @@ const unifyKeys = (l: V.Vector, r: V.Vector): [V.Vector, V.Vector] => {
   if (D.sameType(l.type, r.type)) return [l, r]
   const st = D.supertype(l.type, undefined, r.type, undefined)
   if (st === undefined) return V.fail(`cannot join ${D.describe(l.type)} with ${D.describe(r.type)}`)
-  return [K.cast(l, st.type), K.cast(r, st.type)]
+  return [K.coerce(l, st.type), K.coerce(r, st.type)]
 }
 
 /**
@@ -744,7 +744,7 @@ export const unpivot = (
     return st === undefined ? V.fail(`cannot unpivot ${D.describe(t)} with ${D.describe(p.type)}`) : st.type
   }, parts.length === 0 ? S.nullType : parts[0].type)
   const variable = V.stringsFrom(S.utf8, options.on.flatMap((name) => Array.from({ length: n }, () => name)))
-  const value = k === 0 ? V.nulls(0) : V.concat(parts.map((p) => K.cast(p, type)))
+  const value = k === 0 ? V.nulls(0) : V.concat(parts.map((p) => K.coerce(p, type)))
   return make(
     [...keys, new Column(options.variable, variable, undefined, false), new Column(options.value, value, undefined)],
     n * k

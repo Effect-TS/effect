@@ -97,8 +97,8 @@ const INT_SYNTAX = /^[+-]?\d+$/
 const formatNumber = (x: number): string => String(x)
 
 /**
- * Converts `v` to `target`. Values that don't fit become null (Polars'
- * non-strict casts).
+ * Converts `v` to `target`, as `Expr.cast` does. Values that don't fit
+ * become null (Polars' non-strict casts).
  *
  * @internal
  */
@@ -279,17 +279,44 @@ export const commonType = (types: ReadonlyArray<S.DataType>): S.DataType =>
     return common === undefined ? V.fail(`cannot concatenate ${D.describe(t)} with ${D.describe(u)}`) : common.type
   })
 
-/** Concatenates vectors, cast to their {@link commonType}. @internal */
-export const concat = (parts: ReadonlyArray<V.Vector>): V.Vector => {
-  const type = commonType(parts.map((p) => p.type))
-  return V.concat(parts.map((p) => cast(p, type)))
+/**
+ * Converts `v` to `target`, a type it shares with other values (their
+ * {@link commonType}, an operation's supertype) without being asked to: a
+ * value `target` can't represent fails, where {@link cast} makes it null.
+ * Conversions to the common type may still round, as Polars' do (integers
+ * to floats, timestamps to a coarser unit).
+ *
+ * @internal
+ */
+export const coerce = (v: V.Vector, target: S.DataType): V.Vector => {
+  const out = cast(v, target)
+  if (out.valid !== undefined || out.kind === "null") {
+    for (let i = 0; i < v.length; i++) {
+      if (V.isValid(v, i) && !V.isValid(out, i)) {
+        return V.fail(`${D.describe(v.type)} values don't fit their common type ${D.describe(target)}`)
+      }
+    }
+  }
+  return out
 }
 
-/** Casts a value, keeping its shape. @internal */
+/** Concatenates vectors, coerced to their {@link commonType}. @internal */
+export const concat = (parts: ReadonlyArray<V.Vector>): V.Vector => {
+  const type = commonType(parts.map((p) => p.type))
+  return V.concat(parts.map((p) => coerce(p, type)))
+}
+
+/** Casts a value ({@link cast}), keeping its shape. @internal */
 export const castValue = (value: Value, target: S.DataType): Value =>
   D.sameType(value.vector.type, target)
     ? value
     : { vector: cast(value.vector, target), scalar: value.scalar, dynamic: undefined }
+
+/** Coerces a value ({@link coerce}), keeping its shape. */
+const coerceValue = (value: Value, target: S.DataType): Value =>
+  D.sameType(value.vector.type, target)
+    ? value
+    : { vector: coerce(value.vector, target), scalar: value.scalar, dynamic: undefined }
 
 // -----------------------------------------------------------------------------
 // Arithmetic
@@ -298,8 +325,25 @@ export const castValue = (value: Value, target: S.DataType): Value =>
 /** @internal */
 export type ArithOp = "add" | "sub" | "mul" | "div" | "floorDiv" | "mod"
 
+/**
+ * The type and dynamism of an operand next to one of type `other`: an
+ * integer literal whose value `other` can't hold commits to the smallest
+ * signed integer type that holds it, instead of adopting `other`, as in
+ * Polars (`Int8 + 300` is Int16).
+ */
+const operand = (v: Value, other: S.DataType): readonly [S.DataType, D.Dynamic] => {
+  if (v.dynamic !== "int" || other._tag !== "Int" || v.vector.kind !== "i32") return [v.vector.type, v.dynamic]
+  const x = v.vector.values[0]
+  const [lo, hi] = intRange(other)
+  if (x >= lo && x <= hi) return [v.vector.type, v.dynamic]
+  return [x >= -128 && x <= 127 ? S.int8 : x >= -32768 && x <= 32767 ? S.int16 : S.int32, undefined]
+}
+
+/** The common type of two operands (`D.supertype`, literals fitted by {@link operand}). */
+const supertype = (a: Value, b: Value) => D.supertype(...operand(a, b.vector.type), ...operand(b, a.vector.type))
+
 const unify = (op: string, a: Value, b: Value) => {
-  const st = D.supertype(a.vector.type, a.dynamic, b.vector.type, b.dynamic)
+  const st = supertype(a, b)
   if (st === undefined || !(D.isNumeric(st.type) || st.type._tag === "Null")) {
     return V.fail(`${op} is not defined for ${D.describe(a.vector.type)} and ${D.describe(b.vector.type)}`)
   }
@@ -319,7 +363,7 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
   const at = a.vector.type
   const bt = b.vector.type
   const unsupported = () => V.fail(`${op} is not defined for ${D.describe(at)} and ${D.describe(bt)}`)
-  const asInt = (v: Value, type: S.DataType) => relabel(castValue(v, type), S.int64)
+  const asInt = (v: Value, type: S.DataType) => relabel(coerceValue(v, type), S.int64)
   const point = (t: S.DataType) => t._tag === "Date" || t._tag === "Timestamp"
   if (op === "sub" && point(at) && point(bt)) {
     if (at._tag === "Date" && bt._tag === "Date") {
@@ -341,7 +385,7 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
     return relabel(arith(op, asInt(a, d), asInt(b, d), length), d)
   }
   if (op === "mul" && at._tag === "Duration" && D.isInteger(bt)) {
-    return relabel(arith("mul", relabel(a, S.int64), castValue(b, S.int64), length), at)
+    return relabel(arith("mul", relabel(a, S.int64), coerceValue(b, S.int64), length), at)
   }
   if (op === "mul" && bt._tag === "Duration" && D.isInteger(at)) return temporalArith(op, b, a, length)
   return unsupported()
@@ -352,14 +396,14 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
  * types); other operations and mixes with floats run on floats.
  */
 const decimalArith = (op: ArithOp, a: Value, b: Value, length: number): Value => {
-  const st = D.supertype(a.vector.type, a.dynamic, b.vector.type, b.dynamic)
+  const st = supertype(a, b)
   if (st === undefined) {
     return V.fail(`${op} is not defined for ${D.describe(a.vector.type)} and ${D.describe(b.vector.type)}`)
   }
   if (!Dec.isDecimal(st.type) || (op !== "add" && op !== "sub" && op !== "mul")) {
-    return arith(op, castValue(a, S.float64), castValue(b, S.float64), length)
+    return arith(op, coerceValue(a, S.float64), coerceValue(b, S.float64), length)
   }
-  const asDecimal = (v: Value): Value => (Dec.isDecimal(v.vector.type) ? v : castValue(v, Dec.decimal(0)))
+  const asDecimal = (v: Value): Value => (Dec.isDecimal(v.vector.type) ? v : coerceValue(v, Dec.decimal(0)))
   let left = asDecimal(a)
   const right = asDecimal(b)
   const n = left.scalar && right.scalar ? 1 : length
@@ -393,8 +437,8 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
   const valid = resultValid(a, b, n)
   if (valid === "all-null") return { vector: nullsOf(type, n), scalar: a.scalar && b.scalar, dynamic }
   // A scalar on the left: materialise it (rare) so kernels only see col op col / col op scalar.
-  let left = castValue(a, type)
-  const right = castValue(b, type)
+  let left = coerceValue(a, type)
+  const right = coerceValue(b, type)
   if (left.scalar && !right.scalar) left = column(materialize(left, n))
   const lv = left.vector
   const rv = right.vector
@@ -571,7 +615,7 @@ export const unaryNumeric = (op: "neg" | "abs" | "sqrt" | "round", a: Value, dec
   const v = a.vector
   const n = v.length
   if (v.kind === "null") return a
-  if (op === "sqrt" && v.kind !== "f64") return unaryNumeric(op, castValue(a, S.float64))
+  if (op === "sqrt" && v.kind !== "f64") return unaryNumeric(op, coerceValue(a, S.float64))
   if (op === "round" && !(Number.isInteger(decimals) && decimals >= 0)) {
     return V.fail(`round needs a non-negative whole number of decimals, got ${decimals}`)
   }
@@ -685,23 +729,23 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
   let left = a
   let right = b
   if (D.isNumeric(at) && D.isNumeric(bt) && !D.sameType(at, bt)) {
-    const st = D.supertype(at, a.dynamic, bt, b.dynamic)!.type
+    const st = supertype(a, b)!.type
     // Compare mixed widths as Float64 unless both are 64-bit integers.
     const target = V.kindOf(st) === "i64" && V.kindOf(at) === "i64" && V.kindOf(bt) === "i64" ? st : S.float64
-    left = castValue(a, V.kindOf(st) === "i32" ? st : target)
-    right = castValue(b, V.kindOf(st) === "i32" ? st : target)
+    left = coerceValue(a, V.kindOf(st) === "i32" ? st : target)
+    right = coerceValue(b, V.kindOf(st) === "i32" ? st : target)
   } else if (at._tag === "Null" || bt._tag === "Null") {
     return { vector: nullsOf(S.bool, n), scalar: a.scalar, dynamic: undefined }
   } else if ((Dec.isDecimal(at) || Dec.isDecimal(bt)) && !D.sameType(at, bt)) {
-    const st = D.supertype(at, a.dynamic, bt, b.dynamic)
+    const st = supertype(a, b)
     if (st === undefined) return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
-    left = castValue(a, st.type)
-    right = castValue(b, st.type)
+    left = coerceValue(a, st.type)
+    right = coerceValue(b, st.type)
   } else if ((T.isTemporal(at) || T.isTemporal(bt)) && !D.sameType(at, bt)) {
     const st = T.supertype(at, bt)
     if (st === undefined) return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
-    left = castValue(a, st)
-    right = castValue(b, st)
+    left = coerceValue(a, st)
+    right = coerceValue(b, st)
   } else if (!D.sameType(at, bt) && !(D.isBinaryLike(at) && D.isBinaryLike(bt))) {
     return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
   }
@@ -1012,7 +1056,7 @@ export const isNaN_ = (a: Value): Value => {
  * @internal
  */
 export const when = (cond: Value, then: Value, otherwise: Value, length: number): Value => {
-  const st = D.supertype(then.vector.type, then.dynamic, otherwise.vector.type, otherwise.dynamic)
+  const st = supertype(then, otherwise)
   if (st === undefined) {
     return V.fail(
       `when branches have incompatible types ${D.describe(then.vector.type)} and ${D.describe(otherwise.vector.type)}`
@@ -1025,7 +1069,7 @@ export const when = (cond: Value, then: Value, otherwise: Value, length: number)
   const cv = c.values
   const ca = c.valid
   for (let i = 0; i < n; i++) mask[i] = (cv[i] & (ca === undefined ? 1 : ca[i])) === 1 ? 0 : 1
-  const branches = [materialize(castValue(then, st.type), n), materialize(castValue(otherwise, st.type), n)]
+  const branches = [materialize(coerceValue(then, st.type), n), materialize(coerceValue(otherwise, st.type), n)]
   return { vector: select(branches, mask), scalar: allScalar, dynamic: st.dynamic }
 }
 
@@ -1088,14 +1132,14 @@ export const coalesce = (values: ReadonlyArray<Value>, length: number): Value =>
   let type = acc.vector.type
   let dynamic = acc.dynamic
   for (const v of values.slice(1)) {
-    const st = D.supertype(type, dynamic, v.vector.type, v.dynamic)
+    const st = D.supertype(type, dynamic, ...operand(v, type))
     if (st === undefined) return V.fail(`coalesce arguments have incompatible types`)
     type = st.type
     dynamic = st.dynamic
   }
   const allScalar = values.every((v) => v.scalar)
   const n = allScalar ? 1 : length
-  const vectors = values.map((v) => materialize(castValue(v, type), n))
+  const vectors = values.map((v) => materialize(coerceValue(v, type), n))
   const choice = new Int32Array(n)
   for (let i = 0; i < n; i++) {
     let k = 0

@@ -467,6 +467,13 @@ export const dropNulls: {
  * The rows of every query, one after the other. The queries must have the
  * same columns.
  *
+ * **Gotchas**
+ *
+ * Columns of different Arrow types (decimals of different scales, integers
+ * of different widths) take their common type, as in Polars. A value the
+ * common type can't hold, such as a decimal that leaves 64-bit storage at
+ * the larger scale, fails with a `DataFrameError` instead of becoming null.
+ *
  * @stability experimental
  * @category combining
  * @since 4.1.5
@@ -823,7 +830,7 @@ export const pivot: {
  * Stacks the `on` columns into one `value` column (`"value"` by default),
  * one block of rows per column, with the column's name in `variable`
  * (`"variable"` by default) and the `index` columns repeated. The values
- * take the common type of the stacked columns.
+ * take the common type of the stacked columns; a value it can't hold fails.
  *
  * @stability experimental
  * @category reshaping

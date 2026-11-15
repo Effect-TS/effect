@@ -30,7 +30,11 @@
  *   returns a float; `floorDivide` and `mod` round towards negative infinity,
  *   and an integer division by zero gives `null`.
  * - An integer literal takes the integer type of the column it meets
- *   (`c.int8Column + 1` stays Int8).
+ *   (`c.int8Column + 1` stays Int8) when the type holds it, and widens it
+ *   otherwise (`c.int8Column + 300` is Int16).
+ * - Operands of different types meet in their common type. A value the
+ *   common type can't hold fails the query with a `DataFrameError`; only
+ *   an explicit {@link cast} makes it `null`.
  * - Decimals are stored as 64-bit unscaled integers, so they hold up to 18
  *   digits. Unlike integers they never wrap: a decimal result outside that
  *   storage (from arithmetic, sums, `abs`, `negate`, `round` or a
@@ -261,7 +265,8 @@ export const fromPlan: {
 
 /**
  * A constant. Integers between -2^31 and 2^31 - 1 adopt the integer type of
- * the column they meet; other numbers are Float64; bigints are Int64.
+ * the column they meet when it holds them; other numbers are Float64;
+ * bigints are Int64.
  *
  * @stability experimental
  * @category constructors
