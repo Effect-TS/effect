@@ -113,18 +113,18 @@ const decimalReader = (type: S.Decimal, bytes: Uint8Array, offset: number): Read
 
 const msPerDay = 86_400_000
 
-// The range DateTime accepts for zoned values; Utc values may use the full Date range.
-const minZonedMillis = -8640000000000000 + 12 * 60 * 60 * 1000
-const maxZonedMillis = 8640000000000000 - 14 * 60 * 60 * 1000
+// The range DateTime accepts: the `Date` range for Utc values, narrowed by the largest offsets for zoned ones.
+const maxMillis = 8640000000000000
+const minZonedMillis = -maxMillis + 12 * 60 * 60 * 1000
+const maxZonedMillis = maxMillis - 14 * 60 * 60 * 1000
 
-/** A `DateTime.Utc` without the `Date` round trip `DateTime.makeUnsafe` makes. */
-const utc = (ms: number): DateTime.Utc =>
-  ms >= -8640000000000000 && ms <= 8640000000000000 ? InternalDateTime.makeUtc(ms) : DateTime.makeUnsafe(ms)
+/** A `DateTime.Utc`, or `raw` (the stored integer) outside the range `DateTime` accepts. */
+const utc = (ms: number, raw: number | bigint): DateTime.Utc | number | bigint =>
+  ms >= -maxMillis && ms <= maxMillis ? InternalDateTime.makeUtc(ms) : raw
 
-const zoned = (ms: number, zone: DateTime.TimeZone): DateTime.Zoned =>
-  ms >= minZonedMillis && ms <= maxZonedMillis
-    ? InternalDateTime.makeZonedProto(ms, zone)
-    : DateTime.makeZonedUnsafe(ms, { timeZone: zone })
+/** A `DateTime.Zoned`, or `raw` (the stored integer) outside the range `DateTime` accepts. */
+const zoned = (ms: number, zone: DateTime.TimeZone, raw: bigint): DateTime.Zoned | bigint =>
+  ms >= minZonedMillis && ms <= maxZonedMillis ? InternalDateTime.makeZonedProto(ms, zone) : raw
 const bigThousand = BigInt(1000)
 const bigMillion = BigInt(1_000_000)
 
@@ -236,10 +236,10 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
     case "Date": {
       if (type.unit === "day") {
         const a = typed(Int32Array, buffers[0])
-        return withValidity(data, (i) => utc(a[i + offset] * msPerDay))
+        return withValidity(data, (i) => utc(a[i + offset] * msPerDay, a[i + offset]))
       }
       const a = typed(BigInt64Array, buffers[0])
-      return withValidity(data, (i) => utc(Number(a[i + offset])))
+      return withValidity(data, (i) => utc(Number(a[i + offset]), a[i + offset]))
     }
     case "Timestamp": {
       const a = typed(BigInt64Array, buffers[0])
@@ -250,8 +250,8 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       return withValidity(
         data,
         zone === undefined
-          ? (i) => utc(toMillis(unit, a[i + offset]))
-          : (i) => zoned(toMillis(unit, a[i + offset]), zone)
+          ? (i) => utc(toMillis(unit, a[i + offset]), a[i + offset])
+          : (i) => zoned(toMillis(unit, a[i + offset]), zone, a[i + offset])
       )
     }
     case "Time": {

@@ -38,6 +38,10 @@
  *   timestamps are rounded down to the millisecond. The exact value is in the
  *   column's buffers.
  * - Timestamps without a time zone are read as UTC.
+ * - A `Date` or `Timestamp` outside the range `DateTime` supports (about
+ *   275,000 years either side of 1970) reads as its stored integer in the
+ *   type's unit: a `number` for days, a `bigint` otherwise. Building accepts
+ *   that integer back.
  * - A struct with repeated member names keeps the last member of each name.
  * - Invalid UTF-8 reads as U+FFFD.
  *

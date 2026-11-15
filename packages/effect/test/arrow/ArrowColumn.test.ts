@@ -41,6 +41,9 @@ const cases: ReadonlyArray<
     utc("1970-01-01T00:00:00Z")
   ]],
   ["timestamp with time zone", S.timestamp("second", "Europe/Paris"), [paris(0), 60], [paris(0), paris(60000)]],
+  // Outside the DateTime range (8.64e15 ms either side of 1970), the stored integer
+  ["date (days) beyond DateTime", S.date("day"), [2147483647]],
+  ["timestamp beyond DateTime", S.timestamp("millisecond"), [9e15], [9000000000000000n]],
   ["duration", S.duration("millisecond"), [Duration.seconds(1), 5n, null], [
     Duration.seconds(1),
     Duration.millis(5),
