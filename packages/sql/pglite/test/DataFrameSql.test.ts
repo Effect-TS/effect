@@ -37,12 +37,6 @@ const regions = [
 const Setup = Layer.effectDiscard(
   Effect.gen(function*() {
     const sql = yield* SqlClient
-    yield* sql`DROP TABLE IF EXISTS sales`
-    yield* sql`DROP TABLE IF EXISTS regions`
-    yield* sql`DROP TABLE IF EXISTS contract`
-    yield* sql`DROP TABLE IF EXISTS second`
-    yield* sql`DROP TABLE IF EXISTS "__table0"`
-    yield* sql`DROP TABLE IF EXISTS "__table1"`
     yield* sql`CREATE TABLE sales (id DOUBLE PRECISION, region TEXT, units DOUBLE PRECISION, price DOUBLE PRECISION, at TIMESTAMP)`
     yield* sql`CREATE TABLE regions (region TEXT, manager TEXT)`
     for (const s of sales) {
@@ -61,36 +55,26 @@ const Setup = Layer.effectDiscard(
     yield* sql`CREATE TABLE "__table1" (s TEXT)`
     yield* sql`INSERT INTO "__table1" VALUES ('bad')`
     for (const name of [long, underscores]) {
-      yield* sql.unsafe(`DROP TABLE IF EXISTS "${name}"`)
       yield* sql.unsafe(`CREATE TABLE "${name}" (s TEXT)`)
       yield* sql.unsafe(`INSERT INTO "${name}" VALUES ('${name.length}')`)
     }
-    yield* sql.unsafe(`DROP TABLE IF EXISTS shared`)
     yield* sql.unsafe(`CREATE TABLE shared ("${"z".repeat(63)}" DOUBLE PRECISION)`)
     yield* sql`INSERT INTO shared VALUES (1)`
-    yield* sql`DROP TABLE IF EXISTS "a.b"`
     yield* sql`CREATE TABLE "a.b" (s TEXT)`
     yield* sql`INSERT INTO "a.b" VALUES ('good')`
-    yield* sql`CREATE SCHEMA IF NOT EXISTS a`
-    yield* sql`DROP TABLE IF EXISTS a.b`
+    yield* sql`CREATE SCHEMA a`
     yield* sql`CREATE TABLE a.b (s TEXT)`
     yield* sql`INSERT INTO a.b VALUES ('bad')`
-    yield* sql`DROP TABLE IF EXISTS odd`
     yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL, forever TIMESTAMP, endless DATE)`
     yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month', 'infinity', 'infinity')`
-    yield* sql`DROP TABLE IF EXISTS declared`
     yield* sql`CREATE TABLE declared (t TIMESTAMP, d INTERVAL, n NUMERIC)`
     yield* sql`INSERT INTO declared VALUES ('1970-01-01 00:00:01', '-2 seconds', 12.5), ('1969-12-31 23:59:58', '3 seconds', -0.05), (NULL, NULL, NULL)`
-    yield* sql`DROP TABLE IF EXISTS inexact`
     yield* sql`CREATE TABLE inexact (s TIMESTAMP, ms TIMESTAMP, ns TIMESTAMP, ds INTERVAL, dms INTERVAL, dns INTERVAL, scale NUMERIC, digits NUMERIC, wide NUMERIC, i8 INTEGER, u32 INTEGER, u64 BIGINT, f32 DOUBLE PRECISION, f32i INTEGER)`
     yield* sql`INSERT INTO inexact VALUES ('1970-01-01 00:00:01.5', '1970-01-01 00:00:01.0005', '2263-01-01', '-1.5 seconds', '0.0005 seconds', '110000 days', 1.005, 1000, 1, 256, -1, -1, 0.1, 16777217)`
-    yield* sql`DROP TABLE IF EXISTS exact`
     yield* sql`CREATE TABLE exact (i8 INTEGER, f32 DOUBLE PRECISION)`
     yield* sql`INSERT INTO exact VALUES (-128, 0.5), (127, 'NaN'), (0, '-Infinity'), (1, ${
       2 ** -149
     }), (2, '-0'), (3, ${(2 - 2 ** -23) * 2 ** 127})`
-    yield* sql`DROP TABLE IF EXISTS texts`
-    yield* sql`DROP TYPE IF EXISTS mood`
     yield* sql`CREATE TYPE mood AS ENUM ('zzz', 'aaa')`
     yield* sql`CREATE TABLE texts (m mood, c CHAR(3), v VARCHAR(5), sm SMALLINT, r REAL)`
     yield* sql`INSERT INTO texts VALUES ('zzz', 'ab', 'xy', 20000, 16777216), ('aaa', 'abc', 'x', -20000, 0.5)`
@@ -159,6 +143,11 @@ const types = (df: DataFrame.DataFrame<unknown>) =>
 
 const onSql = <R>(query: Query.Query<R>) => query.pipe(Effect.provide(Sql.layer))
 const rowsOnSql = <R>(query: Query.Query<R>) => Effect.map(onSql(query), DataFrame.toRows)
+/** The message of the error `query` fails with on SQL. */
+const rejects = <R>(query: Query.Query<R>) => Effect.map(Effect.flip(onSql(query)), (e) => e.message)
+/** Queries of the table `name` declared with a schema. */
+const tableOf = (name: string) => <S extends Schema.Top & { readonly Type: object }>(schema: S) =>
+  Query.table(name, schema)
 
 const xs = Query.from(DataFrame.fromColumns({ x: [1, 2, 3] }))
 const ints = Query.from(DataFrame.fromColumns({ x: Int32Array.of(1, 2, 3) }))
@@ -174,7 +163,7 @@ const ties = [0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 2.675, 1.005, 0.125, 0.375, 1.25,
 const decimals = arrow<{ d: BigDecimal.BigDecimal | null }>(
   [ArrowSchema.field("d", ArrowSchema.decimal(18, 3))],
   [["0.5", "1.5", "2.5", "-0.5", "-1.5", "-2.5", "2.675", "1.005", "0.125", null].map((s) =>
-    s === null ? null : BigDecimal.fromStringUnsafe(s)
+    s === null ? null : decimal(s)
   )]
 )
 const units = { s: "second", ms: "millisecond", us: "microsecond", ns: "nanosecond" } as const
@@ -333,7 +322,7 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
       [1500n, -90_000_001n, null],
       [1_700_000_000_123_456n, -1n, null],
       [19_000, -1, null],
-      [BigDecimal.fromStringUnsafe("12.34"), BigDecimal.fromStringUnsafe("-0.05"), null]
+      [decimal("12.34"), decimal("-0.05"), null]
     ]).pipe(Query.withColumns((c) => ({ s: Expr.totalSeconds(c.d), year: Expr.year(c.t) })))
   ],
   ...temporalCasts,
@@ -526,15 +515,16 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
 
     it.effect("errors carry the database's message", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(onSql(ints.pipe(Query.select((c) => ({ y: Expr.add(c.x, 2147483647) })))))
-        assert.include(error.message, "integer out of range")
+        assert.include(
+          yield* rejects(ints.pipe(Query.select((c) => ({ y: Expr.add(c.x, 2147483647) })))),
+          "integer out of range"
+        )
       }))
 
     it.effect("tables must satisfy their schema, as in memory", () =>
       Effect.gen(function*() {
-        const contract = <S extends Schema.Top & { readonly Type: object }>(schema: S) =>
-          Query.table("contract", schema)
-        const rejects = (query: Query.Query<any>) => Effect.map(Effect.flip(onSql(query)), (e) => e.message)
+        const contract = tableOf("contract")
+        const odd = tableOf("odd")
         assert.strictEqual(
           yield* rejects(contract(Schema.Struct({ s: Schema.Literal("good") }))),
           `column "s" has values its schema rejects`
@@ -556,7 +546,6 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           yield* rowsOnSql(contract(Schema.Struct({ s: Schema.Literals(["bad", "good"]) }))),
           [{ s: "bad" }, { s: "good" }]
         )
-        const odd = <S extends Schema.Top & { readonly Type: object }>(schema: S) => Query.table("odd", schema)
         for (
           const [query, message] of [
             [odd(Schema.Struct({ nil: Schema.Null })), `column "nil" has values, expected Null`],
@@ -596,8 +585,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(yield* rowsOnSql(odd(Schema.Struct({ nothing: Schema.Null }))), [{ nothing: null }])
         // A declared column the table doesn't have, named like a column of PostgreSQL's catalog.
         for (const schema of [Schema.Struct({ oid: Schema.BigInt }), Schema.Struct({ typname: Schema.String })]) {
-          const missing = yield* Effect.flip(onSql(Query.table("contract", schema)))
-          assert.include(missing.message, `.${Object.keys(schema.fields)[0]} does not exist`)
+          assert.include(yield* rejects(contract(schema)), `.${Object.keys(schema.fields)[0]} does not exist`)
         }
       }))
 
@@ -625,8 +613,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           // A count reads none of the table's columns.
           for (const query of [table, table.pipe(Query.aggregate(() => ({ n: Expr.count() })))]) {
             const expected = yield* Effect.flip(query.pipe(Effect.provide(memory)))
-            const actual = yield* Effect.flip(onSql(query))
-            assert.strictEqual(actual.message, expected.message)
+            assert.strictEqual(yield* rejects(query), expected.message)
           }
         }
       }))
@@ -672,12 +659,14 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           yield* rowsOnSql(Query.concat([s("contract"), s("__table0"), s("second"), s("__table1")])),
           [{ s: "bad" }, { s: "good" }, { s: "bad" }, { s: "good" }, { s: "bad" }]
         )
-        const error = yield* Effect.flip(onSql(Query.concat([
-          s("contract").pipe(Query.filter((c) => Expr.eq(c.s, "good"))),
-          s("second"),
-          Query.table("__table1", Schema.Struct({ s: Schema.Literal("good") }))
-        ])))
-        assert.strictEqual(error.message, `column "s" has values its schema rejects`)
+        assert.strictEqual(
+          yield* rejects(Query.concat([
+            s("contract").pipe(Query.filter((c) => Expr.eq(c.s, "good"))),
+            s("second"),
+            Query.table("__table1", Schema.Struct({ s: Schema.Literal("good") }))
+          ])),
+          `column "s" has values its schema rejects`
+        )
         assert.deepStrictEqual(yield* rowsOnSql(s("a.b")), [{ s: "good" }])
         assert.deepStrictEqual(yield* rowsOnSql(s(long)), [{ s: "63" }])
         const two = Query.concat([s(underscores), s("second")])
@@ -691,16 +680,17 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           Query.table("shared", Schema.Struct({ [name]: schema })).pipe(Query.select((c) => ({ x: c[name] })))
         const [za, zb] = ["z".repeat(63) + "a", "z".repeat(63) + "b"]
         assert.deepStrictEqual(yield* rowsOnSql(Query.concat([shared(za), shared(zb)])), [{ x: 1 }, { x: 1 }])
-        const error = yield* Effect.flip(onSql(Query.concat([shared(za), shared(zb, Schema.Literal(2))])))
-        assert.strictEqual(error.message, `column ${JSON.stringify(zb)} has values its schema rejects`)
+        assert.strictEqual(
+          yield* rejects(Query.concat([shared(za), shared(zb, Schema.Literal(2))])),
+          `column ${JSON.stringify(zb)} has values its schema rejects`
+        )
         // Columns of one relation are rejected: PostgreSQL keeps the whole characters within an identifier's first 63 bytes.
         const pairs = [["x".repeat(63) + "a", "x".repeat(63) + "b"], ["x".repeat(62) + "é", "x".repeat(62) + "ж"]]
         for (const [a, b] of pairs) {
           const added = Query.from(DataFrame.fromColumns({ [a]: [1] })).pipe(
             Query.withColumns(() => ({ [b]: Expr.lit(2) }))
           )
-          const error = yield* Effect.flip(onSql(added))
-          assert.include(error.message, `columns ${JSON.stringify(a)} and ${JSON.stringify(b)} are one name`)
+          assert.include(yield* rejects(added), `columns ${JSON.stringify(a)} and ${JSON.stringify(b)} are one name`)
         }
       }))
 
