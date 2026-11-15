@@ -37,7 +37,7 @@
  * they differ from the in-memory engine's: integer overflow raises an error
  * instead of wrapping, division by zero follows the database, string order
  * follows its collation, and timestamps and durations keep PostgreSQL's
- * microseconds (finer values round down). Pivots, unpivots, `explode` and
+ * microseconds (finer timestamps round down, finer durations toward zero). Pivots, unpivots, `explode` and
  * `unnest` are not supported yet; tables need declared columns
  * (`Query.table` with a schema), and {@link engine} checks that tables
  * satisfy them, as the in-memory engine does.

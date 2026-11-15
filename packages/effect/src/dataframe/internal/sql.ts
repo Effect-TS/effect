@@ -31,7 +31,7 @@ import * as F from "./frame.ts"
 import * as K from "./kernels.ts"
 import * as Q from "./query.ts"
 import * as Schema_ from "./schema.ts"
-import { civil } from "./temporal.ts"
+import { civil, coarser } from "./temporal.ts"
 import * as V from "./vector.ts"
 
 interface Compiler {
@@ -191,11 +191,12 @@ const integerOf = (t: Temporal): S.Int => (t._tag === "Date" && t.unit === "day"
 
 /**
  * A temporal value as its integer: its `unit`s (its own by default) since
- * the epoch, or its length in them, rounded down.
+ * the epoch, rounded down, or its length in them, rounded toward zero.
  */
 const toInteger = (x: string, type: Temporal, unit?: Plan.TimeUnit): string => {
   if (type._tag !== "Date") {
-    return `CAST(FLOOR(EXTRACT(EPOCH FROM ${x}) * ${perSecond[unit ?? type.unit]}) AS BIGINT)`
+    const rounding = type._tag === "Duration" ? "TRUNC" : "FLOOR"
+    return `CAST(${rounding}(EXTRACT(EPOCH FROM ${x}) * ${perSecond[unit ?? type.unit]}) AS BIGINT)`
   }
   const days = `(CAST(${x} AS DATE) - DATE '1970-01-01')`
   return type.unit === "day" ? days : `(CAST(${days} AS BIGINT) * 86400000)`
@@ -215,7 +216,7 @@ const fromInteger = (x: string, type: Temporal): string => {
     return `(DATE '1970-01-01' + CAST(${type.unit === "day" ? x : `FLOOR(${x} / 86400000.0)`} AS INTEGER))`
   }
   const micros = type.unit === "nanosecond"
-    ? `CAST(FLOOR(${x} / 1000.0) AS BIGINT)`
+    ? `CAST(${type._tag === "Duration" ? "TRUNC" : "FLOOR"}(${x} / 1000.0) AS BIGINT)`
     : `(${x} * ${perSecond.microsecond / perSecond[type.unit]})`
   if (type._tag === "Duration") return interval(micros)
   const epoch = type.timezone === undefined ? "TIMESTAMP '1970-01-01 00:00:00'" : "TIMESTAMPTZ '1970-01-01 00:00:00+00'"
@@ -224,9 +225,9 @@ const fromInteger = (x: string, type: Temporal): string => {
 
 /**
  * `x` converted from `from` to `to` as the engine converts: timestamps
- * and durations rescale to the target unit (rounding down), timestamps and
- * dates convert at midnight, and other temporal values convert as their
- * integers.
+ * and durations rescale to the target unit (rounding as {@link toInteger}),
+ * timestamps and dates convert at midnight, and other temporal values
+ * convert as their integers.
  */
 const cast = (x: string, from: S.DataType, to: S.DataType): string => {
   if (isTemporal(from) && isTemporal(to)) {
@@ -244,6 +245,22 @@ const cast = (x: string, from: S.DataType, to: S.DataType): string => {
   // Floats and decimals truncate towards zero.
   const truncated = to._tag === "Int" && (from._tag === "Decimal" || from._tag === "Float") ? `TRUNC(${x})` : x
   return `CAST(${truncated} AS ${sqlType(to)})`
+}
+
+/**
+ * Operands as the engine combines them: timestamps and durations of mixed
+ * units converted to the coarsest of their units first.
+ */
+const sameUnit = (xs: ReadonlyArray<string>, types: ReadonlyArray<S.DataType>): Array<string> => {
+  const units = types.flatMap((t) => (t._tag === "Timestamp" || t._tag === "Duration" ? [t.unit] : []))
+  if (units.every((u) => u === units[0])) return [...xs]
+  const unit = units.reduce(coarser)
+  return xs.map((x, i) => {
+    const t = types[i]
+    if (t._tag === "Timestamp" && t.unit !== unit) return cast(x, t, S.timestamp(unit, t.timezone))
+    if (t._tag === "Duration" && t.unit !== unit) return cast(x, t, S.duration(unit))
+    return x
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -378,8 +395,11 @@ const totalSeconds: Record<string, number> = {
 
 const call = (node: Plan.Call, scope: Scope): string => {
   const row = scope.compiler.row
-  const a = node.args.map((x) => expression(x, scope))
-  const k = node.args.map((x) => typeOf(x, scope)._tag)
+  const types = node.args.map((x) => typeOf(x, scope))
+  const raw = node.args.map((x) => expression(x, scope))
+  // between compares its operand with each bound separately.
+  const a = node.fn === "between" ? raw : sameUnit(raw, types)
+  const k = types.map((t) => t._tag)
   const ints = k[0] === "Int" && k[1] === "Int"
   const o = node.options ?? {}
   // Floored modulo of integers, exact, null for a zero divisor.
@@ -420,8 +440,11 @@ const call = (node: Plan.Call, scope: Scope): string => {
       return `(${a[0]} > ${a[1]})`
     case "gte":
       return `(${a[0]} >= ${a[1]})`
-    case "between":
-      return `(${a[0]} BETWEEN ${a[1]} AND ${a[2]})`
+    case "between": {
+      const [x, lo] = sameUnit([a[0], a[1]], [types[0], types[1]])
+      const [y, hi] = sameUnit([a[0], a[2]], [types[0], types[2]])
+      return `(${x} >= ${lo} AND ${y} <= ${hi})`
+    }
     case "isIn": {
       const values = (o.values ?? []).filter((v) => v !== null)
       return values.length === 0 ?
@@ -624,6 +647,20 @@ const typed = (node: Plan.Node, frames: Map<Plan.Node, F.Frame>): F.Frame => {
 const columnsOf = (node: Plan.Node, c: Compiler): ReadonlyArray<string> =>
   c.frames.get(node)!.columns.map((col) => col.name)
 
+const typeIn = (node: Plan.Node, name: string, c: Compiler): S.DataType =>
+  c.frames.get(node)!.columns.find((col) => col.name === name)!.type
+
+/**
+ * Column `name` of `input`, as `x`, in the type the column has in `node`:
+ * joins and concatenations bring timestamps and durations of mixed units to
+ * the coarser one.
+ */
+const conformed = (x: string, input: Plan.Node, node: Plan.Node, name: string, c: Compiler): string => {
+  const from = typeIn(input, name, c)
+  const to = typeIn(node, name, c)
+  return isTemporal(from) && isTemporal(to) && !D.sameType(from, to) ? cast(x, from, to) : x
+}
+
 const scopeOf = (node: Plan.Node, compiler: Compiler): Scope => ({
   compiler,
   frame: compiler.frames.get(node)!,
@@ -780,21 +817,28 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     case "Join": {
       const l = relation(node.left, c)
       const r = relation(node.right, c)
-      const on = node.on.map((k) => `l.${quote(k)} = r.${quote(k)}`).join(" AND ")
+      const on = node.on.map((k) => {
+        const [x, y] = sameUnit([`l.${quote(k)}`, `r.${quote(k)}`], [typeIn(node.left, k, c), typeIn(node.right, k, c)])
+        return `${x} = ${y}`
+      }).join(" AND ")
       if (node.how === "semi" || node.how === "anti") {
         return `SELECT * FROM (${l}) AS l WHERE ${
           node.how === "anti" ? "NOT " : ""
         }EXISTS (SELECT 1 FROM (${r}) AS r WHERE ${on})`
       }
       const rightOnly = columnsOf(node.right, c).filter((name) => !node.on.includes(name))
+      const fromLeft = (name: string) => conformed(`l.${quote(name)}`, node.left, node, name, c)
+      const fromRight = (name: string) => conformed(`r.${quote(name)}`, node.right, node, name, c)
       const left = columnsOf(node.left, c).map((name) =>
-        node.how === "full" && node.on.includes(name)
-          ? `COALESCE(l.${quote(name)}, r.${quote(name)}) AS ${quote(name)}`
-          : `l.${quote(name)}`
+        `${
+          node.how === "full" && node.on.includes(name)
+            ? `COALESCE(${fromLeft(name)}, ${fromRight(name)})`
+            : fromLeft(name)
+        } AS ${quote(name)}`
       )
       const join = node.how === "inner" ? "INNER JOIN" : node.how === "left" ? "LEFT JOIN" : "FULL JOIN"
       return `SELECT ${
-        [...left, ...rightOnly.map((name) => `r.${quote(name)}`)].join(", ")
+        [...left, ...rightOnly.map((name) => `${fromRight(name)} AS ${quote(name)}`)].join(", ")
       }, ROW_NUMBER() OVER (ORDER BY l.${row}${
         node.how === "full" ? " NULLS LAST" : ""
       }, r.${row}) AS ${row} FROM (${l}) AS l ${join} (${r}) AS r ON ${on}`
@@ -802,7 +846,11 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     case "Concat": {
       const source = c.hidden("source")
       const union = node.inputs
-        .map((n, i) => `SELECT ${keep}, ${i} AS ${source} FROM (${relation(n, c)}) AS t${i}`)
+        .map((n, i) =>
+          `SELECT ${
+            columns.map((name) => `${conformed(quote(name), n, node, name, c)} AS ${quote(name)}`).join(", ")
+          }, ${row}, ${i} AS ${source} FROM (${relation(n, c)}) AS t${i}`
+        )
         .join(" UNION ALL ")
       return renumbered(union, `${source}, ${row}`)
     }

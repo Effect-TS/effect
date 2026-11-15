@@ -125,6 +125,54 @@ const temporalCasts = unitNames.flatMap((u) => [
     })))
   ] as const
 ])
+/** Integers of a temporal column of `unit`, microsecond multiples (PostgreSQL keeps microseconds). */
+const exact = (unit: typeof unitNames[number], values: ReadonlyArray<number | null>) =>
+  values.map((v) => (v === null ? null : BigInt(v) * (unit === "ns" ? 1000n : 1n)))
+/** Timestamps `t`, `s` and durations `d`, `e`: `t` and `d` of unit `u`, `s` and `e` of unit `v`. */
+const mixed = (u: typeof unitNames[number], v: typeof unitNames[number]) =>
+  arrow<{
+    t: DateTime.Utc | null
+    s: DateTime.Utc | null
+    d: Duration.Duration | null
+    e: Duration.Duration | null
+  }>([
+    ArrowSchema.field("t", ArrowSchema.timestamp(units[u])),
+    ArrowSchema.field("s", ArrowSchema.timestamp(units[v])),
+    ArrowSchema.field("d", ArrowSchema.duration(units[u])),
+    ArrowSchema.field("e", ArrowSchema.duration(units[v]))
+  ], [
+    exact(u, [1500, -1, 2, 1000, null]),
+    exact(v, [1, 1500, -1, 1000, 7]),
+    exact(u, [1500, -1, 2, 1000, null]),
+    exact(v, [1, 1500, -1, 1000, 7])
+  ])
+/** Temporal operations on operands of two different units, which meet in the coarser one. */
+const mixedUnits = unitNames.flatMap((u) =>
+  unitNames.filter((v) => v !== u).map((v) =>
+    [
+      `temporal operations mixing ${u} and ${v}`,
+      mixed(u, v).pipe(Query.select((c) => {
+        const int = (x: Expr.Expr<unknown>) => Expr.cast(x, "Int64")
+        return {
+          tMinusS: int(Expr.subtract(c.t, c.s)),
+          tPlusE: int(Expr.add(c.t, c.e)),
+          tMinusE: int(Expr.subtract(c.t, c.e)),
+          sPlusD: int(Expr.add(c.s, c.d)),
+          dPlusE: int(Expr.add(c.d, c.e)),
+          dMinusE: int(Expr.subtract(c.d, c.e)),
+          eq: Expr.eq(c.t, c.s),
+          lt: Expr.lt(c.t, c.s),
+          gte: Expr.gte(c.s, c.t),
+          durationsEq: Expr.eq(c.d, c.e),
+          durationsGt: Expr.gt(c.d, c.e),
+          between: Expr.between(c.t, c.s, c.s),
+          coalesce: int(Expr.coalesce(c.t, c.s)),
+          when: int(Expr.when(Expr.isNull(c.d), c.e, c.d))
+        }
+      }))
+    ] as const
+  )
+)
 
 /** Queries whose SQL result must equal the in-memory result, column types included. */
 const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
@@ -199,6 +247,24 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     ]).pipe(Query.withColumns((c) => ({ s: Expr.totalSeconds(c.d), year: Expr.year(c.t) })))
   ],
   ...temporalCasts,
+  ...mixedUnits,
+  [
+    "joins on timestamps of mixed units",
+    mixed("s", "ms").pipe(
+      Query.select((c) => ({ k: c.t, x: Expr.lit(1) })),
+      Query.join(mixed("s", "ms").pipe(Query.select((c) => ({ k: c.s, y: Expr.lit(2) }))), { on: "k", how: "full" }),
+      Query.select((c) => ({ k: Expr.cast(c.k, "Int64"), x: c.x, y: c.y }))
+    )
+  ],
+  [
+    "concatenations of durations of mixed units",
+    Query.concat([
+      mixed("s", "ms").pipe(Query.select((c) => ({ d: c.e }))),
+      mixed("s", "ms").pipe(Query.select((c) => ({ d: c.d })))
+    ]).pipe(
+      Query.select((c) => ({ d: Expr.cast(c.d, "Int64"), ms: Expr.cast(Expr.cast(c.d, "Duration[ms]"), "Int64") }))
+    )
+  ],
   [
     "casts of integers beyond double precision to Timestamp[us] and Duration[us]",
     temporal(ArrowSchema.int64, [253_402_300_799_999_999n, -62_135_596_800_000_001n, 9_007_199_254_740_993n]).pipe(
