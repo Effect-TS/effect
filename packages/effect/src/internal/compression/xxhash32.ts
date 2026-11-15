@@ -14,18 +14,19 @@ const read32 = (b: Uint8Array, i: number): number => b[i] | (b[i + 1] << 8) | (b
 const round = (acc: number, lane: number): number => Math.imul(rotl((acc + Math.imul(lane, P2)) | 0, 13), P1)
 
 /**
- * The xxHash32 digest of `input[start, end)` as an unsigned 32-bit number.
+ * The xxHash32 digest of `input[start, end)` with seed 0, as an unsigned
+ * 32-bit number.
  *
  * @internal
  */
-export const xxh32 = (input: Uint8Array, start: number, end: number, seed = 0): number => {
+export const xxh32 = (input: Uint8Array, start: number, end: number): number => {
   let i = start
   let acc: number
   if (end - start >= 16) {
-    let v1 = (seed + P1 + P2) | 0
-    let v2 = (seed + P2) | 0
-    let v3 = seed | 0
-    let v4 = (seed - P1) | 0
+    let v1 = (P1 + P2) | 0
+    let v2 = P2
+    let v3 = 0
+    let v4 = -P1
     const limit = end - 16
     while (i <= limit) {
       v1 = round(v1, read32(input, i))
@@ -36,7 +37,7 @@ export const xxh32 = (input: Uint8Array, start: number, end: number, seed = 0): 
     }
     acc = (rotl(v1, 1) + rotl(v2, 7) + rotl(v3, 12) + rotl(v4, 18)) | 0
   } else {
-    acc = (seed + P5) | 0
+    acc = P5
   }
   acc = (acc + (end - start)) | 0
   while (i + 4 <= end) {

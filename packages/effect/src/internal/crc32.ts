@@ -1,12 +1,8 @@
 // CRC-32 shared by `effect/encoding/Zip` and the gzip decoder of
 // `effect/encoding/Compression`.
 
-/**
- * CRC-32 (IEEE) lookup tables for sixteen bytes at a time.
- *
- * @internal
- */
-export const CRC_TABLE = (() => {
+// CRC-32 (IEEE) lookup tables for sixteen bytes at a time
+const CRC_TABLE = (() => {
   const table = new Int32Array(16 * 256)
   for (let n = 0; n < 256; n++) {
     let c = n
@@ -23,8 +19,7 @@ export const CRC_TABLE = (() => {
   return table
 })()
 
-/** @internal */
-export const littleEndian = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1
+const littleEndian = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1
 
 /**
  * Continues the CRC-32 (IEEE, as in zip and gzip) `crc` over `bytes`; start
