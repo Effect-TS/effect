@@ -547,7 +547,7 @@ const requestPayload = (
   multipartLimits: Option.Option<Multipart.withLimits.Options>
 ): Effect.Effect<
   unknown,
-  never,
+  ParseResult.ParseError,
   | FileSystem
   | Path
   | Scope
@@ -559,7 +559,18 @@ const requestPayload = (
     ? request.headers["content-type"].toLowerCase().trim()
     : "application/json"
   if (contentType.includes("application/json") || contentType.split(";", 1)[0].trimEnd().endsWith("+json")) {
-    return Effect.orDie(request.json)
+    return Effect.flatMap(Effect.orDie(request.text), (text) => {
+      if (text === "") return Effect.succeed(null)
+      try {
+        return Effect.succeed(JSON.parse(text) as unknown)
+      } catch {
+        return Effect.fail(
+          new ParseResult.ParseError({
+            issue: new ParseResult.Type(Schema.Unknown.ast, text, "Expected a valid JSON body")
+          })
+        )
+      }
+    })
   } else if (contentType.includes("multipart/form-data")) {
     return Effect.orDie(Option.match(multipartLimits, {
       onNone: () => request.multipart,
