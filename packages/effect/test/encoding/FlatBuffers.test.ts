@@ -281,5 +281,8 @@ describe("FlatBuffers", () => {
       b.startTable(1)
       b.addFieldInt32(0.5, 111)
     })
+    for (const initialSize of [0, 1.5, NaN, Infinity, 2 ** 31 + 1]) {
+      usage(() => FlatBuffers.makeBuilder({ initialSize }))
+    }
   })
 })

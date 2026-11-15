@@ -697,7 +697,10 @@ export class Builder {
   private readonly forceDefaults: boolean
 
   constructor(options?: { readonly initialSize?: number | undefined; readonly forceDefaults?: boolean | undefined }) {
-    const size = Math.max(1, options?.initialSize ?? 1024)
+    const size = options?.initialSize ?? 1024
+    if (!Number.isInteger(size) || size < 1 || size > MAX_SIZE) {
+      fail("Usage", `initialSize must be an integer from 1 to ${MAX_SIZE}, got ${size}`)
+    }
     this.bytes = new Uint8Array(size)
     this.view = new DataView(this.bytes.buffer)
     this.head = size
@@ -1040,8 +1043,13 @@ export class Builder {
 
 /**
  * Creates a {@link Builder}. `forceDefaults` writes scalar fields even when they
- * equal their default; `initialSize` is the first buffer size (it grows as
- * needed).
+ * equal their default; `initialSize` is the first buffer size in bytes (it
+ * grows as needed).
+ *
+ * **Details**
+ *
+ * `initialSize` is an integer from 1 to 2^31 (default 1024); other values
+ * throw a `Usage` {@link FlatBuffersError}.
  *
  * @stability experimental
  * @category writing
