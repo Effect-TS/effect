@@ -110,20 +110,15 @@ export const supertype = (
     if (ad !== undefined || bd !== undefined) {
       const [lit, col] = ad !== undefined ? [ad, b] : [bd, a]
       if (lit === "int") return { type: col, dynamic: undefined }
-      // float literal
       return { type: col._tag === "Float" ? col : S.float64, dynamic: undefined }
     }
     if (a._tag === "Int" && b._tag === "Int") return { type: intSupertype(a, b), dynamic: undefined }
     const f32 = (t: S.DataType) => t._tag === "Float" ? t.bitWidth === 32 : (t as S.Int).bitWidth <= 16
     return { type: f32(a) && f32(b) ? S.float32 : S.float64, dynamic: undefined }
   }
-  if (T.isTemporal(a) || T.isTemporal(b)) {
-    if (sameType(a, b)) return { type: a, dynamic: undefined }
-    const t = T.supertype(a, b)
-    return t === undefined ? undefined : { type: t, dynamic: undefined }
-  }
   if (sameType(a, b)) return { type: a, dynamic: undefined }
-  return undefined
+  const t = T.supertype(a, b)
+  return t === undefined ? undefined : { type: t, dynamic: undefined }
 }
 
 /** Type of a true division. @internal */
@@ -139,7 +134,7 @@ export const sumType = (t: S.DataType): S.DataType => {
 }
 
 /** Type of `mean`, `median`, `std` and `var` over a column of type `t`. @internal */
-export const meanType = (t: S.DataType): S.DataType => t._tag === "Float" && t.bitWidth === 32 ? S.float32 : S.float64
+export const meanType = divisionType
 
 /** @internal */
 export const describe = (t: S.DataType): string => {

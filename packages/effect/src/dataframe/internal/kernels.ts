@@ -1,7 +1,8 @@
 /**
- * Element-wise kernels. Each kernel has one loop per physical layout and
- * operand shape (column/column, column/scalar), written out so that V8 sees
- * monomorphic typed-array access in every loop.
+ * Element-wise kernels. Loops are specialised per physical layout so that
+ * typed-array access stays monomorphic. A scalar right operand is read with a
+ * `step` of 0 (`y[i * step]`), except in Int32 arithmetic and Int32 and
+ * Float64 comparisons, which keep a separate, faster scalar loop.
  *
  * @internal
  */
@@ -12,7 +13,6 @@ import * as T from "./temporal.ts"
 import * as V from "./vector.ts"
 
 const I0 = BigInt(0)
-const I1 = BigInt(1)
 const I2 = BigInt(2)
 const I63 = BigInt(63)
 const I64 = BigInt(64)
@@ -41,13 +41,15 @@ export const column = (vector: V.Vector): Value => ({ vector, scalar: false, dyn
 /** @internal */
 export const scalar = (vector: V.Vector, dynamic: D.Dynamic = undefined): Value => ({ vector, scalar: true, dynamic })
 
+const result = (vector: V.Vector, scalar: boolean, dynamic?: D.Dynamic): Value => ({ vector, scalar, dynamic })
+
 /** Expands a scalar to `length` slots. @internal */
 export const materialize = (value: Value, length: number): V.Vector =>
   value.scalar ? V.broadcast(value.vector, length) : value.vector
 
 const scalarNull = (value: Value): boolean => value.scalar && !V.isValid(value.vector, 0)
 
-/** Validity of a binary result. @internal */
+/** Validity of a binary result. */
 const resultValid = (a: Value, b: Value, length: number): Uint8Array | undefined | "all-null" => {
   if (scalarNull(a) || scalarNull(b)) return "all-null"
   const av = a.scalar ? undefined : a.vector.valid
@@ -88,19 +90,8 @@ export const nullsOf = (type: S.DataType, length: number): V.Vector => {
 // Casts
 // -----------------------------------------------------------------------------
 
-const intRange = (t: S.DataType): [number, number] => {
-  if (t._tag !== "Int") return [-Infinity, Infinity]
-  if (t.signed) {
-    const max = 2 ** (t.bitWidth - 1)
-    return [-max, max - 1]
-  }
-  return [0, 2 ** t.bitWidth - 1]
-}
-
 const FLOAT_SYNTAX = /^[+-]?(?:\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?|inf|infinity|nan)$/i
 const INT_SYNTAX = /^[+-]?\d+$/
-
-const formatNumber = (x: number): string => String(x)
 
 /**
  * Converts `v` to `target`, as `Expr.cast` does. Values that don't fit
@@ -138,8 +129,6 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector => {
       else {
         switch (v.kind) {
           case "f64":
-            out[i] = formatNumber(v.values[i])
-            break
           case "i32":
             out[i] = String(v.values[i])
             break
@@ -185,18 +174,19 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector => {
     return V.bool(out, V.compactValid(valid))
   }
   // numeric targets: read every source slot as a number (or bigint for i64 targets)
-  const [lo, hi] = intRange(target)
+  const [lo, hi] = V.intRange(target)
   const isIntTarget = D.isInteger(target) || (target._tag !== "Float" && targetKind !== "f64")
   if (targetKind === "i64") {
     const out = new BigInt64Array(n)
     const unsigned = V.isUnsigned64(target)
+    const min = unsigned ? I0 : -(I2 ** I63)
+    const max = unsigned ? I2 ** I64 : I2 ** I63
     for (let i = 0; i < n; i++) {
       if (valid !== undefined && valid[i] === 0) continue
       switch (v.kind) {
         case "i64": {
           const x = v.values[i]
-          if (unsigned && !V.isUnsigned64(v.type) && x < I0) invalidate(i)
-          else if (!unsigned && V.isUnsigned64(v.type) && x < I0) invalidate(i)
+          if (unsigned !== V.isUnsigned64(v.type) && x < I0) invalidate(i)
           else out[i] = x
           break
         }
@@ -216,7 +206,7 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector => {
           if (!INT_SYNTAX.test(s)) invalidate(i)
           else {
             const x = BigInt(s)
-            if (x < (unsigned ? I0 : -(I2 ** I63)) || x >= (unsigned ? I2 ** I64 : I2 ** I63)) invalidate(i)
+            if (x < min || x >= max) invalidate(i)
             else out[i] = BigInt.asIntN(64, x)
           }
           break
@@ -313,17 +303,13 @@ export const concat = (parts: ReadonlyArray<V.Vector>): V.Vector => {
 }
 
 /** Casts a value ({@link cast}), keeping its shape; a cast literal has a fixed type. @internal */
-export const castValue = (value: Value, target: S.DataType): Value => ({
-  vector: D.sameType(value.vector.type, target) ? value.vector : cast(value.vector, target),
-  scalar: value.scalar,
-  dynamic: undefined
-})
+export const castValue = (value: Value, target: S.DataType): Value => result(cast(value.vector, target), value.scalar)
 
 /** Coerces a value ({@link coerce}), keeping its shape. */
 const coerceValue = (value: Value, target: S.DataType): Value =>
   D.sameType(value.vector.type, target)
     ? value
-    : { vector: coerce(value.vector, target), scalar: value.scalar, dynamic: undefined }
+    : result(coerce(value.vector, target), value.scalar)
 
 // -----------------------------------------------------------------------------
 // Arithmetic
@@ -338,7 +324,7 @@ export type ArithOp = "add" | "sub" | "mul" | "div" | "floorDiv" | "mod"
  * value (built from literals only), or the {@link Value.range} of a column.
  */
 const literalRange = (v: Value): readonly [number, number] => {
-  if (!v.scalar) return v.range ?? intRange(S.int32)
+  if (!v.scalar) return v.range ?? V.intRange(S.int32)
   const x = (v.vector as V.I32).values[0]
   return V.isValid(v.vector, 0) ? [x, x] : [0, 0]
 }
@@ -360,7 +346,7 @@ const rangeOf = (values: ReadonlyArray<Value>, dynamic: D.Dynamic): readonly [nu
 const operand = (v: Value, other: S.DataType): readonly [S.DataType, D.Dynamic] => {
   if (v.dynamic !== "int" || other._tag !== "Int" || v.vector.kind !== "i32") return [v.vector.type, v.dynamic]
   const [lo, hi] = literalRange(v)
-  const [min, max] = intRange(other)
+  const [min, max] = V.intRange(other)
   if (lo >= min && hi <= max) return [v.vector.type, v.dynamic]
   return [lo >= -128 && hi <= 127 ? S.int8 : lo >= -32768 && hi <= 32767 ? S.int16 : S.int32, undefined]
 }
@@ -383,12 +369,12 @@ const supertype = (...values: ReadonlyArray<Value>) => {
   ])
 }
 
+const notDefined = (op: string, a: Value, b: Value): never =>
+  V.fail(`${op} is not defined for ${D.describe(a.vector.type)} and ${D.describe(b.vector.type)}`)
+
 const unify = (op: string, a: Value, b: Value) => {
   const st = supertype(a, b)
-  if (st === undefined || !(D.isNumeric(st.type) || st.type._tag === "Null")) {
-    return V.fail(`${op} is not defined for ${D.describe(a.vector.type)} and ${D.describe(b.vector.type)}`)
-  }
-  return st
+  return st === undefined || !(D.isNumeric(st.type) || st.type._tag === "Null") ? notDefined(op, a, b) : st
 }
 
 /** Relabels a value's vector (same storage). */
@@ -403,7 +389,6 @@ const relabel = (value: Value, type: S.DataType): Value => ({ ...value, vector: 
 const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value => {
   const at = a.vector.type
   const bt = b.vector.type
-  const unsupported = () => V.fail(`${op} is not defined for ${D.describe(at)} and ${D.describe(bt)}`)
   const asInt = (v: Value, type: S.DataType) => relabel(coerceValue(v, type), S.int64)
   const point = (t: S.DataType) => t._tag === "Date" || t._tag === "Timestamp"
   if (op === "sub" && point(at) && point(bt)) {
@@ -412,7 +397,7 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
       return relabel(arith("sub", asInt(a, ts), asInt(b, ts), length), S.duration("microsecond"))
     }
     const st = T.supertype(at, bt) as S.Timestamp | undefined
-    if (st === undefined) return unsupported()
+    if (st === undefined) return notDefined(op, a, b)
     return relabel(arith("sub", asInt(a, st), asInt(b, st), length), S.duration(st.unit))
   }
   if ((op === "add" || op === "sub") && at._tag === "Timestamp" && bt._tag === "Duration") {
@@ -429,7 +414,7 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
     return relabel(arith("mul", relabel(a, S.int64), coerceValue(b, S.int64), length), at)
   }
   if (op === "mul" && bt._tag === "Duration" && D.isInteger(at)) return temporalArith(op, b, a, length)
-  return unsupported()
+  return notDefined(op, a, b)
 }
 
 /**
@@ -438,9 +423,7 @@ const temporalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =
  */
 const decimalArith = (op: ArithOp, a: Value, b: Value, length: number): Value => {
   const st = supertype(a, b)
-  if (st === undefined) {
-    return V.fail(`${op} is not defined for ${D.describe(a.vector.type)} and ${D.describe(b.vector.type)}`)
-  }
+  if (st === undefined) return notDefined(op, a, b)
   if (!Dec.isDecimal(st.type) || (op !== "add" && op !== "sub" && op !== "mul")) {
     return arith(op, coerceValue(a, S.float64), coerceValue(b, S.float64), length)
   }
@@ -452,7 +435,7 @@ const decimalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
   const valid = resultValid(left, right, n)
   const ls = (left.vector.type as S.Decimal).scale
   const rs = (right.vector.type as S.Decimal).scale
-  const result = Dec.arith(
+  const { type, values } = Dec.arith(
     op,
     (left.vector as V.I64).values,
     ls,
@@ -460,8 +443,7 @@ const decimalArith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
     rs,
     right.scalar && !left.scalar
   )
-  if (valid === "all-null") return { vector: nullsOf(result.type, n), scalar: a.scalar && b.scalar, dynamic: undefined }
-  return { vector: V.i64(result.type, result.values, valid), scalar: a.scalar && b.scalar, dynamic: undefined }
+  return result(valid === "all-null" ? nullsOf(type, n) : V.i64(type, values, valid), a.scalar && b.scalar)
 }
 
 /** @internal */
@@ -476,14 +458,14 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
   if (type._tag === "Null") type = S.int32
   const n = a.scalar && b.scalar ? 1 : length
   const valid = resultValid(a, b, n)
-  if (valid === "all-null") return { vector: nullsOf(type, n), scalar: a.scalar && b.scalar, dynamic }
+  if (valid === "all-null") return result(nullsOf(type, n), a.scalar && b.scalar, dynamic)
   // A scalar on the left: materialise it (rare) so kernels only see col op col / col op scalar.
   let left = coerceValue(a, type)
   const right = coerceValue(b, type)
   if (left.scalar && !right.scalar) left = column(materialize(left, n))
   const lv = left.vector
   const rv = right.vector
-  const rs = right.scalar
+  const step = right.scalar ? 0 : 1
   let out: V.Vector
   let nullOut: Uint8Array | undefined
   switch (lv.kind) {
@@ -492,9 +474,9 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
       const o = new Float64Array(n)
       const y = (rv as V.F64).values
       const unsigned32 = type._tag === "Int"
-      arithF64(op, x, y, rs ? 0 : 1, o, n, unsigned32)
+      arithF64(op, x, y, step, o, n, unsigned32)
       if (unsigned32 && (op === "floorDiv" || op === "mod")) {
-        nullOut = Uint8Array.from({ length: n }, (_, i) => y[rs ? 0 : i] === 0 ? 0 : 1)
+        nullOut = Uint8Array.from({ length: n }, (_, i) => y[i * step] === 0 ? 0 : 1)
       }
       V.roundFloat32InPlace(type, o)
       out = V.f64(type, o, valid)
@@ -505,8 +487,8 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
       const o = new Int32Array(n)
       if (op === "floorDiv" || op === "mod") {
         nullOut = new Uint8Array(n).fill(1)
-        intDivMod(op, x, (rv as V.I32).values, rs, o, n, nullOut)
-      } else if (rs) arithI32Scalar(op, x, (rv as V.I32).values[0], o, n)
+        intDivMod(op, x, (rv as V.I32).values, step, o, n, nullOut)
+      } else if (step === 0) arithI32Scalar(op, x, (rv as V.I32).values[0], o, n)
       else arithI32(op, x, (rv as V.I32).values, o, n)
       V.wrapInPlace(type, o)
       out = V.i32(type, o, valid)
@@ -519,7 +501,7 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
       const unsigned = V.isUnsigned64(type)
       for (let i = 0; i < n; i++) {
         let p = x[i]
-        let q = rs ? y[0] : y[i]
+        let q = y[i * step]
         if (unsigned) {
           p = BigInt.asUintN(64, p)
           q = BigInt.asUintN(64, q)
@@ -542,8 +524,7 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
               r = I0
               break
             }
-            let d = p / q
-            if ((p % q !== I0) && ((p < I0) !== (q < I0))) d -= I1
+            const d = T.floorDiv(p, q)
             r = op === "floorDiv" ? d : p - d * q
           }
         }
@@ -556,7 +537,7 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
       return V.fail(`${op} is not defined for ${D.describe(type)}`)
   }
   if (nullOut !== undefined) out = V.withValid(out, V.compactValid(V.andValid(out.valid, nullOut, n)))
-  return { vector: out, scalar: a.scalar && b.scalar, dynamic }
+  return result(out, a.scalar && b.scalar, dynamic)
 }
 
 /** Float modulo as Polars computes it: `a - b * floor(a / b)`. */
@@ -634,14 +615,14 @@ const intDivMod = (
   op: "floorDiv" | "mod",
   x: Int32Array,
   y: Int32Array,
-  ys: boolean,
+  step: 0 | 1,
   o: Int32Array,
   n: number,
   valid: Uint8Array
 ) => {
   for (let i = 0; i < n; i++) {
     const a = x[i]
-    const b = ys ? y[0] : y[i]
+    const b = y[i * step]
     if (b === 0) {
       valid[i] = 0
       continue
@@ -661,7 +642,11 @@ export const unaryNumeric = (op: "neg" | "abs" | "sqrt" | "round", a: Value, dec
     return V.fail(`round needs a non-negative whole number of decimals, got ${decimals}`)
   }
   if (op === "round" && v.kind === "i64" && Dec.isDecimal(v.type)) {
-    return { vector: Dec.round(v, v.type, decimals), scalar: a.scalar, dynamic: a.dynamic }
+    return result(Dec.round(v, v.type, decimals), a.scalar, a.dynamic)
+  }
+  // Rounding leaves integers (and dates) as they are.
+  if (op === "round" && (v.kind === "i32" || v.kind === "i64" || (v.kind === "f64" && !D.isFloat(v.type)))) {
+    return result(v, a.scalar, a.dynamic)
   }
   switch (v.kind) {
     case "f64": {
@@ -670,29 +655,26 @@ export const unaryNumeric = (op: "neg" | "abs" | "sqrt" | "round", a: Value, dec
       if (op === "neg") { for (let i = 0; i < n; i++) o[i] = -x[i] }
       else if (op === "abs") { for (let i = 0; i < n; i++) o[i] = Math.abs(x[i]) }
       else if (op === "sqrt") { for (let i = 0; i < n; i++) o[i] = Math.sqrt(x[i]) }
-      else if (D.isFloat(v.type)) roundHalfEven(x, o, decimals)
-      else o.set(x)
-      if (v.type._tag === "Int") V.wrapInPlace(v.type, o)
+      else roundHalfEven(x, o, decimals)
+      V.wrapInPlace(v.type, o)
       V.roundFloat32InPlace(v.type, o)
-      return { vector: V.f64(v.type, o, v.valid), scalar: a.scalar, dynamic: a.dynamic }
+      return result(V.f64(v.type, o, v.valid), a.scalar, a.dynamic)
     }
     case "i32": {
       const x = v.values
       const o = new Int32Array(n)
       if (op === "neg") { for (let i = 0; i < n; i++) o[i] = -x[i] | 0 }
-      else if (op === "abs") { for (let i = 0; i < n; i++) o[i] = Math.abs(x[i]) | 0 }
-      else o.set(x)
+      else for (let i = 0; i < n; i++) o[i] = Math.abs(x[i]) | 0
       V.wrapInPlace(v.type, o)
-      return { vector: V.i32(v.type, o, v.valid), scalar: a.scalar, dynamic: a.dynamic }
+      return result(V.i32(v.type, o, v.valid), a.scalar, a.dynamic)
     }
     case "i64": {
       const x = v.values
       const o = new BigInt64Array(n)
       const fit = Dec.fit(v.type)
       if (op === "neg") { for (let i = 0; i < n; i++) o[i] = fit(-x[i]) }
-      else if (op === "abs") { for (let i = 0; i < n; i++) o[i] = fit(x[i] < I0 ? -x[i] : x[i]) }
-      else o.set(x)
-      return { vector: V.i64(v.type, o, v.valid), scalar: a.scalar, dynamic: a.dynamic }
+      else for (let i = 0; i < n; i++) o[i] = fit(x[i] < I0 ? -x[i] : x[i])
+      return result(V.i64(v.type, o, v.valid), a.scalar, a.dynamic)
     }
     default:
       return V.fail(`${op} is not defined for ${D.describe(v.type)}`)
@@ -771,31 +753,28 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
   let right = b
   if (D.isNumeric(at) && D.isNumeric(bt) && !D.sameType(at, bt)) {
     const st = supertype(a, b)!.type
-    // Compare mixed widths as Float64 unless both are 64-bit integers.
-    const target = V.kindOf(st) === "i64" && V.kindOf(at) === "i64" && V.kindOf(bt) === "i64" ? st : S.float64
-    left = coerceValue(a, V.kindOf(st) === "i32" ? st : target)
-    right = coerceValue(b, V.kindOf(st) === "i32" ? st : target)
+    // Mixed widths compare as Float64 unless the common type has Int32 storage
+    // or both sides are 64-bit integers.
+    const k = V.kindOf(st)
+    const target = k === "i32" || (k === "i64" && V.kindOf(at) === "i64" && V.kindOf(bt) === "i64") ? st : S.float64
+    left = coerceValue(a, target)
+    right = coerceValue(b, target)
   } else if (at._tag === "Null" || bt._tag === "Null") {
-    return { vector: nullsOf(S.bool, n), scalar: a.scalar, dynamic: undefined }
-  } else if ((Dec.isDecimal(at) || Dec.isDecimal(bt)) && !D.sameType(at, bt)) {
+    return result(nullsOf(S.bool, n), a.scalar)
+  } else if (!D.sameType(at, bt) && !(D.isBinaryLike(at) && D.isBinaryLike(bt))) {
+    // Decimals and temporal values compare in their common type.
     const st = supertype(a, b)
     if (st === undefined) return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
     left = coerceValue(a, st.type)
     right = coerceValue(b, st.type)
-  } else if ((T.isTemporal(at) || T.isTemporal(bt)) && !D.sameType(at, bt)) {
-    const st = T.supertype(at, bt)
-    if (st === undefined) return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
-    left = coerceValue(a, st)
-    right = coerceValue(b, st)
-  } else if (!D.sameType(at, bt) && !(D.isBinaryLike(at) && D.isBinaryLike(bt))) {
-    return V.fail(`cannot compare ${D.describe(at)} with ${D.describe(bt)}`)
   }
   const valid = resultValid(left, right, n)
-  if (valid === "all-null") return { vector: nullsOf(S.bool, n), scalar: a.scalar, dynamic: undefined }
+  if (valid === "all-null") return result(nullsOf(S.bool, n), a.scalar)
   const o = new Uint8Array(n)
   const lv = left.vector
   const rv = right.vector
   const rs = right.scalar
+  const step = rs ? 0 : 1
   switch (lv.kind) {
     case "f64":
       if (rs) compareF64Scalar(op, lv.values, (rv as V.F64).values[0], o, n)
@@ -808,7 +787,7 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
     case "bool": {
       const x = lv.values
       const y = (rv as V.Bool).values
-      for (let i = 0; i < n; i++) o[i] = fromOrdering(op, x[i] - y[rs ? 0 : i])
+      for (let i = 0; i < n; i++) o[i] = fromOrdering(op, x[i] - y[i * step])
       break
     }
     case "i64": {
@@ -817,7 +796,7 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
       const yv = (rv as V.I64).values
       const y = new Int32Array(yv.buffer, yv.byteOffset, yv.length * 2)
       for (let i = 0; i < n; i++) {
-        const j = rs ? 0 : i
+        const j = i * step
         const xh = x[2 * i + 1]
         const yh = y[2 * j + 1]
         let c: number
@@ -854,7 +833,7 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
         }
       } else {
         for (let i = 0; i < n; i++) {
-          const j = rs ? 0 : i
+          const j = i * step
           o[i] = fromOrdering(op, compareBytes(ad, ao[i], ao[i + 1], bd, bo[j], bo[j + 1]))
         }
       }
@@ -863,7 +842,7 @@ export const compare = (op: CompareOp, a: Value, b: Value, length: number): Valu
     default:
       return V.fail(`cannot compare ${D.describe(at)}`)
   }
-  return { vector: V.bool(o, valid), scalar: a.scalar, dynamic: undefined }
+  return result(V.bool(o, valid), a.scalar)
 }
 
 // Float64 comparisons use a total order: NaN equals NaN and sorts above every
@@ -1024,7 +1003,7 @@ export const logical = (op: "and" | "or", a: Value, b: Value, length: number): V
   if (x.valid === undefined && y.valid === undefined) {
     if (op === "and") { for (let i = 0; i < n; i++) o[i] = xv[i] & yv[i] }
     else for (let i = 0; i < n; i++) o[i] = xv[i] | yv[i]
-    return { vector: V.bool(o), scalar: a.scalar && b.scalar, dynamic: undefined }
+    return result(V.bool(o), a.scalar && b.scalar)
   }
   const valid = new Uint8Array(n)
   const xa = x.valid
@@ -1045,7 +1024,7 @@ export const logical = (op: "and" | "or", a: Value, b: Value, length: number): V
       valid[i] = definitelyTrue || (p === 1 && q === 1) ? 1 : 0
     }
   }
-  return { vector: V.bool(o, V.compactValid(valid)), scalar: a.scalar && b.scalar, dynamic: undefined }
+  return result(V.bool(o, V.compactValid(valid)), a.scalar && b.scalar)
 }
 
 /** @internal */
@@ -1056,7 +1035,7 @@ export const not = (a: Value): Value => {
   const o = new Uint8Array(v.length)
   const x = v.values
   for (let i = 0; i < o.length; i++) o[i] = x[i] ^ 1
-  return { vector: V.bool(o, v.valid), scalar: a.scalar, dynamic: undefined }
+  return result(V.bool(o, v.valid), a.scalar)
 }
 
 /** @internal */
@@ -1067,7 +1046,7 @@ export const isNull = (a: Value, negate: boolean): Value => {
   else if (v.valid === undefined) o.fill(negate ? 1 : 0)
   else if (negate) o.set(v.valid)
   else for (let i = 0; i < o.length; i++) o[i] = v.valid[i] ^ 1
-  return { vector: V.bool(o), scalar: a.scalar, dynamic: undefined }
+  return result(V.bool(o), a.scalar)
 }
 
 /** @internal */
@@ -1080,11 +1059,7 @@ export const isNaN_ = (a: Value): Value => {
   } else if (v.kind !== "f64" && v.kind !== "i32" && v.kind !== "i64" && v.kind !== "null") {
     return V.fail(`isNaN is not defined for ${D.describe(v.type)}`)
   }
-  return {
-    vector: V.bool(o, v.kind === "null" ? new Uint8Array(v.length) : v.valid),
-    scalar: a.scalar,
-    dynamic: undefined
-  }
+  return result(V.bool(o, v.kind === "null" ? new Uint8Array(v.length) : v.valid), a.scalar)
 }
 
 // -----------------------------------------------------------------------------
@@ -1119,57 +1094,13 @@ export const when = (cond: Value, then: Value, otherwise: Value, length: number)
   }
 }
 
-/** Picks slot `i` from `branches[choice[i]]`; all branches share a type. @internal */
-export const select = (branches: ReadonlyArray<V.Vector>, choice: Int32Array): V.Vector => {
+/** Picks slot `i` from `branches[choice[i]]`; all branches share a type. */
+const select = (branches: ReadonlyArray<V.Vector>, choice: Int32Array): V.Vector => {
   const n = choice.length
-  const first = branches.find((b) => b.kind !== "null") ?? branches[0]
-  if (first.kind === "null") return V.nulls(n)
-  if (first.kind === "list" || first.kind === "struct") {
-    // Nested values: gather slot i from the chosen branch.
-    const all = V.concat(branches.map((b) => (b.kind === "null" ? nullsOf(first.type, n) : b)))
-    const indices = new Int32Array(n)
-    for (let i = 0; i < n; i++) indices[i] = choice[i] * n + i
-    return V.take(all, indices)
-  }
-  const valid = new Uint8Array(n)
-  for (let i = 0; i < n; i++) {
-    const b = branches[choice[i]]
-    valid[i] = V.isValid(b, i) ? 1 : 0
-  }
-  switch (first.kind) {
-    case "f64":
-    case "i32":
-    case "bool":
-    case "i64": {
-      const out = first.kind === "f64"
-        ? new Float64Array(n)
-        : first.kind === "i32"
-        ? new Int32Array(n)
-        : first.kind === "bool"
-        ? new Uint8Array(n)
-        : new BigInt64Array(n)
-      for (let i = 0; i < n; i++) {
-        const b = branches[choice[i]]
-        if (b.kind !== "null") (out as any)[i] = (b as V.F64).values[i]
-      }
-      const vector = first.kind === "f64"
-        ? V.f64(first.type, out as Float64Array)
-        : first.kind === "i32"
-        ? V.i32(first.type, out as Int32Array)
-        : first.kind === "bool"
-        ? V.bool(out as Uint8Array)
-        : V.i64(first.type, out as BigInt64Array)
-      return V.withValid(vector, V.compactValid(valid))
-    }
-    case "str": {
-      const indices = new Int32Array(n)
-      // Concatenate branches, then gather from the concatenation.
-      const strs = branches.map((b) => b.kind === "str" ? b : nullsOf(first.type, n))
-      const all = V.concat(strs)
-      for (let i = 0; i < n; i++) indices[i] = choice[i] * n + i
-      return V.withValid(V.take(all, indices), V.compactValid(valid))
-    }
-  }
+  const indices = new Int32Array(n)
+  for (let i = 0; i < n; i++) indices[i] = choice[i] * n + i
+  const out = V.take(V.concat(branches), indices)
+  return V.withValid(out, V.compactValid(out.valid))
 }
 
 /** First non-null value per slot. @internal */
@@ -1234,9 +1165,9 @@ export const isIn = (a: Value, candidates: ReadonlyArray<unknown>): Value => {
       break
     }
     case "null":
-      return { vector: nullsOf(S.bool, n), scalar: a.scalar, dynamic: undefined }
+      return result(nullsOf(S.bool, n), a.scalar)
   }
-  return { vector: V.bool(o, v.valid), scalar: a.scalar, dynamic: undefined }
+  return result(V.bool(o, v.valid), a.scalar)
 }
 
 // -----------------------------------------------------------------------------
@@ -1251,9 +1182,7 @@ const asStr = (value: Value, name: string): V.Str => {
 
 /** Number of code points. @internal */
 export const strLength = (a: Value): Value => {
-  if (a.vector.kind === "null") {
-    return { vector: nullsOf(S.uint32, a.vector.length), scalar: a.scalar, dynamic: undefined }
-  }
+  if (a.vector.kind === "null") return result(nullsOf(S.uint32, a.vector.length), a.scalar)
   const v = asStr(a, "length")
   const n = v.length
   const o = new Float64Array(n)
@@ -1264,7 +1193,7 @@ export const strLength = (a: Value): Value => {
     for (let k = off[i]; k < off[i + 1]; k++) c += (d[k] & 0xc0) !== 0x80 ? 1 : 0
     o[i] = c
   }
-  return { vector: V.f64(S.uint32, o, v.valid), scalar: a.scalar, dynamic: undefined }
+  return result(V.f64(S.uint32, o, v.valid), a.scalar)
 }
 
 /** @internal */
@@ -1273,14 +1202,12 @@ export const strMap = (a: Value, f: (s: string) => string): Value => {
   const v = asStr(a, "string function")
   const out: Array<string | null> = new Array(v.length)
   for (let i = 0; i < v.length; i++) out[i] = V.isValid(v, i) ? f(V.decodeString(v, i)) : null
-  return { vector: V.stringsFrom(v.type, out), scalar: a.scalar, dynamic: undefined }
+  return result(V.stringsFrom(v.type, out), a.scalar)
 }
 
 /** @internal */
 export const strMatch = (a: Value, mode: "includes" | "startsWith" | "endsWith", pattern: string): Value => {
-  if (a.vector.kind === "null") {
-    return { vector: nullsOf(S.bool, a.vector.length), scalar: a.scalar, dynamic: undefined }
-  }
+  if (a.vector.kind === "null") return result(nullsOf(S.bool, a.vector.length), a.scalar)
   const v = asStr(a, mode)
   const p = V.encodeString(pattern)
   const m = p.length
@@ -1310,7 +1237,7 @@ export const strMatch = (a: Value, mode: "includes" | "startsWith" | "endsWith",
       }
     }
   }
-  return { vector: V.bool(o, v.valid), scalar: a.scalar, dynamic: undefined }
+  return result(V.bool(o, v.valid), a.scalar)
 }
 
 /** Concatenation; a null argument makes the slot null. @internal */
@@ -1343,5 +1270,5 @@ export const strConcat = (values: ReadonlyArray<Value>, length: number): Value =
       at += e - s
     }
   }
-  return { vector: V.str(S.utf8, offsets, data, valid), scalar: allScalar, dynamic: undefined }
+  return result(V.str(S.utf8, offsets, data, valid), allScalar)
 }

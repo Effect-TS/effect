@@ -23,7 +23,7 @@
  */
 import type * as ArrowData from "../../arrow/ArrowData.ts"
 import * as S from "../../arrow/ArrowSchema.ts"
-import { typed } from "../../arrow/internal/buffers.ts"
+import { typed, type TypedArrayConstructor } from "../../arrow/internal/buffers.ts"
 
 /** @internal */
 export type Vector = F64 | I32 | I64 | Bool | Str | Null | List | Struct
@@ -78,7 +78,6 @@ export interface Null {
   readonly valid: Uint8Array | undefined
 }
 
-/** @internal */
 /** @internal */
 export interface List {
   readonly kind: "list"
@@ -195,8 +194,8 @@ export const withType = <V extends Vector>(v: V, type: S.DataType): V => ({ ...v
 export const isValid = (v: Vector, i: number): boolean =>
   v.kind === "null" ? false : v.valid === undefined || v.valid[i] === 1
 
-/** Number of null slots. @internal */
-export const nullCount = (v: Vector): number => {
+/** Number of null slots. */
+const nullCount = (v: Vector): number => {
   if (v.kind === "null") return v.length
   const valid = v.valid
   if (valid === undefined) return 0
@@ -304,8 +303,6 @@ export const wrapInPlace = (type: S.DataType, values: Int32Array | Float64Array)
     else for (let i = 0; i < n; i++) values[i] = values[i] & 0xffff
   } else if (type.bitWidth === 32 && !type.signed) {
     for (let i = 0; i < n; i++) values[i] = values[i] >>> 0
-  } else if (type.bitWidth === 32) {
-    for (let i = 0; i < n; i++) values[i] = values[i] | 0
   }
 }
 
@@ -316,8 +313,18 @@ export const roundFloat32InPlace = (type: S.DataType, values: Float64Array): voi
   }
 }
 
-/** Wraps 64-bit values to an unsigned type's bit pattern view. @internal */
+/** Whether `type` is UInt64 (stored as its Int64 bit pattern). @internal */
 export const isUnsigned64 = (type: S.DataType): boolean => type._tag === "Int" && type.bitWidth === 64 && !type.signed
+
+/** The bounds of an integer type's values; unbounded for other types. @internal */
+export const intRange = (t: S.DataType): [number, number] => {
+  if (t._tag !== "Int") return [-Infinity, Infinity]
+  if (t.signed) {
+    const max = 2 ** (t.bitWidth - 1)
+    return [-max, max - 1]
+  }
+  return [0, 2 ** t.bitWidth - 1]
+}
 
 // -----------------------------------------------------------------------------
 // Arrow interop
@@ -350,8 +357,8 @@ const unpackBits = (bits: Uint8Array, offset: number, length: number): Uint8Arra
   return out
 }
 
-/** Packs a byte-per-slot mask into an Arrow bitmap. @internal */
-export const packBits = (bytes: Uint8Array): Uint8Array => {
+/** Packs a byte-per-slot mask into an Arrow bitmap. */
+const packBits = (bytes: Uint8Array): Uint8Array => {
   const n = bytes.length
   const out = new Uint8Array((n + 7) >> 3)
   const full = n >> 3
@@ -363,6 +370,9 @@ export const packBits = (bytes: Uint8Array): Uint8Array => {
   for (let i = full << 3; i < n; i++) out[i >> 3] |= bytes[i] << (i & 7)
   return out
 }
+
+const I0 = BigInt(0)
+const IM1 = BigInt(-1)
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -488,58 +498,36 @@ export const fromArrowData = (data: ArrowData.ArrowData): Vector => {
     ? undefined
     : unpackBits(data.validity, data.offset, n)
   const storage = storageType(type)
+  /** Slots of the first buffer as `Ctor` (`extra` more for offsets). */
+  const view = <A extends { subarray(start: number, end: number): A }>(Ctor: TypedArrayConstructor<A>, extra = 0) =>
+    typed(Ctor, data.buffers[0]).subarray(data.offset, data.offset + n + extra)
   switch (type._tag) {
     case "Null":
       return nulls(n)
     case "Bool":
       return bool(unpackBits(data.buffers[0], data.offset, n), valid)
-    case "Int": {
-      const o = data.offset
-      const b = data.buffers[0]
+    case "Int":
       switch (type.bitWidth) {
         case 8:
-          return i32(
-            type,
-            type.signed
-              ? Int32Array.from(typed(Int8Array, b).subarray(o, o + n))
-              : Int32Array.from(b.subarray(o, o + n)),
-            valid
-          )
+          return i32(type, Int32Array.from(type.signed ? view(Int8Array) : view(Uint8Array)), valid)
         case 16:
-          return i32(
-            type,
-            Int32Array.from((type.signed ? typed(Int16Array, b) : typed(Uint16Array, b)).subarray(o, o + n)),
-            valid
-          )
+          return i32(type, Int32Array.from(type.signed ? view(Int16Array) : view(Uint16Array)), valid)
         case 32:
           return type.signed
-            ? i32(type, typed(Int32Array, b).subarray(o, o + n), valid)
-            : f64(type, Float64Array.from(typed(Uint32Array, b).subarray(o, o + n)), valid)
+            ? i32(type, view(Int32Array), valid)
+            : f64(type, Float64Array.from(view(Uint32Array)), valid)
         default:
-          return i64(type, typed(BigInt64Array, b).subarray(o, o + n), valid)
+          return i64(type, view(BigInt64Array), valid)
       }
-    }
     case "Float":
-      if (type.bitWidth === 64) {
-        return f64(type, typed(Float64Array, data.buffers[0]).subarray(data.offset, data.offset + n), valid)
-      }
-      if (type.bitWidth === 32) {
-        return f64(
-          type,
-          Float64Array.from(typed(Float32Array, data.buffers[0]).subarray(data.offset, data.offset + n)),
-          valid
-        )
-      }
+      if (type.bitWidth === 64) return f64(type, view(Float64Array), valid)
+      if (type.bitWidth === 32) return f64(type, Float64Array.from(view(Float32Array)), valid)
       return fail("Float16 columns are not supported")
     case "Date":
     case "Time":
     case "Timestamp":
-    case "Duration": {
-      const k = kindOf(type)
-      return k === "i32"
-        ? i32(type, typed(Int32Array, data.buffers[0]).subarray(data.offset, data.offset + n), valid)
-        : i64(type, typed(BigInt64Array, data.buffers[0]).subarray(data.offset, data.offset + n), valid)
-    }
+    case "Duration":
+      return kindOf(type) === "i32" ? i32(type, view(Int32Array), valid) : i64(type, view(BigInt64Array), valid)
     case "Utf8":
     case "Binary":
     case "LargeUtf8":
@@ -551,20 +539,16 @@ export const fromArrowData = (data: ArrowData.ArrowData): Vector => {
     case "BinaryView":
       return fromViews(storage, data, valid)
     case "Decimal": {
-      const o = data.offset
-      const b = data.buffers[0]
-      if (type.bitWidth === 32) {
-        return i64(type, BigInt64Array.from(typed(Int32Array, b).subarray(o, o + n), BigInt), valid)
-      }
-      if (type.bitWidth === 64) return i64(type, typed(BigInt64Array, b).subarray(o, o + n), valid)
+      if (type.bitWidth === 32) return i64(type, BigInt64Array.from(view(Int32Array), BigInt), valid)
+      if (type.bitWidth === 64) return i64(type, view(BigInt64Array), valid)
       // 128 or 256 bits: keep the low word when the rest only extends its sign.
       const words = type.bitWidth / 64
-      const all = typed(BigInt64Array, b)
+      const all = typed(BigInt64Array, data.buffers[0])
       const out = new BigInt64Array(n)
       for (let i = 0; i < n; i++) {
-        const base = (o + i) * words
+        const base = (data.offset + i) * words
         const lo = all[base]
-        const sign = lo < BigInt(0) ? BigInt(-1) : BigInt(0)
+        const sign = lo < I0 ? IM1 : I0
         for (let w = 1; w < words; w++) {
           if (all[base + w] !== sign && (valid === undefined || valid[i] === 1)) {
             return fail(`decimal values beyond 18 digits are not supported (column of ${type.bitWidth}-bit decimals)`)
@@ -576,9 +560,7 @@ export const fromArrowData = (data: ArrowData.ArrowData): Vector => {
     }
     case "List":
     case "LargeList": {
-      const raw = type._tag === "LargeList"
-        ? Int32Array.from(typed(BigInt64Array, data.buffers[0]).subarray(data.offset, data.offset + n + 1), Number)
-        : typed(Int32Array, data.buffers[0]).subarray(data.offset, data.offset + n + 1)
+      const raw = type._tag === "LargeList" ? Int32Array.from(view(BigInt64Array, 1), Number) : view(Int32Array, 1)
       const child = fromArrowData(data.children[0])
       const first = raw[0]
       if (first === 0 && raw[n] === child.length) return list(storage, raw, child, valid)
@@ -631,7 +613,7 @@ export const toArrowData = (v: Vector): ArrowData.ArrowData => {
         const out = new BigInt64Array(n * words)
         for (let i = 0; i < n; i++) {
           out[i * words] = v.values[i]
-          const sign = v.values[i] < BigInt(0) ? BigInt(-1) : BigInt(0)
+          const sign = v.values[i] < I0 ? IM1 : I0
           for (let w = 1; w < words; w++) out[i * words + w] = sign
         }
         return { ...base, buffers: [bytes(out)] }
@@ -662,8 +644,8 @@ export const toArrowData = (v: Vector): ArrowData.ArrowData => {
 // -----------------------------------------------------------------------------
 
 /**
- * Gathers `indices` from `v`. A negative index produces a null slot. `valid`
- * (optional) marks additional null output slots.
+ * Gathers `indices` from `v`. A negative index produces a null slot.
+ * `extraValid` (optional) marks additional null output slots.
  *
  * @internal
  */
@@ -815,7 +797,6 @@ export const slice = (v: Vector, start: number, end: number): Vector => {
 /** Concatenates vectors of the same kind and type. @internal */
 export const concat = (parts: ReadonlyArray<Vector>): Vector => {
   if (parts.length === 1) return parts[0]
-  const first = parts[0]
   const n = parts.reduce((s, p) => s + p.length, 0)
   let valid: Uint8Array | undefined
   if (parts.some((p) => p.kind === "null" || p.valid !== undefined)) {
@@ -829,32 +810,9 @@ export const concat = (parts: ReadonlyArray<Vector>): Vector => {
       at += p.length
     }
   }
-  const kind = parts.find((p) => p.kind !== "null")?.kind ?? "null"
-  if (kind === "null") return nulls(n)
-  const type = parts.find((p) => p.kind !== "null")!.type
-  if (kind === "list") {
-    const offsets = new Int32Array(n + 1)
-    const children: Array<Vector> = []
-    let row = 0
-    let at = 0
-    for (const p of parts) {
-      if (p.kind === "list") {
-        for (let i = 1; i <= p.length; i++) offsets[row + i] = at + p.offsets[i]
-        at += p.offsets[p.length]
-        children.push(p.child)
-      } else for (let i = 1; i <= p.length; i++) offsets[row + i] = at
-      row += p.length
-    }
-    return list(type, offsets, concat(children.length === 0 ? [nulls(0)] : children), valid)
-  }
-  if (kind === "struct") {
-    const fields = (parts.find((p) => p.kind === "struct") as Struct).children.length
-    const children = Array.from(
-      { length: fields },
-      (_, f) => concat(parts.map((p) => (p.kind === "struct" ? p.children[f] : nulls(p.length))))
-    )
-    return struct(type, children, n, valid)
-  }
+  const head = parts.find((p) => p.kind !== "null")
+  if (head === undefined) return nulls(n)
+  const type = head.type
   const fill = <T extends Float64Array | Int32Array | BigInt64Array | Uint8Array>(out: T): T => {
     let at = 0
     for (const p of parts) {
@@ -863,7 +821,7 @@ export const concat = (parts: ReadonlyArray<Vector>): Vector => {
     }
     return out
   }
-  switch (kind) {
+  switch (head.kind) {
     case "f64":
       return f64(type, fill(new Float64Array(n)), valid)
     case "i32":
@@ -872,6 +830,27 @@ export const concat = (parts: ReadonlyArray<Vector>): Vector => {
       return i64(type, fill(new BigInt64Array(n)), valid)
     case "bool":
       return bool(fill(new Uint8Array(n)), valid)
+    case "list": {
+      const offsets = new Int32Array(n + 1)
+      const children: Array<Vector> = []
+      let row = 0
+      let at = 0
+      for (const p of parts) {
+        if (p.kind === "list") {
+          for (let i = 1; i <= p.length; i++) offsets[row + i] = at + p.offsets[i]
+          at += p.offsets[p.length]
+          children.push(p.child)
+        } else for (let i = 1; i <= p.length; i++) offsets[row + i] = at
+        row += p.length
+      }
+      return list(type, offsets, concat(children.length === 0 ? [nulls(0)] : children), valid)
+    }
+    case "struct": {
+      const children = head.children.map((_, f) =>
+        concat(parts.map((p) => (p.kind === "struct" ? p.children[f] : nulls(p.length))))
+      )
+      return struct(type, children, n, valid)
+    }
     case "str": {
       const total = parts.reduce((s, p) => s + (p.kind === "str" ? p.offsets[p.length] - p.offsets[0] : 0), 0)
       const data = new Uint8Array(total)
@@ -892,7 +871,6 @@ export const concat = (parts: ReadonlyArray<Vector>): Vector => {
       return str(type, offsets, data, valid)
     }
   }
-  return first
 }
 
 /** A vector of `length` copies of one value. @internal */

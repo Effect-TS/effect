@@ -53,15 +53,13 @@ export const contains = (x: V.Vector, item: K.Value): V.Vector => {
   const v = asList(x, "listContains")
   const n = v.length
   const items = V.take(K.materialize(item, n), elementRows(v))
-  const eq = K.materialize(K.compare("eq", K.column(v.child), K.column(items), v.child.length), v.child.length)
+  const eq = K.compare("eq", K.column(v.child), K.column(items), v.child.length).vector as V.Bool
   const out = new Uint8Array(n)
-  if (eq.kind === "bool") {
-    for (let i = 0; i < n; i++) {
-      for (let e = v.offsets[i]; e < v.offsets[i + 1]; e++) {
-        if (V.isValid(eq, e) && eq.values[e] === 1) {
-          out[i] = 1
-          break
-        }
+  for (let i = 0; i < n; i++) {
+    for (let e = v.offsets[i]; e < v.offsets[i + 1]; e++) {
+      if (V.isValid(eq, e) && eq.values[e] === 1) {
+        out[i] = 1
+        break
       }
     }
   }

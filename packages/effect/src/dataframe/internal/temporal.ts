@@ -22,10 +22,9 @@ const perSecond: Record<S.TimeUnit, number> = {
   microsecond: 1_000_000,
   nanosecond: 1_000_000_000
 }
-const fineness: Record<S.TimeUnit, number> = { second: 0, millisecond: 1, microsecond: 2, nanosecond: 3 }
 
 /** The coarser of two units (the common unit of mixed operands, as in Polars). @internal */
-export const coarser = (a: S.TimeUnit, b: S.TimeUnit): S.TimeUnit => (fineness[a] <= fineness[b] ? a : b)
+export const coarser = (a: S.TimeUnit, b: S.TimeUnit): S.TimeUnit => (perSecond[a] <= perSecond[b] ? a : b)
 
 const zoned = (t: S.Timestamp): boolean => t.timezone !== undefined && t.timezone !== "UTC" && t.timezone !== "+00:00"
 
@@ -48,9 +47,13 @@ export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined 
 // Integer helpers
 // -----------------------------------------------------------------------------
 
-const floorDiv = (a: bigint, b: bigint): bigint => {
+const I0 = BigInt(0)
+const I1 = BigInt(1)
+
+/** Integer division rounding toward negative infinity. @internal */
+export const floorDiv = (a: bigint, b: bigint): bigint => {
   const q = a / b
-  return (a % b !== BigInt(0)) && ((a < BigInt(0)) !== (b < BigInt(0))) ? q - BigInt(1) : q
+  return a % b !== I0 && (a < I0) !== (b < I0) ? q - I1 : q
 }
 
 /** `v`'s integers times `factor` as `target`; null where the product leaves 64 bits. */
@@ -72,12 +75,15 @@ const multiply = (v: V.Vector, factor: bigint, target: S.DataType): V.Vector => 
  * durations); counts that leave 64 bits become null.
  */
 const rescale = (v: V.Vector, from: S.TimeUnit, to: S.TimeUnit, target: S.DataType, truncate = false): V.Vector => {
-  if (fineness[to] > fineness[from]) return multiply(v, BigInt(perSecond[to] / perSecond[from]), target)
+  if (perSecond[to] > perSecond[from]) return multiply(v, BigInt(perSecond[to] / perSecond[from]), target)
   const f = BigInt(perSecond[from] / perSecond[to])
   return V.i64(target, BigInt64Array.from(asI64(v), (x) => (truncate ? x / f : floorDiv(x, f))), v.valid)
 }
 
 const dayUnits = (unit: S.TimeUnit): bigint => BigInt(86_400 * perSecond[unit])
+
+/** Units per day of a 64-bit date (milliseconds) or timestamp. */
+const unitsPerDay = (t: S.DataType): bigint => dayUnits(t._tag === "Timestamp" ? t.unit : "millisecond")
 
 /** Days since the epoch of every row (dates and timestamps). */
 const days = (v: V.Vector): Float64Array => {
@@ -85,7 +91,7 @@ const days = (v: V.Vector): Float64Array => {
   if (v.kind === "i32") {
     for (let i = 0; i < v.length; i++) out[i] = v.values[i]
   } else if (v.kind === "i64") {
-    const per = v.type._tag === "Timestamp" ? dayUnits(v.type.unit) : BigInt(86_400_000) // Date64: milliseconds
+    const per = unitsPerDay(v.type)
     for (let i = 0; i < v.length; i++) out[i] = Number(floorDiv(v.values[i], per))
   }
   return out
@@ -108,8 +114,8 @@ export const civil = (z: number): readonly [number, number, number] => {
   return [yoe + era * 400 + (m <= 2 ? 1 : 0), m, d]
 }
 
-/** The day count of a date. @internal */
-export const daysFromCivil = (year: number, month: number, day: number): number => {
+/** The day count of a date. */
+const daysFromCivil = (year: number, month: number, day: number): number => {
   const y = month <= 2 ? year - 1 : year
   const era = Math.floor(y / 400)
   const yoe = y - era * 400
@@ -158,7 +164,6 @@ export const field = (fn: Field, v: V.Vector): V.Vector => {
   checkTimestamp(v, fn)
   const n = v.length
   const out = new Int32Array(n)
-  const d = days(v)
   if (fn === "hour" || fn === "minute" || fn === "second" || fn === "millisecond") {
     if (v.type._tag !== "Timestamp" || v.kind !== "i64") return V.i32(fieldType[fn], out, v.valid)
     const unit = v.type.unit
@@ -177,6 +182,7 @@ export const field = (fn: Field, v: V.Vector): V.Vector => {
     }
     return V.i32(fieldType[fn], out, v.valid)
   }
+  const d = days(v)
   for (let i = 0; i < n; i++) {
     const z = d[i]
     switch (fn) {
@@ -209,7 +215,7 @@ const parseEvery = (every: string): { readonly n: number; readonly unit: string 
   return { n, unit: match[2] }
 }
 
-const fixed: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86_400, w: 7 * 86_400 }
+const seconds: Record<string, number> = { ns: 1e-9, us: 1e-6, ms: 1e-3, s: 1, m: 60, h: 3600, d: 86_400, w: 604_800 }
 
 /**
  * Every date or timestamp rounded down to a multiple of `every`: seconds,
@@ -243,11 +249,9 @@ export const truncate = (v: V.Vector, every: string): V.Vector => {
     return V.i32(v.type, out, v.valid)
   }
   if (v.kind !== "i64" || v.type._tag !== "Timestamp") return V.fail(`truncate is not defined for ${v.type._tag}`)
-  const per = perSecond[v.type.unit]
-  const sub: Record<string, number> = { ns: 1e-9, us: 1e-6, ms: 1e-3 }
-  const size = BigInt(Math.round((fixed[unit] ?? sub[unit]) * k * per))
-  if (size <= BigInt(0)) return v
-  const offset = unit === "w" ? BigInt(3) * dayUnits(v.type.unit) : BigInt(0)
+  const size = BigInt(Math.round(seconds[unit] * k * perSecond[v.type.unit]))
+  if (size <= I0) return v
+  const offset = unit === "w" ? BigInt(3) * dayUnits(v.type.unit) : I0
   const out = new BigInt64Array(n)
   for (let i = 0; i < n; i++) out[i] = floorDiv(v.values[i] + offset, size) * size - offset
   return V.i64(v.type, out, v.valid)
@@ -256,7 +260,7 @@ export const truncate = (v: V.Vector, every: string): V.Vector => {
 /** Day counts as the input's type (dates stay dates). */
 const fromDays = (v: V.Vector, d: Float64Array): V.Vector => {
   if (v.kind === "i32") return V.i32(v.type, Int32Array.from(d), v.valid)
-  const per = v.type._tag === "Timestamp" ? dayUnits(v.type.unit) : BigInt(86_400_000)
+  const per = unitsPerDay(v.type)
   return V.i64(v.type, BigInt64Array.from(d, (x) => BigInt(x) * per), v.valid)
 }
 

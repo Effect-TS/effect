@@ -13,17 +13,18 @@ import * as BigDecimal from "../../BigDecimal.ts"
 import * as V from "./vector.ts"
 
 const powers: Array<bigint> = []
-/** `10^k` as a bigint. @internal */
-export const pow10 = (k: number): bigint => (powers[k] ??= BigInt(10) ** BigInt(k))
+/** `10^k` as a bigint. */
+const pow10 = (k: number): bigint => (powers[k] ??= BigInt(10) ** BigInt(k))
 
+const I0 = BigInt(0)
 const MAX = BigInt("9223372036854775807")
 const MIN = -BigInt("9223372036854775808")
 
 /** @internal */
 export const isDecimal = (t: S.DataType): t is S.Decimal => t._tag === "Decimal"
 
-/** Precision of results, as in Polars. @internal */
-export const PRECISION = 38
+/** Precision of results, as in Polars. */
+const PRECISION = 38
 
 /** @internal */
 export const decimal = (scale: number): S.Decimal => S.decimal(PRECISION, scale)
@@ -60,9 +61,9 @@ export const fit = (type: S.DataType): (x: bigint) => bigint => isDecimal(type) 
 const divRound = (x: bigint, k: number): bigint =>
   k === 0 ? x : BigDecimal.round(BigDecimal.make(x, k), { scale: 0, mode: "half-even" }).value
 
-/** `unscaled / 10^scale` as a decimal string, all `scale` digits shown. @internal */
-export const format = (unscaled: bigint, scale: number): string => {
-  const negative = unscaled < BigInt(0)
+/** `unscaled / 10^scale` as a decimal string, all `scale` digits shown. */
+const format = (unscaled: bigint, scale: number): string => {
+  const negative = unscaled < I0
   const digits = (negative ? -unscaled : unscaled).toString().padStart(scale + 1, "0")
   const text = scale === 0 ? digits : `${digits.slice(0, digits.length - scale)}.${digits.slice(digits.length - scale)}`
   return negative ? `-${text}` : text
@@ -70,8 +71,8 @@ export const format = (unscaled: bigint, scale: number): string => {
 
 const DECIMAL_SYNTAX = /^\s*([+-]?)(\d*)(?:\.(\d*))?\s*$/
 
-/** Parses a decimal string to unscaled units of `scale`; `undefined` when invalid. @internal */
-export const parse = (s: string, scale: number): bigint | undefined => {
+/** Parses a decimal string to unscaled units of `scale`; `undefined` when invalid. */
+const parse = (s: string, scale: number): bigint | undefined => {
   const m = DECIMAL_SYNTAX.exec(s)
   if (m === null || (m[2] === "" && (m[3] ?? "") === "")) return undefined
   const fraction = m[3] ?? ""
@@ -79,10 +80,6 @@ export const parse = (s: string, scale: number): bigint | undefined => {
   const x = fraction.length >= scale ? divRound(all, fraction.length - scale) : all * pow10(scale - fraction.length)
   return m[1] === "-" ? -x : x
 }
-
-const digitsOf = (x: bigint): number => (x < BigInt(0) ? -x : x).toString().length
-
-const fits = (x: bigint, t: S.Decimal): boolean => inRange(x) && digitsOf(x) <= t.precision
 
 /**
  * Casts to and from decimals; `undefined` when neither side is a decimal.
@@ -97,8 +94,10 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
   const valid = new Uint8Array(n)
   if (isDecimal(target)) {
     const out = new BigInt64Array(n)
+    // At most `precision` digits: |x| < 10^precision.
+    const limit = target.precision >= 1 ? pow10(target.precision) : I0
     const put = (i: number, x: bigint | undefined) => {
-      if (x !== undefined && fits(x, target)) {
+      if (x !== undefined && inRange(x) && x < limit && -x < limit) {
         out[i] = x
         valid[i] = 1
       }
@@ -119,6 +118,7 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
           break
         }
         case "i32":
+        case "bool":
           put(i, BigInt(v.values[i]) * pow10(target.scale))
           break
         case "f64": {
@@ -133,9 +133,6 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
         case "str":
           put(i, parse(V.decodeString(v, i), target.scale))
           break
-        case "bool":
-          put(i, BigInt(v.values[i]) * pow10(target.scale))
-          break
       }
     }
     return V.i64(target, out, valid)
@@ -144,25 +141,21 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
   if (v.kind !== "i64" || !isDecimal(from)) return V.fail("expected decimal storage")
   const scale = pow10(from.scale)
   switch (target._tag) {
-    case "Float": {
-      const out = new Float64Array(n)
-      for (let i = 0; i < n; i++) out[i] = Number(v.values[i]) / 10 ** from.scale
-      return V.f64(target, out, v.valid)
-    }
+    case "Float":
+      return V.f64(target, toFloat(v.values, from.scale), v.valid)
     case "Int": {
       if (target.bitWidth === 64) {
         const out = new BigInt64Array(n)
         for (let i = 0; i < n; i++) {
           const x = v.values[i] / scale
-          if (V.isValid(v, i) && (target.signed || x >= BigInt(0))) {
+          if (V.isValid(v, i) && (target.signed || x >= I0)) {
             out[i] = x
             valid[i] = 1
           }
         }
         return V.i64(target, out, valid)
       }
-      const lo = target.signed ? -(2 ** (target.bitWidth - 1)) : 0
-      const hi = target.signed ? 2 ** (target.bitWidth - 1) - 1 : 2 ** target.bitWidth - 1
+      const [lo, hi] = V.intRange(target)
       const out = new Float64Array(n)
       for (let i = 0; i < n; i++) {
         if (!V.isValid(v, i)) continue
@@ -180,7 +173,7 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
         Array.from({ length: n }, (_, i) => (V.isValid(v, i) ? format(v.values[i], from.scale) : null))
       )
     case "Bool":
-      return V.bool(Uint8Array.from(v.values, (x) => (x === BigInt(0) ? 0 : 1)), v.valid)
+      return V.bool(Uint8Array.from(v.values, (x) => (x === I0 ? 0 : 1)), v.valid)
     default:
       return V.fail(`cannot cast a decimal to ${target._tag}`)
   }
@@ -230,5 +223,9 @@ export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
 }
 
 /** Unscaled values as floats. @internal */
-export const toFloat = (values: BigInt64Array, scale: number): Float64Array =>
-  Float64Array.from(values, (x) => Number(x) / 10 ** scale)
+export const toFloat = (values: BigInt64Array, scale: number): Float64Array => {
+  const out = new Float64Array(values.length)
+  const unit = 10 ** scale
+  for (let i = 0; i < values.length; i++) out[i] = Number(values[i]) / unit
+  return out
+}
