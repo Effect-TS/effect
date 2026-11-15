@@ -890,6 +890,17 @@ def extended_cases():
     add("decimal/sort", "sort by a decimal", D, [{"op": "sort", "keys": [{"expr": col("price"), "descending": True}], "nullsLast": True}])
     add("decimal/round-ties", "narrowing the scale rounds exact ties", {"left": table([("t", "decimal[6,3]")], {"t": ["0.250", "0.350", "-0.250", "-0.350", "1.050", "2.500", "0.249"]})},
         [{"op": "select", "exprs": {"one": fn("cast", col("t"), to="decimal[6,1]"), "zero": fn("cast", col("t"), to="decimal[6,0]")}}])
+    add("decimal/cast-float-ties", "floats cast to decimals round exact ties half to even, also below zero",
+        {"left": table([("x", "f64")], {"x": [-1.5, -2.5, 1.5, 2.5, -0.75]})},
+        [{"op": "select", "exprs": {"zero": fn("cast", col("x"), to="decimal[18,0]"), "one": fn("cast", col("x"), to="decimal[18,1]")}}])
+    add("decimal/round", "rounding decimals keeps the scale and rounds half to even",
+        {"left": table([("t", "decimal[6,3]")], {"t": ["0.250", "0.350", "-0.250", "-0.350", "1.050", "2.500", "0.249", None]})},
+        [{"op": "select", "exprs": {"r0": fn("round", col("t")), "r1": fn("round", col("t"), decimals=1),
+                                     "r2": fn("round", col("t"), decimals=2), "r3": fn("round", col("t"), decimals=3)}}])
+    add("arith/u32-divide-by-zero", "unsigned 32-bit floor division and modulo by zero give null",
+        {"left": table([("n", "u32"), ("d", "u32")], {"n": [7, 0, 5], "d": [0, 0, 2]})},
+        [{"op": "select", "exprs": {"q": fn("floorDiv", col("n"), col("d")), "m": fn("mod", col("n"), col("d")),
+                                     "qs": fn("floorDiv", col("n"), lit(0, "u32")), "ms": fn("mod", col("n"), lit(0, "u32"))}}])
     # windows see exactly the rows of their input, whatever runs before or after them
     W = {"left": table([("g", "i32"), ("h", "i32"), ("x", "f64")], {"g": [1, 2, 1, 2], "h": [1, 1, 2, 2], "x": [3.0, 1.0, 2.0, 4.0]}),
          "right": table([("g", "i32"), ("name", "utf8")], {"g": [1], "name": ["one"]})}

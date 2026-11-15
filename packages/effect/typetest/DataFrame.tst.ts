@@ -286,6 +286,7 @@ describe("Types", () => {
   it("decimals", () => {
     expect(Expr.add(price, price)).type.toBe<Expr.Expr<BigDecimal.BigDecimal>>()
     expect(Expr.sum(price)).type.toBe<Expr.Aggregate<BigDecimal.BigDecimal>>()
+    expect(Expr.round(price, 1)).type.toBe<Expr.Expr<BigDecimal.BigDecimal>>()
     expect(Expr.castDecimal(Expr.lit(1.5), 10, 2)).type.toBe<Expr.Expr<BigDecimal.BigDecimal | null>>()
   })
 })

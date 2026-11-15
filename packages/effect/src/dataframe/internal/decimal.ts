@@ -108,10 +108,9 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
           const x = v.values[i]
           if (Number.isFinite(x)) {
             const scaled = x * 10 ** target.scale
-            const r = Math.round(scaled)
-            // round half to even
-            const even = Math.abs(scaled - Math.trunc(scaled)) === 0.5 && r % 2 !== 0 ? r - Math.sign(scaled) : r
-            put(i, BigInt(even))
+            const floor = Math.floor(scaled)
+            const rest = scaled - floor
+            put(i, BigInt(rest > 0.5 || (rest === 0.5 && floor % 2 !== 0) ? floor + 1 : floor))
           }
           break
         }
@@ -187,6 +186,23 @@ export const arith = (
     out[i] = checked(op === "add" ? x + y : x - y)
   }
   return { values: out, type: decimal(scale) }
+}
+
+/**
+ * Rounds to `places` decimal places, halves to even, keeping the scale. As
+ * in Polars, the precision grows by one digit when values can round up.
+ *
+ * @internal
+ */
+export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
+  if (places >= type.scale) return v
+  const k = type.scale - places
+  const factor = pow10(k)
+  return V.i64(
+    S.decimal(Math.min(type.precision + 1, PRECISION), type.scale),
+    BigInt64Array.from(v.values, (x) => checked(divRound(x, k) * factor)),
+    v.valid
+  )
 }
 
 /** Unscaled values as floats. @internal */

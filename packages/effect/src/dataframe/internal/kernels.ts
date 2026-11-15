@@ -554,6 +554,12 @@ export const unaryNumeric = (op: "neg" | "abs" | "sqrt" | "round", a: Value, dec
   const n = v.length
   if (v.kind === "null") return a
   if (op === "sqrt" && v.kind !== "f64") return unaryNumeric(op, castValue(a, S.float64))
+  if (op === "round" && !(Number.isInteger(decimals) && decimals >= 0)) {
+    return V.fail(`round needs a non-negative whole number of decimals, got ${decimals}`)
+  }
+  if (op === "round" && v.kind === "i64" && Dec.isDecimal(v.type)) {
+    return { vector: Dec.round(v, v.type, decimals), scalar: a.scalar, dynamic: a.dynamic }
+  }
   switch (v.kind) {
     case "f64": {
       const x = v.values

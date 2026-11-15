@@ -420,13 +420,26 @@ export const sqrt = <A extends number | null>(self: Expr<A>): Expr<number | Null
 /**
  * Rounds to `decimals` places (default 0), halves to even.
  *
+ * **Details**
+ *
+ * Floats round `x * 10^decimals` in float64 arithmetic, so 2.675 rounds to
+ * 2.68 and 1.005 to 1 at two places. Integers are returned unchanged.
+ * Decimals round half to even at `decimals` places and keep their scale;
+ * when `decimals` is below the scale, the precision grows by one digit (up
+ * to 38), as in Polars.
+ *
+ * **Gotchas**
+ *
+ * `decimals` must be a non-negative whole number; other values fail the
+ * query with a `DataFrameError`.
+ *
  * @stability experimental
  * @category arithmetic
  * @since 4.1.5
  */
 export const round: {
-  (decimals?: number): <A extends number | null>(self: Expr<A>) => Expr<A>
-  <A extends number | null>(self: Expr<A>, decimals?: number): Expr<A>
+  (decimals?: number): <A extends Numeric | null>(self: Expr<A>) => Expr<A>
+  <A extends Numeric | null>(self: Expr<A>, decimals?: number): Expr<A>
 } = dual(
   (args) => isExpr(args[0]),
   (self: Expr<unknown>, decimals = 0) => internal.call("round", [self], { decimals })

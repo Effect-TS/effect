@@ -96,6 +96,16 @@ describe("Query", () => {
         assert.instanceOf(error, DataFrame.DataFrameError)
         assert.strictEqual(error.message, "filter predicate must be boolean, got Utf8")
       }))
+
+    it.effect("round rejects negative or fractional places", () =>
+      Effect.gen(function*() {
+        for (const places of [-1, 0.5]) {
+          const error = yield* Effect.flip(
+            Query.from(readings).pipe(Query.select((c) => ({ t: Expr.round(c.temp, places) })))
+          )
+          assert.strictEqual(error.message, `round needs a non-negative whole number of decimals, got ${places}`)
+        }
+      }))
   })
 
   describe("operations", () => {
