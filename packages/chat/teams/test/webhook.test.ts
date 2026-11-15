@@ -213,8 +213,19 @@ describe("layerWebhook", () => {
           bearer
         )
         const body = yield* Effect.promise(() => response.json())
-        return body?.task?.type === "continue"
-          ? body.task.value.card.content.actions[0].data.effect as string
+        return Schema.is(Schema.Struct({
+            task: Schema.Struct({
+              type: Schema.Literal("continue"),
+              value: Schema.Struct({
+                card: Schema.Struct({
+                  content: Schema.Struct({
+                    actions: Schema.Array(Schema.Struct({ data: Schema.Struct({ effect: Schema.String }) }))
+                  })
+                })
+              })
+            })
+          }))(body)
+          ? body.task.value.card.content.actions[0]?.data.effect
           : undefined
       })
 
