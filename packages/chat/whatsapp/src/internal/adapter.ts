@@ -157,7 +157,15 @@ export const make = (options: {
     form.append("type", mime)
     form.append("file", new Blob([file.content as Uint8Array<ArrayBuffer>], { type: mime }), file.name)
     return graph.call(`${phoneNumberId}/media`, { form }).pipe(
-      Effect.mapError(withOp(op)),
+      // Meta refusing the file itself is a file refusal: nothing was sent, so the text can go without it.
+      Effect.mapError((error) =>
+        Errors.chatError(
+          op,
+          error.reason._tag === "TooLarge" || error.reason._tag === "InvalidRequest"
+            ? new TooLarge({ subject: "files", detail: fileRefused, cause: error.reason })
+            : error.reason
+        )
+      ),
       Effect.flatMap((answer) => {
         const id = isObject(answer) ? string(answer, "id") : undefined
         return id === undefined ? fail(op, Errors.invalidResponse(false, "missing_media_id")) : Effect.succeed(id)

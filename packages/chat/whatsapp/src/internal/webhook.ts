@@ -6,6 +6,7 @@ import * as Clock from "effect/Clock"
 import * as Mac from "effect/crypto/Mac"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Option from "effect/Option"
@@ -135,7 +136,15 @@ export const receive = (
             Effect.provideService(ChatInteraction.Handler, handler.value),
             Effect.flatMap((reply) =>
               reply._tag === "OpenModal"
-                ? handler.value.refused(item, chatError("openModal", new Unsupported({ capability: "modals" })))
+                // Awaited only for what is left of the click's share, then left running.
+                ? Effect.forkDetach(
+                  handler.value.refused(item, chatError("openModal", new Unsupported({ capability: "modals" })))
+                ).pipe(
+                  Effect.flatMap((fiber) =>
+                    Effect.flatMap(options.clickDeadline, (left) => Effect.timeoutOption(Fiber.await(fiber), left))
+                  ),
+                  Effect.asVoid
+                )
                 : Effect.void
             )
           )
@@ -166,10 +175,28 @@ const clickMargin = 250
  *   longer than the deadline. Meta then delivers the batch again.
  * - A click gets what is left of the deadline, less a margin, so a slow
  *   click handler is detached rather than passing the deadline.
+ * - At the deadline the work is interrupted without waiting for its
+ *   finalizers, so a slow release can't hold the 503 past Meta's cutoff.
  *
  * @internal
  */
 export const handleRequest = (
+  request: HttpServerRequest.HttpServerRequest,
+  options: Options
+): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
+  Effect.gen(function*() {
+    const fiber = yield* Effect.forkDetach(work(request, options))
+    const response = yield* Effect.onInterrupt(
+      Effect.timeoutOption(Fiber.join(fiber), options.deadline),
+      () => Fiber.interrupt(fiber)
+    )
+    if (Option.isSome(response)) return response.value
+    yield* Effect.forkDetach(Fiber.interrupt(fiber))
+    yield* Effect.logWarning(logged.deadline)
+    return status(503)
+  })
+
+const work = (
   request: HttpServerRequest.HttpServerRequest,
   options: Options
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
@@ -198,10 +225,4 @@ export const handleRequest = (
       Effect.as(ok),
       Effect.catchTag("NotAccepted", () => Effect.as(Effect.logWarning(logged.notAccepted), status(503)))
     )
-  }).pipe(
-    Effect.timeoutOption(options.deadline),
-    Effect.flatMap(Option.match({
-      onNone: () => Effect.as(Effect.logWarning(logged.deadline), status(503)),
-      onSome: Effect.succeed
-    }))
-  )
+  })

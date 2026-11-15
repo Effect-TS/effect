@@ -24,7 +24,11 @@ const cases: ReadonlyArray<readonly [string, string]> = [
   ["`**x**` ``a`` \\*x\\* <b>**x**</b>", "`**x**` ``a`` \\*x\\* <b>*x*</b>"],
   ["a_b_c and 2*3*4", "a_b_c and 2_3_4"],
   ["    **indented**", "    **indented**"],
-  ["- **item**\n> **quote**", "- *item*\n> *quote*"]
+  ["- **item**\n> **quote**", "- *item*\n> *quote*"],
+  ["[**x**] and ![**y**]\n\n[**x**]: https://e.com", "[**x**] and ![**y**]\n\n[**x**]: https://e.com"],
+  ["[r]:\n  <https://e.com>\n  \"**t**\"\n\n**x**", "[r]:\n  <https://e.com>\n  \"**t**\"\n\n*x*"],
+  ["> ~~~js\n> **x**\n> ~~~\n\n**y**", "> ~~~js\n> **x**\n> ~~~\n\n*y*"],
+  ["- ```\n  **x**\n  ```", "- ```\n  **x**\n  ```"]
 ]
 
 const longer = (input: string) => {

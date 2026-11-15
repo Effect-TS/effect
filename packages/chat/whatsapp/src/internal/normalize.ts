@@ -62,6 +62,38 @@ export const groupMessages = (envelope: unknown): number => {
   return count
 }
 
+/** A changed phone number or BSUID, addressed by the user's new id. */
+const fromSystem = (
+  value: JsonObject,
+  metadata: JsonObject,
+  phoneNumberId: string,
+  message: JsonObject,
+  id: string,
+  at: DateTime.Utc | undefined
+): ReadonlyArray<Inbound> => {
+  const system = object(message, "system")
+  const change = string(system, "type")
+  if (change !== "user_changed_number" && change !== "user_changed_user_id") return []
+  const userId = string(system, "user_id")
+  const phone = string(system, "wa_id")
+  const next = userId ?? phone
+  if (next === undefined || !Address.isUser(next)) return []
+  const previousUserId = string(system, "previous_user_id")
+  const previousPhone = string(message, "from")
+  return [{
+    _tag: "UserIdChanged",
+    thread: Address.thread({ phoneNumberId, kind: "user", id: next }),
+    id,
+    change,
+    ...(userId === undefined ? {} : { userId }),
+    ...(previousUserId === undefined ? {} : { previousUserId }),
+    ...(phone === undefined ? {} : { phone }),
+    ...(previousPhone === undefined ? {} : { previousPhone }),
+    ...(at === undefined ? {} : { timestamp: at }),
+    raw: { metadata, contacts: array(value.contacts).filter(isObject), messages: [message] }
+  }]
+}
+
 const fromMessage = (
   value: JsonObject,
   metadata: JsonObject,
@@ -70,6 +102,10 @@ const fromMessage = (
 ): ReadonlyArray<Inbound> => {
   if (!isObject(message) || isGroupMessage(message)) return []
   const id = string(message, "id")
+  const at = timestamp(string(message, "timestamp"))
+  const type = string(message, "type")
+  // A changed BSUID can arrive with no sender at all: the new id is only in `system`.
+  if (type === "system") return id === undefined ? [] : fromSystem(value, metadata, phoneNumberId, message, id, at)
   const contacts = array(value.contacts).filter(isObject)
   const from = string(message, "from")
   const fromUserId = string(message, "from_user_id")
@@ -81,31 +117,7 @@ const fromMessage = (
   if (id === undefined || user === undefined || !Address.isUser(user)) return []
   const thread = Address.thread({ phoneNumberId, kind: "user", id: user })
   const raw: Json = { metadata, contacts: contact === undefined ? [] : [contact], messages: [message] }
-  const at = timestamp(string(message, "timestamp"))
-  const type = string(message, "type")
   switch (type) {
-    case "system": {
-      const system = object(message, "system")
-      const change = string(system, "type")
-      if (change !== "user_changed_number" && change !== "user_changed_user_id") return []
-      const next = string(system, "user_id") ?? string(system, "wa_id")
-      if (next === undefined || !Address.isUser(next)) return []
-      const userId = string(system, "user_id")
-      const previousUserId = string(system, "previous_user_id")
-      const phone = string(system, "wa_id")
-      return [{
-        _tag: "UserIdChanged",
-        thread: Address.thread({ phoneNumberId, kind: "user", id: next }),
-        id,
-        change,
-        ...(userId === undefined ? {} : { userId }),
-        ...(previousUserId === undefined ? {} : { previousUserId }),
-        ...(phone === undefined ? {} : { phone }),
-        ...(from === undefined ? {} : { previousPhone: from }),
-        ...(at === undefined ? {} : { timestamp: at }),
-        raw
-      }]
-    }
     case "reaction": {
       const reaction = object(message, "reaction")
       const emoji = string(reaction, "emoji")

@@ -212,9 +212,11 @@ const link = (s: string, start: number, i: number): Atom | undefined => {
     const end = s.indexOf("]", close + 1)
     return end < 0 ? undefined : { end: end + 1, text: s.slice(start, end + 1) }
   }
-  if (s[close + 1] !== "(") return undefined
+  // A shortcut reference, or plain brackets: either way it is kept as typed.
+  const verbatim = { end: close + 1, text: s.slice(start, close + 1) }
+  if (s[close + 1] !== "(") return verbatim
   const target = destination(s, close + 1)
-  if (target === undefined) return undefined
+  if (target === undefined) return verbatim
   const label = s.slice(i + 1, close)
   const shown = start < i ? label : inline(label)
   const candidate = label === "" || label === target.url ? target.url : shown + " (" + target.url + ")"
@@ -345,10 +347,16 @@ export const render = (markdown: string): string => {
   let i = 0
   while (i < lines.length) {
     const line = body(i)
-    const fence = fenceOpen.exec(line)
+    const prefix = containerPrefix.exec(line)![0]
+    const rest = line.slice(prefix.length)
+    const fence = fenceOpen.exec(rest)
     if (fence !== null && !(fence[2][0] === "`" && fence[3].includes("`"))) {
+      // A fence inside a quote or list item closes on any line whose container markers precede the fence.
+      const nested = prefix !== ""
       const char = fence[2][0]
-      const closing = new RegExp("^ {0,3}" + (char === "~" ? "~" : "`") + "{" + fence[2].length + ",}[ \\t]*$")
+      const closing = new RegExp(
+        (nested ? "^[ \\t>]*" : "^ {0,3}") + (char === "~" ? "~" : "`") + "{" + fence[2].length + ",}[ \\t]*$"
+      )
       let j = i + 1
       while (j < lines.length && !closing.test(body(j))) j++
       if (j >= lines.length) {
@@ -358,8 +366,15 @@ export const render = (markdown: string): string => {
       const content = lines.slice(i + 1, j).join("")
       const source = lines.slice(i, j + 1).join("")
       const candidate = "```" + eol(i) + content + "```" + eol(j)
-      out += content.includes("```") ? source : pick(candidate, source)
+      out += nested || content.includes("```") ? source : pick(candidate, source)
       i = j + 1
+      continue
+    }
+    if (definition.test(rest)) {
+      // A definition's destination and title may continue on the next lines.
+      let j = i
+      while (j < lines.length && !isBlank(body(j).slice(containerPrefix.exec(body(j))![0].length))) out += lines[j++]
+      i = j
       continue
     }
     if (i + 1 < lines.length && line.includes("|") && tableDelimiter.test(body(i + 1)) && body(i + 1).includes("|")) {
@@ -387,13 +402,12 @@ export const render = (markdown: string): string => {
       i += 2
       continue
     }
-    if (/^(?: {4}|\t)/.test(line) || thematicBreak.test(line) || definition.test(line)) {
+    if (/^(?: {4}|\t)/.test(line) || thematicBreak.test(line)) {
       out += lines[i]
       i++
       continue
     }
-    const prefix = containerPrefix.exec(line)![0]
-    out += prefix + inline(line.slice(prefix.length)) + eol(i)
+    out += prefix + inline(rest) + eol(i)
     i++
   }
   return out

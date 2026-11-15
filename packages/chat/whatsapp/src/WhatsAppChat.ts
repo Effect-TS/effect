@@ -151,7 +151,8 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   as bold, a table without its delimiter row and a fence without its info
  *   string. Each replacement is used only when it is no longer than the
  *   Markdown it replaces, so the text never grows; anything else is sent as
- *   typed. `descriptor.measure` counts the Markdown in UTF-16 units.
+ *   typed, including reference links and their definitions, and code fenced
+ *   inside a quote or a list item. `descriptor.measure` counts the Markdown in UTF-16 units.
  * - Link previews are off unless `withPostOptions({ linkPreview: true })`.
  * - One file per post. It is uploaded, then sent as one media message with
  *   the text as its caption, or as the header of a message with reply
@@ -159,7 +160,8 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   detail `file_refused`, before anything is sent: more than one file, a
  *   MIME type outside Meta's table, `image/webp`, a file past its type's
  *   size limit, audio with text or actions, text over 1,024 beside a file,
- *   and a file beside a list. `text/markdown` is uploaded as
+ *   and a file beside a list. An upload Meta refuses as invalid or too large
+ *   fails the same way, so `ChatMarkdown`'s `unattachedNote` applies. `text/markdown` is uploaded as
  *   `text/plain`, with its bytes and name unchanged.
  * - Actions: one to three buttons with labels up to 20 go as reply buttons;
  *   a lone link button with a label up to 20 as a link button; otherwise
@@ -265,11 +267,12 @@ export const parts: (thread: ChatThread) => Option.Option<{
  * - A `NotAccepted` stops the delivery and answers 503, as does a request
  *   that takes longer than `deadline` (4 seconds by default, provisional).
  *   Meta then delivers the whole batch again, for up to 7 days, so a batch
- *   that always runs past the deadline repeats until then.
+ *   that always runs past the deadline repeats until then. At the deadline
+ *   the work is interrupted without waiting for its finalizers.
  * - A click never causes a 503. It gets what is left of the deadline, less
  *   a margin. `Ack` and `Late` count as handled, and a late handler keeps
  *   running. `OpenModal` goes to `Handler.refused` as
- *   `Unsupported("modals")`. Without a `ChatInteraction.Handler` in the
+ *   `Unsupported("modals")`, which is awaited only within the click's share. Without a `ChatInteraction.Handler` in the
  *   layer's context, a click is logged and dropped.
  * - Delivery is at least once. A message, a reaction or a click can arrive
  *   twice, a click even at the same time as its first delivery. Drop

@@ -9,7 +9,9 @@ import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { NotAccepted } from "effect/chat/ChatHandler"
 import * as ChatInteraction from "effect/chat/ChatInteraction"
+import * as ChatMarkdown from "effect/chat/ChatMarkdown"
 import type { Action } from "effect/chat/ChatUi"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
@@ -190,6 +192,21 @@ describe("post", () => {
       })
     }))
 
+  it.effect("posts the text alone when Meta refuses the upload", () =>
+    Effect.gen(function*() {
+      const graph = makeGraph()
+      graph.next.set(phoneNumberId + "/media", graphError(131053))
+      yield* run(
+        graph,
+        ChatMarkdown.post(thread, "Report", {
+          files: [file("a.txt", "text/plain")],
+          unattachedNote: () => " (not attached)",
+          minWriteInterval: Duration.zero
+        })
+      )
+      assert.deepStrictEqual(graph.sent().map((body) => body.text.body), ["Report (not attached)"])
+    }))
+
   it.effect("maps 131047 to Forbidden outside the window", () =>
     Effect.gen(function*() {
       const graph = makeGraph()
@@ -218,7 +235,10 @@ const deliver = Effect.fnUntraced(function*(
   options?: {
     readonly signature?: string
     readonly refuse?: (event: ChatEvent.ChatEvent) => boolean
+    readonly handle?: (event: ChatEvent.ChatEvent) => Effect.Effect<void>
     readonly onClick?: ChatInteraction.ClickReply
+    readonly onRefused?: (error: ChatError) => Effect.Effect<void>
+    readonly deadline?: Duration.Duration
   }
 ) {
   const body = JSON.stringify(envelope)
@@ -236,9 +256,11 @@ const deliver = Effect.fnUntraced(function*(
       handle: (event) =>
         options?.refuse?.(event) === true
           ? Effect.fail(new NotAccepted({}))
+          : options?.handle !== undefined
+          ? options.handle(event)
           : Effect.sync(() => void seen.push(event._tag)),
       onUpdate: (update: WhatsAppUpdate) => Effect.sync(() => void seen.push(update._tag)),
-      deadline: Duration.seconds(4),
+      deadline: options?.deadline ?? Duration.seconds(4),
       maxBodyBytes: 1024 * 1024
     }
   ).pipe(Effect.provideService(
@@ -247,7 +269,8 @@ const deliver = Effect.fnUntraced(function*(
       click: (event) => Effect.sync(() => (seen.push(event._tag), options?.onClick ?? ChatInteraction.ack)),
       submit: () => Effect.succeed(ChatInteraction.close),
       command: () => Effect.succeed(ChatInteraction.ack),
-      refused: (_, error) => Effect.sync(() => void refused.push(error))
+      refused: (_, error) =>
+        Effect.andThen(Effect.sync(() => void refused.push(error)), options?.onRefused?.(error) ?? Effect.void)
     })
   ))
   return { status: response.status, seen, refused }
@@ -291,7 +314,18 @@ describe("webhook", () => {
       assert.deepStrictEqual([refused.status, refused.seen], [503, []])
     }))
 
-  it.effect("hands a click to the handler and refuses a modal as Unsupported", () =>
+  it.live("answers 503 at the deadline without waiting for a slow finalizer", () =>
+    Effect.gen(function*() {
+      const start = Date.now()
+      const result = yield* deliver(text, {
+        handle: () => Effect.never.pipe(Effect.ensuring(Effect.sleep("5 seconds"))),
+        deadline: Duration.millis(50)
+      })
+      assert.strictEqual(result.status, 503)
+      assert.isBelow(Date.now() - start, 2000)
+    }))
+
+  it.live("hands a click to the handler and refuses a modal as Unsupported", () =>
     Effect.gen(function*() {
       const click = inbound({
         type: "interactive",
@@ -299,9 +333,15 @@ describe("webhook", () => {
         interactive: { type: "list_reply", list_reply: { id: "senv\u241Fp\u241Fq", title: "Prod" } }
       })
       const modal = ChatInteraction.modal("m", { title: "M", fields: {} }).open()
-      const result = yield* deliver(click, { onClick: modal })
+      const refusal = yield* Deferred.make<ChatError>()
+      // The refusal callback never finishes, and the click is still answered 200.
+      const result = yield* deliver(click, {
+        onClick: modal,
+        onRefused: (error) => Effect.andThen(Deferred.succeed(refusal, error), Effect.never),
+        deadline: Duration.millis(500)
+      })
       assert.deepStrictEqual([result.status, result.seen], [200, ["SelectChanged"]])
-      assert.strictEqual(result.refused[0]?.reason._tag, "Unsupported")
+      assert.strictEqual((yield* Deferred.await(refusal)).reason._tag, "Unsupported")
       const [event] = WhatsAppChat.normalize(click, { phoneNumberId })
       assert.deepStrictEqual(event._tag === "SelectChanged" && [event.id, event.value, event.messageId], [
         "env",
@@ -309,6 +349,28 @@ describe("webhook", () => {
         "wamid.out1"
       ])
     }))
+})
+
+describe("normalize", () => {
+  it("reports a changed BSUID that arrives with no sender or contact", () => {
+    const envelope = inbound({
+      type: "system",
+      system: { type: "user_changed_user_id", user_id: "US.99", body: "changed" }
+    })
+    const value = envelope.entry[0].changes[0].value as any
+    delete value.contacts
+    delete value.messages[0].from
+    delete value.messages[0].from_user_id
+    const [update] = WhatsAppChat.normalize(envelope, { phoneNumberId })
+    assert.deepStrictEqual(
+      update._tag === "UserIdChanged" && [update.thread.id, update.userId, WhatsAppChat.updateKey(update)],
+      [
+        `${phoneNumberId}/u/US.99`,
+        "US.99",
+        `${phoneNumberId}/user_changed/${value.messages[0].id}`
+      ]
+    )
+  })
 })
 
 describe("keys", () => {
