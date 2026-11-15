@@ -108,7 +108,9 @@ const makeTracing = (options?: { readonly traced?: boolean }) => {
   return cloudflare
 }
 
-describe("CloudflareTracer", () => {
+// The mocked module forwards to one fake at a time, and a test below removes
+// `process.getBuiltinModule`, so the tests must not overlap.
+describe("CloudflareTracer", { concurrent: false }, () => {
   it.effect("records Effect spans as Cloudflare spans nested under the invocation", () =>
     Effect.gen(function*() {
       const cloudflare = makeTracing()
