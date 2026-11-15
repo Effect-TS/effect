@@ -21,6 +21,7 @@ const types = (df: DataFrame.DataFrame<unknown>) =>
 
 describe("DataFrame", () => {
   describe("constructors", () => {
+    // DF-C001 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows maps schema fields to Arrow types", () => {
       assert.deepStrictEqual(types(readings), [
         "city:Utf8:false",
@@ -31,6 +32,7 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(DataFrame.toArray(readings, "station") as Array<unknown>, ["s1", null, null])
     })
 
+    // DF-C002 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows takes per-column type overrides", () => {
       const df = DataFrame.fromRows(Schema.Struct({ n: Schema.Number }), [{ n: 1 }, { n: 2 }], {
         types: { n: ArrowSchema.int32 }
@@ -38,6 +40,7 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(df.schema.fields[0].type, ArrowSchema.int32)
     })
 
+    // DF-C003 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows builds decimal columns from options.types", () => {
       const Price = Schema.Struct({ n: Schema.BigDecimal })
       const df = DataFrame.fromRows(Price, [{ n: BigDecimal.make(123n, 2) }], {
@@ -49,6 +52,7 @@ describe("DataFrame", () => {
       assert.isTrue(Result.isSuccess(DataFrame.validate(df, Price, { types: { n: ArrowSchema.decimal(18, 2) } })))
     })
 
+    // DF-C004 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows rejects overrides that can't hold the field's values", () => {
       assert.throws(
         () => DataFrame.fromRows(Schema.Struct({ n: Schema.Number }), [], { types: { n: ArrowSchema.int64 } }),
@@ -63,6 +67,7 @@ describe("DataFrame", () => {
       )
     })
 
+    // DF-C005 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows rejects schemas without a column type", () => {
       interface Tree {
         readonly children: ReadonlyArray<Tree>
@@ -73,16 +78,19 @@ describe("DataFrame", () => {
       }
     })
 
+    // DF-C006 (API contract): DataFrame.fromColumns; pinned source in README.md.
     it("fromColumns keeps typed array element types", () => {
       const df = DataFrame.fromColumns({ i: Int32Array.of(1, 2), b: BigInt64Array.of(1n, 2n), s: ["a", null] })
       assert.deepStrictEqual(types(df), ["i:Int:false", "b:Int:false", "s:Utf8:true"])
       assert.deepStrictEqual(DataFrame.toRows(df), [{ i: 1, b: 1n, s: "a" }, { i: 2, b: 2n, s: null }])
     })
 
+    // DF-C007 (API contract): DataFrame.fromColumns; pinned source in README.md.
     it("fromColumns rejects columns of different lengths", () => {
       assert.throws(() => DataFrame.fromColumns({ a: [1, 2], b: [1] }), DataFrame.DataFrameError)
     })
 
+    // DF-C008 (API contract): DataFrame.empty; pinned source in README.md.
     it("empty has the schema's columns and no rows", () => {
       const df = DataFrame.empty(Reading)
       assert.strictEqual(df.length, 0)
@@ -100,11 +108,13 @@ describe("DataFrame", () => {
     const column = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown>) => arrowFrame({ t: [type, values] })
     const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
 
+    // DF-C009 (API contract): DataFrame.validate; pinned source in README.md.
     it("returns the frame typed by the schema, in schema order", () => {
       const result = DataFrame.validate(untyped, Schema.Struct({ temp: Schema.Number, city: Schema.String }))
       assert.deepStrictEqual(DataFrame.columnNames(Result.getOrThrow(result)), ["temp", "city"])
     })
 
+    // DF-C010 (API contract): DataFrame.validate; pinned source in README.md.
     it("fails on missing columns, wrong types, unexpected nulls and values the schema rejects", () => {
       const nested = DataFrame.fromRows(
         Schema.Struct({ p: Schema.Struct({ x: Schema.String }), xs: Schema.Array(Schema.NullOr(Schema.Number)) }),
@@ -189,6 +199,7 @@ describe("DataFrame", () => {
       }
     })
 
+    // DF-C011 (API contract): DataFrame.validate; pinned source in README.md.
     it("reads timestamps with a UTC time zone as DateTime.Utc", () => {
       const ts = ArrowSchema.timestamp("millisecond", "UTC")
       const nested = column(ArrowSchema.list(ArrowSchema.field("item", ts)), [[1000n]])
@@ -201,6 +212,7 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(DataFrame.toRows(built), [{ t: DateTime.makeUnsafe(0) }])
     })
 
+    // DF-C012 (API contract): DataFrame.validate; pinned source in README.md.
     it("converts columns to the types fromRows gives the schema, exactly", () => {
       const Row = Schema.Struct({ n: Schema.Number, d: Schema.BigDecimal, t: Schema.DateTimeUtc })
       const df = arrowFrame({
@@ -226,12 +238,14 @@ describe("DataFrame", () => {
   })
 
   describe("Arrow interop", () => {
+    // DF-C013 (API contract): DataFrame.toArrowTable; pinned source in README.md.
     it("round-trips through the IPC stream format", () => {
       const bytes = Result.getOrThrow(ArrowIpc.encodeStream(DataFrame.toArrowTable(readings)))
       const back = DataFrame.fromArrowTable(Result.getOrThrow(ArrowIpc.decodeStream(bytes)))
       assert.isTrue(Equal.equals(back, readings))
     })
 
+    // DF-C014 (API contract): DataFrame.decodeArrowStream; pinned source in README.md.
     it.effect("decodes IPC stream bytes into a frame per batch", () =>
       Effect.gen(function*() {
         const table = DataFrame.toArrowTable(readings)
@@ -245,6 +259,7 @@ describe("DataFrame", () => {
         for (const frame of frames) assert.isTrue(Equal.equals(frame, readings))
       }))
 
+    // DF-C015 (API contract): DataFrame.toArrowTable; pinned source in README.md.
     it.effect("exports late-selected columns", () =>
       Effect.gen(function*() {
         const df = yield* Query.from(readings).pipe(
@@ -256,6 +271,7 @@ describe("DataFrame", () => {
         assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(table)), DataFrame.toRows(df))
       }))
 
+    // DF-C016 (API contract): DataFrame.fromArrowTable; pinned source in README.md.
     it("imports a table without batches with the nullability of its fields", () => {
       const schema = ArrowSchema.make([
         ArrowSchema.field("x", ArrowSchema.int8, { nullable: false }),
@@ -267,6 +283,7 @@ describe("DataFrame", () => {
       ])
     })
 
+    // DF-C017 (API contract): DataFrame.fromArrowTable; pinned source in README.md.
     it.effect("imports sliced list columns with only their own elements", () =>
       Effect.gen(function*() {
         const Lists = Schema.Struct({ xs: Schema.Array(Schema.Number) })
@@ -286,6 +303,7 @@ describe("DataFrame", () => {
   })
 
   describe("values", () => {
+    // DF-C018 (API contract): DataFrame.equals; pinned source in README.md.
     it("compare structurally, NaN included", () => {
       const a = DataFrame.fromColumns({ x: [1, NaN, null] })
       const b = DataFrame.fromColumns({ x: [1, NaN, null] })
@@ -294,6 +312,7 @@ describe("DataFrame", () => {
       assert.isFalse(Equal.equals(a, c))
     })
 
+    // DF-C019 (API contract): DataFrame.DataFrame; pinned source in README.md.
     it("iterate as rows", () => {
       assert.deepStrictEqual(Array.from(DataFrame.fromColumns({ city: DataFrame.toArray(readings, "city") })), [
         { city: "Vienna" },
@@ -302,6 +321,7 @@ describe("DataFrame", () => {
       ])
     })
 
+    // DF-C020 (local policy): DataFrame.format; pinned source in README.md.
     it("format as a text table", () => {
       assert.strictEqual(
         DataFrame.format(

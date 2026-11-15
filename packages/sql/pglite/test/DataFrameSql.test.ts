@@ -482,14 +482,17 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
       }
     })
 
+    // DF-I-SQL/<name>: differential evidence; exact expansion and pins in effect/test/dataframe/README.md.
     for (const [name, query] of cases) it.effect(name, () => both(query))
 
+    // DF-S001: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("negative slices clamp both ends", () =>
       Effect.gen(function*() {
         assert.deepStrictEqual(yield* rowsOnSql(xs.pipe(Query.slice(-5, 1))), [])
         assert.deepStrictEqual(yield* rowsOnSql(xs.pipe(Query.slice(-5, 3))), [{ x: 1 }])
       }))
 
+    // DF-S002: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("rounds decimals half to even, keeping the scale", () =>
       Effect.gen(function*() {
         const df = yield* onSql(
@@ -513,6 +516,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         )
       }))
 
+    // DF-S003: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("errors carry the database's message", () =>
       Effect.gen(function*() {
         assert.include(
@@ -521,6 +525,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         )
       }))
 
+    // DF-S004: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("tables must satisfy their schema, as in memory", () =>
       Effect.gen(function*() {
         const contract = tableOf("contract")
@@ -589,6 +594,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }
       }))
 
+    // DF-S005: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("tables reject values their declared types can't hold exactly, as in memory", () =>
       Effect.gen(function*() {
         for (
@@ -618,6 +624,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }
       }))
 
+    // DF-S006: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("tables are checked on the rows the query reads, whatever the relation", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient
@@ -652,6 +659,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         ])
       }))
 
+    // DF-S007: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("tables are read from their names, whatever the compiler names", () =>
       Effect.gen(function*() {
         const s = (name: string) => Query.table(name, Schema.Struct({ s: Schema.String }))
@@ -673,6 +681,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(yield* rowsOnSql(two), [{ s: "57" }, { s: "good" }])
       }))
 
+    // DF-S008: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("columns are one to PostgreSQL when their first 63 bytes are", () =>
       Effect.gen(function*() {
         // Declarations of one table read its one column `"z".repeat(63)`, each with its checks.
@@ -694,6 +703,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }
       }))
 
+    // DF-S009: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient
@@ -711,6 +721,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(rows, [{ at: DateTime.makeUnsafe("2024-01-01T00:30:00Z"), hour: 0, early: true }])
       }))
 
+    // DF-S010: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("filters, derives and sorts", () =>
       both(table.pipe(
         Query.filter((c) => Expr.and(Expr.isNotNull(c.units), Expr.gt(c.price, 20))),
@@ -719,6 +730,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         Query.head(10)
       )))
 
+    // DF-S011: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("groups in order of first appearance", () =>
       both(table.pipe(
         Query.groupBy("region"),
@@ -735,6 +747,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }))
       )))
 
+    // DF-S012: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("joins keep the left row order", () =>
       both(table.pipe(
         Query.pick("id", "region"),
@@ -742,6 +755,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         Query.filter((c) => Expr.lt(c.id, 15))
       )))
 
+    // DF-S013: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("semi and anti joins, unique and slices", () =>
       Effect.gen(function*() {
         yield* both(table.pipe(Query.join(Query.table("regions", Region), { on: "region", how: "anti" })))
@@ -750,6 +764,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         yield* both(table.pipe(Query.slice(7, 4)))
       }))
 
+    // DF-S014: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("window functions over partitions", () =>
       both(table.pipe(
         Query.select((c) => ({
@@ -762,6 +777,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }))
       )))
 
+    // DF-S015: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("dates and times", () =>
       both(table.pipe(
         Query.select((c) => ({
@@ -773,6 +789,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }))
       )))
 
+    // DF-S016: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("explain shows the SQL", () =>
       Effect.gen(function*() {
         const text = yield* Query.explain(table.pipe(Query.head(1))).pipe(

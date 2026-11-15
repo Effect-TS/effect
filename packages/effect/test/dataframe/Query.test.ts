@@ -43,12 +43,29 @@ const price = (d: string, precision: number, scale: number) =>
 
 describe("Query", () => {
   describe("running", () => {
+    // DF-Q001 (API contract): Query.Query; pinned source in README.md.
     it.effect("is an Effect producing a frame", () =>
       Effect.gen(function*() {
         const df = yield* Query.from(readings).pipe(Query.filter((c) => Expr.gt(c.temp, 20)))
         assert.deepStrictEqual(DataFrame.toArray(df, "city"), ["Vienna", "Berlin"])
       }))
 
+    // DF-Q002 (API contract): Query.select; pinned source in README.md.
+    it.effect("expression callbacks run once at construction, not on execution", () =>
+      Effect.gen(function*() {
+        let calls = 0
+        const query = Query.from(readings).pipe(Query.select((c) => {
+          calls++
+          return { city: c.city }
+        }))
+        assert.strictEqual(calls, 1)
+        const expected = [{ city: "Vienna" }, { city: "Berlin" }, { city: "Vienna" }]
+        assert.deepStrictEqual(yield* rows(query), expected)
+        assert.deepStrictEqual(yield* rows(query), expected)
+        assert.strictEqual(calls, 1)
+      }))
+
+    // DF-Q003 (API contract): Query.Query; pinned source in README.md.
     it.effect("does no work until it runs", () =>
       Effect.gen(function*() {
         const query = Query.table("missing", City).pipe(Query.filter((c) => Expr.eq(c.city, "Vienna")))
@@ -56,6 +73,7 @@ describe("Query", () => {
         assert.strictEqual(error.message, `unknown table "missing"`)
       }))
 
+    // DF-Q004 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("reads each table once per run, from effects too", () =>
       Effect.gen(function*() {
         let loads = 0
@@ -70,6 +88,7 @@ describe("Query", () => {
         assert.strictEqual(loads, 2)
       }))
 
+    // DF-Q005 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("tables can be queries (views)", () =>
       Effect.gen(function*() {
         const warm = Query.table("readings", Reading).pipe(Query.filter((c) => Expr.gt(c.temp, 20)))
@@ -78,6 +97,7 @@ describe("Query", () => {
         assert.deepStrictEqual(result, [{ city: "Vienna" }, { city: "Berlin" }])
       }))
 
+    // DF-Q006 (API contract): Query.table; pinned source in README.md.
     it.effect("checks tables against their declared columns", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(Query.table("readings", City).pipe(Effect.provide(tables)))
@@ -109,6 +129,7 @@ describe("Query", () => {
         assert.deepStrictEqual(DataFrame.toRows(yield* ranges), [{ lo: 1, hi: 2 }])
       }))
 
+    // DF-Q007 (API contract): Query.table; pinned source in README.md.
     it.effect("narrows tables to their declared columns", () =>
       Effect.gen(function*() {
         const Temps = Schema.Struct({ temp: Schema.Number, city: Schema.String })
@@ -116,6 +137,7 @@ describe("Query", () => {
         assert.deepStrictEqual(DataFrame.columnNames(df), ["temp", "city"])
       }))
 
+    // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(Query.from(readings).pipe(Query.filter((c) => c.city as any)))
@@ -123,6 +145,7 @@ describe("Query", () => {
         assert.strictEqual(error.message, "filter predicate must be boolean, got Utf8")
       }))
 
+    // DF-Q009 (API contract): Expr.Expr; pinned source in README.md.
     it.effect("decimal results fail instead of overflowing 64 bits", () =>
       Effect.gen(function*() {
         const nines = (rows: number) =>
@@ -148,6 +171,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q010 (API contract): Expr.round; pinned source in README.md.
     it.effect("round rejects negative or fractional places", () =>
       Effect.gen(function*() {
         for (const places of [-1, 0.5]) {
@@ -160,6 +184,7 @@ describe("Query", () => {
   })
 
   describe("operations", () => {
+    // DF-Q011 (API contract): Query.slice; pinned source in README.md.
     it.effect("slice takes an offset and a length; negative offsets count from the end", () =>
       Effect.gen(function*() {
         const n = Query.from(DataFrame.fromColumns({ n: Int32Array.of(0, 1, 2, 3, 4) }))
@@ -173,12 +198,14 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* values(Query.slice(n, 9)), [])
       }))
 
+    // DF-Q012 (API contract): Query.append; pinned source in README.md.
     it.effect("append stacks rows; dropNulls removes incomplete rows", () =>
       Effect.gen(function*() {
         const df = yield* Query.from(readings).pipe(Query.append(Query.from(readings)), Query.dropNulls(["rain"]))
         assert.deepStrictEqual(DataFrame.toArray(df, "rain"), [0, 2, 0, 2])
       }))
 
+    // DF-Q013 (API contract): Query.join; pinned source in README.md.
     it.effect("joins on several keys", () =>
       Effect.gen(function*() {
         const right = DataFrame.fromColumns({ city: ["Vienna", "Vienna"], temp: [19, 21.5], note: ["cool", "warm"] })
@@ -191,6 +218,7 @@ describe("Query", () => {
         ])
       }))
 
+    // DF-Q014 (API contract): Expr.cast; pinned source in README.md.
     it.effect("cast reports values that don't fit as null", () =>
       Effect.gen(function*() {
         const df = DataFrame.fromColumns({ x: [1.9, -1.9, 3e10, NaN] })
@@ -228,6 +256,7 @@ describe("Query", () => {
         assert.deepStrictEqual(overflows, [{ t: null, d: null, i: null }])
       }))
 
+    // DF-Q015 (API contract): Expr.Expr; pinned source in README.md.
     it.effect("implicit conversions to a common type fail on values it can't hold", () =>
       Effect.gen(function*() {
         const big = Query.from(price("6000000000000000000", 19, 0))
@@ -310,6 +339,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q016 (API contract): Expr.Expr; pinned source in README.md.
     it.effect("temporal operands of mixed units meet in the coarser unit, as in Polars", () =>
       Effect.gen(function*() {
         // Expected values from Polars 2.1.0: timestamps round down, durations toward zero.
@@ -376,6 +406,7 @@ describe("Query", () => {
   })
 
   describe("explain", () => {
+    // DF-Q017 (local policy): Query.explain; pinned source in README.md.
     it.effect("shows the rewritten plan", () =>
       Effect.gen(function*() {
         const query = Query.table("readings", Reading).pipe(
@@ -404,6 +435,7 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(query).pipe(Effect.provide(tables)), [{ city: "Vienna", fahrenheit: 70.7 }])
       }))
 
+    // DF-Q018 (local policy): Query.explain; pinned source in README.md.
     it.effect("pushes key predicates below groups and through renames", () =>
       Effect.gen(function*() {
         const query = Query.from(readings).pipe(
@@ -426,6 +458,7 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(query), [{ town: "Vienna", n: 2, mean: 20.25 }])
       }))
 
+    // DF-Q019 (local policy): Query.explain; pinned source in README.md.
     it.effect("keeps predicates on join keys off the right side, whose keys the join drops", () =>
       Effect.gen(function*() {
         // The result has the left side's Int8 key, where 100 + 100 wraps to -56;
@@ -437,6 +470,7 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(query), [{ x: 100, a: 1, b: 2 }])
       }))
 
+    // DF-Q020 (local policy): Query.explain; pinned source in README.md.
     it.effect("keeps predicates above left joins when they read the right side", () =>
       Effect.gen(function*() {
         const query = Query.from(readings).pipe(
@@ -456,6 +490,7 @@ describe("Query", () => {
   })
 
   describe("plans", () => {
+    // DF-Q021 (API contract): Plan.Node; pinned source in README.md.
     it("are plain data", () => {
       const query = Query.from(readings).pipe(Query.filter((c) => Expr.gt(c.temp, 20)), Query.pick("city"))
       assert.deepStrictEqual(query.plan, {
@@ -474,6 +509,7 @@ describe("Query", () => {
       })
     })
 
+    // DF-Q022 (API contract): Plan.NodeFromJson; pinned source in README.md.
     it("encode to JSON without losing literal types", () => {
       const values: ReadonlyArray<Plan.Value> = ["NaN", NaN, -0, Infinity, 2n ** 70n, "12", 12, true, null]
       const expression: Plan.Expression = {
@@ -507,6 +543,7 @@ describe("Query", () => {
       assert.deepStrictEqual(back, expression)
     })
 
+    // DF-Q023 (API contract): Plan.NodeFromJson; pinned source in README.md.
     it.effect("round-trip through JSON with their inputs", () =>
       Effect.gen(function*() {
         const query = Query.from(readings).pipe(Query.groupBy("city"), Query.agg((c) => ({ max: Expr.max(c.temp) })))
@@ -515,11 +552,13 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(decoded), yield* rows(query))
       }))
 
+    // DF-Q024 (API contract): Plan.NodeFromJson; pinned source in README.md.
     it("reject malformed JSON when decoding", () => {
       const json = { _tag: "Filter", input: { _tag: "Table", name: "t" }, predicate: { _tag: "Call", fn: "explode" } }
       assert.throws(() => Schema.decodeUnknownSync(Plan.NodeFromJson)(json))
     })
 
+    // DF-Q025 (API contract): Plan.Expression; pinned source in README.md.
     it.effect("fail at run time on the wrong number of arguments", () =>
       Effect.gen(function*() {
         const plan: Plan.Node = {
@@ -531,6 +570,7 @@ describe("Query", () => {
         assert.strictEqual(error.message, "gt takes 2 argument(s), got 1")
       }))
 
+    // DF-Q026 (API contract): Expr.toPlan; pinned source in README.md.
     it("expressions convert to and from plans", () => {
       const e = Expr.add(Expr.lit(1n), 2n)
       assert.deepStrictEqual(Expr.toPlan(e), {
@@ -551,6 +591,7 @@ describe("Query", () => {
     for (const source of ["values", "frames", "batches"] as const) {
       describe(source, () => {
         for (const c of cases) {
+          // DF-I-POLARS/<source>/<case-id>: interoperability evidence; pinned oracle provenance in README.md.
           it.effect(`${c.id}: ${c.description}`, () =>
             Effect.gen(function*() {
               const df = yield* Oracle.run(c, source)
@@ -568,6 +609,7 @@ describe("Query", () => {
     const streamed = <A>(query: Query.Query<A>, source: Catalog.Source) =>
       rows(query).pipe(Effect.provide(Catalog.layer({ t: source })))
 
+    // DF-Q027 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("a slice that has its rows pulls no further batch", () =>
       Effect.gen(function*() {
         const one = Stream.concat(Stream.succeed(DataFrame.fromColumns({ x: [1] })), Stream.die("pulled again"))
@@ -577,6 +619,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q028 (API contract): Expr.sum; pinned source in README.md.
     it.effect("decimal sums don't depend on batch boundaries", () =>
       Effect.gen(function*() {
         const query = Query.table("t", Schema.Struct({ s: Schema.String })).pipe(
@@ -588,6 +631,7 @@ describe("Query", () => {
         assert.deepStrictEqual(result, [{ total: BigDecimal.fromBigInt(0n) }])
       }))
 
+    // DF-Q029 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("batches convert to the declared column types; undeclared, they must share their columns", () =>
       Effect.gen(function*() {
         const source = Stream.make(price("1.2", 18, 1), price("1.23", 18, 2), price("1.2", 18, 2))
@@ -624,6 +668,7 @@ describe("Query", () => {
         assert.strictEqual(error.message, `column "d" has values that Decimal[18, 1] can't hold exactly`)
       }))
 
+    // DF-Q030 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("results over inputs of different types are those over their concatenation, streamed or not", () =>
       Effect.gen(function*() {
         type Frame = DataFrame.DataFrame<{ readonly x: number }>
@@ -776,6 +821,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q031 (API contract): Query.aggregate; pinned source in README.md.
     it.effect("zero-row batches aggregate like an empty table", () =>
       Effect.gen(function*() {
         const query = Query.aggregate(t, (c) => ({ n: Expr.count(), total: Expr.sum(c.x), mean: Expr.mean(c.x) }))
@@ -783,6 +829,7 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* streamed(query, empty), [{ n: 0, total: 0, mean: null }])
       }))
 
+    // DF-Q032 (API contract): Query.stream; pinned source in README.md.
     it.effect("results without rows keep the types of their columns", () =>
       Effect.gen(function*() {
         const Nested = Schema.Struct({ xs: Schema.Array(Schema.Number), s: Schema.Struct({ a: Schema.Number }) })
@@ -808,6 +855,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q033 (API contract): Query.stream; pinned source in README.md.
     it.effect("results without rows are those in memory, or fail when their columns are undeclared and unread", () =>
       Effect.gen(function*() {
         const x = (...values: Array<number>) => DataFrame.fromColumns({ x: Int8Array.from(values) })
@@ -871,6 +919,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q034 (API contract): Catalog.Catalog; pinned source in README.md.
     it.effect("reads a table named twice once per run, only if its batches are needed", () =>
       Effect.gen(function*() {
         let loads = 0
@@ -898,6 +947,7 @@ describe("Query", () => {
         assert.strictEqual(loads, 1)
       }))
 
+    // DF-Q035 (API contract): Query.explain; pinned source in README.md.
     it.effect("explain shows the plan without reading the stream", () =>
       Effect.gen(function*() {
         const plan = yield* Query.explain(Query.head(t, 1)).pipe(
@@ -906,6 +956,7 @@ describe("Query", () => {
         assert.strictEqual(plan, [`Slice offset 0 length 1`, `  Table t [x]`].join("\n"))
       }))
 
+    // DF-Q036 (API contract): Query.head; pinned source in README.md.
     it.effect("a head stops reading the stream", () =>
       Effect.gen(function*() {
         let pulled = 0
@@ -919,6 +970,7 @@ describe("Query", () => {
         assert.isBelow(pulled, batches.length)
       }))
 
+    // DF-Q037 (API contract): Query.stream; pinned source in README.md.
     it.effect("Query.stream emits a frame per non-empty batch", () =>
       Effect.gen(function*() {
         const sizes = yield* t.pipe(
@@ -1026,6 +1078,7 @@ describe("Query", () => {
     const sortKey = (c: { readonly [K in keyof Row]: Expr.Expr<Row[K]> }, key: Key) =>
       key.descending ? Expr.desc(c[key.name] as Expr.Expr<unknown>) : Expr.asc(c[key.name] as Expr.Expr<unknown>)
 
+    // DF-Q038 (API contract): Query.sort; pinned source in README.md.
     it.effect("sorts by every column type, in both directions, nulls first or last", () =>
       Effect.gen(function*() {
         for (const name of ["f", "i", "b", "s", "p"] as const) {
@@ -1038,6 +1091,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q039 (API contract): Query.sort; pinned source in README.md.
     it.effect("sorts stably by several keys, also when sliced (top-k)", () =>
       Effect.gen(function*() {
         const keys: ReadonlyArray<Key> = [
@@ -1064,6 +1118,7 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q040 (API contract): Query.groupBy; pinned source in README.md.
     it.effect("groups by keys of every type", () =>
       Effect.gen(function*() {
         for (const keys of [["f"], ["b"], ["p", "i"], ["s", "b", "p"]] as const) {
@@ -1089,6 +1144,7 @@ describe("Query", () => {
         )
       }))
 
+    // DF-Q041 (API contract): Query.join; pinned source in README.md.
     it.effect("joins on a high-cardinality key", () =>
       Effect.gen(function*() {
         const right = generate(0x1b873593, 4000, 3000).map((r) => ({ i: r.i ?? 0, rs: r.s }))
