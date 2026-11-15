@@ -15,14 +15,9 @@
  * renders every column as text (temporal values as integers in their unit),
  * and `decode` reads the rows back as columns of those types.
  *
- * The names the compiler invents (helper columns like the row key, the
- * sources of tables) are short and share one prefix, chosen per plan so
- * that no name the plan supplies (its tables' and its columns') starts with
- * it (see {@link inventor}). PostgreSQL keeps only the first 63 bytes of a
- * name (see {@link identifier}), so the columns of each relation must
- * differ within them (see {@link distinguishable}), and names alike within
- * them are one table, or one column of it, to every declaration (see
- * {@link source}).
+ * Invented names (the row key, table sources) share a per-plan prefix that
+ * no name of the plan starts with (see {@link inventor}). PostgreSQL keeps
+ * the first 63 bytes of a name (see {@link identifier}).
  *
  * @internal
  */
@@ -51,10 +46,9 @@ interface Compiler {
   readonly sources: ReadonlyMap<string, string>
 }
 
-/** @internal */
-export const quote = (name: string): string => `"${name.replaceAll(`"`, `""`)}"`
+const quote = (name: string): string => `"${name.replaceAll(`"`, `""`)}"`
 
-const list = (names: ReadonlyArray<string>, prefix = "") => names.map((n) => `${prefix}${quote(n)}`).join(", ")
+const list = (names: ReadonlyArray<string>) => names.map(quote).join(", ")
 
 const unsupported = (what: string): never => V.fail(`${what} is not supported by the SQL engine`)
 
@@ -65,13 +59,9 @@ const unsupported = (what: string): never => V.fail(`${what} is not supported by
 const sqlType = (t: S.DataType): string => {
   switch (t._tag) {
     case "Int":
-      return t.bitWidth <= 16 && t.signed ? "SMALLINT" : t.bitWidth <= 16 || (t.bitWidth === 32 && t.signed)
-        ? "INTEGER"
-        : t.bitWidth === 32
-        ? "BIGINT"
-        : t.signed
-        ? "BIGINT"
-        : "NUMERIC(20, 0)"
+      if (t.bitWidth <= 16) return t.signed ? "SMALLINT" : "INTEGER"
+      if (t.bitWidth === 32) return t.signed ? "INTEGER" : "BIGINT"
+      return t.signed ? "BIGINT" : "NUMERIC(20, 0)"
     case "Float":
       return t.bitWidth === 32 ? "REAL" : "DOUBLE PRECISION"
     case "Utf8":
@@ -228,7 +218,6 @@ const cast = (x: string, from: S.DataType, to: S.DataType): string => {
     if (from._tag === "Date" && to._tag === "Timestamp") {
       return fromInteger(`CAST(${toInteger(x, S.date("day"))} AS BIGINT) * ${BigInt(86400) * perSecond[to.unit]}`, to)
     }
-    return fromInteger(cast(toInteger(x, from), integerOf(from), integerOf(to)), to)
   }
   if (isTemporal(from)) return cast(toInteger(x, from), integerOf(from), to)
   if (isTemporal(to)) return fromInteger(cast(x, from, integerOf(to)), to)
@@ -362,9 +351,9 @@ const aggregate = (
     case "first":
     case "last": {
       if (over !== undefined) {
-        return `${node.fn === "first" ? "FIRST_VALUE" : "LAST_VALUE"}(${x}) OVER (${
-          partitionBy(scope, " ")
-        }ORDER BY ${row} ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)`
+        return `${node.fn === "first" ? "FIRST_VALUE" : "LAST_VALUE"}(${x}) ${
+          window(scope, "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING")
+        }`
       }
       return `(ARRAY_AGG(${x} ORDER BY ${row} ${node.fn === "first" ? "ASC" : "DESC"}))[1]`
     }
@@ -383,6 +372,20 @@ const totalSeconds: Record<string, number> = {
   totalMilliseconds: 0.001
 }
 
+const infix = {
+  add: "+",
+  multiply: "*",
+  eq: "=",
+  neq: "<>",
+  lt: "<",
+  lte: "<=",
+  gt: ">",
+  gte: ">=",
+  and: "AND",
+  or: "OR"
+} as const
+const unary = { abs: "ABS", length: "LENGTH", toLowerCase: "LOWER", toUpperCase: "UPPER" } as const
+
 const call = (node: Plan.Call, scope: Scope): string => {
   const row = scope.compiler.row
   const types = node.args.map((x) => typeOf(x, scope))
@@ -396,12 +399,19 @@ const call = (node: Plan.Call, scope: Scope): string => {
   const intMod = () => `((${a[0]} % NULLIF(${a[1]}, 0)) + ${a[1]}) % NULLIF(${a[1]}, 0)`
   switch (node.fn) {
     case "add":
-      return `(${a[0]} + ${a[1]})`
+    case "multiply":
+    case "eq":
+    case "neq":
+    case "lt":
+    case "lte":
+    case "gt":
+    case "gte":
+    case "and":
+    case "or":
+      return `(${a[0]} ${infix[node.fn]} ${a[1]})`
     case "subtract":
       if (k[0] === "Date" && k[1] === "Date") return `((${a[0]} - ${a[1]}) * INTERVAL '1 day')`
       return `(${a[0]} - ${a[1]})`
-    case "multiply":
-      return `(${a[0]} * ${a[1]})`
     case "divide":
       return `(${float(a[0])} / ${a[1]})`
     case "floorDivide":
@@ -413,23 +423,14 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "negate":
       return `(-(${a[0]}))`
     case "abs":
-      return `ABS(${a[0]})`
+    case "length":
+    case "toLowerCase":
+    case "toUpperCase":
+      return `${unary[node.fn]}(${a[0]})`
     case "sqrt":
       return `(CASE WHEN ${float(a[0])} < 0 THEN ${NAN} ELSE SQRT(${float(a[0])}) END)`
     case "round":
-      return round(a[0], typeOf(node.args[0], scope), typeOf(node, scope), o.decimals ?? 0)
-    case "eq":
-      return `(${a[0]} = ${a[1]})`
-    case "neq":
-      return `(${a[0]} <> ${a[1]})`
-    case "lt":
-      return `(${a[0]} < ${a[1]})`
-    case "lte":
-      return `(${a[0]} <= ${a[1]})`
-    case "gt":
-      return `(${a[0]} > ${a[1]})`
-    case "gte":
-      return `(${a[0]} >= ${a[1]})`
+      return round(a[0], types[0], typeOf(node, scope), o.decimals ?? 0)
     case "between": {
       const [x, lo] = sameUnit([a[0], a[1]], [types[0], types[1]])
       const [y, hi] = sameUnit([a[0], a[2]], [types[0], types[2]])
@@ -441,10 +442,6 @@ const call = (node: Plan.Call, scope: Scope): string => {
         `(${a[0]} IS NULL AND NULL)` :
         `(${a[0]} IN (${values.map((v) => literal(v, undefined)).join(", ")}))`
     }
-    case "and":
-      return `(${a[0]} AND ${a[1]})`
-    case "or":
-      return `(${a[0]} OR ${a[1]})`
     case "not":
       return `(NOT ${a[0]})`
     case "isNull":
@@ -459,13 +456,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "when":
       return `(CASE WHEN ${a[0]} THEN ${a[1]} ELSE ${a[2]} END)`
     case "cast":
-      return cast(a[0], typeOf(node.args[0], scope), typeOf(node, scope))
-    case "length":
-      return `LENGTH(${a[0]})`
-    case "toLowerCase":
-      return `LOWER(${a[0]})`
-    case "toUpperCase":
-      return `UPPER(${a[0]})`
+      return cast(a[0], types[0], typeOf(node, scope))
     case "includes":
       return `(STRPOS(${a[0]}, ${string(o.pattern ?? "")}) > 0)`
     case "startsWith":
@@ -497,20 +488,20 @@ const call = (node: Plan.Call, scope: Scope): string => {
       return `(${a[0]} - LAG(${a[0]}, ${o.n ?? 1}) ${window(scope)})`
     case "rank": {
       const order = `${a[0]} ${o.descending ? "DESC" : "ASC"} NULLS LAST`
-      const part = partitionBy(scope, " ")
+      const over = `OVER (${partitionBy(scope, " ")}ORDER BY ${order})`
       const ties = `COUNT(*) OVER (PARTITION BY ${[...(scope.partition ?? []), a[0]].join(", ")})`
       const ranked = (() => {
         switch (o.method ?? "average") {
           case "min":
-            return `RANK() OVER (${part}ORDER BY ${order})`
+            return `RANK() ${over}`
           case "max":
-            return `(RANK() OVER (${part}ORDER BY ${order}) + ${ties} - 1)`
+            return `(RANK() ${over} + ${ties} - 1)`
           case "dense":
-            return `DENSE_RANK() OVER (${part}ORDER BY ${order})`
+            return `DENSE_RANK() ${over}`
           case "ordinal":
-            return `ROW_NUMBER() OVER (${part}ORDER BY ${order}, ${row})`
+            return `ROW_NUMBER() OVER (${partitionBy(scope, " ")}ORDER BY ${order}, ${row})`
           case "average":
-            return `(RANK() OVER (${part}ORDER BY ${order}) + (${ties} - 1) / 2.0)`
+            return `(RANK() ${over} + (${ties} - 1) / 2.0)`
         }
       })()
       return `(CASE WHEN ${a[0]} IS NULL THEN NULL ELSE ${ranked} END)`
@@ -519,15 +510,14 @@ const call = (node: Plan.Call, scope: Scope): string => {
     case "rollingMean":
     case "rollingMin":
     case "rollingMax": {
-      const frame = `ROWS BETWEEN ${(o.window ?? 1) - 1} PRECEDING AND CURRENT ROW`
+      const w = window(scope, `ROWS BETWEEN ${(o.window ?? 1) - 1} PRECEDING AND CURRENT ROW`)
       const fn = { rollingSum: "SUM", rollingMean: "AVG", rollingMin: "MIN", rollingMax: "MAX" }[node.fn]
-      const enough = `COUNT(${a[0]}) ${window(scope, frame)} >= ${o.minPeriods ?? o.window ?? 1}`
+      const enough = `COUNT(${a[0]}) ${w} >= ${o.minPeriods ?? o.window ?? 1}`
       // Floats: a NaN in the window makes the minimum or maximum NaN.
+      const nan = `MAX(CASE WHEN ${isNaNSql(a[0])} THEN 1 ELSE 0 END) ${w} = 1`
       const value = k[0] === "Float" && (fn === "MIN" || fn === "MAX")
-        ? `CASE WHEN MAX(CASE WHEN ${isNaNSql(a[0])} THEN 1 ELSE 0 END) ${
-          window(scope, frame)
-        } = 1 THEN ${NAN} ELSE ${fn}(${a[0]}) ${window(scope, frame)} END`
-        : `${fn}(${a[0]}) ${window(scope, frame)}`
+        ? `CASE WHEN ${nan} THEN ${NAN} ELSE ${fn}(${a[0]}) ${w} END`
+        : `${fn}(${a[0]}) ${w}`
       return `(CASE WHEN ${enough} THEN ${value} END)`
     }
     case "year":
@@ -651,47 +641,29 @@ const conformed = (x: string, input: Plan.Node, node: Plan.Node, name: string, c
   return isTemporal(from) && isTemporal(to) && !D.sameType(from, to) ? cast(x, from, to) : x
 }
 
-const scopeOf = (node: Plan.Node, compiler: Compiler): Scope => ({
-  compiler,
-  frame: compiler.frames.get(node)!,
-  partition: undefined
-})
-
 const values = (frame: F.Frame, c: Compiler): string => {
+  if (frame.length === 0) {
+    const nulls = frame.columns.map((col) => `CAST(NULL AS ${sqlType(col.type)}) AS ${quote(col.name)}`)
+    return `SELECT ${[...nulls, `CAST(0 AS BIGINT) AS ${c.row}`].join(", ")} WHERE FALSE`
+  }
   const columns = frame.columns.map((col) => {
     const type = col.type
     const vector = col.values()
     const raw = (vector as V.I32 | V.I64).values
-    const values = type._tag === "Date" || type._tag === "Timestamp" || type._tag === "Duration" ||
-        type._tag === "Decimal"
-      ? undefined
-      : F.toArray(frame, col.name)
+    const integers = isTemporal(type) || type._tag === "Decimal"
+    const values = integers ? undefined : F.toArray(frame, col.name)
     // Temporal and decimal values are written from their integers, at full precision.
     const value = (i: number): string => {
-      switch (type._tag) {
-        case "Date":
-          return literal(type.unit === "day" ? raw[i] : floorDiv(raw[i] as bigint, BigInt(86_400_000)), {
-            _tag: "Date"
-          })
-        case "Timestamp":
-          return literal(raw[i], { _tag: "Timestamp", unit: type.unit, timezone: type.timezone })
-        case "Duration":
-          return literal(raw[i], { _tag: "Duration", unit: type.unit })
-        case "Decimal":
-          return literal(raw[i], { _tag: "Decimal", precision: type.precision, scale: type.scale })
-        default: {
-          const v = values![i]
-          return typeof v === "bigint" ? String(v) : literal(v, undefined)
-        }
+      if (type._tag === "Date" && type.unit !== "day") {
+        return literal(floorDiv(raw[i] as bigint, BigInt(86_400_000)), type)
       }
+      if (integers) return literal(raw[i], type as Plan.LiteralType)
+      const v = values![i]
+      return typeof v === "bigint" ? String(v) : literal(v, undefined)
     }
     const sql = sqlType(type)
     return { name: quote(col.name), cell: (i: number) => `CAST(${V.isValid(vector, i) ? value(i) : "NULL"} AS ${sql})` }
   })
-  if (frame.length === 0) {
-    const nulls = frame.columns.map((col, i) => `CAST(NULL AS ${sqlType(col.type)}) AS ${columns[i].name}`)
-    return `SELECT ${[...nulls, `CAST(0 AS BIGINT) AS ${c.row}`].join(", ")} WHERE FALSE`
-  }
   const tuples = Array.from(
     { length: frame.length },
     (_, r) => `(${[...columns.map((col) => col.cell(r)), String(r + 1)].join(", ")})`
@@ -707,13 +679,14 @@ const relation = (node: Plan.Node, c: Compiler): string => {
   const row = c.row
   const columns = columnsOf(node, c)
   const keep = [...columns.map(quote), row].join(", ")
-  const from = (alias = "t") => `(${relation((node as { readonly input: Plan.Node }).input, c)}) AS ${alias}`
-  const scope = () => scopeOf((node as { readonly input: Plan.Node }).input, c)
-  /** The rows of `input` renumbered in `order`. */
-  const renumbered = (input: string, order: string) =>
+  const input = (node as { readonly input: Plan.Node }).input
+  const from = (alias = "t") => `(${relation(input, c)}) AS ${alias}`
+  const scope = (): Scope => ({ compiler: c, frame: c.frames.get(input)!, partition: undefined })
+  // The rows of `query` renumbered in `order`.
+  const renumbered = (query: string, order: string) =>
     `SELECT ${
       [...columns.map(quote), `ROW_NUMBER() OVER (ORDER BY ${order}) AS ${row}`].join(", ")
-    } FROM (${input}) AS t`
+    } FROM (${query}) AS t`
   switch (node._tag) {
     case "Table":
       return `SELECT ${
@@ -888,20 +861,13 @@ const output = (x: string, type: S.DataType): string => {
   return unsupported(`results of type ${D.describe(type)}`)
 }
 
-const number = (s: string): number => {
-  const n = Number(s)
-  if (!Number.isNaN(n)) return n
-  const lower = s.toLowerCase()
-  return lower.endsWith("inf") ? (lower.startsWith("-") ? -Infinity : Infinity) : NaN
-}
-
 /** Reads one non-null value of a result column of `type`. */
 const reader = (type: S.DataType): (value: unknown) => unknown => {
   switch (type._tag) {
     case "Int":
-      return type.bitWidth === 64 ? (v) => BigInt(String(v)) : (v) => Number(v)
+      return type.bitWidth === 64 ? (v) => BigInt(String(v)) : Number
     case "Float":
-      return (v) => number(String(v))
+      return Number
     case "Bool":
       return (v) => v === true || v === "true" || v === "t"
     case "Decimal":
@@ -1114,15 +1080,12 @@ const typeChecks = (table: Plan.Table): Array<Check> =>
   })
 
 /**
- * The checks of a table's rows, the ones the in-memory engine makes beyond
- * column types: only nulls in `Null` columns, no nulls in other columns
- * unless they are nullable, the conditions of their values (see
- * {@link conditions}), and the values of the fields its schema constrains
- * beyond their column type (literals, enums, refinements) accepted by the
- * schema, tested on each such column's distinct values. Each value
- * aggregates the rows of the table's source.
+ * The checks of a table's rows beyond column types: nulls, the
+ * {@link conditions} of values, and fields its schema constrains (literals,
+ * enums, refinements), tested on distinct values. Each check aggregates the
+ * rows of the table's source.
  */
-const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
+const rowChecks = (table: Plan.Table): Array<Check> => [
   ...(table.columns ?? []).flatMap((column) => {
     const x = quote(column.name)
     const any = (failed: string, failure: string): Check => ({
@@ -1141,9 +1104,10 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
     ]
   }),
   ...(table.schema === undefined ? [] : Schema_.columnChecks(table.schema)).map(([name, test]): Check => {
-    const type = frame.columns.find((c) => c.name === name)!.type
+    const column = table.columns!.find((c) => c.name === name)!
+    const type = Schema_.arrowType(column)
     return {
-      sql: `ARRAY_AGG(DISTINCT ${output(declared(table.columns!.find((c) => c.name === name)!), type)})`,
+      sql: `ARRAY_AGG(DISTINCT ${output(declared(column), type)})`,
       verify: (values) => {
         const rows = ((values ?? []) as ReadonlyArray<unknown>).map((v) => [v])
         if (!F.toArray(decode(S.make([S.field(name, type, { nullable: true })]), rows), name).every(test)) {
@@ -1155,13 +1119,11 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
 ]
 
 /**
- * The source of the tables named `name` among `tables`, as PostgreSQL
- * keeps their names (see {@link identifier}): the columns they declare,
- * read once. It is `MATERIALIZED`, which PostgreSQL computes once per
- * statement, so the checks and the result read the same rows, whatever the
- * relation: views that sample rows or call functions included. Columns are
- * named as PostgreSQL keeps them too, so declarations naming one column
- * differently past its first 63 bytes all read it, each with its checks.
+ * The `MATERIALIZED` source of the tables PostgreSQL sees as table `name`
+ * (see {@link identifier}): their declared columns, read once per
+ * statement, so checks and result see the same rows. Columns are named as
+ * PostgreSQL keeps them, so declarations of one column that differ past its
+ * first 63 bytes all read it.
  */
 const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
   const columns = [
@@ -1171,19 +1133,12 @@ const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
 }
 
 /**
- * Quotes the names the compiler invents for the plan of `frames`, all with
- * one prefix that no table or column name of the plan starts with, so that
- * no invented name equals a name the plan supplies: a helper column can't
- * hide a column, and a source can't shadow a table it reads (a common table
- * expression shadows the table of its name in every `FROM` in its scope,
- * the other sources' included; qualifying the tables' names with their
- * schema is no way out, as the schema isn't known).
- *
- * The prefix is `__`, or else the first `__1_`, `__2_`, … that no name
- * starts with: a name starts with at most one of those, so the prefix stays
- * short, and so do the invented names. PostgreSQL keeps them whole (see
- * {@link identifier}), and a name it truncates keeps its start, so they stay
- * distinct from each other and from the plan's names.
+ * Quotes invented names with a prefix that no table or column name of the
+ * plan starts with (`__`, else the first free `__1_`, `__2_`, …), so a
+ * helper column can't hide a column and a source can't shadow a table it
+ * reads. Schemas are unknown, so tables can't be qualified instead. The
+ * prefix is short and truncation keeps a name's start, so invented names
+ * stay distinct after PostgreSQL truncates (see {@link identifier}).
  */
 const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => string => {
   const names = [...frames].flatMap(([node, frame]) => [
@@ -1265,9 +1220,7 @@ export const compile = (plan: Plan.Node): Compiled => {
   const result = typed(plan, frames)
   distinguishable(frames)
   const hidden = inventor(frames)
-  const tables = [...frames].flatMap(([node, frame]) =>
-    node._tag === "Table" ? [{ node, checks: rowChecks(node, frame) }] : []
-  )
+  const tables = [...frames.keys()].flatMap((node) => node._tag === "Table" ? [{ node, checks: rowChecks(node) }] : [])
   const sources = new Map(
     [...new Set(tables.map((t) => identifier(t.node.name)))].map((name, i) => [name, hidden(`table${i}`)])
   )
@@ -1275,33 +1228,34 @@ export const compile = (plan: Plan.Node): Compiled => {
   const sql = relation(plan, compiler)
   const schema = S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
   const columns = result.columns.map((col) => `${output(quote(col.name), col.type)} AS ${quote(col.name)}`)
-  const ctes = [...sources].map(([name, cte]) => `${cte} AS ${source(name, tables.map((t) => t.node))}`)
+  const nodes = tables.map((t) => t.node)
+  const ctes = [...sources].map(([name, cte]) => `${cte} AS ${source(name, nodes)}`)
   const prelude = ctes.length === 0 ? "" : `WITH ${ctes.join(", ")} `
   const body = `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`
-  const columnTypes = tables.flatMap((t) => typeChecks(t.node))
+  const columnTypes = nodes.flatMap(typeChecks)
   const types = columnTypes.length === 0 ? undefined : {
     sql: `SELECT ${columnTypes.map((check) => check.sql).join(", ")}`,
     checks: columnTypes.map((check) => check.verify)
   }
   const checked = tables.filter((t) => t.checks.length > 0)
-  if (checked.length === 0) {
-    return { sql: prelude + body, types, query: { sql: prelude + body, checks: [] }, schema }
-  }
-  const names: Array<string> = []
+  const plain = prelude + body
+  if (checked.length === 0) return { sql: plain, types, query: { sql: plain, checks: [] }, schema }
+  // Check columns are read by position, so they need no names.
   const header = checked.map((t, i) =>
-    `(SELECT ${
-      t.checks.map((check) => {
-        names.push(hidden(`check${names.length}`))
-        return `${check.sql} AS ${names[names.length - 1]}`
-      }).join(", ")
-    } FROM ${sources.get(identifier(t.node.name))}) AS ${hidden(`checks${i}`)}`
+    `(SELECT ${t.checks.map((check) => check.sql).join(", ")} FROM ${sources.get(identifier(t.node.name))}) AS ${
+      hidden(`checks${i}`)
+    }`
   )
   const rows = `(SELECT ${[...columns, compiler.row].join(", ")} FROM (${sql}) AS t) AS r`
+  const selected = [
+    ...checked.map((_, i) => `${hidden(`checks${i}`)}.*`),
+    ...result.columns.map((col) => `r.${quote(col.name)}`)
+  ]
   return {
-    sql: prelude + body,
+    sql: plain,
     types,
     query: {
-      sql: `${prelude}SELECT ${[...names, ...result.columns.map((col) => `r.${quote(col.name)}`)].join(", ")} FROM ${
+      sql: `${prelude}SELECT ${selected.join(", ")} FROM ${
         header.join(" CROSS JOIN ")
       } FULL JOIN ${rows} ON FALSE ORDER BY r.${compiler.row} NULLS FIRST`,
       checks: checked.flatMap((t) => t.checks.map((check) => check.verify))
