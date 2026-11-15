@@ -2,7 +2,7 @@
 //
 // The whole output is kept in memory, so every earlier byte of a frame stays
 // addressable and the window only limits how far back a match may reach.
-import { type Decoder, fail, Output } from "./failure.ts"
+import { type Decoder, fail, Output, readUint32 } from "./failure.ts"
 import { xxhash64 } from "./xxhash64.ts"
 
 const FRAME_MAGIC = 0xFD2FB528
@@ -133,9 +133,6 @@ let ML_PREDEFINED: Uint32Array | undefined
 const llPredefined = (): Uint32Array => LL_PREDEFINED ??= predefined(LL_DEFAULT, 6)
 const ofPredefined = (): Uint32Array => OF_PREDEFINED ??= predefined(OF_DEFAULT, 5)
 const mlPredefined = (): Uint32Array => ML_PREDEFINED ??= predefined(ML_DEFAULT, 6)
-
-const u32 = (input: Uint8Array, i: number): number =>
-  (input[i] | (input[i + 1] << 8) | (input[i + 2] << 16) | (input[i + 3] << 24)) >>> 0
 
 // Bits `[bit, bit + n)` of the forward bitstream starting at `start`; bytes
 // at or past `end` read as zero (n <= 16)
@@ -359,7 +356,7 @@ class ZstdDecoder {
     }
     if (hasChecksum) {
       if (length - pos < 4) fail("Truncated", "the input ends inside a content checksum")
-      if (xxhash64(out.buffer.subarray(this.frameStart, out.length)).low !== u32(input, pos)) {
+      if (xxhash64(out.buffer.subarray(this.frameStart, out.length)).low !== readUint32(input, pos)) {
         fail("Checksum", "content checksum mismatch")
       }
       pos += 4
@@ -414,7 +411,7 @@ class ZstdDecoder {
         literalsSize = (v >>> 4) & 0x3FF
         compressedSize = v >>> 14
       } else if (headerSize === 4) {
-        const v = u32(input, pos)
+        const v = readUint32(input, pos)
         literalsSize = (v >>> 4) & 0x3FFF
         compressedSize = v >>> 18
       } else {
@@ -821,13 +818,13 @@ export const zstd: Decoder = (input, limit, sizeHint) => {
   let pos = 0
   while (pos < length) {
     if (length - pos < 4) fail("Malformed", "trailing bytes after the last frame")
-    const magic = u32(input, pos)
+    const magic = readUint32(input, pos)
     if (magic === FRAME_MAGIC) {
       pos = decoder.frame(pos + 4)
     } else if (magic >>> 4 === SKIPPABLE_MAGIC) {
       // Skippable frame (§3.1.2)
       if (length - pos < 8) fail("Truncated", "the input ends inside a skippable frame header")
-      const size = u32(input, pos + 4)
+      const size = readUint32(input, pos + 4)
       if (length - pos - 8 < size) fail("Truncated", "the input ends inside a skippable frame")
       pos += 8 + size
     } else {

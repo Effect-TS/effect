@@ -45,33 +45,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
 import * as Compression from "effect/encoding/Compression"
-import { readFileSync } from "node:fs"
-
-type Kind = Compression.CompressionError["kind"]
-type Bytes = ArrayLike<number>
-
-const hex = (s: string): Uint8Array => Uint8Array.from(s.match(/../g) ?? [], (byte) => parseInt(byte, 16))
-const ascii = (s: string): Uint8Array => new TextEncoder().encode(s)
-
-const concat = (...parts: ReadonlyArray<Bytes>): Uint8Array => {
-  const out = new Uint8Array(parts.reduce((n, part) => n + part.length, 0))
-  let offset = 0
-  for (const part of parts) {
-    out.set(part, offset)
-    offset += part.length
-  }
-  return out
-}
-
-// Little-endian integer of `size` bytes, exact up to 2^53
-const le = (value: number, size: number): Array<number> => {
-  const out: Array<number> = []
-  for (let i = 0; i < size; i++) {
-    out.push(value % 256)
-    value = Math.floor(value / 256)
-  }
-  return out
-}
+import { ascii, assertions, type Bytes, concat, fixture, hex, le } from "./CompressionConformance.ts"
 
 // The deterministic generators of generate.py
 const lcg = (seed: number): () => number => {
@@ -109,9 +83,6 @@ const edited = (chunk: Uint8Array, copies: number, every: number, seed: number):
   }
   return concat(...out)
 }
-
-const fixture = (name: string): Uint8Array =>
-  new Uint8Array(readFileSync(new URL(`../../fixtures/compression/zstd/${name}`, import.meta.url)))
 
 // Reference frames from generate.py
 const EMPTY = hex("28b52ffd240001000099e9d851")
@@ -243,18 +214,7 @@ const singleSymbolFseBlock = compressedBlock(
 
 const options: Compression.DecompressOptions = { maxOutputSize: 1 << 20 }
 
-const decodes = (input: Bytes, expected: Bytes | string, options_ = options): void => {
-  const result = Compression.decompressZstd(Uint8Array.from(input), options_)
-  if (Result.isFailure(result)) return assert.fail(`${result.failure.kind}: ${result.failure.message}`)
-  assert.deepStrictEqual(result.success, typeof expected === "string" ? ascii(expected) : Uint8Array.from(expected))
-}
-
-const fails = (input: Bytes, kind: Kind, options_ = options): void => {
-  const result = Compression.decompressZstd(Uint8Array.from(input), options_)
-  if (Result.isSuccess(result)) return assert.fail(`expected ${kind}, decoded ${result.success.length} bytes`)
-  assert.strictEqual(result.failure.kind, kind, result.failure.message)
-  assert.strictEqual(result.failure.codec, "Zstd")
-}
+const { decodes, fails } = assertions(Compression.decompressZstd, "Zstd", options)
 
 // The first `n` bytes of `input` fail with Truncated, for every n in [from, to)
 const failsTruncated = (input: Uint8Array, from: number, to: number): void => {
@@ -977,7 +937,7 @@ export const suite = (): void => {
       for (const [name, expected] of fixtures) {
         // RFC 8878 §3.1.1: each fixture's features are listed in generate.py
         it(`decodes ${name}`, () => {
-          decodes(fixture(name), expected(), { maxOutputSize: 1 << 21 })
+          decodes(fixture(`zstd/${name}`), expected(), { maxOutputSize: 1 << 21 })
         })
       }
     })
