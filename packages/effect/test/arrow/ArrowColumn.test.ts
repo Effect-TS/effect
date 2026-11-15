@@ -85,7 +85,16 @@ const cases: ReadonlyArray<
     ArrowColumn.unionValue(7, 2)
   ], [1, 1.5, 2]],
   ["runEndEncoded", S.runEndEncoded(S.int16, S.field("values", S.utf8)), ["a", "a", null, "b"]],
-  ["dictionary", S.dictionary(S.utf8), ["x", "y", "x", null]]
+  ["runEndEncoded lists that print alike", S.runEndEncoded(S.int32, S.field("v", S.list(item(S.utf8)))), [["a,sb"], [
+    "a",
+    "b"
+  ]]],
+  ["dictionary", S.dictionary(S.utf8), ["x", "y", "x", null]],
+  ["dictionary of lists that print alike", S.dictionary(S.list(item(S.utf8))), [["a,sb"], ["a", "b"]]],
+  ["dictionary of structs that print alike", S.dictionary(S.struct([S.field("a", S.utf8), S.field("b", S.utf8)])), [
+    { a: "x,\"b\":sy", b: "z" },
+    { a: "x", b: "y,\"b\":sz" }
+  ]]
 ]
 
 const rejections: ReadonlyArray<

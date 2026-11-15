@@ -327,7 +327,7 @@ const keyOf = (v: unknown): string => {
   if (isNull(v)) return "null"
   switch (typeof v) {
     case "string":
-      return `s${v}`
+      return `s${JSON.stringify(v)}`
     case "number":
       return Object.is(v, -0) ? "n-0" : `n${v}`
     case "bigint":
