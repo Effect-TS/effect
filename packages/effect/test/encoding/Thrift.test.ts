@@ -79,7 +79,7 @@ const toJson = (v: Thrift.Value): Json => {
   }
 }
 
-const readAll = (bytes: Uint8Array, type: Thrift.TypeName, options?: Thrift.Options) =>
+const readAll = (bytes: Uint8Array, type: Thrift.TypeName, options?: Thrift.ReaderOptions) =>
   Thrift.decode(bytes, (r) => {
     const value = r.readValue(Thrift.Type[type])
     assert.strictEqual(r.position, bytes.length)
@@ -261,7 +261,7 @@ describe("Thrift", () => {
   describe("hostile input", () => {
     const struct = (r: Thrift.Reader) => r.readValue(Thrift.Type.Struct)
     const table: ReadonlyArray<
-      readonly [string, string, (r: Thrift.Reader) => unknown, Thrift.ThriftError["kind"], Thrift.Options?]
+      readonly [string, string, (r: Thrift.Reader) => unknown, Thrift.ThriftError["kind"], Thrift.ReaderOptions?]
     > = [
       ["empty input", "", struct, "Truncated"],
       ["a struct without its stop", "1502", struct, "Truncated"],

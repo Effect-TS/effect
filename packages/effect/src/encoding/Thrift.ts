@@ -65,7 +65,7 @@
  * {@link ThriftError} (or makes {@link decode} fail) instead of reading past
  * the bytes. A length or container size larger than the bytes that remain
  * fails before anything is allocated, and nesting is limited by
- * {@link Options.maxDepth}. Binary values are views into the input, not
+ * {@link ReaderOptions.maxDepth}. Binary values are views into the input, not
  * copies. Strings must be valid UTF-8.
  *
  * `i64` values read as `bigint` ({@link Reader.readI64}) or, when they are
@@ -100,9 +100,9 @@ const ThriftErrorTypeId = "~effect/encoding/Thrift/ThriftError"
  * - `InvalidUtf8`: a string is not valid UTF-8.
  * - `Range`: an `i64` read with {@link Reader.readI64Number} is not a safe
  *   integer.
- * - `Limit`: the input nests deeper than {@link Options.maxDepth}, or a
- *   length or size exceeds {@link Options.maxBinaryLength} or
- *   {@link Options.maxContainerSize}.
+ * - `Limit`: the input nests deeper than {@link ReaderOptions.maxDepth}, or a
+ *   length or size exceeds {@link ReaderOptions.maxBinaryLength} or
+ *   {@link ReaderOptions.maxContainerSize}.
  * - `Usage`: the reader or writer was called out of order or with an
  *   invalid argument or option, or a written value is out of range for its
  *   type. {@link decode} rethrows these caller errors.
@@ -263,7 +263,7 @@ export interface Field {
  * @category models
  * @since 4.1.5
  */
-export interface Options {
+export interface ReaderOptions {
   /**
    * How deep structs and containers may nest, counting each struct and each
    * container entered by {@link Reader.readStructBegin},
@@ -335,7 +335,7 @@ export class Reader {
   /** Set by {@link varint64}: whether the zigzag value is negative. */
   private negative = false
 
-  constructor(bytes: Uint8Array, options?: Options) {
+  constructor(bytes: Uint8Array, options?: ReaderOptions) {
     this.bytes = bytes
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     this.end = bytes.length
@@ -756,7 +756,7 @@ export class Reader {
  * @category reading
  * @since 4.1.5
  */
-export const makeReader = (bytes: Uint8Array, options?: Options): Reader => new Reader(bytes, options)
+export const makeReader = (bytes: Uint8Array, options?: ReaderOptions): Reader => new Reader(bytes, options)
 
 /**
  * Reads `bytes` with `read`, which gets a {@link Reader} at the start of
@@ -774,7 +774,7 @@ export const makeReader = (bytes: Uint8Array, options?: Options): Reader => new 
 export const decode = <A>(
   bytes: Uint8Array,
   read: (reader: Reader) => A,
-  options?: Options
+  options?: ReaderOptions
 ): Result.Result<A, ThriftError> => {
   try {
     return Result.succeed(read(new Reader(bytes, options)))
