@@ -11,7 +11,7 @@
  * - This module works at the protocol level, as generated Thrift code does.
  *   A {@link Reader} is a cursor over the bytes: read a field header, look at
  *   its id and type, read the value or {@link Reader.skip} it. A
- *   {@link Writer} writes the same calls back.
+ *   {@link Writer} mirrors those calls.
  * - The method names and their meaning follow Thrift's `TProtocol`, so code
  *   written against another Thrift implementation reads the same: a struct
  *   is `readStructBegin`, then `readFieldBegin` until it returns
@@ -83,13 +83,15 @@
  * @since 4.1.5
  */
 import * as Data from "../Data.ts"
+import * as Utf8 from "../internal/utf8.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
 
 const ThriftErrorTypeId = "~effect/encoding/Thrift/ThriftError"
 
 /**
- * Error raised for malformed input or a misused {@link Writer}.
+ * Error raised for malformed input or misuse of a {@link Reader} or
+ * {@link Writer}.
  *
  * **Details**
  *
@@ -97,10 +99,9 @@ const ThriftErrorTypeId = "~effect/encoding/Thrift/ThriftError"
  *
  * - `Truncated`: the input ends inside a value, or a length or container
  *   size is larger than the bytes that remain.
- * - `Malformed`: an unknown type code, a varint longer than its type
- *   allows (5 bytes and 32 bits for `i32` and sizes, 16 bits for `i16` and
- *   field ids, 10 bytes and 64 bits for `i64`), a field id over 32767, or a
- *   non-empty container of `Stop`.
+ * - `Malformed`: an unknown type code, a varint wider than its type (16
+ *   bits for `i16` and field ids, 32 for `i32` and sizes, 64 for `i64`), a
+ *   field id over 32767, or a non-empty container of `Stop`.
  * - `InvalidUtf8`: a string is not valid UTF-8.
  * - `Range`: an `i64` read with {@link Reader.readI64Number} is not a safe
  *   integer.
@@ -141,24 +142,15 @@ const fail = (kind: ThriftError["kind"], message: string): never => {
   throw new ThriftError({ kind, message })
 }
 
-const integerOption = (
-  name: string,
-  value: number | undefined,
-  min: number,
-  fallback: number,
-  max = Infinity
-): number => {
-  if (value === undefined) return fallback
+const checkInteger = (what: string, value: number, min: number, max: number): number => {
   if (!Number.isInteger(value) || value < min || value > max) {
-    const range = max === Infinity ? `of at least ${min}` : `from ${min} to ${max}`
-    fail("Usage", `${name} must be an integer ${range}, got ${value}`)
+    fail("Usage", `${what} ${value} is not an integer from ${min} to ${max}`)
   }
   return value
 }
 
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
+const integerOption = (name: string, value: number | undefined, min: number, max: number, fallback: number): number =>
+  value === undefined ? fallback : checkInteger(name, value, min, max)
 
 /**
  * The type of a field or container element. The codes are Thrift's `TType`
@@ -202,26 +194,19 @@ export type Type = typeof Type[keyof typeof Type]
  */
 export type TypeName = keyof typeof Type
 
-const INVALID = 255
+/** Compact type nibble → TType. Nibbles 1 and 2 are a bool field's true and false; 14 and 15 are unassigned. */
+const fromCompact: ReadonlyArray<Type> = [0, 2, 2, 3, 6, 8, 10, 4, 11, 15, 14, 13, 12, 16]
 
-/** Compact type nibble → TType. */
-const fromCompact = [0, 2, 2, 3, 6, 8, 10, 4, 11, 15, 14, 13, 12, 16, INVALID, INVALID]
-
-/** TType → compact type nibble (bool as an element; fields encode the value). */
-const toCompact: Array<number> = new Array(17).fill(INVALID)
-toCompact[0] = 0
-for (let nibble = 1; nibble < 14; nibble++) {
-  if (nibble !== 2) toCompact[fromCompact[nibble]] = nibble
-}
+/** TType → compact type nibble, with `Bool` as 1. */
+const toCompact: Array<number> = []
+fromCompact.forEach((type, nibble) => {
+  if (nibble !== 2) toCompact[type] = nibble
+})
 
 const typeNames: Array<TypeName> = []
 for (const name of Object.keys(Type) as Array<TypeName>) typeNames[Type[name]] = name
 
 const describe = (type: number): string => typeNames[type] ?? String(type)
-
-// -----------------------------------------------------------------------------
-// Values
-// -----------------------------------------------------------------------------
 
 /**
  * Any Thrift value, tagged with the name of its {@link Type}: what
@@ -263,10 +248,6 @@ export interface Field {
   readonly value: Value
 }
 
-// -----------------------------------------------------------------------------
-// Reading
-// -----------------------------------------------------------------------------
-
 /**
  * Limits for reading untrusted input. A value that isn't an integer in range
  * throws a {@link ThriftError} of kind `Usage`.
@@ -289,38 +270,27 @@ export interface ReaderOptions {
   readonly maxContainerSize?: number | undefined
 }
 
-// Keeps a leading U+FEFF, which is part of the string.
-const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 const MAX_SAFE = Number.MAX_SAFE_INTEGER
 const BIGINT_1 = BigInt(1)
 const BIGINT_7 = BigInt(7)
 const BIGINT_63 = BigInt(63)
 const BIGINT_0x7f = BigInt(0x7f)
-const I64_MIN = -(BigInt(1) << BIGINT_63)
-const I64_MAX = (BigInt(1) << BIGINT_63) - BIGINT_1
+
+const zigzag = (n: number): number => ((n << 1) ^ (n >> 31)) >>> 0
+const unzigzag = (n: number): number => (n >>> 1) ^ -(n & 1)
 
 /**
  * A cursor over compact-protocol bytes. Each `read*` method reads one value
- * at {@link position} and moves past it; reads throw a {@link ThriftError}
- * on malformed input.
- *
- * **Details**
- *
- * After {@link readFieldBegin}, {@link fieldId} holds the field's id; after
- * {@link readListBegin} or {@link readSetBegin}, {@link elementType} holds
- * the element type; after {@link readMapBegin}, {@link keyType} and
- * {@link valueType}. Copy the property into a local before reading a nested
- * value, which overwrites it.
- *
- * A `bool` field keeps its value in the field header: {@link readBool} right
- * after a `Bool` field header returns it without reading a byte. Inside a
- * container, each `bool` is a byte.
+ * at {@link position} and moves past it, or throws a {@link ThriftError} on
+ * malformed input.
  *
  * **Gotchas**
  *
- * {@link readBinary}, {@link readUuid} and the binary values of
- * {@link readValue} are views of {@link bytes}: copy them before mutating or
- * reusing the input.
+ * - A nested read overwrites {@link fieldId}, {@link elementType},
+ *   {@link keyType} and {@link valueType}: copy one into a local first.
+ * - {@link readBinary}, {@link readUuid} and the binary values of
+ *   {@link readValue} are views of {@link bytes}: copy them before mutating
+ *   or reusing the input.
  *
  * @stability experimental
  * @category reading
@@ -346,7 +316,6 @@ export class Reader {
   private readonly maxContainerSize: number
   private lastFieldId = 0
   private readonly fieldIds: Array<number> = []
-  private structs = 0
   private depth = 0
   /** The compact type of a bool field header not yet read: 1 true, 2 false, 0 none. */
   private bool = 0
@@ -357,9 +326,9 @@ export class Reader {
     this.bytes = bytes
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     this.end = bytes.length
-    this.maxDepth = integerOption("maxDepth", options?.maxDepth, 1, 64, 1000)
-    this.maxBinaryLength = integerOption("maxBinaryLength", options?.maxBinaryLength, 0, Infinity)
-    this.maxContainerSize = integerOption("maxContainerSize", options?.maxContainerSize, 0, Infinity)
+    this.maxDepth = integerOption("maxDepth", options?.maxDepth, 1, 1000, 64)
+    this.maxBinaryLength = integerOption("maxBinaryLength", options?.maxBinaryLength, 0, Infinity, Infinity)
+    this.maxContainerSize = integerOption("maxContainerSize", options?.maxContainerSize, 0, Infinity, Infinity)
   }
 
   /**
@@ -371,10 +340,7 @@ export class Reader {
     return this.pos
   }
   set position(position: number) {
-    if (!Number.isInteger(position) || position < 0 || position > this.end) {
-      fail("Usage", `position ${position} is outside the ${this.end}-byte input`)
-    }
-    this.pos = position
+    this.pos = checkInteger("position", position, 0, this.end)
     this.bool = 0
   }
 
@@ -428,13 +394,12 @@ export class Reader {
   private varint16(what: string): number {
     const n = this.varint32(what)
     if (n > 0xffff) fail("Malformed", `${what} before byte ${this.pos} is longer than 16 bits`)
-    return (n >>> 1) ^ -(n & 1)
+    return unzigzag(n)
   }
 
   /**
-   * A zigzag varint of at most 64 bits as a number: returns the magnitude
-   * `|v|` for v >= 0 or `|v| - 1` for v < 0 (exact up to 2^53) and sets
-   * {@link negative}.
+   * A zigzag varint of at most 64 bits as a number: returns `v` for v >= 0 or
+   * `-v - 1` for v < 0 (exact below 2^53) and sets {@link negative}.
    */
   private varint64(what: string): number {
     const bytes = this.bytes
@@ -449,8 +414,8 @@ export class Reader {
     while (b >= 0x80) {
       if (pos >= end) return this.truncated(what)
       b = bytes[pos++]
-      if (pos - start === 10) {
-        if (b > 0x01) return fail("Malformed", `${what} at byte ${start} is longer than 64 bits`)
+      if (pos - start === 10 && b > 0x01) {
+        return fail("Malformed", `${what} at byte ${start} is longer than 64 bits`)
       }
       half += (b & 0x7f) * scale
       scale *= 128
@@ -478,7 +443,6 @@ export class Reader {
     return this.advance(length, `${what} of ${length} bytes`)
   }
 
-  /** Reads a list or set header. */
   private listHeader(what: string): number {
     const header = this.byte(`${what} header`)
     let size = header >> 4
@@ -496,24 +460,24 @@ export class Reader {
 
   private elementOf(nibble: number, size: number, what: string): Type {
     const type = fromCompact[nibble]
-    if (type === INVALID || (type === Type.Stop && size > 0)) {
+    if (type === undefined || (type === Type.Stop && size > 0)) {
       return fail("Malformed", `${what} at byte ${this.pos} has element type code ${nibble}`)
     }
-    return type as Type
+    return type
   }
 
   /** Starts reading a struct. Read its fields with {@link readFieldBegin}. */
   readStructBegin(): void {
     this.enter()
-    this.fieldIds[this.structs++] = this.lastFieldId
+    this.fieldIds.push(this.lastFieldId)
     this.lastFieldId = 0
   }
 
   /** Finishes the struct started with {@link readStructBegin}, after its `Stop`. */
   readStructEnd(): void {
-    if (this.structs === 0) fail("Usage", "readStructEnd without readStructBegin")
+    if (this.fieldIds.length === 0) fail("Usage", "readStructEnd without readStructBegin")
     this.depth--
-    this.lastFieldId = this.fieldIds[--this.structs]
+    this.lastFieldId = this.fieldIds.pop()!
   }
 
   /**
@@ -536,11 +500,11 @@ export class Reader {
     this.lastFieldId = id
     this.fieldId = id
     const type = fromCompact[nibble]
-    if (type === INVALID) {
+    if (type === undefined) {
       return fail("Malformed", `the field header at byte ${this.pos - 1} has type code ${nibble}`)
     }
     if (nibble <= 2) this.bool = nibble
-    return type as Type
+    return type
   }
 
   /** Reads a list header: returns the list's size and sets {@link elementType}. */
@@ -590,8 +554,7 @@ export class Reader {
 
   /** Reads an `i32`. */
   readI32(): number {
-    const n = this.varint32("an i32")
-    return (n >>> 1) ^ -(n & 1)
+    return unzigzag(this.varint32("an i32"))
   }
 
   /** Reads an `i64` as a `bigint`. */
@@ -635,11 +598,7 @@ export class Reader {
   /** Reads a `string`: a `binary` value decoded as UTF-8. */
   readString(): string {
     const at = this.binary("a string")
-    try {
-      return utf8.decode(this.bytes.subarray(at, this.pos))
-    } catch {
-      return fail("InvalidUtf8", `the string at byte ${at} is not valid UTF-8`)
-    }
+    return Utf8.decode(this.bytes, at, this.pos) ?? fail("InvalidUtf8", `the string at byte ${at} is not valid UTF-8`)
   }
 
   /** Reads a `uuid`: 16 bytes, as a view of {@link bytes}. */
@@ -655,8 +614,7 @@ export class Reader {
   skip(type: Type): void {
     switch (type) {
       case Type.Bool:
-        if (this.bool !== 0) this.bool = 0
-        else this.advance(1, "a bool")
+        this.readBool()
         return
       case Type.I8:
         this.advance(1, "an i8")
@@ -807,10 +765,6 @@ export const decode = <A>(
   }
 }
 
-// -----------------------------------------------------------------------------
-// Writing
-// -----------------------------------------------------------------------------
-
 const encoder = new TextEncoder()
 
 /**
@@ -821,8 +775,7 @@ const encoder = new TextEncoder()
  *
  * Write a struct as {@link writeStructBegin}, then for each field
  * {@link writeFieldBegin} and its value, then {@link writeFieldStop} and
- * {@link writeStructEnd}. A `bool` field's value goes into its header:
- * `writeFieldBegin(Type.Bool, id)` writes nothing until {@link writeBool}.
+ * {@link writeStructEnd}.
  *
  * Containers are a header ({@link writeListBegin}, {@link writeSetBegin},
  * {@link writeMapBegin}) followed by exactly that many elements (for a map,
@@ -845,7 +798,7 @@ export class Writer {
   private boolFieldId = 0
 
   constructor(options?: { readonly initialSize?: number | undefined }) {
-    this.bytes = new Uint8Array(Math.max(16, integerOption("initialSize", options?.initialSize, 0, 1024)))
+    this.bytes = new Uint8Array(Math.max(16, integerOption("initialSize", options?.initialSize, 0, Infinity, 1024)))
     this.view = new DataView(this.bytes.buffer)
   }
 
@@ -886,22 +839,20 @@ export class Writer {
     this.position = pos
   }
 
-  private integer(value: number, min: number, max: number, what: string): void {
-    this.checkNoBool(what)
-    if (!Number.isInteger(value) || value < min || value > max) {
-      fail("Usage", `${what} ${value} is not an integer from ${min} to ${max}`)
-    }
+  private raw(value: Uint8Array): void {
+    this.reserve(value.length)
+    this.bytes.set(value, this.position)
+    this.position += value.length
   }
 
-  private checkSize(size: number, what: string): void {
-    if (!Number.isInteger(size) || size < 0 || size > 0xffffffff) {
-      fail("Usage", `${what} ${size} is not an integer from 0 to ${0xffffffff}`)
-    }
+  private integer(value: number, min: number, max: number, what: string): void {
+    this.checkNoBool(what)
+    checkInteger(what, value, min, max)
   }
 
   private elementNibble(type: number, size: number, what: string): number {
     const nibble = toCompact[type]
-    if (nibble === undefined || nibble === INVALID || (type === Type.Stop && size > 0)) {
+    if (nibble === undefined || (type === Type.Stop && size > 0)) {
       return fail("Usage", `${describe(type)} is not a valid ${what}`)
     }
     return nibble
@@ -913,7 +864,7 @@ export class Writer {
       this.writeByte((delta << 4) | nibble)
     } else {
       this.writeByte(nibble)
-      this.varint32(((id << 1) ^ (id >> 31)) >>> 0)
+      this.varint32(zigzag(id))
     }
     this.lastFieldId = id
   }
@@ -936,16 +887,14 @@ export class Writer {
   writeFieldBegin(type: Type, id: number): void {
     this.checkNoBool("writeFieldBegin")
     if (this.fieldIds.length === 0) fail("Usage", "writeFieldBegin outside writeStructBegin/writeStructEnd")
-    if (!Number.isInteger(id) || id < -32768 || id > 32767) {
-      fail("Usage", `field id ${id} is not an integer from -32768 to 32767`)
-    }
+    checkInteger("field id", id, -32768, 32767)
     if (type === Type.Bool) {
       this.boolPending = true
       this.boolFieldId = id
       return
     }
     const nibble = toCompact[type]
-    if (nibble === undefined || nibble === INVALID || type === Type.Stop) {
+    if (nibble === undefined || type === Type.Stop) {
       fail("Usage", `${describe(type)} is not a field type`)
     }
     this.fieldHeader(nibble, id)
@@ -957,10 +906,10 @@ export class Writer {
     this.writeByte(0)
   }
 
-  private listHeader(elementType: Type, size: number, what: string): void {
-    this.checkNoBool(`write${what}Begin`)
-    this.checkSize(size, `${what} size`)
-    const nibble = this.elementNibble(elementType, size, `${what} element type`)
+  private listHeader(elementType: Type, size: number, method: string): void {
+    this.checkNoBool(method)
+    checkInteger("container size", size, 0, 0xffffffff)
+    const nibble = this.elementNibble(elementType, size, "element type")
     if (size < 15) {
       this.writeByte((size << 4) | nibble)
     } else {
@@ -971,18 +920,18 @@ export class Writer {
 
   /** Writes a list header; write `size` elements of `elementType` next. */
   writeListBegin(elementType: Type, size: number): void {
-    this.listHeader(elementType, size, "List")
+    this.listHeader(elementType, size, "writeListBegin")
   }
 
   /** Writes a set header; write `size` elements of `elementType` next. */
   writeSetBegin(elementType: Type, size: number): void {
-    this.listHeader(elementType, size, "Set")
+    this.listHeader(elementType, size, "writeSetBegin")
   }
 
   /** Writes a map header; write `size` key-value pairs next. */
   writeMapBegin(keyType: Type, valueType: Type, size: number): void {
     this.checkNoBool("writeMapBegin")
-    this.checkSize(size, "map size")
+    checkInteger("container size", size, 0, 0xffffffff)
     const key = this.elementNibble(keyType, size, "map key type")
     const value = this.elementNibble(valueType, size, "map value type")
     if (size === 0) {
@@ -1012,13 +961,13 @@ export class Writer {
   /** Writes an `i16`. */
   writeI16(value: number): void {
     this.integer(value, -32768, 32767, "i16")
-    this.varint32(((value << 1) ^ (value >> 31)) >>> 0)
+    this.varint32(zigzag(value))
   }
 
   /** Writes an `i32`. */
   writeI32(value: number): void {
     this.integer(value, -2147483648, 2147483647, "i32")
-    this.varint32(((value << 1) ^ (value >> 31)) >>> 0)
+    this.varint32(zigzag(value))
   }
 
   /** Writes an `i64` given as a safe-integer `number`. */
@@ -1044,8 +993,8 @@ export class Writer {
   /** Writes an `i64`. */
   writeI64(value: bigint): void {
     this.checkNoBool("writeI64")
-    if (value < I64_MIN || value > I64_MAX) fail("Usage", `i64 ${value} is out of range`)
     if (value >= -MAX_SAFE && value <= MAX_SAFE) return this.writeI64Number(Number(value))
+    if (BigInt.asIntN(64, value) !== value) fail("Usage", `i64 ${value} is out of range`)
     let u = BigInt.asUintN(64, (value << BIGINT_1) ^ (value >> BIGINT_63))
     this.reserve(10)
     while (u > BIGINT_0x7f) {
@@ -1067,9 +1016,7 @@ export class Writer {
   writeBinary(value: Uint8Array): void {
     this.checkNoBool("writeBinary")
     this.varint32(value.length)
-    this.reserve(value.length)
-    this.bytes.set(value, this.position)
-    this.position += value.length
+    this.raw(value)
   }
 
   /** Writes a `string` as UTF-8 `binary`. Lone surrogates, which UTF-8 can't encode, become U+FFFD. */
@@ -1100,9 +1047,7 @@ export class Writer {
   writeUuid(value: Uint8Array): void {
     this.checkNoBool("writeUuid")
     if (value.length !== 16) fail("Usage", `a uuid is 16 bytes, got ${value.length}`)
-    this.reserve(16)
-    this.bytes.set(value, this.position)
-    this.position += 16
+    this.raw(value)
   }
 
   /** Writes a {@link Value}: a field's value after its header, a container element, or a whole value. */
