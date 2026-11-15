@@ -136,7 +136,10 @@ const attachmentsOf = (message: JsonObject): Array<ChatMessage.Attachment> => {
       ...(size === undefined ? {} : { size })
     })
   }
-  for (const key of ["document", "audio", "video", "voice", "animation"]) add(object(message, key))
+  // An animation comes with a copy of itself as `document`, for older clients.
+  const animation = object(message, "animation")
+  add(animation ?? object(message, "document"))
+  for (const key of ["audio", "video", "voice"]) add(object(message, key))
   const photo = message.photo
   if (Array.isArray(photo) && photo.length > 0) {
     let largest: JsonObject | undefined

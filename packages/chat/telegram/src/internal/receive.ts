@@ -158,7 +158,8 @@ export const commandEvent = (update: JsonObject, context: Context): ChatInteract
   if (message === undefined || isExcluded(message)) return undefined
   const found = commandOf(message, context)
   const at = threadOf(message)
-  const user = integer(object(message, "from"), "id") ?? integer(object(message, "sender_chat"), "id")
+  // As in `normalize`: an anonymous admin's `from` is Telegram's shared stand-in, the chat is the sender.
+  const user = integer(object(message, "sender_chat"), "id") ?? integer(object(message, "from"), "id")
   if (found === undefined || at === undefined || user === undefined) return undefined
   return ChatInteraction.CommandInvoked.make({
     id: found.id,

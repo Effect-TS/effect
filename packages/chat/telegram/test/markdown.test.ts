@@ -1,15 +1,23 @@
 /**
  * T3 and T4: the rendered Markdown stays within what `measure` charged and
  * carries no raw HTML, image, math, spoiler or link outside http, https and
- * mailto. The corpus is checked by hand against GFM; live check 2 confirms
- * Telegram's parser agrees.
+ * mailto. A GFM parser reads the output; live check 2 confirms Telegram's
+ * parser agrees with it.
  */
-import { measure, messageLength, render, reservation } from "@effect/chat-telegram/internal/markdown"
+import {
+  maxColumns,
+  maxDepth,
+  measure,
+  messageLength,
+  render,
+  reservation
+} from "@effect/chat-telegram/internal/markdown"
 import { assert, describe, it } from "@effect/vitest"
 import * as fc from "fast-check"
+import { inspect } from "./gfm.ts"
 
 const cases: ReadonlyArray<readonly [string, string]> = [
-  ["<b>hi</b> <https://e.com> <javascript:alert(1)>", "\\<b>hi\\</b> <https://e.com> \\<javascript:alert(1)>"],
+  ["<b>hi</b> <https://e.com> <javascript:alert(1)>", "&lt;b>hi&lt;/b> <https://e.com> &lt;javascript:alert(1)>"],
   ["![a](https://e.com/a.png) ![b][r]", "\\![a](https://e.com/a.png) \\![b][r]"],
   ["[me](tg://user?id=1) [ok](tg://user?id=2)", "[me\\](tg://user?id\\=1) [ok](tg://user?id\\=2)"],
   [
@@ -24,6 +32,50 @@ const cases: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const bytes = (s: string) => new TextEncoder().encode(s).length
+
+const mentions = new Set(["2"])
+
+/** Fails with what a GFM parse of `render(input)` finds that the renderer promises it never holds. */
+const assertInert = (input: string) => {
+  const out = render(input, { mentions })
+  const found = inspect(out)
+  const context = JSON.stringify(input) + " rendered " + JSON.stringify(out)
+  assert.deepStrictEqual(found.html, [], context)
+  assert.strictEqual(found.images, 0, context)
+  assert.deepStrictEqual(
+    found.links.filter((url) => !/^(?:https?:\/\/|mailto:)/i.test(url) && url !== "tg://user?id=2"),
+    [],
+    context
+  )
+  assert.deepStrictEqual(found.active, [], context)
+  assert.isAtMost(found.maxDepth, maxDepth, context)
+  assert.isAtMost(found.maxColumns, maxColumns, context)
+}
+
+const hostile = fc.string({
+  unit: fc.constantFrom(
+    ..."<>$=|![]()*_~`#-+.:/\\&;\n \t\"'0a",
+    "~~~",
+    "```",
+    " ~~~",
+    "- ",
+    "> ",
+    "1. ",
+    "https://e.com",
+    "www.e.co",
+    "x@e.co",
+    "tg://user?id=1",
+    "<b>",
+    "](",
+    "[^",
+    "[^a]: ",
+    "|---|",
+    "\\]",
+    "\\<",
+    "\\`"
+  ),
+  maxLength: 60
+})
 
 const markdown = fc.string({
   unit: fc.oneof(
@@ -45,6 +97,26 @@ const markdown = fc.string({
 describe("render", () => {
   it("escapes the hostile corpus", () => {
     for (const [input, expected] of cases) assert.strictEqual(render(input, { mentions: new Set(["2"]) }), expected)
+  })
+
+  it("leaves a GFM parser no HTML, image, foreign link, math, spoiler or excess nesting", () => {
+    for (
+      const input of [
+        // a backtick in a link title is not a code span
+        "[x](https://e.com \"`\") <tg-button data=\"pwn\">Click</tg-button> `",
+        "[x](https://e.com \"`\") ![i](https://e.com/i.png) [ping](tg://user?id=123) `",
+        // a fence may be indented up to three spaces
+        " ~~~\nx\n~~~\n[ping](tg://user?id=123) <b>",
+        // each delimiter of a run is a level
+        "_".repeat(36) + "x" + "_".repeat(36),
+        // a heading ends a table
+        "| a | b |\n|---|---|\n# heading\n||secret||",
+        // a backslash in a bare URL escapes nothing
+        "https://e.com\\<b> ](https://e.com\\<a> )",
+        "[^]:<x> [^a]: x\n="
+      ]
+    ) assertInert(input)
+    fc.assert(fc.property(hostile, (input) => assertInert(input)), { numRuns: 2000 })
   })
 
   it("escapes the pipes of a table wider than 20 columns", () => {

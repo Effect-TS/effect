@@ -11,10 +11,10 @@
  *   `editMessageText` with `rich_message`), in Markdown escaped so that
  *   consumer text reaches no raw HTML, image, math, spoiler or non-web
  *   link.
- * - Nothing here has run against Telegram yet, and the package is private
- *   until it has. Files, buttons and commands are behind `unverified`
- *   options, off by default, so a descriptor never advertises what no live
- *   check confirmed.
+ * - Nothing here has run against Telegram yet, the default capabilities
+ *   included, and the package stays private until the base live checks
+ *   pass. Files, buttons and commands need further checks, so they are
+ *   behind `unverified` options, off by default.
  * - There is no `ephemeral`: a private answer to a command is refused
  *   through `Handler.refused`, never posted. `fetchMessage`, `history`,
  *   `opener`, `startThread`, selects, modals, native streams and reaction
@@ -101,11 +101,19 @@ export type Outcome = "accepted" | "unhandled" | "notAccepted" | "invalid"
 export interface ReceiveOptions {
   /** Updates that give no event, the excluded contexts among them. */
   readonly onUnhandled?: ((update: Schema.Json) => Effect.Effect<void>) | undefined
-  /** How long `ChatHandler.handle` has. Default 10 seconds. */
+  /** How long `ChatHandler.handle` has before the update is `notAccepted`. Default 10 seconds. */
   readonly deadline?: Duration.Input | undefined
-  /** A click handler's share before the click is answered. Default 2.5 seconds. */
+  /**
+   * How long a click handler has before the click is answered. Default 2.5
+   * seconds. The handler then keeps running, detached, and the update is
+   * `accepted`: Telegram does not send it again.
+   */
   readonly clickDeadline?: Duration.Input | undefined
-  /** A command handler's share. Default 10 seconds. */
+  /**
+   * How long a command handler has. Default 10 seconds. The handler is then
+   * interrupted, and the update is `accepted`: Telegram does not send it
+   * again.
+   */
   readonly commandDeadline?: Duration.Input | undefined
 }
 
@@ -201,7 +209,9 @@ export const layer = (options: {
 /**
  * The header Telegram sends the webhook secret in. An app that records
  * server request headers must add it to `Headers.CurrentRedactedNames`,
- * keeping the names already there.
+ * keeping the names already there, in the layer it serves:
+ * `Layer.provideMerge` reaches the server span, `Layer.provide` on the
+ * webhook alone does not. The README has the setup.
  *
  * @stability unstable
  * @category constants
@@ -457,7 +467,10 @@ export const normalizeInteraction = (
  * is one: `{botId}.{update_id}.{date}`, with `test.` in front in the test
  * environment. Telegram sends an update again until it gets a 200 (or an
  * offset moves past it), clicks and commands included, so a handler whose
- * work must not run twice keeps this key with its work in one transaction.
+ * work must not be lost or run twice commits this key and a recoverable
+ * work item in one transaction before it returns. A click or command
+ * past its deadline counts as answered and is not sent again, so that
+ * holds only for a commit within the deadline. The README has the recipe.
  *
  * @stability unstable
  * @category normalization
