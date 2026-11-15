@@ -134,6 +134,14 @@ const fail = (kind: ThriftError["kind"], message: string): never => {
   throw new ThriftError({ kind, message })
 }
 
+const integerOption = (name: string, value: number | undefined, min: number, fallback: number): number => {
+  if (value === undefined) return fallback
+  if (!Number.isInteger(value) || value < min) {
+    fail("Usage", `${name} must be an integer of at least ${min}, got ${value}`)
+  }
+  return value
+}
+
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -256,12 +264,13 @@ export interface Options {
   /**
    * How deep structs and containers may nest, counting each struct and each
    * container entered by {@link Reader.readStructBegin},
-   * {@link Reader.skip} or {@link Reader.readValue}. Defaults to 64.
+   * {@link Reader.skip} or {@link Reader.readValue}. A positive integer;
+   * defaults to 64.
    */
   readonly maxDepth?: number | undefined
-  /** The longest binary or string value, in bytes. No limit by default. */
+  /** The longest binary or string value, in bytes: a non-negative integer. No limit by default. */
   readonly maxBinaryLength?: number | undefined
-  /** The largest list, set or map. No limit by default. */
+  /** The largest list, set or map: a non-negative integer. No limit by default. */
   readonly maxContainerSize?: number | undefined
 }
 
@@ -326,9 +335,9 @@ export class Reader {
     this.bytes = bytes
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     this.end = bytes.length
-    this.maxDepth = options?.maxDepth ?? 64
-    this.maxBinaryLength = options?.maxBinaryLength ?? Infinity
-    this.maxContainerSize = options?.maxContainerSize ?? Infinity
+    this.maxDepth = integerOption("maxDepth", options?.maxDepth, 1, 64)
+    this.maxBinaryLength = integerOption("maxBinaryLength", options?.maxBinaryLength, 0, Infinity)
+    this.maxContainerSize = integerOption("maxContainerSize", options?.maxContainerSize, 0, Infinity)
   }
 
   /** Where the next read starts in {@link bytes}. Set it to read from elsewhere. */
@@ -799,7 +808,7 @@ export class Writer {
   private boolFieldId = 0
 
   constructor(options?: { readonly initialSize?: number | undefined }) {
-    this.bytes = new Uint8Array(Math.max(16, options?.initialSize ?? 1024))
+    this.bytes = new Uint8Array(Math.max(16, integerOption("initialSize", options?.initialSize, 0, 1024)))
     this.view = new DataView(this.bytes.buffer)
   }
 

@@ -322,6 +322,26 @@ describe("Thrift", () => {
       assert.isAbove(failures, 0)
     })
 
+    it("rejects limits that aren't integers in range", () => {
+      // NaN used to disable a limit and a fractional one to round it.
+      for (
+        const options of [
+          { maxDepth: NaN },
+          { maxDepth: 0 },
+          { maxDepth: 1.5 },
+          { maxBinaryLength: -1 },
+          { maxBinaryLength: NaN },
+          { maxContainerSize: Infinity }
+        ]
+      ) {
+        assert.strictEqual(
+          thrown(() => Thrift.makeReader(new Uint8Array(0), options)),
+          "Usage",
+          Object.entries(options).join()
+        )
+      }
+    })
+
     it("decode rethrows errors that aren't ThriftErrors", () => {
       assert.throws(() =>
         Thrift.decode(Uint8Array.of(0), () => {
@@ -367,6 +387,13 @@ describe("Thrift", () => {
     for (const [name, f] of usage) {
       it(`rejects ${name}`, () => assert.strictEqual(thrown(() => f(Thrift.makeWriter())), "Usage"))
     }
+
+    it("rejects an initialSize that isn't a non-negative integer", () => {
+      // NaN used to make the buffer grow forever.
+      for (const initialSize of [NaN, Infinity, -1, 1.5]) {
+        assert.strictEqual(thrown(() => Thrift.makeWriter({ initialSize })), "Usage", String(initialSize))
+      }
+    })
 
     it("grows from a small buffer and returns a copy", () => {
       const bytes = parquet("alltypes_tiny_pages.parquet/footer")
