@@ -29,6 +29,7 @@ type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
+  readonly binarySchemas?: ReadonlySet<string> | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
   /**
    * Closes objects with declared properties when every contributing object schema omits `additionalProperties`.
@@ -201,7 +202,12 @@ function prepareSchemas(
     }
     rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
   }
-  const representation = SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
+  // Binary transport bodies encode bytes, independently of their JSON Schema representation.
+  // Only replace operation-local roots; shared components may also be used by JSON bodies.
+  const representation = SchemaRepresentation.toRepresentations(Arr.map(
+    rootSchemas,
+    (schema, index) => options?.binarySchemas?.has(names[index]) ? Schema.Uint8Array.ast : schema.ast
+  ))
   return {
     schemas: Object.fromEntries(names.map((name, index) => [
       name,

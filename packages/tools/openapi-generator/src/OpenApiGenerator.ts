@@ -224,6 +224,12 @@ export const make = Effect.gen(function*() {
         onEnter: options.onEnter,
         closeObjects: options.closeObjects,
         multipartSchemaRefs: multipart.refs,
+        binarySchemas: new Set(parsed.operations.flatMap((operation) =>
+          [
+            ...operation.requestBodyRepresentable,
+            ...operation.responses.flatMap((response) => response.representable)
+          ].flatMap((media) => media.encoding === "binary" && media.effectStream === undefined ? [media.schema] : [])
+        )),
         includeSchemas: options.includeSchemas
       }
       const module = new Codegen.Module(
@@ -701,7 +707,7 @@ const parseOpenApi = (
                 effectStream: "sse",
                 schema: addSchema(
                   `${schemaId}${status}Sse`,
-                  mediaType.schema as JsonSchema.JsonSchema,
+                  normalizeSseEventSchema(resolveReference(mediaType.schema, resolveRef)),
                   op
                 ),
                 errorSchema: addSchema(
