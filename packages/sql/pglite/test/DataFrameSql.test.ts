@@ -507,9 +507,21 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }
       }))
 
-    it.effect("tables are checked on the rows the query reads, even of volatile views", () =>
+    it.effect("tables are checked on the rows the query reads, whatever the relation", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient
+        // A view whose rows differ in each scan, without volatile functions.
+        yield* sql.unsafe(
+          `CREATE FUNCTION tick() RETURNS INTEGER STABLE LANGUAGE plpgsql AS $$
+            DECLARE n INTEGER := COALESCE(NULLIF(current_setting('df.tick', TRUE), ''), '0')::INTEGER + 1;
+            BEGIN PERFORM set_config('df.tick', n::TEXT, FALSE); RETURN n; END $$`
+        )
+        yield* sql`CREATE VIEW ticking AS SELECT CASE WHEN tick() <= 1 THEN 'good' ELSE 'bad' END AS s`
+        const ticking = () => Query.table("ticking", Schema.Struct({ s: Schema.Literal("good") }))
+        const tick = <R>(query: Query.Query<R>) =>
+          Effect.andThen(sql`SELECT set_config('df.tick', '0', FALSE)`, rowsOnSql(query))
+        assert.deepStrictEqual(yield* tick(ticking()), [{ s: "good" }])
+        assert.deepStrictEqual(yield* tick(Query.concat([ticking(), ticking()])), [{ s: "good" }, { s: "good" }])
         yield* sql`CREATE SEQUENCE seq START 1`
         yield* sql`CREATE VIEW fluctuating AS SELECT CASE WHEN nextval('seq') <= 2 THEN 'good' ELSE 'bad' END AS s`
         const query = Query.table("fluctuating", Schema.Struct({ s: Schema.Literal("good") }))

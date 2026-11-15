@@ -72,7 +72,8 @@ import type * as Plan from "./Plan.ts"
  * **Gotchas**
  *
  * The query doesn't check that the tables satisfy their declared columns and
- * schemas: {@link engine} runs a query with those checks instead.
+ * schemas: {@link engine} runs a query that checks the rows it reads
+ * instead.
  *
  * @stability experimental
  * @category models
@@ -124,22 +125,23 @@ const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
  * integers up to 32 bits, `bigint` for 64-bit ones, `smallint`,
  * `integer`, `real` or `double precision` for floats, string or enum
  * types for strings, `bytea`, `boolean`, `date`, `timestamp` or
- * `timestamptz` (read as UTC), `interval`, and any type for `Null`
- * columns. Then one
- * query checks the rows and computes the result from the same rows: only
- * nulls in `Null` columns, no nulls in other non-nullable columns,
- * timestamps in the range of `DateTime`, intervals without months, and the
- * distinct values of the columns the schema constrains beyond their type
- * (literals, enums, refinements) accepted by the schema. Columns the query
- * doesn't read are checked too. `explain` shows both queries.
+ * `timestamptz` (read as UTC), `interval`, `numeric` for decimals, and
+ * any type for `Null` columns. Then one query reads each table once, as a
+ * `MATERIALIZED` common table expression (computed once per statement),
+ * checks those rows and computes the result from exactly them, whatever
+ * the relation: views that sample rows or call functions included, and a
+ * table read twice gives the same rows twice. The checks: only nulls in
+ * `Null` columns, no nulls in other non-nullable columns, timestamps in
+ * the range of `DateTime`, intervals without months, and the distinct
+ * values of the columns the schema constrains beyond their type (literals,
+ * enums, refinements) accepted by the schema. Columns the query doesn't
+ * read are checked too. `explain` shows both queries.
  *
  * **Gotchas**
  *
- * The row checks and the result read the same rows: they are one
- * statement, so they read one snapshot, and a view that calls volatile
- * functions (`nextval`, `random`) is computed once for both. Functions
- * that give different results within a statement without being declared
- * volatile are not supported. The column types are checked in a separate
+ * Every query reads all rows of its tables, which the checks need, and
+ * copies their declared columns once: filters can't use the tables'
+ * indexes. The column types are checked in a separate
  * statement first: run both inside a `REPEATABLE READ` transaction when
  * the tables may be altered concurrently.
  *
@@ -176,8 +178,9 @@ export const engine: Effect.Effect<Engine.Service, never, SqlClient> = Effect.ge
 
 /**
  * A layer that runs queries on the database of the `SqlClient` in the
- * context, with {@link engine} (tables are checked against their schemas
- * as they are read).
+ * context, with {@link engine}: each query reads its tables once, checks
+ * those rows against their declared columns and schemas, and computes its
+ * result from exactly those rows.
  *
  * @stability experimental
  * @category layers

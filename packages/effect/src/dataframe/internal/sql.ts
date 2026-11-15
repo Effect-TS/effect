@@ -41,8 +41,8 @@ interface Compiler {
   readonly hidden: (name: string) => string
   /** The quoted row key. */
   readonly row: string
-  /** The quoted name of each table's source (see {@link source}). */
-  readonly sources: ReadonlyMap<Plan.Node, string>
+  /** The quoted name of the source of each table name (see {@link source}). */
+  readonly sources: ReadonlyMap<string, string>
 }
 
 /** @internal */
@@ -766,7 +766,7 @@ const relation = (node: Plan.Node, c: Compiler): string => {
           `ROW_NUMBER() OVER () AS ${row}`
         ]
           .join(", ")
-      } FROM ${c.sources.get(node)}`
+      } FROM ${c.sources.get(node.name)}`
     case "Values":
       return values(node.frame as unknown as F.Frame, c)
     case "Filter": {
@@ -999,18 +999,24 @@ const exact = (x: string, type: S.DataType): string | undefined => {
   }
 }
 
+const utc = S.timestamp("microsecond")
+
 /**
- * A declared column of a table's source as its declared type: null where it
- * isn't held exactly (see {@link exact}), so that reading such values
- * doesn't fail before the checks of the rows do.
+ * A declared column of a table's source as its declared type (timestamps
+ * as UTC timestamps without a time zone, whatever the session's time
+ * zone): null where it isn't held exactly (see {@link exact}), so that
+ * reading such values doesn't fail before the checks of the rows do.
  */
 const declared = (column: Plan.TableColumn): string => {
   const x = quote(column.name)
   const type = Schema_.arrowType(column)
+  const value = type._tag === "Timestamp"
+    ? fromInteger(toInteger(x, utc), utc)
+    : type._tag === "Decimal"
+    ? `CAST(${x} AS ${sqlType(type)})`
+    : x
   const held = exact(x, type)
-  return held === undefined
-    ? x
-    : `(CASE WHEN ${held} THEN ${type._tag === "Decimal" ? `CAST(${x} AS ${sqlType(type)})` : x} END)`
+  return held === undefined ? value : `(CASE WHEN ${held} THEN ${value} END)`
 }
 
 /**
@@ -1092,25 +1098,15 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
   })
 ]
 
-const utc = S.timestamp("microsecond")
-
 /**
- * The source a table is read through: its declared columns, timestamps as
- * UTC timestamps without a time zone (as the engine reads them, whatever the
- * session's time zone). The checks and the result read it in the same
- * statement, so the same snapshot: sources the checks read too are inlined
- * (`NOT MATERIALIZED`, as cheap as reading the table twice), unless they
- * call volatile functions, which PostgreSQL computes once for both instead.
+ * The source of the tables named `name` among `tables`: the columns they
+ * declare, read once. It is `MATERIALIZED`, which PostgreSQL computes once
+ * per statement, so the checks and the result read the same rows, whatever
+ * the relation: views that sample rows or call functions included.
  */
-const source = (table: Plan.Table, checked: boolean): string => {
-  const columns = (table.columns ?? []).map((column) =>
-    column.type === "Timestamp"
-      ? `${fromInteger(toInteger(quote(column.name), utc), utc)} AS ${quote(column.name)}`
-      : quote(column.name)
-  )
-  return `${checked ? "NOT MATERIALIZED " : ""}(SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM ${
-    quote(table.name)
-  })`
+const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
+  const columns = [...new Set(tables.flatMap((t) => t.name === name ? t.columns!.map((c) => c.name) : []))]
+  return `MATERIALIZED (SELECT ${columns.length === 0 ? "1" : list(columns)} FROM ${quote(name)})`
 }
 
 /** One SQL query whose first row holds the values of checks. */
@@ -1149,22 +1145,16 @@ export const compile = (plan: Plan.Node): Compiled => {
   let prefix = "__"
   while ([...used].some((name) => name.startsWith(prefix))) prefix += "_"
   const hidden = (name: string) => quote(prefix + name)
-  const tables = [...frames].flatMap(([node, frame], i) =>
-    node._tag === "Table" ? [{ node, name: hidden(`table${i}`), checks: rowChecks(node, frame) }] : []
+  const tables = [...frames].flatMap(([node, frame]) =>
+    node._tag === "Table" ? [{ node, checks: rowChecks(node, frame) }] : []
   )
-  const compiler: Compiler = {
-    frames,
-    hidden,
-    row: hidden("row"),
-    sources: new Map(tables.map((t) => [t.node, t.name]))
-  }
+  const sources = new Map([...new Set(tables.map((t) => t.node.name))].map((name, i) => [name, hidden(`table${i}`)]))
+  const compiler: Compiler = { frames, hidden, row: hidden("row"), sources }
   const sql = relation(plan, compiler)
   const schema = S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
   const columns = result.columns.map((col) => `${output(quote(col.name), col.type)} AS ${quote(col.name)}`)
-  const ctes = (checked: boolean) =>
-    tables.length === 0
-      ? ""
-      : `WITH ${tables.map((t) => `${t.name} AS ${source(t.node, checked && t.checks.length > 0)}`).join(", ")} `
+  const ctes = [...sources].map(([name, cte]) => `${cte} AS ${source(name, tables.map((t) => t.node))}`)
+  const prelude = ctes.length === 0 ? "" : `WITH ${ctes.join(", ")} `
   const body = `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`
   const columnTypes = tables.flatMap((t) => typeChecks(t.node))
   const types = columnTypes.length === 0 ? undefined : {
@@ -1173,7 +1163,7 @@ export const compile = (plan: Plan.Node): Compiled => {
   }
   const checked = tables.filter((t) => t.checks.length > 0)
   if (checked.length === 0) {
-    return { sql: ctes(false) + body, types, query: { sql: ctes(false) + body, checks: [] }, schema }
+    return { sql: prelude + body, types, query: { sql: prelude + body, checks: [] }, schema }
   }
   const names: Array<string> = []
   const header = checked.map((t, i) =>
@@ -1182,14 +1172,14 @@ export const compile = (plan: Plan.Node): Compiled => {
         names.push(hidden(`check${names.length}`))
         return `${check.sql} AS ${names[names.length - 1]}`
       }).join(", ")
-    } FROM ${t.name}) AS ${hidden(`checks${i}`)}`
+    } FROM ${sources.get(t.node.name)}) AS ${hidden(`checks${i}`)}`
   )
   const rows = `(SELECT ${[...columns, compiler.row].join(", ")} FROM (${sql}) AS t) AS r`
   return {
-    sql: ctes(false) + body,
+    sql: prelude + body,
     types,
     query: {
-      sql: `${ctes(true)}SELECT ${[...names, ...result.columns.map((col) => `r.${quote(col.name)}`)].join(", ")} FROM ${
+      sql: `${prelude}SELECT ${[...names, ...result.columns.map((col) => `r.${quote(col.name)}`)].join(", ")} FROM ${
         header.join(" CROSS JOIN ")
       } FULL JOIN ${rows} ON FALSE ORDER BY r.${compiler.row} NULLS FIRST`,
       checks: checked.flatMap((t) => t.checks.map((check) => check.verify))
