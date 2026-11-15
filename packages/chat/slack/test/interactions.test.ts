@@ -5,6 +5,7 @@
  * ones are in `commands.test.ts`.
  */
 import * as SlackChat from "@effect/chat-slack/SlackChat"
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
 import type { ChatError } from "effect/chat/ChatError"
@@ -281,6 +282,7 @@ describe("layerInteractivity", () => {
     }).pipe(
       Layer.provide(SlackChat.layer({ botToken: Redacted.make("xoxb-test"), teamId: team })),
       Layer.provide(Chat.layer),
+      Layer.provide(NodeCrypto.layerMac),
       Layer.provide(handler.layer),
       Layer.provide(makeFake({ "auth.test": authTest }).layer)
     )

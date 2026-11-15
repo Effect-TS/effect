@@ -1,10 +1,13 @@
 import { handleRequest, makeVerifier, type Options, unavailable as logged } from "@effect/chat-slack/internal/webhook"
 import * as SlackChat from "@effect/chat-slack/SlackChat"
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
 import { ChatError, PlatformUnavailable } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { ChatHandler, NotAccepted } from "effect/chat/ChatHandler"
+import * as CryptoError from "effect/crypto/CryptoError"
+import * as Mac from "effect/crypto/Mac"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -56,7 +59,7 @@ const request = async (body: string, options?: { readonly timestamp?: string; re
 const message = messageEnvelope({ ts: "1794509003.000001", user: "U080YLYB277", text: "hi <@U0CCLMD4S1L>" })
 
 const handle = Effect.fnUntraced(function*(options: Partial<Options>, web: Request) {
-  const verify = yield* makeVerifier(Redacted.make(secret))
+  const verify = yield* makeVerifier(Redacted.make(secret)).pipe(Effect.provide(NodeCrypto.layerMac))
   const events: Array<ChatEvent.ChatEvent> = []
   const response = yield* handleRequest(HttpServerRequest.fromWeb(web), {
     verify,
@@ -94,6 +97,11 @@ describe("webhook", () => {
       assert.strictEqual(old.status, 401)
       const unsigned = yield* handle({}, new Request("http://localhost/", { method: "POST", body }))
       assert.strictEqual(unsigned.status, 401)
+      for (const signature of ["00", "v0=0", "v0=gg", "v0=00"]) {
+        const web = yield* Effect.promise(() => request(body))
+        web.headers.set("x-slack-signature", signature)
+        assert.strictEqual((yield* handle({}, web)).status, 401)
+      }
       assert.strictEqual(wrongKey.events.length + old.events.length + unsigned.events.length, 0)
     }))
 
@@ -170,6 +178,7 @@ describe("webhook", () => {
       }).pipe(
         Layer.provide(SlackChat.layer({ botToken: Redacted.make("xoxb-test"), teamId: team })),
         Layer.provide(Chat.layer),
+        Layer.provide(NodeCrypto.layerMac),
         Layer.provide(Layer.succeed(ChatHandler, { handle: (event) => Effect.sync(() => void events.push(event)) })),
         Layer.provide(fake.layer)
       )
@@ -196,18 +205,46 @@ describe("webhook", () => {
       assert.isTrue(cancelled)
     }))
 
-  it.live("layerWebhook serves the path", () =>
+  it.live("layerWebhook uses the supplied Mac and fails closed on crypto errors", () =>
     Effect.gen(function*() {
       const fake = makeFake({ "auth.test": authTest })
       const events: Array<ChatEvent.ChatEvent> = []
+      let fail = false
+      const mac = Layer.succeed(Mac.Mac, {
+        generateKey: () => Effect.die("unused"),
+        sign: () => Effect.die("unused"),
+        verify: Effect.fnUntraced(function*(key, tag, data) {
+          assert.strictEqual(key.algorithm, Mac.hmacSha256)
+          assert.deepStrictEqual(tag, new Uint8Array([0xab, 0xcd]))
+          assert.strictEqual(new TextDecoder().decode(yield* Mac.toBytes(key)), secret)
+          assert.strictEqual(new TextDecoder().decode(data).split(":").slice(2).join(":"), JSON.stringify(message))
+          return yield* fail
+            ? Effect.fail(
+              new CryptoError.CryptoError({
+                module: "Mac",
+                method: "verify",
+                reason: new CryptoError.InvalidKey({ description: "test failure" })
+              })
+            )
+            : Effect.succeed(true)
+        })
+      })
       const app = SlackChat.layerWebhook({ path: "/slack/events", signingSecret: Redacted.make(secret), appId }).pipe(
         Layer.provide(SlackChat.layer({ botToken: Redacted.make("xoxb-test"), teamId: team })),
         Layer.provide(Chat.layer),
+        Layer.provide(mac),
         Layer.provide(Layer.succeed(ChatHandler, { handle: (event) => Effect.sync(() => void events.push(event)) })),
         Layer.provide(fake.layer)
       )
       const { dispose, handler } = HttpRouter.toWebHandler(app, { disableLogger: true })
-      const response = yield* Effect.promise(() => request(JSON.stringify(message)).then((web) => handler(web)))
+      const send = Effect.promise(async () => {
+        const web = await request(JSON.stringify(message))
+        web.headers.set("x-slack-signature", "v0=abcd")
+        return handler(web)
+      })
+      const response = yield* send
+      fail = true
+      assert.strictEqual((yield* send).status, 401)
       yield* Effect.promise(() => dispose())
       assert.strictEqual(response.status, 200)
       assert.strictEqual(events.length, 1)

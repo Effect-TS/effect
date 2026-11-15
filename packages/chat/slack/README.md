@@ -8,6 +8,23 @@ A [Slack](https://slack.com) adapter for `effect/chat`. Includes the Events API 
 npm install effect @effect/chat-slack
 ```
 
+## Signature verification
+
+`SlackChat.layerWebhook` and `SlackChat.layerInteractivity` require the
+`Mac` service; the adapter does not provide a default. Supply
+`NodeCrypto.layerMac` from `@effect/platform-node/NodeCrypto`,
+`BunCrypto.layerMac`, `DenoCrypto.layerMac`, or `BrowserCrypto.layerMac`
+from the corresponding platform package.
+
+For other runtimes such as Workers, provide
+`Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto))`,
+using `effect/crypto/Mac`, `effect/Layer`, and `effect/crypto/SecureRandom`.
+Pass the chosen layer to each route layer with `Layer.provide`.
+
+An invalid signing secret fails layer construction as a defect. A verification
+error or malformed signature fails closed with HTTP 401. Requests must still
+have a digits-only timestamp within five minutes of the current clock.
+
 ## Known limits
 
 - A post with files has not been tested in a Slack Connect channel.

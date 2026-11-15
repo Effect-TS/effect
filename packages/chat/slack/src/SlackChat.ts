@@ -51,6 +51,7 @@ import * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ParseMention } from "effect/chat/ChatTest"
 import { ChatThread } from "effect/chat/ChatThread"
 import * as Context from "effect/Context"
+import type * as Mac from "effect/crypto/Mac"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
@@ -387,6 +388,13 @@ export const parts: (thread: ChatThread) => Option.Option<{
  * - Slack redelivers on a timeout or an error, so an event can arrive twice.
  *   `ChatEvent.dedupeKey` gives the two deliveries equal keys.
  *
+ * Signature checks use the required `Mac` service. Provide
+ * `NodeCrypto.layerMac`, `BunCrypto.layerMac`, `DenoCrypto.layerMac`,
+ * `BrowserCrypto.layerMac`, or `Mac.layerWebCrypto` with
+ * `SecureRandom.layerWebCrypto` for other runtimes such as Workers.
+ * Key construction failures are configuration defects; verification errors
+ * fail the signature check (401).
+ *
  * @stability unstable
  * @category layers
  * @since 4.1.5
@@ -397,7 +405,7 @@ export const layerWebhook = (options: {
   readonly appId: string
   readonly deadline?: Duration.Duration | undefined
   readonly maxBodyBytes?: number | undefined
-}): Layer.Layer<never, never, HttpRouter.HttpRouter | SlackChat | ChatHandler> =>
+}): Layer.Layer<never, never, HttpRouter.HttpRouter | SlackChat | ChatHandler | Mac.Mac> =>
   HttpRouter.use(Effect.fnUntraced(function*(router) {
     const slack = yield* SlackChat
     const handler = yield* ChatHandler
@@ -433,6 +441,13 @@ export const layerWebhook = (options: {
  * - Slack never redelivers an interaction, so a click or submit that is not
  *   answered in time is lost. A user can submit again, as a new request.
  *
+ * Signature checks use the required `Mac` service. Provide
+ * `NodeCrypto.layerMac`, `BunCrypto.layerMac`, `DenoCrypto.layerMac`,
+ * `BrowserCrypto.layerMac`, or `Mac.layerWebCrypto` with
+ * `SecureRandom.layerWebCrypto` for other runtimes such as Workers.
+ * Key construction failures are configuration defects; verification errors
+ * fail the signature check (401).
+ *
  * @stability unstable
  * @category layers
  * @since 4.1.5
@@ -443,7 +458,7 @@ export const layerInteractivity = (options: {
   readonly appId: string
   readonly deadline?: Duration.Duration | undefined
   readonly maxBodyBytes?: number | undefined
-}): Layer.Layer<never, never, HttpRouter.HttpRouter | SlackChat | ChatInteraction.Handler> =>
+}): Layer.Layer<never, never, HttpRouter.HttpRouter | SlackChat | ChatInteraction.Handler | Mac.Mac> =>
   HttpRouter.use(Effect.fnUntraced(function*(router) {
     const slack = yield* SlackChat
     const handler = yield* ChatInteraction.Handler

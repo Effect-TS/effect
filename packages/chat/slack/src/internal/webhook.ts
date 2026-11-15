@@ -3,7 +3,7 @@ import type * as ChatEvent from "effect/chat/ChatEvent"
 import type { NotAccepted } from "effect/chat/ChatHandler"
 import * as ChatInteraction from "effect/chat/ChatInteraction"
 import * as Clock from "effect/Clock"
-import { WebCrypto } from "effect/crypto/WebCrypto"
+import * as Mac from "effect/crypto/Mac"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as HttpServerRequest from "effect/http/HttpServerRequest"
@@ -19,19 +19,6 @@ const maxSkewSeconds = 60 * 5
 
 const encoder = new TextEncoder()
 
-const toHex = (bytes: Uint8Array): string => {
-  let out = ""
-  for (const byte of bytes) out += byte.toString(16).padStart(2, "0")
-  return out
-}
-
-const timingSafeEqual = (a: string, b: string): boolean => {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return diff === 0
-}
-
 /**
  * Checks Slack's `v0` request signature: an HMAC-SHA256 of
  * `v0:{timestamp}:{body}` with the signing secret, and a timestamp within
@@ -40,29 +27,26 @@ const timingSafeEqual = (a: string, b: string): boolean => {
  * @internal
  */
 export const makeVerifier = Effect.fnUntraced(function*(signingSecret: Redacted.Redacted) {
-  const crypto = yield* WebCrypto
-  const key = yield* Effect.promise(() =>
-    crypto.subtle.importKey(
-      "raw",
-      encoder.encode(Redacted.value(signingSecret)),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    )
-  )
+  const mac = yield* Mac.Mac
+  // Invalid signing secrets are configuration defects, not route errors.
+  const key = yield* Mac.key(Mac.hmacSha256, encoder.encode(Redacted.value(signingSecret))).pipe(Effect.orDie)
   return (headers: { readonly [key: string]: string | undefined }, body: Uint8Array): Effect.Effect<boolean> =>
     Effect.gen(function*() {
       const timestamp = headers["x-slack-request-timestamp"]
       const signature = headers["x-slack-signature"]
       if (timestamp === undefined || signature === undefined || !/^\d+$/.test(timestamp)) return false
+      if (!/^v0=(?:[0-9a-fA-F]{2})+$/.test(signature)) return false
+      const hex = signature.slice(3)
+      const tag = new Uint8Array(hex.length / 2)
+      for (let i = 0; i < tag.length; i++) tag[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
       const now = yield* Clock.currentTimeMillis
       if (Math.abs(now / 1000 - Number(timestamp)) > maxSkewSeconds) return false
       const prefix = encoder.encode(`v0:${timestamp}:`)
       const message = new Uint8Array(prefix.length + body.length)
       message.set(prefix)
       message.set(body, prefix.length)
-      const mac = yield* Effect.promise(() => crypto.subtle.sign("HMAC", key, message))
-      return timingSafeEqual(`v0=${toHex(new Uint8Array(mac))}`, signature)
+      // Crypto failures fail closed, like a mismatched signature.
+      return yield* mac.verify(key, tag, message).pipe(Effect.catch(() => Effect.succeed(false)))
     })
 })
 

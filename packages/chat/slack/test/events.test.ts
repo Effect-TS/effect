@@ -4,6 +4,7 @@
  */
 import { handleRequest, makeVerifier } from "@effect/chat-slack/internal/webhook"
 import * as SlackChat from "@effect/chat-slack/SlackChat"
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { dedupeKey } from "effect/chat/ChatEvent"
@@ -57,7 +58,7 @@ const deliver = Effect.fnUntraced(function*(delivery: Delivery) {
   })
   const events: Array<ChatEvent.ChatEvent> = []
   const response = yield* handleRequest(HttpServerRequest.fromWeb(web), {
-    verify: yield* makeVerifier(Redacted.make(secret)),
+    verify: yield* makeVerifier(Redacted.make(secret)).pipe(Effect.provide(NodeCrypto.layerMac)),
     appId,
     teamId: team,
     botUserId: Effect.succeed(botUserId),
