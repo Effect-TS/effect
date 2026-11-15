@@ -204,6 +204,18 @@ describe("HttpApi", () => {
         assert.strictEqual(response.status, 400)
       }).pipe(Effect.provide(HttpLive)))
 
+    it.effect("malformed JSON returns HttpApiDecodeError", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClientRequest.post("/users").pipe(
+          HttpClientRequest.setUrlParams({ id: "0" }),
+          HttpClientRequest.bodyText("{\"name\":\"Joe\" \"x\":1}", "application/json"),
+          HttpClient.execute
+        )
+        assert.strictEqual(response.status, 400)
+        const body = yield* response.json
+        assert.propertyVal(body, "_tag", "HttpApiDecodeError")
+      }).pipe(Effect.provide(HttpLive)))
+
     it.effect("HttpApiDecodeError", () =>
       Effect.gen(function*() {
         const client = yield* HttpApiClient.make(Api)
