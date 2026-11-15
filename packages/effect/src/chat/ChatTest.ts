@@ -2319,7 +2319,8 @@ export const conformance = (options: {
     Effect.gen(function*() {
       const { measure } = t.descriptor
       const most = t.descriptor.limits.messageLength
-      const actions = [{ ...conformanceButton(t.rule), value: "x" }]
+      // A short label, so a platform whose labels are short still takes the button.
+      const actions = [{ ...conformanceButton(t.rule), label: "fits", value: "x" }]
       let low = 0
       let high = most
       while (low < high) {
