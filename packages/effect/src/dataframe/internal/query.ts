@@ -6,8 +6,11 @@
  *
  * - row-wise predicates move below the row-wise operations they commute
  *   with (sorts, projections, derived columns they don't read, group keys,
- *   either side of a join, every input of a concat), and filters that meet
- *   merge;
+ *   either side of a join), and filters that meet merge. A predicate only
+ *   moves where it sees the values it sees in place: it stays above a concat
+ *   (whose inputs may differ in type from their concatenation), and one on
+ *   join keys moves to the left side only (the side whose keys the join
+ *   keeps);
  * - slices move below row-wise operations that keep every row in place, and
  *   a slice of a sort becomes a top-k selection.
  *
@@ -319,23 +322,19 @@ const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
       const { down, here } = split((refs) => subset(refs, node.keys))
       return filtered({ ...node, input: push(node.input, down) }, here)
     }
-    case "Concat":
-      return { ...node, inputs: node.inputs.map((input) => push(input, predicates)) }
     case "Join": {
       const leftNames = names(node.left)
       const rightNames = names(node.right)
       if (node.how === "full" || leftNames === undefined || rightNames === undefined) return filtered(node, predicates)
       const left = new Set(leftNames)
-      const right = new Set(rightNames)
+      // The join keeps the left side's keys, which the right side's may differ from in type.
+      const right = new Set(rightNames.filter((n) => !node.on.includes(n)))
       const toLeft: Array<Plan.Expression> = []
       const toRight: Array<Plan.Expression> = []
       const here: Array<Plan.Expression> = []
       for (const p of predicates) {
         const refs = E.columns(p)
-        if (node.how === "inner" && subset(refs, node.on)) {
-          toLeft.push(p)
-          toRight.push(p)
-        } else if (subset(refs, left)) toLeft.push(p)
+        if (subset(refs, left)) toLeft.push(p)
         else if (node.how === "inner" && subset(refs, right)) toRight.push(p)
         else here.push(p)
       }

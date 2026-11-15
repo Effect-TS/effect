@@ -393,6 +393,17 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(query), [{ town: "Vienna", n: 2, mean: 20.25 }])
       }))
 
+    it.effect("keeps predicates on join keys off the right side, whose keys the join drops", () =>
+      Effect.gen(function*() {
+        // The result has the left side's Int8 key, where 100 + 100 wraps to -56;
+        // in the right side's Int64 it is 200.
+        const query = Query.from(DataFrame.fromColumns({ x: Int8Array.of(100), a: [1] })).pipe(
+          Query.join(Query.from(DataFrame.fromColumns({ x: BigInt64Array.of(100n), b: [2] })), { on: "x" }),
+          Query.filter((c) => Expr.lt(Expr.add(c.x, c.x), 0))
+        )
+        assert.deepStrictEqual(yield* rows(query), [{ x: 100, a: 1, b: 2 }])
+      }))
+
     it.effect("keeps predicates above left joins when they read the right side", () =>
       Effect.gen(function*() {
         const query = Query.from(readings).pipe(
