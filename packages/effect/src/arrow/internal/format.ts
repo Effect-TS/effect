@@ -156,12 +156,34 @@ export interface Footer {
 const maxDepth = 64
 
 /**
+ * What decoding a metadata buffer may still read. Many offsets may point at
+ * one table or string, so a small buffer could decode to a huge schema. As in
+ * Arrow C++ (ARROW-11559), the budget is 8 per byte of metadata; every field
+ * and key-value table costs 1, and every string its length.
+ */
+interface Budget {
+  remaining: number
+}
+
+const spend = (budget: Budget, cost: number): void => {
+  budget.remaining -= cost
+  if (budget.remaining < 0) fail("metadata refers to the same tables or strings too many times")
+}
+
+const stringOf = (budget: Budget, table: Fb.Table, slot: number): string | undefined => {
+  const s = table.string(slot)
+  if (s !== undefined) spend(budget, s.length)
+  return s
+}
+
+/**
  * Reads a metadata FlatBuffer with `read`, failing with `Invalid` for
  * malformed bytes. The table depth limit is the one Arrow C++ verifies
  * metadata with, above the nesting that `maxDepth` allows for fields.
  */
-const decodeFlatBuffer = <A>(bytes: Uint8Array, what: string, read: (table: Fb.Table) => A): A => {
-  const result = Fb.decode(bytes, read, { maxDepth: 128 })
+const decodeFlatBuffer = <A>(bytes: Uint8Array, what: string, read: (table: Fb.Table, budget: Budget) => A): A => {
+  const budget: Budget = { remaining: 8 * bytes.length }
+  const result = Fb.decode(bytes, (table) => read(table, budget), { maxDepth: 128 })
   if (Result.isFailure(result)) {
     throw new IpcFailure("Invalid", `invalid ${what}: ${result.failure.message}`, result.failure)
   }
@@ -189,9 +211,12 @@ const int64s = (table: Fb.Table, slot: number, what: string): Array<number> | un
   return v === undefined ? undefined : Array.from({ length: v.length }, (_, i) => int53(v.int64(i), what))
 }
 
-const metadataOf = (table: Fb.Table, slot: number): ReadonlyMap<string, string> => {
+const metadataOf = (table: Fb.Table, slot: number, budget: Budget): ReadonlyMap<string, string> => {
   const out = new Map<string, string>()
-  for (const kv of tables(table, slot)) out.set(kv.string(0) ?? "", kv.string(1) ?? "")
+  for (const kv of tables(table, slot)) {
+    spend(budget, 1)
+    out.set(stringOf(budget, kv, 0) ?? "", stringOf(budget, kv, 1) ?? "")
+  }
   return out
 }
 
@@ -205,7 +230,12 @@ const intType = (t: Fb.Table | undefined): S.Int => {
 const one = (children: ReadonlyArray<S.Field>, what: string): S.Field =>
   children.length === 1 ? children[0] : fail(`${what} needs exactly one child, got ${children.length}`)
 
-const decodeType = (typeId: number, t: Fb.Table | undefined, children: ReadonlyArray<S.Field>): S.DataType => {
+const decodeType = (
+  typeId: number,
+  t: Fb.Table | undefined,
+  children: ReadonlyArray<S.Field>,
+  budget: Budget
+): S.DataType => {
   const table = () => t ?? fail(`missing type table for type ${typeId}`)
   switch (typeId) {
     case TypeId.Null:
@@ -249,7 +279,8 @@ const decodeType = (typeId: number, t: Fb.Table | undefined, children: ReadonlyA
     }
     case TypeId.Timestamp: {
       const ts = table()
-      return { _tag: "Timestamp", unit: enumValue(timeUnits, ts.int16(0), "time unit"), timezone: ts.string(1) }
+      const timezone = stringOf(budget, ts, 1)
+      return { _tag: "Timestamp", unit: enumValue(timeUnits, ts.int16(0), "time unit"), timezone }
     }
     case TypeId.Interval:
       return { _tag: "Interval", unit: enumValue(intervalUnits, table().int16(0), "interval unit") }
@@ -314,10 +345,11 @@ const decodeType = (typeId: number, t: Fb.Table | undefined, children: ReadonlyA
   }
 }
 
-const decodeField = (t: Fb.Table, depth: number): S.Field => {
+const decodeField = (t: Fb.Table, depth: number, budget: Budget): S.Field => {
   if (depth > maxDepth) fail(`fields nested deeper than ${maxDepth}`)
-  const children = tables(t, 5).map((c) => decodeField(c, depth + 1))
-  let type = decodeType(t.uint8(2), t.table(3), children)
+  spend(budget, 1)
+  const children = tables(t, 5).map((c) => decodeField(c, depth + 1, budget))
+  let type = decodeType(t.uint8(2), t.table(3), children, budget)
   const dict = t.table(4)
   if (dict !== undefined) {
     const indexType = dict.has(1)
@@ -326,15 +358,15 @@ const decodeField = (t: Fb.Table, depth: number): S.Field => {
     const id = int53(dict.int64(0), "dictionary id")
     type = { _tag: "Dictionary", id, indexType, valueType: type, ordered: dict.bool(2) }
   }
-  return { name: t.string(0) ?? "", type, nullable: t.bool(1), metadata: metadataOf(t, 6) }
+  return { name: stringOf(budget, t, 0) ?? "", type, nullable: t.bool(1), metadata: metadataOf(t, 6, budget) }
 }
 
-const decodeSchema = (t: Fb.Table): SchemaMessage => {
+const decodeSchema = (t: Fb.Table, budget: Budget): SchemaMessage => {
   const endianness = t.int16(0)
   const features = int64s(t, 3, "feature") ?? []
   return {
     _tag: "Schema",
-    schema: { fields: tables(t, 1).map((f) => decodeField(f, 0)), metadata: metadataOf(t, 2) },
+    schema: { fields: tables(t, 1).map((f) => decodeField(f, 0, budget)), metadata: metadataOf(t, 2, budget) },
     endianness: endianness === 1 ? "big" : "little",
     features
   }
@@ -371,13 +403,13 @@ const decodeRecordBatch = (t: Fb.Table): RecordBatchMessage => {
   }
 }
 
-const messageOf = (t: Fb.Table): Message => {
+const messageOf = (t: Fb.Table, budget: Budget): Message => {
   const headerType = t.uint8(1)
   const headerTable = t.table(2)
   let header: Message["header"]
   switch (headerType) {
     case MessageHeader.Schema:
-      header = decodeSchema(headerTable ?? fail("missing Schema header"))
+      header = decodeSchema(headerTable ?? fail("missing Schema header"), budget)
       break
     case MessageHeader.RecordBatch:
       header = decodeRecordBatch(headerTable ?? fail("missing RecordBatch header"))
@@ -399,14 +431,14 @@ const messageOf = (t: Fb.Table): Message => {
     version: t.int16(0),
     header,
     bodyLength: int53(t.int64(3), "body length"),
-    metadata: metadataOf(t, 4)
+    metadata: metadataOf(t, 4, budget)
   }
 }
 
 /** Decodes an IPC `Message` FlatBuffer. @internal */
 export const decodeMessage = (bytes: Uint8Array): Message => decodeFlatBuffer(bytes, "message metadata", messageOf)
 
-const footerOf = (t: Fb.Table): Footer => {
+const footerOf = (t: Fb.Table, budget: Budget): Footer => {
   const blocks = (slot: number) =>
     structs(t, slot, 24, (s): Block => ({
       offset: int53(s.int64(0), "block offset"),
@@ -415,10 +447,10 @@ const footerOf = (t: Fb.Table): Footer => {
     }))
   return {
     version: t.int16(0),
-    schema: decodeSchema(t.table(1) ?? fail("footer without schema")),
+    schema: decodeSchema(t.table(1) ?? fail("footer without schema"), budget),
     dictionaries: blocks(2),
     recordBatches: blocks(3),
-    metadata: metadataOf(t, 4)
+    metadata: metadataOf(t, 4, budget)
   }
 }
 

@@ -142,6 +142,41 @@ const decodeChunks = (chunks: ReadonlyArray<Uint8Array>) =>
     Stream.runCollect
   )
 
+// A stream whose schema is a struct listing one child field table 10 times, 5
+// levels deep: 100,000 fields from a few hundred bytes of metadata
+const sharedFieldsStream = () => {
+  const b = FlatBuffers.makeBuilder()
+  const field = (typeId: number, children: ReadonlyArray<FlatBuffers.Offset>) => {
+    b.startTable(0)
+    const type = b.endTable()
+    const vector = b.createOffsetVector(children)
+    b.startTable(7)
+    b.addFieldUint8(2, typeId)
+    b.addFieldOffset(3, type)
+    b.addFieldOffset(5, vector)
+    return b.endTable()
+  }
+  let child = field(1, []) // Null
+  for (let level = 0; level < 5; level++) child = field(13, Array(10).fill(child)) // Struct
+  const fields = b.createOffsetVector([child])
+  b.startTable(4)
+  b.addFieldOffset(1, fields)
+  const schema = b.endTable()
+  b.startTable(5)
+  b.addFieldInt16(0, 4) // V5
+  b.addFieldUint8(1, 1) // Schema
+  b.addFieldOffset(2, schema)
+  const metadata = b.finish(b.endTable())
+  const padded = (metadata.length + 7) & ~7
+  const stream = new Uint8Array(8 + padded + 8)
+  const view = new DataView(stream.buffer)
+  view.setUint32(0, 0xffffffff, true)
+  view.setInt32(4, padded, true)
+  stream.set(metadata, 8)
+  view.setUint32(8 + padded, 0xffffffff, true)
+  return stream
+}
+
 const assertIpcError = (result: Result.Result<unknown, ArrowIpc.ArrowIpcError>) => {
   assert.isTrue(Result.isFailure(result))
   if (Result.isFailure(result)) {
@@ -196,6 +231,7 @@ describe("ArrowIpc", () => {
       const cause = result.failure.cause
       assert.isTrue(FlatBuffers.isFlatBuffersError(cause) && cause.kind === "OutOfBounds")
     }
+    assertIpcError(ArrowIpc.decodeStream(sharedFieldsStream()))
 
     // Every proper prefix of a file lacks its footer
     for (let cut = 0; cut < fileBytes.length; cut++) {
