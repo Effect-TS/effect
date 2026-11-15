@@ -103,8 +103,9 @@ const ThriftErrorTypeId = "~effect/encoding/Thrift/ThriftError"
  * - `Limit`: the input nests deeper than {@link Options.maxDepth}, or a
  *   length or size exceeds {@link Options.maxBinaryLength} or
  *   {@link Options.maxContainerSize}.
- * - `Usage`: the reader or writer was called out of order, or a value is
- *   out of range for its type.
+ * - `Usage`: the reader or writer was called out of order or with an
+ *   invalid argument or option, or a written value is out of range for its
+ *   type. {@link decode} rethrows these caller errors.
  *
  * @stability experimental
  * @category errors
@@ -685,7 +686,7 @@ export class Reader {
         return
       }
       default:
-        fail("Malformed", `can't skip a value of type ${describe(type)} at byte ${this.pos}`)
+        fail("Usage", `can't skip a value of type ${describe(type)}`)
     }
   }
 
@@ -746,7 +747,7 @@ export class Reader {
         return { _tag: "Map", keyType: typeNames[key], valueType: typeNames[value], entries }
       }
       default:
-        return fail("Malformed", `can't read a value of type ${describe(type)} at byte ${this.pos}`)
+        return fail("Usage", `can't read a value of type ${describe(type)}`)
     }
   }
 }
@@ -764,6 +765,11 @@ export const makeReader = (bytes: Uint8Array, options?: Options): Reader => new 
  * Reads `bytes` with `read`, which gets a {@link Reader} at the start of
  * them. Malformed input becomes a failed `Result` instead of an exception.
  *
+ * **Gotchas**
+ *
+ * `Usage` errors and errors other than {@link ThriftError} are rethrown:
+ * they are bugs in `read` or invalid options, not bad input.
+ *
  * @stability experimental
  * @category reading
  * @since 4.1.5
@@ -776,7 +782,7 @@ export const decode = <A>(
   try {
     return Result.succeed(read(new Reader(bytes, options)))
   } catch (cause) {
-    if (isThriftError(cause)) return Result.fail(cause)
+    if (isThriftError(cause) && cause.kind !== "Usage") return Result.fail(cause)
     throw cause
   }
 }

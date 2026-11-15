@@ -356,6 +356,20 @@ describe("Thrift", () => {
           throw new Error("boom")
         }), "boom")
     })
+
+    it("decode rethrows Usage errors, which are the caller's", () => {
+      const misuse: ReadonlyArray<(r: Thrift.Reader) => unknown> = [
+        (r) => r.readStructEnd(),
+        (r) => r.position = -1,
+        (r) => r.position = 2,
+        (r) => r.position = 0.5,
+        (r) => r.skip(Thrift.Type.Stop),
+        (r) => r.readValue(7 as Thrift.Type)
+      ]
+      for (const f of misuse) {
+        assert.strictEqual(thrown(() => Thrift.decode(Uint8Array.of(0), f)), "Usage", String(f))
+      }
+    })
   })
 
   describe("Writer", () => {
