@@ -284,7 +284,7 @@ describe("Thrift", () => {
       ["a skipped binary over maxBinaryLength", "1803616263", (r) => r.skip(Thrift.Type.Struct), "Limit", {
         maxBinaryLength: 2
       }],
-      ["a list over maxContainerSize", "35010203", (r) => r.readListBegin(), "Limit", { maxContainerSize: 2 }],
+      ["a list over maxContainerSize", "35", (r) => r.readListBegin(), "Limit", { maxContainerSize: 2 }],
       ["a struct over maxDepth", "1c1c000000", struct, "Limit", { maxDepth: 2 }],
       ["lists over maxDepth", "1919191500", (r) => r.skip(Thrift.Type.List), "Limit", { maxDepth: 2 }]
     ]

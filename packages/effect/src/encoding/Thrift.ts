@@ -437,13 +437,33 @@ export class Reader {
     return half
   }
 
+  /** Checks a container size; every element takes at least `bytesPerElement` bytes. */
   private checkSize(size: number, bytesPerElement: number, what: string): void {
-    if (size * bytesPerElement > this.end - this.pos) {
-      fail("Truncated", `${what} of ${size} elements at byte ${this.pos} is larger than the remaining input`)
-    }
     if (size > this.maxContainerSize) {
       fail("Limit", `${what} of ${size} elements exceeds the limit of ${this.maxContainerSize}`)
     }
+    if (size * bytesPerElement > this.end - this.pos) {
+      fail("Truncated", `${what} of ${size} elements at byte ${this.pos} is larger than the remaining input`)
+    }
+  }
+
+  /** Reads a binary length and moves past the bytes; returns where they start. */
+  private binary(what: string): number {
+    const length = this.varint32(`${what} length`)
+    if (length > this.maxBinaryLength) {
+      fail("Limit", `${what} of ${length} bytes exceeds the limit of ${this.maxBinaryLength}`)
+    }
+    return this.advance(length, `${what} of ${length} bytes`)
+  }
+
+  /** Reads a list or set header. */
+  private listHeader(what: string): number {
+    const header = this.byte(`${what} header`)
+    let size = header >> 4
+    if (size === 15) size = this.varint32(`${what} size`)
+    this.elementType = this.elementOf(header & 0x0f, size, what)
+    this.checkSize(size, 1, what)
+    return size
   }
 
   private enter(): void {
@@ -503,22 +523,12 @@ export class Reader {
 
   /** Reads a list header: returns the list's size and sets {@link elementType}. */
   readListBegin(): number {
-    const header = this.byte("a list header")
-    let size = header >> 4
-    if (size === 15) size = this.varint32("a list size")
-    this.elementType = this.elementOf(header & 0x0f, size, "a list")
-    this.checkSize(size, 1, "a list")
-    return size
+    return this.listHeader("a list")
   }
 
   /** Reads a set header: returns the set's size and sets {@link elementType}. */
   readSetBegin(): number {
-    const header = this.byte("a set header")
-    let size = header >> 4
-    if (size === 15) size = this.varint32("a set size")
-    this.elementType = this.elementOf(header & 0x0f, size, "a set")
-    this.checkSize(size, 1, "a set")
-    return size
+    return this.listHeader("a set")
   }
 
   /** Reads a map header: returns the map's size and sets {@link keyType} and {@link valueType}. */
@@ -596,23 +606,14 @@ export class Reader {
 
   /** Reads a `binary` value as a view of {@link bytes}, not a copy. */
   readBinary(): Uint8Array {
-    const length = this.varint32("a binary length")
-    if (length > this.maxBinaryLength) {
-      fail("Limit", `a binary value of ${length} bytes exceeds the limit of ${this.maxBinaryLength}`)
-    }
-    const at = this.advance(length, `a binary value of ${length} bytes`)
-    return this.bytes.subarray(at, at + length)
+    return this.bytes.subarray(this.binary("a binary value"), this.pos)
   }
 
   /** Reads a `string`: a `binary` value decoded as UTF-8. */
   readString(): string {
-    const length = this.varint32("a string length")
-    if (length > this.maxBinaryLength) {
-      fail("Limit", `a string of ${length} bytes exceeds the limit of ${this.maxBinaryLength}`)
-    }
-    const at = this.advance(length, `a string of ${length} bytes`)
+    const at = this.binary("a string")
     try {
-      return utf8.decode(this.bytes.subarray(at, at + length))
+      return utf8.decode(this.bytes.subarray(at, this.pos))
     } catch {
       return fail("InvalidUtf8", `the string at byte ${at} is not valid UTF-8`)
     }
@@ -649,14 +650,9 @@ export class Reader {
       case Type.Double:
         this.advance(8, "a double")
         return
-      case Type.Binary: {
-        const length = this.varint32("a binary length")
-        if (length > this.maxBinaryLength) {
-          fail("Limit", `a binary value of ${length} bytes exceeds the limit of ${this.maxBinaryLength}`)
-        }
-        this.advance(length, `a binary value of ${length} bytes`)
+      case Type.Binary:
+        this.binary("a binary value")
         return
-      }
       case Type.Uuid:
         this.advance(16, "a uuid")
         return
@@ -938,11 +934,10 @@ export class Writer {
     this.writeByte(0)
   }
 
-  /** Writes a list header; write `size` elements of `elementType` next. */
-  writeListBegin(elementType: Type, size: number): void {
-    this.checkNoBool("writeListBegin")
-    this.checkSize(size, "list size")
-    const nibble = this.elementNibble(elementType, size, "list element type")
+  private listHeader(elementType: Type, size: number, what: string): void {
+    this.checkNoBool(`write${what}Begin`)
+    this.checkSize(size, `${what} size`)
+    const nibble = this.elementNibble(elementType, size, `${what} element type`)
     if (size < 15) {
       this.writeByte((size << 4) | nibble)
     } else {
@@ -951,9 +946,14 @@ export class Writer {
     }
   }
 
+  /** Writes a list header; write `size` elements of `elementType` next. */
+  writeListBegin(elementType: Type, size: number): void {
+    this.listHeader(elementType, size, "List")
+  }
+
   /** Writes a set header; write `size` elements of `elementType` next. */
   writeSetBegin(elementType: Type, size: number): void {
-    this.writeListBegin(elementType, size)
+    this.listHeader(elementType, size, "Set")
   }
 
   /** Writes a map header; write `size` key-value pairs next. */
