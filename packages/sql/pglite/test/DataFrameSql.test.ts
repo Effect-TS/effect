@@ -157,6 +157,7 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
       cumMax: Expr.cumMax(c.b)
     })))
   ],
+  ["unique on no columns keeps the first row", xs.pipe(Query.unique([]))],
   ["filters on a window function", xs.pipe(Query.filter((c) => Expr.gt(Expr.cumSum(c.x), 3)))],
   ["filters on an aggregate over the input", xs.pipe(Query.filter((c) => Expr.gt(c.x, Expr.over(Expr.mean(c.x), []))))],
   [

@@ -733,9 +733,11 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     }
     case "Unique": {
       const k = c.hidden("k")
-      return `SELECT ${keep} FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY ${
-        list(node.columns ?? columns)
-      } ORDER BY ${row}) AS ${k} FROM ${from("s")}) AS t WHERE ${k} = 1`
+      const keys = node.columns ?? columns
+      const partition = keys.length === 0 ? "" : `PARTITION BY ${list(keys)} `
+      return `SELECT ${keep} FROM (SELECT *, ROW_NUMBER() OVER (${partition}ORDER BY ${row}) AS ${k} FROM ${
+        from("s")
+      }) AS t WHERE ${k} = 1`
     }
     case "DropNulls": {
       const keys = node.columns ?? columns
