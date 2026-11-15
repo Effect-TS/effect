@@ -797,7 +797,7 @@ describe("String", () => {
 
   describe("Unicode case conversion", () => {
     it("preserves accented letters at case boundaries", () => {
-      strictEqual(S.camelCase("ÄpfelBaum"), "äpfelBaum")
+      strictEqual(S.camelCase("CaféÜber"), "caféÜber")
     })
 
     it("preserves caseless letters", () => {
@@ -808,8 +808,8 @@ describe("String", () => {
       strictEqual(S.snakeCase("हिन्दी भाषा"), "हिन्दी_भाषा")
     })
 
-    it("splits at non-ASCII number boundaries", () => {
-      strictEqual(S.snakeCase("room٣a"), "room_٣_a")
+    it("preserves marks at non-ASCII number boundaries", () => {
+      strictEqual(S.snakeCase("cafe\u0301٣\u0308a"), "cafe\u0301_٣\u0308_a")
     })
 
     it("preserves Unicode config keys without splitting digit groups", () => {
