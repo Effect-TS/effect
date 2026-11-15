@@ -156,6 +156,23 @@ describe("DataFrame", () => {
       assert.strictEqual(table.batches[0].length, 2)
       assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(table)), DataFrame.toRows(df))
     })
+
+    it("imports sliced list columns with only their own elements", () => {
+      const Lists = Schema.Struct({ xs: Schema.Array(Schema.Number) })
+      const df = DataFrame.fromRows(Lists, [{ xs: [1] }, { xs: [2] }, { xs: [3] }])
+      const table = DataFrame.toArrowTable(df)
+      const sliced = DataFrame.fromArrowTable(ArrowTable.slice(table, 0, 1))
+      const sums = Query.from(sliced).pipe(
+        Query.select((c) => ({ s: Expr.listSum(c.xs as Expr.Expr<ReadonlyArray<number>>) })),
+        Effect.runSync
+      )
+      assert.deepStrictEqual(DataFrame.toRows(sums), [{ s: 1 }])
+      const two = ArrowTable.make(table.schema, [
+        ...ArrowTable.slice(table, 0, 1).batches,
+        ...ArrowTable.slice(table, 2, 3).batches
+      ])
+      assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromArrowTable(two)), [{ xs: [1] }, { xs: [3] }])
+    })
   })
 
   describe("values", () => {

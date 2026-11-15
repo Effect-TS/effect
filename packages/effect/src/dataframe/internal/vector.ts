@@ -84,7 +84,10 @@ export interface List {
   readonly kind: "list"
   readonly type: S.DataType
   readonly length: number
-  /** `offsets[i]..offsets[i + 1]` are slot `i`'s elements in `child`. */
+  /**
+   * `offsets[i]..offsets[i + 1]` are slot `i`'s elements in `child`;
+   * `offsets[0]` is 0 and `child` holds exactly `offsets[length]` elements.
+   */
   readonly offsets: Int32Array
   readonly child: Vector
   readonly valid: Uint8Array | undefined
@@ -578,8 +581,8 @@ export const fromArrowData = (data: ArrowData.ArrowData): Vector => {
         : typed(Int32Array, data.buffers[0]).subarray(data.offset, data.offset + n + 1)
       const child = fromArrowData(data.children[0])
       const first = raw[0]
-      if (first === 0) return list(storage, raw, child, valid)
-      const offsets = Int32Array.from(raw, (o) => o - first)
+      if (first === 0 && raw[n] === child.length) return list(storage, raw, child, valid)
+      const offsets = first === 0 ? raw : Int32Array.from(raw, (o) => o - first)
       return list(storage, offsets, slice(child, first, raw[n]), valid)
     }
     case "Struct": {
