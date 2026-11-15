@@ -109,15 +109,12 @@ const SKIPPABLE_MAGIC = 0x184d2a50
 /** @internal */
 export const lz4Frame: Decoder = (input, limit, sizeHint) => {
   const end = input.length
-  if (end === 0) truncated("a frame magic number")
+  if (end < 4) truncated("a frame magic number")
   let out: Output | undefined
   let ip = 0
   while (ip < end) {
     // Bytes after the last frame that cannot start another are not data
-    if (ip + 4 > end) {
-      if (ip === 0) truncated("a frame magic number")
-      fail("Malformed", "bytes are left after the last frame")
-    }
+    if (ip + 4 > end) fail("Malformed", "bytes are left after the last frame")
     const magic = read32(input, ip)
     ip += 4
     if ((magic & 0xfffffff0) >>> 0 === SKIPPABLE_MAGIC) {
