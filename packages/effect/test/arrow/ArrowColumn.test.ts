@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
 import { BigDecimal, DateTime, Duration, Result } from "effect"
-import { ArrowColumn, ArrowExtension, ArrowSchema as S } from "effect/arrow"
+import { ArrowColumn, ArrowData, ArrowExtension, ArrowSchema as S } from "effect/arrow"
 
 const bytes = (...values: Array<number>) => new Uint8Array(values)
 const text = (value: string) => new TextEncoder().encode(value)
@@ -202,6 +202,28 @@ const rejections: ReadonlyArray<
 ]
 
 describe("ArrowColumn", () => {
+  // ARROW-LAYOUT-001 (normative): Columnar.rst, Validity bitmaps / Fixed-size Primitive Layout.
+  // Source pin and scope: ./CONFORMANCE.md#sources
+  it("reads the specification int32 bitmap example with nonzero masked bytes", () => {
+    const data = ArrowData.make({
+      type: S.int32,
+      length: 5,
+      nullCount: 1,
+      validity: bytes(0x1d),
+      buffers: [bytes(1, 0, 0, 0, 255, 255, 255, 255, 2, 0, 0, 0, 4, 0, 0, 0, 8, 0, 0, 0)]
+    })
+    const field = S.field("x", S.int32)
+    assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, [data])), [1, null, 2, 4, 8])
+    assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, [ArrowData.slice(data, 1, 4)])), [null, 2, 4])
+    // Zero-null arrays can either omit or retain the bitmap.
+    for (const validity of [undefined, bytes(0x1f)]) {
+      const valid = ArrowData.make({ type: S.int32, length: 5, validity, buffers: data.buffers })
+      assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, [valid])), [1, -1, 2, 4, 8])
+    }
+  })
+
+  // ARROW-COLUMN-001 (local regression): value conversions and nested builders; not an independent wire oracle.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("fromValues builds every type family and reads the values back", () => {
     for (const [label, type, values, read = values] of cases) {
       const column = Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values, { extensions: [once] }))
@@ -210,6 +232,8 @@ describe("ArrowColumn", () => {
     }
   })
 
+  // ARROW-COLUMN-002 (mixed): Schema.fbs type constraints; local rejection paths and input policy.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("fromValues fails with an ArrowBuildError locating a value that does not fit", () => {
     for (const [label, field, values, path] of rejections) {
       const result = ArrowColumn.fromValues(field, values)
@@ -221,6 +245,8 @@ describe("ArrowColumn", () => {
     }
   })
 
+  // ARROW-COLUMN-003 (local): extension callbacks and storage fallback.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("extensions encode values when building and decode them when reading", () => {
     const hex = ArrowExtension.make({
       name: "test.hex",

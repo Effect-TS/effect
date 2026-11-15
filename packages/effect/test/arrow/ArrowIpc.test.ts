@@ -188,12 +188,107 @@ const assertIpcError = (result: Result.Result<unknown, ArrowIpc.ArrowIpcError>, 
   }
 }
 
+// Schema.fbs / Message.fbs metadata, built through the public FlatBuffers API.
+// Empty schemas and zero-row batches isolate feature flags and message ordering.
+const emptyMessage = (header: "schema" | "batch", options: { bigEndian?: boolean; codec?: number } = {}) => {
+  const b = FlatBuffers.makeBuilder()
+  let payload: FlatBuffers.Offset
+  if (header === "schema") {
+    const fields = b.createOffsetVector([])
+    b.startTable(4)
+    b.addFieldInt16(0, options.bigEndian ? 1 : 0)
+    b.addFieldOffset(1, fields)
+    payload = b.endTable()
+  } else {
+    b.startVector(16, 0, 8)
+    const nodes = b.endVector()
+    b.startVector(16, 0, 8)
+    const buffers = b.endVector()
+    let compression: FlatBuffers.Offset | undefined
+    if (options.codec !== undefined) {
+      b.startTable(2)
+      b.addFieldInt8(0, options.codec) // LZ4_FRAME = 0, ZSTD = 1; method BUFFER = 0
+      compression = b.endTable()
+    }
+    b.startTable(5)
+    b.addFieldOffset(1, nodes)
+    b.addFieldOffset(2, buffers)
+    if (compression !== undefined) b.addFieldOffset(3, compression)
+    payload = b.endTable()
+  }
+  b.startTable(5)
+  b.addFieldInt16(0, 4) // V5
+  b.addFieldUint8(1, header === "schema" ? 1 : 3)
+  b.addFieldOffset(2, payload)
+  const metadata = b.finish(b.endTable())
+  const padded = Math.ceil(metadata.length / 8) * 8
+  const message = new Uint8Array(8 + padded)
+  const view = new DataView(message.buffer)
+  view.setUint32(0, 0xffffffff, true)
+  view.setInt32(4, padded, true)
+  message.set(metadata, 8)
+  return message
+}
+
+const concatenate = (...parts: ReadonlyArray<Uint8Array>) => {
+  const out = new Uint8Array(parts.reduce((length, part) => length + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    out.set(part, offset)
+    offset += part.length
+  }
+  return out
+}
+
 describe("ArrowIpc", () => {
+  // ARROW-IPC-010 (local): Schema.fbs Endianness; unsupported feature classification.
+  // Source pin and scope: ./CONFORMANCE.md
+  it.effect("rejects big-endian schema metadata with BigEndian", () =>
+    Effect.gen(function*() {
+      assert.isTrue(Result.isSuccess(ArrowIpc.decodeStream(emptyMessage("schema"))))
+      const input = emptyMessage("schema", { bigEndian: true })
+      assertIpcError(ArrowIpc.decodeStream(input), "BigEndian")
+      const error = yield* Effect.flip(decodeChunks(split(input, 13)))
+      assert.isTrue(ArrowIpc.isArrowIpcError(error))
+      assert.strictEqual(error.kind, "BigEndian")
+    }))
+
+  // ARROW-IPC-011 (local): Message.fbs BodyCompression; no codec payload is decoded.
+  // Source pin and scope: ./CONFORMANCE.md
+  it.effect("rejects LZ4 and ZSTD batch compression metadata with Compression", () =>
+    Effect.gen(function*() {
+      const schema = emptyMessage("schema")
+      const valid = Result.getOrThrow(ArrowIpc.decodeStream(concatenate(schema, emptyMessage("batch"))))
+      assert.deepStrictEqual(valid.batches.map((batch) => batch.length), [0])
+      for (const codec of [0, 1]) {
+        const input = concatenate(schema, emptyMessage("batch", { codec }))
+        assertIpcError(ArrowIpc.decodeStream(input), "Compression")
+        const error = yield* Effect.flip(decodeChunks(split(input, 13)))
+        assert.isTrue(ArrowIpc.isArrowIpcError(error))
+        assert.strictEqual(error.kind, "Compression")
+      }
+    }))
+
+  // ARROW-IPC-012 (mixed): Columnar.rst Streaming Format requires schema before record batches.
+  // Source pin and scope: ./CONFORMANCE.md
+  it.effect("rejects a record batch before its schema", () =>
+    Effect.gen(function*() {
+      const input = concatenate(emptyMessage("batch"), emptyMessage("schema"))
+      assertIpcError(ArrowIpc.decodeStream(input))
+      const error = yield* Effect.flip(decodeChunks(split(input, 13)))
+      assert.isTrue(ArrowIpc.isArrowIpcError(error))
+      assert.strictEqual(error.kind, "Invalid")
+    }))
+
   for (const { bytes, decode, encode, format } of formats) {
+    // ARROW-IPC-001 (interop): Columnar.rst layouts / IPC; independently generated fixture values.
+    // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
     it(`decodes a pyarrow ${format}`, () => {
       assertFixtureTable(Result.getOrThrow(decode(bytes)))
     })
 
+    // ARROW-IPC-002 (local regression): encode/decode composition and slicing, not external writer validation.
+    // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
     it(`decodes a re-encoded ${format} to the same rows, also when sliced`, () => {
       const table = Result.getOrThrow(decode(bytes))
       assertFixtureTable(Result.getOrThrow(decode(Result.getOrThrow(encode(table)))))
@@ -202,6 +297,8 @@ describe("ArrowIpc", () => {
     })
   }
 
+  // ARROW-IPC-003 (local): transport chunk boundaries and empty batch input.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it.effect("decode and encode stream batches across arbitrary chunks", () =>
     Effect.gen(function*() {
       for (const size of [1, 13, 1000]) {
@@ -220,6 +317,8 @@ describe("ArrowIpc", () => {
       assertEquals(ArrowIpc.decodeStream(empty), Result.succeed(ArrowTable.make(schema, [])))
     }))
 
+  // ARROW-IPC-004 (mixed): Columnar.rst IPC framing; local error types and schema expansion budget.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("rejects malformed and truncated input with an ArrowIpcError", () => {
     for (const garbage of [bytes(), bytes(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)]) {
       assertIpcError(ArrowIpc.decodeStream(garbage))
@@ -254,6 +353,34 @@ describe("ArrowIpc", () => {
     }
   })
 
+  // ARROW-IPC-006 (normative framing; local error kind): Columnar.rst, Encapsulated message format / IPC File Format.
+  // Source pin and scope: ./CONFORMANCE.md#sources
+  it.effect("rejects invalid metadata lengths, file magic and footer lengths", () =>
+    Effect.gen(function*() {
+      // A continuation marker must be followed by a nonnegative, available metadata length.
+      for (const length of [-2, 0x7fffffff]) {
+        const corrupt = streamBytes.slice()
+        new DataView(corrupt.buffer).setInt32(4, length, true)
+        assertIpcError(ArrowIpc.decodeStream(corrupt))
+        const error = yield* Effect.flip(decodeChunks(split(corrupt, 13)))
+        assert.isTrue(ArrowIpc.isArrowIpcError(error))
+        assert.strictEqual(error.kind, "Invalid")
+      }
+      // Both magic strings are required, independently of a valid footer.
+      for (const at of [0, fileBytes.length - 6]) {
+        const corrupt = fileBytes.slice()
+        corrupt[at] ^= 1
+        assertIpcError(ArrowIpc.decodeFile(corrupt))
+      }
+      for (const length of [-1, 0, fileBytes.length]) {
+        const corrupt = fileBytes.slice()
+        new DataView(corrupt.buffer).setInt32(corrupt.length - 10, length, true)
+        assertIpcError(ArrowIpc.decodeFile(corrupt))
+      }
+    }))
+
+  // ARROW-IPC-005 (interop): Columnar.rst Dictionary Messages; Message.fbs DictionaryBatch.isDelta.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("appends delta dictionaries to the slots each side uses", () => {
     // Each delta's offsets start at 1, so its value starts one byte or item in;
     // the first list dictionaries' children hold an unused item after [7]
@@ -264,6 +391,8 @@ describe("ArrowIpc", () => {
     ])
   })
 
+  // ARROW-IPC-007 (mixed): Columnar.rst Union Layout / Schema.fbs Union; local Invalid error.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("rejects union type ids that are not unique or not in 0..127", () => {
     const union = (typeIds: ReadonlyArray<number>) =>
       S.make([S.field("u", S.union("sparse", [S.field("a", S.int32), S.field("b", S.int32)], typeIds))])
@@ -281,6 +410,8 @@ describe("ArrowIpc", () => {
     }
   })
 
+  // ARROW-IPC-008 (mixed): Schema.fbs MetadataVersion.V5 removes union validity; local Unsupported error.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("does not write unions with null slots of their own", () => {
     // Pre-V5 unions had a validity bitmap; V5, which the writer emits, has none
     const type = S.union("sparse", [S.field("i", S.int32)])
@@ -300,6 +431,8 @@ describe("ArrowIpc", () => {
     assertIpcError(ArrowIpc.encodeFile(table), "Unsupported")
   })
 
+  // ARROW-IPC-009 (mixed): Columnar.rst Streaming Format requires schema first; local channel error.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it.effect("decode fails with an ArrowIpcError when the input ends inside a message or holds no schema", () =>
     Effect.gen(function*() {
       for (const input of [streamBytes.subarray(0, streamBytes.length - 100), bytes()]) {

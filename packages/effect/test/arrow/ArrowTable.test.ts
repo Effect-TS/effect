@@ -24,6 +24,8 @@ const nested = S.make([
 ])
 
 describe("ArrowTable", () => {
+  // ARROW-TABLE-001 (local): batching, missing fields, iteration and dictionary sharing.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("fromRows splits rows into batches that toRows reads back", () => {
     const built = Result.getOrThrow(
       ArrowTable.fromRows(schema, [{ id: 1, tag: "x" }, { id: 2, name: "b" }], { batchSize: 1 })
@@ -39,6 +41,8 @@ describe("ArrowTable", () => {
     for (const dictionary of others) assert.strictEqual(dictionary, first)
   })
 
+  // ARROW-TABLE-002 (local): named/positional column construction.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("fromColumns and fromBatches build one batch per entry, by field name or position", () => {
     const fromBatches = Result.getOrThrow(ArrowTable.fromBatches(schema, [
       { id: [1, 2], name: ["a", null], tag: ["x", "y"] },
@@ -51,6 +55,8 @@ describe("ArrowTable", () => {
     assert.deepStrictEqual(ArrowTable.toRows(fromColumns), [rows[0]])
   })
 
+  // ARROW-TABLE-003 (local): shape/type errors and nested error paths.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("build errors locate the value across batches", () => {
     const failures: ReadonlyArray<
       readonly [Result.Result<ArrowTable.Table, ArrowColumn.ArrowBuildError>, ReadonlyArray<string | number>]
@@ -74,6 +80,8 @@ describe("ArrowTable", () => {
     }
   })
 
+  // ARROW-TABLE-004 (local): JavaScript own-property safety.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("reads and builds a field named __proto__ as an own property", () => {
     const proto = S.make([S.field("__proto__", S.int32), S.field("s", S.struct([S.field("__proto__", S.int32)]))])
     const [first, second] = ArrowTable.toRows(
@@ -86,6 +94,8 @@ describe("ArrowTable", () => {
     assert.deepStrictEqual(Object.entries(second.s as object), [["__proto__", null]])
   })
 
+  // ARROW-TABLE-005 (local): column lookup, iteration and index bounds.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("column reads one field across batches, by name or position", () => {
     const names = ["a", null, "c", "d", "e"]
     for (const field of ["name", 1]) {
@@ -109,6 +119,8 @@ describe("ArrowTable", () => {
     assert.isTrue(Option.isNone(ArrowTable.column(table, 3)))
   })
 
+  // ARROW-TABLE-006 (local): slicing across batches and bounds.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("slice keeps rows start until end across batches", () => {
     const slices: ReadonlyArray<readonly [start: number, end: number | undefined, lengths: ReadonlyArray<number>]> = [
       [0, undefined, [2, 2, 1]],
