@@ -56,13 +56,7 @@ export const words = (key: SortKey): { readonly hi: Uint32Array | undefined; rea
       return { hi: undefined, lo }
     }
     case "f64": {
-      const tmp = new Float64Array(n)
-      const x = v.values
-      for (let i = 0; i < n; i++) {
-        const a = x[i]
-        tmp[i] = a === 0 ? 0 : a !== a ? NaN : a
-      }
-      const bits = new Uint32Array(tmp.buffer)
+      const bits = new Uint32Array(Hash.canonicalBits(v.values, n).buffer)
       const hi = new Uint32Array(n)
       const lo = new Uint32Array(n)
       for (let i = 0; i < n; i++) {
@@ -90,11 +84,9 @@ export const words = (key: SortKey): { readonly hi: Uint32Array | undefined; rea
     }
     case "str": {
       const g = Hash.ids(v)
-      const order = new Int32Array(g.count)
-      for (let i = 0; i < g.count; i++) order[i] = i
       const off = v.offsets
       const d = v.data
-      const sorted = Array.from(order).sort((a, b) => {
+      const sorted = Int32Array.from({ length: g.count }, (_, i) => i).sort((a, b) => {
         const ra = g.firstRow[a]
         const rb = g.firstRow[b]
         return compareBytes(d, off[ra], off[ra + 1], d, off[rb], off[rb + 1])
@@ -134,7 +126,6 @@ const radix = (perm: Int32Array, hi: Uint32Array | undefined, lo: Uint32Array): 
     const src = useHi ? h! : l
     counts.fill(0)
     for (let i = 0; i < n; i++) counts[((src[i] >>> shift) & 0xffff) + 1]++
-    // constant digit: nothing to do
     let constant = false
     for (let b = 1; b <= 65536; b++) {
       if (counts[b] === n) {
@@ -161,7 +152,7 @@ const radix = (perm: Int32Array, hi: Uint32Array | undefined, lo: Uint32Array): 
 const sortByKey = (key: SortKey, nullsLast: boolean, perm: Int32Array): Int32Array => {
   const n = perm.length
   const w = words(key)
-  // keys in current perm order
+  // The key's words in the current perm order.
   const lo = new Uint32Array(n)
   const hi = w.hi === undefined ? undefined : new Uint32Array(n)
   for (let i = 0; i < n; i++) {
@@ -173,8 +164,8 @@ const sortByKey = (key: SortKey, nullsLast: boolean, perm: Int32Array): Int32Arr
   return partitionNulls(key.vector, sorted, nullsLast)
 }
 
-/** Moves null keys to the front (or back), keeping order on both sides. @internal */
-export const partitionNulls = (v: V.Vector, perm: Int32Array, nullsLast: boolean): Int32Array => {
+/** Moves null keys to the front (or back), keeping order on both sides. */
+const partitionNulls = (v: V.Vector, perm: Int32Array, nullsLast: boolean): Int32Array => {
   if (v.kind !== "null" && v.valid === undefined) return perm
   const n = perm.length
   const out = new Int32Array(n)
@@ -213,7 +204,7 @@ const comparator = (keys: ReadonlyArray<SortKey>, nullsLast: boolean): (a: numbe
 }
 
 const smallSort = (keys: ReadonlyArray<SortKey>, nullsLast: boolean, perm: Int32Array): Int32Array =>
-  Int32Array.from(Array.from(perm).sort(comparator(keys, nullsLast)))
+  perm.sort(comparator(keys, nullsLast))
 
 /**
  * The first `k` rows of the order that sorts `keys`, without sorting the
@@ -227,13 +218,12 @@ export const topK = (keys: ReadonlyArray<SortKey>, nullsLast: boolean, n: number
   const cmp = comparator(keys, nullsLast)
   // A max-heap: the root is the worst of the best `k` rows so far.
   const heap = new Int32Array(k)
-  const down = (size: number) => {
-    let i = 0
+  const down = (i: number) => {
     while (true) {
       const l = 2 * i + 1
-      if (l >= size) return
+      if (l >= k) return
       const r = l + 1
-      const c = r < size && cmp(heap[r], heap[l]) > 0 ? r : l
+      const c = r < k && cmp(heap[r], heap[l]) > 0 ? r : l
       if (cmp(heap[c], heap[i]) <= 0) return
       const t = heap[c]
       heap[c] = heap[i]
@@ -241,23 +231,46 @@ export const topK = (keys: ReadonlyArray<SortKey>, nullsLast: boolean, n: number
       i = c
     }
   }
-  for (let i = 0; i < k; i++) {
-    heap[i] = i
-    let j = i
-    while (j > 0) {
-      const p = (j - 1) >> 1
-      if (cmp(heap[j], heap[p]) <= 0) break
-      const t = heap[p]
-      heap[p] = heap[j]
-      heap[j] = t
-      j = p
-    }
-  }
+  for (let i = 0; i < k; i++) heap[i] = i
+  for (let i = (k >> 1) - 1; i >= 0; i--) down(i)
   for (let i = k; i < n; i++) {
     if (cmp(i, heap[0]) < 0) {
       heap[0] = i
-      down(k)
+      down(0)
     }
   }
-  return Int32Array.from(Array.from(heap).sort(cmp))
+  return heap.sort(cmp)
+}
+
+// -----------------------------------------------------------------------------
+// Row comparison
+// -----------------------------------------------------------------------------
+
+/** `order(i, j) < 0` when row i sorts before row j (valid, non-NaN rows). @internal */
+export const rowOrder = (v: V.Vector): (i: number, j: number) => number => {
+  switch (v.kind) {
+    case "list":
+    case "struct":
+      return V.fail(`cannot order ${v.type._tag} values`)
+    case "f64": {
+      const x = v.values
+      return (i, j) => (x[i] < x[j] ? -1 : x[i] > x[j] ? 1 : 0)
+    }
+    case "i32":
+    case "bool": {
+      const x = v.values
+      return (i, j) => x[i] - x[j]
+    }
+    case "i64": {
+      const x = V.isUnsigned64(v.type) ? new BigUint64Array(v.values.buffer, v.values.byteOffset, v.length) : v.values
+      return (i, j) => (x[i] < x[j] ? -1 : x[i] > x[j] ? 1 : 0)
+    }
+    case "str": {
+      const o = v.offsets
+      const d = v.data
+      return (i, j) => compareBytes(d, o[i], o[i + 1], d, o[j], o[j + 1])
+    }
+    case "null":
+      return () => 0
+  }
 }

@@ -9,9 +9,9 @@
  * M2 (Chan et al.). Medians and distinct counts don't combine.
  *
  * Parts have the types of the whole input (every batch of a streamed node
- * has the types of its whole result), so their partials combine as they
- * are and finish in that input type. Float results may
- * differ in rounding, as float sums of the same values in another order do.
+ * has the types of its whole result), so their partials combine as they are
+ * and finish in that input type. Float results may differ in rounding, as
+ * float sums of the same values in another order do.
  *
  * @internal
  */
@@ -21,8 +21,7 @@ import * as Hash from "./hash.ts"
 import * as K from "./kernels.ts"
 import * as V from "./vector.ts"
 
-/** @internal */
-export type Part =
+type Part =
   | { readonly _tag: "vector"; readonly vector: V.Vector }
   | { readonly _tag: "sums"; readonly sums: Agg.Sums }
   | { readonly _tag: "mean"; readonly sum: Float64Array; readonly count: Float64Array }
@@ -32,7 +31,6 @@ export type Part =
     readonly mean: Float64Array
     readonly m2: Float64Array
   }
-  | { readonly _tag: "none" }
 
 const reaggregated = new Set<Agg.AggFn>(["count", "len", "min", "max", "first", "last"])
 
@@ -40,8 +38,8 @@ const reaggregated = new Set<Agg.AggFn>(["count", "len", "min", "max", "first", 
 export const combinable = (fn: Agg.AggFn): boolean =>
   reaggregated.has(fn) || fn === "sum" || fn === "mean" || fn === "std" || fn === "variance"
 
-/** The partial aggregate of `fn` over `v` grouped by `g`. @internal */
-export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping): Part => {
+/** The partial aggregate of `fn` over `v` grouped by `g`. */
+const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping): Part => {
   if (reaggregated.has(fn)) return { _tag: "vector", vector: Agg.aggregate(fn, v, g) }
   if (v === undefined) return V.fail(`${fn} needs an argument`)
   switch (fn) {
@@ -55,31 +53,23 @@ export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping)
     case "variance":
       return { _tag: "moments", ...Agg.moments(v, g) }
     default:
-      return { _tag: "none" }
+      return V.fail(`${fn} cannot be computed from partial aggregates`)
   }
 }
 
 /**
  * Combines the partials of several parts: `parts[c]` holds part `c`'s
- * partials for its groups over inputs of `type`; `ids` maps the
- * concatenated groups of all parts to `count` combined groups.
- *
- * @internal
+ * partials for its groups; `ids` maps the concatenated groups of all parts
+ * to `count` combined groups.
  */
-export const combine = (
-  fn: Agg.AggFn,
-  parts: ReadonlyArray<Part>,
-  type: S.DataType | undefined,
-  ids: Int32Array,
-  count: number
-): Part => {
+const combine = (fn: Agg.AggFn, parts: ReadonlyArray<Part>, ids: Int32Array, count: number): Part => {
   const grouping: Agg.Grouping = { ids, count }
   if (reaggregated.has(fn)) {
     const vector = K.concat(parts.map((p) => (p as Extract<Part, { _tag: "vector" }>).vector))
     return { _tag: "vector", vector: Agg.aggregate(fn === "count" || fn === "len" ? "sum" : fn, vector, grouping) }
   }
   if (fn === "sum") {
-    const float = type!._tag === "Float"
+    const float = (parts[0] as Extract<Part, { _tag: "sums" }>).sums instanceof Float64Array
     const sums = float ? new Float64Array(count) : new Array<bigint>(count).fill(BigInt(0))
     let at = 0
     for (const p of parts as ReadonlyArray<Extract<Part, { _tag: "sums" }>>) {
@@ -104,28 +94,26 @@ export const combine = (
     }
     return { _tag: "mean", sum, count: total }
   }
-  if (fn === "std" || fn === "variance") {
-    const n = new Float64Array(count)
-    const mean = new Float64Array(count)
-    const m2 = new Float64Array(count)
-    let at = 0
-    for (const p of parts as ReadonlyArray<Extract<Part, { _tag: "moments" }>>) {
-      for (let j = 0; j < p.count.length; j++) {
-        const nb = p.count[j]
-        if (nb === 0) continue
-        const g = ids[at + j]
-        const na = n[g]
-        const nab = na + nb
-        const delta = p.mean[j] - mean[g]
-        mean[g] += delta * nb / nab
-        m2[g] += p.m2[j] + delta * delta * na * nb / nab
-        n[g] = nab
-      }
-      at += p.count.length
+  // std and variance
+  const n = new Float64Array(count)
+  const mean = new Float64Array(count)
+  const m2 = new Float64Array(count)
+  let at = 0
+  for (const p of parts as ReadonlyArray<Extract<Part, { _tag: "moments" }>>) {
+    for (let j = 0; j < p.count.length; j++) {
+      const nb = p.count[j]
+      if (nb === 0) continue
+      const g = ids[at + j]
+      const na = n[g]
+      const nab = na + nb
+      const delta = p.mean[j] - mean[g]
+      mean[g] += delta * nb / nab
+      m2[g] += p.m2[j] + delta * delta * na * nb / nab
+      n[g] = nab
     }
-    return { _tag: "moments", count: n, mean, m2 }
+    at += p.count.length
   }
-  return V.fail(`${fn} cannot be computed from partial aggregates`)
+  return { _tag: "moments", count: n, mean, m2 }
 }
 
 /** The aggregate column of a combined partial over inputs of `type`. @internal */
@@ -139,8 +127,6 @@ export const finish = (fn: Agg.AggFn, part: Part, type: S.DataType | undefined):
       return Agg.meanFrom(type!, part.sum, part.count)
     case "moments":
       return Agg.varianceFrom(fn as "std" | "variance", type!, part.count, part.m2)
-    case "none":
-      return V.fail(`${fn} cannot be computed from partial aggregates`)
   }
 }
 
@@ -192,7 +178,7 @@ export const merge = (fns: ReadonlyArray<Agg.AggFn>, states: ReadonlyArray<State
   return {
     keys: keys.map((k) => V.take(k, g.firstRow)),
     types: filled[0].types,
-    parts: fns.map((fn, a) => combine(fn, filled.map((s) => s.parts[a]), filled[0].types[a], g.ids, g.count)),
+    parts: fns.map((fn, a) => combine(fn, filled.map((s) => s.parts[a]), g.ids, g.count)),
     count: g.count,
     rows: filled.reduce((n, s) => n + s.rows, 0)
   }

@@ -13,7 +13,7 @@ import * as S from "../../arrow/ArrowSchema.ts"
 import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
-import { compareBytes } from "./kernels.ts"
+import * as Sort from "./sort.ts"
 import * as V from "./vector.ts"
 
 const I0 = BigInt(0)
@@ -33,6 +33,15 @@ export type AggFn =
   | "variance"
   | "median"
   | "list"
+
+/**
+ * The kernel of an aggregate call with argument `arg`: `count` without an
+ * argument counts rows; every other function needs one.
+ *
+ * @internal
+ */
+export const kernel = (fn: AggFn, arg: unknown): AggFn =>
+  arg !== undefined ? fn : fn === "count" ? "len" : V.fail(`${fn} needs an argument`)
 
 /** @internal */
 export interface Grouping {
@@ -75,13 +84,7 @@ export const aggregate = (fn: AggFn, v: V.Vector | undefined, g: Grouping): V.Ve
   if (v === undefined) return V.fail(`${fn} needs an argument`)
   switch (fn) {
     case "list": {
-      // Each group's values, in row order.
-      const starts = new Int32Array(groups + 1)
-      for (let i = 0; i < n; i++) starts[ids[i] + 1]++
-      for (let k = 0; k < groups; k++) starts[k + 1] += starts[k]
-      const at = starts.slice(0, groups)
-      const rows = new Int32Array(n)
-      for (let i = 0; i < n; i++) rows[at[ids[i]]++] = i
+      const { rows, starts } = Hash.rowsByGroup(ids, groups)
       return V.list(S.list(S.field("item", v.type)), starts, V.take(v, rows))
     }
     case "count":
@@ -213,9 +216,17 @@ export const sumCount = (
   v: V.Vector,
   g: Grouping
 ): { readonly sum: Float64Array; readonly count: Float64Array } => {
+  const { valid, x } = asFloat(v)
+  return sumCountOf(x, valid, g)
+}
+
+const sumCountOf = (
+  x: Float64Array,
+  valid: Uint8Array | undefined,
+  g: Grouping
+): { readonly sum: Float64Array; readonly count: Float64Array } => {
   const ids = g.ids
   const n = ids.length
-  const { valid, x } = asFloat(v)
   const sum = new Float64Array(g.count)
   const count = new Float64Array(g.count)
   if (valid === undefined) {
@@ -262,16 +273,15 @@ export const moments = (
   const n = ids.length
   const { valid, x } = asFloat(v)
   const groups = g.count
-  const { count, sum } = sumCount(v, g)
-  const m = sum
-  for (let k = 0; k < groups; k++) m[k] = sum[k] / count[k]
+  const { count, sum } = sumCountOf(x, valid, g)
+  for (let k = 0; k < groups; k++) sum[k] /= count[k]
   const m2 = new Float64Array(groups)
   for (let i = 0; i < n; i++) {
     if (valid !== undefined && valid[i] === 0) continue
-    const d = x[i] - m[ids[i]]
+    const d = x[i] - sum[ids[i]]
     m2[ids[i]] += d * d
   }
-  return { count, mean: m, m2 }
+  return { count, mean: sum, m2 }
 }
 
 /** The std or variance column from per-group counts and M2. @internal */
@@ -360,7 +370,7 @@ const minMax = (fn: "min" | "max", v: V.Vector, g: Grouping): V.Vector => {
     case "str": {
       // Track the best row per group, then gather it.
       const best = new Int32Array(groups).fill(-1)
-      const cmp = rowComparator(v)
+      const cmp = Sort.rowOrder(v)
       for (let i = 0; i < n; i++) {
         if (!V.isValid(v, i)) continue
         const k = ids[i]
@@ -370,20 +380,6 @@ const minMax = (fn: "min" | "max", v: V.Vector, g: Grouping): V.Vector => {
       return V.take(v, best)
     }
   }
-}
-
-const rowComparator = (v: V.I64 | V.Str): (a: number, b: number) => number => {
-  if (v.kind === "str") {
-    const d = v.data
-    const o = v.offsets
-    return (a, b) => compareBytes(d, o[a], o[a + 1], d, o[b], o[b + 1])
-  }
-  const x = v.values
-  if (V.isUnsigned64(v.type)) {
-    const u = new BigUint64Array(x.buffer, x.byteOffset, x.length)
-    return (a, b) => (u[a] < u[b] ? -1 : u[a] > u[b] ? 1 : 0)
-  }
-  return (a, b) => (x[a] < x[b] ? -1 : x[a] > x[b] ? 1 : 0)
 }
 
 const median = (v: V.Vector, g: Grouping): V.Vector => {

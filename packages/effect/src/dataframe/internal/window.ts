@@ -7,32 +7,18 @@
  */
 import * as S from "../../arrow/ArrowSchema.ts"
 import type * as Plan from "../Plan.ts"
+import type * as Agg from "./aggregate.ts"
 import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
-import { compareBytes } from "./kernels.ts"
+import * as Hash from "./hash.ts"
 import * as Sort from "./sort.ts"
 import * as V from "./vector.ts"
 
 /** Rows' partition ids (dense, in order of first appearance). @internal */
-export interface Partition {
-  readonly ids: Int32Array
-  readonly count: number
-}
+export type Partition = Agg.Grouping
 
 /** One partition holding every row. @internal */
 export const whole = (n: number): Partition => ({ ids: new Int32Array(n), count: n > 0 ? 1 : 0 })
-
-/** The rows of every partition, in row order: `rows[starts[g]..starts[g + 1])`. */
-const rowsByPartition = (p: Partition): { readonly starts: Int32Array; readonly rows: Int32Array } => {
-  const n = p.ids.length
-  const starts = new Int32Array(p.count + 1)
-  for (let i = 0; i < n; i++) starts[p.ids[i] + 1]++
-  for (let g = 0; g < p.count; g++) starts[g + 1] += starts[g]
-  const at = starts.slice(0, p.count)
-  const rows = new Int32Array(n)
-  for (let i = 0; i < n; i++) rows[at[p.ids[i]]++] = i
-  return { starts, rows }
-}
 
 const validOf = (v: V.Vector): Uint8Array | undefined =>
   v.kind === "null" ? new Uint8Array(v.length) : v.valid === undefined ? undefined : v.valid.slice()
@@ -50,7 +36,8 @@ export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
   switch (v.kind) {
     case "null":
       return V.nulls(n)
-    case "f64": {
+    case "f64":
+    case "bool": {
       const x = v.values
       const acc = new Float64Array(p.count)
       const out = new Float64Array(n)
@@ -67,13 +54,6 @@ export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
         if (valid === undefined || valid[i] === 1) out[i] = acc[ids[i]] = (acc[ids[i]] + x[i]) | 0
       }
       return V.i32(type, out, valid)
-    }
-    case "bool": {
-      const x = v.values
-      const acc = new Float64Array(p.count)
-      const out = new Float64Array(n)
-      for (let i = 0; i < n; i++) if (valid === undefined || valid[i] === 1) out[i] = acc[ids[i]] += x[i]
-      return V.f64(S.uint32, out, valid)
     }
     case "i64": {
       const x = v.values
@@ -102,51 +82,12 @@ export const cumCount = (v: V.Vector, p: Partition): V.Vector => {
   return V.f64(S.uint32, out)
 }
 
-/** `compare(i, j) < 0` when row i sorts before row j (valid, non-NaN rows). */
-const rowOrder = (v: V.Vector): (i: number, j: number) => number => {
-  switch (v.kind) {
-    case "list":
-    case "struct":
-      return V.fail(`cannot order ${v.type._tag} values`)
-    case "f64": {
-      const x = v.values
-      return (i, j) => (x[i] < x[j] ? -1 : x[i] > x[j] ? 1 : 0)
-    }
-    case "i32":
-    case "bool": {
-      const x = v.values
-      return (i, j) => x[i] - x[j]
-    }
-    case "i64": {
-      const x = v.values
-      const unsigned = V.isUnsigned64(v.type)
-      return unsigned
-        ? (
-          i,
-          j
-        ) => (BigInt.asUintN(64, x[i]) < BigInt.asUintN(64, x[j])
-          ? -1
-          : BigInt.asUintN(64, x[i]) > BigInt.asUintN(64, x[j])
-          ? 1
-          : 0)
-        : (i, j) => (x[i] < x[j] ? -1 : x[i] > x[j] ? 1 : 0)
-    }
-    case "str": {
-      const o = v.offsets
-      const d = v.data
-      return (i, j) => compareBytes(d, o[i], o[i + 1], d, o[j], o[j + 1])
-    }
-    case "null":
-      return () => 0
-  }
-}
-
 const isNaNAt = (v: V.Vector, i: number): boolean => v.kind === "f64" && v.values[i] !== v.values[i]
 
 /** Running minimum or maximum per partition; NaNs are skipped, nulls stay null. @internal */
 export const cumMinMax = (fn: "cumMin" | "cumMax", v: V.Vector, p: Partition): V.Vector => {
   const n = v.length
-  const order = rowOrder(v)
+  const order = Sort.rowOrder(v)
   const sign = fn === "cumMin" ? -1 : 1
   const best = new Int32Array(p.count).fill(-1)
   const rows = new Int32Array(n)
@@ -168,7 +109,7 @@ export const cumMinMax = (fn: "cumMin" | "cumMax", v: V.Vector, p: Partition): V
 
 /** The value `n` rows earlier in the partition (later for negative `n`). @internal */
 export const shift = (v: V.Vector, p: Partition, n: number): V.Vector => {
-  const { rows, starts } = rowsByPartition(p)
+  const { rows, starts } = Hash.rowsByGroup(p.ids, p.count)
   const idx = new Int32Array(v.length).fill(-1)
   for (let g = 0; g < p.count; g++) {
     const s = starts[g]
@@ -200,7 +141,7 @@ export const rank = (v: V.Vector, p: Partition, method: Plan.RankMethod, descend
   const valid = validOf(v)
   let i = 0
   while (i < n) {
-    // one partition: perm[i..end)
+    // One partition: perm[i..end).
     const g = p.ids[perm[i]]
     let end = i
     while (end < n && p.ids[perm[end]] === g) end++
@@ -252,7 +193,7 @@ export const rolling = (
   minPeriods: number
 ): V.Vector => {
   const n = v.length
-  const { rows, starts } = rowsByPartition(p)
+  const { rows, starts } = Hash.rowsByGroup(p.ids, p.count)
   /** Calls `f` with each row and the window `rows[first..last]` ending at it. */
   const windows = (f: (row: number, first: number, last: number) => void) => {
     for (let g = 0; g < p.count; g++) {
@@ -261,7 +202,7 @@ export const rolling = (
   }
   const ok = new Uint8Array(n)
   if (fn === "rollingMin" || fn === "rollingMax") {
-    const order = rowOrder(v)
+    const order = Sort.rowOrder(v)
     const sign = fn === "rollingMin" ? -1 : 1
     const idx = new Int32Array(n).fill(-1)
     windows((row, first, last) => {
@@ -324,8 +265,6 @@ export const rolling = (
   switch (v.kind) {
     case "i32":
       return V.i32(type, Int32Array.from(out, (a) => a | 0), ok)
-    case "bool":
-      return V.f64(S.uint32, out, ok)
     default:
       V.wrapInPlace(type, out)
       return V.f64(type, out, ok)

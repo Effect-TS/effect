@@ -11,20 +11,17 @@
  * aggregates of windows collect instead). Every other operation collects its
  * inputs first.
  *
- * Every batch of a node has the column types of the node's whole result, so
- * each operation sees the values it would see over all rows at once: the
- * batches of a table, as read (converted to its declared columns, if any),
- * must have the columns of its first batch, as the batches of an Arrow
- * stream share its schema, and a concatenation converts its inputs' batches
- * to their common types, as concatenating their results would.
+ * Every batch of a node has the column types of the node's whole result: a
+ * table's batches (converted to its declared columns, if any) must share the
+ * columns of its first, and a concatenation converts its inputs to their
+ * common types.
  *
  * A node has at least one batch, possibly without rows, unless its columns
  * are unknown: they depend on a table without declared columns of which no
- * batch was read (it has none, or a slice without rows doesn't read it).
- * Where no batch is read, a declared table's result is its declared columns
- * without rows. Unknown columns are never made up: an operation that needs
- * them (collecting a result, concatenating, joining, aggregating, any
- * operation that collects its input) fails, asking for them to be declared.
+ * batch was read. Where no batch is read, a declared table's result is its
+ * declared columns without rows. Operations that need unknown columns
+ * (collecting, concatenating, joining, aggregating) fail, asking for them to
+ * be declared.
  *
  * @internal
  */
@@ -35,7 +32,7 @@ import * as Stream from "../../Stream.ts"
 import type { Catalog } from "../Catalog.ts"
 import type { DataFrameError } from "../DataFrame.ts"
 import type * as Plan from "../Plan.ts"
-import type * as Agg from "./aggregate.ts"
+import * as Agg from "./aggregate.ts"
 import * as D from "./dtype.ts"
 import * as E from "./expr.ts"
 import * as F from "./frame.ts"
@@ -124,10 +121,10 @@ const perBatch = (node: Q.Node): boolean => {
 
 /** Runs a node by collecting its inputs (an operation that needs all rows). */
 const collected = (node: Q.Node, catalog: Tables): Batches =>
-  Stream.unwrap(
-    Effect.forEach(Q.children(node), (c) => collectFrames(batches(c, catalog), c)).pipe(
-      Effect.flatMap((inputs) => Q.attempt(() => Q.step(node, inputs))),
-      Effect.map(Stream.succeed)
+  Stream.fromEffect(
+    Effect.flatMap(
+      Effect.forEach(Q.children(node), (c) => collectFrames(batches(c, catalog), c)),
+      (inputs) => Q.attempt(() => Q.step(node, inputs))
     )
   )
 
@@ -138,9 +135,7 @@ const aggregate = (
   const keys = node._tag === "GroupBy" ? node.keys : []
   const specs = node.aggregates.map(({ expression, name }) => {
     if (expression._tag !== "AggregateCall") return V.fail(`${name} is not an aggregate expression`)
-    if (expression.arg === undefined && expression.fn !== "count") return V.fail(`${expression.fn} needs an argument`)
-    const fn: Agg.AggFn = expression.arg === undefined ? "len" : expression.fn
-    return { name, fn, arg: expression.arg }
+    return { name, fn: Agg.kernel(expression.fn, expression.arg), arg: expression.arg }
   })
   if (!Q.isRowWise(node) || !specs.every((s) => Partial.combinable(s.fn))) {
     return collected(node, catalog)
@@ -149,7 +144,7 @@ const aggregate = (
   return Stream.suspend(() => {
     // Whether any batch's key column may hold nulls.
     const nullable = keys.map(() => false)
-    return Stream.unwrap(
+    return Stream.fromEffect(
       Stream.runFoldEffect(
         batches(node.input, catalog),
         (): Partial.State | undefined => undefined,
@@ -173,8 +168,7 @@ const aggregate = (
             )
             return F.make([...keyColumns, ...columns], state.count)
           })
-        ),
-        Effect.map(Stream.succeed)
+        )
       )
     )
   })
@@ -241,10 +235,8 @@ const slice = (input: Batches, offset: number, length: number | undefined): Batc
  * The batches of a node's result: at least one unless its columns are
  * unknown. Batches without rows stay, so a result whose rows are all dropped
  * still has the types of its columns.
- *
- * @internal
  */
-export const batches = (node: Q.Node, catalog: Tables): Batches => {
+const batches = (node: Q.Node, catalog: Tables): Batches => {
   if (perBatch(node)) {
     return Stream.mapEffect(
       batches((node as { readonly input: Q.Node }).input, catalog),

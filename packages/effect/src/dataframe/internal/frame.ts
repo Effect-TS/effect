@@ -10,7 +10,7 @@
  *
  * @internal
  */
-import * as ArrowData from "../../arrow/ArrowData.ts"
+import * as ArrowColumn from "../../arrow/ArrowColumn.ts"
 import * as S from "../../arrow/ArrowSchema.ts"
 import * as ArrowTable from "../../arrow/ArrowTable.ts"
 import * as Equal from "../../Equal.ts"
@@ -139,13 +139,8 @@ export const fromVectors = (names: ReadonlyArray<string>, vectors: ReadonlyArray
 }
 
 /** @internal */
-export const columnIndex = (self: Frame, name: string): number => {
-  const i = self.columns.findIndex((c) => c.name === name)
-  return i < 0 ? V.fail(`unknown column ${JSON.stringify(name)}`) : i
-}
-
-/** @internal */
-export const column = (self: Frame, name: string): Column => self.columns[columnIndex(self, name)]
+export const column = (self: Frame, name: string): Column =>
+  self.columns.find((c) => c.name === name) ?? V.fail(`unknown column ${JSON.stringify(name)}`)
 
 /** @internal */
 export const context = (self: Frame): E.Context => ({
@@ -179,13 +174,12 @@ export const fromArrowTable = (table: ArrowTable.Table): Frame => {
 
 /** @internal */
 export const toArrowTable = (self: Frame): ArrowTable.Table => {
-  const schema = S.make(self.columns.map((c) => S.field(c.name, c.type, { nullable: c.nullable })))
+  const schema = self.schema
   const data = self.columns.map((c) => V.toArrowData(c.values()))
   return ArrowTable.make(schema, [ArrowTable.recordBatch(schema, self.length, data)])
 }
 
-/** @internal */
-export const rows = (self: Frame): Iterable<any> => ArrowTable.rows(toArrowTable(self))
+const rows = (self: Frame): Iterable<any> => ArrowTable.rows(toArrowTable(self))
 
 /** @internal */
 export const toRows = (self: Frame): Array<any> => ArrowTable.toRows(toArrowTable(self))
@@ -193,21 +187,15 @@ export const toRows = (self: Frame): Array<any> => ArrowTable.toRows(toArrowTabl
 /** @internal */
 export const toArray = (self: Frame, name: string): Array<unknown> => {
   const vector = column(self, name).values()
-  const field = S.field(name, vector.type)
-  const t = ArrowTable.make(S.make([field]), [
-    ArrowTable.recordBatch(S.make([field]), vector.length, [V.toArrowData(vector)])
-  ])
-  return ArrowTable.toRows(t).map((r) => r[name])
+  return ArrowColumn.toArray(ArrowColumn.make(S.field(name, vector.type), [V.toArrowData(vector)]))
 }
-
-void ArrowData
 
 // -----------------------------------------------------------------------------
 // Row selection
 // -----------------------------------------------------------------------------
 
-/** Re-selects every column through `indices` (positions in the current frame; -1 = null). @internal */
-export const take = (self: Frame, indices: Int32Array): Frame => {
+/** Re-selects every column through `indices` (positions in the current frame; -1 = null). */
+const take = (self: Frame, indices: Int32Array): Frame => {
   let missing = false
   for (let i = 0; i < indices.length; i++) {
     if (indices[i] < 0) {
@@ -281,11 +269,9 @@ export const slice = (self: Frame, start: number, end: number): Frame => {
   )
 }
 
-/** @internal */
-export const head = (self: Frame, n: number): Frame => slice(self, 0, n)
+const head = (self: Frame, n: number): Frame => slice(self, 0, n)
 
-/** @internal */
-export const tail = (self: Frame, n: number): Frame => slice(self, Math.max(0, self.length - n), self.length)
+const tail = (self: Frame, n: number): Frame => slice(self, Math.max(0, self.length - n), self.length)
 
 /** @internal */
 export const sort = (
@@ -334,11 +320,9 @@ const evaluateAll = (self: Frame, exprs: { readonly [name: string]: E.Node }): A
 }
 
 /** @internal */
-export const select = (self: Frame, exprs: { readonly [name: string]: E.Node }): Frame => {
-  const columns = evaluateAll(self, exprs)
+export const select = (self: Frame, exprs: { readonly [name: string]: E.Node }): Frame =>
   // A frame of only scalars (e.g. `select(() => ({ one: Expr.lit(1) }))`) keeps the frame's length.
-  return make(columns, self.length)
-}
+  make(evaluateAll(self, exprs), self.length)
 
 /** @internal */
 export const withColumns = (self: Frame, exprs: { readonly [name: string]: E.Node }): Frame => {
@@ -366,9 +350,9 @@ const aggregateColumns = (
   return Object.keys(aggs).map((name) => {
     const node = aggs[name]
     if (node._tag !== "AggregateCall") return V.fail(`${name} is not an aggregate expression`)
-    if (node.arg === undefined && node.fn !== "count") return V.fail(`${node.fn} needs an argument`)
+    const fn = Agg.kernel(node.fn, node.arg)
     const input = node.arg === undefined ? undefined : E.evaluateColumn(node.arg, ctx)
-    return new Column(name, Agg.aggregate(node.arg === undefined ? "len" : node.fn, input, grouping), undefined)
+    return new Column(name, Agg.aggregate(fn, input, grouping), undefined)
   })
 }
 
@@ -408,20 +392,13 @@ const joinIds = (
   pairs: ReadonlyArray<[V.Vector, V.Vector]>,
   nl: number,
   nr: number
-): { leftIds: Int32Array; rightIds: Int32Array; count: number; nulls: undefined } => {
+): { leftIds: Int32Array; rightIds: Int32Array; count: number } => {
   if (pairs.length === 1 && pairs[0][0].kind === "i32" && pairs[0][1].kind === "i32") {
     // One Int32 key: index the right keys directly by value when their range is small.
     const l = pairs[0][0] as V.I32
     const r = pairs[0][1] as V.I32
-    let min = 2147483647
-    let max = -2147483648
-    for (let j = 0; j < nr; j++) {
-      if (r.valid !== undefined && r.valid[j] === 0) continue
-      const v = r.values[j]
-      if (v < min) min = v
-      if (v > max) max = v
-    }
-    if (max < min || max - min < Math.max(1 << 16, 2 * (nl + nr))) {
+    const { max, min } = Hash.int32Range(r.values, r.valid, nr)
+    if (max < min || max - min < Hash.directLimit(nl + nr)) {
       const range = max < min ? 0 : max - min + 1
       const table = new Int32Array(range).fill(-1)
       const rightIds = new Int32Array(nr)
@@ -443,7 +420,7 @@ const joinIds = (
         const k = lv[i] - min
         leftIds[i] = (la !== undefined && la[i] === 0) || k < 0 || k >= range ? -1 : table[k]
       }
-      return { leftIds, rightIds, count, nulls: undefined }
+      return { leftIds, rightIds, count }
     }
   }
   // General case: ids over both sides at once.
@@ -456,7 +433,7 @@ const joinIds = (
     for (let i = 0; i < nl; i++) if (nulls[i] === 1) leftIds[i] = -1
     for (let j = 0; j < nr; j++) if (nulls[nl + j] === 1) rightIds[j] = -1
   }
-  return { leftIds, rightIds, count: g.count, nulls: undefined }
+  return { leftIds, rightIds, count: g.count }
 }
 
 /** @internal */
@@ -464,16 +441,8 @@ export const join = (self: Frame, that: Frame, on: ReadonlyArray<string>, how: J
   const nl = self.length
   const nr = that.length
   const pairs = on.map((k) => unifyKeys(column(self, k).values(), column(that, k).values()))
-  const { leftIds, nulls, rightIds, count } = joinIds(pairs, nl, nr)
-  // CSR buckets of right rows per id
-  const start = new Int32Array(count + 1)
-  for (let j = 0; j < nr; j++) if (rightIds[j] >= 0) start[rightIds[j] + 1]++
-  for (let k = 0; k < count; k++) start[k + 1] += start[k]
-  const rows = new Int32Array(start[count])
-  const fill = start.slice(0, count)
-  for (let j = 0; j < nr; j++) if (rightIds[j] >= 0) rows[fill[rightIds[j]]++] = j
-  const ids = leftIds
-  void nulls
+  const { count, leftIds: ids, rightIds } = joinIds(pairs, nl, nr)
+  const { rows, starts: start } = Hash.rowsByGroup(rightIds, count)
 
   if (how === "semi" || how === "anti") {
     const want = how === "semi" ? 1 : 0
@@ -746,9 +715,7 @@ export const unnest = (self: Frame, name: string): Frame => {
     fields.forEach((f, k) => {
       if (existing.has(f.name)) V.fail(`unnest would duplicate the column ${JSON.stringify(f.name)}`)
       const child = v.children[k]
-      const valid = v.valid === undefined
-        ? (child.kind === "null" ? undefined : child.valid)
-        : V.andValid(child.kind === "null" ? undefined : child.valid, v.valid, v.length)
+      const valid = V.andValid(child.kind === "null" ? undefined : child.valid, v.valid, v.length)
       columns.push(new Column(f.name, V.withValid(child, valid), undefined))
     })
   }
