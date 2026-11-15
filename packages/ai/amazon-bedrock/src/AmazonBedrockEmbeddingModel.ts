@@ -8,6 +8,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as AiError from "effect/ai/AiError"
 import * as EmbeddingModel from "effect/ai/EmbeddingModel"
 import * as AiModel from "effect/ai/Model"
 import * as Arr from "effect/Array"
@@ -62,14 +63,14 @@ export type Family = "titan-embed-text-v2" | "cohere-embed-v3" | "cohere-embed-v
 export class Config extends Context.Service<Config, {
   /**
    * The vector size. Titan sends it as `dimensions` and Cohere v4 as
-   * `output_dimension`. Cohere v3 has a fixed size and does not send it.
+   * `output_dimension`. Cohere v3 requires 1024 when specified and does not send it.
    */
   readonly dimensions?: number | undefined
   /** Whether Titan normalizes the vector. */
   readonly normalize?: boolean | undefined
-  /** The kind of input, read by Cohere. Cohere v3 requires it. */
+  /** The kind of input, read by Cohere. Both v3 and v4 require it. */
   readonly input_type?: "search_document" | "search_query" | "classification" | "clustering" | undefined
-  /** How Cohere truncates a text that is too long. */
+  /** How Cohere truncates long text: v3 uses START/END, v4 uses LEFT/RIGHT. */
   readonly truncate?: "NONE" | "START" | "END" | "LEFT" | "RIGHT" | undefined
   readonly [x: string]: unknown
 }>()("@effect/ai-amazon-bedrock/AmazonBedrockEmbeddingModel/Config") {}
@@ -130,13 +131,14 @@ export const model = (
  * supplies request fields, and scoped overrides from `withConfigOverride` are
  * merged last for each request. Usage is the sum of the
  * `x-amzn-bedrock-input-token-count` response headers, or `undefined` when a
- * response has none.
+ * response has a missing or invalid count.
  *
  * **Gotchas**
  *
  * Concurrent `embed` calls share a request when their `Config` and
  * `AmazonBedrockConfig` values are equal. Up to 5 requests of one batch run at
- * the same time.
+ * the same time. Other per-call context used by an injected HTTP client comes
+ * from the first caller in a batch.
  *
  * @see {@link layer} for providing the embedding model service as a layer
  * @see {@link model} for creating an `AiModel` that also provides dimensions
@@ -166,17 +168,42 @@ export const make = Effect.fnUntraced(function*({ model, family, config: provide
     ],
     embedMany: Effect.fnUntraced(function*({ inputs }) {
       const config = yield* makeConfig
+      if (family === "cohere-embed-v3" && config.dimensions !== undefined && config.dimensions !== 1024) {
+        return yield* Effect.fail(AiError.make({
+          module: "AmazonBedrockEmbeddingModel",
+          method: "embedMany",
+          reason: new AiError.InvalidRequestError({
+            parameter: "dimensions",
+            description: "Cohere Embed v3 requires 1024 dimensions"
+          })
+        }))
+      }
       const responses = yield* Effect.forEach(
         Arr.chunksOf(inputs, row.textsPerRequest),
-        (texts) => invoke({ modelId: model, body: row.body(config, texts) }),
+        Effect.fnUntraced(function*(texts) {
+          const [body, response] = yield* invoke({ modelId: model, body: row.body(config, texts) })
+          const results = vectors(body)
+          if (results.length !== texts.length) {
+            return yield* Effect.fail(AiError.make({
+              module: "AmazonBedrockEmbeddingModel",
+              method: "embedMany",
+              reason: new AiError.InvalidOutputError({
+                description: `Expected ${texts.length} embeddings, received ${results.length}`
+              })
+            }))
+          }
+          return [results, response] as const
+        }),
         { concurrency: 5 }
       )
       return {
-        results: responses.flatMap(([body]) => vectors(body)),
+        results: responses.flatMap(([results]) => results),
         usage: {
           inputTokens: responses.reduce<number | undefined>((total, [, response]) => {
             const header = response.headers["x-amzn-bedrock-input-token-count"]
-            return total === undefined || header === undefined ? undefined : total + Number(header)
+            if (total === undefined || header === undefined || !/^\d+$/.test(header)) return undefined
+            const sum = total + Number(header)
+            return Number.isSafeInteger(sum) ? sum : undefined
           }, 0)
         }
       }

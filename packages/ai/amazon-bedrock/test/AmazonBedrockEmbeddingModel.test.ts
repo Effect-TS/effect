@@ -6,39 +6,6 @@ import { Digest, Mac, SecureRandom } from "effect/crypto"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 
 describe("AmazonBedrockEmbeddingModel", () => {
-  it.effect("model provides Dimensions, sends it as output_dimension to Cohere v4 and decodes float embeddings", () =>
-    Effect.gen(function*() {
-      const http = makeHttpClient((body) => ({
-        body: {
-          id: "1",
-          texts: body.texts,
-          embeddings: { float: body.texts.map((text: string) => [text.length, 0.5]) },
-          response_type: "embeddings_by_type"
-        },
-        inputTokens: 4
-      }))
-
-      const [dimensions, response] = yield* Effect.gen(function*() {
-        const model = yield* EmbeddingModel.EmbeddingModel
-        return [yield* EmbeddingModel.Dimensions, yield* model.embedMany(["a", "bb"])] as const
-      }).pipe(
-        Effect.provide(AmazonBedrockEmbeddingModel.model("eu.cohere.embed-v4:0", {
-          family: "cohere-embed-v4",
-          dimensions: 2,
-          config: { input_type: "search_document" }
-        })),
-        Effect.provide(http.layer)
-      )
-
-      assert.strictEqual(dimensions, 2)
-      assert.deepStrictEqual(response.embeddings.map((embedding) => embedding.vector), [[1, 0.5], [2, 0.5]])
-      assert.strictEqual(response.usage.inputTokens, 4)
-      assert.deepStrictEqual(http.requests, [{
-        url: "https://bedrock-runtime.us-east-1.amazonaws.com/model/eu.cohere.embed-v4%3A0/invoke",
-        body: { input_type: "search_document", output_dimension: 2, texts: ["a", "bb"] }
-      }])
-    }))
-
   it.effect("Titan sends one request per text in order and sums the token count headers", () =>
     Effect.gen(function*() {
       const http = makeHttpClient((body) => ({
@@ -102,39 +69,88 @@ describe("AmazonBedrockEmbeddingModel", () => {
       assert.isUndefined(response.usage.inputTokens)
     }))
 
-  it.effect("withConfigOverride wins over the layer config, and calls with different configs share no request", () =>
+  it.effect("Cohere v4 provides dimensions and isolates scoped configuration overrides", () =>
     Effect.gen(function*() {
       const http = makeHttpClient((body) => ({
         body: { embeddings: { float: body.texts.map((text: string) => [text.charCodeAt(0)]) } },
         inputTokens: 1
       }))
 
-      const responses = yield* Effect.gen(function*() {
+      const [dimensions, responses] = yield* Effect.gen(function*() {
         const model = yield* EmbeddingModel.EmbeddingModel
-        return yield* Effect.all([
+        const responses = yield* Effect.all([
           model.embed("a").pipe(AmazonBedrockEmbeddingModel.withConfigOverride({ input_type: "search_query" })),
           model.embed("b"),
           model.embed("c").pipe(AmazonBedrockEmbeddingModel.withConfigOverride({ input_type: "search_query" }))
         ], { concurrency: "unbounded" })
+        return [yield* EmbeddingModel.Dimensions, responses] as const
       }).pipe(
-        Effect.provide(AmazonBedrockEmbeddingModel.layer({
-          model: "eu.cohere.embed-v4:0",
+        Effect.provide(AmazonBedrockEmbeddingModel.model("eu.cohere.embed-v4:0", {
+          dimensions: 256,
           family: "cohere-embed-v4",
-          config: { input_type: "search_document", truncate: "END", output_dimension: 256 }
+          config: { input_type: "search_document", truncate: "RIGHT" }
         })),
         Effect.provide(http.layer)
       )
 
+      assert.strictEqual(dimensions, 256)
       assert.deepStrictEqual(responses.map((response) => response.vector), [[97], [98], [99]])
       assert.sameDeepMembers(http.requests.map((request) => request.body), [
-        { input_type: "search_query", truncate: "END", output_dimension: 256, texts: ["a", "c"] },
-        { input_type: "search_document", truncate: "END", output_dimension: 256, texts: ["b"] }
+        { input_type: "search_query", truncate: "RIGHT", output_dimension: 256, texts: ["a", "c"] },
+        { input_type: "search_document", truncate: "RIGHT", output_dimension: 256, texts: ["b"] }
       ])
+    }))
+
+  it.effect("rejects chunk count mismatches even when the total count matches", () =>
+    Effect.gen(function*() {
+      const http = makeHttpClient((body) => ({
+        body: { embeddings: Array.from({ length: body.texts.length === 96 ? 95 : 2 }, () => [1]) }
+      }))
+      const error = yield* Effect.gen(function*() {
+        const model = yield* EmbeddingModel.EmbeddingModel
+        return yield* Effect.flip(model.embedMany(Array.from({ length: 97 }, () => "text")))
+      }).pipe(
+        Effect.provide(AmazonBedrockEmbeddingModel.layer({ model: "cohere", family: "cohere-embed-v3" })),
+        Effect.provide(http.layer)
+      )
+      assert.strictEqual(error.reason._tag, "InvalidOutputError")
+    }))
+
+  it.effect("treats malformed token counts as unavailable", () =>
+    Effect.gen(function*() {
+      for (const inputTokens of ["invalid", "Infinity", "", "-1", "1.5"]) {
+        const http = makeHttpClient(() => ({ body: { embedding: [1] }, inputTokens }))
+        const response = yield* Effect.gen(function*() {
+          const model = yield* EmbeddingModel.EmbeddingModel
+          return yield* model.embedMany(["text"])
+        }).pipe(
+          Effect.provide(AmazonBedrockEmbeddingModel.layer({ model: "titan", family: "titan-embed-text-v2" })),
+          Effect.provide(http.layer)
+        )
+        assert.isUndefined(response.usage.inputTokens)
+      }
+    }))
+
+  it.effect("rejects incompatible Cohere v3 dimensions including scoped overrides", () =>
+    Effect.gen(function*() {
+      const http = makeHttpClient(() => ({ body: { embeddings: [[1]] } }))
+      const errors = yield* Effect.gen(function*() {
+        const model = yield* EmbeddingModel.EmbeddingModel
+        return yield* Effect.all([
+          Effect.flip(model.embed("text")),
+          Effect.flip(model.embed("text").pipe(AmazonBedrockEmbeddingModel.withConfigOverride({ dimensions: 512 })))
+        ])
+      }).pipe(
+        Effect.provide(AmazonBedrockEmbeddingModel.model("cohere", { family: "cohere-embed-v3", dimensions: 256 })),
+        Effect.provide(http.layer)
+      )
+      assert.deepStrictEqual(errors.map((error) => error.reason._tag), ["InvalidRequestError", "InvalidRequestError"])
+      assert.deepStrictEqual(http.requests, [])
     }))
 })
 
 const makeHttpClient = (
-  respond: (body: any) => { readonly body: unknown; readonly inputTokens?: number }
+  respond: (body: any) => { readonly body: unknown; readonly inputTokens?: number | string }
 ) => {
   const requests: Array<{ readonly url: string; readonly body: unknown }> = []
   const client = HttpClient.makeWith(
