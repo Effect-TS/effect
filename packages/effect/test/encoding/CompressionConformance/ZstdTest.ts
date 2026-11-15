@@ -191,8 +191,7 @@ const backward = (...fields: ReadonlyArray<readonly [value: number, width: numbe
 // Huffman weights (§4.2.1) in direct representation for "a" (0x61), weight
 // 1; "b" gets the implied last weight, 1. "a" decodes from bit 0, "b" from 1.
 const WEIGHTS_AB = [127 + 98, ...new Array(48).fill(0), 0x01]
-const abBits = (s: string) => Array.from(s, (c) => [c === "b" ? 1 : 0, 1] as const)
-const abStream = (s: string): Array<number> => backward(...abBits(s))
+const abStream = (s: string): Array<number> => backward(...Array.from(s, (c) => [c === "b" ? 1 : 0, 1] as const))
 
 // Sequences_Section_Header (§3.1.1.3.2.1)
 const NO_SEQUENCES = [0]
@@ -257,9 +256,10 @@ const fails = (input: Bytes, kind: Kind, options_ = options): void => {
   assert.strictEqual(result.failure.codec, "Zstd")
 }
 
-// Every input made of the first `n` bytes of `input`, for n in [from, to)
-const cuts = (input: Uint8Array, from: number, to: number): Array<Uint8Array> =>
-  Array.from({ length: to - from }, (_, i) => input.subarray(0, from + i))
+// The first `n` bytes of `input` fail with Truncated, for every n in [from, to)
+const failsTruncated = (input: Uint8Array, from: number, to: number): void => {
+  for (let n = from; n < to; n++) fails(input.subarray(0, n), "Truncated")
+}
 
 // "hello " in a Raw_Block, "xxx" in an RLE_Block, with a Window_Descriptor,
 // a 4-byte Frame_Content_Size and a Content_Checksum. Offsets: header 4-9,
@@ -839,18 +839,19 @@ export const suite = (): void => {
     describe("Truncated input", () => {
       // RFC 8878 §3.1.1: Magic_Number is 4 bytes; empty input is local policy
       it("MUST reject input that ends inside the magic number", () => {
-        for (const input of cuts(HELLO, 0, 4)) fails(input, "Truncated")
+        failsTruncated(HELLO, 0, 4)
       })
 
       // RFC 8878 §3.1.1.1
       it("MUST reject input that ends inside the Frame_Header", () => {
-        for (const input of cuts(STRUCTURED, 4, 10)) fails(input, "Truncated")
+        failsTruncated(STRUCTURED, 4, 10)
         fails(frame([0x23, 0, 0]), "Truncated")
       })
 
       // RFC 8878 §3.1.1.2: Block_Header is 3 bytes
       it("MUST reject input that ends inside a Block_Header", () => {
-        for (const input of [...cuts(STRUCTURED, 10, 13), ...cuts(STRUCTURED, 20, 22)]) fails(input, "Truncated")
+        failsTruncated(STRUCTURED, 10, 13)
+        failsTruncated(STRUCTURED, 20, 22)
       })
 
       // RFC 8878 §3.1.1.2: "Each frame must have at least 1 block"; the
@@ -862,20 +863,20 @@ export const suite = (): void => {
 
       // RFC 8878 §3.1.1.2.3
       it("MUST reject input that ends inside a block's Block_Content", () => {
-        for (const input of cuts(STRUCTURED, 13, 19)) fails(input, "Truncated")
+        failsTruncated(STRUCTURED, 13, 19)
         fails(STRUCTURED.subarray(0, 22), "Truncated")
-        for (const input of cuts(HELLO_NO_CHECKSUM, 9, HELLO_NO_CHECKSUM.length)) fails(input, "Truncated")
+        failsTruncated(HELLO_NO_CHECKSUM, 9, HELLO_NO_CHECKSUM.length)
       })
 
       // RFC 8878 §3.1.1: Content_Checksum is 4 bytes
       it("MUST reject input that ends inside the Content_Checksum", () => {
-        for (const input of cuts(STRUCTURED, 23, 27)) fails(input, "Truncated")
+        failsTruncated(STRUCTURED, 23, 27)
       })
 
       // RFC 8878 §3.1.2: Frame_Size then Frame_Size bytes of User_Data
       it("MUST reject input that ends inside a skippable frame", () => {
         const input = skippable(5, ascii("xyz"))
-        for (const cut of cuts(input, 4, input.length)) fails(cut, "Truncated")
+        failsTruncated(input, 4, input.length)
       })
     })
 
@@ -899,7 +900,6 @@ export const suite = (): void => {
       })
     })
 
-    // Local policy for what the RFC leaves to the decoder
     // Inputs the RFC's wording excludes, accepted to match libzstd 1.5.7.
     // These tests pin deliberate deviations; they are not RFC 8878 conformance.
     describe("Compatibility exceptions (not RFC 8878 conformance)", () => {
@@ -924,6 +924,7 @@ export const suite = (): void => {
       })
     })
 
+    // Local policy for what the RFC leaves to the decoder
     describe("Decoder policy", () => {
       // https://www.rfc-editor.org/rfc/rfc8878#section-3.1
       it("rejects bytes after the last frame that do not form a frame", () => {
