@@ -61,6 +61,11 @@ const Setup = Layer.effectDiscard(
     yield* sql`INSERT INTO exact VALUES (-128, 0.5), (127, 'NaN'), (0, '-Infinity'), (1, ${
       2 ** -149
     }), (2, '-0'), (3, ${(2 - 2 ** -23) * 2 ** 127})`
+    yield* sql`DROP TABLE IF EXISTS texts`
+    yield* sql`DROP TYPE IF EXISTS mood`
+    yield* sql`CREATE TYPE mood AS ENUM ('zzz', 'aaa')`
+    yield* sql`CREATE TABLE texts (m mood, c CHAR(3), v VARCHAR(5), sm SMALLINT, r REAL)`
+    yield* sql`INSERT INTO texts VALUES ('zzz', 'ab', 'xy', 20000, 16777216), ('aaa', 'abc', 'x', -20000, 0.5)`
   })
 )
 
@@ -105,7 +110,13 @@ const memory = Catalog.layer({
   exact: frame([
     ArrowSchema.field("i8", ArrowSchema.int32),
     ArrowSchema.field("f32", ArrowSchema.float64)
-  ], [[-128, 127, 0, 1, 2, 3], [0.5, NaN, -Infinity, 2 ** -149, -0, (2 - 2 ** -23) * 2 ** 127]])
+  ], [[-128, 127, 0, 1, 2, 3], [0.5, NaN, -Infinity, 2 ** -149, -0, (2 - 2 ** -23) * 2 ** 127]]),
+  // PostgreSQL converts char(n) values to text without their trailing spaces.
+  texts: frame([
+    ...["m", "c", "v"].map((name) => ArrowSchema.field(name, ArrowSchema.utf8)),
+    ArrowSchema.field("sm", ArrowSchema.int16),
+    ArrowSchema.field("r", ArrowSchema.float32)
+  ], [["zzz", "aaa"], ["ab", "abc"], ["xy", "x"], [20000, -20000], [16777216, 0.5]])
 })
 
 const table = Query.table("sales", Sale)
@@ -393,6 +404,27 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     Query.table("exact", Schema.Struct({ i8: Schema.Number, f32: Schema.Number }), {
       types: { i8: ArrowSchema.int8, f32: ArrowSchema.float32 }
     })
+  ],
+  [
+    "enum, char, varchar, smallint and real columns, as their declared types",
+    Query.table(
+      "texts",
+      Schema.Struct({ m: Schema.String, c: Schema.String, v: Schema.String, sm: Schema.Number, r: Schema.Number }),
+      { types: { sm: ArrowSchema.int32 } }
+    ).pipe(
+      Query.select((c) => ({
+        m: c.m,
+        lower: Expr.toLowerCase(c.m),
+        before: Expr.lt(c.m, "b"),
+        c: c.c,
+        padded: Expr.eq(c.c, "ab "),
+        length: Expr.length(c.c),
+        v: Expr.concat(c.v, "|"),
+        sm: Expr.add(c.sm, c.sm),
+        r: Expr.add(c.r, 1)
+      })),
+      Query.sort((c) => [c.m])
+    )
   ],
   [
     "rounding integers",

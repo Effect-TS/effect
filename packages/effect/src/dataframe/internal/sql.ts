@@ -1063,19 +1063,20 @@ interface Check {
 const utc = S.timestamp("microsecond")
 
 /**
- * A declared column of a table's source as its declared type (timestamps
- * as UTC timestamps without a time zone, whatever the session's time
- * zone): null where it breaks a condition (see {@link conditions}), so that
- * reading such values doesn't fail before the checks of the rows do.
+ * A declared column of a table's source as the engine reads it: in the
+ * PostgreSQL type of its declared type (strings and enums as text,
+ * timestamps as UTC timestamps without a time zone, whatever the session's
+ * time zone), and null where it breaks a condition (see {@link conditions}),
+ * so that reading such values doesn't fail before the checks of the rows do.
  */
 const declared = (column: Plan.TableColumn): string => {
   const x = quote(column.name)
   const type = Schema_.arrowType(column)
-  const value = type._tag === "Timestamp"
+  const value = type._tag === "Null"
+    ? `CAST(NULL AS ${sqlType(type)})`
+    : type._tag === "Timestamp"
     ? fromInteger(toInteger(x, utc), utc)
-    : type._tag === "Decimal"
-    ? `CAST(${x} AS ${sqlType(type)})`
-    : x
+    : `CAST(${x} AS ${sqlType(type)})`
   const holds = conditions(x, column)
   return holds.length === 0 ? value : `(CASE WHEN ${holds.map((c) => c.holds).join(" AND ")} THEN ${value} END)`
 }

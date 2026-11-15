@@ -138,7 +138,10 @@ const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
  * of `DateTime`, intervals without months, and the distinct values of the
  * columns the schema constrains beyond their type (literals, enums,
  * refinements) accepted by the schema. Columns the query doesn't read are
- * checked too. `explain` shows both queries.
+ * checked too. The query reads every column as its declared type: strings,
+ * enums and `char(n)` as text (`char(n)` without trailing spaces, as
+ * PostgreSQL converts it), numbers as the PostgreSQL type of their
+ * declared type. `explain` shows both queries.
  *
  * **Gotchas**
  *
