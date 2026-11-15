@@ -71,6 +71,9 @@ const rowsOnSql = <R>(query: Query.Query<R>) => Effect.map(onSql(query), DataFra
 const xs = Query.from(DataFrame.fromColumns({ x: [1, 2, 3] }))
 const ints = Query.from(DataFrame.fromColumns({ x: Int32Array.of(1, 2, 3) }))
 const bools = Query.from(DataFrame.fromColumns({ b: [true, null, false, true] }))
+const groups = Query.from(
+  DataFrame.fromColumns({ g: ["a", "b", "a", "b", "a"], h: [1, 1, 2, 2, 1], x: [1, 3, 2, 6, 4] })
+)
 const none = ints.pipe(Query.filter((c) => Expr.gt(c.x, 9)))
 /** A query over a frame with exactly the given Arrow columns. */
 const arrow = <R>(fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
@@ -158,6 +161,23 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     })))
   ],
   ["unique on no columns keeps the first row", xs.pipe(Query.unique([]))],
+  [
+    "windows in aggregate arguments see only their group",
+    groups.pipe(
+      Query.groupBy("g"),
+      Query.agg((c) => ({
+        running: Expr.sum(Expr.cumSum(c.x)),
+        previous: Expr.sum(Expr.shift(c.x)),
+        rank: Expr.max(Expr.rank(c.x, { method: "min" })),
+        centered: Expr.max(Expr.subtract(c.x, Expr.over(Expr.mean(c.x), []))),
+        nested: Expr.sum(Expr.over(Expr.cumSum(c.x), [c.h]))
+      }))
+    )
+  ],
+  [
+    "windows in aggregate arguments over all rows",
+    groups.pipe(Query.aggregate((c) => ({ running: Expr.sum(Expr.cumSum(c.x)), first: Expr.first(Expr.shift(c.x)) })))
+  ],
   ["filters on a window function", xs.pipe(Query.filter((c) => Expr.gt(Expr.cumSum(c.x), 3)))],
   ["filters on an aggregate over the input", xs.pipe(Query.filter((c) => Expr.gt(c.x, Expr.over(Expr.mean(c.x), []))))],
   [

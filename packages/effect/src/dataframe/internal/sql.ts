@@ -312,11 +312,18 @@ const round = (x: string, type: S.DataType, result: S.DataType, decimals: number
 const extreme = (fn: "min" | "max", type: S.DataType["_tag"] | undefined): string =>
   type === "Bool" ? (fn === "min" ? "BOOL_AND" : "BOOL_OR") : fn.toUpperCase()
 
-const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefined): string => {
+/**
+ * The aggregate `node` of `x`, the SQL of its argument (of type `type`); a
+ * window function when `over` (its window) is given.
+ */
+const aggregate = (
+  node: Plan.AggregateCall,
+  x: string,
+  type: S.DataType["_tag"] | undefined,
+  scope: Scope,
+  over: string | undefined
+): string => {
   const row = scope.compiler.row
-  const inner = { ...scope, partition: undefined }
-  const x = node.arg === undefined ? "" : expression(node.arg, inner)
-  const type = node.arg === undefined ? undefined : typeOf(node.arg, inner)._tag
   const o = over === undefined ? "" : ` ${over}`
   switch (node.fn) {
     case "count":
@@ -561,15 +568,18 @@ const expression = (node: Plan.Expression, scope: Scope): string => {
       return literal(node.value, node.type)
     case "Call":
       return call(node, scope)
-    case "AggregateCall":
-      return scope.partition === undefined
-        ? V.fail(`aggregate ${node.fn} can only be used in agg or over`)
-        : aggregate(node, scope, `OVER (${partitionBy(scope)})`)
-    case "Over":
-      return expression(node.expression, {
-        ...scope,
-        partition: node.partitionBy.map((k) => expression(k, { ...scope, partition: undefined }))
-      })
+    case "AggregateCall": {
+      if (scope.partition === undefined) return V.fail(`aggregate ${node.fn} can only be used in agg or over`)
+      const inner = { ...scope, partition: undefined }
+      const x = node.arg === undefined ? "" : expression(node.arg, inner)
+      const type = node.arg === undefined ? undefined : typeOf(node.arg, inner)._tag
+      return aggregate(node, x, type, scope, `OVER (${partitionBy(scope)})`)
+    }
+    case "Over": {
+      // Within an enclosing partition (another `over`, or a group), partitions refine it.
+      const keys = node.partitionBy.map((k) => expression(k, { ...scope, partition: undefined }))
+      return expression(node.expression, { ...scope, partition: [...(scope.partition ?? []), ...keys] })
+    }
   }
 }
 
@@ -747,15 +757,25 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     }
     case "GroupBy":
     case "Aggregate": {
-      const s = scope()
       const keys = node._tag === "GroupBy" ? node.keys : []
-      const aggs = node.aggregates.map((a) =>
-        `${aggregate(a.expression as Plan.AggregateCall, s, undefined)} AS ${quote(a.name)}`
+      // Arguments are computed first, partitioned by the group: windows in them see only its rows.
+      const group: Scope = { ...scope(), partition: keys.map(quote) }
+      const args = node.aggregates.map((a, i) => {
+        const arg = (a.expression as Plan.AggregateCall).arg
+        return arg === undefined
+          ? undefined
+          : { name: c.hidden(`arg${i}`), sql: expression(arg, group), type: typeOf(arg, group)._tag }
+      })
+      const computed = args.flatMap((x) => x === undefined ? [] : [`, ${x.sql} AS ${x.name}`])
+      const aggs = node.aggregates.map((a, i) =>
+        `${aggregate(a.expression as Plan.AggregateCall, args[i]?.name ?? "", args[i]?.type, group, undefined)} AS ${
+          quote(a.name)
+        }`
       )
       const key = keys.length === 0 ? `1 AS ${row}` : `MIN(${row}) AS ${row}`
-      return `SELECT ${[...keys.map(quote), ...aggs, key].join(", ")} FROM ${from()}${
-        keys.length === 0 ? "" : ` GROUP BY ${list(keys)}`
-      }`
+      return `SELECT ${[...keys.map(quote), ...aggs, key].join(", ")} FROM (SELECT *${
+        computed.join("")
+      } FROM ${from()}) AS t${keys.length === 0 ? "" : ` GROUP BY ${list(keys)}`}`
     }
     case "Join": {
       const l = relation(node.left, c)
