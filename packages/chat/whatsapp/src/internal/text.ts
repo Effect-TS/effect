@@ -476,7 +476,8 @@ export const render = (markdown: string): string => {
       i += 2
       continue
     }
-    if (/^(?: {4}|\t)/.test(line) || thematicBreak.test(line)) {
+    // Indented code, measured inside its quotes and list items with tabs expanded, is kept as typed.
+    if (/^ {4}/.test(rest) || thematicBreak.test(line)) {
       out += lines[i]
       i++
       continue
