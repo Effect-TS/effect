@@ -480,6 +480,8 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  * **Gotchas**
  *
  * - A path that does not start at the root element matches nothing.
+ * - Paths and `Element` names are names as written, including prefixes, even
+ *   with `namespaces: "strict"`, which only adds namespaces to events.
  * - Whitespace between child elements, such as indentation, is kept as string
  *   children.
  * - A collected element larger than `maxElementSize` fails with a `Limit`
@@ -1024,13 +1026,14 @@ const xmlnsNamespace = "http://www.w3.org/2000/xmlns/"
 // namespaces it declares, are copied
 const copyString = (s: string): string => s.length < 13 ? s : (" " + s).slice(1)
 
-// A namespace bound in scope, shared by every binding to it, so that
-// namespaces are compared by identity however long they are
+// A namespace bound by a declaration. Bindings to the same namespace share
+// one, so that namespaces are compared by identity however long they are.
 interface Namespace {
   readonly uri: string
-  // The number of bindings to it that open elements and the current tag made
-  refs: number
 }
+
+// The xml prefix is always bound, and cannot be declared otherwise
+const xmlBinding: Namespace = { uri: xmlNamespace }
 
 interface Scope {
   readonly namespace: string
@@ -1038,6 +1041,10 @@ interface Scope {
   // The length of the undo log before the element's declarations
   readonly undo: number
 }
+
+// The size of released namespace declarations, beyond those of open elements,
+// at which the namespace maps are rebuilt
+const compactDeclarationSize = 4096
 
 // Returns the index of the colon of a qualified name, -1 when it has none, or
 // -2 when the name is not a qualified name
@@ -1108,16 +1115,21 @@ class Parser {
   private readonly namespaces: boolean
   private ascii = false
 
-  // With namespaces, the scope of each open element, the bindings in scope, the
-  // namespaces they bind by name, and the prefix and previous binding of each
-  // change that open elements made, which end tags undo
+  // With namespaces, the scope of each open element, the binding of each
+  // prefix, the shared namespace of each namespace name, and the prefix and
+  // previous binding of each change that open elements made, which end tags
+  // undo. In V8, deleting a key from a large map and adding it again makes
+  // later lookups of it walk the deleted entries, so a prefix that goes out of
+  // scope is set to `undefined` and namespaces are kept. Both maps are rebuilt
+  // from the bindings in use once the declarations released since outweigh
+  // those of open elements.
   private readonly scopes: Array<Scope> = []
-  // The xml prefix is always bound, and cannot be declared otherwise
-  private readonly bindings = new Map<string, Namespace>([["xml", { uri: xmlNamespace, refs: 1 }]])
-  private readonly bound = new Map<string, Namespace>()
+  private bindings = new Map<string, Namespace | undefined>([["xml", xmlBinding]])
+  private namespacesByName = new Map<string, Namespace>()
   private readonly undoPrefixes: Array<string> = []
   private readonly undoBindings: Array<Namespace | undefined> = []
   private openDeclarationSize = 0
+  private releasedDeclarationSize = 0
 
   constructor(maxTokenSize: number, maxDepth: number, bytes: boolean, positions: boolean, namespaces: boolean) {
     this.maxTokenSize = maxTokenSize
@@ -1566,8 +1578,7 @@ class Parser {
       const key = copyString(prefix)
       this.undoPrefixes.push(key)
       this.undoBindings.push(current)
-      if (uri === "") this.bindings.delete(key)
-      else this.bindings.set(key, this.bind(uri))
+      this.bindings.set(key, uri === "" ? undefined : this.namespace(uri))
       this.openDeclarationSize += prefix.length + uri.length
     }
     if (!selfClosing && this.openDeclarationSize > this.maxTokenSize) {
@@ -1638,13 +1649,12 @@ class Parser {
 
   // Returns the shared namespace for `uri`. Finding it costs the length of
   // `uri`, which is part of the declaration being read.
-  private bind(uri: string): Namespace {
-    let namespace = this.bound.get(uri)
+  private namespace(uri: string): Namespace {
+    let namespace = this.namespacesByName.get(uri)
     if (namespace === undefined) {
-      namespace = { uri: copyString(uri), refs: 0 }
-      this.bound.set(namespace.uri, namespace)
+      namespace = { uri: copyString(uri) }
+      this.namespacesByName.set(namespace.uri, namespace)
     }
-    namespace.refs++
     return namespace
   }
 
@@ -1652,13 +1662,29 @@ class Parser {
   private restore(undo: number): void {
     while (this.undoPrefixes.length > undo) {
       const prefix = this.undoPrefixes.pop()!
-      const previous = this.undoBindings.pop()
       // The binding in scope is the one this element made, which ends with it
-      const current = this.bindings.get(prefix)
-      this.openDeclarationSize -= prefix.length + (current?.uri.length ?? 0)
-      if (current !== undefined && --current.refs === 0) this.bound.delete(current.uri)
-      if (previous === undefined) this.bindings.delete(prefix)
-      else this.bindings.set(prefix, previous)
+      const size = prefix.length + (this.bindings.get(prefix)?.uri.length ?? 0)
+      this.openDeclarationSize -= size
+      this.releasedDeclarationSize += size
+      this.bindings.set(prefix, this.undoBindings.pop())
+    }
+    // The maps have fewer entries than the size of the declarations released
+    // since the last rebuild, so rebuilding them is linear in the input
+    if (this.releasedDeclarationSize > this.openDeclarationSize + compactDeclarationSize) {
+      const bindings = new Map<string, Namespace | undefined>()
+      const namespaces = new Map<string, Namespace>()
+      for (const [prefix, namespace] of this.bindings) {
+        if (namespace === undefined) continue
+        bindings.set(prefix, namespace)
+        namespaces.set(namespace.uri, namespace)
+      }
+      // A shadowed binding comes back into scope when its element closes
+      for (const namespace of this.undoBindings) {
+        if (namespace !== undefined) namespaces.set(namespace.uri, namespace)
+      }
+      this.bindings = bindings
+      this.namespacesByName = namespaces
+      this.releasedDeclarationSize = 0
     }
   }
 
