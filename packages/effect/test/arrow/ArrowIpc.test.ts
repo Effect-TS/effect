@@ -119,11 +119,13 @@ const columns: ReadonlyArray<readonly [name: string, type: S.DataType, values: R
 
 const schema = S.make(columns.map(([name, type]) => S.field(name, type)), new Map([["source", "pyarrow"]]))
 
-const assertFixtureTable = (table: ArrowTable.Table) => {
+/** Checks a table holding the fixture rows from `start`, in batches of `lengths` rows. */
+const assertFixtureTable = (table: ArrowTable.Table, start = 0, lengths: ReadonlyArray<number> = [3, 2]) => {
   assertEquals(table.schema, schema)
-  assert.deepStrictEqual(table.batches.map((batch) => batch.length), [3, 2])
+  assert.deepStrictEqual(table.batches.map((batch) => batch.length), lengths)
+  const end = start + lengths.reduce((n, length) => n + length, 0)
   for (const [name, , values] of columns) {
-    assertEquals(ArrowColumn.toArray(Option.getOrThrow(ArrowTable.column(table, name))), values, name)
+    assertEquals(ArrowColumn.toArray(Option.getOrThrow(ArrowTable.column(table, name))), values.slice(start, end), name)
   }
 }
 
@@ -193,9 +195,11 @@ describe("ArrowIpc", () => {
       assertFixtureTable(Result.getOrThrow(decode(bytes)))
     })
 
-    it(`decodes a re-encoded ${format} to the same rows`, () => {
+    it(`decodes a re-encoded ${format} to the same rows, also when sliced`, () => {
       const table = Result.getOrThrow(decode(bytes))
       assertFixtureTable(Result.getOrThrow(decode(Result.getOrThrow(encode(table)))))
+      // Rows 1..4: the first batch from slot 1, the second whole
+      assertFixtureTable(Result.getOrThrow(decode(Result.getOrThrow(encode(ArrowTable.slice(table, 1))))), 1, [2, 2])
     })
   }
 
