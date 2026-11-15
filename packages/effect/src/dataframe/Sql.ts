@@ -9,7 +9,9 @@
  *   joins in left row order, as the in-memory engine.
  * - {@link layer} provides an `Engine` that compiles every query and runs it
  *   with the `SqlClient` in the context, so `yield* query` reads from the
- *   database. `Query.table` names become table names.
+ *   database. `Query.table` names become table names, each one quoted
+ *   identifier: `"a.b"` reads the table called `a.b`, not table `b` of
+ *   schema `a`.
  * - The SQL is PostgreSQL's (PGlite included); other databases are future
  *   work.
  *

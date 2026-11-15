@@ -57,6 +57,13 @@ const Setup = Layer.effectDiscard(
     yield* sql`INSERT INTO "__table0" VALUES ('bad')`
     yield* sql`CREATE TABLE "__table1" (s TEXT)`
     yield* sql`INSERT INTO "__table1" VALUES ('bad')`
+    yield* sql`DROP TABLE IF EXISTS "a.b"`
+    yield* sql`CREATE TABLE "a.b" (s TEXT)`
+    yield* sql`INSERT INTO "a.b" VALUES ('good')`
+    yield* sql`CREATE SCHEMA IF NOT EXISTS a`
+    yield* sql`DROP TABLE IF EXISTS a.b`
+    yield* sql`CREATE TABLE a.b (s TEXT)`
+    yield* sql`INSERT INTO a.b VALUES ('bad')`
     yield* sql`DROP TABLE IF EXISTS odd`
     yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL, forever TIMESTAMP, endless DATE)`
     yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month', 'infinity', 'infinity')`
@@ -642,6 +649,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           Query.table("__table1", Schema.Struct({ s: Schema.Literal("good") }))
         ])))
         assert.strictEqual(error.message, `column "s" has values its schema rejects`)
+        assert.deepStrictEqual(yield* rowsOnSql(s("a.b")), [{ s: "good" }])
       }))
 
     it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>
