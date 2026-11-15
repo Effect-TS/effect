@@ -337,11 +337,10 @@ const rangeOf = (values: ReadonlyArray<Value>, dynamic: D.Dynamic): readonly [nu
 }
 
 /**
- * The type and dynamism of an operand next to one of type `other`: integer
- * literals (every literal of an operand built from them, whichever rows
- * select it) that `other` can't hold commit to the smallest signed integer
- * type that holds them, instead of adopting `other`, as in Polars (`Int8 +
- * 300` is Int16).
+ * The type and dynamism of an operand next to one of type `other`. Integer
+ * literals that `other` can't hold take the smallest signed integer type
+ * that holds them instead of adopting `other`, as in Polars (`Int8 + 300`
+ * is Int16). An operand built only from literals is fitted as a whole.
  */
 const operand = (v: Value, other: S.DataType): readonly [S.DataType, D.Dynamic] => {
   if (v.dynamic !== "int" || other._tag !== "Int" || v.vector.kind !== "i32") return [v.vector.type, v.dynamic]
