@@ -70,13 +70,13 @@ export type Codec = "Snappy" | "Gzip" | "Lz4Block" | "Lz4Frame" | "Zstd"
  * The `kind` field identifies the failure:
  *
  * - `Malformed`: the input breaks the codec's format, for example an unknown
- *   block type, a match that reaches before the start of the output, or bytes
- *   left over after the last frame.
+ *   block type, a match that reaches before the start of the output, output
+ *   that differs from a size recorded in the input, or bytes left over after
+ *   the end of the data.
  * - `Truncated`: the input ends inside a header, block or checksum.
  * - `Checksum`: a checksum stored in the input does not match the data.
  * - `SizeMismatch`: the output size differs from
- *   {@link DecompressOptions.expectedSize}, or from a size recorded in the
- *   input.
+ *   {@link DecompressOptions.expectedSize}.
  * - `OutputLimit`: the output would be larger than
  *   {@link DecompressOptions.maxOutputSize}.
  * - `Unsupported`: valid input that uses a feature this module does not
@@ -175,7 +175,9 @@ const run = (
     if (!(error instanceof DecodeFailure)) throw error
     // With an expected size, more output than that is a size mismatch
     const kind = error.kind === "OutputLimit" && expectedSize !== undefined ? "SizeMismatch" : error.kind
-    const message = kind === "SizeMismatch" ? `the output is larger than the expected ${expectedSize} bytes` : error.message
+    const message = kind === "SizeMismatch"
+      ? `the output is larger than the expected ${expectedSize} bytes`
+      : error.message
     return Result.fail(new CompressionError({ codec, kind, message }))
   }
 }
