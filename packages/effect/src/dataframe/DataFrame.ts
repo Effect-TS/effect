@@ -384,6 +384,14 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
  * arrays need compatible fields and items. Values of fields the schema
  * constrains further (literals, enums, refinements) are checked against it.
  *
+ * **Gotchas**
+ *
+ * `DateTimeUtc` fields take timestamps without a time zone, or with a UTC
+ * one (`UTC`, `Etc/UTC`, `+00:00`), which the result drops; other time
+ * zones, and values outside the range `DateTime` represents, fail.
+ * `DateTimeZoned` fields are not supported: read zoned timestamps from an
+ * untyped frame, where they are `DateTime.Zoned` values.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.5

@@ -703,6 +703,9 @@ export interface TableColumn {
  * bits for floats and narrower integers, any 64-bit integer for `Int64`
  * and `UInt64`, any decimal for `Decimal`, the same
  * temporal type in any unit, and lists and structs with compatible children.
+ * `Timestamp` columns read as `DateTime.Utc` values: their timestamps must
+ * have no time zone or a UTC one (dropped), and lie in the range `DateTime`
+ * represents.
  *
  * `schema`, set by `Query.table`, is the struct schema the rows must
  * satisfy: values of fields it constrains beyond their column type (literals,

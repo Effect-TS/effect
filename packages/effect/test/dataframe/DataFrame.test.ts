@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, Effect, Equal, Result, Schema, Stream } from "effect"
+import { BigDecimal, DateTime, Effect, Equal, Result, Schema, Stream } from "effect"
 import { ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
 import { DataFrame, Expr, Query } from "effect/dataframe"
 
@@ -85,6 +85,13 @@ describe("DataFrame", () => {
 
   describe("validate", () => {
     const untyped = DataFrame.fromArrowTable(DataFrame.toArrowTable(readings))
+    const column = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown>) =>
+      DataFrame.fromArrowTable(
+        Result.getOrThrow(
+          ArrowTable.fromRows(ArrowSchema.make([ArrowSchema.field("t", type)]), values.map((t) => ({ t })))
+        )
+      )
+    const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
 
     it("returns the frame typed by the schema, in schema order", () => {
       const result = DataFrame.validate(untyped, Schema.Struct({ temp: Schema.Number, city: Schema.String }))
@@ -116,6 +123,24 @@ describe("DataFrame", () => {
           DataFrame.fromColumns({ n: [1, 1.5] }),
           Schema.Struct({ n: Schema.Int }),
           `column "n" has values its schema rejects`
+        ],
+        [
+          column(ArrowSchema.timestamp("millisecond", "Europe/Berlin"), [0n]),
+          Utc,
+          `column "t" has time zone Europe/Berlin, expected UTC timestamps`
+        ],
+        [
+          column(ArrowSchema.timestamp("millisecond"), [9223372036854775807n]),
+          Utc,
+          `column "t" has timestamps outside the range of DateTime`
+        ],
+        [
+          column(ArrowSchema.list(ArrowSchema.field("item", ArrowSchema.timestamp("microsecond"))), [[
+            8640000000000000999n,
+            8640000000000001000n
+          ]]),
+          Schema.Struct({ t: Schema.Array(Schema.DateTimeUtc) }),
+          `column "t[]" has timestamps outside the range of DateTime`
         ]
       ]
       for (const [df, schema, message] of cases) {
@@ -123,6 +148,13 @@ describe("DataFrame", () => {
         assert.isTrue(Result.isFailure(result))
         assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
       }
+    })
+
+    it("reads timestamps with a UTC time zone as DateTime.Utc", () => {
+      const ts = ArrowSchema.timestamp("millisecond", "UTC")
+      const nested = column(ArrowSchema.list(ArrowSchema.field("item", ts)), [[1000n]])
+      const df = Result.getOrThrow(DataFrame.validate(nested, Schema.Struct({ t: Schema.Array(Schema.DateTimeUtc) })))
+      assert.deepStrictEqual(DataFrame.toRows(df), [{ t: [DateTime.makeUnsafe(1000)] }])
     })
   })
 

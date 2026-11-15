@@ -78,6 +78,15 @@ describe("Query", () => {
           const error = yield* Effect.flip(Query.table("t", Kind).pipe(Effect.provide(Catalog.layer({ t }))))
           assert.strictEqual(error.message, `column "kind" has values its schema rejects`)
         }
+        const berlin = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(
+          ArrowSchema.make([ArrowSchema.field("t", ArrowSchema.timestamp("millisecond", "Europe/Berlin"))]),
+          [{ t: 0n }]
+        )))
+        const Utc = Schema.Struct({ t: Schema.DateTimeUtc })
+        for (const t of [berlin, Stream.make(berlin)]) {
+          const error = yield* Effect.flip(Query.table("t", Utc).pipe(Effect.provide(Catalog.layer({ t }))))
+          assert.strictEqual(error.message, `column "t" has time zone Europe/Berlin, expected UTC timestamps`)
+        }
       }))
 
     it.effect("narrows tables to their declared columns", () =>

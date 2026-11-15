@@ -2,6 +2,11 @@
  * Table columns for the fields of an Effect Schema struct: their Arrow types,
  * and the checks a frame must pass to be read as rows of the schema.
  *
+ * A `Timestamp` column reads as `DateTime.Utc` values, so its timestamps
+ * must have no time zone (or a UTC one, which the check drops) and lie in
+ * the range `DateTime` represents. `DateTimeZoned` fields have no column
+ * type.
+ *
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
@@ -251,7 +256,32 @@ const allNull = (v: V.Vector, rows: Uint8Array | undefined): boolean => {
   return true
 }
 
-const check = (path: string, v: V.Vector, expected: Column, rows: Uint8Array | undefined): void => {
+const utcZones: ReadonlySet<string> = new Set(["UTC", "Etc/UTC", "+00:00"])
+
+/** The stored values of a timestamp in each unit that `DateTime` represents (±8.64e15 ms). */
+const timestampRange: { readonly [U in S.TimeUnit]: readonly [bigint, bigint] } = {
+  second: [-BigInt("8640000000000"), BigInt("8640000000000")],
+  millisecond: [-BigInt("8640000000000000"), BigInt("8640000000000000")],
+  microsecond: [-BigInt("8640000000000000000"), BigInt("8640000000000000999")],
+  nanosecond: [-BigInt("9223372036854775808"), BigInt("9223372036854775807")]
+}
+
+/** Timestamps that read as `DateTime.Utc`: without a time zone, in range. */
+const utcTimestamps = (path: string, v: V.I64, type: S.Timestamp, rows: Uint8Array | undefined): V.Vector => {
+  if (type.timezone !== undefined && !utcZones.has(type.timezone)) {
+    return V.fail(`column ${JSON.stringify(path)} has time zone ${type.timezone}, expected UTC timestamps`)
+  }
+  const [lo, hi] = timestampRange[type.unit]
+  for (let i = 0; i < v.length; i++) {
+    if ((rows === undefined || rows[i] === 1) && V.isValid(v, i) && (v.values[i] < lo || v.values[i] > hi)) {
+      return V.fail(`column ${JSON.stringify(path)} has timestamps outside the range of DateTime`)
+    }
+  }
+  return type.timezone === undefined ? v : V.withType(v, S.timestamp(type.unit))
+}
+
+/** Checks a column against its declaration, returning it with UTC time zones dropped. */
+const check = (path: string, v: V.Vector, expected: Column, rows: Uint8Array | undefined): V.Vector => {
   if (!compatible(v.type, expected, true) && !(expected.type === "Null" && allNull(v, rows))) {
     return V.fail(`column ${JSON.stringify(path)} is ${describe(v.type)}, expected ${describeColumn(expected)}`)
   }
@@ -262,22 +292,35 @@ const check = (path: string, v: V.Vector, expected: Column, rows: Uint8Array | u
       }
     }
   }
-  if (expected.fields === undefined) return
+  if (expected.type === "Timestamp" && v.kind === "i64" && v.type._tag === "Timestamp") {
+    return utcTimestamps(path, v, v.type, rows)
+  }
+  if (expected.fields === undefined) return v
   if (v.kind === "struct" && v.type._tag === "Struct") {
     const present = new Uint8Array(v.length)
     for (let i = 0; i < v.length; i++) present[i] = (rows === undefined || rows[i] === 1) && V.isValid(v, i) ? 1 : 0
+    const fields = v.type.fields
+    const children = v.children.slice()
     for (const f of expected.fields) {
-      const k = v.type.fields.findIndex((g) => g.name === f.name)
+      const k = fields.findIndex((g) => g.name === f.name)
       if (k === -1) return V.fail(`missing column ${JSON.stringify(`${path}.${f.name}`)}`)
-      check(`${path}.${f.name}`, v.children[k], f, present)
+      children[k] = check(`${path}.${f.name}`, v.children[k], f, present)
     }
-  } else if (v.kind === "list") {
+    if (children.every((c, k) => c === v.children[k])) return v
+    const type = S.struct(fields.map((g, k) => ({ ...g, type: children[k].type })))
+    return V.struct(type, children, v.length, v.valid)
+  }
+  if (v.kind === "list" && (v.type._tag === "List" || v.type._tag === "LargeList")) {
     const present = new Uint8Array(v.child.length)
     for (let i = 0; i < v.length; i++) {
       if ((rows === undefined || rows[i] === 1) && V.isValid(v, i)) present.fill(1, v.offsets[i], v.offsets[i + 1])
     }
-    check(`${path}[]`, v.child, expected.fields[0], present)
+    const child = check(`${path}[]`, v.child, expected.fields[0], present)
+    return child === v.child
+      ? v
+      : V.list({ ...v.type, child: { ...v.type.child, type: child.type } }, v.offsets, child, v.valid)
   }
+  return v
 }
 
 const refined = (ast: AST.AST): boolean =>
@@ -323,8 +366,8 @@ const valuesCheck = (ast: AST.AST): ((value: unknown) => boolean) | undefined =>
 }
 
 /**
- * Checks that a frame has the expected columns and narrows it to them. With
- * a `schema`, the values of fields it constrains beyond their column type are
+ * Checks that a frame has the expected columns and narrows it to them,
+ * dropping UTC time zones from timestamps. With a `schema`, the values of fields it constrains beyond their column type are
  * checked against it too.
  *
  * @internal
@@ -334,12 +377,16 @@ export const conform = (
   columns: ReadonlyArray<Plan.TableColumn>,
   schema?: { readonly ast: AST.AST } | undefined
 ): F.Frame => {
-  for (const expected of columns) {
-    const c = frame.columns.find((c) => c.name === expected.name)
-    if (c === undefined) return V.fail(`missing column ${JSON.stringify(expected.name)}`)
-    check(expected.name, c.values(), expected, undefined)
-  }
-  const narrowed = F.pick(frame, columns.map((c) => c.name))
+  const narrowed = F.make(
+    columns.map((expected) => {
+      const c = frame.columns.find((c) => c.name === expected.name)
+      if (c === undefined) return V.fail(`missing column ${JSON.stringify(expected.name)}`)
+      const values = c.values()
+      const checked = check(expected.name, values, expected, undefined)
+      return checked === values ? c : new F.Column(c.name, checked, undefined, c.nullable)
+    }),
+    frame.length
+  )
   if (schema !== undefined) {
     for (const ps of structOf(schema).propertySignatures) {
       const test = valuesCheck(ps.type)
