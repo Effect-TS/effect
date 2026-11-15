@@ -18,8 +18,10 @@
  *
  * - Big-endian data and compressed bodies (LZ4 frame, ZSTD) are rejected with
  *   an {@link ArrowIpcError} whose `kind` says so.
- * - Sliced data (see `ArrowTable.slice`) can be written; only the slots in
- *   the slice are encoded.
+ * - Sliced data (see `ArrowTable.slice`) can be written, and decodes to the
+ *   slice's rows only. The written buffers can still hold bytes of values
+ *   outside the slice (a slice from the start keeps its whole buffers), so
+ *   slicing does not remove data from the output.
  * - Unions with null slots of their own (a pre-V5 layout some decoded input
  *   uses) cannot be written: encoding fails with kind `"Unsupported"`.
  * - {@link decode} and {@link encode} stream the stream format; the file
