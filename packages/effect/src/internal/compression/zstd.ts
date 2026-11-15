@@ -67,16 +67,21 @@ const weights = new Uint8Array(256)
 const rankStart = new Uint32Array(13)
 
 /**
- * An FSE decoding table (§4.1). Each entry packs
+ * An FSE decoding table (§4.1) for symbols up to `maxSymbol` and accuracy
+ * logs up to `maxLog`. Each entry packs
  * `baseline << 16 | numberOfBits << 8 | symbol`.
  */
 class FseTable {
+  readonly maxSymbol: number
+  readonly maxLog: number
   readonly own: Uint32Array
   // The table in use: `own`, a predefined table, or undefined before the
   // first one in the frame
   table: Uint32Array | undefined = undefined
   log = 0
-  constructor(maxLog: number) {
+  constructor(maxSymbol: number, maxLog: number) {
+    this.maxSymbol = maxSymbol
+    this.maxLog = maxLog
     this.own = new Uint32Array(1 << maxLog)
   }
 }
@@ -121,9 +126,16 @@ const predefined = (distribution: Int16Array, log: number): Uint32Array => {
   return table
 }
 
+// The predefined tables (§3.1.1.3.2.2), built on first use
 let LL_PREDEFINED: Uint32Array | undefined
 let OF_PREDEFINED: Uint32Array | undefined
 let ML_PREDEFINED: Uint32Array | undefined
+const llPredefined = (): Uint32Array => LL_PREDEFINED ??= predefined(LL_DEFAULT, 6)
+const ofPredefined = (): Uint32Array => OF_PREDEFINED ??= predefined(OF_DEFAULT, 5)
+const mlPredefined = (): Uint32Array => ML_PREDEFINED ??= predefined(ML_DEFAULT, 6)
+
+const u32 = (input: Uint8Array, i: number): number =>
+  (input[i] | (input[i + 1] << 8) | (input[i + 2] << 16) | (input[i + 3] << 24)) >>> 0
 
 // Bits `[bit, bit + n)` of the forward bitstream starting at `start`; bytes
 // at or past `end` read as zero (n <= 16)
@@ -135,17 +147,11 @@ const forwardBits = (input: Uint8Array, start: number, end: number, bit: number,
 
 // Reads an FSE table description (§4.1.1) at `start` into `slot` and
 // returns the position after it
-const readFse = (
-  input: Uint8Array,
-  start: number,
-  end: number,
-  maxSymbol: number,
-  maxLog: number,
-  slot: FseTable
-): number => {
+const readFse = (input: Uint8Array, start: number, end: number, slot: FseTable): number => {
+  const maxSymbol = slot.maxSymbol
   const totalBits = (end - start) * 8
   const log = forwardBits(input, start, end, 0, 4) + 5
-  if (log > maxLog) fail("Malformed", `FSE accuracy log ${log} is larger than ${maxLog}`)
+  if (log > slot.maxLog) fail("Malformed", `FSE accuracy log ${log} is larger than ${slot.maxLog}`)
   let bit = 4
   let remaining = (1 << log) + 1
   let threshold = 1 << log
@@ -247,10 +253,12 @@ class ZstdDecoder {
   rep3 = 8
   huffman: Uint16Array | undefined = undefined
   huffmanLog = 0
-  readonly ll = new FseTable(9)
-  readonly of = new FseTable(8)
-  readonly ml = new FseTable(9)
-  readonly weightTable = new FseTable(6)
+  // The largest symbol and accuracy log each table accepts (§3.1.1.3.2.1,
+  // §4.2.1.2)
+  readonly ll = new FseTable(35, 9)
+  readonly of = new FseTable(31, 8)
+  readonly ml = new FseTable(52, 9)
+  readonly weightTable = new FseTable(11, 6)
   literals = new Uint8Array(0)
 
   constructor(input: Uint8Array, limit: number, sizeHint: number | undefined) {
@@ -351,8 +359,7 @@ class ZstdDecoder {
     }
     if (hasChecksum) {
       if (length - pos < 4) fail("Truncated", "the input ends inside a content checksum")
-      const expected = (input[pos] | (input[pos + 1] << 8) | (input[pos + 2] << 16) | (input[pos + 3] << 24)) >>> 0
-      if (xxhash64(out.buffer.subarray(this.frameStart, out.length)).low !== expected) {
+      if (xxhash64(out.buffer.subarray(this.frameStart, out.length)).low !== u32(input, pos)) {
         fail("Checksum", "content checksum mismatch")
       }
       pos += 4
@@ -360,7 +367,7 @@ class ZstdDecoder {
     return pos
   }
 
-  // §3.1.1.3
+  // Decodes the compressed block in [start, end) (§3.1.1.3)
   compressedBlock(start: number, end: number): void {
     const input = this.input
     let pos = start
@@ -407,7 +414,7 @@ class ZstdDecoder {
         literalsSize = (v >>> 4) & 0x3FF
         compressedSize = v >>> 14
       } else if (headerSize === 4) {
-        const v = (b0 | (input[pos + 1] << 8) | (input[pos + 2] << 16) | (input[pos + 3] << 24)) >>> 0
+        const v = u32(input, pos)
         literalsSize = (v >>> 4) & 0x3FFF
         compressedSize = v >>> 18
       } else {
@@ -518,36 +525,28 @@ class ZstdDecoder {
   // FSE-compressed Huffman weights (§4.2.1.2); returns the number decoded
   fseWeights(start: number, end: number): number {
     const slot = this.weightTable
-    const pos = readFse(this.input, start, end, 11, 6, slot)
+    const pos = readFse(this.input, start, end, slot)
     const table = slot.own
     const log = slot.log
     const bits = new BackwardBits(this.input, pos, end)
-    let state1 = bits.read(log)
-    let state2 = bits.read(log)
+    let state = bits.read(log)
+    let other = bits.read(log)
     // Missing bits read as zero only when a state is updated, not when the
     // states are initialized (§4.1, §4.2.1.2)
     if (bits.remaining() < 0) fail("Malformed", "the Huffman weights stream is shorter than its initial states")
     let count = 0
-    // Two interleaved states until the stream would overflow, then the
-    // other state's symbol is the last one
+    // The two states take turns until updating one would overflow the
+    // stream; the other state's symbol is then the last one
     for (;;) {
       if (count > 253) fail("Malformed", "too many Huffman weights")
-      let entry = table[state1]
+      const entry = table[state]
       weights[count++] = entry & 0xFF
-      state1 = (entry >>> 16) + bits.read((entry >>> 8) & 0xFF)
-      if (bits.remaining() < 0) {
-        weights[count++] = table[state2] & 0xFF
-        break
-      }
-      if (count > 253) fail("Malformed", "too many Huffman weights")
-      entry = table[state2]
-      weights[count++] = entry & 0xFF
-      state2 = (entry >>> 16) + bits.read((entry >>> 8) & 0xFF)
-      if (bits.remaining() < 0) {
-        weights[count++] = table[state1] & 0xFF
-        break
-      }
+      const updated = (entry >>> 16) + bits.read((entry >>> 8) & 0xFF)
+      if (bits.remaining() < 0) break
+      state = other
+      other = updated
     }
+    weights[count++] = table[other] & 0xFF
     return count
   }
 
@@ -591,8 +590,6 @@ class ZstdDecoder {
     pos: number,
     end: number,
     slot: FseTable,
-    maxSymbol: number,
-    maxLog: number,
     predefined: () => Uint32Array,
     predefinedLog: number
   ): number {
@@ -605,14 +602,14 @@ class ZstdDecoder {
       case 1: {
         if (pos >= end) fail("Malformed", "missing RLE symbol")
         const symbol = this.input[pos]
-        if (symbol > maxSymbol) fail("Malformed", `RLE symbol ${symbol} is out of range`)
+        if (symbol > slot.maxSymbol) fail("Malformed", `RLE symbol ${symbol} is out of range`)
         slot.own[0] = symbol
         slot.table = slot.own
         slot.log = 0
         return pos + 1
       }
       case 2:
-        return readFse(this.input, pos, end, maxSymbol, maxLog, slot)
+        return readFse(this.input, pos, end, slot)
       default: {
         if (slot.table === undefined) fail("Malformed", "repeat mode without a previous table")
         return pos
@@ -643,9 +640,9 @@ class ZstdDecoder {
       const modes = input[pos++]
       if (modes & 3) fail("Malformed", "reserved bits of the symbol compression modes are set")
       const ll = this.ll, of = this.of, ml = this.ml
-      pos = this.sequenceTable(modes >>> 6, pos, end, ll, 35, 9, llPredefined, 6)
-      pos = this.sequenceTable((modes >>> 4) & 3, pos, end, of, 31, 8, ofPredefined, 5)
-      pos = this.sequenceTable((modes >>> 2) & 3, pos, end, ml, 52, 9, mlPredefined, 6)
+      pos = this.sequenceTable(modes >>> 6, pos, end, ll, llPredefined, 6)
+      pos = this.sequenceTable((modes >>> 4) & 3, pos, end, of, ofPredefined, 5)
+      pos = this.sequenceTable((modes >>> 2) & 3, pos, end, ml, mlPredefined, 6)
       const llTable = ll.table!, ofTable = of.table!, mlTable = ml.table!
 
       // The bitstream reader of BackwardBits, inlined into locals for the hot
@@ -816,10 +813,6 @@ class ZstdDecoder {
   }
 }
 
-const llPredefined = (): Uint32Array => LL_PREDEFINED ??= predefined(LL_DEFAULT, 6)
-const ofPredefined = (): Uint32Array => OF_PREDEFINED ??= predefined(OF_DEFAULT, 5)
-const mlPredefined = (): Uint32Array => ML_PREDEFINED ??= predefined(ML_DEFAULT, 6)
-
 /** @internal */
 export const zstd: Decoder = (input, limit, sizeHint) => {
   const length = input.length
@@ -828,13 +821,13 @@ export const zstd: Decoder = (input, limit, sizeHint) => {
   let pos = 0
   while (pos < length) {
     if (length - pos < 4) fail("Malformed", "trailing bytes after the last frame")
-    const magic = (input[pos] | (input[pos + 1] << 8) | (input[pos + 2] << 16) | (input[pos + 3] << 24)) >>> 0
+    const magic = u32(input, pos)
     if (magic === FRAME_MAGIC) {
       pos = decoder.frame(pos + 4)
     } else if (magic >>> 4 === SKIPPABLE_MAGIC) {
       // Skippable frame (§3.1.2)
       if (length - pos < 8) fail("Truncated", "the input ends inside a skippable frame header")
-      const size = (input[pos + 4] | (input[pos + 5] << 8) | (input[pos + 6] << 16) | (input[pos + 7] << 24)) >>> 0
+      const size = u32(input, pos + 4)
       if (length - pos - 8 < size) fail("Truncated", "the input ends inside a skippable frame")
       pos += 8 + size
     } else {
