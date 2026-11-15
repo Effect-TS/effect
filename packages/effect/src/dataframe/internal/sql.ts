@@ -308,6 +308,10 @@ const round = (x: string, type: S.DataType, result: S.DataType, decimals: number
   }
 }
 
+/** The SQL aggregate for the minimum or maximum of a column of `type` (booleans have their own). */
+const extreme = (fn: "min" | "max", type: S.DataType["_tag"] | undefined): string =>
+  type === "Bool" ? (fn === "min" ? "BOOL_AND" : "BOOL_OR") : fn.toUpperCase()
+
 const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefined): string => {
   const row = scope.compiler.row
   const inner = { ...scope, partition: undefined }
@@ -324,7 +328,7 @@ const aggregate = (node: Plan.AggregateCall, scope: Scope, over: string | undefi
       return `AVG(${x})${o}`
     case "min":
     case "max": {
-      const fn = node.fn.toUpperCase()
+      const fn = extreme(node.fn, type)
       // Floats: NaN is skipped unless every value is NaN.
       return type === "Float"
         ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(x)} THEN NULL ELSE ${x} END)${o}, ${fn}(${x})${o})`
@@ -456,7 +460,7 @@ const call = (node: Plan.Call, scope: Scope): string => {
       } END)`
     case "cumMin":
     case "cumMax": {
-      const fn = node.fn === "cumMin" ? "MIN" : "MAX"
+      const fn = extreme(node.fn === "cumMin" ? "min" : "max", k[0])
       // Floats: NaN is skipped (it stays only while no other value was seen).
       const value = k[0] === "Float"
         ? `COALESCE(${fn}(CASE WHEN ${isNaNSql(a[0])} THEN NULL ELSE ${a[0]} END) ${window(scope, running)}, ${a[0]})`

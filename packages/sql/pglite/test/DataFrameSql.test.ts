@@ -70,6 +70,7 @@ const rowsOnSql = <R>(query: Query.Query<R>) => Effect.map(onSql(query), DataFra
 
 const xs = Query.from(DataFrame.fromColumns({ x: [1, 2, 3] }))
 const ints = Query.from(DataFrame.fromColumns({ x: Int32Array.of(1, 2, 3) }))
+const bools = Query.from(DataFrame.fromColumns({ b: [true, null, false, true] }))
 const none = ints.pipe(Query.filter((c) => Expr.gt(c.x, 9)))
 /** A query over a frame with exactly the given Arrow columns. */
 const arrow = <R>(fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
@@ -142,6 +143,19 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
   [
     "boolean sum aggregate",
     Query.from(DataFrame.fromColumns({ b: [true, false, true] })).pipe(Query.aggregate((c) => ({ s: Expr.sum(c.b) })))
+  ],
+  [
+    "boolean minimum and maximum",
+    bools.pipe(Query.aggregate((c) => ({ min: Expr.min(c.b), max: Expr.max(c.b) })))
+  ],
+  [
+    "boolean minimum and maximum over windows",
+    bools.pipe(Query.select((c) => ({
+      min: Expr.over(Expr.min(c.b), []),
+      max: Expr.over(Expr.max(c.b), []),
+      cumMin: Expr.cumMin(c.b),
+      cumMax: Expr.cumMax(c.b)
+    })))
   ],
   ["filters on a window function", xs.pipe(Query.filter((c) => Expr.gt(Expr.cumSum(c.x), 3)))],
   ["filters on an aggregate over the input", xs.pipe(Query.filter((c) => Expr.gt(c.x, Expr.over(Expr.mean(c.x), []))))],
