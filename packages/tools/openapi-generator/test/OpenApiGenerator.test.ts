@@ -1,6 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
 import * as Exit from "effect/Exit"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
@@ -1683,6 +1684,8 @@ export const TestClientError = <Tag extends string, E>(
 
   describe("httpapi", () => {
     const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
+    const event = (name: string) =>
+      Schema.Struct({ ...Sse.EventEncoded.fields, event: Schema.Literal(name) }).annotate({ identifier: name })
 
     itGeneratedClientsCompile(
       "round-trips buffered binary payloads and responses into compilable HttpApi declarations",
@@ -1704,6 +1707,9 @@ export const TestClientError = <Tag extends string, E>(
           HttpApiGroup.make("events").add(
             HttpApiEndpoint.get("events", "/events", {
               success: HttpApiSchema.StreamSse({ data: Schema.Struct({ count: Schema.Number }) })
+            }),
+            HttpApiEndpoint.get("namedEvents", "/named-events", {
+              success: HttpApiSchema.StreamSse({ events: Schema.Union([event("FirstEvent"), event("SecondEvent")]) })
             })
           )
         )

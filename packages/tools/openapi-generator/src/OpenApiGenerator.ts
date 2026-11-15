@@ -707,7 +707,7 @@ const parseOpenApi = (
                 effectStream: "sse",
                 schema: addSchema(
                   `${schemaId}${status}Sse`,
-                  normalizeSseEventSchema(resolveReference(mediaType.schema, resolveRef)),
+                  normalizeSseEventSchema(mediaType.schema as JsonSchema.JsonSchema, resolveRef),
                   op
                 ),
                 errorSchema: addSchema(
@@ -794,7 +794,8 @@ const parseOpenApi = (
             httpClientResponses.sseSchemaMode === "event"
               ? makeSseEventSchema(
                 resolveReference(sseResponseSchema, resolveRef),
-                effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
+                effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined,
+                resolveRef
               )
               : sseResponseSchema,
             op
@@ -1295,9 +1296,10 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
 
 const makeSseEventSchema = (
   input: JsonSchema.JsonSchema,
-  failureEvent: string | undefined
+  failureEvent: string | undefined,
+  resolveRef: (ref: string) => unknown
 ): JsonSchema.JsonSchema => {
-  const eventSchema = normalizeSseEventSchema(input)
+  const eventSchema = normalizeSseEventSchema(input, resolveRef)
   if (failureEvent === undefined) {
     return eventSchema
   }
@@ -1318,11 +1320,18 @@ const makeSseEventSchema = (
   }
 }
 
-const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-  const schema = { ...input } as Record<string, any>
+const normalizeSseEventSchema = (
+  input: JsonSchema.JsonSchema,
+  resolveRef: (ref: string) => unknown,
+  ancestors: ReadonlySet<unknown> = new Set()
+): JsonSchema.JsonSchema => {
+  const resolved = resolveReference(input, resolveRef)
+  if (ancestors.has(resolved)) return input
+  const nextAncestors = new Set(ancestors).add(resolved)
+  const schema = { ...resolved } as Record<string, any>
   for (const key of ["allOf", "anyOf", "oneOf"] as const) {
     if (Array.isArray(schema[key])) {
-      schema[key] = schema[key].map(normalizeSseEventSchema)
+      schema[key] = schema[key].map((member) => normalizeSseEventSchema(member, resolveRef, nextAncestors))
     }
   }
   if (
