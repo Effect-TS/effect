@@ -72,7 +72,7 @@ import type * as Plan from "./Plan.ts"
  * **Gotchas**
  *
  * The query doesn't check that the tables satisfy their declared columns and
- * schemas: {@link engine} runs those checks as separate queries first.
+ * schemas: {@link engine} runs a query with those checks instead.
  *
  * @stability experimental
  * @category models
@@ -119,18 +119,29 @@ const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
  * **Details**
  *
  * Tables must satisfy their declared columns and schemas, as with the
- * in-memory engine: before the query, the engine queries every table of the
- * plan for nulls in its non-nullable columns and for the distinct values of
- * the columns its schema constrains beyond their type (literals, enums,
- * refinements), tests those values with the schema, and fails if the table
- * breaks either. Columns the query doesn't read are checked too. `explain`
- * shows these queries before the query itself.
+ * in-memory engine, or the query fails. First the engine queries the
+ * PostgreSQL types of the declared columns: `smallint` or `integer` for
+ * integers up to 32 bits, `bigint` for 64-bit ones, `smallint`,
+ * `integer`, `real` or `double precision` for floats, string or enum
+ * types for strings, `bytea`, `boolean`, `date`, `timestamp` or
+ * `timestamptz` (read as UTC), `interval`, and any type for `Null`
+ * columns. Then one
+ * query checks the rows and computes the result from the same rows: only
+ * nulls in `Null` columns, no nulls in other non-nullable columns,
+ * timestamps in the range of `DateTime`, intervals without months, and the
+ * distinct values of the columns the schema constrains beyond their type
+ * (literals, enums, refinements) accepted by the schema. Columns the query
+ * doesn't read are checked too. `explain` shows both queries.
  *
  * **Gotchas**
  *
- * The checks and the query are separate statements: rows written between
- * them are not checked. Run the query inside a `REPEATABLE READ`
- * transaction when the tables may change concurrently.
+ * The row checks and the result read the same rows: they are one
+ * statement, so they read one snapshot, and a view that calls volatile
+ * functions (`nextval`, `random`) is computed once for both. Functions
+ * that give different results within a statement without being declared
+ * volatile are not supported. The column types are checked in a separate
+ * statement first: run both inside a `REPEATABLE READ` transaction when
+ * the tables may be altered concurrently.
  *
  * @stability experimental
  * @category engines
@@ -143,13 +154,14 @@ export const engine: Effect.Effect<Engine.Service, never, SqlClient> = Effect.ge
   const collect = (plan: Plan.Node): Effect.Effect<DataFrame<unknown>, DataFrameError> =>
     Effect.gen(function*() {
       const query = yield* compiled(plan)
-      for (const check of query.checks) {
-        const rows = yield* run(check.sql)
-        yield* Effect.fromResult(attempt(() => check.verify(rows)))
+      if (query.types !== undefined) {
+        const types = query.types
+        const rows = yield* run(types.sql)
+        yield* Effect.fromResult(attempt(() => internal.verify(types, rows)))
       }
-      const rows = yield* run(query.sql)
+      const rows = yield* run(query.query.sql)
       return yield* Effect.try({
-        try: () => internal.decode(query.schema, rows) as unknown as DataFrame<unknown>,
+        try: () => internal.read(query, rows) as unknown as DataFrame<unknown>,
         catch: toError
       })
     })
@@ -157,14 +169,15 @@ export const engine: Effect.Effect<Engine.Service, never, SqlClient> = Effect.ge
     name: "sql (postgres)",
     collect,
     stream: (plan) => Stream.fromEffect(collect(plan)),
-    explain: (plan) => Effect.map(compiled(plan), (c) => [...c.checks.map((check) => check.sql), c.sql].join(";\n"))
+    explain: (plan) =>
+      Effect.map(compiled(plan), (c) => [...(c.types === undefined ? [] : [c.types.sql]), c.query.sql].join(";\n"))
   } satisfies Engine.Service
 })
 
 /**
  * A layer that runs queries on the database of the `SqlClient` in the
  * context, with {@link engine} (tables are checked against their schemas
- * first).
+ * as they are read).
  *
  * @stability experimental
  * @category layers

@@ -41,6 +41,8 @@ interface Compiler {
   readonly hidden: (name: string) => string
   /** The quoted row key. */
   readonly row: string
+  /** The quoted name of each table's source (see {@link source}). */
+  readonly sources: ReadonlyMap<Plan.Node, string>
 }
 
 /** @internal */
@@ -91,23 +93,54 @@ const sqlType = (t: S.DataType): string => {
   }
 }
 
-/** The type the SQL engine reads a declared table column as. */
-const tableType = (table: string, column: Plan.TableColumn): S.DataType => {
-  switch (column.type) {
-    case "Timestamp":
-      return S.timestamp("microsecond")
-    case "Duration":
-      return S.duration("microsecond")
-    case "Binary":
-      return S.binary
-    case "Null":
-      return S.nullType
-    default:
-      return D.castTargets[column.type] ?? unsupported(
-        `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
-      )
-  }
+const smallIntegers = ["smallint", "integer"]
+
+/**
+ * How the SQL engine reads declared table columns of each type: as values
+ * of `type`, from columns of the PostgreSQL types `accepts` or of the type
+ * categories `categories` (as the in-memory engine accepts integers below
+ * 64 bits for floats and narrower integers), or of any type for `Null`.
+ * `undefined` for column types it doesn't read yet.
+ */
+const tableTypes: {
+  readonly [K in Plan.TypeName]:
+    | {
+      readonly type: S.DataType
+      readonly accepts?: ReadonlyArray<string>
+      readonly categories?: ReadonlyArray<string>
+    }
+    | undefined
+} = {
+  Int8: { type: S.int8, accepts: smallIntegers },
+  Int16: { type: S.int16, accepts: smallIntegers },
+  Int32: { type: S.int32, accepts: smallIntegers },
+  Int64: { type: S.int64, accepts: ["bigint"] },
+  UInt8: { type: S.uint8, accepts: smallIntegers },
+  UInt16: { type: S.uint16, accepts: smallIntegers },
+  UInt32: { type: S.uint32, accepts: smallIntegers },
+  UInt64: { type: S.uint64, accepts: ["bigint"] },
+  Float16: undefined,
+  Float32: { type: S.float32, accepts: [...smallIntegers, "real", "double precision"] },
+  Float64: { type: S.float64, accepts: [...smallIntegers, "real", "double precision"] },
+  // String types and enums.
+  Utf8: { type: S.utf8, categories: ["S", "E"] },
+  Binary: { type: S.binary, accepts: ["bytea"] },
+  Bool: { type: S.bool, accepts: ["boolean"] },
+  Null: { type: S.nullType },
+  Date: { type: S.date("day"), accepts: ["date"] },
+  Time: undefined,
+  Timestamp: { type: S.timestamp("microsecond"), accepts: ["timestamp without time zone", "timestamp with time zone"] },
+  Duration: { type: S.duration("microsecond"), accepts: ["interval"] },
+  Decimal: undefined,
+  List: undefined,
+  Struct: undefined
 }
+
+/** How the SQL engine reads a declared table column (see {@link tableTypes}). */
+const tableType = (table: string, column: Plan.TableColumn) =>
+  tableTypes[column.type] ?? unsupported(
+    `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
+  )
 
 const string = (s: string): string => `'${s.replaceAll("'", "''")}'`
 
@@ -627,7 +660,7 @@ const typed = (node: Plan.Node, frames: Map<Plan.Node, F.Frame>): F.Frame => {
     )
     frame = F.fromVectors(
       columns.map((c) => c.name),
-      columns.map((c) => K.nullsOf(tableType(node.name, c), 0)),
+      columns.map((c) => K.nullsOf(tableType(node.name, c).type, 0)),
       0
     )
   } else if (node._tag === "Values") {
@@ -726,7 +759,9 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     } FROM (${input}) AS t`
   switch (node._tag) {
     case "Table":
-      return `SELECT ${[...columns.map(quote), `ROW_NUMBER() OVER () AS ${row}`].join(", ")} FROM ${quote(node.name)}`
+      return `SELECT ${[...columns.map(quote), `ROW_NUMBER() OVER () AS ${row}`].join(", ")} FROM ${
+        c.sources.get(node)
+      }`
     case "Values":
       return values(node.frame as unknown as F.Frame, c)
     case "Filter": {
@@ -924,65 +959,142 @@ const reader = (type: S.DataType): (value: unknown) => unknown => {
 }
 
 // -----------------------------------------------------------------------------
-// Table checks
+// Tables
 // -----------------------------------------------------------------------------
 
 /**
- * A query over a table, and a test of its rows that fails when the table
- * breaks its declared columns or schema.
- *
- * @internal
+ * A check of a table: one SQL value, and a test of it that fails when the
+ * table breaks its declaration.
  */
-export interface Check {
+interface Check {
   readonly sql: string
-  readonly verify: (rows: ReadonlyArray<ReadonlyArray<unknown>>) => void
+  readonly verify: (value: unknown) => void
 }
 
 /**
- * The checks of a table that its result's casts to the column types don't
- * make: no nulls in non-nullable columns, and the values of fields its schema
- * constrains (literals, enums, refinements) accepted by the schema, tested
- * on each such column's distinct values.
+ * The checks of a table's declared column types that don't read its rows:
+ * each value is the PostgreSQL type of a column the engine doesn't read as
+ * declared, or null.
  */
-const tableChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => {
-  const from = quote(table.name)
-  const checks: Array<Check> = []
-  const required = (table.columns ?? []).filter((c) => !c.nullable)
-  if (required.length > 0) {
-    const read = reader(S.bool)
-    checks.push({
-      sql: `SELECT ${
-        required.map((c) => output(`EXISTS (SELECT 1 FROM ${from} WHERE ${quote(c.name)} IS NULL)`, S.bool)).join(", ")
-      }`,
-      verify: (rows) => {
-        const missing = required.find((_, i) => read(rows[0][i]))
-        if (missing !== undefined) V.fail(`column ${JSON.stringify(missing.name)} has missing values`)
+const typeChecks = (table: Plan.Table): Array<Check> =>
+  (table.columns ?? []).flatMap((column): Array<Check> => {
+    if (column.type === "Null") return []
+    const { accepts = [], categories = [] } = tableType(table.name, column)
+    const accepted = [
+      ...(accepts.length === 0 ? [] : [`format_type(oid, NULL) IN (${accepts.map(string).join(", ")})`]),
+      ...(categories.length === 0 ? [] : [`typcategory IN (${categories.map(string).join(", ")})`])
+    ]
+    return [{
+      sql: `(SELECT CASE WHEN ${
+        accepted.join(" OR ")
+      } THEN NULL ELSE format_type(oid, NULL) END FROM pg_type WHERE oid = pg_typeof((SELECT ${
+        quote(column.name)
+      } FROM ${quote(table.name)} LIMIT 0)))`,
+      verify: (actual) => {
+        if (actual !== null) V.fail(`column ${JSON.stringify(column.name)} is ${actual}, expected ${column.type}`)
+      }
+    }]
+  })
+
+/**
+ * The checks of a table's rows, the ones the in-memory engine makes beyond
+ * column types: only nulls in `Null` columns, no nulls in other columns
+ * unless they are nullable, timestamps in the range of `DateTime`,
+ * durations of fixed length (no months), and the values of the fields its
+ * schema constrains beyond their column type (literals, enums, refinements)
+ * accepted by the schema, tested on each such column's distinct values.
+ * Each value aggregates the rows of the table's source.
+ */
+const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
+  ...(table.columns ?? []).flatMap((column) => {
+    const x = quote(column.name)
+    const path = JSON.stringify(column.name)
+    const any = (failed: string, message: string): Check => ({
+      sql: `BOOL_OR(${failed})`,
+      verify: (value) => {
+        if (value === true) V.fail(`column ${path} ${message}`)
       }
     })
-  }
-  for (const [name, test] of table.schema === undefined ? [] : Schema_.valueChecks(table.schema)) {
+    const checks: Array<Check> = []
+    if (column.type === "Null") checks.push(any(`${x} IS NOT NULL`, "has values, expected Null"))
+    else if (!column.nullable) checks.push(any(`${x} IS NULL`, "has missing values"))
+    if (column.type === "Timestamp") {
+      checks.push(any(
+        `EXTRACT(EPOCH FROM ${x}) NOT BETWEEN -8640000000000 AND 8640000000000.000999`,
+        "has timestamps outside the range of DateTime"
+      ))
+    }
+    if (column.type === "Duration") {
+      checks.push(any(
+        `EXTRACT(YEAR FROM ${x}) <> 0 OR EXTRACT(MONTH FROM ${x}) <> 0`,
+        "has durations in months, which have no fixed length"
+      ))
+    }
+    return checks
+  }),
+  ...(table.schema === undefined ? [] : Schema_.valueChecks(table.schema)).map(([name, test]): Check => {
     const type = frame.columns.find((c) => c.name === name)!.type
-    checks.push({
-      sql: `SELECT DISTINCT ${output(quote(name), type)} FROM ${from}`,
-      verify: (rows) => {
+    return {
+      sql: `ARRAY_AGG(DISTINCT ${output(quote(name), type)})`,
+      verify: (values) => {
+        const rows = ((values ?? []) as ReadonlyArray<unknown>).map((v) => [v])
         if (!F.toArray(decode(S.make([S.field(name, type, { nullable: true })]), rows), name).every(test)) {
           V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
         }
       }
-    })
-  }
-  return checks
+    }
+  })
+]
+
+const utc = S.timestamp("microsecond")
+
+/**
+ * The source a table is read through: its declared columns, timestamps as
+ * UTC timestamps without a time zone (as the engine reads them, whatever the
+ * session's time zone). The checks and the result read it in the same
+ * statement, so the same snapshot: sources the checks read too are inlined
+ * (`NOT MATERIALIZED`, as cheap as reading the table twice), unless they
+ * call volatile functions, which PostgreSQL computes once for both instead.
+ */
+const source = (table: Plan.Table, checked: boolean): string => {
+  const columns = (table.columns ?? []).map((column) =>
+    column.type === "Timestamp"
+      ? `${fromInteger(toInteger(quote(column.name), utc), utc)} AS ${quote(column.name)}`
+      : quote(column.name)
+  )
+  return `${checked ? "NOT MATERIALIZED " : ""}(SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM ${
+    quote(table.name)
+  })`
+}
+
+/** One SQL query whose first row holds the values of checks. */
+interface Checked {
+  readonly sql: string
+  readonly checks: ReadonlyArray<(value: unknown) => void>
 }
 
 /** @internal */
 export interface Compiled {
+  /** The query without the checks: the result's rows in the plan's row order. */
   readonly sql: string
+  /**
+   * The checks of the column types of the plan's tables, to run first (the
+   * query doesn't compile against tables of other column types), when the
+   * plan reads tables.
+   */
+  readonly types: Checked | undefined
+  /**
+   * The query: a row of the checks of its tables' rows first, when there
+   * are some, then the result's rows in the plan's row order.
+   */
+  readonly query: Checked
   readonly schema: S.Schema
-  /** The checks of the plan's tables, to run before the query. */
-  readonly checks: ReadonlyArray<Check>
 }
 
-/** A plan as one SQL query, its rows in the plan's row order, and the checks of its tables. @internal */
+/**
+ * A plan as SQL: the query, a query of its tables' column types, and the
+ * query with the checks of their rows. @internal
+ */
 export const compile = (plan: Plan.Node): Compiled => {
   const frames = new Map<Plan.Node, F.Frame>()
   const result = typed(plan, frames)
@@ -991,18 +1103,78 @@ export const compile = (plan: Plan.Node): Compiled => {
   let prefix = "__"
   while ([...used].some((name) => name.startsWith(prefix))) prefix += "_"
   const hidden = (name: string) => quote(prefix + name)
-  const compiler: Compiler = { frames, hidden, row: hidden("row") }
+  const tables = [...frames].flatMap(([node, frame], i) =>
+    node._tag === "Table" ? [{ node, name: hidden(`table${i}`), checks: rowChecks(node, frame) }] : []
+  )
+  const compiler: Compiler = {
+    frames,
+    hidden,
+    row: hidden("row"),
+    sources: new Map(tables.map((t) => [t.node, t.name]))
+  }
   const sql = relation(plan, compiler)
+  const schema = S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
   const columns = result.columns.map((col) => `${output(quote(col.name), col.type)} AS ${quote(col.name)}`)
+  const ctes = (checked: boolean) =>
+    tables.length === 0
+      ? ""
+      : `WITH ${tables.map((t) => `${t.name} AS ${source(t.node, checked && t.checks.length > 0)}`).join(", ")} `
+  const body = `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`
+  const columnTypes = tables.flatMap((t) => typeChecks(t.node))
+  const types = columnTypes.length === 0 ? undefined : {
+    sql: `SELECT ${columnTypes.map((check) => check.sql).join(", ")}`,
+    checks: columnTypes.map((check) => check.verify)
+  }
+  const checked = tables.filter((t) => t.checks.length > 0)
+  if (checked.length === 0) {
+    return { sql: ctes(false) + body, types, query: { sql: ctes(false) + body, checks: [] }, schema }
+  }
+  const names: Array<string> = []
+  const header = checked.map((t, i) =>
+    `(SELECT ${
+      t.checks.map((check) => {
+        names.push(hidden(`check${names.length}`))
+        return `${check.sql} AS ${names[names.length - 1]}`
+      }).join(", ")
+    } FROM ${t.name}) AS ${hidden(`checks${i}`)}`
+  )
+  const rows = `(SELECT ${[...columns, compiler.row].join(", ")} FROM (${sql}) AS t) AS r`
   return {
-    sql: `SELECT ${columns.length === 0 ? "1" : columns.join(", ")} FROM (${sql}) AS t ORDER BY ${compiler.row}`,
-    schema: S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true }))),
-    checks: [...frames].flatMap(([node, frame]) => node._tag === "Table" ? tableChecks(node, frame) : [])
+    sql: ctes(false) + body,
+    types,
+    query: {
+      sql: `${ctes(true)}SELECT ${[...names, ...result.columns.map((col) => `r.${quote(col.name)}`)].join(", ")} FROM ${
+        header.join(" CROSS JOIN ")
+      } FULL JOIN ${rows} ON FALSE ORDER BY r.${compiler.row} NULLS FIRST`,
+      checks: checked.flatMap((t) => t.checks.map((check) => check.verify))
+    },
+    schema
   }
 }
 
-/** The rows of a compiled query's result, one array of values per row, as a frame. @internal */
-export const decode = (schema: S.Schema, rows: ReadonlyArray<ReadonlyArray<unknown>>): F.Frame =>
+/**
+ * Tests the checks in the first row of a checked query's result, failing
+ * when a table breaks its declaration, and returns the other rows without
+ * the checks.
+ *
+ * @internal
+ */
+export const verify = (
+  checked: Checked,
+  rows: ReadonlyArray<ReadonlyArray<unknown>>
+): ReadonlyArray<ReadonlyArray<unknown>> => {
+  const k = checked.checks.length
+  if (k === 0) return rows
+  checked.checks.forEach((test, i) => test(rows[0][i]))
+  return rows.slice(1).map((row) => row.slice(k))
+}
+
+/** The result rows of a compiled query, after its checks (see {@link verify}), as a frame. @internal */
+export const read = (compiled: Compiled, rows: ReadonlyArray<ReadonlyArray<unknown>>): F.Frame =>
+  decode(compiled.schema, verify(compiled.query, rows))
+
+/** The rows of a result, one array of values per row, as a frame of `schema`. */
+const decode = (schema: S.Schema, rows: ReadonlyArray<ReadonlyArray<unknown>>): F.Frame =>
   F.make(
     schema.fields.map((f, i) => {
       const read = reader(f.type)

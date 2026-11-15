@@ -47,6 +47,9 @@ const Setup = Layer.effectDiscard(
     for (const r of regions) yield* sql`INSERT INTO regions VALUES (${r.region}, ${r.manager})`
     yield* sql`CREATE TABLE contract (s TEXT, n DOUBLE PRECISION)`
     yield* sql`INSERT INTO contract VALUES ('bad', NULL), ('good', 1)`
+    yield* sql`DROP TABLE IF EXISTS odd`
+    yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL)`
+    yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month')`
   })
 )
 
@@ -405,6 +408,62 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           yield* rowsOnSql(contract(Schema.Struct({ s: Schema.Literals(["bad", "good"]) }))),
           [{ s: "bad" }, { s: "good" }]
         )
+        const odd = <S extends Schema.Top & { readonly Type: object }>(schema: S) => Query.table("odd", schema)
+        for (
+          const [query, message] of [
+            [odd(Schema.Struct({ nil: Schema.Null })), `column "nil" has values, expected Null`],
+            [contract(Schema.Struct({ s: Schema.NullOr(Schema.Number) })), `column "s" is text, expected Float64`],
+            [
+              contract(Schema.Struct({ n: Schema.NullOr(Schema.BigInt) })),
+              `column "n" is double precision, expected Int64`
+            ],
+            [
+              odd(Schema.Struct({ far: Schema.NullOr(Schema.DateTimeUtc) })),
+              `column "far" has timestamps outside the range of DateTime`
+            ],
+            [
+              odd(Schema.Struct({ months: Schema.Duration })),
+              `column "months" has durations in months, which have no fixed length`
+            ]
+          ] as const
+        ) {
+          assert.strictEqual(yield* rejects(query), message)
+        }
+        assert.deepStrictEqual(yield* rowsOnSql(odd(Schema.Struct({ nothing: Schema.Null }))), [{ nothing: null }])
+      }))
+
+    it.effect("tables are checked on the rows the query reads, even of volatile views", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient
+        yield* sql`CREATE SEQUENCE seq START 1`
+        yield* sql`CREATE VIEW fluctuating AS SELECT CASE WHEN nextval('seq') <= 2 THEN 'good' ELSE 'bad' END AS s`
+        const query = Query.table("fluctuating", Schema.Struct({ s: Schema.Literal("good") }))
+        const read = sql.withTransaction(
+          Effect.andThen(sql`SET TRANSACTION ISOLATION LEVEL REPEATABLE READ`, Effect.result(rowsOnSql(query)))
+        )
+        const results = [yield* read, yield* read, yield* read]
+        assert.deepStrictEqual(results.map((r) => Result.isSuccess(r) ? r.success : r.failure.message), [
+          [{ s: "good" }],
+          [{ s: "good" }],
+          `column "s" has values its schema rejects`
+        ])
+      }))
+
+    it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient
+        const query = Query.table("odd", Schema.Struct({ at: Schema.DateTimeUtc })).pipe(
+          Query.select((c) => ({
+            at: c.at,
+            hour: Expr.hour(c.at),
+            early: Expr.lt(c.at, Expr.lit(DateTime.makeUnsafe("2024-01-01T00:45:00Z")))
+          }))
+        )
+        const rows = yield* sql`SET TIME ZONE 'Europe/Berlin'`.pipe(
+          Effect.andThen(rowsOnSql(query)),
+          Effect.ensuring(Effect.orDie(sql`RESET TIME ZONE`))
+        )
+        assert.deepStrictEqual(rows, [{ at: DateTime.makeUnsafe("2024-01-01T00:30:00Z"), hour: 0, early: true }])
       }))
 
     it.effect("filters, derives and sorts", () =>
