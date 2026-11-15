@@ -10,6 +10,7 @@ import * as Duration from "../../Duration.ts"
 import { pipeArguments } from "../../Pipeable.ts"
 import type * as Plan from "../Plan.ts"
 import * as Agg from "./aggregate.ts"
+import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
 import * as K from "./kernels.ts"
@@ -159,8 +160,10 @@ const literalOfType = (value: unknown, type: Plan.LiteralType): K.Value => {
       return K.scalar(V.i64(S.timestamp(type.unit, type.timezone), BigInt64Array.of(big)))
     case "Duration":
       return K.scalar(V.i64(S.duration(type.unit), BigInt64Array.of(big)))
-    case "Decimal":
-      return K.scalar(V.i64(S.decimal(type.precision, type.scale), BigInt64Array.of(big)))
+    case "Decimal": {
+      const unscaled = BigInt64Array.of(Dec.checked(big))
+      return K.scalar(V.i64(S.decimal(type.precision, type.scale), unscaled))
+    }
   }
 }
 

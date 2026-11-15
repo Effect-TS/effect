@@ -150,20 +150,26 @@ const sum = (v: V.Vector, g: Grouping): V.Vector => {
       for (let i = 0; i < n; i++) if (V.isValid(v, i)) acc[ids[i]] += x[i]
       return V.f64(S.uint32, acc)
     }
-    case "i64": {
-      const x = v.values
-      const acc = new Array<bigint>(groups).fill(I0)
-      const valid = v.valid
-      for (let i = 0; i < n; i++) if (valid === undefined || valid[i] === 1) acc[ids[i]] += x[i]
-      const out = new BigInt64Array(groups)
-      const fit = Dec.isDecimal(type) ? Dec.checked : (x: bigint) => BigInt.asIntN(64, x)
-      for (let k = 0; k < groups; k++) out[k] = fit(acc[k])
-      return V.i64(type, out)
-    }
+    case "i64":
+      return fromSums(type, exactSums(v, g))
     default:
       return V.fail(`sum is not defined for ${D.describe(v.type)}`)
   }
 }
+
+/** Per-group sums of 64-bit integers or decimals, exact (unbounded). @internal */
+export const exactSums = (v: V.I64, g: Grouping): Array<bigint> => {
+  const x = v.values
+  const ids = g.ids
+  const acc = new Array<bigint>(g.count).fill(I0)
+  const valid = v.valid
+  for (let i = 0; i < ids.length; i++) if (valid === undefined || valid[i] === 1) acc[ids[i]] += x[i]
+  return acc
+}
+
+/** Exact sums as a column of `type`, stored as `Dec.fit` says. @internal */
+export const fromSums = (type: S.DataType, sums: ReadonlyArray<bigint>): V.Vector =>
+  V.i64(type, BigInt64Array.from(sums, Dec.fit(type)))
 
 /** Every value as a float, with validity. */
 const asFloat = (v: V.Vector): { readonly x: Float64Array; readonly valid: Uint8Array | undefined } => {

@@ -585,8 +585,9 @@ export const unaryNumeric = (op: "neg" | "abs" | "sqrt" | "round", a: Value, dec
     case "i64": {
       const x = v.values
       const o = new BigInt64Array(n)
-      if (op === "neg") { for (let i = 0; i < n; i++) o[i] = BigInt.asIntN(64, -x[i]) }
-      else if (op === "abs") { for (let i = 0; i < n; i++) o[i] = BigInt.asIntN(64, x[i] < I0 ? -x[i] : x[i]) }
+      const fit = Dec.fit(v.type)
+      if (op === "neg") { for (let i = 0; i < n; i++) o[i] = fit(-x[i]) }
+      else if (op === "abs") { for (let i = 0; i < n; i++) o[i] = fit(x[i] < I0 ? -x[i] : x[i]) }
       else o.set(x)
       return { vector: V.i64(v.type, o, v.valid), scalar: a.scalar, dynamic: a.dynamic }
     }

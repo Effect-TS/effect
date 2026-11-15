@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Result, Schema, Stream } from "effect"
+import { BigDecimal, Effect, Exit, Result, Schema, Stream } from "effect"
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Plan, Query } from "effect/dataframe"
 import * as Compare from "./oracle/Compare.ts"
@@ -97,27 +97,29 @@ describe("Query", () => {
         assert.strictEqual(error.message, "filter predicate must be boolean, got Utf8")
       }))
 
-    it.effect("decimal sums fail instead of overflowing 64 bits", () =>
+    it.effect("decimal results fail instead of overflowing 64 bits", () =>
       Effect.gen(function*() {
         const nines = (rows: number) =>
           DataFrame.fromColumns({ s: Array.from({ length: rows }, () => "999999999999999999") })
-        const d = (c: Query.Columns<{ readonly s: string }>) => Expr.castDecimal(c.s, 18, 0)
-        const overflow = (query: Effect.Effect<unknown, DataFrame.DataFrameError>) =>
-          Effect.map(Effect.flip(query), (error) => error.message)
+        const d = (c: Query.Columns<{ readonly s: string }>) => Expr.castDecimal(c.s, 19, 0)
         const ten = Query.from(nines(10))
-        assert.strictEqual(
-          yield* overflow(Query.aggregate(ten, (c) => ({ total: Expr.sum(d(c)) }))),
-          "decimal value overflows 64 bits"
-        )
-        assert.strictEqual(
-          yield* overflow(Query.select(ten, (c) => ({ running: Expr.cumSum(d(c)) }))),
-          "decimal value overflows 64 bits"
-        )
+        const min = Query.from(DataFrame.fromColumns({ s: ["-9223372036854775808"] }))
         const streamed = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
           Query.aggregate((c) => ({ total: Expr.sum(Expr.castDecimal(c.s as Expr.Expr<string>, 18, 0)) })),
           Effect.provide(Catalog.layer({ t: Stream.make(nines(5), nines(5)) }))
         )
-        assert.strictEqual(yield* overflow(streamed), "decimal value overflows 64 bits")
+        const queries: ReadonlyArray<Effect.Effect<unknown, DataFrame.DataFrameError>> = [
+          Query.aggregate(ten, (c) => ({ total: Expr.sum(d(c)) })),
+          Query.select(ten, (c) => ({ running: Expr.cumSum(d(c)) })),
+          Query.select(ten, (c) => ({ rolling: Expr.rollingSum(d(c), 10) })),
+          Query.select(min, (c) => ({ abs: Expr.abs(d(c)) })),
+          Query.select(min, (c) => ({ negated: Expr.negate(d(c)) })),
+          Query.select(min, () => ({ literal: Expr.lit(BigDecimal.fromBigInt(10n ** 20n)) })),
+          streamed
+        ]
+        for (const query of queries) {
+          assert.strictEqual((yield* Effect.flip(query)).message, "decimal value overflows 64 bits")
+        }
       }))
 
     it.effect("round rejects negative or fractional places", () =>
@@ -175,6 +177,15 @@ describe("Query", () => {
           { i: null, s: "30000000000" },
           { i: null, s: "NaN" }
         ])
+        const decimals = DataFrame.fromColumns({ f: [1e308], u: BigUint64Array.of(2n ** 64n - 1n), d: ["-1.5"] })
+        const casts = yield* rows(
+          Query.from(decimals).pipe(Query.select((c) => ({
+            fromFloat: Expr.castDecimal(c.f, 18, 18),
+            fromUInt64: Expr.castDecimal(c.u, 20, 0),
+            toUInt64: Expr.cast(Expr.castDecimal(c.d, 2, 1), "UInt64")
+          })))
+        )
+        assert.deepStrictEqual(casts, [{ fromFloat: null, fromUInt64: null, toUInt64: null }])
       }))
   })
 

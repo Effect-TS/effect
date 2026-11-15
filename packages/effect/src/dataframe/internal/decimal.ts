@@ -1,8 +1,10 @@
 /**
  * Decimals: unscaled 64-bit integers with a scale (`value / 10^scale`), so
  * up to 18 significant digits. Arithmetic follows Polars' result types
- * (precision 38, scales added for products, the larger scale for sums);
- * arithmetic, sums and running sums fail instead of overflowing 64 bits. Rescaling down rounds half to even.
+ * (precision 38, scales added for products, the larger scale for sums).
+ * Every computed decimal is stored through `checked` (or `fit`), so a
+ * value outside 64 bits fails instead of wrapping; casts make such values
+ * null instead. Rescaling down rounds half to even.
  *
  * @internal
  */
@@ -39,8 +41,20 @@ export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined 
   return undefined
 }
 
+const inRange = (x: bigint): boolean => x <= MAX && x >= MIN
+
 /** `x`, or a failure when it overflows 64-bit decimal storage. @internal */
-export const checked = (x: bigint): bigint => (x > MAX || x < MIN ? V.fail("decimal value overflows 64 bits") : x)
+export const checked = (x: bigint): bigint => (inRange(x) ? x : V.fail("decimal value overflows 64 bits"))
+
+const wrap = (x: bigint): bigint => BigInt.asIntN(64, x)
+
+/**
+ * How an exact result of `type` is stored in 64 bits: decimals are
+ * `checked`, 64-bit integers wrap.
+ *
+ * @internal
+ */
+export const fit = (type: S.DataType): (x: bigint) => bigint => isDecimal(type) ? checked : wrap
 
 /** Rounds `x / 10^k` half to even (`BigDecimal.round`). */
 const divRound = (x: bigint, k: number): bigint =>
@@ -68,7 +82,7 @@ export const parse = (s: string, scale: number): bigint | undefined => {
 
 const digitsOf = (x: bigint): number => (x < BigInt(0) ? -x : x).toString().length
 
-const fits = (x: bigint, t: S.Decimal): boolean => x <= MAX && x >= MIN && digitsOf(x) <= t.precision
+const fits = (x: bigint, t: S.Decimal): boolean => inRange(x) && digitsOf(x) <= t.precision
 
 /**
  * Casts to and from decimals; `undefined` when neither side is a decimal.
@@ -92,23 +106,24 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
     for (let i = 0; i < n; i++) {
       if (!V.isValid(v, i)) continue
       switch (v.kind) {
-        case "i64":
+        case "i64": {
+          const x = V.isUnsigned64(from) ? BigInt.asUintN(64, v.values[i]) : v.values[i]
           put(
             i,
             isDecimal(from)
               ? from.scale >= target.scale
-                ? divRound(v.values[i], from.scale - target.scale)
-                : v.values[i] * pow10(target.scale - from.scale)
-              : v.values[i] * pow10(target.scale)
+                ? divRound(x, from.scale - target.scale)
+                : x * pow10(target.scale - from.scale)
+              : x * pow10(target.scale)
           )
           break
+        }
         case "i32":
           put(i, BigInt(v.values[i]) * pow10(target.scale))
           break
         case "f64": {
-          const x = v.values[i]
-          if (Number.isFinite(x)) {
-            const scaled = x * 10 ** target.scale
+          const scaled = v.values[i] * 10 ** target.scale
+          if (Number.isFinite(scaled)) {
             const floor = Math.floor(scaled)
             const rest = scaled - floor
             put(i, BigInt(rest > 0.5 || (rest === 0.5 && floor % 2 !== 0) ? floor + 1 : floor))
@@ -136,7 +151,15 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
     }
     case "Int": {
       if (target.bitWidth === 64) {
-        return V.i64(target, BigInt64Array.from(v.values, (x) => x / scale), v.valid)
+        const out = new BigInt64Array(n)
+        for (let i = 0; i < n; i++) {
+          const x = v.values[i] / scale
+          if (V.isValid(v, i) && (target.signed || x >= BigInt(0))) {
+            out[i] = x
+            valid[i] = 1
+          }
+        }
+        return V.i64(target, out, valid)
       }
       const lo = target.signed ? -(2 ** (target.bitWidth - 1)) : 0
       const hi = target.signed ? 2 ** (target.bitWidth - 1) - 1 : 2 ** target.bitWidth - 1

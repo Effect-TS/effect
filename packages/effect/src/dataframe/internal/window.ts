@@ -79,7 +79,7 @@ export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
       const x = v.values
       const acc = new BigInt64Array(p.count)
       const out = new BigInt64Array(n)
-      const fit = Dec.isDecimal(type) ? Dec.checked : (x: bigint) => BigInt.asIntN(64, x)
+      const fit = Dec.fit(type)
       for (let i = 0; i < n; i++) {
         if (valid === undefined || valid[i] === 1) out[i] = acc[ids[i]] = fit(acc[ids[i]] + x[i])
       }
@@ -253,59 +253,77 @@ export const rolling = (
 ): V.Vector => {
   const n = v.length
   const { rows, starts } = rowsByPartition(p)
+  /** Calls `f` with each row and the window `rows[first..last]` ending at it. */
+  const windows = (f: (row: number, first: number, last: number) => void) => {
+    for (let g = 0; g < p.count; g++) {
+      for (let j = starts[g]; j < starts[g + 1]; j++) f(rows[j], Math.max(starts[g], j - window + 1), j)
+    }
+  }
   const ok = new Uint8Array(n)
   if (fn === "rollingMin" || fn === "rollingMax") {
     const order = rowOrder(v)
     const sign = fn === "rollingMin" ? -1 : 1
     const idx = new Int32Array(n).fill(-1)
-    for (let g = 0; g < p.count; g++) {
-      for (let j = starts[g]; j < starts[g + 1]; j++) {
-        let best = -1
-        let count = 0
-        for (let k = Math.max(starts[g], j - window + 1); k <= j; k++) {
-          const r = rows[k]
-          if (!V.isValid(v, r)) continue
-          count++
-          if (best >= 0 && isNaNAt(v, best)) continue
-          if (isNaNAt(v, r) || best < 0 || order(r, best) * sign > 0) best = r
-        }
-        if (count >= minPeriods) idx[rows[j]] = best
+    windows((row, first, last) => {
+      let best = -1
+      let count = 0
+      for (let k = first; k <= last; k++) {
+        const r = rows[k]
+        if (!V.isValid(v, r)) continue
+        count++
+        if (best >= 0 && isNaNAt(v, best)) continue
+        if (isNaNAt(v, r) || best < 0 || order(r, best) * sign > 0) best = r
       }
-    }
+      if (count >= minPeriods) idx[row] = best
+    })
     return V.take(v, idx)
   }
   if (v.kind === "str" || v.kind === "null" || v.kind === "list" || v.kind === "struct") {
     return V.fail(`${fn} is not defined for ${D.describe(v.type)}`)
   }
-  const x = v.kind === "i64"
-    ? Float64Array.from(v.values, Number)
-    : v.kind === "f64"
-    ? v.values
-    : Float64Array.from(v.values as Int32Array | Uint8Array)
-  const out = new Float64Array(n)
-  for (let g = 0; g < p.count; g++) {
-    for (let j = starts[g]; j < starts[g + 1]; j++) {
-      let sum = 0
+  const type = fn === "rollingMean" ? D.meanType(v.type) : D.sumType(v.type)
+  if (v.kind === "i64") {
+    // Exact sums: 64-bit integers wrap and decimals fail outside 64 bits.
+    const fit = Dec.fit(type)
+    const unit = Dec.isDecimal(v.type) ? 10 ** v.type.scale : 1
+    const sums = new BigInt64Array(n)
+    const means = new Float64Array(n)
+    windows((row, first, last) => {
+      let sum = BigInt(0)
       let count = 0
-      for (let k = Math.max(starts[g], j - window + 1); k <= j; k++) {
+      for (let k = first; k <= last; k++) {
         const r = rows[k]
         if (!V.isValid(v, r)) continue
-        sum += x[r]
+        sum += v.values[r]
         count++
       }
-      if (count >= minPeriods) {
-        ok[rows[j]] = 1
-        out[rows[j]] = fn === "rollingMean" ? sum / count : sum
-      }
-    }
+      if (count < minPeriods) return
+      ok[row] = 1
+      if (fn === "rollingMean") means[row] = Number(sum) / unit / count
+      else sums[row] = fit(sum)
+    })
+    return fn === "rollingMean" ? V.f64(type, means, ok) : V.i64(type, sums, ok)
   }
-  if (fn === "rollingMean") return V.f64(D.meanType(v.type), out, ok)
-  const type = D.sumType(v.type)
+  const x = v.kind === "f64" ? v.values : Float64Array.from(v.values)
+  const out = new Float64Array(n)
+  windows((row, first, last) => {
+    let sum = 0
+    let count = 0
+    for (let k = first; k <= last; k++) {
+      const r = rows[k]
+      if (!V.isValid(v, r)) continue
+      sum += x[r]
+      count++
+    }
+    if (count >= minPeriods) {
+      ok[row] = 1
+      out[row] = fn === "rollingMean" ? sum / count : sum
+    }
+  })
+  if (fn === "rollingMean") return V.f64(type, out, ok)
   switch (v.kind) {
     case "i32":
       return V.i32(type, Int32Array.from(out, (a) => a | 0), ok)
-    case "i64":
-      return V.i64(type, BigInt64Array.from(out, (a) => BigInt.asIntN(64, BigInt(a))), ok)
     case "bool":
       return V.f64(S.uint32, out, ok)
     default:

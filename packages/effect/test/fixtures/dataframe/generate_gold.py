@@ -897,6 +897,8 @@ def extended_cases():
         {"left": table([("t", "decimal[6,3]")], {"t": ["0.250", "0.350", "-0.250", "-0.350", "1.050", "2.500", "0.249", None]})},
         [{"op": "select", "exprs": {"r0": fn("round", col("t")), "r1": fn("round", col("t"), decimals=1),
                                      "r2": fn("round", col("t"), decimals=2), "r3": fn("round", col("t"), decimals=3)}}])
+    add("decimal/rolling-mean", "rolling means of decimals are floats of their values", D,
+        [{"op": "select", "exprs": {"m": fn("rollingMean", col("price"), window=2), "mf": fn("rollingMean", col("fee"), window=3, minPeriods=1)}}])
     add("arith/u32-divide-by-zero", "unsigned 32-bit floor division and modulo by zero give null",
         {"left": table([("n", "u32"), ("d", "u32")], {"n": [7, 0, 5], "d": [0, 0, 2]})},
         [{"op": "select", "exprs": {"q": fn("floorDiv", col("n"), col("d")), "m": fn("mod", col("n"), col("d")),

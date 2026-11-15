@@ -31,6 +31,11 @@
  *   and an integer division by zero gives `null`.
  * - An integer literal takes the integer type of the column it meets
  *   (`c.int8Column + 1` stays Int8).
+ * - Decimals are stored as 64-bit unscaled integers, so they hold up to 18
+ *   digits. Unlike integers they never wrap: a decimal result outside that
+ *   storage (from arithmetic, sums, `abs`, `negate`, `round` or a
+ *   literal) fails the query with a `DataFrameError`, and a cast makes it
+ *   `null`.
  *
  * **Example** (Building expressions)
  *
@@ -680,7 +685,8 @@ export const cast: {
 
 /**
  * Converts to a decimal with `precision` digits, `scale` of them after the
- * point. Values that don't fit become null; extra digits round half to even.
+ * point. Values that don't fit (more than `precision` digits, or outside
+ * 64-bit decimal storage) become null; extra digits round half to even.
  *
  * @stability experimental
  * @category casts
