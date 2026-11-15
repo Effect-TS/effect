@@ -387,9 +387,12 @@ export const arith = (op: ArithOp, a: Value, b: Value, length: number): Value =>
     case "f64": {
       const x = lv.values
       const o = new Float64Array(n)
+      const y = (rv as V.F64).values
       const unsigned32 = type._tag === "Int"
-      if (rs) arithF64Scalar(op, x, (rv as V.F64).values[0], o, n, unsigned32)
-      else arithF64(op, x, (rv as V.F64).values, o, n, unsigned32)
+      arithF64(op, x, y, rs ? 0 : 1, o, n, unsigned32)
+      if (unsigned32 && (op === "floorDiv" || op === "mod")) {
+        nullOut = Uint8Array.from({ length: n }, (_, i) => y[rs ? 0 : i] === 0 ? 0 : 1)
+      }
       V.roundFloat32InPlace(type, o)
       out = V.f64(type, o, valid)
       break
@@ -461,54 +464,36 @@ const floorMod = (a: number, b: number): number => {
   return r !== 0 && (r < 0) !== (b < 0) ? r + b : r
 }
 
-const arithF64 = (op: ArithOp, x: Float64Array, y: Float64Array, o: Float64Array, n: number, u32: boolean) => {
+/** Float and UInt32 kernels; `step` 0 reads `y[0]` for every row (a scalar). */
+const arithF64 = (
+  op: ArithOp,
+  x: Float64Array,
+  y: Float64Array,
+  step: 0 | 1,
+  o: Float64Array,
+  n: number,
+  u32: boolean
+) => {
   switch (op) {
     case "add":
-      for (let i = 0; i < n; i++) o[i] = x[i] + y[i]
+      for (let i = 0; i < n; i++) o[i] = x[i] + y[i * step]
       break
     case "sub":
-      for (let i = 0; i < n; i++) o[i] = x[i] - y[i]
+      for (let i = 0; i < n; i++) o[i] = x[i] - y[i * step]
       break
     case "mul":
-      if (u32) { for (let i = 0; i < n; i++) o[i] = Math.imul(x[i], y[i]) >>> 0 }
-      else for (let i = 0; i < n; i++) o[i] = x[i] * y[i]
+      if (u32) { for (let i = 0; i < n; i++) o[i] = Math.imul(x[i], y[i * step]) >>> 0 }
+      else for (let i = 0; i < n; i++) o[i] = x[i] * y[i * step]
       break
     case "div":
-      for (let i = 0; i < n; i++) o[i] = x[i] / y[i]
+      for (let i = 0; i < n; i++) o[i] = x[i] / y[i * step]
       break
     case "floorDiv":
-      if (u32) { for (let i = 0; i < n; i++) o[i] = Math.floor(x[i] / y[i]) }
-      else for (let i = 0; i < n; i++) o[i] = Math.floor(x[i] / y[i])
+      for (let i = 0; i < n; i++) o[i] = Math.floor(x[i] / y[i * step])
       break
     case "mod":
-      if (u32) { for (let i = 0; i < n; i++) o[i] = floorMod(x[i], y[i]) }
-      else for (let i = 0; i < n; i++) o[i] = floatMod(x[i], y[i])
-      break
-  }
-  if (u32) { for (let i = 0; i < n; i++) o[i] = o[i] >>> 0 }
-}
-
-const arithF64Scalar = (op: ArithOp, x: Float64Array, y: number, o: Float64Array, n: number, u32: boolean) => {
-  switch (op) {
-    case "add":
-      for (let i = 0; i < n; i++) o[i] = x[i] + y
-      break
-    case "sub":
-      for (let i = 0; i < n; i++) o[i] = x[i] - y
-      break
-    case "mul":
-      if (u32) { for (let i = 0; i < n; i++) o[i] = Math.imul(x[i], y) >>> 0 }
-      else for (let i = 0; i < n; i++) o[i] = x[i] * y
-      break
-    case "div":
-      for (let i = 0; i < n; i++) o[i] = x[i] / y
-      break
-    case "floorDiv":
-      for (let i = 0; i < n; i++) o[i] = Math.floor(x[i] / y)
-      break
-    case "mod":
-      if (u32) { for (let i = 0; i < n; i++) o[i] = floorMod(x[i], y) }
-      else for (let i = 0; i < n; i++) o[i] = floatMod(x[i], y)
+      if (u32) { for (let i = 0; i < n; i++) o[i] = floorMod(x[i], y[i * step]) }
+      else for (let i = 0; i < n; i++) o[i] = floatMod(x[i], y[i * step])
       break
   }
   if (u32) { for (let i = 0; i < n; i++) o[i] = o[i] >>> 0 }
