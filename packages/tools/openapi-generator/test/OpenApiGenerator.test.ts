@@ -1682,6 +1682,35 @@ export const TestClientError = <Tag extends string, E>(
   })
 
   describe("httpapi", () => {
+    const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
+
+    itGeneratedClientsCompile(
+      "round-trips buffered binary payloads and responses into compilable HttpApi declarations",
+      OpenApi.fromApi(
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("files").add(
+            HttpApiEndpoint.post("upload", "/upload", { payload: Bytes }),
+            HttpApiEndpoint.get("download", "/download", { success: Bytes })
+          )
+        )
+      ),
+      { formats: ["httpapi"] }
+    )
+
+    itGeneratedClientsCompile(
+      "round-trips SSE responses into compilable HttpApi declarations",
+      OpenApi.fromApi(
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("events").add(
+            HttpApiEndpoint.get("events", "/events", {
+              success: HttpApiSchema.StreamSse({ data: Schema.Struct({ count: Schema.Number }) })
+            })
+          )
+        )
+      ),
+      { formats: ["httpapi"] }
+    )
+
     it.effect("generates tagged groups with endpoint annotations and representable parameters", () =>
       assertHttpApiIncludes(
         {
