@@ -1,0 +1,400 @@
+/**
+ * Markdown to WhatsApp text.
+ *
+ * Each construct the renderer knows has a candidate replacement, rendered
+ * bottom-up, which is emitted only when it is no longer than the
+ * construct's source in code points, UTF-16 units and UTF-8 bytes. Otherwise
+ * the source is emitted as it is. Text between constructs is always kept, so
+ * the output is never longer than the input in any of the three units.
+ */
+
+/** The longest text message, and the measure's unit: UTF-16 code units. @internal */
+export const messageLength = 4096
+
+/** The longest caption, and the longest body beside reply buttons or a link button. @internal */
+export const shortBodyLength = 1024
+
+/** @internal */
+export const measure = (markdown: string): number => markdown.length
+
+const codePoints = (s: string): number => {
+  let n = 0
+  for (const _ of s) n++
+  return n
+}
+
+const utf8Bytes = (s: string): number => {
+  let n = 0
+  for (const char of s) {
+    const code = char.codePointAt(0)!
+    n += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4
+  }
+  return n
+}
+
+/** Whether `candidate` is no longer than `source` in all three units. @internal */
+export const fits = (candidate: string, source: string): boolean =>
+  candidate.length <= source.length && codePoints(candidate) <= codePoints(source) &&
+  utf8Bytes(candidate) <= utf8Bytes(source)
+
+const pick = (candidate: string, source: string): string => fits(candidate, source) ? candidate : source
+
+/** The characters WhatsApp formats with, which a decoded reference must not produce. */
+const formatting = new Set(["*", "_", "~", "`"])
+
+const entities: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: "\"",
+  apos: "'",
+  nbsp: " ",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  laquo: "«",
+  raquo: "»",
+  bull: "•",
+  middot: "·",
+  deg: "°",
+  plusmn: "±",
+  times: "×",
+  divide: "÷",
+  minus: "−",
+  euro: "€",
+  pound: "£",
+  yen: "¥",
+  cent: "¢",
+  sect: "§",
+  para: "¶",
+  larr: "←",
+  rarr: "→",
+  uarr: "↑",
+  darr: "↓",
+  harr: "↔",
+  lArr: "⇐",
+  rArr: "⇒",
+  hArr: "⇔",
+  le: "≤",
+  ge: "≥",
+  ne: "≠",
+  asymp: "≈",
+  infin: "∞",
+  frac12: "½",
+  frac14: "¼",
+  frac34: "¾",
+  iexcl: "¡",
+  iquest: "¿"
+}
+
+const decodeReference = (reference: string): string | undefined => {
+  const body = reference.slice(1, -1)
+  let decoded: string | undefined
+  if (body.startsWith("#")) {
+    const code = body[1] === "x" || body[1] === "X"
+      ? Number.parseInt(body.slice(2), 16)
+      : Number.parseInt(body.slice(1), 10)
+    decoded = code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff) ? "�" : String.fromCodePoint(code)
+  } else {
+    decoded = Object.hasOwn(entities, body) ? entities[body] : undefined
+  }
+  return decoded === undefined || formatting.has(decoded) ? undefined : decoded
+}
+
+const isWhitespace = (char: string | undefined) => char === undefined || /\s/u.test(char)
+const isPunctuation = (char: string | undefined) => char !== undefined && /[\p{P}\p{S}]/u.test(char)
+const isAsciiPunctuation = (char: string | undefined) => char !== undefined && /[!-/:-@[-`{-~]/.test(char)
+
+interface Atom {
+  readonly end: number
+  readonly text: string
+}
+
+const runLength = (s: string, i: number, char: string) => {
+  let j = i
+  while (s[j] === char) j++
+  return j - i
+}
+
+/** A code span from the backtick run at `i`, or the run itself when it has no match. */
+const codeSpan = (s: string, i: number): Atom => {
+  const n = runLength(s, i, "`")
+  let j = i + n
+  while (j < s.length) {
+    if (s[j] !== "`") {
+      j++
+      continue
+    }
+    const m = runLength(s, j, "`")
+    if (m === n) return { end: j + m, text: s.slice(i, j + m) }
+    j += m
+  }
+  return { end: i + n, text: s.slice(i, i + n) }
+}
+
+const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*)>/
+const emailAutolink =
+  /^<([A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>/
+const html = /^(?:<!--[\s\S]*?-->|<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>)/
+const reference = /^&(?:#[0-9]{1,7};|#[xX][0-9A-Fa-f]{1,6};|[A-Za-z][A-Za-z0-9]{1,31};)/
+
+/** The index of the `]` closing the `[` at `i`, skipping escapes and code spans. */
+const closeBracket = (s: string, i: number): number => {
+  let depth = 0
+  let j = i
+  while (j < s.length) {
+    const char = s[j]
+    if (char === "\\") j += 2
+    else if (char === "`") j = codeSpan(s, j).end
+    else {
+      if (char === "[") depth++
+      else if (char === "]" && --depth === 0) return j
+      j++
+    }
+  }
+  return -1
+}
+
+/** An inline destination and optional title from the `(` at `i`: the URL and the index after `)`. */
+const destination = (s: string, i: number): { readonly url: string; readonly end: number } | undefined => {
+  let j = i + 1
+  while (s[j] === " " || s[j] === "\t") j++
+  let url: string
+  if (s[j] === "<") {
+    const close = s.indexOf(">", j)
+    if (close < 0 || s.slice(j + 1, close).includes("<")) return undefined
+    url = s.slice(j + 1, close)
+    j = close + 1
+  } else {
+    const start = j
+    let depth = 0
+    while (j < s.length && !/\s/.test(s[j])) {
+      if (s[j] === "\\" && isAsciiPunctuation(s[j + 1])) j++
+      else if (s[j] === "(") depth++
+      else if (s[j] === ")") {
+        if (depth === 0) break
+        depth--
+      }
+      j++
+    }
+    if (depth !== 0) return undefined
+    url = s.slice(start, j)
+  }
+  const afterUrl = j
+  while (s[j] === " " || s[j] === "\t") j++
+  if (j > afterUrl && (s[j] === "\"" || s[j] === "'" || s[j] === "(")) {
+    const close = s[j] === "(" ? ")" : s[j]
+    let k = j + 1
+    while (k < s.length && s[k] !== close) k += s[k] === "\\" ? 2 : 1
+    if (k >= s.length) return undefined
+    j = k + 1
+    while (s[j] === " " || s[j] === "\t") j++
+  }
+  return s[j] === ")" ? { url, end: j + 1 } : undefined
+}
+
+/** A link or image from the `[` at `i`, `start` being the `!` of an image. */
+const link = (s: string, start: number, i: number): Atom | undefined => {
+  if (s[i + 1] === "^") {
+    const close = s.indexOf("]", i)
+    return close < 0 ? undefined : { end: close + 1, text: s.slice(start, close + 1) }
+  }
+  const close = closeBracket(s, i)
+  if (close < 0) return undefined
+  if (s[close + 1] === "[") {
+    const end = s.indexOf("]", close + 1)
+    return end < 0 ? undefined : { end: end + 1, text: s.slice(start, end + 1) }
+  }
+  if (s[close + 1] !== "(") return undefined
+  const target = destination(s, close + 1)
+  if (target === undefined) return undefined
+  const label = s.slice(i + 1, close)
+  const shown = start < i ? label : inline(label)
+  const candidate = label === "" || label === target.url ? target.url : shown + " (" + target.url + ")"
+  return { end: target.end, text: pick(candidate, s.slice(start, target.end)) }
+}
+
+/** The construct at `i` that is kept or replaced as a whole, if any. */
+const atom = (s: string, i: number): Atom | undefined => {
+  switch (s[i]) {
+    case "\\":
+      return isAsciiPunctuation(s[i + 1]) ? { end: i + 2, text: s.slice(i, i + 2) } : undefined
+    case "`":
+      return codeSpan(s, i)
+    case "<": {
+      const rest = s.slice(i)
+      const match = autolink.exec(rest) ?? emailAutolink.exec(rest)
+      if (match !== null) return { end: i + match[0].length, text: pick(match[1], match[0]) }
+      const tag = html.exec(rest)
+      return tag === null ? undefined : { end: i + tag[0].length, text: tag[0] }
+    }
+    case "!":
+      return s[i + 1] === "[" ? link(s, i, i + 1) : undefined
+    case "[":
+      return link(s, i, i)
+    case "&": {
+      const match = reference.exec(s.slice(i, i + 40))
+      if (match === null) return undefined
+      const decoded = decodeReference(match[0])
+      return { end: i + match[0].length, text: decoded === undefined ? match[0] : pick(decoded, match[0]) }
+    }
+  }
+  return undefined
+}
+
+const leftFlanking = (before: string | undefined, after: string | undefined) =>
+  !isWhitespace(after) && (!isPunctuation(after) || isWhitespace(before) || isPunctuation(before))
+
+const rightFlanking = (before: string | undefined, after: string | undefined) =>
+  !isWhitespace(before) && (!isPunctuation(before) || isWhitespace(after) || isPunctuation(after))
+
+const canOpen = (s: string, i: number, n: number) => {
+  const before = s[i - 1]
+  const after = s[i + n]
+  const left = leftFlanking(before, after)
+  return s[i] === "_" ? left && (!rightFlanking(before, after) || isPunctuation(before)) : left
+}
+
+const canClose = (s: string, i: number, n: number) => {
+  const before = s[i - 1]
+  const after = s[i + n]
+  const right = rightFlanking(before, after)
+  return s[i] === "_" ? right && (!leftFlanking(before, after) || isPunctuation(after)) : right
+}
+
+/** Emphasis or strikethrough from the delimiter run at `i`, if it has a closer. */
+const emphasis = (s: string, i: number): Atom | undefined => {
+  const char = s[i]
+  const n = runLength(s, i, char)
+  if (n > 2 || !canOpen(s, i, n)) return undefined
+  let j = i + n
+  while (j < s.length) {
+    const skipped = s[j] === "*" || s[j] === "_" || s[j] === "~" ? undefined : atom(s, j)
+    if (skipped !== undefined) {
+      j = skipped.end
+      continue
+    }
+    if (s[j] !== char) {
+      j++
+      continue
+    }
+    const m = runLength(s, j, char)
+    if (m === n && j > i + n && canClose(s, j, m)) {
+      const marker = char === "~" ? "~" : n === 2 ? "*" : "_"
+      const candidate = marker + inline(s.slice(i + n, j)) + marker
+      return { end: j + m, text: pick(candidate, s.slice(i, j + m)) }
+    }
+    j += m
+  }
+  return undefined
+}
+
+/** One line of inline Markdown. @internal */
+export const inline = (s: string): string => {
+  let out = ""
+  let i = 0
+  while (i < s.length) {
+    const char = s[i]
+    const found = char === "*" || char === "_" || char === "~" ? emphasis(s, i) : atom(s, i)
+    if (found !== undefined) {
+      out += found.text
+      i = found.end
+    } else if (char === "*" || char === "_" || char === "~") {
+      const n = runLength(s, i, char)
+      out += s.slice(i, i + n)
+      i += n
+    } else {
+      out += char
+      i++
+    }
+  }
+  return out
+}
+
+const fenceOpen = /^( {0,3})(`{3,}|~{3,})(.*)$/
+const atxHeading = /^ {0,3}(#{1,6})(?:[ \t]+(.*))?$/
+const setextUnderline = /^ {0,3}(?:=+|-+)[ \t]*$/
+const thematicBreak = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
+const definition = /^ {0,3}\[[^\]]+\]:/
+const blockStart = /^(?: {4}|\t| {0,3}(?:[>#|]|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|`{3}|~{3}))/
+const tableDelimiter = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/
+const containerPrefix = /^((?: {0,3}>[ \t]?)*)( {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+)?/
+
+const cells = (row: string) => row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").length
+
+const isBlank = (line: string) => line.trim() === ""
+
+/**
+ * Markdown as WhatsApp text, never longer than the Markdown in code points,
+ * UTF-16 units or UTF-8 bytes.
+ *
+ * @internal
+ */
+export const render = (markdown: string): string => {
+  const lines = markdown.split(/(?<=\n)/)
+  const body = (k: number) => lines[k].replace(/\r?\n$/, "")
+  const eol = (k: number) => lines[k].slice(body(k).length)
+  let out = ""
+  let i = 0
+  while (i < lines.length) {
+    const line = body(i)
+    const fence = fenceOpen.exec(line)
+    if (fence !== null && !(fence[2][0] === "`" && fence[3].includes("`"))) {
+      const char = fence[2][0]
+      const closing = new RegExp("^ {0,3}" + (char === "~" ? "~" : "`") + "{" + fence[2].length + ",}[ \\t]*$")
+      let j = i + 1
+      while (j < lines.length && !closing.test(body(j))) j++
+      if (j >= lines.length) {
+        out += lines.slice(i).join("")
+        break
+      }
+      const content = lines.slice(i + 1, j).join("")
+      const source = lines.slice(i, j + 1).join("")
+      const candidate = "```" + eol(i) + content + "```" + eol(j)
+      out += content.includes("```") ? source : pick(candidate, source)
+      i = j + 1
+      continue
+    }
+    if (i + 1 < lines.length && line.includes("|") && tableDelimiter.test(body(i + 1)) && body(i + 1).includes("|")) {
+      if (cells(line) === cells(body(i + 1))) {
+        out += lines[i]
+        let j = i + 2
+        while (j < lines.length && !isBlank(body(j))) out += lines[j++]
+        i = j
+        continue
+      }
+    }
+    const heading = atxHeading.exec(line)
+    if (heading !== null) {
+      const content = (heading[2] ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim()
+      out += (content === "" ? line : pick("*" + inline(content) + "*", line)) + eol(i)
+      i++
+      continue
+    }
+    if (
+      i + 1 < lines.length && !isBlank(line) && !blockStart.test(line) && !thematicBreak.test(line) &&
+      !definition.test(line) && (i === 0 || isBlank(body(i - 1))) && setextUnderline.test(body(i + 1))
+    ) {
+      const source = line + eol(i) + body(i + 1)
+      out += pick("*" + inline(line.trim()) + "*", source) + eol(i + 1)
+      i += 2
+      continue
+    }
+    if (/^(?: {4}|\t)/.test(line) || thematicBreak.test(line) || definition.test(line)) {
+      out += lines[i]
+      i++
+      continue
+    }
+    const prefix = containerPrefix.exec(line)![0]
+    out += prefix + inline(line.slice(prefix.length)) + eol(i)
+    i++
+  }
+  return out
+}

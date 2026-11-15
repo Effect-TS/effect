@@ -134,6 +134,7 @@ export default defineConfig({
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),
       ...project("@effect/ai-openrouter", "packages/ai/openrouter"),
       ...project("@effect/chat-slack", "packages/chat/slack"),
+      ...project("@effect/chat-whatsapp", "packages/chat/whatsapp"),
       // dfx imports `effect`, which has to be the same instance as the tests'
       // for things like `Redacted` to work, so vite resolves it too.
       ...project("@effect/chat-discord", "packages/chat/discord", true, {
