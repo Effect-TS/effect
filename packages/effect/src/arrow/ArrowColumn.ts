@@ -252,7 +252,7 @@ export const fromValues = (
     Builders.checkType(field.type, [])
     const session = Builders.session(Values.options(options))
     const data = Builders.finish(
-      Builders.build(field, Array.isArray(values) ? values : Array.from(values), session, (i) => [i]),
+      Builders.build(field, values, session, (i) => [i]),
       session
     )
     return Result.succeed(make(field, [data], options))

@@ -504,6 +504,10 @@ const mapAll = (items: Iterable<unknown>, f: Store): Array<unknown> => {
   return out
 }
 
+/** `values` as an array without holes. */
+const dense = (values: Iterable<unknown>): ReadonlyArray<unknown> =>
+  Array.isArray(values) && !values.includes(undefined) ? values : Array.from(values)
+
 const isIterable = (v: unknown): v is Iterable<unknown> => typeof v === "object" && v !== null && Symbol.iterator in v
 
 // -----------------------------------------------------------------------------
@@ -568,16 +572,11 @@ const memberAt = (at: At, name: string | number): At => (i) => [...at(i), name]
 /**
  * Builds one array of `field` from `values`; `at` locates each value in the
  * input. Each value is converted to its storage value once (see
- * {@link storeOf}). @internal
+ * {@link storeOf}), and holes read as nulls. @internal
  */
-export const build = (
-  field: S.Field,
-  values: ReadonlyArray<unknown>,
-  options: Session,
-  at: At
-): ArrowData.ArrowData => {
+export const build = (field: S.Field, values: Iterable<unknown>, options: Session, at: At): ArrowData.ArrowData => {
   const store = storeOf(field, options)
-  return buildField(field, store === undefined ? values : mapAll(values, store), options, at)
+  return buildField(field, store === undefined ? dense(values) : mapAll(values, store), options, at)
 }
 
 /**

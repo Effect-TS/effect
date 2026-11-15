@@ -71,6 +71,7 @@ const cases: ReadonlyArray<
   ["binaryView", S.binaryView, [text("short"), text("more than twelve bytes"), null]],
   ["fixedSizeBinary", S.fixedSizeBinary(2), [bytes(1, 2), null]],
   ["utf8", S.utf8, ["a", "", "héllo", null]],
+  ["utf8 from a sparse array", S.utf8, Object.assign(new Array(3), { 0: "a", 2: "b" }), ["a", null, "b"]],
   ["largeUtf8", S.largeUtf8, ["日本", null]],
   ["utf8View", S.utf8View, ["short", "a string longer than twelve bytes", null]],
   ["list", S.list(item(S.int32)), [[1, null], [], null]],
@@ -102,6 +103,10 @@ const cases: ReadonlyArray<
     ArrowColumn.unionValue(7, 2)
   ], [1, 1.5, 2]],
   ["runEndEncoded", S.runEndEncoded(S.int16, S.field("values", S.utf8)), ["a", "a", null, "b"]],
+  ["runEndEncoded from a sparse array", S.runEndEncoded(S.int16, S.field("values", S.utf8)), new Array(2), [
+    null,
+    null
+  ]],
   ["runEndEncoded lists that print alike", S.runEndEncoded(S.int32, S.field("v", S.list(item(S.utf8)))), [["a,sb"], [
     "a",
     "b"
