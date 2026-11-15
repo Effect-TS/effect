@@ -46,7 +46,10 @@ import { RetriesDisabled } from "./internal/retries.ts"
  * - An op whose capability is missing from `capabilities` fails with
  *   `Unsupported`.
  * - `limits.messageLength` is the platform's own limit for one message, in
- *   the platform's own unit.
+ *   the platform's own unit. Where every message also carries a fixed
+ *   overhead that the text does not, such as a card's structure, it is that
+ *   limit less a fixed reservation for the overhead, and the adapter's docs
+ *   give both numbers.
  * - `measure` gives what a Markdown string costs against
  *   `limits.messageLength` and `limits.streamLength`. It is pure and makes
  *   no call to the platform. It is an upper bound, never less than what the
@@ -69,7 +72,10 @@ import { RetriesDisabled } from "./internal/retries.ts"
  *   `limits.modalMetadataLength` and `limits.modalFields` are there exactly
  *   when the matching capability is (`buttons` for the first two, `modals`
  *   for the last two). Each is the platform's number in the platform's unit,
- *   as `messageLength` is. The adapter checks them exactly and fails
+ *   as `messageLength` is. Where the platform publishes none, it is the
+ *   adapter's own cap, documented as the adapter's, and set so that a
+ *   message holding every element at its cap still fits `messageLength`.
+ *   The adapter checks them exactly and fails
  *   `TooLarge`: before the call for a message's elements, and before it
  *   opens a modal.
  * - `limits.followUpAge` is there exactly when `commands` is: how long after

@@ -140,6 +140,7 @@ export default defineConfig({
       ...project("@effect/chat-discord", "packages/chat/discord", true, {
         test: { server: { deps: { inline: ["dfx"] } } }
       }),
+      ...project("@effect/chat-teams", "packages/chat/teams"),
       ...project("@effect/atom-react", "packages/atom/react", true, {
         test: {
           environment: "jsdom",

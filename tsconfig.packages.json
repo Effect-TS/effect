@@ -16,6 +16,7 @@
     { "path": "packages/chat/slack" },
     { "path": "packages/chat/whatsapp" },
     { "path": "packages/chat/discord" },
+    { "path": "packages/chat/teams" },
     { "path": "packages/atom/vue" },
     { "path": "packages/atom/solid" },
     { "path": "packages/opentelemetry" },

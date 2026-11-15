@@ -60,6 +60,8 @@
       "@effect/chat-whatsapp/*": ["./packages/chat/whatsapp/src/*.ts"],
       "@effect/chat-discord": ["./packages/chat/discord/src/index.ts"],
       "@effect/chat-discord/*": ["./packages/chat/discord/src/*.ts"],
+      "@effect/chat-teams": ["./packages/chat/teams/src/index.ts"],
+      "@effect/chat-teams/*": ["./packages/chat/teams/src/*.ts"],
       "@effect/atom-react": ["./packages/atom/react/src/index.ts"],
       "@effect/atom-react/*": ["./packages/atom/react/src/*.ts"],
       "@effect/atom-vue": ["./packages/atom/vue/src/index.ts"],
