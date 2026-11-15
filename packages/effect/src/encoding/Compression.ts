@@ -32,9 +32,15 @@
  *
  * Decoding is synchronous and runs in pure JavaScript, so it works the same on
  * every runtime. Malformed, truncated or oversized input fails with a
- * {@link CompressionError} and never reads past the input or allocates more
- * than the output limit. The returned bytes are a new buffer that does not
- * share memory with the input.
+ * {@link CompressionError} and never reads past the input. The returned bytes
+ * are a new buffer that does not share memory with the input.
+ *
+ * {@link DecompressOptions.maxOutputSize} bounds the output, not total memory.
+ * Decoders also use working buffers of a fixed size, whatever the limit: up
+ * to 96 KiB for the gzip inflater's window and output, and up to 128 KiB of
+ * literals plus decoding tables for Zstandard. When the host cannot allocate
+ * an output within the limit, its own allocation error is thrown, not a
+ * {@link CompressionError}.
  *
  * Compression (writing) is not supported, nor are Brotli, LZO, Zstandard
  * dictionaries, the LZ4 legacy frame format and the Snappy framing format.
@@ -121,7 +127,8 @@ export interface DecompressOptions {
   /**
    * The largest output allowed, in bytes. Decoding fails with `OutputLimit`
    * before the output grows past it. Required, because a few bytes of
-   * compressed input can expand to gigabytes.
+   * compressed input can expand to gigabytes. It bounds the output only, not
+   * the fixed working buffers of the decoders.
    */
   readonly maxOutputSize: number
   /**
@@ -273,6 +280,10 @@ export const decompressLz4Frame = (
  * **Details**
  *
  * Specification: https://www.rfc-editor.org/rfc/rfc8878
+ *
+ * Like libzstd, it accepts two inputs that RFC 8878's wording excludes: a
+ * match offset equal to the window size, which libzstd's encoder emits, and
+ * a sequences FSE table with a single symbol.
  *
  * Throws a `RangeError` when an option is not a non-negative safe integer.
  *

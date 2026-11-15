@@ -524,6 +524,9 @@ class ZstdDecoder {
     const bits = new BackwardBits(this.input, pos, end)
     let state1 = bits.read(log)
     let state2 = bits.read(log)
+    // Missing bits read as zero only when a state is updated, not when the
+    // states are initialized (§4.1, §4.2.1.2)
+    if (bits.remaining() < 0) fail("Malformed", "the Huffman weights stream is shorter than its initial states")
     let count = 0
     // Two interleaved states until the stream would overflow, then the
     // other state's symbol is the last one

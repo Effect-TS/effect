@@ -19,11 +19,8 @@
  * - Dictionaries (§3.1.1.1.3, §5, §6): not supported. A frame with a non-zero
  *   Dictionary_ID fails with `Unsupported`, so dictionary decoding is untested.
  * - Decoder memory guidance (§3.1.1.1.2, "at least 8 MB"): the whole output
- *   is kept in memory, so memory is bounded by `maxOutputSize` and
+ *   is kept in memory, so the output is bounded by `maxOutputSize` and
  *   Window_Size only bounds match offsets.
- * - "There must be two or more symbols with nonzero probability" (§4.1.1) and
- *   "This mode must not be used when only one symbol is present" (§3.1.1.3.2.1):
- *   not checked, as in libzstd; such a table still decodes deterministically.
  * - Encoder requirements (Unused_Bit set to zero, block splitting, choice of
  *   modes): apply to compressors.
  * - Media type and IANA registrations (§7): not part of decoding.
@@ -32,10 +29,18 @@
  *   Frame_Content_Size fails with `Malformed`, bytes after the last frame
  *   that do not form a frame fail with `Malformed`, empty input fails with
  *   `Truncated`, a Dictionary_ID field of 0 means no dictionary (as in
- *   libzstd), and a match offset equal to Window_Size is accepted (§3.1.1.4
- *   says offsets "must be smaller than Window_Size", but libzstd's encoder
- *   emits offsets up to Window_Size). Four Huffman streams need only as many
- *   literals as §3.1.1.3.1.6 allows (libzstd also requires at least 6).
+ *   libzstd). Four Huffman streams need only as many literals as
+ *   §3.1.1.3.1.6 allows (libzstd also requires at least 6).
+ * - Compatibility exceptions, where the decoder accepts input the RFC's
+ *   wording excludes, to match libzstd 1.5.7. They are tested as deviations,
+ *   not as conformance, and are pending a decision on EFF-3821:
+ *   - a match offset equal to Window_Size (§3.1.1.4 says offsets "must be
+ *     smaller than Window_Size"; libzstd's encoder emits them);
+ *   - an FSE distribution with a single symbol, in FSE_Compressed_Mode
+ *     (§4.1.1 "two or more symbols with nonzero probability",
+ *     §3.1.1.3.2.1 "must not be used when only one symbol is present").
+ *     For Huffman weights such a table never reaches the end of its stream,
+ *     so it still fails with `Malformed`.
  */
 import { assert, describe, it } from "@effect/vitest"
 import { Result } from "effect"
@@ -224,6 +229,19 @@ const fseBlock = (last: boolean): Uint8Array =>
     last
   )
 
+// A block with one match of 4 at `offset` (Offset_Code 10, so offsets 1021
+// to 2044)
+const matchAt = (offset: number): Uint8Array =>
+  compressedBlock(rawLiterals([]), rleSequences(1, 0, 10, 1, backward([offset + 3 - 1024, 10])))
+
+// FSE_Compressed_Mode offsets with a single symbol: Accuracy_Log 5, Offset_Code
+// 3 at probability 32. Every state is code 3 and moves with 0 bits. Output
+// after PREFIX: "X", then a match of 4 at offset 8 (Offset_Value 8 + 3)
+const singleSymbolFseBlock = compressedBlock(
+  rawLiterals(ascii("X")),
+  concat([1, modes(RLE, FSE, RLE), 1, 0x10, 0xfc, 0x01, 1], backward([0, 5], [3, 3]))
+)
+
 const options: Compression.DecompressOptions = { maxOutputSize: 1 << 20 }
 
 const decodes = (input: Bytes, expected: Bytes | string, options_ = options): void => {
@@ -323,18 +341,16 @@ export const suite = (): void => {
       it("MUST reject a match offset beyond Window_Size from Exponent and Mantissa", () => {
         // Descriptor 0x01: 1 KB + 1/8 KB = 1152 bytes
         const data = randomBytes(1153, 1)
-        const offset = (n: number) =>
-          compressedBlock(rawLiterals([]), rleSequences(1, 0, 10, 1, backward([n + 3 - 1024, 10])))
         decodes(
-          frame(windowed(0x01), rawBlock(data.subarray(0, 1152), false), offset(1152)),
-          concat(data.subarray(0, 1152), data.subarray(0, 4))
+          frame(windowed(0x01), rawBlock(data.subarray(0, 1152), false), matchAt(1151)),
+          concat(data.subarray(0, 1152), data.subarray(1, 5))
         )
         fails(
           frame(
             windowed(0x01),
             rawBlock(data.subarray(0, 1152), false),
             rawBlock(data.subarray(1152), false),
-            offset(1153)
+            matchAt(1153)
           ),
           "Malformed"
         )
@@ -545,6 +561,21 @@ export const suite = (): void => {
         // states start at 3, a cell of weight 1, and the stream overflows on
         // the first state update
         decodes(huffman([4, 0x10, 0x3f, ...backward([3, 5], [3, 5])]), [2, 0, 1, 2])
+      })
+
+      // RFC 8878 §4.1: each initial state consumes Accuracy_Log bits.
+      // §4.2.1.2 assumes zero bits only when updating a state overflows the
+      // stream, not when initializing State1 and State2.
+      it("MUST reject FSE-compressed weights without the bits of both initial states", () => {
+        // Accuracy_Log 5, weight 0 at probability -1 and weight 1 at 31:
+        // state 0 is weight 1, so states read as zero would build a valid tree
+        const description = [0x00, 0x7e]
+        // Control: both initial states, 0, are in the stream
+        decodes(huffman([4, ...description, ...backward([0, 5], [0, 5])]), [2, 0, 1, 2])
+        // Only the end mark
+        fails(huffman([3, ...description, 0x01]), "Malformed")
+        // State1's 5 bits, but not State2's
+        fails(huffman([3, ...description, ...backward([0, 5])]), "Malformed")
       })
 
       // RFC 8878 §4.2.1.1: the implied last weight completes the sum to a
@@ -869,6 +900,30 @@ export const suite = (): void => {
     })
 
     // Local policy for what the RFC leaves to the decoder
+    // Inputs the RFC's wording excludes, accepted to match libzstd 1.5.7.
+    // These tests pin deliberate deviations; they are not RFC 8878 conformance.
+    describe("Compatibility exceptions (not RFC 8878 conformance)", () => {
+      // RFC 8878 §3.1.1.4: offsets "must be smaller than Window_Size".
+      // libzstd's encoder emits offsets equal to Window_Size (level 19 with a
+      // 1 KB window matches 1024 bytes back), so rejecting them would reject
+      // its output.
+      it("accepts a match offset equal to Window_Size", () => {
+        const data = randomBytes(1152, 1)
+        decodes(
+          frame(windowed(0x01), rawBlock(data, false), matchAt(1152)),
+          concat(data, data.subarray(0, 4))
+        )
+      })
+
+      // RFC 8878 §4.1.1: "there must be two or more symbols with nonzero
+      // probability", and §3.1.1.3.2.1: FSE_Compressed_Mode "must not be used
+      // when only one symbol is present ... (although any other mode will
+      // work)". Such a table decodes unambiguously, as in libzstd.
+      it("accepts an FSE_Compressed_Mode table with a single symbol", () => {
+        decodes(afterPrefix(singleSymbolFseBlock), "abcdefghXbcde")
+      })
+    })
+
     describe("Decoder policy", () => {
       // https://www.rfc-editor.org/rfc/rfc8878#section-3.1
       it("rejects bytes after the last frame that do not form a frame", () => {
