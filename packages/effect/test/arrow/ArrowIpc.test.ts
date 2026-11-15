@@ -255,12 +255,13 @@ describe("ArrowIpc", () => {
     }
   })
 
-  it("appends delta dictionaries whose offsets do not start at 0", () => {
-    // Each delta's offsets start at 1, so its value starts one byte or item in
+  it("appends delta dictionaries to the slots each side uses", () => {
+    // Each delta's offsets start at 1, so its value starts one byte or item in;
+    // the first list dictionaries' children hold an unused item after [7]
     const table = Result.getOrThrow(ArrowIpc.decodeStream(deltaBytes))
     assertEquals(ArrowTable.toRows(table), [
-      { utf8: "a", largeBinary: bytes(1), list: [7] },
-      { utf8: "b", largeBinary: bytes(2), list: [2] }
+      { utf8: "a", largeBinary: bytes(1), list: [7], fixedSizeList: [7] },
+      { utf8: "b", largeBinary: bytes(2), list: [2], fixedSizeList: [2] }
     ])
   })
 

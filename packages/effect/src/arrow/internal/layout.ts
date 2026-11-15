@@ -384,14 +384,14 @@ const appendOffsets = (
   return new Uint8Array(out.buffer)
 }
 
-/** Offset `i`; an empty offsets buffer (allowed for zero slots) reads as 0. */
-const offsetAt = (buffer: Uint8Array, large: boolean, i: number) =>
-  buffer.length === 0 ? 0 : readOffset(buffer, large, i)
-
-/** Appends `right` to `left` (same type), as delta dictionaries do. @internal */
+/**
+ * Appends `right` to `left` (same type), as delta dictionaries do. Each side
+ * is first cut to the values its slots use: offsets from 0, and values and
+ * children holding exactly the items those offsets cover. @internal
+ */
 export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): ArrowData.ArrowData => {
-  const a = normalize(left)
-  const b = normalize(right)
+  const a = normalizeData(left)
+  const b = normalizeData(right)
   const type = a.type
   const length = a.length + b.length
   const nullCount = a.nullCount + b.nullCount
@@ -412,16 +412,12 @@ export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): A
     case "Utf8":
     case "LargeBinary":
     case "LargeUtf8": {
-      // `b`'s offsets need not start at 0: its values are bytes [bStart, bEnd).
       const large = isLargeOffsets(type)
-      const aEnd = offsetAt(a.buffers[0], large, a.length)
-      const bStart = offsetAt(b.buffers[0], large, 0)
-      const bEnd = offsetAt(b.buffers[0], large, b.length)
       return {
         ...base,
         buffers: [
-          appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, aEnd - bStart),
-          concatBytes(a.buffers[1].subarray(0, aEnd), b.buffers[1].subarray(bStart, bEnd))
+          appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, a.buffers[1].length),
+          concatBytes(a.buffers[1], b.buffers[1])
         ],
         children: []
       }
@@ -439,14 +435,11 @@ export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): A
     case "List":
     case "LargeList":
     case "Map": {
-      // `b`'s offsets need not start at 0: its items are [bStart, bEnd) of its child.
       const large = isLargeOffsets(type)
-      const bStart = offsetAt(b.buffers[0], large, 0)
-      const bEnd = offsetAt(b.buffers[0], large, b.length)
       return {
         ...base,
-        buffers: [appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, a.children[0].length - bStart)],
-        children: [concat(a.children[0], slice(b.children[0], bStart, bEnd))]
+        buffers: [appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, a.children[0].length)],
+        children: [concat(a.children[0], b.children[0])]
       }
     }
     case "ListView":

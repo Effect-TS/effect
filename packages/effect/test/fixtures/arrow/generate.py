@@ -12,8 +12,11 @@ It writes, next to this file:
   second batch comes from sliced (non-zero offset) arrays.
 - `types.arrow`: the same rows as an IPC file, with one unified dictionary.
 - `deltas.arrows`: an IPC stream whose dictionary deltas have offsets that
-  start at 1, not 0. pyarrow always writes 0, so the stream is patched after
-  writing; each delta's value then starts one byte or item in.
+  start at 1, not 0, and whose first list and fixed-size list dictionaries
+  have a child longer than they use. pyarrow always writes offsets from 0 and
+  children trimmed to their used items, so the stream is patched after
+  writing: each delta's value then starts one byte or item in, and each
+  first dictionary's child keeps the unused item 99 that follows its value.
 """
 
 import datetime
@@ -117,6 +120,12 @@ delta_values = {
     "utf8": pa.array(["a", "xb"]),
     "largeBinary": pa.array([b"\x01", b"\x08\x02"], pa.large_binary()),
     "list": pa.array([[7], [9, 2]], pa.list_(pa.int32())),
+    "fixedSizeList": pa.array([[7], [2]], pa.list_(pa.int32(), 1)),
+}
+# The first dictionaries of the list columns: [[7]] on a child [7, 99].
+first_dictionaries = {
+    "list": pa.ListArray.from_arrays(pa.array([0, 1], pa.int32()), pa.array([7, 99], pa.int32())),
+    "fixedSizeList": pa.FixedSizeListArray.from_arrays(pa.array([7, 99], pa.int32()), 1).slice(0, 1),
 }
 delta_schema = pa.schema([pa.field(name, pa.dictionary(pa.int32(), values.type)) for name, values in delta_values.items()])
 sink = io.BytesIO()
@@ -125,22 +134,38 @@ with pa.ipc.new_stream(sink, delta_schema, options=pa.ipc.IpcWriteOptions(emit_d
         indices = pa.array([i], pa.int32())
         writer.write_batch(
             pa.record_batch(
-                [pa.DictionaryArray.from_arrays(indices, values.slice(0, i + 1)) for values in delta_values.values()],
+                [
+                    pa.DictionaryArray.from_arrays(indices, first_dictionaries[name] if i == 0 and name in first_dictionaries else values.slice(0, i + 1))
+                    for name, values in delta_values.items()
+                ],
                 schema=delta_schema,
             )
         )
 
-# Each delta's body starts with its offsets (the validity buffer is empty), so
-# setting its first byte makes the first offset 1.
+# Dictionary messages come in column order. Each offsets delta's body starts
+# with its offsets (the validity buffer is empty), so setting its first byte
+# makes the first offset 1. Each first list dictionary has two field nodes of
+# length 1 (list, child); setting the child's to 2 keeps the item 99 that its
+# body already holds.
+names = list(delta_values)
+one_item_nodes = bytes.fromhex("02000000" + ("01" + "00" * 15) * 2)
 reader = pa.ipc.MessageReader.open_stream(sink.getvalue())
 out = bytearray()
 batches_seen = 0
+dictionaries_seen = 0
 for message in reader:
     serialized = bytearray(message.serialize())
     if message.type == "record batch":
         batches_seen += 1
-    elif message.type == "dictionary" and batches_seen == 1:
-        serialized[len(serialized) - message.body.size] = 1
+    elif message.type == "dictionary":
+        name = names[dictionaries_seen % len(names)]
+        dictionaries_seen += 1
+        if batches_seen == 0 and name in first_dictionaries:
+            at = serialized.index(one_item_nodes)
+            assert serialized.find(one_item_nodes, at + 1) == -1
+            serialized[at + 20] = 2
+        elif batches_seen == 1 and name != "fixedSizeList":
+            serialized[len(serialized) - message.body.size] = 1
     out += serialized
 out += b"\xff\xff\xff\xff\x00\x00\x00\x00"
 (here / "deltas.arrows").write_bytes(bytes(out))
