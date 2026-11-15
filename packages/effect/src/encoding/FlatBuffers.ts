@@ -121,7 +121,7 @@ interface Source {
 }
 
 const check = (view: DataView, at: number, size: number): void => {
-  if (at < 0 || size < 0 || at + size > view.byteLength) {
+  if (at < 0 || at + size > view.byteLength) {
     fail("OutOfBounds", `${size} bytes at ${at} lie outside the ${view.byteLength}-byte buffer`)
   }
 }
@@ -132,10 +132,16 @@ const indirect = (view: DataView, at: number): number => {
   return at + view.getUint32(at, true)
 }
 
+/** Checks a vector (or string) header at `start` and its elements, and returns its length. */
+const lengthAt = (view: DataView, start: number, elementSize: number): number => {
+  check(view, start, 4)
+  const length = view.getUint32(start, true)
+  check(view, start + 4, length * elementSize)
+  return length
+}
+
 const readString = (source: Source, start: number): string => {
-  check(source.view, start, 4)
-  const length = source.view.getUint32(start, true)
-  check(source.view, start + 4, length)
+  const length = lengthAt(source.view, start, 1)
   return Utf8.decode(source.bytes, start + 4, start + 4 + length) ??
     fail("InvalidUtf8", `the string at ${start} is not valid UTF-8`)
 }
@@ -143,6 +149,57 @@ const readString = (source: Source, start: number): string => {
 // -----------------------------------------------------------------------------
 // Reading
 // -----------------------------------------------------------------------------
+
+/** Scalar readers shared by structs and vectors; `at` validates and locates each read. */
+abstract class Scalars {
+  readonly position: number
+  protected readonly source: Source
+
+  constructor(source: Source, position: number) {
+    this.source = source
+    this.position = position
+  }
+
+  get buffer(): Uint8Array {
+    return this.source.bytes
+  }
+
+  protected abstract at(n: number, size: number): number
+
+  bool(n: number): boolean {
+    return this.source.view.getUint8(this.at(n, 1)) !== 0
+  }
+  int8(n: number): number {
+    return this.source.view.getInt8(this.at(n, 1))
+  }
+  uint8(n: number): number {
+    return this.source.view.getUint8(this.at(n, 1))
+  }
+  int16(n: number): number {
+    return this.source.view.getInt16(this.at(n, 2), true)
+  }
+  uint16(n: number): number {
+    return this.source.view.getUint16(this.at(n, 2), true)
+  }
+  int32(n: number): number {
+    return this.source.view.getInt32(this.at(n, 4), true)
+  }
+  uint32(n: number): number {
+    return this.source.view.getUint32(this.at(n, 4), true)
+  }
+  int64(n: number): bigint {
+    return this.source.view.getBigInt64(this.at(n, 8), true)
+  }
+  uint64(n: number): bigint {
+    return this.source.view.getBigUint64(this.at(n, 8), true)
+  }
+  float32(n: number): number {
+    return this.source.view.getFloat32(this.at(n, 4), true)
+  }
+  float64(n: number): number {
+    return this.source.view.getFloat64(this.at(n, 8), true)
+  }
+}
 
 /**
  * Reads fields at fixed byte offsets: the fields of a struct, stored inline
@@ -184,62 +241,22 @@ export interface Struct {
   struct(offset: number, size: number): Struct
 }
 
-class StructImpl implements Struct {
-  readonly position: number
-  private readonly source: Source
+class StructImpl extends Scalars implements Struct {
   private readonly size: number
 
   /** The caller has checked that the struct lies inside the buffer. */
   constructor(source: Source, position: number, size: number) {
-    this.source = source
-    this.position = position
+    super(source, position)
     this.size = size
   }
 
-  get buffer(): Uint8Array {
-    return this.source.bytes
-  }
-
-  private at(offset: number, size: number): number {
+  protected at(offset: number, size: number): number {
     if (!Number.isInteger(offset) || offset < 0 || offset + size > this.size) {
       fail("Usage", `${size} bytes at ${offset} lie outside the ${this.size}-byte struct`)
     }
     return this.position + offset
   }
 
-  bool(offset: number): boolean {
-    return this.source.view.getUint8(this.at(offset, 1)) !== 0
-  }
-  int8(offset: number): number {
-    return this.source.view.getInt8(this.at(offset, 1))
-  }
-  uint8(offset: number): number {
-    return this.source.view.getUint8(this.at(offset, 1))
-  }
-  int16(offset: number): number {
-    return this.source.view.getInt16(this.at(offset, 2), true)
-  }
-  uint16(offset: number): number {
-    return this.source.view.getUint16(this.at(offset, 2), true)
-  }
-  int32(offset: number): number {
-    return this.source.view.getInt32(this.at(offset, 4), true)
-  }
-  uint32(offset: number): number {
-    return this.source.view.getUint32(this.at(offset, 4), true)
-  }
-  int64(offset: number): bigint {
-    return this.source.view.getBigInt64(this.at(offset, 8), true)
-  }
-  uint64(offset: number): bigint {
-    return this.source.view.getBigUint64(this.at(offset, 8), true)
-  }
-  float32(offset: number): number {
-    return this.source.view.getFloat32(this.at(offset, 4), true)
-  }
-  float64(offset: number): number {
-    return this.source.view.getFloat64(this.at(offset, 8), true)
-  }
   struct(offset: number, size: number): Struct {
     positive("size", size)
     return new StructImpl(this.source, this.at(offset, size), size)
@@ -292,27 +309,20 @@ export interface Vector {
   struct(index: number): Struct
 }
 
-class VectorImpl implements Vector {
-  readonly position: number
+class VectorImpl extends Scalars implements Vector {
   readonly length: number
-  private readonly source: Source
   private readonly elementSize: number
   private readonly depth: number
 
   /** The caller has checked that all `length` elements lie inside the buffer. */
   constructor(source: Source, position: number, length: number, elementSize: number, depth: number) {
-    this.source = source
-    this.position = position
+    super(source, position)
     this.length = length
     this.elementSize = elementSize
     this.depth = depth
   }
 
-  get buffer(): Uint8Array {
-    return this.source.bytes
-  }
-
-  private at(index: number, size: number): number {
+  protected at(index: number, size: number): number {
     if (size !== this.elementSize) {
       fail("Usage", `a ${size}-byte read from a vector of ${this.elementSize}-byte elements`)
     }
@@ -322,39 +332,6 @@ class VectorImpl implements Vector {
     return this.position + index * size
   }
 
-  bool(index: number): boolean {
-    return this.source.view.getUint8(this.at(index, 1)) !== 0
-  }
-  int8(index: number): number {
-    return this.source.view.getInt8(this.at(index, 1))
-  }
-  uint8(index: number): number {
-    return this.source.view.getUint8(this.at(index, 1))
-  }
-  int16(index: number): number {
-    return this.source.view.getInt16(this.at(index, 2), true)
-  }
-  uint16(index: number): number {
-    return this.source.view.getUint16(this.at(index, 2), true)
-  }
-  int32(index: number): number {
-    return this.source.view.getInt32(this.at(index, 4), true)
-  }
-  uint32(index: number): number {
-    return this.source.view.getUint32(this.at(index, 4), true)
-  }
-  int64(index: number): bigint {
-    return this.source.view.getBigInt64(this.at(index, 8), true)
-  }
-  uint64(index: number): bigint {
-    return this.source.view.getBigUint64(this.at(index, 8), true)
-  }
-  float32(index: number): number {
-    return this.source.view.getFloat32(this.at(index, 4), true)
-  }
-  float64(index: number): number {
-    return this.source.view.getFloat64(this.at(index, 8), true)
-  }
   string(index: number): string {
     return readString(this.source, indirect(this.source.view, this.at(index, 4)))
   }
@@ -520,9 +497,7 @@ class TableImpl implements Table {
     const at = this.field(slot, 4)
     if (at === -1) return undefined
     const start = indirect(this.source.view, at)
-    check(this.source.view, start, 4)
-    const length = this.source.view.getUint32(start, true)
-    check(this.source.view, start + 4, length * elementSize)
+    const length = lengthAt(this.source.view, start, elementSize)
     return new VectorImpl(this.source, start + 4, length, elementSize, this.depth)
   }
   bytes(slot: number): Uint8Array | undefined {
@@ -531,7 +506,8 @@ class TableImpl implements Table {
   }
 }
 
-const identifierBytes = (identifier: string): Uint8Array => {
+const identifierBytes = (identifier: string | undefined): Uint8Array | undefined => {
+  if (identifier === undefined) return undefined
   const bytes = encoder.encode(identifier)
   return bytes.length === 4
     ? bytes
@@ -587,7 +563,7 @@ export const root = (bytes: Uint8Array, options?: {
 }): Table => {
   const maxDepth = options?.maxDepth ?? 64
   positive("maxDepth", maxDepth)
-  const expected = options?.identifier === undefined ? undefined : identifierBytes(options.identifier)
+  const expected = identifierBytes(options?.identifier)
   let data = bytes
   if (options?.sizePrefixed) {
     if (bytes.length < 4) fail("OutOfBounds", "a size-prefixed buffer needs at least 4 bytes")
@@ -1028,7 +1004,7 @@ export class Builder {
   }): Uint8Array {
     this.notNested("finish")
     if (this.finished) fail("Usage", "finish called twice")
-    const identifier = options?.identifier === undefined ? undefined : identifierBytes(options.identifier)
+    const identifier = identifierBytes(options?.identifier)
     this.prep(this.minAlign, 4 + (identifier === undefined ? 0 : 4) + (options?.sizePrefixed ? 4 : 0))
     if (identifier !== undefined) {
       this.prep(4, 4)
@@ -1042,14 +1018,10 @@ export class Builder {
 }
 
 /**
- * Creates a {@link Builder}. `forceDefaults` writes scalar fields even when they
- * equal their default; `initialSize` is the first buffer size in bytes (it
- * grows as needed).
- *
- * **Details**
- *
- * `initialSize` is an integer from 1 to 2^31 (default 1024); other values
- * throw a `Usage` {@link FlatBuffersError}.
+ * Creates a {@link Builder}. `forceDefaults` writes scalar fields even when
+ * they equal their default. `initialSize` is the first buffer size in bytes,
+ * an integer from 1 to 2^31 (default 1024); the buffer grows as needed, and
+ * other values throw a `Usage` {@link FlatBuffersError}.
  *
  * @stability experimental
  * @category writing
