@@ -63,55 +63,56 @@ export const attempt = <A>(f: () => A): Effect.Effect<A, DataFrameError> => {
 // Resolving tables
 // -----------------------------------------------------------------------------
 
-const values = (frame: F.Frame): Node => ({ _tag: "Values", frame: frame as any })
+/** A frame as a plan node. @internal */
+export const values = (frame: F.Frame): Node => ({ _tag: "Values", frame: frame as any })
 const frameOf = (node: { readonly frame: unknown }): F.Frame => node.frame as F.Frame
 
-/** Replaces every `Table` with the catalog's frame. @internal */
-export const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Node, DataFrameError> => {
-  const names = new Set<string>()
-  const collect = (node: Plan.Node): void => {
+/** How many times a plan names each table. @internal */
+export const tables = (plan: Plan.Node): Map<string, number> => {
+  const out = new Map<string, number>()
+  const walk = (node: Node): void => {
+    if (node._tag === "Table") out.set(node.name, (out.get(node.name) ?? 0) + 1)
+    for (const c of children(node)) walk(c)
+  }
+  walk(plan as Node)
+  return out
+}
+
+/** A plan with each `Table` replaced by `f` of it. @internal */
+export const mapTables = (plan: Plan.Node, f: (table: Plan.Table) => Node): Node => {
+  const replace = (node: Plan.Node): Node => {
     switch (node._tag) {
       case "Table":
-        names.add(node.name)
-        return
+        return f(node)
       case "Values":
-        return
+        return node
       case "Join":
-        collect(node.left)
-        collect(node.right)
-        return
+        return { ...node, left: replace(node.left), right: replace(node.right) }
       case "Concat":
-        for (const n of node.inputs) collect(n)
-        return
+        return { ...node, inputs: node.inputs.map(replace) }
       default:
-        collect(node.input)
+        return { ...node, input: replace(node.input) } as Node
     }
   }
-  collect(plan)
-  if (names.size === 0) return Effect.succeed(plan as Node)
-  return Effect.forEach([...names], (name) =>
-    catalog.table(name).pipe(
-      Effect.map((df) => [name, df as unknown as F.Frame] as const)
-    )).pipe(
+  return replace(plan)
+}
+
+/** A table's frame, checked against and narrowed to its declared columns. @internal */
+export const tableValues = (table: Plan.Table, frame: F.Frame): Node =>
+  values(table.columns === undefined ? frame : conform(frame, table.columns, table.schema))
+
+/** Replaces every `Table` with the catalog's frame, reading each table once. @internal */
+export const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Node, DataFrameError> => {
+  const names = [...tables(plan).keys()]
+  if (names.length === 0) return Effect.succeed(plan as Node)
+  return Effect.forEach(
+    names,
+    (name) => Effect.map(catalog.table(name), (df) => [name, df as unknown as F.Frame] as const)
+  )
+    .pipe(
       Effect.flatMap((entries) => {
-        const tables = new Map(entries)
-        const replace = (node: Plan.Node): Node => {
-          switch (node._tag) {
-            case "Table": {
-              const frame = tables.get(node.name)!
-              return values(node.columns === undefined ? frame : conform(frame, node.columns, node.schema))
-            }
-            case "Values":
-              return node
-            case "Join":
-              return { ...node, left: replace(node.left), right: replace(node.right) }
-            case "Concat":
-              return { ...node, inputs: node.inputs.map(replace) }
-            default:
-              return { ...node, input: replace(node.input) } as Node
-          }
-        }
-        return attempt(() => replace(plan))
+        const frames = new Map(entries)
+        return attempt(() => mapTables(plan, (table) => tableValues(table, frames.get(table.name)!)))
       })
     )
 }
@@ -619,17 +620,6 @@ export const execute = (plan: Node): Effect.Effect<F.Frame, DataFrameError> => {
   return run(plan)
 }
 
-/** The names of the tables a plan reads. @internal */
-export const tables = (plan: Plan.Node): Set<string> => {
-  const out = new Set<string>()
-  const walk = (node: Node): void => {
-    if (node._tag === "Table") out.add(node.name)
-    for (const c of children(node)) walk(c)
-  }
-  walk(plan as Node)
-  return out
-}
-
 /**
  * Resolves, optimises and runs a plan. Plans that read streamed tables run
  * batch by batch (see `stream.ts`).
@@ -637,7 +627,7 @@ export const tables = (plan: Plan.Node): Set<string> => {
  * @internal
  */
 export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> =>
-  [...tables(plan)].some(catalog.streaming)
+  isStreaming(plan, catalog)
     ? Streaming.collect(plan, catalog).pipe(
       Effect.withSpan("dataframe.Query", {
         attributes: { "dataframe.operations": count(plan), "dataframe.streaming": true }
@@ -649,8 +639,18 @@ export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effec
       Effect.withSpan("dataframe.Query", { attributes: { "dataframe.operations": count(plan) } })
     )
 
-/** The optimised plan, as text. @internal */
+/**
+ * The optimised plan that runs, as text. Plans over streamed tables show
+ * them as `Table` nodes, without reading them.
+ *
+ * @internal
+ */
 export const explain = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<string, DataFrameError> =>
-  resolve(plan, catalog).pipe(Effect.flatMap((resolved) => attempt(() => show(optimize(resolved)))))
+  isStreaming(plan, catalog)
+    ? attempt(() => show(optimize(plan as Node)))
+    : resolve(plan, catalog).pipe(Effect.flatMap((resolved) => attempt(() => show(optimize(resolved)))))
+
+const isStreaming = (plan: Plan.Node, catalog: Catalog.Service): boolean =>
+  [...tables(plan).keys()].some(catalog.streaming)
 
 const count = (node: Plan.Node): number => 1 + children(node as Node).reduce((n, c) => n + count(c as Plan.Node), 0)

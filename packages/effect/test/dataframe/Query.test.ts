@@ -321,6 +321,46 @@ describe("Query", () => {
   describe("streamed tables", () => {
     const Row = Schema.Struct({ x: Schema.Number })
     const batches = Array.from({ length: 8 }, (_, b) => DataFrame.fromRows(Row, [{ x: 2 * b }, { x: 2 * b + 1 }]))
+    const t = Query.table("t", Row)
+    const streamed = <A>(query: Query.Query<A>, source: Catalog.Source) =>
+      rows(query).pipe(Effect.provide(Catalog.layer({ t: source })))
+
+    it.effect("a slice that has its rows pulls no further batch", () =>
+      Effect.gen(function*() {
+        const one = Stream.concat(Stream.succeed(DataFrame.fromColumns({ x: [1] })), Stream.die("pulled again"))
+        assert.deepStrictEqual(yield* streamed(Query.head(t, 1), one), [{ x: 1 }])
+        assert.deepStrictEqual(yield* streamed(Query.head(t, 0), Stream.die("pulled")), [])
+      }))
+
+    it.effect("zero-row batches aggregate like an empty table", () =>
+      Effect.gen(function*() {
+        const query = Query.aggregate(t, (c) => ({ n: Expr.count(), total: Expr.sum(c.x), mean: Expr.mean(c.x) }))
+        const empty = Stream.make(DataFrame.fromColumns({ x: Float64Array.of() }))
+        assert.deepStrictEqual(yield* streamed(query, empty), [{ n: 0, total: 0, mean: null }])
+      }))
+
+    it.effect("reads a table named twice once per run", () =>
+      Effect.gen(function*() {
+        let loads = 0
+        const load = Effect.sync(() => DataFrame.fromColumns({ x: [++loads] }))
+        assert.deepStrictEqual(yield* streamed(Query.concat([t, t]), Stream.fromEffect(load)), [{ x: 1 }, { x: 1 }])
+        assert.strictEqual(loads, 1)
+        const frames = yield* Query.concat([t, t]).pipe(
+          Query.stream,
+          Stream.runCollect,
+          Effect.provide(Catalog.layer({ t: load }))
+        )
+        assert.deepStrictEqual(frames.flatMap((frame) => DataFrame.toArray(frame, "x")), [2, 2])
+        assert.strictEqual(loads, 2)
+      }))
+
+    it.effect("explain shows the plan without reading the stream", () =>
+      Effect.gen(function*() {
+        const plan = yield* Query.explain(Query.head(t, 1)).pipe(
+          Effect.provide(Catalog.layer({ t: Stream.die("read") }))
+        )
+        assert.strictEqual(plan, [`Slice offset 0 length 1`, `  Table t [x]`].join("\n"))
+      }))
 
     it.effect("a head stops reading the stream", () =>
       Effect.gen(function*() {

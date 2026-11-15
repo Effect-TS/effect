@@ -64,9 +64,9 @@ const runEmpty = (node: Q.Node): Effect.Effect<F.Frame, DataFrameError> => {
   const empty = (n: Q.Node): Q.Node => {
     switch (n._tag) {
       case "Table":
-        return { _tag: "Values", frame: emptyTable(n) as any }
+        return Q.values(emptyTable(n))
       case "Values":
-        return { _tag: "Values", frame: F.slice(n.frame as unknown as F.Frame, 0, 0) as any }
+        return Q.values(F.slice(n.frame as unknown as F.Frame, 0, 0))
       case "Join":
         return { ...n, left: empty(n.left), right: empty(n.right) }
       case "Concat":
@@ -127,14 +127,18 @@ const aggregate = (
     return collected(node, catalog)
   }
   const fns = specs.map((s) => s.fn)
-  // The first batch's input vectors and key columns, for result types.
+  // The first non-empty batch's input vectors and key columns, for result types.
   let template: { readonly inputs: ReadonlyArray<V.Vector | undefined>; readonly frame: F.Frame } | undefined
+  // The first batch, to aggregate over no rows when every batch is empty.
+  let first: F.Frame | undefined
   return Stream.unwrap(
     Stream.runFoldEffect(
       batches(node.input, catalog),
       (): Partial.State | undefined => undefined,
       (state, batch) =>
         Q.attempt(() => {
+          first ??= batch
+          if (batch.length === 0) return state
           const ctx = F.context(batch)
           const inputs = specs.map((s) => (s.arg === undefined ? undefined : E.evaluateColumn(s.arg, ctx)))
           template ??= { inputs, frame: batch }
@@ -147,7 +151,10 @@ const aggregate = (
         })
     ).pipe(
       Effect.flatMap((state) => {
-        if (state === undefined || template === undefined) return runEmpty(node)
+        if (state === undefined || template === undefined) {
+          const empty = first
+          return empty === undefined ? runEmpty(node) : Q.attempt(() => Q.step(node, [empty]))
+        }
         const t = template
         return Q.attempt(() => {
           const keyColumns = keys.map((k, i) =>
@@ -165,11 +172,10 @@ const aggregate = (
 }
 
 const slice = (input: Batches, offset: number, length: number | undefined): Batches =>
-  Stream.suspend(() => {
+  length === 0 ? Stream.empty : Stream.suspend(() => {
     let skip = offset
     let left = length ?? Infinity
     return input.pipe(
-      Stream.takeWhile(() => left > 0),
       Stream.map((batch) => {
         const start = Math.min(skip, batch.length)
         skip -= start
@@ -177,6 +183,7 @@ const slice = (input: Batches, offset: number, length: number | undefined): Batc
         left -= end - start
         return F.slice(batch, start, end)
       }),
+      Stream.takeUntil(() => left === 0),
       Stream.filter((batch) => batch.length > 0)
     )
   })
@@ -222,13 +229,34 @@ export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
   }
 }
 
+/**
+ * The optimised plan, with the tables it names more than once read once,
+ * as frames: each run reads each table once.
+ */
+const prepare = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Q.Node, DataFrameError> => {
+  const repeated = [...Q.tables(plan)].flatMap(([name, n]) => n > 1 ? [name] : [])
+  return Effect.forEach(
+    repeated,
+    (name) => Effect.map(Stream.runCollect(catalog.stream(name)), (frames) => [name, frames] as const)
+  ).pipe(
+    Effect.flatMap((entries) => {
+      const read = new Map(entries)
+      return Q.attempt(() =>
+        Q.optimize(Q.mapTables(plan, (table) => {
+          const frames = read.get(table.name) as ReadonlyArray<F.Frame> | undefined
+          if (frames === undefined) return table
+          if (frames.length === 0) return Q.values(emptyTable(table))
+          return Q.tableValues(table, frames.length === 1 ? frames[0] : F.concat(frames))
+        }))
+      )
+    })
+  )
+}
+
 /** The batches of a plan's result, after optimisation. @internal */
 export const stream = (plan: Plan.Node, catalog: Catalog.Service): Batches =>
-  Stream.unwrap(Effect.map(Q.attempt(() => Q.optimize(plan as Q.Node)), (optimized) => batches(optimized, catalog)))
+  Stream.unwrap(Effect.map(prepare(plan, catalog), (optimized) => batches(optimized, catalog)))
 
 /** A plan's result as one frame, computed batch by batch. @internal */
 export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> =>
-  Effect.flatMap(
-    Q.attempt(() => Q.optimize(plan as Q.Node)),
-    (optimized) => collectFrames(batches(optimized, catalog), optimized)
-  )
+  Effect.flatMap(prepare(plan, catalog), (optimized) => collectFrames(batches(optimized, catalog), optimized))
