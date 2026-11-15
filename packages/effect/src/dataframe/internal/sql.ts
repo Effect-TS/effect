@@ -96,51 +96,52 @@ const sqlType = (t: S.DataType): string => {
 const smallIntegers = ["smallint", "integer"]
 
 /**
- * How the SQL engine reads declared table columns of each type: as values
- * of `type`, from columns of the PostgreSQL types `accepts` or of the type
+ * The PostgreSQL columns the SQL engine reads as declared table columns of
+ * each type: columns of the PostgreSQL types `accepts` or of the type
  * categories `categories` (as the in-memory engine accepts integers below
  * 64 bits for floats and narrower integers), or of any type for `Null`.
  * `undefined` for column types it doesn't read yet.
  */
 const tableTypes: {
   readonly [K in Plan.TypeName]:
-    | {
-      readonly type: S.DataType
-      readonly accepts?: ReadonlyArray<string>
-      readonly categories?: ReadonlyArray<string>
-    }
+    | { readonly accepts?: ReadonlyArray<string>; readonly categories?: ReadonlyArray<string> }
     | undefined
 } = {
-  Int8: { type: S.int8, accepts: smallIntegers },
-  Int16: { type: S.int16, accepts: smallIntegers },
-  Int32: { type: S.int32, accepts: smallIntegers },
-  Int64: { type: S.int64, accepts: ["bigint"] },
-  UInt8: { type: S.uint8, accepts: smallIntegers },
-  UInt16: { type: S.uint16, accepts: smallIntegers },
-  UInt32: { type: S.uint32, accepts: smallIntegers },
-  UInt64: { type: S.uint64, accepts: ["bigint"] },
+  Int8: { accepts: smallIntegers },
+  Int16: { accepts: smallIntegers },
+  Int32: { accepts: smallIntegers },
+  Int64: { accepts: ["bigint"] },
+  UInt8: { accepts: smallIntegers },
+  UInt16: { accepts: smallIntegers },
+  UInt32: { accepts: smallIntegers },
+  UInt64: { accepts: ["bigint"] },
   Float16: undefined,
-  Float32: { type: S.float32, accepts: [...smallIntegers, "real", "double precision"] },
-  Float64: { type: S.float64, accepts: [...smallIntegers, "real", "double precision"] },
+  Float32: { accepts: [...smallIntegers, "real", "double precision"] },
+  Float64: { accepts: [...smallIntegers, "real", "double precision"] },
   // String types and enums.
-  Utf8: { type: S.utf8, categories: ["S", "E"] },
-  Binary: { type: S.binary, accepts: ["bytea"] },
-  Bool: { type: S.bool, accepts: ["boolean"] },
-  Null: { type: S.nullType },
-  Date: { type: S.date("day"), accepts: ["date"] },
+  Utf8: { categories: ["S", "E"] },
+  Binary: { accepts: ["bytea"] },
+  Bool: { accepts: ["boolean"] },
+  Null: {},
+  Date: { accepts: ["date"] },
   Time: undefined,
-  Timestamp: { type: S.timestamp("microsecond"), accepts: ["timestamp without time zone", "timestamp with time zone"] },
-  Duration: { type: S.duration("microsecond"), accepts: ["interval"] },
-  Decimal: undefined,
+  Timestamp: { accepts: ["timestamp without time zone", "timestamp with time zone"] },
+  Duration: { accepts: ["interval"] },
+  Decimal: { accepts: ["numeric"] },
   List: undefined,
   Struct: undefined
 }
 
-/** How the SQL engine reads a declared table column (see {@link tableTypes}). */
-const tableType = (table: string, column: Plan.TableColumn) =>
-  tableTypes[column.type] ?? unsupported(
-    `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
-  )
+/**
+ * The type the SQL engine reads a declared table column as: the type the
+ * in-memory engine conforms it to.
+ */
+const tableType = (table: string, column: Plan.TableColumn): S.DataType =>
+  tableTypes[column.type] === undefined
+    ? unsupported(
+      `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
+    )
+    : Schema_.arrowType(column)
 
 const string = (s: string): string => `'${s.replaceAll("'", "''")}'`
 
@@ -660,7 +661,7 @@ const typed = (node: Plan.Node, frames: Map<Plan.Node, F.Frame>): F.Frame => {
     )
     frame = F.fromVectors(
       columns.map((c) => c.name),
-      columns.map((c) => K.nullsOf(tableType(node.name, c).type, 0)),
+      columns.map((c) => K.nullsOf(tableType(node.name, c), 0)),
       0
     )
   } else if (node._tag === "Values") {
@@ -759,9 +760,13 @@ const relation = (node: Plan.Node, c: Compiler): string => {
     } FROM (${input}) AS t`
   switch (node._tag) {
     case "Table":
-      return `SELECT ${[...columns.map(quote), `ROW_NUMBER() OVER () AS ${row}`].join(", ")} FROM ${
-        c.sources.get(node)
-      }`
+      return `SELECT ${
+        [
+          ...node.columns!.map((column) => `${declared(column)} AS ${quote(column.name)}`),
+          `ROW_NUMBER() OVER () AS ${row}`
+        ]
+          .join(", ")
+      } FROM ${c.sources.get(node)}`
     case "Values":
       return values(node.frame as unknown as F.Frame, c)
     case "Filter": {
@@ -971,6 +976,43 @@ interface Check {
   readonly verify: (value: unknown) => void
 }
 
+const int64 = BigInt(1) << BigInt(63)
+
+/**
+ * SQL that is true when `x`, a value of a table's source, is one its
+ * declared column's `type` holds exactly, as the in-memory engine converts
+ * table columns: timestamps and durations in whole units that fit 64 bits
+ * (PostgreSQL keeps microseconds), decimals without more digits than the
+ * precision and scale allow (no rounding). `undefined` when every value is.
+ */
+const exact = (x: string, type: S.DataType): string | undefined => {
+  switch (type._tag) {
+    case "Timestamp":
+    case "Duration": {
+      const v = `(EXTRACT(EPOCH FROM ${x}) * ${perSecond[type.unit]})`
+      return `${v} = TRUNC(${v}) AND ${v} BETWEEN ${-int64} AND ${int64 - BigInt(1)}`
+    }
+    case "Decimal":
+      return `ROUND(${x}, ${type.scale}) = ${x} AND ABS(${x}) < ${power(type.precision - type.scale)}`
+    default:
+      return undefined
+  }
+}
+
+/**
+ * A declared column of a table's source as its declared type: null where it
+ * isn't held exactly (see {@link exact}), so that reading such values
+ * doesn't fail before the checks of the rows do.
+ */
+const declared = (column: Plan.TableColumn): string => {
+  const x = quote(column.name)
+  const type = Schema_.arrowType(column)
+  const held = exact(x, type)
+  return held === undefined
+    ? x
+    : `(CASE WHEN ${held} THEN ${type._tag === "Decimal" ? `CAST(${x} AS ${sqlType(type)})` : x} END)`
+}
+
 /**
  * The checks of a table's declared column types that don't read its rows:
  * each value is the PostgreSQL type of a column the engine doesn't read as
@@ -979,7 +1021,7 @@ interface Check {
 const typeChecks = (table: Plan.Table): Array<Check> =>
   (table.columns ?? []).flatMap((column): Array<Check> => {
     if (column.type === "Null") return []
-    const { accepts = [], categories = [] } = tableType(table.name, column)
+    const { accepts = [], categories = [] } = tableTypes[column.type]!
     const accepted = [
       ...(accepts.length === 0 ? [] : [`format_type(oid, NULL) IN (${accepts.map(string).join(", ")})`]),
       ...(categories.length === 0 ? [] : [`typcategory IN (${categories.map(string).join(", ")})`])
@@ -1000,8 +1042,9 @@ const typeChecks = (table: Plan.Table): Array<Check> =>
  * The checks of a table's rows, the ones the in-memory engine makes beyond
  * column types: only nulls in `Null` columns, no nulls in other columns
  * unless they are nullable, timestamps in the range of `DateTime`,
- * durations of fixed length (no months), and the values of the fields its
- * schema constrains beyond their column type (literals, enums, refinements)
+ * durations of fixed length (no months), values their declared type holds
+ * exactly (see {@link exact}), and the values of the fields its schema
+ * constrains beyond their column type (literals, enums, refinements)
  * accepted by the schema, tested on each such column's distinct values.
  * Each value aggregates the rows of the table's source.
  */
@@ -1030,12 +1073,15 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
         "has durations in months, which have no fixed length"
       ))
     }
+    const type = Schema_.arrowType(column)
+    const held = exact(x, type)
+    if (held !== undefined) checks.push(any(`NOT (${held})`, `has values that ${D.describe(type)} can't hold exactly`))
     return checks
   }),
   ...(table.schema === undefined ? [] : Schema_.valueChecks(table.schema)).map(([name, test]): Check => {
     const type = frame.columns.find((c) => c.name === name)!.type
     return {
-      sql: `ARRAY_AGG(DISTINCT ${output(quote(name), type)})`,
+      sql: `ARRAY_AGG(DISTINCT ${output(declared(table.columns!.find((c) => c.name === name)!), type)})`,
       verify: (values) => {
         const rows = ((values ?? []) as ReadonlyArray<unknown>).map((v) => [v])
         if (!F.toArray(decode(S.make([S.field(name, type, { nullable: true })]), rows), name).every(test)) {

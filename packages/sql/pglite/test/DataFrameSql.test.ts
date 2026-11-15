@@ -50,12 +50,43 @@ const Setup = Layer.effectDiscard(
     yield* sql`DROP TABLE IF EXISTS odd`
     yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL)`
     yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month')`
+    yield* sql`DROP TABLE IF EXISTS declared`
+    yield* sql`CREATE TABLE declared (t TIMESTAMP, d INTERVAL, n NUMERIC)`
+    yield* sql`INSERT INTO declared VALUES ('1970-01-01 00:00:01', '-2 seconds', 12.5), ('1969-12-31 23:59:58', '3 seconds', -0.05), (NULL, NULL, NULL)`
+    yield* sql`DROP TABLE IF EXISTS inexact`
+    yield* sql`CREATE TABLE inexact (s TIMESTAMP, ms TIMESTAMP, ns TIMESTAMP, ds INTERVAL, dms INTERVAL, dns INTERVAL, scale NUMERIC, digits NUMERIC)`
+    yield* sql`INSERT INTO inexact VALUES ('1970-01-01 00:00:01.5', '1970-01-01 00:00:01.0005', '2263-01-01', '-1.5 seconds', '0.0005 seconds', '110000 days', 1.005, 1000)`
   })
 )
 
+/** A frame with exactly the given Arrow columns. */
+const frame = (fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
+  DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(ArrowSchema.make(fields), columns)))
+const decimal = (s: string) => BigDecimal.fromStringUnsafe(s)
+
 const memory = Catalog.layer({
   sales: DataFrame.fromRows(Sale, sales),
-  regions: DataFrame.fromRows(Region, regions)
+  regions: DataFrame.fromRows(Region, regions),
+  // The rows of the PostgreSQL tables `declared` and `inexact`, as PostgreSQL keeps them.
+  declared: frame([
+    ArrowSchema.field("t", ArrowSchema.timestamp("microsecond"), { nullable: true }),
+    ArrowSchema.field("d", ArrowSchema.duration("microsecond"), { nullable: true }),
+    ArrowSchema.field("n", ArrowSchema.decimal(20, 4), { nullable: true })
+  ], [[1_000_000n, -2_000_000n, null], [-2_000_000n, 3_000_000n, null], [decimal("12.5"), decimal("-0.05"), null]]),
+  inexact: frame([
+    ...["s", "ms", "ns"].map((name) => ArrowSchema.field(name, ArrowSchema.timestamp("microsecond"))),
+    ...["ds", "dms", "dns"].map((name) => ArrowSchema.field(name, ArrowSchema.duration("microsecond"))),
+    ...["scale", "digits"].map((name) => ArrowSchema.field(name, ArrowSchema.decimal(20, 4)))
+  ], [
+    [1_500_000n],
+    [1_000_500n],
+    [9_246_182_400_000_000n],
+    [-1_500_000n],
+    [500n],
+    [9_504_000_000_000_000n],
+    [decimal("1.005")],
+    [decimal("1000")]
+  ])
 })
 
 const table = Query.table("sales", Sale)
@@ -80,9 +111,7 @@ const groups = Query.from(
 const none = ints.pipe(Query.filter((c) => Expr.gt(c.x, 9)))
 /** A query over a frame with exactly the given Arrow columns. */
 const arrow = <R>(fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
-  Query.from(
-    DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(ArrowSchema.make(fields), columns)))
-  ) as Query.Query<unknown> as Query.Query<R>
+  Query.from(frame(fields, columns)) as Query.Query<unknown> as Query.Query<R>
 const ties = [0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 2.675, 1.005, 0.125, 0.375, 1.25, 1.35]
 const decimals = arrow<{ d: BigDecimal.BigDecimal | null }>(
   [ArrowSchema.field("d", ArrowSchema.decimal(18, 3))],
@@ -319,6 +348,27 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
       Query.select((c) => ({ r0: Expr.round(c.x), r1: Expr.round(c.x, 1), r2: Expr.round(c.x, 2) }))
     )
   ],
+  ...unitNames.map((u) =>
+    [
+      `tables declared in ${u} and with a decimal`,
+      Query.table(
+        "declared",
+        Schema.Struct({
+          t: Schema.NullOr(Schema.DateTimeUtc),
+          d: Schema.NullOr(Schema.Duration),
+          n: Schema.NullOr(Schema.BigDecimal)
+        }),
+        {
+          types: { t: ArrowSchema.timestamp(units[u]), d: ArrowSchema.duration(units[u]), n: ArrowSchema.decimal(5, 2) }
+        }
+      ).pipe(Query.withColumns((c) => ({
+        ti: Expr.cast(c.t, "Int64"),
+        di: Expr.cast(c.d, "Int64"),
+        text: Expr.cast(c.n, "Utf8"),
+        sum: Expr.add(c.n, c.n)
+      })))
+    ] as const
+  ),
   [
     "rounding integers",
     Query.from(DataFrame.fromColumns({ x: Int32Array.of(5, -15, 25) })).pipe(
@@ -430,6 +480,27 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           assert.strictEqual(yield* rejects(query), message)
         }
         assert.deepStrictEqual(yield* rowsOnSql(odd(Schema.Struct({ nothing: Schema.Null }))), [{ nothing: null }])
+      }))
+
+    it.effect("tables reject values their declared types can't hold exactly, as in memory", () =>
+      Effect.gen(function*() {
+        for (
+          const [column, schema, type] of [
+            ["s", Schema.DateTimeUtc, ArrowSchema.timestamp("second")],
+            ["ms", Schema.DateTimeUtc, ArrowSchema.timestamp("millisecond")],
+            ["ns", Schema.DateTimeUtc, ArrowSchema.timestamp("nanosecond")],
+            ["ds", Schema.Duration, ArrowSchema.duration("second")],
+            ["dms", Schema.Duration, ArrowSchema.duration("millisecond")],
+            ["dns", Schema.Duration, ArrowSchema.duration("nanosecond")],
+            ["scale", Schema.BigDecimal, ArrowSchema.decimal(5, 2)],
+            ["digits", Schema.BigDecimal, ArrowSchema.decimal(5, 2)]
+          ] as const
+        ) {
+          const query = Query.table("inexact", Schema.Struct({ [column]: schema }), { types: { [column]: type } })
+          const expected = yield* Effect.flip(query.pipe(Effect.provide(memory)))
+          const actual = yield* Effect.flip(onSql(query))
+          assert.strictEqual(actual.message, expected.message)
+        }
       }))
 
     it.effect("tables are checked on the rows the query reads, even of volatile views", () =>
