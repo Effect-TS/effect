@@ -343,7 +343,7 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       const members = type.fields.map((f, k) => reader(f, data.children[k], options))
       return withValidity(data, (i) => {
         const out: Record<string, unknown> = {}
-        for (let k = 0; k < names.length; k++) out[names[k]] = members[k](i + offset)
+        for (let k = 0; k < names.length; k++) setProperty(out, names[k], members[k](i + offset))
         return out
       })
     }
@@ -411,6 +411,20 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
     }
   }
 }
+
+/**
+ * Sets `out[name]` as an own property, also when `name` is `__proto__`
+ * (which assignment would treat as the prototype). @internal
+ */
+export const setProperty = (out: Record<string, unknown>, name: string, value: unknown): void => {
+  if (name === "__proto__") {
+    Object.defineProperty(out, name, { value, writable: true, enumerable: true, configurable: true })
+  } else out[name] = value
+}
+
+/** Reads `v[name]`, where `__proto__` is only ever an own property. @internal */
+export const getProperty = (v: object, name: string): unknown =>
+  name === "__proto__" && !Object.hasOwn(v, name) ? undefined : (v as Record<string, unknown>)[name]
 
 /**
  * Iterates `length(c)` values of each chunk `c` through `readerOf(c)`, without

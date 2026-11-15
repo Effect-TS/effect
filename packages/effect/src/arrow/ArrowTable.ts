@@ -181,7 +181,7 @@ const rowsOf = (self: Table, options?: ArrowColumn.Options): Iterable<Record<str
       const readers = fields.map((f, c) => Values.reader(f, batch.columns[c], resolved))
       return (i) => {
         const row: Record<string, unknown> = {}
-        for (let c = 0; c < names.length; c++) row[names[c]] = readers[c](i)
+        for (let c = 0; c < names.length; c++) Values.setProperty(row, names[c], readers[c](i))
         return row
       }
     })
@@ -252,9 +252,9 @@ type Columns = Readonly<Record<string, Iterable<unknown>>> | ReadonlyArray<Itera
 
 const columnValues = (schema: ArrowSchema.Schema, columns: Columns): Array<Array<unknown>> =>
   schema.fields.map((f, c) => {
-    const source = Array.isArray(columns)
-      ? columns[c]
-      : (columns as Readonly<Record<string, Iterable<unknown>>>)[f.name]
+    const source = (Array.isArray(columns) ? columns[c] : Values.getProperty(columns, f.name)) as
+      | Iterable<unknown>
+      | undefined
     if (source === undefined) throw new Builders.BuildFailure(`missing column ${JSON.stringify(f.name)}`, [f.name])
     return Array.isArray(source) ? source : Array.from(source)
   })
@@ -333,7 +333,7 @@ export const fromRows = (
     let columns: Array<Array<unknown>> = schema.fields.map(() => [])
     let count = 0
     for (const row of rows) {
-      schema.fields.forEach((f, c) => columns[c].push(row[f.name] ?? null))
+      schema.fields.forEach((f, c) => columns[c].push(Values.getProperty(row, f.name) ?? null))
       if (++count >= batchSize) {
         batches.push(columns)
         columns = schema.fields.map(() => [])

@@ -58,6 +58,7 @@ describe("ArrowTable", () => {
       [ArrowTable.fromRows(schema, [...rows.slice(0, 3), { id: null }], { batchSize: 2 }), [3, "id"]],
       [ArrowTable.fromColumns(schema, { id: [1, 2], name: ["a"], tag: ["x", "y"] }), ["name"]],
       [ArrowTable.fromColumns(schema, { id: [1], name: ["a"] }), ["tag"]],
+      [ArrowTable.fromColumns(S.make([S.field("__proto__", S.int32)]), {}), ["__proto__"]],
       [ArrowTable.fromRows(nested, [{ id: 1 }, { id: 2 }, { id: 3, s: { a: 300 } }], { batchSize: 2 }), [2, "s", "a"]],
       [ArrowTable.fromRows(nested, [{ l: [1] }, { l: [] }, { l: [2, 300] }], { batchSize: 2 }), [2, "l", 1]],
       [ArrowTable.fromColumns(S.make([S.field("u", S.union("sparse", [S.field("a", S.int8)], [-1]))]), { u: [] }), [
@@ -71,6 +72,18 @@ describe("ArrowTable", () => {
         assert.deepStrictEqual(result.failure.path, path)
       }
     }
+  })
+
+  it("reads and builds a field named __proto__ as an own property", () => {
+    const proto = S.make([S.field("__proto__", S.int32), S.field("s", S.struct([S.field("__proto__", S.int32)]))])
+    const [first, second] = ArrowTable.toRows(
+      Result.getOrThrow(ArrowTable.fromRows(proto, [JSON.parse(`{"__proto__": 1, "s": {"__proto__": 2}}`), { s: {} }]))
+    )
+    assert.strictEqual(Object.getPrototypeOf(first), Object.prototype)
+    assert.deepStrictEqual(Object.entries(first), [["__proto__", 1], ["s", first.s]])
+    assert.deepStrictEqual(Object.entries(first.s as object), [["__proto__", 2]])
+    assert.deepStrictEqual(Object.entries(second), [["__proto__", null], ["s", second.s]])
+    assert.deepStrictEqual(Object.entries(second.s as object), [["__proto__", null]])
   })
 
   it("column reads one field across batches, by name or position", () => {

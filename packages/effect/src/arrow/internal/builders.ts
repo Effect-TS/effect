@@ -13,7 +13,7 @@ import * as Predicate from "../../Predicate.ts"
 import type * as ArrowData from "../ArrowData.ts"
 import type * as S from "../ArrowSchema.ts"
 import * as Layout from "./layout.ts"
-import type { Options } from "./values.ts"
+import * as Values from "./values.ts"
 
 interface DictionaryState {
   readonly valueType: S.DataType
@@ -30,14 +30,18 @@ interface DictionaryState {
  * built in a session share one dictionary per id, which grows as values
  * arrive; {@link finish} attaches the final dictionaries. @internal
  */
-export interface Session extends Options {
+export interface Session extends Values.Options {
   readonly dictionaries: Map<number, DictionaryState>
   /** The items of each non-array iterable read so far, so one-shot iterables can be read again. */
   readonly items: WeakMap<object, ReadonlyArray<unknown>>
 }
 
 /** @internal */
-export const session = (options: Options): Session => ({ ...options, dictionaries: new Map(), items: new WeakMap() })
+export const session = (options: Values.Options): Session => ({
+  ...options,
+  dictionaries: new Map(),
+  items: new WeakMap()
+})
 
 /** Placeholders standing in for dictionaries until {@link finish}. */
 const pending = new WeakMap<ArrowData.ArrowData, DictionaryState>()
@@ -458,9 +462,9 @@ const asIterable = (v: unknown, s: Session, at: At, index: number, what: string)
 
 /** Member `k`, named by `f`, of the struct value `v` (an object, or an array by position). */
 const memberValue = (v: object, f: S.Field, k: number): unknown =>
-  (Array.isArray(v) ? v[k] : (v as Record<string, unknown>)[f.name]) ?? null
+  (Array.isArray(v) ? v[k] : Values.getProperty(v, f.name)) ?? null
 
-const encoderOf = (field: S.Field, options: Options): ((v: unknown) => unknown) | undefined => {
+const encoderOf = (field: S.Field, options: Values.Options): ((v: unknown) => unknown) | undefined => {
   const name = field.metadata.get("ARROW:extension:name")
   const extension = name === undefined ? undefined : options.extensions.get(name)
   if (extension === undefined) return undefined
