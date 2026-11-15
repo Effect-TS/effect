@@ -4,6 +4,7 @@ import { Result } from "effect"
 import * as FlatBuffers from "effect/encoding/FlatBuffers"
 import * as Hex from "effect/encoding/Hex"
 
+// Assertion IDs and immutable source links: ./FlatBuffers.conformance.md
 const fromHex = (hex: string) => Result.getOrThrow(Hex.decode(hex))
 
 // The expected bytes were written by the official FlatBuffers Python builder
@@ -95,11 +96,102 @@ const usage = (f: () => unknown) =>
   })
 
 describe("FlatBuffers", () => {
+  // FB-N03: internals.md (Encoding example), transcribed independently of our builder.
+  it("reads the specification encoding example", () => {
+    const bytes = fromHex(
+      "1400000010001600040000001400100000000000" +
+        "100000000000803f00000040000040400800000032000000" +
+        "040000006672656400000000"
+    )
+    const root = FlatBuffers.root(bytes)
+    const pos = root.struct(0, 12)!
+    assert.deepStrictEqual([pos.float32(0), pos.float32(4), pos.float32(8)], [1, 2, 3])
+    assert.isFalse(root.has(1))
+    assert.strictEqual(root.int16(1, 150), 150)
+    assert.strictEqual(root.int16(2), 50)
+    assert.strictEqual(root.string(3), "fred")
+  })
+
+  // FB-N04: internals.md (Tables): subtract the signed offset; vtables may follow objects.
+  it("reads a vtable after its table", () => {
+    // Root at 4; table contains -8 and value 42; vtable at 12 has size 6, object size 8, field offset 4.
+    const root = FlatBuffers.root(fromHex("04000000f8ffffff2a000000060008000400"))
+    assert.isTrue(root.has(0))
+    assert.strictEqual(root.int32(0), 42)
+    assert.strictEqual(root.int32(1, 7), 7)
+  })
+
+  // FB-N05: internals.md (Format components): little-endian IEEE-754 and unsigned scalars.
+  it("reads independently encoded binary64 and unsigned scalars", () => {
+    // Root at 16; vtable at 4; fields at table offsets 8 (double), 16 (ulong), 4 (uint).
+    // All wire values are hand-authored, not produced by the local builder.
+    const header = "100000000a00180008001000040000000c000000"
+    const cases = [
+      {
+        double: "000000000000f83f",
+        expected: 1.5,
+        uint: "00000080",
+        ulong: "0000000000000080",
+        u32: 2147483648,
+        u64: 9223372036854775808n
+      },
+      {
+        double: "0000000000000000",
+        expected: 0,
+        uint: "ffffffff",
+        ulong: "ffffffffffffffff",
+        u32: 4294967295,
+        u64: 18446744073709551615n
+      },
+      {
+        double: "0000000000000080",
+        expected: -0,
+        uint: "01000080",
+        ulong: "0100000000000080",
+        u32: 2147483649,
+        u64: 9223372036854775809n
+      },
+      {
+        double: "000000000000f07f",
+        expected: Infinity,
+        uint: "00000080",
+        ulong: "0000000000000080",
+        u32: 2147483648,
+        u64: 9223372036854775808n
+      },
+      {
+        double: "000000000000f0ff",
+        expected: -Infinity,
+        uint: "ffffffff",
+        ulong: "ffffffffffffffff",
+        u32: 4294967295,
+        u64: 18446744073709551615n
+      },
+      {
+        double: "000000000000f87f",
+        expected: NaN,
+        uint: "01000080",
+        ulong: "0100000000000080",
+        u32: 2147483649,
+        u64: 9223372036854775809n
+      }
+    ]
+    for (const row of cases) {
+      const root = FlatBuffers.root(fromHex(header + row.uint + row.double + row.ulong))
+      // Object.is distinguishes signed zero and compares NaN without asserting a NaN payload.
+      assert.isTrue(Object.is(root.float64(0), row.expected), row.double)
+      assert.strictEqual(root.uint64(1), row.u64)
+      assert.strictEqual(root.uint32(2), row.u32)
+    }
+  })
+
+  // FB-I01: Python-builder byte parity; not a canonical wire layout.
   it("builds the bytes the official builder builds", () => {
     assert.strictEqual(Hex.encode(buildMonster()), MONSTER)
     assert.strictEqual(Hex.encode(buildPrefixed()), PREFIXED)
   })
 
+  // FB-N01 / FB-I02: internals.md (Offsets, Structs, Tables, Strings and Vectors); schema.md (identifiers).
   it("reads the official builder's bytes", () => {
     const monster = fromHex(MONSTER)
     assert.strictEqual(FlatBuffers.identifier(monster), "MONS")
@@ -122,6 +214,7 @@ describe("FlatBuffers", () => {
     assert.strictEqual(root.int32(1), 7)
   })
 
+  // FB-N02: internals.md (Tables): zero and out-of-range vtable entries mean absent.
   it("reads absent fields as their defaults", () => {
     const b = FlatBuffers.makeBuilder()
     b.startTable(1)
@@ -134,6 +227,7 @@ describe("FlatBuffers", () => {
     assert.strictEqual(root.float64(100, 1.5), 1.5)
   })
 
+  // FB-P01: local error classification; schema.md requires UTF-8, not this error API.
   it("decode returns a failure for malformed input", () => {
     const failure = (bytes: Uint8Array, options?: Parameters<typeof FlatBuffers.decode>[2]) => {
       const result = FlatBuffers.decode(bytes, (root) => root.string(0), options)
@@ -153,6 +247,7 @@ describe("FlatBuffers", () => {
     assert.strictEqual(failure(Uint8Array.of(0xff, 0, 0, 0, 0, 0, 0, 0), { sizePrefixed: true }), "OutOfBounds")
   })
 
+  // FB-P02: local callback error propagation.
   it("decode rethrows errors that aren't FlatBuffersErrors", () => {
     assert.throws(() =>
       FlatBuffers.decode(fromHex(MONSTER), () => {
@@ -160,6 +255,7 @@ describe("FlatBuffers", () => {
       }), "boom")
   })
 
+  // FB-P03: local bounded-read safety, not full-buffer verification.
   it("only fails with FlatBuffersError on truncated or corrupted buffers", () => {
     const monster = fromHex(MONSTER)
     for (let i = 0; i < monster.length; i++) {
@@ -174,6 +270,7 @@ describe("FlatBuffers", () => {
     }
   })
 
+  // FB-P04: local configurable traversal limit.
   it("fails tables nested deeper than maxDepth", () => {
     const b = FlatBuffers.makeBuilder()
     let table = 0
@@ -192,6 +289,7 @@ describe("FlatBuffers", () => {
     assert.deepStrictEqual(FlatBuffers.decode(bytes, depth, { maxDepth: 65 }), Result.succeed(65))
   })
 
+  // FB-P05: local shape/argument validation.
   it("throws for reads that don't match the shape asked for, even inside decode", () => {
     const monster = fromHex(MONSTER)
     const root = FlatBuffers.root(monster)
@@ -205,6 +303,7 @@ describe("FlatBuffers", () => {
     usage(() => FlatBuffers.decode(monster, (root) => root.has(0), { identifier: "TOOLONG" }))
   })
 
+  // FB-P06: local BOM preservation, including a four-byte non-ASCII identifier.
   it("keeps UTF-8 strings and identifiers intact, byte order mark included", () => {
     const b = FlatBuffers.makeBuilder()
     const s = b.createString("\ufeffhello")
@@ -215,6 +314,7 @@ describe("FlatBuffers", () => {
     assert.strictEqual(FlatBuffers.identifier(bytes), "\ufeffA")
   })
 
+  // FB-P07: local forceDefaults option; absent-reference behavior.
   it("forceDefaults writes scalar defaults but leaves absent references absent", () => {
     const b = FlatBuffers.makeBuilder({ forceDefaults: true })
     b.startTable(2)
@@ -226,6 +326,7 @@ describe("FlatBuffers", () => {
     assert.isTrue(root.has(1))
   })
 
+  // FB-P08: local builder state/argument validation (includes 16-bit vtable capacity).
   it("Builder rejects misuse", () => {
     const builder = (f: (b: FlatBuffers.Builder) => void) => usage(() => f(FlatBuffers.makeBuilder()))
     builder((b) => {
