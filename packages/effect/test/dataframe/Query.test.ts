@@ -245,22 +245,53 @@ describe("Query", () => {
           const error = yield* Effect.flip(query)
           assert.strictEqual(error.message, "Decimal[19, 0] values don't fit their common type Decimal[38, 2]")
         }
-        // An integer literal a column's type can't hold widens it, as in Polars 2.1.0.
-        const df = yield* Query.from(DataFrame.fromColumns({ x: Int8Array.of(1) })).pipe(
-          Query.select((c) => ({
-            sum: Expr.add(c.x, 300),
-            gt: Expr.gt(c.x, 1000),
-            when: Expr.when(Expr.gt(c.x, 0), c.x, 1000),
-            coalesce: Expr.coalesce(c.x, 1000)
+        // Integer literals a column's type can't hold widen it, wherever they
+        // appear among the operands. Expected values from Polars 2.1.0 unless noted.
+        const { bool, float64, int8, int16, int32 } = ArrowSchema
+        const literals: ReadonlyArray<
+          readonly [
+            string,
+            (c: Query.Columns<{ readonly x: number | null; readonly u: number | null }>) => Expr.Expr<unknown>,
+            ArrowSchema.DataType,
+            ReadonlyArray<unknown>
+          ]
+        > = [
+          ["x + 300", (c) => Expr.add(c.x, 300), int16, [null, 305]],
+          ["300 + x", (c) => Expr.add(Expr.lit(300), c.x), int16, [null, 305]],
+          ["x > 1000", (c) => Expr.gt(c.x, 1000), bool, [null, false]],
+          ["when(x > 0, x, 300)", (c) => Expr.when(Expr.gt(c.x, 0), c.x, 300), int16, [300, 5]],
+          ["when(x > 0, 300, x)", (c) => Expr.when(Expr.gt(c.x, 0), 300, c.x), int16, [null, 300]],
+          ["coalesce(x, 300)", (c) => Expr.coalesce(c.x, 300), int16, [300, 5]],
+          ["coalesce(300, x)", (c) => Expr.coalesce(300, c.x), int16, [300, 300]],
+          ["fillNull(x, 300)", (c) => Expr.fillNull(c.x, 300), int16, [300, 5]],
+          ["coalesce(null, 300, x)", (c) => Expr.coalesce(null, 300, c.x), int16, [300, 300]],
+          ["coalesce(x, null, 300)", (c) => Expr.coalesce(c.x, null, 300), int16, [300, 5]],
+          ["coalesce(x, 300, 70000)", (c) => Expr.coalesce(c.x, 300, 70000), int32, [300, 5]],
+          // Polars 2.1.0 gives Int16, which can't hold 70000.
+          ["coalesce(300, 70000, x)", (c) => Expr.coalesce(300, 70000, c.x), int32, [300, 300]],
+          ["coalesce(1, x)", (c) => Expr.coalesce(1, c.x), int8, [1, 1]],
+          ["coalesce(300, 1.5, x)", (c) => Expr.coalesce(300, 1.5, c.x), float64, [300, 300]],
+          ["coalesce(u, -1)", (c) => Expr.coalesce(c.u, -1), int16, [-1, 5]],
+          ["coalesce(-1, u)", (c) => Expr.coalesce(-1, c.u), int16, [-1, -1]],
+          // Every value of an operand built from literals is fitted, not only
+          // the first row's; Polars 2.1.0 gives Int8, making 5 + 300 null.
+          ["x + when(x is null, 1, 300)", (c) => Expr.add(c.x, Expr.when(Expr.isNull(c.x), 1, 300)), int16, [null, 305]]
+        ]
+        // x is Int8 and u UInt8, both [null, 5].
+        const ints = Query.from(DataFrame.fromColumns({ x: Int8Array.of(0, 5), u: Uint8Array.of(0, 5) })).pipe(
+          Query.withColumns((c) => ({
+            x: Expr.when(Expr.gt(c.x, 0), c.x, null),
+            u: Expr.when(Expr.gt(c.u, 0), c.u, null)
           }))
         )
-        assert.deepStrictEqual(DataFrame.toRows(df), [{ sum: 301, gt: false, when: 1, coalesce: 1 }])
-        assert.deepStrictEqual(df.schema.fields.map((f) => f.type), [
-          ArrowSchema.int16,
-          ArrowSchema.bool,
-          ArrowSchema.int16,
-          ArrowSchema.int16
-        ])
+        for (const [name, expr, type, values] of literals) {
+          const df = yield* Query.select(ints, (c) => ({ r: expr(c) }))
+          assert.deepStrictEqual(
+            [df.schema.fields[0].type, DataFrame.toRows(df).map((row) => row.r)],
+            [type, values],
+            name
+          )
+        }
       }))
 
     it.effect("temporal operands of mixed units meet in the coarser unit, as in Polars", () =>

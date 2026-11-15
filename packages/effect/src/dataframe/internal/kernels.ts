@@ -326,21 +326,43 @@ const coerceValue = (value: Value, target: S.DataType): Value =>
 export type ArithOp = "add" | "sub" | "mul" | "div" | "floorDiv" | "mod"
 
 /**
- * The type and dynamism of an operand next to one of type `other`: an
- * integer literal whose value `other` can't hold commits to the smallest
- * signed integer type that holds it, instead of adopting `other`, as in
- * Polars (`Int8 + 300` is Int16).
+ * The type and dynamism of an operand next to one of type `other`: integer
+ * literals (every value of an operand built from them) that `other` can't
+ * hold commit to the smallest signed integer type that holds them, instead
+ * of adopting `other`, as in Polars (`Int8 + 300` is Int16).
  */
 const operand = (v: Value, other: S.DataType): readonly [S.DataType, D.Dynamic] => {
-  if (v.dynamic !== "int" || other._tag !== "Int" || v.vector.kind !== "i32") return [v.vector.type, v.dynamic]
-  const x = v.vector.values[0]
-  const [lo, hi] = intRange(other)
-  if (x >= lo && x <= hi) return [v.vector.type, v.dynamic]
-  return [x >= -128 && x <= 127 ? S.int8 : x >= -32768 && x <= 32767 ? S.int16 : S.int32, undefined]
+  const vector = v.vector
+  if (v.dynamic !== "int" || other._tag !== "Int" || vector.kind !== "i32") return [vector.type, v.dynamic]
+  let lo = 0
+  let hi = 0
+  for (let i = 0; i < vector.length; i++) {
+    if (!V.isValid(vector, i)) continue
+    lo = Math.min(lo, vector.values[i])
+    hi = Math.max(hi, vector.values[i])
+  }
+  const [min, max] = intRange(other)
+  if (lo >= min && hi <= max) return [vector.type, v.dynamic]
+  return [lo >= -128 && hi <= 127 ? S.int8 : lo >= -32768 && hi <= 32767 ? S.int16 : S.int32, undefined]
 }
 
-/** The common type of two operands (`D.supertype`, literals fitted by {@link operand}). */
-const supertype = (a: Value, b: Value) => D.supertype(...operand(a, b.vector.type), ...operand(b, a.vector.type))
+/**
+ * The common type of operands (`D.supertype`): integer literals are fitted
+ * by {@link operand} to the common type of the other operands, wherever they
+ * appear among them, so the result doesn't depend on their order.
+ */
+const supertype = (...values: ReadonlyArray<Value>) => {
+  const fold = (types: ReadonlyArray<readonly [S.DataType, D.Dynamic]>) =>
+    types.reduce<ReturnType<typeof D.supertype>>(
+      (acc, [type, dynamic]) => acc && D.supertype(acc.type, acc.dynamic, type, dynamic),
+      { type: S.nullType, dynamic: undefined }
+    )
+  const fixed = fold(values.flatMap((v) => v.dynamic === undefined ? [[v.vector.type, undefined] as const] : []))
+  return fixed && fold([
+    [fixed.type, undefined],
+    ...values.flatMap((v) => v.dynamic === undefined ? [] : [operand(v, fixed.type)])
+  ])
+}
 
 const unify = (op: string, a: Value, b: Value) => {
   const st = supertype(a, b)
@@ -1128,26 +1150,18 @@ export const select = (branches: ReadonlyArray<V.Vector>, choice: Int32Array): V
 
 /** First non-null value per slot. @internal */
 export const coalesce = (values: ReadonlyArray<Value>, length: number): Value => {
-  let acc = values[0]
-  let type = acc.vector.type
-  let dynamic = acc.dynamic
-  for (const v of values.slice(1)) {
-    const st = D.supertype(type, dynamic, ...operand(v, type))
-    if (st === undefined) return V.fail(`coalesce arguments have incompatible types`)
-    type = st.type
-    dynamic = st.dynamic
-  }
+  const st = supertype(...values)
+  if (st === undefined) return V.fail(`coalesce arguments have incompatible types`)
   const allScalar = values.every((v) => v.scalar)
   const n = allScalar ? 1 : length
-  const vectors = values.map((v) => materialize(coerceValue(v, type), n))
+  const vectors = values.map((v) => materialize(coerceValue(v, st.type), n))
   const choice = new Int32Array(n)
   for (let i = 0; i < n; i++) {
     let k = 0
     while (k < vectors.length - 1 && !V.isValid(vectors[k], i)) k++
     choice[i] = k
   }
-  acc = { vector: select(vectors, choice), scalar: allScalar, dynamic }
-  return acc
+  return { vector: select(vectors, choice), scalar: allScalar, dynamic: st.dynamic }
 }
 
 // -----------------------------------------------------------------------------

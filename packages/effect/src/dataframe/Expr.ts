@@ -29,9 +29,10 @@
  * - Integer arithmetic wraps on overflow; `divide` is true division and
  *   returns a float; `floorDivide` and `mod` round towards negative infinity,
  *   and an integer division by zero gives `null`.
- * - An integer literal takes the integer type of the column it meets
+ * - An integer literal takes the integer type of the columns it meets
  *   (`c.int8Column + 1` stays Int8) when the type holds it, and widens it
- *   otherwise (`c.int8Column + 300` is Int16).
+ *   otherwise (`c.int8Column + 300` is Int16), wherever it appears among
+ *   the operands (`coalesce(300, 70000, c.int8Column)` is Int32).
  * - Operands of different types meet in their common type. A value the
  *   common type can't hold fails the query with a `DataFrameError`; only
  *   an explicit {@link cast} makes it `null`.
