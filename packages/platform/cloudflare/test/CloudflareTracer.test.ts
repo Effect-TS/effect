@@ -3,9 +3,20 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Option } from "effect"
 import { HttpTraceContext } from "effect/http"
 import { AsyncLocalStorage } from "node:async_hooks"
+import { vi } from "vitest"
 
-// A stand-in for Cloudflare's `tracing` API (`import { tracing } from
-// "cloudflare:workers"`, or `ctx.tracing`). As in the Workers runtime:
+// `tracing` from "cloudflare:workers" forwards to the fake the current test
+// installed with `makeTracing`.
+const current = vi.hoisted(() => ({ tracing: undefined as any }))
+vi.mock("cloudflare:workers", () => ({
+  tracing: {
+    startSpan: (name: string) => current.tracing.startSpan(name),
+    withActiveSpan: (span: unknown, callback: () => unknown) => current.tracing.withActiveSpan(span, callback)
+  }
+}))
+
+// A stand-in for Cloudflare's `tracing` API, installed as the
+// "cloudflare:workers" export for the calling test. As in the Workers runtime:
 //
 // - the active span lives on the async context, and a new span becomes a child
 //   of it, or of the invocation's root span when none is active
@@ -72,7 +83,7 @@ const makeTracing = (options?: { readonly traced?: boolean }) => {
 
   let root = new FakeSpan("request-1", undefined)
 
-  return {
+  const cloudflare = {
     spans,
     /** Ends the current invocation and starts the next one in the same isolate. */
     nextInvocation() {
@@ -93,6 +104,8 @@ const makeTracing = (options?: { readonly traced?: boolean }) => {
       }
     }
   }
+  current.tracing = cloudflare.tracing
+  return cloudflare
 }
 
 describe("CloudflareTracer", () => {
@@ -103,7 +116,7 @@ describe("CloudflareTracer", () => {
       yield* Effect.void.pipe(
         Effect.withSpan("load-user", { attributes: { "user.id": 42 } }),
         Effect.withSpan("handle-request"),
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
@@ -116,11 +129,11 @@ describe("CloudflareTracer", () => {
 
   it.effect("gives Effect spans the trace and span ids Cloudflare assigned", () =>
     Effect.gen(function*() {
-      const cloudflare = makeTracing()
+      makeTracing()
 
       const span = yield* Effect.currentSpan.pipe(
         Effect.withSpan("handle-request"),
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       assert.strictEqual(span.traceId, "0af7651916cd43dd8448eb211c80319c")
@@ -136,7 +149,7 @@ describe("CloudflareTracer", () => {
       yield* Effect.yieldNow.pipe(
         Effect.andThen(kvGet),
         Effect.withSpan("load-user"),
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
@@ -152,7 +165,7 @@ describe("CloudflareTracer", () => {
       yield* Effect.fail(new Error("card declined")).pipe(
         Effect.withSpan("charge-card"),
         Effect.exit,
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       const span = cloudflare.spans[0]
@@ -168,7 +181,7 @@ describe("CloudflareTracer", () => {
       yield* Effect.interrupt.pipe(
         Effect.withSpan("long-poll"),
         Effect.exit,
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       const span = cloudflare.spans[0]
@@ -188,7 +201,7 @@ describe("CloudflareTracer", () => {
         Effect.andThen(Effect.currentSpan),
         Effect.withSpan("debug-step", { sampled: false, attributes: { "debug.detail": "verbose" } }),
         Effect.withSpan("handle-request"),
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [
@@ -204,7 +217,7 @@ describe("CloudflareTracer", () => {
   it.effect("keeps the caller's AsyncLocalStorage values under a span created elsewhere", () =>
     Effect.gen(function*() {
       const cloudflare = makeTracing()
-      const tracer = CloudflareTracer.layer({ tracing: cloudflare.tracing })
+      const tracer = CloudflareTracer.layer
       const store = new AsyncLocalStorage<string>()
       // Reads the caller's value where the runtime would create a span of its own.
       const kvGet = Effect.sync(() => {
@@ -237,11 +250,11 @@ describe("CloudflareTracer", () => {
 
   it.effect("fails to build without AsyncLocalStorage from process.getBuiltinModule", () =>
     Effect.gen(function*() {
-      const cloudflare = makeTracing()
+      makeTracing()
       const getBuiltinModule = process.getBuiltinModule
       ;(process as { getBuiltinModule?: unknown }).getBuiltinModule = undefined
       const exit = yield* Effect.void.pipe(
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing })),
+        Effect.provide(CloudflareTracer.layer),
         Effect.exit,
         Effect.ensuring(Effect.sync(() => {
           process.getBuiltinModule = getBuiltinModule
@@ -264,7 +277,7 @@ describe("CloudflareTracer", () => {
         Effect.andThen(Effect.void.pipe(Effect.withSpan("refresh-cache"))),
         Effect.andThen(Effect.currentSpan),
         Effect.withSpan("background"),
-        Effect.provide(CloudflareTracer.layer({ tracing: cloudflare.tracing }))
+        Effect.provide(CloudflareTracer.layer)
       )
 
       assert.deepStrictEqual(cloudflare.spans.map((span) => span.path), [

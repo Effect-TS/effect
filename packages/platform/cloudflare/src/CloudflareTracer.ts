@@ -1,7 +1,7 @@
 /**
  * Records Effect spans in the trace Cloudflare Workers already collects for
  * each invocation, using the Workers custom spans API (`tracing` from
- * `cloudflare:workers`, or `ctx.tracing`).
+ * `cloudflare:workers`).
  *
  * Effect spans become Cloudflare spans in the invocation's trace, and the spans
  * the runtime creates for `fetch` and binding calls nest under the Effect span
@@ -14,6 +14,9 @@
  * from the Worker to your own OTLP endpoint.
  *
  * **Compatibility**
+ *
+ * The module imports `tracing` from `cloudflare:workers`, so it only loads in
+ * the Workers runtime.
  *
  * The tracer needs `tracing.startSpan` and `tracing.withActiveSpan`.
  * `withActiveSpan` is newer than Cloudflare's custom spans documentation: it
@@ -37,6 +40,10 @@
  *   that outlives its invocation, such as a `Layer.span` in a module-level
  *   `ManagedRuntime`, stops recording, and spans created under it in later
  *   invocations nest under that invocation's root span.
+ * - A Durable Object does not reject spans from its earlier requests, so there
+ *   spans created under such a span join the earlier request's trace, which has
+ *   already been sent, and are lost. Avoid long-lived parent spans, such as a
+ *   `Layer.span`, in a runtime shared across a Durable Object's requests.
  * - Sampling is Effect's decision and recording is Cloudflare's. A span
  *   Cloudflare does not record gets random ids, so an outgoing `traceparent`
  *   can be marked sampled in an invocation Cloudflare records nothing for.
@@ -44,6 +51,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import { tracing } from "cloudflare:workers"
 import * as Cause from "effect/Cause"
 import type * as Context from "effect/Context"
 import * as Hex from "effect/encoding/Hex"
@@ -54,33 +62,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
 
-/**
- * The part of the Workers `tracing` API the tracer uses, satisfied by both
- * `tracing` from `cloudflare:workers` and `ctx.tracing`.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export interface Tracing {
-  startSpan(name: string): TracingSpan
-  withActiveSpan<T>(span: TracingSpan, callback: () => T): T
-}
-
-/**
- * The part of a Workers custom span the tracer uses.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export interface TracingSpan {
-  spanContext(): { readonly traceId: string; readonly spanId: string }
-  setAttribute(key: string, value: string | number | boolean): unknown
-  recordException(exception: { readonly name: string; readonly message: string; readonly stack?: string }): void
-  setStatus(status: { readonly code: "error"; readonly message?: string }): unknown
-  end(): void
-}
+type TracingSpan = ReturnType<typeof tracing.startSpan>
 
 /**
  * Creates an Effect `Tracer` that records spans with the Workers `tracing`
@@ -104,8 +86,7 @@ export interface TracingSpan {
  * @category constructors
  * @since 4.1.5
  */
-export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
-  const tracing = options.tracing
+export const make = (): Tracer.Tracer => {
   const AsyncLocalStorage = (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage
   if (typeof AsyncLocalStorage?.snapshot !== "function") {
     throw new Error(
@@ -176,17 +157,21 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
 }
 
 /**
- * Creates a layer that installs a tracer recording Effect spans with the
- * Workers `tracing` API.
+ * A layer that installs a tracer recording Effect spans with the Workers
+ * `tracing` API.
+ *
+ * **Details**
+ *
+ * The tracer is created each time the layer is built, which fails with a
+ * defect when `AsyncLocalStorage` is unavailable (see {@link make}).
  *
  * **Example** (Tracing a Worker)
  *
  * ```ts
  * import { CloudflareTracer } from "@effect/platform-cloudflare"
- * import { tracing } from "cloudflare:workers"
  * import { Effect, ManagedRuntime } from "effect"
  *
- * const runtime = ManagedRuntime.make(CloudflareTracer.layer({ tracing }))
+ * const runtime = ManagedRuntime.make(CloudflareTracer.layer)
  *
  * export default {
  *   fetch: (request: Request) =>
@@ -205,8 +190,7 @@ export const make = (options: { readonly tracing: Tracing }): Tracer.Tracer => {
  * @category layers
  * @since 4.1.5
  */
-export const layer = (options: { readonly tracing: Tracing }): Layer.Layer<never> =>
-  Layer.sync(Tracer.Tracer, () => make(options))
+export const layer: Layer.Layer<never> = Layer.sync(Tracer.Tracer, make)
 
 // Cloudflare gives spans it does not record all-zero ids.
 const isValidId = (id: string | undefined): id is string => id !== undefined && /[^0]/.test(id)
