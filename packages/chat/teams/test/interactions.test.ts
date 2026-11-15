@@ -109,7 +109,7 @@ describe("dialogs", () => {
       assert.deepStrictEqual(texts, ["Too short"])
     }).pipe(Effect.provide(crypto)))
 
-  it.effect("counts the signed envelope against modalMetadataLength", () =>
+  it.effect("counts the metadata's signed envelope against modalMetadataLength", () =>
     Effect.gen(function*() {
       // The raw id and metadata fit the cap; with the envelope they do not.
       const metadata = "m".repeat(modalMetadataLength - modal.id.length)

@@ -144,14 +144,10 @@ const dialogCard = (
   }
 }
 
-const modalRefusal = (modal: ChatUi.Modal, envelope: Envelope.Envelope) => {
-  const fields = modal.elements.length
-  if (fields > modalFields) return Errors.tooLarge(undefined, "too_many_modal_fields")
-  if (envelope.dialogLength(modal) > modalMetadataLength) {
-    return Errors.tooLarge(undefined, "modal_metadata_too_long")
-  }
-  return Envelope.checkModal(modal)
-}
+const modalRefusal = (modal: ChatUi.Modal) =>
+  modal.elements.length > modalFields
+    ? Errors.tooLarge(undefined, "too_many_modal_fields")
+    : Envelope.checkModal(modal)
 
 /**
  * One verified invoke, or a card's `Action.Submit` fallback, which comes as
@@ -242,7 +238,7 @@ export const invoke = (
       yield* refused(event, Errors.chatError("openModal", Errors.unsupported("modals")))
       return acked
     }
-    const refusal = modalRefusal(reply.modal, envelope)
+    const refusal = modalRefusal(reply.modal)
     if (refusal !== undefined) {
       yield* refused(event, Errors.chatError("openModal", refusal))
       return failure
@@ -250,8 +246,13 @@ export const invoke = (
     const signed = yield* Effect.result(
       envelope.signDialog({ conversationId, userId: user, messageId, modal: reply.modal })
     )
-    if (signed._tag === "Failure") {
-      yield* refused(event, Errors.chatError("openModal", signed.failure))
+    // `modalMetadataLength` holds the whole signed token: the definition,
+    // the metadata and every claim. Signing is local, so the check is exact
+    // and nothing has opened yet.
+    const tooLong = signed._tag === "Success" && signed.success.length > modalMetadataLength
+    if (signed._tag === "Failure" || tooLong) {
+      const reason = signed._tag === "Failure" ? signed.failure : Errors.tooLarge(undefined, "modal_too_large")
+      yield* refused(event, Errors.chatError("openModal", reason))
       return failure
     }
     return { status: 200, body: dialogCard(reply.modal, signed.success) as Schema.Json }

@@ -212,7 +212,9 @@ export class TeamsChat extends Context.Service<TeamsChat, {
  *   that carries the data, envelope included. `actionDataLength` is 1,000
  *   units of button token, about 500 ASCII characters of id plus value with
  *   a GUID app and tenant. `modalMetadataLength` is 4,000 units of dialog
- *   token for the modal's id and metadata, about 1,900 ASCII characters.
+ *   token, and the whole token counts: the modal's id, metadata, title,
+ *   labels, options and texts together get about 1,880 bytes of JSON. A
+ *   modal over it is refused `TooLarge` before anything opens.
  *   A message with every element at its cap still fits `messageLength`.
  * - The `HttpClient` must add no credentials of its own and follow no
  *   redirects. The adapter decides per request which host gets the bot's

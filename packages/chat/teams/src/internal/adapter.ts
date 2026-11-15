@@ -56,10 +56,11 @@ export const actionsPerMessage = Render.actionsPerRow
 export const actionDataLength = 1_000
 
 /**
- * The adapter's own cap on a modal's id plus metadata, counted as their
- * share of the signed dialog token with everything the adapter adds:
- * 1,483 units of it are the envelope with a GUID app and tenant, which
- * leaves about 1,900 ASCII characters.
+ * The adapter's own cap on a modal's id plus metadata, counted as the whole
+ * signed dialog token that carries them: the claims, the metadata and the
+ * modal's definition (title, labels, options, texts). With a GUID app and
+ * tenant and every id at its longest, the claims take at most 1,483 units,
+ * which leaves about 1,880 bytes for the rest of the modal's JSON.
  *
  * @internal
  */

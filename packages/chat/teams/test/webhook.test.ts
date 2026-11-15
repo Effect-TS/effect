@@ -2,11 +2,16 @@
  * The messaging endpoint through `layerWebhook`, with tokens signed by a
  * key in a stubbed Bot Framework key set.
  */
+import { modalMetadataLength } from "@effect/chat-teams/internal/adapter"
+import * as Envelope from "@effect/chat-teams/internal/envelope"
 import * as TeamsChat from "@effect/chat-teams/TeamsChat"
 import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
+import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { ChatHandler } from "effect/chat/ChatHandler"
+import * as ChatInteraction from "effect/chat/ChatInteraction"
+import type * as ChatUi from "effect/chat/ChatUi"
 import * as Context from "effect/Context"
 import * as Digest from "effect/crypto/Digest"
 import * as Mac from "effect/crypto/Mac"
@@ -52,7 +57,11 @@ const activity = (overrides?: Record<string, unknown>) => ({
   ...overrides
 })
 
-const setup = Effect.fnUntraced(function*(options?: { readonly jwksUri?: string }) {
+const setup = Effect.fnUntraced(function*(options?: {
+  readonly jwksUri?: string
+  readonly teams?: Partial<Parameters<typeof TeamsChat.layer>[0]>
+  readonly interactions?: ChatInteraction.Handler["Service"]
+}) {
   const pair = yield* Jwk.generateKeyPair({ algorithm: "RS256", kid: "k1" })
   const key = yield* Jwk.importPrivate(pair.privateKey, "RS256")
   const token = (claimed = serviceUrl) =>
@@ -87,15 +96,20 @@ const setup = Effect.fnUntraced(function*(options?: { readonly jwksUri?: string 
   )
   const events: Array<ChatEvent.ChatEvent> = []
   const app = TeamsChat.layerWebhook({ path: "/api/messages" }).pipe(
-    Layer.provide(TeamsChat.layer({ appId, tenantId, credentials: Redacted.make("secret") })),
+    Layer.provide(TeamsChat.layer({ appId, tenantId, credentials: Redacted.make("secret"), ...options?.teams })),
     Layer.provide(Chat.layer),
+    Layer.provide(
+      options?.interactions === undefined
+        ? Layer.empty
+        : Layer.succeed(ChatInteraction.Handler, options.interactions)
+    ),
     Layer.provide(Layer.succeed(ChatHandler, { handle: (event) => Effect.sync(() => void events.push(event)) })),
     Layer.provide(Layer.succeed(HttpClient.HttpClient, http)),
     Layer.provide(crypto)
   )
   const { dispose, handler } = HttpRouter.toWebHandler(app, { disableLogger: true })
   yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
-  const send = (body: unknown, authorization?: string) =>
+  const exchange = (body: unknown, authorization?: string) =>
     Effect.promise(() =>
       handler(
         new Request("http://localhost/api/messages", {
@@ -107,8 +121,10 @@ const setup = Effect.fnUntraced(function*(options?: { readonly jwksUri?: string 
           }
         })
       )
-    ).pipe(Effect.map((response) => response.status))
-  return { events, fetched, send, token }
+    )
+  const send = (body: unknown, authorization?: string) =>
+    Effect.map(exchange(body, authorization), (response) => response.status)
+  return { events, exchange, fetched, send, token }
 })
 
 describe("layerWebhook", () => {
@@ -154,5 +170,61 @@ describe("layerWebhook", () => {
       const { events, send, token } = yield* setup({ jwksUri: "not a URL" })
       assert.strictEqual(yield* send(activity(), `Bearer ${yield* token()}`), 503)
       assert.strictEqual(events.length, 0)
+    }).pipe(Effect.provide(crypto)))
+
+  it.effect("opens a dialog only when its whole signed token fits modalMetadataLength", () =>
+    Effect.gen(function*() {
+      const interactionKey = Redacted.make(
+        { kty: "oct", kid: "k1", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const
+      )
+      // Short id and no metadata: the definition alone makes the token long.
+      const modal = (text: string): ChatUi.Modal => ({
+        _tag: "Modal",
+        id: "m",
+        title: "Modal",
+        elements: [{ _tag: "Text", text }, { _tag: "TextInput", id: "answer", label: "Answer" }]
+      })
+      const refusals: Array<ChatError> = []
+      const { exchange, token } = yield* setup({
+        teams: {
+          interactionKeys: [interactionKey],
+          modalButtons: ["open"],
+          unverified: { buttons: true, modals: true }
+        },
+        interactions: {
+          click: (event) =>
+            Effect.succeed(ChatInteraction.OpenModal.make({ modal: modal("x".repeat(Number(event.value))) })),
+          submit: () => Effect.succeed(ChatInteraction.close),
+          command: () => Effect.succeed(ChatInteraction.ack),
+          refused: (_, error) => Effect.sync(() => void refusals.push(error))
+        }
+      })
+      const envelope = yield* Envelope.make({ appId, tenantId, keys: [interactionKey] })
+      const bearer = `Bearer ${yield* token()}`
+      const open = Effect.fnUntraced(function*(textLength: number) {
+        const button = yield* envelope.signButton("a:direct", { id: "open", value: String(textLength) })
+        const response = yield* exchange(
+          activity({
+            type: "invoke",
+            name: "task/fetch",
+            replyToId: "1800000000000",
+            value: { data: { effect: button } }
+          }),
+          bearer
+        )
+        const body = yield* Effect.promise(() => response.json())
+        return body?.task?.type === "continue"
+          ? body.task.value.card.content.actions[0].data.effect as string
+          : undefined
+      })
+
+      const big = yield* open(3_500)
+      assert.isUndefined(big)
+      assert.strictEqual(refusals[0]?.reason._tag, "TooLarge")
+
+      const small = yield* open(1_000)
+      assert.isString(small)
+      assert.isAtMost(small!.length, modalMetadataLength)
+      assert.strictEqual(refusals.length, 1)
     }).pipe(Effect.provide(crypto)))
 })

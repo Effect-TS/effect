@@ -76,7 +76,6 @@ describe("envelope", () => {
       const verified = yield* envelope.verifyDialog(token, { conversationId: opened, userId: "u1" })
       assert.deepStrictEqual(verified, Option.some({ conversationId: opened, messageId: "123", modal }))
       assert.isTrue(token.length <= Envelope.maxTokenLength)
-      assert.isTrue(envelope.dialogLength(modal) >= Envelope.dialogTokenLength({ ...options, kid: "k1" }, { id: "" }))
       assert.deepStrictEqual(
         Envelope.validateSubmission(modal, { effect: token, env: "prod", note: "" }),
         Option.some({ env: "prod" })

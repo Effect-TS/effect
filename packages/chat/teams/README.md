@@ -58,7 +58,7 @@ A dialog opens only from a button whose id is listed in `modalButtons`. Any othe
 - Native streams. Streams are posted and then edited.
 - Selects.
 
-The element caps are the adapter's own, since Teams publishes none: 6 elements per message and 10 fields per modal. `actionDataLength` (1,000) and `modalMetadataLength` (4,000) count the signed token that carries the data, envelope included. With a GUID app and tenant that leaves about 500 ASCII characters for a button's id and value, and about 1,900 for a modal's id and metadata.
+The element caps are the adapter's own, since Teams publishes none: 6 elements per message and 10 fields per modal. `actionDataLength` (1,000) and `modalMetadataLength` (4,000) count the whole signed token that carries the data, envelope included. With a GUID app and tenant that leaves about 500 ASCII characters for a button's id and value. A dialog token also carries the modal's definition, so its id, metadata, title, labels, options and texts share about 1,880 bytes of JSON. A modal over that is refused `TooLarge` before anything opens. Check 13 may raise the cap once the dialog card's real size limit is known.
 
 ## Security
 

@@ -173,34 +173,6 @@ export const buttonTokenLength = (
   base64Length(utf8Length(JSON.stringify(buttonClaims(context, "x".repeat(hashLength), button)))) + 1 +
   signatureLength
 
-const longestId = "x".repeat(limits.id)
-
-/**
- * What a modal's id and metadata take in a dialog token, with everything
- * the adapter adds: the header, the fixed claims with each id at its
- * longest, the definition's shell and the signature. The rest of the
- * definition (title, labels, options) is held to `limits.definition`
- * instead. Pure: the same modal always gives the same length.
- *
- * @internal
- */
-export const dialogTokenLength = (
-  context: ButtonContext,
-  modal: { readonly id: string; readonly metadata?: string | undefined }
-): number =>
-  base64Length(utf8Length(headerJson(context.kid, typ.dialog))) + 1 +
-  base64Length(utf8Length(JSON.stringify({
-    aud: context.appId,
-    tid: context.tenantId,
-    cnv: "x".repeat(hashLength),
-    cid: longestId,
-    sub: longestId,
-    exp: Number.MAX_SAFE_INTEGER,
-    mid: longestId,
-    def: { _tag: "Modal", id: modal.id, title: "", elements: [] },
-    ...(modal.metadata === undefined ? {} : { md: modal.metadata })
-  }))) + 1 + signatureLength
-
 // Checks
 
 /** Whether a field of `modal` uses the reserved `effect` id. @internal */
@@ -329,8 +301,6 @@ export interface Envelope {
   ) => Effect.Effect<Option.Option<Dialog>>
   /** `buttonTokenLength` with this envelope's app, tenant and signing key. */
   readonly tokenLength: (button: Button) => number
-  /** `dialogTokenLength` with this envelope's app, tenant and signing key. */
-  readonly dialogLength: (modal: { readonly id: string; readonly metadata?: string | undefined }) => number
 }
 
 const validKid = /^[A-Za-z0-9_-]{1,16}$/
@@ -451,7 +421,6 @@ export const make = Effect.fnUntraced(function*(options: {
             }))
           )
       ),
-    tokenLength: (button) => buttonTokenLength(context, button),
-    dialogLength: (modal) => dialogTokenLength(context, modal)
+    tokenLength: (button) => buttonTokenLength(context, button)
   }
 })
