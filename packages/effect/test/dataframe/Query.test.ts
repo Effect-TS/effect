@@ -403,6 +403,27 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* streamed(query, empty), [{ n: 0, total: 0, mean: null }])
       }))
 
+    it.effect("results without rows keep the types of their columns", () =>
+      Effect.gen(function*() {
+        const Nested = Schema.Struct({ xs: Schema.Array(Schema.Number), s: Schema.Struct({ a: Schema.Number }) })
+        const nested = Query.table("t", Nested).pipe(
+          Query.filter((c) => Expr.gt(Expr.listLength(c.xs), 5)),
+          Query.select((c) => ({ sum: Expr.listSum(c.xs), a: Expr.field(c.s, "a") }))
+        )
+        const untyped = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
+          Query.filter((c) => Expr.gt(c.x as Expr.Expr<number>, 5))
+        )
+        const cases: ReadonlyArray<readonly [Query.Query<unknown>, Catalog.Source, ReadonlyArray<string>]> = [
+          [nested, Stream.empty, ["sum:Float", "a:Float"]],
+          [nested, Stream.make(DataFrame.fromRows(Nested, [{ xs: [1], s: { a: 1 } }])), ["sum:Float", "a:Float"]],
+          [untyped, Stream.make(DataFrame.fromColumns({ x: [1], y: ["a"] })), ["x:Float", "y:Utf8"]]
+        ]
+        for (const [query, source, expected] of cases) {
+          const df = yield* query.pipe(Effect.provide(Catalog.layer({ t: source })))
+          assert.deepStrictEqual(df.schema.fields.map((f) => `${f.name}:${f.type._tag}`), expected)
+        }
+      }))
+
     it.effect("reads a table named twice once per run", () =>
       Effect.gen(function*() {
         let loads = 0

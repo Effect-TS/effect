@@ -50,14 +50,22 @@ const typeOf: Record<string, S.DataType> = {
   Duration: S.duration("microsecond")
 }
 
+/** The type of a declared column without rows; decimals, whose precision is unknown, are Null. */
+const emptyType = (column: Plan.TableColumn): S.DataType => {
+  const fields = (column.fields ?? []).map((f) => S.field(f.name, emptyType(f), { nullable: f.nullable }))
+  switch (column.type) {
+    case "List":
+      return S.list(fields[0])
+    case "Struct":
+      return S.struct(fields)
+    default:
+      return typeOf[column.type] ?? S.nullType
+  }
+}
+
 /** A table without rows: its declared columns, or none. */
 const emptyTable = (node: Extract<Q.Node, { readonly _tag: "Table" }>): F.Frame =>
-  F.make(
-    (node.columns ?? []).map((c) =>
-      new F.Column(c.name, K.nullsOf(typeOf[c.type] ?? S.nullType, 0), undefined, c.nullable)
-    ),
-    0
-  )
+  F.make((node.columns ?? []).map((c) => new F.Column(c.name, K.nullsOf(emptyType(c), 0), undefined, c.nullable)), 0)
 
 /** The plan over no rows (every input empty), run in place. */
 const runEmpty = (node: Q.Node): Effect.Effect<F.Frame, DataFrameError> => {
@@ -182,18 +190,22 @@ const slice = (input: Batches, offset: number, length: number | undefined): Batc
         left -= end - start
         return F.slice(batch, start, end)
       }),
-      Stream.takeUntil(() => left === 0),
-      Stream.filter((batch) => batch.length > 0)
+      Stream.takeUntil(() => left === 0)
     )
   })
 
-/** The batches of a node's result. @internal */
+/**
+ * The batches of a node's result. Batches without rows stay, so a result
+ * whose rows are all dropped still has the types of its columns.
+ *
+ * @internal
+ */
 export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
   if (perBatch(node)) {
     return Stream.mapEffect(
       batches((node as { readonly input: Q.Node }).input, catalog),
       (batch) => Q.attempt(() => Q.step(node, [batch]))
-    ).pipe(Stream.filter((batch) => batch.length > 0))
+    )
   }
   switch (node._tag) {
     case "Table":
@@ -252,9 +264,11 @@ const prepare = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Q.Nod
   )
 }
 
-/** The batches of a plan's result, after optimisation. @internal */
+/** The non-empty batches of a plan's result, after optimisation. @internal */
 export const stream = (plan: Plan.Node, catalog: Catalog.Service): Batches =>
-  Stream.unwrap(Effect.map(prepare(plan, catalog), (optimized) => batches(optimized, catalog)))
+  Stream.unwrap(Effect.map(prepare(plan, catalog), (optimized) => batches(optimized, catalog))).pipe(
+    Stream.filter((batch) => batch.length > 0)
+  )
 
 /** A plan's result as one frame, computed batch by batch. @internal */
 export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> =>
