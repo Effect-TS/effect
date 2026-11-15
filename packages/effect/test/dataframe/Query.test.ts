@@ -413,8 +413,13 @@ describe("Query", () => {
         const untyped = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
           Query.filter((c) => Expr.gt(c.x as Expr.Expr<number>, 5))
         )
+        const Price = Schema.Struct({ d: Schema.BigDecimal })
+        const prices = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 2) } }).pipe(
+          Query.aggregate((c) => ({ total: Expr.sum(c.d), r: Expr.max(Expr.round(c.d, 1)) }))
+        )
         const cases: ReadonlyArray<readonly [Query.Query<unknown>, Catalog.Source, ReadonlyArray<string>]> = [
           [nested, Stream.empty, ["sum:Float", "a:Float"]],
+          [prices, Stream.empty, ["total:Decimal", "r:Decimal"]],
           [nested, Stream.make(DataFrame.fromRows(Nested, [{ xs: [1], s: { a: 1 } }])), ["sum:Float", "a:Float"]],
           [untyped, Stream.make(DataFrame.fromColumns({ x: [1], y: ["a"] })), ["x:Float", "y:Utf8"]]
         ]

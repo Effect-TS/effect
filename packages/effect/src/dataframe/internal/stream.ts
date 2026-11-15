@@ -13,7 +13,6 @@
  *
  * @internal
  */
-import * as S from "../../arrow/ArrowSchema.ts"
 import * as Effect from "../../Effect.ts"
 import * as Stream from "../../Stream.ts"
 import type { Catalog } from "../Catalog.ts"
@@ -25,47 +24,17 @@ import * as F from "./frame.ts"
 import * as K from "./kernels.ts"
 import * as Partial from "./partial.ts"
 import * as Q from "./query.ts"
-import { conform } from "./schema.ts"
+import { arrowType, conform } from "./schema.ts"
 import * as V from "./vector.ts"
 
 type Batches = Stream.Stream<F.Frame, DataFrameError>
 
-const typeOf: Record<string, S.DataType> = {
-  Int8: S.int8,
-  Int16: S.int16,
-  Int32: S.int32,
-  Int64: S.int64,
-  UInt8: S.uint8,
-  UInt16: S.uint16,
-  UInt32: S.uint32,
-  UInt64: S.uint64,
-  Float32: S.float32,
-  Float64: S.float64,
-  Utf8: S.utf8,
-  Binary: S.binary,
-  Bool: S.bool,
-  Null: S.nullType,
-  Date: S.date("day"),
-  Timestamp: S.timestamp("microsecond"),
-  Duration: S.duration("microsecond")
-}
-
-/** The type of a declared column without rows; decimals, whose precision is unknown, are Null. */
-const emptyType = (column: Plan.TableColumn): S.DataType => {
-  const fields = (column.fields ?? []).map((f) => S.field(f.name, emptyType(f), { nullable: f.nullable }))
-  switch (column.type) {
-    case "List":
-      return S.list(fields[0])
-    case "Struct":
-      return S.struct(fields)
-    default:
-      return typeOf[column.type] ?? S.nullType
-  }
-}
-
 /** A table without rows: its declared columns, or none. */
 const emptyTable = (node: Extract<Q.Node, { readonly _tag: "Table" }>): F.Frame =>
-  F.make((node.columns ?? []).map((c) => new F.Column(c.name, K.nullsOf(emptyType(c), 0), undefined, c.nullable)), 0)
+  F.make(
+    (node.columns ?? []).map((c) => new F.Column(c.name, K.nullsOf(arrowType(c), 0), undefined, c.nullable)),
+    0
+  )
 
 /** The plan over no rows (every input empty), run in place. */
 const runEmpty = (node: Q.Node): Effect.Effect<F.Frame, DataFrameError> => {
@@ -83,7 +52,7 @@ const runEmpty = (node: Q.Node): Effect.Effect<F.Frame, DataFrameError> => {
         return { ...n, input: empty((n as { readonly input: Q.Node }).input) } as Q.Node
     }
   }
-  return Q.execute(empty(node))
+  return Effect.flatMap(Q.attempt(() => empty(node)), Q.execute)
 }
 
 const collectFrames = (batches: Batches, node: Q.Node): Effect.Effect<F.Frame, DataFrameError> =>

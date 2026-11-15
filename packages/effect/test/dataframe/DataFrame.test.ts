@@ -46,23 +46,36 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(df.schema.fields[0].type, ArrowSchema.decimal(18, 2))
       assert.isTrue(BigDecimal.equals(DataFrame.toRows(df)[0].n, BigDecimal.make(123n, 2)))
       assert.strictEqual(DataFrame.empty(Price, { types: { n: ArrowSchema.decimal(9, 0) } }).length, 0)
-      assert.isTrue(Result.isSuccess(DataFrame.validate(df, Price)))
+      assert.isTrue(Result.isSuccess(DataFrame.validate(df, Price, { types: { n: ArrowSchema.decimal(18, 2) } })))
     })
 
     it("fromRows rejects overrides that can't hold the field's values", () => {
       assert.throws(
         () => DataFrame.fromRows(Schema.Struct({ n: Schema.Number }), [], { types: { n: ArrowSchema.int64 } }),
-        `field "n": Int64 can't hold values of Float64`
+        `column "n" is Int64, expected Float64`
+      )
+      assert.throws(
+        () =>
+          DataFrame.fromRows(Schema.Struct({ t: Schema.DateTimeUtc }), [], {
+            types: { t: ArrowSchema.timestamp("second", "Europe/Berlin") }
+          }),
+        `column "t" has time zone Europe/Berlin, expected UTC timestamps`
       )
     })
 
     it("fromRows rejects schemas without a column type", () => {
-      try {
-        DataFrame.fromRows(Schema.Struct({ xs: Schema.Record(Schema.String, Schema.Number) }), [])
-        assert.fail("expected an error")
-      } catch (e) {
-        assert.instanceOf(e, DataFrame.DataFrameError)
-        assert.include((e as DataFrame.DataFrameError).message, `"xs"`)
+      interface Tree {
+        readonly children: ReadonlyArray<Tree>
+      }
+      const Tree: Schema.Codec<Tree> = Schema.Struct({ children: Schema.Array(Schema.suspend(() => Tree)) })
+      for (const xs of [Schema.Record(Schema.String, Schema.Number), Tree]) {
+        try {
+          DataFrame.fromRows(Schema.Struct({ xs }), [])
+          assert.fail("expected an error")
+        } catch (e) {
+          assert.instanceOf(e, DataFrame.DataFrameError)
+          assert.include((e as DataFrame.DataFrameError).message, `"xs`)
+        }
       }
     })
 
@@ -125,6 +138,32 @@ describe("DataFrame", () => {
           `column "n" has values its schema rejects`
         ],
         [
+          DataFrame.fromRows(Schema.Struct({ s: Schema.Struct({ a: Schema.String }) }), [{ s: { a: "x" } }, {
+            s: { a: "z" }
+          }]),
+          Schema.Struct({
+            s: Schema.Union([Schema.Struct({ a: Schema.Literal("x") }), Schema.Struct({ a: Schema.Literal("y") })])
+          }),
+          `column "s" has values its schema rejects`
+        ],
+        [
+          DataFrame.fromColumns({ s: ["x", "z"] }),
+          Schema.Struct({
+            s: Schema.Union([Schema.suspend(() => Schema.Literal("x")), Schema.suspend(() => Schema.Literal("y"))])
+          }),
+          `column "s" has values its schema rejects`
+        ],
+        [
+          column(ArrowSchema.decimal(18, 3), [BigDecimal.fromStringUnsafe("1.234")]),
+          Schema.Struct({ t: Schema.BigDecimal }),
+          `column "t": decimal columns need a precision and scale: pass options.types (for example ArrowSchema.decimal(18, 2))`
+        ],
+        [
+          column(ArrowSchema.timestamp("nanosecond"), [1n]),
+          Utc,
+          `column "t" has values that Timestamp[us] can't hold exactly`
+        ],
+        [
           column(ArrowSchema.timestamp("millisecond", "Europe/Berlin"), [0n]),
           Utc,
           `column "t" has time zone Europe/Berlin, expected UTC timestamps`
@@ -155,6 +194,37 @@ describe("DataFrame", () => {
       const nested = column(ArrowSchema.list(ArrowSchema.field("item", ts)), [[1000n]])
       const df = Result.getOrThrow(DataFrame.validate(nested, Schema.Struct({ t: Schema.Array(Schema.DateTimeUtc) })))
       assert.deepStrictEqual(DataFrame.toRows(df), [{ t: [DateTime.makeUnsafe(1000)] }])
+      const built = DataFrame.fromRows(Utc, [{ t: DateTime.makeUnsafe(0) }], {
+        types: { t: ArrowSchema.timestamp("second", "UTC") }
+      })
+      assert.deepStrictEqual(built.schema.fields[0].type, ArrowSchema.timestamp("second"))
+      assert.deepStrictEqual(DataFrame.toRows(built), [{ t: DateTime.makeUnsafe(0) }])
+    })
+
+    it("converts columns to the types fromRows gives the schema, exactly", () => {
+      const Row = Schema.Struct({ n: Schema.Number, d: Schema.BigDecimal, t: Schema.DateTimeUtc })
+      const df = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(
+        ArrowSchema.make([
+          ArrowSchema.field("n", ArrowSchema.int32),
+          ArrowSchema.field("d", ArrowSchema.decimal(18, 1)),
+          ArrowSchema.field("t", ArrowSchema.timestamp("millisecond"))
+        ]),
+        [{ n: 1, d: BigDecimal.fromStringUnsafe("1.2"), t: 1n }]
+      )))
+      const types = { d: ArrowSchema.decimal(18, 2) }
+      const validated = Result.getOrThrow(DataFrame.validate(df, Row, { types }))
+      assert.deepStrictEqual(validated.schema, DataFrame.empty(Row, { types }).schema)
+      assert.deepStrictEqual(df.pipe(DataFrame.validate(Row, { types }), Result.getOrThrow).schema, validated.schema)
+      assert.deepStrictEqual(DataFrame.toRows(validated), [{
+        n: 1,
+        d: BigDecimal.make(120n, 2),
+        t: DateTime.makeUnsafe(1)
+      }])
+      const lossy = DataFrame.validate(df, Row, { types: { d: ArrowSchema.decimal(18, 0) } })
+      assert.strictEqual(
+        Result.isFailure(lossy) && lossy.failure.message,
+        `column "d" has values that Decimal[18, 0] can't hold exactly`
+      )
     })
   })
 

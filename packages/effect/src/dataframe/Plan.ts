@@ -673,13 +673,19 @@ export const TypeName = Schema.Literals([
 ])
 
 /**
- * A column a {@link Table} is expected to have.
+ * A column a {@link Table} is declared to have, and the type it is read as.
  *
  * **Details**
  *
  * `fields` describes the children of a nested column: the single `item` of
- * a `List`, or the fields of a `Struct`. Without it, a nested column's
- * children are not checked.
+ * a `List`, or the fields of a `Struct`. `precision` and `scale` give the
+ * type of a `Decimal` column, and `unit` the unit of a `Timestamp` or
+ * `Duration` column (microseconds when absent).
+ *
+ * **Gotchas**
+ *
+ * A `Decimal` column without `precision` and `scale` fails when its table
+ * is read.
  *
  * @stability experimental
  * @category models
@@ -690,6 +696,9 @@ export interface TableColumn {
   readonly type: TypeName
   readonly nullable: boolean
   readonly fields?: ReadonlyArray<TableColumn> | undefined
+  readonly precision?: number | undefined
+  readonly scale?: number | undefined
+  readonly unit?: TimeUnit | undefined
 }
 
 /**
@@ -698,14 +707,16 @@ export interface TableColumn {
  * **Details**
  *
  * When `columns` is given, the table must have these columns and no nulls
- * in non-nullable ones; the input is narrowed to these columns, in this
- * order. A column's type must hold the declared values: integers below 64
- * bits for floats and narrower integers, any 64-bit integer for `Int64`
- * and `UInt64`, any decimal for `Decimal`, the same
- * temporal type in any unit, and lists and structs with compatible children.
- * `Timestamp` columns read as `DateTime.Utc` values: their timestamps must
- * have no time zone or a UTC one (dropped), and lie in the range `DateTime`
- * represents.
+ * in non-nullable ones; the input (every batch of a streamed table) is
+ * narrowed to these columns, in this order, and converted to their declared
+ * types, so results don't depend on the types the input happens to have. A
+ * column converts when its type holds the declared values (integers below
+ * 64 bits for floats and narrower integers, any 64-bit integer for `Int64`
+ * and `UInt64`, any decimal for `Decimal`, the same temporal type in any
+ * unit, lists and structs with such children) and every value converts
+ * exactly. `Timestamp` columns read as `DateTime.Utc` values: their
+ * timestamps must have no time zone or a UTC one (dropped), and lie in the
+ * range `DateTime` represents. `Date` and `Time` columns keep their unit.
  *
  * `schema`, set by `Query.table`, is the struct schema the rows must
  * satisfy: values of fields it constrains beyond their column type (literals,
@@ -1030,7 +1041,10 @@ const TableColumnSchema: Schema.Codec<TableColumn> = Schema.Struct({
   name: Schema.String,
   type: TypeName,
   nullable: Schema.Boolean,
-  fields: Schema.optional(Schema.Array(Schema.suspend(() => TableColumnSchema)))
+  fields: Schema.optional(Schema.Array(Schema.suspend(() => TableColumnSchema))),
+  precision: Schema.optional(Schema.Int),
+  scale: Schema.optional(Schema.Int),
+  unit: Schema.optional(TimeUnit)
 })
 
 const NodeSchema = Schema.suspend((): Schema.Codec<Node, unknown> => NodeUnion)

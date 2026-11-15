@@ -161,14 +161,18 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
 /**
  * Builds a frame from rows described by a struct schema. Column types come
  * from the schema's type side: `String` is Utf8, `Number` is Float64,
- * `Boolean` is Bool, `BigInt` is Int64, and `NullOr`/optional fields are
- * nullable. `options.types` overrides the Arrow type of individual columns
- * (for example `ArrowSchema.int32`); `BigDecimal` fields need one, with
- * the decimal's precision and scale.
+ * `Boolean` is Bool, `BigInt` is Int64, `DateTimeUtc` and `Duration`
+ * are microsecond timestamps and durations, and `NullOr`/optional fields
+ * are nullable. `options.types` overrides the Arrow type of individual
+ * columns (for example `ArrowSchema.int32`); `BigDecimal` fields need
+ * one, with the decimal's precision and scale.
  *
  * **Details**
  *
- * Missing values read back as `null` (see {@link Normalize}).
+ * Missing values read back as `null` (see {@link Normalize}). An override
+ * must hold its field's values, as {@link validate} checks columns: a
+ * `DateTimeUtc` override is a timestamp without a time zone or with a UTC
+ * one, which the frame drops.
  *
  * Throws a {@link DataFrameError} when a value doesn't fit its column, or an
  * override can't hold its field's values.
@@ -372,8 +376,9 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
 
 /**
  * Checks that a frame has the columns of a struct schema, with compatible
- * types, and returns it typed (with only the schema's columns, in its
- * order).
+ * types, and returns it typed: with only the schema's columns, in its order,
+ * converted to the types {@link fromRows} gives them (`options.types`
+ * overrides some, and `BigDecimal` fields need one).
  *
  * **Details**
  *
@@ -381,8 +386,11 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
  * takes floats and integers below 64 bits, `BigInt` takes 64-bit integers,
  * `BigDecimal` takes decimals of any precision and scale, `DateTimeUtc` and
  * `Duration` take timestamps and durations in any unit, and structs and
- * arrays need compatible fields and items. Values of fields the schema
- * constrains further (literals, enums, refinements) are checked against it.
+ * arrays need compatible fields and items. Every value must convert to the
+ * declared type exactly: a decimal with more digits than the declared scale,
+ * or a timestamp finer than the declared unit, fails. Values of fields the
+ * schema constrains further (literals, enums, refinements, including inside
+ * structs, arrays and union members) are checked against it.
  *
  * **Gotchas**
  *
@@ -398,15 +406,21 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
  */
 export const validate: {
   <S extends { readonly Type: object; readonly ast: any }>(
-    schema: S
+    schema: S,
+    options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
   ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
   <R, S extends { readonly Type: object; readonly ast: any }>(
     self: DataFrame<R>,
-    schema: S
+    schema: S,
+    options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
   ): Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
-} = dual(2, (self: DataFrame<unknown>, schema: { readonly ast: any }) => {
+} = dual((args) => isDataFrame(args[0]), (
+  self: DataFrame<unknown>,
+  schema: { readonly ast: any },
+  options?: { readonly types?: { readonly [name: string]: ArrowSchema.DataType | undefined } | undefined }
+) => {
   try {
-    return Result.succeed(wrap(Schema_.conform(frame(self), Schema_.columns(schema), schema)))
+    return Result.succeed(wrap(Schema_.conform(frame(self), Schema_.declare(schema, options?.types), schema)))
   } catch (cause) {
     return Result.fail(fromDefect(cause))
   }

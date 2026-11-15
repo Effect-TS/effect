@@ -68,6 +68,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import type * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import type * as BigDecimal from "../BigDecimal.ts"
 import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
@@ -235,7 +236,16 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  * A query over the table called `name`, provided by the `Catalog` when
  * the query runs. The table must have the columns of the struct schema, and
  * its values must satisfy it, as with `DataFrame.validate`; the query sees
- * only those columns, in the schema's order.
+ * only those columns, in the schema's order, with the types
+ * `DataFrame.fromRows` gives them (`options.types` overrides some, and
+ * `BigDecimal` fields need one).
+ *
+ * **Details**
+ *
+ * Every batch of a streamed table is converted to these types, so results
+ * have the same types whatever the batches hold, and when there are none.
+ * A table without the precision and scale of a `BigDecimal` field fails
+ * when it is read.
  *
  * @stability experimental
  * @category constructors
@@ -243,9 +253,15 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  */
 export const table = <S extends { readonly Type: object; readonly ast: any }>(
   name: string,
-  schema: S
+  schema: S,
+  options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
 ): Query<Normalize<S["Type"]>> =>
-  make({ _tag: "Table", name, columns: Schema_.columns(schema), schema: schema as unknown as Schema.Top })
+  make({
+    _tag: "Table",
+    name,
+    columns: Schema_.declare(schema, options?.types as any),
+    schema: schema as unknown as Schema.Top
+  })
 
 /**
  * A query from its plan, with untyped rows. Decode untrusted plans with

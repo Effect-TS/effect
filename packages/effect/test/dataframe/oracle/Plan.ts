@@ -78,6 +78,11 @@ const tableColumn = (name: string, t: ArrowSchema.DataType): Plan.TableColumn =>
       return { name, type: "List", nullable: true, fields: [tableColumn("item", t.child.type)] }
     case "Struct":
       return { name, type: "Struct", nullable: true, fields: t.fields.map((f) => tableColumn(f.name, f.type)) }
+    case "Decimal":
+      return { name, type: "Decimal", nullable: true, precision: t.precision, scale: t.scale }
+    case "Timestamp":
+    case "Duration":
+      return { name, type: t._tag, nullable: true, unit: t.unit }
     default:
       return { name, type: t._tag as Plan.TypeName, nullable: true }
   }

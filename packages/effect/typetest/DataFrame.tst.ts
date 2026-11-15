@@ -1,5 +1,6 @@
 import type { BigDecimal, Result, Stream } from "effect"
 import { DateTime, Duration, Effect, Schema } from "effect"
+import { ArrowSchema } from "effect/arrow"
 import { DataFrame, Expr, Query } from "effect/dataframe"
 import { describe, expect, it } from "tstyche"
 
@@ -39,6 +40,19 @@ describe("DataFrame", () => {
       Result.Result<DataFrame.DataFrame<Row>, DataFrame.DataFrameError>
     >()
     expect(Query.table("t", S)).type.toBe<Query.Query<Row>>()
+  })
+
+  it("validate and Query.table take Arrow types for the schema's fields", () => {
+    const Price = Schema.Struct({ d: Schema.BigDecimal })
+    const types = { d: ArrowSchema.decimal(18, 2) }
+    expect(DataFrame.validate(DataFrame.empty(Price, { types }), Price, { types })).type.toBe<
+      Result.Result<DataFrame.DataFrame<{ readonly d: BigDecimal.BigDecimal }>, DataFrame.DataFrameError>
+    >()
+    expect(DataFrame.empty(Price, { types }).pipe(DataFrame.validate(Price, { types }))).type.toBe<
+      Result.Result<DataFrame.DataFrame<{ readonly d: BigDecimal.BigDecimal }>, DataFrame.DataFrameError>
+    >()
+    expect(Query.table("t", Price, { types })).type.toBe<Query.Query<{ readonly d: BigDecimal.BigDecimal }>>()
+    expect(Query.table).type.not.toBeCallableWith("t", Price, { types: { e: ArrowSchema.int32 } })
   })
 
   it("fromColumns infers column types", () => {
