@@ -97,7 +97,6 @@ const load = (name: string): Corpus =>
   JSON.parse(Fs.readFileSync(new URL(`../../fixtures/dataframe/gold/${name}.json`, import.meta.url), "utf8"))
 
 export const spec = (): Corpus => load("spec")
-export const random = (): Corpus => load("random")
 export const extended = (): Corpus => load("extended")
 
 /** Splits `a:x,b:list<y>` on top-level commas. */

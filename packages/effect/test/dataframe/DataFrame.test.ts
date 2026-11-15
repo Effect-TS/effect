@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Equal, Result, Schema } from "effect"
-import { ArrowIpc, ArrowSchema } from "effect/arrow"
+import { Effect, Equal, Result, Schema, Stream } from "effect"
+import { ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
 import { DataFrame, Expr, Query } from "effect/dataframe"
 
 const Reading = Schema.Struct({
@@ -93,6 +93,19 @@ describe("DataFrame", () => {
       const back = DataFrame.fromArrowTable(Result.getOrThrow(ArrowIpc.decodeStream(bytes)))
       assert.isTrue(Equal.equals(back, readings))
     })
+
+    it.effect("decodes IPC stream bytes into a frame per batch", () =>
+      Effect.gen(function*() {
+        const table = DataFrame.toArrowTable(readings)
+        const bytes = Result.getOrThrow(
+          ArrowIpc.encodeStream(ArrowTable.make(table.schema, [table.batches[0], table.batches[0]]))
+        )
+        // Split the bytes at arbitrary points, as a socket would deliver them.
+        const chunks = [bytes.subarray(0, 100), bytes.subarray(100, 300), bytes.subarray(300)]
+        const frames = yield* DataFrame.decodeArrowStream(Stream.fromIterable(chunks)).pipe(Stream.runCollect)
+        assert.strictEqual(frames.length, 2)
+        for (const frame of frames) assert.isTrue(Equal.equals(frame, readings))
+      }))
 
     it("exports late-selected columns", () => {
       const df = Query.from(readings).pipe(

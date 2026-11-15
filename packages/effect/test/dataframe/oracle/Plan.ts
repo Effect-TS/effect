@@ -1,7 +1,7 @@
 /**
  * Gold plans as effect/dataframe plans, run through the public API.
  */
-import { BigDecimal, Effect, Schema } from "effect"
+import { BigDecimal, Effect, Schema, Stream } from "effect"
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Plan, Query } from "effect/dataframe"
 import * as Result from "effect/Result"
@@ -340,12 +340,32 @@ export const plan = (gold: Gold.Case, inline: boolean, declare = false): Plan.No
 }
 
 /**
+ * How a case's inputs reach the query: inline `Values` nodes, frames in the
+ * catalog, or streams of two-row batches in the catalog.
+ */
+export type Source = "values" | "frames" | "batches"
+
+const batchesOf = (table: Gold.Table): Stream.Stream<DataFrame.DataFrame<any>> => {
+  const length = table.fields.length === 0 ? 0 : table.columns[table.fields[0].name].length
+  return Stream.fromIterable(Array.from({ length: Math.ceil(length / 2) }, (_, b) =>
+    frameOf({
+      fields: table.fields,
+      columns: Object.fromEntries(
+        Object.entries(table.columns).map(([name, values]) => [name, values.slice(b * 2, b * 2 + 2)])
+      )
+    })))
+}
+
+/**
  * Runs a case: its plan goes through its JSON form (so the codecs are part
  * of what is checked) and then runs as a query.
  */
-export const run = (gold: Gold.Case, inline: boolean): DataFrame.DataFrame<any> => {
-  const json = JSON.parse(JSON.stringify(Schema.encodeSync(Plan.NodeFromJson)(plan(gold, inline))))
+export const run = (gold: Gold.Case, source: Source): DataFrame.DataFrame<any> => {
+  const node = plan(gold, source === "values", source === "batches")
+  const json = JSON.parse(JSON.stringify(Schema.encodeSync(Plan.NodeFromJson)(node)))
   const decoded = Schema.decodeUnknownSync(Plan.NodeFromJson)(json)
-  const tables = Object.fromEntries(Object.entries(gold.inputs).map(([name, t]) => [name, frameOf(t)]))
+  const tables = Object.fromEntries(
+    Object.entries(gold.inputs).map(([name, t]) => [name, source === "batches" ? batchesOf(t) : frameOf(t)])
+  )
   return Query.fromPlan(decoded).pipe(Effect.provide(Catalog.layer(tables)), Effect.runSync)
 }

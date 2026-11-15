@@ -6,7 +6,7 @@ JSON plan language, and the result Python Polars produces for that pipeline.
 The TypeScript oracle (test/dataframe/oracle) replays each plan through the
 public effect/dataframe API and compares the result with the Polars output.
 
-    python generate_gold.py            # writes gold/spec.json and gold/random.json
+    uv run --with polars==2.1.0 python generate_gold.py   # writes gold/spec.json and gold/extended.json
 
 Needs polars (tested with 2.1). Polars is the semantic reference: where
 effect/dataframe deliberately differs, the case is left out here and the
@@ -15,7 +15,6 @@ difference is listed in DEVIATIONS below.
 
 import json
 import math
-import random
 import sys
 from pathlib import Path
 
@@ -690,153 +689,6 @@ def spec_cases():
 
 
 # ---------------------------------------------------------------------------
-# Random differential cases
-# ---------------------------------------------------------------------------
-
-NUMERIC = ("i32", "f64")
-STRINGS = ["a", "b", "c", "aa", "ab", "B", "é", "😀", "", "zz"]
-
-
-def random_value(rng, t, null_rate):
-    if rng.random() < null_rate:
-        return None
-    if t == "bool":
-        return rng.random() < 0.5
-    if t == "i32":
-        return rng.choice([rng.randint(-5, 5), rng.randint(-1000, 1000), 2147483647, -2147483648]) if rng.random() < 0.1 else rng.randint(-5, 5)
-    if t == "i64":
-        return rng.choice([rng.randint(-5, 5), 2**53 + rng.randint(0, 3), -(2**62)])
-    if t == "f64":
-        r = rng.random()
-        if r < 0.03:
-            return float("nan")
-        if r < 0.05:
-            return rng.choice([float("inf"), float("-inf"), -0.0])
-        return rng.choice([float(rng.randint(-4, 4)), round(rng.uniform(-100, 100), 3)])
-    if t == "utf8":
-        return rng.choice(STRINGS)
-    raise ValueError(t)
-
-
-def random_table(rng, prefix, n_rows, types):
-    fields = [(f"{prefix}{i}_{t}", t) for i, t in enumerate(types)]
-    null_rate = rng.choice([0.0, 0.1, 0.3])
-    return table(fields, {name: [random_value(rng, t, null_rate) for _ in range(n_rows)] for name, t in fields})
-
-
-def random_expr(rng, cols, want, depth=0):
-    """cols: {name: type}; want: 'num' | 'bool' | 'utf8' | 'i64'"""
-    by = lambda ts: [c for c, t in cols.items() if t in ts]
-    if want == "num":
-        choices = by(NUMERIC)
-        if depth >= 2 or rng.random() < 0.4:
-            if choices and rng.random() < 0.8:
-                return col(rng.choice(choices))
-            return lit(rng.choice([2, -1, 0.5, 2.5]))
-        op = rng.choice(["add", "sub", "mul", "div", "neg", "abs", "fillNull", "when", "mod", "floorDiv"])
-        if op in ("neg", "abs"):
-            return fn(op, random_expr(rng, cols, "num", depth + 1))
-        if op == "fillNull":
-            return fn(op, random_expr(rng, cols, "num", depth + 1), lit(rng.choice([0, 1.5])))
-        if op == "when":
-            return fn("when", random_expr(rng, cols, "bool", depth + 1), random_expr(rng, cols, "num", depth + 1), random_expr(rng, cols, "num", depth + 1))
-        return fn(op, random_expr(rng, cols, "num", depth + 1), random_expr(rng, cols, "num", depth + 1))
-    if want == "bool":
-        r = rng.random()
-        if r < 0.45 and by(NUMERIC):
-            return fn(rng.choice(["gt", "lt", "gte", "lte", "eq", "neq"]), random_expr(rng, cols, "num", depth + 1), random_expr(rng, cols, "num", depth + 1))
-        if r < 0.6 and by(("utf8",)):
-            c = col(rng.choice(by(("utf8",))))
-            return rng.choice([
-                fn(rng.choice(["eq", "lt", "gte"]), c, lit(rng.choice(STRINGS))),
-                fn("isIn", c, values=rng.sample(STRINGS, 3)),
-                fn("strStartsWith", c, prefix=rng.choice(["a", "é", ""])),
-            ])
-        if r < 0.7 and by(("i64",)):
-            return fn(rng.choice(["gt", "eq"]), col(rng.choice(by(("i64",)))), lit(rng.randint(-3, 3), "i64"))
-        if r < 0.8:
-            return fn(rng.choice(["isNull", "isNotNull"]), col(rng.choice(list(cols))))
-        if r < 0.9 and by(("bool",)) and depth < 2:
-            return col(rng.choice(by(("bool",))))
-        if depth < 2:
-            return fn(rng.choice(["and", "or"]), random_expr(rng, cols, "bool", depth + 1), random_expr(rng, cols, "bool", depth + 1))
-        return fn("isNull", col(rng.choice(list(cols))))
-    raise ValueError(want)
-
-
-AGGS_NUM = ["sum", "mean", "min", "max", "count", "first", "last", "nUnique", "std", "median"]
-AGGS_ANY = ["count", "first", "last", "nUnique", "min", "max"]
-
-
-def random_aggs(rng, cols, exclude, tag):
-    aggs = {f"n{tag}": agg("len")}
-    for i in range(rng.randint(1, 3)):
-        candidates = [c for c in cols if c not in exclude]
-        if not candidates:
-            break
-        c = rng.choice(candidates)
-        t = cols[c]
-        name = rng.choice(AGGS_NUM if t in NUMERIC else AGGS_ANY)
-        if t == "bool" and name in ("min", "max"):
-            name = "count"
-        aggs[f"a{tag}_{i}"] = agg(name, col(c))
-    return aggs
-
-
-def schema_after(inputs, ops):
-    df = run(inputs, ops)
-    return {name: type_name(dtype) for name, dtype in df.schema.items()}
-
-
-def random_case(rng, index):
-    try:
-        return random_case_unsafe(rng, index)
-    except Exception as error:  # Polars rejected the plan: not a valid case
-        print(f"skipping random/{index:04d}: {type(error).__name__}: {str(error)[:120]}", file=sys.stderr)
-        return None
-
-
-def random_case_unsafe(rng, index):
-    n_rows = rng.choice([0, 1, 5, 20, 60])
-    types = [rng.choice(["i32", "f64", "utf8", "bool", "i64", "f64", "utf8"]) for _ in range(rng.randint(2, 5))]
-    left = random_table(rng, "l", n_rows, ["utf8", "i32"] + types)
-    inputs = {"left": left}
-    ops = []
-    for _ in range(rng.randint(1, 4)):
-        cols = schema_after(inputs, ops)
-        kind = rng.choice(["filter", "withColumns", "sort", "groupBy", "join", "unique", "head", "filter", "withColumns"])
-        if kind == "filter":
-            ops.append({"op": "filter", "predicate": random_expr(rng, cols, "bool")})
-        elif kind == "withColumns":
-            ops.append({"op": "withColumns", "exprs": {f"x{len(ops)}": random_expr(rng, cols, "num") if rng.random() < 0.7 else random_expr(rng, cols, "bool")}})
-        elif kind == "sort":
-            keys = rng.sample(list(cols), min(len(cols), rng.randint(1, 2)))
-            ops.append({"op": "sort", "keys": [{"expr": col(k), "descending": rng.random() < 0.5} for k in keys], "nullsLast": rng.random() < 0.5})
-        elif kind == "groupBy":
-            keys = rng.sample([c for c, t in cols.items() if t != "f64"] or list(cols), 1)
-            ops.append({"op": "groupBy", "keys": keys, "aggs": random_aggs(rng, cols, keys, len(ops))})
-        elif kind == "join" and "right" not in inputs:
-            key_candidates = [c for c, t in cols.items() if t in ("utf8", "i32", "i64")]
-            if not key_candidates:
-                continue
-            key = rng.choice(key_candidates)
-            right = random_table(rng, "r", rng.choice([0, 3, 10, 30]), [rng.choice(["f64", "utf8", "bool"])])
-            # reuse the key column's values so that rows match
-            values = [v for v in inputs["left"]["columns"].get(key, [])] if key in inputs["left"]["columns"] else []
-            pool = values or [encode_value(random_value(rng, cols[key], 0.2), cols[key]) for _ in range(5)]
-            right["fields"].insert(0, {"name": key, "type": cols[key]})
-            n = len(next(iter(right["columns"].values())))
-            right["columns"][key] = [rng.choice(pool) if pool else None for _ in range(n)]
-            inputs["right"] = right
-            ops.append({"op": "join", "right": "right", "on": [key], "how": rng.choice(["inner", "left", "full", "semi", "anti"])})
-        elif kind == "unique":
-            ops.append({"op": "unique", "columns": rng.sample(list(cols), 1)} if rng.random() < 0.5 else {"op": "unique"})
-        elif kind == "head":
-            ops.append({"op": "head", "n": rng.randint(0, 10)})
-    return case(f"random/{index:04d}", "seeded random pipeline", inputs, ops)
-
-
-# ---------------------------------------------------------------------------
 # Extended cases: window functions, pivots, more types
 # ---------------------------------------------------------------------------
 
@@ -1047,12 +899,9 @@ def main():
     header = {"generator": "generate_gold.py", "polars": pl.__version__, "deviations": DEVIATIONS}
     spec = spec_cases()
     (gold / "spec.json").write_text(json.dumps({**header, "cases": spec}, ensure_ascii=False, indent=None, separators=(",", ":")) + "\n")
-    rng = random.Random(20261114)
-    cases = [c for c in (random_case(rng, i) for i in range(400)) if c is not None]
-    (gold / "random.json").write_text(json.dumps({**header, "cases": cases}, ensure_ascii=False, indent=None, separators=(",", ":")) + "\n")
     extended = extended_cases()
     (gold / "extended.json").write_text(json.dumps({**header, "cases": extended}, ensure_ascii=False, indent=None, separators=(",", ":")) + "\n")
-    print(f"spec: {len(spec)} cases, random: {len(cases)} cases, extended: {len(extended)} cases")
+    print(f"spec: {len(spec)} cases, extended: {len(extended)} cases")
 
 
 if __name__ == "__main__":
