@@ -303,9 +303,10 @@ export interface Element {
  * - `namespaces`: `"strict"` checks the document against Namespaces in XML
  *   1.0 and adds `namespace` and `localName` to `StartElement` and
  *   `EndElement` events. Violations fail with a `Syntax` `XmlError` at the
- *   start tag or processing instruction. Names in a DOCTYPE are not checked.
- *   Defaults to `undefined`, which reports names as written and leaves the
- *   fields absent.
+ *   start tag or processing instruction, except that an undeclared prefix
+ *   fails with `Unsupported` when the document has a DOCTYPE. Names in a
+ *   DOCTYPE are not checked. Defaults to `undefined`, which reports names as
+ *   written and leaves the fields absent.
  *
  * Memory per token, for open element names, and for the namespace
  * declarations of open elements is bounded by `maxTokenSize`.
