@@ -216,10 +216,17 @@ export const bitPacked = (
 ): number => {
   const size = Math.ceil(n * width / 8)
   if (size > end - pos) fail("Malformed", `${what} need ${size} bytes`)
-  let bit = pos * 8
+  let at = pos
+  let bit = 0
   for (let i = 0; i < n; i++) {
     let value = 0
-    for (let k = 0; k < width; k++, bit++) value = (value << 1) | ((bytes[bit >> 3] >> (7 - (bit & 7))) & 1)
+    for (let k = 0; k < width; k++) {
+      value = (value << 1) | ((bytes[at] >> (7 - bit)) & 1)
+      if (++bit === 8) {
+        bit = 0
+        at++
+      }
+    }
     out[i] = value
   }
   return pos + size

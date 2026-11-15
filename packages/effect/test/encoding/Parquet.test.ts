@@ -451,7 +451,7 @@ describe("Parquet", () => {
           /repetition/
         ))
 
-      it.effect("PQ-SCHEMA-2 MUST rebuild the schema tree from its depth-first elements and num_children (L525-526)", () =>
+      it.effect("PQ-SCHEMA-2 MUST rebuild the schema tree from its depth-first elements and num_children (L518-523, L542-547)", () =>
         Effect.gen(function*() {
           const schema = [
             root(2),
@@ -593,7 +593,7 @@ describe("Parquet", () => {
           yield* failsWith(values(repeatedInt32([part(0, 1, 1), part(1, 2, 0)], 1, 2)), "Malformed", /row boundary/)
         }))
 
-      it.effect("PQ-V2-2 MUST read v2 levels uncompressed and without a length prefix (L742-745, L763)", () =>
+      it.effect("PQ-V2-2 MUST read v2 levels uncompressed and without a length prefix (L744-745, L767)", () =>
         Effect.gen(function*() {
           const values_ = int32s(5, 7)
           const decompress: Parquet.Decompress = (data, size) => {
@@ -616,7 +616,7 @@ describe("Parquet", () => {
           ])
         }))
 
-      it.effect("PQ-V2-3 MUST NOT decompress the values of a v2 page whose is_compressed is false (L745)", () =>
+      it.effect("PQ-V2-3 MUST NOT decompress the values of a v2 page whose is_compressed is false (L745, L779)", () =>
         Effect.gen(function*() {
           const v2 = dataPageV2({
             numValues: 3,
@@ -629,7 +629,7 @@ describe("Parquet", () => {
           assert.deepStrictEqual(yield* values(optionalInt32([v2], 3, GZIP)), [5, null, 7])
         }))
 
-      it.effect("PQ-V2-4 MUST hold num_values - num_nulls values in the data section (L748-751)", () =>
+      it.effect("PQ-V2-4 MUST hold num_values - num_nulls values in the data section (L755-756)", () =>
         Effect.gen(function*() {
           const v2 = dataPageV2({ numValues: 3, numNulls: 0, numRows: 3, definition: someNull, values: int32s(5, 7) })
           yield* failsWith(values(optionalInt32([v2], 3)), "Malformed", /nulls/)
@@ -774,7 +774,7 @@ describe("Parquet", () => {
           chunks: [{ type: Type.INT32, path: ["g0", "g1", "g2", "g3", "g4", "g5", "x"], numValues: 8, pages: [page] }]
         })
 
-      it.effect("PQ-BP-1 MUST unpack BIT_PACKED levels from the most significant bit (L188-197)", () =>
+      it.effect("PQ-BP-1 MUST unpack BIT_PACKED levels from the most significant bit (L182-195)", () =>
         Effect.gen(function*() {
           // the spec's example: 0 to 7 with bit width 3 is 00000101 00111001 01110111
           const page = dataPage(8, bytes([0b00000101, 0b00111001, 0b01110111], int32s(42)), { levels: BIT_PACKED })
@@ -783,7 +783,7 @@ describe("Parquet", () => {
           assert.deepStrictEqual(column.layers.map((l) => l.nullCount), [1, 2, 3, 4, 5, 6, 7])
         }))
 
-      it.effect("PQ-BP-2 MUST NOT read BIT_PACKED as a values encoding (L198-199)", () =>
+      it.effect("PQ-BP-2 MUST NOT read BIT_PACKED as a values encoding (L197-198)", () =>
         failsWith(
           values(
             flat({
@@ -939,6 +939,7 @@ describe("Parquet", () => {
           const error = yield* Effect.flip(values(make(gzipSync(body), GZIP), { codecs: { GZIP: failing } }))
           assert.strictEqual(error.kind, "Codec")
           assert.strictEqual(error.cause, "corrupt")
+          assert.match(error.message, /^column "x" of row group 0, page at byte 4: GZIP decompression failed/)
         }))
 
       it.effect("PQ-COMP-2 SHOULD read GZIP pages holding several members (L61), given a Decompress that does", () =>
@@ -1052,6 +1053,61 @@ describe("Parquet", () => {
         yield* failsWith(read(int32s3, { maxValues: 2 }), "Limit", /maxValues/)
         assert.strictEqual(rows(yield* read(strings, { maxBinaryLength: 5 })).length, 2)
         yield* failsWith(read(strings, { maxBinaryLength: 4 }), "Limit", /maxBinaryLength/)
+      }))
+
+    it.effect("caps fixed-width values and per-page value counts", () =>
+      Effect.gen(function*() {
+        const wide = flat({
+          type: Type.FIXED_LEN_BYTE_ARRAY,
+          typeLength: 0x7fffffff,
+          repetition: OPTIONAL,
+          numRows: 1000,
+          pages: [dataPage(1000, lengthPrefixed(runs(1, [0, 1000])))]
+        })
+        yield* failsWith(read(wide), "Limit", /maxBinaryLength/)
+        const dictionary = flat({
+          type: Type.INT32,
+          repetition: REQUIRED,
+          numRows: 3,
+          dictionary: true,
+          pages: [
+            dictionaryPage(8, int32s(0, 1, 2, 3, 4, 5, 6, 7)),
+            dataPage(3, bytes([3], runs(3, [7, 3])), { encoding: RLE_DICTIONARY })
+          ]
+        })
+        assert.deepStrictEqual(rows(yield* read(dictionary)), [7, 7, 7])
+        yield* failsWith(read(dictionary, { maxValues: 5 }), "Limit", /maxValues/)
+      }))
+
+    it.effect("checks page sizes before calling a codec", () =>
+      Effect.gen(function*() {
+        const calls: Array<number> = []
+        const codecs = {
+          GZIP: (data: Uint8Array, size: number) => {
+            calls.push(size)
+            return gzip(data, size)
+          }
+        }
+        const v2 = (definitionLength: number, uncompressedSize: number) =>
+          page(
+            3,
+            {
+              8: Struct({ 1: I32(1), 2: I32(0), 3: I32(1), 4: I32(PLAIN), 5: I32(definitionLength), 6: I32(0) })
+            },
+            new Uint8Array(4),
+            uncompressedSize
+          )
+        const make = (page_: Uint8Array) =>
+          flat({ type: Type.INT32, repetition: OPTIONAL, numRows: 1, codec: GZIP, pages: [page_] })
+        yield* failsWith(
+          read(make(dataPage(1, new Uint8Array(4), { uncompressedSize: -1 })), { codecs }),
+          "Malformed",
+          /negative size/
+        )
+        yield* failsWith(read(make(v2(5, 8)), { codecs }), "Malformed", /levels of a v2 data page/)
+        yield* failsWith(read(make(v2(3, 2)), { codecs }), "Malformed", /levels of a v2 data page/)
+        yield* failsWith(read(make(v2(-1, 8)), { codecs }), "Malformed", /negative/)
+        assert.deepStrictEqual(calls, [])
       }))
 
     it.effect("dies on invalid options and indexes", () =>

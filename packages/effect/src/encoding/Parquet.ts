@@ -463,6 +463,10 @@ export const fromBytes = (bytes: Uint8Array): Source => ({
  * `GZIP`, pages may hold several gzip members. `LZ4` is the deprecated
  * Hadoop-framed codec; `LZ4_RAW` is the plain LZ4 block format.
  *
+ * **Gotchas**
+ *
+ * Report failures in the error channel: a function that throws is a defect.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -1704,15 +1708,23 @@ const decompress = (
  * {@link Decompress} for it in `codecs`. Dictionary-encoded values are looked
  * up in the dictionary, so the result never refers to it.
  *
- * Limits for untrusted files: `maxPageSize` (default 256 MiB) caps each page's
- * compressed and uncompressed size, `maxValues` (default 2^26) the values of
- * the column chunk, nulls included, and `maxBinaryLength` (default 1 GiB) the
- * total bytes of its `BYTE_ARRAY` values. Each is at most 2^31 - 1.
+ * Limits for untrusted files, each at most 2^31 - 1:
+ *
+ * - `maxPageSize` (default 256 MiB) caps each page's compressed and
+ *   uncompressed size.
+ * - `maxValues` (default 2^24) caps the values of the column chunk and of
+ *   each page, nulls included.
+ * - `maxBinaryLength` (default 1 GiB) caps the total bytes of the chunk's
+ *   `BYTE_ARRAY`, `FIXED_LEN_BYTE_ARRAY` and `INT96` values. Fixed-width
+ *   values are counted for every value, nulls included.
  *
  * **Gotchas**
  *
- * `rowGroup` and `column` must be indexes into `metadata`: anything else is
- * a defect, not a failure.
+ * - Memory and time grow with the values times the nodes on the column's
+ *   path: every optional node has a validity bitmap. Lower `maxValues` for
+ *   deeply nested columns from untrusted files.
+ * - `rowGroup` and `column` must be indexes into `metadata`: anything else
+ *   is a defect, not a failure.
  *
  * @stability experimental
  * @category decoding
@@ -1732,7 +1744,7 @@ export const readColumn = <E, R>(
 ): Effect.Effect<Column, ParquetError | E, R> =>
   Effect.gen(function*() {
     const maxPageSize = limit("maxPageSize", options.maxPageSize, 256 * 1024 * 1024, MAX_INT32)
-    const maxValues = limit("maxValues", options.maxValues, 2 ** 26, MAX_INT32)
+    const maxValues = limit("maxValues", options.maxValues, 2 ** 24, MAX_INT32)
     const maxBinaryLength = limit("maxBinaryLength", options.maxBinaryLength, 1024 * 1024 * 1024, MAX_INT32)
     const group = Number.isInteger(options.rowGroup) ? metadata.rowGroups[options.rowGroup] : undefined
     const column = Number.isInteger(options.column) ? metadata.columns[options.column] : undefined
@@ -1749,6 +1761,13 @@ export const readColumn = <E, R>(
     const meta = chunk.metaData
     if (meta.numValues > maxValues) {
       return yield* error("Limit", `${where} has ${meta.numValues} values, more than maxValues (${maxValues})`)
+    }
+    const width = column.physicalType === "INT96" ? 12 : column.typeLength ?? 0
+    if (meta.numValues * width > maxBinaryLength) {
+      return yield* error(
+        "Limit",
+        `${where} has ${meta.numValues} values of ${width} bytes, more than maxBinaryLength (${maxBinaryLength})`
+      )
     }
     const decoder = new ChunkDecoder(column, meta.numValues, { left: maxBinaryLength })
     // A chunk without values needs no pages; parquet-cpp writes data_page_offset 0 for one.
@@ -1781,6 +1800,9 @@ export const readColumn = <E, R>(
       }
       if (header.compressedSize > maxPageSize || header.uncompressedSize > maxPageSize) {
         return yield* error("Limit", `a page of ${where} is larger than maxPageSize (${maxPageSize})`)
+      }
+      if (header.numValues > maxValues) {
+        return yield* error("Limit", `a page of ${where} has more values than maxValues (${maxValues})`)
       }
       pos = body + header.compressedSize
       const page = bytes.subarray(body, pos)
