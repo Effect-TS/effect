@@ -1110,7 +1110,12 @@ describe("RpcClient", () => {
             failedMessage === "Request" ? Effect.asVoid(client.Ping()) : Stream.runDrain(client.Events())
           )
 
-          assert.deepStrictEqual(exit, Exit.fail(new RpcClientError({ reason })))
+          assert(Exit.isFailure(exit))
+          assert.lengthOf(exit.cause.reasons, 1)
+          const failure = exit.cause.reasons[0]
+          assert(Cause.isFailReason(failure))
+          assert.instanceOf(failure.error, RpcClientError)
+          assert.strictEqual(failure.error.reason, reason)
         })
     )
   }
