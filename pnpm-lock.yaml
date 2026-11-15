@@ -369,6 +369,12 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/chat/telegram:
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
   packages/chat/whatsapp:
     devDependencies:
       effect:

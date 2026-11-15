@@ -62,6 +62,8 @@
       "@effect/chat-discord/*": ["./packages/chat/discord/src/*.ts"],
       "@effect/chat-teams": ["./packages/chat/teams/src/index.ts"],
       "@effect/chat-teams/*": ["./packages/chat/teams/src/*.ts"],
+      "@effect/chat-telegram": ["./packages/chat/telegram/src/index.ts"],
+      "@effect/chat-telegram/*": ["./packages/chat/telegram/src/*.ts"],
       "@effect/atom-react": ["./packages/atom/react/src/index.ts"],
       "@effect/atom-react/*": ["./packages/atom/react/src/*.ts"],
       "@effect/atom-vue": ["./packages/atom/vue/src/index.ts"],
