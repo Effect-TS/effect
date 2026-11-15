@@ -66,6 +66,12 @@ export * as Jsonc from "./Jsonc.ts"
 export * as Ndjson from "./Ndjson.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as Parquet from "./Parquet.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
