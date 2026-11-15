@@ -59,7 +59,7 @@ import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
-import type { DataFrame } from "./DataFrame.ts"
+import { type DataFrame, isDataFrame } from "./DataFrame.ts"
 import * as F from "./internal/frame.ts"
 
 // -----------------------------------------------------------------------------
@@ -110,11 +110,7 @@ const valueFromJson: SchemaTransformation.Transformation<Value, typeof ValueJson
     encode: (value) => {
       if (typeof value === "bigint") return Effect.succeed({ bigint: value.toString() })
       if (typeof value === "number" && (!Number.isFinite(value) || Object.is(value, -0))) {
-        return Effect.succeed({
-          float: Number.isNaN(value) ? "NaN" as const : value === Infinity ? "Infinity" as const : value === -Infinity
-            ? "-Infinity" as const
-            : "-0" as const
-        })
+        return Effect.succeed({ float: (Object.is(value, -0) ? "-0" : String(value)) as typeof FloatName.Type })
       }
       return Effect.succeed(value as string | number | boolean | null)
     }
@@ -131,8 +127,6 @@ export const Value: Schema.declare<Value> = Schema.declare(isValue, {
   expected: "number | bigint | string | boolean | null",
   toCodecJson: () => Schema.link<Value>()(ValueJson, valueFromJson)
 })
-
-const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
 
 const frameFromBytes: SchemaTransformation.Transformation<DataFrame<unknown>, Uint8Array> = SchemaTransformation
   .transformEffect({
@@ -370,10 +364,10 @@ export type TimeUnit = typeof TimeUnit.Type
 export const TimeUnit = Schema.Literals(["second", "millisecond", "microsecond", "nanosecond"])
 
 const LiteralTypeSchema: Schema.Codec<LiteralType, unknown> = Schema.Union([
-  Schema.Struct({ _tag: Schema.tag("Date") }),
-  Schema.Struct({ _tag: Schema.tag("Timestamp"), unit: TimeUnit, timezone: Schema.optional(Schema.String) }),
-  Schema.Struct({ _tag: Schema.tag("Duration"), unit: TimeUnit }),
-  Schema.Struct({ _tag: Schema.tag("Decimal"), precision: Schema.Int, scale: Schema.Int })
+  Schema.TaggedStruct("Date", {}),
+  Schema.TaggedStruct("Timestamp", { unit: TimeUnit, timezone: Schema.optional(Schema.String) }),
+  Schema.TaggedStruct("Duration", { unit: TimeUnit }),
+  Schema.TaggedStruct("Decimal", { precision: Schema.Int, scale: Schema.Int })
 ]) as any
 
 /**
@@ -507,13 +501,10 @@ export interface Over {
 
 const ExpressionSchema = Schema.suspend((): Schema.Codec<Expression, unknown> => ExpressionUnion)
 
-const ColumnSchema = Schema.Struct({ _tag: Schema.tag("Column"), name: Schema.String })
-const LiteralSchema = Schema.Struct({
-  _tag: Schema.tag("Literal"),
-  value: Value,
-  type: Schema.optional(LiteralTypeSchema)
-})
+const ColumnSchema = Schema.TaggedStruct("Column", { name: Schema.String })
+const LiteralSchema = Schema.TaggedStruct("Literal", { value: Value, type: Schema.optional(LiteralTypeSchema) })
 const PositiveInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))
+const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const CallOptionsSchema = Schema.Struct({
   decimals: Schema.optional(Schema.Int),
   to: Schema.optional(CastTarget),
@@ -529,21 +520,18 @@ const CallOptionsSchema = Schema.Struct({
   name: Schema.optional(Schema.String),
   names: Schema.optional(Schema.Array(Schema.String)),
   precision: Schema.optional(PositiveInt),
-  scale: Schema.optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)))
+  scale: Schema.optional(NonNegativeInt)
 })
-const CallSchema = Schema.Struct({
-  _tag: Schema.tag("Call"),
+const CallSchema = Schema.TaggedStruct("Call", {
   fn: FunctionName,
   args: Schema.Array(ExpressionSchema),
   options: Schema.optional(CallOptionsSchema)
 })
-const AggregateCallSchema = Schema.Struct({
-  _tag: Schema.tag("AggregateCall"),
+const AggregateCallSchema = Schema.TaggedStruct("AggregateCall", {
   fn: AggregateName,
   arg: Schema.optional(ExpressionSchema)
 })
-const OverSchema = Schema.Struct({
-  _tag: Schema.tag("Over"),
+const OverSchema = Schema.TaggedStruct("Over", {
   expression: ExpressionSchema,
   partitionBy: Schema.Array(ExpressionSchema)
 })
@@ -1059,56 +1047,25 @@ const TableColumnSchema: Schema.Codec<TableColumn> = Schema.Struct({
 
 const NodeSchema = Schema.suspend((): Schema.Codec<Node, unknown> => NodeUnion)
 const Columns = Schema.Array(Schema.String)
-const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
 const NodeUnion = Schema.Union([
-  Schema.Struct({ _tag: Schema.tag("Values"), frame: Frame }),
-  Schema.Struct({
-    _tag: Schema.tag("Table"),
-    name: Schema.String,
-    columns: Schema.optional(Schema.Array(TableColumnSchema))
-  }),
-  Schema.Struct({ _tag: Schema.tag("Filter"), input: NodeSchema, predicate: ExpressionSchema }),
-  Schema.Struct({ _tag: Schema.tag("Select"), input: NodeSchema, columns: Schema.Array(NamedSchema) }),
-  Schema.Struct({ _tag: Schema.tag("WithColumns"), input: NodeSchema, columns: Schema.Array(NamedSchema) }),
-  Schema.Struct({
-    _tag: Schema.tag("Sort"),
-    input: NodeSchema,
-    keys: Schema.Array(SortKeySchema),
-    nullsLast: Schema.Boolean
-  }),
-  Schema.Struct({
-    _tag: Schema.tag("Slice"),
-    input: NodeSchema,
-    offset: Schema.Int,
-    length: Schema.optional(NonNegativeInt)
-  }),
-  Schema.Struct({ _tag: Schema.tag("Unique"), input: NodeSchema, columns: Schema.optional(Columns) }),
-  Schema.Struct({ _tag: Schema.tag("DropNulls"), input: NodeSchema, columns: Schema.optional(Columns) }),
-  Schema.Struct({ _tag: Schema.tag("Pick"), input: NodeSchema, columns: Columns }),
-  Schema.Struct({ _tag: Schema.tag("Omit"), input: NodeSchema, columns: Columns }),
-  Schema.Struct({
-    _tag: Schema.tag("Rename"),
-    input: NodeSchema,
-    mapping: Schema.Record(Schema.String, Schema.String)
-  }),
-  Schema.Struct({
-    _tag: Schema.tag("GroupBy"),
-    input: NodeSchema,
-    keys: Columns,
-    aggregates: Schema.Array(NamedSchema)
-  }),
-  Schema.Struct({ _tag: Schema.tag("Aggregate"), input: NodeSchema, aggregates: Schema.Array(NamedSchema) }),
-  Schema.Struct({
-    _tag: Schema.tag("Join"),
-    left: NodeSchema,
-    right: NodeSchema,
-    on: Columns,
-    how: JoinHow
-  }),
-  Schema.Struct({ _tag: Schema.tag("Concat"), inputs: Schema.Array(NodeSchema) }),
-  Schema.Struct({
-    _tag: Schema.tag("Pivot"),
+  Schema.TaggedStruct("Values", { frame: Frame }),
+  Schema.TaggedStruct("Table", { name: Schema.String, columns: Schema.optional(Schema.Array(TableColumnSchema)) }),
+  Schema.TaggedStruct("Filter", { input: NodeSchema, predicate: ExpressionSchema }),
+  Schema.TaggedStruct("Select", { input: NodeSchema, columns: Schema.Array(NamedSchema) }),
+  Schema.TaggedStruct("WithColumns", { input: NodeSchema, columns: Schema.Array(NamedSchema) }),
+  Schema.TaggedStruct("Sort", { input: NodeSchema, keys: Schema.Array(SortKeySchema), nullsLast: Schema.Boolean }),
+  Schema.TaggedStruct("Slice", { input: NodeSchema, offset: Schema.Int, length: Schema.optional(NonNegativeInt) }),
+  Schema.TaggedStruct("Unique", { input: NodeSchema, columns: Schema.optional(Columns) }),
+  Schema.TaggedStruct("DropNulls", { input: NodeSchema, columns: Schema.optional(Columns) }),
+  Schema.TaggedStruct("Pick", { input: NodeSchema, columns: Columns }),
+  Schema.TaggedStruct("Omit", { input: NodeSchema, columns: Columns }),
+  Schema.TaggedStruct("Rename", { input: NodeSchema, mapping: Schema.Record(Schema.String, Schema.String) }),
+  Schema.TaggedStruct("GroupBy", { input: NodeSchema, keys: Columns, aggregates: Schema.Array(NamedSchema) }),
+  Schema.TaggedStruct("Aggregate", { input: NodeSchema, aggregates: Schema.Array(NamedSchema) }),
+  Schema.TaggedStruct("Join", { left: NodeSchema, right: NodeSchema, on: Columns, how: JoinHow }),
+  Schema.TaggedStruct("Concat", { inputs: Schema.Array(NodeSchema) }),
+  Schema.TaggedStruct("Pivot", {
     input: NodeSchema,
     on: Schema.String,
     index: Columns,
@@ -1116,10 +1073,9 @@ const NodeUnion = Schema.Union([
     aggregate: Schema.Union([AggregateName, Schema.Literal("len")]),
     columns: Schema.optional(Columns)
   }),
-  Schema.Struct({ _tag: Schema.tag("Explode"), input: NodeSchema, column: Schema.String }),
-  Schema.Struct({ _tag: Schema.tag("Unnest"), input: NodeSchema, column: Schema.String }),
-  Schema.Struct({
-    _tag: Schema.tag("Unpivot"),
+  Schema.TaggedStruct("Explode", { input: NodeSchema, column: Schema.String }),
+  Schema.TaggedStruct("Unnest", { input: NodeSchema, column: Schema.String }),
+  Schema.TaggedStruct("Unpivot", {
     input: NodeSchema,
     index: Columns,
     on: Columns,

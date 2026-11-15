@@ -70,7 +70,7 @@
  */
 import type * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import type * as BigDecimal from "../BigDecimal.ts"
-import * as Effect from "../Effect.ts"
+import type * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import { dual } from "../Function.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
@@ -216,9 +216,6 @@ const columns: any = new Proxy({}, {
 const named = (exprs: { readonly [name: string]: unknown }): Array<Plan.Named> =>
   Object.keys(exprs).map((name) => ({ name, expression: E.toNode(exprs[name]) }))
 
-const isGroupBy = (u: unknown): u is GroupBy<unknown, never> =>
-  typeof u === "object" && u !== null && (u as { _tag?: unknown })._tag === "GroupBy" && "query" in u
-
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
@@ -311,7 +308,7 @@ export const fromPlan = (plan: Plan.Node): Query<{ readonly [name: string]: unkn
  * @since 4.1.5
  */
 export const stream = <R>(self: Query<R>): Stream.Stream<DataFrame<R>, DataFrameError> =>
-  Stream.unwrap(Engine.use((engine) => Effect.succeed(engine.stream(self.plan) as any)))
+  Stream.unwrap(Engine.useSync((engine) => engine.stream(self.plan) as any))
 
 /**
  * The plan that runs for a query, after tables are resolved and the plan is
@@ -370,14 +367,10 @@ export const sort: {
   make({
     _tag: "Sort",
     input: self.plan,
-    keys: keys(columns).map((k) =>
-      E.isExpr(k)
-        ? { expression: k.node, descending: false }
-        : {
-          expression: E.toNode((k as Expr.SortOrder<unknown>).expr),
-          descending: (k as Expr.SortOrder<unknown>).descending
-        }
-    ),
+    keys: keys(columns).map((k) => {
+      const { expr, descending } = E.isExpr(k) ? { expr: k, descending: false } : k as Expr.SortOrder<unknown>
+      return { expression: E.toNode(expr), descending }
+    }),
     nullsLast: options?.nullsLast ?? false
   }))
 
@@ -445,6 +438,8 @@ export const unique: {
     make({ _tag: "Unique", input: self.plan, columns })
 )
 
+type NonNull<R, K extends keyof R> = Simplify<Omit<R, K> & { [P in K]: NonNullable<R[P]> }>
+
 /**
  * Removes the rows that are `null` in any of the given columns (all
  * columns by default).
@@ -456,11 +451,11 @@ export const unique: {
 export const dropNulls: {
   <R, const K extends keyof R & string = keyof R & string>(
     columns?: ReadonlyArray<K>
-  ): (self: Query<R>) => Query<Simplify<Omit<R, K> & { [P in K]: NonNullable<R[P]> }>>
+  ): (self: Query<R>) => Query<NonNull<R, K>>
   <R, const K extends keyof R & string = keyof R & string>(
     self: Query<R>,
     columns?: ReadonlyArray<K>
-  ): Query<Simplify<Omit<R, K> & { [P in K]: NonNullable<R[P]> }>>
+  ): Query<NonNull<R, K>>
 } = dual(
   (args) => isQuery(args[0]),
   <R>(self: Query<R>, columns?: ReadonlyArray<string>) => make({ _tag: "DropNulls", input: self.plan, columns })
@@ -531,6 +526,10 @@ export const omit: {
 } = (...names: ReadonlyArray<string>) => (self: Query<unknown>) =>
   make({ _tag: "Omit", input: self.plan, columns: names }) as any
 
+type Renamed<R, M> = Simplify<
+  Omit<R, keyof M> & { [K in keyof M & keyof R as M[K] extends string ? M[K] : never]: R[K] }
+>
+
 /**
  * Renames columns: `{ old: "new" }`.
  *
@@ -541,13 +540,8 @@ export const omit: {
 export const rename: {
   <R, const M extends { readonly [K in keyof R]?: string }>(
     mapping: M
-  ): (self: Query<R>) => Query<
-    Simplify<Omit<R, keyof M> & { [K in keyof M & keyof R as M[K] extends string ? M[K] : never]: R[K] }>
-  >
-  <R, const M extends { readonly [K in keyof R]?: string }>(
-    self: Query<R>,
-    mapping: M
-  ): Query<Simplify<Omit<R, keyof M> & { [K in keyof M & keyof R as M[K] extends string ? M[K] : never]: R[K] }>>
+  ): (self: Query<R>) => Query<Renamed<R, M>>
+  <R, const M extends { readonly [K in keyof R]?: string }>(self: Query<R>, mapping: M): Query<Renamed<R, M>>
 } = dual(
   2,
   (self: Query<unknown>, mapping: { readonly [name: string]: string | undefined }) => {
@@ -556,6 +550,8 @@ export const rename: {
     return make({ _tag: "Rename", input: self.plan, mapping: defined })
   }
 )
+
+type Computed<O> = Simplify<{ [K in keyof O]: Expr.Type<O[K]> }>
 
 /**
  * Replaces the columns with the given expressions; the record's keys name
@@ -568,11 +564,11 @@ export const rename: {
 export const select: {
   <R, O extends { readonly [name: string]: Expr.Expr<any> }>(
     f: (columns: Columns<R>) => O
-  ): (self: Query<R>) => Query<Simplify<{ [K in keyof O]: Expr.Type<O[K]> }>>
+  ): (self: Query<R>) => Query<Computed<O>>
   <R, O extends { readonly [name: string]: Expr.Expr<any> }>(
     self: Query<R>,
     f: (columns: Columns<R>) => O
-  ): Query<Simplify<{ [K in keyof O]: Expr.Type<O[K]> }>>
+  ): Query<Computed<O>>
 } = dual(
   2,
   (self: Query<unknown>, f: (columns: any) => { readonly [name: string]: unknown }) =>
@@ -589,11 +585,11 @@ export const select: {
 export const withColumns: {
   <R, O extends { readonly [name: string]: Expr.Expr<any> }>(
     f: (columns: Columns<R>) => O
-  ): (self: Query<R>) => Query<Simplify<Omit<R, keyof O> & { [K in keyof O]: Expr.Type<O[K]> }>>
+  ): (self: Query<R>) => Query<Simplify<Omit<R, keyof O> & Computed<O>>>
   <R, O extends { readonly [name: string]: Expr.Expr<any> }>(
     self: Query<R>,
     f: (columns: Columns<R>) => O
-  ): Query<Simplify<Omit<R, keyof O> & { [K in keyof O]: Expr.Type<O[K]> }>>
+  ): Query<Simplify<Omit<R, keyof O> & Computed<O>>>
 } = dual(
   2,
   (self: Query<unknown>, f: (columns: any) => { readonly [name: string]: unknown }) =>
@@ -631,13 +627,13 @@ export const groupBy: {
 export const agg: {
   <R, K extends keyof R, O extends { readonly [name: string]: Expr.Aggregate<any> }>(
     f: (columns: Columns<R>) => O
-  ): (self: GroupBy<R, K>) => Query<Simplify<Pick<R, K> & { [P in keyof O]: Expr.Type<O[P]> }>>
+  ): (self: GroupBy<R, K>) => Query<Simplify<Pick<R, K> & Computed<O>>>
   <R, K extends keyof R, O extends { readonly [name: string]: Expr.Aggregate<any> }>(
     self: GroupBy<R, K>,
     f: (columns: Columns<R>) => O
-  ): Query<Simplify<Pick<R, K> & { [P in keyof O]: Expr.Type<O[P]> }>>
+  ): Query<Simplify<Pick<R, K> & Computed<O>>>
 } = dual(
-  (args) => isGroupBy(args[0]),
+  2,
   (self: GroupBy<unknown, never>, f: (columns: any) => { readonly [name: string]: unknown }) =>
     make({
       _tag: "GroupBy",
@@ -657,11 +653,11 @@ export const agg: {
 export const aggregate: {
   <R, O extends { readonly [name: string]: Expr.Aggregate<any> }>(
     f: (columns: Columns<R>) => O
-  ): (self: Query<R>) => Query<Simplify<{ [P in keyof O]: Expr.Type<O[P]> }>>
+  ): (self: Query<R>) => Query<Computed<O>>
   <R, O extends { readonly [name: string]: Expr.Aggregate<any> }>(
     self: Query<R>,
     f: (columns: Columns<R>) => O
-  ): Query<Simplify<{ [P in keyof O]: Expr.Type<O[P]> }>>
+  ): Query<Computed<O>>
 } = dual(
   2,
   (self: Query<unknown>, f: (columns: any) => { readonly [name: string]: unknown }) =>
@@ -832,6 +828,25 @@ export const pivot: {
     columns: options.columns
   })) as any
 
+interface UnpivotOptions<On, Index, Variable, Value> {
+  readonly on: On
+  readonly index?: Index | undefined
+  readonly variable?: Variable | undefined
+  readonly value?: Value | undefined
+}
+
+type Unpivoted<
+  R,
+  On extends ReadonlyArray<keyof R>,
+  Index extends ReadonlyArray<keyof R>,
+  Variable extends string,
+  Value extends string
+> = Simplify<
+  & Pick<R, Index[number]>
+  & { readonly [K in Variable]: On[number] }
+  & { readonly [K in Value]: R[On[number]] }
+>
+
 /**
  * Stacks the `on` columns into one `value` column (`"value"` by default),
  * one block of rows per column, with the column's name in `variable`
@@ -849,52 +864,31 @@ export const unpivot: {
     const Index extends ReadonlyArray<keyof R & string> = readonly [],
     const Variable extends string = "variable",
     const Value extends string = "value"
-  >(options: {
-    readonly on: On
-    readonly index?: Index | undefined
-    readonly variable?: Variable | undefined
-    readonly value?: Value | undefined
-  }): (
-    self: Query<R>
-  ) => Query<
-    Simplify<
-      & Pick<R, Index[number]>
-      & { readonly [K in Variable]: On[number] }
-      & { readonly [K in Value]: R[On[number]] }
-    >
-  >
+  >(
+    options: UnpivotOptions<On, Index, Variable, Value>
+  ): (self: Query<R>) => Query<Unpivoted<R, On, Index, Variable, Value>>
   <
     R,
     const On extends ReadonlyArray<keyof R & string>,
     const Index extends ReadonlyArray<keyof R & string> = readonly [],
     const Variable extends string = "variable",
     const Value extends string = "value"
-  >(self: Query<R>, options: {
-    readonly on: On
-    readonly index?: Index | undefined
-    readonly variable?: Variable | undefined
-    readonly value?: Value | undefined
-  }): Query<
-    Simplify<
-      & Pick<R, Index[number]>
-      & { readonly [K in Variable]: On[number] }
-      & { readonly [K in Value]: R[On[number]] }
-    >
-  >
-} = dual(2, (self: Query<unknown>, options: {
-  readonly on: ReadonlyArray<string>
-  readonly index?: ReadonlyArray<string> | undefined
-  readonly variable?: string | undefined
-  readonly value?: string | undefined
-}) =>
-  make({
-    _tag: "Unpivot",
-    input: self.plan,
-    index: options.index ?? [],
-    on: options.on,
-    variable: options.variable ?? "variable",
-    value: options.value ?? "value"
-  })) as any
+  >(
+    self: Query<R>,
+    options: UnpivotOptions<On, Index, Variable, Value>
+  ): Query<Unpivoted<R, On, Index, Variable, Value>>
+} = dual(
+  2,
+  (self: Query<unknown>, options: UnpivotOptions<ReadonlyArray<string>, ReadonlyArray<string>, string, string>) =>
+    make({
+      _tag: "Unpivot",
+      input: self.plan,
+      index: options.index ?? [],
+      on: options.on,
+      variable: options.variable ?? "variable",
+      value: options.value ?? "value"
+    })
+) as any
 
 /**
  * One row per element of the list column `column`, the other columns
@@ -908,11 +902,11 @@ export const unpivot: {
 export const explode: {
   <R, const K extends ListKeys<R>>(
     column: K
-  ): (self: Query<R>) => Query<Simplify<{ readonly [P in keyof R]: P extends K ? ElementOf<R[P]> | null : R[P] }>>
+  ): (self: Query<R>) => Query<Exploded<R, K>>
   <R, const K extends ListKeys<R>>(
     self: Query<R>,
     column: K
-  ): Query<Simplify<{ readonly [P in keyof R]: P extends K ? ElementOf<R[P]> | null : R[P] }>>
+  ): Query<Exploded<R, K>>
 } = dual(2, (self: Query<unknown>, column: string) => make({ _tag: "Explode", input: self.plan, column })) as any
 
 /**
@@ -926,14 +920,15 @@ export const explode: {
 export const unnest: {
   <R, const K extends StructKeys<R>>(
     column: K
-  ): (self: Query<R>) => Query<Simplify<Omit<R, K> & Fields<R[K]>>>
-  <R, const K extends StructKeys<R>>(self: Query<R>, column: K): Query<Simplify<Omit<R, K> & Fields<R[K]>>>
+  ): (self: Query<R>) => Query<Unnested<R, K>>
+  <R, const K extends StructKeys<R>>(self: Query<R>, column: K): Query<Unnested<R, K>>
 } = dual(2, (self: Query<unknown>, column: string) => make({ _tag: "Unnest", input: self.plan, column })) as any
 
 type ListKeys<R> = {
   [K in keyof R & string]: NonNullable<R[K]> extends ReadonlyArray<unknown> ? K : never
 }[keyof R & string]
 type ElementOf<A> = NonNullable<A> extends ReadonlyArray<infer E> ? E : never
+type Exploded<R, K> = Simplify<{ readonly [P in keyof R]: P extends K ? ElementOf<R[P]> | null : R[P] }>
 type StructKeys<R> = {
   [K in keyof R & string]: NonNullable<R[K]> extends ReadonlyArray<unknown> ? never
     : NonNullable<R[K]> extends object ? K
@@ -941,3 +936,4 @@ type StructKeys<R> = {
 }[keyof R & string]
 type Fields<A> = null extends A ? { readonly [K in keyof NonNullable<A>]: NonNullable<A>[K] | null }
   : { readonly [K in keyof NonNullable<A>]: NonNullable<A>[K] }
+type Unnested<R, K extends keyof R> = Simplify<Omit<R, K> & Fields<R[K]>>

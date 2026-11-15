@@ -39,10 +39,10 @@
  * they differ from the in-memory engine's: integer overflow raises an error
  * instead of wrapping, division by zero follows the database, string order
  * follows its collation, and timestamps and durations keep PostgreSQL's
- * microseconds (finer timestamps round down, finer durations toward zero). Pivots, unpivots, `explode` and
- * `unnest` are not supported yet; tables need declared columns
- * (`Query.table` with a schema), and {@link engine} checks that tables
- * satisfy them, as the in-memory engine does.
+ * microseconds (finer timestamps round down, finer durations toward zero).
+ * Pivots, unpivots, `explode` and `unnest` are not supported yet; tables
+ * need declared columns (`Query.table` with a schema), and {@link engine}
+ * checks that tables satisfy them, as the in-memory engine does.
  *
  * @stability experimental
  * @since 4.1.5
@@ -53,8 +53,7 @@ import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import { SqlClient } from "../sql/SqlClient.ts"
 import * as Stream from "../Stream.ts"
-import { DataFrameError } from "./DataFrame.ts"
-import type { DataFrame } from "./DataFrame.ts"
+import { type DataFrame, DataFrameError } from "./DataFrame.ts"
 import { Engine } from "./Engine.ts"
 import * as internal from "./internal/sql.ts"
 import * as V from "./internal/vector.ts"

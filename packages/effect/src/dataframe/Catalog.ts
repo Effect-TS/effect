@@ -104,27 +104,11 @@ export type Source =
 const unknownTable = (name: string) =>
   Effect.fail(new DataFrameError({ message: `unknown table ${JSON.stringify(name)}` }))
 
-/**
- * A catalog without tables.
- *
- * @stability experimental
- * @category constructors
- * @since 4.1.5
- */
-export const empty: Catalog.Service = {
-  table: unknownTable,
-  stream: (name) => Stream.fromEffect(unknownTable(name)),
-  streaming: () => false
-}
-
-const concatenated = (frames: ReadonlyArray<DataFrame<unknown>>): Effect.Effect<DataFrame<unknown>, DataFrameError> => {
-  if (frames.length === 1) return Effect.succeed(frames[0])
-  try {
-    return Effect.succeed(F.concat(frames as unknown as ReadonlyArray<F.Frame>) as unknown as DataFrame<unknown>)
-  } catch (cause) {
-    return Effect.fail(new DataFrameError({ message: cause instanceof Error ? cause.message : String(cause), cause }))
-  }
-}
+const concatenated = (frames: ReadonlyArray<DataFrame<unknown>>): Effect.Effect<DataFrame<unknown>, DataFrameError> =>
+  frames.length === 1 ? Effect.succeed(frames[0]) : Effect.try({
+    try: () => F.concat(frames as unknown as ReadonlyArray<F.Frame>) as unknown as DataFrame<unknown>,
+    catch: (cause) => new DataFrameError({ message: cause instanceof Error ? cause.message : String(cause), cause })
+  })
 
 /**
  * A catalog of the given tables.
@@ -161,6 +145,15 @@ export const make = (tables: { readonly [name: string]: Source }): Catalog.Servi
     streaming: (name) => Stream.isStream(entries.get(name))
   }
 }
+
+/**
+ * A catalog without tables.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.1.5
+ */
+export const empty: Catalog.Service = make({})
 
 /**
  * A layer providing a catalog of the given tables.

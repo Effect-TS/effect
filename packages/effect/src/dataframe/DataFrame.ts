@@ -38,6 +38,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import * as ArrowData from "../arrow/ArrowData.ts"
 import * as ArrowIpc from "../arrow/ArrowIpc.ts"
 import * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import * as ArrowTable from "../arrow/ArrowTable.ts"
@@ -111,6 +112,12 @@ export type Normalize<T> = {
 
 type Simplify<A> = { readonly [K in keyof A]: A[K] } extends infer B ? B : never
 
+type StructSchema = { readonly Type: object; readonly ast: any }
+
+type TypeOptions<S extends StructSchema> = {
+  readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined
+}
+
 type NormalizeValue<A> = A extends undefined ? null
   : A extends BigDecimal.BigDecimal | DateTime.DateTime | Duration.Duration | Uint8Array ? A
   : A extends Array<infer E> ? Array<NormalizeValue<E>>
@@ -119,9 +126,9 @@ type NormalizeValue<A> = A extends undefined ? null
   : A
 
 /**
- * Raised for invalid input that the types can't rule out: a row that doesn't
- * match its schema, an Arrow table whose columns don't match a schema, or a
- * column type the DataFrame doesn't support.
+ * Raised for invalid input that the types can't rule out (a row that doesn't
+ * match its schema, an Arrow table whose columns don't match a schema, a
+ * column type frames can't hold), and by queries that fail when they run.
  *
  * @stability experimental
  * @category errors
@@ -145,6 +152,7 @@ const unsafe = <A>(f: () => A): A => {
 
 const frame = <R>(self: DataFrame<R>): F.Frame => self as unknown as F.Frame
 const wrap = <R>(f: F.Frame): DataFrame<R> => f as unknown as DataFrame<R>
+
 /**
  * Returns `true` for data frames.
  *
@@ -181,18 +189,16 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * @category constructors
  * @since 4.1.5
  */
-export const fromRows = <S extends { readonly Type: object; readonly ast: any }>(
+export const fromRows = <S extends StructSchema>(
   schema: S,
   rows: Iterable<S["Type"]>,
-  options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+  options?: TypeOptions<S>
 ): DataFrame<Normalize<S["Type"]>> =>
   unsafe(() => {
     const arrow = Schema_.toArrowSchema(schema, options?.types as any)
-    const table = Result.getOrElse(
+    const table = Result.getOrThrowWith(
       ArrowTable.fromRows(arrow, Array.isArray(rows) ? rows : Array.from(rows) as any),
-      (error) => {
-        throw fromDefect(error)
-      }
+      fromDefect
     )
     return wrap(F.fromArrowTable(table))
   })
@@ -270,40 +276,23 @@ export const fromColumns = <C extends { readonly [name: string]: ColumnInput }>(
 ): DataFrame<Simplify<{ [K in keyof C]: ColumnValue<C[K]> }>> =>
   unsafe(() => {
     const names = Object.keys(columns)
-    const fields: Array<ArrowSchema.Field> = []
-    const data = names.map((name) => {
+    const types = names.map((name) => {
+      const c = columns[name]
+      return ArrayBuffer.isView(c)
+        ? typedArrayTypes.find(([ctor]) => c instanceof ctor)![1]
+        : inferType(c as ReadonlyArray<unknown>)
+    })
+    const lengths = new Set(names.map((n) => columns[n].length))
+    if (lengths.size > 1) V.fail(`columns have different lengths: ${[...lengths].join(", ")}`)
+    const length = names.length === 0 ? 0 : columns[names[0]].length
+    const vectors = names.map((name, i) => {
       const c = columns[name]
       if (ArrayBuffer.isView(c)) {
-        const type = typedArrayTypes.find(([ctor]) => c instanceof ctor)![1]
-        fields.push(ArrowSchema.field(name, type, { nullable: false }))
         const bytes = new Uint8Array(c.buffer, c.byteOffset, c.byteLength)
-        return {
-          type,
-          length: (c as Float64Array).length,
-          offset: 0,
-          nullCount: 0,
-          validity: undefined,
-          buffers: [bytes],
-          children: [],
-          dictionary: undefined
-        }
+        return V.fromArrowData(ArrowData.make({ type: types[i], length: c.length, buffers: [bytes] }))
       }
-      const type = inferType(c as ReadonlyArray<unknown>)
-      fields.push(ArrowSchema.field(name, type))
-      return undefined
-    })
-    const lengths = new Set(names.map((n) => (columns[n] as { length: number }).length))
-    if (lengths.size > 1) V.fail(`columns have different lengths: ${[...lengths].join(", ")}`)
-    const length = names.length === 0 ? 0 : (columns[names[0]] as { length: number }).length
-    const vectors = names.map((name, i) => {
-      const d = data[i]
-      if (d !== undefined) return V.fromArrowData(d)
-      const schema = ArrowSchema.make([fields[i]])
-      const values = columns[name] as ReadonlyArray<unknown>
-      const rows = values.map((v) => ({ [name]: v }))
-      const table = Result.getOrElse(ArrowTable.fromRows(schema, rows), (error) => {
-        throw fromDefect(error)
-      })
+      const schema = ArrowSchema.make([ArrowSchema.field(name, types[i])])
+      const table = Result.getOrThrowWith(ArrowTable.fromColumns(schema, [c]), fromDefect)
       return F.fromArrowTable(table).columns[0].vector
     })
     return wrap(F.fromVectors(names, vectors, length))
@@ -315,8 +304,8 @@ export const fromColumns = <C extends { readonly [name: string]: ColumnInput }>(
  *
  * **Details**
  *
- * Throws a {@link DataFrameError} for column types the DataFrame doesn't
- * support yet (decimals, nested types, intervals).
+ * Throws a {@link DataFrameError} for column types frames can't hold, such
+ * as Float16, intervals, maps, unions, or decimals beyond 18 digits.
  *
  * @stability experimental
  * @category constructors
@@ -352,13 +341,12 @@ export const decodeArrowStream = <E, R>(
     Stream.mapError((error) =>
       ArrowIpc.isArrowIpcError(error) ? new DataFrameError({ message: error.message, cause: error }) : error as E
     ),
-    Stream.mapEffect((batch) => {
-      try {
-        return Effect.succeed(fromRecordBatch(batch))
-      } catch (cause) {
-        return Effect.fail(cause instanceof DataFrameError ? cause : fromDefect(cause))
-      }
-    })
+    Stream.mapEffect((batch) =>
+      Effect.try({
+        try: () => fromRecordBatch(batch),
+        catch: (cause) => cause instanceof DataFrameError ? cause : fromDefect(cause)
+      })
+    )
   )
 
 /**
@@ -369,9 +357,9 @@ export const decodeArrowStream = <E, R>(
  * @category constructors
  * @since 4.1.5
  */
-export const empty = <S extends { readonly Type: object; readonly ast: any }>(
+export const empty = <S extends StructSchema>(
   schema: S,
-  options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+  options?: TypeOptions<S>
 ): DataFrame<Normalize<S["Type"]>> => fromRows(schema, [], options)
 
 /**
@@ -406,26 +394,24 @@ export const empty = <S extends { readonly Type: object; readonly ast: any }>(
  * @since 4.1.5
  */
 export const validate: {
-  <S extends { readonly Type: object; readonly ast: any }>(
+  <S extends StructSchema>(
     schema: S,
-    options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+    options?: TypeOptions<S>
   ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
-  <R, S extends { readonly Type: object; readonly ast: any }>(
+  <R, S extends StructSchema>(
     self: DataFrame<R>,
     schema: S,
-    options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+    options?: TypeOptions<S>
   ): Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
 } = dual((args) => isDataFrame(args[0]), (
   self: DataFrame<unknown>,
   schema: { readonly ast: any },
   options?: { readonly types?: { readonly [name: string]: ArrowSchema.DataType | undefined } | undefined }
-) => {
-  try {
-    return Result.succeed(wrap(Schema_.conform(frame(self), Schema_.declare(schema, options?.types), schema)))
-  } catch (cause) {
-    return Result.fail(fromDefect(cause))
-  }
-})
+) =>
+  Result.try({
+    try: () => wrap(Schema_.conform(frame(self), Schema_.declare(schema, options?.types), schema)),
+    catch: fromDefect
+  }))
 
 // -----------------------------------------------------------------------------
 // Conversions

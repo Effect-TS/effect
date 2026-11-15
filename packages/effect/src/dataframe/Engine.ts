@@ -16,7 +16,7 @@
  * @since 4.1.5
  */
 import * as Context from "../Context.ts"
-import * as Effect from "../Effect.ts"
+import type * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Stream from "../Stream.ts"
 import { Catalog } from "./Catalog.ts"
@@ -51,9 +51,6 @@ export declare namespace Engine {
   }
 }
 
-const frame = <A>(effect: Effect.Effect<A, DataFrameError>): Effect.Effect<DataFrame<unknown>, DataFrameError> =>
-  effect as any
-
 /**
  * The in-memory engine: tables from the `Catalog`, the plan rewritten
  * (predicate, slice and projection pushdown, top-k), streamed tables batch by
@@ -65,13 +62,8 @@ const frame = <A>(effect: Effect.Effect<A, DataFrameError>): Effect.Effect<DataF
  */
 export const memory: Engine.Service = {
   name: "memory",
-  collect: (plan) => Catalog.use((catalog) => frame(Q.collect(plan, catalog))),
-  stream: (plan) =>
-    Stream.unwrap(
-      Catalog.use((catalog) =>
-        Effect.succeed(Streaming.stream(plan, catalog) as unknown as Stream.Stream<DataFrame<unknown>, DataFrameError>)
-      )
-    ),
+  collect: (plan) => Catalog.use((catalog) => Q.collect(plan, catalog) as any),
+  stream: (plan) => Stream.unwrap(Catalog.useSync((catalog) => Streaming.stream(plan, catalog) as any)),
   explain: (plan) => Catalog.use((catalog) => Q.explain(plan, catalog))
 }
 

@@ -288,6 +288,8 @@ export const lit = <
 
 type ArithResult<A, B> = Expr<NumericOf<A> | Nullish<A> | Nullish<B>>
 
+const unary = (fn: Plan.FunctionName) => (self: Expr<unknown>) => internal.call<any>(fn, [self])
+
 const binary = (fn: Plan.FunctionName) =>
   dual(2, (self: unknown, that: unknown) => internal.call(fn, [self, that])) as any
 
@@ -376,6 +378,13 @@ export const divide: {
   ): Expr<number | Nullish<A> | Nullish<B>>
 } = binary("divide")
 
+type FloorDivision = {
+  <B extends Numeric | null>(
+    that: Input<B>
+  ): <A extends NumericOf<B> | null>(self: Expr<A>) => Expr<Base<A> | null>
+  <A extends Numeric | null, B extends Base<A> | null>(self: Expr<A>, that: Input<B>): Expr<Base<A> | null>
+}
+
 /**
  * Division rounded towards negative infinity. Integer division by zero
  * gives `null`.
@@ -384,12 +393,7 @@ export const divide: {
  * @category arithmetic
  * @since 4.1.5
  */
-export const floorDivide: {
-  <B extends Numeric | null>(
-    that: Input<B>
-  ): <A extends NumericOf<B> | null>(self: Expr<A>) => Expr<Base<A> | null>
-  <A extends Numeric | null, B extends Base<A> | null>(self: Expr<A>, that: Input<B>): Expr<Base<A> | null>
-} = binary("floorDivide")
+export const floorDivide: FloorDivision = binary("floorDivide")
 
 /**
  * The remainder of {@link floorDivide}: it has the sign of the divisor
@@ -399,12 +403,7 @@ export const floorDivide: {
  * @category arithmetic
  * @since 4.1.5
  */
-export const mod: {
-  <B extends Numeric | null>(
-    that: Input<B>
-  ): <A extends NumericOf<B> | null>(self: Expr<A>) => Expr<Base<A> | null>
-  <A extends Numeric | null, B extends Base<A> | null>(self: Expr<A>, that: Input<B>): Expr<Base<A> | null>
-} = binary("mod")
+export const mod: FloorDivision = binary("mod")
 
 /**
  * `-self`.
@@ -558,6 +557,16 @@ export const isIn: {
 // Logic
 // -----------------------------------------------------------------------------
 
+type Logical = {
+  <B extends boolean | null>(
+    that: Input<B>
+  ): <A extends boolean | null>(self: Expr<A>) => Expr<boolean | Nullish<A> | Nullish<B>>
+  <A extends boolean | null, B extends boolean | null>(
+    self: Expr<A>,
+    that: Input<B>
+  ): Expr<boolean | Nullish<A> | Nullish<B>>
+}
+
 /**
  * Three-valued AND: `false` if either side is `false`, otherwise `null` if
  * either side is `null`.
@@ -566,15 +575,7 @@ export const isIn: {
  * @category logic
  * @since 4.1.5
  */
-export const and: {
-  <B extends boolean | null>(
-    that: Input<B>
-  ): <A extends boolean | null>(self: Expr<A>) => Expr<boolean | Nullish<A> | Nullish<B>>
-  <A extends boolean | null, B extends boolean | null>(
-    self: Expr<A>,
-    that: Input<B>
-  ): Expr<boolean | Nullish<A> | Nullish<B>>
-} = binary("and")
+export const and: Logical = binary("and")
 
 /**
  * Three-valued OR: `true` if either side is `true`, otherwise `null` if
@@ -584,15 +585,7 @@ export const and: {
  * @category logic
  * @since 4.1.5
  */
-export const or: {
-  <B extends boolean | null>(
-    that: Input<B>
-  ): <A extends boolean | null>(self: Expr<A>) => Expr<boolean | Nullish<A> | Nullish<B>>
-  <A extends boolean | null, B extends boolean | null>(
-    self: Expr<A>,
-    that: Input<B>
-  ): Expr<boolean | Nullish<A> | Nullish<B>>
-} = binary("or")
+export const or: Logical = binary("or")
 
 /**
  * Negation; `null` stays `null`.
@@ -700,7 +693,7 @@ export const cast: {
  * 64-bit decimal storage) become null; extra digits round half to even.
  *
  * @stability experimental
- * @category casts
+ * @category conversions
  * @since 4.1.5
  */
 export const castDecimal: {
@@ -744,7 +737,12 @@ export const toLowerCase = <A extends string | null>(self: Expr<A>): Expr<A> => 
  */
 export const toUpperCase = <A extends string | null>(self: Expr<A>): Expr<A> => internal.call("toUpperCase", [self])
 
-const pattern = (fn: "includes" | "startsWith" | "endsWith") =>
+type Pattern = {
+  (text: string): <A extends string | null>(self: Expr<A>) => Expr<boolean | Nullish<A>>
+  <A extends string | null>(self: Expr<A>, text: string): Expr<boolean | Nullish<A>>
+}
+
+const pattern = (fn: "includes" | "startsWith" | "endsWith"): Pattern =>
   dual(2, (self: unknown, text: string) => internal.call(fn, [self], { pattern: text })) as any
 
 /**
@@ -754,10 +752,7 @@ const pattern = (fn: "includes" | "startsWith" | "endsWith") =>
  * @category strings
  * @since 4.1.5
  */
-export const includes: {
-  (text: string): <A extends string | null>(self: Expr<A>) => Expr<boolean | Nullish<A>>
-  <A extends string | null>(self: Expr<A>, text: string): Expr<boolean | Nullish<A>>
-} = pattern("includes")
+export const includes: Pattern = pattern("includes")
 
 /**
  * Whether the string starts with `text`.
@@ -766,10 +761,7 @@ export const includes: {
  * @category strings
  * @since 4.1.5
  */
-export const startsWith: {
-  (text: string): <A extends string | null>(self: Expr<A>) => Expr<boolean | Nullish<A>>
-  <A extends string | null>(self: Expr<A>, text: string): Expr<boolean | Nullish<A>>
-} = pattern("startsWith")
+export const startsWith: Pattern = pattern("startsWith")
 
 /**
  * Whether the string ends with `text`.
@@ -778,10 +770,7 @@ export const startsWith: {
  * @category strings
  * @since 4.1.5
  */
-export const endsWith: {
-  (text: string): <A extends string | null>(self: Expr<A>) => Expr<boolean | Nullish<A>>
-  <A extends string | null>(self: Expr<A>, text: string): Expr<boolean | Nullish<A>>
-} = pattern("endsWith")
+export const endsWith: Pattern = pattern("endsWith")
 
 /**
  * Concatenates the arguments as strings; `null` if any argument is `null`.
@@ -978,8 +967,6 @@ export const over: {
     })
 ) as any
 
-type CumSum<A> = Expr<NumericOf<A> | Nullish<A>>
-
 /**
  * The running sum: on each row, the sum of the values so far (in the
  * partition, with {@link over}). Nulls stay null and are skipped; NaN
@@ -989,7 +976,9 @@ type CumSum<A> = Expr<NumericOf<A> | Nullish<A>>
  * @category windows
  * @since 4.1.5
  */
-export const cumSum = <A extends Numeric | boolean | null>(self: Expr<A>): CumSum<A> => internal.call("cumSum", [self])
+export const cumSum = <A extends Numeric | boolean | null>(
+  self: Expr<A>
+): Expr<NumericOf<A> | Nullish<A>> => internal.call("cumSum", [self])
 
 /**
  * The running minimum. Nulls stay null; NaN is skipped.
@@ -1018,6 +1007,9 @@ export const cumMax = <A>(self: Expr<A>): Expr<A> => internal.call("cumMax", [se
  */
 export const cumCount = (self: Expr<unknown>): Expr<number> => internal.call("cumCount", [self])
 
+const lag = (fn: "shift" | "diff") =>
+  dual((args) => isExpr(args[0]), (self: unknown, n = 1) => internal.call(fn, [self], { n })) as any
+
 /**
  * The value `n` rows earlier (1 by default); a negative `n` looks ahead.
  * Null where there is no such row.
@@ -1029,10 +1021,7 @@ export const cumCount = (self: Expr<unknown>): Expr<number> => internal.call("cu
 export const shift: {
   (n?: number): <A>(self: Expr<A>) => Expr<A | null>
   <A>(self: Expr<A>, n?: number): Expr<A | null>
-} = dual(
-  (args) => isExpr(args[0]),
-  (self: unknown, n = 1) => internal.call("shift", [self], { n })
-) as any
+} = lag("shift")
 
 /**
  * The difference to the value `n` rows earlier (1 by default).
@@ -1044,10 +1033,12 @@ export const shift: {
 export const diff: {
   (n?: number): <A extends Numeric | null>(self: Expr<A>) => Expr<A | null>
   <A extends Numeric | null>(self: Expr<A>, n?: number): Expr<A | null>
-} = dual(
-  (args) => isExpr(args[0]),
-  (self: unknown, n = 1) => internal.call("diff", [self], { n })
-) as any
+} = lag("diff")
+
+type RankOptions = {
+  readonly method?: Plan.RankMethod | undefined
+  readonly descending?: boolean | undefined
+}
 
 /**
  * The rank of each value, 1 for the smallest (largest with `descending`).
@@ -1060,38 +1051,34 @@ export const diff: {
  * @since 4.1.5
  */
 export const rank: {
-  (options?: {
-    readonly method?: Plan.RankMethod | undefined
-    readonly descending?: boolean | undefined
-  }): <A>(self: Expr<A>) => Expr<number | Nullish<A>>
-  <A>(self: Expr<A>, options?: {
-    readonly method?: Plan.RankMethod | undefined
-    readonly descending?: boolean | undefined
-  }): Expr<number | Nullish<A>>
+  (options?: RankOptions): <A>(self: Expr<A>) => Expr<number | Nullish<A>>
+  <A>(self: Expr<A>, options?: RankOptions): Expr<number | Nullish<A>>
 } = dual(
   (args) => isExpr(args[0]),
-  (self: unknown, options?: { readonly method?: Plan.RankMethod; readonly descending?: boolean }) =>
+  (self: unknown, options?: RankOptions) =>
     internal.call("rank", [self], {
       method: options?.method ?? "average",
       descending: options?.descending ?? false
     })
 ) as any
 
+type RollingOptions = { readonly minPeriods?: number | undefined }
+
 type Rolling = {
-  (window: number, options?: { readonly minPeriods?: number | undefined }): <A extends Numeric | null>(
+  (window: number, options?: RollingOptions): <A extends Numeric | null>(
     self: Expr<A>
   ) => Expr<NonNullable<A> | null>
   <A extends Numeric | null>(
     self: Expr<A>,
     window: number,
-    options?: { readonly minPeriods?: number | undefined }
+    options?: RollingOptions
   ): Expr<NonNullable<A> | null>
 }
 
 const rolling = (fn: "rollingSum" | "rollingMean" | "rollingMin" | "rollingMax"): Rolling =>
   dual(
     (args) => isExpr(args[0]),
-    (self: unknown, window: number, options?: { readonly minPeriods?: number | undefined }) =>
+    (self: unknown, window: number, options?: RollingOptions) =>
       internal.call(fn, [self], { window, minPeriods: options?.minPeriods ?? window })
   ) as any
 
@@ -1113,13 +1100,13 @@ export const rollingSum: Rolling = rolling("rollingSum")
  * @since 4.1.5
  */
 export const rollingMean: {
-  (window: number, options?: { readonly minPeriods?: number | undefined }): <A extends Numeric | null>(
+  (window: number, options?: RollingOptions): <A extends Numeric | null>(
     self: Expr<A>
   ) => Expr<number | null>
   <A extends Numeric | null>(
     self: Expr<A>,
     window: number,
-    options?: { readonly minPeriods?: number | undefined }
+    options?: RollingOptions
   ): Expr<number | null>
 } = rolling("rollingMean") as any
 
@@ -1146,7 +1133,6 @@ export const rollingMax: Rolling = rolling("rollingMax")
 // -----------------------------------------------------------------------------
 
 type Field = <A extends DateTime.Utc | null>(self: Expr<A>) => Expr<number | Nullish<A>>
-const datePart = (fn: Plan.FunctionName): Field => (self) => internal.call(fn, [self])
 
 /**
  * The calendar year of a date or timestamp (UTC).
@@ -1171,7 +1157,7 @@ const datePart = (fn: Plan.FunctionName): Field => (self) => internal.call(fn, [
  * @category dates and times
  * @since 4.1.5
  */
-export const year: Field = datePart("year")
+export const year: Field = unary("year")
 
 /**
  * The month (1–12) of a date or timestamp.
@@ -1180,7 +1166,7 @@ export const year: Field = datePart("year")
  * @category dates and times
  * @since 4.1.5
  */
-export const month: Field = datePart("month")
+export const month: Field = unary("month")
 
 /**
  * The day of the month (1–31) of a date or timestamp.
@@ -1189,7 +1175,7 @@ export const month: Field = datePart("month")
  * @category dates and times
  * @since 4.1.5
  */
-export const day: Field = datePart("day")
+export const day: Field = unary("day")
 
 /**
  * The hour (0–23) of a timestamp.
@@ -1198,7 +1184,7 @@ export const day: Field = datePart("day")
  * @category dates and times
  * @since 4.1.5
  */
-export const hour: Field = datePart("hour")
+export const hour: Field = unary("hour")
 
 /**
  * The minute (0–59) of a timestamp.
@@ -1207,7 +1193,7 @@ export const hour: Field = datePart("hour")
  * @category dates and times
  * @since 4.1.5
  */
-export const minute: Field = datePart("minute")
+export const minute: Field = unary("minute")
 
 /**
  * The second (0–59) of a timestamp.
@@ -1216,7 +1202,7 @@ export const minute: Field = datePart("minute")
  * @category dates and times
  * @since 4.1.5
  */
-export const second: Field = datePart("second")
+export const second: Field = unary("second")
 
 /**
  * The millisecond within the second (0–999) of a timestamp.
@@ -1225,7 +1211,7 @@ export const second: Field = datePart("second")
  * @category dates and times
  * @since 4.1.5
  */
-export const millisecond: Field = datePart("millisecond")
+export const millisecond: Field = unary("millisecond")
 
 /**
  * The ISO weekday of a date or timestamp: 1 for Monday to 7 for Sunday.
@@ -1234,7 +1220,7 @@ export const millisecond: Field = datePart("millisecond")
  * @category dates and times
  * @since 4.1.5
  */
-export const weekday: Field = datePart("weekday")
+export const weekday: Field = unary("weekday")
 
 /**
  * The day of the year (1–366) of a date or timestamp.
@@ -1243,7 +1229,7 @@ export const weekday: Field = datePart("weekday")
  * @category dates and times
  * @since 4.1.5
  */
-export const ordinalDay: Field = datePart("ordinalDay")
+export const ordinalDay: Field = unary("ordinalDay")
 
 /**
  * Rounds dates and timestamps down to a multiple of `every`: `"30s"`,
@@ -1260,7 +1246,6 @@ export const truncate: {
 } = dual(2, (self: unknown, every: string) => internal.call("truncate", [self], { every })) as any
 
 type Total = <A extends Duration.Duration | null>(self: Expr<A>) => Expr<bigint | Nullish<A>>
-const total = (fn: Plan.FunctionName): Total => (self) => internal.call(fn, [self])
 
 /**
  * A duration in whole days, rounded toward zero.
@@ -1269,7 +1254,7 @@ const total = (fn: Plan.FunctionName): Total => (self) => internal.call(fn, [sel
  * @category dates and times
  * @since 4.1.5
  */
-export const totalDays: Total = total("totalDays")
+export const totalDays: Total = unary("totalDays")
 
 /**
  * A duration in whole hours, rounded toward zero.
@@ -1278,7 +1263,7 @@ export const totalDays: Total = total("totalDays")
  * @category dates and times
  * @since 4.1.5
  */
-export const totalHours: Total = total("totalHours")
+export const totalHours: Total = unary("totalHours")
 
 /**
  * A duration in whole minutes, rounded toward zero.
@@ -1287,7 +1272,7 @@ export const totalHours: Total = total("totalHours")
  * @category dates and times
  * @since 4.1.5
  */
-export const totalMinutes: Total = total("totalMinutes")
+export const totalMinutes: Total = unary("totalMinutes")
 
 /**
  * A duration in whole seconds, rounded toward zero.
@@ -1296,7 +1281,7 @@ export const totalMinutes: Total = total("totalMinutes")
  * @category dates and times
  * @since 4.1.5
  */
-export const totalSeconds: Total = total("totalSeconds")
+export const totalSeconds: Total = unary("totalSeconds")
 
 /**
  * A duration in whole milliseconds, rounded toward zero.
@@ -1305,7 +1290,7 @@ export const totalSeconds: Total = total("totalSeconds")
  * @category dates and times
  * @since 4.1.5
  */
-export const totalMilliseconds: Total = total("totalMilliseconds")
+export const totalMilliseconds: Total = unary("totalMilliseconds")
 
 // -----------------------------------------------------------------------------
 // Lists and structs
