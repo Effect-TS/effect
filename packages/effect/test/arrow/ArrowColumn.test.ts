@@ -10,6 +10,8 @@ const utc = (input: string | number) => DateTime.makeUnsafe(input)
 const paris = (millis: number) => DateTime.makeZonedUnsafe(millis, { timeZone: "Europe/Paris" })
 const item = (type: S.DataType) => S.field("item", type)
 const intMap = S.map(S.field("key", S.utf8), S.field("value", S.int32))
+const utf8Runs = S.runEndEncoded(S.int16, S.field("values", S.utf8))
+const int8Map = S.field("m", S.map(S.field("k", S.utf8), S.field("v", S.int8)))
 
 // An extension over int32 lists that fails when building encodes a value twice
 const encoded = new WeakSet<object>()
@@ -87,7 +89,7 @@ const cases: ReadonlyArray<
   ["struct with repeated names, by position", S.struct([S.field("a", S.int32), S.field("a", S.utf8)]), [[1, "s"]], [{
     a: "s"
   }]],
-  ["map", S.map(S.field("key", S.utf8), S.field("value", S.int32)), [new Map([["k", 1]]), [["l", null]], null], [
+  ["map", intMap, [new Map([["k", 1]]), [["l", null]], null], [
     new Map([["k", 1]]),
     new Map([["l", null]]),
     null
@@ -102,11 +104,8 @@ const cases: ReadonlyArray<
     1.5,
     ArrowColumn.unionValue(7, 2)
   ], [1, 1.5, 2]],
-  ["runEndEncoded", S.runEndEncoded(S.int16, S.field("values", S.utf8)), ["a", "a", null, "b"]],
-  ["runEndEncoded from a sparse array", S.runEndEncoded(S.int16, S.field("values", S.utf8)), new Array(2), [
-    null,
-    null
-  ]],
+  ["runEndEncoded", utf8Runs, ["a", "a", null, "b"]],
+  ["runEndEncoded from a sparse array", utf8Runs, new Array(2), [null, null]],
   ["runEndEncoded lists that print alike", S.runEndEncoded(S.int32, S.field("v", S.list(item(S.utf8)))), [["a,sb"], [
     "a",
     "b"
@@ -192,11 +191,11 @@ const rejections: ReadonlyArray<
   ["largeListView item", S.field("l", S.largeListView(item(S.int8))), [[1], [2, 300]], [1, 1]],
   ["fixed-size list item", S.field("l", S.fixedSizeList(item(S.int8), 2)), [[1, 2], [3, 300]], [1, 1]],
   ["struct member", S.field("s", int8Member), [{ a: 1 }, { a: 300 }], [1, "a"]],
-  ["map value", S.field("m", S.map(S.field("k", S.utf8), S.field("v", S.int8))), [
+  ["map value", int8Map, [
     new Map([["k", 1]]),
     new Map([["k", 2], ["l", 300]])
   ], [1, 1, 1]],
-  ["null map key", S.field("m", S.map(S.field("k", S.utf8), S.field("v", S.int8))), [[["k", 1], [null, 2]]], [0, 1]],
+  ["null map key", int8Map, [[["k", 1], [null, 2]]], [0, 1]],
   ["dense union member", S.field("u", S.union("dense", [S.field("s", int8Member)])), [{ a: 1 }, { a: 300 }], [1, "a"]],
   ["run-end encoded value", S.field("r", S.runEndEncoded(S.int16, S.field("v", S.int8))), [1, 1, 300], [2]],
   ["dictionary value", S.field("d", S.dictionary(int8Member)), [{ a: 1 }, { a: 1 }, { a: 300 }], [2, "a"]]
