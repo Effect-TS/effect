@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "effect": "workspace:^",
-    "glob": "^14.0.4"
+    "glob": "^14.0.6"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0 <7.0.0"
