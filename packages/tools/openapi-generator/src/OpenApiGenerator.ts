@@ -793,7 +793,7 @@ const parseOpenApi = (
             `${schemaId}${status}Sse`,
             httpClientResponses.sseSchemaMode === "event"
               ? makeSseEventSchema(
-                resolveReference(sseResponseSchema, resolveRef),
+                sseResponseSchema,
                 effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined,
                 resolveRef
               )
@@ -1325,10 +1325,17 @@ const normalizeSseEventSchema = (
   resolveRef: (ref: string) => unknown,
   ancestors: ReadonlySet<unknown> = new Set()
 ): JsonSchema.JsonSchema => {
-  const resolved = resolveReference(input, resolveRef)
-  if (ancestors.has(resolved)) return input
-  const nextAncestors = new Set(ancestors).add(resolved)
-  const schema = { ...resolved } as Record<string, any>
+  if (ancestors.has(input)) return input
+  const nextAncestors = new Set(ancestors).add(input)
+  const schema = { ...input } as Record<string, any>
+  if (typeof schema.$ref === "string") {
+    const target = normalizeSseEventSchema(resolveRef(schema.$ref) as JsonSchema.JsonSchema, resolveRef, nextAncestors)
+    delete schema.$ref
+    // OpenAPI 3.1 reference siblings constrain the target; neither side overrides the other.
+    return Object.keys(schema).length === 0
+      ? target
+      : { allOf: [target, normalizeSseEventSchema(schema as JsonSchema.JsonSchema, resolveRef, nextAncestors)] }
+  }
   for (const key of ["allOf", "anyOf", "oneOf"] as const) {
     if (Array.isArray(schema[key])) {
       schema[key] = schema[key].map((member) => normalizeSseEventSchema(member, resolveRef, nextAncestors))

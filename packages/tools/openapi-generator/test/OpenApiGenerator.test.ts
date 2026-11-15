@@ -1717,6 +1717,74 @@ export const TestClientError = <Tag extends string, E>(
       { formats: ["httpapi"] }
     )
 
+    const constrainedSseSpec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Events", version: "1.0.0" },
+      security: [],
+      tags: [{ name: "Events" }],
+      paths: {
+        "/events": {
+          get: {
+            operationId: "events",
+            parameters: [],
+            tags: ["Events"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Events",
+                content: {
+                  "text/event-stream": {
+                    schema: {
+                      anyOf: ["first", "second"].map((event) => ({
+                        $ref: "#/components/schemas/BaseEvent",
+                        type: "object",
+                        properties: { event: { const: event } }
+                      }))
+                    },
+                    "x-effect-stream": {
+                      encoding: "sse",
+                      errorSchema: { not: {} },
+                      causeSchema: { type: "object" },
+                      failureEvent: "effect/http-api/stream/failure"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      components: {
+        securitySchemes: {},
+        schemas: {
+          BaseEvent: {
+            type: "object",
+            properties: { id: { type: "string" }, event: { type: "string" }, data: { type: "string" } },
+            required: ["event", "data"]
+          }
+        }
+      }
+    }
+
+    for (const format of ["httpapi", "httpclient"] as const) {
+      itGeneratedClientsCompile(
+        `preserves SSE reference sibling constraints (${format})`,
+        constrainedSseSpec,
+        {
+          formats: [format],
+          usage: `
+const first: Events200Sse = { event: "first", data: "payload" }
+const second: Events200Sse = { event: "second", data: "payload" }
+// @ts-expect-error The reference sibling restricts the event name.
+const unrelated: Events200Sse = { event: "unrelated", data: "payload" }
+`
+        }
+      )
+    }
+
+    it.effect("preserves SSE reference sibling constraints (httpclient-type-only)", () =>
+      assertTypeOnlyIncludes(constrainedSseSpec, ["\"event\": \"first\"", "\"event\": \"second\""]))
+
     it.effect("generates tagged groups with endpoint annotations and representable parameters", () =>
       assertHttpApiIncludes(
         {
