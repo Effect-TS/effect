@@ -101,6 +101,7 @@ const cases: ReadonlyArray<
 ]
 
 const int8Member = S.struct([S.field("a", S.int8)])
+const nonNullInt = S.field("a", S.int32, { nullable: false })
 const twoInts = [S.field("a", S.int32), S.field("b", S.int32)]
 
 const rejections: ReadonlyArray<
@@ -110,6 +111,13 @@ const rejections: ReadonlyArray<
   ["negative unsigned", S.field("n", S.uint64), [-1n], [0]],
   ["not an integer", S.field("n", S.int32), [1.5], [0]],
   ["null in a non-nullable field", S.field("n", S.int32, { nullable: false }), [1, null], [1]],
+  // Only the slots of valid parents and selected union members must not be null
+  ["null in a non-nullable struct member", S.field("s", S.struct([nonNullInt])), [null, { a: null }], [1, "a"]],
+  ["null in a non-nullable list item", S.field("l", S.fixedSizeList(nonNullInt, 1)), [null, [null]], [1, 0]],
+  ["null in a non-nullable sparse union member", S.field("u", S.union("sparse", [S.field("s", S.utf8), nonNullInt])), [
+    "s",
+    ArrowColumn.unionValue(1, null)
+  ], [1]],
   ["wrong kind", S.field("s", S.utf8), ["a", 1], [1]],
   ["more decimal places than the scale", S.field("d", S.decimal(5, 2)), [dec("1.234")], [0]],
   ["wrong byte width", S.field("b", S.fixedSizeBinary(2)), [bytes(1)], [0]],

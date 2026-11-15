@@ -412,12 +412,18 @@ const itemAt = (at: At, offsets: ArrayLike<number>): At => (j) => {
 
 const memberAt = (at: At, name: string | number): At => (i) => [...at(i), name]
 
-/** Builds one array of `field` from `values`; `at` locates each value in the input. @internal */
+/**
+ * Builds one array of `field` from `values`; `at` locates each value in the
+ * input. Only the slots where `used` holds must respect the field's
+ * nullability; the others stand for null parents or other union members.
+ * @internal
+ */
 export const build = (
   field: S.Field,
   values: ReadonlyArray<unknown>,
   options: Session,
-  at: At
+  at: At,
+  used: (index: number) => boolean = () => true
 ): ArrowData.ArrowData => {
   const extensionName = field.metadata.get("ARROW:extension:name")
   const extension = extensionName === undefined ? undefined : options.extensions.get(extensionName)
@@ -426,7 +432,7 @@ export const build = (
     values = values.map((v) => isNull(v) ? null : extension.encode(v, metadata))
   }
   if (!field.nullable && field.type._tag !== "Null") {
-    const i = values.findIndex(isNull)
+    const i = values.findIndex((v, i) => isNull(v) && used(i))
     if (i !== -1) failAt(at, i, `null in non-nullable field ${JSON.stringify(field.name)}`)
   }
   return buildType(field.type, values, options, at)
@@ -598,16 +604,13 @@ const buildType = (
         if (list.length !== type.listSize) failAt(at, i, `expected ${type.listSize} items, got ${list.length}`)
         items.push(...list)
       })
-      // Items of null lists are null too; only items of valid lists must respect the child's nullability.
-      const itemsOfValidLists = values.every((v, i) =>
-        isNull(v) || items.slice(i * type.listSize, (i + 1) * type.listSize).every((x) => !isNull(x))
-      )
       const size = type.listSize
       const child = build(
-        { ...type.child, nullable: type.child.nullable || itemsOfValidLists },
+        type.child,
         items,
         options,
-        (j) => [...at(Math.floor(j / size)), j % size]
+        (j) => [...at(Math.floor(j / size)), j % size],
+        (j) => !isNull(values[Math.floor(j / size)])
       )
       return data(type, n, validityOf(values), [], [child])
     }
@@ -625,10 +628,9 @@ const buildType = (
         if (typeof v !== "object") failAt(at, i, `expected an object, got ${describe(v)}`)
         type.fields.forEach((f, k) => (columns[k][i] = (v as Record<string, unknown>)[f.name] ?? null))
       })
-      const nullable = (f: S.Field, k: number) =>
-        // Members of null structs are null too; only check members of valid slots.
-        f.nullable ? f : { ...f, nullable: !values.some((v, i) => !isNull(v) && isNull(columns[k][i])) }
-      const children = type.fields.map((f, k) => build(nullable(f, k), columns[k], options, memberAt(at, f.name)))
+      const children = type.fields.map((f, k) =>
+        build(f, columns[k], options, memberAt(at, f.name), (i) => !isNull(values[i]))
+      )
       return data(type, n, validityOf(values), [], children)
     }
     case "Map": {
@@ -789,7 +791,7 @@ const buildUnion = (
   members.forEach((m, i) => (typeIds[i] = type.typeIds[m]))
   if (type.mode === "sparse") {
     const children = type.fields.map((f, k) =>
-      build({ ...f, nullable: true }, plain.map((v, i) => members[i] === k ? v : null), options, at)
+      build(f, plain.map((v, i) => members[i] === k ? v : null), options, at, (i) => members[i] === k)
     )
     return data(type, n, noNulls, [asBytes(typeIds)], children)
   }
