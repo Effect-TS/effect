@@ -84,6 +84,12 @@ export * as Sse from "./Sse.ts"
 export * as Tar from "./Tar.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as Thrift from "./Thrift.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
