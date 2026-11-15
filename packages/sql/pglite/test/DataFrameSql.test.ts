@@ -676,6 +676,19 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(yield* rowsOnSql(two), [{ s: "57" }, { s: "good" }])
       }))
 
+    it.effect("columns PostgreSQL can't tell apart are rejected", () =>
+      Effect.gen(function*() {
+        // PostgreSQL keeps the whole characters within an identifier's first 63 bytes.
+        const pairs = [["x".repeat(63) + "a", "x".repeat(63) + "b"], ["x".repeat(62) + "é", "x".repeat(62) + "ж"]]
+        for (const [a, b] of pairs) {
+          const added = Query.from(DataFrame.fromColumns({ [a]: [1] })).pipe(
+            Query.withColumns(() => ({ [b]: Expr.lit(2) }))
+          )
+          const error = yield* Effect.flip(onSql(added))
+          assert.include(error.message, `columns ${JSON.stringify(a)} and ${JSON.stringify(b)} are one name`)
+        }
+      }))
+
     it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient

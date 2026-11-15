@@ -97,7 +97,9 @@ const toError = (cause: unknown) => {
 
 /**
  * Compiles a plan to one PostgreSQL query. Fails for operations the SQL
- * engine doesn't support.
+ * engine doesn't support, and for columns of one relation whose names
+ * share their first 63 bytes (in UTF-8): PostgreSQL keeps only those of a
+ * name, so it can't tell such columns apart.
  *
  * @stability experimental
  * @category compiling

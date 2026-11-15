@@ -18,7 +18,9 @@
  * The names the compiler invents (helper columns like the row key, the
  * sources of tables) are short and share one prefix, chosen per plan so
  * that no name the plan supplies (its tables' and its columns') starts with
- * it (see {@link inventor}).
+ * it (see {@link inventor}). PostgreSQL keeps only the first 63 bytes of a
+ * name, so the columns of each relation must differ within them (see
+ * {@link distinguishable}).
  *
  * @internal
  */
@@ -1172,9 +1174,9 @@ const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
  *
  * The prefix is `__`, or else the first `__1_`, `__2_`, … that no name
  * starts with: a name starts with at most one of those, so the prefix stays
- * short, and so do the invented names. PostgreSQL keeps them whole (it
- * keeps 63 bytes of a name), and a name it truncates keeps its start, so
- * they stay distinct from each other and from the plan's names.
+ * short, and so do the invented names. PostgreSQL keeps them whole (see
+ * {@link identifier}), and a name it truncates keeps its start, so they stay
+ * distinct from each other and from the plan's names.
  */
 const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => string => {
   const names = [...frames].flatMap(([node, frame]) => [
@@ -1184,6 +1186,43 @@ const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => st
   let prefix = "__"
   for (let k = 1; names.some((name) => name.startsWith(prefix)); k++) prefix = `__${k}_`
   return (name) => quote(prefix + name)
+}
+
+/**
+ * A name as PostgreSQL keeps it: the whole characters within its first 63
+ * bytes in UTF-8 (`NAMEDATALEN - 1`).
+ */
+const identifier = (name: string): string => {
+  let bytes = 0
+  let end = 0
+  for (const char of name) {
+    const code = char.codePointAt(0)!
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4
+    if (bytes > 63) break
+    end += char.length
+  }
+  return name.slice(0, end)
+}
+
+/**
+ * Fails when two columns of a relation of the plan of `frames` are one
+ * identifier to PostgreSQL (see {@link identifier}): the in-memory engine
+ * tells them apart, the database can't.
+ */
+const distinguishable = (frames: ReadonlyMap<Plan.Node, F.Frame>): void => {
+  for (const frame of frames.values()) {
+    const seen = new Map<string, string>()
+    for (const { name } of frame.columns) {
+      const id = identifier(name)
+      const other = seen.get(id)
+      if (other !== undefined) {
+        V.fail(
+          `columns ${JSON.stringify(other)} and ${JSON.stringify(name)} are one name to PostgreSQL (its first 63 bytes)`
+        )
+      }
+      seen.set(id, name)
+    }
+  }
 }
 
 /** One SQL query whose first row holds the values of checks. */
@@ -1217,6 +1256,7 @@ export interface Compiled {
 export const compile = (plan: Plan.Node): Compiled => {
   const frames = new Map<Plan.Node, F.Frame>()
   const result = typed(plan, frames)
+  distinguishable(frames)
   const hidden = inventor(frames)
   const tables = [...frames].flatMap(([node, frame]) =>
     node._tag === "Table" ? [{ node, checks: rowChecks(node, frame) }] : []
