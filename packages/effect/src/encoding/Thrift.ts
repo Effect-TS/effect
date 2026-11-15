@@ -353,6 +353,7 @@ export class Reader {
       fail("Usage", `position ${position} is outside the ${this.end}-byte input`)
     }
     this.pos = position
+    this.bool = 0
   }
 
   private truncated(what: string): never {

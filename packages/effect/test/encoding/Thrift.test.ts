@@ -233,6 +233,15 @@ describe("Thrift", () => {
       assert.strictEqual(r.position, 5)
     })
 
+    it("forgets a bool field header when the position moves", () => {
+      const r = Thrift.makeReader(Uint8Array.of(0x11, 0x02))
+      r.readStructBegin()
+      assert.strictEqual(r.readFieldBegin(), Thrift.Type.Bool)
+      r.position = 1
+      assert.isFalse(r.readBool())
+      assert.strictEqual(r.position, 2)
+    })
+
     it("reads binary as a view of the input", () => {
       const bytes = Uint8Array.of(2, 7, 8)
       const view = Thrift.makeReader(bytes).readBinary()
