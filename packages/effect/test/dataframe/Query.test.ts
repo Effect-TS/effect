@@ -824,6 +824,68 @@ describe("Query", () => {
         }
       }))
 
+    it.effect("results without rows are those in memory, or fail when their columns are undeclared and unread", () =>
+      Effect.gen(function*() {
+        const x = (...values: Array<number>) => DataFrame.fromColumns({ x: Int8Array.from(values) })
+        const xy = (x: number, y: number) => DataFrame.fromColumns({ x: Int8Array.of(x), y: Int8Array.of(y) })
+        const undeclared = (name: string) => Query.fromPlan({ _tag: "Table", name }) as typeof t
+        const [u, r, e] = [undeclared("u"), undeclared("r"), undeclared("e")]
+        const d = Query.table("d", Row, { types: { x: ArrowSchema.int8 } })
+        const p = Query.table("p", Schema.Struct({ i: Schema.Number, k: Schema.String, v: Schema.Number }))
+        // Streamed, no batch of u is read and the declared d has none.
+        const memory = Catalog.layer({
+          u: x(1),
+          r: xy(1, 2),
+          d: x(),
+          p: DataFrame.fromColumns({ i: [1], k: ["a"], v: [1] })
+        })
+        const streamed = Catalog.layer({
+          u: Stream.die("read"),
+          r: Stream.make(xy(1, 2)),
+          d: Stream.empty,
+          p: Stream.die("read"),
+          e: Stream.empty
+        })
+        const declare = (what: string) =>
+          `the columns of a result without rows are unknown, as no batch they depend on was read: declare the columns of ${what}`
+        const sums = (query: typeof t) => Query.aggregate(query, (c) => ({ n: Expr.count(), s: Expr.sum(c.x) }))
+        const cases: ReadonlyArray<readonly [Query.Query<unknown>, Array<unknown>, string?]> = [
+          [Query.concat([Query.head(u, 0), Query.from(x(9))]), [{ x: 9 }], declare(`table "u"`)],
+          [Query.head(u, 0), [], declare(`table "u"`)],
+          [Query.unique(Query.head(u, 0)), [], declare(`table "u"`)],
+          [sums(Query.head(u, 0)), [{ n: 0, s: 0 }], declare(`table "u"`)],
+          [Query.join(d, Query.head(r, 0), { on: "x" }), [], declare(`table "r"`)],
+          [
+            Query.head(Query.pivot(p, { on: "k", index: ["i"], values: "v", aggregate: "sum" }), 0),
+            [],
+            declare(`the pivot on "k"`)
+          ],
+          [Query.concat([Query.join(d, r, { on: "x" }), Query.from(xy(9, 3))]), [{ x: 9, y: 3 }]],
+          [Query.concat([Query.head(d, 0), Query.from(x(9))]), [{ x: 9 }]],
+          [sums(d), [{ n: 0, s: 0 }]]
+        ]
+        for (const [query, expected, error] of cases) {
+          const df = yield* Effect.provide(query, memory)
+          assert.deepStrictEqual(DataFrame.toRows(df), expected)
+          if (error === undefined) {
+            const result = yield* Effect.provide(query, streamed)
+            assert.deepStrictEqual([DataFrame.toRows(result), result.schema], [expected, df.schema])
+          } else {
+            assert.strictEqual((yield* Effect.flip(Effect.provide(query, streamed))).message, error)
+          }
+        }
+        // A table without declared columns or batches has no in-memory counterpart.
+        const unknown: ReadonlyArray<Query.Query<unknown>> = [
+          e,
+          Query.concat([e, Query.from(x(9))]),
+          Query.concat([e, e]),
+          Query.aggregate(e, () => ({ n: Expr.count() }))
+        ]
+        for (const query of unknown) {
+          assert.strictEqual((yield* Effect.flip(Effect.provide(query, streamed))).message, declare(`table "e"`))
+        }
+      }))
+
     it.effect("reads a table named twice once per run", () =>
       Effect.gen(function*() {
         let loads = 0

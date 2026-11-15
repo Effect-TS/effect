@@ -721,6 +721,13 @@ export interface TableColumn {
  * Every batch of a streamed table, after this conversion (as given, without
  * `columns`), must have the column names and types of its first batch.
  *
+ * Without `columns`, a streamed table's columns come from its batches. When
+ * no batch is read (the table has none, or a slice without rows skips it),
+ * they are unknown: a result that needs them (collecting one, concatenating,
+ * joining, aggregating, sorting) fails with a `DataFrameError` asking for
+ * them to be declared, and `Query.stream` emits no batch for one that has no
+ * rows.
+ *
  * `schema`, set by `Query.table`, is the struct schema the rows must
  * satisfy: values of fields it constrains beyond their column type (literals,
  * enums, refinements) are checked against it.
