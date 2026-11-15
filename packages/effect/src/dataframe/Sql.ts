@@ -26,29 +26,29 @@
  * )
  *
  * const compiled = Result.getOrThrow(Sql.compile(query.plan, { dialect: "postgres" }))
- * compiled.columns // => ["city", "total"]
+ * compiled.schema.fields.map((f) => f.name) // => ["city", "total"]
  * ```
  *
  * **Details**
  *
- * Values follow the database's semantics where they differ from the
- * in-memory engine's: integer overflow raises an error instead of wrapping,
- * division by zero follows the database, string order follows its collation
- * (binary in DuckDB), `round` rounds half away from zero in PostgreSQL, and
- * `min`/`max` of floats treat NaN as the largest value. Pivots, unpivots,
+ * Results have the column types the in-memory engine gives for the same
+ * plan (see {@link Compiled}). Values follow the database's semantics where
+ * they differ from the in-memory engine's: integer overflow raises an error
+ * instead of wrapping, division by zero follows the database, and string
+ * order follows its collation (binary in DuckDB). Pivots, unpivots,
  * `explode` and `unnest` are not supported yet; tables need declared
  * columns (`Query.table` with a schema).
  *
  * @stability experimental
  * @since 4.1.5
  */
-import * as DateTime from "../DateTime.ts"
+import type * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import { SqlClient } from "../sql/SqlClient.ts"
 import * as Stream from "../Stream.ts"
-import { DataFrameError, fromColumns } from "./DataFrame.ts"
+import { DataFrameError } from "./DataFrame.ts"
 import type { DataFrame } from "./DataFrame.ts"
 import { Engine } from "./Engine.ts"
 import * as internal from "./internal/sql.ts"
@@ -65,7 +65,15 @@ import type * as Plan from "./Plan.ts"
 export type Dialect = "duckdb" | "postgres"
 
 /**
- * A compiled plan: the query, and the names of its result columns in order.
+ * A compiled plan: the query, and the schema of its result.
+ *
+ * **Details**
+ *
+ * The schema has the column types the in-memory engine gives for the same
+ * plan, whatever the database's own types are; every field is nullable. The
+ * query renders each column in a form {@link engine} reads back as that
+ * type, so its raw rows are meant for that decoding rather than for direct
+ * use.
  *
  * @stability experimental
  * @category models
@@ -73,11 +81,17 @@ export type Dialect = "duckdb" | "postgres"
  */
 export interface Compiled {
   readonly sql: string
-  readonly columns: ReadonlyArray<string>
+  readonly schema: ArrowSchema.Schema
 }
 
-const toError = (cause: unknown) =>
-  new DataFrameError({ message: cause instanceof Error ? cause.message : String(cause), cause })
+/** The messages of an error and its causes, outermost first, without repeats. */
+const toError = (cause: unknown) => {
+  const messages: Array<string> = []
+  for (let c: unknown = cause; c instanceof Error && messages.length < 8; c = c.cause) {
+    if (c.message !== "" && !messages.includes(c.message)) messages.push(c.message)
+  }
+  return new DataFrameError({ message: messages.length === 0 ? String(cause) : messages.join(": "), cause })
+}
 
 /**
  * Compiles a plan to one SQL query (dialect `postgres` by default). Fails
@@ -97,14 +111,6 @@ export const compile = (
     if (cause instanceof V.DataFrameDefect) return Result.fail(toError(cause))
     throw cause
   }
-}
-
-const frameOf = (columns: ReadonlyArray<string>, rows: ReadonlyArray<Record<string, unknown>>): DataFrame<unknown> => {
-  const data: Record<string, Array<unknown>> = {}
-  // Drivers return JS Dates for timestamps and dates.
-  const value = (v: unknown) => (v === undefined ? null : v instanceof Date ? DateTime.makeUnsafe(v) : v)
-  for (const name of columns) data[name] = rows.map((r) => value(r[name]))
-  return fromColumns(data as any) as DataFrame<unknown>
 }
 
 /**
@@ -127,8 +133,11 @@ export const engine = (options?: { readonly dialect?: Dialect | undefined }): Ef
     const collect = (plan: Plan.Node): Effect.Effect<DataFrame<unknown>, DataFrameError> =>
       Effect.gen(function*() {
         const query = yield* compiled(plan)
-        const rows = yield* sql.unsafe<Record<string, unknown>>(query.sql).pipe(Effect.mapError(toError))
-        return yield* Effect.try({ try: () => frameOf(query.columns, rows), catch: toError })
+        const rows = yield* sql.unsafe(query.sql).values.pipe(Effect.mapError(toError))
+        return yield* Effect.try({
+          try: () => internal.decode(query.schema, rows) as unknown as DataFrame<unknown>,
+          catch: toError
+        })
       })
     return {
       name: `sql (${dialect})`,
