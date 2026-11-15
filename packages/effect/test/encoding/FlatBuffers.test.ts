@@ -214,7 +214,7 @@ describe("FlatBuffers", () => {
     assert.strictEqual(root.int32(1), 7)
   })
 
-  // FB-N02: internals.md (Tables): zero and out-of-range vtable entries mean absent.
+  // FB-N02: internals.md (Tables): slots beyond the trimmed vtable mean absent.
   it("reads absent fields as their defaults", () => {
     const b = FlatBuffers.makeBuilder()
     b.startTable(1)
