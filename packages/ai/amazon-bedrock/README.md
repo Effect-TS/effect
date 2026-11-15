@@ -1,6 +1,6 @@
 # @effect/ai-amazon-bedrock
 
-Amazon Bedrock provider for Effect's `LanguageModel`, built on the Bedrock Runtime Converse and ConverseStream APIs. Requests are signed with AWS Signature Version 4 or sent with a Bedrock API key, and the provider has no runtime dependencies beyond `effect`.
+Amazon Bedrock provider for Effect's `LanguageModel` and `EmbeddingModel`, built on the Bedrock Runtime Converse, ConverseStream and InvokeModel APIs. Requests are signed with AWS Signature Version 4 or sent with a Bedrock API key, and the provider has no runtime dependencies beyond `effect`.
 
 ## Installation
 
@@ -70,6 +70,7 @@ const BedrockClient = Layer.unwrap(Effect.gen(function*() {
 - Prompt caching, opted into per message or part with `options: { "amazon-bedrock": { cachePoint: { type: "default" } } }`.
 - Image and document file parts, sent as bytes.
 - Model-specific parameters, such as extended thinking, through `additionalModelRequestFields` in the model config.
+- Embeddings with Amazon Titan Text Embeddings V2 and Cohere Embed v3 and v4 through `AmazonBedrockEmbeddingModel`.
 
 The client maps Bedrock's `x-amzn-errortype` exceptions and HTTP statuses to `AiError`, validates the CRC of every event stream frame, and fails a stream on an exception frame such as `throttlingException`.
 
