@@ -30,11 +30,13 @@ const TypeId = "~effect/Pool"
 const Acquire = Symbol()
 const AcquireContext = Symbol()
 const PoolClock = Symbol()
+const Acquiring = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
   readonly [AcquireContext]: Context.Context<Scope.Scope>
   readonly [PoolClock]: Clock
+  [Acquiring]: number
 }
 
 /**
@@ -147,7 +149,6 @@ export interface State<A, E> {
   readonly scope: Scope.Scope
   isShuttingDown: boolean
   usage: number
-  acquiring: number
   readonly resizeSemaphore: Semaphore.Semaphore
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
@@ -403,7 +404,6 @@ export const makeWithStrategy = <A, E, R>(options: {
       scope,
       isShuttingDown: false,
       usage: 0,
-      acquiring: 0,
       resizeSemaphore: Semaphore.makeUnsafe(1),
       items: new Set(),
       availableHead: undefined,
@@ -416,6 +416,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
       [AcquireContext]: services as Context.Context<Scope.Scope>,
       [PoolClock]: yield* Clock,
+      [Acquiring]: 0,
       config,
       state,
       pipe() {
@@ -949,8 +950,8 @@ export const reserve: {
  *
  * - `idle` and `used` count only successfully acquired items.
  * - `acquiring` counts acquisition effects from start until success, failure,
- *   or interruption, even when no borrower is waiting. Queued acquisitions
- *   that have not started and reclaimed items do not count.
+ *   or interruption. Queued acquisitions that have not started and reclaimed
+ *   items do not count.
  * - An item is used while it has a borrower or a reservation, otherwise idle.
  * - An invalidated item counts as used until its last borrower returns it.
  *
@@ -983,7 +984,7 @@ export const stats = <A, E>(self: Pool<A, E>): Effect.Effect<Stats> =>
     return {
       idle,
       used,
-      acquiring: self.state.acquiring,
+      acquiring: (self as PoolImpl<A, E>)[Acquiring],
       pending: self.state.waiters.size,
       min: self.config.minSize,
       max: self.config.maxSize
@@ -1073,11 +1074,11 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
       const previousContext = fiber.context
       fiber.setContext(Context.add(impl[AcquireContext], Scope.Scope, scope))
       let acquiring = true
-      self.state.acquiring++
+      impl[Acquiring]++
       const use = Effect.flatMap(Effect.exit(impl[Acquire]), (exit) => {
         // Publish completion and the item without yielding between them.
         acquiring = false
-        self.state.acquiring--
+        impl[Acquiring]--
         const item: PoolItem<A, E> = {
           exit,
           finalizer: Effect.ignoreCause(Scope.close(scope, exit), {
@@ -1120,7 +1121,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         restore(use) as Effect.Effect<PoolItem<A, E>>,
         (exit) => {
           fiber.setContext(previousContext)
-          if (acquiring) self.state.acquiring--
+          if (acquiring) impl[Acquiring]--
           return exit._tag === "Failure" ? internal.scopeCloseUnsafe(scope, exit) : undefined
         },
         true

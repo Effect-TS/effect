@@ -73,8 +73,7 @@ export interface PgClient extends Client.Base {
    * Returns a snapshot of connection pool occupancy. A client from `makeClient`
    * has one session that stays leased for its lifetime, so it always reports
    * `{ idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 }` regardless
-   * of statement activity. `acquiring` includes connections being opened even
-   * without a waiting borrower.
+   * of statement activity.
    *
    * **Gotchas**
    *
