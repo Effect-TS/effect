@@ -358,7 +358,26 @@ const containers = (line: string): { readonly stack: ReadonlyArray<number>; read
   return { stack, rest }
 }
 
-/** What is left of a line inside the containers of `stack`, or `undefined` when the line ends one of them. */
+/**
+ * A line with the tabs of its indentation and container markers expanded to
+ * the next multiple of four columns, so a tab only partly taken by a
+ * container leaves its other columns. Used to find blocks, never as output.
+ */
+const expandIndent = (line: string): string => {
+  let out = ""
+  for (let k = 0; k < line.length; k++) {
+    const char = line[k]
+    if (char === "\t") out += " ".repeat(4 - (out.length % 4))
+    else if (/[ >\-*+.)0-9]/.test(char)) out += char
+    else return out + line.slice(k)
+  }
+  return out
+}
+
+/**
+ * What is left of a line, with its indentation expanded, inside the
+ * containers of `stack`, or `undefined` when the line ends one of them.
+ */
 const inside = (line: string, stack: ReadonlyArray<number>): string | undefined => {
   let rest = line
   for (const width of stack) {
@@ -369,14 +388,8 @@ const inside = (line: string, stack: ReadonlyArray<number>): string | undefined 
       continue
     }
     if (isBlank(rest)) return ""
-    let column = 0
-    let k = 0
-    while (column < width && (rest[k] === " " || rest[k] === "\t")) {
-      column += rest[k] === "\t" ? 4 - (column % 4) : 1
-      k++
-    }
-    if (column < width) return undefined
-    rest = rest.slice(k)
+    if (!rest.startsWith(" ".repeat(width))) return undefined
+    rest = rest.slice(width)
   }
   return rest
 }
@@ -399,7 +412,7 @@ export const render = (markdown: string): string => {
   let i = 0
   while (i < lines.length) {
     const line = body(i)
-    const { rest, stack } = containers(line)
+    const { rest, stack } = containers(expandIndent(line))
     const fence = fenceOpen.exec(rest)
     if (fence !== null && !(fence[2][0] === "`" && fence[3].includes("`"))) {
       // The closer is matched inside the opener's quotes and list items. A line outside them ends the code too.
@@ -407,7 +420,7 @@ export const render = (markdown: string): string => {
       let j = i + 1
       let closed = false
       for (; j < lines.length; j++) {
-        const code = inside(body(j), stack)
+        const code = inside(expandIndent(body(j)), stack)
         if (code === undefined) break
         if (closing.test(code)) {
           closed = true
@@ -431,7 +444,7 @@ export const render = (markdown: string): string => {
       out += lines[i]
       let j = i + 1
       while (j < lines.length) {
-        const next = inside(body(j), stack) ?? body(j)
+        const next = inside(expandIndent(body(j)), stack) ?? expandIndent(body(j))
         if (isBlank(next) || opensBlock(next)) break
         out += lines[j++]
       }
@@ -442,7 +455,7 @@ export const render = (markdown: string): string => {
       if (cells(line) === cells(body(i + 1))) {
         out += lines[i]
         let j = i + 2
-        while (j < lines.length && !isBlank(body(j)) && !opensBlock(body(j))) out += lines[j++]
+        while (j < lines.length && !isBlank(body(j)) && !opensBlock(expandIndent(body(j)))) out += lines[j++]
         i = j
         continue
       }
@@ -468,7 +481,9 @@ export const render = (markdown: string): string => {
       i++
       continue
     }
-    out += line.slice(0, line.length - rest.length) + inline(rest) + eol(i)
+    // The text is cut from the line as typed, so the output keeps its tabs.
+    const text = containers(line).rest
+    out += line.slice(0, line.length - text.length) + inline(text) + eol(i)
     i++
   }
   return out

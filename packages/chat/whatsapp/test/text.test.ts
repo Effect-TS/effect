@@ -33,7 +33,8 @@ const cases: ReadonlyArray<readonly [string, string]> = [
   ["- > ~~~\n  >       ~~~\n  > **x**\n  > ~~~", "- > ~~~\n  >       ~~~\n  > **x**\n  > ~~~"],
   ["> ~~~\n> **x**\n\n**y**", "> ~~~\n> **x**\n\n*y*"],
   ["[r]: /url\n~~~js\n\n**x**\n~~~", "[r]: /url\n```\n\n**x**\n```"],
-  ["| a |\n|---|\n~~~\n\n**x**\n~~~", "| a |\n```\n\n**x**\n```"]
+  ["| a |\n|---|\n~~~\n\n**x**\n~~~", "| a |\n```\n\n**x**\n```"],
+  ["- ~~~js\n\t  ~~~\n  **x**\n  ~~~", "- ~~~js\n\t  ~~~\n  **x**\n  ~~~"]
 ]
 
 const longer = (input: string) => {
