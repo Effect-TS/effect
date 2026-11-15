@@ -11,6 +11,19 @@ const paris = (millis: number) => DateTime.makeZonedUnsafe(millis, { timeZone: "
 const item = (type: S.DataType) => S.field("item", type)
 const intMap = S.map(S.field("key", S.utf8), S.field("value", S.int32))
 
+// An extension over int32 lists that fails when building encodes a value twice
+const encoded = new WeakSet<object>()
+const once = ArrowExtension.make({
+  name: "test.once",
+  decode: (items: ReadonlyArray<number>) => items,
+  encode: (items: Iterable<number>) => {
+    assert.isFalse(encoded.has(items), "a value was encoded twice")
+    encoded.add(items)
+    return Array.from(items)
+  }
+})
+const onceList = S.field("xs", S.list(item(S.int32)), { metadata: ArrowExtension.metadata("test.once") })
+
 // Values given to fromValues, and the values read back when they differ
 const cases: ReadonlyArray<
   readonly [label: string, type: S.DataType, values: ReadonlyArray<unknown>, read?: ReadonlyArray<unknown>]
@@ -113,7 +126,25 @@ const cases: ReadonlyArray<
     [1].values(),
     [1].values(),
     [2].values()
-  ], [[1], [1], [2]]]
+  ], [[1], [1], [2]]],
+  // Keying and building read the same encoded value
+  ["runEndEncoded extension values", S.runEndEncoded(S.int16, onceList), [
+    [1, 2].values(),
+    [1, 2].values(),
+    [3].values()
+  ], [[1, 2], [1, 2], [3]]],
+  ["dictionary of structs with an extension member", S.dictionary(S.struct([onceList])), [
+    { xs: [1, 2].values() },
+    { xs: [1, 2].values() }
+  ], [{ xs: [1, 2] }, { xs: [1, 2] }]],
+  ["runEndEncoded unions of extension values", S.runEndEncoded(S.int16, S.field("v", S.union("dense", [onceList]))), [
+    ArrowColumn.unionValue(0, [1].values()),
+    ArrowColumn.unionValue(0, [1].values())
+  ], [[1], [1]]],
+  ["dictionary of maps with extension values", S.dictionary(S.map(S.field("key", S.utf8), onceList)), [
+    [["k", [1].values()]],
+    [["k", [1].values()]]
+  ], [new Map([["k", [1]]]), new Map([["k", [1]]])]]
 ]
 
 const int8Member = S.struct([S.field("a", S.int8)])
@@ -169,7 +200,7 @@ const rejections: ReadonlyArray<
 describe("ArrowColumn", () => {
   it("fromValues builds every type family and reads the values back", () => {
     for (const [label, type, values, read = values] of cases) {
-      const column = Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values))
+      const column = Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values, { extensions: [once] }))
       assert.strictEqual(column.length, values.length, label)
       assertEquals(ArrowColumn.toArray(column), read, label)
     }

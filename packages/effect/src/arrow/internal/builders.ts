@@ -32,16 +32,10 @@ interface DictionaryState {
  */
 export interface Session extends Values.Options {
   readonly dictionaries: Map<number, DictionaryState>
-  /** The items of each non-array iterable read so far, so one-shot iterables can be read again. */
-  readonly items: WeakMap<object, ReadonlyArray<unknown>>
 }
 
 /** @internal */
-export const session = (options: Values.Options): Session => ({
-  ...options,
-  dictionaries: new Map(),
-  items: new WeakMap()
-})
+export const session = (options: Values.Options): Session => ({ ...options, dictionaries: new Map() })
 
 /** Placeholders standing in for dictionaries until {@link finish}. */
 const pending = new WeakMap<ArrowData.ArrowData, DictionaryState>()
@@ -50,7 +44,7 @@ const builtDictionary = (state: DictionaryState, s: Session): ArrowData.ArrowDat
   if (state.built === undefined) {
     const inner: Session = { ...s, dictionaries: new Map() }
     const field: S.Field = { name: "", type: state.valueType, nullable: true, metadata: new Map() }
-    state.built = finish(build(field, state.values, inner, (k) => state.at[k](state.slot[k])), inner)
+    state.built = finish(buildField(field, state.values, inner, (k) => state.at[k](state.slot[k])), inner)
   }
   return state.built
 }
@@ -344,14 +338,11 @@ const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): 
 // -----------------------------------------------------------------------------
 
 /**
- * A key for building `v` as `field`, read as {@link build} reads it: values
- * with equal keys are stored alike. Values that cannot be read as `field` have
- * none, so they are never merged with another.
+ * A key for the storage value `v` of `field`: values with equal keys are
+ * stored alike. Values that cannot be stored as `field` have none, so they are
+ * never merged with another.
  */
-const keyOf = (field: S.Field, v: unknown, s: Session): string | undefined => {
-  const encode = encoderOf(field, s)
-  return isNull(v) ? "null" : typeKey(field.type, encode === undefined ? v : encode(v), s)
-}
+const keyOf = (field: S.Field, v: unknown): string | undefined => isNull(v) ? "null" : typeKey(field.type, v)
 
 const joinKeys = (keys: ReadonlyArray<string | undefined>): string | undefined =>
   keys.includes(undefined) ? undefined : JSON.stringify(keys)
@@ -363,42 +354,40 @@ const intervalParts = {
 }
 
 /** The key of a non-null `v` built as `type`; see {@link keyOf}. */
-const typeKey = (type: S.DataType, v: unknown, s: Session): string | undefined => {
+const typeKey = (type: S.DataType, v: unknown): string | undefined => {
   switch (type._tag) {
     case "List":
     case "LargeList":
     case "ListView":
     case "LargeListView":
-    case "FixedSizeList": {
-      const items = itemsOf(v, s)
-      return items && joinKeys(Array.from(items, (x) => keyOf(type.child, x, s)))
-    }
+    case "FixedSizeList":
+      return Array.isArray(v) ? joinKeys(Array.from(v, (x) => keyOf(type.child, x))) : undefined
     case "Map": {
       const [keyField, valueField] = (type.entries.type as S.Struct).fields
-      const entries = itemsOf(v, s)
-      return entries && joinKeys(Array.from(entries, (e) => {
-        const entry = itemsOf(e, s)
-        return entry && joinKeys([keyOf(keyField, entry[0], s), keyOf(valueField, entry[1], s)])
-      }))
+      return Array.isArray(v)
+        ? joinKeys(
+          v.map((e) => Array.isArray(e) ? joinKeys([keyOf(keyField, e[0]), keyOf(valueField, e[1])]) : undefined)
+        )
+        : undefined
     }
     case "Struct":
       return typeof v === "object" && v !== null
-        ? joinKeys(type.fields.map((f, k) => keyOf(f, memberValue(v, f, k), s)))
+        ? joinKeys(type.fields.map((f, k) => keyOf(f, memberValue(v, f, k))))
         : undefined
     case "Union": {
       const member = memberOf(type, v)
       return member === -1
         ? undefined
-        : joinKeys([String(member), keyOf(type.fields[member], isUnionValue(v) ? v.value : v, s)])
+        : joinKeys([String(member), keyOf(type.fields[member], isUnionValue(v) ? v.value : v)])
     }
     case "Interval":
       return typeof v === "object" && v !== null
         ? joinKeys(intervalParts[type.unit].map((k) => scalarKey((v as Record<string, unknown>)[k] ?? 0)))
         : undefined
     case "RunEndEncoded":
-      return keyOf(type.values, v, s)
+      return keyOf(type.values, v)
     case "Dictionary":
-      return typeKey(type.valueType, v, s)
+      return typeKey(type.valueType, v)
     default:
       return scalarKey(v)
   }
@@ -425,6 +414,99 @@ const scalarKey = (v: unknown): string | undefined => {
 }
 
 // -----------------------------------------------------------------------------
+// Storage values
+// -----------------------------------------------------------------------------
+
+type Store = (v: unknown) => unknown
+
+/**
+ * How to turn a value of `field` into its storage value, the only form the
+ * builders read: extension values encoded and iterables read into arrays at
+ * every level. Lists and maps become arrays (map entries `[key, value]`
+ * arrays); structs and unions with members to convert become arrays of members
+ * by position and `UnionValue`s. `undefined` when every value is its own
+ * storage value. {@link build} converts each value once, so encoders run once
+ * per value and one-shot iterables are read once, however often keying and
+ * building read the result. Values that do not fit are kept for the builders
+ * to reject.
+ */
+const storeOf = (field: S.Field, s: Session): Store | undefined => {
+  const encode = encoderOf(field, s)
+  const store = typeStoreOf(field.type, s)
+  if (encode === undefined) return store && ((v) => isNull(v) ? null : store(v))
+  return (v) => {
+    if (isNull(v)) return null
+    const encoded = encode(v)
+    return store === undefined || isNull(encoded) ? encoded : store(encoded)
+  }
+}
+
+const typeStoreOf = (type: S.DataType, s: Session): Store | undefined => {
+  switch (type._tag) {
+    case "List":
+    case "LargeList":
+    case "ListView":
+    case "LargeListView":
+    case "FixedSizeList": {
+      const item = storeOf(type.child, s)
+      return (v) => !isIterable(v) ? v : item !== undefined ? mapAll(v, item) : Array.isArray(v) ? v : Array.from(v)
+    }
+    case "Map": {
+      const [key, value] = (type.entries.type as S.Struct).fields.map((f) => storeOf(f, s) ?? identity)
+      return (v) =>
+        isIterable(v)
+          ? mapAll(v, (e) => {
+            if (!isIterable(e)) return e
+            const [k, x] = e
+            return [key(k), value(x)]
+          })
+          : v
+    }
+    case "Struct": {
+      const members = type.fields.map((f) => storeOf(f, s))
+      if (members.every((m) => m === undefined)) return undefined
+      return (v) =>
+        typeof v === "object"
+          ? type.fields.map((f, k) => {
+            const member = memberValue(v as object, f, k)
+            const store = members[k]
+            return store === undefined ? member : store(member)
+          })
+          : v
+    }
+    case "Union": {
+      const members = type.fields.map((f) => storeOf(f, s))
+      if (members.every((m) => m === undefined)) return undefined
+      return (v) => {
+        const member = memberOf(type, v)
+        const store = member === -1 ? undefined : members[member]
+        if (store === undefined) return v
+        const value = store(isUnionValue(v) ? v.value : v)
+        return { _tag: "UnionValue", typeId: type.typeIds[member], value } satisfies UnionValue
+      }
+    }
+    case "RunEndEncoded":
+      return storeOf(type.values, s)
+    case "Dictionary":
+      return typeStoreOf(type.valueType, s)
+    default:
+      return undefined
+  }
+}
+
+const identity = (v: unknown) => v
+
+/** `f` of each item, reading holes as `undefined`. */
+const mapAll = (items: Iterable<unknown>, f: Store): Array<unknown> => {
+  const array = Array.isArray(items) ? items : Array.from(items)
+  const out = new Array(array.length)
+  for (let i = 0; i < array.length; i++) out[i] = f(array[i])
+  return out
+}
+
+const isIterable = (v: unknown): v is Iterable<unknown> => typeof v === "object" && v !== null && Symbol.iterator in v
+
+// -----------------------------------------------------------------------------
 // Builders
 // -----------------------------------------------------------------------------
 
@@ -448,17 +530,8 @@ const data = (
 
 const noNulls = { validity: undefined, nullCount: 0 }
 
-/** The items of an array or other iterable object, each iterable read once per session. */
-const itemsOf = (v: unknown, s: Session): ReadonlyArray<unknown> | undefined => {
-  if (Array.isArray(v)) return v
-  if (typeof v !== "object" || v === null || !(Symbol.iterator in v)) return undefined
-  let items = s.items.get(v)
-  if (items === undefined) s.items.set(v, items = Array.from(v as Iterable<unknown>))
-  return items
-}
-
-const asIterable = (v: unknown, s: Session, at: At, index: number, what: string): ReadonlyArray<unknown> =>
-  itemsOf(v, s) ?? failAt(at, index, `expected ${what}, got ${describe(v)}`)
+const asArray = (v: unknown, at: At, index: number, what: string): ReadonlyArray<unknown> =>
+  Array.isArray(v) ? v : failAt(at, index, `expected ${what}, got ${describe(v)}`)
 
 /** Member `k`, named by `f`, of the struct value `v` (an object, or an array by position). */
 const memberValue = (v: object, f: S.Field, k: number): unknown =>
@@ -494,19 +567,31 @@ const memberAt = (at: At, name: string | number): At => (i) => [...at(i), name]
 
 /**
  * Builds one array of `field` from `values`; `at` locates each value in the
- * input. Only the slots where `used` holds must respect the field's
- * nullability; the others stand for null parents or other union members.
- * @internal
+ * input. Each value is converted to its storage value once (see
+ * {@link storeOf}). @internal
  */
 export const build = (
+  field: S.Field,
+  values: ReadonlyArray<unknown>,
+  options: Session,
+  at: At
+): ArrowData.ArrowData => {
+  const store = storeOf(field, options)
+  return buildField(field, store === undefined ? values : mapAll(values, store), options, at)
+}
+
+/**
+ * Builds one array of `field` from storage `values`. Only the slots where
+ * `used` holds must respect the field's nullability; the others stand for
+ * null parents or other union members.
+ */
+const buildField = (
   field: S.Field,
   values: ReadonlyArray<unknown>,
   options: Session,
   at: At,
   used: (index: number) => boolean = () => true
 ): ArrowData.ArrowData => {
-  const encode = encoderOf(field, options)
-  if (encode !== undefined) values = values.map((v) => isNull(v) ? null : encode(v))
   if (!field.nullable && field.type._tag !== "Null") {
     const i = values.findIndex((v, i) => isNull(v) && used(i))
     if (i !== -1) failAt(at, i, `null in non-nullable field ${JSON.stringify(field.name)}`)
@@ -653,10 +738,10 @@ const buildType = (
       const items: Array<unknown> = []
       const offsets = new Float64Array(n + 1)
       values.forEach((v, i) => {
-        if (!isNull(v)) { for (const x of asIterable(v, options, at, i, "an array")) items.push(x) }
+        if (!isNull(v)) { for (const x of asArray(v, at, i, "an array")) items.push(x) }
         offsets[i + 1] = items.length
       })
-      const child = build(type.child, items, options, itemAt(at, offsets))
+      const child = buildField(type.child, items, options, itemAt(at, offsets))
       const ints = (a: Float64Array) =>
         asBytes(
           type._tag === "LargeList" || type._tag === "LargeListView"
@@ -676,12 +761,12 @@ const buildType = (
           for (let k = 0; k < type.listSize; k++) items.push(null)
           return
         }
-        const list = asIterable(v, options, at, i, "an array")
+        const list = asArray(v, at, i, "an array")
         if (list.length !== type.listSize) failAt(at, i, `expected ${type.listSize} items, got ${list.length}`)
         items.push(...list)
       })
       const size = type.listSize
-      const child = build(
+      const child = buildField(
         type.child,
         items,
         options,
@@ -701,7 +786,7 @@ const buildType = (
         type.fields.forEach((f, k) => (columns[k][i] = memberValue(v as object, f, k)))
       })
       const children = type.fields.map((f, k) =>
-        build(f, columns[k], options, memberAt(at, f.name), (i) => !isNull(values[i]))
+        buildField(f, columns[k], options, memberAt(at, f.name), (i) => !isNull(values[i]))
       )
       return data(type, n, validityOf(values), [], children)
     }
@@ -715,8 +800,8 @@ const buildType = (
       values.forEach((v, i) => {
         slot = i
         if (!isNull(v)) {
-          for (const e of asIterable(v, options, at, i, "a ReadonlyMap")) {
-            const [k, x] = asIterable(e, options, inSlot, keys.length, "a [key, value] entry")
+          for (const e of asArray(v, at, i, "a ReadonlyMap")) {
+            const [k, x] = asArray(e, inSlot, keys.length, "a [key, value] entry")
             if (isNull(k)) failAt(inSlot, keys.length, "map keys must not be null")
             keys.push(k)
             items.push(x)
@@ -727,8 +812,8 @@ const buildType = (
       const entryAt = itemAt(at, offsets)
       const [keyField, valueField] = entriesType.fields
       const entries = data(type.entries.type, keys.length, noNulls, [], [
-        build(keyField, keys, options, memberAt(entryAt, 0)),
-        build(valueField, items, options, memberAt(entryAt, 1))
+        buildField(keyField, keys, options, memberAt(entryAt, 0)),
+        buildField(valueField, items, options, memberAt(entryAt, 1))
       ])
       return data(type, n, validityOf(values), [asBytes(offsets)], [entries])
     }
@@ -739,20 +824,20 @@ const buildType = (
       const runValues: Array<unknown> = []
       let previous: string | undefined
       values.forEach((v, i) => {
-        const key = keyOf(type.values, v, options)
+        const key = keyOf(type.values, v)
         if (key !== undefined && key === previous) {
           runEnds[runEnds.length - 1] = i + 1
         } else {
           runEnds.push(i + 1)
-          runValues.push(isNull(v) ? null : v)
+          runValues.push(v)
           previous = key
         }
       })
       // Run `r` starts where the previous run ends.
       const runAt: At = (r) => at(r === 0 ? 0 : runEnds[r - 1])
       return data(type, n, noNulls, [], [
-        build(type.runEnds, runEnds, options, runAt),
-        build(type.values, runValues, options, runAt)
+        buildField(type.runEnds, runEnds, options, runAt),
+        buildField(type.values, runValues, options, runAt)
       ])
     }
     case "Dictionary": {
@@ -764,7 +849,7 @@ const buildType = (
       const s = state
       const indices = values.map((v, i) => {
         if (isNull(v)) return null
-        const key = typeKey(type.valueType, v, options)
+        const key = typeKey(type.valueType, v)
         let index = key === undefined ? undefined : s.unique.get(key)
         if (index === undefined) {
           index = s.values.length
@@ -870,7 +955,7 @@ const buildUnion = (
   members.forEach((m, i) => (typeIds[i] = type.typeIds[m]))
   if (type.mode === "sparse") {
     const children = type.fields.map((f, k) =>
-      build(f, plain.map((v, i) => members[i] === k ? v : null), options, at, (i) => members[i] === k)
+      buildField(f, plain.map((v, i) => members[i] === k ? v : null), options, at, (i) => members[i] === k)
     )
     return data(type, n, noNulls, [asBytes(typeIds)], children)
   }
@@ -882,7 +967,7 @@ const buildUnion = (
   })
   // Value `j` of member `k` comes from the slot that holds member `k` at offset `j`.
   const children = type.fields.map((f, k) =>
-    build(f, perMember[k], options, (j) => at(members.findIndex((m, i) => m === k && offsets[i] === j)))
+    buildField(f, perMember[k], options, (j) => at(members.findIndex((m, i) => m === k && offsets[i] === j)))
   )
   return data(type, n, noNulls, [asBytes(typeIds), asBytes(offsets)], children)
 }

@@ -7,8 +7,9 @@
  *   `ARROW:extension:name` (and optionally `ARROW:extension:metadata`). Its
  *   data is stored as the field's ordinary type, the storage type.
  * - Readers that are given an {@link ArrowExtension} for that name pass each
- *   storage value through `decode`; builders pass each value through
- *   `encode`. Without a registered extension, the storage values are used.
+ *   storage value through `decode`; builders pass each non-null value
+ *   through `encode` exactly once. Without a registered extension, the
+ *   storage values are used.
  *
  * **Example** (A UUID extension over 16-byte binaries)
  *
