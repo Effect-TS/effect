@@ -143,7 +143,10 @@ export const show = (node: Node): string => {
 export interface Context {
   readonly length: number
   readonly column: (name: string) => V.Vector
-  /** The partitions of an enclosing `Over`: window functions run per partition. */
+  /**
+   * The partitions of an enclosing `Over` or grouped aggregate: window
+   * functions run per partition, and aggregates broadcast over it.
+   */
   readonly partition?: W.Partition | undefined
 }
 
@@ -188,17 +191,18 @@ export const evaluate = (node: Node, ctx: Context): K.Value => {
     case "Literal":
       return node.type === undefined || node.value === null ? literal(node.value) : literalOfType(node.value, node.type)
     case "AggregateCall": {
-      // Inside `over`: the partition's aggregate on each of its rows.
+      // Inside `over` or an aggregate: the partition's aggregate on each of its rows.
       if (ctx.partition === undefined) return V.fail(`aggregate ${show(node)} can only be used in agg or over`)
       if (node.arg === undefined && node.fn !== "count") return V.fail(`${node.fn} needs an argument`)
-      const arg = node.arg === undefined ? undefined : evaluateColumn(node.arg, { ...ctx, partition: undefined })
+      const arg = node.arg === undefined ? undefined : evaluateColumn(node.arg, ctx)
       const values = Agg.aggregate(node.arg === undefined ? "len" : node.fn, arg, ctx.partition)
       return K.column(V.take(values, ctx.partition.ids))
     }
     case "Call":
       return evaluateCall(node, ctx)
     case "Over": {
-      const keys = node.partitionBy.map((k) => evaluateColumn(k, { ...ctx, partition: undefined }))
+      const keys = node.partitionBy.map((k) => evaluateColumn(k, ctx))
+      if (ctx.partition !== undefined) keys.unshift(V.i32(S.int32, ctx.partition.ids))
       const g = Hash.groups(keys, ctx.length)
       return evaluate(node.expression, { ...ctx, partition: { ids: g.ids, count: g.count } })
     }
@@ -456,8 +460,7 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     case "rollingMean":
     case "rollingMin":
     case "rollingMax": {
-      // The argument is evaluated over all rows, the window per partition.
-      const x = K.materialize(evaluate(node.args[0], { ...ctx, partition: undefined }), n)
+      const x = K.materialize(evaluate(node.args[0], ctx), n)
       const p = ctx.partition ?? W.whole(n)
       switch (node.fn) {
         case "cumSum":

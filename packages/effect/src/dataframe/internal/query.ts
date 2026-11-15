@@ -4,9 +4,10 @@
  * Execution is a post-order walk that calls the frame operations. Before it,
  * `optimize` rewrites the plan so less work happens:
  *
- * - predicates move below the operations they commute with (sorts,
- *   projections, derived columns they don't read, group keys, either side of
- *   a join, every input of a concat), and filters that meet merge;
+ * - row-wise predicates move below the operations they commute with
+ *   (sorts, projections, derived columns they don't read, group keys, either
+ *   side of a join, every input of a concat), and filters that meet merge;
+ *   predicates with windows stay where they are;
  * - slices move below row-wise operations, and a slice of a sort becomes a
  *   top-k selection;
  * - columns nothing reads are dropped at the inputs, and derived columns and
@@ -232,9 +233,14 @@ const pushFilters = (node: Node): Node => {
 const filtered = (input: Node, predicates: ReadonlyArray<Plan.Expression>): Node =>
   predicates.length === 0 ? input : { _tag: "Filter", input, predicate: and(predicates) }
 
-/** Places each predicate as deep as it can go below `node`. */
+/**
+ * Places each predicate as deep as it can go below `node`. Predicates that
+ * are not row-wise (windows) depend on exactly the rows they see, so a set
+ * containing one stays where it is.
+ */
 const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
   if (predicates.length === 0) return node
+  if (!predicates.every(E.isRowWise)) return filtered(node, predicates)
   const split = (canPush: (refs: Set<string>, p: Plan.Expression) => boolean) => {
     const down: Array<Plan.Expression> = []
     const here: Array<Plan.Expression> = []

@@ -890,6 +890,24 @@ def extended_cases():
     add("decimal/sort", "sort by a decimal", D, [{"op": "sort", "keys": [{"expr": col("price"), "descending": True}], "nullsLast": True}])
     add("decimal/round-ties", "narrowing the scale rounds exact ties", {"left": table([("t", "decimal[6,3]")], {"t": ["0.250", "0.350", "-0.250", "-0.350", "1.050", "2.500", "0.249"]})},
         [{"op": "select", "exprs": {"one": fn("cast", col("t"), to="decimal[6,1]"), "zero": fn("cast", col("t"), to="decimal[6,0]")}}])
+    # windows see exactly the rows of their input, whatever runs before or after them
+    W = {"left": table([("g", "i32"), ("h", "i32"), ("x", "f64")], {"g": [1, 2, 1, 2], "h": [1, 1, 2, 2], "x": [3.0, 1.0, 2.0, 4.0]}),
+         "right": table([("g", "i32"), ("name", "utf8")], {"g": [1], "name": ["one"]})}
+    add("window/filter-after-sort", "a window predicate sees the sorted rows", W,
+        [{"op": "sort", "keys": [{"expr": col("x")}]}, {"op": "filter", "predicate": fn("gt", fn("cumSum", col("x")), lit(3.0))}])
+    add("window/filter-after-filter", "a window predicate sees only the rows an earlier filter kept", W,
+        [{"op": "filter", "predicate": fn("gt", col("x"), lit(1.0))}, {"op": "filter", "predicate": fn("gt", fn("shift", col("x")), lit(2.0))}])
+    add("window/filter-after-concat", "a window predicate sees every input of a concat", W,
+        [{"op": "concat", "with": "left"}, {"op": "filter", "predicate": fn("gt", fn("cumSum", col("x")), lit(15.0))}])
+    add("window/filter-after-join", "a window predicate sees only the joined rows", W,
+        [{"op": "join", "right": "right", "on": ["g"], "how": "inner"}, {"op": "filter", "predicate": fn("gt", fn("shift", col("x")), lit(2.0))}])
+    add("window/filter-whole", "a window predicate sees the whole input", W,
+        [{"op": "filter", "predicate": fn("gt", fn("cumSum", col("x")), lit(5.0))}])
+    add("window/agg-of-window", "an aggregate of a window sees the whole input", W,
+        [{"op": "agg", "aggs": {"s": agg("sum", fn("cumSum", col("x"))), "n": agg("len")}}])
+    add("window/grouped-agg-of-window", "windows inside grouped aggregates run per group", W,
+        [{"op": "groupBy", "keys": ["g"], "aggs": {"s": agg("sum", fn("cumSum", col("x"))), "l": agg("list", fn("cumSum", col("x"))),
+                                                     "o": agg("sum", over(agg("sum", col("x")), "h"))}}])
     return out
 
 

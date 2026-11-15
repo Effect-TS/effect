@@ -344,7 +344,7 @@ const aggregateColumns = (
   aggs: { readonly [name: string]: E.Node },
   grouping: Agg.Grouping
 ): Array<Column> => {
-  const ctx = context(self)
+  const ctx: E.Context = { ...context(self), partition: grouping }
   return Object.keys(aggs).map((name) => {
     const node = aggs[name]
     if (node._tag !== "AggregateCall") return V.fail(`${name} is not an aggregate expression`)

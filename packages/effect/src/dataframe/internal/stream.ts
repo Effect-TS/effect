@@ -1,14 +1,15 @@
 /**
  * Running plans batch by batch over streamed tables.
  *
- * Row-wise operations (filters, projections, derived columns without
+ * Row-wise operations (filters, projections and derived columns without
  * windows, renames, `dropNulls`, `explode`, `unnest`) run on every batch as
  * it arrives, a slice from the start stops pulling batches once it has its
  * rows, joins stream their left side against the collected right side, and
  * concatenations stream their inputs one after the other. Grouping and whole-
  * table aggregation fold every batch into partial aggregates, so memory grows
- * with the number of groups, not rows (medians and distinct counts collect
- * instead). Every other operation collects its inputs first.
+ * with the number of groups, not rows (medians, distinct counts and
+ * aggregates of windows collect instead). Every other operation collects its
+ * inputs first.
  *
  * @internal
  */
@@ -86,6 +87,7 @@ const collectFrames = (batches: Batches, node: Q.Node): Effect.Effect<F.Frame, D
 const isRowWise = (node: Q.Node): boolean => {
   switch (node._tag) {
     case "Filter":
+      return E.isRowWise(node.predicate)
     case "Pick":
     case "Omit":
     case "Rename":
@@ -121,7 +123,9 @@ const aggregate = (
     const fn: Agg.AggFn = expression.arg === undefined ? "len" : expression.fn
     return { name, fn, arg: expression.arg }
   })
-  if (!specs.every((s) => Partial.combinable(s.fn))) return collected(node, catalog)
+  if (!specs.every((s) => Partial.combinable(s.fn) && (s.arg === undefined || E.isRowWise(s.arg)))) {
+    return collected(node, catalog)
+  }
   const fns = specs.map((s) => s.fn)
   // The first batch's input vectors and key columns, for result types.
   let template: { readonly inputs: ReadonlyArray<V.Vector | undefined>; readonly frame: F.Frame } | undefined

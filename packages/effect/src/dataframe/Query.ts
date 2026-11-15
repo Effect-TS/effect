@@ -584,6 +584,11 @@ export const groupBy: {
  * Computes aggregates per group: one row per distinct key, in order of first
  * appearance, with the key columns first.
  *
+ * **Details**
+ *
+ * An aggregate's argument is evaluated per group: window functions in it
+ * (`Expr.cumSum`, `Expr.over`, …) see only the group's rows, in row order.
+ *
  * @stability experimental
  * @category grouping
  * @since 4.1.5
