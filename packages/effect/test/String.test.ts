@@ -800,8 +800,8 @@ describe("String", () => {
       strictEqual(S.camelCase("CaféÜber"), "caféÜber")
     })
 
-    it("preserves caseless letters", () => {
-      strictEqual(S.snakeCase("日本語_テキスト"), "日本語_テキスト")
+    it("preserves caseless letters at number boundaries", () => {
+      strictEqual(S.snakeCase("日本語2テキスト"), "日本語_2_テキスト")
     })
 
     it("preserves combining marks", () => {
@@ -818,7 +818,7 @@ describe("String", () => {
 
     it("preserves decomposed marks at case boundaries without normalization", () => {
       strictEqual(S.snakeCase("cafe\u0301Bar"), "cafe\u0301_bar")
-      strictEqual(S.configCase("A\u0308B\u0301c"), "A\u0308_B\u0301C")
+      strictEqual(S.configCase("Ø\u0301Æ\u0301ø"), "Ø\u0301_Æ\u0301Ø")
     })
   })
 

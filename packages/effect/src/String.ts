@@ -1419,17 +1419,20 @@ const normalizeCase = (
   return result.slice(start, end).split("\0").map(transform).join(delimiter)
 }
 
+const SPLIT_LOWER_UPPER_REGEXP = /([\p{Ll}\p{N}]\p{M}*)(\p{Lu})/gu
+const SPLIT_UPPER_UPPER_REGEXP = /(\p{Lu}\p{M}*)(\p{Lu}\p{M}*\p{Ll})/gu
+
 // Support camel case ("camelCase" -> "camel Case" and "CAMELCase" -> "CAMEL Case")
 // and digit boundaries ("camel2case" -> "camel 2 case").
 const SPLIT_REGEXP = [
-  /([\p{Ll}\p{N}]\p{M}*)(\p{Lu})/gu,
-  /(\p{Lu}\p{M}*)(\p{Lu}\p{M}*\p{Ll})/gu,
+  SPLIT_LOWER_UPPER_REGEXP,
+  SPLIT_UPPER_UPPER_REGEXP,
   /(\p{L}\p{M}*)(\p{N})/gu,
   /(\p{N}\p{M}*)(\p{L})/gu
 ]
 
 // Config paths preserve digit groups such as "v2" while still supporting camel case.
-const CONFIG_SPLIT_REGEXP = [/([\p{Ll}\p{N}]\p{M}*)(\p{Lu})/gu, /(\p{Lu}\p{M}*)(\p{Lu}\p{M}*\p{Ll})/gu]
+const CONFIG_SPLIT_REGEXP = [SPLIT_LOWER_UPPER_REGEXP, SPLIT_UPPER_UPPER_REGEXP]
 
 // Remove all non-word characters.
 const STRIP_REGEXP = /[^\p{L}\p{M}\p{N}]+/gu
