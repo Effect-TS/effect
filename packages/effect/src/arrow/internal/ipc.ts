@@ -200,6 +200,9 @@ const loadColumns = (
   const columns = types.map((t) => loadField(t, ctx))
   if (ctx.node !== batch.nodes.length) invalid("record batch has more field nodes than the schema needs")
   if (ctx.buffer !== batch.buffers.length) invalid("record batch has more buffers than the schema needs")
+  if (ctx.variadic !== batch.variadicBufferCounts.length) {
+    invalid("record batch has more variadic buffer counts than the schema needs")
+  }
   for (const column of columns) {
     if (column.length !== batch.length) invalid(`column of length ${column.length} in a batch of ${batch.length} rows`)
     validate(column)

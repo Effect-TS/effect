@@ -534,7 +534,50 @@ describe("ArrowIpc", () => {
   })
 
   // ARROW-IPC-015: Message.fbs RecordBatch nodes/buffers follow the flattened schema.
-  it("rejects record batches whose field-node or buffer counts disagree with the schema", () => {
+  it("rejects record batches whose field-node, buffer or variadic counts disagree with the schema", () => {
+    // Message.fbs 103–116: exactly one variadic count per view field, even for inline values.
+    const table = Result.getOrThrow(ArrowTable.fromRows(S.make([S.field("value", S.utf8View)]), [{ value: "a" }]))
+    const encoded = Result.getOrThrow(ArrowIpc.encodeStream(table))
+    const schemaSize = 8 + new DataView(encoded.buffer).getInt32(4, true)
+    const schema = encoded.subarray(0, schemaSize)
+    for (const counts of [[0], [], [0, 1]]) {
+      const b = FlatBuffers.makeBuilder()
+      b.startVector(16, 1, 8)
+      b.addInt64(0n)
+      b.addInt64(1n)
+      const nodes = b.endVector()
+      b.startVector(16, 2, 8)
+      b.addInt64(16n)
+      b.addInt64(0n)
+      b.addInt64(0n)
+      b.addInt64(0n)
+      const buffers = b.endVector()
+      b.startVector(8, counts.length, 8)
+      for (const count of [...counts].reverse()) b.addInt64(BigInt(count))
+      const variadic = b.endVector()
+      b.startTable(5)
+      b.addFieldInt64(0, 1n)
+      b.addFieldOffset(1, nodes)
+      b.addFieldOffset(2, buffers)
+      b.addFieldOffset(4, variadic)
+      const batch = b.endTable()
+      b.startTable(5)
+      b.addFieldInt16(0, 4)
+      b.addFieldUint8(1, 3)
+      b.addFieldOffset(2, batch)
+      b.addFieldInt64(3, 16n)
+      const metadata = b.finish(b.endTable())
+      const frame = new Uint8Array(8 + Math.ceil(metadata.length / 8) * 8 + 16)
+      const view = new DataView(frame.buffer)
+      view.setInt32(0, -1, true)
+      view.setInt32(4, frame.length - 24, true)
+      frame.set(metadata, 8)
+      view.setInt32(frame.length - 16, 1, true)
+      frame[frame.length - 12] = 97 // inline UTF-8 "a"
+      const result = ArrowIpc.decodeStream(concatenate(schema, frame))
+      if (counts.length === 1) assertEquals(ArrowTable.toRows(Result.getOrThrow(result)), [{ value: "a" }])
+      else assertIpcError(result)
+    }
     const prefix = concatenate(dictionaryFrame("schema"), dictionaryFrame("dictionary"))
     for (const options of [{ nodes: 0 }, { nodes: 2 }, { buffers: 1 }, { buffers: 3 }]) {
       assertIpcError(ArrowIpc.decodeStream(concatenate(prefix, dictionaryFrame("batch", options))))
