@@ -240,7 +240,421 @@ const concatenate = (...parts: ReadonlyArray<Uint8Array>) => {
   return out
 }
 
+// Independent Schema.fbs / Message.fbs / File.fbs fixtures: one Int32 dictionary.
+const dictionarySchema = (b: FlatBuffers.Builder) => {
+  const name = b.createString("d")
+  b.startTable(2)
+  b.addFieldInt32(0, 32)
+  b.addFieldBool(1, true)
+  const int = b.endTable()
+  b.startTable(4)
+  b.addFieldInt64(0, 1n)
+  b.addFieldOffset(1, int)
+  const dictionary = b.endTable()
+  b.startTable(7)
+  b.addFieldOffset(0, name)
+  b.addFieldBool(1, true)
+  b.addFieldUint8(2, 2) // Int
+  b.addFieldOffset(3, int)
+  b.addFieldOffset(4, dictionary)
+  const fields = b.createOffsetVector([b.endTable()])
+  b.startTable(4)
+  b.addFieldOffset(1, fields)
+  return b.endTable()
+}
+
+const dictionaryFrame = (kind: "schema" | "dictionary" | "batch", options: {
+  value?: number
+  null?: boolean
+  delta?: boolean
+  version?: number
+  legacy?: boolean
+  nodes?: number
+  buffers?: number
+} = {}) => {
+  const b = FlatBuffers.makeBuilder()
+  const body = kind === "schema" ? bytes() : new Uint8Array(16)
+  let header: FlatBuffers.Offset
+  if (kind === "schema") header = dictionarySchema(b)
+  else {
+    body[0] = options.null ? 0 : 1
+    new DataView(body.buffer).setInt32(8, options.value ?? 0, true)
+    b.startVector(16, options.nodes ?? 1, 8)
+    for (let i = 0; i < (options.nodes ?? 1); i++) {
+      b.addInt64(options.null ? 1n : 0n)
+      b.addInt64(1n)
+    }
+    const nodes = b.endVector()
+    b.startVector(16, options.buffers ?? 2, 8)
+    for (let i = (options.buffers ?? 2) - 1; i >= 0; i--) {
+      b.addInt64(i === 0 ? 1n : 4n)
+      b.addInt64(i === 0 ? 0n : 8n)
+    }
+    const buffers = b.endVector()
+    b.startTable(5)
+    b.addFieldInt64(0, 1n)
+    b.addFieldOffset(1, nodes)
+    b.addFieldOffset(2, buffers)
+    header = b.endTable()
+    if (kind === "dictionary") {
+      b.startTable(3)
+      b.addFieldInt64(0, 1n)
+      b.addFieldOffset(1, header)
+      b.addFieldBool(2, options.delta ?? false)
+      header = b.endTable()
+    }
+  }
+  b.startTable(5)
+  b.addFieldInt16(0, options.version ?? 4)
+  b.addFieldUint8(1, kind === "schema" ? 1 : kind === "dictionary" ? 2 : 3)
+  b.addFieldOffset(2, header)
+  b.addFieldInt64(3, BigInt(body.length))
+  const metadata = b.finish(b.endTable())
+  const prefixSize = options.legacy ? 4 : 8
+  const prefix = new Uint8Array(Math.ceil((prefixSize + metadata.length) / 8) * 8)
+  const view = new DataView(prefix.buffer)
+  if (!options.legacy) view.setInt32(0, -1, true)
+  view.setInt32(prefixSize - 4, prefix.length - prefixSize, true)
+  prefix.set(metadata, prefixSize)
+  return concatenate(prefix, body)
+}
+
+const dictionaryFile = (dictionaries: ReadonlyArray<Uint8Array>, batch: Uint8Array) => {
+  const schema = dictionaryFrame("schema")
+  const b = FlatBuffers.makeBuilder()
+  const schemaOffset = dictionarySchema(b)
+  let offset = 8 + schema.length
+  const blocks = [...dictionaries, batch].map((frame) => {
+    const block = { offset, metadata: new DataView(frame.buffer).getInt32(4, true) + 8 }
+    offset += frame.length
+    return block
+  })
+  const vector = (items: typeof blocks) => {
+    b.startVector(24, items.length, 8)
+    for (let i = items.length - 1; i >= 0; i--) {
+      b.addInt64(16n)
+      b.addInt32(0) // struct padding
+      b.addInt32(items[i].metadata)
+      b.addInt64(BigInt(items[i].offset))
+    }
+    return b.endVector()
+  }
+  const dictionaryBlocks = vector(blocks.slice(0, -1))
+  const batchBlocks = vector(blocks.slice(-1))
+  b.startTable(5)
+  b.addFieldInt16(0, 4)
+  b.addFieldOffset(1, schemaOffset)
+  b.addFieldOffset(2, dictionaryBlocks)
+  b.addFieldOffset(3, batchBlocks)
+  const footer = b.finish(b.endTable())
+  const length = new Uint8Array(4)
+  new DataView(length.buffer).setInt32(0, footer.length, true)
+  return concatenate(
+    text("ARROW1"),
+    bytes(0, 0),
+    schema,
+    ...dictionaries,
+    batch,
+    bytes(255, 255, 255, 255, 0, 0, 0, 0),
+    footer,
+    length,
+    text("ARROW1")
+  )
+}
+
 describe("ArrowIpc", () => {
+  // ARROW-IPC-019: Columnar.rst 447-449, 514-524, 1035, 1124;
+  // physical buffer sizes follow the validity and fixed-width layouts.
+  // Mutate wire data, not unchecked ArrowData constructors, to exercise the decoder.
+  const malformedLayouts: ReadonlyArray<{
+    name: string
+    type: S.DataType
+    values: ReadonlyArray<unknown>
+    buffer: number
+    offset?: number
+    value: number
+    short?: boolean
+    byte?: boolean
+  }> = [
+    {
+      name: "descending offsets across a null slot",
+      type: S.utf8,
+      values: ["a", null, "bc"],
+      buffer: 1,
+      offset: 8,
+      value: 0
+    },
+    { name: "out-of-range offsets", type: S.utf8, values: ["a"], buffer: 1, offset: 4, value: 2 },
+    { name: "short validity buffer", type: S.int32, values: [null, 1], buffer: 0, value: 0, short: true },
+    { name: "short value buffer", type: S.int32, values: [1], buffer: 1, value: 3, short: true },
+    {
+      name: "negative dictionary index",
+      type: S.dictionary(S.utf8, { indexType: S.int8 }),
+      values: ["a"],
+      buffer: 1,
+      value: -1,
+      byte: true
+    },
+    {
+      name: "out-of-range dictionary index",
+      type: S.dictionary(S.utf8, { indexType: S.int8 }),
+      values: ["a"],
+      buffer: 1,
+      value: 1,
+      byte: true
+    },
+    ...[S.utf8View, S.binaryView].flatMap((type) => [
+      {
+        name: "missing view buffer",
+        type,
+        values: [type === S.utf8View ? "abcdefghijklmnop" : text("abcdefghijklmnop")],
+        buffer: 1,
+        offset: 8,
+        value: 1
+      },
+      {
+        name: "out-of-range view",
+        type,
+        values: [type === S.utf8View ? "abcdefghijklmnop" : text("abcdefghijklmnop")],
+        buffer: 1,
+        offset: 12,
+        value: 1
+      },
+      {
+        name: "mismatched view prefix",
+        type,
+        values: [type === S.utf8View ? "abcdefghijklmnop" : text("abcdefghijklmnop")],
+        buffer: 1,
+        offset: 4,
+        value: 0
+      }
+    ]),
+    {
+      name: "nonpositive run end",
+      type: S.runEndEncoded(S.int32, S.field("values", S.utf8)),
+      values: ["a", "b"],
+      buffer: 1,
+      value: 0
+    },
+    {
+      name: "nonincreasing run ends",
+      type: S.runEndEncoded(S.int32, S.field("values", S.utf8)),
+      values: ["a", "b"],
+      buffer: 1,
+      offset: 4,
+      value: 1
+    }
+  ]
+  for (const layout of malformedLayouts) {
+    it(`rejects ${layout.type._tag} ${layout.name} in IPC record batches`, () => {
+      const schema = S.make([S.field("value", layout.type)])
+      const rows = layout.values.map((value) => ({ value }))
+      const table = Result.getOrThrow(ArrowTable.fromRows(schema, rows))
+      const input = Result.getOrThrow(ArrowIpc.encodeStream(table))
+      assertEquals(ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeStream(input))), rows)
+      const view = new DataView(input.buffer, input.byteOffset, input.byteLength)
+      for (let position = 0; position < input.length - 8;) {
+        const length = view.getInt32(position + 4, true)
+        const message = FlatBuffers.root(input.subarray(position + 8, position + 8 + length))
+        if (message.uint8(1) === 3) {
+          const buffer = message.table(2)!.vector(2, 16)!.struct(layout.buffer)
+          if (layout.short) {
+            view.setBigInt64(position + 8 + buffer.position + 8, BigInt(layout.value), true)
+          } else {
+            const at = position + 8 + length + Number(buffer.int64(0)) + (layout.offset ?? 0)
+            if (layout.byte) view.setInt8(at, layout.value)
+            else view.setInt32(at, layout.value, true)
+          }
+          break
+        }
+        position += 8 + length + Number(message.int64(3))
+      }
+      assertIpcError(ArrowIpc.decodeStream(input))
+    })
+  }
+
+  // ARROW-IPC-013: Columnar.rst 1493-1496; null slots do not require dictionary keys.
+  it.effect("allows all-null dictionary batches before definition but rejects undefined non-null indices", () =>
+    Effect.gen(function*() {
+      const schema = dictionaryFrame("schema")
+      const nulls = dictionaryFrame("batch", { null: true, value: 999 })
+      const definition = dictionaryFrame("dictionary", { value: 42 })
+      const batch = dictionaryFrame("batch")
+      const input = concatenate(schema, nulls, definition, batch)
+      assert.deepStrictEqual(ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeStream(input))), [{ d: null }, {
+        d: 42
+      }])
+      const decoded = yield* decodeChunks(split(input, 13))
+      assert.deepStrictEqual(decoded.map((b) => b.length), [1, 1])
+      assert.deepStrictEqual(decoded.flatMap((b) => ArrowTable.toRows(ArrowTable.make(b.schema, [b]))), [
+        { d: null },
+        { d: 42 }
+      ])
+      assertIpcError(ArrowIpc.decodeStream(concatenate(schema, batch, definition)))
+      const error = yield* Effect.flip(decodeChunks(split(concatenate(schema, batch), 13)))
+      assert.strictEqual(error.kind, "Invalid")
+      // A claimed all-null node must not hide a set validity bit without a dictionary.
+      const malformed = nulls.slice()
+      malformed[8 + new DataView(malformed.buffer).getInt32(4, true)] = 1
+      const malformedInput = concatenate(schema, malformed)
+      assertIpcError(ArrowIpc.decodeStream(malformedInput))
+      const malformedError = yield* Effect.flip(decodeChunks(split(malformedInput, 13)))
+      assert.strictEqual(malformedError.kind, "Invalid")
+    }))
+
+  // ARROW-IPC-014: Columnar.rst 1530-1536; Message.fbs DictionaryBatch.isDelta.
+  it("rejects file dictionary replacement while preserving file deltas and stream replacements", () => {
+    const first = dictionaryFrame("dictionary", { value: 42 })
+    const replacement = dictionaryFrame("dictionary", { value: 99 })
+    const delta = dictionaryFrame("dictionary", { value: 99, delta: true })
+    const batch = dictionaryFrame("batch")
+    assert.deepStrictEqual(ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeFile(dictionaryFile([first], batch)))), [{
+      d: 42
+    }])
+    assertIpcError(ArrowIpc.decodeFile(dictionaryFile([first, replacement], batch)))
+    assert.deepStrictEqual(
+      ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeFile(
+        dictionaryFile(
+          [first, delta, dictionaryFrame("dictionary", { value: 77, delta: true })],
+          dictionaryFrame("batch", { value: 2 })
+        )
+      ))),
+      [{ d: 77 }]
+    )
+    assert.deepStrictEqual(
+      ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeStream(concatenate(
+        dictionaryFrame("schema"),
+        first,
+        batch,
+        replacement,
+        batch
+      )))),
+      [{ d: 42 }, { d: 99 }]
+    )
+  })
+
+  // ARROW-IPC-015: Message.fbs RecordBatch nodes/buffers follow the flattened schema.
+  it("rejects record batches whose field-node or buffer counts disagree with the schema", () => {
+    const prefix = concatenate(dictionaryFrame("schema"), dictionaryFrame("dictionary"))
+    for (const options of [{ nodes: 0 }, { nodes: 2 }, { buffers: 1 }, { buffers: 3 }]) {
+      assertIpcError(ArrowIpc.decodeStream(concatenate(prefix, dictionaryFrame("batch", options))))
+    }
+  })
+
+  // ARROW-IPC-016: Schema.fbs MetadataVersion; Columnar.rst 1235-1248 legacy and continuation framing.
+  it.effect("reads V4 and V5 messages with legacy or continuation framing and optional EOS", () =>
+    Effect.gen(function*() {
+      for (const version of [3, 4]) {
+        for (const legacy of [false, true]) {
+          const frames = [
+            dictionaryFrame("schema", { version, legacy }),
+            dictionaryFrame("dictionary", { version, legacy, value: 42 }),
+            dictionaryFrame("batch", { version, legacy })
+          ]
+          for (const frame of frames) {
+            const prefixSize = legacy ? 4 : 8
+            const metadataSize = new DataView(frame.buffer).getInt32(prefixSize - 4, true)
+            assert.strictEqual((prefixSize + metadataSize) % 8, 0)
+            assert.strictEqual(frame.length % 8, 0)
+          }
+          for (const eos of [bytes(), legacy ? bytes(0, 0, 0, 0) : bytes(255, 255, 255, 255, 0, 0, 0, 0)]) {
+            const input = concatenate(...frames, eos)
+            assert.deepStrictEqual(ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeStream(input))), [{ d: 42 }])
+            const decoded = yield* decodeChunks(split(input, 13))
+            assert.deepStrictEqual(decoded.map((b) => b.length), [1])
+            assert.deepStrictEqual(decoded.flatMap((b) => ArrowTable.toRows(ArrowTable.make(b.schema, [b]))), [{
+              d: 42
+            }])
+          }
+        }
+      }
+      for (const version of [0, 1, 2, 5]) {
+        assertIpcError(
+          ArrowIpc.decodeStream(dictionaryFrame("schema", { version })),
+          version < 3 ? "Unsupported" : "Invalid"
+        )
+      }
+    }))
+
+  // ARROW-IPC-017: Columnar.rst Streaming Format: one schema, before dictionary / record batches.
+  it("rejects repeated schemas and dictionaries before the schema", () => {
+    const schema = dictionaryFrame("schema")
+    assertIpcError(ArrowIpc.decodeStream(concatenate(schema, schema)))
+    assertIpcError(ArrowIpc.decodeStream(concatenate(dictionaryFrame("dictionary"), schema)))
+    assertIpcError(ArrowIpc.decodeStream(concatenate(emptyMessage("schema"), dictionaryFrame("dictionary"))))
+  })
+
+  // ARROW-IPC-018: Columnar.rst encapsulated messages, primitive layout and IPC File Format;
+  // Message.fbs RecordBatch / FieldNode / Buffer and File.fbs Footer / Block.
+  // Inspect public writer bytes independently, without calling an Arrow decoder.
+  it("writes V5 framing, aligned Int32 buffers, EOS and file footer block locations", () => {
+    const schema = S.make([S.field("i", S.int32)])
+    const column = ArrowData.make({
+      type: S.int32,
+      length: 3,
+      nullCount: 1,
+      validity: bytes(5),
+      buffers: [bytes(7, 0, 0, 0, 0, 0, 0, 0, 247, 255, 255, 255)]
+    })
+    const table = ArrowTable.make(schema, [ArrowTable.recordBatch(schema, 3, [column])])
+    for (const format of ["stream", "file"] as const) {
+      const output = Result.getOrThrow(format === "stream" ? ArrowIpc.encodeStream(table) : ArrowIpc.encodeFile(table))
+      const view = new DataView(output.buffer, output.byteOffset, output.byteLength)
+      let position = format === "file" ? 8 : 0
+      const blocks: Array<{ offset: number; metadata: number; body: number }> = []
+      for (const headerType of [1, 3]) {
+        assert.strictEqual(position % 8, 0)
+        assert.strictEqual(view.getUint32(position, true), 0xffffffff)
+        const metadata = view.getInt32(position + 4, true)
+        assert.strictEqual(metadata % 8, 0)
+        const message = FlatBuffers.root(output.subarray(position + 8, position + 8 + metadata))
+        assert.strictEqual(message.int16(0), 4)
+        assert.strictEqual(message.uint8(1), headerType)
+        const body = Number(message.int64(3))
+        assert.strictEqual(body % 8, 0)
+        if (headerType === 3) {
+          blocks.push({ offset: position, metadata: metadata + 8, body })
+          const batch = message.table(2)!
+          assert.strictEqual(batch.int64(0), 3n)
+          const nodes = batch.vector(1, 16)!
+          assert.strictEqual(nodes.length, 1)
+          assert.strictEqual(nodes.struct(0).int64(0), 3n)
+          assert.strictEqual(nodes.struct(0).int64(8), 1n)
+          const buffers = batch.vector(2, 16)!
+          assert.strictEqual(buffers.length, 2)
+          const bodyStart = position + 8 + metadata
+          assert.strictEqual(buffers.struct(0).int64(0), 0n)
+          assert.strictEqual(buffers.struct(0).int64(8), 1n)
+          assert.strictEqual(output[bodyStart], 5)
+          const valuesOffset = Number(buffers.struct(1).int64(0))
+          assert.strictEqual(valuesOffset % 8, 0)
+          assert.strictEqual(buffers.struct(1).int64(8), 12n)
+          assert.strictEqual(view.getInt32(bodyStart + valuesOffset, true), 7)
+          assert.strictEqual(view.getInt32(bodyStart + valuesOffset + 8, true), -9)
+        }
+        position += 8 + metadata + body
+      }
+      assert.deepStrictEqual(output.subarray(position, position + 8), bytes(255, 255, 255, 255, 0, 0, 0, 0))
+      position += 8
+      if (format === "stream") assert.strictEqual(position, output.length)
+      else {
+        assert.deepStrictEqual(output.subarray(0, 8), concatenate(text("ARROW1"), bytes(0, 0)))
+        assert.deepStrictEqual(output.subarray(-6), text("ARROW1"))
+        const footerLength = view.getInt32(output.length - 10, true)
+        assert.strictEqual(position + footerLength + 10, output.length)
+        const footer = FlatBuffers.root(output.subarray(position, position + footerLength))
+        assert.strictEqual(footer.int16(0), 4)
+        assert.strictEqual(footer.table(1)!.vector(1, 4)!.table(0).string(0), "i")
+        assert.strictEqual(footer.vector(2, 24)?.length ?? 0, 0)
+        const records = footer.vector(3, 24)!
+        assert.strictEqual(records.length, 1)
+        assert.strictEqual(records.struct(0).int64(0), BigInt(blocks[0].offset))
+        assert.strictEqual(records.struct(0).int32(8), blocks[0].metadata)
+        assert.strictEqual(records.struct(0).int64(16), BigInt(blocks[0].body))
+      }
+    }
+  })
+
   // ARROW-IPC-010 (local): Schema.fbs Endianness; unsupported feature classification.
   // Source pin and scope: ./CONFORMANCE.md
   it.effect("rejects big-endian schema metadata with BigEndian", () =>

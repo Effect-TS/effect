@@ -148,7 +148,7 @@ const loadField = (type: S.DataType, ctx: LoadContext): ArrowData.ArrowData => {
     case "Dictionary": {
       const validity = validityOf(node, nextBuffer(ctx))
       const indices = nextBuffer(ctx)
-      const dictionary = ctx.dictionaries.get(type.id) ?? invalid(`dictionary ${type.id} is used before it is defined`)
+      const dictionary = ctx.dictionaries.get(type.id)
       return data(type, node, validity, [indices], [], dictionary)
     }
     case "Null":
@@ -198,6 +198,8 @@ const loadColumns = (
 ): Array<ArrowData.ArrowData> => {
   const ctx: LoadContext = { batch, body, version, dictionaries, node: 0, buffer: 0, variadic: 0 }
   const columns = types.map((t) => loadField(t, ctx))
+  if (ctx.node !== batch.nodes.length) invalid("record batch has more field nodes than the schema needs")
+  if (ctx.buffer !== batch.buffers.length) invalid("record batch has more buffers than the schema needs")
   for (const column of columns) {
     if (column.length !== batch.length) invalid(`column of length ${column.length} in a batch of ${batch.length} rows`)
     validate(column)
@@ -372,6 +374,11 @@ const validate = (d: ArrowData.ArrowData): void => {
           const buffer = d.buffers[1 + index]
           if (index < 0 || buffer === undefined) invalid(`view refers to missing data buffer ${index}`)
           if (offset < 0 || offset + size > buffer.length) invalid(`view ${offset}+${size} is outside its data buffer`)
+          for (let byte = 0; byte < 4; byte++) {
+            if (d.buffers[0][at * 4 + 4 + byte] !== buffer[offset + byte]) {
+              invalid("view prefix differs from its data buffer")
+            }
+          }
         }
       }
       return
@@ -458,10 +465,13 @@ const validate = (d: ArrowData.ArrowData): void => {
       return
     }
     case "Dictionary": {
-      const dictionary = d.dictionary ?? invalid("dictionary-encoded data without a dictionary")
+      // All-null arrays may precede their dictionary in a stream. A missing
+      // dictionary has no valid indices; the slot checks below still reject any
+      // non-null index, independently of the declared null count.
+      const dictionary = d.dictionary
       const width = type.indexType.bitWidth / 8
       needBytes(d.buffers[0], end * width, "dictionary indices")
-      const size = dictionary.length
+      const size = dictionary?.length ?? 0
       const indices = intArray(type.indexType, d.buffers[0])
       // Null slots may hold any index, so an out-of-range index only fails in a valid slot.
       if (width === 8) {
@@ -669,10 +679,15 @@ export const decodeFile = (bytes: Uint8Array): ArrowTable.Table => {
     checkVersion(message.message.version)
     return message
   }
+  const defined = new Set<number>()
   for (const block of footer.dictionaries) {
     const { body, message } = blockMessage(block)
     const header = message.header
     if (header._tag !== "DictionaryBatch") invalid(`dictionary block holds ${header._tag}`)
+    if (!header.isDelta) {
+      if (defined.has(header.id)) invalid(`the file format cannot replace dictionary ${header.id}`)
+      defined.add(header.id)
+    }
     applyDictionary(header, body, message.version, state.types, state.dictionaries)
   }
   const batches = footer.recordBatches.map((block) => {
