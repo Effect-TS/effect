@@ -196,9 +196,9 @@ export const evaluate = (node: Node, ctx: Context): K.Value => {
     case "AggregateCall": {
       // Inside `over` or an aggregate: the partition's aggregate on each of its rows.
       if (ctx.partition === undefined) return V.fail(`aggregate ${show(node)} can only be used in agg or over`)
-      if (node.arg === undefined && node.fn !== "count") return V.fail(`${node.fn} needs an argument`)
-      const arg = node.arg === undefined ? undefined : evaluateColumn(node.arg, ctx)
-      const values = Agg.aggregate(node.arg === undefined ? "len" : node.fn, arg, ctx.partition)
+      // `count()` without an argument counts rows; `Agg.aggregate` fails for other aggregates without one.
+      const fn = node.fn === "count" && node.arg === undefined ? "len" : node.fn
+      const values = Agg.aggregate(fn, node.arg && evaluateColumn(node.arg, ctx), ctx.partition)
       return K.column(V.take(values, ctx.partition.ids))
     }
     case "Call":
@@ -328,6 +328,8 @@ const arithmetic = {
   mod: "mod"
 } as const
 
+const listAggregates = { listSum: "sum", listMean: "mean", listMin: "min", listMax: "max" } as const
+
 const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
   const n = ctx.length
   const bounds = arity[node.fn]
@@ -344,6 +346,8 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     )
   }
   const arg = (i: number) => evaluate(node.args[i], ctx)
+  const col = (i: number) => K.materialize(arg(i), n)
+  const args = () => node.args.map((a) => evaluate(a, ctx))
   const options = node.options ?? {}
   const option = <A>(name: keyof Plan.CallOptions): A => {
     const value = options[name]
@@ -384,7 +388,7 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
       return K.isNaN_(arg(0))
     case "fillNull":
     case "coalesce":
-      return K.coalesce(node.args.map((a) => evaluate(a, ctx)), n)
+      return K.coalesce(args(), n)
     case "when":
       return K.when(arg(0), arg(1), arg(2), n)
     case "cast": {
@@ -413,7 +417,7 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     case "endsWith":
       return K.strMatch(arg(0), node.fn, option<string>("pattern"))
     case "concat":
-      return K.strConcat(node.args.map((a) => evaluate(a, ctx)), n)
+      return K.strConcat(args(), n)
     case "year":
     case "month":
     case "day":
@@ -423,35 +427,33 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     case "millisecond":
     case "weekday":
     case "ordinalDay":
-      return K.column(T.field(node.fn, K.materialize(arg(0), n)))
+      return K.column(T.field(node.fn, col(0)))
     case "truncate":
-      return K.column(T.truncate(K.materialize(arg(0), n), option<string>("every")))
+      return K.column(T.truncate(col(0), option<string>("every")))
     case "listLength":
-      return K.column(Nested.length(K.materialize(arg(0), n)))
+      return K.column(Nested.length(col(0)))
     case "listGet":
-      return K.column(Nested.get(K.materialize(arg(0), n), option<number>("index")))
+      return K.column(Nested.get(col(0), option<number>("index")))
     case "listSum":
     case "listMean":
     case "listMin":
-    case "listMax": {
-      const fn = node.fn === "listSum" ? "sum" : node.fn === "listMean" ? "mean" : node.fn === "listMin" ? "min" : "max"
-      return K.column(Nested.aggregate(fn, K.materialize(arg(0), n)))
-    }
+    case "listMax":
+      return K.column(Nested.aggregate(listAggregates[node.fn], col(0)))
     case "listContains":
-      return K.column(Nested.contains(K.materialize(arg(0), n), arg(1)))
+      return K.column(Nested.contains(col(0), arg(1)))
     case "field":
-      return K.column(Nested.field(K.materialize(arg(0), n), option<string>("name")))
+      return K.column(Nested.field(col(0), option<string>("name")))
     case "struct": {
       const names = option<ReadonlyArray<string>>("names")
       if (names.length !== node.args.length) return V.fail("struct needs one name per argument")
-      return K.column(Nested.struct(names, node.args.map((a) => K.materialize(evaluate(a, ctx), n)), n))
+      return K.column(Nested.struct(names, node.args.map((_, i) => col(i)), n))
     }
     case "totalDays":
     case "totalHours":
     case "totalMinutes":
     case "totalSeconds":
     case "totalMilliseconds":
-      return K.column(T.total(node.fn, K.materialize(arg(0), n)))
+      return K.column(T.total(node.fn, col(0)))
     case "cumSum":
     case "cumMin":
     case "cumMax":
@@ -463,7 +465,7 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     case "rollingMean":
     case "rollingMin":
     case "rollingMax": {
-      const x = K.materialize(evaluate(node.args[0], ctx), n)
+      const x = col(0)
       const p = ctx.partition ?? W.whole(n)
       switch (node.fn) {
         case "cumSum":

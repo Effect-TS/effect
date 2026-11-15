@@ -28,6 +28,8 @@ import * as V from "./vector.ts"
 
 type Column = Omit<Plan.TableColumn, "name">
 
+const field = (path: string, name: string) => (path === "" ? name : `${path}.${name}`)
+
 const leaf = (type: Plan.TypeName, nullable = false): Column => ({ type, nullable })
 
 const literalType = (literal: unknown): Plan.TypeName | undefined => {
@@ -50,6 +52,17 @@ const sameShape = (a: Column, b: Column): boolean =>
 
 const suspended = new Set<AST.AST>()
 
+/** `f` of a suspended schema, failing (after `prefix`) when it recurses. */
+const unsuspend = <A>(ast: AST.Suspend, prefix: string, f: (ast: AST.AST) => A): A => {
+  if (suspended.has(ast)) return V.fail(`${prefix}recursive schemas have no DataFrame column type`)
+  suspended.add(ast)
+  try {
+    return f(ast.thunk())
+  } finally {
+    suspended.delete(ast)
+  }
+}
+
 const columnOf = (ast: AST.AST, path: string): Column => {
   switch (ast._tag) {
     case "String":
@@ -69,12 +82,8 @@ const columnOf = (ast: AST.AST, path: string): Column => {
       return type === undefined ? unsupported(ast, path) : leaf(type)
     }
     case "Enum": {
-      const kinds = new Set(ast.enums.map(([, v]) => typeof v))
-      return kinds.size === 1 && kinds.has("string")
-        ? leaf("Utf8")
-        : kinds.size === 1
-        ? leaf("Float64")
-        : unsupported(ast, path)
+      const types = new Set(ast.enums.map(([, v]) => literalType(v)))
+      return types.size === 1 ? leaf([...types][0]!) : unsupported(ast, path)
     }
     case "Union": {
       let column: Column | undefined
@@ -88,17 +97,8 @@ const columnOf = (ast: AST.AST, path: string): Column => {
       }
       return { ...(column ?? leaf("Null")), nullable }
     }
-    case "Suspend": {
-      if (suspended.has(ast)) {
-        return V.fail(`field ${JSON.stringify(path)}: recursive schemas have no DataFrame column type`)
-      }
-      suspended.add(ast)
-      try {
-        return columnOf(ast.thunk(), path)
-      } finally {
-        suspended.delete(ast)
-      }
-    }
+    case "Suspend":
+      return unsuspend(ast, `field ${JSON.stringify(path)}: `, (ast) => columnOf(ast, path))
     case "Arrays": {
       const element = ast.rest[0]
       if (ast.elements.length > 0 || element === undefined || ast.rest.length > 1) return unsupported(ast, path)
@@ -124,10 +124,10 @@ const columnOf = (ast: AST.AST, path: string): Column => {
 const unsupported = (ast: AST.AST, path: string): never =>
   V.fail(`field ${JSON.stringify(path)}: schemas of kind ${ast._tag} have no DataFrame column type yet`)
 
-const fieldsOf = (ast: AST.Objects, prefix: string | undefined): Array<Plan.TableColumn> =>
+const fieldsOf = (ast: AST.Objects, path: string): Array<Plan.TableColumn> =>
   ast.propertySignatures.map((ps) => {
     const name = String(ps.name)
-    const column = columnOf(ps.type, prefix === undefined ? name : `${prefix}.${name}`)
+    const column = columnOf(ps.type, field(path, name))
     return { name, ...column, nullable: column.nullable || AST.isOptional(ps.type) }
   })
 
@@ -142,8 +142,8 @@ const structOf = (schema: { readonly ast: AST.AST }): AST.Objects => {
 // Declared columns
 // -----------------------------------------------------------------------------
 
-/** The plan type name of an Arrow type. @internal */
-export const typeName = (t: S.DataType): Plan.TypeName => {
+/** The plan type name of an Arrow type. */
+const typeName = (t: S.DataType): Plan.TypeName => {
   switch (t._tag) {
     case "Int":
     case "Float":
@@ -174,11 +174,8 @@ const describeColumn = (c: Column): string => c.type === "List" ? `List<${descri
 const utcZones: ReadonlySet<string> = new Set(["UTC", "Etc/UTC", "+00:00"])
 
 /**
- * Checks that values of Arrow type `t` read as values of the column, not
- * looking into lists and structs: integers below 64 bits for floats and
- * narrower integers, 64-bit integers (bigints) for 64-bit ones, any decimal
- * for a decimal, timestamps without a time zone or with a UTC one, and
- * temporal types of the same kind in any unit.
+ * Fails unless values of Arrow type `t` read as values of the column (not
+ * looking into lists and structs). Timestamps need no time zone or a UTC one.
  */
 const checkType = (path: string, t: S.DataType, expected: Column): void => {
   if (expected.type === "Timestamp" && t._tag === "Timestamp" && t.timezone !== undefined) {
@@ -190,6 +187,11 @@ const checkType = (path: string, t: S.DataType, expected: Column): void => {
   }
 }
 
+/**
+ * Integers below 64 bits read as floats and narrower integers, 64-bit
+ * integers (bigints) as 64-bit ones, any decimal as a decimal, and temporal
+ * types as the same kind in any unit.
+ */
 const compatible = (t: S.DataType, expected: Column): boolean => {
   switch (expected.type) {
     case "Float16":
@@ -211,30 +213,23 @@ const compatible = (t: S.DataType, expected: Column): boolean => {
   }
 }
 
-const field = (path: string, name: string) => (path === "" ? name : `${path}.${name}`)
-
 const missing = (path: string): never => V.fail(`missing column ${JSON.stringify(path)}`)
 
 /** The column declared for a field's `column` with Arrow type `t`, or its default type. */
-const declareColumn = (path: string, column: Column, t: S.DataType | undefined): Column => {
+const declareColumn = (path: string, column: Plan.TableColumn, t: S.DataType | undefined): Plan.TableColumn => {
   if (t !== undefined) checkType(path, t, column)
   switch (column.type) {
     case "List": {
-      const [item] = column.fields!
       const child = t !== undefined && (t._tag === "List" || t._tag === "LargeList") ? t.child.type : undefined
-      return { ...column, fields: [{ ...declareColumn(`${path}[]`, item, child), name: "item" }] }
+      return { ...column, fields: [declareColumn(`${path}[]`, column.fields![0], child)] }
     }
     case "Struct":
       return {
         ...column,
         fields: column.fields!.map((f) => {
-          if (t === undefined || t._tag !== "Struct") {
-            return { ...declareColumn(field(path, f.name), f, undefined), name: f.name }
-          }
-          const g = t.fields.find((g) => g.name === f.name)
-          return g === undefined
-            ? missing(field(path, f.name))
-            : { ...declareColumn(field(path, f.name), f, g.type), name: f.name }
+          const p = field(path, f.name)
+          const g = t?._tag === "Struct" ? (t.fields.find((g) => g.name === f.name) ?? missing(p)).type : undefined
+          return declareColumn(p, f, g)
         })
       }
     case "Decimal":
@@ -257,22 +252,7 @@ const declareColumn = (path: string, column: Column, t: S.DataType | undefined):
 export const declare = (
   schema: { readonly ast: AST.AST },
   overrides: { readonly [name: string]: S.DataType | undefined } | undefined
-): Array<Plan.TableColumn> =>
-  fieldsOf(structOf(schema), undefined).map((c) => ({ ...declareColumn(c.name, c, overrides?.[c.name]), name: c.name }))
-
-const numeric: { readonly [name: string]: S.DataType } = {
-  Int8: S.int8,
-  Int16: S.int16,
-  Int32: S.int32,
-  Int64: S.int64,
-  UInt8: S.uint8,
-  UInt16: S.uint16,
-  UInt32: S.uint32,
-  UInt64: S.uint64,
-  Float16: S.float16,
-  Float32: S.float32,
-  Float64: S.float64
-}
+): Array<Plan.TableColumn> => fieldsOf(structOf(schema), "").map((c) => declareColumn(c.name, c, overrides?.[c.name]))
 
 /**
  * The Arrow type of a declared column. Timestamps and durations without a
@@ -315,8 +295,11 @@ export const arrowType = (column: Plan.TableColumn, path: string = column.name):
           }: decimal columns need a precision and scale: pass options.types (for example ArrowSchema.decimal(18, 2))`
         )
         : S.decimal(column.precision, column.scale)
+    case "Float16":
+      return S.float16
     default:
-      return numeric[column.type]
+      // The other numeric types, named as cast targets.
+      return D.castTargets[column.type]
   }
 }
 
@@ -335,8 +318,10 @@ export const toArrowSchema = (
 // Checking frames
 // -----------------------------------------------------------------------------
 
+const inRows = (rows: Uint8Array | undefined, i: number): boolean => rows === undefined || rows[i] === 1
+
 const allNull = (v: V.Vector, rows: Uint8Array | undefined): boolean => {
-  for (let i = 0; i < v.length; i++) if ((rows === undefined || rows[i] === 1) && V.isValid(v, i)) return false
+  for (let i = 0; i < v.length; i++) if (inRows(rows, i) && V.isValid(v, i)) return false
   return true
 }
 
@@ -351,7 +336,7 @@ const timestampRange: { readonly [U in S.TimeUnit]: readonly [bigint, bigint] } 
 const checkRange = (path: string, v: V.I64, unit: S.TimeUnit, rows: Uint8Array | undefined): void => {
   const [lo, hi] = timestampRange[unit]
   for (let i = 0; i < v.length; i++) {
-    if ((rows === undefined || rows[i] === 1) && V.isValid(v, i) && (v.values[i] < lo || v.values[i] > hi)) {
+    if (inRows(rows, i) && V.isValid(v, i) && (v.values[i] < lo || v.values[i] > hi)) {
       V.fail(`column ${JSON.stringify(path)} has timestamps outside the range of DateTime`)
     }
   }
@@ -382,7 +367,7 @@ const convert = (path: string, v: V.Vector, target: S.DataType, rows: Uint8Array
   const back = K.cast(converted, v.type)
   for (let i = 0; i < v.length; i++) {
     if (
-      (rows === undefined || rows[i] === 1) && V.isValid(v, i) &&
+      inRows(rows, i) && V.isValid(v, i) &&
       (!V.isValid(converted, i) || !sameValue(v, back, i))
     ) {
       return V.fail(`column ${JSON.stringify(path)} has values that ${D.describe(target)} can't hold exactly`)
@@ -400,14 +385,14 @@ const check = (path: string, v: V.Vector, expected: Plan.TableColumn, rows: Uint
   checkType(path, v.type, expected)
   if (!expected.nullable) {
     for (let i = 0; i < v.length; i++) {
-      if ((rows === undefined || rows[i] === 1) && !V.isValid(v, i)) {
+      if (inRows(rows, i) && !V.isValid(v, i)) {
         return V.fail(`column ${JSON.stringify(path)} has missing values`)
       }
     }
   }
   if (v.kind === "struct" && v.type._tag === "Struct") {
     const present = new Uint8Array(v.length)
-    for (let i = 0; i < v.length; i++) present[i] = (rows === undefined || rows[i] === 1) && V.isValid(v, i) ? 1 : 0
+    for (let i = 0; i < v.length; i++) present[i] = inRows(rows, i) && V.isValid(v, i) ? 1 : 0
     const fields = v.type.fields
     const children = expected.fields!.map((f) => {
       const k = fields.findIndex((g) => g.name === f.name)
@@ -416,10 +401,10 @@ const check = (path: string, v: V.Vector, expected: Plan.TableColumn, rows: Uint
     const type = S.struct(expected.fields!.map((f, k) => S.field(f.name, children[k].type, { nullable: f.nullable })))
     return V.struct(type, children, v.length, v.valid)
   }
-  if (v.kind === "list" && (v.type._tag === "List" || v.type._tag === "LargeList")) {
+  if (v.kind === "list") {
     const present = new Uint8Array(v.child.length)
     for (let i = 0; i < v.length; i++) {
-      if ((rows === undefined || rows[i] === 1) && V.isValid(v, i)) present.fill(1, v.offsets[i], v.offsets[i + 1])
+      if (inRows(rows, i) && V.isValid(v, i)) present.fill(1, v.offsets[i], v.offsets[i + 1])
     }
     const item = expected.fields![0]
     const child = check(`${path}[]`, v.child, item, present)
@@ -454,15 +439,8 @@ const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => 
       const is = Parser._is(AST.replaceChecks(ast, undefined))
       return (value) => value === null || is(value)
     }
-    case "Suspend": {
-      if (suspended.has(ast)) return V.fail("recursive schemas have no DataFrame column type")
-      suspended.add(ast)
-      try {
-        return valuesCheck(ast.thunk())
-      } finally {
-        suspended.delete(ast)
-      }
-    }
+    case "Suspend":
+      return unsuspend(ast, "", valuesCheck)
     case "Union": {
       const members = ast.types.filter((t) => t._tag !== "Null" && t._tag !== "Undefined").map(valuesCheck)
       if (members.some((m) => m === undefined)) return undefined
@@ -489,10 +467,8 @@ const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => 
 /**
  * The fields of a struct schema whose values it constrains beyond their
  * column type, each with its test for those values.
- *
- * @internal
  */
-export const valueChecks = (
+const valueChecks = (
   schema: { readonly ast: AST.AST }
 ): Array<readonly [name: string, test: (value: unknown) => boolean]> =>
   structOf(schema).propertySignatures.flatMap((ps) => {

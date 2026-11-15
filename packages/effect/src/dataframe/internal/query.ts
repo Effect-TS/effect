@@ -12,14 +12,13 @@
  *   join keys moves to the left side only (the side whose keys the join
  *   keeps);
  * - slices move below row-wise operations that keep every row in place, and
- *   a slice of a sort becomes a top-k selection.
+ *   a slice of a sort becomes a top-k selection;
+ * - columns nothing reads are dropped at the inputs, and derived columns and
+ *   aggregates nothing reads are not computed.
  *
  * An operation is row-wise when its expressions are (see `isRowWise`): a
  * window in a predicate, a sort key or a derived column sees every row of its
  * input, so moving a filter or slice below it changes its result.
- *
- * - columns nothing reads are dropped at the inputs, and derived columns and
- *   aggregates nothing reads are not computed.
  *
  * @internal
  */
@@ -52,18 +51,43 @@ export type Node =
 
 type Rebuild<N> = N extends { readonly input: Plan.Node } ? Omit<N, "input"> & { readonly input: Node } : never
 
-/** @internal */
-export const toError = (cause: unknown): DataFrameError =>
-  new DataFrameError({ message: cause instanceof Error ? cause.message : String(cause), cause })
-
 /** Runs a kernel computation, turning its failures into `DataFrameError`s. @internal */
 export const attempt = <A>(f: () => A): Effect.Effect<A, DataFrameError> => {
   try {
     return Effect.succeed(f())
   } catch (cause) {
-    if (cause instanceof V.DataFrameDefect) return Effect.fail(toError(cause))
+    if (cause instanceof V.DataFrameDefect) return Effect.fail(new DataFrameError({ message: cause.message, cause }))
     if (cause instanceof DataFrameError) return Effect.fail(cause)
     throw cause
+  }
+}
+
+/** @internal */
+export const children = (node: Node): ReadonlyArray<Node> => {
+  switch (node._tag) {
+    case "Values":
+    case "Table":
+      return []
+    case "Join":
+      return [node.left, node.right]
+    case "Concat":
+      return node.inputs
+    default:
+      return [node.input]
+  }
+}
+
+const mapChildren = (node: Node, f: (child: Node) => Node): Node => {
+  switch (node._tag) {
+    case "Values":
+    case "Table":
+      return node
+    case "Join":
+      return { ...node, left: f(node.left), right: f(node.right) }
+    case "Concat":
+      return { ...node, inputs: node.inputs.map(f) }
+    default:
+      return { ...node, input: f(node.input) } as Node
   }
 }
 
@@ -87,21 +111,8 @@ export const tables = (plan: Plan.Node): Map<string, number> => {
 }
 
 /** A plan with each `Table` replaced by `f` of it. @internal */
-export const mapTables = (plan: Plan.Node, f: (table: Plan.Table) => Node): Node => {
-  const replace = (node: Plan.Node): Node => {
-    switch (node._tag) {
-      case "Table":
-        return f(node)
-      case "Values":
-        return node
-      case "Join":
-        return { ...node, left: replace(node.left), right: replace(node.right) }
-      case "Concat":
-        return { ...node, inputs: node.inputs.map(replace) }
-      default:
-        return { ...node, input: replace(node.input) } as Node
-    }
-  }
+export const mapTables = (plan: Node, f: (table: Plan.Table) => Node): Node => {
+  const replace = (node: Node): Node => node._tag === "Table" ? f(node) : mapChildren(node, replace)
   return replace(plan)
 }
 
@@ -109,8 +120,8 @@ export const mapTables = (plan: Plan.Node, f: (table: Plan.Table) => Node): Node
 const tableValues = (table: Plan.Table, frame: F.Frame): Node =>
   values(table.columns === undefined ? frame : conform(frame, table.columns, table.schema))
 
-/** Replaces every `Table` with the catalog's frame, reading each table once. @internal */
-export const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Node, DataFrameError> => {
+/** Replaces every `Table` with the catalog's frame, reading each table once. */
+const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Node, DataFrameError> => {
   const names = [...tables(plan).keys()]
   if (names.length === 0) return Effect.succeed(plan as Node)
   return Effect.forEach(
@@ -120,7 +131,7 @@ export const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effec
     .pipe(
       Effect.flatMap((entries) => {
         const frames = new Map(entries)
-        return attempt(() => mapTables(plan, (table) => tableValues(table, frames.get(table.name)!)))
+        return attempt(() => mapTables(plan as Node, (table) => tableValues(table, frames.get(table.name)!)))
       })
     )
 }
@@ -134,10 +145,8 @@ const namesCache = new WeakMap<object, { readonly names: ReadonlyArray<string> |
 /**
  * The output column names of a resolved plan, or `undefined` when they
  * depend on the data (a pivot without declared columns).
- *
- * @internal
  */
-export const names = (node: Node): ReadonlyArray<string> | undefined => {
+const names = (node: Node): ReadonlyArray<string> | undefined => {
   const cached = namesCache.get(node)
   if (cached !== undefined) return cached.names
   const result = computeNames(node)
@@ -157,6 +166,7 @@ const computeNames = (node: Node): ReadonlyArray<string> | undefined => {
     case "Slice":
     case "Unique":
     case "DropNulls":
+    case "Explode":
       return names(node.input)
     case "Select":
       return node.columns.map((c) => c.name)
@@ -190,8 +200,6 @@ const computeNames = (node: Node): ReadonlyArray<string> | undefined => {
       return node.inputs.length === 0 ? [] : names(node.inputs[0])
     case "Pivot":
       return node.columns === undefined ? undefined : [...node.index, ...node.columns]
-    case "Explode":
-      return names(node.input)
     case "Unnest":
       return undefined
     case "Unpivot":
@@ -224,10 +232,9 @@ const expressions = (node: Node): ReadonlyArray<Plan.Expression> => {
 }
 
 /**
- * Whether an operation's expressions are row-wise (`E.isRowWise`; for
- * aggregations, their arguments), so that each input row contributes the
- * same values whichever other rows are present. Only row-wise operations
- * let filters and slices move below them, and run batch by batch.
+ * Whether an operation's expressions are row-wise (for aggregations, their
+ * arguments). Only such operations let filters and slices move below them,
+ * and run batch by batch.
  *
  * @internal
  */
@@ -244,25 +251,13 @@ const conjuncts = (e: Plan.Expression): Array<Plan.Expression> =>
 const and = (es: ReadonlyArray<Plan.Expression>): Plan.Expression =>
   es.reduce((a, b) => ({ _tag: "Call", fn: "and", args: [a, b] }))
 
-const subset = (a: Set<string>, b: ReadonlySet<string> | ReadonlyArray<string>): boolean => {
-  const s = b instanceof Set ? b : new Set(b as ReadonlyArray<string>)
-  for (const x of a) if (!s.has(x)) return false
+const subset = (a: Set<string>, b: ReadonlySet<string>): boolean => {
+  for (const x of a) if (!b.has(x)) return false
   return true
 }
 
-const mapChildren = (node: Node, f: (child: Node) => Node): Node => {
-  switch (node._tag) {
-    case "Values":
-    case "Table":
-      return node
-    case "Join":
-      return { ...node, left: f(node.left), right: f(node.right) }
-    case "Concat":
-      return { ...node, inputs: node.inputs.map(f) }
-    default:
-      return { ...node, input: f(node.input) } as Node
-  }
-}
+const inverse = (mapping: { readonly [from: string]: string }): Map<string, string> =>
+  new Map(Object.entries(mapping).map(([from, to]) => [to, from]))
 
 const pushFilters = (node: Node): Node => {
   const optimized = mapChildren(node, pushFilters)
@@ -275,17 +270,18 @@ const filtered = (input: Node, predicates: ReadonlyArray<Plan.Expression>): Node
 /**
  * Places each predicate as deep as it can go below `node`. Predicates that
  * are not row-wise (windows) depend on exactly the rows they see, so a set
- * containing one stays where it is, as do predicates above an operation that
- * is not row-wise.
+ * containing one stays where it is.
  */
 const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
   if (predicates.length === 0) return node
   if (!predicates.every(E.isRowWise) || !isRowWise(node)) return filtered(node, predicates)
-  const split = (canPush: (refs: Set<string>, p: Plan.Expression) => boolean) => {
+  /** Pushes the predicates reading only columns that pass `ok` into the input, rewritten. */
+  const below = (ok: (name: string) => boolean, rewrite = (p: Plan.Expression) => p): Node => {
     const down: Array<Plan.Expression> = []
     const here: Array<Plan.Expression> = []
-    for (const p of predicates) (canPush(E.columns(p), p) ? down : here).push(p)
-    return { down, here }
+    for (const p of predicates) ([...E.columns(p)].every(ok) ? down : here).push(p)
+    const input = push((node as { readonly input: Node }).input, down.map(rewrite))
+    return filtered({ ...node, input } as Node, here)
   }
   switch (node._tag) {
     case "Filter":
@@ -294,34 +290,25 @@ const push = (node: Node, predicates: ReadonlyArray<Plan.Expression>): Node => {
     case "DropNulls":
     case "Pick":
     case "Omit":
-      return { ...node, input: push(node.input, predicates) }
+      return below(() => true)
     case "Rename": {
-      const inverse = new Map(Object.entries(node.mapping).map(([from, to]) => [to, from]))
-      const renamed = predicates.map((p) =>
-        E.mapColumns(p, (name) => ({ _tag: "Column", name: inverse.get(name) ?? name }))
-      )
-      return { ...node, input: push(node.input, renamed) }
+      const from = inverse(node.mapping)
+      return below(() => true, (p) => E.mapColumns(p, (name) => ({ _tag: "Column", name: from.get(name) ?? name })))
     }
     case "WithColumns": {
       const added = new Set(node.columns.map((c) => c.name))
-      const { down, here } = split((refs) => [...refs].every((r) => !added.has(r)))
-      return filtered({ ...node, input: push(node.input, down) }, here)
+      return below((r) => !added.has(r))
     }
     case "Select": {
       const byName = new Map(node.columns.map((c) => [c.name, c.expression]))
-      const { down, here } = split((refs) => [...refs].every((r) => byName.get(r)?._tag === "Column"))
-      const inlined = down.map((p) => E.mapColumns(p, (name) => byName.get(name)!))
-      return filtered({ ...node, input: push(node.input, inlined) }, here)
+      return below((r) => byName.get(r)?._tag === "Column", (p) => E.mapColumns(p, (name) => byName.get(name)!))
     }
     case "Unique": {
       const columns = node.columns
-      const { down, here } = split((refs) => columns === undefined || subset(refs, columns))
-      return filtered({ ...node, input: push(node.input, down) }, here)
+      return below((r) => columns === undefined || columns.includes(r))
     }
-    case "GroupBy": {
-      const { down, here } = split((refs) => subset(refs, node.keys))
-      return filtered({ ...node, input: push(node.input, down) }, here)
-    }
+    case "GroupBy":
+      return below((r) => node.keys.includes(r))
     case "Join": {
       const leftNames = names(node.left)
       const rightNames = names(node.right)
@@ -380,10 +367,10 @@ const slice = (input: Node, offset: number, length: number | undefined): Node =>
 
 type Required = ReadonlySet<string> | undefined
 
-const union = (required: Required, ...more: ReadonlyArray<Iterable<string>>): Required => {
+const union = (required: Required, more: Iterable<string>): Required => {
   if (required === undefined) return undefined
   const out = new Set(required)
-  for (const m of more) for (const x of m) out.add(x)
+  for (const x of more) out.add(x)
   return out
 }
 
@@ -411,12 +398,10 @@ const prune = (node: Node, required: Required): Node => {
     case "Table":
       return node
     case "Filter":
-      return { ...node, input: prune(node.input, union(required, E.columns(node.predicate))) }
     case "Sort":
     case "TopK":
-      return { ...node, input: prune(node.input, union(required, exprColumns(node.keys.map((k) => k.expression)))) }
     case "Slice":
-      return { ...node, input: prune(node.input, required) }
+      return { ...node, input: prune(node.input, union(required, exprColumns(expressions(node)))) }
     case "Unique":
     case "DropNulls":
       return {
@@ -443,13 +428,13 @@ const prune = (node: Node, required: Required): Node => {
       const all = names(node.input)
       if (all === undefined) return { ...node, input: prune(node.input, undefined) }
       const drop = new Set(node.columns)
-      const below = all.filter((n) => !drop.has(n) && (required === undefined || required.has(n)))
-      return { ...node, input: prune(node.input, new Set(below.length === 0 ? all.slice(0, 1) : below)) }
+      const below = keep(all, (n) => !drop.has(n) && (required === undefined || required.has(n)))
+      return { ...node, input: prune(node.input, new Set(below)) }
     }
     case "Rename": {
       if (required === undefined) return { ...node, input: prune(node.input, undefined) }
-      const inverse = new Map(Object.entries(node.mapping).map(([from, to]) => [to, from]))
-      return { ...node, input: prune(node.input, new Set([...required].map((n) => inverse.get(n) ?? n))) }
+      const from = inverse(node.mapping)
+      return { ...node, input: prune(node.input, new Set([...required].map((n) => from.get(n) ?? n))) }
     }
     case "GroupBy": {
       const aggregates = required === undefined
@@ -510,9 +495,8 @@ const line = (node: Node): string => {
     case "Filter":
       return `Filter ${E.show(node.predicate)}`
     case "Select":
-      return `Select ${named(node.columns)}`
     case "WithColumns":
-      return `WithColumns ${named(node.columns)}`
+      return `${node._tag} ${named(node.columns)}`
     case "Sort":
       return `Sort ${keys(node.keys)}${node.nullsLast ? " nulls last" : ""}`
     case "TopK":
@@ -520,13 +504,11 @@ const line = (node: Node): string => {
     case "Slice":
       return `Slice offset ${node.offset}${node.length === undefined ? "" : ` length ${node.length}`}`
     case "Unique":
-      return `Unique${node.columns === undefined ? "" : ` ${list(node.columns)}`}`
     case "DropNulls":
-      return `DropNulls${node.columns === undefined ? "" : ` ${list(node.columns)}`}`
+      return `${node._tag}${node.columns === undefined ? "" : ` ${list(node.columns)}`}`
     case "Pick":
-      return `Pick ${list(node.columns)}`
     case "Omit":
-      return `Omit ${list(node.columns)}`
+      return `${node._tag} ${list(node.columns)}`
     case "Rename":
       return `Rename ${list(Object.entries(node.mapping).map(([a, b]) => `${a} -> ${b}`))}`
     case "GroupBy":
@@ -544,24 +526,8 @@ const line = (node: Node): string => {
     case "Unpivot":
       return `Unpivot ${list(node.on)} index ${list(node.index)} as ${node.variable}, ${node.value}`
     case "Explode":
-      return `Explode ${node.column}`
     case "Unnest":
-      return `Unnest ${node.column}`
-  }
-}
-
-/** @internal */
-export const children = (node: Node): ReadonlyArray<Node> => {
-  switch (node._tag) {
-    case "Values":
-    case "Table":
-      return []
-    case "Join":
-      return [node.left, node.right]
-    case "Concat":
-      return node.inputs
-    default:
-      return [node.input]
+      return `${node._tag} ${node.column}`
   }
 }
 
@@ -662,18 +628,18 @@ export const execute = (plan: Node): Effect.Effect<F.Frame, DataFrameError> => {
  *
  * @internal
  */
-export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> =>
-  isStreaming(plan, catalog)
-    ? Streaming.collect(plan, catalog).pipe(
-      Effect.withSpan("dataframe.Query", {
-        attributes: { "dataframe.operations": count(plan), "dataframe.streaming": true }
-      })
-    )
+export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<F.Frame, DataFrameError> => {
+  const streaming = isStreaming(plan, catalog)
+  const result = streaming
+    ? Streaming.collect(plan, catalog)
     : resolve(plan, catalog).pipe(
       Effect.flatMap((resolved) => attempt(() => optimize(resolved))),
-      Effect.flatMap(execute),
-      Effect.withSpan("dataframe.Query", { attributes: { "dataframe.operations": count(plan) } })
+      Effect.flatMap(execute)
     )
+  return result.pipe(Effect.withSpan("dataframe.Query", {
+    attributes: { "dataframe.operations": count(plan), ...(streaming ? { "dataframe.streaming": true } : {}) }
+  }))
+}
 
 /**
  * The optimised plan that runs, as text. Plans over streamed tables show
@@ -682,9 +648,10 @@ export const collect = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effec
  * @internal
  */
 export const explain = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<string, DataFrameError> =>
-  isStreaming(plan, catalog)
-    ? attempt(() => show(optimize(plan as Node)))
-    : resolve(plan, catalog).pipe(Effect.flatMap((resolved) => attempt(() => show(optimize(resolved)))))
+  Effect.flatMap(
+    isStreaming(plan, catalog) ? Effect.succeed(plan as Node) : resolve(plan, catalog),
+    (resolved) => attempt(() => show(optimize(resolved)))
+  )
 
 const isStreaming = (plan: Plan.Node, catalog: Catalog.Service): boolean =>
   [...tables(plan).keys()].some(catalog.streaming)

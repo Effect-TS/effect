@@ -69,21 +69,9 @@ const undeclared = (node: Q.Node): ReadonlyArray<string> => [
  */
 const unread = (node: Q.Node): Batches => {
   if (undeclared(node).length > 0) return Stream.empty
-  const empty = (n: Q.Node): Q.Node => {
-    switch (n._tag) {
-      case "Table":
-        return Q.values(F.empty(n.columns!.map((c) => ({ name: c.name, type: arrowType(c), nullable: c.nullable }))))
-      case "Values":
-        return n
-      case "Join":
-        return { ...n, left: empty(n.left), right: empty(n.right) }
-      case "Concat":
-        return { ...n, inputs: n.inputs.map(empty) }
-      default:
-        return { ...n, input: empty((n as { readonly input: Q.Node }).input) } as Q.Node
-    }
-  }
-  return Stream.fromEffect(Effect.flatMap(Q.attempt(() => empty(node)), Q.execute))
+  const empty = (table: Plan.Table) =>
+    Q.values(F.empty(table.columns!.map((c) => ({ name: c.name, type: arrowType(c), nullable: c.nullable }))))
+  return Stream.fromEffect(Effect.flatMap(Q.attempt(() => Q.mapTables(node, empty)), Q.execute))
 }
 
 /** Fails for a node without batches, whose columns are unknown. */
