@@ -141,7 +141,8 @@ const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
  * checked too. The query reads every column as its declared type: strings,
  * enums and `char(n)` as text (`char(n)` without trailing spaces, as
  * PostgreSQL converts it), numbers as the PostgreSQL type of their
- * declared type. `explain` shows both queries.
+ * declared type. `explain` shows both queries. Tables whose schemas have
+ * checks on whole rows are rejected when the query compiles.
  *
  * **Gotchas**
  *
