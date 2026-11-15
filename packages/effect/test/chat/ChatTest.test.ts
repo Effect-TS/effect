@@ -93,9 +93,10 @@ describe("ChatTest", () => {
     }
   })
 
-  // These rules probe their capability only while the one it builds on is on.
+  // Paths that all-on and all-off miss: a probe gated on another capability, and a modal opened from a select.
   for (
     const [rule, off] of [
+      ["modal/origin", "buttons"],
       ["unsupported/modals", "modals"],
       ["modal/errorsKeepOpen", "modalErrors"],
       ["unsupported/ephemeral", "ephemeral"]

@@ -84,7 +84,7 @@ const withLogs = <A, E, R>(effect: Effect.Effect<A, E, R>) => {
 }
 
 describe("webhook", () => {
-  it.live("rejects a bad or stale signature", () =>
+  it.live("rejects a bad, stale or missing signature", () =>
     Effect.gen(function*() {
       const body = JSON.stringify(message)
       const wrongKey = yield* handle({}, yield* Effect.promise(() => request(body, { key: "other" })))
@@ -92,7 +92,9 @@ describe("webhook", () => {
       const stale = String(Math.floor(Date.now() / 1000) - 6 * 60)
       const old = yield* handle({}, yield* Effect.promise(() => request(body, { timestamp: stale })))
       assert.strictEqual(old.status, 401)
-      assert.strictEqual(wrongKey.events.length + old.events.length, 0)
+      const unsigned = yield* handle({}, new Request("http://localhost/", { method: "POST", body }))
+      assert.strictEqual(unsigned.status, 401)
+      assert.strictEqual(wrongKey.events.length + old.events.length + unsigned.events.length, 0)
     }))
 
   it.live("413 past the body limit, 400 for a body that is not JSON", () =>
