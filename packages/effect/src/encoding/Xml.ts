@@ -24,6 +24,7 @@ import * as Effect from "../Effect.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import { isWellFormed } from "../String.ts"
+import type { Mutable } from "../Types.ts"
 
 const XmlErrorTypeId = "~effect/encoding/Xml/XmlError"
 
@@ -132,9 +133,9 @@ export interface Doctype {
  * `XmlError` would. Otherwise they are absent. The encoders ignore them.
  *
  * With `namespaces: "strict"`, `namespace` and `localName` give the element's
- * resolved name. Attributes stay keyed by their names as written, and `xmlns`
- * declarations stay attributes. Otherwise these fields are absent. The
- * encoders ignore them.
+ * resolved name. Otherwise they are absent. The encoders ignore them.
+ * Attributes stay keyed by their names as written, and `xmlns` declarations
+ * stay attributes.
  *
  * @stability experimental
  * @category models
@@ -380,11 +381,11 @@ export interface ElementsOptions {
  * - Names are reported as written, including namespace prefixes, and `xmlns`
  *   declarations are ordinary attributes. `namespaces: "strict"` adds the
  *   resolved names.
- * - Tokens, aggregate open element names, or with `namespaces: "strict"` the
- *   aggregate namespace declarations of open elements, longer than
- *   `maxTokenSize`, and elements nested deeper than `maxDepth`, fail with a
- *   `Limit` `XmlError`. A long token can instead fail with an error found in
- *   its first `maxTokenSize + 1` characters.
+ * - Tokens or aggregate open element names longer than `maxTokenSize`, and
+ *   elements nested deeper than `maxDepth`, fail with a `Limit` `XmlError`.
+ *   So do the aggregate namespace declarations of open elements, with
+ *   `namespaces: "strict"`. A long token can instead fail with an error found
+ *   in its first `maxTokenSize + 1` characters.
  * - Strings in events can share memory with their input chunk, so keeping a
  *   short string, such as an id from each record, can keep the whole chunk in
  *   memory. Copy strings that are kept long, for example with
@@ -1022,8 +1023,8 @@ const xmlNamespace = "http://www.w3.org/XML/1998/namespace"
 const xmlnsNamespace = "http://www.w3.org/2000/xmlns/"
 
 // In V8, a slice of 13 or more characters keeps its whole input chunk alive,
-// so strings held while their element is open, such as its name and the
-// namespaces it declares, are copied
+// so strings that the parser holds, such as the name of an open element and
+// the namespaces it declares, are copied
 const copyString = (s: string): string => s.length < 13 ? s : (" " + s).slice(1)
 
 // A namespace bound by a declaration. Bindings to the same namespace share
@@ -1045,17 +1046,6 @@ interface Scope {
 // The size of released namespace declarations, beyond those of open elements,
 // at which the namespace maps are rebuilt
 const compactDeclarationSize = 4096
-
-// Returns the index of the colon of a qualified name, -1 when it has none, or
-// -2 when the name is not a qualified name
-const qnameColon = (name: string): number => {
-  const colon = name.indexOf(":")
-  if (colon === -1) return -1
-  return colon === 0 || colon === name.length - 1 || name.indexOf(":", colon + 1) !== -1 ||
-      !isNameStartCode(name.charCodeAt(colon + 1)) ?
-    -2 :
-    colon
-}
 
 // The number of element names whose attribute order is tracked, and the
 // number of attributes beyond which V8 would turn a fast-mode map into a
@@ -1115,19 +1105,21 @@ class Parser {
   private readonly namespaces: boolean
   private ascii = false
 
-  // With namespaces, the scope of each open element, the binding of each
-  // prefix, the shared namespace of each namespace name, and the prefix and
-  // previous binding of each change that open elements made, which end tags
-  // undo. In V8, deleting a key from a large map and adding it again makes
-  // later lookups of it walk the deleted entries, so a prefix that goes out of
-  // scope is set to `undefined` and namespaces are kept. Both maps are rebuilt
-  // from the bindings in use once the declarations released since outweigh
-  // those of open elements.
+  // With namespaces, the scope of each open element
   private readonly scopes: Array<Scope> = []
+  // The binding of each prefix, and the shared namespace of each namespace
+  // name. In V8, deleting a key from a large map and adding it again makes
+  // later lookups of it walk the deleted entries, so entries are never
+  // deleted: a prefix that goes out of scope is set to `undefined`, and
+  // `compact` rebuilds both maps.
   private bindings = new Map<string, Namespace | undefined>([["xml", xmlBinding]])
   private namespacesByName = new Map<string, Namespace>()
+  // The prefix and previous binding of each change that open elements made,
+  // which end tags undo
   private readonly undoPrefixes: Array<string> = []
   private readonly undoBindings: Array<Namespace | undefined> = []
+  // The size of the declarations of open elements, and of those released
+  // since the maps were rebuilt
   private openDeclarationSize = 0
   private releasedDeclarationSize = 0
 
@@ -1500,7 +1492,7 @@ class Parser {
       }
       if (shape !== undefined && shape !== null && shape.length <= maxFastAttributes) {
         // Stored names are copied, as they outlive the chunk
-        if (index === shape.length) shape.push((" " + attribute).slice(1))
+        if (index === shape.length) shape.push(copyString(attribute))
         else if (shape[index] !== attribute) {
           this.shapes.set(name, null)
           shape = null
@@ -1518,22 +1510,26 @@ class Parser {
     if (!selfClosing && this.openNameSize + name.length > this.maxTokenSize) {
       throw this.error("Limit", `open element names exceed maxTokenSize of ${this.maxTokenSize}`, this.base + i)
     }
-    const start = this.namespaces ? this.resolveStart(name, attributes ?? emptyAttributes, i, selfClosing) : undefined
+    const scope = this.namespaces ? this.openScope(name, attributes ?? emptyAttributes, i, selfClosing) : undefined
     this.flushText()
-    if (start !== undefined) {
-      this.out.push(start)
-    } else if (this.positions) {
+    let start: Mutable<StartElement>
+    if (this.positions) {
       this.count(i)
-      this.out.push({
+      start = {
         _tag: "StartElement",
         name,
         attributes: attributes ?? emptyAttributes,
         line: this.line,
         column: this.base + i - this.lineStart + 1
-      })
+      }
     } else {
-      this.out.push({ _tag: "StartElement", name, attributes: attributes ?? emptyAttributes })
+      start = { _tag: "StartElement", name, attributes: attributes ?? emptyAttributes }
     }
+    if (scope !== undefined) {
+      start.namespace = scope.namespace
+      start.localName = scope.localName
+    }
+    this.out.push(start)
     if (selfClosing) {
       this.out.push(this.endElement(name))
       if (this.stack.length === 0) this.state = EPILOG
@@ -1545,21 +1541,24 @@ class Parser {
     return j
   }
 
-  private resolveStart(
+  // Applies the declarations of a start tag and resolves its names
+  private openScope(
     name: string,
     attributes: Readonly<Record<string, string>>,
     i: number,
     selfClosing: boolean
-  ): StartElement {
+  ): Scope {
     const undo = this.undoPrefixes.length
+    let prefixed = 0
     for (const attribute in attributes) {
-      if (qnameColon(attribute) === -2) throw this.syntax(`attribute name ${attribute} is not a qualified name`, i)
+      const colon = this.qnameColon("attribute", attribute, i)
       let prefix: string
       if (attribute === "xmlns") {
         prefix = ""
       } else if (attribute.startsWith("xmlns:")) {
         prefix = attribute.slice(6)
       } else {
+        if (colon !== -1) prefixed++
         continue
       }
       const uri = attributes[attribute]
@@ -1578,7 +1577,7 @@ class Parser {
       const key = copyString(prefix)
       this.undoPrefixes.push(key)
       this.undoBindings.push(current)
-      this.bindings.set(key, uri === "" ? undefined : this.namespace(uri))
+      this.bindings.set(key, uri === "" ? undefined : this.intern(uri))
       this.openDeclarationSize += prefix.length + uri.length
     }
     if (!selfClosing && this.openDeclarationSize > this.maxTokenSize) {
@@ -1590,8 +1589,7 @@ class Parser {
     }
     let namespace: string
     let localName = name
-    const colon = qnameColon(name)
-    if (colon === -2) throw this.syntax(`element name ${name} is not a qualified name`, i)
+    const colon = this.qnameColon("element", name, i)
     if (colon === -1) {
       namespace = this.bindings.get("")?.uri ?? ""
     } else {
@@ -1602,42 +1600,44 @@ class Parser {
       namespace = uri
       localName = name.slice(colon + 1)
     }
-    // Unprefixed attributes have no namespace
-    let seen: Map<Namespace, Set<string>> | undefined
-    for (const attribute in attributes) {
-      const colon = attribute.indexOf(":")
-      if (colon === -1 || attribute.startsWith("xmlns:")) continue
-      const prefix = attribute.slice(0, colon)
-      const binding = this.bindings.get(prefix)
-      if (binding === undefined) {
-        throw this.undeclared(`namespace prefix ${prefix} of attribute ${attribute} is not declared`, i)
+    // Prefixed attributes are resolved once every declaration of the tag is
+    // applied. Unprefixed attributes have no namespace, and a duplicate takes
+    // two prefixed ones.
+    if (prefixed > 0) {
+      const seen = prefixed > 1 ? new Map<Namespace, Set<string>>() : undefined
+      for (const attribute in attributes) {
+        const colon = attribute.indexOf(":")
+        if (colon === -1 || attribute.startsWith("xmlns:")) continue
+        const prefix = attribute.slice(0, colon)
+        const binding = this.bindings.get(prefix)
+        if (binding === undefined) {
+          throw this.undeclared(`namespace prefix ${prefix} of attribute ${attribute} is not declared`, i)
+        }
+        if (seen === undefined) break
+        const local = attribute.slice(colon + 1)
+        let locals = seen.get(binding)
+        if (locals === undefined) seen.set(binding, locals = new Set())
+        else if (locals.has(local)) {
+          throw this.syntax(`attribute ${attribute} has the namespace and local name of another attribute`, i)
+        }
+        locals.add(local)
       }
-      const local = attribute.slice(colon + 1)
-      seen ??= new Map()
-      let locals = seen.get(binding)
-      if (locals === undefined) seen.set(binding, locals = new Set())
-      else if (locals.has(local)) {
-        throw this.syntax(`attribute ${attribute} has the namespace and local name of another attribute`, i)
-      }
-      locals.add(local)
     }
-    let start: StartElement
-    if (this.positions) {
-      this.count(i)
-      start = {
-        _tag: "StartElement",
-        name,
-        attributes,
-        line: this.line,
-        column: this.base + i - this.lineStart + 1,
-        namespace,
-        localName
-      }
-    } else {
-      start = { _tag: "StartElement", name, attributes, namespace, localName }
+    const scope: Scope = { namespace, localName, undo }
+    this.scopes.push(scope)
+    return scope
+  }
+
+  // Returns the index of the colon in a qualified name, or -1 when it has none
+  private qnameColon(kind: "element" | "attribute", name: string, i: number): number {
+    const colon = name.indexOf(":")
+    if (
+      colon !== -1 && (colon === 0 || colon === name.length - 1 || name.indexOf(":", colon + 1) !== -1 ||
+        !isNameStartCode(name.charCodeAt(colon + 1)))
+    ) {
+      throw this.syntax(`${kind} name ${name} is not a qualified name`, i)
     }
-    this.scopes.push({ namespace, localName, undo })
-    return start
+    return colon
   }
 
   private endElement(name: string): EndElement {
@@ -1649,7 +1649,7 @@ class Parser {
 
   // Returns the shared namespace for `uri`. Finding it costs the length of
   // `uri`, which is part of the declaration being read.
-  private namespace(uri: string): Namespace {
+  private intern(uri: string): Namespace {
     let namespace = this.namespacesByName.get(uri)
     if (namespace === undefined) {
       namespace = { uri: copyString(uri) }
@@ -1668,24 +1668,28 @@ class Parser {
       this.releasedDeclarationSize += size
       this.bindings.set(prefix, this.undoBindings.pop())
     }
-    // The maps have fewer entries than the size of the declarations released
-    // since the last rebuild, so rebuilding them is linear in the input
-    if (this.releasedDeclarationSize > this.openDeclarationSize + compactDeclarationSize) {
-      const bindings = new Map<string, Namespace | undefined>()
-      const namespaces = new Map<string, Namespace>()
-      for (const [prefix, namespace] of this.bindings) {
-        if (namespace === undefined) continue
-        bindings.set(prefix, namespace)
-        namespaces.set(namespace.uri, namespace)
-      }
-      // A shadowed binding comes back into scope when its element closes
-      for (const namespace of this.undoBindings) {
-        if (namespace !== undefined) namespaces.set(namespace.uri, namespace)
-      }
-      this.bindings = bindings
-      this.namespacesByName = namespaces
-      this.releasedDeclarationSize = 0
+    if (this.releasedDeclarationSize > this.openDeclarationSize + compactDeclarationSize) this.compact()
+  }
+
+  // Rebuilds the maps from the bindings in use. Their entries come from
+  // declarations that are open or were released since the last rebuild, and
+  // the released ones outweigh the open ones, so rebuilds are linear in the
+  // input.
+  private compact(): void {
+    const bindings = new Map<string, Namespace | undefined>()
+    const namespacesByName = new Map<string, Namespace>()
+    for (const [prefix, namespace] of this.bindings) {
+      if (namespace === undefined) continue
+      bindings.set(prefix, namespace)
+      namespacesByName.set(namespace.uri, namespace)
     }
+    // A shadowed binding comes back into scope when its element closes
+    for (const namespace of this.undoBindings) {
+      if (namespace !== undefined) namespacesByName.set(namespace.uri, namespace)
+    }
+    this.bindings = bindings
+    this.namespacesByName = namespacesByName
+    this.releasedDeclarationSize = 0
   }
 
   // A DTD can declare a prefix with a default attribute value, which is not
