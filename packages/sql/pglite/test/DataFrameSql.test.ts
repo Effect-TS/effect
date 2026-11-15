@@ -65,6 +65,9 @@ const Setup = Layer.effectDiscard(
       yield* sql.unsafe(`CREATE TABLE "${name}" (s TEXT)`)
       yield* sql.unsafe(`INSERT INTO "${name}" VALUES ('${name.length}')`)
     }
+    yield* sql.unsafe(`DROP TABLE IF EXISTS shared`)
+    yield* sql.unsafe(`CREATE TABLE shared ("${"z".repeat(63)}" DOUBLE PRECISION)`)
+    yield* sql`INSERT INTO shared VALUES (1)`
     yield* sql`DROP TABLE IF EXISTS "a.b"`
     yield* sql`CREATE TABLE "a.b" (s TEXT)`
     yield* sql`INSERT INTO "a.b" VALUES ('good')`
@@ -637,12 +640,17 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
             DECLARE n INTEGER := COALESCE(NULLIF(current_setting('df.tick', TRUE), ''), '0')::INTEGER + 1;
             BEGIN PERFORM set_config('df.tick', n::TEXT, FALSE); RETURN n; END $$`
         )
-        yield* sql`CREATE VIEW ticking AS SELECT CASE WHEN tick() <= 1 THEN 'good' ELSE 'bad' END AS s`
-        const ticking = () => Query.table("ticking", Schema.Struct({ s: Schema.Literal("good") }))
+        // Named with 63 bytes: names longer than that are one with it to PostgreSQL.
+        const view = "ticking".padEnd(63, "_")
+        yield* sql.unsafe(`CREATE VIEW "${view}" AS SELECT CASE WHEN tick() <= 1 THEN 'good' ELSE 'bad' END AS s`)
+        const ticking = (name = view) => Query.table(name, Schema.Struct({ s: Schema.Literal("good") }))
         const tick = <R>(query: Query.Query<R>) =>
           Effect.andThen(sql`SELECT set_config('df.tick', '0', FALSE)`, rowsOnSql(query))
         assert.deepStrictEqual(yield* tick(ticking()), [{ s: "good" }])
-        assert.deepStrictEqual(yield* tick(Query.concat([ticking(), ticking()])), [{ s: "good" }, { s: "good" }])
+        assert.deepStrictEqual(
+          yield* tick(Query.concat([ticking(), ticking(), ticking(view + "s")])),
+          [{ s: "good" }, { s: "good" }, { s: "good" }]
+        )
         yield* sql`CREATE SEQUENCE seq START 1`
         yield* sql`CREATE VIEW fluctuating AS SELECT CASE WHEN nextval('seq') <= 2 THEN 'good' ELSE 'bad' END AS s`
         const query = Query.table("fluctuating", Schema.Struct({ s: Schema.Literal("good") }))
@@ -676,9 +684,16 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(yield* rowsOnSql(two), [{ s: "57" }, { s: "good" }])
       }))
 
-    it.effect("columns PostgreSQL can't tell apart are rejected", () =>
+    it.effect("columns are one to PostgreSQL when their first 63 bytes are", () =>
       Effect.gen(function*() {
-        // PostgreSQL keeps the whole characters within an identifier's first 63 bytes.
+        // Declarations of one table read its one column `"z".repeat(63)`, each with its checks.
+        const shared = (name: string, schema: Schema.Top & { readonly Type: number } = Schema.Number) =>
+          Query.table("shared", Schema.Struct({ [name]: schema })).pipe(Query.select((c) => ({ x: c[name] })))
+        const [za, zb] = ["z".repeat(63) + "a", "z".repeat(63) + "b"]
+        assert.deepStrictEqual(yield* rowsOnSql(Query.concat([shared(za), shared(zb)])), [{ x: 1 }, { x: 1 }])
+        const error = yield* Effect.flip(onSql(Query.concat([shared(za), shared(zb, Schema.Literal(2))])))
+        assert.strictEqual(error.message, `column ${JSON.stringify(zb)} has values its schema rejects`)
+        // Columns of one relation are rejected: PostgreSQL keeps the whole characters within an identifier's first 63 bytes.
         const pairs = [["x".repeat(63) + "a", "x".repeat(63) + "b"], ["x".repeat(62) + "é", "x".repeat(62) + "ж"]]
         for (const [a, b] of pairs) {
           const added = Query.from(DataFrame.fromColumns({ [a]: [1] })).pipe(

@@ -19,8 +19,10 @@
  * sources of tables) are short and share one prefix, chosen per plan so
  * that no name the plan supplies (its tables' and its columns') starts with
  * it (see {@link inventor}). PostgreSQL keeps only the first 63 bytes of a
- * name, so the columns of each relation must differ within them (see
- * {@link distinguishable}).
+ * name (see {@link identifier}), so the columns of each relation must
+ * differ within them (see {@link distinguishable}), and names alike within
+ * them are one table, or one column of it, to every declaration (see
+ * {@link source}).
  *
  * @internal
  */
@@ -45,7 +47,7 @@ interface Compiler {
   readonly hidden: (name: string) => string
   /** The quoted row key. */
   readonly row: string
-  /** The quoted name of the source of each table name (see {@link source}). */
+  /** The quoted name of the source of each table name, as PostgreSQL keeps it (see {@link source}). */
   readonly sources: ReadonlyMap<string, string>
 }
 
@@ -720,7 +722,7 @@ const relation = (node: Plan.Node, c: Compiler): string => {
           `ROW_NUMBER() OVER () AS ${row}`
         ]
           .join(", ")
-      } FROM ${c.sources.get(node.name)}`
+      } FROM ${c.sources.get(identifier(node.name))}`
     case "Values":
       return values(node.frame as unknown as F.Frame, c)
     case "Filter": {
@@ -1153,13 +1155,18 @@ const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
 ]
 
 /**
- * The source of the tables named `name` among `tables`: the columns they
- * declare, read once. It is `MATERIALIZED`, which PostgreSQL computes once
- * per statement, so the checks and the result read the same rows, whatever
- * the relation: views that sample rows or call functions included.
+ * The source of the tables named `name` among `tables`, as PostgreSQL
+ * keeps their names (see {@link identifier}): the columns they declare,
+ * read once. It is `MATERIALIZED`, which PostgreSQL computes once per
+ * statement, so the checks and the result read the same rows, whatever the
+ * relation: views that sample rows or call functions included. Columns are
+ * named as PostgreSQL keeps them too, so declarations naming one column
+ * differently past its first 63 bytes all read it, each with its checks.
  */
 const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
-  const columns = [...new Set(tables.flatMap((t) => t.name === name ? t.columns!.map((c) => c.name) : []))]
+  const columns = [
+    ...new Set(tables.flatMap((t) => identifier(t.name) === name ? t.columns!.map((c) => identifier(c.name)) : []))
+  ]
   return `MATERIALIZED (SELECT ${columns.length === 0 ? "1" : list(columns)} FROM ${quote(name)})`
 }
 
@@ -1261,7 +1268,9 @@ export const compile = (plan: Plan.Node): Compiled => {
   const tables = [...frames].flatMap(([node, frame]) =>
     node._tag === "Table" ? [{ node, checks: rowChecks(node, frame) }] : []
   )
-  const sources = new Map([...new Set(tables.map((t) => t.node.name))].map((name, i) => [name, hidden(`table${i}`)]))
+  const sources = new Map(
+    [...new Set(tables.map((t) => identifier(t.node.name)))].map((name, i) => [name, hidden(`table${i}`)])
+  )
   const compiler: Compiler = { frames, hidden, row: hidden("row"), sources }
   const sql = relation(plan, compiler)
   const schema = S.make(result.columns.map((col) => S.field(col.name, col.type, { nullable: true })))
@@ -1285,7 +1294,7 @@ export const compile = (plan: Plan.Node): Compiled => {
         names.push(hidden(`check${names.length}`))
         return `${check.sql} AS ${names[names.length - 1]}`
       }).join(", ")
-    } FROM ${sources.get(t.node.name)}) AS ${hidden(`checks${i}`)}`
+    } FROM ${sources.get(identifier(t.node.name))}) AS ${hidden(`checks${i}`)}`
   )
   const rows = `(SELECT ${[...columns, compiler.row].join(", ")} FROM (${sql}) AS t) AS r`
   return {
