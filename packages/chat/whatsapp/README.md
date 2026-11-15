@@ -24,7 +24,25 @@ For other runtimes such as Workers, provide
 - Groups are not supported. Group webhooks are logged and dropped, and an op on a group address fails.
 - WhatsApp has no edit or delete, so a streamed reply is posted part by part.
 - Outside the 24 hour customer service window only templates can be sent, with `WhatsAppChat.sendTemplate`.
-- Not yet checked against the live API: the unit Meta counts text limits in, how the rendered formatting shows, a `.md` file sent as `text/plain`, whether error 131047 comes back on the send or as a later status, the webhook's real timeout, and how a media header renders beside buttons.
+- A user can tap more than one reply button of a message, or pick one list row twice. Each tap is its own click.
+
+## Live checks
+
+Checked on Graph API `v23.0` from a Meta test number to one phone. The default `baseUrl` is `v24.0`, where these have not been repeated.
+
+- Meta counts text, interactive bodies, button and row titles, and row ids in code points. The adapter counts UTF-16 units, which is never less. A reply button id is counted in UTF-8 bytes, up to 256, and the adapter checks it that way.
+- The rendered formatting displays as intended, and literal `*`, `_` and escapes display as typed.
+- A `.md` file sent as `text/plain` arrives with its name.
+- A media header beside reply buttons or a link button renders.
+- Meta gave up on a webhook response after about 22 seconds. The default `deadline` is 10 seconds.
+- Six messages to one user in 4.4 seconds were accepted. That is one burst, not a sustained rate, so `minWriteInterval` stays at Meta's documented 6 seconds.
+
+Not yet checked:
+
+- Whether error 131047 comes back on the send or as a later status.
+- Sending to a BSUID from a production number. A test number only sends to its allow-listed phone numbers.
+- Sending from a production number whose business has Messaging accounts and a payment method, with and without `messagingAccountId`.
+- Groups.
 
 ## Links
 

@@ -152,7 +152,11 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   string. Each replacement is used only when it is no longer than the
  *   Markdown it replaces, so the text never grows; anything else is sent as
  *   typed, including reference links and their definitions, and code fenced
- *   inside a quote or a list item. `descriptor.measure` counts the Markdown in UTF-16 units.
+ *   inside a quote or a list item.
+ * - `descriptor.measure` and the label limits count UTF-16 units. Meta
+ *   counts text, bodies, labels and row ids in code points, so the count is
+ *   exact for most text and stricter only for characters outside the Basic
+ *   Multilingual Plane, such as emoji.
  * - Link previews are off unless `withPostOptions({ linkPreview: true })`.
  * - One file per post. It is uploaded, then sent as one media message with
  *   the text as its caption, or as the header of a message with reply
@@ -181,11 +185,21 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   `label_too_long`), an id holding U+241F, two reply buttons with one
  *   label, and two elements with one id and value (`InvalidRequest`). A
  *   select's `selected` and a button's `style` are ignored.
+ * - A reply button's id on the wire is `b`, the id, U+241F and the value,
+ *   and Meta counts it in UTF-8 bytes, up to 256. Over that, the post is
+ *   refused before the call with `TooLarge`, `action_data_too_long`,
+ *   even when the id and value are within `limits.actionDataLength`.
  * - `getThread` is built from the address alone, as `direct`. `opener`
  *   is always `None`.
  * - The pair rate limit is one message every 6 seconds to one user, which is
- *   `limits.minWriteInterval`. Meta refuses a faster pace with error
- *   131056, `RateLimited`.
+ *   `limits.minWriteInterval`. Meta accepts short bursts above that rate
+ *   but refuses a sustained faster pace with error 131056, `RateLimited`.
+ * - `messagingAccountId` is sent as `messaging_account_id` on every
+ *   message. Meta needs it when the access token can send from more than
+ *   one Messaging account on the phone number, and picks the token's only
+ *   one when it is left out.
+ * - Built against Graph API `v24.0`, the default `baseUrl`. The
+ *   adapter's live checks ran on `v23.0`.
  *
  * @stability unstable
  * @category layers
@@ -194,6 +208,7 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
 export const layer = (options: {
   readonly accessToken: Redacted.Redacted
   readonly phoneNumberId: string
+  readonly messagingAccountId?: string | undefined
   readonly baseUrl?: string | undefined
 }): Layer.Layer<WhatsAppChat | WhatsAppGraphApi, never, HttpClient.HttpClient | Registry> =>
   Layer.effect(
@@ -206,7 +221,8 @@ export const layer = (options: {
         graph,
         http,
         accessToken: options.accessToken,
-        phoneNumberId: options.phoneNumberId
+        phoneNumberId: options.phoneNumberId,
+        messagingAccountId: options.messagingAccountId
       })
       yield* registry.register(adapter)
       const context = { phoneNumberId: options.phoneNumberId }
@@ -265,10 +281,11 @@ export const parts: (thread: ChatThread) => Option.Option<{
  *   `ChatHandler`, clicks to `ChatInteraction.handle`, and statuses and
  *   changed ids to `onUpdate`. A removed reaction is dropped.
  * - A `NotAccepted` stops the delivery and answers 503, as does a request
- *   that takes longer than `deadline` (4 seconds by default, provisional).
- *   Meta then delivers the whole batch again, for up to 7 days, so a batch
- *   that always runs past the deadline repeats until then. At the deadline
- *   the work is interrupted without waiting for its finalizers.
+ *   that takes longer than `deadline`, 10 seconds by default. Meta then
+ *   delivers the whole batch again, for up to 7 days, so a batch that
+ *   always runs past the deadline repeats until then. At the deadline the
+ *   work is interrupted without waiting for its finalizers. In a live check
+ *   Meta gave up on a response after about 22 seconds and redelivered.
  * - A click never causes a 503. It gets what is left of the deadline, less
  *   a margin. `Ack` and `Late` count as handled, and a late handler keeps
  *   running. `OpenModal` goes to `Handler.refused` as
@@ -280,6 +297,10 @@ export const parts: (thread: ChatThread) => Option.Option<{
  *   a second run is unsafe must claim `deliveryKey` atomically, before any
  *   side effect. The adapter keeps no seen-store. Deliveries are not in
  *   order either: order by the updates' timestamps.
+ * - A user can tap more than one reply button of a message, or pick one
+ *   list row twice. Each tap is a click of its own, with its own
+ *   `deliveryKey`, so a choice that must be made once needs its own
+ *   claim.
  *
  * Signature checks use the required `Mac` service. Provide
  * `NodeCrypto.layerMac`, `BunCrypto.layerMac`, `DenoCrypto.layerMac`,
@@ -311,7 +332,7 @@ export const layerWebhook = (options: {
       normalize: (envelope) => Normalize.normalize(envelope, context),
       handle: handler.handle,
       onUpdate: options.onUpdate,
-      deadline: options.deadline ?? Duration.seconds(4),
+      deadline: options.deadline ?? Duration.seconds(10),
       maxBodyBytes: options.maxBodyBytes ?? 3 * 1024 * 1024
     }
     yield* router.add(

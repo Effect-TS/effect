@@ -1,7 +1,7 @@
 import { type ChatErrorReason, InvalidRequest, TooLarge } from "effect/chat/ChatError"
 import type { Action, Button, LinkButton, Select } from "effect/chat/ChatUi"
 import { defaultButtonsSection, defaultListButton, type PostOptions } from "./options.ts"
-import { shortBodyLength } from "./text.ts"
+import { shortBodyLength, utf8Bytes } from "./text.ts"
 
 /** Between an element's id and its value in a wire id. @internal */
 export const join = "\u241F"
@@ -9,6 +9,8 @@ export const join = "\u241F"
 /** @internal */
 export const limits = { actionsPerMessage: 10, actionDataLength: 198 } as const
 
+/** Meta counts a reply button's id in UTF-8 bytes, unlike every other limit. */
+const replyIdBytes = 256
 const replyLabelLength = 20
 const rowTitleLength = 24
 const listButtonLength = 20
@@ -165,6 +167,7 @@ export const plan = (actions: ReadonlyArray<Action>, options: PostOptions): Plan
       const ids = buttons.map(buttonWireId)
       if (!unique(buttons.map((button) => button.label))) return invalid("duplicate_label")
       if (!unique(ids)) return invalid("duplicate_id")
+      if (ids.some((id) => utf8Bytes(id) > replyIdBytes)) return tooLarge("action_data_too_long")
       return {
         kind,
         interactive: {

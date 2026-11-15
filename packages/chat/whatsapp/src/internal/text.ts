@@ -8,7 +8,10 @@
  * the output is never longer than the input in any of the three units.
  */
 
-/** The longest text message, and the measure's unit: UTF-16 code units. @internal */
+/**
+ * The longest text message, and the measure's unit: UTF-16 code units, which
+ * are never fewer than the code points Meta counts. @internal
+ */
 export const messageLength = 4096
 
 /** The longest caption, and the longest body beside reply buttons or a link button. @internal */
@@ -23,7 +26,8 @@ const codePoints = (s: string): number => {
   return n
 }
 
-const utf8Bytes = (s: string): number => {
+/** @internal */
+export const utf8Bytes = (s: string): number => {
   let n = 0
   for (const char of s) {
     const code = char.codePointAt(0)!

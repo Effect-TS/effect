@@ -178,6 +178,28 @@ describe("post", () => {
       assert.deepStrictEqual(graph.calls, [])
     }))
 
+  it.effect("refuses a reply button whose wire id is over 256 UTF-8 bytes", () =>
+    Effect.gen(function*() {
+      const graph = makeGraph()
+      // "b", the id and U+241F take 5 bytes, so 125 "é" and one "a" make 256.
+      yield* run(graph, post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(125) + "a")] }))
+      assert.strictEqual(graph.calls.length, 1)
+      const reason = yield* failure(graph, post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(126))] }))
+      assert.deepStrictEqual([reason._tag, reason.detail], ["TooLarge", "action_data_too_long"])
+      assert.strictEqual(graph.calls.length, 1)
+    }))
+
+  it.effect("names the messaging account on every send when one is configured", () =>
+    Effect.gen(function*() {
+      const graph = makeGraph()
+      yield* Effect.gen(function*() {
+        yield* post({ markdown: "hi" })
+        const whatsapp = yield* WhatsAppChat.WhatsAppChat
+        yield* whatsapp.sendTemplate(thread, { name: "hello", language: "en_US" })
+      }).pipe(Effect.provide(whatsappLayer(graph, { messagingAccountId: "ma-1" })))
+      assert.deepStrictEqual(graph.sent().map((body) => body.messaging_account_id), ["ma-1", "ma-1"])
+    }))
+
   it.effect("uploads a file as the header of reply buttons, and Markdown as text/plain", () =>
     Effect.gen(function*() {
       const graph = makeGraph()

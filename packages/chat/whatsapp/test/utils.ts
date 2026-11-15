@@ -99,8 +99,11 @@ export const makeGraph = () => {
 }
 
 /** `Chat`, `Registry` and the WhatsApp adapter on a fake Graph API. */
-export const whatsappLayer = (graph: ReturnType<typeof makeGraph>) =>
-  WhatsAppChat.layer({ accessToken: Redacted.make("EAAG-test"), phoneNumberId }).pipe(
+export const whatsappLayer = (
+  graph: ReturnType<typeof makeGraph>,
+  options?: { readonly messagingAccountId?: string }
+) =>
+  WhatsAppChat.layer({ accessToken: Redacted.make("EAAG-test"), phoneNumberId, ...options }).pipe(
     Layer.provideMerge(Chat.layer),
     Layer.provide(graph.layer)
   )

@@ -100,8 +100,10 @@ export const make = (options: {
   readonly http: HttpClient.HttpClient
   readonly accessToken: Redacted.Redacted
   readonly phoneNumberId: string
+  readonly messagingAccountId?: string | undefined
 }) => {
   const { graph, phoneNumberId } = options
+  const account = options.messagingAccountId === undefined ? {} : { messaging_account_id: options.messagingAccountId }
 
   const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
@@ -124,7 +126,7 @@ export const make = (options: {
 
   const send = Effect.fnUntraced(function*(op: string, thread: ChatThread, user: string, message: JsonObject) {
     const answer = yield* graph.call(`${phoneNumberId}/messages`, {
-      body: { messaging_product: "whatsapp", recipient_type: "individual", ...recipient(user), ...message },
+      body: { messaging_product: "whatsapp", recipient_type: "individual", ...account, ...recipient(user), ...message },
       write: true
     }).pipe(Effect.mapError(withOp(op)))
     const messages = isObject(answer) && Array.isArray(answer.messages) ? answer.messages : []
