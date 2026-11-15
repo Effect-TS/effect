@@ -13,8 +13,12 @@ const actions: ReadonlyArray<ChatUi.Action> = [
   { _tag: "LinkButton", label: "Docs", url: "https://example.com/?a=1&b=<2>" }
 ]
 
-const fits = (markdown: string, actions: ReadonlyArray<ChatUi.Action>) =>
-  expect(JSON.stringify(Render.cardActivity(markdown, actions, encode)).length).toBeLessThanOrEqual(
+const fits = (
+  markdown: string,
+  actions: ReadonlyArray<ChatUi.Action>,
+  opensDialog?: (button: ChatUi.Button) => boolean
+) =>
+  expect(JSON.stringify(Render.cardActivity(markdown, actions, encode, opensDialog)).length).toBeLessThanOrEqual(
     measure(markdown, actions) + Length.R
   )
 
@@ -29,5 +33,22 @@ describe("measure", () => {
     const markdown = "# Title\n\nsome *text* & <b>\n\n```ts\nconst x = 1\n```"
     fits(markdown, [])
     expect(measure(markdown, [])).toBe(measure(markdown))
+  })
+
+  it("bounds a dialog button whose label has lone surrogates", () => {
+    fits("x", [{ _tag: "Button", id: "open", label: "\uD800".repeat(20_000) }], () => true)
+  })
+
+  it("bounds the text form with its dollar escapes", () => {
+    const markdown = "$".repeat(10_000) + "\\$"
+    expect(JSON.stringify(Render.textActivity(markdown)).length).toBeLessThanOrEqual(measure(markdown) + Length.R)
+  })
+})
+
+describe("textActivity", () => {
+  it("escapes each dollar outside code, so Teams reads no math", () => {
+    const markdown = "$x$ \\$y \\\\$z `$c$`\n```\n$$\n```\n$"
+    const sent = "\\$x\\$ \\$y \\\\\\$z `$c$`\n```\n$$\n```\n\\$"
+    expect(Render.textActivity(markdown).text).toBe(sent)
   })
 })

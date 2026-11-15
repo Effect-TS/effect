@@ -7,11 +7,13 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { ChatHandler } from "effect/chat/ChatHandler"
+import * as Context from "effect/Context"
 import * as Digest from "effect/crypto/Digest"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpRouter from "effect/http/HttpRouter"
@@ -50,7 +52,7 @@ const activity = (overrides?: Record<string, unknown>) => ({
   ...overrides
 })
 
-const setup = Effect.gen(function*() {
+const setup = Effect.fnUntraced(function*(options?: { readonly jwksUri?: string }) {
   const pair = yield* Jwk.generateKeyPair({ algorithm: "RS256", kid: "k1" })
   const key = yield* Jwk.importPrivate(pair.privateKey, "RS256")
   const token = (claimed = serviceUrl) =>
@@ -68,12 +70,17 @@ const setup = Effect.gen(function*() {
       ),
       Redacted.value
     )
-  const http = HttpClient.make((request, url) =>
+  const fetched: Array<{ readonly url: string; readonly redirect: RequestRedirect | undefined }> = []
+  const http = HttpClient.make((request, url, _signal, fiber) =>
     Effect.sync(() => {
+      fetched.push({
+        url: url.href,
+        redirect: Context.getOrUndefined(fiber.context, FetchHttpClient.RequestInit)?.redirect
+      })
       const body = url.href === keysUrl
         ? { keys: [{ ...pair.publicKey, endorsements: ["msteams"] }] }
         : url.pathname.endsWith("/openidconfiguration")
-        ? { jwks_uri: keysUrl }
+        ? { jwks_uri: options?.jwksUri ?? keysUrl }
         : {}
       return HttpClientResponse.fromWeb(request, Response.json(body))
     })
@@ -101,13 +108,13 @@ const setup = Effect.gen(function*() {
         })
       )
     ).pipe(Effect.map((response) => response.status))
-  return { events, send, token }
+  return { events, fetched, send, token }
 })
 
 describe("layerWebhook", () => {
   it.effect("answers 403 without a valid token, and for a token bound to another serviceUrl", () =>
     Effect.gen(function*() {
-      const { events, send, token } = yield* setup
+      const { events, send, token } = yield* setup()
       assert.strictEqual(yield* send(activity()), 403)
       assert.strictEqual(yield* send(activity(), "Bearer not.a.token"), 403)
       const other = yield* token("https://smba.trafficmanager.net/amer/")
@@ -119,7 +126,7 @@ describe("layerWebhook", () => {
 
   it.effect("hands a verified message to the ChatHandler, and drops a targeted one", () =>
     Effect.gen(function*() {
-      const { events, send, token } = yield* setup
+      const { events, send, token } = yield* setup()
       const bearer = `Bearer ${yield* token()}`
       assert.strictEqual(yield* send(activity(), bearer), 200)
       assert.strictEqual(
@@ -128,5 +135,24 @@ describe("layerWebhook", () => {
       )
       assert.strictEqual(events.length, 1)
       assert.strictEqual(events[0]._tag, "MessageCreated")
+    }).pipe(Effect.provide(crypto)))
+
+  it.effect("fetches the metadata and the key set with redirects off", () =>
+    Effect.gen(function*() {
+      const { fetched, send, token } = yield* setup()
+      assert.strictEqual(yield* send(activity(), `Bearer ${yield* token()}`), 200)
+      const discovery = fetched.filter((request) => request.url.startsWith("https://login.botframework.com/"))
+      assert.deepStrictEqual(discovery.map((request) => request.url), [
+        "https://login.botframework.com/v1/.well-known/openidconfiguration",
+        keysUrl
+      ])
+      assert.isTrue(discovery.every((request) => request.redirect === "manual"))
+    }).pipe(Effect.provide(crypto)))
+
+  it.effect("answers 503 for metadata whose jwks_uri is not a URL", () =>
+    Effect.gen(function*() {
+      const { events, send, token } = yield* setup({ jwksUri: "not a URL" })
+      assert.strictEqual(yield* send(activity(), `Bearer ${yield* token()}`), 503)
+      assert.strictEqual(events.length, 0)
     }).pipe(Effect.provide(crypto)))
 })

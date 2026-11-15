@@ -182,9 +182,10 @@ const fail = (reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reaso
 /**
  * Streams the file behind an attachment id.
  *
- * Every hop, the first and each redirect, must pass {@link safeUrl} and have a
- * host in the id's allowlist (exact `connectorHosts` for `connector:`,
- * `fileHostSuffixes` for `preauth:`) or in `redirectHosts`. The first hop of a
+ * Every hop must pass {@link safeUrl}. The first must have a host in the id's
+ * own allowlist (exact `connectorHosts` for `connector:`, `fileHostSuffixes`
+ * for `preauth:`), and a redirect a host there or in `redirectHosts`. A
+ * redirect host never receives the token. The first hop of a
  * `connector:` id must also have the {@link connectorPath} shape. A URL that
  * fails fails `Forbidden` with detail `untrusted_url`.
  *
@@ -219,15 +220,17 @@ export function download(
     if (parsed.kind === "url") return yield* fail(Errors.unsupported("download", "url_attachment"))
     const { kind } = parsed
     const redirectHosts = options.redirectHosts ?? new Set<string>()
-    const allowed = (url: URL): boolean =>
-      (kind === "connector"
+    // The id's own allowlist. `redirectHosts` never vouches for the first
+    // hop, since the first hop of a `connector:` id is the one with the token.
+    const own = (url: URL): boolean =>
+      kind === "connector"
         ? options.connectorHosts.has(url.hostname)
-        : underSuffix(url.hostname, options.fileHostSuffixes))
-      || redirectHosts.has(url.hostname)
+        : underSuffix(url.hostname, options.fileHostSuffixes)
+    const allowed = (url: URL): boolean => own(url) || redirectHosts.has(url.hostname)
 
     const first = safeUrl(parsed.url)
     if (
-      first === undefined || !allowed(first) ||
+      first === undefined || !own(first) ||
       (kind === "connector" && (first.search !== "" || !connectorPath.test(first.pathname)))
     ) {
       return yield* fail(Errors.untrustedUrl())

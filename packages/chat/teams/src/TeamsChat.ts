@@ -9,13 +9,17 @@
  *   registration. The cloud's endpoints and host allowlists come as a unit
  *   from `publicCloud` or a `Cloud` of the consumer's own. They are
  *   privileged configuration and never read from an activity.
- * - Nothing here has run against a real tenant yet. The package is private
- *   until it has. Capabilities beyond posting, editing, deleting and
- *   reading threads and users are behind `unverified` options, off by
- *   default, so a descriptor never advertises what no tenant confirmed.
- * - Reading messages (`fetchMessage`, `history`, `opener`) needs
- *   Microsoft Graph, which this version does not use. They are
- *   `Unsupported`, as are `replyTo`, files and native streams.
+ * - Nothing here has run against a real tenant, the default capabilities
+ *   included. The package stays private until every release check in the
+ *   README has tenant evidence.
+ * - Implemented but unverified, and off by default: `buttons`, `modals`,
+ *   `modalErrors`, `commands`, `ephemeral`, `startThread` and
+ *   `download`, each behind an `unverified` option. Turning one on
+ *   advertises a capability no tenant has confirmed.
+ * - Not implemented in this version, whatever the options: reading
+ *   messages (`fetchMessage`, `history`, `opener`, which need Microsoft
+ *   Graph), `replyTo`, files, native streams and selects. They are
+ *   `Unsupported`.
  *
  * @stability unstable
  * @since 4.1.5
@@ -186,7 +190,8 @@ export class TeamsChat extends Context.Service<TeamsChat, {
  *
  * - `post` and `edit` without elements send the Markdown as `text` with
  *   `textFormat: "extendedmarkdown"`, with every `<` and `&` as an entity,
- *   so no HTML and no `<at>` mention forms. Mentions notify nobody.
+ *   so no HTML and no `<at>` mention forms, and every `$` outside code as
+ *   `\$`, so Teams reads no math. Mentions notify nobody.
  * - With elements, the message is one Adaptive Card and no `text`:
  *   `TextBlock`, `CodeBlock` and `Table` elements from the Markdown, then
  *   `ActionSet` rows. An `edit` may switch between the two forms.
@@ -202,10 +207,19 @@ export class TeamsChat extends Context.Service<TeamsChat, {
  *   value. A token has no replay protection: a click can be sent again
  *   while the conversation exists. A dialog token also binds the user and
  *   expires after an hour.
- * - The adapter's own caps, as Teams publishes none: 6 elements per message,
- *   200 code units for an element's id plus value, 10 fields per modal and
- *   1,000 code units for a modal's id plus metadata. A message with every
- *   element at its cap still fits `messageLength`.
+ * - The adapter's own caps, as Teams publishes none: 6 elements per
+ *   message, 10 fields per modal, and two caps counted as the signed token
+ *   that carries the data, envelope included. `actionDataLength` is 1,000
+ *   units of button token, about 500 ASCII characters of id plus value with
+ *   a GUID app and tenant. `modalMetadataLength` is 4,000 units of dialog
+ *   token for the modal's id and metadata, about 1,900 ASCII characters.
+ *   A message with every element at its cap still fits `messageLength`.
+ * - The `HttpClient` must add no credentials of its own and follow no
+ *   redirects. The adapter decides per request which host gets the bot's
+ *   token, asks Fetch for `redirect: "manual"` and fails a response from
+ *   any other URL than the one it sent to. A client other than
+ *   `FetchHttpClient`, or middleware that rewrites requests, must keep
+ *   that.
  * - `getUser` needs `in`, the thread whose roster to read: without it
  *   it fails `InvalidRequest` with `thread_required`. A user's id is the
  *   Entra object id when Teams sends one, and the Connector id (`29:…`,
@@ -303,6 +317,11 @@ export const layer = (options: {
  *   answered 200. Past `deadline` (10 seconds by default) the handler is
  *   interrupted and the answer is 503. Each 503 is logged with its reason.
  * - Answers 413 past `maxBodyBytes` (1 MiB by default).
+ *
+ * The metadata and the key set are fetched with redirects off, and the
+ * metadata is read up to 64 KiB. A metadata document or `jwks_uri` that
+ * can't be read is 503. The `HttpClient` has the same requirements as for
+ * `layer`.
  *
  * Token checks need the `Signature` service. Importing the key set's
  * public keys goes through `Jwk.importPublic`, which needs a `WebCrypto`

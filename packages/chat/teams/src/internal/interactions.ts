@@ -64,9 +64,7 @@ const refused = (event: ChatInteraction.ButtonClicked | ChatInteraction.CommandI
  * Where the message an invoke came from lives. A card posted as a channel
  * post has the channel as its address, as `normalize` gives it.
  */
-const cardThread = (activity: JsonObject): ChatThread | undefined => {
-  const conversationId = string(object(activity, "conversation"), "id")
-  const messageId = string(activity, "replyToId")
+const cardThread = (conversationId: string | undefined, messageId: string | undefined): ChatThread | undefined => {
   if (conversationId === undefined || conversationId.length > Address.maxIdLength) return undefined
   const parts = Address.parts(Address.thread(conversationId))
   if (Option.isNone(parts)) return undefined
@@ -76,7 +74,21 @@ const cardThread = (activity: JsonObject): ChatThread | undefined => {
 }
 
 /** The adaptive card of a dialog, built only from the signed definition. */
-const dialogCard = (modal: ChatUi.Modal, token: string, errors?: Readonly<Record<string, string>>) => {
+const dialogCard = (
+  modal: ChatUi.Modal,
+  token: string,
+  submitted?: {
+    readonly values: Readonly<Record<string, string>>
+    readonly errors: Readonly<Record<string, string>>
+  }
+) => {
+  // A dialog sent again with errors keeps what the user entered, not the
+  // definition's `initial`. Lookups are own properties only, so a field id
+  // such as `constructor` reads nothing inherited.
+  const own = (record: Readonly<Record<string, string>>, key: string): string | undefined =>
+    Object.hasOwn(record, key) && typeof record[key] === "string" ? record[key] : undefined
+  const valueOf = (element: ChatUi.TextInput | ChatUi.SelectInput) =>
+    submitted === undefined ? element.initial : own(submitted.values, element.id)
   const body: Array<unknown> = []
   for (const element of modal.elements) {
     if (element._tag === "Text") {
@@ -92,7 +104,7 @@ const dialogCard = (modal: ChatUi.Modal, token: string, errors?: Readonly<Record
         isRequired: element.optional !== true,
         maxLength: element.maxLength ?? Envelope.defaultMaxLength,
         ...(element.placeholder === undefined ? {} : { placeholder: element.placeholder }),
-        ...(element.initial === undefined ? {} : { value: element.initial })
+        ...(valueOf(element) === undefined ? {} : { value: valueOf(element) })
       })
     } else {
       body.push({
@@ -103,10 +115,10 @@ const dialogCard = (modal: ChatUi.Modal, token: string, errors?: Readonly<Record
         isRequired: element.optional !== true,
         choices: element.options.map((option) => ({ title: option.label, value: option.value })),
         ...(element.placeholder === undefined ? {} : { placeholder: element.placeholder }),
-        ...(element.initial === undefined ? {} : { value: element.initial })
+        ...(valueOf(element) === undefined ? {} : { value: valueOf(element) })
       })
     }
-    const error = errors?.[element.id]
+    const error = submitted === undefined ? undefined : own(submitted.errors, element.id)
     if (error !== undefined) {
       body.push({ ...Render.textBlock(Render.escapeText(Render.wellFormed(error))), color: "attention" })
     }
@@ -132,10 +144,10 @@ const dialogCard = (modal: ChatUi.Modal, token: string, errors?: Readonly<Record
   }
 }
 
-const modalRefusal = (modal: ChatUi.Modal) => {
+const modalRefusal = (modal: ChatUi.Modal, envelope: Envelope.Envelope) => {
   const fields = modal.elements.length
   if (fields > modalFields) return Errors.tooLarge(undefined, "too_many_modal_fields")
-  if (modal.id.length + (modal.metadata?.length ?? 0) > modalMetadataLength) {
+  if (envelope.dialogLength(modal) > modalMetadataLength) {
     return Errors.tooLarge(undefined, "modal_metadata_too_long")
   }
   return Envelope.checkModal(modal)
@@ -183,14 +195,16 @@ export const invoke = (
       const dialog = yield* envelope.verifyDialog(token, { conversationId, userId: user })
       if (Option.isNone(dialog)) return failure
       const values = Envelope.validateSubmission(dialog.value.modal, data)
-      const at = threadOf(activity)
-      if (Option.isNone(values) || at === undefined) return failure
+      // The thread of the click that opened it, from the signed conversation
+      // id and message, never from the submit.
+      const origin = cardThread(dialog.value.conversationId, dialog.value.messageId)
+      if (Option.isNone(values) || origin === undefined) return failure
       const modal = dialog.value.modal
       const event = ChatInteraction.ModalSubmitted.make({
         id: modal.id,
         ...(modal.metadata === undefined ? {} : { metadata: modal.metadata }),
         values: values.value,
-        thread: at.thread,
+        thread: origin,
         ...(dialog.value.messageId === undefined ? {} : { messageId: dialog.value.messageId }),
         userId: user,
         raw: activity
@@ -198,15 +212,18 @@ export const invoke = (
       const reply = yield* ChatInteraction.handle(event, options.deadline)
       if (isLate(reply)) return failure
       if (reply._tag === "Errors") {
-        return { status: 200, body: dialogCard(modal, token as string, reply.errors) as Schema.Json }
+        return {
+          status: 200,
+          body: dialogCard(modal, token as string, { values: values.value, errors: reply.errors }) as Schema.Json
+        }
       }
       return ok
     }
 
     if (name !== "adaptiveCard/action" && name !== "message" && name !== "task/fetch") return failure
     const button = yield* envelope.verifyButton(token, { conversationId })
-    const thread = cardThread(activity)
     const messageId = string(activity, "replyToId")
+    const thread = cardThread(conversationId, messageId)
     if (Option.isNone(button) || thread === undefined || messageId === undefined) return failure
     const opensDialog = name === "task/fetch"
     if (opensDialog !== options.modalButtons.has(button.value.id)) return failure
@@ -225,13 +242,13 @@ export const invoke = (
       yield* refused(event, Errors.chatError("openModal", Errors.unsupported("modals")))
       return acked
     }
-    const refusal = modalRefusal(reply.modal)
+    const refusal = modalRefusal(reply.modal, envelope)
     if (refusal !== undefined) {
       yield* refused(event, Errors.chatError("openModal", refusal))
       return failure
     }
     const signed = yield* Effect.result(
-      envelope.signDialog(conversationId, { userId: user, messageId, modal: reply.modal })
+      envelope.signDialog({ conversationId, userId: user, messageId, modal: reply.modal })
     )
     if (signed._tag === "Failure") {
       yield* refused(event, Errors.chatError("openModal", signed.failure))

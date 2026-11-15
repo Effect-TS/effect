@@ -5,9 +5,10 @@ import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
-import type * as HttpClient from "effect/http/HttpClient"
+import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Semaphore from "effect/Semaphore"
@@ -158,8 +159,33 @@ export const makeTokens = (options: {
 }
 
 /**
+ * The client with Fetch's redirects off, for every request it sends,
+ * including those made by code the adapter hands it to, such as the key set.
+ *
+ * @internal
+ */
+export const noRedirects = (http: HttpClient.HttpClient): HttpClient.HttpClient =>
+  HttpClient.transform(
+    http,
+    (effect) => Effect.provideService(effect, FetchHttpClient.RequestInit, { redirect: "manual" })
+  )
+
+/**
+ * The URL a request goes to, with its query parameters and without a hash.
+ *
+ * @internal
+ */
+export const effectiveUrl = (request: HttpClientRequest.HttpClientRequest): string | undefined => {
+  const url = Option.getOrUndefined(HttpClientRequest.toUrl(request))
+  if (url === undefined) return undefined
+  url.hash = ""
+  return url.href
+}
+
+/**
  * Sends one request with redirects off. A response from another URL than
- * the request's means something followed a redirect, and is refused.
+ * the request's, query included, means something followed a redirect, and
+ * is refused.
  *
  * @internal
  */
@@ -169,11 +195,10 @@ export const send = (
   write: boolean,
   op: string
 ): Effect.Effect<HttpClientResponse.HttpClientResponse, ChatError> =>
-  http.execute(request).pipe(
-    Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
+  noRedirects(http).execute(request).pipe(
     Effect.catch((error) => Effect.fail(Errors.chatError(op, Errors.transport(write, error.reason._tag, error)))),
     Effect.flatMap((response) =>
-      response.url !== "" && response.url !== request.url
+      response.url !== effectiveUrl(request)
         ? Effect.fail(Errors.chatError(op, Errors.untrustedUrl()))
         : Effect.succeed(response)
     )

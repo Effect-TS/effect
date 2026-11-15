@@ -4,12 +4,14 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Jwks from "effect/jose/Jwks"
 import * as Jwt from "effect/jose/Jwt"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
-import { type Cloud, send } from "./connector.ts"
+import * as Stream from "effect/Stream"
+import { type Cloud, noRedirects, send } from "./connector.ts"
 
 /** The longest `Authorization` header read. Anything longer is refused unread. */
 const maxAuthorizationLength = 16 * 1024
@@ -35,6 +37,34 @@ export const endorsedForTeams = (jwk: { readonly [key: string]: unknown }): bool
   const endorsements = jwk.endorsements
   return Array.isArray(endorsements) && endorsements.every((e) => typeof e === "string") &&
     endorsements.includes("msteams")
+}
+
+const parseUrl = (input: string): URL | undefined => {
+  try {
+    return new URL(input)
+  } catch {
+    return undefined
+  }
+}
+
+/** The body, or `undefined` once it passes `maxBytes` or can't be read. Never reads past the limit. */
+const readBounded = (
+  response: HttpClientResponse.HttpClientResponse,
+  maxBytes: number
+): Effect.Effect<Uint8Array | undefined> => {
+  const declared = Number(response.headers["content-length"])
+  if (Number.isFinite(declared) && declared > maxBytes) return Effect.succeed(undefined)
+  const body = new Uint8Array(maxBytes)
+  return Stream.runFoldEffect(response.stream, () => 0, (length, chunk) =>
+    chunk.length > maxBytes - length
+      ? Effect.fail("too_large" as const)
+      : Effect.sync(() => {
+        body.set(chunk, length)
+        return length + chunk.length
+      })).pipe(
+      Effect.map((length) => body.subarray(0, length)),
+      Effect.orElseSucceed(() => undefined)
+    )
 }
 
 const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
@@ -69,7 +99,9 @@ export const tenantOf = (activity: Record<string, unknown>): string | undefined 
  *
  * The key set is found lazily from the cloud's OpenID metadata, whose
  * `jwks_uri` must be `https:` on the metadata's own host. Neither fetch
- * follows a redirect. A key set that can't be read is `unavailable`, so
+ * follows a redirect: the key set's client has Fetch's redirects off for
+ * each request, refreshes included. The metadata is read to at most 64 KiB.
+ * Metadata that can't be fetched, read or parsed is `unavailable`. A key set that can't be read is `unavailable`, so
  * the webhook answers 503 and Teams retries; every other failure is
  * `forbidden`.
  *
@@ -88,20 +120,21 @@ export const makeVerifier = Effect.fnUntraced(function*(options: {
   let failedAt = Number.NEGATIVE_INFINITY
 
   const jwksUri = Effect.gen(function*() {
-    const metadataUrl = new URL(options.cloud.openIdMetadataUrl)
+    const metadataUrl = parseUrl(options.cloud.openIdMetadataUrl)
+    if (metadataUrl === undefined) return yield* Effect.fail("metadata_url" as const)
     const response = yield* send(http, HttpClientRequest.get(metadataUrl.href), false, "openIdMetadata")
     if (response.status !== 200) return yield* Effect.fail("metadata_status" as const)
-    const body = yield* Effect.orElseSucceed(response.text, () => "")
-    if (body.length === 0 || body.length > maxMetadataBytes) return yield* Effect.fail("metadata_size" as const)
+    const body = yield* readBounded(response, maxMetadataBytes)
+    if (body === undefined || body.length === 0) return yield* Effect.fail("metadata_size" as const)
     let json: unknown
     try {
-      json = JSON.parse(body)
+      json = JSON.parse(new TextDecoder().decode(body))
     } catch {
       return yield* Effect.fail("metadata_json" as const)
     }
     const uri = isObject(json) ? json.jwks_uri : undefined
-    if (typeof uri !== "string") return yield* Effect.fail("metadata_jwks_uri" as const)
-    const parsed = new URL(uri)
+    const parsed = typeof uri === "string" ? parseUrl(uri) : undefined
+    if (parsed === undefined) return yield* Effect.fail("metadata_jwks_uri" as const)
     if (parsed.protocol !== "https:" || parsed.port !== "" || parsed.hostname !== metadataUrl.hostname) {
       return yield* Effect.fail("metadata_jwks_host" as const)
     }
@@ -117,7 +150,7 @@ export const makeVerifier = Effect.fnUntraced(function*(options: {
     const made = yield* jwksUri.pipe(
       Effect.flatMap((url) => Jwks.makeRemote({ url, filter: endorsedForTeams })),
       Effect.provideService(Scope.Scope, scope),
-      Effect.provideService(HttpClient.HttpClient, http),
+      Effect.provideService(HttpClient.HttpClient, noRedirects(http)),
       Effect.option
     )
     if (made._tag === "None") {

@@ -67,10 +67,16 @@ describe("envelope", () => {
           { _tag: "TextInput", id: "note", label: "Note", optional: true }
         ]
       }
-      const token = yield* envelope.signDialog(conversation, { userId: "u1", messageId: "m1", modal })
-      assert.isTrue(Option.isNone(yield* envelope.verifyDialog(token, { conversationId: conversation, userId: "u2" })))
-      const verified = yield* envelope.verifyDialog(token, { conversationId: conversation, userId: "u1" })
-      assert.deepStrictEqual(verified, Option.some({ messageId: "m1", modal }))
+      const opened = `${conversation};messageid=123`
+      const token = yield* envelope.signDialog({ conversationId: opened, userId: "u1", messageId: "123", modal })
+      assert.isTrue(Option.isNone(yield* envelope.verifyDialog(token, { conversationId: opened, userId: "u2" })))
+      // The same channel, another reply chain: refused, so a submit keeps the click's origin.
+      const moved = `${conversation};messageid=456`
+      assert.isTrue(Option.isNone(yield* envelope.verifyDialog(token, { conversationId: moved, userId: "u1" })))
+      const verified = yield* envelope.verifyDialog(token, { conversationId: opened, userId: "u1" })
+      assert.deepStrictEqual(verified, Option.some({ conversationId: opened, messageId: "123", modal }))
+      assert.isTrue(token.length <= Envelope.maxTokenLength)
+      assert.isTrue(envelope.dialogLength(modal) >= Envelope.dialogTokenLength({ ...options, kid: "k1" }, { id: "" }))
       assert.deepStrictEqual(
         Envelope.validateSubmission(modal, { effect: token, env: "prod", note: "" }),
         Option.some({ env: "prod" })

@@ -36,7 +36,7 @@ export const escapeText = (text: string): string => text.replace(/[<&]/g, (c) =>
 /** @internal */
 export const textActivity = (markdown: string): Record<string, unknown> => ({
   type: "message",
-  text: escapeText(wellFormed(markdown)),
+  text: escapeDollars(escapeText(wellFormed(markdown))),
   textFormat: "extendedmarkdown"
 })
 
@@ -101,6 +101,18 @@ export const buttonAction = (button: Button, token: string) => {
   }
 }
 
+/**
+ * A button that opens a dialog: an `Action.Submit` with `task/fetch`,
+ * smaller than the `Action.Execute` and fallback the measure prices.
+ *
+ * @internal
+ */
+export const dialogAction = (button: Button, token: string) => ({
+  type: "Action.Submit",
+  title: wellFormed(button.label),
+  data: { msteams: { type: "task/fetch" }, effect: token }
+})
+
 /** @internal */
 export const linkAction = (link: LinkButton) => ({
   type: "Action.OpenUrl",
@@ -116,13 +128,15 @@ export const linkAction = (link: LinkButton) => ({
 export const cardActivity = (
   markdown: string,
   actions: ReadonlyArray<Action>,
-  encode: (button: Button) => string
+  encode: (button: Button) => string,
+  opensDialog: (button: Button) => boolean = () => false
 ): Record<string, unknown> => {
   const body: Array<unknown> = blocks(markdown)
   const rendered: Array<unknown> = []
   for (const action of actions) {
-    if (action._tag === "Button") rendered.push(buttonAction(action, encode(action)))
-    else if (action._tag === "LinkButton") rendered.push(linkAction(action))
+    if (action._tag === "Button") {
+      rendered.push(opensDialog(action) ? dialogAction(action, encode(action)) : buttonAction(action, encode(action)))
+    } else if (action._tag === "LinkButton") rendered.push(linkAction(action))
   }
   for (let i = 0; i < rendered.length; i += actionsPerRow) {
     body.push(actionSet(rendered.slice(i, i + actionsPerRow)))
@@ -147,6 +161,62 @@ const fenceOpen = (line: string): Fence | undefined => {
 const fenceCloses = (fence: Fence, line: string): boolean => {
   const match = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line)
   return match !== null && match[1][0] === fence.marker[0] && match[1].length >= fence.marker.length
+}
+
+/**
+ * Escapes each `$` outside code as `\$`, so that Teams reads no math in
+ * the text form. A `$` the Markdown already escapes, after an odd run of
+ * backslashes, is left alone, and so is code: fenced blocks and code spans
+ * on one line. One unit per `$` at most, as `Length.weight` prices it.
+ *
+ * @internal
+ */
+export const escapeDollars = (markdown: string): string => {
+  const parts = markdown.split(/(\r\n|\r|\n)/)
+  let fence: Fence | undefined
+  for (let i = 0; i < parts.length; i += 2) {
+    const line = parts[i]
+    if (fence !== undefined) {
+      if (fenceCloses(fence, line)) fence = undefined
+      continue
+    }
+    fence = fenceOpen(line)
+    if (fence === undefined) parts[i] = escapeLine(line)
+  }
+  return parts.join("")
+}
+
+const escapeLine = (line: string): string => {
+  let out = ""
+  let i = 0
+  while (i < line.length) {
+    const char = line[i]
+    if (char === "`") {
+      let run = 1
+      while (line[i + run] === "`") run++
+      const ticks = "`".repeat(run)
+      const close = findRun(line, ticks, i + run)
+      const end = close === -1 ? i + run : close + run
+      out += line.slice(i, end)
+      i = end
+      continue
+    }
+    if (char === "$") {
+      let backslashes = 0
+      while (line[i - 1 - backslashes] === "\\") backslashes++
+      out += backslashes % 2 === 0 ? "\\$" : "$"
+    } else out += char
+    i++
+  }
+  return out
+}
+
+/** The index of a run of exactly `ticks` from `from`, or -1. */
+const findRun = (line: string, ticks: string, from: number): number => {
+  for (let at = line.indexOf(ticks, from); at !== -1; at = line.indexOf(ticks, at + 1)) {
+    if (line[at - 1] !== "`" && line[at + ticks.length] !== "`") return at
+  }
+  return -1
 }
 
 const delimiterRow = /^[ \t]*\|?(?:[ \t]*:?-+:?[ \t]*\|)*[ \t]*:?-+:?[ \t]*\|?[ \t]*$/

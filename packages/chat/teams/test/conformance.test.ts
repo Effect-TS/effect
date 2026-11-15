@@ -3,8 +3,10 @@
  * that answers every write. Capabilities behind `unverified` are off, so
  * their rules check that the descriptor leaves them out and the ops refuse.
  */
+import * as Adapter from "@effect/chat-teams/internal/adapter"
+import * as Length from "@effect/chat-teams/internal/length"
 import * as TeamsChat from "@effect/chat-teams/TeamsChat"
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as Chat from "effect/chat/Chat"
 import { conformance } from "effect/chat/ChatTest"
 import * as Digest from "effect/crypto/Digest"
@@ -24,11 +26,12 @@ const thread = TeamsChat.thread(conversationId)
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
 
-const makeConnector = () => {
+const makeConnector = (sent: Array<{ readonly url: URL; readonly body: string }> = []) => {
   let next = 1_700_000_000_000
   const posted = new Set<string>()
   return HttpClient.make((request, url) =>
     Effect.sync(() => {
+      if (request.body._tag === "Uint8Array") sent.push({ url, body: new TextDecoder().decode(request.body.body) })
       let response: Response
       if (url.host === "login.microsoftonline.com") {
         response = json({ access_token: "token", expires_in: 3600, token_type: "Bearer" })
@@ -44,15 +47,20 @@ const makeConnector = () => {
       } else if (url.pathname.includes("/members/")) {
         response = json({ id: "29:user", aadObjectId: "user", name: "User" })
       } else response = json({ members: [] })
+      // As Fetch does: the response names the URL it came from, query included.
+      Object.defineProperty(response, "url", { value: url.href })
       return HttpClientResponse.fromWeb(request, response)
     })
   )
 }
 
-const layer = () =>
-  TeamsChat.layer({ appId, tenantId, credentials: Redacted.make("secret") }).pipe(
+const layer = (
+  extra: Partial<Parameters<typeof TeamsChat.layer>[0]> = {},
+  sent?: Array<{ readonly url: URL; readonly body: string }>
+) =>
+  TeamsChat.layer({ appId, tenantId, credentials: Redacted.make("secret"), ...extra }).pipe(
     Layer.provideMerge(Chat.layer),
-    Layer.provide(Layer.succeed(HttpClient.HttpClient, makeConnector())),
+    Layer.provide(Layer.succeed(HttpClient.HttpClient, makeConnector(sent))),
     Layer.provide(Layer.mergeAll(Digest.layerWebCrypto, Mac.layerWebCrypto)),
     Layer.provide(SecureRandom.layerWebCrypto)
   )
@@ -93,4 +101,56 @@ describe("conformance over the stubbed Connector", () => {
   for (const name of names) {
     it.effect(name, () => conformance(options)[name].pipe(Effect.provide(layer())))
   }
+})
+
+describe("reads over the stubbed Connector", () => {
+  it.effect("getThread sends its query and accepts the answer", () =>
+    Effect.gen(function*() {
+      const chat = yield* Chat.Chat
+      const info = yield* chat.getThread(thread)
+      assert.strictEqual(info.kind, "channel")
+    }).pipe(Effect.provide(layer())))
+})
+
+describe("buttons over the stubbed Connector", () => {
+  const buttons = layer({
+    interactionKeys: [Redacted.make({ kty: "oct", kid: "k1", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" })],
+    unverified: { buttons: true }
+  })
+
+  it.effect("counts the signed envelope against actionDataLength", () =>
+    Effect.gen(function*() {
+      const chat = yield* Chat.Chat
+      // The raw id and value fit the cap; with the envelope they do not.
+      const over = { _tag: "Button", id: "b", label: "B", value: "v".repeat(Adapter.actionDataLength - 1) } as const
+      const error = yield* Effect.flip(chat.post(thread, { markdown: "x", actions: [over] }))
+      assert.strictEqual(error.reason._tag, "TooLarge")
+      const posted = yield* chat.post(thread, { markdown: "x", actions: [{ ...over, value: "v".repeat(400) }] })
+      assert.isString(posted.id)
+    }).pipe(Effect.provide(buttons)))
+})
+
+describe("command answers over the stubbed Connector", () => {
+  it.effect("a private answer names its recipient by id alone, so it stays in the size bound", () => {
+    const sent: Array<{ readonly url: URL; readonly body: string }> = []
+    return Effect.gen(function*() {
+      const service = yield* TeamsChat.TeamsChat
+      const raw = {
+        type: "message",
+        id: "1",
+        serviceUrl: "https://smba.trafficmanager.net/teams",
+        from: { id: "29:user", aadObjectId: "user", name: "n".repeat(10_000) },
+        conversation: { id: conversationId }
+      }
+      yield* Adapter.internals.get(service)!.answer(
+        "respond",
+        raw,
+        { markdown: "a".repeat(Length.messageLength) },
+        "ephemeral"
+      )
+      const answer = sent.find(({ url }) => url.searchParams.get("isTargetedActivity") === "true")!
+      assert.deepStrictEqual(JSON.parse(answer.body).recipient, { id: "29:user" })
+      assert.isAtMost(answer.body.length, Length.Edge)
+    }).pipe(Effect.provide(layer({}, sent)))
+  })
 })

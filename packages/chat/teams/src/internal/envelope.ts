@@ -99,6 +99,7 @@ const DialogClaims = Schema.Struct({
   aud: Id,
   tid: Id,
   cnv: Hash,
+  cid: Id,
   sub: Id,
   exp: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })),
   mid: Schema.optionalKey(Id),
@@ -130,8 +131,9 @@ export const maxTokenLength: number = (() => {
   const header = utf8Length(headerJson("", typ.dialog)) + limits.kid
   const button = utf8Length(JSON.stringify({ aud: "", tid: "", cnv: "", id: "", val: "" })) - 2 * 5 +
     3 * jsonString(limits.id) + jsonString(hashLength) + jsonString(limits.buttonValue)
-  const dialog = utf8Length(JSON.stringify({ aud: "", tid: "", cnv: "", sub: "", exp: 0, mid: "", def: 0, md: "" })) -
-    2 * 6 - 2 + 4 * jsonString(limits.id) + jsonString(hashLength) + String(Number.MAX_SAFE_INTEGER).length +
+  const dialog =
+    utf8Length(JSON.stringify({ aud: "", tid: "", cnv: "", cid: "", sub: "", exp: 0, mid: "", def: 0, md: "" })) -
+    2 * 7 - 2 + 5 * jsonString(limits.id) + jsonString(hashLength) + String(Number.MAX_SAFE_INTEGER).length +
     limits.definition + jsonString(limits.metadata)
   return base64Length(header) + 1 + base64Length(Math.max(button, dialog)) + 1 + signatureLength
 })()
@@ -170,6 +172,34 @@ export const buttonTokenLength = (
   base64Length(utf8Length(headerJson(context.kid, typ.button))) + 1 +
   base64Length(utf8Length(JSON.stringify(buttonClaims(context, "x".repeat(hashLength), button)))) + 1 +
   signatureLength
+
+const longestId = "x".repeat(limits.id)
+
+/**
+ * What a modal's id and metadata take in a dialog token, with everything
+ * the adapter adds: the header, the fixed claims with each id at its
+ * longest, the definition's shell and the signature. The rest of the
+ * definition (title, labels, options) is held to `limits.definition`
+ * instead. Pure: the same modal always gives the same length.
+ *
+ * @internal
+ */
+export const dialogTokenLength = (
+  context: ButtonContext,
+  modal: { readonly id: string; readonly metadata?: string | undefined }
+): number =>
+  base64Length(utf8Length(headerJson(context.kid, typ.dialog))) + 1 +
+  base64Length(utf8Length(JSON.stringify({
+    aud: context.appId,
+    tid: context.tenantId,
+    cnv: "x".repeat(hashLength),
+    cid: longestId,
+    sub: longestId,
+    exp: Number.MAX_SAFE_INTEGER,
+    mid: longestId,
+    def: { _tag: "Modal", id: modal.id, title: "", elements: [] },
+    ...(modal.metadata === undefined ? {} : { md: modal.metadata })
+  }))) + 1 + signatureLength
 
 // Checks
 
@@ -266,6 +296,11 @@ export interface Button {
 
 /** @internal */
 export interface Dialog {
+  /**
+   * The conversation id the click came from, as Teams sent it. A submit
+   * must come from the same one.
+   */
+  readonly conversationId: string
   /** The message the click came from. Absent when a command opened it. */
   readonly messageId?: string | undefined
   readonly modal: ChatUi.Modal
@@ -282,16 +317,20 @@ export interface Envelope {
   ) => Effect.Effect<Option.Option<Button>>
   /** Fails with the reason the modal or an id is refused. */
   readonly signDialog: (
-    conversationId: string,
     dialog: Dialog & { readonly userId: string; readonly ttl?: Duration.Input | undefined }
   ) => Effect.Effect<string, ChatErrorReason>
-  /** The dialog the token was signed for, if it is unexpired and for this conversation and user. */
+  /**
+   * The dialog the token was signed for, if it is unexpired, for this user,
+   * and from exactly this conversation id.
+   */
   readonly verifyDialog: (
     token: unknown,
     activity: { readonly conversationId: string; readonly userId: string }
   ) => Effect.Effect<Option.Option<Dialog>>
   /** `buttonTokenLength` with this envelope's app, tenant and signing key. */
   readonly tokenLength: (button: Button) => number
+  /** `dialogTokenLength` with this envelope's app, tenant and signing key. */
+  readonly dialogLength: (modal: { readonly id: string; readonly metadata?: string | undefined }) => number
 }
 
 const validKid = /^[A-Za-z0-9_-]{1,16}$/
@@ -372,9 +411,10 @@ export const make = Effect.fnUntraced(function*(options: {
         verify(ButtonClaims, token, typ.button, activity.conversationId, {}),
         Option.map((claims) => ({ id: claims.id, ...(claims.val === undefined ? {} : { value: claims.val }) }))
       ),
-    signDialog: (conversationId, dialog) => {
+    signDialog: (dialog) => {
       const refusal = checkModal(dialog.modal) ??
-        (dialog.userId.length > limits.id || (dialog.messageId?.length ?? 0) > limits.id
+        (dialog.userId.length > limits.id || (dialog.messageId?.length ?? 0) > limits.id ||
+            dialog.conversationId.length > limits.id
           ? invalidRequest("id_too_long")
           : undefined)
       if (refusal !== undefined) return Effect.fail(refusal)
@@ -385,7 +425,8 @@ export const make = Effect.fnUntraced(function*(options: {
         return yield* sign(DialogClaims, {
           aud: options.appId,
           tid: options.tenantId,
-          cnv: yield* hash(conversationId),
+          cnv: yield* hash(dialog.conversationId),
+          cid: dialog.conversationId,
           sub: dialog.userId,
           exp,
           ...(dialog.messageId === undefined ? {} : { mid: dialog.messageId }),
@@ -400,11 +441,17 @@ export const make = Effect.fnUntraced(function*(options: {
           subject: activity.userId,
           requiredClaims: ["exp", "sub"]
         }),
-        Option.map((claims): Dialog => ({
-          ...(claims.mid === undefined ? {} : { messageId: claims.mid }),
-          modal: { ...claims.def, ...(claims.md === undefined ? {} : { metadata: claims.md }) }
-        }))
+        (verified) =>
+          verified.pipe(
+            Option.filter((claims) => claims.cid === activity.conversationId),
+            Option.map((claims): Dialog => ({
+              conversationId: claims.cid,
+              ...(claims.mid === undefined ? {} : { messageId: claims.mid }),
+              modal: { ...claims.def, ...(claims.md === undefined ? {} : { metadata: claims.md }) }
+            }))
+          )
       ),
-    tokenLength: (button) => buttonTokenLength(context, button)
+    tokenLength: (button) => buttonTokenLength(context, button),
+    dialogLength: (modal) => dialogTokenLength(context, modal)
   }
 })

@@ -46,11 +46,24 @@ export interface Unverified {
 /** The adapter's own cap on elements in one message. @internal */
 export const actionsPerMessage = Render.actionsPerRow
 
-/** The adapter's own cap on an element's id plus value, in UTF-16 code units. @internal */
-export const actionDataLength = 200
+/**
+ * The adapter's own cap on an element's id plus value, counted as the
+ * signed token that carries them: 329 units of it are the envelope with a
+ * GUID app and tenant, which leaves about 500 ASCII characters.
+ *
+ * @internal
+ */
+export const actionDataLength = 1_000
 
-/** The adapter's own cap on a modal's id plus metadata. @internal */
-export const modalMetadataLength = 1_000
+/**
+ * The adapter's own cap on a modal's id plus metadata, counted as their
+ * share of the signed dialog token with everything the adapter adds:
+ * 1,483 units of it are the envelope with a GUID app and tenant, which
+ * leaves about 1,900 ASCII characters.
+ *
+ * @internal
+ */
+export const modalMetadataLength = 4_000
 
 /** The adapter's own cap on a modal's inputs and texts. @internal */
 export const modalFields = 10
@@ -126,38 +139,6 @@ export interface Made {
   ) => Effect.Effect<void, ChatError>
 }
 
-/**
- * Swaps the action of each button that opens a dialog for an
- * `Action.Submit` with `task/fetch`, which is smaller than the
- * `Action.Execute` and its fallback that the measure counted.
- */
-const opensDialogs = (
-  activity: Record<string, unknown>,
-  modalButtons: ReadonlySet<string>,
-  tokens: ReadonlyMap<Action, string>
-): Record<string, unknown> => {
-  const openers = new Map<string, Action & { readonly _tag: "Button" }>()
-  for (const [action, token] of tokens) {
-    if (action._tag === "Button" && modalButtons.has(action.id)) openers.set(token, action)
-  }
-  if (openers.size === 0) return activity
-  const swap = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(swap)
-    if (typeof node !== "object" || node === null) return node
-    const record = node as Record<string, unknown>
-    const data = record.data as Record<string, unknown> | undefined
-    const token = record.type === "Action.Execute" && typeof data?.effect === "string" ? data.effect : undefined
-    const opener = token === undefined ? undefined : openers.get(token)
-    if (opener !== undefined) {
-      return { type: "Action.Submit", title: opener.label, data: { msteams: { type: "task/fetch" }, effect: token } }
-    }
-    const out: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(record)) out[key] = swap(value)
-    return out
-  }
-  return swap(activity) as Record<string, unknown>
-}
-
 const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
 
 /** @internal */
@@ -198,7 +179,7 @@ export const make = (options: Options): Made => {
       const tokens = new Map<Action, string>()
       for (const action of actions) {
         if (action._tag !== "Button") continue
-        if (action.id.length + (action.value?.length ?? 0) > actionDataLength) {
+        if (options.envelope!.tokenLength(action) > actionDataLength) {
           return yield* fail(op, Errors.tooLarge(undefined, "action_data_too_long"))
         }
         const token = yield* Effect.mapError(
@@ -210,10 +191,11 @@ export const make = (options: Options): Made => {
         )
         tokens.set(action, token)
       }
-      return opensDialogs(
-        Render.cardActivity(content.markdown, actions, (button) => tokens.get(button)!),
-        options.modalButtons,
-        tokens
+      return Render.cardActivity(
+        content.markdown,
+        actions,
+        (button) => tokens.get(button)!,
+        (button) => options.modalButtons.has(button.id)
       )
     })
 
@@ -355,10 +337,10 @@ export const make = (options: Options): Made => {
     for (const id of [conversationId, messageId, recipientId]) yield* checkId(op, id)
     const activity = yield* body(op, conversationId, content)
     if (visibility === "ephemeral") {
-      const name = string(from, "name")
       yield* connector.call("POST", activities(conversationId), {
         ...activity,
-        recipient: { id: recipientId, ...(name === undefined ? {} : { name }) },
+        // Only the id: `Length.A` reserves it, and an unbounded name would break the size bound.
+        recipient: { id: recipientId },
         entities: [{ type: "targetedMessageInfo", messageId }]
       }, { write: true, op, serviceUrl, query: { isTargetedActivity: "true" } })
     } else {
