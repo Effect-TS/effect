@@ -48,14 +48,19 @@ const Setup = Layer.effectDiscard(
     yield* sql`CREATE TABLE contract (s TEXT, n DOUBLE PRECISION)`
     yield* sql`INSERT INTO contract VALUES ('bad', NULL), ('good', 1)`
     yield* sql`DROP TABLE IF EXISTS odd`
-    yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL)`
-    yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month')`
+    yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL, forever TIMESTAMP, endless DATE)`
+    yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month', 'infinity', 'infinity')`
     yield* sql`DROP TABLE IF EXISTS declared`
     yield* sql`CREATE TABLE declared (t TIMESTAMP, d INTERVAL, n NUMERIC)`
     yield* sql`INSERT INTO declared VALUES ('1970-01-01 00:00:01', '-2 seconds', 12.5), ('1969-12-31 23:59:58', '3 seconds', -0.05), (NULL, NULL, NULL)`
     yield* sql`DROP TABLE IF EXISTS inexact`
-    yield* sql`CREATE TABLE inexact (s TIMESTAMP, ms TIMESTAMP, ns TIMESTAMP, ds INTERVAL, dms INTERVAL, dns INTERVAL, scale NUMERIC, digits NUMERIC)`
-    yield* sql`INSERT INTO inexact VALUES ('1970-01-01 00:00:01.5', '1970-01-01 00:00:01.0005', '2263-01-01', '-1.5 seconds', '0.0005 seconds', '110000 days', 1.005, 1000)`
+    yield* sql`CREATE TABLE inexact (s TIMESTAMP, ms TIMESTAMP, ns TIMESTAMP, ds INTERVAL, dms INTERVAL, dns INTERVAL, scale NUMERIC, digits NUMERIC, wide NUMERIC, i8 INTEGER, u32 INTEGER, u64 BIGINT, f32 DOUBLE PRECISION, f32i INTEGER)`
+    yield* sql`INSERT INTO inexact VALUES ('1970-01-01 00:00:01.5', '1970-01-01 00:00:01.0005', '2263-01-01', '-1.5 seconds', '0.0005 seconds', '110000 days', 1.005, 1000, 1, 256, -1, -1, 0.1, 16777217)`
+    yield* sql`DROP TABLE IF EXISTS exact`
+    yield* sql`CREATE TABLE exact (i8 INTEGER, f32 DOUBLE PRECISION)`
+    yield* sql`INSERT INTO exact VALUES (-128, 0.5), (127, 'NaN'), (0, '-Infinity'), (1, ${
+      2 ** -149
+    }), (2, '-0'), (3, ${(2 - 2 ** -23) * 2 ** 127})`
   })
 )
 
@@ -76,7 +81,11 @@ const memory = Catalog.layer({
   inexact: frame([
     ...["s", "ms", "ns"].map((name) => ArrowSchema.field(name, ArrowSchema.timestamp("microsecond"))),
     ...["ds", "dms", "dns"].map((name) => ArrowSchema.field(name, ArrowSchema.duration("microsecond"))),
-    ...["scale", "digits"].map((name) => ArrowSchema.field(name, ArrowSchema.decimal(20, 4)))
+    ...["scale", "digits", "wide"].map((name) => ArrowSchema.field(name, ArrowSchema.decimal(20, 4))),
+    ...["i8", "u32"].map((name) => ArrowSchema.field(name, ArrowSchema.int32)),
+    ArrowSchema.field("u64", ArrowSchema.int64),
+    ArrowSchema.field("f32", ArrowSchema.float64),
+    ArrowSchema.field("f32i", ArrowSchema.int32)
   ], [
     [1_500_000n],
     [1_000_500n],
@@ -85,8 +94,18 @@ const memory = Catalog.layer({
     [500n],
     [9_504_000_000_000_000n],
     [decimal("1.005")],
-    [decimal("1000")]
-  ])
+    [decimal("1000")],
+    [decimal("1")],
+    [256],
+    [-1],
+    [-1n],
+    [0.1],
+    [16777217]
+  ]),
+  exact: frame([
+    ArrowSchema.field("i8", ArrowSchema.int32),
+    ArrowSchema.field("f32", ArrowSchema.float64)
+  ], [[-128, 127, 0, 1, 2, 3], [0.5, NaN, -Infinity, 2 ** -149, -0, (2 - 2 ** -23) * 2 ** 127]])
 })
 
 const table = Query.table("sales", Sale)
@@ -370,6 +389,12 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     ] as const
   ),
   [
+    "tables declared with narrower types, holding them exactly",
+    Query.table("exact", Schema.Struct({ i8: Schema.Number, f32: Schema.Number }), {
+      types: { i8: ArrowSchema.int8, f32: ArrowSchema.float32 }
+    })
+  ],
+  [
     "rounding integers",
     Query.from(DataFrame.fromColumns({ x: Int32Array.of(5, -15, 25) })).pipe(
       Query.select((c) => ({ r0: Expr.round(c.x), r1: Expr.round(c.x, 1) }))
@@ -478,6 +503,18 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
             [
               contract(Schema.Struct({ s: Schema.String }).check(Schema.makeFilter((row) => row.s !== ""))),
               "schemas with checks on whole rows aren't supported on SQL tables; check their fields instead"
+            ],
+            [
+              odd(Schema.Struct({ forever: Schema.DateTimeUtc })),
+              `column "forever" has timestamps outside the range of DateTime`
+            ],
+            [
+              Query.fromPlan({
+                _tag: "Table",
+                name: "odd",
+                columns: [{ name: "endless", type: "Date", nullable: true }]
+              }),
+              `column "endless" has values that Date can't hold exactly`
             ]
           ] as const
         ) {
@@ -497,13 +534,22 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
             ["dms", Schema.Duration, ArrowSchema.duration("millisecond")],
             ["dns", Schema.Duration, ArrowSchema.duration("nanosecond")],
             ["scale", Schema.BigDecimal, ArrowSchema.decimal(5, 2)],
-            ["digits", Schema.BigDecimal, ArrowSchema.decimal(5, 2)]
+            ["digits", Schema.BigDecimal, ArrowSchema.decimal(5, 2)],
+            ["wide", Schema.BigDecimal, ArrowSchema.decimal(38, 20)],
+            ["i8", Schema.Number, ArrowSchema.int8],
+            ["u32", Schema.Number, ArrowSchema.uint32],
+            ["u64", Schema.BigInt, ArrowSchema.uint64],
+            ["f32", Schema.Number, ArrowSchema.float32],
+            ["f32i", Schema.Number, ArrowSchema.float32]
           ] as const
         ) {
-          const query = Query.table("inexact", Schema.Struct({ [column]: schema }), { types: { [column]: type } })
-          const expected = yield* Effect.flip(query.pipe(Effect.provide(memory)))
-          const actual = yield* Effect.flip(onSql(query))
-          assert.strictEqual(actual.message, expected.message)
+          const table = Query.table("inexact", Schema.Struct({ [column]: schema }), { types: { [column]: type } })
+          // A count reads none of the table's columns.
+          for (const query of [table, table.pipe(Query.aggregate(() => ({ n: Expr.count() })))]) {
+            const expected = yield* Effect.flip(query.pipe(Effect.provide(memory)))
+            const actual = yield* Effect.flip(onSql(query))
+            assert.strictEqual(actual.message, expected.message)
+          }
         }
       }))
 

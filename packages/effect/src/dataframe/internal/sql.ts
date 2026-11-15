@@ -93,56 +93,6 @@ const sqlType = (t: S.DataType): string => {
   }
 }
 
-const smallIntegers = ["smallint", "integer"]
-
-/**
- * The PostgreSQL columns the SQL engine reads as declared table columns of
- * each type: columns of the PostgreSQL types `accepts` or of the type
- * categories `categories` (as the in-memory engine accepts integers below
- * 64 bits for floats and narrower integers), or of any type for `Null`.
- * `undefined` for column types it doesn't read yet.
- */
-const tableTypes: {
-  readonly [K in Plan.TypeName]:
-    | { readonly accepts?: ReadonlyArray<string>; readonly categories?: ReadonlyArray<string> }
-    | undefined
-} = {
-  Int8: { accepts: smallIntegers },
-  Int16: { accepts: smallIntegers },
-  Int32: { accepts: smallIntegers },
-  Int64: { accepts: ["bigint"] },
-  UInt8: { accepts: smallIntegers },
-  UInt16: { accepts: smallIntegers },
-  UInt32: { accepts: smallIntegers },
-  UInt64: { accepts: ["bigint"] },
-  Float16: undefined,
-  Float32: { accepts: [...smallIntegers, "real", "double precision"] },
-  Float64: { accepts: [...smallIntegers, "real", "double precision"] },
-  // String types and enums.
-  Utf8: { categories: ["S", "E"] },
-  Binary: { accepts: ["bytea"] },
-  Bool: { accepts: ["boolean"] },
-  Null: {},
-  Date: { accepts: ["date"] },
-  Time: undefined,
-  Timestamp: { accepts: ["timestamp without time zone", "timestamp with time zone"] },
-  Duration: { accepts: ["interval"] },
-  Decimal: { accepts: ["numeric"] },
-  List: undefined,
-  Struct: undefined
-}
-
-/**
- * The type the SQL engine reads a declared table column as: the type the
- * in-memory engine conforms it to.
- */
-const tableType = (table: string, column: Plan.TableColumn): S.DataType =>
-  tableTypes[column.type] === undefined
-    ? unsupported(
-      `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
-    )
-    : Schema_.arrowType(column)
-
 const string = (s: string): string => `'${s.replaceAll("'", "''")}'`
 
 const pad = (n: number, width = 2) => String(n).padStart(width, "0")
@@ -967,6 +917,140 @@ const reader = (type: S.DataType): (value: unknown) => unknown => {
 // Tables
 // -----------------------------------------------------------------------------
 
+const smallIntegers = ["smallint", "integer"]
+
+/** A condition, as SQL on a value `x`, and the failure of a column with values that don't satisfy it. */
+interface Condition {
+  readonly holds: string
+  readonly failure: string
+}
+
+const exactly = (type: S.DataType): string => `has values that ${D.describe(type)} can't hold exactly`
+
+/** Integers in the range of an integer type. */
+const inRange = (x: string, type: S.DataType): Array<Condition> => {
+  const { bitWidth, signed } = type as S.Int
+  const lo = signed ? -(BigInt(1) << BigInt(bitWidth - 1)) : BigInt(0)
+  const hi = (BigInt(1) << BigInt(signed ? bitWidth - 1 : bitWidth)) - BigInt(1)
+  return [{ holds: `${x} BETWEEN ${lo} AND ${hi}`, failure: exactly(type) }]
+}
+
+/**
+ * Numbers that are 32-bit floats: zero, infinities, NaN, or numbers between
+ * the least and the greatest 32-bit float in magnitude that convert to
+ * `REAL` and back unchanged (outside that range the conversion fails).
+ */
+const float32 = (x: string, type: S.DataType): Array<Condition> => {
+  const d = float(x)
+  return [{
+    holds: `(CASE WHEN ABS(${d}) BETWEEN ${float(`'${2 ** -149}'`)} AND ${
+      float(`'${(2 - 2 ** -23) * 2 ** 127}'`)
+    } THEN CAST(CAST(${d} AS REAL) AS DOUBLE PRECISION) = ${d} ELSE ${d} = 0 OR ABS(${d}) = ${
+      float("'Infinity'")
+    } OR ${d} = ${NAN} END)`,
+    failure: exactly(type)
+  }]
+}
+
+const int64 = BigInt(1) << BigInt(63)
+
+/** Timestamps and durations in whole units of the type that fit 64 bits (PostgreSQL keeps microseconds). */
+const wholeUnits = (x: string, type: S.DataType): Condition => {
+  const v = `(EXTRACT(EPOCH FROM ${x}) * ${perSecond[(type as S.Timestamp | S.Duration).unit]})`
+  return { holds: `${v} = TRUNC(${v}) AND ${v} BETWEEN ${-int64} AND ${int64 - BigInt(1)}`, failure: exactly(type) }
+}
+
+/**
+ * How the SQL engine reads declared table columns of each type, as the
+ * in-memory engine conforms table columns to their declaration:
+ *
+ * - `accepts` and `categories`: the PostgreSQL types, and type categories,
+ *   of the columns it reads as such columns (integers below 64 bits for
+ *   floats and narrower integers, as the in-memory engine; any type for
+ *   `Null`, which holds only nulls).
+ * - `conditions`: the conditions every value satisfies, beyond its type,
+ *   for its declared type to hold it exactly.
+ *
+ * `undefined` for column types it doesn't read yet.
+ */
+const tableTypes: {
+  readonly [K in Plan.TypeName]:
+    | {
+      readonly accepts?: ReadonlyArray<string>
+      readonly categories?: ReadonlyArray<string>
+      readonly conditions?: (x: string, type: S.DataType) => ReadonlyArray<Condition>
+    }
+    | undefined
+} = {
+  Int8: { accepts: smallIntegers, conditions: inRange },
+  Int16: { accepts: smallIntegers, conditions: inRange },
+  Int32: { accepts: smallIntegers },
+  Int64: { accepts: ["bigint"] },
+  UInt8: { accepts: smallIntegers, conditions: inRange },
+  UInt16: { accepts: smallIntegers, conditions: inRange },
+  UInt32: { accepts: smallIntegers, conditions: inRange },
+  UInt64: { accepts: ["bigint"], conditions: inRange },
+  Float16: undefined,
+  Float32: { accepts: [...smallIntegers, "real", "double precision"], conditions: float32 },
+  Float64: { accepts: [...smallIntegers, "real", "double precision"] },
+  // String types and enums.
+  Utf8: { categories: ["S", "E"] },
+  Binary: { accepts: ["bytea"] },
+  Bool: { accepts: ["boolean"] },
+  Null: {},
+  Date: { accepts: ["date"], conditions: (x, type) => [{ holds: `isfinite(${x})`, failure: exactly(type) }] },
+  Time: undefined,
+  Timestamp: {
+    accepts: ["timestamp without time zone", "timestamp with time zone"],
+    conditions: (x, type) => [
+      {
+        holds: `EXTRACT(EPOCH FROM ${x}) BETWEEN -8640000000000 AND 8640000000000.000999`,
+        failure: "has timestamps outside the range of DateTime"
+      },
+      wholeUnits(x, type)
+    ]
+  },
+  Duration: {
+    accepts: ["interval"],
+    conditions: (x, type) => [
+      {
+        holds: `EXTRACT(YEAR FROM ${x}) = 0 AND EXTRACT(MONTH FROM ${x}) = 0`,
+        failure: "has durations in months, which have no fixed length"
+      },
+      wholeUnits(x, type)
+    ]
+  },
+  Decimal: {
+    accepts: ["numeric"],
+    conditions: (x, type) => {
+      const { precision, scale } = type as S.Decimal
+      return [{
+        holds: `ROUND(${x}, ${scale}) = ${x} AND ABS(${x}) < ${power(precision - scale)} AND ${x} * ${
+          power(scale)
+        } BETWEEN ${-int64} AND ${int64 - BigInt(1)}`,
+        failure: exactly(type)
+      }]
+    }
+  },
+  List: undefined,
+  Struct: undefined
+}
+
+/**
+ * The type the SQL engine reads a declared table column as: the type the
+ * in-memory engine conforms it to.
+ */
+const tableType = (table: string, column: Plan.TableColumn): S.DataType =>
+  tableTypes[column.type] === undefined
+    ? unsupported(
+      `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
+    )
+    : Schema_.arrowType(column)
+
+/** The conditions of a declared column's values, `x` (see {@link tableTypes}). */
+const conditions = (x: string, column: Plan.TableColumn): ReadonlyArray<Condition> =>
+  tableTypes[column.type]!.conditions?.(x, Schema_.arrowType(column)) ?? []
+
 /**
  * A check of a table: one SQL value, and a test of it that fails when the
  * table breaks its declaration.
@@ -976,35 +1060,12 @@ interface Check {
   readonly verify: (value: unknown) => void
 }
 
-const int64 = BigInt(1) << BigInt(63)
-
-/**
- * SQL that is true when `x`, a value of a table's source, is one its
- * declared column's `type` holds exactly, as the in-memory engine converts
- * table columns: timestamps and durations in whole units that fit 64 bits
- * (PostgreSQL keeps microseconds), decimals without more digits than the
- * precision and scale allow (no rounding). `undefined` when every value is.
- */
-const exact = (x: string, type: S.DataType): string | undefined => {
-  switch (type._tag) {
-    case "Timestamp":
-    case "Duration": {
-      const v = `(EXTRACT(EPOCH FROM ${x}) * ${perSecond[type.unit]})`
-      return `${v} = TRUNC(${v}) AND ${v} BETWEEN ${-int64} AND ${int64 - BigInt(1)}`
-    }
-    case "Decimal":
-      return `ROUND(${x}, ${type.scale}) = ${x} AND ABS(${x}) < ${power(type.precision - type.scale)}`
-    default:
-      return undefined
-  }
-}
-
 const utc = S.timestamp("microsecond")
 
 /**
  * A declared column of a table's source as its declared type (timestamps
  * as UTC timestamps without a time zone, whatever the session's time
- * zone): null where it isn't held exactly (see {@link exact}), so that
+ * zone): null where it breaks a condition (see {@link conditions}), so that
  * reading such values doesn't fail before the checks of the rows do.
  */
 const declared = (column: Plan.TableColumn): string => {
@@ -1015,8 +1076,8 @@ const declared = (column: Plan.TableColumn): string => {
     : type._tag === "Decimal"
     ? `CAST(${x} AS ${sqlType(type)})`
     : x
-  const held = exact(x, type)
-  return held === undefined ? value : `(CASE WHEN ${held} THEN ${value} END)`
+  const holds = conditions(x, column)
+  return holds.length === 0 ? value : `(CASE WHEN ${holds.map((c) => c.holds).join(" AND ")} THEN ${value} END)`
 }
 
 /**
@@ -1047,42 +1108,29 @@ const typeChecks = (table: Plan.Table): Array<Check> =>
 /**
  * The checks of a table's rows, the ones the in-memory engine makes beyond
  * column types: only nulls in `Null` columns, no nulls in other columns
- * unless they are nullable, timestamps in the range of `DateTime`,
- * durations of fixed length (no months), values their declared type holds
- * exactly (see {@link exact}), and the values of the fields its schema
- * constrains beyond their column type (literals, enums, refinements)
- * accepted by the schema, tested on each such column's distinct values.
- * Each value aggregates the rows of the table's source.
+ * unless they are nullable, the conditions of their values (see
+ * {@link conditions}), and the values of the fields its schema constrains
+ * beyond their column type (literals, enums, refinements) accepted by the
+ * schema, tested on each such column's distinct values. Each value
+ * aggregates the rows of the table's source.
  */
 const rowChecks = (table: Plan.Table, frame: F.Frame): Array<Check> => [
   ...(table.columns ?? []).flatMap((column) => {
     const x = quote(column.name)
-    const path = JSON.stringify(column.name)
-    const any = (failed: string, message: string): Check => ({
+    const any = (failed: string, failure: string): Check => ({
       sql: `BOOL_OR(${failed})`,
       verify: (value) => {
-        if (value === true) V.fail(`column ${path} ${message}`)
+        if (value === true) V.fail(`column ${JSON.stringify(column.name)} ${failure}`)
       }
     })
-    const checks: Array<Check> = []
-    if (column.type === "Null") checks.push(any(`${x} IS NOT NULL`, "has values, expected Null"))
-    else if (!column.nullable) checks.push(any(`${x} IS NULL`, "has missing values"))
-    if (column.type === "Timestamp") {
-      checks.push(any(
-        `EXTRACT(EPOCH FROM ${x}) NOT BETWEEN -8640000000000 AND 8640000000000.000999`,
-        "has timestamps outside the range of DateTime"
-      ))
-    }
-    if (column.type === "Duration") {
-      checks.push(any(
-        `EXTRACT(YEAR FROM ${x}) <> 0 OR EXTRACT(MONTH FROM ${x}) <> 0`,
-        "has durations in months, which have no fixed length"
-      ))
-    }
-    const type = Schema_.arrowType(column)
-    const held = exact(x, type)
-    if (held !== undefined) checks.push(any(`NOT (${held})`, `has values that ${D.describe(type)} can't hold exactly`))
-    return checks
+    return [
+      ...(column.type === "Null"
+        ? [any(`${x} IS NOT NULL`, "has values, expected Null")]
+        : column.nullable
+        ? []
+        : [any(`${x} IS NULL`, "has missing values")]),
+      ...conditions(x, column).map((c) => any(`NOT (${c.holds})`, c.failure))
+    ]
   }),
   ...(table.schema === undefined ? [] : Schema_.columnChecks(table.schema)).map(([name, test]): Check => {
     const type = frame.columns.find((c) => c.name === name)!.type

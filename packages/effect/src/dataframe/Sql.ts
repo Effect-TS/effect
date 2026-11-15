@@ -131,11 +131,14 @@ const attempt = <A>(f: () => A): Result.Result<A, DataFrameError> => {
  * checks those rows and computes the result from exactly them, whatever
  * the relation: views that sample rows or call functions included, and a
  * table read twice gives the same rows twice. The checks: only nulls in
- * `Null` columns, no nulls in other non-nullable columns, timestamps in
- * the range of `DateTime`, intervals without months, and the distinct
- * values of the columns the schema constrains beyond their type (literals,
- * enums, refinements) accepted by the schema. Columns the query doesn't
- * read are checked too. `explain` shows both queries.
+ * `Null` columns, no nulls in other non-nullable columns, values their
+ * declared types hold exactly (integers in range, numbers that `Float32`
+ * holds, decimals within their precision, scale and 64-bit storage, finite
+ * dates, timestamps and durations in whole units), timestamps in the range
+ * of `DateTime`, intervals without months, and the distinct values of the
+ * columns the schema constrains beyond their type (literals, enums,
+ * refinements) accepted by the schema. Columns the query doesn't read are
+ * checked too. `explain` shows both queries.
  *
  * **Gotchas**
  *
