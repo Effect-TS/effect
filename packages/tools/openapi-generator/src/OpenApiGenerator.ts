@@ -707,7 +707,7 @@ const parseOpenApi = (
                 effectStream: "sse",
                 schema: addSchema(
                   `${schemaId}${status}Sse`,
-                  normalizeSseEventSchema(mediaType.schema as JsonSchema.JsonSchema, resolveRef),
+                  normalizeSseEventSchema(mediaType.schema as JsonSchema.JsonSchema, resolveRef, getDialect(spec)),
                   op
                 ),
                 errorSchema: addSchema(
@@ -795,7 +795,8 @@ const parseOpenApi = (
               ? makeSseEventSchema(
                 sseResponseSchema,
                 effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined,
-                resolveRef
+                resolveRef,
+                getDialect(spec)
               )
               : sseResponseSchema,
             op
@@ -1297,9 +1298,10 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
 const makeSseEventSchema = (
   input: JsonSchema.JsonSchema,
   failureEvent: string | undefined,
-  resolveRef: (ref: string) => unknown
+  resolveRef: (ref: string) => unknown,
+  dialect: ReturnType<typeof getDialect>
 ): JsonSchema.JsonSchema => {
-  const eventSchema = normalizeSseEventSchema(input, resolveRef)
+  const eventSchema = normalizeSseEventSchema(input, resolveRef, dialect)
   if (failureEvent === undefined) {
     return eventSchema
   }
@@ -1310,7 +1312,7 @@ const makeSseEventSchema = (
         type: "object",
         properties: {
           id: { type: "string" },
-          event: { const: failureEvent },
+          event: { enum: [failureEvent] },
           data: { type: "string" }
         },
         required: ["event", "data"],
@@ -1323,22 +1325,31 @@ const makeSseEventSchema = (
 const normalizeSseEventSchema = (
   input: JsonSchema.JsonSchema,
   resolveRef: (ref: string) => unknown,
+  dialect: ReturnType<typeof getDialect>,
   ancestors: ReadonlySet<unknown> = new Set()
 ): JsonSchema.JsonSchema => {
   if (ancestors.has(input)) return input
   const nextAncestors = new Set(ancestors).add(input)
   const schema = { ...input } as Record<string, any>
   if (typeof schema.$ref === "string") {
-    const target = normalizeSseEventSchema(resolveRef(schema.$ref) as JsonSchema.JsonSchema, resolveRef, nextAncestors)
+    const target = normalizeSseEventSchema(
+      resolveRef(schema.$ref) as JsonSchema.JsonSchema,
+      resolveRef,
+      dialect,
+      nextAncestors
+    )
+    if (dialect === "openapi-3.0") return target
     delete schema.$ref
     // OpenAPI 3.1 reference siblings constrain the target; neither side overrides the other.
     return Object.keys(schema).length === 0
       ? target
-      : { allOf: [target, normalizeSseEventSchema(schema as JsonSchema.JsonSchema, resolveRef, nextAncestors)] }
+      : {
+        allOf: [target, normalizeSseEventSchema(schema as JsonSchema.JsonSchema, resolveRef, dialect, nextAncestors)]
+      }
   }
   for (const key of ["allOf", "anyOf", "oneOf"] as const) {
     if (Array.isArray(schema[key])) {
-      schema[key] = schema[key].map((member) => normalizeSseEventSchema(member, resolveRef, nextAncestors))
+      schema[key] = schema[key].map((member) => normalizeSseEventSchema(member, resolveRef, dialect, nextAncestors))
     }
   }
   if (
