@@ -37,6 +37,9 @@ const Setup = Layer.effectDiscard(
     yield* sql`DROP TABLE IF EXISTS sales`
     yield* sql`DROP TABLE IF EXISTS regions`
     yield* sql`DROP TABLE IF EXISTS contract`
+    yield* sql`DROP TABLE IF EXISTS second`
+    yield* sql`DROP TABLE IF EXISTS "__table0"`
+    yield* sql`DROP TABLE IF EXISTS "__table1"`
     yield* sql`CREATE TABLE sales (id DOUBLE PRECISION, region TEXT, units DOUBLE PRECISION, price DOUBLE PRECISION, at TIMESTAMP)`
     yield* sql`CREATE TABLE regions (region TEXT, manager TEXT)`
     for (const s of sales) {
@@ -47,6 +50,13 @@ const Setup = Layer.effectDiscard(
     for (const r of regions) yield* sql`INSERT INTO regions VALUES (${r.region}, ${r.manager})`
     yield* sql`CREATE TABLE contract (s TEXT, n DOUBLE PRECISION)`
     yield* sql`INSERT INTO contract VALUES ('bad', NULL), ('good', 1)`
+    // Tables named like the sources of other tables.
+    yield* sql`CREATE TABLE second (s TEXT)`
+    yield* sql`INSERT INTO second VALUES ('good')`
+    yield* sql`CREATE TABLE "__table0" (s TEXT)`
+    yield* sql`INSERT INTO "__table0" VALUES ('bad')`
+    yield* sql`CREATE TABLE "__table1" (s TEXT)`
+    yield* sql`INSERT INTO "__table1" VALUES ('bad')`
     yield* sql`DROP TABLE IF EXISTS odd`
     yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL, forever TIMESTAMP, endless DATE)`
     yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month', 'infinity', 'infinity')`
@@ -612,6 +622,21 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           [{ s: "good" }],
           `column "s" has values its schema rejects`
         ])
+      }))
+
+    it.effect("tables are read from their names, whatever the compiler names", () =>
+      Effect.gen(function*() {
+        const s = (name: string) => Query.table(name, Schema.Struct({ s: Schema.String }))
+        assert.deepStrictEqual(
+          yield* rowsOnSql(Query.concat([s("contract"), s("__table0"), s("second"), s("__table1")])),
+          [{ s: "bad" }, { s: "good" }, { s: "bad" }, { s: "good" }, { s: "bad" }]
+        )
+        const error = yield* Effect.flip(onSql(Query.concat([
+          s("contract").pipe(Query.filter((c) => Expr.eq(c.s, "good"))),
+          s("second"),
+          Query.table("__table1", Schema.Struct({ s: Schema.Literal("good") }))
+        ])))
+        assert.strictEqual(error.message, `column "s" has values its schema rejects`)
       }))
 
     it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>

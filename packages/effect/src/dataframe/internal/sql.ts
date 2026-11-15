@@ -15,8 +15,10 @@
  * renders every column as text (temporal values as integers in their unit),
  * and `decode` reads the rows back as columns of those types.
  *
- * Helper columns (the row key and the like) share one prefix, chosen per
- * plan so that no column of the plan starts with it.
+ * The names the compiler invents (helper columns like the row key, the
+ * sources of tables) share one prefix, chosen per plan so that no name the
+ * plan supplies (its tables' and its columns') starts with it (see
+ * {@link inventor}).
  *
  * @internal
  */
@@ -37,7 +39,7 @@ import * as V from "./vector.ts"
 interface Compiler {
   /** The engine's frame for every node of the plan, on zero-row inputs. */
   readonly frames: ReadonlyMap<Plan.Node, F.Frame>
-  /** A quoted helper column name, disjoint from the plan's column names. */
+  /** A quoted invented name, disjoint from the plan's table and column names (see {@link inventor}). */
   readonly hidden: (name: string) => string
   /** The quoted row key. */
   readonly row: string
@@ -1158,6 +1160,26 @@ const source = (name: string, tables: ReadonlyArray<Plan.Table>): string => {
   return `MATERIALIZED (SELECT ${columns.length === 0 ? "1" : list(columns)} FROM ${quote(name)})`
 }
 
+/**
+ * Quotes the names the compiler invents for the plan of `frames`, all with
+ * one prefix that no table or column name of the plan starts with, so that
+ * no invented name equals a name the plan supplies: a helper column can't
+ * hide a column, and a source can't shadow a table it reads (a common table
+ * expression shadows the table of its name in every `FROM` in its scope,
+ * the other sources' included; qualifying the tables' names with their
+ * schema is no way out, as the schema isn't known). Names PostgreSQL
+ * truncates keep their start, so this holds for them too.
+ */
+const inventor = (frames: ReadonlyMap<Plan.Node, F.Frame>): (name: string) => string => {
+  const names = [...frames].flatMap(([node, frame]) => [
+    ...(node._tag === "Table" ? [node.name] : []),
+    ...frame.columns.map((col) => col.name)
+  ])
+  let prefix = "__"
+  while (names.some((name) => name.startsWith(prefix))) prefix += "_"
+  return (name) => quote(prefix + name)
+}
+
 /** One SQL query whose first row holds the values of checks. */
 interface Checked {
   readonly sql: string
@@ -1189,11 +1211,7 @@ export interface Compiled {
 export const compile = (plan: Plan.Node): Compiled => {
   const frames = new Map<Plan.Node, F.Frame>()
   const result = typed(plan, frames)
-  const used = new Set<string>()
-  for (const frame of frames.values()) for (const col of frame.columns) used.add(col.name)
-  let prefix = "__"
-  while ([...used].some((name) => name.startsWith(prefix))) prefix += "_"
-  const hidden = (name: string) => quote(prefix + name)
+  const hidden = inventor(frames)
   const tables = [...frames].flatMap(([node, frame]) =>
     node._tag === "Table" ? [{ node, checks: rowChecks(node, frame) }] : []
   )
