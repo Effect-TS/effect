@@ -205,7 +205,7 @@ describe("Thrift", () => {
 
     it.prop("string round-trips through UTF-8", [Schema.String], ([s]) => {
       // Lone surrogates have no UTF-8 encoding and become U+FFFD.
-      const expected = new TextDecoder().decode(new TextEncoder().encode(s))
+      const expected = new TextDecoder("utf-8", { ignoreBOM: true }).decode(new TextEncoder().encode(s))
       assert.strictEqual(roundTrip((w) => w.writeString(s), (r) => r.readString()), expected)
     })
 
