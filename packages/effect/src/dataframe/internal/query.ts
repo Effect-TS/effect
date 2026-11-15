@@ -105,8 +105,8 @@ export const mapTables = (plan: Plan.Node, f: (table: Plan.Table) => Node): Node
   return replace(plan)
 }
 
-/** A table's frame, checked against and narrowed to its declared columns. @internal */
-export const tableValues = (table: Plan.Table, frame: F.Frame): Node =>
+/** A table's frame, checked against and narrowed to its declared columns. */
+const tableValues = (table: Plan.Table, frame: F.Frame): Node =>
   values(table.columns === undefined ? frame : conform(frame, table.columns, table.schema))
 
 /** Replaces every `Table` with the catalog's frame, reading each table once. @internal */

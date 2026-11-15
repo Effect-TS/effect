@@ -8,22 +8,17 @@
  * decimals); means from sums and counts; variances from counts, means and
  * M2 (Chan et al.). Medians and distinct counts don't combine.
  *
- * Parts may differ in type (stream batches of untyped tables). The result
- * is the aggregate of the concatenated rows: each state keeps the smallest
- * and largest input value converted to the inputs' common type, so a value
- * that type can't hold fails as concatenating would, and `finish` gives
- * the result the type and overflow of that common type. Float results may
+ * Parts have the types of the whole input (every batch of a streamed node
+ * has the types of its whole result), so their partials combine as they
+ * are and finish in that input type. Float results may
  * differ in rounding, as float sums of the same values in another order do.
  *
  * @internal
  */
 import type * as S from "../../arrow/ArrowSchema.ts"
 import * as Agg from "./aggregate.ts"
-import * as Dec from "./decimal.ts"
-import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
 import * as K from "./kernels.ts"
-import * as T from "./temporal.ts"
 import * as V from "./vector.ts"
 
 /** @internal */
@@ -38,8 +33,6 @@ export type Part =
     readonly m2: Float64Array
   }
   | { readonly _tag: "none" }
-
-const scaleOf = (t: S.DataType): number => (Dec.isDecimal(t) ? t.scale : 0)
 
 const reaggregated = new Set<Agg.AggFn>(["count", "len", "min", "max", "first", "last"])
 
@@ -66,60 +59,37 @@ export const partial = (fn: Agg.AggFn, v: V.Vector | undefined, g: Agg.Grouping)
   }
 }
 
-/** Sums of parts whose inputs have `types`, in their common type `type`. */
-const combineSums = (
-  parts: ReadonlyArray<Agg.Sums>,
-  types: ReadonlyArray<S.DataType>,
-  type: S.DataType,
-  ids: Int32Array,
-  count: number
-): Agg.Sums => {
-  const float = type._tag === "Float"
-  const out = float ? new Float64Array(count) : new Array<bigint>(count).fill(BigInt(0))
-  let at = 0
-  parts.forEach((p, c) => {
-    if (T.isTemporal(type) && !D.sameType(types[c], type)) {
-      V.fail(`sums of ${D.describe(types[c])} and ${D.describe(type)} values don't combine`)
-    }
-    if (float) {
-      const scale = 10 ** scaleOf(types[c])
-      for (let j = 0; j < p.length; j++) (out as Float64Array)[ids[at + j]] += Number(p[j]) / scale
-    } else {
-      const factor = Dec.pow10(scaleOf(type) - scaleOf(types[c]))
-      for (let j = 0; j < p.length; j++) (out as Array<bigint>)[ids[at + j]] += (p[j] as bigint) * factor
-    }
-    at += p.length
-  })
-  return out
-}
-
 /**
  * Combines the partials of several parts: `parts[c]` holds part `c`'s
- * partials for its groups over inputs of `types[c]`, whose common type is
- * `type`; `ids` maps the concatenated groups of all parts to `count`
- * combined groups.
+ * partials for its groups over inputs of `type`; `ids` maps the
+ * concatenated groups of all parts to `count` combined groups.
  *
  * @internal
  */
 export const combine = (
   fn: Agg.AggFn,
   parts: ReadonlyArray<Part>,
-  types: ReadonlyArray<S.DataType | undefined>,
   type: S.DataType | undefined,
   ids: Int32Array,
   count: number
 ): Part => {
   const grouping: Agg.Grouping = { ids, count }
   if (reaggregated.has(fn)) {
-    const vectors = parts.map((p) => (p as Extract<Part, { _tag: "vector" }>).vector)
-    if (fn === "count" || fn === "len") {
-      return { _tag: "vector", vector: Agg.aggregate("sum", K.concat(vectors), grouping) }
-    }
-    return { _tag: "vector", vector: Agg.aggregate(fn, V.concat(vectors.map((v) => K.coerce(v, type!))), grouping) }
+    const vector = K.concat(parts.map((p) => (p as Extract<Part, { _tag: "vector" }>).vector))
+    return { _tag: "vector", vector: Agg.aggregate(fn === "count" || fn === "len" ? "sum" : fn, vector, grouping) }
   }
   if (fn === "sum") {
-    const sums = parts.map((p) => (p as Extract<Part, { _tag: "sums" }>).sums)
-    return { _tag: "sums", sums: combineSums(sums, types as ReadonlyArray<S.DataType>, type!, ids, count) }
+    const float = type!._tag === "Float"
+    const sums = float ? new Float64Array(count) : new Array<bigint>(count).fill(BigInt(0))
+    let at = 0
+    for (const p of parts as ReadonlyArray<Extract<Part, { _tag: "sums" }>>) {
+      for (let j = 0; j < p.sums.length; j++) {
+        if (float) (sums as Float64Array)[ids[at + j]] += p.sums[j] as number
+        else (sums as Array<bigint>)[ids[at + j]] += p.sums[j] as bigint
+      }
+      at += p.sums.length
+    }
+    return { _tag: "sums", sums }
   }
   if (fn === "mean") {
     const sum = new Float64Array(count)
@@ -180,28 +150,16 @@ export const finish = (fn: Agg.AggFn, part: Part, type: S.DataType | undefined):
 
 /**
  * The groups of some rows: their keys (one row per group), partial
- * aggregates and, per aggregate input, its domain: the smallest and
- * largest value in the inputs' common type.
+ * aggregates and the type of each aggregate's input.
  *
  * @internal
  */
 export interface State {
   readonly keys: ReadonlyArray<V.Vector>
-  readonly domains: ReadonlyArray<V.Vector | undefined>
+  readonly types: ReadonlyArray<S.DataType | undefined>
   readonly parts: ReadonlyArray<Part>
   readonly count: number
   readonly rows: number
-}
-
-/**
- * The smallest and largest valid value of `v`, the values that decide
- * whether a numeric or temporal column converts to a type; no values for
- * other columns.
- */
-const domain = (v: V.Vector): V.Vector => {
-  if (v.kind !== "i32" && v.kind !== "i64" && v.kind !== "f64") return V.take(v, new Int32Array(0))
-  const all = { ids: new Int32Array(v.length), count: 1 }
-  return V.concat([Agg.aggregate("min", v, all), Agg.aggregate("max", v, all)])
 }
 
 /** Groups some rows; without keys, they form one group even when there are none. @internal */
@@ -213,7 +171,7 @@ export const group = (
   const g = keys.length === 0 ? { ids: new Int32Array(n), count: 1, firstRow: new Int32Array(1) } : Hash.groups(keys, n)
   return {
     keys: keys.map((k) => V.take(k, g.firstRow)),
-    domains: inputs.map(({ vector }) => vector === undefined ? undefined : domain(vector)),
+    types: inputs.map(({ vector }) => vector?.type),
     parts: inputs.map(({ fn, vector }) => partial(fn, vector, g)),
     count: g.count,
     rows: n
@@ -221,35 +179,20 @@ export const group = (
 }
 
 /**
- * Combines states, keeping groups in order of first appearance. States
- * without rows only add their types.
+ * Combines states of rows of the same types, keeping groups in order of
+ * first appearance. States without rows add nothing.
  *
  * @internal
  */
 export const merge = (fns: ReadonlyArray<Agg.AggFn>, states: ReadonlyArray<State>): State => {
-  if (states.length === 1) return states[0]
-  const keys = states[0].keys.map((_, k) => K.concat(states.map((s) => s.keys[k])))
-  const domains = states[0].domains.map((d, a) =>
-    d === undefined ? undefined : domain(K.concat(states.map((s) => s.domains[a]!)))
-  )
   const filled = states.filter((s) => s.rows > 0)
-  if (filled.length === 0) {
-    return group(keys, fns.map((fn, a) => ({ fn, vector: domains[a] && V.take(domains[a], new Int32Array(0)) })), 0)
-  }
+  if (filled.length <= 1) return filled[0] ?? states[0]
+  const keys = filled[0].keys.map((_, k) => K.concat(filled.map((s) => s.keys[k])))
   const g = Hash.groups(keys, filled.reduce((n, s) => n + s.count, 0))
   return {
     keys: keys.map((k) => V.take(k, g.firstRow)),
-    domains,
-    parts: fns.map((fn, a) =>
-      combine(
-        fn,
-        filled.map((s) => s.parts[a]),
-        filled.map((s) => s.domains[a]?.type),
-        domains[a]?.type,
-        g.ids,
-        g.count
-      )
-    ),
+    types: filled[0].types,
+    parts: fns.map((fn, a) => combine(fn, filled.map((s) => s.parts[a]), filled[0].types[a], g.ids, g.count)),
     count: g.count,
     rows: filled.reduce((n, s) => n + s.rows, 0)
   }

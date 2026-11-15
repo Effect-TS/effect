@@ -11,14 +11,24 @@
  * aggregates of windows collect instead). Every other operation collects its
  * inputs first.
  *
+ * Every batch of a node has the column types of the node's whole result, so
+ * each operation sees the values it would see over all rows at once: the
+ * batches of a table, as read (converted to its declared columns, if any),
+ * must have the columns of its first batch, as the batches of an Arrow
+ * stream share its schema, and a concatenation converts its inputs' batches
+ * to their common types, as concatenating their results would.
+ *
  * @internal
  */
 import * as Effect from "../../Effect.ts"
+import * as Option from "../../Option.ts"
+import * as Sink from "../../Sink.ts"
 import * as Stream from "../../Stream.ts"
 import type { Catalog } from "../Catalog.ts"
 import type { DataFrameError } from "../DataFrame.ts"
 import type * as Plan from "../Plan.ts"
 import type * as Agg from "./aggregate.ts"
+import * as D from "./dtype.ts"
 import * as E from "./expr.ts"
 import * as F from "./frame.ts"
 import * as K from "./kernels.ts"
@@ -126,7 +136,7 @@ const aggregate = (
           state === undefined ? runEmpty(node) : Q.attempt(() => {
             const keyColumns = keys.map((k, i) => new F.Column(k, state.keys[i], undefined, nullable[i]))
             const columns = specs.map((s, a) =>
-              new F.Column(s.name, Partial.finish(s.fn, state.parts[a], state.domains[a]?.type), undefined)
+              new F.Column(s.name, Partial.finish(s.fn, state.parts[a], state.types[a]), undefined)
             )
             return F.make([...keyColumns, ...columns], state.count)
           })
@@ -135,6 +145,47 @@ const aggregate = (
       )
     )
   })
+}
+
+/**
+ * The inputs' batches one after the other, converted to the inputs' common
+ * types. An input's first batch gives its types (its result without rows when
+ * it has none), so every input starts before the first batch is emitted.
+ */
+const concat = (inputs: ReadonlyArray<Q.Node>, catalog: Catalog.Service): Batches =>
+  Stream.unwrap(Effect.gen(function*() {
+    const peeled = yield* Effect.forEach(
+      inputs,
+      (input) =>
+        Effect.flatMap(Stream.peel(batches(input, catalog), Sink.head()), ([first, rest]) =>
+          Option.isSome(first)
+            ? Effect.succeed({ first: first.value, rest: Stream.concat(Stream.succeed(first.value), rest) })
+            : Effect.map(runEmpty(input), (empty) => ({ first: empty, rest: Stream.empty })))
+    )
+    const types = yield* Q.attempt(() => F.concat(peeled.map(({ first }) => F.slice(first, 0, 0))))
+    return peeled.map(({ rest }) => Stream.mapEffect(rest, (batch) => Q.attempt(() => F.coerce(batch, types))))
+      .reduce((a, b) => Stream.concat(a, b))
+  }))
+
+const describeColumns = (frame: F.Frame): string =>
+  `[${frame.columns.map((c) => `${c.name}: ${D.describe(c.type)}`).join(", ")}]`
+
+/**
+ * Reads the batches of a table in turn: each converted to the declared
+ * columns, if any, and checked to have the columns of the first.
+ */
+const reader = (table: Plan.Table) => {
+  let first: F.Frame | undefined
+  return (frame: F.Frame): F.Frame => {
+    const batch = table.columns === undefined ? frame : conform(frame, table.columns, table.schema)
+    first ??= batch
+    const same = batch.columns.length === first.columns.length &&
+      batch.columns.every((c, i) => c.name === first!.columns[i].name && D.sameType(c.type, first!.columns[i].type))
+    return same ? batch : V.fail(
+      `a batch of table ${JSON.stringify(table.name)} has columns ${describeColumns(batch)}, ` +
+        `its first batch ${describeColumns(first)}: the batches of a streamed table share their columns`
+    )
+  }
 }
 
 const slice = (input: Batches, offset: number, length: number | undefined): Batches =>
@@ -168,12 +219,13 @@ export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
   }
   switch (node._tag) {
     case "Table":
-      return Stream.suspend(() => catalog.stream(node.name)).pipe(
-        Stream.mapEffect((frame) => {
-          const batch = frame as unknown as F.Frame
-          return Q.attempt(() => (node.columns === undefined ? batch : conform(batch, node.columns, node.schema)))
-        })
-      )
+      return Stream.suspend(() => {
+        const read = reader(node)
+        return Stream.mapEffect(
+          catalog.stream(node.name),
+          (frame) => Q.attempt(() => read(frame as unknown as F.Frame))
+        )
+      })
     case "Values":
       return Stream.succeed(node.frame as unknown as F.Frame)
     case "Slice":
@@ -190,7 +242,7 @@ export const batches = (node: Q.Node, catalog: Catalog.Service): Batches => {
     case "Concat":
       return node.inputs.length === 0
         ? collected(node, catalog)
-        : node.inputs.map((input) => batches(input, catalog)).reduce((a, b) => Stream.concat(a, b))
+        : concat(node.inputs, catalog)
     case "GroupBy":
     case "Aggregate":
       return aggregate(node, catalog)
@@ -216,7 +268,8 @@ const prepare = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Q.Nod
           const frames = read.get(table.name) as ReadonlyArray<F.Frame> | undefined
           if (frames === undefined) return table
           if (frames.length === 0) return Q.values(emptyTable(table))
-          return Q.tableValues(table, frames.length === 1 ? frames[0] : F.concat(frames))
+          const batches = frames.map(reader(table))
+          return Q.values(batches.length === 1 ? batches[0] : F.concat(batches))
         }))
       )
     })

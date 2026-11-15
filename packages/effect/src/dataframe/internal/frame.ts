@@ -554,6 +554,23 @@ export const dropNulls = (self: Frame, names: ReadonlyArray<string> | undefined)
   return take(self, Int32Array.from(keep))
 }
 
+/**
+ * `self` with the columns of `like`, each converted to its type in `like`
+ * (`K.coerce`: a value that type can't hold fails).
+ *
+ * @internal
+ */
+export const coerce = (self: Frame, like: Frame): Frame =>
+  make(
+    like.columns.map((c) => {
+      const own = column(self, c.name)
+      return D.sameType(own.type, c.type)
+        ? own
+        : new Column(c.name, K.coerce(own.values(), c.type), undefined, own.nullable)
+    }),
+    self.length
+  )
+
 /** @internal */
 export const concat = (frames: ReadonlyArray<Frame>): Frame => {
   const first = frames[0]

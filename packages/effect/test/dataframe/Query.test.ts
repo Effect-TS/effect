@@ -236,14 +236,8 @@ describe("Query", () => {
           })
         const big = Query.from(price("6000000000000000000", 19, 0))
         const small = Query.from(price("1.20", 18, 2))
-        const groups = Query.fromPlan({ _tag: "Table", name: "t" }).pipe(
-          Query.groupBy("d"),
-          Query.agg(() => ({ n: Expr.count() })),
-          Effect.provide(Catalog.layer({ t: Stream.make(price("6000000000000000000", 19, 0), price("1.20", 18, 2)) }))
-        )
         const failures: ReadonlyArray<Effect.Effect<unknown, DataFrame.DataFrameError>> = [
           Query.concat([big, small]),
-          groups,
           Query.join(big, small, { on: "d", how: "left" }),
           Query.filter(big, (c) => Expr.eq(c.d, BigDecimal.fromStringUnsafe("1.20")))
         ]
@@ -551,7 +545,7 @@ describe("Query", () => {
         assert.deepStrictEqual(result, [{ total: BigDecimal.fromBigInt(0n) }])
       }))
 
-    it.effect("batches of different types combine in their common type", () =>
+    it.effect("batches convert to the declared column types; undeclared, they must share their columns", () =>
       Effect.gen(function*() {
         const Price = Schema.Struct({ d: Schema.BigDecimal })
         const price = (d: string, scale: number) =>
@@ -560,31 +554,63 @@ describe("Query", () => {
           })
         const source = Stream.make(price("1.2", 1), price("1.23", 2), price("1.2", 2))
         const declared = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 2) } })
-        const untyped = Query.fromPlan({ _tag: "Table", name: "t" }) as typeof declared
         const d = (s: string) => BigDecimal.fromStringUnsafe(s)
-        for (const table of [declared, untyped]) {
-          const totals = table.pipe(
-            Query.aggregate((c) => ({ s: Expr.sum(c.d), lo: Expr.min(c.d), hi: Expr.max(c.d) }))
+        const totals = declared.pipe(
+          Query.aggregate((c) => ({ s: Expr.sum(c.d), lo: Expr.min(c.d), hi: Expr.max(c.d) }))
+        )
+        assert.deepStrictEqual(yield* streamed(totals, source), [{ s: d("3.63"), lo: d("1.20"), hi: d("1.23") }])
+        const groups = declared.pipe(
+          Query.groupBy("d"),
+          Query.agg(() => ({ n: Expr.count() })),
+          Query.sort((c) => [c.d])
+        )
+        assert.deepStrictEqual(yield* streamed(groups, source), [{ d: d("1.20"), n: 2 }, { d: d("1.23"), n: 1 }])
+        // Undeclared, a batch of other types would make the column types of
+        // earlier results depend on later batches.
+        const untyped = Query.fromPlan({ _tag: "Table", name: "t" })
+        for (
+          const query of [
+            untyped,
+            Query.concat([untyped, untyped]),
+            Query.aggregate(untyped, () => ({ n: Expr.count() }))
+          ]
+        ) {
+          assert.strictEqual(
+            (yield* Effect.flip(streamed(query, source))).message,
+            `a batch of table "t" has columns [d: Decimal[18, 2]], its first batch [d: Decimal[18, 1]]: ` +
+              `the batches of a streamed table share their columns`
           )
-          assert.deepStrictEqual(yield* streamed(totals, source), [{ s: d("3.63"), lo: d("1.20"), hi: d("1.23") }])
-          const groups = table.pipe(
-            Query.groupBy("d"),
-            Query.agg(() => ({ n: Expr.count() })),
-            Query.sort((c) => [c.d])
-          )
-          assert.deepStrictEqual(yield* streamed(groups, source), [{ d: d("1.20"), n: 2 }, { d: d("1.23"), n: 1 }])
         }
         const lossy = Query.table("t", Price, { types: { d: ArrowSchema.decimal(18, 1) } })
         const error = yield* Effect.flip(streamed(lossy, source))
         assert.strictEqual(error.message, `column "d" has values that Decimal[18, 1] can't hold exactly`)
       }))
 
-    it.effect("aggregates of batches of different types are those of the batches concatenated, in either order", () =>
+    it.effect("results over inputs of different types are those over their concatenation, streamed or not", () =>
       Effect.gen(function*() {
+        type Frame = DataFrame.DataFrame<{ readonly x: number }>
         const x = (type: ArrowSchema.DataType, values: ReadonlyArray<number>) =>
           DataFrame.fromRows(Row, values.map((x) => ({ x })), { types: { x: type } })
-        const untyped = Query.fromPlan({ _tag: "Table", name: "t" }) as typeof t
-        const query = (table: typeof t) =>
+        const wide = (values: BigUint64Array | BigInt64Array) =>
+          DataFrame.fromColumns({ x: values }) as unknown as Frame
+        const Price = Schema.Struct({ x: Schema.BigDecimal })
+        const price = (d: string, precision: number, scale: number) =>
+          DataFrame.fromRows(Price, [{ x: BigDecimal.fromStringUnsafe(d) }], {
+            types: { x: ArrowSchema.decimal(precision, scale) }
+          }) as unknown as Frame
+        // A query over the frames concatenated: in memory, and streamed with
+        // each frame a streamed table of its own.
+        const results = <A>(frames: ReadonlyArray<Frame>, query: (table: typeof t) => Query.Query<A>) => {
+          const names = frames.map((_, i) => `t${i}`)
+          const concat = (tables: ReadonlyArray<typeof t>) => Query.concat(tables as [typeof t, ...Array<typeof t>])
+          return [
+            query(concat(frames.map(Query.from))),
+            query(concat(names.map((name) => Query.fromPlan({ _tag: "Table", name }) as typeof t))).pipe(
+              Effect.provide(Catalog.layer(Object.fromEntries(names.map((name, i) => [name, Stream.make(frames[i])]))))
+            )
+          ]
+        }
+        const aggregates = (table: typeof t) =>
           Query.aggregate(table, (c) => ({
             sum: Expr.sum(c.x),
             mean: Expr.mean(c.x),
@@ -596,50 +622,74 @@ describe("Query", () => {
             std: Expr.std(c.x),
             variance: Expr.variance(c.x)
           }))
-        // Expected values from Polars 2.1.0 over the concatenated batches, in
-        // order and reversed (first, last). Every result is Float64 but count.
-        // std and variance are left out where floats round them differently
-        // depending on how the rows are split.
+        const groups = (table: typeof t) => table.pipe(Query.groupBy("x"), Query.agg(() => ({ n: Expr.count() })))
+        // Expected values from Polars 2.1.0 over the frames concatenated
+        // (`how="vertical_relaxed"`), in order and reversed: first and last,
+        // and groups in order of appearance. Every result is Float64 but
+        // count. std and variance are left out where floats round them
+        // differently depending on how the rows are split.
         const { float32, float64, int32 } = ArrowSchema
         const cases: ReadonlyArray<
           readonly [
-            ReadonlyArray<DataFrame.DataFrame<{ readonly x: number }>>,
+            ReadonlyArray<Frame>,
             Record<string, number>,
-            readonly [readonly [number, number], readonly [number, number]]
+            readonly [readonly [number, number], readonly [number, number]],
+            readonly [ReadonlyArray<readonly [number, number]>, ReadonlyArray<readonly [number, number]>]
           ]
         > = [
           [
             [x(int32, [2147483647]), x(int32, [1]), x(float64, [0.5])],
             { sum: 2147483648.5, mean: 715827882.8333334, min: 0.5, max: 2147483647, count: 3 },
-            [[2147483647, 0.5], [0.5, 2147483647]]
+            [[2147483647, 0.5], [0.5, 2147483647]],
+            [[[2147483647, 1], [1, 1], [0.5, 1]], [[0.5, 1], [1, 1], [2147483647, 1]]]
           ],
           [
             [x(float32, [1]), x(float64, [1.0000001])],
             { sum: 2.0000001000000003, mean: 1.0000000500000001, min: 1, max: 1.0000001, count: 2 },
-            [[1, 1.0000001], [1.0000001, 1]]
+            [[1, 1.0000001], [1.0000001, 1]],
+            [[[1, 1], [1.0000001, 1]], [[1.0000001, 1], [1, 1]]]
           ],
           [
             [x(float32, [1, 3]), x(float64, [2])],
             { sum: 6, mean: 2, min: 1, max: 3, count: 3, std: 1, variance: 1 },
-            [[1, 2], [2, 3]]
+            [[1, 2], [2, 3]],
+            [[[1, 1], [3, 1], [2, 1]], [[2, 1], [1, 1], [3, 1]]]
           ],
           [
             [x(float64, []), x(int32, [1, 2])],
             { sum: 3, mean: 1.5, min: 1, max: 2, count: 2, std: Math.SQRT1_2, variance: 0.5 },
-            [[1, 2], [1, 2]]
+            [[1, 2], [1, 2]],
+            [[[1, 1], [2, 1]], [[1, 1], [2, 1]]]
+          ],
+          [
+            [wide(BigUint64Array.of(2n ** 63n)), wide(BigInt64Array.of(-1n)), x(float64, [0.5])],
+            { sum: 2 ** 63, mean: 3074457345618258400, min: -1, max: 2 ** 63, count: 3 },
+            [[2 ** 63, 0.5], [0.5, 2 ** 63]],
+            [[[2 ** 63, 1], [-1, 1], [0.5, 1]], [[0.5, 1], [-1, 1], [2 ** 63, 1]]]
+          ],
+          [
+            [price("6000000000000000000", 19, 0), price("1.20", 18, 2), x(float64, [0.5])],
+            { sum: 6e18, mean: 2e18, min: 0.5, max: 6e18, count: 3 },
+            [[6e18, 0.5], [0.5, 6e18]],
+            [[[6e18, 1], [1.2, 1], [0.5, 1]], [[0.5, 1], [1.2, 1], [6e18, 1]]]
+          ],
+          [
+            [x(int32, [1, 2]), x(float64, [2, 0.5])],
+            { sum: 5.5, mean: 1.375, min: 0.5, max: 2, count: 4 },
+            [[1, 0.5], [2, 2]],
+            [[[1, 1], [2, 2], [0.5, 1]], [[2, 2], [0.5, 1], [1, 1]]]
           ]
         ]
-        for (const [batches, expected, ends] of cases) {
-          for (const [order, [first, last]] of [[batches, ends[0]], [[...batches].reverse(), ends[1]]] as const) {
-            const results = [
-              yield* query(untyped).pipe(Effect.provide(Catalog.layer({ t: Stream.fromIterable(order) }))),
-              yield* query(Query.concat(order.map(Query.from) as [typeof t, ...Array<typeof t>]))
-            ]
-            for (const df of results) {
+        for (const [frames, expected, ends, grouped] of cases) {
+          const orders = [[frames, ends[0], grouped[0]], [[...frames].reverse(), ends[1], grouped[1]]] as const
+          for (const [order, [first, last], keys] of orders) {
+            for (const query of results(order, aggregates)) {
+              const df = yield* query
               const [row] = DataFrame.toRows(df)
-              const keys = Object.keys(expected)
               assert.deepStrictEqual(
-                Object.fromEntries([...keys, "first", "last"].map((k) => [k, row[k as keyof typeof row]])),
+                Object.fromEntries(
+                  [...Object.keys(expected), "first", "last"].map((k) => [k, row[k as keyof typeof row]])
+                ),
                 { ...expected, first, last }
               )
               assert.deepStrictEqual(
@@ -647,23 +697,45 @@ describe("Query", () => {
                 df.schema.fields.map((f) => f.name === "count" ? ArrowSchema.uint32 : float64)
               )
             }
+            for (const query of results(order, groups)) {
+              assert.deepStrictEqual(DataFrame.toRows(yield* query), keys.map(([x, n]) => ({ x, n })))
+            }
           }
         }
-        // A value the common type can't hold fails, as concatenating fails, though no minimum holds it.
-        const wide = [
-          DataFrame.fromColumns({ x: BigUint64Array.of(2n ** 63n, 0n) }),
-          DataFrame.fromColumns({ x: BigInt64Array.of(-1n) })
-        ] as const
-        const min = (table: Query.Query<{ readonly x: bigint }>) =>
-          Query.aggregate(table, (c) => ({ min: Expr.min(c.x) }))
-        const failures = [
-          min(Query.fromPlan({ _tag: "Table", name: "t" }) as Query.Query<{ readonly x: bigint }>).pipe(
-            Effect.provide(Catalog.layer({ t: Stream.make(...wide) }))
-          ),
-          min(Query.concat([Query.from(wide[0]), Query.from(wide[1])]))
+        // Row-wise operations see the common type too, as in Polars 2.1.0: Int8
+        // 100 doubles to 200 in Int64, where doubling in Int8 wraps to -56.
+        const small = [DataFrame.fromColumns({ x: Int8Array.of(100) }), wide(BigInt64Array.of(1n))]
+        const rowWise: ReadonlyArray<readonly [(table: typeof t) => Query.Query<unknown>, ReadonlyArray<unknown>]> = [
+          [(table) => Query.select(table, (c) => ({ y: Expr.multiply(c.x, 2) })), [{ y: 200n }, { y: 2n }]],
+          [(table) => Query.filter(table, (c) => Expr.gt(Expr.add(c.x, c.x), 150)), [{ x: 100n }]]
         ]
-        for (const query of failures) {
-          assert.strictEqual((yield* Effect.flip(query)).message, "UInt64 values don't fit their common type Int64")
+        for (const [query, expected] of rowWise) {
+          for (const result of results(small, query)) assert.deepStrictEqual(DataFrame.toRows(yield* result), expected)
+        }
+        // A value the common type can't hold fails, as concatenating fails, though no minimum holds it.
+        const failures: ReadonlyArray<readonly [ReadonlyArray<Frame>, string]> = [
+          [
+            [wide(BigUint64Array.of(2n ** 63n, 0n)), wide(BigInt64Array.of(-1n))],
+            "UInt64 values don't fit their common type Int64"
+          ],
+          [
+            [wide(BigInt64Array.of(-1n)), wide(BigUint64Array.of(2n ** 63n))],
+            "UInt64 values don't fit their common type Int64"
+          ],
+          [
+            [price("6000000000000000000", 19, 0), price("1.20", 18, 2)],
+            "Decimal[19, 0] values don't fit their common type Decimal[38, 2]"
+          ]
+        ]
+        const min = (table: typeof t) => Query.aggregate(table, (c) => ({ min: Expr.min(c.x) }))
+        for (const [frames, message] of failures) {
+          const queries: ReadonlyArray<Effect.Effect<unknown, DataFrame.DataFrameError>> = [
+            ...results(frames, min),
+            ...results(frames, groups)
+          ]
+          for (const query of queries) {
+            assert.strictEqual((yield* Effect.flip(query)).message, message)
+          }
         }
       }))
 

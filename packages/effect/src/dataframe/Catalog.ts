@@ -11,7 +11,10 @@
  *   run of a query reads each table it names once.
  * - A query over a streamed table runs batch by batch: row-wise operations
  *   per batch, grouping and aggregation folded into partial aggregates, so a
- *   stream larger than memory can be filtered and summarised.
+ *   stream larger than memory can be filtered and summarised. The batches,
+ *   as the query reads them (converted to its declared columns, if any),
+ *   must have the column names and types of the first, as the batches of an
+ *   Arrow stream share its schema.
  * - The default catalog is empty; provide one with {@link layer} or
  *   `Effect.provideService(Catalog, Catalog.make(...))`.
  *

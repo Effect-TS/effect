@@ -477,6 +477,9 @@ export const dropNulls: {
  * common type can't hold, such as a decimal that leaves 64-bit storage at
  * the larger scale, fails with a `DataFrameError` instead of becoming null.
  *
+ * Over streamed tables, the concatenation reads the first batch of every
+ * query, which gives its types, before it returns its first row.
+ *
  * @stability experimental
  * @category combining
  * @since 4.1.5

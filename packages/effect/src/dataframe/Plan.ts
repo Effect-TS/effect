@@ -718,6 +718,9 @@ export interface TableColumn {
  * timestamps must have no time zone or a UTC one (dropped), and lie in the
  * range `DateTime` represents. `Date` and `Time` columns keep their unit.
  *
+ * Every batch of a streamed table, after this conversion (as given, without
+ * `columns`), must have the column names and types of its first batch.
+ *
  * `schema`, set by `Query.table`, is the struct schema the rows must
  * satisfy: values of fields it constrains beyond their column type (literals,
  * enums, refinements) are checked against it.
