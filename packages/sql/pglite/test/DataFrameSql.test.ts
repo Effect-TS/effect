@@ -563,6 +563,11 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           assert.strictEqual(yield* rejects(query), message)
         }
         assert.deepStrictEqual(yield* rowsOnSql(odd(Schema.Struct({ nothing: Schema.Null }))), [{ nothing: null }])
+        // A declared column the table doesn't have, named like a column of PostgreSQL's catalog.
+        for (const schema of [Schema.Struct({ oid: Schema.BigInt }), Schema.Struct({ typname: Schema.String })]) {
+          const missing = yield* Effect.flip(onSql(Query.table("contract", schema)))
+          assert.include(missing.message, `.${Object.keys(schema.fields)[0]} does not exist`)
+        }
       }))
 
     it.effect("tables reject values their declared types can't hold exactly, as in memory", () =>

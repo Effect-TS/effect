@@ -1086,7 +1086,8 @@ const declared = (column: Plan.TableColumn): string => {
 /**
  * The checks of a table's declared column types that don't read its rows:
  * each value is the PostgreSQL type of a column the engine doesn't read as
- * declared, or null.
+ * declared, or null. Each column is qualified by its table: unqualified, a
+ * column the table lacks would be the `pg_type` column of its name.
  */
 const typeChecks = (table: Plan.Table): Array<Check> =>
   (table.columns ?? []).flatMap((column): Array<Check> => {
@@ -1099,9 +1100,9 @@ const typeChecks = (table: Plan.Table): Array<Check> =>
     return [{
       sql: `(SELECT CASE WHEN ${
         accepted.join(" OR ")
-      } THEN NULL ELSE format_type(oid, NULL) END FROM pg_type WHERE oid = pg_typeof((SELECT ${
+      } THEN NULL ELSE format_type(oid, NULL) END FROM pg_type WHERE oid = pg_typeof((SELECT t.${
         quote(column.name)
-      } FROM ${quote(table.name)} LIMIT 0)))`,
+      } FROM ${quote(table.name)} AS t LIMIT 0)))`,
       verify: (actual) => {
         if (actual !== null) V.fail(`column ${JSON.stringify(column.name)} is ${actual}, expected ${column.type}`)
       }
