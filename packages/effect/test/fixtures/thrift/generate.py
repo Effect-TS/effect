@@ -1,11 +1,7 @@
 """
-Gold corpus for effect/encoding/Thrift: values written by the official Apache
-Thrift Python library's TCompactProtocol (thrift 0.25.0), and the bytes
-it produces. The TypeScript test reads every case back into a Thrift.Value,
-expects the same tree, and writes the tree back, expecting the same bytes.
-
-    PARQUET_TESTING=/path/to/apache/parquet-testing \
-      uv run --with thrift==0.25.0 python test/fixtures/thrift/generate.py
+Generates gold.json, the gold corpus for effect/encoding/Thrift: values and
+the bytes the official Apache Thrift Python library's TCompactProtocol writes
+for them. README.md describes the corpus and how to regenerate it.
 
 Values are JSON trees shaped like Thrift.Value:
   {"_tag": "Bool", "value": true}
@@ -18,11 +14,7 @@ Values are JSON trees shaped like Thrift.Value:
   {"_tag": "Map", "keyType": "I32", "valueType": "Bool", "entries": [[k, v]]}
 A case is {"id", "type", "value", "bytes"}: `type` is the Type name of the
 top-level value. Every case is also read back here with the Python reader to
-check the generator.
-
-The "parquet" cases are Thrift structs cut from parquet-testing files (a
-footer, page headers, a bloom filter header, column and offset indexes),
-with the tree the Python reader reads from them.
+check the generator. The "parquet" cases are structs and carry no `type`.
 """
 
 import json
@@ -72,10 +64,6 @@ def double_json(d):
     return d
 
 
-def double_py(v):
-    return float(v) if isinstance(v, str) else float(v)
-
-
 def write(p, v):
     tag = v["_tag"]
     if tag == "Bool":
@@ -89,7 +77,7 @@ def write(p, v):
     elif tag == "I64":
         p.writeI64(int(v["value"]))
     elif tag == "Double":
-        p.writeDouble(double_py(v["value"]))
+        p.writeDouble(float(v["value"]))
     elif tag == "Binary":
         p.writeBinary(bytes.fromhex(v["value"]))
     elif tag == "Uuid":

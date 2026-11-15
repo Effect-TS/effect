@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Result, Schema } from "effect"
+import * as Hex from "effect/encoding/Hex"
 import * as Thrift from "effect/encoding/Thrift"
 import { readFileSync } from "node:fs"
 
@@ -31,8 +32,7 @@ const gold: { readonly cases: ReadonlyArray<Case>; readonly parquet: ReadonlyArr
 const corpus: ReadonlyArray<Case> = [...gold.cases, ...gold.parquet.map((c) => ({ ...c, type: "Struct" as const }))]
 const parquet = (id: string) => fromHex(gold.parquet.find((c) => c.id === id)!.bytes)
 
-const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16))
-const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+const fromHex = (hex: string) => Result.getOrThrow(Hex.decode(hex))
 
 const fromJson = (v: Json): Thrift.Value => {
   switch (v._tag) {
@@ -50,30 +50,6 @@ const fromJson = (v: Json): Thrift.Value => {
       return { ...v, elements: v.elements.map(fromJson) }
     case "Map":
       return { ...v, entries: v.entries.map(([k, x]) => [fromJson(k), fromJson(x)] as const) }
-    default:
-      return v
-  }
-}
-
-const toJson = (v: Thrift.Value): Json => {
-  switch (v._tag) {
-    case "I64":
-      return { _tag: "I64", value: String(v.value) }
-    case "Double":
-      return {
-        _tag: "Double",
-        value: Object.is(v.value, -0) ? "-0" : Number.isFinite(v.value) ? v.value : String(v.value)
-      }
-    case "Binary":
-    case "Uuid":
-      return { _tag: v._tag, value: toHex(v.value) }
-    case "Struct":
-      return { _tag: "Struct", fields: v.fields.map((f) => ({ id: f.id, value: toJson(f.value) })) }
-    case "List":
-    case "Set":
-      return { ...v, elements: v.elements.map(toJson) }
-    case "Map":
-      return { ...v, entries: v.entries.map(([k, x]) => [toJson(k), toJson(x)] as const) }
     default:
       return v
   }
@@ -110,11 +86,12 @@ describe("Thrift", () => {
     it("reads, skips and writes every gold case as the official library does", () => {
       for (const c of corpus) {
         const bytes = fromHex(c.bytes)
-        assert.deepStrictEqual(toJson(Result.getOrThrow(readAll(bytes, c.type))), c.value, c.id)
+        const value = fromJson(c.value)
+        assert.deepStrictEqual(Result.getOrThrow(readAll(bytes, c.type)), value, c.id)
         const r = Thrift.makeReader(bytes)
         r.skip(Thrift.Type[c.type])
         assert.strictEqual(r.position, bytes.length, c.id)
-        assert.strictEqual(toHex(write((w) => w.writeValue(fromJson(c.value)))), c.bytes, c.id)
+        assert.strictEqual(Hex.encode(write((w) => w.writeValue(value))), c.bytes, c.id)
       }
     })
 
@@ -341,7 +318,7 @@ describe("Thrift", () => {
     })
 
     it("rejects limits that aren't integers in range", () => {
-      // NaN used to disable a limit and a fractional one to round it.
+      // NaN compares false with everything, so it would switch a limit off.
       for (
         const options of [
           { maxDepth: NaN },
@@ -416,7 +393,6 @@ describe("Thrift", () => {
         "a list element of another type",
         (w) => w.writeValue({ _tag: "List", elementType: "I32", elements: [{ _tag: "I8", value: 1 }] })
       ],
-      // Used to write nothing.
       ["a value of no Thrift type", (w) => w.writeValue({ _tag: "Text", value: "a" } as unknown as Thrift.Value)]
     ]
     for (const [name, f] of usage) {
@@ -424,7 +400,7 @@ describe("Thrift", () => {
     }
 
     it("rejects an initialSize that isn't a non-negative integer", () => {
-      // NaN used to make the buffer grow forever.
+      // A NaN size would never satisfy the loop that grows the buffer.
       for (const initialSize of [NaN, Infinity, -1, 1.5]) {
         assert.strictEqual(thrown(() => Thrift.makeWriter({ initialSize })), "Usage", String(initialSize))
       }
