@@ -265,6 +265,8 @@ export const batches = (node: Q.Node, catalog: Tables): Batches => {
     case "Slice":
       if (node.length === 0) return unread(node)
       return node.offset >= 0 ? slice(batches(node.input, catalog), node.offset, node.length) : collected(node, catalog)
+    case "TopK":
+      return node.limit === 0 ? unread(node) : collected(node, catalog)
     case "Join": {
       if (node.how === "full") return collected(node, catalog)
       const right = collectFrames(batches(node.right, catalog), node.right)

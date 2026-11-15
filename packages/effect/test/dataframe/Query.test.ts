@@ -583,7 +583,9 @@ describe("Query", () => {
       Effect.gen(function*() {
         const one = Stream.concat(Stream.succeed(DataFrame.fromColumns({ x: [1] })), Stream.die("pulled again"))
         assert.deepStrictEqual(yield* streamed(Query.head(t, 1), one), [{ x: 1 }])
-        assert.deepStrictEqual(yield* streamed(Query.head(t, 0), Stream.die("pulled")), [])
+        for (const none of [Query.head(t, 0), Query.head(Query.sort(t, (c) => [c.x]), 0)]) {
+          assert.deepStrictEqual(yield* streamed(none, Stream.die("pulled")), [])
+        }
       }))
 
     it.effect("decimal sums don't depend on batch boundaries", () =>
