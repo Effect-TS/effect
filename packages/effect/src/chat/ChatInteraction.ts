@@ -39,8 +39,9 @@
  * - Clicks, submits and commands are not `ChatEvent`s. They need an answer
  *   inside the platform's 3 seconds, so they go to `Handler`, which answers
  *   by return value and has no error channel.
- * - Neither platform redelivers a click, a submit or a command, so
- *   interactions carry no dedupe key.
+ * - Slack and Discord don't redeliver a click, a submit or a command, so
+ *   interactions carry no dedupe key. An adapter whose platform does
+ *   redeliver them documents a delivery key of its own.
  *
  * @stability unstable
  * @since 4.1.5

@@ -384,6 +384,19 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(calls.map((call) => call.op), ["post", "edit"])
       }).pipe(Effect.provide(ChatTest.layer())))
 
+    it.effect("posts each part once, when it is final, without edit", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const { end, send } = yield* feed(thread)
+        yield* send("one\n\n")
+        assert.deepStrictEqual(yield* test.calls, [])
+        yield* send("two ".repeat(10) + "\n\nthree")
+        const result = yield* end
+        assert.deepStrictEqual(result.parts.map((part) => part.transport), ["post", "post"])
+        assert.deepStrictEqual(yield* texts(test, thread), ["one\n\n" + "two ".repeat(10) + "\n\n", "three"])
+        assert.deepStrictEqual((yield* test.calls).map((call) => call.op), ["post", "post"])
+      }).pipe(Effect.provide(ChatTest.layer({ capabilities: ["files"], limits: { messageLength: 50 } }))))
+
     it.effect("writes natively with a recipient, sending held text again", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup

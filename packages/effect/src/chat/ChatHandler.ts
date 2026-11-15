@@ -3,7 +3,8 @@
  *
  * Adapters take the `ChatHandler` service from context and call `handle` for
  * every inbound event. The contract is "accept, fast": success means the event
- * is the consumer's and is never redelivered.
+ * is the consumer's. The platform can still deliver it again, so drop
+ * repeats with `ChatEvent.dedupeKey`.
  *
  * @stability unstable
  * @since 4.1.5
@@ -42,8 +43,9 @@ export class NotAccepted extends Schema.TaggedError<NotAccepted>("effect/chat/Ch
  *
  * **Details**
  *
- * Adapters take the service and call `handle`. Success means the event is the
- * consumer's and is never redelivered; `NotAccepted` refuses it.
+ * Adapters take the service and call `handle`. Success hands the event to the
+ * consumer, and `NotAccepted` refuses it. Success does not stop the platform
+ * from delivering the event again: delivery is at-least-once.
  *
  * **Gotchas**
  *

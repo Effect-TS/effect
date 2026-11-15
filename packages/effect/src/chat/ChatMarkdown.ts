@@ -3,8 +3,9 @@
  *
  * `post` splits Markdown that outgrows one message into parts at block
  * boundaries. `stream` writes a stream of Markdown deltas as it arrives, by
- * the adapter's native stream when it has one and otherwise by posting and
- * then editing. Both sit above the adapter ops and use one splitter.
+ * the adapter's native stream when it has one, otherwise by posting and then
+ * editing, and on an adapter without `edit` by posting each part once. Both
+ * sit above the adapter ops and use one splitter.
  *
  * **Example** (Streaming a reply)
  *
@@ -52,9 +53,10 @@ import type { Action } from "./ChatUi.ts"
  *   overflow file.
  * - `text` is the slice of the input the part carries, without anything the
  *   layer added. The `text` of every part, in order, is the input.
- * - `transport` is `post` for a part from `post`, `edit` for a streamed
- *   part written by post-then-edit and `native` for one written by the
- *   adapter's native stream, even if it was finished by an edit.
+ * - `transport` is `post` for a part from `post` and for a streamed part
+ *   posted once to an adapter without `edit`, `edit` for a streamed part
+ *   written by post-then-edit and `native` for one written by the adapter's
+ *   native stream, even if it was finished by an edit.
  *
  * @stability unstable
  * @category models
@@ -450,6 +452,8 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
     } = { _tag: "Running" }
     let finishing = false
     let nativeAllowed = native !== undefined && options.recipient !== undefined
+    /** Without `edit`, a streamed part is posted once, when it is final. */
+    const buffered = options.deltas !== undefined && !descriptor.capabilities.has("edit")
     let renderedNatively = false
     let lastWrite = Number.NEGATIVE_INFINITY
     let retryAt: number | undefined
@@ -473,7 +477,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
       start,
       fence,
       prefix: reopening(fence),
-      transport: options.deltas === undefined ? "post" : nativeAllowed ? "native" : "edit",
+      transport: options.deltas === undefined ? "post" : nativeAllowed ? "native" : buffered ? "post" : "edit",
       native: nativeAllowed,
       posted: undefined,
       confirmed: start,
@@ -825,6 +829,11 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           extrasAlone = true
         }
         if (cut < input.length) return cutAt(cut)
+        if (buffered && !final) {
+          // Nothing to post until the part is final: it rolls over or the reply ends.
+          part.attempted = input.length
+          return Effect.void
+        }
         return Effect.flatMap(writeEdit(input.length, final, final && !extrasAlone), () => {
           if (final && isRunning()) finishPart(input.length)
           return end(final)
@@ -1313,6 +1322,10 @@ export const post = <R = never>(
  *   written by native appends. Otherwise, or when the first native start fails
  *   with `Unsupported`, it posts and then edits. The result and the span say
  *   which ran.
+ * - On an adapter without `edit` the reply is buffered instead: each part is
+ *   posted once, when it rolls over or the reply ends, with transport
+ *   `post`. Nothing shows until then. An upstream failure or an interrupt
+ *   posts what was received, as above.
  * - Text that outgrows a message rolls over into a new one at a block
  *   boundary, and each new message counts against `maxParts`. A native stream
  *   rolls over at the next block boundary past 85% of `limits.streamLength`,
@@ -1349,7 +1362,9 @@ export const post = <R = never>(
  *   the reply stopped.
  * - There are no actions either. Add them after the result with
  *   `chat.edit(thread, last.messageId, { markdown: last.markdown, actions })`,
- *   where `last` is the final entry of `Result.parts`.
+ *   where `last` is the final entry of `Result.parts`. Without `edit` they
+ *   can't be added to the reply: post them in a message of their own with
+ *   `chat.post(thread, { markdown, actions })`.
  * - To stop a reply, end `deltas` with `Stream.interruptWhen` or
  *   `Stream.haltWhen`, so a `Result` still comes back. Interrupting the call
  *   leaves only the ids collected through `onPart`.
@@ -1358,7 +1373,6 @@ export const post = <R = never>(
  * - A native part that is rolled over on `TooLarge` can end inside an open
  *   code fence, since it can no longer be appended to. The next part reopens
  *   the fence.
- * - Post-then-edit needs the `edit` capability.
  *
  * @stability unstable
  * @category constructors
