@@ -103,48 +103,38 @@ const aggregate = (
     return collected(node, catalog)
   }
   const fns = specs.map((s) => s.fn)
-  // The first non-empty batch's input vectors and key columns, for result types.
-  let template: { readonly inputs: ReadonlyArray<V.Vector | undefined>; readonly frame: F.Frame } | undefined
-  // The first batch, to aggregate over no rows when every batch is empty.
-  let first: F.Frame | undefined
-  return Stream.unwrap(
-    Stream.runFoldEffect(
-      batches(node.input, catalog),
-      (): Partial.State | undefined => undefined,
-      (state, batch) =>
-        Q.attempt(() => {
-          first ??= batch
-          if (batch.length === 0) return state
-          const ctx = F.context(batch)
-          const inputs = specs.map((s) => (s.arg === undefined ? undefined : E.evaluateColumn(s.arg, ctx)))
-          template ??= { inputs, frame: batch }
-          const part = Partial.group(
-            keys.map((k) => F.column(batch, k).values()),
-            fns.map((fn, a) => ({ fn, vector: inputs[a] })),
-            batch.length
-          )
-          return state === undefined ? part : Partial.merge(fns, [state, part])
-        })
-    ).pipe(
-      Effect.flatMap((state) => {
-        if (state === undefined || template === undefined) {
-          const empty = first
-          return empty === undefined ? runEmpty(node) : Q.attempt(() => Q.step(node, [empty]))
-        }
-        const t = template
-        return Q.attempt(() => {
-          const keyColumns = keys.map((k, i) =>
-            new F.Column(k, state.keys[i], undefined, F.column(t.frame, k).nullable)
-          )
-          const columns = specs.map((s, a) =>
-            new F.Column(s.name, Partial.finish(s.fn, state.parts[a], t.inputs[a]), undefined)
-          )
-          return F.make([...keyColumns, ...columns], node._tag === "Aggregate" ? 1 : state.count)
-        })
-      }),
-      Effect.map(Stream.succeed)
+  return Stream.suspend(() => {
+    // Whether any batch's key column may hold nulls.
+    const nullable = keys.map(() => false)
+    return Stream.unwrap(
+      Stream.runFoldEffect(
+        batches(node.input, catalog),
+        (): Partial.State | undefined => undefined,
+        (state, batch) =>
+          Q.attempt(() => {
+            const ctx = F.context(batch)
+            keys.forEach((k, i) => nullable[i] ||= F.column(batch, k).nullable)
+            const part = Partial.group(
+              keys.map((k) => F.column(batch, k).values()),
+              specs.map((s) => ({ fn: s.fn, vector: s.arg === undefined ? undefined : E.evaluateColumn(s.arg, ctx) })),
+              batch.length
+            )
+            return state === undefined ? part : Partial.merge(fns, [state, part])
+          })
+      ).pipe(
+        Effect.flatMap((state) =>
+          state === undefined ? runEmpty(node) : Q.attempt(() => {
+            const keyColumns = keys.map((k, i) => new F.Column(k, state.keys[i], undefined, nullable[i]))
+            const columns = specs.map((s, a) =>
+              new F.Column(s.name, Partial.finish(s.fn, state.parts[a], state.domains[a]?.type), undefined)
+            )
+            return F.make([...keyColumns, ...columns], state.count)
+          })
+        ),
+        Effect.map(Stream.succeed)
+      )
     )
-  )
+  })
 }
 
 const slice = (input: Batches, offset: number, length: number | undefined): Batches =>
