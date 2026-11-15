@@ -64,9 +64,13 @@
  * Every read is bounds-checked: malformed or hostile input throws a
  * {@link ThriftError} (or makes {@link decode} fail) instead of reading past
  * the bytes. A length or container size larger than the bytes that remain
- * fails before anything is allocated, and nesting is limited by
- * {@link ReaderOptions.maxDepth}. Binary values are views into the input, not
- * copies. Strings must be valid UTF-8.
+ * fails before anything is allocated, varints are capped at the width of
+ * their type, and nesting is limited by {@link ReaderOptions.maxDepth}.
+ * Strings must be valid UTF-8.
+ *
+ * Binary and `uuid` values, also inside a {@link Value}, are views into the
+ * input, not copies: they change when the input does and keep its buffer
+ * alive. Copy one with `slice()` to keep it on its own.
  *
  * `i64` values read as `bigint` ({@link Reader.readI64}) or, when they are
  * known to be safe integers such as offsets and counts, as `number`
@@ -257,7 +261,14 @@ export interface Field {
 // -----------------------------------------------------------------------------
 
 /**
- * Limits for reading untrusted input.
+ * Limits for reading untrusted input. A value that isn't an integer in range
+ * throws a {@link ThriftError} of kind `Usage`.
+ *
+ * **Gotchas**
+ *
+ * {@link Reader.skip} and {@link Reader.readValue} recurse, so a `maxDepth`
+ * in the thousands can overflow the stack, which throws a `RangeError`
+ * instead of a {@link ThriftError}.
  *
  * @stability experimental
  * @category models
@@ -304,6 +315,12 @@ const I64_MAX = (BigInt(1) << BIGINT_63) - BIGINT_1
  * after a `Bool` field header returns it without reading a byte. Inside a
  * container, each `bool` is a byte.
  *
+ * **Gotchas**
+ *
+ * {@link readBinary}, {@link readUuid} and the binary values of
+ * {@link readValue} are views of {@link bytes}: copy them before mutating or
+ * reusing the input.
+ *
  * @stability experimental
  * @category reading
  * @since 4.1.5
@@ -344,7 +361,11 @@ export class Reader {
     this.maxContainerSize = integerOption("maxContainerSize", options?.maxContainerSize, 0, Infinity)
   }
 
-  /** Where the next read starts in {@link bytes}. Set it to read from elsewhere. */
+  /**
+   * Where the next read starts in {@link bytes}. Set it to read from
+   * elsewhere; a position outside the input is a `Usage` error, so check
+   * offsets read from the input first.
+   */
   get position(): number {
     return this.pos
   }
@@ -589,7 +610,8 @@ export class Reader {
 
   /**
    * Reads an `i64` as a `number`. Fails with kind `Range` when the value is
-   * not a safe integer.
+   * not a safe integer, leaving {@link position} at the value so that
+   * {@link readI64} can read it.
    */
   readI64Number(): number {
     const start = this.pos
@@ -750,7 +772,7 @@ export class Reader {
 }
 
 /**
- * A {@link Reader} at the start of `bytes`.
+ * Creates a {@link Reader} at the start of `bytes`, which it reads in place.
  *
  * @stability experimental
  * @category reading
@@ -805,8 +827,8 @@ const encoder = new TextEncoder()
  * {@link writeMapBegin}) followed by exactly that many elements (for a map,
  * key then value).
  *
- * Integers outside their type's range, and calls out of order, throw a
- * {@link ThriftError} of kind `Usage`.
+ * Integers outside their type's range, values of no {@link Type}, and calls
+ * out of order throw a {@link ThriftError} of kind `Usage`.
  *
  * @stability experimental
  * @category writing
@@ -1147,8 +1169,8 @@ export class Writer {
 }
 
 /**
- * A new {@link Writer}. `initialSize` is the first buffer size; it grows as
- * needed.
+ * Creates a {@link Writer}. `initialSize` is the first buffer size in bytes,
+ * a non-negative integer (default 1024); the buffer grows as needed.
  *
  * @stability experimental
  * @category writing
