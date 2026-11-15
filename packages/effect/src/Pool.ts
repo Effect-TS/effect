@@ -100,8 +100,10 @@ export interface Config<A, E> {
  * **Details**
  *
  * `idle` and `used` count acquired items, not borrowers, so an item shared by
- * several borrowers counts once. `pending` counts borrowers waiting for an
- * item. `min` and `max` are the configured size bounds.
+ * several borrowers counts once. `acquiring` counts acquisition effects that
+ * have started but not yet exited, including pre-warming and replacements,
+ * independently of whether any borrower is waiting. `pending` counts borrowers
+ * waiting for an item. `min` and `max` are the configured size bounds.
  *
  * @see {@link stats} for reading a snapshot
  *
@@ -112,6 +114,7 @@ export interface Config<A, E> {
 export interface Stats {
   readonly idle: number
   readonly used: number
+  readonly acquiring: number
   readonly pending: number
   readonly min: number
   readonly max: number
@@ -144,6 +147,7 @@ export interface State<A, E> {
   readonly scope: Scope.Scope
   isShuttingDown: boolean
   usage: number
+  acquiring: number
   readonly resizeSemaphore: Semaphore.Semaphore
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
@@ -399,6 +403,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       scope,
       isShuttingDown: false,
       usage: 0,
+      acquiring: 0,
       resizeSemaphore: Semaphore.makeUnsafe(1),
       items: new Set(),
       availableHead: undefined,
@@ -932,8 +937,8 @@ export const reserve: {
 )
 
 /**
- * Returns a snapshot of how many items are idle or in use and how many
- * borrowers are waiting.
+ * Returns a snapshot of how many items are idle, in use, or being acquired
+ * and how many borrowers are waiting.
  *
  * **When to use**
  *
@@ -942,16 +947,23 @@ export const reserve: {
  *
  * **Details**
  *
- * - Only successfully acquired items are counted. Items still being acquired
- *   and failed acquisitions are not.
+ * - `idle` and `used` count only successfully acquired items.
+ * - `acquiring` counts acquisition effects from start until success, failure,
+ *   or interruption, even when no borrower is waiting. Queued acquisitions
+ *   that have not started and reclaimed items do not count.
  * - An item is used while it has a borrower or a reservation, otherwise idle.
  * - An invalidated item counts as used until its last borrower returns it.
  *
  * **Gotchas**
  *
  * The replacement for an invalidated item is acquired while the old one is
- * still borrowed, so `idle + used` can briefly exceed `max`. A borrower that
- * has been woken but has not yet taken its item is not counted as pending.
+ * still borrowed, so `idle + used + acquiring` can briefly exceed `max`. A
+ * borrower that has been woken but has not yet taken its item is not counted
+ * as pending. `pending` and `acquiring` are independent: a borrower waiting
+ * on an acquisition contributes to both.
+ *
+ * `idle + used + acquiring === 0` means the pool holds and is opening no items,
+ * not that every release finalizer has finished.
  *
  * @see {@link Stats} for the snapshot fields
  *
@@ -971,6 +983,7 @@ export const stats = <A, E>(self: Pool<A, E>): Effect.Effect<Stats> =>
     return {
       idle,
       used,
+      acquiring: self.state.acquiring,
       pending: self.state.waiters.size,
       min: self.config.minSize,
       max: self.config.maxSize
@@ -1059,7 +1072,12 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
       const scope = internal.scopeMakeUnsafe()
       const previousContext = fiber.context
       fiber.setContext(Context.add(impl[AcquireContext], Scope.Scope, scope))
+      let acquiring = true
+      self.state.acquiring++
       const use = Effect.flatMap(Effect.exit(impl[Acquire]), (exit) => {
+        // Publish completion and the item without yielding between them.
+        acquiring = false
+        self.state.acquiring--
         const item: PoolItem<A, E> = {
           exit,
           finalizer: Effect.ignoreCause(Scope.close(scope, exit), {
@@ -1102,6 +1120,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         restore(use) as Effect.Effect<PoolItem<A, E>>,
         (exit) => {
           fiber.setContext(previousContext)
+          if (acquiring) self.state.acquiring--
           return exit._tag === "Failure" ? internal.scopeCloseUnsafe(scope, exit) : undefined
         },
         true
