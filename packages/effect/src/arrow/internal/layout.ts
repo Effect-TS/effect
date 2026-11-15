@@ -310,7 +310,7 @@ const concatBytes = (a: Uint8Array, b: Uint8Array): Uint8Array => {
   return out
 }
 
-/** `b`'s offsets shifted by `shift`, appended to `a`'s (both normalised, `n + 1` entries each). */
+/** `a`'s offsets, then `b`'s after its first shifted by `shift` (`length + 1` entries each). */
 const appendOffsets = (
   a: Uint8Array,
   aLength: number,
@@ -339,8 +339,9 @@ const appendOffsets = (
   return new Uint8Array(out.buffer)
 }
 
-const lastOffset = (buffer: Uint8Array, large: boolean, length: number) =>
-  length === 0 && buffer.length === 0 ? 0 : readOffset(buffer, large, length)
+/** Offset `i`; an empty offsets buffer (allowed for zero slots) reads as 0. */
+const offsetAt = (buffer: Uint8Array, large: boolean, i: number) =>
+  buffer.length === 0 ? 0 : readOffset(buffer, large, i)
 
 /** Appends `right` to `left` (same type), as delta dictionaries do. @internal */
 export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): ArrowData.ArrowData => {
@@ -366,14 +367,16 @@ export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): A
     case "Utf8":
     case "LargeBinary":
     case "LargeUtf8": {
+      // `b`'s offsets need not start at 0: its values are bytes [bStart, bEnd).
       const large = isLargeOffsets(type)
-      const aEnd = lastOffset(a.buffers[0], large, a.length)
-      const bEnd = lastOffset(b.buffers[0], large, b.length)
+      const aEnd = offsetAt(a.buffers[0], large, a.length)
+      const bStart = offsetAt(b.buffers[0], large, 0)
+      const bEnd = offsetAt(b.buffers[0], large, b.length)
       return {
         ...base,
         buffers: [
-          appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, aEnd),
-          concatBytes(a.buffers[1].subarray(0, aEnd), b.buffers[1].subarray(0, bEnd))
+          appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, aEnd - bStart),
+          concatBytes(a.buffers[1].subarray(0, aEnd), b.buffers[1].subarray(bStart, bEnd))
         ],
         children: []
       }
@@ -391,11 +394,14 @@ export const concat = (left: ArrowData.ArrowData, right: ArrowData.ArrowData): A
     case "List":
     case "LargeList":
     case "Map": {
+      // `b`'s offsets need not start at 0: its items are [bStart, bEnd) of its child.
       const large = isLargeOffsets(type)
+      const bStart = offsetAt(b.buffers[0], large, 0)
+      const bEnd = offsetAt(b.buffers[0], large, b.length)
       return {
         ...base,
-        buffers: [appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, a.children[0].length)],
-        children: [concat(a.children[0], b.children[0])]
+        buffers: [appendOffsets(a.buffers[0], a.length, b.buffers[0], b.length, large, a.children[0].length - bStart)],
+        children: [concat(a.children[0], slice(b.children[0], bStart, bEnd))]
       }
     }
     case "ListView":

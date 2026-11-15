@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs"
 // Written by pyarrow; see fixtures/arrow/generate.py
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`../fixtures/arrow/${name}`, import.meta.url)))
 const streamBytes = fixture("types.arrows")
+const deltaBytes = fixture("deltas.arrows")
 const fileBytes = fixture("types.arrow")
 
 const bytes = (...values: Array<number>) => new Uint8Array(values)
@@ -247,6 +248,15 @@ describe("ArrowIpc", () => {
         assertIpcError(result)
       }
     }
+  })
+
+  it("appends delta dictionaries whose offsets do not start at 0", () => {
+    // Each delta's offsets start at 1, so its value starts one byte or item in
+    const table = Result.getOrThrow(ArrowIpc.decodeStream(deltaBytes))
+    assertEquals(ArrowTable.toRows(table), [
+      { utf8: "a", largeBinary: bytes(1), list: [7] },
+      { utf8: "b", largeBinary: bytes(2), list: [2] }
+    ])
   })
 
   it.effect("decode fails with an ArrowIpcError when the input ends inside a message or holds no schema", () =>

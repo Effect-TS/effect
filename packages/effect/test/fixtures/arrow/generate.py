@@ -11,10 +11,14 @@ It writes, next to this file:
   dictionary delta. Every other column is one array split in two, so the
   second batch comes from sliced (non-zero offset) arrays.
 - `types.arrow`: the same rows as an IPC file, with one unified dictionary.
+- `deltas.arrows`: an IPC stream whose dictionary deltas have offsets that
+  start at 1, not 0. pyarrow always writes 0, so the stream is patched after
+  writing; each delta's value then starts one byte or item in.
 """
 
 import datetime
 import decimal
+import io
 import pathlib
 
 import pyarrow as pa
@@ -107,3 +111,36 @@ with pa.ipc.new_stream(here / "types.arrows", schema, options=pa.ipc.IpcWriteOpt
 
 with pa.ipc.new_file(here / "types.arrow", schema, options=pa.ipc.IpcWriteOptions(unify_dictionaries=True)) as writer:
     writer.write_table(pa.Table.from_batches(batches))
+
+# Batch 0 holds dictionary value 0; batch 1 adds value 1, written as a delta.
+delta_values = {
+    "utf8": pa.array(["a", "xb"]),
+    "largeBinary": pa.array([b"\x01", b"\x08\x02"], pa.large_binary()),
+    "list": pa.array([[7], [9, 2]], pa.list_(pa.int32())),
+}
+delta_schema = pa.schema([pa.field(name, pa.dictionary(pa.int32(), values.type)) for name, values in delta_values.items()])
+sink = io.BytesIO()
+with pa.ipc.new_stream(sink, delta_schema, options=pa.ipc.IpcWriteOptions(emit_dictionary_deltas=True)) as writer:
+    for i in range(2):
+        indices = pa.array([i], pa.int32())
+        writer.write_batch(
+            pa.record_batch(
+                [pa.DictionaryArray.from_arrays(indices, values.slice(0, i + 1)) for values in delta_values.values()],
+                schema=delta_schema,
+            )
+        )
+
+# Each delta's body starts with its offsets (the validity buffer is empty), so
+# setting its first byte makes the first offset 1.
+reader = pa.ipc.MessageReader.open_stream(sink.getvalue())
+out = bytearray()
+batches_seen = 0
+for message in reader:
+    serialized = bytearray(message.serialize())
+    if message.type == "record batch":
+        batches_seen += 1
+    elif message.type == "dictionary" and batches_seen == 1:
+        serialized[len(serialized) - message.body.size] = 1
+    out += serialized
+out += b"\xff\xff\xff\xff\x00\x00\x00\x00"
+(here / "deltas.arrows").write_bytes(bytes(out))
