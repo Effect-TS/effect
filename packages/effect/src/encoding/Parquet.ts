@@ -41,6 +41,10 @@
  * - Physical types: all eight. Values stay in their physical type; logical
  *   types and converted types are decoded into the schema but not applied
  *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes).
+ * - Text: every `STRING`, `ENUM` and `JSON` value, and every value of their
+ *   converted types (`UTF8`, `ENUM`, `JSON`), is checked to be UTF-8, and so
+ *   is every value of such a column's dictionary. Anything else fails with
+ *   `Malformed`. `JSON` values are not parsed.
  * - Annotations: an annotation added after 2.14.0, or one the spec doesn't
  *   define for the physical type it is on (a `STRING` on an `INT32`), is left
  *   out of the schema, and so is the order of the column's statistics. A
@@ -1393,6 +1397,8 @@ class ChunkDecoder {
   readonly kind: Encodings.Kind
   readonly numValues: number
   private readonly budget: Encodings.Budget
+  /** Whether the values are annotated as text, which has to be UTF-8. */
+  private readonly utf8: boolean
   /** The levels of every value, nulls included; `undefined` when the column has none. */
   private readonly repetitions: Uint8Array | undefined
   private readonly definitions: Uint8Array | undefined
@@ -1407,6 +1413,11 @@ class ChunkDecoder {
     this.kind = kind
     this.numValues = numValues
     this.budget = { left: maxBinaryLength }
+    // A logical type supersedes the converted type.
+    const leaf = column.nodes[column.nodes.length - 1]
+    const annotation = leaf.logicalType?.type ?? leaf.convertedType
+    this.utf8 = kind.tag === "bytes" &&
+      (annotation === "STRING" || annotation === "UTF8" || annotation === "ENUM" || annotation === "JSON")
     // Fixed-width values take their bytes in every slot, nulls included.
     if (kind.tag === "fixed" || kind.tag === "int96") Encodings.spend(this.budget, numValues * kind.width)
     this.repetitions = column.maxRepetitionLevel === 0 ? undefined : new Uint8Array(numValues)
@@ -1421,6 +1432,7 @@ class ChunkDecoder {
       fail("Malformed", `a dictionary page is encoded with ${header.encoding}, not PLAIN`)
     }
     this.dictionary = Encodings.plain(this.kind, data, 0, data.length, header.numValues, this.budget)
+    if (this.utf8) Encodings.utf8(this.dictionary as Encodings.Binary, "dictionary value")
   }
 
   /** A v1 data page: repetition levels, definition levels and values, all after decompression. */
@@ -1545,6 +1557,10 @@ class ChunkDecoder {
         return invalid()
       default:
         return fail("Unsupported", `the ${encoding} encoding is not supported`)
+    }
+    // The values of a dictionary were checked with its page.
+    if (this.utf8 && encoding !== "PLAIN_DICTIONARY" && encoding !== "RLE_DICTIONARY") {
+      Encodings.utf8(dense as Encodings.Binary, "value")
     }
     this.dense.push(dense)
   }

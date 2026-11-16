@@ -486,6 +486,47 @@ export const deltaByteArray = (
   return { offsets, data: out }
 }
 
+/**
+ * Whether `data[pos, end)` is well-formed UTF-8 (the Unicode Standard, table
+ * 3-7): no overlong forms, no surrogates, nothing after U+10FFFF.
+ */
+const wellFormed = (data: Uint8Array, pos: number, end: number): boolean => {
+  while (pos < end) {
+    const lead = data[pos++]
+    if (lead < 0x80) continue
+    if (lead < 0xc2 || lead > 0xf4) return false
+    // The second byte's range is what excludes the forms above.
+    let more = 1
+    let low = 0x80
+    let high = 0xbf
+    if (lead >= 0xf0) {
+      more = 3
+      if (lead === 0xf0) low = 0x90
+      else if (lead === 0xf4) high = 0x8f
+    } else if (lead >= 0xe0) {
+      more = 2
+      if (lead === 0xe0) low = 0xa0
+      else if (lead === 0xed) high = 0x9f
+    }
+    if (more > end - pos) return false
+    const second = data[pos++]
+    if (second < low || second > high) return false
+    while (--more > 0) if ((data[pos++] & 0xc0) !== 0x80) return false
+  }
+  return true
+}
+
+/**
+ * Fails unless every one of `values` is UTF-8 on its own. No strings are made.
+ *
+ * @internal
+ */
+export const utf8 = ({ data, offsets }: Binary, what: string): void => {
+  for (let i = 0, n = offsets.length - 1; i < n; i++) {
+    if (!wellFormed(data, offsets[i], offsets[i + 1])) fail("Malformed", `${what} ${i} is not UTF-8`)
+  }
+}
+
 /** The number of values in `dense`. @internal */
 export const lengthOf = (kind: Kind, dense: Dense): number =>
   kind.tag === "bytes"

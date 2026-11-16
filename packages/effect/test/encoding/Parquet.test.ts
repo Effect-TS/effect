@@ -263,6 +263,8 @@ const file = (options: {
   return bytes(text("PAR1"), ...body, footer, u32(footer.length), text("PAR1"))
 }
 
+type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
+
 /** A file with one top-level column. */
 const flat = (options: {
   readonly type: number
@@ -277,11 +279,17 @@ const flat = (options: {
   readonly statistics?: V | undefined
   readonly chunk?: { readonly [id: number]: V } | undefined
   readonly metadata?: { readonly [id: number]: V } | undefined
+  readonly annotation?: Annotation | undefined
 }) =>
   file({
     schema: [
       root(1),
-      element("x", { type: options.type, repetition: options.repetition, typeLength: options.typeLength })
+      element("x", {
+        type: options.type,
+        repetition: options.repetition,
+        typeLength: options.typeLength,
+        ...options.annotation
+      })
     ],
     numRows: options.numRows,
     chunks: [{ ...options, path: ["x"], numValues: options.numValues ?? options.numRows }],
@@ -294,6 +302,7 @@ const requiredColumn = (type: number, n: number, data: Uint8Array, options?: {
   readonly typeLength?: number | undefined
   readonly codec?: number | undefined
   readonly uncompressedSize?: number | undefined
+  readonly annotation?: Annotation | undefined
 }) =>
   flat({
     type,
@@ -301,6 +310,7 @@ const requiredColumn = (type: number, n: number, data: Uint8Array, options?: {
     numRows: n,
     typeLength: options?.typeLength,
     codec: options?.codec,
+    annotation: options?.annotation,
     pages: [dataPage(n, data, options)]
   })
 
@@ -407,7 +417,6 @@ describe("Parquet", () => {
       flat({ type: Type.INT32, repetition: REPEATED, numRows, numValues, pages })
     // def levels 1, 0, 1 as RLE runs, for a column with one optional node
     const someNull = runs(1, [1, 1], [0, 1], [1, 1])
-    type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
     /**
      * A file with one required column `x` that has statistics in TYPE_ORDER, and no rows. The annotation is on `x`,
      * or without a `type` on a group around it.
@@ -771,6 +780,179 @@ describe("Parquet", () => {
           for (const bitWidth of [0, 24, 65, -8]) {
             yield* failsWith(metadataOf(annotated(Type.INT32, integer(bitWidth, true))), "Malformed", /bit width/)
           }
+        }))
+      type Binaries = ReadonlyArray<ReadonlyArray<number>>
+      const forms = ["PLAIN", "DELTA_LENGTH_BYTE_ARRAY", "DELTA_BYTE_ARRAY", "dictionary"] as const
+      /** A required BYTE_ARRAY column of `values`, each of which is its own dictionary entry in the last form. */
+      const binaries = (form: typeof forms[number], values: Binaries, annotation?: Annotation) => {
+        const n = values.length
+        const lengths = values.map((value) => value.length)
+        const plain = bytes(...values.map((value) => lengthPrefixed(Uint8Array.from(value))))
+        switch (form) {
+          case "PLAIN":
+            return requiredColumn(Type.BYTE_ARRAY, n, plain, { annotation })
+          case "DELTA_LENGTH_BYTE_ARRAY":
+            return requiredColumn(Type.BYTE_ARRAY, n, bytes(delta(lengths), ...values), {
+              encoding: DELTA_LENGTH_BYTE_ARRAY,
+              annotation
+            })
+          case "DELTA_BYTE_ARRAY":
+            return requiredColumn(Type.BYTE_ARRAY, n, bytes(delta(lengths.map(() => 0)), delta(lengths), ...values), {
+              encoding: DELTA_BYTE_ARRAY,
+              annotation
+            })
+          case "dictionary":
+            return flat({
+              type: Type.BYTE_ARRAY,
+              repetition: REQUIRED,
+              numRows: n,
+              dictionary: true,
+              annotation,
+              pages: [
+                dictionaryPage(n, plain),
+                dataPage(n, bytes([8], runs(8, ...values.map((_, i) => [i, 1] as const))), { encoding: RLE_DICTIONARY })
+              ]
+            })
+        }
+      }
+      const hex = (values: Binaries) => values.map((value) => Hex.encode(Uint8Array.from(value)))
+      const STRING = logical(1)
+      const utf8 = [
+        ["STRING", STRING],
+        ["ENUM", logical(4)],
+        ["JSON", logical(12)],
+        ["UTF8", { convertedType: 0 }],
+        ["ENUM (converted)", { convertedType: 4 }],
+        ["JSON (converted)", { convertedType: 19 }]
+      ] as const
+      // "é" is C3 A9
+      const split: Binaries = [[0x61, 0xc3], [0xa9]]
+
+      it.effect("PQ-LT-8 MUST reject a STRING, ENUM or JSON value that is not UTF-8 (#string, #enum, #json)", () =>
+        Effect.gen(function*() {
+          const valid: Binaries = [[], [0x61], [0xc3, 0xa9], [], [0xe2, 0x82, 0xac], [0xf0, 0x9f, 0x98, 0x80]]
+          for (const [label, annotation] of utf8) {
+            for (const form of forms) {
+              const where = `${label} ${form}`
+              assert.deepStrictEqual(yield* values(binaries(form, valid, annotation)), hex(valid), where)
+              yield* failsWith(values(binaries(form, [[0x61], [0xff]], annotation)), "Malformed", /value 1 .*UTF-8/)
+              // every value is UTF-8 on its own: here the two are only when joined
+              yield* failsWith(values(binaries(form, split, annotation)), "Malformed", /value 0 .*UTF-8/)
+            }
+          }
+          // v2 data pages
+          const v2 = (value: ReadonlyArray<number>) =>
+            flat({
+              type: Type.BYTE_ARRAY,
+              repetition: REQUIRED,
+              numRows: 1,
+              annotation: STRING,
+              pages: [dataPageV2({
+                numValues: 1,
+                numNulls: 0,
+                numRows: 1,
+                values: lengthPrefixed(Uint8Array.from(value))
+              })]
+            })
+          assert.deepStrictEqual(yield* values(v2([0xc3, 0xa9])), ["c3a9"])
+          yield* failsWith(values(v2([0xc3])), "Malformed", /value 0 .*UTF-8/)
+        }))
+
+      it.effect("PQ-LT-9 MUST reject every sequence of bytes that is not well-formed UTF-8 (#string)", () =>
+        Effect.gen(function*() {
+          const string = (value: ReadonlyArray<number>) => values(binaries("PLAIN", [value], STRING))
+          // the first and last code points of every length, and those around the surrogates
+          const valid: Binaries = [
+            [0x00],
+            [0x7f],
+            [0xc2, 0x80],
+            [0xdf, 0xbf],
+            [0xe0, 0xa0, 0x80],
+            [0xed, 0x9f, 0xbf],
+            [0xee, 0x80, 0x80],
+            [0xef, 0xbf, 0xbf],
+            [0xf0, 0x90, 0x80, 0x80],
+            [0xf4, 0x8f, 0xbf, 0xbf],
+            // a byte order mark is a character like any other
+            [0xef, 0xbb, 0xbf, 0x61]
+          ]
+          for (const value of valid) assert.deepStrictEqual(yield* string(value), hex([value]))
+          const invalid: Binaries = [
+            // a continuation byte first, and bytes that are never in UTF-8
+            [0x80],
+            [0xbf],
+            [0xc0, 0x80],
+            [0xc1, 0xbf],
+            [0xf5, 0x80, 0x80, 0x80],
+            [0xff],
+            // sequences that end early
+            [0xc2],
+            [0xe2, 0x82],
+            [0xf0, 0x9f, 0x98],
+            [0xc2, 0x41],
+            [0xe2, 0x82, 0x41],
+            [0xf0, 0x9f, 0x98, 0x41],
+            // overlong forms
+            [0xe0, 0x9f, 0xbf],
+            [0xf0, 0x8f, 0xbf, 0xbf],
+            // surrogates, and code points after U+10FFFF
+            [0xed, 0xa0, 0x80],
+            [0xed, 0xbf, 0xbf],
+            [0xf4, 0x90, 0x80, 0x80]
+          ]
+          const strict = new TextDecoder("utf-8", { fatal: true })
+          for (const value of invalid) {
+            yield* failsWith(string(value), "Malformed", /value 0 is not UTF-8/)
+            assert.throws(() => strict.decode(Uint8Array.from(value)), TypeError, undefined, hex([value])[0])
+          }
+        }))
+
+      it.effect("PQ-LT-10 checks DELTA_BYTE_ARRAY values after their prefixes are added (Encodings.md#delta-strings-delta_byte_array--7)", () =>
+        Effect.gen(function*() {
+          const make = (prefixes: ReadonlyArray<number>, suffixes: Binaries) =>
+            values(requiredColumn(
+              Type.BYTE_ARRAY,
+              suffixes.length,
+              bytes(delta(prefixes), delta(suffixes.map((suffix) => suffix.length)), ...suffixes),
+              { encoding: DELTA_BYTE_ARRAY, annotation: STRING }
+            ))
+          // the suffix A9 is not UTF-8, the value C3 A9 is
+          assert.deepStrictEqual(yield* make([0, 1], [[0xc3, 0xa9], [0xa9]]), ["c3a9", "c3a9"])
+          // the suffix "(" is UTF-8, the value C3 28 is not
+          yield* failsWith(make([0, 1], [[0xc3, 0xa9], [0x28]]), "Malformed", /value 1 .*UTF-8/)
+        }))
+
+      it.effect("PQ-LT-11 checks a dictionary once, with the values no page refers to", () =>
+        Effect.gen(function*() {
+          const make = (dictionary: Binaries) =>
+            values(flat({
+              type: Type.BYTE_ARRAY,
+              repetition: REQUIRED,
+              numRows: 2,
+              dictionary: true,
+              annotation: STRING,
+              pages: [
+                dictionaryPage(
+                  dictionary.length,
+                  bytes(...dictionary.map((value) => lengthPrefixed(Uint8Array.from(value))))
+                ),
+                dataPage(2, bytes([1], runs(1, [0, 2])), { encoding: RLE_DICTIONARY })
+              ]
+            }))
+          assert.deepStrictEqual(yield* make([[0x61], [0x62]]), ["61", "61"])
+          yield* failsWith(make([[0x61], [0xff]]), "Malformed", /dictionary value 1 .*UTF-8/)
+        }))
+
+      it.effect("PQ-LT-12 doesn't check the bytes of other BYTE_ARRAY and FIXED_LEN_BYTE_ARRAY columns", () =>
+        Effect.gen(function*() {
+          const binary: Binaries = [[0xff], ...split]
+          for (const annotation of [undefined, logical(13), { convertedType: 20 }, logical(17)]) {
+            for (const form of forms) {
+              assert.deepStrictEqual(yield* values(binaries(form, binary, annotation)), hex(binary))
+            }
+          }
+          const fixed = requiredColumn(FIXED, 2, new Uint8Array([0xff, 0xc3, 0xa9, 0xff]), { typeLength: 2 })
+          assert.deepStrictEqual(yield* values(fixed), ["ffc3", "a9ff"])
         }))
     })
 
