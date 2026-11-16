@@ -341,6 +341,7 @@ export class Resource {
       const released = Result.try(release)
       if (Result.isFailure(released)) reasons.push(Cause.makeDieReason(released.failure))
     }
+    delete this.cleanupOffer
     this.releases.length = 0
     this.owned.clear()
     if (this.kind === "caller" || this.kind === "region" || this.kind === "operation") this.runtime.callers--

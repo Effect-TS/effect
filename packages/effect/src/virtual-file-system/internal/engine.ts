@@ -525,6 +525,18 @@ export class Engine {
       }),
       () => {
         for (const id of retained) this.pin(id)
+        if (retained.size > 0 && !(retained.size === 1 && retained.has(this.root))) {
+          // Storage can be installed after acquisition. Inspect the pins when close holds the storage turn.
+          resource.cleanupOffer = () => {
+            if (!this.offer || this.runtime.storageUnavailable?.()) return undefined
+            const removed: Array<bigint> = []
+            for (const id of retained) {
+              if (this.pins.get(id) === 1 && this.nodes.get(id)?.nlink === BigInt("0")) removed.push(id)
+            }
+            if (removed.length === 0) return undefined
+            return this.offerState(new Map(), removed, this.nextObject, "close")
+          }
+        }
       }
     )
   }

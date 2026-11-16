@@ -689,18 +689,6 @@ const openNode = (
     return selected
   })
 
-const retainHandle = (engine: E.Engine, resource: R.Resource, id: bigint) =>
-  Result.map(engine.retainObjectsResult(resource, [id]), () => {
-    if (engine.offer) {
-      resource.cleanupOffer = () => {
-        if (
-          engine.runtime.storageUnavailable?.() || engine.pins.get(id) !== 1 || engine.nodes.get(id)?.nlink !== zero
-        ) return undefined
-        return engine.offerState(new Map(), [id], engine.nextObject, "close")
-      }
-    }
-  })
-
 const fileState = (
   caller: E.Caller,
   resource: R.Resource,
@@ -709,7 +697,7 @@ const fileState = (
 ) =>
   Result.gen(function*() {
     const engine = E.resolveEngine(caller)
-    yield* retainHandle(engine, resource, file.id)
+    yield* engine.retainObjectsResult(resource, [file.id])
     return {
       caller: yield* E.createCallerResult(engine, caller.policy, resource),
       resource,
@@ -873,7 +861,7 @@ const acquireDirectory = (
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
     yield* tx.requireResult(found, E.EXECUTE_PERMISSION)
-    yield* retainHandle(tx.engine, resource, found.id)
+    yield* tx.engine.retainObjectsResult(resource, [found.id])
     return { caller: yield* E.createCallerResult(tx.engine, caller.policy, resource), resource, id: found.id }
   })
 
