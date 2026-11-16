@@ -88,6 +88,12 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    * duration, releasing the locks. On MySQL it is rounded up to whole
    * seconds. Vitess ignores the MySQL session timeout, so behind Vitess the
    * locks stay held until the runner's connection closes.
+   *
+   * It also bounds how long a runner whose shard lock operations keep failing,
+   * while its heartbeat still succeeds, stays in the shard assignments. When a
+   * lock operation fails and none has succeeded for this duration, the runner
+   * unregisters so that other runners take its shards. It registers again
+   * once lock storage accepts its lock operations.
    */
   readonly shardLockExpiration: Duration.Input
   /**

@@ -5112,8 +5112,9 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
           yield* advanceUntil(1000, () => ownedByA() < shards.length),
           "the joining runner was not assigned shards"
         )
+        // the joining runner retries a failed acquisition every entityMessagePollInterval
         assert.isTrue(
-          yield* advanceUntil(5000, () => ownedByA() === shards.length),
+          yield* advanceUntil(30_000, () => ownedByA() === shards.length),
           "the healthy runner did not take back the shards of the joining runner"
         )
       }).pipe(Effect.scoped)
