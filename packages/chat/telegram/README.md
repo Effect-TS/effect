@@ -2,7 +2,7 @@
 
 A [Telegram](https://telegram.org) adapter for `effect/chat`, over the Bot API. It includes a webhook endpoint, a long-polling loop, a pure update normaliser, and the address helpers.
 
-This package is private, and it is not released. The base live checks (1, 2, 3, 4, 5, 7, 10, 11, 15, 16 and 17) ran against production on 16 Nov 2026, and their results are below. Check 17 still needs check 9. Files, buttons and commands are not verified. Releasing it means removing `private`, adding the package to the release setup, and adding its changeset.
+This package is private, and it is not released. The base live checks (1, 2, 3, 4, 5, 7, 10, 11, 15, 16 and 17) ran against production on 16 Nov 2026, and their results are below. Checks 8 and 9 ran too, except for a forged click and check 9's bystander, which needs a second person. Files and reactions are not verified. Releasing it means removing `private`, adding the package to the release setup, and adding its changeset.
 
 ## Setup
 
@@ -95,7 +95,7 @@ A crash before the commit leaves nothing, and the repeat does the work. A concur
 
 ## Live checks
 
-Checks 1 to 5, 7, 10, 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot and a forum supergroup. That also covers check 17, except for 9. `test/live.test.ts` runs the conformance suite against the Bot API when `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set.
+Checks 1 to 5, 7 to 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot, one person and a forum supergroup. That also covers check 17, except for check 9's bystander. `test/live.test.ts` runs the conformance suite against the Bot API when `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set.
 
 1. Rich messages render on macOS desktop and mobile clients. Not seen: Web, Android and older clients.
 2. The rich-Markdown dialect, the escapes Telegram honors, and its readings of links, definitions and emphasis. The escaping follows what it found.
@@ -104,8 +104,8 @@ Checks 1 to 5, 7, 10, 11 and 13 to 16 ran on production on 16 Nov 2026, with a b
 5. A plain `@user` notifies nobody, and an allowed `tg://user` link is a mention.
 6. Not run: rich-message media over multipart `attach://`, and edits of a message with media.
 7. Webhook redelivery after a 503 or a dropped connection, as described under Redelivery.
-8. Not run: callback queries, the server's copy of `reply_markup`, forged `data`, delayed clicks.
-9. Not run: ephemeral commands, with an author and a bystander.
+8. Callback queries carry Telegram's copy of `reply_markup`, which an edit replaces. Telegram keeps at most 100 buttons and 8 per row, and drops the rest without an error. A click answered at the 2.5-second deadline stops spinning about 4 seconds after the tap. Not tried: a forged `data` from a modified client.
+9. Commands, with the author only. A typed command and one picked from the menu arrive alike. In a group, a command registered with `is_ephemeral` arrives with `message_id` 0, an `ephemeral_message_id` and `receiver_user`, and goes only to the command handler; in a private chat it is an ordinary command. A private answer is refused with `Unsupported` and nothing is posted. A public follow-up within 15 seconds replies to the command, and later fails `NotFound` with `interaction_expired`. Not tried: a bystander.
 10. The error responses behind the error mapping.
 11. Forum topics and the General topic. Topics in private chats were not tried.
 12. Not run: reaction updates.
@@ -113,7 +113,7 @@ Checks 1 to 5, 7, 10, 11 and 13 to 16 ran on production on 16 Nov 2026, with a b
 14. `getChatMember` as a non-admin works for members and non-members, and fails `NotFound` for another bot.
 15. A plain `@bot` mention does not reach a bot in privacy mode. A reply does.
 16. Inbound rich messages: a bot never receives another bot's messages, so they arrive only as a reply target, with `rich_message` and no `text`.
-17. A production smoke check of 1, 4, 5, 9, 13 and 15: all but 9 ran.
+17. A production smoke check of 1, 4, 5, 9, 13 and 15: all ran, except check 9's bystander.
 
 ## Links
 
