@@ -2,7 +2,7 @@
 
 A [Telegram](https://telegram.org) adapter for `effect/chat`, over the Bot API. It includes a webhook endpoint, a long-polling loop, a pure update normaliser, and the address helpers.
 
-The live checks ran against production on 16 Nov 2026, and their results are below. Not verified: files, reactions, a forged click, and what a bystander sees of a command. Files, buttons and commands stay behind the `unverified` options.
+The live checks ran against production on 16 Nov 2026, and their results are below. Not verified: a forged click, and what a bystander sees of a command. Files, buttons and commands stay behind the `unverified` options.
 
 ## Setup
 
@@ -45,7 +45,7 @@ These capabilities are implemented but stay off until their live checks pass, on
 | `buttons`  | `buttons`  | 8                                  |
 | `commands` | `commands` | 9                                  |
 
-An edit of a message posted with files may drop its media. Live check 6 decides whether that is so.
+An edit of a message posted with files drops its media (live check 6).
 
 Not supported in this version: `ephemeral`, `fetchMessage`, `history`, `opener`, `startThread`, selects, modals, native streams, reactions (outbound and as events), and typing. A private answer to a command is refused through `ChatInteraction.Handler.refused` with `Unsupported`, and is never posted in public. A `message_reaction` update goes to `onUnhandled`.
 
@@ -95,20 +95,20 @@ A crash before the commit leaves nothing, and the repeat does the work. A concur
 
 ## Live checks
 
-Checks 1 to 5, 7 to 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot, one person and a forum supergroup. That also covers check 17, except for check 9's bystander. `test/live.test.ts` runs the conformance suite against the Bot API only when all of `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set, so CI skips it.
+Checks 1 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot, one person and a forum supergroup. That also covers check 17, except for check 9's bystander. `test/live.test.ts` runs the conformance suite against the Bot API only when all of `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set, so CI skips it.
 
 1. Rich messages render on macOS desktop and mobile clients. Not seen: Web, Android and older clients.
 2. The rich-Markdown dialect, the escapes Telegram honors, and its readings of links, definitions and emphasis. The escaping follows what it found.
 3. The limits: 32,768 rendered characters (non-ASCII text counts less), 500 blocks with a list counting one per item, 16 levels of nesting, 20 table columns, about 4,387 inline nodes per paragraph and about 773 references to one footnote. A code block is one block. `measure` stays under each of these.
 4. No link preview on rich posts or edits.
 5. A plain `@user` notifies nobody, and an allowed `tg://user` link is a mention.
-6. Not run: rich-message media over multipart `attach://`, and edits of a message with media.
+6. Rich-message media over multipart `attach://`: up to 50 files in one message, 51 is refused with 413; 10 MB files; file names and MIME types kept, except that Telegram turns some characters outside Latin-1, such as `–`, into spaces. An edit drops the media. A download through the adapter is byte for byte.
 7. Webhook redelivery after a 503 or a dropped connection, as described under Redelivery. Not run: the polling side, and whether a refused update holds back other chats.
 8. Callback queries carry Telegram's copy of `reply_markup`, which an edit replaces. Telegram keeps at most 100 buttons and 8 per row, and drops the rest without an error. A click answered at the 2.5-second deadline stops spinning about 4 seconds after the tap. Not tried: a forged `data` from a modified client.
 9. Commands, with the author only. A typed command and one picked from the menu arrive alike. In a group, a command registered with `is_ephemeral` arrives with `message_id` 0, an `ephemeral_message_id` and `receiver_user`, and goes only to the command handler; in a private chat it is an ordinary command. A private answer is refused with `Unsupported` and nothing is posted. A public follow-up within 15 seconds replies to the command, and later fails `NotFound` with `interaction_expired`. Not tried: a bystander.
 10. The error responses behind the error mapping.
 11. Forum topics and the General topic. Topics in private chats were not tried.
-12. Not run: reaction updates.
+12. Reaction updates reach an admin bot that asks for `message_reaction`, which the adapter does not. Each carries the user's whole set before and after, as `old_reaction` and `new_reaction`: add, change and remove each give one update. They normalise to no event. Not tried: custom and paid emoji, and `actor_chat`.
 13. Edit pacing: one edit every 3 seconds in a group gets no 429. Back-to-back edits got one after 19, with `retry_after` 43.
 14. `getChatMember` as a non-admin works for members and non-members, and fails `NotFound` for another bot.
 15. A plain `@bot` mention does not reach a bot in privacy mode. A reply does.
