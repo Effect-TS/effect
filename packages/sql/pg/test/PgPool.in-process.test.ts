@@ -510,18 +510,18 @@ describe("pool stats", () => {
       yield* pool.get
       yield* pool.get
       yield* pool.get
-      assert.deepStrictEqual(yield* pool.stats, { idle: 0, used: 1, pending: 0, min: 0, max: 2 })
+      assert.deepStrictEqual(yield* pool.stats, { idle: 0, used: 1, acquiring: 0, pending: 0, min: 0, max: 2 })
     })))
 
   it.effect("PgClient.make reports the occupancy of its pool", () =>
     Effect.scoped(Effect.gen(function*() {
       const sql = yield* PgClient.make({ username: "test", maxConnections: 3, stream: readyStream })
-      assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 0, pending: 0, min: 0, max: 3 })
+      assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 0, acquiring: 0, pending: 0, min: 0, max: 3 })
       yield* Effect.scoped(Effect.gen(function*() {
         yield* sql.reserve
-        assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 1, pending: 0, min: 0, max: 3 })
+        assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 1, acquiring: 0, pending: 0, min: 0, max: 3 })
       }))
-      assert.deepStrictEqual(yield* sql.poolStats, { idle: 1, used: 0, pending: 0, min: 0, max: 3 })
+      assert.deepStrictEqual(yield* sql.poolStats, { idle: 1, used: 0, acquiring: 0, pending: 0, min: 0, max: 3 })
     })).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("PgClient.makeClient reports its one session as permanently leased", () =>
@@ -529,7 +529,7 @@ describe("pool stats", () => {
       const sql = yield* PgClient.makeClient({ username: "test", stream: readyStream })
       // The snapshot describes the session, not statement activity, so it does
       // not change while work runs on it.
-      const leased = { idle: 0, used: 1, pending: 0, min: 1, max: 1 }
+      const leased = { idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 }
       assert.deepStrictEqual(yield* sql.poolStats, leased)
       yield* Effect.scoped(Effect.gen(function*() {
         yield* sql.reserve
