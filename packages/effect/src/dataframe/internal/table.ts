@@ -19,6 +19,7 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
+import * as Values from "../../arrow/internal/values.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
 import type * as Plan from "../Plan.ts"
@@ -382,8 +383,7 @@ const exact = (path: string, column: Plan.TableColumn): ((value: unknown) => voi
         }
       }
     case "Duration": {
-      const [mul, div] = microseconds[column.unit ?? "microsecond"]
-      const nanos = mul * BigInt(1000) / div
+      const nanos = Values.nanosPerUnit[column.unit ?? "microsecond"]
       return nanos === BigInt(1) ? undefined : (value) => {
         if (Duration.isDuration(value) && Duration.toNanosUnsafe(value) % nanos !== BigInt(0)) {
           inexact(path, arrowType(column, path))
@@ -478,18 +478,12 @@ const check = (path: string, v: V.Vector, expected: Plan.TableColumn, rows: Uint
 /**
  * Fails unless the values of the columns that `checks` names pass their
  * test, and the rows the row test.
- *
- * @internal
  */
-export const runChecks = (
-  checks: Plan.TableChecks,
-  values: (name: string) => ReadonlyArray<unknown>,
-  rows: () => ReadonlyArray<unknown>
-): void => {
+const runChecks = (checks: Plan.TableChecks, frame: F.Frame): void => {
   for (const [name, test] of checks.columns) {
-    if (!values(name).every(test)) V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
+    if (!F.toArray(frame, name).every(test)) V.fail(`column ${JSON.stringify(name)} has values its schema rejects`)
   }
-  if (checks.rows !== undefined && !rows().every(checks.rows)) V.fail("rows have values their schema rejects")
+  if (checks.rows !== undefined && !F.toRows(frame).every(checks.rows)) V.fail("rows have values their schema rejects")
 }
 
 /**
@@ -517,6 +511,6 @@ export const conform = (
     }),
     frame.length
   )
-  if (checks !== undefined) runChecks(checks, (name) => F.toArray(narrowed, name), () => F.toRows(narrowed))
+  if (checks !== undefined) runChecks(checks, narrowed)
   return narrowed
 }

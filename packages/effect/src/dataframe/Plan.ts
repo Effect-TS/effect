@@ -1127,7 +1127,10 @@ const tableFromJson: SchemaTransformation.Transformation<Table, typeof TableJson
  */
 const TableSchema = Schema.declareConstructor<Table>()(
   [],
-  () => (u, _, options) => Effect.as(SchemaParser.decodeUnknownEffect(TableStruct)(u, options), u as Table),
+  () => {
+    const decode = SchemaParser.decodeUnknownEffect(TableStruct)
+    return (u, _, options) => Effect.as(decode(u, options), u as Table)
+  },
   {
     expected: "Table",
     // A union picks this member by its tag, as it does a struct.

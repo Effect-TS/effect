@@ -31,9 +31,9 @@ const validOf = (v: V.Vector): Uint8Array | undefined =>
 export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
   const n = v.length
   const ids = p.ids
+  if (D.isPointInTime(v.type)) return V.fail(`cumSum is not defined for ${D.describe(v.type)}`)
   const type = D.sumType(v.type)
   const valid = validOf(v)
-  if (D.isPointInTime(v.type)) return V.fail(`cumSum is not defined for ${D.describe(v.type)}`)
   switch (v.kind) {
     case "null":
       return V.nulls(n)
