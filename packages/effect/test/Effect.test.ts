@@ -27,6 +27,7 @@ import {
   Schedule,
   Scheduler,
   Scope,
+  TxQueue,
   TxRef
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
@@ -4518,6 +4519,37 @@ describe("Effect", () => {
     })
 
     describe("retry", () => {
+      it.effect("should wait for a read value to change after recovering a retry", () =>
+        Effect.gen(function*() {
+          const queue = yield* TxQueue.unbounded<number>()
+          let runs = 0
+          const waiter = yield* Effect.tx(Effect.gen(function*() {
+            runs++
+            return yield* Effect.exit(TxQueue.take(queue))
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* Effect.repeat(Effect.yieldNow, { times: 10 })
+          assert.strictEqual(runs, 1)
+
+          yield* TxQueue.offer(queue, 42)
+          assert.deepStrictEqual(yield* Fiber.join(waiter), Exit.succeed(42))
+          assert.strictEqual(runs, 2)
+        }))
+
+      it.effect("should interrupt a recovered retry without committing its writes", () =>
+        Effect.gen(function*() {
+          const written = TxRef.makeUnsafe(0)
+          const waiter = yield* Effect.tx(Effect.gen(function*() {
+            yield* TxRef.set(written, 1)
+            yield* Effect.exit(Effect.txRetry)
+          })).pipe(Effect.forkChild({ startImmediately: true }))
+
+          const exit = yield* Fiber.interrupt(waiter).pipe(Effect.andThen(Fiber.await(waiter)))
+
+          assert.isTrue(Exit.hasInterrupts(exit))
+          assert.strictEqual(yield* TxRef.get(written), 0)
+        }))
+
       it.effect("should preserve a retry cleanup failure when a read ref changes during cleanup", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
