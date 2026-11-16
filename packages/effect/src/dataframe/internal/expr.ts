@@ -116,6 +116,30 @@ export const call = <E>(
   options?: { readonly [key: string]: unknown }
 ): E => makeExpr({ _tag: "Call", fn, args: args.map(toNode), options })
 
+/**
+ * `isIn`: plain candidates are the `values` of the call. A `BigDecimal`,
+ * `DateTime` or `Duration` has a literal type, which a plan value can't
+ * carry, so it is compared with `eq`.
+ *
+ * @internal
+ */
+export const isIn = <E>(self: unknown, values: ReadonlyArray<unknown>): E => {
+  const literals = values.map(literalNode)
+  const typed = literals.filter((literal) => literal.type !== undefined)
+  if (typed.length === 0) return call("isIn", [self], { values })
+  const node = toNode(self)
+  const test = (fn: Plan.FunctionName, args: ReadonlyArray<Node>, options?: Plan.CallOptions): Node => ({
+    _tag: "Call",
+    fn,
+    args,
+    options
+  })
+  const plain = literals.filter((literal) => literal.type === undefined).map((literal) => literal.value)
+  const tests = typed.map((literal) => test("eq", [node, literal]))
+  if (plain.length > 0) tests.unshift(test("isIn", [node], { values: plain }))
+  return makeExpr(tests.reduce((a, b) => test("or", [a, b])))
+}
+
 /** Readable form of an expression, used by `toString`. @internal */
 export const show = (node: Node): string => {
   switch (node._tag) {

@@ -1024,6 +1024,59 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.deepStrictEqual(yield* rowsOnSql(floats), [{ f: 1e-292 }, { f: -1e-292 }])
       }))
 
+    // DF-S022: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("isIn compares decimals by value as in memory", () =>
+      Effect.gen(function*() {
+        const dec = (unscaled: bigint, scale: number) => BigDecimal.make(unscaled, scale)
+        // 7.00, 7.50 and -7.00 next to 70, 0 and 700. The columns are untyped, as in a frame
+        // read from Arrow: typed columns take candidates of their own type.
+        const held = arrow<any>(
+          [
+            ArrowSchema.field("d", ArrowSchema.decimal(18, 2)),
+            ArrowSchema.field("n", ArrowSchema.decimal(18, -1)),
+            ArrowSchema.field("at", ArrowSchema.timestamp("microsecond", "UTC")),
+            ArrowSchema.field("took", ArrowSchema.duration("microsecond"))
+          ],
+          [
+            [dec(700n, 2), dec(750n, 2), dec(-700n, 2), null],
+            [dec(7n, -1), dec(0n, -1), dec(70n, -1), null],
+            [0n, 1_000_000n, 5n, null],
+            [0n, 1_000_000n, 5n, null]
+          ]
+        )
+        const chosen = held.pipe(Query.select((c) => ({
+          same: Expr.isIn(c.d, [dec(700n, 2)]),
+          rescaled: Expr.isIn(c.d, [dec(7n, 0), dec(7500n, 3)]),
+          integer: Expr.isIn(c.d, [7, -7n]),
+          float: Expr.isIn(c.d, [7.5]),
+          units: Expr.isIn(c.d, [700, 750n]),
+          mixed: Expr.isIn(c.d, [7, dec(-700n, 2), null]),
+          none: Expr.not(Expr.isIn(c.d, [7, dec(750n, 2)])),
+          negative: Expr.isIn(c.n, [70, dec(700n, 0)]),
+          at: Expr.isIn(c.at, [DateTime.makeUnsafe(1000)]),
+          took: Expr.isIn(c.took, [Duration.seconds(1), Duration.micros(5n)])
+        })))
+        yield* both(chosen)
+        const row = (...values: ReadonlyArray<boolean | null>) => ({
+          same: values[0],
+          rescaled: values[1],
+          integer: values[2],
+          float: values[3],
+          units: values[4],
+          mixed: values[5],
+          none: values[6],
+          negative: values[7],
+          at: values[8],
+          took: values[9]
+        })
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          row(true, true, true, false, false, true, false, true, false, false),
+          row(false, true, false, true, false, false, false, false, true, true),
+          row(false, false, true, false, false, true, true, true, false, true),
+          row(null, null, null, null, null, null, null, null, null, null)
+        ])
+      }))
+
     // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("unions and nullable fields are checked as in memory", () =>
       Effect.gen(function*() {

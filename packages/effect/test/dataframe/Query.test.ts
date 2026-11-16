@@ -658,6 +658,52 @@ describe("Query", () => {
         ])
       }))
 
+    // DF-Q055 (API contract): Expr.isIn; pinned source in README.md.
+    it.effect("isIn compares decimals, points in time and durations by value", () =>
+      Effect.gen(function*() {
+        const dec = (unscaled: bigint, scale: number) => BigDecimal.make(unscaled, scale)
+        // The columns are untyped, as in a frame read from Arrow: typed columns take candidates of their own type.
+        const frame = arrowFrame<any>({
+          // 7.00, 7.50 and -7.00
+          d: [ArrowSchema.decimal(18, 2), [dec(700n, 2), dec(750n, 2), dec(-700n, 2), null]],
+          // 70, 0 and 700
+          n: [ArrowSchema.decimal(18, -1), [dec(7n, -1), dec(0n, -1), dec(70n, -1), null]],
+          b: [ArrowSchema.int64, [7n, 700n, 70n, null]],
+          at: [ArrowSchema.timestamp("millisecond", "UTC"), [0n, 1000n, 5n, null]],
+          took: [ArrowSchema.duration("millisecond"), [0n, 1000n, 5n, null]]
+        })
+        const cases: ReadonlyArray<readonly [string, ReadonlyArray<unknown>, ReadonlyArray<boolean | null>]> = [
+          ["d", [dec(700n, 2)], [true, false, false, null]],
+          // Equal at another scale.
+          ["d", [dec(7n, 0), dec(7500n, 3)], [true, true, false, null]],
+          ["d", [dec(7001n, 3)], [false, false, false, null]],
+          ["d", [7], [true, false, false, null]],
+          ["d", [7n], [true, false, false, null]],
+          ["d", [7.5], [false, true, false, null]],
+          // Not the unscaled units 7.00 is stored as.
+          ["d", [700, 700n], [false, false, false, null]],
+          ["d", [7, dec(-700n, 2)], [true, false, true, null]],
+          ["d", [-7, null], [false, false, true, null]],
+          ["d", [], [false, false, false, null]],
+          ["d", ["7.00", true, NaN, Infinity, 2n ** 70n], [false, false, false, null]],
+          ["n", [70], [true, false, false, null]],
+          ["n", [7, 75], [false, false, false, null]],
+          ["n", [0, dec(700n, 0)], [false, true, true, null]],
+          // Controls: integers hold no fraction, and take numbers and bigints.
+          ["b", [7.5, NaN], [false, false, false, null]],
+          ["b", [7, 70n], [true, false, true, null]],
+          ["at", [DateTime.makeUnsafe(1000)], [false, true, false, null]],
+          ["took", [Duration.seconds(1), Duration.millis(5)], [false, true, true, null]]
+        ]
+        for (const [column, candidates, expected] of cases) {
+          const query = Query.from(frame).pipe(Query.select((c) => ({ x: Expr.isIn(c[column], candidates) })))
+          assert.deepStrictEqual(yield* rows(query), expected.map((x) => ({ x })), `${column} in ${candidates}`)
+          // The plan holds no value its JSON form can't.
+          const plan = Schema.decodeSync(Plan.NodeFromJson)(Schema.encodeSync(Plan.NodeFromJson)(query.plan))
+          assert.deepStrictEqual(yield* rows(Query.fromPlan(plan)), expected.map((x) => ({ x })))
+        }
+      }))
+
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {

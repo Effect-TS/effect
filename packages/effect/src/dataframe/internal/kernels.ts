@@ -1151,8 +1151,11 @@ export const isIn = (a: Value, candidates: ReadonlyArray<unknown>): Value => {
       break
     }
     case "i64": {
+      // A decimal's candidates are values, not the unscaled units it stores.
+      if (Dec.isDecimal(v.type)) return result(V.bool(Dec.isIn(v.values, v.type.scale, candidates), v.valid), a.scalar)
+      // Only an integer can be one of these values.
       const set = new Set(
-        candidates.filter((c) => typeof c === "bigint" || typeof c === "number").map((c) => BigInt(c as any))
+        candidates.filter((c): c is bigint | number => typeof c === "bigint" || Number.isInteger(c)).map(BigInt)
       )
       for (let i = 0; i < n; i++) o[i] = +set.has(v.values[i])
       break

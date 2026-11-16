@@ -373,6 +373,48 @@ export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
   )
 }
 
+/**
+ * The integer `x` in unscaled units of `scale`, or `undefined` when the
+ * scale or the 64 bits of storage can't hold it exactly.
+ */
+const exactly = (x: bigint, scale: number): bigint | undefined => {
+  if (scale >= 0) {
+    const unscaled = x * factor(scale)
+    return inRange(unscaled) ? unscaled : undefined
+  }
+  if (x === I0) return I0
+  // A nonzero multiple of `10^-scale` has more digits than that.
+  if (-scale >= (x < I0 ? -x : x).toString().length) return undefined
+  const divisor = pow10(-scale)
+  return x % divisor === I0 && inRange(x / divisor) ? x / divisor : undefined
+}
+
+/**
+ * Whether each decimal is one of `candidates`. A candidate is a value and
+ * not a number of unscaled units: an integer is the decimal equal to it,
+ * and another number is the decimals whose float it is, as in a comparison
+ * with a float. Candidates that aren't numbers match nothing.
+ *
+ * @internal
+ */
+export const isIn = (values: BigInt64Array, scale: number, candidates: ReadonlyArray<unknown>): Uint8Array => {
+  const exact = new Set<bigint>()
+  const floats = new Set<number>()
+  for (const c of candidates) {
+    if (typeof c === "bigint" || (typeof c === "number" && Number.isInteger(c))) {
+      const unscaled = exactly(BigInt(c), scale)
+      if (unscaled !== undefined) exact.add(unscaled)
+    } else if (typeof c === "number" && Number.isFinite(c)) {
+      floats.add(c)
+    }
+  }
+  const out = new Uint8Array(values.length)
+  for (let i = 0; i < values.length; i++) {
+    out[i] = +(exact.has(values[i]) || (floats.size > 0 && floats.has(toNumber(values[i], scale))))
+  }
+  return out
+}
+
 /** Unscaled values as floats. @internal */
 export const toFloat = (values: BigInt64Array, scale: number): Float64Array => {
   const out = new Float64Array(values.length)

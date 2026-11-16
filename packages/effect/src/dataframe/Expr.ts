@@ -547,7 +547,9 @@ export const between: {
 } = dual(3, (self: unknown, lower: unknown, upper: unknown) => internal.call("between", [self, lower, upper])) as any
 
 /**
- * Whether the value is one of `values`.
+ * Whether the value is one of `values`; `null` for `null`. A decimal is one
+ * of the numbers equal to it, whatever its scale. `BigDecimal`, `DateTime`
+ * and `Duration` candidates are compared as {@link eq} compares them.
  *
  * @stability experimental
  * @category comparisons
@@ -556,7 +558,7 @@ export const between: {
 export const isIn: {
   <B>(values: ReadonlyArray<B>): <A extends Base<B> | null>(self: Expr<A>) => Expr<boolean | Nullish<A>>
   <A>(self: Expr<A>, values: ReadonlyArray<Base<A>>): Expr<boolean | Nullish<A>>
-} = dual(2, (self: unknown, values: ReadonlyArray<unknown>) => internal.call("isIn", [self], { values })) as any
+} = dual(2, internal.isIn) as any
 
 // -----------------------------------------------------------------------------
 // Logic
