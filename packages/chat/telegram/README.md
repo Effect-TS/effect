@@ -69,15 +69,15 @@ Updates from business connections, a channel's direct messages and guest mode ar
 
   const App = Webhook.pipe(Layer.provideMerge(RedactSecret))
   ```
-- Consumer Markdown is escaped so that it reaches no raw HTML, image, math, spoiler, highlight, or link outside `http`, `https` and `mailto`. A `tg://user` link stays only for users listed in `withPostOptions({ notify: { users } })`. Telegram honors only some backslash escapes, and it closes a link at an escaped `]`, so the other escapes become numeric character references, and a refused link or definition is broken at its `(` or its opening `[`. A kept link is sent with its destination verbatim, as Telegram reads it, and without its title. It is kept only when its `[` is on the same line, and a definition only at the top level after a blank line.
-- Where Markdown is ambiguous the escaping errs toward plain text: a table keeps its pipes only after a blank line or a heading; a `*` or `_` with space on both sides is escaped, as Telegram would open emphasis with it; and past 15 delimiters that could open emphasis, or 4,000 code spans, links and footnote references in one paragraph, or 700 footnote references in a message, the rest are shown as written. Telegram still pairs emphasis more loosely than CommonMark: `a* b*` is italic.
+- Consumer Markdown is escaped so that it reaches no raw HTML, image, math, spoiler, highlight, or link outside `http`, `https` and `mailto`. A `tg://user` link stays only for users listed in `withPostOptions({ notify: { users } })`. Telegram honors only some backslash escapes, and it closes a link at an escaped `]`, so the other escapes become numeric character references, and a refused link or definition is broken at its `(` or its opening `[`. A kept link is sent with its destination verbatim, as Telegram reads it, and without its title. It is kept only when its `[` is on the same line, its label has no other bracket in it and no `]` comes right before it, and a definition only at the top level after a blank line.
+- Where Markdown is ambiguous the escaping errs toward plain text: a table keeps its pipes only after a blank line or a heading; a `*` or `_` with space on both sides is escaped, as Telegram would open emphasis with it; and past 15 delimiters that could open emphasis, or 4,000 code spans, footnote references and `[` that could open a link or reference in one paragraph, or 700 footnote references in a message, the rest are shown as written. Telegram still pairs emphasis more loosely than CommonMark: `a* b*` is italic.
 - A click is dispatched only when its `data` matches a button in Telegram's own copy of the message. That shows the bot put the button there, not that it is still current or that this user may press it.
 
 ## Redelivery
 
 Telegram sends an update again until it gets a 200, clicks and commands included. Polling sees it again until the offset moves past it. The webhook answers 503 when the `ChatHandler` fails `NotAccepted` or passes `deadline` (10 seconds), and Telegram retries. Polling retries an update up to `maxAttempts` times, then logs it and moves on.
 
-Telegram delivers updates in order, for the whole bot: while one is refused, the ones after it wait. It retries after about 0.3, 2, 4, 8, 16 and 32 seconds, keeping the `update_id`, and gives up on a webhook request after 60 seconds. A handler that refuses a lot stalls every chat, so `NotAccepted` is for short outages.
+Telegram delivers webhook updates in order: while one is refused, the ones after it wait. This was seen in one chat. Whether updates for other chats wait too was not tried, so assume a refused update can stall every chat, and keep `NotAccepted` for short outages. Telegram retries after about 0.3, 2, 4, 8, 16 and 32 seconds, keeping the `update_id`, and gives up on a webhook request after 60 seconds.
 
 Clicks and commands are different. Their handlers have a deadline of their own, and when it passes the update counts as answered: the webhook answers 200 and polling moves its offset. Telegram does not send it again.
 
@@ -95,7 +95,7 @@ A crash before the commit leaves nothing, and the repeat does the work. A concur
 
 ## Live checks
 
-Checks 1 to 5, 7 to 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot, one person and a forum supergroup. That also covers check 17, except for check 9's bystander. `test/live.test.ts` runs the conformance suite against the Bot API when `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set.
+Checks 1 to 5, 7 to 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin bot, one person and a forum supergroup. That also covers check 17, except for check 9's bystander. `test/live.test.ts` runs the conformance suite against the Bot API only when all of `TELEGRAM_LIVE_BOT_TOKEN`, `TELEGRAM_LIVE_BOT2_TOKEN` and `TELEGRAM_LIVE_CHAT` are set, so CI skips it.
 
 1. Rich messages render on macOS desktop and mobile clients. Not seen: Web, Android and older clients.
 2. The rich-Markdown dialect, the escapes Telegram honors, and its readings of links, definitions and emphasis. The escaping follows what it found.
@@ -103,7 +103,7 @@ Checks 1 to 5, 7 to 11 and 13 to 16 ran on production on 16 Nov 2026, with a bot
 4. No link preview on rich posts or edits.
 5. A plain `@user` notifies nobody, and an allowed `tg://user` link is a mention.
 6. Not run: rich-message media over multipart `attach://`, and edits of a message with media.
-7. Webhook redelivery after a 503 or a dropped connection, as described under Redelivery.
+7. Webhook redelivery after a 503 or a dropped connection, as described under Redelivery. Not run: the polling side, and whether a refused update holds back other chats.
 8. Callback queries carry Telegram's copy of `reply_markup`, which an edit replaces. Telegram keeps at most 100 buttons and 8 per row, and drops the rest without an error. A click answered at the 2.5-second deadline stops spinning about 4 seconds after the tap. Not tried: a forged `data` from a modified client.
 9. Commands, with the author only. A typed command and one picked from the menu arrive alike. In a group, a command registered with `is_ephemeral` arrives with `message_id` 0, an `ephemeral_message_id` and `receiver_user`, and goes only to the command handler; in a private chat it is an ordinary command. A private answer is refused with `Unsupported` and nothing is posted. A public follow-up within 15 seconds replies to the command, and later fails `NotFound` with `interaction_expired`. Not tried: a bystander.
 10. The error responses behind the error mapping.

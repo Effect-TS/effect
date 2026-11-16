@@ -1,14 +1,13 @@
 /**
  * The conformance suite against the real Bot API. Opt-in: it runs only when
- * these are set, so CI skips it.
+ * all three of these are set, so CI skips it.
  *
  * - `TELEGRAM_LIVE_BOT_TOKEN` and `TELEGRAM_LIVE_CHAT`: the bot and a group
  *   it may write to, as a chat id.
  * - `TELEGRAM_LIVE_BOT2_TOKEN`: a second bot in the group, for the rules
  *   that need another identity's message. Its message is sent with
  *   `sendMessage` and normalised as an inbound update, since bots never
- *   receive each other's messages. Without it those rules fail at
- *   `userPosts`.
+ *   receive each other's messages.
  *
  * Only the default capabilities run: files, buttons and commands stay off
  * until their own live checks pass.
@@ -30,7 +29,7 @@ const botToken = process.env.TELEGRAM_LIVE_BOT_TOKEN
 const secondToken = process.env.TELEGRAM_LIVE_BOT2_TOKEN
 const chat = process.env.TELEGRAM_LIVE_CHAT
 
-describe.skipIf(botToken === undefined || chat === undefined)("live conformance", () => {
+describe.skipIf(botToken === undefined || secondToken === undefined || chat === undefined)("live conformance", () => {
   const layer = TelegramChat.layer({ token: Redacted.make(botToken!) }).pipe(
     Layer.provideMerge(Chat.layer),
     Layer.provide(FetchHttpClient.layer)
@@ -39,10 +38,9 @@ describe.skipIf(botToken === undefined || chat === undefined)("live conformance"
   /** Posts as the second bot and normalises the answer as the update the first bot would get. */
   const userPosts = (thread: ChatThread.ChatThread, text: string): Effect.Effect<ChatEvent.ChatEvent> =>
     Effect.gen(function*() {
-      if (secondToken === undefined) return yield* Effect.die(new Error("TELEGRAM_LIVE_BOT2_TOKEN is not set"))
       const parts = TelegramChat.parts(thread)
       if (parts._tag === "None") return yield* Effect.die(new Error("not a Telegram thread"))
-      const second = yield* TelegramBotApi.make({ token: Redacted.make(secondToken) })
+      const second = yield* TelegramBotApi.make({ token: Redacted.make(secondToken!) })
       const message = yield* second.call("sendMessage", {
         chat_id: Number(parts.value.chatId),
         ...(parts.value.messageThreadId === undefined

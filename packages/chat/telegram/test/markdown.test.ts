@@ -37,7 +37,7 @@ const cases: ReadonlyArray<readonly [string, string]> = [
   ["| a | b |\n|---|---|\n| 1 | 2 |", "| a | b |\n|---|---|\n| 1 | 2 |"],
   ["`<b>` and `open", "`<b>` and \\`open"],
   [">>>>>>>>>>>>>>>>> x", ">>>>>>>>>>>>>>>\\>\\> x"],
-  ["[x\\](tg://resolve?domain=telegram) \\<b>x\\</b>", "[x&#93;(tg://resolve?domain\\=telegram) &#60;b>x&#60;/b>"],
+  ["[x\\](tg://resolve?domain=telegram) \\<b>x\\</b>", "\\[x&#93;(tg://resolve?domain\\=telegram) &#60;b>x&#60;/b>"],
   [
     "[a](https://e.com/?q=1&x=2 \"t\") [b](https://e.com/a_b*c\\(d\\))",
     "[a](https://e.com/?q=1&x=2) [b](https://e.com/a_b*c%28d%29)"
@@ -74,6 +74,7 @@ const assertInert = (input: string) => {
   assert.deepStrictEqual(found.unhonored, [], context)
   assert.isAtMost(found.maxDepth, maxDepth, context)
   assert.isAtMost(found.maxColumns, maxColumns, context)
+  assert.isAtMost(found.inline, maxInlineNodes, context)
   if (measure(input) <= messageLength) assert.isAtMost(found.blocks, maxBlocks, context)
 }
 
@@ -99,6 +100,8 @@ const hostile = fc.string({
     "\\<",
     "\\`",
     // whitespace that is not a blank line to CommonMark
+    "[a]",
+    "\n[a]: mailto:x\n",
     "\u00a0",
     "\u3000",
     "\v",
@@ -156,7 +159,21 @@ describe("render", () => {
         "x|y\n\t---|---",
         // a line of U+00A0 is text, so it ends no paragraph
         ">".repeat(15) + " x\n\u00a0\n" + "_".repeat(14) + "x" + "_".repeat(14),
-        "[^a]: z\n\u00a0\nx|y\n---|---\n||secret||"
+        "[^a]: z\n\u00a0\nx|y\n---|---\n||secret||",
+        // a nested label, a reference or a footnote may turn the outer link
+        // into text, and its destination into Markdown
+        "[outer [inner]](mailto:[pwn](tg://user?id=1))\n\n[inner]: https://safe.com",
+        "[outer [inner]](mailto:![pwn](tg://document?id=f1))\n\n[inner]: https://safe.com",
+        "[outer [inner]](mailto:||spoiler||)\n\n[inner]: https://safe.com",
+        "[a][inner](mailto:[pwn](tg://user?id=1))\n\n[inner]: https://safe.com",
+        "[inner][](mailto:[pwn](tg://user?id=1))\n\n[inner]: https://safe.com",
+        "[x [^a]](mailto:[pwn](tg://user?id=1))\n\n[^a]: z",
+        "[x [^a](mailto:[pwn](tg://user?id=1))\n\n[^a]: z",
+        // unbalanced parentheses end no destination
+        "[](mailto:$(> )",
+        // a definition's label may span lines
+        "[\n[a]: [",
+        "[x\\](a)\n]: tg://user?id=1\n\n[x&#93;(a)\n]"
       ]
     ) assertInert(input)
     fc.assert(fc.property(hostile, (input) => assertInert(input)), { numRuns: 2000 })
@@ -191,8 +208,19 @@ describe("render", () => {
     assert.strictEqual(spans.match(/(?<!\\)`a(?<!\\)`/g)?.length, maxInlineNodes)
     const links = render("[a](https://e.com) ".repeat(maxInlineNodes + 10))
     assert.strictEqual(links.split("](").length - 1, maxInlineNodes)
+    // references count as links, also beside code spans and links
+    const shortcuts = "[a] ".repeat(maxInlineNodes + 10) + "\n\n[a]: https://e.com"
+    assert.isAtMost(measure(shortcuts), messageLength)
+    assert.strictEqual(inspect(render(shortcuts)).inline, maxInlineNodes)
+    // four nodes a repeat, 40 past the cap
+    const mixed = "[a] `b` [c](https://e.com) [d][a] ".repeat(maxInlineNodes / 4 + 10) + "\n\n[a]: https://e.com"
+    assert.isAtMost(inspect(render(mixed)).inline, maxInlineNodes)
     const references = render(Array.from({ length: 10 }, () => "x[^1]".repeat(100)).join("\n\n") + "\n\n[^1]: n")
     assert.strictEqual(references.match(/(?<!\\)\[\^1\]/g)?.length, maxFootnoteReferences + 1)
+  })
+
+  it("has an oracle that sees each escape Telegram ignores", () => {
+    assert.deepStrictEqual(inspect(String.raw`\!\<b>`).unhonored, [String.raw`\!\<b>`])
   })
 
   it("escapes the pipes of a table wider than 20 columns", () => {

@@ -228,6 +228,8 @@ const linkTail = (line: string, start: number): { readonly destination: string; 
       depth--
     }
   }
+  // CommonMark keeps only balanced parentheses in a destination.
+  if (depth > 0) return undefined
   const destination = line.slice(from, i)
   const spaced = blank(line[i])
   while (blank(line[i])) i++
@@ -404,9 +406,14 @@ const renderLine = (line: string, context: LineContext): string => {
   let labelEscaped = false
   const definitionAllowed = context.definitions.allowed && prefix.depth === 0
   context.definitions.allowed = false
-  // The `[` that could still open a link, as CommonMark counts them: each
-  // \`]` takes the nearest, and a link takes them all.
-  let openers = 0
+  // Where the `[` of a label with no other bracket in it is, until a `]`
+  // closes it. Only such a label keeps its destination: around a nested
+  // label, a reference or a footnote, whether the outer brackets make a
+  // link depends on definitions and on Telegram's precedence, and a raw
+  // tail would be read as Markdown.
+  let opener: number | undefined
+  // Where each `[` not yet closed on this line is in `out`.
+  const unclosed: Array<number> = []
   let out = prefix.text
   let urlEnd = -1
   let i = prefix.rest
@@ -480,9 +487,17 @@ const renderLine = (line: string, context: LineContext): string => {
             continue
           }
           context.footnotes.count++
+          opener = undefined
         } else if (!inUrl) {
-          openers++
+          // Each `[` that could open a link or a reference counts as a node.
+          if (!node(1)) {
+            out += "\\["
+            i++
+            continue
+          }
+          opener = i
         }
+        unclosed.push(out.length)
         out += "["
         i++
         continue
@@ -492,16 +507,15 @@ const renderLine = (line: string, context: LineContext): string => {
         // kept destination is sent verbatim, which is inert only if it is
         // read as one: a link needs an opener on its line, a definition the
         // start of a line where one may stand.
-        const opened = openers > 0
-        if (opened) openers--
+        // Not `[a][b](…)` or `[a][](…)`, where `[a]` may be the link.
+        const plain = opener !== undefined && line[opener - 1] !== "]"
+        opener = undefined
+        unclosed.pop()
         if (next === "(") {
           const tail = linkTail(line, i + 1)
-          if (
-            opened && tail !== undefined && allowedDestination(tail.destination, context.mentions) && node(1)
-          ) {
+          if (plain && tail !== undefined && allowedDestination(tail.destination, context.mentions)) {
             out += "](" + destinationOf(tail.destination) + ")"
             i = tail.end
-            openers = 0
             continue
           }
           out += "]\\("
@@ -511,7 +525,7 @@ const renderLine = (line: string, context: LineContext): string => {
         if (next === ":" && !(footnote && i === line.indexOf("]", prefix.rest))) {
           const definition = definitionDestination(line, i + 2)
           if (
-            definitionAllowed && label !== undefined && i === line.indexOf("]", prefix.rest) &&
+            definitionAllowed && label !== undefined && out[label] === "[" && i === line.indexOf("]", prefix.rest) &&
             definition !== undefined && allowedDestination(definition.destination, context.mentions)
           ) {
             out += "]: " + destinationOf(definition.destination)
@@ -564,6 +578,9 @@ const renderLine = (line: string, context: LineContext): string => {
         i++
     }
   }
+  // A label left open at the start of a line could close on a later one,
+  // as a definition's.
+  if (label !== undefined && unclosed[0] === label) out = out.slice(0, label) + "\\" + out.slice(label)
   return out
 }
 
@@ -593,14 +610,17 @@ export interface RenderOptions {
  *   Markdown parser and then a URL parser would, is not http, https or
  *   mailto is text: a link loses its `(`, a definition its opening `[`.
  *   A `tg://user` link stays for an id in `mentions`. A kept link needs its
- *   `[` and its whole tail on its line, a kept definition the top level
+ *   `[` and its whole tail on its line, a label with no other bracket in
+ *   it, and no `]` right before it, a kept definition the top level
  *   after a blank line or another definition. Its destination is sent as
  *   Telegram reads it, verbatim, and its title is dropped.
  * - A `*`, `_` or `~` run with space on both sides is escaped, outside a
  *   thematic break: Telegram would open emphasis with it.
- * - Code spans, links and footnote references past `maxInlineNodes` in a
- *   paragraph, or footnote references past `maxFootnoteReferences` in the
- *   message, are text.
+ * - Code spans, `[` that could open a link or reference, and footnote
+ *   references past `maxInlineNodes` in a paragraph, or footnote
+ *   references past `maxFootnoteReferences` in the message, are text. A
+ *   `[` that starts a line and is not closed on it is escaped, as it could
+ *   open a definition whose label ends on a later line.
  * - Container markers and emphasis past 16 levels are escaped. Every
  *   delimiter that could open emphasis counts as a level until the
  *   paragraph ends, at a blank line or a line that surely starts a block,

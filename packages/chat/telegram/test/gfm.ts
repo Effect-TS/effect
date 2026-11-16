@@ -18,6 +18,12 @@ export interface Findings {
    * as a backslash and then reads the character as syntax (live check 2).
    */
   readonly unhonored: ReadonlyArray<string>
+  /**
+   * The most inline nodes in one paragraph, as the renderer counts them:
+   * code spans, links and references written with `[` or `<`, and footnote
+   * references at three each. Bare URLs are not counted.
+   */
+  readonly inline: number
 }
 
 /** Punctuation whose backslash escape Telegram honors. */
@@ -47,17 +53,38 @@ export const inspect = (markdown: string): Findings => {
   let blocks = 0
   const active: Array<string> = []
   const unhonored: Array<string> = []
+  let inline = 0
+  /** The inline nodes under `node`, as `Findings.inline` counts them. */
+  const count = (node: Mdast.Nodes): number => {
+    const own = node.type === "inlineCode"
+      ? 1
+      : node.type === "footnoteReference"
+      ? 3
+      : (node.type === "link" || node.type === "linkReference") &&
+          /[[<]/.test(markdown[node.position?.start.offset ?? -1] ?? "")
+      ? 1
+      : 0
+    return "children" in node
+      ? node.children.reduce((sum, child) => sum + count(child as Mdast.Nodes), own)
+      : own
+  }
   const visit = (node: Mdast.Nodes, depth: number) => {
     const d = nesting.has(node.type) ? depth + 1 : depth
     maxDepth = Math.max(maxDepth, d)
     if (blockTypes.has(node.type)) blocks++
+    if (node.type === "paragraph" || node.type === "heading" || node.type === "tableCell") {
+      inline = Math.max(inline, count(node))
+    }
     switch (node.type) {
       case "text": {
         if (node.position === undefined) break
         const source = markdown.slice(node.position.start.offset, node.position.end.offset)
         if (/(?:^|[^\\])(?:\\\\)*[|$=]/.test(source)) active.push(source)
-        for (const match of source.matchAll(/(?:^|[^\\])(?:\\\\)*\\([!-/:-@[-`{-~])/g)) {
-          if (!honored.test(match[1])) unhonored.push(source)
+        // One pass, so that an escape right after another is still seen.
+        for (let i = 0; i < source.length; i++) {
+          if (source[i] !== "\\") continue
+          const next = source[++i]
+          if (next !== undefined && /[!-/:-@[-`{-~]/.test(next) && !honored.test(next)) unhonored.push(source)
         }
         break
       }
@@ -83,5 +110,5 @@ export const inspect = (markdown: string): Findings => {
     if ("children" in node) { for (const child of node.children) visit(child as Mdast.Nodes, d) }
   }
   visit(parse(markdown), 0)
-  return { html, images, links, maxDepth, maxColumns, blocks, active, unhonored }
+  return { html, images, links, maxDepth, maxColumns, blocks, active, unhonored, inline }
 }
