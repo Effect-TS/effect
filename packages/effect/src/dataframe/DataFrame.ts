@@ -446,8 +446,9 @@ export const empty = <S extends StructSchema>(
  * untyped rows, and no values are tested beyond their column type. The
  * fields can be `Null` (nullable), `Bool`, integers of any width, `Float32`,
  * `Float64`, `Utf8`, `Binary`, `Date` in days, `Time` in microseconds,
- * `Timestamp` and `Duration` in any unit, 128-bit `Decimal`, and `List`
- * and `Struct` of these. Other Arrow types fail: frames can't hold some
+ * `Timestamp` and `Duration` in any unit, 128-bit `Decimal` (a precision
+ * from 1 to 38 and a 32-bit scale, or it fails), and `List` and `Struct` of
+ * these. Other Arrow types fail: frames can't hold some
  * (`Float16`, intervals, maps, unions) and hold others as one of the types
  * above, which is the type to declare (`Utf8` for `LargeUtf8` and
  * `Utf8View`, `List` for `LargeList`, the value type for a dictionary). A

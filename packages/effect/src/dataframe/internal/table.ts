@@ -19,6 +19,7 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
+import * as Layout from "../../arrow/internal/layout.ts"
 import * as Values from "../../arrow/internal/values.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
@@ -110,6 +111,17 @@ const compatible = (t: S.DataType, expected: Column): boolean => {
 
 const missing = (path: string): never => V.fail(`missing column ${JSON.stringify(path)}`)
 
+/**
+ * The 128-bit decimal type of a declared precision and scale, failing unless
+ * Arrow allows them (`Layout.checkDecimal`). Declarations and plans give
+ * them unchecked, and converting values computes with them.
+ */
+const decimalType = (path: string, precision: number, scale: number): S.Decimal => {
+  const type = S.decimal(precision, scale)
+  Layout.checkDecimal(type, (message) => V.fail(`column ${JSON.stringify(path)}: ${message}`))
+  return type
+}
+
 /** The column declared for a field's `column` with Arrow type `t`, or its default type. @internal */
 export const declareColumn = (path: string, column: Plan.TableColumn, t: S.DataType | undefined): Plan.TableColumn => {
   if (t !== undefined) checkType(path, t, column)
@@ -127,8 +139,11 @@ export const declareColumn = (path: string, column: Plan.TableColumn, t: S.DataT
           return declareColumn(p, f, g)
         })
       }
-    case "Decimal":
-      return t?._tag === "Decimal" ? { ...column, precision: t.precision, scale: t.scale } : column
+    case "Decimal": {
+      if (t?._tag !== "Decimal") return column
+      const { precision, scale } = decimalType(path, t.precision, t.scale)
+      return { ...column, precision, scale }
+    }
     case "Timestamp":
     case "Duration":
       return { ...column, unit: t?._tag === column.type ? t.unit : "microsecond" }
@@ -183,10 +198,11 @@ const fieldColumn = (path: string, f: S.Field): Plan.TableColumn => {
       return { ...column, type: "Timestamp", unit: t.unit }
     case "Duration":
       return { ...column, type: "Duration", unit: t.unit }
-    case "Decimal":
-      return t.bitWidth === 128
-        ? { ...column, type: "Decimal", precision: t.precision, scale: t.scale }
-        : undeclarable(path, `${t.bitWidth}-bit decimals`, "declared decimals are 128-bit")
+    case "Decimal": {
+      if (t.bitWidth !== 128) return undeclarable(path, `${t.bitWidth}-bit decimals`, "declared decimals are 128-bit")
+      const { precision, scale } = decimalType(path, t.precision, t.scale)
+      return { ...column, type: "Decimal", precision, scale }
+    }
     case "List":
       return { ...column, type: "List", fields: [fieldColumn(`${path}[]`, { ...t.child, name: "item" })] }
     case "Struct":
@@ -249,7 +265,7 @@ export const arrowType = (column: Plan.TableColumn, path: string = column.name):
             JSON.stringify(path)
           }: decimal columns need a precision and scale: pass options.types (for example ArrowSchema.decimal(18, 2))`
         )
-        : S.decimal(column.precision, column.scale)
+        : decimalType(path, column.precision, column.scale)
     case "Float16":
       return S.float16
     default:

@@ -712,6 +712,10 @@ describe("DataFrame", () => {
           `column "c": 64-bit decimals can't be declared: declared decimals are 128-bit`
         ],
         [
+          ArrowSchema.struct([field("x", ArrowSchema.decimal(39, 0))]),
+          `column "c.x": invalid decimal128 precision 39, expected an integer in 1..38`
+        ],
+        [
           ArrowSchema.date("millisecond"),
           `column "c": dates in milliseconds can't be declared: declared dates are in days`
         ],

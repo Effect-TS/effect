@@ -675,8 +675,9 @@ export const TypeName = Schema.Literals([
  *
  * **Gotchas**
  *
- * A `Decimal` column without `precision` and `scale` fails when its table
- * is read.
+ * A `Decimal` column fails when its table is read unless it has a
+ * `precision` that is an integer from 1 to 38 and a `scale` that is a
+ * 32-bit integer.
  *
  * @stability experimental
  * @category models

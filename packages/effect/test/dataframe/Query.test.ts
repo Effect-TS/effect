@@ -306,6 +306,49 @@ describe("Query", () => {
       )
     })
 
+    // DF-Q048 (API contract): Query.table; pinned source in README.md.
+    it.effect("rejects a decimal precision or scale that a 128-bit decimal can't have", () =>
+      Effect.gen(function*() {
+        const precision = (p: number) => `column "d": invalid decimal128 precision ${p}, expected an integer in 1..38`
+        const scale = (s: number) => `column "d": invalid decimal scale ${s}, expected a 32-bit integer`
+        const source = Catalog.layer({ t: price("7", 2, 0) })
+        const native = (type: ArrowSchema.DataType) =>
+          Query.table("t", ArrowSchema.make([ArrowSchema.field("d", type, { nullable: false })]))
+        const override = (type: ArrowSchema.DataType) => Query.table("t", Price, { types: { d: type } })
+        const plan = (precision: number, scale: number): Plan.Node => ({
+          _tag: "Table",
+          name: "t",
+          columns: [{ name: "d", type: "Decimal", nullable: false, precision, scale }]
+        })
+        // The plan schema takes any integer: a decoded plan carries those, a hand-made one the others.
+        const cases: ReadonlyArray<readonly [precision: number, scale: number, message: string, decodes: boolean]> = [
+          [2.5, 0, precision(2.5), false],
+          [0, 0, precision(0), true],
+          [39, 0, precision(39), true],
+          [2, 0.5, scale(0.5), false],
+          [2, 2 ** 31, scale(2 ** 31), true]
+        ]
+        for (const [p, s, message, decodes] of cases) {
+          const type = ArrowSchema.decimal(p, s)
+          assert.throws(() => native(type), DataFrame.DataFrameError, message)
+          assert.throws(() => override(type), DataFrame.DataFrameError, message)
+          const decoded = Schema.decodeUnknownResult(Plan.Node)(plan(p, s))
+          assert.strictEqual(Result.isSuccess(decoded), decodes)
+          const query = Query.fromPlan(Result.getOrElse(decoded, () => plan(p, s)))
+          const error = yield* Effect.flip(query.pipe(Effect.provide(source)))
+          assert.instanceOf(error, DataFrame.DataFrameError)
+          assert.strictEqual(error.message, message)
+          const streamed = Query.stream(query).pipe(Stream.runCollect, Effect.provide(source))
+          assert.strictEqual((yield* Effect.flip(streamed)).message, message)
+        }
+        const valid = ArrowSchema.decimal(38, 0)
+        const decoded = Query.fromPlan(Schema.decodeUnknownSync(Plan.Node)(plan(38, 0)))
+        for (const query of [native(valid), override(valid), decoded]) {
+          const df = yield* query.pipe(Effect.provide(source))
+          assert.deepStrictEqual(DataFrame.toRows(df), [{ d: BigDecimal.make(7n, 0) }])
+        }
+      }))
+
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {
