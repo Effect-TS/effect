@@ -1400,7 +1400,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     Effect.map((context) => {
       const router = Context.get(context, HttpRouter)
       const handler = router.asHttpEffect()
-      return Layer.merge(
+      return Layer.provideMerge(
         middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler),
         Layer.succeedContext(context)
       )
