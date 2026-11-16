@@ -4,7 +4,7 @@ import * as Hex from "effect/encoding/Hex"
 import * as Parquet from "effect/encoding/Parquet"
 import * as Thrift from "effect/encoding/Thrift"
 import { readFileSync } from "node:fs"
-import { gunzipSync, gzipSync } from "node:zlib"
+import { crc32, gunzipSync, gzipSync } from "node:zlib"
 
 // Two kinds of evidence:
 // - "pyarrow fixtures": files written by pyarrow, read back and compared with
@@ -155,12 +155,29 @@ const element = (name: string, options: {
   })
 const root = (children: number) => element("schema", { children })
 
-const page = (type: number, header: { readonly [id: number]: V }, body: Uint8Array, uncompressedSize = body.length) =>
-  bytes(thrift(Struct({ 1: I32(type), 2: I32(uncompressedSize), 3: I32(body.length), ...header })), body)
+/** `crc` is the unsigned CRC-32, which the header holds as a signed i32. */
+const page = (
+  type: number,
+  header: { readonly [id: number]: V },
+  body: Uint8Array,
+  uncompressedSize = body.length,
+  crc?: number
+) =>
+  bytes(
+    thrift(Struct({
+      1: I32(type),
+      2: I32(uncompressedSize),
+      3: I32(body.length),
+      4: crc === undefined ? undefined : I32(crc | 0),
+      ...header
+    })),
+    body
+  )
 const dataPage = (numValues: number, body: Uint8Array, options?: {
   readonly encoding?: number | undefined
   readonly levels?: number | undefined
   readonly uncompressedSize?: number | undefined
+  readonly crc?: number | undefined
 }) =>
   page(
     0,
@@ -173,10 +190,15 @@ const dataPage = (numValues: number, body: Uint8Array, options?: {
       })
     },
     body,
-    options?.uncompressedSize
+    options?.uncompressedSize,
+    options?.crc
   )
-const dictionaryPage = (numValues: number, body: Uint8Array, encoding = PLAIN) =>
-  page(2, { 7: Struct({ 1: I32(numValues), 2: I32(encoding) }) }, body)
+const dictionaryPage = (
+  numValues: number,
+  body: Uint8Array,
+  encoding = PLAIN,
+  options?: { readonly uncompressedSize?: number | undefined; readonly crc?: number | undefined }
+) => page(2, { 7: Struct({ 1: I32(numValues), 2: I32(encoding) }) }, body, options?.uncompressedSize, options?.crc)
 const dataPageV2 = (options: {
   readonly numValues: number
   readonly numNulls: number
@@ -191,6 +213,8 @@ const dataPageV2 = (options: {
   readonly definitionLength?: number | undefined
   /** Defaults to the length of `repetition`. */
   readonly repetitionLength?: number | undefined
+  /** Computes the CRC from the page's bytes: levels, then values. */
+  readonly crc?: ((body: Uint8Array) => number) | undefined
 }) => {
   const repetition = options.repetition ?? new Uint8Array(0)
   const definition = options.definition ?? new Uint8Array(0)
@@ -209,7 +233,8 @@ const dataPageV2 = (options: {
       })
     },
     body,
-    options.uncompressedSize
+    options.uncompressedSize,
+    options.crc?.(body)
   )
 }
 
@@ -303,6 +328,7 @@ const requiredColumn = (type: number, n: number, data: Uint8Array, options?: {
   readonly codec?: number | undefined
   readonly uncompressedSize?: number | undefined
   readonly annotation?: Annotation | undefined
+  readonly crc?: number | undefined
 }) =>
   flat({
     type,
@@ -1445,6 +1471,126 @@ describe("Parquet", () => {
         Effect.gen(function*() {
           const members = bytes(gzipSync(body.subarray(0, 4)), gzipSync(body.subarray(4)))
           assert.deepStrictEqual(yield* values(make(members, GZIP), { codecs: { GZIP: gzip } }), [1, 2, 3])
+        }))
+    })
+
+    describe("README.md#checksumming", () => {
+      const options = { codecs: { GZIP: gzip } }
+      const wrong = (body: Uint8Array) => (crc32(body) ^ 1) >>> 0
+
+      it.effect("PQ-CRC-1 MUST check a v1 data page against its CRC, of the bytes after the header (parquet.thrift L840-852)", () =>
+        Effect.gen(function*() {
+          const seven = int32s(7)
+          const eight = int32s(8)
+          const make = (body: Uint8Array, crc?: number) => values(requiredColumn(Type.INT32, 1, body, { crc }))
+          assert.deepStrictEqual(yield* make(seven, crc32(seven)), [7])
+          // the value changed and the CRC didn't
+          yield* failsWith(make(eight, crc32(seven)), "Malformed", /CRC/)
+          // a page without a CRC is not checked
+          assert.deepStrictEqual(yield* make(eight), [8])
+          // of the compressed bytes, with the levels
+          const body = bytes(lengthPrefixed(someNull), int32s(5, 7))
+          const compressed = gzipSync(body)
+          const gzipped = (crc: number) =>
+            values(
+              optionalInt32([dataPage(3, compressed, { uncompressedSize: body.length, crc })], 3, GZIP),
+              options
+            )
+          assert.deepStrictEqual(yield* gzipped(crc32(compressed)), [5, null, 7])
+          yield* failsWith(gzipped(crc32(body)), "Malformed", /CRC/)
+        }))
+
+      it.effect("PQ-CRC-2 MUST check a v2 data page against its CRC, of the levels and the stored values (parquet.thrift L840-852)", () =>
+        Effect.gen(function*() {
+          const values_ = int32s(5, 7)
+          const make = (compressed: boolean, crc: (body: Uint8Array) => number) =>
+            values(
+              optionalInt32(
+                [dataPageV2({
+                  numValues: 3,
+                  numNulls: 1,
+                  numRows: 3,
+                  definition: someNull,
+                  values: compressed ? gzipSync(values_) : values_,
+                  compressed,
+                  uncompressedSize: someNull.length + values_.length,
+                  crc
+                })],
+                3,
+                GZIP
+              ),
+              options
+            )
+          for (const compressed of [false, true]) {
+            assert.deepStrictEqual(yield* make(compressed, crc32), [5, null, 7])
+            yield* failsWith(make(compressed, wrong), "Malformed", /CRC/)
+            // not of the values alone
+            yield* failsWith(
+              make(compressed, (body) => crc32(body.subarray(someNull.length))),
+              "Malformed",
+              /CRC/
+            )
+          }
+        }))
+
+      it.effect("PQ-CRC-3 MUST check a dictionary page against its CRC (parquet.thrift L840-852)", () =>
+        Effect.gen(function*() {
+          const dictionary = int32s(10, 11)
+          const make = (compressed: boolean, crc: (body: Uint8Array) => number) => {
+            const stored = (body: Uint8Array) => compressed ? gzipSync(body) : body
+            const indices = bytes([1], runs(1, [1, 2], [0, 1]))
+            return values(
+              flat({
+                type: Type.INT32,
+                repetition: REQUIRED,
+                numRows: 3,
+                dictionary: true,
+                codec: compressed ? GZIP : undefined,
+                pages: [
+                  dictionaryPage(2, stored(dictionary), PLAIN, {
+                    uncompressedSize: dictionary.length,
+                    crc: crc(stored(dictionary))
+                  }),
+                  dataPage(3, stored(indices), { encoding: RLE_DICTIONARY, uncompressedSize: indices.length })
+                ]
+              }),
+              options
+            )
+          }
+          for (const compressed of [false, true]) {
+            assert.deepStrictEqual(yield* make(compressed, crc32), [11, 11, 10])
+            yield* failsWith(make(compressed, wrong), "Malformed", /CRC/)
+          }
+        }))
+
+      it.effect("PQ-CRC-4 MUST compute the standard CRC-32 of GZIP, as an unsigned number (#checksumming)", () =>
+        Effect.gen(function*() {
+          // the check value of CRC-32, which is negative as the i32 of the page header
+          const check = 0xcbf43926
+          const body = text("123456789")
+          const make = (crc: number) =>
+            values(requiredColumn(Type.FIXED_LEN_BYTE_ARRAY, 1, body, { typeLength: 9, crc }))
+          assert.strictEqual(check | 0, -873187034)
+          assert.deepStrictEqual(yield* make(check), [Hex.encode(body)])
+          yield* failsWith(make(check ^ 0x80000000), "Malformed", /CRC/)
+          // CRC-32C, of the same bytes
+          yield* failsWith(make(0xe3069283), "Malformed", /CRC/)
+        }))
+
+      it.effect("PQ-CRC-5 checks the CRC of the pages it skips", () =>
+        Effect.gen(function*() {
+          const index = text("index")
+          const make = (crc: number) =>
+            values(
+              flat({
+                type: Type.INT32,
+                repetition: REQUIRED,
+                numRows: 3,
+                pages: [page(1, { 6: Struct({}) }, index, index.length, crc), dataPage(3, int32s(1, 2, 3))]
+              })
+            )
+          assert.deepStrictEqual(yield* make(crc32(index)), [1, 2, 3])
+          yield* failsWith(make(wrong(index)), "Malformed", /CRC/)
         }))
     })
 

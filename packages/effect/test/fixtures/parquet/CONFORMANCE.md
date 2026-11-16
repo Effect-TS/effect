@@ -71,6 +71,11 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-BSS-2    | Encodings.md#byte-stream-split-byte_stream_split--9                        | The streams are exactly K * N bytes, with no padding                                                    |
 | PQ-COMP-1   | Compression.md#codecs                                                      | Pages are decompressed with the column chunk's codec                                                    |
 | PQ-COMP-2   | Compression.md#gzip                                                        | Readers should read GZIP pages with several members (through the supplied `Decompress`)                 |
+| PQ-CRC-1    | README.md#checksumming, parquet.thrift L840-852                            | A v1 data page's `crc` is of its stored bytes after the header (rejected on a mismatch)                 |
+| PQ-CRC-2    | parquet.thrift L840-852                                                    | A v2 data page's `crc` is of its levels and its values as stored                                        |
+| PQ-CRC-3    | parquet.thrift L840-852                                                    | A dictionary page's `crc` is checked the same way                                                       |
+| PQ-CRC-4    | README.md#checksumming, parquet.thrift L842-843                            | The CRC is the standard CRC-32 of GZIP; the i32 of the header is read as unsigned                       |
+| PQ-CRC-5    | parquet.thrift L844-845                                                    | Local policy: the `crc` of a skipped page is checked too                                                |
 
 ## Unsupported: fails with `Unsupported`
 
@@ -87,7 +92,6 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 
 - Page index: `ColumnIndex` and `OffsetIndex` (PageIndex.md, parquet.thrift L1235-1373). The reader reads every page in order.
 - Bloom filters (BloomFilter.md).
-- Page checksums (README.md#checksumming). `crc` is skipped, not verified.
 - Statistics semantics (parquet.thrift L1100-1219): sort orders, NaN rules and exactness are exposed as written, not interpreted. Size and geospatial statistics are skipped.
 - Logical types (LogicalTypes.md): annotations are decoded into the schema and checked against the node they are on (PQ-LT-1 to PQ-LT-7). Values stay in their physical type and, but for the UTF-8 of text (PQ-LT-8), are not checked against the annotation: that `JSON` is valid JSON, the range of a narrow `INTEGER`, which the spec leaves to the implementation, the digits of a `DECIMAL`, the nulls of `UNKNOWN`. The structure of `LIST`, `MAP`, `VARIANT` and `FILE` groups is not checked or interpreted, which includes the LIST and MAP backward-compatibility rules. Variant and Geometry values are not read.
 - Error recovery (README.md#error-recovery): each `readColumn` call is independent, so a corrupt column chunk doesn't affect the others, but nothing inside a chunk is recovered.

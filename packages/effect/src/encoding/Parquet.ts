@@ -55,7 +55,9 @@
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
  *   levels in `RLE` or the deprecated `BIT_PACKED`.
  * - Pages: data pages v1 and v2 and dictionary pages; index pages and page
- *   types added after 2.14.0 are skipped.
+ *   types added after 2.14.0 are skipped. A page with a CRC-32 in its header
+ *   is checked against it, the skipped ones too, and fails with `Malformed`
+ *   when its bytes don't match. A page without one is read as it is.
  * - Nesting: any depth of optional, required and repeated fields, assembled from
  *   repetition and definition levels into {@link Layer}s.
  *
@@ -63,7 +65,7 @@
  * encrypted files and columns, the `ALP` encoding, column chunks in other
  * files (`file_path`), `TIME` and `TIMESTAMP` units added after 2.14.0, and
  * compressed pages without a matching {@link Decompress}. Not read: page
- * indexes, bloom filters, page checksums, size and geospatial statistics.
+ * indexes, bloom filters, size and geospatial statistics.
  *
  * Input is untrusted: every offset and length is checked against the bytes
  * that are there, and the sizes a file claims are capped by options
@@ -77,6 +79,7 @@
  */
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
+import { crc32 } from "../internal/crc32.ts"
 import * as Encodings from "../internal/parquet/encodings.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Thrift from "./Thrift.ts"
@@ -91,8 +94,8 @@ const ParquetErrorTypeId = "~effect/encoding/Parquet/ParquetError"
  * The `kind` field identifies the failure:
  *
  * - `Malformed`: the file breaks the Parquet format, for example a bad magic
- *   number, invalid Thrift metadata, an offset outside the file, or pages that
- *   don't add up to their column chunk.
+ *   number, invalid Thrift metadata, an offset outside the file, pages that
+ *   don't add up to their column chunk, or a page that doesn't match its CRC.
  * - `Unsupported`: the file uses a feature this module doesn't read, or a
  *   compression codec with no {@link Decompress} in the options.
  * - `Limit`: the file needs more than an option such as `maxPageSize` allows.
@@ -1249,6 +1252,8 @@ interface PageHeader {
   readonly type: number
   readonly uncompressedSize: number
   readonly compressedSize: number
+  /** The CRC-32 as the header holds it, a signed i32. */
+  readonly crc: number | undefined
   readonly numValues: number
   readonly encoding: Encoding | number
   readonly definitionEncoding: Encoding | number
@@ -1265,6 +1270,7 @@ const pageHeader = (r: Reader): PageHeader => {
     type: [1, i32],
     uncompressedSize: [2, i32],
     compressedSize: [3, i32],
+    crc: [4, i32],
     dataPage: [
       5,
       structOf((r) =>
@@ -1306,6 +1312,7 @@ const pageHeader = (r: Reader): PageHeader => {
     type,
     uncompressedSize,
     compressedSize,
+    crc: f.crc,
     numValues: 0,
     encoding: "PLAIN",
     definitionEncoding: "RLE",
@@ -1857,9 +1864,13 @@ export const readColumn = <E, R>(
           return yield* error("Limit", `a page of ${where} has more values than maxValues (${maxValues})`)
         }
         pos = body + header.compressedSize
+        const page = bytes.subarray(body, pos)
+        // The CRC is of the page as it is stored: with its levels, and compressed.
+        if (header.crc !== undefined && crc32(0, page) !== header.crc >>> 0) {
+          return yield* error("Malformed", `${where}, page at byte ${headerAt}: the page does not match its CRC`)
+        }
         // Index pages and page types added later are skipped.
         if (header.type !== DATA_PAGE && header.type !== DATA_PAGE_V2 && header.type !== DICTIONARY_PAGE) continue
-        const page = bytes.subarray(body, pos)
         const levels = header.type === DATA_PAGE_V2 ? header.repetitionLength + header.definitionLength : 0
         const codec = header.compressed ? meta.codec : "UNCOMPRESSED"
         yield* decompress(codec, options.codecs, page.subarray(levels), header.uncompressedSize - levels).pipe(
