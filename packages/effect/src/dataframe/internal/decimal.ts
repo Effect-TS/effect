@@ -79,15 +79,55 @@ const format = (unscaled: bigint, scale: number): string => {
 }
 
 const DECIMAL_SYNTAX = /^\s*([+-]?)(\d*)(?:\.(\d*))?\s*$/
+/** {@link DECIMAL_SYNTAX} without the spaces around it. */
+const PLAIN_SYNTAX = /^([+-]?)(\d*)(?:\.(\d*))?$/
 
-/** Parses a decimal string to unscaled units of `scale`; `undefined` when invalid. */
-const parse = (s: string, scale: number): bigint | undefined => {
-  const m = DECIMAL_SYNTAX.exec(s)
+/**
+ * Parses a decimal string to unscaled units of `scale`; `undefined` when
+ * invalid. `drop` removes the `k` digits a fraction has beyond the scale.
+ */
+const parse = (
+  s: string,
+  scale: number,
+  syntax: RegExp = DECIMAL_SYNTAX,
+  drop: (x: bigint, k: number) => bigint | undefined = divRound
+): bigint | undefined => {
+  const m = syntax.exec(s)
   if (m === null || (m[2] === "" && (m[3] ?? "") === "")) return undefined
   const fraction = m[3] ?? ""
-  const all = BigInt(`${m[2] || "0"}${fraction}`)
-  const x = fraction.length >= scale ? divRound(all, fraction.length - scale) : all * pow10(scale - fraction.length)
-  return m[1] === "-" ? -x : x
+  const all = BigInt(`${m[1]}${m[2] || "0"}${fraction}`)
+  return fraction.length >= scale ? drop(all, fraction.length - scale) : all * pow10(scale - fraction.length)
+}
+
+/** For {@link parse}: a fraction longer than the scale is invalid. */
+const dropNone = (x: bigint, k: number): bigint | undefined => (k === 0 ? x : undefined)
+
+/**
+ * A decimal vector of `type` from decimal strings; `null` and `undefined`
+ * are nulls. Reads plain decimal notation (`-12.34`) only: `undefined` when
+ * a string has another form, more fraction digits than the scale, or a value
+ * outside the type's bit width or the 64 bits of a vector.
+ *
+ * @internal
+ */
+export const fromStrings = (type: S.Decimal, values: ReadonlyArray<unknown>): V.I64 | undefined => {
+  const n = values.length
+  const out = new BigInt64Array(n)
+  const valid = new Uint8Array(n)
+  const limit = I1 << BigInt(Math.min(type.bitWidth, 64) - 1)
+  let nulls = false
+  for (let i = 0; i < n; i++) {
+    const v = values[i]
+    if (v === null || v === undefined) {
+      nulls = true
+      continue
+    }
+    const x = parse(String(v), type.scale, PLAIN_SYNTAX, dropNone)
+    if (x === undefined || x >= limit || x < -limit) return undefined
+    out[i] = x
+    valid[i] = 1
+  }
+  return V.i64(type, out, nulls ? valid : undefined)
 }
 
 /**

@@ -26,6 +26,7 @@ import * as S from "../../arrow/ArrowSchema.ts"
 import * as BigDecimal from "../../BigDecimal.ts"
 import * as Result from "../../Result.ts"
 import type * as Plan from "../Plan.ts"
+import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import * as E from "./expr.ts"
 import * as F from "./frame.ts"
@@ -1296,14 +1297,44 @@ export const verify = (
 export const read = (compiled: Compiled, rows: ReadonlyArray<ReadonlyArray<unknown>>): F.Frame =>
   decode(compiled.schema, verify(compiled.query, rows))
 
+/**
+ * The vector of a result column of decimals, or of lists of decimals, parsed
+ * from the strings of its values without a `BigDecimal` per value.
+ * `undefined` for other types and for values `Dec.fromStrings` doesn't read.
+ * `decode` then builds the column from what `reader` reads, which also
+ * reports invalid values.
+ */
+const decimals = (type: S.DataType, values: ReadonlyArray<unknown>): V.Vector | undefined => {
+  if (type._tag === "Decimal") return Dec.fromStrings(type, values)
+  if (type._tag !== "List" || type.child.type._tag !== "Decimal") return undefined
+  const offsets = new Int32Array(values.length + 1)
+  const valid = new Uint8Array(values.length)
+  const items: Array<unknown> = []
+  let nulls = false
+  values.forEach((v, i) => {
+    if (v === null || v === undefined) nulls = true
+    else {
+      valid[i] = 1
+      for (const item of v as ReadonlyArray<unknown>) items.push(item)
+    }
+    offsets[i + 1] = items.length
+  })
+  const child = Dec.fromStrings(type.child.type, items)
+  // A null item in a field declared without nulls is left for `decode` to report.
+  if (child === undefined || (child.valid !== undefined && !type.child.nullable)) return undefined
+  return V.list(V.storageType(type), offsets, child, nulls ? valid : undefined)
+}
+
 /** The rows of a result, one array of values per row, as a frame of `schema`. */
 const decode = (schema: S.Schema, rows: ReadonlyArray<ReadonlyArray<unknown>>): F.Frame =>
   F.make(
     schema.fields.map((f, i) => {
+      const cells = rows.map((row) => row[i])
+      const vector = decimals(f.type, cells)
+      if (vector !== undefined) return new F.Column(f.name, vector, undefined, vector.valid !== undefined)
       const read = reader(f.type)
       let nullable = false
-      const values = rows.map((row) => {
-        const v = row[i]
+      const values = cells.map((v) => {
         if (v !== null && v !== undefined) return read(v)
         nullable = true
         return null
