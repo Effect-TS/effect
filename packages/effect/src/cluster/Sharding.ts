@@ -747,9 +747,12 @@ const make = Effect.gen(function*() {
     //
     // While failures are pending, the next lock operation starts within one
     // lock interval of the last one failing. It takes at most one interval, and
-    // a refresh can follow a heartbeat that takes one too. So once
+    // a refresh follows a heartbeat that takes up to one too. So once
     // `shardLockExpiration` has passed, a failure is seen within three
-    // intervals, and unregistering takes at most one more.
+    // intervals if heartbeats succeed. The first unregistration attempt runs
+    // straight away and takes at most one more interval, including the wait for
+    // a registration in flight. If it fails or times out, the probe below
+    // retries it every interval.
     const shardLockExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
     const unregisterSelf = withRegistrationLock(runnerStorage.unregister(selfAddress)).pipe(
       Effect.timeout(shardLockInterval)

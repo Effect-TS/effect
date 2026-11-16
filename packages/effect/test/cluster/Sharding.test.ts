@@ -5081,6 +5081,7 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
         cluster.failAcquire.clear()
         cluster.lockDelays.clear()
         cluster.releaseAllDelays.clear()
+        cluster.registerDelays.clear()
         const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
         while (closing.pollUnsafe() === undefined) {
           yield* TestClock.adjust(100)
@@ -5142,6 +5143,50 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
         yield* advanceUntil(5000, () => ownedByB() > 0 && ownedByA() + ownedByB() === shards.length),
         "the recovered runner did not rejoin"
       )
+    }).pipe(Effect.scoped))
+
+  it.effect("unregisters once a registration in flight across eviction completes", () =>
+    Effect.gen(function*() {
+      const { advanceUntil, cluster, isRegistered, start } = yield* makeLockCluster()
+      const ownedByA = yield* start(1234)
+      const ownedByB = yield* start(1235)
+      const balanced = () => ownedByA() > 0 && ownedByB() > 0 && ownedByA() + ownedByB() === shards.length
+      assert.isTrue(yield* advanceUntil(5000, balanced))
+
+      // The runner drops out of membership, so it registers again. The write
+      // lands at once, but the response takes 4s, within the registration
+      // deadline, and holds the registration lock meanwhile.
+      cluster.registerDelays.set(1234, 4000)
+      cluster.membership.splice(cluster.membership.findIndex(([runner]) => runner.address.port === 1234), 1)
+      cluster.failLocks.add(1234)
+      cluster.registeredAt.delete(1234)
+      assert.isTrue(yield* advanceUntil(1000, () => isRegistered(1234)), "the runner did not register again")
+
+      // Unregistration waits for the registration to respond, so it misses the
+      // bound that assumes it completes within one lock interval
+      assert.isTrue(yield* advanceUntil(5000, () => !isRegistered(1234)), "the failing runner did not unregister")
+      const registeredAt = cluster.registeredAt.get(1234)
+      assert.isDefined(registeredAt, "the runner unregistered before its registration responded")
+      assert.isAbove(registeredAt, cluster.lockFaultedAt.get(1234)! + expiration + 4 * lockInterval)
+      // a retried attempt unregisters it within one lock interval of the registration responding
+      assert.isAtMost(
+        (yield* Clock.currentTimeMillis) - registeredAt,
+        lockInterval + 50,
+        "the runner unregistered late"
+      )
+
+      assert.isTrue(
+        yield* advanceUntil(5000, () => ownedByB() === shards.length),
+        "the healthy runner did not take over the shards of the failing runner"
+      )
+      for (let elapsed = 0; elapsed < 2000; elapsed += 50) {
+        yield* TestClock.adjust(50)
+        assert.isFalse(isRegistered(1234), "the evicted runner registered again")
+      }
+
+      cluster.registerDelays.delete(1234)
+      cluster.failLocks.delete(1234)
+      assert.isTrue(yield* advanceUntil(5000, balanced), "the recovered runner did not rejoin")
     }).pipe(Effect.scoped))
 
   it.effect("does not acquire again while a probe lock is not released", () =>
@@ -5216,6 +5261,10 @@ interface SharedCluster {
   readonly lockDelays: Map<number, number>
   /** Milliseconds each `releaseAll` of a port takes, overriding `lockDelays`. */
   readonly releaseAllDelays: Map<number, number>
+  /** Milliseconds each registration of a port takes to respond, after it is written. */
+  readonly registerDelays: Map<number, number>
+  /** When each port's last registration responded. */
+  readonly registeredAt: Map<number, number>
   /** Milliseconds after which an unrefreshed lock can be taken by another runner. */
   readonly lockExpiration: number
   /** When each lock expires. */
@@ -5234,6 +5283,8 @@ const makeSharedCluster = (options?: { readonly lockExpiration?: number }): Shar
   lockFaultedAt: new Map(),
   lockDelays: new Map(),
   releaseAllDelays: new Map(),
+  registerDelays: new Map(),
+  registeredAt: new Map(),
   lockExpiration: options?.lockExpiration ?? Infinity,
   lockExpiresAt: new Map()
 })
@@ -5275,10 +5326,15 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
       return cluster.failGetRunners.delete(port) ? failed : Effect.succeed(cluster.membership.slice())
     }),
     register: (runner) =>
-      Effect.sync(() => {
-        cluster.membership.push([runner, true])
-        return MachineId.make(port)
-      }),
+      Effect.sync(() => cluster.membership.push([runner, true])).pipe(
+        Effect.andThen(
+          Effect.suspend(() => Effect.delay(Clock.currentTimeMillis, cluster.registerDelays.get(port) ?? 0))
+        ),
+        Effect.map((now) => {
+          cluster.registeredAt.set(port, now)
+          return MachineId.make(port)
+        })
+      ),
     unregister: (address) =>
       delayed(Effect.sync(() => {
         const index = cluster.membership.findIndex(([runner]) => Equal.equals(runner.address, address))
