@@ -206,6 +206,99 @@ describe("Query", () => {
         assert.deepStrictEqual(DataFrame.columnNames(df), ["temp", "city"])
       }))
 
+    // DF-Q043 (API contract): Query.table; pinned source in README.md.
+    it.effect("compiles a schema's checks when the table is declared, not per batch", () =>
+      Effect.gen(function*() {
+        const Kind = Schema.Struct({ kind: Schema.Literals(["a", "b"]) })
+        let reads = 0
+        const counted = {
+          Type: Kind.Type,
+          get ast() {
+            reads++
+            return Kind.ast
+          }
+        }
+        const query = Query.table("t", counted)
+        const declared = reads
+        const good = DataFrame.fromColumns({ kind: ["a", "b"] })
+        const bad = DataFrame.fromColumns({ kind: ["c"] })
+        const read = (query: Query.Query<unknown>, batches: ReadonlyArray<DataFrame.DataFrame<unknown>>) =>
+          query.pipe(Effect.provide(Catalog.layer({ t: Stream.fromIterable(batches) })))
+        assert.strictEqual((yield* read(query, [good, good, good, good])).length, 8)
+        const error = yield* Effect.flip(read(query, [good, good, bad]))
+        assert.strictEqual(error.message, `column "kind" has values its schema rejects`)
+        assert.strictEqual(reads, declared)
+        // The checks are functions: they stay out of the JSON form of the plan.
+        const json = JSON.stringify(Schema.encodeSync(Plan.NodeFromJson)(query.plan))
+        const decoded = Query.fromPlan(Schema.decodeUnknownSync(Plan.NodeFromJson)(JSON.parse(json)))
+        assert.deepStrictEqual(decoded.plan, {
+          _tag: "Table",
+          name: "t",
+          columns: [{ name: "kind", type: "Utf8", nullable: false }]
+        })
+        assert.strictEqual((yield* read(decoded, [good, bad])).length, 3)
+      }))
+
+    // DF-Q044 (API contract): Query.table; pinned source in README.md.
+    it.effect("tables declared by an Arrow schema convert their input to its columns", () =>
+      Effect.gen(function*() {
+        const schema = ArrowSchema.make([
+          ArrowSchema.field("d", ArrowSchema.decimal(18, 2), { nullable: false }),
+          ArrowSchema.field("n", ArrowSchema.int32)
+        ])
+        const t = Query.table("t", schema)
+        assert.deepStrictEqual(t.plan, {
+          _tag: "Table",
+          name: "t",
+          columns: [
+            { name: "d", type: "Decimal", nullable: false, precision: 18, scale: 2 },
+            { name: "n", type: "Int32", nullable: true }
+          ]
+        })
+        const batch = (d: string | null, scale: number, n: number | null) =>
+          arrowFrame({
+            n: [ArrowSchema.int8, [n]],
+            extra: [ArrowSchema.utf8, ["x"]],
+            d: [ArrowSchema.decimal(9, scale), [d === null ? null : BigDecimal.fromStringUnsafe(d)]]
+          })
+        const read = (source: Catalog.Source) => t.pipe(Effect.provide(Catalog.layer({ t: source })))
+        const expected = [{ d: BigDecimal.make(120n, 2), n: 1 }]
+        for (const source of [batch("1.2", 1, 1), Stream.make(batch("1.2", 1, 1)), Stream.make(batch("1.20", 2, 1))]) {
+          const df = yield* read(source)
+          assert.deepStrictEqual(df.schema, schema)
+          assert.deepStrictEqual(DataFrame.toRows(df), expected)
+        }
+        const two = yield* read(Stream.make(batch("1.2", 1, 1), batch("1.20", 2, null)))
+        assert.deepStrictEqual(DataFrame.toRows(two), [...expected, { d: BigDecimal.make(120n, 2), n: null }])
+        assert.deepStrictEqual((yield* read(Stream.empty)).schema, schema)
+        for (
+          const [bad, message] of [
+            [batch(null, 1, 1), `column "d" has missing values`],
+            [batch("1.234", 3, 1), `column "d" has values that Decimal[18, 2] can't hold exactly`]
+          ] as const
+        ) {
+          for (const source of [bad, Stream.make(batch("1.2", 1, 1), bad)]) {
+            assert.strictEqual((yield* Effect.flip(read(source))).message, message)
+          }
+        }
+      }))
+
+    // DF-Q045 (API contract): Query.table; pinned source in README.md.
+    it("fails when a table is declared by a schema that has no columns for it", () => {
+      assert.throws(
+        () => Query.table("t", Schema.Struct({ a: Schema.NumberFromString })),
+        DataFrame.DataFrameError,
+        `field "a" has a transformation: frames hold decoded values and transformations are not run; ` +
+          "Schema.toType(schema) describes the decoded rows"
+      )
+      const zoned = ArrowSchema.make([ArrowSchema.field("t", ArrowSchema.timestamp("second", "Europe/Berlin"))])
+      assert.throws(
+        () => Query.table("t", zoned),
+        DataFrame.DataFrameError,
+        `column "t" has time zone Europe/Berlin, expected UTC timestamps`
+      )
+    })
+
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {

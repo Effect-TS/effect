@@ -690,6 +690,36 @@ export interface TableColumn {
 }
 
 /**
+ * The tests of a {@link Table}'s values that its column types don't cover,
+ * compiled once from a struct schema's literals, enums and refinements when
+ * the table is declared.
+ *
+ * **Details**
+ *
+ * `columns` pairs the name of a declared column with a test of one value
+ * of it. Every value of that column is read (as `DataFrame.toArray` gives
+ * it) and tested; a test must accept `null`, as nullability is part of the
+ * column's declaration. `rows` tests one row object, as `DataFrame.toRows`
+ * gives it, and is `undefined` when there is nothing to test across
+ * columns. A table fails with a `DataFrameError` when a test returns
+ * `false`.
+ *
+ * **Gotchas**
+ *
+ * The tests are functions, so they are not part of the JSON form of a plan.
+ * A SQL engine runs `columns` tests on the distinct values of each column
+ * and fails for a table with a `rows` test.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.5
+ */
+export interface TableChecks {
+  readonly columns: ReadonlyArray<readonly [name: string, test: (value: unknown) => boolean]>
+  readonly rows: ((row: unknown) => boolean) | undefined
+}
+
+/**
  * The rows of a table the `Catalog` provides by name.
  *
  * **Details**
@@ -716,13 +746,15 @@ export interface TableColumn {
  * them to be declared, and `Query.stream` emits no batch for one that has no
  * rows.
  *
- * `schema`, set by `Query.table`, is the struct schema the rows must
- * satisfy: values of fields it constrains beyond their column type (literals,
- * enums, refinements) are checked against it.
+ * `checks`, set by `Query.table` for a struct schema that constrains
+ * values beyond their column type, holds the tests the rows must also pass
+ * (see {@link TableChecks}). They run after the conversion, on every batch
+ * of a streamed table. A column without a test is checked by its type alone
+ * and its values are never read.
  *
  * **Gotchas**
  *
- * `schema` is not part of the JSON form: a plan decoded from JSON checks
+ * `checks` is not part of the JSON form: a plan decoded from JSON checks
  * column types only.
  *
  * @stability experimental
@@ -733,7 +765,7 @@ export interface Table {
   readonly _tag: "Table"
   readonly name: string
   readonly columns?: ReadonlyArray<TableColumn> | undefined
-  readonly schema?: Schema.Top | undefined
+  readonly checks?: TableChecks | undefined
 }
 
 /**

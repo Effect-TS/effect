@@ -31,7 +31,7 @@ import * as E from "./expr.ts"
 import * as F from "./frame.ts"
 import * as K from "./kernels.ts"
 import * as Q from "./query.ts"
-import * as Schema_ from "./schema.ts"
+import { arrowType } from "./table.ts"
 import { civil, coarser } from "./temporal.ts"
 import * as V from "./vector.ts"
 
@@ -1017,11 +1017,11 @@ const tableType = (table: string, column: Plan.TableColumn): S.DataType =>
     ? unsupported(
       `column ${JSON.stringify(column.name)} of table ${JSON.stringify(table)}: ${column.type} table columns`
     )
-    : Schema_.arrowType(column)
+    : arrowType(column)
 
 /** The conditions of a declared column's values, `x` (see {@link tableTypes}). */
 const conditions = (x: string, column: Plan.TableColumn): ReadonlyArray<Condition> =>
-  tableTypes[column.type]!.conditions?.(x, Schema_.arrowType(column)) ?? []
+  tableTypes[column.type]!.conditions?.(x, arrowType(column)) ?? []
 
 /**
  * A check of a table: one SQL value, and a test of it that fails when the
@@ -1043,7 +1043,7 @@ const utc = S.timestamp("microsecond")
  */
 const declared = (column: Plan.TableColumn): string => {
   const x = quote(column.name)
-  const type = Schema_.arrowType(column)
+  const type = arrowType(column)
   const value = type._tag === "Null"
     ? `CAST(NULL AS ${sqlType(type)})`
     : type._tag === "Timestamp"
@@ -1080,10 +1080,21 @@ const typeChecks = (table: Plan.Table): Array<Check> =>
   })
 
 /**
+ * The tests of a table's checks, each of the values of one column, as a SQL
+ * engine runs them: a table with a test of whole rows fails.
+ */
+const columnChecks = (table: Plan.Table): Plan.TableChecks["columns"] =>
+  table.checks === undefined
+    ? []
+    : table.checks.rows === undefined
+    ? table.checks.columns
+    : V.fail("schemas with checks on whole rows aren't supported on SQL tables; check their fields instead")
+
+/**
  * The checks of a table's rows beyond column types: nulls, the
- * {@link conditions} of values, and fields its schema constrains (literals,
- * enums, refinements), tested on distinct values. Each check aggregates the
- * rows of the table's source.
+ * {@link conditions} of values, and the tests of the table's own checks
+ * (fields its schema constrains: literals, enums, refinements), run on
+ * distinct values. Each check aggregates the rows of the table's source.
  */
 const rowChecks = (table: Plan.Table): Array<Check> => [
   ...(table.columns ?? []).flatMap((column) => {
@@ -1103,9 +1114,9 @@ const rowChecks = (table: Plan.Table): Array<Check> => [
       ...conditions(x, column).map((c) => any(`NOT (${c.holds})`, c.failure))
     ]
   }),
-  ...(table.schema === undefined ? [] : Schema_.columnChecks(table.schema)).map(([name, test]): Check => {
+  ...columnChecks(table).map(([name, test]): Check => {
     const column = table.columns!.find((c) => c.name === name)!
-    const type = Schema_.arrowType(column)
+    const type = arrowType(column)
     return {
       sql: `ARRAY_AGG(DISTINCT ${output(declared(column), type)})`,
       verify: (values) => {

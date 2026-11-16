@@ -74,7 +74,6 @@ import type * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import { dual } from "../Function.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
-import type * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import type { DataFrame, DataFrameError, Normalize } from "./DataFrame.ts"
@@ -231,36 +230,83 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
 
 /**
  * A query over the table called `name`, provided by the `Catalog` when
- * the query runs. The table must have the columns of the struct schema, and
- * its values must satisfy it, as with `DataFrame.validate`; the query sees
- * only those columns, in the schema's order, with the types
- * `DataFrame.fromRows` gives them (`options.types` overrides some, and
- * `BigDecimal` fields need one).
+ * the query runs, with the columns a struct schema or an Arrow schema
+ * declares. The table must have those columns, as `DataFrame.validate`
+ * checks a frame; the query sees only them, in the declared order and with
+ * the declared types.
  *
  * **Details**
  *
- * Every batch of a streamed table is converted to these types, so results
- * have the same types whatever the batches hold, and when there are none.
- * A table without the precision and scale of a `BigDecimal` field fails
- * when it is read.
+ * A struct schema declares the columns `DataFrame.fromRows` gives its
+ * fields (`options.types` overrides some, and `BigDecimal` fields need
+ * one) and types the rows. The schema is read once, here, and compiled to
+ * the tests the table's rows must pass (`Plan.TableChecks`). A field with
+ * refinements, literals or enums has its values read and tested one by one,
+ * and a struct with checks of its own (`Schema.Struct(...).check(...)`) has
+ * every row read and tested. Other fields are checked by column type only,
+ * on the typed columns.
  *
- * A SQL engine can't check a struct's own checks on whole rows
- * (`Schema.Struct(...).check(...)`): a query over such a table fails.
+ * An Arrow schema declares its fields as they are (type, nullability,
+ * nested fields, decimal precision and scale, time unit), with untyped rows
+ * and no tests of values. `DataFrame.validate` lists the Arrow types a
+ * declaration takes.
+ *
+ * Every batch of a streamed table is converted to the declared types, so
+ * results have the same types whatever the batches hold, and when there are
+ * none. A table without the precision and scale of a `BigDecimal` field
+ * fails when it is read.
+ *
+ * **Gotchas**
+ *
+ * - Throws a `DataFrameError` for a schema that declares no columns: a
+ *   struct schema that transforms its rows or has fields without a column
+ *   type (see `DataFrame.fromRows`), or an Arrow schema with types a
+ *   declaration can't take.
+ * - A SQL engine can't check a struct's own checks on whole rows: a query
+ *   over such a table fails.
+ * - The tests are functions and not part of the plan's JSON form: a plan
+ *   decoded from JSON checks column types only.
+ *
+ * **Example** (Declaring a table by an Arrow schema)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { ArrowSchema } from "effect/arrow"
+ * import { Catalog, DataFrame, Query } from "effect/dataframe"
+ *
+ * const readings = Query.table(
+ *   "readings",
+ *   ArrowSchema.make([
+ *     ArrowSchema.field("city", ArrowSchema.utf8, { nullable: false }),
+ *     ArrowSchema.field("temp", ArrowSchema.float32)
+ *   ])
+ * )
+ *
+ * const frame = DataFrame.fromColumns({ temp: Int32Array.of(21, 19), city: ["Vienna", "Berlin"] })
+ * const result = Effect.runSync(readings.pipe(Effect.provide(Catalog.layer({ readings: frame }))))
+ * result.schema.fields.map((f) => f.type) // => [ArrowSchema.utf8, ArrowSchema.float32]
+ * DataFrame.toRows(result) // => [{ city: "Vienna", temp: 21 }, { city: "Berlin", temp: 19 }]
+ * ```
  *
  * @stability experimental
  * @category constructors
  * @since 4.1.5
  */
-export const table = <S extends { readonly Type: object; readonly ast: any }>(
+export const table: {
+  <S extends { readonly Type: object; readonly ast: any }>(
+    name: string,
+    schema: S,
+    options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
+  ): Query<Normalize<S["Type"]>>
+  (name: string, schema: ArrowSchema.Schema): Query<{ readonly [name: string]: unknown }>
+} = (
   name: string,
-  schema: S,
-  options?: { readonly types?: { readonly [K in keyof S["Type"]]?: ArrowSchema.DataType } | undefined }
-): Query<Normalize<S["Type"]>> =>
-  make({
-    _tag: "Table",
-    name,
-    columns: Schema_.declare(schema, options?.types as any),
-    schema: schema as unknown as Schema.Top
+  schema: { readonly ast: any } | ArrowSchema.Schema,
+  options?: { readonly types?: { readonly [name: string]: ArrowSchema.DataType | undefined } | undefined }
+): Query<any> =>
+  Q.unsafe(() => {
+    const { checks, columns } = Schema_.declare(schema, options?.types)
+    return make(checks === undefined ? { _tag: "Table", name, columns } : { _tag: "Table", name, columns, checks })
   })
 
 /**

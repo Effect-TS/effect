@@ -38,7 +38,7 @@ import * as E from "./expr.ts"
 import * as F from "./frame.ts"
 import * as Partial from "./partial.ts"
 import * as Q from "./query.ts"
-import { arrowType, conform } from "./schema.ts"
+import { arrowType, conform } from "./table.ts"
 import * as V from "./vector.ts"
 
 type Batches = Stream.Stream<F.Frame, DataFrameError>
@@ -192,7 +192,7 @@ const describeColumns = (frame: F.Frame): string =>
 const reader = (table: Plan.Table) => {
   let first: F.Frame | undefined
   return (frame: F.Frame): F.Frame => {
-    const batch = table.columns === undefined ? frame : conform(frame, table.columns, table.schema)
+    const batch = table.columns === undefined ? frame : conform(frame, table.columns, table.checks)
     first ??= batch
     const same = batch.columns.length === first.columns.length &&
       batch.columns.every((c, i) => c.name === first!.columns[i].name && D.sameType(c.type, first!.columns[i].type))

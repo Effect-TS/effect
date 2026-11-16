@@ -55,6 +55,22 @@ describe("DataFrame", () => {
     expect(Query.table).type.not.toBeCallableWith("t", Price, { types: { e: ArrowSchema.int32 } })
   })
 
+  it("validate and Query.table take an Arrow schema and give untyped rows", () => {
+    const schema = ArrowSchema.make([ArrowSchema.field("n", ArrowSchema.int32)])
+    type Untyped = { readonly [name: string]: unknown }
+    expect(DataFrame.validate(DataFrame.empty(Station), schema)).type.toBe<
+      Result.Result<DataFrame.DataFrame<Untyped>, DataFrame.DataFrameError>
+    >()
+    expect(DataFrame.empty(Station).pipe(DataFrame.validate(schema))).type.toBe<
+      Result.Result<DataFrame.DataFrame<Untyped>, DataFrame.DataFrameError>
+    >()
+    expect(Query.table("t", schema)).type.toBe<Query.Query<Untyped>>()
+    expect(Query.table).type.not.toBeCallableWith("t", schema, { types: { n: ArrowSchema.int64 } })
+    expect(DataFrame.validate).type.not.toBeCallableWith(DataFrame.empty(Station), schema, {
+      types: { n: ArrowSchema.int64 }
+    })
+  })
+
   it("fromColumns infers column types", () => {
     expect(DataFrame.fromColumns({ a: new Float64Array(1), b: ["x", null], c: new BigInt64Array(1) })).type.toBe<
       DataFrame.DataFrame<{ readonly a: number; readonly b: string | null; readonly c: bigint }>

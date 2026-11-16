@@ -56,6 +56,7 @@ import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import * as F from "./internal/frame.ts"
 import * as Schema_ from "./internal/schema.ts"
+import * as T from "./internal/table.ts"
 import * as V from "./internal/vector.ts"
 
 // -----------------------------------------------------------------------------
@@ -168,22 +169,41 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
 
 /**
  * Builds a frame from rows described by a struct schema. Column types come
- * from the schema's type side: `String` is Utf8, `Number` is Float64,
+ * from the schema's fields: `String` is Utf8, `Number` is Float64,
  * `Boolean` is Bool, `BigInt` is Int64, `DateTimeUtc` and `Duration`
- * are microsecond timestamps and durations, and `NullOr`/optional fields
- * are nullable. `options.types` overrides the Arrow type of individual
- * columns (for example `ArrowSchema.int32`); `BigDecimal` fields need
- * one, with the decimal's precision and scale.
+ * are microsecond timestamps and durations, arrays are lists, structs are
+ * structs, and `NullOr`/optional fields are nullable. `options.types`
+ * overrides the Arrow type of individual columns (for example
+ * `ArrowSchema.int32`); `BigDecimal` fields need one, with the decimal's
+ * precision and scale.
  *
  * **Details**
+ *
+ * The rows are decoded values (the schema's `Type`). The schema describes
+ * them and is not run as a decoder. Its refinements, literals and enums are
+ * tested on the value of every field that has them (inside structs, arrays
+ * and union members too), and a struct's own checks
+ * (`Schema.Struct(...).check(...)`) on every row, so the frame holds only
+ * rows that {@link validate} accepts. Fields without them are stored without
+ * further work.
  *
  * Missing values read back as `null` (see {@link Normalize}). An override
  * must hold its field's values, as {@link validate} checks columns: a
  * `DateTimeUtc` override is a timestamp without a time zone or with a UTC
  * one, which the frame drops.
  *
- * Throws a {@link DataFrameError} when a value doesn't fit its column, or an
- * override can't hold its field's values.
+ * Throws a {@link DataFrameError} when a value doesn't fit its column or
+ * fails a check of the schema, an override can't hold its field's values,
+ * or the schema has no column types.
+ *
+ * **Gotchas**
+ *
+ * - A schema that transforms its rows is rejected, as frames hold decoded
+ *   values and run no transformation: `Schema.NumberFromString`,
+ *   `Schema.decodeTo`, decoding defaults, renamed keys. Pass
+ *   `Schema.toType(schema)` to describe the decoded rows of such a schema.
+ * - Tuples, records, classes, `DateTimeZoned`, unions of different column
+ *   types and recursive schemas have no column type.
  *
  * @stability experimental
  * @category constructors
@@ -195,11 +215,11 @@ export const fromRows = <S extends StructSchema>(
   options?: TypeOptions<S>
 ): DataFrame<Normalize<S["Type"]>> =>
   unsafe(() => {
-    const arrow = Schema_.toArrowSchema(schema, options?.types as any)
-    const table = Result.getOrThrowWith(
-      ArrowTable.fromRows(arrow, Array.isArray(rows) ? rows : Array.from(rows) as any),
-      fromDefect
-    )
+    const { checks, columns } = Schema_.declare(schema, options?.types as any)
+    const input: ReadonlyArray<any> = Array.isArray(rows) ? rows : Array.from(rows)
+    const table = Result.getOrThrowWith(ArrowTable.fromRows(T.toArrowSchema(columns), input), fromDefect)
+    // The rows are values already: test them as given instead of reading them back from the frame.
+    if (checks !== undefined) T.runChecks(checks, (name) => input.map((row) => row[name]), () => input)
     return wrap(F.fromArrowTable(table))
   })
 
@@ -353,6 +373,11 @@ export const decodeArrowStream = <E, R>(
  * An empty frame with the columns of a struct schema, typed as in
  * {@link fromRows}, which also describes `options.types`.
  *
+ * **Gotchas**
+ *
+ * Throws a {@link DataFrameError} for the schemas {@link fromRows} rejects:
+ * one that transforms its rows, or has fields without a column type.
+ *
  * @stability experimental
  * @category constructors
  * @since 4.1.5
@@ -363,31 +388,51 @@ export const empty = <S extends StructSchema>(
 ): DataFrame<Normalize<S["Type"]>> => fromRows(schema, [], options)
 
 /**
- * Checks that a frame has the columns of a struct schema, with compatible
- * types, and returns it typed: with only the schema's columns, in its order,
- * converted to the types {@link fromRows} gives them (`options.types`
- * overrides some, and `BigDecimal` fields need one).
+ * Checks that a frame has the columns a struct schema or an Arrow schema
+ * declares, with compatible types, and returns it with only those columns,
+ * in the declared order, converted to the declared types.
  *
  * **Details**
  *
- * A column is compatible when its values read back as the field's: `Number`
- * takes floats and integers below 64 bits, `BigInt` takes 64-bit integers,
- * `BigDecimal` takes decimals of any precision and scale, `DateTimeUtc` and
- * `Duration` take timestamps and durations in any unit, and structs and
- * arrays need compatible fields and items. Every value must convert to the
- * declared type exactly: a decimal with more digits than the declared scale,
- * or a timestamp finer than the declared unit, fails. Values of fields the
- * schema constrains further (literals, enums, refinements, including inside
- * structs, arrays and union members) are checked against it, and so are the
- * rows when the struct itself has checks (`Schema.Struct(...).check(...)`).
+ * A struct schema declares the columns {@link fromRows} gives its fields
+ * (`options.types` overrides some, and `BigDecimal` fields need one), and
+ * the result is typed by it. A column is compatible when its values read
+ * back as the field's: `Number` takes floats and integers below 64 bits,
+ * `BigInt` takes 64-bit integers, `BigDecimal` takes decimals of any
+ * precision and scale, `DateTimeUtc` and `Duration` take timestamps and
+ * durations in any unit, and structs and arrays need compatible fields and
+ * items. Every value must convert to the declared type exactly: a decimal
+ * with more digits than the declared scale, or a timestamp finer than the
+ * declared unit, fails.
+ *
+ * The types are checked and converted on the typed columns, without reading
+ * values. A field the schema constrains further (literals, enums,
+ * refinements, including inside structs, arrays and union members) has its
+ * values read and tested one by one, and a struct with checks of its own
+ * (`Schema.Struct(...).check(...)`) has every row read and tested. The
+ * schema is not run as a decoder: one that transforms its rows fails, as in
+ * {@link fromRows}.
+ *
+ * An Arrow schema declares its fields as they are: type, nullability,
+ * nested fields, decimal precision and scale, and time unit. The result has
+ * untyped rows, and no values are tested beyond their column type. The
+ * fields can be `Null` (nullable), `Bool`, integers of any width, `Float32`,
+ * `Float64`, `Utf8`, `Binary`, `Date` in days, `Time` in microseconds,
+ * `Timestamp` and `Duration` in any unit, 128-bit `Decimal`, and `List`
+ * and `Struct` of these. Other Arrow types fail: frames can't hold some
+ * (`Float16`, intervals, maps, unions) and hold others as one of the types
+ * above, which is the type to declare (`Utf8` for `LargeUtf8` and
+ * `Utf8View`, `List` for `LargeList`, the value type for a dictionary). A
+ * list's item field is named `item` in the result. Dates in milliseconds
+ * and times in other units convert to the declared days and microseconds.
  *
  * **Gotchas**
  *
- * `DateTimeUtc` fields take timestamps without a time zone, or with a UTC
- * one (`UTC`, `Etc/UTC`, `+00:00`), which the result drops; other time
- * zones, and values outside the range `DateTime` represents, fail.
- * `DateTimeZoned` fields are not supported: read zoned timestamps from an
- * untyped frame, where they are `DateTime.Zoned` values.
+ * `DateTimeUtc` fields and Arrow timestamps take timestamps without a time
+ * zone, or with a UTC one (`UTC`, `Etc/UTC`, `+00:00`), which the result
+ * drops; other time zones, and values outside the range `DateTime`
+ * represents, fail. `DateTimeZoned` fields are not supported: read zoned
+ * timestamps from an untyped frame, where they are `DateTime.Zoned` values.
  *
  * @stability experimental
  * @category constructors
@@ -398,18 +443,28 @@ export const validate: {
     schema: S,
     options?: TypeOptions<S>
   ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
+  (
+    schema: ArrowSchema.Schema
+  ): <R>(self: DataFrame<R>) => Result.Result<DataFrame<{ readonly [name: string]: unknown }>, DataFrameError>
   <R, S extends StructSchema>(
     self: DataFrame<R>,
     schema: S,
     options?: TypeOptions<S>
   ): Result.Result<DataFrame<Normalize<S["Type"]>>, DataFrameError>
+  <R>(
+    self: DataFrame<R>,
+    schema: ArrowSchema.Schema
+  ): Result.Result<DataFrame<{ readonly [name: string]: unknown }>, DataFrameError>
 } = dual((args) => isDataFrame(args[0]), (
   self: DataFrame<unknown>,
-  schema: { readonly ast: any },
+  schema: { readonly ast: any } | ArrowSchema.Schema,
   options?: { readonly types?: { readonly [name: string]: ArrowSchema.DataType | undefined } | undefined }
 ) =>
   Result.try({
-    try: () => wrap(Schema_.conform(frame(self), Schema_.declare(schema, options?.types), schema)),
+    try: () => {
+      const { checks, columns } = Schema_.declare(schema, options?.types)
+      return wrap(T.conform(frame(self), columns, checks))
+    },
     catch: fromDefect
   }))
 

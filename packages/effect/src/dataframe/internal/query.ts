@@ -28,8 +28,8 @@ import { DataFrameError } from "../DataFrame.ts"
 import type * as Plan from "../Plan.ts"
 import * as E from "./expr.ts"
 import * as F from "./frame.ts"
-import { conform } from "./schema.ts"
 import * as Streaming from "./stream.ts"
+import { conform } from "./table.ts"
 import * as V from "./vector.ts"
 
 /** A sort that only keeps its first `limit` rows. @internal */
@@ -59,6 +59,15 @@ export const attempt = <A>(f: () => A): Effect.Effect<A, DataFrameError> => {
     if (cause instanceof V.DataFrameDefect) return Effect.fail(new DataFrameError({ message: cause.message, cause }))
     if (cause instanceof DataFrameError) return Effect.fail(cause)
     throw cause
+  }
+}
+
+/** Runs a kernel computation, throwing its failures as `DataFrameError`s. @internal */
+export const unsafe = <A>(f: () => A): A => {
+  try {
+    return f()
+  } catch (cause) {
+    throw cause instanceof V.DataFrameDefect ? new DataFrameError({ message: cause.message, cause }) : cause
   }
 }
 
@@ -118,7 +127,7 @@ export const mapTables = (plan: Node, f: (table: Plan.Table) => Node): Node => {
 
 /** A table's frame, checked against and narrowed to its declared columns. */
 const tableValues = (table: Plan.Table, frame: F.Frame): Node =>
-  values(table.columns === undefined ? frame : conform(frame, table.columns, table.schema))
+  values(table.columns === undefined ? frame : conform(frame, table.columns, table.checks))
 
 /** Replaces every `Table` with the catalog's frame, reading each table once. */
 const resolve = (plan: Plan.Node, catalog: Catalog.Service): Effect.Effect<Node, DataFrameError> => {

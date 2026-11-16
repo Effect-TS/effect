@@ -1,7 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, DateTime, Effect, Equal, Result, Schema, Stream } from "effect"
+import { BigDecimal, DateTime, Duration, Effect, Equal, Result, Schema, Stream } from "effect"
 import { ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
-import { DataFrame, Expr, Query } from "effect/dataframe"
+import { Catalog, DataFrame, Expr, Query } from "effect/dataframe"
+import * as InternalDateTime from "effect/internal/dateTime"
+import { vi } from "vitest"
 
 const Reading = Schema.Struct({
   city: Schema.String,
@@ -95,6 +97,62 @@ describe("DataFrame", () => {
       const df = DataFrame.empty(Reading)
       assert.strictEqual(df.length, 0)
       assert.deepStrictEqual(DataFrame.columnNames(df), ["city", "temp", "rain", "station"])
+    })
+
+    // DF-C022 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("fromRows checks rows against the schema's refinements, literals and row checks", () => {
+      const Positive = Schema.Number.check(Schema.isGreaterThan(0))
+      const Order = Schema.Struct({
+        n: Positive,
+        kind: Schema.Literals(["x", "y"]),
+        note: Schema.optional(Schema.NonEmptyString),
+        lines: Schema.Array(
+          Schema.Struct({ qty: Schema.NullOr(Positive), unit: Schema.optional(Schema.Literal("kg")) })
+        )
+      }).check(Schema.makeFilter((row) => row.lines.length <= row.n || "more lines than n"))
+      const valid = { n: 2, kind: "x", lines: [{ qty: 1 }, { qty: null, unit: undefined }] } as const
+      const df = DataFrame.fromRows(Order, [valid, { ...valid, note: undefined }, { ...valid, note: "late" }])
+      assert.deepStrictEqual(DataFrame.toArray(df, "note"), [null, null, "late"])
+      assert.isTrue(Result.isSuccess(DataFrame.validate(df, Order)))
+      const cases: ReadonlyArray<readonly [object, string]> = [
+        [{ n: -1 }, `column "n" has values its schema rejects`],
+        [{ kind: "z" }, `column "kind" has values its schema rejects`],
+        [{ note: "" }, `column "note" has values its schema rejects`],
+        [{ lines: [{ qty: 1 }, { qty: 0 }] }, `column "lines" has values its schema rejects`],
+        [{ lines: [{ qty: 1, unit: "lb" }] }, `column "lines" has values its schema rejects`],
+        [{ n: 1 }, "rows have values their schema rejects"]
+      ]
+      for (const [fields, message] of cases) {
+        const rows = [valid, { ...valid, ...fields }] as unknown as ReadonlyArray<typeof Order.Type>
+        assert.throws(() => DataFrame.fromRows(Order, rows), DataFrame.DataFrameError, message)
+      }
+    })
+
+    // DF-C023 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("fromRows, empty and validate reject schemas that transform their rows", () => {
+      const cases: ReadonlyArray<readonly [{ readonly Type: object; readonly ast: any }, string]> = [
+        [Schema.Struct({ a: Schema.NumberFromString }), `field "a"`],
+        [Schema.Struct({ t: Schema.optional(Schema.DateTimeUtcFromString) }), `field "t"`],
+        [
+          Schema.Struct({ p: Schema.Struct({ xs: Schema.Array(Schema.NullOr(Schema.NumberFromString)) }) }),
+          `field "p.xs[]"`
+        ],
+        [Schema.Struct({ a: Schema.Number.pipe(Schema.withDecodingDefault(Effect.succeed(1))) }), `field "a"`],
+        [Schema.Struct({ a: Schema.suspend(() => Schema.NumberFromString) }), `field "a"`],
+        [Schema.Struct({ a: Schema.Number }).pipe(Schema.encodeKeys({ a: "b" })), "the schema"]
+      ]
+      for (const [schema, subject] of cases) {
+        const message =
+          `${subject} has a transformation: frames hold decoded values and transformations are not run; ` +
+          "Schema.toType(schema) describes the decoded rows"
+        assert.throws(() => DataFrame.fromRows(schema, []), DataFrame.DataFrameError, message)
+        assert.throws(() => DataFrame.empty(schema), DataFrame.DataFrameError, message)
+        const result = DataFrame.validate(DataFrame.fromColumns({ a: ["1"] }), schema)
+        assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
+      }
+      const Decoded = Schema.toType(Schema.Struct({ a: Schema.NumberFromString, t: Schema.DateTimeUtcFromString }))
+      const row = { a: 1, t: DateTime.makeUnsafe(0) }
+      assert.deepStrictEqual(DataFrame.toRows(DataFrame.fromRows(Decoded, [row])), [row])
     })
   })
 
@@ -254,6 +312,163 @@ describe("DataFrame", () => {
         Result.isFailure(lossy) && lossy.failure.message,
         `column "d" has values that Decimal[18, 0] can't hold exactly`
       )
+    })
+
+    // DF-C024 (local policy): DataFrame.validate; pinned source in README.md.
+    it("builds values only for the fields the schema constrains", () => {
+      const Row = Schema.Struct({ t: Schema.DateTimeUtc, d: Schema.Duration, m: Schema.BigDecimal })
+      const types = { m: ArrowSchema.decimal(18, 2) }
+      const df = arrowFrame({
+        t: [ArrowSchema.timestamp("millisecond"), [1n, 2n, 3n]],
+        d: [ArrowSchema.duration("second"), [1n, 2n, 3n]],
+        m: [ArrowSchema.decimal(9, 2), ["1.5", "2.5", "3.5"].map(BigDecimal.fromStringUnsafe)]
+      })
+      const built = [vi.spyOn(InternalDateTime, "makeUtc"), vi.spyOn(Duration, "nanos"), vi.spyOn(BigDecimal, "make")]
+      const counts = () => built.map((spy) => spy.mock.calls.length)
+      try {
+        const validated = Result.getOrThrow(DataFrame.validate(df, Row, { types }))
+        const table = Query.table("t", Row, { types }).pipe(Effect.provide(Catalog.layer({ t: Stream.make(df, df) })))
+        assert.strictEqual(Effect.runSync(table).length, 6)
+        assert.deepStrictEqual(counts(), [0, 0, 0])
+        const After = Schema.Struct({
+          ...Row.fields,
+          t: Schema.DateTimeUtc.check(Schema.makeFilter((t) => DateTime.toEpochMillis(t) > 0))
+        })
+        assert.isTrue(Result.isSuccess(DataFrame.validate(df, After, { types })))
+        assert.deepStrictEqual(counts(), [3, 0, 0])
+        // Reading rows builds the values, which shows that the spies see them.
+        const rows = DataFrame.toRows(validated)
+        assert.deepStrictEqual(counts().map((n, i) => n > [3, 0, 0][i]), [true, true, true])
+        assert.deepStrictEqual(rows[0], {
+          t: DateTime.makeUnsafe(1),
+          d: Duration.nanos(1_000_000_000n),
+          m: BigDecimal.make(150n, 2)
+        })
+      } finally {
+        for (const spy of built) spy.mockRestore()
+      }
+    })
+
+    // DF-C025 (API contract): DataFrame.validate; pinned source in README.md.
+    it("takes an Arrow schema, converting the frame to its columns", () => {
+      const item = ArrowSchema.field("element", ArrowSchema.decimal(18, 2), { nullable: false })
+      const schema = ArrowSchema.make([
+        ArrowSchema.field("t", ArrowSchema.timestamp("second", "UTC")),
+        ArrowSchema.field("n", ArrowSchema.int32, { nullable: false }),
+        ArrowSchema.field("xs", ArrowSchema.list(item)),
+        ArrowSchema.field("p", ArrowSchema.struct([ArrowSchema.field("s", ArrowSchema.utf8, { nullable: false })]))
+      ])
+      const frame = (n: number | null, unit: ArrowSchema.TimeUnit = "nanosecond", t = 1_000_000_000n) =>
+        arrowFrame({
+          extra: [ArrowSchema.bool, [true]],
+          p: [ArrowSchema.struct([ArrowSchema.field("s", ArrowSchema.largeUtf8)]), [{ s: "a" }]],
+          xs: [ArrowSchema.list(ArrowSchema.field("item", ArrowSchema.decimal(9, 1))), [[BigDecimal.make(15n, 1)]]],
+          n: [ArrowSchema.int8, [n]],
+          t: [ArrowSchema.timestamp(unit), [t]]
+        })
+      const validated = Result.getOrThrow(DataFrame.validate(frame(1), schema))
+      assert.deepStrictEqual(
+        validated.schema,
+        ArrowSchema.make([
+          ArrowSchema.field("t", ArrowSchema.timestamp("second")),
+          schema.fields[1],
+          ArrowSchema.field("xs", ArrowSchema.list({ ...item, name: "item" })),
+          schema.fields[3]
+        ])
+      )
+      assert.deepStrictEqual(frame(1).pipe(DataFrame.validate(schema), Result.getOrThrow), validated)
+      assert.deepStrictEqual(DataFrame.toRows(validated), [{
+        t: DateTime.makeUnsafe(1000),
+        n: 1,
+        xs: [BigDecimal.make(150n, 2)],
+        p: { s: "a" }
+      }])
+      for (
+        const [df, message] of [
+          [frame(null), `column "n" has missing values`],
+          // A finer unit converts only when no digit is lost (DF-C010 has the same for struct schemas).
+          [frame(1, "millisecond", 1_500n), `column "t" has values that Timestamp[s] can't hold exactly`]
+        ] as const
+      ) {
+        const result = DataFrame.validate(df, schema)
+        assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
+      }
+    })
+
+    // DF-C027 (API contract): DataFrame.validate; pinned source in README.md.
+    it("converts dates and times to the declared unit", () => {
+      const schema = ArrowSchema.make([
+        ArrowSchema.field("d", ArrowSchema.date("day")),
+        ArrowSchema.field("at", ArrowSchema.time("microsecond"))
+      ])
+      const frame = (d: bigint | null, at: number | null) =>
+        arrowFrame({
+          d: [ArrowSchema.date("millisecond"), [d, null]],
+          at: [ArrowSchema.time("millisecond"), [at, null]]
+        })
+      const source = frame(172_800_000n, 1_500)
+      const validated = Result.getOrThrow(DataFrame.validate(source, schema))
+      assert.deepStrictEqual(validated.schema, schema)
+      assert.deepStrictEqual(DataFrame.toArray(validated, "d"), DataFrame.toArray(source, "d"))
+      // A time reads as its count of the column's unit.
+      assert.deepStrictEqual(DataFrame.toArray(validated, "at"), [1_500_000n, null])
+      const result = DataFrame.validate(frame(172_800_001n, 1), schema)
+      assert.strictEqual(
+        Result.isFailure(result) && result.failure.message,
+        `column "d" has values that Date can't hold exactly`
+      )
+    })
+
+    // DF-C026 (API contract): DataFrame.validate; pinned source in README.md.
+    it("rejects Arrow schemas with types a table can't declare", () => {
+      const { field } = ArrowSchema
+      const cases: ReadonlyArray<readonly [ArrowSchema.DataType, string]> = [
+        [
+          ArrowSchema.timestamp("second", "Europe/Berlin"),
+          `column "c" has time zone Europe/Berlin, expected UTC timestamps`
+        ],
+        [ArrowSchema.interval("yearMonth"), `column "c": Interval columns can't be declared`],
+        [ArrowSchema.float16, `column "c": Float16 columns can't be declared`],
+        [
+          ArrowSchema.map(field("k", ArrowSchema.utf8), field("v", ArrowSchema.int32)),
+          `column "c": Map columns can't be declared`
+        ],
+        [
+          ArrowSchema.dictionary(ArrowSchema.utf8),
+          `column "c": Dictionary columns can't be declared: frames hold them as their value type`
+        ],
+        [ArrowSchema.largeUtf8, `column "c": LargeUtf8 columns can't be declared: frames hold them as Utf8`],
+        [
+          ArrowSchema.largeList(field("item", ArrowSchema.int32)),
+          `column "c": LargeList columns can't be declared: frames hold them as List`
+        ],
+        [
+          ArrowSchema.decimal(18, 2, 64),
+          `column "c": 64-bit decimals can't be declared: declared decimals are 128-bit`
+        ],
+        [
+          ArrowSchema.date("millisecond"),
+          `column "c": dates in milliseconds can't be declared: declared dates are in days`
+        ],
+        [
+          ArrowSchema.time("second"),
+          `column "c": times in seconds can't be declared: declared times are in microseconds`
+        ],
+        [ArrowSchema.list(field("item", ArrowSchema.float16)), `column "c[]": Float16 columns can't be declared`],
+        [
+          ArrowSchema.struct([field("x", ArrowSchema.utf8View)]),
+          `column "c.x": Utf8View columns can't be declared: frames hold them as Utf8`
+        ]
+      ]
+      for (const [type, message] of cases) {
+        const result = DataFrame.validate(readings, ArrowSchema.make([field("c", type)]))
+        assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
+      }
+      const notNull = DataFrame.validate(
+        readings,
+        ArrowSchema.make([field("c", ArrowSchema.nullType, { nullable: false })])
+      )
+      assert.strictEqual(Result.isFailure(notNull) && notNull.failure.message, `column "c": Null columns are nullable`)
     })
   })
 
