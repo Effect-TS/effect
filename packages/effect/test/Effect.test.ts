@@ -5516,6 +5516,49 @@ describe("Effect", () => {
         assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
       })
 
+      it("resumes a wait through the scheduler that parked it after the fiber's scheduler changes", async () => {
+        const { land, scheduler } = makeScheduler()
+        let wake!: () => void
+        const fiber = Effect.runFork(
+          Effect.callback<void>((resume) => {
+            wake = () => resume(Effect.void)
+          }).pipe(Effect.andThen(Effect.sync(current))),
+          { scheduler }
+        )
+        await land()
+        fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
+        storage.run("waker", wake)
+        await land()
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("owner"))
+      })
+
+      it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+        "does not retain the state of a wait after the fiber exits",
+        async () => {
+          const { land, scheduler } = makeScheduler()
+          let reference: WeakRef<object> | undefined
+          const park = scheduler.park
+          scheduler.park = function() {
+            const parked = park.call(this)
+            reference = new WeakRef(parked)
+            return parked
+          }
+          let wake!: () => void
+          const fiber = Effect.runFork(
+            Effect.callback<void>((resume) => {
+              wake = () => resume(Effect.void)
+            }),
+            { scheduler }
+          )
+          await land()
+          wake()
+          await land()
+          await Effect.runPromise(collectGarbage)
+          assert.isTrue(Exit.isSuccess(fiber.pollUnsafe()!))
+          assert.isUndefined(reference!.deref())
+        }
+      )
+
       itWithAsyncHooks("runs an interrupt requested while entering a native context before the value", () => {
         // An async_hooks `before` callback runs inside runInAsyncScope, before
         // the fiber runs, so the interrupt replaces the value. The value is not
