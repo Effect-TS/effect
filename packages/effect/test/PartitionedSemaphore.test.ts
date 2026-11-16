@@ -40,6 +40,7 @@ describe("PartitionedSemaphore", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher: () => ({
           scheduleTask: (task) => tasks.push(task),
           flush() {}
@@ -158,6 +159,7 @@ describe("PartitionedSemaphore", () => {
       let paused = false
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher: () => ({
           scheduleTask: (task) => {
             tasks.push(task)
@@ -188,6 +190,7 @@ describe("PartitionedSemaphore", () => {
         let checks = 0
         const scheduler: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           makeDispatcher: () => ({
             scheduleTask: (task) => {
               tasks.push(task)
@@ -227,6 +230,7 @@ describe("PartitionedSemaphore", () => {
       let ran = false
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher: () => ({
           scheduleTask: (task) => {
             tasks.push(task)
@@ -260,6 +264,7 @@ describe("PartitionedSemaphore", () => {
         let shouldYield = false
         const scheduler: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           makeDispatcher() {
             return {
               scheduleTask(task) {

@@ -60,6 +60,7 @@ describe("Latch", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {
@@ -119,6 +120,7 @@ describe("Latch", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {
@@ -156,6 +158,7 @@ describe("Latch", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {
@@ -195,6 +198,7 @@ describe("Latch", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {

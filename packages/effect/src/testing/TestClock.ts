@@ -493,15 +493,16 @@ class TrackingScheduler implements Scheduler.Scheduler {
   readonly clock: TestClockImpl
   readonly parent: Scheduler.Scheduler
   readonly executionMode: Scheduler.Scheduler["executionMode"]
-  readonly park: Scheduler.Scheduler["park"]
   constructor(clock: TestClockImpl, parent: Scheduler.Scheduler) {
     this.clock = clock
     this.parent = parent
     this.executionMode = parent.executionMode
-    this.park = parent.park && ((fiber) => parent.park!(fiber))
   }
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
     return this.parent.shouldYield(fiber)
+  }
+  park(fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
+    return this.parent.park(fiber)
   }
   makeDispatcher(): Scheduler.SchedulerDispatcher {
     const clock = this.clock

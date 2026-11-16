@@ -6,30 +6,12 @@
  */
 import { waitUntil } from "cloudflare:workers"
 import type { Effect } from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
-interface AsyncResource {
-  runInAsyncScope<This>(fn: (this: This) => void, thisArg?: This): void
-  emitDestroy(): void
-}
-
-const AsyncResource: (new(type: string) => AsyncResource) | undefined = (() => {
-  try {
-    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-  } catch {
-    return undefined
-  }
-})()
-
 const compatibilityFlags: Record<string, boolean | undefined> | undefined = (globalThis as any).Cloudflare
   ?.compatibilityFlags
-
-// Entering another request's AsyncResource only fails when AsyncLocalStorage
-// snapshots are bound to their request. Otherwise it succeeds in the wrong
-// request, so every resumption goes through the owner's promise instead.
-const canEnter = AsyncResource !== undefined &&
-  compatibilityFlags?.bind_asynclocalstorage_snapshot_to_request !== false
 
 const noop = (): void => {}
 
@@ -54,23 +36,23 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
   }
 }
 
-// Created in the request a fiber parks in, which owns it. Entering the
-// AsyncResource runs the fiber synchronously with the owner's
-// AsyncLocalStorage state. workerd refuses that from any other request, so the
-// fiber is then handed to a promise the owner created: workerd runs its
-// reactions in the owner's IoContext.
+// Created in the request a fiber parks in, which owns it. The fiber resumes
+// in a reaction to a promise the owner created: workerd runs promise reactions
+// in the request that created the promise, with the AsyncLocalStorage state
+// they were registered in, so the fiber has the owner's I/O objects, timers
+// and store.
 //
 // The owner waits on that promise with waitUntil, so it keeps running after it
 // responds. workerd still cancels a request whose only pending work is a
 // promise another request settles, so a timer set in the owner marks the fiber
 // as pending work. The owner clears it when the promise settles.
+//
+// workerd has no way to ask which request is running, so a fiber woken by its
+// owner also resumes through the promise, a microtask later.
 class OwnerResumption implements Scheduler.Resumption {
-  readonly resource: AsyncResource | undefined
   readonly settle: (task: () => void) => void
-  resumed = false
 
   constructor() {
-    this.resource = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
     const timer = setPendingTimer()
     let settle!: (task: () => void) => void
     keepOwnerAlive(
@@ -85,39 +67,9 @@ class OwnerResumption implements Scheduler.Resumption {
   }
 
   resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
-    // The fiber runs once, with the first entry. An interrupt arriving later
-    // is already pending on it.
-    if (this.resumed) return
-    this.resumed = true
-    const resource = this.resource
-    if (canEnter) {
-      let entered = false
-      try {
-        resource!.runInAsyncScope(() => {
-          entered = true
-          fiber.run(effect)
-        })
-        return this.release()
-      } catch (error) {
-        if (entered) {
-          this.release()
-          throw error
-        }
-      }
-    }
-    this.settle(() => {
-      if (resource === undefined) return fiber.run(effect)
-      try {
-        resource.runInAsyncScope(() => fiber.run(effect))
-      } finally {
-        resource.emitDestroy()
-      }
-    })
-  }
-
-  release(): void {
-    this.resource!.emitDestroy()
-    this.settle(noop)
+    // Only the first call settles the promise, so the fiber runs once, with the
+    // first entry. An interrupt arriving later is already recorded on it.
+    this.settle(() => fiber.run(effect))
   }
 }
 
@@ -143,8 +95,8 @@ class OwnerResumption implements Scheduler.Resumption {
  * A fiber is owned by the request it last suspended in, or was forked in.
  * When another request wakes or interrupts it, the fiber resumes in its owner,
  * with the owner's `AsyncLocalStorage` state, I/O objects, and timers, and the
- * waking request continues without waiting for it. Inside a Durable Object,
- * requests share these, so fibers resume immediately.
+ * waking request continues without waiting for it. Every fiber resumes a
+ * microtask after it is woken, including one woken by its own request.
  *
  * While a fiber waits, its owner registers the pending resumption with
  * `waitUntil` from `cloudflare:workers` and holds a timer, which counts as
@@ -168,11 +120,7 @@ class OwnerResumption implements Scheduler.Resumption {
  *
  * Owner resumption needs the `handle_cross_request_promise_resolution`
  * compatibility flag, enabled by default from 2024-10-14; the constructor
- * throws without it. `AsyncLocalStorage` state is restored with
- * `node:async_hooks`, available with the `nodejs_compat` or `nodejs_als`
- * flags. Without the `bind_asynclocalstorage_snapshot_to_request` flag, enabled
- * by default from 2025-06-16, every resumption is handed to the owner, so fibers
- * woken by their own request also resume a microtask later.
+ * throws without it.
  *
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.
@@ -192,11 +140,11 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
   }
 
   /**
-   * Records the request a fiber parks in, so it resumes there.
+   * Returns how a parked fiber resumes: in the request it parks in.
    *
    * @since 4.2.0
    */
-  park(): Scheduler.Resumption {
+  override park(_fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
     return new OwnerResumption()
   }
 }

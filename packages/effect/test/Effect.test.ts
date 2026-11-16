@@ -67,6 +67,7 @@ describe("Effect", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher: () => ({
           scheduleTask: (task) => {
             tasks.push(task)
@@ -174,6 +175,7 @@ describe("Effect", () => {
               const tasks: Array<() => void> = []
               const scheduler: Scheduler.Scheduler = {
                 executionMode: "async",
+                park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
                 makeDispatcher: () => ({
                   scheduleTask: (task) => {
                     tasks.push(task)
@@ -1577,6 +1579,7 @@ describe("Effect", () => {
         let yieldParent = false
         const scheduler: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           makeDispatcher: () => ({
             scheduleTask: (task) => {
               tasks.push(task)
@@ -5474,7 +5477,9 @@ describe("Effect", () => {
           }
         }
         const scheduler = new class extends Scheduler.MixedScheduler {
-          readonly park = (): Scheduler.Resumption => new OwnerResumption()
+          override park(): Scheduler.Resumption {
+            return new OwnerResumption()
+          }
         }("sync")
         const land = async () => {
           for (let i = 0; i < 5; i++) {

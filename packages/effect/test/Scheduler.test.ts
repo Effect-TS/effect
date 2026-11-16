@@ -82,6 +82,7 @@ describe("Scheduler", () => {
       let calls = 0
       const scheduler: Scheduler.Scheduler = {
         executionMode: "sync",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         shouldYield: () => {
           calls++
           return false
@@ -110,6 +111,7 @@ describe("Scheduler", () => {
     let attempts = 0
     const scheduler: Scheduler.Scheduler = {
       executionMode: "async",
+      park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
       shouldYield: (fiber) => fiber.currentOpCount >= 2,
       makeDispatcher: () => ({
         scheduleTask: (task) => {

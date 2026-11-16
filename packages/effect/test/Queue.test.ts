@@ -247,6 +247,7 @@ describe("Queue", () => {
     const tasks: Array<() => void> = []
     const scheduler: Scheduler.Scheduler = {
       executionMode: "async",
+      park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
       shouldYield: () => false,
       makeDispatcher: () => ({
         scheduleTask: (task) => {
@@ -532,6 +533,7 @@ describe("Queue", () => {
             const scheduler: Scheduler.Scheduler = {
               executionMode: base.executionMode,
               makeDispatcher: () => base.makeDispatcher(),
+              park: (fiber) => base.park(fiber),
               shouldYield: (fiber) => {
                 if (++seen !== at) return base.shouldYield(fiber)
                 // Interrupt before the scheduler resumes the fiber.
@@ -853,6 +855,7 @@ describe("Queue", () => {
       const tasks: Array<() => void> = []
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {

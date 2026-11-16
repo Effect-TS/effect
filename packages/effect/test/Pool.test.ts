@@ -975,6 +975,7 @@ describe("Pool", () => {
         Pool.use(pool, Effect.succeed).pipe(Effect.provideService(Scheduler.Scheduler, {
           executionMode: scheduler.executionMode,
           makeDispatcher: () => scheduler.makeDispatcher(),
+          park: (fiber) => scheduler.park(fiber),
           shouldYield: (fiber) => {
             if (!yieldOnce) return scheduler.shouldYield(fiber)
             yieldOnce = false
@@ -1006,6 +1007,7 @@ describe("Pool", () => {
         Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.Scheduler, {
           executionMode: scheduler.executionMode,
           makeDispatcher: () => scheduler.makeDispatcher(),
+          park: (fiber) => scheduler.park(fiber),
           shouldYield: (fiber) => hold || scheduler.shouldYield(fiber)
         })),
         { startImmediately: true }
