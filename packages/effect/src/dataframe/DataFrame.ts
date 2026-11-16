@@ -38,6 +38,7 @@
  * @stability experimental
  * @since 4.1.5
  */
+import type * as ArrowColumn from "../arrow/ArrowColumn.ts"
 import * as ArrowData from "../arrow/ArrowData.ts"
 import * as ArrowIpc from "../arrow/ArrowIpc.ts"
 import * as ArrowSchema from "../arrow/ArrowSchema.ts"
@@ -492,6 +493,66 @@ export const toArray: {
   <R, K extends keyof R & string>(name: K): (self: DataFrame<R>) => Array<R[K]>
   <R, K extends keyof R & string>(self: DataFrame<R>, name: K): Array<R[K]>
 } = dual(2, (self: DataFrame<unknown>, name: string) => F.toArray(frame(self), name)) as any
+
+/**
+ * One column as an Arrow column, without building rows or values.
+ *
+ * **When to use**
+ *
+ * Use to read or compute over a column's stored numbers, or to read single
+ * values, without paying for a row object or a `DateTime`, `Duration` or
+ * `BigDecimal` per value.
+ *
+ * **Details**
+ *
+ * The column has one chunk, laid out as {@link toArrowTable} lays it out:
+ * its type, validity bitmap, buffers and child arrays are those of the
+ * Arrow table, and share the frame's memory where the layouts agree.
+ * `ArrowData.values` and `ArrowData.offsets` give its numbers and slot
+ * boundaries as typed arrays, with timestamps, dates and durations as the
+ * integers they are stored as, in the unit of the column's type.
+ * `ArrowColumn.get`, `ArrowColumn.toArray` and iteration build values
+ * as {@link toArray} does, typed by the frame's rows, one at a time.
+ *
+ * **Gotchas**
+ *
+ * - The typed array to expect follows from the column's Arrow type
+ *   (`self.schema`), not from the row type: a `number` column can be
+ *   `Int32` or `Float64`.
+ * - Treat the buffers as read-only: they can be the frame's own.
+ * - Frames hold dictionary-encoded and chunked input as one plain array per
+ *   column, so the column has no dictionary and a single chunk.
+ *
+ * **Example** (Reading timestamps as stored)
+ *
+ * ```ts import.meta.vitest
+ * import { DateTime, Option, Schema } from "effect"
+ * import { ArrowColumn, ArrowData } from "effect/arrow"
+ * import { DataFrame } from "effect/dataframe"
+ *
+ * const Event = Schema.Struct({ at: Schema.NullOr(Schema.DateTimeUtc) })
+ * const events = DataFrame.fromRows(Event, [{ at: DateTime.makeUnsafe(1500) }, { at: null }])
+ *
+ * const at = DataFrame.column(events, "at")
+ * const micros = Option.getOrThrow(ArrowData.values(at.chunks[0]))
+ * micros[0] // => 1500000n
+ * ArrowData.isValid(at.chunks[0], 1) // => false
+ * ArrowColumn.getUnsafe(at, 0) // => DateTime.makeUnsafe(1500)
+ * ```
+ *
+ * @see {@link toArray} for the values of a column as an array
+ * @see {@link toArrowTable} for every column as one record batch
+ * @stability experimental
+ * @category conversions
+ * @since 4.1.5
+ */
+export const column: {
+  <R, K extends keyof R & string>(name: K): (self: DataFrame<R>) => ArrowColumn.ArrowColumn<Exclude<R[K], null>>
+  <R, K extends keyof R & string>(self: DataFrame<R>, name: K): ArrowColumn.ArrowColumn<Exclude<R[K], null>>
+} = dual(
+  2,
+  (self: DataFrame<unknown>, name: string) => unsafe(() => F.toArrowColumn(frame(self), name))
+) as any
 
 /**
  * The frame as an Arrow table with one record batch.

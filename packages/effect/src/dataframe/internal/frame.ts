@@ -184,11 +184,15 @@ const rows = (self: Frame): Iterable<any> => ArrowTable.rows(toArrowTable(self))
 /** @internal */
 export const toRows = (self: Frame): Array<any> => ArrowTable.toRows(toArrowTable(self))
 
-/** @internal */
-export const toArray = (self: Frame, name: string): Array<unknown> => {
-  const vector = column(self, name).values()
-  return ArrowColumn.toArray(ArrowColumn.make(S.field(name, vector.type), [V.toArrowData(vector)]))
+/** One column as an Arrow column of one chunk, over the frame's buffers where the layouts agree. @internal */
+export const toArrowColumn = (self: Frame, name: string): ArrowColumn.ArrowColumn => {
+  const c = column(self, name)
+  const vector = c.values()
+  return ArrowColumn.make(S.field(name, vector.type, { nullable: c.nullable }), [V.toArrowData(vector)])
 }
+
+/** @internal */
+export const toArray = (self: Frame, name: string): Array<unknown> => ArrowColumn.toArray(toArrowColumn(self, name))
 
 // -----------------------------------------------------------------------------
 // Row selection

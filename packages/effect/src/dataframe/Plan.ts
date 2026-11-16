@@ -734,7 +734,9 @@ export interface TableChecks {
  * unit, lists and structs with such children) and every value converts
  * exactly. `Timestamp` columns read as `DateTime.Utc` values: their
  * timestamps must have no time zone or a UTC one (dropped), and lie in the
- * range `DateTime` represents. `Date` and `Time` columns keep their unit.
+ * range `DateTime` represents. `Date` columns are in days and `Time`
+ * columns in microseconds: dates in milliseconds and times in other units
+ * convert to them.
  *
  * Every batch of a streamed table, after this conversion (as given, without
  * `columns`), must have the column names and types of its first batch.

@@ -1,6 +1,6 @@
 import type { BigDecimal, Result, Stream } from "effect"
 import { DateTime, Duration, Effect, Schema } from "effect"
-import { ArrowSchema } from "effect/arrow"
+import { ArrowColumn, ArrowSchema } from "effect/arrow"
 import { DataFrame, Expr, Query } from "effect/dataframe"
 import { describe, expect, it } from "tstyche"
 
@@ -69,6 +69,17 @@ describe("DataFrame", () => {
     expect(DataFrame.validate).type.not.toBeCallableWith(DataFrame.empty(Station), schema, {
       types: { n: ArrowSchema.int64 }
     })
+  })
+
+  it("column types its values by the frame's rows", () => {
+    const frame = DataFrame.empty(Reading)
+    expect(DataFrame.column(frame, "temp")).type.toBe<ArrowColumn.ArrowColumn<number>>()
+    expect(frame.pipe(DataFrame.column("rain"))).type.toBe<ArrowColumn.ArrowColumn<number>>()
+    expect(ArrowColumn.toArray(DataFrame.column(frame, "rain"))).type.toBe<Array<number | null>>()
+    expect(ArrowColumn.getUnsafe(DataFrame.column(frame, "id"), 0)).type.toBe<bigint | null>()
+    expect(DataFrame.column).type.not.toBeCallableWith(frame, "missing")
+    const untyped = DataFrame.fromArrowTable(DataFrame.toArrowTable(frame))
+    expect(DataFrame.column(untyped, "anything")).type.toBe<ArrowColumn.ArrowColumn<unknown>>()
   })
 
   it("fromColumns infers column types", () => {

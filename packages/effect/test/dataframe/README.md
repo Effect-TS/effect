@@ -46,6 +46,7 @@ The assertion column is the exact leaf test title. Combine it with the file and 
 | DF-C025 | C    | takes an Arrow schema, converting the frame to its columns                            | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
 | DF-C026 | C    | rejects Arrow schemas with types a table can't declare                                | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
 | DF-C027 | C    | converts dates and times to the declared unit                                         | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
+| DF-C028 | C    | column gives a column's buffers and values without building rows                      | [DataFrame layouts](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L6-L9)          |
 
 DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: import/export preserves the backing buffers, byte offsets and byte lengths, as well as values. It does not require typed-array wrapper identity or mutation-based aliasing. The compatible fixed-width layouts are described in Apache Arrow’s [Columnar format](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/docs/source/format/Columnar.rst#fixed-size-primitive-layout) and [Schema.fbs](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/format/Schema.fbs); the no-copy adapter promise is the Effect API contract, not a requirement that Arrow imposes on every adapter.
 
@@ -99,7 +100,7 @@ DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: 
 | DF-Q044 | C    | tables declared by an Arrow schema convert their input to its columns                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 | DF-Q045 | C    | fails when a table is declared by a schema that has no columns for it                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 
-DF-C022 to DF-C027 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, and tables declared by an Arrow schema. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only a frame whose columns already have the declared types.
+DF-C022 to DF-C028 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, tables declared by an Arrow schema, and `DataFrame.column`, which has no symbol at the baseline and links to the layouts it exposes. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only a frame whose columns already have the declared types.
 
 ## Supported Schema subset
 
@@ -187,6 +188,7 @@ The actual SQL suite is **`packages/sql/pglite/test/DataFrameSql.test.ts`**, not
 - `fromRows, empty, validate and Query.table read missing values back as null`
 - `validate and Query.table take Arrow types for the schema's fields`
 - `validate and Query.table take an Arrow schema and give untyped rows`
+- `column types its values by the frame's rows`
 - `fromColumns infers column types`
 
 ### `Query`

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BigDecimal, DateTime, Duration, Effect, Equal, Result, Schema, Stream } from "effect"
-import { ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
+import { BigDecimal, DateTime, Duration, Effect, Equal, Option, Result, Schema, Stream } from "effect"
+import { ArrowColumn, ArrowData, ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Query } from "effect/dataframe"
 import * as InternalDateTime from "effect/internal/dateTime"
 import { vi } from "vitest"
@@ -174,6 +174,56 @@ describe("DataFrame", () => {
       assert.strictEqual(after.byteOffset, before.byteOffset)
       assert.strictEqual(after.byteLength, before.byteLength)
     }
+  })
+
+  // DF-C028 (API contract): DataFrame.column; pinned source in README.md.
+  it("column gives a column's buffers and values without building rows", () => {
+    const schema = ArrowSchema.make([
+      ArrowSchema.field("at", ArrowSchema.timestamp("nanosecond", "Europe/Vienna")),
+      ArrowSchema.field("n", ArrowSchema.int32, { nullable: false }),
+      ArrowSchema.field("s", ArrowSchema.utf8)
+    ])
+    const input = Result.getOrThrow(
+      ArrowTable.fromColumns(schema, [[1700000000123456789n, null, -1n], [1, -2, 3], ["a", null, "bc"]])
+    )
+    const frame = DataFrame.fromArrowTable(input)
+    const built = [vi.spyOn(InternalDateTime, "makeUtc"), vi.spyOn(InternalDateTime, "makeZonedProto")]
+    try {
+      const at = DataFrame.column(frame, "at")
+      assert.strictEqual(at.length, 3)
+      assert.deepStrictEqual(at.field.type, ArrowSchema.timestamp("nanosecond", "Europe/Vienna"))
+      assert.strictEqual(at.chunks.length, 1)
+      const nanos = Option.getOrThrow(ArrowData.values(at.chunks[0]))
+      assert.isTrue(nanos instanceof BigInt64Array)
+      assert.deepStrictEqual([nanos[0], nanos[2]], [1700000000123456789n, -1n])
+      assert.deepStrictEqual([0, 1, 2].map((i) => ArrowData.isValid(at.chunks[0], i)), [true, false, true])
+
+      const n = frame.pipe(DataFrame.column("n"))
+      assert.strictEqual(n.field.nullable, false)
+      const ints = Option.getOrThrow(ArrowData.values(n.chunks[0]))
+      assert.deepStrictEqual(ints, Int32Array.of(1, -2, 3))
+      assert.strictEqual(ints.buffer, input.batches[0].columns[1].buffers[0].buffer)
+
+      const s = DataFrame.column(frame, "s").chunks[0]
+      assert.deepStrictEqual(Array.from(Option.getOrThrow(ArrowData.offsets(s)), Number), [0, 1, 1, 3])
+      assert.deepStrictEqual(new TextDecoder().decode(s.buffers[1]), "abc")
+      assert.strictEqual(built.reduce((sum, spy) => sum + spy.mock.calls.length, 0), 0)
+
+      // A value is built when it is asked for, at the millisecond DateTime holds.
+      const first = ArrowColumn.getUnsafe(at, 0) as DateTime.Zoned
+      assert.strictEqual(DateTime.toEpochMillis(first), 1700000000123)
+      assert.strictEqual(DateTime.zoneToString(first.zone), "Europe/Vienna")
+      assert.strictEqual(ArrowColumn.getUnsafe(at, 1), null)
+      assert.strictEqual(built.reduce((sum, spy) => sum + spy.mock.calls.length, 0), 1)
+    } finally {
+      built.forEach((spy) => spy.mockRestore())
+    }
+    assert.deepStrictEqual(ArrowColumn.toArray(DataFrame.column(readings, "rain")), [0, null, 2])
+    assert.throws(
+      () => DataFrame.column(frame as DataFrame.DataFrame<any>, "missing"),
+      DataFrame.DataFrameError,
+      `unknown column "missing"`
+    )
   })
 
   describe("validate", () => {
