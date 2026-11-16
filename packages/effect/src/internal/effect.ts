@@ -505,11 +505,9 @@ interface FiberCache extends Fiber.Fiber.Cache {
   readonly parking: Parking
 }
 
-// The wait state of a fiber that has not started
-const unstarted = {}
-
 // Runs a parked fiber synchronously in the caller's async context, in
-// runtimes without node:async_hooks
+// runtimes without node:async_hooks. Also resumes a fiber that is not parked,
+// which runs it if it has not started and does nothing once it has exited.
 const directParking: Parking = {
   park: constUndefined,
   resume(fiber, _parked, effect) {
@@ -583,7 +581,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._parked = unstarted
+    this._parkedBy = directParking
+    this._parked = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -607,9 +606,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  // The state of the fiber's current or last wait, as returned by park, which
-  // its scheduler's resume receives. A fiber only changes scheduler while it
-  // runs, so the scheduler in its cache is the one that parked it.
+  // The strategy that parked the fiber, which resumes its current wait even if
+  // setContext changes the fiber's scheduler before the wait ends
+  declare _parkedBy: Parking
+  // The state of the current wait, as returned by park. Cleared when the fiber
+  // exits, so a retained fiber does not keep it alive.
   declare _parked: unknown
 
   // set in setContext
@@ -662,20 +663,15 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       // even if its scheduler resumes it with another effect
       this._deferredInterrupt = true
       if (!this._running) {
-        // A fiber that has not started, such as one forked into a closed
-        // scope, has no wait to resume
-        const effect = failCause(this._interruptedCause) as any
-        if (this._parked === unstarted) this.run(effect)
-        else this.evaluate(effect)
+        this.evaluate(failCause(this._interruptedCause) as any)
       }
     }
   }
   pollUnsafe(): Exit.Exit<A, E> | undefined {
     return this._exit
   }
-  // Only called while the fiber is parked: starts go through run
   evaluate(effect: Primitive): void {
-    this.cache.parking.resume(this, this._parked, effect as any)
+    this._parkedBy.resume(this, this._parked, effect as any)
   }
   // Every effect a scheduler resumes the fiber with is a primitive
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
@@ -689,7 +685,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._parked = this.cache.parking.park(this)
+      this._parked = (this._parkedBy = this.cache.parking).park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -718,6 +714,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     this._stack.length = 0
     this._children = undefined
+    this._parkedBy = directParking
+    this._parked = undefined
     this.context = Context.empty()
     // The cache is shared with other fibers, so replace it rather than mutate
     // it, letting the ended span and its parents be collected
@@ -5724,7 +5722,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.run(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._parked = child.cache.parking.park(child)
+    child._parked = (child._parkedBy = child.cache.parking).park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
