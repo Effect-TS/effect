@@ -9,7 +9,6 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
-import * as BigDecimal from "../../BigDecimal.ts"
 import * as V from "./vector.ts"
 
 const powers: Array<bigint> = []
@@ -17,6 +16,8 @@ const powers: Array<bigint> = []
 const pow10 = (k: number): bigint => (powers[k] ??= BigInt(10) ** BigInt(k))
 
 const I0 = BigInt(0)
+const I1 = BigInt(1)
+const I2 = BigInt(2)
 const MAX = BigInt("9223372036854775807")
 const MIN = -BigInt("9223372036854775808")
 
@@ -57,9 +58,17 @@ const wrap = (x: bigint): bigint => BigInt.asIntN(64, x)
  */
 export const fit = (type: S.DataType): (x: bigint) => bigint => isDecimal(type) ? checked : wrap
 
-/** Rounds `x / 10^k` half to even (`BigDecimal.round`). */
-const divRound = (x: bigint, k: number): bigint =>
-  k === 0 ? x : BigDecimal.round(BigDecimal.make(x, k), { scale: 0, mode: "half-even" }).value
+/** Rounds `x / 10^k` half to even. */
+const divRound = (x: bigint, k: number): bigint => {
+  if (k === 0) return x
+  const divisor = pow10(k)
+  // Truncated towards zero; the remainder has the sign of `x`.
+  const quotient = x / divisor
+  const remainder = x % divisor
+  const twice = (remainder < I0 ? -remainder : remainder) * I2
+  if (twice < divisor || (twice === divisor && quotient % I2 === I0)) return quotient
+  return x < I0 ? quotient - I1 : quotient + I1
+}
 
 /** `unscaled / 10^scale` as a decimal string, all `scale` digits shown. */
 const format = (unscaled: bigint, scale: number): string => {
