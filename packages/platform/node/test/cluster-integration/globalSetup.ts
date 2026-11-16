@@ -13,9 +13,10 @@ declare module "vitest" {
   }
 }
 
-// Commits on these throwaway databases skip the disk flush. A slow flush can
+// Commits on these throwaway databases skip the disk flush: a slow flush can
 // hold a lock refresh past the harness's 500 ms `shardLockRefreshInterval`,
-// which fences a reply and replays its request (Smoke.test.ts checks this).
+// which fences a reply and replays its request. Smoke.test.ts checks the
+// settings.
 const makePostgresContainer = () =>
   new PostgreSqlContainer("postgres:alpine").withCommand(["postgres", "-c", "fsync=off"])
 

@@ -31,7 +31,7 @@ or power-loss durability.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
 - `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection.
 - `cutSocket(runner, { peer, direction })` to close one inbound or outbound client/runner connection without stopping either endpoint.
-- `holdShardLockCheck(shardId)` to hold the next matching singleton refresh until its caller times out. To isolate a persisted reply check from periodic refreshes, use one runner with at least two shards, wait for stable ownership, and avoid ownership changes while the hold is armed.
+- `holdShardLockCheck(runner, shardId)` to hang that runner's next lock refresh of only `shardId`, which is how a persisted reply confirms its lock. Periodic refreshes cover every owned shard, so give the runner at least two shards and keep ownership stable while the hold is armed.
 - `diskSyncSettings()` to read the database settings that decide whether a commit waits for the disk.
 - `insertMessage(row)` to inject a raw row into this cluster's prefixed message table.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.

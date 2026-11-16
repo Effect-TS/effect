@@ -127,6 +127,11 @@ interface MessageRow {
   readonly reply_payload: string | Record<string, unknown> | null
 }
 
+interface SettingRow {
+  readonly name: string
+  readonly value: string
+}
+
 interface RunnerEntry extends ClusterRunner {
   readonly controller: ReturnType<typeof makeRunnerStorageController>
   readonly lockFault: ReturnType<typeof makeLockFaultController>
@@ -233,15 +238,12 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   return { client, set }
 }
 
-interface LockChecks {
-  held: string | undefined
-}
-
-const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"], lockChecks: LockChecks) => {
+const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
   const gate = Latch.makeUnsafe(true)
   const refreshPaused = Latch.makeUnsafe()
   const syncPaused = Latch.makeUnsafe()
   let mode: "frozen" | "killed" | "running" = "running"
+  let heldShard: string | undefined
   let lastRunners: Array<readonly [RunnerModel.Runner, boolean]> = []
 
   const waitWhileFrozen = <A, E>(
@@ -268,8 +270,8 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
     ),
     refresh: (address, shardIds) => {
       const shards = Array.from(shardIds)
-      if (shards.length === 1 && shards[0].toString() === lockChecks.held) {
-        lockChecks.held = undefined
+      if (shards.length === 1 && shards[0].toString() === heldShard) {
+        heldShard = undefined
         return Effect.never
       }
       return waitWhileFrozen(refreshPaused, storage.refresh(address, shards), () => shards)
@@ -285,6 +287,10 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
       mode = "frozen"
       gate.closeUnsafe()
     }).pipe(Effect.andThen(Effect.all([refreshPaused.await, syncPaused.await], { discard: true }))),
+    holdShardLockCheck: (shardId: ShardId.ShardId) =>
+      Effect.sync(() => {
+        heldShard = shardId.toString()
+      }),
     kill: Effect.sync(() => {
       mode = "killed"
       gate.openUnsafe()
@@ -452,7 +458,6 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<RunnerEntry> = []
   const socketController = makeSocketController()
-  const lockChecks: LockChecks = { held: undefined }
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
     scope: Scope.Closeable,
@@ -502,10 +507,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     const runnerDatabase = Context.add(database, SqlClient.SqlClient, lockFault.client)
     const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig, runnerDatabase)
     yield* Scope.addFinalizer(scope, lockFault.set("clear"))
-    const controller = makeRunnerStorageController(
-      Context.get(rawStorageContext, RunnerStorage.RunnerStorage),
-      lockChecks
-    )
+    const controller = makeRunnerStorageController(Context.get(rawStorageContext, RunnerStorage.RunnerStorage))
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
@@ -584,29 +586,23 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return sql`INSERT INTO ${messages} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid)
   }
 
-  // The settings that decide whether a commit waits for the disk. A slow disk
-  // flush can hold a lock refresh past `shardLockRefreshInterval`, which fences
-  // a reply and replays its request, so the test databases skip them.
+  // The database settings that decide whether a commit waits for the disk.
   const diskSyncSettings = Effect.fnUntraced(function*() {
-    const rows = options.backend === "pg"
-      ? yield* sql<{ readonly name: string; readonly value: string }>`
-        SELECT name, setting AS value FROM pg_settings WHERE name = 'fsync'
-      `
-      : yield* sql<{ readonly name: string; readonly value: string }>`
+    const rows = yield* (options.backend === "pg"
+      ? sql<SettingRow>`SELECT name, setting AS value FROM pg_settings WHERE name = 'fsync'`
+      : sql<SettingRow>`
         SELECT variable_name AS name, variable_value AS value
         FROM performance_schema.global_variables
         WHERE variable_name IN ('innodb_flush_log_at_trx_commit', 'sync_binlog')
-        ORDER BY variable_name
-      `
-    return Object.fromEntries(rows.map((row) => [row.name, String(row.value)]))
+      `)
+    return Object.fromEntries(rows.map((row) => [row.name, row.value]))
   })
 
-  // Holds the next matching singleton refresh until its caller times out.
-  // To isolate reply checks, use stable multi-shard ownership with no churn.
-  const holdShardLockCheck = (shardId: ShardId.ShardId) =>
-    Effect.sync(() => {
-      lockChecks.held = shardId.toString()
-    })
+  // Hangs the runner's next refresh of only this shard, which is how a
+  // persisted reply confirms its lock. A periodic refresh matches too when
+  // the runner owns no other shard.
+  const holdShardLockCheck = (runner: ClusterRunner, shardId: ShardId.ShardId) =>
+    entryFor(runner).controller.holdShardLockCheck(shardId)
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
