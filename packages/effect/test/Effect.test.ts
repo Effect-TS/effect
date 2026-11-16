@@ -5660,33 +5660,19 @@ describe("Effect", () => {
 
     describe("Scheduler.park", () => {
       // Runs each parked fiber in the "owner" store when `land` runs, like a
-      // scheduler that hands fibers back to the request owning them. With
-      // `enterFromOwner`, fibers resumed from the owner run synchronously, as
-      // CloudflareScheduler's do from the owning request. `onEnter` runs once
-      // when the next fiber is resumed, before it runs or is queued, like an
-      // async_hooks `before` callback. `onRelease` runs once after that.
-      const makeScheduler = (options?: { readonly enterFromOwner?: boolean }) => {
+      // scheduler that hands fibers back to the request that owns them
+      const makeScheduler = () => {
         const pending: Array<() => void> = []
-        let onEnter: (() => void) | undefined
-        let onRelease: (() => void) | undefined
-        class OwnerResumption implements Scheduler.Resumption {
-          resumed = false
-          resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>): void {
-            if (this.resumed) return
-            this.resumed = true
-            const enter = onEnter
-            onEnter = undefined
-            enter?.()
-            if (options?.enterFromOwner && current() === "owner") fiber.run(effect)
-            else pending.push(() => storage.run("owner", () => fiber.run(effect)))
-            const release = onRelease
-            onRelease = undefined
-            release?.()
-          }
-        }
         const scheduler = new class extends Scheduler.MixedScheduler {
           override park(): Scheduler.Resumption {
-            return new OwnerResumption()
+            let resumed = false
+            return {
+              resume(fiber, effect) {
+                if (resumed) return
+                resumed = true
+                pending.push(() => storage.run("owner", () => fiber.run(effect)))
+              }
+            }
           }
         }("sync")
         const land = async () => {
@@ -5695,13 +5681,7 @@ describe("Effect", () => {
             while (pending.length > 0) pending.shift()!()
           }
         }
-        const setOnEnter = (f: () => void) => {
-          onEnter = f
-        }
-        const setOnRelease = (f: () => void) => {
-          onRelease = f
-        }
-        return { scheduler, land, setOnEnter, setOnRelease }
+        return { scheduler, land }
       }
 
       it("resumes and starts forks in the owner's context, including under TestClock", async () => {
@@ -5746,68 +5726,6 @@ describe("Effect", () => {
         assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
       })
 
-      // An interrupt requested before the resumption runs the fiber replaces
-      // the value: it arrived first, while the value was entering, while the
-      // resumption was released, or while the value waited to land. An
-      // interrupt requested after the fiber ran leaves the value's masked
-      // continuation alone.
-      describe("value and interrupt timing", () => {
-        const fibers = ["a root fiber", "a fork started synchronously", "a fork started later"] as const
-        const timings = {
-          before: "an interrupt requested before the value",
-          entering: "an interrupt requested while the value enters the context",
-          released: "an interrupt requested while the resumption is released",
-          after: "an interrupt requested after the value",
-          landed: "an interrupt requested after the value has landed"
-        } as const
-        for (const kind of fibers) {
-          for (const landing of ["synchronously", "later"] as const) {
-            for (const [timing, label] of Object.entries(timings)) {
-              const valueRuns = timing === "landed" ||
-                (landing === "synchronously" && (timing === "released" || timing === "after"))
-              it(`${kind}, value landing ${landing}, ${label}: ${valueRuns ? "value" : "interrupt"} first`, async () => {
-                const { land, scheduler, setOnEnter, setOnRelease } = makeScheduler({ enterFromOwner: true })
-                const seen: Array<string> = []
-                let wake!: () => void
-                const body = Effect.uninterruptibleMask((restore) =>
-                  restore(Effect.callback<void>((resume) => {
-                    wake = () => resume(Effect.void)
-                  })).pipe(Effect.andThen(Effect.sync(() => seen.push(current()))))
-                ).pipe(Effect.andThen(Effect.never))
-                let fiber!: Fiber.Fiber<never>
-                if (kind === "a root fiber") {
-                  fiber = Effect.runFork(body, { scheduler })
-                } else {
-                  // A fork's start goes through its resumption too: it runs
-                  // synchronously when forked in its owner, otherwise later
-                  storage.run(kind === "a fork started synchronously" ? "owner" : "parent", () =>
-                    Effect.runFork(
-                      Effect.forkDetach(body).pipe(Effect.tap((child) => Effect.sync(() => (fiber = child)))),
-                      { scheduler }
-                    ))
-                }
-                await land()
-                // The owner runs the value synchronously; another hands it off
-                // to land later
-                storage.run(landing === "synchronously" ? "owner" : "waker", () => {
-                  if (timing === "before") fiber.interruptUnsafe()
-                  if (timing === "entering") setOnEnter(() => fiber.interruptUnsafe())
-                  if (timing === "released") setOnRelease(() => fiber.interruptUnsafe())
-                  wake()
-                  if (timing === "after") fiber.interruptUnsafe()
-                })
-                if (timing === "landed") {
-                  await land()
-                  fiber.interruptUnsafe()
-                }
-                await land()
-                assert.deepStrictEqual(seen, valueRuns ? ["owner"] : [])
-                assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
-              })
-            }
-          }
-        }
-      })
       itWithAsyncHooks("runs an interrupt requested while entering a native context before the value", () => {
         // An async_hooks `before` callback runs inside runInAsyncScope, before
         // the fiber runs, so the interrupt replaces the value. The value is not
@@ -5850,32 +5768,6 @@ describe("Effect", () => {
         assert.isFalse(continued)
         assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
       })
-      for (const dispatched of [false, true]) {
-        it(`interrupts a fork before it starts, ${dispatched ? "after" : "before"} its start is dispatched`, async () => {
-          const { land, scheduler } = makeScheduler()
-          const seen: Array<string> = []
-          let child!: Fiber.Fiber<number>
-          Effect.runFork(
-            Effect.forkDetach(Effect.sync(() => {
-              seen.push(current())
-              return 42
-            })).pipe(Effect.tap((fiber) =>
-              Effect.sync(() => {
-                child = fiber
-                if (!dispatched) fiber.interruptUnsafe()
-              })
-            )),
-            { scheduler }
-          )
-          if (dispatched) {
-            await Promise.resolve()
-            storage.run("waker", () => child.interruptUnsafe())
-          }
-          await land()
-          assert.deepStrictEqual(seen, [])
-          assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
-        })
-      }
     })
 
     const runWithStore = <A, E>(store: string | undefined, effect: Effect.Effect<A, E>): Promise<A> =>

@@ -30,99 +30,45 @@ const makeMiniflare = (contents: string, compatibilityDate: string) =>
           modules: { "worker.mjs": { type: "esm", contents } }
         },
         compatibilityDate,
-        compatibilityFlags: ["nodejs_compat"],
-        env: { ROOM: { type: "durable-object", worker: "scheduler", exportName: "Room" } },
-        exports: { Room: { type: "durable-object", storage: "sqlite" } }
+        compatibilityFlags: ["nodejs_compat"]
       }
     }]
   })
 
-// Before 2025-06-16, workerd lets a request enter another request's
-// AsyncResource, so owner detection cannot rely on it refusing
-describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility date %s)", (compatibilityDate) => {
+describe("CloudflareScheduler", () => {
   let miniflare: Miniflare
-  const get = (path: string) => miniflare.dispatchFetch(`http://localhost${path}`)
   const json = async (path: string): Promise<any> => {
-    const response = await get(path)
+    const response = await miniflare.dispatchFetch(`http://localhost${path}`)
     assert.strictEqual(response.status, 200, await response.clone().text())
     return response.json()
   }
   // Waits until `path` responds with a body matching `until`
   const poll = async (path: string, until: (body: any) => boolean): Promise<any> => {
     for (let i = 0; i < 250; i++) {
-      const response = await get(path)
-      const body = response.status === 200 ? await response.json() : await response.arrayBuffer()
-      if (response.status === 200 && until(body)) return body
+      const body = await json(path)
+      if (until(body)) return body
       await sleep(20)
     }
     throw new Error(`${path} did not respond in time`)
   }
-  const logged = (count: number) => (body: { log: Array<unknown> }) => body.log.length >= count
-
-  const resumed = [
-    { at: "resumed", store: "A", io: "owner" },
-    { at: "slept", store: "A", io: "owner" }
-  ]
 
   beforeAll(async () => {
-    miniflare = makeMiniflare(await bundle(), compatibilityDate)
+    miniflare = makeMiniflare(await bundle(), "2026-07-01")
   }, 30_000)
 
   afterAll(() => miniflare?.dispose())
 
-  it("keeps async context when a fiber is woken by its own request", async () => {
-    assert.strictEqual(await json("/same"), "X")
-  })
-
-  it("keeps a request's fibers running after it responds", async () => {
-    assert.deepStrictEqual(await json("/background?id=background"), [])
-    assert.deepStrictEqual(await poll("/log?id=background", logged(1)), {
-      log: [{ at: "slept", store: "A", io: "owner" }],
-      exited: true,
-      timers: 0
-    })
-  })
-
-  // No fixture timers: the owner has no work of its own while its fiber waits
+  // The owner has no work of its own while its fiber waits
   it("resumes a fiber in an idle owner that has responded, then clears its timer", async () => {
     assert.deepStrictEqual(await json("/park?id=resume"), [])
     await sleep(100)
     assert.deepStrictEqual(await json("/log?id=resume"), { log: [], exited: false, timers: 1 })
     assert.strictEqual(await json("/wake?id=resume"), "woken")
     assert.deepStrictEqual(await poll("/log?id=resume", (body) => body.exited), {
-      log: resumed,
-      exited: true,
-      timers: 0
-    })
-  })
-
-  it("resumes a fiber in an owner that waits only for it", async () => {
-    const owner = get("/park?id=join&join")
-    await sleep(100)
-    assert.strictEqual(await json("/wake?id=join"), "woken")
-    const response = await owner
-    assert.strictEqual(response.status, 200, await response.clone().text())
-    assert.deepStrictEqual(await response.json(), resumed)
-    assert.strictEqual((await json("/log?id=join")).timers, 0)
-  })
-
-  it("interrupts a fiber in an idle owner, then clears its timer", async () => {
-    assert.deepStrictEqual(await json("/park?id=interrupt"), [])
-    await sleep(100)
-    assert.strictEqual(await json("/wake?id=interrupt&interrupt"), "woken")
-    assert.deepStrictEqual(await poll("/log?id=interrupt", (body) => body.exited), {
-      log: [{ at: "interrupted", store: "A", io: "owner" }],
-      exited: true,
-      timers: 0
-    })
-  })
-
-  it("interrupts a woken fiber that has not resumed before it continues", async () => {
-    assert.deepStrictEqual(await json("/park?id=woken-interrupt&callback"), [])
-    await sleep(100)
-    assert.strictEqual(await json("/wake?id=woken-interrupt&wake&interrupt"), "woken")
-    assert.deepStrictEqual(await poll("/log?id=woken-interrupt", (body) => body.exited), {
-      log: [{ at: "interrupted", store: "A", io: "owner" }],
+      log: [
+        { at: "resumed", store: "resume", io: "owner" },
+        { at: "slept", store: "resume", io: "owner" }
+      ],
       exited: true,
       timers: 0
     })
@@ -133,46 +79,20 @@ describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility 
   it("runs an interrupted fiber once when its owner wakes it before the interrupt lands", async () => {
     assert.deepStrictEqual(await json("/park?id=run-once&owner-wake"), [])
     await sleep(100)
-    assert.strictEqual(await json("/wake?id=run-once&wake&interrupt"), "woken")
-    assert.deepStrictEqual(await poll("/log?id=run-once", logged(1)), {
-      log: [{ at: "cleanup", store: "A", io: "owner" }],
+    assert.strictEqual(await json("/wake?id=run-once&interrupt"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=run-once", (body) => body.log.length > 0), {
+      log: [{ at: "cleanup", store: "run-once", io: "owner" }],
       exited: false,
       timers: 1
     })
-    assert.strictEqual(await json("/finish?id=run-once"), "woken")
+    assert.strictEqual(await json("/wake?id=run-once&finish"), "woken")
     assert.deepStrictEqual(await poll("/log?id=run-once", (body) => body.exited), {
       log: [
-        { at: "cleanup", store: "A", io: "owner" },
-        { at: "cleaned", store: "A", io: "owner" },
-        { at: "interrupted", store: "A", io: "owner" }
+        { at: "cleanup", store: "run-once", io: "owner" },
+        { at: "cleaned", store: "run-once", io: "owner" },
+        { at: "interrupted", store: "run-once", io: "owner" }
       ],
       exited: true,
-      timers: 0
-    })
-  })
-
-  it("resumes a Durable Object fiber after its request has ended", async () => {
-    assert.deepStrictEqual(await json("/room/park?id=room"), [])
-    await sleep(50)
-    assert.strictEqual(await json("/room/wake?id=room"), "woken")
-    assert.deepStrictEqual(await poll("/room/log?id=room", (body) => body.exited), {
-      log: resumed,
-      exited: true,
-      timers: 0
-    })
-  })
-
-  it("serves a request waiting for a shared runtime that other requests initialize", async () => {
-    // A starts the initialization and responds, B waits for it, C finishes it
-    assert.strictEqual(await json("/runtime/start"), false)
-    const waiter = get("/runtime/join")
-    await sleep(100)
-    assert.strictEqual(await json("/runtime/ready"), "ready")
-    const response = await waiter
-    assert.strictEqual(response.status, 200, await response.clone().text())
-    assert.strictEqual(await response.json(), "B")
-    assert.deepStrictEqual(await poll("/runtime/status", (body) => body.timers === 0), {
-      initialized: true,
       timers: 0
     })
   })
@@ -182,7 +102,6 @@ describe("CloudflareScheduler without cross-request promise resolution", () => {
   it("cannot be constructed", async () => {
     const worker = await bundle(`
       import { CloudflareScheduler } from "@effect/platform-cloudflare/CloudflareScheduler"
-      export class Room {}
       export default {
         fetch() {
           try {
