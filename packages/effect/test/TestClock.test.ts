@@ -14,7 +14,7 @@ import { vi } from "vitest"
 describe("TestClock", () => {
   describe("warnings", { concurrent: false }, () => {
     for (const warning of ["not advancing the test clock", "still running without suspending"] as const) {
-      it(`warnings bypass TestConsole - ${warning}`, () =>
+      it.live(`warnings bypass TestConsole - ${warning}`, () =>
         Effect.gen(function*() {
           const output: Array<unknown> = []
           yield* Effect.acquireRelease(
@@ -50,11 +50,9 @@ describe("TestClock", () => {
           assert.deepStrictEqual(captured, ["ordinary output"])
           assert.isTrue(containsWarning(output))
         }).pipe(
-          Effect.scoped,
-          // The environment `it.effect` provides, with a shorter warning delay. It is built
-          // outside the test so the clock captures the real console, not TestConsole.
-          Effect.provide(Layer.mergeAll(TestConsole.layer, TestClock.layer({ warningDelay: "10 millis" }))),
-          Effect.runPromise
+          // The environment `it.effect` provides, with a shorter warning delay. `it.live`
+          // starts without TestConsole, so the clock captures the real console.
+          Effect.provide(Layer.mergeAll(TestConsole.layer, TestClock.layer({ warningDelay: "10 millis" })))
         ))
     }
   })
