@@ -49,6 +49,26 @@ export interface Scheduler {
  *
  * **Details**
  *
+ * A fiber parks when it stops running with more to do: it suspended, or it was
+ * forked and its start is scheduled. `park` returns the state of that one
+ * wait, such as the context the fiber parked in. While the fiber is parked,
+ * everything that would make it run again is passed to `resume` with that
+ * state: the effect its wait produced, its start, or an interrupt. `resume`
+ * runs the fiber once, with the first entry, by calling `fiber.run(effect)`,
+ * either synchronously or later, in whatever context it chooses. Entries that
+ * arrive before then can be ignored. The scheduler that parked a fiber also
+ * resumes it, even if the fiber has moved to another scheduler since.
+ *
+ * An interrupt requested while the fiber is parked is recorded on the fiber
+ * before it reaches `resume`, the same way as one requested while the fiber
+ * is running. The fiber acts on it at its first interruptible step, so it
+ * replaces the effect `fiber.run` is called with, and a fork interrupted
+ * before it starts never runs. Running the fiber with an entry therefore does
+ * not guarantee the entry is delivered: a value woken before an interrupt but
+ * run after it is dropped. A callback that hands a resource to the fiber keeps
+ * owning it until the fiber runs, so it needs cancellation cleanup to release
+ * a resource that is dropped.
+ *
  * A scheduler is a `ParkingScheduler` when it has a `park` property; the
  * fiber checks this when its scheduler changes. Fibers of any other scheduler
  * park the default way: where `node:async_hooks` is available, as in Node.js,
@@ -58,73 +78,37 @@ export interface Scheduler {
  *
  * **Gotchas**
  *
- * A scheduler that wraps another one must define `park` only when the wrapped
- * scheduler does, so that the wrapped scheduler's choice is kept.
+ * - If `fiber.run` is never called, the fiber never resumes and cannot be
+ *   interrupted.
+ * - A scheduler that wraps another one must define `park` and `resume` only
+ *   when the wrapped scheduler does, and forward both, so that the wrapped
+ *   scheduler's choice is kept.
  *
  * @stability unstable
  * @category models
  * @since 4.2.0
  */
-export interface ParkingScheduler extends Scheduler {
+export interface ParkingScheduler<Parked = unknown> extends Scheduler {
   /**
-   * Called when a fiber stops running with more to do: it suspended, or it was
-   * forked and its start is scheduled. The returned `Resumption` decides where
-   * and when the fiber runs next.
+   * Called when a fiber parks. Returns the state of this wait, which is passed
+   * to `resume`.
    *
    * @stability unstable
    * @since 4.2.0
    */
-  park(fiber: Fiber.Fiber<unknown, unknown>): Resumption
-}
-
-/**
- * Owns a parked fiber until it runs it, returned by `ParkingScheduler.park`.
- *
- * **When to use**
- *
- * Use to implement `ParkingScheduler.park`.
- *
- * **Details**
- *
- * While a fiber is parked, everything that would make it run again is passed
- * to `resume`: the effect its wait produced, its start, or an interrupt. The
- * resumption runs the fiber once, with the first entry, by calling
- * `fiber.run(effect)`, either synchronously or later, in whatever context it
- * chooses. Entries that arrive before then can be ignored.
- *
- * An interrupt requested while the fiber is parked is recorded on the fiber
- * before it reaches `resume`, the same way as one requested while the fiber
- * is running. The fiber acts on it at its first interruptible step, so it
- * replaces the effect `fiber.run` is called with, and a fork interrupted
- * before it starts never runs.
- *
- * Running the fiber with an entry therefore does not guarantee the entry is
- * delivered. A value woken before an interrupt but run after it is dropped,
- * including a value produced in another request that lands later. A callback
- * that hands a resource to the fiber keeps owning it until the fiber runs, so
- * it needs cancellation cleanup to release a resource that is dropped.
- *
- * **Gotchas**
- *
- * If `fiber.run` is never called, the fiber never resumes and cannot be
- * interrupted.
- *
- * @stability unstable
- * @category models
- * @since 4.2.0
- */
-export interface Resumption {
+  park(fiber: Fiber.Fiber<unknown, unknown>): Parked
   /**
-   * Resumes the parked fiber with the selected effect in its scheduler context.
+   * Called with each entry for a fiber this scheduler parked, and the state
+   * `park` returned for that wait. Runs the fiber once, with the first entry.
    *
    * @stability unstable
    * @since 4.2.0
    */
-  resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
+  resume(fiber: ParkedFiber, parked: Parked, effect: Effect<unknown, unknown>): void
 }
 
 /**
- * A parked fiber, as passed to `Resumption.resume`.
+ * A parked fiber, as passed to `ParkingScheduler.resume`.
  *
  * **Details**
  *
