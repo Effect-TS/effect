@@ -233,7 +233,11 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   return { client, set }
 }
 
-const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"]) => {
+interface LockChecks {
+  held: string | undefined
+}
+
+const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Service"], lockChecks: LockChecks) => {
   const gate = Latch.makeUnsafe(true)
   const refreshPaused = Latch.makeUnsafe()
   const syncPaused = Latch.makeUnsafe()
@@ -264,6 +268,10 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
     ),
     refresh: (address, shardIds) => {
       const shards = Array.from(shardIds)
+      if (shards.length === 1 && shards[0].toString() === lockChecks.held) {
+        lockChecks.held = undefined
+        return Effect.never
+      }
       return waitWhileFrozen(refreshPaused, storage.refresh(address, shards), () => shards)
     },
     release: (address, shardId) => mode === "killed" ? Effect.void : storage.release(address, shardId),
@@ -444,6 +452,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<RunnerEntry> = []
   const socketController = makeSocketController()
+  const lockChecks: LockChecks = { held: undefined }
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
     scope: Scope.Closeable,
@@ -493,7 +502,10 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     const runnerDatabase = Context.add(database, SqlClient.SqlClient, lockFault.client)
     const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig, runnerDatabase)
     yield* Scope.addFinalizer(scope, lockFault.set("clear"))
-    const controller = makeRunnerStorageController(Context.get(rawStorageContext, RunnerStorage.RunnerStorage))
+    const controller = makeRunnerStorageController(
+      Context.get(rawStorageContext, RunnerStorage.RunnerStorage),
+      lockChecks
+    )
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
@@ -571,6 +583,32 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     const messages = sql(`${prefix}_messages`)
     return sql`INSERT INTO ${messages} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid)
   }
+
+  // The settings that decide whether a commit waits for the disk. A slow disk
+  // flush can hold a lock refresh past `shardLockRefreshInterval`, which fences
+  // a reply and replays its request, so the test databases skip them.
+  const diskSyncSettings = Effect.fnUntraced(function*() {
+    const rows = options.backend === "pg"
+      ? yield* sql<{ readonly name: string; readonly value: string }>`
+        SELECT name, setting AS value FROM pg_settings WHERE name = 'fsync'
+      `
+      : yield* sql<{ readonly name: string; readonly value: string }>`
+        SELECT variable_name AS name, variable_value AS value
+        FROM performance_schema.global_variables
+        WHERE variable_name IN ('innodb_flush_log_at_trx_commit', 'sync_binlog')
+        ORDER BY variable_name
+      `
+    return Object.fromEntries(rows.map((row) => [row.name, String(row.value)]))
+  })
+
+  // Holds the next lock check of exactly `shardId`, the refresh a runner
+  // makes before it stores the final reply of a persisted request on that
+  // shard, until the runner gives up on it after `shardLockRefreshInterval`.
+  // The runner's regular lock refreshes are not held.
+  const holdShardLockCheck = (shardId: ShardId.ShardId) =>
+    Effect.sync(() => {
+      lockChecks.held = shardId.toString()
+    })
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
@@ -702,10 +740,12 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     clientSharding,
     cutSocket,
     diagnostics,
+    diskSyncSettings,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
     faultLock,
     freeze,
     getClient,
+    holdShardLockCheck,
     insertMessage,
     kill,
     lockMode: options.lockMode ?? "advisory",

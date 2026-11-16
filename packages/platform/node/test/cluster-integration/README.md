@@ -12,6 +12,12 @@ Docker must be running. Vitest global setup starts one `postgres:alpine` and one
 `mysql:lts` container for the entire project. Every cluster uses a unique table
 prefix, and every runner listens on an operating-system-assigned port.
 
+Both databases run with commits that skip the disk flush (PostgreSQL
+`fsync=off`, MySQL `innodb_flush_log_at_trx_commit=0` and `sync_binlog=0`). A
+slow flush can hold a lock refresh past the 500 ms `shardLockRefreshInterval`;
+the runner then fences the reply and the request replays, which breaks the
+exactly-once handler counts. `Smoke.test.ts` checks these settings.
+
 ## Harness
 
 `harness.ts` exposes:
@@ -23,6 +29,8 @@ prefix, and every runner listens on an operating-system-assigned port.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
 - `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection.
 - `cutSocket(runner, { peer, direction })` to close one inbound or outbound client/runner connection without stopping either endpoint.
+- `holdShardLockCheck(shardId)` to hold the next lock check of that one shard, the refresh a runner makes before storing a persisted reply, until the runner gives up on it. Regular lock refreshes are not held.
+- `diskSyncSettings()` to read the database settings that decide whether a commit waits for the disk.
 - `insertMessage(row)` to inject a raw row into this cluster's prefixed message table.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.
 - `clientSharding` and `ownersOfShard` for direct shard ownership assertions.
