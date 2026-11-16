@@ -17,7 +17,7 @@ export const channel = "C0CH1LGJ4F3"
 
 export const checkOptions = { platform: "slack", parseMention: SlackChat.parseMention }
 
-export interface RecordedCall {
+interface RecordedCall {
   readonly method: string
   readonly label?: string
   readonly request: Record<string, unknown>
@@ -26,16 +26,6 @@ export interface RecordedCall {
 
 export const fixture = (name: string): { readonly calls: ReadonlyArray<RecordedCall>; readonly [key: string]: any } =>
   JSON.parse(fs.readFileSync(new URL(`./fixtures/recorded/${name}.json`, import.meta.url), "utf8"))
-
-/** Every message object a fixture's reads returned, by ts. */
-export const recordedMessages = (name: string): Map<string, any> => {
-  const out = new Map<string, any>()
-  for (const call of fixture(name).calls) {
-    const messages = call.response?.messages
-    if (Array.isArray(messages)) { for (const message of messages) out.set(message.ts, message) }
-  }
-  return out
-}
 
 /**
  * An `event_callback` envelope built around a message as a Web API read
@@ -73,7 +63,7 @@ export interface FakeCall {
   readonly params: Record<string, any>
 }
 
-export type Answer =
+type Answer =
   | Record<string, unknown>
   | { readonly status: number; readonly headers?: Record<string, string>; readonly body?: unknown }
   | typeof hang

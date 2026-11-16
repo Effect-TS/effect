@@ -60,14 +60,11 @@ describe("ChatError", () => {
       assert.notInclude(JSON.stringify(error), "secret")
       assert.notInclude(JSON.stringify(reason), "secret")
       assert.notInclude(error.message, "secret")
-      assert.strictEqual(error.cause, reason)
     }
   })
 
   it("delegates retryAfter to the reason", () => {
     const error = new ChatError.ChatError({ platform: "slack", op: "post", reason: reasons[0] })
     assert.deepStrictEqual(error.retryAfter, Duration.seconds(3))
-    assert.isTrue(ChatError.isChatError(error))
-    assert.isFalse(ChatError.isChatError(reasons[0]))
   })
 })

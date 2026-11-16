@@ -15,11 +15,6 @@ export const botUserId = "1564742987727118426"
 export const tim = "449108784879763458"
 export const guild = "840178841540362250"
 export const scratch = "1570607253965246584"
-export const test = "1570605581192929301"
-export const role = "1570607256838479964"
-export const webhook = "1570607260156297307"
-
-export const checkOptions = { platform: "discord", parseMention: DiscordChat.parseMention }
 
 export interface Dispatch {
   readonly receivedAt?: string
@@ -31,10 +26,7 @@ export interface Dispatch {
 export const events = (name: string): ReadonlyArray<Dispatch> =>
   JSON.parse(fs.readFileSync(new URL(`./fixtures/events/${name}.json`, import.meta.url), "utf8")).dispatches
 
-export const eventFixtures = (): ReadonlyArray<string> =>
-  fs.readdirSync(new URL("./fixtures/events", import.meta.url)).map((file) => file.replace(/\.json$/, ""))
-
-export interface RecordedCall {
+interface RecordedCall {
   readonly step: string
   readonly method: string
   readonly path: string
@@ -83,7 +75,7 @@ export const answer = (call: RecordedCall): Effect.Effect<any, unknown> =>
 type Handler = (...args: Array<any>) => Effect.Effect<any, unknown>
 
 export interface Fake {
-  readonly calls: Array<{ readonly method: string; readonly args: ReadonlyArray<any>; readonly files?: number }>
+  readonly calls: Array<{ readonly method: string; readonly args: ReadonlyArray<any> }>
   readonly called: (method: string) => ReadonlyArray<ReadonlyArray<any>>
   readonly service: DiscordREST["Service"]
 }
@@ -93,20 +85,13 @@ export interface Fake {
  * method with no handler dies, so a test sees any call it didn't expect.
  */
 export const makeFake = (handlers: Record<string, Handler>): Fake => {
-  const calls: Array<{ method: string; args: ReadonlyArray<any>; files?: number }> = []
-  let files: number | undefined
+  const calls: Array<{ method: string; args: ReadonlyArray<any> }> = []
   const service = new Proxy({}, {
     get: (_, method: string) => {
-      if (method === "withFiles") {
-        return (list: ReadonlyArray<unknown>) => (effect: Effect.Effect<any, any>) =>
-          Effect.suspend(() => {
-            files = list.length
-            return Effect.ensuring(effect, Effect.sync(() => (files = undefined)))
-          })
-      }
+      if (method === "withFiles") return () => (effect: Effect.Effect<any, any>) => effect
       return (...args: Array<any>) =>
         Effect.suspend(() => {
-          calls.push({ method, args, ...(files === undefined ? {} : { files }) })
+          calls.push({ method, args })
           const handler = handlers[method]
           return handler === undefined ? Effect.die(new Error(`unexpected ${method}`)) : handler(...args)
         })
@@ -140,9 +125,10 @@ const webhookEdit = (fake: Fake, request: HttpClientRequest.HttpClientRequest, p
 
 /**
  * `DiscordChat.layer` over a fake, with `Chat` and an `HttpClient` that
- * answers `download`, and an original response's edit from the fake.
+ * answers an original response's edit from the fake, and any other request,
+ * an attachment's download, from its `download` handler.
  */
-export const discordLayer = (fake: Fake, options?: { readonly download?: Uint8Array | undefined }) =>
+export const discordLayer = (fake: Fake) =>
   DiscordChat.layer.pipe(
     Layer.provideMerge(Chat.layer),
     Layer.provide(Layer.succeed(
@@ -157,7 +143,9 @@ export const discordLayer = (fake: Fake, options?: { readonly download?: Uint8Ar
         const path = request.method === "PATCH" ? originalResponse.exec(request.url) : null
         return path !== null
           ? webhookEdit(fake, request, path)
-          : Effect.succeed(HttpClientResponse.fromWeb(request, new Response(new Uint8Array(options?.download ?? []))))
+          : (fake.service as any).download(request.url).pipe(
+            Effect.map((bytes: Uint8Array<ArrayBuffer>) => HttpClientResponse.fromWeb(request, new Response(bytes)))
+          )
       })
     ))
   )

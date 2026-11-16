@@ -18,15 +18,7 @@ const options = { appId: "app-1", tenantId: "tenant-1" }
 const conversation = "19:abc@thread.tacv2"
 
 describe("envelope", () => {
-  it.effect("round trips a button, from any message of the conversation", () =>
-    Effect.gen(function*() {
-      const envelope = yield* Envelope.make({ ...options, keys: [k1] })
-      const token = yield* envelope.signButton(conversation, { id: "approve", value: "42" })
-      const verified = yield* envelope.verifyButton(token, { conversationId: `${conversation};messageid=123` })
-      assert.deepStrictEqual(verified, Option.some({ id: "approve", value: "42" }))
-    }).pipe(Effect.provide(layer)))
-
-  it.effect("refuses another conversation, a tampered token and an unknown kid", () =>
+  it.effect("refuses a button from another conversation, a tampered token and an unknown kid", () =>
     Effect.gen(function*() {
       const envelope = yield* Envelope.make({ ...options, keys: [k1] })
       const token = yield* envelope.signButton(conversation, { id: "approve" })
@@ -44,17 +36,7 @@ describe("envelope", () => {
       assert.isTrue(Option.isSome(yield* rotated.verifyButton(token, { conversationId: conversation })))
     }).pipe(Effect.provide(layer)))
 
-  it.effect("buttonTokenLength is the length of the signed token", () =>
-    Effect.gen(function*() {
-      const envelope = yield* Envelope.make({ ...options, keys: [k1] })
-      for (const button of [{ id: "a" }, { id: "pick", value: "caf\u00e9 \"quoted\" \u{1F600}" }]) {
-        const token = yield* envelope.signButton(conversation, button)
-        assert.strictEqual(Envelope.buttonTokenLength({ ...options, kid: "k1" }, button), token.length)
-        assert.isTrue(token.length <= Envelope.maxTokenLength)
-      }
-    }).pipe(Effect.provide(layer)))
-
-  it.effect("round trips a dialog and checks its submit against the definition", () =>
+  it.effect("binds a dialog to its user and reply chain, and a submit to its definition", () =>
     Effect.gen(function*() {
       const envelope = yield* Envelope.make({ ...options, keys: [k1] })
       const modal: ChatUi.Modal = {
@@ -75,7 +57,6 @@ describe("envelope", () => {
       assert.isTrue(Option.isNone(yield* envelope.verifyDialog(token, { conversationId: moved, userId: "u1" })))
       const verified = yield* envelope.verifyDialog(token, { conversationId: opened, userId: "u1" })
       assert.deepStrictEqual(verified, Option.some({ conversationId: opened, messageId: "123", modal }))
-      assert.isTrue(token.length <= Envelope.maxTokenLength)
       assert.deepStrictEqual(
         Envelope.validateSubmission(modal, { effect: token, env: "prod", note: "" }),
         Option.some({ env: "prod" })

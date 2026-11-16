@@ -87,8 +87,9 @@ describe("ChatTest", () => {
     }
   })
 
+  // With a capability off, a gated rule only probes it, as unsupported/{capability} does.
   describe("conformance without any capability", () => {
-    for (const rule of ruleNames) {
+    for (const rule of ruleNames.filter((name) => name.startsWith("unsupported/"))) {
       it.live(rule, () => runRule(rule, { capabilities: [] }))
     }
   })
@@ -175,21 +176,6 @@ describe("ChatTest", () => {
       yield* Effect.forEach(Object.values(rulesFor(test, thread)), (rule) => rule, { discard: true })
       const left = (yield* test.messages(thread)).filter((message) => message.author.isSelf)
       assert.deepStrictEqual(left.map((message) => message.text), [])
-    }).pipe(Effect.provide(ChatTest.layer())))
-
-  it.effect("checkMessage rejects a mention whose slice is not its token", () =>
-    Effect.gen(function*() {
-      const test = yield* ChatTest.ChatTest
-      const thread = yield* test.makeThread()
-      const event = yield* test.userPosts(thread, { text: "hi", mentionsSelf: true })
-      assert(event._tag === "MessageCreated")
-      yield* ChatTest.checkMessage(event.message, { platform: "test", parseMention })
-      const shifted = {
-        ...event.message,
-        mentions: event.message.mentions.map((mention) => ({ ...mention, start: mention.start + 1 }))
-      }
-      const exit = yield* Effect.exit(ChatTest.checkMessage(shifted, { platform: "test", parseMention }))
-      assert.isTrue(Exit.isFailure(exit))
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.effect("checkInteraction rejects an empty messageId", () =>

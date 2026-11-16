@@ -24,28 +24,21 @@ const portable = (name: string) =>
   name === "unsupported/commands" ||
   name === "unsupported/ephemeral"
 
-describe("conformance over the stubbed DiscordREST", () => {
-  const names = Object.keys(conformance({
+const rules = (discord: ReturnType<typeof makeDiscord>) =>
+  conformance({
     platform: "discord",
     thread: DiscordChat.thread(scratch),
     userPosts: () => Effect.die("unused"),
     parseMention: DiscordChat.parseMention,
-    refuseFiles: () => Effect.void,
-    interactions: { click: () => Effect.void, submit: () => Effect.void, command: () => Effect.void }
-  })).filter(portable)
+    refuseFiles: discord.refuseFiles,
+    interactions: discord.interactions
+  })
 
-  for (const name of names) {
+describe("conformance over the stubbed DiscordREST", () => {
+  for (const name of Object.keys(rules(makeDiscord())).filter(portable)) {
     it.effect(name, () => {
       const discord = makeDiscord()
-      const rules = conformance({
-        platform: "discord",
-        thread: DiscordChat.thread(scratch),
-        userPosts: () => Effect.die("unused"),
-        parseMention: DiscordChat.parseMention,
-        refuseFiles: discord.refuseFiles,
-        interactions: discord.interactions
-      })
-      return Effect.andThen(discord.bind, rules[name]).pipe(Effect.provide(discordLayer(discord.fake)))
+      return Effect.andThen(discord.bind, rules(discord)[name]).pipe(Effect.provide(discordLayer(discord.fake)))
     })
   }
 })

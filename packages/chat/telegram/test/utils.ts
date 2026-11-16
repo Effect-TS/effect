@@ -13,15 +13,10 @@ import * as Redacted from "effect/Redacted"
 /** A marker token: no error, span or log may contain it. */
 export const token = "123456789:AAH-marker_TOKEN_must_not_leak"
 export const botId = "123456789"
-export const username = "effect_bot"
+const username = "effect_bot"
 export const chatId = -1001234567890
 export const thread = TelegramChat.thread(chatId)
-export const user = { id: 4242, is_bot: false, first_name: "Ada" }
-
-export interface Call {
-  readonly method: string
-  readonly body: any
-}
+const user = { id: 4242, is_bot: false, first_name: "Ada" }
 
 const ok = (result: unknown) => ({ status: 200, body: { ok: true, result } })
 
@@ -56,7 +51,7 @@ const readBody = (request: HttpClientRequest.HttpClientRequest): any => {
  * one-shot answers for a method.
  */
 export const makeApi = () => {
-  const calls: Array<Call> = []
+  const calls: Array<{ readonly method: string; readonly body: any }> = []
   const messages = new Map<number, any>()
   const next = new Map<string, Answer>()
   /** The batches `getUpdates` gives, in order. Once they run out it never answers. */
@@ -91,8 +86,6 @@ export const makeApi = () => {
       case "getFile":
         return ok({ file_id: body.file_id, file_unique_id: "u", file_size: 5, file_path: "documents/file_1.txt" })
       case "answerCallbackQuery":
-      case "setWebhook":
-      case "setMyCommands":
         return ok(true)
       default:
         return apiError(404, "Not Found")
@@ -136,12 +129,9 @@ export const makeApi = () => {
 
 export type FakeApi = ReturnType<typeof makeApi>
 
-/** Every capability on, as the conformance suite and the interaction tests want. */
-export const unverified = { files: true, buttons: true, commands: true }
-
-/** `Chat`, `Registry` and the adapter on a fake Bot API. */
-export const telegramLayer = (api: FakeApi, options?: { readonly unverified?: TelegramChat.Unverified }) =>
-  TelegramChat.layer({ token: Redacted.make(token), unverified: options?.unverified ?? unverified }).pipe(
+/** `Chat`, `Registry` and the adapter on a fake Bot API, with every capability on. */
+export const telegramLayer = (api: FakeApi) =>
+  TelegramChat.layer({ token: Redacted.make(token), unverified: { files: true, buttons: true, commands: true } }).pipe(
     Layer.provideMerge(Chat.layer),
     Layer.provide(api.layer)
   )
@@ -172,15 +162,9 @@ export const commandUpdate = (name: string, text = "", extra?: Record<string, un
   })
 
 /** A click on `data` from `user`, on the message as Telegram keeps it. */
-export const callbackUpdate = (message: Record<string, unknown> | undefined, data: string) => ({
+export const callbackUpdate = (message: Record<string, unknown>, data: string) => ({
   update_id: ++updateId,
-  callback_query: {
-    id: "cq" + updateId,
-    from: user,
-    chat_instance: "1",
-    data,
-    ...(message === undefined ? {} : { message })
-  }
+  callback_query: { id: "cq" + updateId, from: user, chat_instance: "1", data, message }
 })
 
 export const context = { botId, botUsername: username }

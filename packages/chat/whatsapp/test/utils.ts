@@ -91,7 +91,6 @@ export const makeGraph = () => {
   return {
     calls,
     messages,
-    media,
     next,
     sent: () => calls.filter((call) => call.path === `${phoneNumberId}/messages`).map((call) => call.body),
     layer: Layer.succeed(HttpClient.HttpClient, client)

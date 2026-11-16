@@ -171,71 +171,94 @@ describe("layerWebhook", () => {
       assert.strictEqual(yield* send(activity(), `Bearer ${yield* token()}`), 503)
       assert.strictEqual(events.length, 0)
     }).pipe(Effect.provide(crypto)))
+})
+
+describe("dialogs through layerWebhook", () => {
+  const interactionKey = Redacted.make(
+    { kty: "oct", kid: "k1", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const
+  )
+  const channel = "19:abc@thread.tacv2"
+  // A click on a card posted as a channel post: the root of its own reply chain.
+  const clicked = `${channel};messageid=123`
+  const modal: ChatUi.Modal = {
+    _tag: "Modal",
+    id: "deploy",
+    title: "Deploy",
+    elements: [
+      { _tag: "TextInput", id: "constructor", label: "Name", initial: "first" },
+      { _tag: "TextInput", id: "note", label: "Note", initial: "draft" }
+    ]
+  }
+
+  const open = Effect.fnUntraced(function*(opens: ChatUi.Modal) {
+    const submits: Array<ChatInteraction.ModalSubmitted> = []
+    const refusals: Array<ChatError> = []
+    const { exchange, token } = yield* setup({
+      teams: { interactionKeys: [interactionKey], modalButtons: ["open"], unverified: { buttons: true, modals: true } },
+      interactions: {
+        click: () => Effect.succeed(ChatInteraction.OpenModal.make({ modal: opens })),
+        submit: (event) =>
+          Effect.sync(() => {
+            submits.push(event)
+            return ChatInteraction.errors({ note: "Too short" })
+          }),
+        command: () => Effect.succeed(ChatInteraction.ack),
+        refused: (_, error) => Effect.sync(() => void refusals.push(error))
+      }
+    })
+    const bearer = `Bearer ${yield* token()}`
+    const invoke = (overrides: Record<string, unknown>) =>
+      exchange(
+        activity({
+          type: "invoke",
+          conversation: { id: clicked, conversationType: "channel", tenantId },
+          ...overrides
+        }),
+        bearer
+      ).pipe(Effect.flatMap((response) => Effect.promise((): Promise<any> => response.json())))
+    const envelope = yield* Envelope.make({ appId, tenantId, keys: [interactionKey] })
+    const button = yield* envelope.signButton(channel, { id: "open" })
+    const opened = yield* invoke({ name: "task/fetch", replyToId: "123", value: { data: { effect: button } } })
+    const dialog: string | undefined = opened?.task?.value?.card?.content?.actions?.[0]?.data?.effect
+    const submit = (values: Record<string, string>) =>
+      invoke({ name: "task/submit", value: { data: { effect: dialog ?? null, ...values } } })
+    return { dialog, refusals, submit, submits }
+  })
 
   it.effect("opens a dialog only when its whole signed token fits modalMetadataLength", () =>
     Effect.gen(function*() {
-      const interactionKey = Redacted.make(
-        { kty: "oct", kid: "k1", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" } as const
-      )
       // Short id and no metadata: the definition alone makes the token long.
-      const modal = (text: string): ChatUi.Modal => ({
-        _tag: "Modal",
-        id: "m",
-        title: "Modal",
-        elements: [{ _tag: "Text", text }, { _tag: "TextInput", id: "answer", label: "Answer" }]
+      const withText = (length: number): ChatUi.Modal => ({
+        ...modal,
+        elements: [{ _tag: "Text", text: "x".repeat(length) }, ...modal.elements]
       })
-      const refusals: Array<ChatError> = []
-      const { exchange, token } = yield* setup({
-        teams: {
-          interactionKeys: [interactionKey],
-          modalButtons: ["open"],
-          unverified: { buttons: true, modals: true }
-        },
-        interactions: {
-          click: (event) =>
-            Effect.succeed(ChatInteraction.OpenModal.make({ modal: modal("x".repeat(Number(event.value))) })),
-          submit: () => Effect.succeed(ChatInteraction.close),
-          command: () => Effect.succeed(ChatInteraction.ack),
-          refused: (_, error) => Effect.sync(() => void refusals.push(error))
-        }
-      })
-      const envelope = yield* Envelope.make({ appId, tenantId, keys: [interactionKey] })
-      const bearer = `Bearer ${yield* token()}`
-      const open = Effect.fnUntraced(function*(textLength: number) {
-        const button = yield* envelope.signButton("a:direct", { id: "open", value: String(textLength) })
-        const response = yield* exchange(
-          activity({
-            type: "invoke",
-            name: "task/fetch",
-            replyToId: "1800000000000",
-            value: { data: { effect: button } }
-          }),
-          bearer
-        )
-        const body = yield* Effect.promise(() => response.json())
-        return Schema.is(Schema.Struct({
-            task: Schema.Struct({
-              type: Schema.Literal("continue"),
-              value: Schema.Struct({
-                card: Schema.Struct({
-                  content: Schema.Struct({
-                    actions: Schema.Array(Schema.Struct({ data: Schema.Struct({ effect: Schema.String }) }))
-                  })
-                })
-              })
-            })
-          }))(body)
-          ? body.task.value.card.content.actions[0]?.data.effect
-          : undefined
-      })
+      const big = yield* open(withText(3_500))
+      assert.isUndefined(big.dialog)
+      assert.strictEqual(big.refusals[0]?.reason._tag, "TooLarge")
 
-      const big = yield* open(3_500)
-      assert.isUndefined(big)
-      assert.strictEqual(refusals[0]?.reason._tag, "TooLarge")
+      const small = yield* open(withText(1_000))
+      assert.isString(small.dialog)
+      assert.isAtMost(small.dialog!.length, modalMetadataLength)
+      assert.strictEqual(small.refusals.length, 0)
+    }).pipe(Effect.provide(crypto)))
 
-      const small = yield* open(1_000)
-      assert.isString(small)
-      assert.isAtMost(small!.length, modalMetadataLength)
-      assert.strictEqual(refusals.length, 1)
+  it.effect("a submit keeps the thread and message of the click", () =>
+    Effect.gen(function*() {
+      const { submit, submits } = yield* open(modal)
+      yield* submit({ constructor: "a", note: "b" })
+      assert.strictEqual(submits.length, 1)
+      assert.deepStrictEqual(submits[0].thread, TeamsChat.thread(channel))
+      assert.strictEqual(submits[0].messageId, "123")
+    }).pipe(Effect.provide(crypto)))
+
+  it.effect("an error reply keeps what the user entered, and reads no inherited key", () =>
+    Effect.gen(function*() {
+      const { submit } = yield* open(modal)
+      const reply = yield* submit({ constructor: "edited", note: "b" })
+      const body: ReadonlyArray<any> = reply.task.value.card.content.body
+      const inputs = body.filter((element) => element.type === "Input.Text")
+      assert.deepStrictEqual(inputs.map((input) => input.value), ["edited", "b"])
+      const texts = body.filter((element) => element.type === "TextBlock").map((element) => element.text)
+      assert.deepStrictEqual(texts, ["Too short"])
     }).pipe(Effect.provide(crypto)))
 })

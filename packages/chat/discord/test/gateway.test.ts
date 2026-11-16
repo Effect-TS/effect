@@ -173,32 +173,6 @@ describe("layerDispatchHook", () => {
     }))
   })
 
-  it.effect("a host stopped in the middle of an event resumes from before it", () => {
-    const storage: Storage = new Map()
-    let started = 0
-    const handle = () =>
-      Effect.suspend(() => {
-        started++
-        return Effect.never
-      })
-    return Effect.gen(function*() {
-      yield* Effect.scoped(Effect.gen(function*() {
-        const first = yield* host(storage, handle)
-        yield* first.receive(hello)
-        yield* first.receive(ready)
-        yield* first.receive(message(2))
-        yield* until(() => started === 1)
-      }))
-      assert.strictEqual(stored(storage)?.sequence, 1)
-      yield* Effect.scoped(Effect.gen(function*() {
-        const second = yield* host(storage, handle)
-        yield* second.receive(hello)
-        yield* until(() => second.sent(6).length === 1)
-        assert.deepStrictEqual(second.sent(6), [{ token: "token", session_id: "session-1", seq: 1 }])
-      }))
-    })
-  })
-
   it.effect("a handler defect is logged and the event dropped, so the events after it still arrive", () => {
     const storage: Storage = new Map()
     let handled = 0

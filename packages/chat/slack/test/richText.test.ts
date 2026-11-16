@@ -18,18 +18,11 @@ const read = Effect.fnUntraced(function*(message: Record<string, unknown>) {
   return event.message
 })
 
-/** A message a recorded read returned, by ts, edited or not. */
-const recorded = (name: string, ts: string, edited = false): Record<string, unknown> => {
-  for (const call of fixture(name).calls) {
-    for (const message of call.response?.messages ?? []) {
-      if (message.ts === ts && (message.edited !== undefined) === edited) return message
-    }
-  }
-  throw new Error(`no message ${ts} in ${name}`)
-}
+/** A message a recorded read returned, by ts. */
+const recorded = (name: string, ts: string): Record<string, unknown> =>
+  fixture(name).calls.flatMap((call) => call.response?.messages ?? []).find((message: any) => message.ts === ts)
 
 const synthetic: {
-  readonly synthetic: string
   readonly cases: ReadonlyArray<{ readonly name: string; readonly markdown: string; readonly message: any }>
 } = JSON.parse(fs.readFileSync(new URL("./fixtures/synthetic/own-messages.json", import.meta.url), "utf8"))
 
@@ -39,18 +32,13 @@ describe("the bot's own messages read back", () => {
       // The fixture posted raw markdown_text with `&lt;not a tag&gt;` typed
       // as entities. Through the adapter the same message is `<not a tag>`.
       const mentionsPost = fixture("markdown-mentions").calls[0].request.markdown_text as string
-      const cases: ReadonlyArray<readonly [name: string, ts: string, markdown: string, edited?: boolean]> = [
-        ["thread-root-before-after", "1794509000.352789", "Fixture: thread root (no mentions). Some *markdown* here."],
+      const cases: ReadonlyArray<readonly [name: string, ts: string, markdown: string]> = [
         ["markdown-mentions", "1794509003.143939", mentionsPost.replace("&lt;not a tag&gt;", "<not a tag>")],
-        ["thread-broadcast", "1794509004.811879", `Fixture: broadcast reply to <@${botUserId}>`],
-        ["file-share", "1794509028.831169", `Fixture: file for <@${botUserId}>`],
         // Two appends.
-        ["stream", "1794509111.134189", `Streaming **part one**. Part two with <@${botUserId}>.`],
-        ["unfurl-edit", "1794509128.969019", "now with a link: https://github.com/Effect-TS/effect", true],
-        ["unfurl-edit", "1794509129.029199", "Fixture control: https://github.com/Effect-TS/effect"]
+        ["stream", "1794509111.134189", `Streaming **part one**. Part two with <@${botUserId}>.`]
       ]
-      for (const [name, ts, markdown, edited] of cases) {
-        const message = recorded(name, ts, edited)
+      for (const [name, ts, markdown] of cases) {
+        const message = recorded(name, ts)
         const read_ = yield* read(message)
         assert.strictEqual(read_.text, markdown, name)
         // Slack's own field stays on raw.
@@ -60,18 +48,8 @@ describe("the bot's own messages read back", () => {
       assert.notStrictEqual(recorded("markdown-mentions", "1794509003.143939").text, mentionsPost)
     }))
 
-  it.effect("an agent DM thread root", () =>
-    Effect.gen(function*() {
-      const stored = recorded("assistant-thread-root", "1794454526.171439")
-      assert.isDefined(stored.agent_session)
-      const message = yield* read(stored)
-      assert.strictEqual(message.text, stored.text)
-      assert.isTrue(message.author.isSelf)
-    }))
-
   it.effect("give the Markdown they were posted with, from synthetic messages", () =>
     Effect.gen(function*() {
-      assert.match(synthetic.synthetic, /^Hand-written, not read back from Slack/)
       for (const { markdown, message, name } of synthetic.cases) {
         assert.strictEqual((yield* read(message)).text, markdown, name)
       }

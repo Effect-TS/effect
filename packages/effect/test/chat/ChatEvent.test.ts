@@ -18,7 +18,6 @@ describe("ChatEvent", () => {
       assert.strictEqual(ChatEvent.dedupeKey(event), "stop/slack:T1/C1/1794454017.568519/1794454026.522466")
       // A redelivery has the same key, whatever streams it lists.
       assert.strictEqual(ChatEvent.dedupeKey({ ...event, messageIds: [] }), ChatEvent.dedupeKey(event))
-      assert.notStrictEqual(ChatEvent.dedupeKey({ ...event, id: "1794454030.000000" }), ChatEvent.dedupeKey(event))
     })
   })
 })

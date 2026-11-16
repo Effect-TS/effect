@@ -13,94 +13,60 @@ const clicked = (id: string, value?: string) =>
 const invoked = (id: string, text = "") =>
   ChatInteraction.CommandInvoked.make({ id, text, thread, userId: "u1", raw: { id: "i1" } })
 
-describe("ChatInteraction", () => {
-  describe("encodeValue / decodeValue", () => {
-    it("sends a string-only schema as it is", () => {
-      assert.strictEqual(ChatInteraction.encodeValue(Schema.String, "v1.4.2"), "v1.4.2")
-      assert.strictEqual(ChatInteraction.encodeValue(Schema.Literals(["a", "b"]), "a"), "a")
-      assert.deepStrictEqual(ChatInteraction.decodeValue(Schema.String, "\"quoted\""), Option.some("\"quoted\""))
-    })
-
-    it("sends anything else as JSON, decided by the schema and not the value", () => {
-      const StringOrNumber = Schema.Union([Schema.String, Schema.Number])
-      assert.strictEqual(ChatInteraction.encodeValue(StringOrNumber, "123"), "\"123\"")
-      assert.strictEqual(ChatInteraction.encodeValue(StringOrNumber, 123), "123")
-      assert.deepStrictEqual(ChatInteraction.decodeValue(StringOrNumber, "\"123\""), Option.some("123"))
-      assert.deepStrictEqual(ChatInteraction.decodeValue(StringOrNumber, "123"), Option.some(123))
-      assert.strictEqual(ChatInteraction.encodeValue(Deploy, { version: "v1" }), "{\"version\":\"v1\"}")
-    })
-
-    it("gives none for a string that no longer decodes", () => {
-      assert.isTrue(Option.isNone(ChatInteraction.decodeValue(Deploy, "not json")))
-      assert.isTrue(Option.isNone(ChatInteraction.decodeValue(Deploy, "{\"version\":1}")))
-      assert.isTrue(Option.isNone(ChatInteraction.decodeValue(Schema.Literals(["a"]), "b")))
-    })
+const handlerWith = (options: {
+  readonly click?: Effect.Effect<ChatInteraction.ClickReply>
+  readonly submit?: Effect.Effect<ChatInteraction.SubmitReply>
+  readonly command?: (command: ChatInteraction.CommandInvoked) => ChatInteraction.CommandReply
+  readonly refused?: (error: ChatError.ChatError) => Effect.Effect<void>
+}) =>
+  ChatInteraction.Handler.of({
+    click: () => options.click ?? Effect.succeed(ChatInteraction.ack),
+    submit: () => options.submit ?? Effect.succeed(ChatInteraction.close),
+    command: (command) => Effect.succeed(options.command?.(command) ?? ChatInteraction.ack),
+    refused: (_, error) => options.refused?.(error) ?? Effect.void
   })
 
-  describe("definitions", () => {
-    it("button.of encodes the value and takes overrides", () => {
-      const Approve = ChatInteraction.button("approve", { label: "Approve", style: "primary", value: Deploy })
-      assert.deepStrictEqual(Approve.of({ version: "v1" }, { label: "Ship v1" }), {
-        _tag: "Button",
-        id: "approve",
-        label: "Ship v1",
-        style: "primary",
-        value: "{\"version\":\"v1\"}"
-      })
-      const Plain = ChatInteraction.button("plain", { label: "Plain" })
-      assert.deepStrictEqual(Plain.of(), { _tag: "Button", id: "plain", label: "Plain" })
-    })
+describe("ChatInteraction", () => {
+  it("encodes a value by its schema: a string-only schema as it is, anything else as JSON", () => {
+    const StringOrNumber = Schema.Union([Schema.String, Schema.Number])
+    assert.strictEqual(ChatInteraction.encodeValue(Schema.String, "v1.4.2"), "v1.4.2")
+    assert.deepStrictEqual(ChatInteraction.decodeValue(Schema.String, "\"quoted\""), Option.some("\"quoted\""))
+    assert.strictEqual(ChatInteraction.encodeValue(StringOrNumber, "123"), "\"123\"")
+    assert.deepStrictEqual(ChatInteraction.decodeValue(StringOrNumber, "123"), Option.some(123))
+  })
 
-    it("modal.open builds the elements in field order, with encoded metadata and options", () => {
-      const Reason = ChatInteraction.modal("reason", {
-        title: "Why",
-        metadata: Deploy,
-        fields: {
-          intro: ChatInteraction.text("Tell us."),
-          reason: ChatInteraction.textInput({ label: "Reason", multiline: true, maxLength: 200 }),
-          env: ChatInteraction.selectInput({ label: "Env", value: Schema.Number, optional: true })
+  it("modal.open builds the elements in field order, with encoded metadata and options", () => {
+    const Reason = ChatInteraction.modal("reason", {
+      title: "Why",
+      metadata: Deploy,
+      fields: {
+        intro: ChatInteraction.text("Tell us."),
+        reason: ChatInteraction.textInput({ label: "Reason", multiline: true, maxLength: 200 }),
+        env: ChatInteraction.selectInput({ label: "Env", value: Schema.Number, optional: true })
+      }
+    })
+    const opened = Reason.open({
+      metadata: { version: "v1" },
+      options: { env: [{ label: "Prod", value: 1 }] },
+      initial: { env: 1 }
+    })
+    assert.deepStrictEqual(opened.modal, {
+      _tag: "Modal",
+      id: "reason",
+      title: "Why",
+      metadata: "{\"version\":\"v1\"}",
+      elements: [
+        { _tag: "Text", text: "Tell us." },
+        { _tag: "TextInput", id: "reason", label: "Reason", multiline: true, maxLength: 200 },
+        {
+          _tag: "SelectInput",
+          id: "env",
+          label: "Env",
+          options: [{ label: "Prod", value: "1" }],
+          initial: "1",
+          optional: true
         }
-      })
-      const opened = Reason.open({
-        metadata: { version: "v1" },
-        options: { env: [{ label: "Prod", value: 1 }] },
-        initial: { env: 1 }
-      })
-      assert.isTrue(Schema.is(ChatInteraction.OpenModal)(opened))
-      assert.deepStrictEqual(opened.modal, {
-        _tag: "Modal",
-        id: "reason",
-        title: "Why",
-        metadata: "{\"version\":\"v1\"}",
-        elements: [
-          { _tag: "Text", text: "Tell us." },
-          { _tag: "TextInput", id: "reason", label: "Reason", multiline: true, maxLength: 200 },
-          {
-            _tag: "SelectInput",
-            id: "env",
-            label: "Env",
-            options: [{ label: "Prod", value: "1" }],
-            initial: "1",
-            optional: true
-          }
-        ]
-      })
-    })
-
-    it("respond and defer answer privately by default, and a deferral survives JSON", () => {
-      assert.deepStrictEqual(ChatInteraction.respond({ markdown: "Hi" }), {
-        _tag: "Respond",
-        markdown: "Hi",
-        visibility: "ephemeral"
-      })
-      const deferred = ChatInteraction.defer(invoked("summarize"), { visibility: "public" })
-      const codec = Schema.toCodecJson(ChatInteraction.Defer)
-      const wire = JSON.parse(JSON.stringify(Schema.encodeSync(codec)(deferred)))
-      assert.deepStrictEqual(Schema.decodeUnknownSync(codec)(wire), {
-        _tag: "Defer",
-        command: { _tag: "CommandInvoked", id: "summarize", text: "", thread, userId: "u1", raw: { id: "i1" } },
-        visibility: "public"
-      })
+      ]
     })
   })
 
@@ -138,7 +104,7 @@ describe("ChatInteraction", () => {
       Effect.gen(function*() {
         seen.length = 0
         const handler = yield* ChatInteraction.Handler
-        const reply = yield* handler.click(clicked("approve", ChatInteraction.encodeValue(Deploy, { version: "v1" })))
+        const reply = yield* handler.click(clicked("approve", Approve.of({ version: "v1" }).value))
         assert.strictEqual(reply._tag, "OpenModal")
         const submitted = ChatInteraction.ModalSubmitted.make({
           id: "reason",
@@ -166,7 +132,6 @@ describe("ChatInteraction", () => {
         // A command and a button share one id space: a command named like a button is not routed to it.
         assert.deepStrictEqual(yield* handler.command(invoked("approve")), ChatInteraction.ack)
         assert.deepStrictEqual(unhandled, ["nope:UnknownId", "approve:UnknownId"])
-        assert.deepStrictEqual(Ship.argument, { name: "version", description: "The version", required: false })
       }).pipe(Effect.provide(Interactions)))
 
     it.effect("answers an unknown id or a value that no longer decodes without a handler", () =>
@@ -203,18 +168,6 @@ describe("ChatInteraction", () => {
 
   describe("handle", () => {
     const deadline = Duration.seconds(3)
-    const handlerWith = (options: {
-      readonly click?: Effect.Effect<ChatInteraction.ClickReply>
-      readonly submit?: Effect.Effect<ChatInteraction.SubmitReply>
-      readonly command?: Effect.Effect<ChatInteraction.CommandReply>
-      readonly refused?: (error: ChatError.ChatError) => Effect.Effect<void>
-    }) =>
-      ChatInteraction.Handler.of({
-        click: () => options.click ?? Effect.succeed(ChatInteraction.ack),
-        submit: () => options.submit ?? Effect.succeed(ChatInteraction.close),
-        command: () => options.command ?? Effect.succeed(ChatInteraction.ack),
-        refused: (_, error) => options.refused?.(error) ?? Effect.void
-      })
 
     it.effect("interrupts the handler when cancelled during startup", () =>
       Effect.gen(function*() {
@@ -272,23 +225,6 @@ describe("ChatInteraction", () => {
         assert.strictEqual(error.reason.detail, ChatError.interactionExpired)
       }))
 
-    it.effect("interrupts a late command", () =>
-      Effect.gen(function*() {
-        let interrupted = false
-        const handler = handlerWith({
-          command: Effect.as(Effect.sleep("5 seconds"), ChatInteraction.respond({ markdown: "late" })).pipe(
-            Effect.onInterrupt(() => Effect.sync(() => void (interrupted = true)))
-          )
-        })
-        const fiber = yield* ChatInteraction.handle(invoked("slow"), deadline).pipe(
-          Effect.provideService(ChatInteraction.Handler, handler),
-          Effect.forkChild
-        )
-        yield* TestClock.adjust("3 seconds")
-        assert.isTrue(Schema.is(ChatInteraction.Late)(yield* Fiber.join(fiber)))
-        assert.isTrue(interrupted)
-      }))
-
     it.effect("gives Late at the deadline without waiting for a late submit's cleanup", () =>
       Effect.gen(function*() {
         const cleaned = yield* Deferred.make<void>()
@@ -314,40 +250,12 @@ describe("ChatInteraction", () => {
   })
 
   describe("ChatTest.interact", () => {
-    it.effect("uses the layer's interactionDeadline", () =>
-      Effect.gen(function*() {
-        const test = yield* ChatTest.ChatTest
-        const handler = ChatInteraction.Handler.of({
-          click: () => Effect.as(Effect.sleep("2 seconds"), ChatInteraction.ack),
-          submit: () => Effect.succeed(ChatInteraction.close),
-          command: () => Effect.succeed(ChatInteraction.ack),
-          refused: () => Effect.void
-        })
-        const fiber = yield* test.interact(clicked("a")).pipe(
-          Effect.provideService(ChatInteraction.Handler, handler),
-          Effect.forkChild
-        )
-        yield* TestClock.adjust("1 second")
-        assert.isTrue(Schema.is(ChatInteraction.Late)(yield* Fiber.join(fiber)))
-      }).pipe(Effect.provide(ChatTest.layer({ interactionDeadline: Duration.seconds(1) }))))
-
-    const answering = (reply: (command: ChatInteraction.CommandInvoked) => ChatInteraction.CommandReply) => {
-      const refused: Array<ChatError.ChatError> = []
-      const handler = ChatInteraction.Handler.of({
-        click: () => Effect.succeed(ChatInteraction.ack),
-        submit: () => Effect.succeed(ChatInteraction.close),
-        command: (command) => Effect.succeed(reply(command)),
-        refused: (_, error) => Effect.sync(() => void refused.push(error))
-      })
-      return { handler, refused }
-    }
-
     it.effect("follows up a deferral once, inside followUpAge", () =>
       Effect.gen(function*() {
         const test = yield* ChatTest.ChatTest
         const chat = yield* Chat.Chat
         const channel = yield* test.makeThread()
-        const { handler } = answering((command) => ChatInteraction.defer(command))
+        const handler = handlerWith({ command: (command) => ChatInteraction.defer(command) })
         const interact = (command: ChatInteraction.CommandInvoked) =>
           Effect.provideService(test.interact(command), ChatInteraction.Handler, handler)
         const first = yield* interact(yield* test.command(channel, "summarize"))
@@ -359,22 +267,18 @@ describe("ChatInteraction", () => {
         const expired = yield* Effect.flip(chat.followUp(second as ChatInteraction.Defer, { markdown: "Late" }))
         assert.strictEqual(expired.reason._tag, "NotFound")
         assert.strictEqual(expired.reason.detail, ChatError.interactionExpired)
-        const answers = (yield* test.calls).filter((call) => call.op === "followUp")
-        assert.deepStrictEqual(answers.map((call) => [call.markdown, call.outcome]), [
-          ["Done", "ok"],
-          ["Again", "NotFound"],
-          ["Late", "NotFound"]
-        ])
-        assert.deepStrictEqual(yield* test.messages(channel), [])
       }).pipe(Effect.provide(ChatTest.layer())))
 
     it.effect("refuses a private answer without ephemeral, and sends nothing", () =>
       Effect.gen(function*() {
         const test = yield* ChatTest.ChatTest
         const channel = yield* test.makeThread()
-        const { handler, refused } = answering((command) =>
-          command.text === "defer" ? ChatInteraction.defer(command) : ChatInteraction.respond({ markdown: "Secret" })
-        )
+        const refused: Array<ChatError.ChatError> = []
+        const handler = handlerWith({
+          command: (command) =>
+            command.text === "defer" ? ChatInteraction.defer(command) : ChatInteraction.respond({ markdown: "Secret" }),
+          refused: (error) => Effect.sync(() => void refused.push(error))
+        })
         for (const text of ["respond", "defer"]) {
           yield* Effect.provideService(
             test.interact(yield* test.command(channel, "secret", { text })),

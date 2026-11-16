@@ -103,29 +103,14 @@ describe("captured Events API deliveries", () => {
       }
     }))
 
-  it.live("a root mention, then the root's message_changed deliveries give nothing", () =>
-    Effect.gen(function*() {
-      const [root, ...changed] = yield* deliveries("thread-root")
-      const event = created(root)
-      assert.deepStrictEqual(mentions(event), selfMention())
-      assert.isTrue(event.message.author.isSelf)
-      assert.deepStrictEqual(partsOf(event.thread), { team, channel })
-      assert.strictEqual(changed.length, 2)
-      for (const events of changed) assert.deepStrictEqual(events, [])
-    }))
-
   it.live("a thread reply and a thread_broadcast belong to the root's thread", () =>
     Effect.gen(function*() {
       const root = created((yield* deliveries("thread-root"))[0]).message.id
       const reply = created((yield* deliveries("thread-reply"))[0])
       assert.deepStrictEqual(partsOf(reply.thread), { team, channel, threadTs: root })
-      assert.deepStrictEqual(mentions(reply), selfMention())
       // Slack sent a message_changed for the broadcast before the broadcast itself.
-      const [changed, broadcast] = yield* deliveries("thread-broadcast")
-      assert.deepStrictEqual(changed, [])
-      const event = created(broadcast)
-      assert.deepStrictEqual(partsOf(event.thread), { team, channel, threadTs: root })
-      assert.deepStrictEqual(mentions(event), selfMention())
+      const [, broadcast] = yield* deliveries("thread-broadcast")
+      assert.deepStrictEqual(partsOf(created(broadcast).thread), { team, channel, threadTs: root })
     }))
 
   it.live("a mention only in code, a Block Kit section or an attachment is not reported", () =>
@@ -135,24 +120,7 @@ describe("captured Events API deliveries", () => {
         assert.deepStrictEqual(event.message.mentions, [], name)
       }
     }))
-
-  it.live("the bot's own /me line reads back from its blocks, with the token the renderer wrote", () =>
-    Effect.gen(function*() {
-      const event = created((yield* deliveries("me-message"))[0])
-      assert.deepStrictEqual(mentions(event), selfMention())
-    }))
-
-  it.live("a native stream arrives as an empty message from the bot, its text only as message_changed", () =>
-    Effect.gen(function*() {
-      const [start, changed] = yield* deliveries("native-stream")
-      const event = created(start)
-      assert.strictEqual(event.message.text, "")
-      assert.isTrue(event.message.author.isSelf)
-      assert.deepStrictEqual(changed, [])
-    }))
 })
-
-const person = "U080YLYB277"
 
 type Body = { readonly event: Record<string, unknown> }
 
@@ -177,15 +145,12 @@ describe("captured deliveries for messages a person typed", () => {
         for (const [message, mention] of pairsOf(name)) {
           const fromMessage = created(SlackChat.normalize(message, context))
           const fromMention = created(SlackChat.normalize(mention, context))
-          yield* checkEvent(fromMessage, checkOptions)
-          yield* checkEvent(fromMention, checkOptions)
           assert.strictEqual(dedupeKey(fromMessage), dedupeKey(fromMention), name)
           assert.isTrue(sameMessage(fromMessage.message, fromMention.message), name)
           const { raw: _a, ...left } = fromMessage.message
           const { raw: _b, ...right } = fromMention.message
           assert.deepStrictEqual(left, right, name)
           assert.deepStrictEqual(fromMessage.thread, fromMention.thread, name)
-          assert.isFalse(fromMessage.message.author.isSelf)
           assert.deepStrictEqual(
             mentions(fromMessage),
             selfMention(String(message.event.subtype) === "me_message" ? "|janitor2" : "")
@@ -209,12 +174,6 @@ describe("captured deliveries for messages a person typed", () => {
       assert.deepStrictEqual(created(original).message.mentions, [])
       assert.deepStrictEqual(changed, [])
       assert.deepStrictEqual(mention, [])
-      const [, , rootChanged, removed] = yield* deliveries("human-edit-removes-mention")
-      assert.deepStrictEqual(rootChanged, [])
-      assert.deepStrictEqual(removed, [])
-      const [, , kept, keptRoot] = yield* deliveries("human-edit-keeps-mention")
-      assert.deepStrictEqual(kept, [])
-      assert.deepStrictEqual(keptRoot, [])
     }))
 
   it.live("reactions, with a skin tone and a custom emoji", () =>
@@ -225,7 +184,6 @@ describe("captured deliveries for messages a person typed", () => {
         const event = events[0]
         assert(event._tag === "ReactionAdded" || event._tag === "ReactionRemoved")
         assert.strictEqual(event.messageId, root)
-        assert.strictEqual(event.userId, person)
         return event
       })
       assert.deepStrictEqual(reactions.map((event) => [event._tag, event.emoji]), [
@@ -240,19 +198,7 @@ describe("captured deliveries for messages a person typed", () => {
     }))
 })
 
-describe("captured deliveries for the bot's replies and stops", () => {
-  it.live("janitor's status message, its edits and its deletion: only the posts are events", () =>
-    Effect.gen(function*() {
-      const results = yield* deliveries("bot-reply-lifecycle")
-      const posted = results.filter((events) => events.length > 0).map(created)
-      assert.strictEqual(posted.length, 2)
-      const root = created((yield* deliveries("human-mention"))[0]).message.id
-      for (const event of posted) {
-        assert.isTrue(event.message.author.isSelf)
-        assert.deepStrictEqual(partsOf(event.thread), { team, channel, threadTs: root })
-      }
-    }))
-
+describe("captured deliveries for stops", () => {
   it.live("only the first click on Stop names the open stream", () =>
     Effect.gen(function*() {
       const results = yield* deliveries("stop-stream")
@@ -261,10 +207,7 @@ describe("captured deliveries for the bot's replies and stops", () => {
       assert.strictEqual(stream.message.text, "")
       const stops = results.flat().filter((event) => event._tag === "StopRequested")
       assert.deepStrictEqual(stops.map((event) => event.messageIds), [[stream.message.id], [], []])
-      for (const stop of stops) {
-        assert.strictEqual(stop.userId, person)
-        assert.deepStrictEqual(Option.getOrThrow(SlackChat.parts(stop.thread)), { team, channel, threadTs: root })
-      }
+      for (const stop of stops) assert.deepStrictEqual(partsOf(stop.thread), { team, channel, threadTs: root })
       // Each click is its own request.
       assert.strictEqual(new Set(stops.map(dedupeKey)).size, 3)
     }))

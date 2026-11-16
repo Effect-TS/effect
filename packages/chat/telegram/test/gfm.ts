@@ -41,9 +41,6 @@ const blockTypes = new Set([
   "html"
 ])
 
-export const parse = (markdown: string): Mdast.Root =>
-  fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] })
-
 export const inspect = (markdown: string): Findings => {
   const html: Array<string> = []
   const links: Array<string> = []
@@ -109,6 +106,6 @@ export const inspect = (markdown: string): Findings => {
     }
     if ("children" in node) { for (const child of node.children) visit(child as Mdast.Nodes, d) }
   }
-  visit(parse(markdown), 0)
+  visit(fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }), 0)
   return { html, images, links, maxDepth, maxColumns, blocks, active, unhonored, inline }
 }

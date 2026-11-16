@@ -10,8 +10,7 @@ const idOf = (customId: string): string => customId.split(join)[0]
 
 /**
  * A Discord that keeps the messages the adapter posts, with their
- * components, and records every interaction callback and every edit of an
- * original response. `interactions` is the conformance hook: it builds
+ * components, and records every interaction callback. `interactions` is the conformance hook: it builds
  * Discord's `INTERACTION_CREATE` payload from what was posted, or a slash
  * command's, and sends it through `DiscordChat.interaction`. A command
  * starts from the one recorded in `fixtures/recorded/commands.json`, and so
@@ -20,7 +19,6 @@ const idOf = (customId: string): string => customId.split(join)[0]
 export const makeDiscord = (channelType = 0) => {
   const messages = new Map<string, any>()
   const callbacks: Array<{ readonly id: string; readonly token: string; readonly payload: any }> = []
-  const originals: Array<{ readonly applicationId: string; readonly token: string; readonly payload: any }> = []
   let next = 1570700000000000000n
   let refuse = 0
   let interactionCount = 0
@@ -78,12 +76,11 @@ export const makeDiscord = (channelType = 0) => {
       callbacks.push({ id, token, payload: options.payload })
       return Effect.succeed(null)
     },
-    updateOriginalWebhookMessage: (applicationId: string, token: string, options: { payload: any }) => {
+    updateOriginalWebhookMessage: (_applicationId: string, token: string, options: { payload: any }) => {
       // Only a token a type 5 callback answered has an original response to edit.
       if (!callbacks.some((callback) => callback.token === token && callback.payload.type === 5)) {
         return Effect.fail(errorResponse(404, { code: 10015, message: "Unknown Webhook" }))
       }
-      originals.push({ applicationId, token, payload: options.payload })
       return Effect.succeed({ id: nextId(), content: options.payload.content })
     }
   })
@@ -184,9 +181,6 @@ export const makeDiscord = (channelType = 0) => {
       Effect.sync(() => {
         service = discord
       })),
-    messages,
-    callbacks,
-    originals,
     interactions,
     refuseFiles: () =>
       Effect.sync(() => {

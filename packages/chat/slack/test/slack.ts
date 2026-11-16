@@ -9,16 +9,17 @@ const tim = "U080YLYB277"
  * A Slack that keeps the messages the adapter posts, with their blocks, and
  * records every view it opens. `interactions` is the conformance hook: it
  * builds Slack's `block_actions` and `view_submission` payloads from what
- * was posted and opened, and a slash command's form fields, sends them
- * through `SlackChat.interaction` and keeps the answers. A command's
- * `response_url` answers `ok`.
+ * was posted and opened, and a slash command's form fields, and sends them
+ * through `SlackChat.interaction`. A command's
+ * `response_url` answers `ok`. `refuseFiles` makes the next file upload
+ * fail.
  */
 export const makeSlack = () => {
   const messages = new Map<string, any>()
   const views: Array<any> = []
-  const answers: Array<unknown> = []
   let next = 1794600000
   let viewCount = 0
+  let refuse = false
 
   const fake = makeFake({
     "auth.test": authTest,
@@ -55,6 +56,13 @@ export const makeSlack = () => {
       views.push(view)
       return { ok: true, view }
     },
+    "conversations.history": (params) => ({
+      ok: true,
+      messages: [...messages.values()].filter((message) => message.channel === params.channel).reverse()
+    }),
+    "files.getUploadURLExternal": { ok: true, upload_url: "https://files.slack.test/upload/F1", file_id: "F1" },
+    "files.completeUploadExternal": () =>
+      refuse ? { ok: false, error: "invalid_arguments" } : { ok: true, files: [{ id: "F1" }] },
     "response_url": { status: 200, body: "ok" }
   })
 
@@ -64,11 +72,8 @@ export const makeSlack = () => {
   /** The service the hook delivers through, set by `bind`. */
   let service: SlackChat.SlackChat["Service"] | undefined
 
-  const deliver = Effect.fnUntraced(function*(payload: Record<string, unknown>) {
-    const answer = yield* service!.interaction({ ...payload, token: "verification", api_app_id: appId })
-    answers.push(answer)
-    return answer
-  })
+  const deliver = (payload: Record<string, unknown>) =>
+    service!.interaction({ ...payload, token: "verification", api_app_id: appId })
 
   const user = { id: tim, username: "tim", name: "tim", team_id: team }
 
@@ -146,9 +151,10 @@ export const makeSlack = () => {
       Effect.sync(() => {
         service = slack
       })),
-    messages,
-    views,
-    answers,
-    interactions
+    interactions,
+    refuseFiles: () =>
+      Effect.sync(() => {
+        refuse = true
+      })
   }
 }

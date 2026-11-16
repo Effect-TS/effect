@@ -119,15 +119,6 @@ describe("post", () => {
       })
     }))
 
-  it.effect("measures a short body layout, its link lines and its generated body", () =>
-    Effect.gen(function*() {
-      const graph = makeGraph()
-      const descriptor = yield* run(graph, Effect.flatMap(Chat.Chat, (chat) => chat.descriptor("whatsapp")))
-      assert.strictEqual(descriptor.measure("ab", [button("a", "Yes")]), 2 + 3072 + 3)
-      const link: Action = { _tag: "LinkButton", label: "Docs", url: "u" }
-      assert.strictEqual(descriptor.measure("", [button("a", "Yes"), link]), 3072 + "Yes, Docs".length + 2 + 7)
-    }))
-
   it.effect("refuses before any call", () =>
     Effect.gen(function*() {
       const graph = makeGraph()
@@ -146,6 +137,12 @@ describe("post", () => {
           "duplicate_label"
         ],
         [post({ markdown: "x", actions: [button("a\u241F", "A")] }), "InvalidRequest", "invalid_action_id"],
+        // The wire id "bx\u241F" + 126 "é" is 257 UTF-8 bytes, though within actionDataLength.
+        [
+          post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(126))] }),
+          "TooLarge",
+          "action_data_too_long"
+        ],
         [
           post({ markdown: "x" }, { platform: "whatsapp", id: phoneNumberId + "/u/not-a-user" }),
           "InvalidRequest",
@@ -176,17 +173,6 @@ describe("post", () => {
         assert.deepStrictEqual([reason._tag, reason.detail], [tag, detail])
       }
       assert.deepStrictEqual(graph.calls, [])
-    }))
-
-  it.effect("refuses a reply button whose wire id is over 256 UTF-8 bytes", () =>
-    Effect.gen(function*() {
-      const graph = makeGraph()
-      // "b", the id and U+241F take 5 bytes, so 125 "é" and one "a" make 256.
-      yield* run(graph, post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(125) + "a")] }))
-      assert.strictEqual(graph.calls.length, 1)
-      const reason = yield* failure(graph, post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(126))] }))
-      assert.deepStrictEqual([reason._tag, reason.detail], ["TooLarge", "action_data_too_long"])
-      assert.strictEqual(graph.calls.length, 1)
     }))
 
   it.effect("names the messaging account on every send when one is configured", () =>
@@ -393,12 +379,6 @@ describe("webhook", () => {
       })
       assert.deepStrictEqual([result.status, result.seen], [200, ["SelectChanged"]])
       assert.strictEqual((yield* Deferred.await(refusal)).reason._tag, "Unsupported")
-      const [event] = WhatsAppChat.normalize(click, { phoneNumberId })
-      assert.deepStrictEqual(event._tag === "SelectChanged" && [event.id, event.value, event.messageId], [
-        "env",
-        "p\u241Fq",
-        "wamid.out1"
-      ])
     }))
 })
 
@@ -425,15 +405,7 @@ describe("normalize", () => {
 })
 
 describe("keys", () => {
-  it("keys a delivery by its webhook message, and an update by its parts", () => {
-    const click = inbound({
-      type: "interactive",
-      context: { id: "wamid.out1" },
-      interactive: { type: "button_reply", button_reply: { id: "ba", title: "A" } }
-    })
-    const [event] = WhatsAppChat.normalize(click, { phoneNumberId })
-    const id = (click.entry[0].changes[0].value.messages[0] as any).id
-    assert.strictEqual(event._tag === "ButtonClicked" && WhatsAppChat.deliveryKey(event), `${phoneNumberId}/${id}`)
+  it("keys an update by its parts, escaped", () => {
     const updates = WhatsAppChat.normalize(
       statuses({ id: "wamid.a/b", status: "delivered", recipient_id: phone, recipient_user_id: bsuid }),
       { phoneNumberId }

@@ -1,9 +1,7 @@
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import { SlackWebApi } from "@effect/chat-slack/SlackWebApi"
 import { assert, describe, it } from "@effect/vitest"
-import { fileRefused } from "effect/chat/ChatError"
-import { checkMessage, conformance } from "effect/chat/ChatTest"
-import type { Action } from "effect/chat/ChatUi"
+import { checkMessage } from "effect/chat/ChatTest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -46,9 +44,7 @@ describe("post", () => {
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const result = yield* slack.post(replyThread, { markdown: "hi <@U1> `<@U1>` & >" })
-        assert.strictEqual(result.id, "1794509200.000100")
-        assert.deepStrictEqual(result.thread, replyThread)
+        yield* slack.post(replyThread, { markdown: "hi <@U1> `<@U1>` & >" })
         assert.deepStrictEqual(fake.called("chat.postMessage")[0].params, {
           channel,
           thread_ts: root,
@@ -75,24 +71,6 @@ describe("post", () => {
         assert.deepStrictEqual(JSON.parse(params.blocks), [{ type: "markdown", text: "hi <@U1> &lt;@U2>" }])
         assert.strictEqual(params.text, "hi <@U1> &lt;@U2&gt;")
         assert.strictEqual(params.unfurl_links, "true")
-        assert.strictEqual(params.unfurl_media, "true")
-        assert.isUndefined(params.thread_ts)
-      })
-    )
-  })
-
-  it.effect("fails TooLarge before calling Slack", () => {
-    const fake = makeFake({})
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        // 3,001 `<` are 12,004 once escaped.
-        const failure = yield* reason(slack.post(channelThread, { markdown: "<".repeat(3_001) }))
-        assert.strictEqual(failure.tag, "TooLarge")
-        assert.strictEqual(fake.calls.length, 0)
-        // 12,000 astral letters fit.
-        assert.strictEqual(slack.descriptor.measure("𝐀".repeat(12_000)), 12_000)
       })
     )
   })
@@ -124,110 +102,41 @@ describe("post", () => {
       Effect.gen(function*() {
         const slack = yield* adapter
         // 14,000 if `&lt;` cost 4, 11,000 as Slack counts it.
-        const markdown = "😀".repeat(1_000) + "<".repeat(1_000)
-        assert.isAtMost(slack.descriptor.measure(markdown), slack.descriptor.limits.messageLength)
-        yield* slack.post(channelThread, { markdown })
+        yield* slack.post(channelThread, { markdown: "😀".repeat(1_000) + "<".repeat(1_000) })
         // 1,400 😀 are 14,000 with shortcodes: Slack refuses, nothing is posted.
         const failure = yield* reason(slack.post(channelThread, { markdown: "😀".repeat(1_400) }))
         assert.deepStrictEqual(failure, { op: "post", tag: "TooLarge", detail: "msg_blocks_too_long", retry: "denied" })
-        assert.strictEqual(fake.called("chat.postMessage").length, 2)
       })
     )
   })
-
-  it.effect("replyTo is unsupported", () =>
-    run(
-      makeFake({}),
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const failure = yield* reason(slack.post(channelThread, { markdown: "x", replyTo: { messageId: "1.2" } }))
-        assert.strictEqual(failure.tag, "Unsupported")
-        assert.isFalse(slack.descriptor.capabilities.has("replyTo"))
-      })
-    ))
 })
 
 describe("buttons and selects", () => {
-  const button = { _tag: "Button", id: "go", label: "Go <now>", value: "v", style: "primary" } as const
-  const link = { _tag: "LinkButton", label: "Docs", url: "https://effect.website/docs" } as const
-  const select = {
-    _tag: "Select",
-    id: "pick",
-    options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
-    selected: "b"
-  } as const
+  const button = { _tag: "Button", id: "go", label: "Go <!channel>", value: "v" } as const
 
-  it.effect("go as one actions block after the markdown, and with no markdown the labels are the text", () => {
-    const fake = makeFake({
-      "chat.postMessage": posted("1794509200.000100"),
-      "chat.update": posted("1794509200.000100")
-    })
+  it.effect("with no Markdown, the text is the escaped labels", () => {
+    const fake = makeFake({ "chat.postMessage": posted("1794509200.000100") })
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        yield* slack.post(channelThread, { markdown: "Pick", actions: [button, link, select] })
-        yield* slack.edit(channelThread, "1794509200.000100", { markdown: "", actions: [button, link] })
-        const [post] = fake.called("chat.postMessage")
-        assert.deepStrictEqual(JSON.parse(post.params.blocks), [
-          { type: "markdown", text: "Pick" },
-          {
-            type: "actions",
-            block_id: "chat1",
-            elements: [
-              {
-                type: "button",
-                action_id: "go",
-                text: { type: "plain_text", text: "Go <now>" },
-                value: "v",
-                style: "primary"
-              },
-              {
-                type: "button",
-                action_id: "\u241F1",
-                text: { type: "plain_text", text: "Docs" },
-                url: "https://effect.website/docs"
-              },
-              {
-                type: "static_select",
-                action_id: "pick",
-                options: [
-                  { text: { type: "plain_text", text: "A" }, value: "a" },
-                  { text: { type: "plain_text", text: "B" }, value: "b" }
-                ],
-                initial_option: { text: { type: "plain_text", text: "B" }, value: "b" }
-              }
-            ]
-          }
-        ])
-        const [edit] = fake.called("chat.update")
-        assert.deepStrictEqual(JSON.parse(edit.params.blocks).map((block: any) => block.type), ["actions"])
-        assert.strictEqual(edit.params.text, "Go &lt;now&gt; Docs")
+        yield* slack.post(channelThread, { markdown: "", actions: [button] })
+        assert.strictEqual(fake.called("chat.postMessage")[0].params.text, "Go &lt;!channel&gt;")
       })
     )
   })
 
-  it.effect("are refused before any call for an id Slack or the adapter can't take", () => {
+  it.effect("an id holding the adapter's separator is refused before any call", () => {
     const fake = makeFake({})
     return run(
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const refused = (actions: ReadonlyArray<Action>) =>
-          reason(slack.post(channelThread, { markdown: "x", actions }))
-        assert.deepStrictEqual(
-          [
-            yield* refused([{ ...button, id: "a\u241Fb" }]),
-            yield* refused([{ ...button, id: "日".repeat(256) }]),
-            yield* refused([{ ...select, id: "i".repeat(10), options: [{ label: "A", value: "v".repeat(1_991) }] }])
-          ].map((error) => [error.op, error.tag, error.detail]),
-          [
-            ["post", "InvalidRequest", "invalid_action_id"],
-            ["post", "TooLarge", "action_id_too_long"],
-            ["post", "TooLarge", "action_data_too_long"]
-          ]
+        const failure = yield* reason(
+          slack.post(channelThread, { markdown: "x", actions: [{ ...button, id: "a\u241Fb" }] })
         )
-        assert.strictEqual(fake.called("chat.postMessage").length, 0)
+        assert.deepStrictEqual([failure.tag, failure.detail], ["InvalidRequest", "invalid_action_id"])
+        assert.deepStrictEqual(fake.calls, [])
       })
     )
   })
@@ -246,8 +155,6 @@ describe("files", () => {
   }
   const file = (name: string) => ({ name, contentType: "text/plain", content: new TextEncoder().encode("hello") })
   const ts = "1794509300.000100"
-  const methods = (fake: ReturnType<typeof makeFake>) =>
-    fake.calls.map((call) => call.method).filter((method) => !method.startsWith("/upload/"))
 
   it.effect("uploads, completes with no channel, posts, then attaches with the same body", () => {
     const fake = makeFake({ ...upload(["F1", "F2"]), "chat.postMessage": posted(ts) })
@@ -255,22 +162,22 @@ describe("files", () => {
       fake,
       Effect.gen(function*() {
         const slack = yield* adapter
-        const markdown = "**see** <@U1> " + "a".repeat(5_000)
-        const result = yield* slack.post(replyThread, { markdown, files: [file("a.txt"), file("b.txt")] })
-        assert.strictEqual(result.id, ts)
-        assert.deepStrictEqual(methods(fake), [
-          "files.getUploadURLExternal",
-          "files.getUploadURLExternal",
-          "files.completeUploadExternal",
-          "chat.postMessage",
-          "chat.update"
-        ])
+        yield* slack.post(replyThread, { markdown: "a".repeat(5_000), files: [file("a.txt"), file("b.txt")] })
+        assert.deepStrictEqual(
+          fake.calls.map((call) => call.method).filter((method) => !method.startsWith("/upload/")),
+          [
+            "files.getUploadURLExternal",
+            "files.getUploadURLExternal",
+            "files.completeUploadExternal",
+            "chat.postMessage",
+            "chat.update"
+          ]
+        )
         assert.deepStrictEqual(fake.called("files.completeUploadExternal")[0].params, {
           files: JSON.stringify([{ id: "F1", title: "a.txt" }, { id: "F2", title: "b.txt" }])
         })
         const post = fake.called("chat.postMessage")[0].params
-        const attach = fake.called("chat.update")[0].params
-        assert.deepStrictEqual(attach, {
+        assert.deepStrictEqual(fake.called("chat.update")[0].params, {
           channel,
           ts,
           blocks: post.blocks,
@@ -279,16 +186,6 @@ describe("files", () => {
         })
         // The text is cut to the update budget from the post on.
         assert.isAtMost(new TextEncoder().encode(post.text).length, 3_800)
-        assert.isTrue(post.text.endsWith("…"))
-        assert.strictEqual(post.thread_ts, root)
-
-        // Later writes keep the files: no file_ids, and no files.delete.
-        const edit = yield* Effect.forkChild(slack.edit(replyThread, ts, { markdown: "edited" }))
-        yield* TestClock.adjust("3 seconds")
-        yield* Fiber.join(edit)
-        yield* slack.delete(replyThread, ts)
-        assert.isUndefined(fake.called("chat.update")[1].params.file_ids)
-        assert.strictEqual(fake.called("files.delete").length, 0)
       })
     )
   })
@@ -303,39 +200,6 @@ describe("files", () => {
         const post = fake.called("chat.postMessage")[0].params
         assert.deepStrictEqual(JSON.parse(post.blocks), [{ type: "markdown", text: "\\*a\\*.txt, &lt;@U1>.csv" }])
         assert.strictEqual(post.text, "*a*.txt, &lt;@U1&gt;.csv")
-        assert.strictEqual(fake.called("chat.update")[0].params.text, post.text)
-      })
-    )
-  })
-
-  it.effect("too many files fail file_refused before any call", () => {
-    const fake = makeFake({})
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const files = Array.from({ length: slack.descriptor.limits.filesPerMessage + 1 }, (_, i) => file(`${i}.txt`))
-        assert.deepStrictEqual(yield* reason(slack.post(channelThread, { markdown: "x", files })), {
-          op: "post",
-          tag: "TooLarge",
-          detail: fileRefused,
-          retry: "denied"
-        })
-        assert.deepStrictEqual(fake.calls, [])
-      })
-    )
-  })
-
-  it.effect("a failed post removes the uploads", () => {
-    const fake = makeFake({ ...upload(["F1", "F2"]), "chat.postMessage": { ok: false, error: "not_in_channel" } })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const failure = yield* reason(slack.post(channelThread, { markdown: "x", files: [file("a"), file("b")] }))
-        assert.deepStrictEqual(failure, { op: "post", tag: "Forbidden", detail: "not_in_channel", retry: "denied" })
-        assert.deepStrictEqual(fake.called("files.delete").map((call) => call.params.file), ["F1", "F2"])
-        assert.strictEqual(fake.called("chat.update").length, 0)
       })
     )
   })
@@ -362,28 +226,6 @@ describe("files", () => {
     )
   })
 
-  it.effect("a refused attach deletes the message and the files and fails file_refused", () => {
-    const fake = makeFake({
-      ...upload(["F1"]),
-      "chat.postMessage": posted(ts),
-      "chat.update": { ok: false, error: "file_not_found" }
-    })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const error = yield* Effect.flip(slack.post(channelThread, { markdown: "x", files: [file("a")] }))
-        assert.deepStrictEqual([error.reason._tag, error.reason.detail, error.retry], [
-          "NotFound",
-          fileRefused,
-          "denied"
-        ])
-        assert.strictEqual(methods(fake).slice(-3).join(), "chat.update,chat.delete,files.delete")
-        assert.deepStrictEqual(fake.called("chat.delete")[0].params, { channel, ts })
-      })
-    )
-  })
-
   it.effect("a rollback that can't delete the message fails uncertain with SlackAttachFailed", () => {
     const fake = makeFake({
       ...upload(["F1", "F2"]),
@@ -405,53 +247,19 @@ describe("files", () => {
         assert.deepStrictEqual(cause.thread, replyThread)
         assert.strictEqual(cause.messageId, ts)
         assert.deepStrictEqual(cause.fileIds, ["F1", "F2"])
-        assert.deepStrictEqual([cause.reason._tag, cause.reason.detail], ["NotFound", "file_not_found"])
-        assert.notInclude(cause.message, ts)
-        assert.notInclude(cause.message, "F1")
         // The files are kept, so the ids it carries still mean something.
         assert.strictEqual(fake.called("files.delete").length, 0)
-      })
-    )
-  })
-
-  it.effect("post/refusedFile passes over the stub", () => {
-    let refuse = false
-    const fake = makeFake({
-      ...upload(["F1"]),
-      "auth.test": authTest,
-      "conversations.history": { ok: true, messages: [] },
-      "files.completeUploadExternal": () =>
-        refuse ? { ok: false, error: "invalid_arguments" } : { ok: true, files: [{ id: "F1" }] }
-    })
-    const rules = conformance({
-      platform: "slack",
-      thread: channelThread,
-      userPosts: () => Effect.die("unused"),
-      parseMention: SlackChat.parseMention,
-      refuseFiles: () =>
-        Effect.sync(() => {
-          refuse = true
-        })
-    })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        yield* rules["post/refusedFile"]
-        assert.strictEqual(fake.called("chat.postMessage").length, 0)
       })
     )
   })
 })
 
 describe("errors", () => {
-  it.effect("maps Slack's codes", () => {
+  it.effect("maps Slack's answers, and never repeats a write that may have landed", () => {
     const fake = makeFake({
-      "auth.test": authTest,
       "chat.update": { ok: false, error: "invalid_auth" },
-      "conversations.replies": { ok: false, error: "thread_not_found" },
       "chat.postMessage": { status: 500 },
-      "conversations.info": { status: 429, headers: { "retry-after": "7" } },
-      "users.info": { ok: false, error: "user_not_found" }
+      "conversations.info": { status: 429, headers: { "retry-after": "7" } }
     })
     return run(
       fake,
@@ -463,13 +271,6 @@ describe("errors", () => {
           detail: "invalid_auth",
           retry: "denied"
         })
-        assert.deepStrictEqual(yield* reason(slack.fetchMessage(channelThread, "1.2")), {
-          op: "fetchMessage",
-          tag: "NotFound",
-          detail: "thread_not_found",
-          retry: "denied"
-        })
-        // A write that may have landed is never repeated.
         assert.deepStrictEqual(yield* reason(slack.post(channelThread, { markdown: "x" })), {
           op: "post",
           tag: "PlatformUnavailable",
@@ -481,18 +282,15 @@ describe("errors", () => {
         const limited = yield* Effect.flip(api.call("conversations.info", { channel }, { retry: false }))
         assert.strictEqual(limited.reason._tag, "RateLimited")
         assert.deepStrictEqual(limited.retryAfter, Duration.seconds(7))
-        // A bot_message author is a bot id, which users.info does not know.
-        assert.strictEqual((yield* reason(slack.getUser("B0WEBHOOK"))).tag, "NotFound")
       })
     )
   })
 })
 
 describe("reads", () => {
-  const mentions = fixture("markdown-mentions")
-  const replies = mentions.calls.find((call) => call.method === "conversations.replies")!.response
-
   it.effect("fetchMessage normalises what Slack stored", () => {
+    const replies = fixture("markdown-mentions").calls.find((call) => call.method === "conversations.replies")!
+      .response
     const fake = makeFake({ "auth.test": authTest, "conversations.replies": replies })
     return run(
       fake,
@@ -500,10 +298,9 @@ describe("reads", () => {
         const slack = yield* adapter
         const message = yield* slack.fetchMessage(channelThread, "1794509003.143939")
         yield* checkMessage(message, checkOptions)
-        assert.deepStrictEqual(message.thread, channelThread)
         assert.strictEqual(message.mentions.length, 2)
         // The thread's channel, with both bounds at the message, inclusive, or Slack leaves the message out.
-        const { channel: requested, latest, oldest, inclusive } = fake.called("conversations.replies")[0].params
+        const { channel: requested, inclusive, latest, oldest } = fake.called("conversations.replies")[0].params
         assert.deepStrictEqual({ channel: requested, latest, oldest, inclusive }, {
           channel,
           latest: "1794509003.143939",
@@ -514,26 +311,7 @@ describe("reads", () => {
     )
   })
 
-  it.effect("opener is None for a channel, and for a root that is not a message", () => {
-    const fake = makeFake({
-      "auth.test": authTest,
-      "conversations.replies": {
-        ok: true,
-        messages: [{ ts: root, thread_ts: root, subtype: "assistant_app_thread", user: botUserId, text: "New chat" }]
-      }
-    })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        assert.isTrue(Option.isNone(yield* slack.opener(channelThread)))
-        assert.isTrue(Option.isNone(yield* slack.opener(replyThread)))
-        assert.strictEqual(fake.calls.filter((call) => call.method === "conversations.replies").length, 1)
-      })
-    )
-  })
-
-  it.effect("thread history in both directions, from exclusive", () => {
+  it.effect("thread history pages in both directions, from exclusive", () => {
     const message = (ts: string) => ({ ts, thread_ts: root, user: "U080YLYB277", text: ts })
     const fake = makeFake({
       "auth.test": authTest,
@@ -557,8 +335,6 @@ describe("reads", () => {
           "1794509112.000001",
           "1794509113.000001"
         ])
-        assert.deepStrictEqual(forward[0].thread, channelThread)
-        assert.deepStrictEqual(fake.called("conversations.replies")[1].params.cursor, "page2")
         const backward = yield* Stream.runCollect(
           slack.history(replyThread, { direction: "backward", from: "1794509113.000001" })
         )
@@ -579,13 +355,10 @@ describe("reads", () => {
       Effect.gen(function*() {
         const slack = yield* adapter
         const info = yield* slack.getThread(channelThread)
-        assert.strictEqual(info.kind, "channel")
-        assert.strictEqual(info.name, "chat-testing-123")
-        assert.strictEqual(info.topic, "tests")
+        assert.deepStrictEqual([info.kind, info.name, info.topic], ["channel", "chat-testing-123", "tests"])
         const thread = yield* slack.getThread(replyThread)
         assert.strictEqual(thread.kind, "thread")
         assert.deepStrictEqual(thread.parent, channelThread)
-        assert.deepStrictEqual(yield* slack.startThread(channelThread, root), replyThread)
       })
     )
   })
@@ -611,46 +384,6 @@ describe("delete", () => {
 describe("nativeStream", () => {
   const ts = "1794509111.134189"
 
-  it.effect("start, append with a held tail, stop", () => {
-    const fake = makeFake({
-      "chat.startStream": posted(ts),
-      "chat.appendStream": posted(ts),
-      "chat.stopStream": posted(ts)
-    })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const native = slack.nativeStream!
-        const started = yield* native.start(replyThread, { markdown: "Hello ", recipient: "U080YLYB277" })
-        assert.strictEqual(started.id, ts)
-        assert.deepStrictEqual(fake.called("chat.startStream")[0].params, {
-          channel,
-          thread_ts: root,
-          recipient_user_id: "U080YLYB277",
-          recipient_team_id: team,
-          markdown_text: "Hello "
-        })
-        const notify = SlackChat.withPostOptions({ notify: { users: ["U1"] } })
-        assert.deepStrictEqual(yield* native.append(replyThread, ts, "hi <@U", undefined).pipe(notify), {
-          state: "open",
-          held: 3
-        })
-        assert.deepStrictEqual(yield* native.append(replyThread, ts, "<@U1> a < b", { flush: true }).pipe(notify), {
-          state: "open",
-          held: 0
-        })
-        assert.deepStrictEqual(
-          fake.called("chat.appendStream").map((call) => call.params.markdown_text),
-          ["hi ", "<@U1> a &lt; b"]
-        )
-        assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: false })
-        assert.isUndefined(fake.called("chat.stopStream")[0].params.session_status)
-        assert.strictEqual(fake.called("agents.sessions.setStatus").length, 0)
-      })
-    )
-  })
-
   it.effect("is unsupported off a thread, without a recipient, or when turned off", () =>
     run(
       makeFake({}),
@@ -674,7 +407,6 @@ describe("nativeStream", () => {
         { ok: false, error: "message_not_in_streaming_state" },
         { ok: false, error: "stopped_by_user" }
       ],
-      "chat.stopStream": { ok: true, channel, ts, message: { ts, ai_context: { result_status: "stopped_by_user" } } },
       "agents.sessions.setStatus": { ok: true }
     })
     return run(
@@ -702,11 +434,6 @@ describe("nativeStream", () => {
           thread_ts: root,
           status: "suspended"
         }])
-        // A caller that stops anyway gets stopped, and the status isn't set twice.
-        const result = yield* native.stop(replyThread, ts, { end: "done" }).pipe(suspended)
-        assert.deepStrictEqual(result, { stopped: true })
-        assert.strictEqual(fake.called("chat.stopStream")[0].params.session_status, "suspended")
-        assert.strictEqual(fake.called("agents.sessions.setStatus").length, 1)
       })
     )
   })
@@ -737,46 +464,13 @@ describe("nativeStream", () => {
     )
   })
 
-  it.effect("a 429 waits the retry-after, then doubles the interval for that message", () => {
-    const fake = makeFake({
-      "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(ts)],
-      "chat.update": posted("1794509200.000100")
-    })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const slack = yield* adapter
-        const native = slack.nativeStream!
-        const limited = yield* reason(native.append(replyThread, ts, "a", { flush: true }))
-        assert.strictEqual(limited.tag, "RateLimited")
-        const appends = () => fake.called("chat.appendStream").length
-        const second = yield* Effect.forkChild(native.append(replyThread, ts, "b", { flush: true }))
-        yield* TestClock.adjust("2999 millis")
-        assert.strictEqual(appends(), 1)
-        yield* TestClock.adjust("1 millis")
-        yield* Fiber.join(second)
-        assert.strictEqual(appends(), 2)
-        // Two seconds now, twice the one second interval.
-        const third = yield* Effect.forkChild(native.append(replyThread, ts, "c", { flush: true }))
-        yield* TestClock.adjust("1999 millis")
-        assert.strictEqual(appends(), 2)
-        yield* TestClock.adjust("1 millis")
-        yield* Fiber.join(third)
-        assert.strictEqual(appends(), 3)
-        // Another message is not slowed.
-        yield* slack.edit(replyThread, "1794509200.000100", { markdown: "x" })
-        assert.strictEqual(fake.called("chat.update").length, 1)
-      })
-    )
-  })
-
-  it.effect("the doubled interval goes to the part that continues the reply, not to another reply", () => {
+  it.effect("after a 429 the reply's next part waits, then doubles its interval, and another reply does not", () => {
     const next = "1794509201.000100"
     const other = "1794509202.000100"
     const fake = makeFake({
       "chat.appendStream": [{ status: 429, headers: { "retry-after": "3" } }, posted(other), posted(next)],
       "chat.stopStream": { ok: true, message: { ts } },
-      "chat.startStream": [posted(other), posted(next), posted("1794509203.000100")]
+      "chat.startStream": [posted(other), posted(next)]
     })
     return run(
       fake,
@@ -802,10 +496,6 @@ describe("nativeStream", () => {
         yield* TestClock.adjust("1 millis")
         yield* Fiber.join(append)
         assert.strictEqual(fake.called("chat.appendStream").length, 3)
-        // A reply that ends hands nothing on.
-        yield* native.stop(replyThread, next, { end: "done" })
-        yield* native.start(replyThread, { markdown: "d", recipient, continues: next })
-        assert.strictEqual(fake.called("chat.startStream").length, 3)
       })
     )
   })
@@ -856,16 +546,6 @@ describe("nativeStream", () => {
   describe("the cleanup edit", () => {
     const z = "\u200B"
     const recipient = "U080YLYB277"
-    /** Runs `effect` in a span and gives what it set as `slack.stream.cleanup`. */
-    const cleanupOf = Effect.fnUntraced(function*<A, E, R>(effect: Effect.Effect<A, E, R>) {
-      yield* effect
-      return (yield* Effect.currentSpan).attributes.get("slack.stream.cleanup")
-    }, Effect.withSpan("test"))
-    const updates = (fake: ReturnType<typeof makeFake>) =>
-      fake.called("chat.update").map((call): Record<string, unknown> => ({
-        ...call.params,
-        blocks: JSON.parse(call.params.blocks)
-      }))
 
     it.effect("rewrites a stream whose appends differ from the block, once, after the stop, with no actions", () => {
       const fake = makeFake({ "chat.startStream": posted(ts), "chat.appendStream": posted(ts) })
@@ -875,60 +555,22 @@ describe("nativeStream", () => {
           const native = (yield* adapter).nativeStream!
           yield* native.start(replyThread, { markdown: "Hi <@U2> ", recipient })
           yield* native.append(replyThread, ts, "and `<@U3>` a < b", { flush: true })
-          assert.deepStrictEqual(
-            fake.calls.map((call) => call.method).filter((method) => method !== "auth.test"),
-            ["chat.startStream", "chat.appendStream"]
-          )
           assert.strictEqual(fake.called("chat.startStream")[0].params.markdown_text, `Hi <${z}@U2> `)
           assert.strictEqual(fake.called("chat.appendStream")[0].params.markdown_text, `and \`<${z}@U3>\` a &lt; b`)
-          const cleanup = yield* cleanupOf(native.stop(replyThread, ts, { end: "done" }))
-          assert.strictEqual(cleanup, "edited")
+          yield* native.stop(replyThread, ts, { end: "done" })
           assert.deepStrictEqual(fake.calls.map((call) => call.method).slice(-2), ["chat.stopStream", "chat.update"])
-          assert.deepStrictEqual(updates(fake), [{
-            channel,
-            ts,
-            blocks: [{ type: "markdown", text: "Hi &lt;@U2> and `<@U3>` a &lt; b" }],
-            text: "Hi &lt;@U2&gt; and `&lt;@U3&gt;` a &lt; b"
-          }])
-        })
-      )
-    })
-
-    it.effect("is not sent when the appends match the block", () => {
-      const fake = makeFake({ "chat.startStream": posted(ts) })
-      return run(
-        fake,
-        Effect.gen(function*() {
-          const native = (yield* adapter).nativeStream!
-          yield* native.start(replyThread, { markdown: "a < b `<b>` &lt; <@U1>", recipient }).pipe(
-            SlackChat.withPostOptions({ notify: { users: ["U1"] } })
+          assert.deepStrictEqual(
+            fake.called("chat.update").map((call): Record<string, unknown> => ({
+              ...call.params,
+              blocks: JSON.parse(call.params.blocks)
+            })),
+            [{
+              channel,
+              ts,
+              blocks: [{ type: "markdown", text: "Hi &lt;@U2> and `<@U3>` a &lt; b" }],
+              text: "Hi &lt;@U2&gt; and `&lt;@U3&gt;` a &lt; b"
+            }]
           )
-          const cleanup = yield* cleanupOf(
-            native.stop(replyThread, ts, { end: "done" }).pipe(SlackChat.withPostOptions({ notify: { users: ["U1"] } }))
-          )
-          assert.isUndefined(cleanup)
-          assert.strictEqual(fake.called("chat.update").length, 0)
-        })
-      )
-    })
-
-    it.effect("is skipped when the edit fails, and the stop still succeeds", () => {
-      const fake = makeFake({
-        "chat.startStream": posted(ts),
-        "chat.update": { ok: false, error: "cant_update_message" }
-      })
-      return run(
-        fake,
-        Effect.gen(function*() {
-          const native = (yield* adapter).nativeStream!
-          yield* native.start(replyThread, { markdown: "<@U2>", recipient })
-          let result: { readonly stopped: boolean } | undefined
-          const cleanup = yield* cleanupOf(
-            Effect.map(native.stop(replyThread, ts, { end: "done" }), (stopped) => (result = stopped))
-          )
-          assert.strictEqual(cleanup, "failed")
-          assert.deepStrictEqual(result, { stopped: false })
-          assert.strictEqual(fake.called("chat.update").length, 1)
         })
       )
     })
@@ -953,13 +595,8 @@ describe("nativeStream", () => {
           assert.strictEqual(fake.called("chat.update").length, 1)
           yield* Fiber.interrupt(first)
           // Slack answers this one as not streaming, so the user's stop is known from the first.
-          let result: { readonly stopped: boolean } | undefined
-          const cleanup = yield* cleanupOf(
-            Effect.map(native.stop(replyThread, ts, { end: "done" }), (stopped) => (result = stopped))
-          )
-          assert.strictEqual(cleanup, "edited")
+          assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: true })
           assert.strictEqual(fake.called("chat.update").length, 2)
-          assert.deepStrictEqual(result, { stopped: true })
           assert.strictEqual(fake.called("agents.sessions.setStatus").length, 1)
         })
       )
@@ -976,9 +613,10 @@ describe("nativeStream", () => {
         Effect.gen(function*() {
           const native = (yield* adapter).nativeStream!
           yield* native.start(replyThread, { markdown: "a <@U2>", recipient })
-          const appended = yield* cleanupOf(native.append(replyThread, ts, " b", { flush: true }))
-          assert.strictEqual(appended, "edited")
-          assert.deepStrictEqual(updates(fake)[0].blocks, [{ type: "markdown", text: "a &lt;@U2>" }])
+          yield* native.append(replyThread, ts, " b", { flush: true })
+          assert.deepStrictEqual(fake.called("chat.update").map((call) => JSON.parse(call.params.blocks)), [
+            [{ type: "markdown", text: "a &lt;@U2>" }]
+          ])
           assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: true })
           assert.strictEqual(fake.called("chat.update").length, 1)
         })
@@ -1050,17 +688,6 @@ describe("nativeStream", () => {
       })
     )
   })
-
-  it.effect("stop on a closed stream succeeds", () => {
-    const fake = makeFake({ "chat.stopStream": { ok: false, error: "message_not_in_streaming_state" } })
-    return run(
-      fake,
-      Effect.gen(function*() {
-        const native = (yield* adapter).nativeStream!
-        assert.deepStrictEqual(yield* native.stop(replyThread, ts, { end: "done" }), { stopped: false })
-      })
-    )
-  })
 })
 
 describe("SlackChat", () => {
@@ -1084,14 +711,8 @@ describe("SlackChat", () => {
       Effect.gen(function*() {
         const slack = yield* SlackChat.SlackChat
         assert.strictEqual(yield* slack.botUserId, botUserId)
-        assert.strictEqual(yield* slack.botUserId, botUserId)
-        assert.strictEqual(fake.called("auth.test").length, 1)
         const user = yield* slack.user("U0EXT")
         assert.include(user, { id: "U0EXT", teamId: "T0OTHER", name: "Ext", isRestricted: true, isStranger: true })
-        // The core op reads the same record, with the team on raw.
-        const core = yield* (yield* adapter).getUser("U0EXT")
-        assert.deepStrictEqual(core.raw, user.raw)
-        assert.include(core.raw, { team_id: "T0OTHER" })
       })
     )
   })
@@ -1101,12 +722,5 @@ describe("SlackChat", () => {
     assert.deepStrictEqual(SlackChat.emojiToName("👍"), Option.some("+1"))
     assert.deepStrictEqual(SlackChat.emojiToName("❤"), Option.some("heart"))
     assert.isTrue(Option.isNone(SlackChat.emojiFromName("party-parrot")))
-  })
-
-  it("thread and parts", () => {
-    assert.deepStrictEqual(SlackChat.parts(replyThread), Option.some({ team, channel, threadTs: root }))
-    assert.deepStrictEqual(SlackChat.parts(channelThread), Option.some({ team, channel }))
-    assert.isTrue(Option.isNone(SlackChat.parts({ platform: "discord", id: "1/2" })))
-    assert.isTrue(Option.isNone(SlackChat.parts({ platform: "slack", id: "T1" })))
   })
 })

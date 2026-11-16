@@ -53,7 +53,7 @@ describe("download", () => {
       assert.deepStrictEqual(sent, [{ url: connectorUrl, authorization: "Bearer secret", redirect: "manual" }])
     }))
 
-  it.effect("refuses a redirect off the allowlist and sends the token on the first hop only", () =>
+  it.effect("sends the token on the first hop only, and never to an untrusted URL", () =>
     Effect.gen(function*() {
       const { http, sent } = serve((url) =>
         new Response(null, {
@@ -61,23 +61,18 @@ describe("download", () => {
           headers: { location: url === connectorUrl ? "https://cdn.example.com/file" : "https://evil.example/file" }
         })
       )
-      const reason = yield* reasonOf(Download.download(`connector:${connectorUrl}`, options(http)))
-      assert.strictEqual(reason._tag, "Forbidden")
-      assert.strictEqual(reason.detail, "untrusted_url")
+      const redirected = yield* reasonOf(Download.download(`connector:${connectorUrl}`, options(http)))
+      assert.deepStrictEqual([redirected._tag, redirected.detail], ["Forbidden", "untrusted_url"])
       assert.deepStrictEqual(sent.map((request) => [request.url, request.authorization]), [
         [connectorUrl, "Bearer secret"],
         ["https://cdn.example.com/file", undefined]
       ])
-    }))
 
-  it.effect("never sends the token to a redirect host named as the first hop", () =>
-    Effect.gen(function*() {
-      const { http, sent } = serve(() => new Response("hello"))
+      // A redirect host named as the first hop.
       const id = "connector:https://cdn.example.com/v3/attachments/a/views/original"
-      const reason = yield* reasonOf(Download.download(id, options(http)))
-      assert.strictEqual(reason._tag, "Forbidden")
-      assert.strictEqual(reason.detail, "untrusted_url")
-      assert.deepStrictEqual(sent, [])
+      const first = yield* reasonOf(Download.download(id, options(http)))
+      assert.deepStrictEqual([first._tag, first.detail], ["Forbidden", "untrusted_url"])
+      assert.strictEqual(sent.length, 2)
     }))
 
   it.effect("fails TooLarge past maxBytes", () =>

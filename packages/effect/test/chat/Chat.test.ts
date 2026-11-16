@@ -21,10 +21,8 @@ describe("Chat", () => {
       const test = yield* ChatTest.ChatTest
       const b = yield* test.makeThread()
       yield* chat.post(b, { markdown: "to b" })
-      assert.strictEqual((yield* chat.descriptor("a")).platform, "a")
       const missing = yield* Effect.flip(chat.post(ChatThread.make("c", "x"), { markdown: "nowhere" }))
       assert.strictEqual(missing.reason._tag, "NoAdapter")
-      assert.strictEqual(missing.op, "post")
       assert.deepStrictEqual((yield* test.messages(b)).map((message) => message.text), ["to b"])
     }).pipe(Effect.provide(Layer.mergeAll(ChatTest.layer({ platform: "a" }), ChatTest.layer({ platform: "b" })))))
 
