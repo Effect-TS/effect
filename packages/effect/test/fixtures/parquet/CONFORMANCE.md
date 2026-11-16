@@ -24,6 +24,9 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-META-2   | parquet.thrift L1440-1455                                                  | `column_orders` has one entry per leaf column, in schema order                          |
 | PQ-SCHEMA-1 | parquet.thrift L535-537                                                    | Every schema node but the root has a repetition                                         |
 | PQ-SCHEMA-2 | parquet.thrift L518-523, L542-547                                          | The schema tree is the depth-first list of elements, groups giving `num_children`       |
+| PQ-LT-1     | LogicalTypes.md#timestamp                                                  | Unknown `TIMESTAMP` units are unsupported features, not errors in the file              |
+| PQ-LT-2     | parquet.thrift L370-373, L380-383                                          | `TimestampType.unit` and `TimeType.unit` are required (rejected when missing)           |
+| PQ-LT-3     | LogicalTypes.md#unsupported-logical-types                                  | An unrecognized logical type is ignored, and so is its column's order                   |
 | PQ-NEST-1   | README.md#nested-encoding                                                  | Maximum levels follow from the optional and repeated nodes of the path                  |
 | PQ-NEST-2   | README.md#nested-encoding                                                  | Repetition and definition levels encode lists (Dremel)                                  |
 | PQ-NULL-1   | README.md#nulls                                                            | Nulls are encoded in the definition levels only, not in the data                        |
@@ -69,6 +72,7 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-UNSUP-3 | Encodings.md#adaptive-lossless-floating-point-alp--10 | The `ALP` encoding (in preview at 2.14.0)                                                                                                                         |
 | PQ-UNSUP-4 | parquet.thrift ColumnChunk.file_path                  | Column chunks in another file                                                                                                                                     |
 | PQ-UNSUP-5 | Compression.md#codecs                                 | Every codec but `UNCOMPRESSED` without a `Decompress`, and unknown codecs. The module has no codecs; the shared ones are planned in `effect/encoding/Compression` |
+| PQ-UNSUP-6 | LogicalTypes.md#time                                  | A `TIME` unit added after 2.14.0. Local policy: the spec states the rule for `TIMESTAMP` only (PQ-LT-1)                                                           |
 
 ## Deferred: not read yet
 

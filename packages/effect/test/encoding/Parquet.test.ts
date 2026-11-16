@@ -88,6 +88,7 @@ const rows = (column: Parquet.Column): Array<Gold> => {
 const text = (s: string) => new TextEncoder().encode(s)
 
 type V = Thrift.Value
+const I8 = (value: number): V => ({ _tag: "I8", value })
 const I32 = (value: number): V => ({ _tag: "I32", value })
 const I64 = (value: number): V => ({ _tag: "I64", value: BigInt(value) })
 const Bool = (value: boolean): V => ({ _tag: "Bool", value })
@@ -135,13 +136,22 @@ const element = (name: string, options: {
   readonly typeLength?: number | undefined
   readonly repetition?: number | undefined
   readonly children?: number | undefined
+  readonly convertedType?: number | undefined
+  readonly scale?: number | undefined
+  readonly precision?: number | undefined
+  /** A LogicalType union: a struct with one field. */
+  readonly logicalType?: V | undefined
 }): V =>
   Struct({
     1: options.type === undefined ? undefined : I32(options.type),
     2: options.typeLength === undefined ? undefined : I32(options.typeLength),
     3: options.repetition === undefined ? undefined : I32(options.repetition),
     4: Str(name),
-    5: options.children === undefined ? undefined : I32(options.children)
+    5: options.children === undefined ? undefined : I32(options.children),
+    6: options.convertedType === undefined ? undefined : I32(options.convertedType),
+    7: options.scale === undefined ? undefined : I32(options.scale),
+    8: options.precision === undefined ? undefined : I32(options.precision),
+    10: options.logicalType
   })
 const root = (children: number) => element("schema", { children })
 
@@ -397,6 +407,27 @@ describe("Parquet", () => {
       flat({ type: Type.INT32, repetition: REPEATED, numRows, numValues, pages })
     // def levels 1, 0, 1 as RLE runs, for a column with one optional node
     const someNull = runs(1, [1, 1], [0, 1], [1, 1])
+    type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
+    /** A file with one required column `x` that has statistics in TYPE_ORDER, and no rows. */
+    const annotated = (type: number, annotation: Annotation) =>
+      file({
+        schema: [root(1), element("x", { type, repetition: REQUIRED, ...annotation })],
+        numRows: 0,
+        chunks: [{ type, path: ["x"], numValues: 0, pages: [] }],
+        metadata: { 7: List("Struct", [Struct({ 1: Struct({}) })]) }
+      })
+    /** What the reader says about column `x`. */
+    const annotationOf = (bytes: Uint8Array) =>
+      Effect.map(metadataOf(bytes), ({ columns: [column] }) => ({
+        logicalType: column.nodes[0].logicalType,
+        convertedType: column.nodes[0].convertedType,
+        columnOrder: column.columnOrder
+      }))
+    const empty = Struct({})
+    const TIME = 7
+    const TIMESTAMP = 8
+    /** A TimeType or TimestampType with a TimeUnit union, or without its unit. */
+    const temporal = (member: number, unit: V | undefined) => Struct({ [member]: Struct({ 1: Bool(true), 2: unit }) })
 
     describe("README.md#file-format", () => {
       it.effect("PQ-FILE-1 MUST start and end with the magic number PAR1", () =>
@@ -498,6 +529,50 @@ describe("Parquet", () => {
             "Malformed",
             /ends inside a group/
           )
+        }))
+    })
+
+    describe("LogicalTypes.md", () => {
+      it.effect("PQ-LT-1 MUST handle an unknown TIMESTAMP unit as an unsupported feature (#timestamp)", () =>
+        Effect.gen(function*() {
+          const TIMESTAMP_MICROS = 10
+          const timestamp = (unit: number) =>
+            annotated(Type.INT64, {
+              logicalType: temporal(TIMESTAMP, Struct({ [unit]: empty })),
+              convertedType: TIMESTAMP_MICROS
+            })
+          assert.deepStrictEqual((yield* annotationOf(timestamp(3))).logicalType, {
+            type: "TIMESTAMP",
+            isAdjustedToUTC: true,
+            unit: "NANOS"
+          })
+          // a fourth unit, which must not read as the legacy TIMESTAMP_MICROS
+          yield* failsWith(metadataOf(timestamp(4)), "Unsupported", /TIMESTAMP unit 4/)
+        }))
+
+      it.effect("PQ-LT-2 MUST reject a TIME or TIMESTAMP without its unit (parquet.thrift L370-373, L380-383)", () =>
+        Effect.gen(function*() {
+          const make = (member: number, unit: V | undefined) =>
+            metadataOf(annotated(Type.INT64, { logicalType: temporal(member, unit) }))
+          yield* failsWith(make(TIMESTAMP, undefined), "Malformed", /TimestampType\.unit is missing/)
+          yield* failsWith(make(TIME, undefined), "Malformed", /TimeType\.unit is missing/)
+          // a TimeUnit union with no member
+          yield* failsWith(make(TIMESTAMP, empty), "Malformed", /TimestampType\.unit is missing/)
+        }))
+
+      it.effect("PQ-LT-3 SHOULD ignore an unrecognized logical type and the column's order (#unsupported-logical-types)", () =>
+        Effect.gen(function*() {
+          assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT64, {})), {
+            logicalType: undefined,
+            convertedType: undefined,
+            columnOrder: "TYPE_ORDER"
+          })
+          // member 99 of the LogicalType union, which 2.14.0 doesn't have
+          assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT64, { logicalType: Struct({ 99: empty }) })), {
+            logicalType: undefined,
+            convertedType: undefined,
+            columnOrder: undefined
+          })
         }))
     })
 
@@ -1039,6 +1114,18 @@ describe("Parquet", () => {
           for (const codec of [1, 3, 4, 5, 6, 7, 99]) {
             yield* failsWith(values(requiredColumn(Type.INT32, 3, int32s(1, 2, 3), { codec })), "Unsupported")
           }
+        }))
+
+      it.effect("PQ-UNSUP-6 fails with Unsupported on a TIME unit added after 2.14.0", () =>
+        Effect.gen(function*() {
+          const time = (unit: number) =>
+            annotated(Type.INT64, { logicalType: temporal(TIME, Struct({ [unit]: empty })) })
+          assert.deepStrictEqual((yield* annotationOf(time(2))).logicalType, {
+            type: "TIME",
+            isAdjustedToUTC: true,
+            unit: "MICROS"
+          })
+          yield* failsWith(metadataOf(time(4)), "Unsupported", /TIME unit 4/)
         }))
     })
   })

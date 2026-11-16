@@ -40,7 +40,9 @@
  *
  * - Physical types: all eight. Values stay in their physical type; logical
  *   types and converted types are decoded into the schema but not applied
- *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes).
+ *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes). A
+ *   logical type added after 2.14.0 is left out of the schema, and so is the
+ *   order of its column's statistics.
  * - Encodings: `PLAIN`, `PLAIN_DICTIONARY` and `RLE_DICTIONARY` (values
  *   are looked up in the dictionary), `RLE` (booleans), `DELTA_BINARY_PACKED`,
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
@@ -52,9 +54,9 @@
  *
  * Not supported, failing with a {@link ParquetError} of kind `Unsupported`:
  * encrypted files and columns, the `ALP` encoding, column chunks in other
- * files (`file_path`), and compressed pages without a matching
- * {@link Decompress}. Not read: page indexes, bloom filters, page checksums,
- * size and geospatial statistics.
+ * files (`file_path`), `TIME` and `TIMESTAMP` units added after 2.14.0, and
+ * compressed pages without a matching {@link Decompress}. Not read: page
+ * indexes, bloom filters, page checksums, size and geospatial statistics.
  *
  * Input is untrusted: every offset and length is checked against the bytes
  * that are there, and the sizes a file claims are capped by options
@@ -300,7 +302,10 @@ export interface ColumnDescriptor {
   readonly maxDefinitionLevel: number
   /** The number of repeated nodes on the path. */
   readonly maxRepetitionLevel: number
-  /** `undefined` when the file has no column orders, or one this module doesn't know. */
+  /**
+   * `undefined` when the file has no column orders, or one this module doesn't
+   * know, or when the column's logical type is one this module doesn't know.
+   */
   readonly columnOrder: ColumnOrder | undefined
 }
 
@@ -766,20 +771,30 @@ const simpleLogicalTypes = {
   19: "FILE"
 } as const
 
-/** Reads a union of empty structs, such as TimeUnit or ColumnOrder, as the name of its field. */
-const unionName = <A>(r: Reader, names: ReadonlyArray<A | undefined>): A | undefined => {
-  let out: A | undefined
+/**
+ * Reads a union of empty structs, such as TimeUnit or ColumnOrder, as the name
+ * of its field, or as the id of a field this module doesn't know.
+ */
+const unionName = <A>(r: Reader, names: ReadonlyArray<A | undefined>): A | number | undefined => {
+  let out: A | number | undefined
   struct(r, (id, type) => {
     r.skip(type)
-    if (type === T.Struct) out = names[id]
+    const known = names[id]
+    if (known === undefined) out = id
+    else if (type === T.Struct) out = known
   })
   return out
 }
 
-const logicalType = (r: Reader): LogicalType | undefined => {
-  let out: LogicalType | undefined
+/** Reads a LogicalType union, or the id of a member this module doesn't know. */
+const logicalType = (r: Reader): LogicalType | number | undefined => {
+  let out: LogicalType | number | undefined
   struct(r, (id, type) => {
-    if (type !== T.Struct) return r.skip(type)
+    if (type !== T.Struct) {
+      r.skip(type)
+      out = id
+      return
+    }
     const simple = simpleLogicalTypes[id as keyof typeof simpleLogicalTypes]
     if (simple !== undefined) {
       r.skip(type)
@@ -798,11 +813,13 @@ const logicalType = (r: Reader): LogicalType | undefined => {
       }
       case 7:
       case 8: {
+        const kind = id === 7 ? "TIME" : "TIMESTAMP"
+        const what = id === 7 ? "TimeType" : "TimestampType"
         const f = readStruct(r, { isAdjustedToUTC: [1, bool], unit: [2, structOf((r) => unionName(r, timeUnits))] })
-        const isAdjustedToUTC = required(f.isAdjustedToUTC, "TimeType.isAdjustedToUTC")
-        out = f.unit === undefined
-          ? undefined
-          : { type: id === 7 ? "TIME" : "TIMESTAMP", isAdjustedToUTC, unit: f.unit }
+        const isAdjustedToUTC = required(f.isAdjustedToUTC, `${what}.isAdjustedToUTC`)
+        const unit = required(f.unit, `${what}.unit`)
+        if (typeof unit === "number") return fail("Unsupported", `${kind} unit ${unit} is not supported`)
+        out = { type: kind, isAdjustedToUTC, unit }
         return
       }
       case 10: {
@@ -831,7 +848,7 @@ const logicalType = (r: Reader): LogicalType | undefined => {
       }
       default:
         r.skip(type)
-        out = undefined
+        out = id
     }
   })
   return out
@@ -916,7 +933,7 @@ interface Schema {
 /** Rebuilds the schema tree from its depth-first list of elements. */
 const schemaTree = (
   elements: ReadonlyArray<Element>,
-  orders: ReadonlyArray<ColumnOrder | undefined> | undefined,
+  orders: ReadonlyArray<ColumnOrder | number | undefined> | undefined,
   maxDepth: number
 ): Schema => {
   const columns: Array<ColumnDescriptor> = []
@@ -938,7 +955,7 @@ const schemaTree = (
       repetition,
       typeLength: e.typeLength,
       convertedType: e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType),
-      logicalType: e.logicalType,
+      logicalType: typeof e.logicalType === "number" ? undefined : e.logicalType,
       scale: e.scale,
       precision: e.precision,
       fieldId: e.fieldId
@@ -962,6 +979,7 @@ const schemaTree = (
     }
     const self: SchemaNode = { ...base, physicalType, children: undefined }
     const nodes = [...path, self]
+    const order = orders?.[columns.length]
     columns.push({
       path: nodes.map((n) => n.name),
       nodes,
@@ -969,7 +987,8 @@ const schemaTree = (
       typeLength: physicalType === "FIXED_LEN_BYTE_ARRAY" ? e.typeLength : undefined,
       maxDefinitionLevel: definition,
       maxRepetitionLevel: repetitionLevel,
-      columnOrder: orders?.[columns.length]
+      // The order of a logical type this module doesn't know is unknown too.
+      columnOrder: typeof order === "number" || typeof e.logicalType === "number" ? undefined : order
     })
     return self
   }
