@@ -1,0 +1,203 @@
+import { assert, describe, it } from "@effect/vitest"
+import { assertEquals } from "@effect/vitest/utils"
+import { DateTime, Duration, Option, Result } from "effect"
+import { ArrowColumn, ArrowExtension, ArrowSchema as S, ArrowTable } from "effect/arrow"
+
+const schema = S.make([
+  S.field("id", S.int32, { nullable: false }),
+  S.field("name", S.utf8),
+  S.field("tag", S.dictionary(S.utf8))
+])
+const rows = [
+  { id: 1, name: "a", tag: "x" },
+  { id: 2, name: null, tag: "y" },
+  { id: 3, name: "c", tag: "x" },
+  { id: 4, name: "d", tag: null },
+  { id: 5, name: "e", tag: "z" }
+]
+// Two rows per batch: [1, 2], [3, 4], [5]
+const table = Result.getOrThrow(ArrowTable.fromRows(schema, rows, { batchSize: 2 }))
+
+const nested = S.make([
+  S.field("id", S.int32),
+  S.field("s", S.struct([S.field("a", S.int8)])),
+  S.field("l", S.list(S.field("item", S.int8)))
+])
+
+describe("ArrowTable", () => {
+  // ARROW-TABLE-001 (local): batching, missing fields, iteration and dictionary sharing.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("fromRows splits rows into batches that toRows reads back", () => {
+    const built = Result.getOrThrow(
+      ArrowTable.fromRows(schema, [{ id: 1, tag: "x" }, { id: 2, name: "b" }], { batchSize: 1 })
+    )
+    assert.deepStrictEqual(ArrowTable.toRows(built), [{ id: 1, name: null, tag: "x" }, { id: 2, name: "b", tag: null }])
+
+    assert.deepStrictEqual(table.batches.map((batch) => batch.length), [2, 2, 1])
+    assert.strictEqual(ArrowTable.numRows(table), 5)
+    assert.deepStrictEqual(ArrowTable.toRows(table), rows)
+    assert.deepStrictEqual(Array.from(ArrowTable.rows(table)), rows)
+    // Dictionary-encoded fields share one dictionary across batches
+    const [first, ...others] = table.batches.map((batch) => batch.columns[2].dictionary)
+    for (const dictionary of others) assert.strictEqual(dictionary, first)
+  })
+
+  // ARROW-TABLE-002 (local): named/positional column construction.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("fromColumns and fromBatches build one batch per entry, by field name or position", () => {
+    const fromBatches = Result.getOrThrow(ArrowTable.fromBatches(schema, [
+      { id: [1, 2], name: ["a", null], tag: ["x", "y"] },
+      [[3, 4, 5], ["c", "d", "e"], ["x", null, "z"]]
+    ]))
+    assert.deepStrictEqual(fromBatches.batches.map((batch) => batch.length), [2, 3])
+    assert.deepStrictEqual(ArrowTable.toRows(fromBatches), rows)
+
+    const fromColumns = Result.getOrThrow(ArrowTable.fromColumns(schema, [[1], ["a"], ["x"]]))
+    assert.deepStrictEqual(ArrowTable.toRows(fromColumns), [rows[0]])
+  })
+
+  // ARROW-TABLE-003 (local): shape/type errors and nested error paths.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("build errors locate the value across batches", () => {
+    const failures: ReadonlyArray<
+      readonly [Result.Result<ArrowTable.Table, ArrowColumn.ArrowBuildError>, ReadonlyArray<string | number>]
+    > = [
+      [ArrowTable.fromRows(schema, [...rows.slice(0, 3), { id: null }], { batchSize: 2 }), [3, "id"]],
+      [ArrowTable.fromColumns(schema, { id: [1, 2], name: ["a"], tag: ["x", "y"] }), ["name"]],
+      [ArrowTable.fromColumns(schema, { id: [1], name: ["a"] }), ["tag"]],
+      [ArrowTable.fromColumns(S.make([S.field("__proto__", S.int32)]), {}), ["__proto__"]],
+      [ArrowTable.fromRows(nested, [{ id: 1 }, { id: 2 }, { id: 3, s: { a: 300 } }], { batchSize: 2 }), [2, "s", "a"]],
+      [ArrowTable.fromRows(nested, [{ l: [1] }, { l: [] }, { l: [2, 300] }], { batchSize: 2 }), [2, "l", 1]],
+      [ArrowTable.fromColumns(S.make([S.field("u", S.union("sparse", [S.field("a", S.int8)], [-1]))]), { u: [] }), [
+        "u"
+      ]],
+      [ArrowTable.fromRows(S.make([S.field("d", S.decimal(10, 0, 32))]), []), ["d"]]
+    ]
+    for (const [result, path] of failures) {
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.isTrue(ArrowColumn.isArrowBuildError(result.failure))
+        assert.deepStrictEqual(result.failure.path, path)
+      }
+    }
+  })
+
+  // ARROW-TABLE-004 (local): JavaScript own-property safety.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("reads and builds a field named __proto__ as an own property", () => {
+    const proto = S.make([S.field("__proto__", S.int32), S.field("s", S.struct([S.field("__proto__", S.int32)]))])
+    const [first, second] = ArrowTable.toRows(
+      Result.getOrThrow(ArrowTable.fromRows(proto, [JSON.parse(`{"__proto__": 1, "s": {"__proto__": 2}}`), { s: {} }]))
+    )
+    assert.strictEqual(Object.getPrototypeOf(first), Object.prototype)
+    assert.deepStrictEqual(Object.entries(first), [["__proto__", 1], ["s", first.s]])
+    assert.deepStrictEqual(Object.entries(first.s as object), [["__proto__", 2]])
+    assert.deepStrictEqual(Object.entries(second), [["__proto__", null], ["s", second.s]])
+    assert.deepStrictEqual(Object.entries(second.s as object), [["__proto__", null]])
+  })
+
+  // ARROW-TABLE-005 (local): column lookup, iteration and index bounds.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("column reads one field across batches, by name or position", () => {
+    const names = ["a", null, "c", "d", "e"]
+    for (const field of ["name", 1]) {
+      const column = Option.getOrThrow(ArrowTable.column(table, field))
+      assert.strictEqual(column.field, schema.fields[1])
+      assert.deepStrictEqual(ArrowColumn.toArray(column), names)
+      assert.deepStrictEqual([...column], names)
+      assert.deepStrictEqual([0, 1, 3, 4, 5, -1, 1.5].map((i) => ArrowColumn.get(column, i)), [
+        Option.some("a"),
+        Option.some(null),
+        Option.some("d"),
+        Option.some("e"),
+        Option.none(),
+        Option.none(),
+        Option.none()
+      ])
+      assert.strictEqual(ArrowColumn.getUnsafe(column, 2), "c")
+      assert.throws(() => ArrowColumn.getUnsafe(column, 5), RangeError)
+    }
+    assert.isTrue(Option.isNone(ArrowTable.column(table, "missing")))
+    assert.isTrue(Option.isNone(ArrowTable.column(table, 3)))
+  })
+
+  // ARROW-TABLE-006 (local): slicing across batches and bounds.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("slice keeps rows start until end across batches", () => {
+    const slices: ReadonlyArray<readonly [start: number, end: number | undefined, lengths: ReadonlyArray<number>]> = [
+      [0, undefined, [2, 2, 1]],
+      [1, 4, [1, 2]],
+      [2, 4, [2]],
+      [3, 5, [1, 1]],
+      [4, undefined, [1]],
+      [3, 3, []]
+    ]
+    for (const [start, end, lengths] of slices) {
+      const sliced = ArrowTable.slice(table, start, end)
+      assert.deepStrictEqual(sliced.batches.map((batch) => batch.length), lengths)
+      assert.strictEqual(ArrowTable.numRows(sliced), rows.slice(start, end).length)
+      assert.deepStrictEqual(ArrowTable.toRows(sliced), rows.slice(start, end))
+    }
+    assert.deepStrictEqual(ArrowTable.toRows(ArrowTable.slice(ArrowTable.slice(table, 1), 2, 3)), [rows[3]])
+    for (const [start, end] of [[-1, 2], [3, 2], [0, 6]]) {
+      assert.throws(() => ArrowTable.slice(table, start, end), RangeError)
+    }
+  })
+
+  // ARROW-TABLE-007 (local): storage rows through rows/toRows, and as builder input.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("storage rows build the same table again, except for decimals", () => {
+    const hex = ArrowExtension.make({
+      name: "test.hex",
+      decode: (n: number) => n.toString(16),
+      encode: (s: string) => parseInt(s, 16)
+    })
+    const temporal = S.make([
+      S.field("at", S.timestamp("nanosecond", "Europe/Paris")),
+      S.field("day", S.date("day")),
+      S.field("took", S.duration("microsecond")),
+      S.field("every", S.interval("yearMonth")),
+      S.field("seen", S.list(S.field("item", S.date("millisecond")))),
+      S.field("kind", S.dictionary(S.duration("second"))),
+      S.field("hex", S.int32, { metadata: ArrowExtension.metadata("test.hex") })
+    ])
+    const empty = { at: null, day: null, took: null, every: null, seen: null, kind: null, hex: null }
+    const domain = [{
+      at: DateTime.makeZonedUnsafe(1704164645678, { timeZone: "Europe/Paris" }),
+      day: DateTime.makeUnsafe("2024-01-02T00:00:00Z"),
+      took: Duration.millis(1500),
+      every: { months: 14 },
+      seen: [DateTime.makeUnsafe(60000), null],
+      kind: Duration.seconds(5),
+      hex: "ff"
+    }, empty]
+    const storage = [{
+      at: 1704164645678901234n,
+      day: 19724,
+      took: 1500000n,
+      every: { months: 14 },
+      seen: [60000n, null],
+      kind: 5n,
+      hex: 255
+    }, empty]
+    const options = { extensions: [hex] }
+    // Built from domain values, except for the nanoseconds a DateTime cannot hold
+    const built = Result.getOrThrow(
+      ArrowTable.fromRows(temporal, [{ ...domain[0], at: storage[0].at }, {}], { ...options, batchSize: 1 })
+    )
+    const read = ArrowTable.toRows(built, { ...options, representation: "storage" })
+    assert.deepStrictEqual(read, storage)
+    assert.deepStrictEqual(Array.from(ArrowTable.rows(built, { representation: "storage" })), storage)
+
+    // Extension storage values are given to a builder that does not encode them
+    const rebuilt = Result.getOrThrow(ArrowTable.fromRows(temporal, read))
+    assert.deepStrictEqual(ArrowTable.toRows(rebuilt, { representation: "storage" }), storage)
+    assertEquals(ArrowTable.toRows(rebuilt, options), domain)
+
+    // Builders take a BigDecimal, not the unscaled value
+    const decimals = S.make([S.field("d", S.decimal(5, 2))])
+    const result = ArrowTable.fromRows(decimals, [{ d: 150n }])
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) assert.deepStrictEqual(result.failure.path, [0, "d"])
+  })
+})
