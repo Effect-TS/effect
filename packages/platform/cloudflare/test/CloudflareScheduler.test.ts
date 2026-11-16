@@ -42,7 +42,7 @@ const makeMiniflare = (contents: string, compatibilityDate: string) =>
 describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility date %s)", (compatibilityDate) => {
   let miniflare: Miniflare
   const get = (path: string) => miniflare.dispatchFetch(`http://localhost${path}`)
-  const json = async (path: string) => {
+  const json = async (path: string): Promise<any> => {
     const response = await get(path)
     assert.strictEqual(response.status, 200, await response.clone().text())
     return response.json()
@@ -78,58 +78,69 @@ describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility 
     assert.deepStrictEqual(await json("/background?id=background"), [])
     assert.deepStrictEqual(await poll("/log?id=background", logged(1)), {
       log: [{ at: "slept", store: "A", io: "owner" }],
-      exited: true
+      exited: true,
+      timers: 0
     })
   })
 
-  it("resumes a fiber in the request that owns it, after the owner responds", async () => {
-    assert.deepStrictEqual(await json("/park?id=resume&work=5000"), [])
+  // No fixture timers: the owner has no work of its own while its fiber waits
+  it("resumes a fiber in an idle owner that has responded, then clears its timer", async () => {
+    assert.deepStrictEqual(await json("/park?id=resume"), [])
+    await sleep(100)
+    assert.deepStrictEqual(await json("/log?id=resume"), { log: [], exited: false, timers: 1 })
     assert.strictEqual(await json("/wake?id=resume"), "woken")
-    assert.deepStrictEqual((await poll("/log?id=resume", logged(2))).log, resumed)
+    assert.deepStrictEqual(await poll("/log?id=resume", (body) => body.exited), {
+      log: resumed,
+      exited: true,
+      timers: 0
+    })
   })
 
-  it("resumes a fiber in the request that owns it, while the owner waits for it", async () => {
-    const owner = get("/park?id=join&join&work=5000")
-    await poll("/log?id=join", () => true)
+  it("resumes a fiber in an owner that waits only for it", async () => {
+    const owner = get("/park?id=join&join")
+    await sleep(100)
     assert.strictEqual(await json("/wake?id=join"), "woken")
     const response = await owner
-    assert.strictEqual(response.status, 200)
+    assert.strictEqual(response.status, 200, await response.clone().text())
     assert.deepStrictEqual(await response.json(), resumed)
+    assert.strictEqual((await json("/log?id=join")).timers, 0)
   })
 
-  it("interrupts a fiber in the request that owns it", async () => {
-    assert.deepStrictEqual(await json("/park?id=interrupt&work=5000"), [])
-    assert.strictEqual(await json("/wake?id=interrupt&interrupt"), "woken")
-    assert.deepStrictEqual(await poll("/log?id=interrupt", logged(1)), {
-      log: [{ at: "interrupted", store: "A", io: "owner" }],
-      exited: true
-    })
-  })
-
-  it("leaves a fiber suspended when nothing keeps its owner running", async () => {
-    // workerd cancels the owner once it only waits on another request
-    assert.deepStrictEqual(await json("/park?id=idle"), [])
-    await sleep(50)
-    assert.strictEqual(await json("/wake?id=idle"), "woken")
+  it("interrupts a fiber in an idle owner, then clears its timer", async () => {
+    assert.deepStrictEqual(await json("/park?id=interrupt"), [])
     await sleep(100)
-    assert.deepStrictEqual(await json("/log?id=idle"), { log: [], exited: false })
+    assert.strictEqual(await json("/wake?id=interrupt&interrupt"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=interrupt", (body) => body.exited), {
+      log: [{ at: "interrupted", store: "A", io: "owner" }],
+      exited: true,
+      timers: 0
+    })
   })
 
   it("resumes a Durable Object fiber after its request has ended", async () => {
     assert.deepStrictEqual(await json("/room/park?id=room"), [])
     await sleep(50)
     assert.strictEqual(await json("/room/wake?id=room"), "woken")
-    assert.deepStrictEqual(await poll("/room/log?id=room", (body) => body.exited), { log: resumed, exited: true })
+    assert.deepStrictEqual(await poll("/room/log?id=room", (body) => body.exited), {
+      log: resumed,
+      exited: true,
+      timers: 0
+    })
   })
 
-  it("finishes initializing a shared runtime after the request that started it responds", async () => {
+  it("serves a request waiting for a shared runtime that other requests initialize", async () => {
+    // A starts the initialization and responds, B waits for it, C finishes it
     assert.strictEqual(await json("/runtime/start"), false)
-    // workerd cancels a request that only waits on another request's work
-    const waiter = await get("/runtime/join")
-    assert.strictEqual(waiter.status, 500)
-    assert.match(await waiter.text(), /hung/)
-    assert.strictEqual(await poll("/runtime/status", (initialized) => initialized), true)
-    assert.strictEqual(await json("/runtime/join"), "B")
+    const waiter = get("/runtime/join")
+    await sleep(100)
+    assert.strictEqual(await json("/runtime/ready"), "ready")
+    const response = await waiter
+    assert.strictEqual(response.status, 200, await response.clone().text())
+    assert.strictEqual(await response.json(), "B")
+    assert.deepStrictEqual(await poll("/runtime/status", (body) => body.timers === 0), {
+      initialized: true,
+      timers: 0
+    })
   })
 })
 
