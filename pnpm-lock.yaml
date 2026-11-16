@@ -527,6 +527,9 @@ importers:
       miniflare:
         specifier: ^4.20260730.0
         version: 4.20260730.0
+      miniflare-v5:
+        specifier: npm:miniflare@5.20260925.0-alpha
+        version: miniflare@5.20260925.0-alpha(@types/node@26.6.6)
 
   packages/platform/deno:
     dependencies:

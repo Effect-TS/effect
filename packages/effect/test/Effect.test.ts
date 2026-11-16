@@ -5650,6 +5650,45 @@ describe("Effect", () => {
     const storage = new AsyncLocalStorage<string>()
     const current = () => storage.getStore() ?? "none"
 
+    for (const preserveAsyncContext of [false, true, undefined]) {
+      it(`resumes and forks with preserveAsyncContext=${preserveAsyncContext}`, async () => {
+        const tasks: Array<() => void> = []
+        const scheduler = {
+          executionMode: "sync" as const,
+          preserveAsyncContext,
+          shouldYield: () => false,
+          makeDispatcher: () => ({
+            scheduleTask: (task: () => void) => {
+              tasks.push(task)
+            },
+            flush: () => {
+              while (tasks.length > 0) tasks.shift()!()
+            }
+          })
+        }
+        const deferred = Deferred.makeUnsafe<void>()
+        const waiter = storage.run(
+          "waiter",
+          () => Effect.runFork(Effect.andThen(Deferred.await(deferred), Effect.sync(current)), { scheduler })
+        )
+        const parent = storage.run("parent", () =>
+          Effect.runFork(
+            Effect.gen(function*() {
+              const child = yield* Effect.forkChild(Effect.sync(current))
+              return yield* Fiber.join(child)
+            }),
+            { scheduler }
+          ))
+        await storage.run("waker", () => Effect.runPromise(Deferred.succeed(deferred, undefined)))
+        storage.run("dispatcher", () => scheduler.makeDispatcher().flush())
+        assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed(preserveAsyncContext === false ? "waker" : "waiter"))
+        assert.deepStrictEqual(
+          parent.pollUnsafe(),
+          Exit.succeed(preserveAsyncContext === false ? "dispatcher" : "parent")
+        )
+      })
+    }
+
     const runWithStore = <A, E>(store: string | undefined, effect: Effect.Effect<A, E>): Promise<A> =>
       store === undefined ? Effect.runPromise(effect) : storage.run(store, () => Effect.runPromise(effect))
 
