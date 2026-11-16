@@ -128,6 +128,29 @@ describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility 
     })
   })
 
+  // The owner's wake reaction runs after the interrupt has been handed over,
+  // while the interrupted fiber waits in its cleanup
+  it("runs an interrupted fiber once when its owner wakes it before the interrupt lands", async () => {
+    assert.deepStrictEqual(await json("/park?id=run-once&owner-wake"), [])
+    await sleep(100)
+    assert.strictEqual(await json("/wake?id=run-once&wake&interrupt"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=run-once", logged(1)), {
+      log: [{ at: "cleanup", store: "A", io: "owner" }],
+      exited: false,
+      timers: 1
+    })
+    assert.strictEqual(await json("/finish?id=run-once"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=run-once", (body) => body.exited), {
+      log: [
+        { at: "cleanup", store: "A", io: "owner" },
+        { at: "cleaned", store: "A", io: "owner" },
+        { at: "interrupted", store: "A", io: "owner" }
+      ],
+      exited: true,
+      timers: 0
+    })
+  })
+
   it("resumes a Durable Object fiber after its request has ended", async () => {
     assert.deepStrictEqual(await json("/room/park?id=room"), [])
     await sleep(50)

@@ -1,6 +1,6 @@
 effect/Scheduler#ControlledScheduler:
   replacement: "none"
-  note: "No public step-controlled scheduler remains; implement Scheduler and SchedulerDispatcher for exact controlled stepping."
+  note: "No public step-controlled scheduler remains; implement Scheduler and SchedulerDispatcher for exact controlled stepping, delegating park to a MixedScheduler."
 effect/Scheduler#defaultScheduler:
   replacement: "Scheduler.Scheduler"
   note: "The default scheduler is now a Context.Reference; yield it to read or provide it to override the current scheduler."
@@ -9,7 +9,7 @@ effect/Scheduler#defaultShouldYield:
   note: "The standalone function was removed; yielding is implemented by each Scheduler instance."
 effect/Scheduler#make:
   replacement: "none"
-  note: "Implement the redesigned Scheduler interface and return task dispatch through makeDispatcher."
+  note: "Implement the redesigned Scheduler interface: return task dispatch through makeDispatcher, and fiber resumption through park, delegating to a MixedScheduler for the default."
 effect/Scheduler#makeBatched:
   replacement: "new Scheduler.MixedScheduler(\"async\", schedule)"
   note: "Pass a cancellable scheduling function; the dispatcher performs priority batching."
@@ -24,7 +24,7 @@ effect/Scheduler#PriorityBuckets:
   note: "Priority buckets are now an internal Scheduler implementation detail."
 effect/Scheduler#Scheduler:
   replacement: "Scheduler.Scheduler"
-  note: "The interface remains but dispatch moved to SchedulerDispatcher returned by makeDispatcher."
+  note: "The interface remains but dispatch moved to SchedulerDispatcher returned by makeDispatcher, and implementations also provide park, which MixedScheduler implements."
 effect/Scheduler#SchedulerRunner:
   replacement: "Scheduler.SchedulerDispatcher"
   note: "Task scheduling and flushing moved to the dispatcher returned by Scheduler.makeDispatcher."

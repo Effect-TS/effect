@@ -499,48 +499,11 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-const AsyncResource:
-  | (new(type: string) => {
-    runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
-    emitDestroy(): void
-  })
-  | undefined = (() => {
-    try {
-      return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-    } catch {
-      return undefined
-    }
-  })()
-
-// The default resumption: runs the fiber synchronously, in the context it
-// parked in
-const NativeResumption: (new() => Scheduler.Resumption) | undefined = AsyncResource && class extends AsyncResource {
-  resumed = false
-  constructor() {
-    super("effect/Fiber")
+// How entries reach a fiber that is not parked
+const unparked: Scheduler.Resumption = {
+  resume(fiber, effect) {
+    fiber.run(effect)
   }
-  resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>): void {
-    // An entry from an async_hooks `before` callback, such as an interrupt,
-    // arrives while the first one enters the scope, and is already pending
-    if (this.resumed) return
-    this.resumed = true
-    try {
-      this.runInAsyncScope(fiber.run, fiber, effect)
-    } finally {
-      // Each resumption runs its fiber once, so release it for async_hooks
-      // consumers like vitest's detectAsyncLeaks.
-      this.emitDestroy()
-    }
-  }
-}
-
-const park = (fiber: FiberImpl): Scheduler.Resumption | undefined => {
-  const scheduler = fiber.cache.scheduler
-  return scheduler.park !== undefined
-    ? scheduler.park(fiber)
-    : NativeResumption === undefined
-    ? undefined
-    : new NativeResumption()
 }
 
 /** @internal */
@@ -570,7 +533,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._resumption = undefined
+    this._resumption = unparked
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -594,7 +557,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  declare _resumption: Scheduler.Resumption | undefined
+  declare _resumption: Scheduler.Resumption
 
   // set in setContext
   declare context: Context.Context<never>
@@ -654,17 +617,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    if (this._resumption !== undefined) {
-      return this._resumption.resume(this, effect as any)
-    }
-    this.run(effect)
+    this._resumption.resume(this, effect as any)
   }
   // Every effect a resumption receives is a primitive
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
       return
     }
-    this._resumption = undefined
+    this._resumption = unparked
     if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -672,7 +632,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._resumption = park(this)
+      this._resumption = this.cache.scheduler.park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -5712,7 +5672,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._resumption = park(child)
+    child._resumption = child.cache.scheduler.park(child)
     // Cancel the deferred start if an interrupt runs first.
     let resumed = false
     child.yieldWith(() => {

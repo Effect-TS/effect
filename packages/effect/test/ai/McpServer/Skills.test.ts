@@ -559,6 +559,7 @@ describe("McpServer skills", () => {
         const tasks: Array<() => void> = []
         const gated: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           shouldYield: (fiber) => fiber.currentOpCount > 2,
           makeDispatcher: () => ({ scheduleTask: (task) => tasks.push(task), flush: () => {} })
         }

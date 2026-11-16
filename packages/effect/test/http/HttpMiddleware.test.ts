@@ -268,6 +268,7 @@ describe("HttpMiddleware", () => {
         let observed: Context.Context<never> | undefined
         const scheduler: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           makeDispatcher: () => ({
             scheduleTask: (task) => {
               tasks.push(task)

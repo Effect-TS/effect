@@ -39,6 +39,10 @@ class SteppedScheduler implements Scheduler.Scheduler {
     return this.holding ? fiber.currentOpCount > 2 : this.fallback.shouldYield(fiber)
   }
 
+  park(fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
+    return this.fallback.park(fiber)
+  }
+
   makeDispatcher(): Scheduler.SchedulerDispatcher {
     const dispatcher = this.fallback.makeDispatcher()
     return {

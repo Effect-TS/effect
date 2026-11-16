@@ -1831,6 +1831,7 @@ describe("ScopedCache", () => {
         const get: Fiber.Fiber<void> = yield* ScopedCache.get(cache, "key").pipe(
           Effect.provideService(Scheduler.Scheduler, {
             executionMode: "async",
+            park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
             makeDispatcher: () => ({
               scheduleTask: (task) => tasks.push(task),
               flush: () => {}

@@ -42,6 +42,7 @@ interface Slot {
   readonly deferred: Deferred.Deferred<void>
   fiber?: Fiber.Fiber<unknown>
   resume?: () => void
+  finish?: () => void
 }
 const slots = new Map<string, Slot>()
 
@@ -68,6 +69,20 @@ const route = async (url: URL, id: string): Promise<Response> => {
           ? Effect.callback<void>((resume) => {
             slot.resume = () => resume(Effect.void)
           })
+          : url.searchParams.has("owner-wake")
+          // Woken by a promise reaction in the owner, with a cleanup that
+          // waits for /finish
+          ? Effect.callback<void>((resume) => {
+            new Promise<void>((resolve) => {
+              slot.resume = resolve
+            }).then(() => resume(Effect.void))
+            return note("cleanup").pipe(
+              Effect.andThen(Effect.callback<void>((finish) => {
+                slot.finish = () => finish(Effect.void)
+              })),
+              Effect.andThen(note("cleaned"))
+            )
+          })
           : Deferred.await(slot.deferred)
         const parked = wait.pipe(
           Effect.andThen(note("resumed")),
@@ -87,9 +102,12 @@ const route = async (url: URL, id: string): Promise<Response> => {
       })
     }
     case "/wake":
+    case "/finish":
       return als.run("B", async () => {
         const slot = slots.get(id)!
-        if (url.searchParams.has("interrupt")) {
+        if (url.pathname === "/finish") {
+          slot.finish!()
+        } else if (url.searchParams.has("interrupt")) {
           // Optionally wakes the fiber first, so the interrupt arrives before
           // the owner has run it
           if (url.searchParams.has("wake")) slot.resume!()

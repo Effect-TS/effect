@@ -961,6 +961,7 @@ const countOps = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<number, E> =
     const scheduler: Scheduler.Scheduler = {
       executionMode: "sync",
       makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
+      park: (fiber) => new Scheduler.MixedScheduler("sync").park(fiber),
       shouldYield: () => {
         ops++
         return false
