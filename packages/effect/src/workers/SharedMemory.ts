@@ -1,25 +1,12 @@
 /**
  * Typed arrays in shared memory, for passing data to workers without copying.
  *
- * **Mental model**
+ * Use {@link make} to allocate shared arrays and {@link schema} for worker RPC
+ * payloads. Unlike transferred buffers, shared buffers remain usable by the
+ * sender and multiple workers.
  *
- * - `postMessage` doesn't copy a typed array whose buffer is a
- *   `SharedArrayBuffer`. The worker receives a view of the same memory.
- * - {@link make} allocates a typed array in shared memory. To copy existing
- *   values, allocate a shared array and call its `set` method.
- * - {@link schema} describes a shared typed array in a message schema, such
- *   as an RPC payload. Decoding rejects values without shared backing memory.
- * - Transferring (see `Transferable`) also avoids a copy. It moves a buffer
- *   to one receiver and detaches it from the sender. Share data that several
- *   threads use at once, or that the sender keeps using. Transfer results
- *   that the sender no longer needs.
- *
- * **Details**
- *
- * With RPC (as in the example below), the worker runs `RpcServer.layer` for
- * the group over `RpcServer.layerProtocolWorkerRunner`, and the main thread
- * provides `RpcClient.layerProtocolWorker({ size })` and a platform `Worker`
- * layer.
+ * With RPC, provide `RpcClient.layerProtocolWorker` on the client and
+ * `RpcServer.layerProtocolWorkerRunner` on the server, with platform worker layers.
  *
  * **Gotchas**
  *
@@ -174,15 +161,6 @@ export const isAvailable = (): boolean =>
 /**
  * Returns whether the view's memory is a `SharedArrayBuffer`.
  *
- * **Example** (Checking where a typed array lives)
- *
- * ```ts import.meta.vitest
- * import { SharedMemory } from "effect/workers"
- *
- * SharedMemory.isShared(new Int32Array(4)) // => false
- * SharedMemory.isShared(SharedMemory.make(Int32Array, 4)) // => true
- * ```
- *
  * @stability unstable
  * @category guards
  * @since 4.1.5
@@ -197,13 +175,16 @@ export const isShared = (view: ArrayBufferView): boolean =>
  *
  * Throws {@link SharedMemoryError} when shared memory is unavailable.
  *
- * **Example** (A shared output array)
+ * **Example** (Copying existing values into shared memory)
  *
  * ```ts import.meta.vitest
  * import { SharedMemory } from "effect/workers"
  *
- * const counts = SharedMemory.make(Int32Array, 256)
- * counts.length // => 256
+ * const values = Int32Array.of(1, 2, 3)
+ * const shared = SharedMemory.make(Int32Array, values.length)
+ * shared.set(values)
+ * values[0] = 9
+ * shared[0] // => 1
  * ```
  *
  * @stability unstable
@@ -231,26 +212,7 @@ export const make = <C extends TypedArrayConstructor>(
  *
  * - Decoding and encoding accept only instances of `constructor` backed by
  *   a `SharedArrayBuffer`. Serialized copies fail validation.
- * - Worker protocols encode messages with `Schema.toCodecJson`. Its codec
- *   for this schema passes the value through untouched, so `postMessage`
- *   shares it.
- *
- * **Example** (A shared field in an RPC payload)
- *
- * ```ts
- * import { Schema } from "effect"
- * import { Rpc } from "effect/rpc"
- * import { SharedMemory } from "effect/workers"
- *
- * export const Sum = Rpc.make("Sum", {
- *   payload: {
- *     data: SharedMemory.schema(Float64Array),
- *     from: Schema.Number,
- *     to: Schema.Number
- *   },
- *   success: Schema.Number
- * })
- * ```
+ * - `Schema.toCodecJson` passes the array through unchanged for `postMessage`.
  *
  * @stability unstable
  * @category schemas
