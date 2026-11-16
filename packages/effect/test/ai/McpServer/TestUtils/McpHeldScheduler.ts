@@ -35,6 +35,7 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
   const scheduler: Scheduler.Scheduler = {
     executionMode: base.executionMode,
     shouldYield: (fiber) => base.shouldYield(fiber),
+    park: (fiber) => base.park(fiber),
     makeDispatcher() {
       // Fiber dispatchers are created by the fiber runtime; only McpServer
       // calls `makeDispatcher` directly.

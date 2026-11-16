@@ -89,6 +89,7 @@ describe("Sharding startup", () => {
           Effect.provideService(Scheduler.Scheduler, {
             executionMode: scheduler.executionMode,
             makeDispatcher: () => scheduler.makeDispatcher(),
+            park: (fiber) => scheduler.park(fiber),
             shouldYield: (fiber) => fiber === startupFiber && fiber.currentOpCount >= 4
           })
         )

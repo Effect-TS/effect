@@ -350,6 +350,7 @@ describe("Semaphore", () => {
       let shouldYield = false
       const scheduler: Scheduler.Scheduler = {
         executionMode: "async",
+        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
         makeDispatcher() {
           return {
             scheduleTask(task, _priority) {
@@ -482,6 +483,7 @@ describe("Semaphore", () => {
         Effect.provideService(Scheduler.Scheduler, {
           executionMode: counted.executionMode,
           makeDispatcher: () => counted.makeDispatcher(),
+          park: (fiber) => counted.park(fiber),
           shouldYield: (fiber) => {
             operations++
             return counted.shouldYield(fiber)
@@ -501,6 +503,7 @@ describe("Semaphore", () => {
         const scheduler: Scheduler.Scheduler = {
           executionMode: base.executionMode,
           makeDispatcher: () => base.makeDispatcher(),
+          park: (fiber) => base.park(fiber),
           shouldYield: (fiber) => {
             if (++seen === at) fiber.interruptUnsafe()
             return base.shouldYield(fiber)
@@ -533,6 +536,7 @@ describe("Semaphore", () => {
       ) => {
         const scheduler: Scheduler.Scheduler = {
           executionMode: "async",
+          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
           makeDispatcher: () => ({
             scheduleTask(task) {
               tasks.push(task)
