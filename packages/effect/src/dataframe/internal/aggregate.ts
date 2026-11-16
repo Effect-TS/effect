@@ -14,6 +14,7 @@ import * as Dec from "./decimal.ts"
 import * as D from "./dtype.ts"
 import * as Hash from "./hash.ts"
 import * as Sort from "./sort.ts"
+import * as T from "./temporal.ts"
 import * as V from "./vector.ts"
 
 const I0 = BigInt(0)
@@ -188,7 +189,7 @@ export const sumColumn = (inputType: S.DataType, sums: Sums): V.Vector => {
  * not numbers: their integers count units, which a mean would lose.
  */
 const asFloat = (v: V.Vector): { readonly x: Float64Array; readonly valid: Uint8Array | undefined } => {
-  if (v.type._tag === "Duration" || D.isPointInTime(v.type)) {
+  if (T.isTemporal(v.type)) {
     return V.fail(`expected a numeric column, got ${D.describe(v.type)}`)
   }
   switch (v.kind) {
