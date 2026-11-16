@@ -643,7 +643,7 @@ export class Transaction {
   }
 
   private readonly timeRequests = new Map<bigint, Set<"atime" | "mtime" | "ctime" | "birthtime">>()
-  private readonly products: Array<{ readonly node: Node; readonly value: M.ObjectObservation }> = []
+  private readonly products: Array<M.ObjectObservation> = []
   private pendingPosition: { readonly state: FileState; readonly next: bigint } | undefined
   private pendingRead: { readonly destination: BorrowedDestination; readonly bytes: Uint8Array } | undefined
   private pendingCaller: Caller | undefined
@@ -743,7 +743,7 @@ export class Transaction {
 
   observation(node: Node) {
     const value = this.engine.observation(node)
-    this.products.push({ node, value })
+    this.products.push(value)
     return value
   }
 
@@ -1688,8 +1688,8 @@ export class Transaction {
         }
       }
       for (const product of this.products) {
-        const node = yield* this.getResult(product.node.id)
-        Object.assign(product.value, engine.observation(node))
+        const node = this.changes.get(product.metadata.objectNumber)
+        if (node !== undefined) Object.assign(product, engine.observation(node))
       }
       const read = this.pendingRead
       // The destination can detach while storage decides whether to persist atime.

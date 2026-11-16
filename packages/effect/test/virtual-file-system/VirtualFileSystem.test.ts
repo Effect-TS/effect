@@ -1,6 +1,7 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { BytePath, Clock, DateTime, Effect, Exit, Option, Result, Scope } from "effect"
 import { TestClock } from "effect/testing"
+import { owners } from "effect/virtual-file-system/internal/engine"
 import * as VFS from "effect/virtual-file-system/VirtualFileSystem"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
@@ -58,6 +59,24 @@ const probe = (script: string) =>
   })
 
 describe("VirtualFileSystem", () => {
+  it.effect("projects an unchanged child once while publishing a directory access time", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make()
+      const caller = yield* owner.authorize({ credentials })
+      yield* caller.writeFile("/file", bytes(7))
+      const child = yield* caller.stat("/file")
+      yield* TestClock.adjust("1 second")
+      const project = vi.spyOn(owners.get(owner)!, "observation")
+      const listing = yield* caller.readDirectoryEntries("/")
+      assert.strictEqual(
+        project.mock.calls.filter(([node]) => node.id === child.metadata.objectNumber).length,
+        1
+      )
+      assert.deepStrictEqual(listing.entries[0].object, child)
+      assert.strictEqual(listing.directory.metadata.atime, 1_000_000_000n)
+      assert.deepStrictEqual(listing.directory, yield* caller.stat("/"))
+    }).pipe(withClock))
+
   it.effect("should check authority before rejecting a malformed guard when JavaScript supplies a cyclic token", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make()
