@@ -220,6 +220,7 @@ export class Resource {
   private readonly done = Deferred.makeUnsafe<void>()
   private readonly releases: Array<() => void> = []
   private readonly contexts: Array<ContextCell<unknown>> = []
+  private enrollment: Scope.Closeable | undefined
   private outcome: Exit.Exit<void> | undefined
   readonly close: Effect.Effect<void>
   readonly runtime: Runtime
@@ -270,9 +271,12 @@ export class Resource {
     return Result.succeed(cell)
   }
 
-  enroll(scope: Scope.Scope, operation: string) {
+  enroll(scope: Scope.Scope, operation: string, onScopeClose = this.close) {
     return Effect.gen({ self: this }, function*() {
-      yield* Scope.addFinalizer(scope, this.close)
+      if (this.currentState !== "open") return yield* closed(operation)
+      const enrollment = Scope.forkUnsafe(scope)
+      this.enrollment = enrollment
+      yield* Scope.addFinalizerExit(enrollment, () => this.currentState === "closed" ? Effect.void : onScopeClose)
       if (this.currentState !== "open") return yield* closed(operation)
     })
   }
@@ -356,6 +360,11 @@ export class Resource {
     for (const cell of this.contexts) cell.value = undefined
     this.contexts.length = 0
     this.currentState = "closed"
+    if (this.enrollment !== undefined) {
+      // Closing this private scope unlinks it immediately. Its only finalizer now returns Effect.void.
+      Scope.closeUnsafe(this.enrollment, exit)
+      this.enrollment = undefined
+    }
     Deferred.doneUnsafe(this.done, exit)
   }
 }

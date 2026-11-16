@@ -13,6 +13,23 @@ const withClock = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   )
 
 describe("VirtualFileSystem handles", () => {
+  for (const close of ["effect", "sync"] as const) {
+    it.effect(`removes the scope finalizer after explicit ${close} close`, () =>
+      Effect.gen(function*() {
+        const owner = yield* VFS.make({ limits: { synchronous: true } })
+        const caller = yield* owner.authorize({ credentials })
+        yield* caller.writeFile("/file", bytes(1))
+        const scope = yield* makeScope
+        for (let i = 0; i < 8; i++) {
+          const file = yield* Scope.provide(caller.open("/file"), scope)
+          if (close === "effect") yield* file.close()
+          else Result.getOrThrow((yield* file.sync()).close())
+        }
+        assert.strictEqual((yield* owner.usage).handles, 0)
+        assert.strictEqual(scope.state._tag, "Empty")
+      }))
+  }
+
   it.effect("should share cursor state only through one handle when sequential and positioned I/O are mixed", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make()

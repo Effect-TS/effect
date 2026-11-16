@@ -4,6 +4,17 @@ import { TestClock } from "effect/testing"
 import { installStorage } from "effect/virtual-file-system/internal/engine"
 import * as VFS from "effect/virtual-file-system/VirtualFileSystem"
 
+it.effect("removes the scope finalizer after explicit durable handle close", () =>
+  Effect.gen(function*() {
+    const owner = yield* VFS.make()
+    const caller = yield* owner.authorize({ credentials: { uid: 0, gid: 0 } })
+    yield* installStorage(owner, () => Effect.void, () => false)
+    const scope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+    const file = yield* Scope.provide(caller.open("/file", { create: "ifmissing" }), scope)
+    yield* file.close()
+    assert.strictEqual(scope.state._tag, "Empty")
+  }))
+
 it.effect("rejects storage installation on an owner that permits synchronous publication", () =>
   Effect.gen(function*() {
     const owner = yield* VFS.make({ limits: { synchronous: true } })

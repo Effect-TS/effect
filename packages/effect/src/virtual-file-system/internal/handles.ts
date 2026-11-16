@@ -736,16 +736,17 @@ export const open = Effect.fnUntraced(
               let deciding = false
               let abandoned = false
               return {
-                enroll: durable ?
-                  Scope.addFinalizer(
-                    scope,
+                enroll: acquired.enroll(
+                  scope,
+                  "open",
+                  durable ?
                     Effect.suspend(() => {
                       if (!deciding) return acquired.close
                       abandoned = true
                       return Effect.void
-                    })
-                  ) :
-                  acquired.enroll(scope, "open"),
+                    }) :
+                    acquired.close
+                ),
                 execute: () =>
                   Result.gen(function*() {
                     yield* acquired.checkOpenResult("open")
