@@ -11516,7 +11516,7 @@ function chunkLink<Value>(values: Schema<ReadonlyArray<Value>>) {
   return link<Chunk_.Chunk<Value>>()(
     values,
     SchemaTransformation.transform({
-      decode: Chunk_.fromIterable,
+      decode: Chunk_.fromArrayUnsafe,
       encode: Arr.fromIterable
     })
   )
@@ -11576,7 +11576,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
           return Effect.mapBothEager(
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
-              onSuccess: Chunk_.fromIterable,
+              onSuccess: Chunk_.fromArrayUnsafe,
               onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options)
             }
           )
