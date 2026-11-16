@@ -34,17 +34,50 @@ import type * as Fiber from "./Fiber.ts"
 export interface Scheduler {
   readonly executionMode: "sync" | "async"
   /**
-   * Controls whether fibers preserve native async context across suspension and
-   * deferred forks. Set to `false` on runtimes with request-bound async resources;
-   * continuations then run in the context that resumes them. Omission preserves
-   * the current behavior.
+   * Captures the native async context a fiber suspends or is forked in, which
+   * its next resumption runs in.
    *
-   * @default true
+   * **Details**
+   *
+   * When omitted, fibers capture a `node:async_hooks` `AsyncResource` where
+   * one is available. Return `undefined` to capture nothing.
+   *
    * @since 4.2.0
    */
-  readonly preserveAsyncContext?: boolean | undefined
+  readonly captureAsyncContext?: (() => AsyncContext | undefined) | undefined
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
+}
+
+/**
+ * The native async context a fiber resumes in, captured by
+ * `Scheduler.captureAsyncContext`.
+ *
+ * **When to use**
+ *
+ * Use to implement a scheduler for a runtime whose async contexts cannot be
+ * entered from everywhere, such as Cloudflare Workers, where they belong to the
+ * request that created them.
+ *
+ * **Details**
+ *
+ * Each captured context resumes its fiber once. `runInAsyncScope` either calls
+ * `fn` synchronously, or arranges to call it exactly once later and returns.
+ * A fiber whose resumption is still pending defers interrupts, and other
+ * resumptions, until it lands. `emitDestroy` is called when `runInAsyncScope`
+ * returns.
+ *
+ * **Gotchas**
+ *
+ * If `fn` is never called, the fiber never resumes and cannot be interrupted.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface AsyncContext {
+  runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
+  emitDestroy(): void
 }
 
 /**
@@ -173,11 +206,12 @@ class PriorityBuckets {
  * **Gotchas**
  *
  * On Cloudflare Workers, request-owned scheduler timers can be discarded,
- * leaving shared fibers suspended. Use `new MixedScheduler("sync")` for the
- * whole application; see `HttpRouter.toWebHandler` for a recipe.
- * Sync mode does not yield to the event loop: CPU-heavy work delays other
- * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
- * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
+ * leaving shared fibers suspended, and async contexts cannot be resumed from
+ * another request. Use `CloudflareScheduler` from `@effect/platform-cloudflare`
+ * for the whole application; it runs in sync mode and resumes each fiber in
+ * the request that owns it. Sync mode does not yield to the event loop:
+ * CPU-heavy work delays other requests, and I/O-polling loops can exhaust the
+ * CPU limit.
  *
  * @stability stable
  * @category models

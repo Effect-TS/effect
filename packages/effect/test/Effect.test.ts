@@ -5445,58 +5445,70 @@ describe("Effect", () => {
     const storage = new AsyncLocalStorage<string>()
     const current = () => storage.getStore() ?? "none"
 
-    it("TestClock preserves the scheduler async-context opt-out", async () => {
-      const scheduler = new class extends Scheduler.MixedScheduler {
-        readonly preserveAsyncContext = false
-      }("sync")
-      const deferred = Deferred.makeUnsafe<void>()
-      const waiter = storage.run("waiter", () =>
-        Effect.runFork(
-          Effect.andThen(Deferred.await(deferred), Effect.sync(current)).pipe(Effect.provide(TestClock.layer())),
-          { scheduler }
-        ))
-      await storage.run("waker", () => Effect.runPromise(Deferred.succeed(deferred, undefined), { scheduler }))
-      assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed("waker"))
-    })
-
-    for (const preserveAsyncContext of [false, true, undefined]) {
-      it(`resumes and forks with preserveAsyncContext=${preserveAsyncContext}`, async () => {
-        const tasks: Array<() => void> = []
-        const scheduler = {
-          executionMode: "sync" as const,
-          preserveAsyncContext,
-          shouldYield: () => false,
-          makeDispatcher: () => ({
-            scheduleTask: (task: () => void) => {
-              tasks.push(task)
+    describe("Scheduler.captureAsyncContext", () => {
+      // Holds every resumption until `land` runs it in the "owner" store, like a
+      // context that hands resumptions back to the request owning the fiber.
+      const makeScheduler = () => {
+        const pending: Array<() => void> = []
+        const scheduler = new class extends Scheduler.MixedScheduler {
+          readonly captureAsyncContext = (): Scheduler.AsyncContext => ({
+            runInAsyncScope: (fn, thisArg, arg) => {
+              pending.push(() => storage.run("owner", () => fn.call(thisArg, arg)))
             },
-            flush: () => {
-              while (tasks.length > 0) tasks.shift()!()
-            }
+            emitDestroy() {}
           })
+        }("sync")
+        const land = async () => {
+          for (let i = 0; i < 5; i++) {
+            await Promise.resolve()
+            while (pending.length > 0) pending.shift()!()
+          }
         }
+        return { scheduler, land }
+      }
+
+      it("resumes and starts forks in the captured context, including under TestClock", async () => {
+        const { land, scheduler } = makeScheduler()
         const deferred = Deferred.makeUnsafe<void>()
-        const waiter = storage.run(
-          "waiter",
-          () => Effect.runFork(Effect.andThen(Deferred.await(deferred), Effect.sync(current)), { scheduler })
+        const fiber = Effect.runFork(
+          Effect.gen(function*() {
+            const child = yield* Effect.forkChild(Effect.sync(current))
+            yield* Deferred.await(deferred)
+            return [yield* Fiber.join(child), current()]
+          }).pipe(Effect.provide(TestClock.layer())),
+          { scheduler }
         )
-        const parent = storage.run("parent", () =>
-          Effect.runFork(
-            Effect.gen(function*() {
-              const child = yield* Effect.forkChild(Effect.sync(current))
-              return yield* Fiber.join(child)
-            }),
-            { scheduler }
-          ))
-        await storage.run("waker", () => Effect.runPromise(Deferred.succeed(deferred, undefined)))
-        storage.run("dispatcher", () => scheduler.makeDispatcher().flush())
-        assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed(preserveAsyncContext === false ? "waker" : "waiter"))
-        assert.deepStrictEqual(
-          parent.pollUnsafe(),
-          Exit.succeed(preserveAsyncContext === false ? "dispatcher" : "parent")
-        )
+        await land()
+        storage.run("waker", () => Effect.runSync(Deferred.succeed(deferred, undefined)))
+        await land()
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["owner", "owner"]))
       })
-    }
+
+      for (const interruptFirst of [false, true]) {
+        it(`delivers a value before an interrupt ${interruptFirst ? "it overtakes" : "requested while it lands"}`, async () => {
+          const { land, scheduler } = makeScheduler()
+          const seen: Array<string> = []
+          let wake!: () => void
+          const fiber = Effect.runFork(
+            Effect.uninterruptibleMask((restore) =>
+              restore(Effect.callback<void>((resume) => {
+                wake = () => resume(Effect.void)
+              })).pipe(Effect.andThen(Effect.sync(() => seen.push(current()))))
+            ).pipe(Effect.andThen(Effect.never)),
+            { scheduler }
+          )
+          await land()
+          storage.run("waker", () => {
+            if (interruptFirst) fiber.interruptUnsafe()
+            wake()
+            if (!interruptFirst) fiber.interruptUnsafe()
+          })
+          await land()
+          assert.deepStrictEqual(seen, ["owner"])
+          assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+        })
+      }
+    })
 
     const runWithStore = <A, E>(store: string | undefined, effect: Effect.Effect<A, E>): Promise<A> =>
       store === undefined ? Effect.runPromise(effect) : storage.run(store, () => Effect.runPromise(effect))

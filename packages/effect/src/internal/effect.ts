@@ -498,12 +498,7 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-interface AsyncContext {
-  runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
-  emitDestroy(): void
-}
-
-const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
+const AsyncResource: (new(type: string) => Scheduler.AsyncContext) | undefined = (() => {
   try {
     return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
   } catch {
@@ -511,8 +506,10 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
   }
 })()
 
-const captureAsyncContext = (scheduler: Scheduler.Scheduler): AsyncContext | undefined =>
-  AsyncResource === undefined || scheduler.preserveAsyncContext === false
+const captureAsyncContext = (scheduler: Scheduler.Scheduler): Scheduler.AsyncContext | undefined =>
+  scheduler.captureAsyncContext !== undefined
+    ? scheduler.captureAsyncContext()
+    : AsyncResource === undefined
     ? undefined
     : new AsyncResource("effect/Fiber")
 
@@ -540,6 +537,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._deferredInterrupt = false
     this._parent = undefined
     this._asyncContext = undefined
+    this._resuming = false
+    this._overtaken = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
   }
 
@@ -560,7 +559,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  declare _asyncContext: AsyncContext | undefined
+  declare _asyncContext: Scheduler.AsyncContext | undefined
+  // A resumption was handed to the captured async context and has not landed
+  declare _resuming: boolean
+  // A resumption that arrived while an interrupt was still landing
+  declare _overtaken: Primitive | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -608,7 +611,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       ? causeAddInterrupts(this._interruptedCause, cause)
       : cause
     if (this.interruptible) {
-      if (this._running) {
+      if (this._running || this._resuming) {
         this._deferredInterrupt = true
       } else {
         this.evaluate(failCause(this._interruptedCause) as any)
@@ -621,11 +624,20 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   evaluate(effect: Primitive): void {
     if (this._exit) {
       return
+    } else if (this._resuming) {
+      // Interrupts are deferred while a resumption lands, so this one can only
+      // have overtaken an interrupt. It is delivered first, as if it had won.
+      this._overtaken = effect
+      return
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
       try {
-        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+        // Native resources always run the resumption synchronously, so only
+        // scheduler-provided contexts need the hand-off bookkeeping
+        return asyncContext.constructor === AsyncResource
+          ? asyncContext.runInAsyncScope(this.evaluate, this, effect)
+          : this.handOff(asyncContext, effect)
       } finally {
         // Each captured context is resumed once, so release it for async_hooks
         // consumers like vitest's detectAsyncLeaks.
@@ -672,6 +684,32 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const cache = this.cache
     if (cache.span !== undefined || cache.stackFrame !== undefined) {
       this.cache = { ...cache, span: undefined, stackFrame: undefined }
+    }
+  }
+  handOff(asyncContext: Scheduler.AsyncContext, effect: Primitive): void {
+    this._resuming = true
+    try {
+      asyncContext.runInAsyncScope(this.resume, this, effect)
+    } catch (error) {
+      this._resuming = false
+      throw error
+    }
+  }
+  // The captured async context can run the resumption later, in the context
+  // that owns the fiber. An interrupt requested meanwhile is delivered once the
+  // resumption suspends, so a value handed to the fiber is never dropped.
+  resume(effect: Primitive): void {
+    this._resuming = false
+    let interrupt = this._deferredInterrupt
+    this._deferredInterrupt = false
+    if (this._overtaken !== undefined) {
+      effect = this._overtaken
+      this._overtaken = undefined
+      interrupt = this._interruptedCause !== undefined
+    }
+    this.evaluate(effect)
+    if (interrupt && this._exit === undefined && this.interruptible && !this._running) {
+      this.evaluate(failCause(this._interruptedCause!) as any)
     }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
