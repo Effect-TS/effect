@@ -1,0 +1,1155 @@
+/**
+ * effect/dataframe queries run on PostgreSQL (PGlite) through `Sql.layer`
+ * give the rows the in-memory engine gives for the same data.
+ */
+import { PgliteClient } from "@effect/sql-pglite"
+import { assert, describe, layer } from "@effect/vitest"
+import { BigDecimal, DateTime, Duration, Effect, Layer, Result, Schema } from "effect"
+import { ArrowSchema, ArrowTable } from "effect/arrow"
+import { Catalog, DataFrame, Expr, Query, Sql } from "effect/dataframe"
+import { SqlClient } from "effect/sql/SqlClient"
+import { vi } from "vitest"
+
+const Sale = Schema.Struct({
+  id: Schema.Number,
+  region: Schema.NullOr(Schema.String),
+  units: Schema.NullOr(Schema.Number),
+  price: Schema.Number,
+  at: Schema.DateTimeUtc
+})
+const Region = Schema.Struct({ region: Schema.String, manager: Schema.String })
+/** Table names starting like the compiler's names: 63 bytes, the most PostgreSQL keeps, and 57. */
+const long = "_".repeat(62) + "a"
+const underscores = "_".repeat(57)
+
+const sales = Array.from({ length: 40 }, (_, i) => ({
+  id: i,
+  region: i % 7 === 0 ? null : ["north", "south", "east", "west"][i % 4],
+  units: i % 5 === 0 ? null : (i * 37) % 23,
+  price: Math.round(((i * 53) % 97) * 1.25 * 100) / 100,
+  at: DateTime.makeUnsafe(Date.UTC(2024, i % 12, 1 + (i % 27), i % 24))
+}))
+const regions = [
+  { region: "north", manager: "Ada" },
+  { region: "south", manager: "Grace" },
+  { region: "east", manager: "Edsger" }
+]
+
+const Setup = Layer.effectDiscard(
+  Effect.gen(function*() {
+    const sql = yield* SqlClient
+    yield* sql`CREATE TABLE sales (id DOUBLE PRECISION, region TEXT, units DOUBLE PRECISION, price DOUBLE PRECISION, at TIMESTAMP)`
+    yield* sql`CREATE TABLE regions (region TEXT, manager TEXT)`
+    for (const s of sales) {
+      yield* sql`INSERT INTO sales VALUES (${s.id}, ${s.region}, ${s.units}, ${s.price}, ${
+        DateTime.formatIso(s.at).replace("T", " ").replace("Z", "")
+      })`
+    }
+    for (const r of regions) yield* sql`INSERT INTO regions VALUES (${r.region}, ${r.manager})`
+    yield* sql`CREATE TABLE contract (s TEXT, n DOUBLE PRECISION)`
+    yield* sql`INSERT INTO contract VALUES ('bad', NULL), ('good', 1)`
+    // Tables named like the sources of other tables.
+    yield* sql`CREATE TABLE second (s TEXT)`
+    yield* sql`INSERT INTO second VALUES ('good')`
+    yield* sql`CREATE TABLE "__table0" (s TEXT)`
+    yield* sql`INSERT INTO "__table0" VALUES ('bad')`
+    yield* sql`CREATE TABLE "__table1" (s TEXT)`
+    yield* sql`INSERT INTO "__table1" VALUES ('bad')`
+    for (const name of [long, underscores]) {
+      yield* sql.unsafe(`CREATE TABLE "${name}" (s TEXT)`)
+      yield* sql.unsafe(`INSERT INTO "${name}" VALUES ('${name.length}')`)
+    }
+    yield* sql.unsafe(`CREATE TABLE shared ("${"z".repeat(63)}" DOUBLE PRECISION)`)
+    yield* sql`INSERT INTO shared VALUES (1)`
+    yield* sql`CREATE TABLE "a.b" (s TEXT)`
+    yield* sql`INSERT INTO "a.b" VALUES ('good')`
+    yield* sql`CREATE SCHEMA a`
+    yield* sql`CREATE TABLE a.b (s TEXT)`
+    yield* sql`INSERT INTO a.b VALUES ('bad')`
+    yield* sql`CREATE TABLE odd (nil INTEGER, nothing INTEGER, at TIMESTAMPTZ, far TIMESTAMP, months INTERVAL, forever TIMESTAMP, endless DATE)`
+    yield* sql`INSERT INTO odd VALUES (42, NULL, '2024-01-01 00:30:00+00', '290000-01-01', '1 month', 'infinity', 'infinity')`
+    yield* sql`CREATE TABLE declared (t TIMESTAMP, d INTERVAL, n NUMERIC)`
+    yield* sql`INSERT INTO declared VALUES ('1970-01-01 00:00:01', '-2 seconds', 12.5), ('1969-12-31 23:59:58', '3 seconds', -0.05), (NULL, NULL, NULL)`
+    yield* sql`CREATE TABLE inexact (s TIMESTAMP, ms TIMESTAMP, ns TIMESTAMP, ds INTERVAL, dms INTERVAL, dns INTERVAL, scale NUMERIC, digits NUMERIC, wide NUMERIC, i8 INTEGER, u32 INTEGER, u64 BIGINT, f32 DOUBLE PRECISION, f32i INTEGER)`
+    yield* sql`INSERT INTO inexact VALUES ('1970-01-01 00:00:01.5', '1970-01-01 00:00:01.0005', '2263-01-01', '-1.5 seconds', '0.0005 seconds', '110000 days', 1.005, 1000, 1, 256, -1, -1, 0.1, 16777217)`
+    yield* sql`CREATE TABLE exact (i8 INTEGER, f32 DOUBLE PRECISION)`
+    yield* sql`INSERT INTO exact VALUES (-128, 0.5), (127, 'NaN'), (0, '-Infinity'), (1, ${
+      2 ** -149
+    }), (2, '-0'), (3, ${(2 - 2 ** -23) * 2 ** 127})`
+    yield* sql`CREATE TABLE arrowed (d DATE, at TIMESTAMP, n INTEGER, s TEXT, extra TEXT)`
+    yield* sql`INSERT INTO arrowed VALUES ('2024-01-01', '1970-01-01 00:00:01.5', 7, 'a', 'x'), (NULL, NULL, -7, NULL, 'y')`
+    yield* sql`CREATE TYPE mood AS ENUM ('zzz', 'aaa')`
+    yield* sql`CREATE TABLE texts (m mood, c CHAR(3), v VARCHAR(5), sm SMALLINT, r REAL)`
+    yield* sql`INSERT INTO texts VALUES ('zzz', 'ab', 'xy', 20000, 16777216), ('aaa', 'abc', 'x', -20000, 0.5)`
+  })
+)
+
+/** A frame with exactly the given Arrow columns. */
+const frame = (fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
+  DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromColumns(ArrowSchema.make(fields), columns)))
+const decimal = (s: string) => BigDecimal.fromStringUnsafe(s)
+
+const memory = Catalog.layer({
+  sales: DataFrame.fromRows(Sale, sales),
+  regions: DataFrame.fromRows(Region, regions),
+  // The rows of the PostgreSQL tables `declared` and `inexact`, as PostgreSQL keeps them.
+  declared: frame([
+    ArrowSchema.field("t", ArrowSchema.timestamp("microsecond"), { nullable: true }),
+    ArrowSchema.field("d", ArrowSchema.duration("microsecond"), { nullable: true }),
+    ArrowSchema.field("n", ArrowSchema.decimal(20, 4), { nullable: true })
+  ], [[1_000_000n, -2_000_000n, null], [-2_000_000n, 3_000_000n, null], [decimal("12.5"), decimal("-0.05"), null]]),
+  inexact: frame([
+    ...["s", "ms", "ns"].map((name) => ArrowSchema.field(name, ArrowSchema.timestamp("microsecond"))),
+    ...["ds", "dms", "dns"].map((name) => ArrowSchema.field(name, ArrowSchema.duration("microsecond"))),
+    ...["scale", "digits", "wide"].map((name) => ArrowSchema.field(name, ArrowSchema.decimal(20, 4))),
+    ...["i8", "u32"].map((name) => ArrowSchema.field(name, ArrowSchema.int32)),
+    ArrowSchema.field("u64", ArrowSchema.int64),
+    ArrowSchema.field("f32", ArrowSchema.float64),
+    ArrowSchema.field("f32i", ArrowSchema.int32)
+  ], [
+    [1_500_000n],
+    [1_000_500n],
+    [9_246_182_400_000_000n],
+    [-1_500_000n],
+    [500n],
+    [9_504_000_000_000_000n],
+    [decimal("1.005")],
+    [decimal("1000")],
+    [decimal("1")],
+    [256],
+    [-1],
+    [-1n],
+    [0.1],
+    [16777217]
+  ]),
+  exact: frame([
+    ArrowSchema.field("i8", ArrowSchema.int32),
+    ArrowSchema.field("f32", ArrowSchema.float64)
+  ], [[-128, 127, 0, 1, 2, 3], [0.5, NaN, -Infinity, 2 ** -149, -0, (2 - 2 ** -23) * 2 ** 127]]),
+  // Dates in milliseconds and timestamps in seconds convert to the declared days and milliseconds.
+  arrowed: frame([
+    ArrowSchema.field("extra", ArrowSchema.utf8),
+    ArrowSchema.field("d", ArrowSchema.date("millisecond")),
+    ArrowSchema.field("at", ArrowSchema.timestamp("microsecond")),
+    ArrowSchema.field("n", ArrowSchema.int32),
+    ArrowSchema.field("s", ArrowSchema.utf8)
+  ], [["x", "y"], [BigInt(19723 * 86_400_000), null], [1_500_000n, null], [7, -7], ["a", null]]),
+  // PostgreSQL converts char(n) values to text without their trailing spaces.
+  texts: frame([
+    ...["m", "c", "v"].map((name) => ArrowSchema.field(name, ArrowSchema.utf8)),
+    ArrowSchema.field("sm", ArrowSchema.int16),
+    ArrowSchema.field("r", ArrowSchema.float32)
+  ], [["zzz", "aaa"], ["ab", "abc"], ["xy", "x"], [20000, -20000], [16777216, 0.5]])
+})
+
+const table = Query.table("sales", Sale)
+
+const close = (a: unknown, b: unknown) =>
+  typeof a === "number" && typeof b === "number"
+    ? Object.is(a, b) || Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))
+    : false
+
+const types = (df: DataFrame.DataFrame<unknown>) =>
+  DataFrame.toArrowTable(df).schema.fields.map((f) => ({ name: f.name, type: f.type }))
+
+const onSql = <R>(query: Query.Query<R>) => query.pipe(Effect.provide(Sql.layer))
+const rowsOnSql = <R>(query: Query.Query<R>) => Effect.map(onSql(query), DataFrame.toRows)
+/** The message of the error `query` fails with on SQL. */
+const rejects = <R>(query: Query.Query<R>) => Effect.map(Effect.flip(onSql(query)), (e) => e.message)
+/** Queries of the table `name` declared with a schema. */
+const tableOf = (name: string) => <S extends Schema.Top & { readonly Type: object }>(schema: S) =>
+  Query.table(name, schema)
+
+const xs = Query.from(DataFrame.fromColumns({ x: [1, 2, 3] }))
+const ints = Query.from(DataFrame.fromColumns({ x: Int32Array.of(1, 2, 3) }))
+const bools = Query.from(DataFrame.fromColumns({ b: [true, null, false, true] }))
+const groups = Query.from(
+  DataFrame.fromColumns({ g: ["a", "b", "a", "b", "a"], h: [1, 1, 2, 2, 1], x: [1, 3, 2, 6, 4] })
+)
+const none = ints.pipe(Query.filter((c) => Expr.gt(c.x, 9)))
+/** A query over a frame with exactly the given Arrow columns. */
+const arrow = <R>(fields: ReadonlyArray<ArrowSchema.Field>, columns: ReadonlyArray<ReadonlyArray<unknown>>) =>
+  Query.from(frame(fields, columns)) as Query.Query<unknown> as Query.Query<R>
+const ties = [0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 2.675, 1.005, 0.125, 0.375, 1.25, 1.35]
+const decimals = arrow<{ d: BigDecimal.BigDecimal | null }>(
+  [ArrowSchema.field("d", ArrowSchema.decimal(18, 3))],
+  [["0.5", "1.5", "2.5", "-0.5", "-1.5", "-2.5", "2.675", "1.005", "0.125", null].map((s) =>
+    s === null ? null : decimal(s)
+  )]
+)
+/** Durations in microseconds, with a group that has none. */
+const spans = arrow<{ g: string; d: Duration.Duration | null }>(
+  [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.duration("microsecond"))],
+  [["a", "a", "a", "b", "c"], [7n, 9n, null, 4n, null]]
+)
+const units = { s: "second", ms: "millisecond", us: "microsecond", ns: "nanosecond" } as const
+const unitNames = ["s", "ms", "us", "ns"] as const
+/** One column `v` of `type`, its integers microsecond multiples in every unit (PostgreSQL keeps microseconds). */
+const temporal = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown> = [1_001_000n, -1_500_000n, null]) =>
+  arrow<{ v: unknown }>([ArrowSchema.field("v", type)], [values])
+/** Casts in both directions between temporal types of every unit and integers. */
+const temporalCasts = unitNames.flatMap((u) => [
+  [
+    `casts of Timestamp[${u}]`,
+    temporal(ArrowSchema.timestamp(units[u])).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int64"),
+      date: Expr.cast(c.v, "Date"),
+      duration: Expr.cast(c.v, `Duration[${u}]`),
+      s: Expr.cast(c.v, "Timestamp[s]"),
+      ms: Expr.cast(c.v, "Timestamp[ms]"),
+      us: Expr.cast(c.v, "Timestamp[us]"),
+      ns: Expr.cast(c.v, "Timestamp[ns]")
+    })))
+  ] as const,
+  [
+    `casts of Duration[${u}]`,
+    temporal(ArrowSchema.duration(units[u])).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int64"),
+      timestamp: Expr.cast(c.v, `Timestamp[${u}]`),
+      s: Expr.cast(c.v, "Duration[s]"),
+      ms: Expr.cast(c.v, "Duration[ms]"),
+      us: Expr.cast(c.v, "Duration[us]"),
+      ns: Expr.cast(c.v, "Duration[ns]")
+    })))
+  ] as const,
+  [
+    `casts of integers to Timestamp[${u}] and Duration[${u}]`,
+    temporal(ArrowSchema.int64).pipe(Query.select((c) => ({
+      timestamp: Expr.cast(c.v, `Timestamp[${u}]`),
+      duration: Expr.cast(c.v, `Duration[${u}]`)
+    })))
+  ] as const
+])
+/** Integers of a temporal column of `unit`, microsecond multiples (PostgreSQL keeps microseconds). */
+const exact = (unit: typeof unitNames[number], values: ReadonlyArray<number | null>) =>
+  values.map((v) => (v === null ? null : BigInt(v) * (unit === "ns" ? 1000n : 1n)))
+/** Timestamps `t`, `s` and durations `d`, `e`: `t` and `d` of unit `u`, `s` and `e` of unit `v`. */
+const mixed = (u: typeof unitNames[number], v: typeof unitNames[number]) =>
+  arrow<{
+    t: DateTime.Utc | null
+    s: DateTime.Utc | null
+    d: Duration.Duration | null
+    e: Duration.Duration | null
+  }>([
+    ArrowSchema.field("t", ArrowSchema.timestamp(units[u])),
+    ArrowSchema.field("s", ArrowSchema.timestamp(units[v])),
+    ArrowSchema.field("d", ArrowSchema.duration(units[u])),
+    ArrowSchema.field("e", ArrowSchema.duration(units[v]))
+  ], [
+    exact(u, [1500, -1, 2, 1000, null]),
+    exact(v, [1, 1500, -1, 1000, 7]),
+    exact(u, [1500, -1, 2, 1000, null]),
+    exact(v, [1, 1500, -1, 1000, 7])
+  ])
+/** Temporal operations on operands of two different units, which meet in the coarser one. */
+const mixedUnits = unitNames.flatMap((u) =>
+  unitNames.filter((v) => v !== u).map((v) =>
+    [
+      `temporal operations mixing ${u} and ${v}`,
+      mixed(u, v).pipe(Query.select((c) => {
+        const int = (x: Expr.Expr<unknown>) => Expr.cast(x, "Int64")
+        return {
+          tMinusS: int(Expr.subtract(c.t, c.s)),
+          tPlusE: int(Expr.add(c.t, c.e)),
+          tMinusE: int(Expr.subtract(c.t, c.e)),
+          sPlusD: int(Expr.add(c.s, c.d)),
+          dPlusE: int(Expr.add(c.d, c.e)),
+          dMinusE: int(Expr.subtract(c.d, c.e)),
+          eq: Expr.eq(c.t, c.s),
+          lt: Expr.lt(c.t, c.s),
+          gte: Expr.gte(c.s, c.t),
+          durationsEq: Expr.eq(c.d, c.e),
+          durationsGt: Expr.gt(c.d, c.e),
+          between: Expr.between(c.t, c.s, c.s),
+          coalesce: int(Expr.coalesce(c.t, c.s)),
+          when: int(Expr.when(Expr.isNull(c.d), c.e, c.d))
+        }
+      }))
+    ] as const
+  )
+)
+
+/** Queries whose SQL result must equal the in-memory result, column types included. */
+const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
+  ["int64 columns", Query.from(DataFrame.fromColumns({ d: BigInt64Array.of(1n, 9007199254740993n, -3n) }))],
+  [
+    "aggregate types",
+    ints.pipe(
+      Query.aggregate((c) => ({ n: Expr.count(), s: Expr.sum(c.x), m: Expr.mean(c.x), d: Expr.countDistinct(c.x) }))
+    )
+  ],
+  ["empty results", none.pipe(Query.withColumns((c) => ({ y: Expr.divide(c.x, 2), s: Expr.concat("a", "b") })))],
+  ["aggregates of empty input", none.pipe(Query.aggregate((c) => ({ n: Expr.countDistinct(c.x), s: Expr.sum(c.x) })))],
+  [
+    "boolean sums",
+    Query.from(DataFrame.fromColumns({ b: [true, false, true] })).pipe(
+      Query.select((c) => ({ s: Expr.over(Expr.sum(c.b), []), r: Expr.cumSum(c.b) }))
+    )
+  ],
+  [
+    "boolean sum aggregate",
+    Query.from(DataFrame.fromColumns({ b: [true, false, true] })).pipe(Query.aggregate((c) => ({ s: Expr.sum(c.b) })))
+  ],
+  [
+    "boolean minimum and maximum",
+    bools.pipe(Query.aggregate((c) => ({ min: Expr.min(c.b), max: Expr.max(c.b) })))
+  ],
+  [
+    "boolean minimum and maximum over windows",
+    bools.pipe(Query.select((c) => ({
+      min: Expr.over(Expr.min(c.b), []),
+      max: Expr.over(Expr.max(c.b), []),
+      cumMin: Expr.cumMin(c.b),
+      cumMax: Expr.cumMax(c.b)
+    })))
+  ],
+  ["unique on no columns keeps the first row", xs.pipe(Query.unique([]))],
+  [
+    "windows in aggregate arguments see only their group",
+    groups.pipe(
+      Query.groupBy("g"),
+      Query.agg((c) => ({
+        running: Expr.sum(Expr.cumSum(c.x)),
+        previous: Expr.sum(Expr.shift(c.x)),
+        rank: Expr.max(Expr.rank(c.x, { method: "min" })),
+        centered: Expr.max(Expr.subtract(c.x, Expr.over(Expr.mean(c.x), []))),
+        nested: Expr.sum(Expr.over(Expr.cumSum(c.x), [c.h]))
+      }))
+    )
+  ],
+  [
+    "windows in aggregate arguments over all rows",
+    groups.pipe(Query.aggregate((c) => ({ running: Expr.sum(Expr.cumSum(c.x)), first: Expr.first(Expr.shift(c.x)) })))
+  ],
+  ["filters on a window function", xs.pipe(Query.filter((c) => Expr.gt(Expr.cumSum(c.x), 3)))],
+  ["filters on an aggregate over the input", xs.pipe(Query.filter((c) => Expr.gt(c.x, Expr.over(Expr.mean(c.x), []))))],
+  [
+    "over an empty partition list",
+    xs.pipe(Query.select((c) => ({ n: Expr.over(Expr.sum(c.x), []), m: Expr.over(Expr.first(c.x), []) })))
+  ],
+  [
+    "temporal and decimal inputs",
+    arrow<{ d: Duration.Duration | null; t: DateTime.Utc | null }>([
+      ArrowSchema.field("d", ArrowSchema.duration("microsecond")),
+      ArrowSchema.field("t", ArrowSchema.timestamp("microsecond")),
+      ArrowSchema.field("day", ArrowSchema.date("day")),
+      ArrowSchema.field("n", ArrowSchema.decimal(18, 2))
+    ], [
+      [1500n, -90_000_001n, null],
+      [1_700_000_000_123_456n, -1n, null],
+      [19_000, -1, null],
+      [decimal("12.34"), decimal("-0.05"), null]
+    ]).pipe(Query.withColumns((c) => ({ s: Expr.totalSeconds(c.d), year: Expr.year(c.t) })))
+  ],
+  ...temporalCasts,
+  ...mixedUnits,
+  [
+    "joins on timestamps of mixed units",
+    mixed("s", "ms").pipe(
+      Query.select((c) => ({ k: c.t, x: Expr.lit(1) })),
+      Query.join(mixed("s", "ms").pipe(Query.select((c) => ({ k: c.s, y: Expr.lit(2) }))), { on: "k", how: "full" }),
+      Query.select((c) => ({ k: Expr.cast(c.k, "Int64"), x: c.x, y: c.y }))
+    )
+  ],
+  [
+    "concatenations of durations of mixed units",
+    Query.concat([
+      mixed("s", "ms").pipe(Query.select((c) => ({ d: c.e }))),
+      mixed("s", "ms").pipe(Query.select((c) => ({ d: c.d })))
+    ]).pipe(
+      Query.select((c) => ({ d: Expr.cast(c.d, "Int64"), ms: Expr.cast(Expr.cast(c.d, "Duration[ms]"), "Int64") }))
+    )
+  ],
+  [
+    "casts of integers beyond double precision to Timestamp[us] and Duration[us]",
+    temporal(ArrowSchema.int64, [253_402_300_799_999_999n, -62_135_596_800_000_001n, 9_007_199_254_740_993n]).pipe(
+      Query.select((c) => ({ timestamp: Expr.cast(c.v, "Timestamp[us]"), duration: Expr.cast(c.v, "Duration[us]") }))
+    )
+  ],
+  [
+    "casts of zoned timestamps",
+    temporal(ArrowSchema.timestamp("microsecond", "UTC")).pipe(
+      Query.select((c) => ({ int: Expr.cast(c.v, "Int64"), s: Expr.cast(c.v, "Timestamp[s]") }))
+    )
+  ],
+  [
+    "casts of dates",
+    temporal(ArrowSchema.date("day"), [19_000, -1, null]).pipe(Query.select((c) => ({
+      int: Expr.cast(c.v, "Int32"),
+      long: Expr.cast(c.v, "Int64"),
+      text: Expr.cast(c.v, "Utf8"),
+      s: Expr.cast(c.v, "Timestamp[s]"),
+      ns: Expr.cast(c.v, "Timestamp[ns]"),
+      date: Expr.cast(Expr.cast(c.v, "Int32"), "Date")
+    })))
+  ],
+  [
+    "durations",
+    Query.from(DataFrame.fromColumns({ d: [Duration.seconds(30), Duration.seconds(90)] })).pipe(
+      Query.filter((c) => Expr.gt(Expr.totalSeconds(c.d), 60n))
+    )
+  ],
+  [
+    "columns named like helpers",
+    Query.from(DataFrame.fromColumns({ __row: [1, 2], __n: [3, 4], __source: ["a", "b"] }))
+  ],
+  [
+    "tail of columns named __n and long",
+    Query.from(DataFrame.fromColumns({ __n: [1, 2], [long]: [3, 4] })).pipe(Query.tail(1))
+  ],
+  [
+    "columns of 63 bytes, multi-byte characters included",
+    Query.from(DataFrame.fromColumns({ ["é".repeat(31) + "a"]: [1], ["é".repeat(31) + "b"]: [2] }))
+  ],
+  [
+    "concat of a column named __source",
+    Query.concat([
+      Query.from(DataFrame.fromColumns({ __source: [1] })),
+      Query.from(DataFrame.fromColumns({ __source: [2] }))
+    ])
+  ],
+  [
+    "sqrt of negative numbers",
+    Query.from(DataFrame.fromColumns({ x: [-1, 4, null, -0] })).pipe(Query.select((c) => ({ r: Expr.sqrt(c.x) })))
+  ],
+  [
+    "rounding floats",
+    Query.from(DataFrame.fromColumns({ x: ties })).pipe(
+      Query.select((c) => ({ r0: Expr.round(c.x), r1: Expr.round(c.x, 1), r2: Expr.round(c.x, 2) }))
+    )
+  ],
+  ...unitNames.map((u) =>
+    [
+      `tables declared in ${u} and with a decimal`,
+      Query.table(
+        "declared",
+        Schema.Struct({
+          t: Schema.NullOr(Schema.DateTimeUtc),
+          d: Schema.NullOr(Schema.Duration),
+          n: Schema.NullOr(Schema.BigDecimal)
+        }),
+        {
+          types: { t: ArrowSchema.timestamp(units[u]), d: ArrowSchema.duration(units[u]), n: ArrowSchema.decimal(5, 2) }
+        }
+      ).pipe(Query.withColumns((c) => ({
+        ti: Expr.cast(c.t, "Int64"),
+        di: Expr.cast(c.d, "Int64"),
+        text: Expr.cast(c.n, "Utf8"),
+        sum: Expr.add(c.n, c.n)
+      })))
+    ] as const
+  ),
+  [
+    "tables declared with narrower types, holding them exactly",
+    Query.table("exact", Schema.Struct({ i8: Schema.Number, f32: Schema.Number }), {
+      types: { i8: ArrowSchema.int8, f32: ArrowSchema.float32 }
+    })
+  ],
+  [
+    "tables declared by an Arrow schema",
+    Query.table(
+      "arrowed",
+      ArrowSchema.make([
+        ArrowSchema.field("d", ArrowSchema.date("day")),
+        ArrowSchema.field("at", ArrowSchema.timestamp("millisecond")),
+        ArrowSchema.field("n", ArrowSchema.int32, { nullable: false }),
+        ArrowSchema.field("s", ArrowSchema.utf8)
+      ])
+    )
+  ],
+  [
+    "enum, char, varchar, smallint and real columns, as their declared types",
+    Query.table(
+      "texts",
+      Schema.Struct({ m: Schema.String, c: Schema.String, v: Schema.String, sm: Schema.Number, r: Schema.Number }),
+      { types: { sm: ArrowSchema.int32 } }
+    ).pipe(
+      Query.select((c) => ({
+        m: c.m,
+        lower: Expr.toLowerCase(c.m),
+        before: Expr.lt(c.m, "b"),
+        c: c.c,
+        padded: Expr.eq(c.c, "ab "),
+        length: Expr.length(c.c),
+        v: Expr.concat(c.v, "|"),
+        sm: Expr.add(c.sm, c.sm),
+        r: Expr.add(c.r, 1)
+      })),
+      Query.sort((c) => [c.m])
+    )
+  ],
+  [
+    "rounding integers",
+    Query.from(DataFrame.fromColumns({ x: Int32Array.of(5, -15, 25) })).pipe(
+      Query.select((c) => ({ r0: Expr.round(c.x), r1: Expr.round(c.x, 1) }))
+    )
+  ],
+  [
+    "integer literals fitted whichever rows select them",
+    Query.from(DataFrame.fromColumns({ x: Int8Array.of(100, 0) })).pipe(
+      Query.select((c) => ({ r: Expr.multiply(Expr.add(c.x, Expr.when(Expr.eq(c.x, 0), 300, 1)), 2) }))
+    )
+  ]
+]
+
+describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () => {
+  layer(Layer.provideMerge(Setup, PgliteClient.layer()), { timeout: "60 seconds" })((it) => {
+    const both = Effect.fnUntraced(function*<R>(query: Query.Query<R>) {
+      const expected = yield* query.pipe(Effect.provide(memory))
+      const actual = yield* onSql(query)
+      assert.deepStrictEqual(types(actual), types(expected))
+      const a = DataFrame.toRows(actual) as Array<Record<string, unknown>>
+      const b = DataFrame.toRows(expected) as Array<Record<string, unknown>>
+      assert.strictEqual(a.length, b.length)
+      for (let r = 0; r < b.length; r++) {
+        for (const k of Object.keys(b[r])) {
+          if (!close(a[r][k], b[r][k])) {
+            assert.deepStrictEqual({ row: r, column: k, value: a[r][k] }, { row: r, column: k, value: b[r][k] })
+          }
+        }
+      }
+    })
+
+    // DF-I-SQL/<name>: differential evidence; exact expansion and pins in effect/test/dataframe/README.md.
+    for (const [name, query] of cases) it.effect(name, () => both(query))
+
+    // DF-S001: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("negative slices clamp both ends", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* rowsOnSql(xs.pipe(Query.slice(-5, 1))), [])
+        assert.deepStrictEqual(yield* rowsOnSql(xs.pipe(Query.slice(-5, 3))), [{ x: 1 }])
+      }))
+
+    // DF-S002: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("rounds decimals half to even, keeping the scale", () =>
+      Effect.gen(function*() {
+        const df = yield* onSql(
+          decimals.pipe(Query.select((c) => ({ r0: Expr.round(c.d, 0), r1: Expr.round(c.d, 1) })))
+        )
+        assert.deepStrictEqual(types(df).map((f) => f.type), [ArrowSchema.decimal(19, 3), ArrowSchema.decimal(19, 3)])
+        assert.deepStrictEqual(
+          DataFrame.toRows(df).map((r: any) => [r.r0 && BigDecimal.format(r.r0), r.r1 && BigDecimal.format(r.r1)]),
+          [
+            ["0", "0.5"],
+            ["2", "1.5"],
+            ["2", "2.5"],
+            ["0", "-0.5"],
+            ["-2", "-1.5"],
+            ["-2", "-2.5"],
+            ["3", "2.7"],
+            ["1", "1"],
+            ["0", "0.1"],
+            [null, null]
+          ]
+        )
+      }))
+
+    // DF-S003: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("errors carry the database's message", () =>
+      Effect.gen(function*() {
+        assert.include(
+          yield* rejects(ints.pipe(Query.select((c) => ({ y: Expr.add(c.x, 2147483647) })))),
+          "integer out of range"
+        )
+      }))
+
+    // DF-S004: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("tables must satisfy their schema, as in memory", () =>
+      Effect.gen(function*() {
+        const contract = tableOf("contract")
+        const odd = tableOf("odd")
+        assert.strictEqual(
+          yield* rejects(contract(Schema.Struct({ s: Schema.Literal("good") }))),
+          `column "s" has values its schema rejects`
+        )
+        assert.strictEqual(
+          yield* rejects(contract(Schema.Struct({ n: Schema.Number }))),
+          `column "n" has missing values`
+        )
+        // Columns the query doesn't read are checked too.
+        assert.strictEqual(
+          yield* rejects(
+            contract(Schema.Struct({ s: Schema.Literal("good"), n: Schema.NullOr(Schema.Number) })).pipe(
+              Query.pick("n")
+            )
+          ),
+          `column "s" has values its schema rejects`
+        )
+        assert.deepStrictEqual(
+          yield* rowsOnSql(contract(Schema.Struct({ s: Schema.Literals(["bad", "good"]) }))),
+          [{ s: "bad" }, { s: "good" }]
+        )
+        for (
+          const [query, message] of [
+            [odd(Schema.Struct({ nil: Schema.Null })), `column "nil" has values, expected Null`],
+            [contract(Schema.Struct({ s: Schema.NullOr(Schema.Number) })), `column "s" is text, expected Float64`],
+            [
+              contract(Schema.Struct({ n: Schema.NullOr(Schema.BigInt) })),
+              `column "n" is double precision, expected Int64`
+            ],
+            [
+              odd(Schema.Struct({ far: Schema.NullOr(Schema.DateTimeUtc) })),
+              `column "far" has timestamps outside the range of DateTime`
+            ],
+            [
+              odd(Schema.Struct({ months: Schema.Duration })),
+              `column "months" has durations in months, which have no fixed length`
+            ],
+            [
+              contract(Schema.Struct({ s: Schema.String }).check(Schema.makeFilter((row) => row.s !== ""))),
+              "schemas with checks on whole rows aren't supported on SQL tables; check their fields instead"
+            ],
+            [
+              odd(Schema.Struct({ forever: Schema.DateTimeUtc })),
+              `column "forever" has timestamps outside the range of DateTime`
+            ],
+            [
+              Query.fromPlan({
+                _tag: "Table",
+                name: "odd",
+                columns: [{ name: "endless", type: "Date", nullable: true }]
+              }),
+              `column "endless" has values that Date can't hold exactly`
+            ]
+          ] as const
+        ) {
+          assert.strictEqual(yield* rejects(query), message)
+        }
+        assert.deepStrictEqual(yield* rowsOnSql(odd(Schema.Struct({ nothing: Schema.Null }))), [{ nothing: null }])
+        // A declared column the table doesn't have, named like a column of PostgreSQL's catalog.
+        for (const schema of [Schema.Struct({ oid: Schema.BigInt }), Schema.Struct({ typname: Schema.String })]) {
+          assert.include(yield* rejects(contract(schema)), `.${Object.keys(schema.fields)[0]} does not exist`)
+        }
+      }))
+
+    // DF-S005: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("tables reject values their declared types can't hold exactly, as in memory", () =>
+      Effect.gen(function*() {
+        for (
+          const [column, schema, type] of [
+            ["s", Schema.DateTimeUtc, ArrowSchema.timestamp("second")],
+            ["ms", Schema.DateTimeUtc, ArrowSchema.timestamp("millisecond")],
+            ["ns", Schema.DateTimeUtc, ArrowSchema.timestamp("nanosecond")],
+            ["ds", Schema.Duration, ArrowSchema.duration("second")],
+            ["dms", Schema.Duration, ArrowSchema.duration("millisecond")],
+            ["dns", Schema.Duration, ArrowSchema.duration("nanosecond")],
+            ["scale", Schema.BigDecimal, ArrowSchema.decimal(5, 2)],
+            ["digits", Schema.BigDecimal, ArrowSchema.decimal(5, 2)],
+            ["wide", Schema.BigDecimal, ArrowSchema.decimal(38, 20)],
+            ["i8", Schema.Number, ArrowSchema.int8],
+            ["u32", Schema.Number, ArrowSchema.uint32],
+            ["u64", Schema.BigInt, ArrowSchema.uint64],
+            ["f32", Schema.Number, ArrowSchema.float32],
+            ["f32i", Schema.Number, ArrowSchema.float32]
+          ] as const
+        ) {
+          const table = Query.table("inexact", Schema.Struct({ [column]: schema }), { types: { [column]: type } })
+          // A count reads none of the table's columns.
+          for (const query of [table, table.pipe(Query.aggregate(() => ({ n: Expr.count() })))]) {
+            const expected = yield* Effect.flip(query.pipe(Effect.provide(memory)))
+            assert.strictEqual(yield* rejects(query), expected.message)
+          }
+        }
+      }))
+
+    // DF-S006: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("tables are checked on the rows the query reads, whatever the relation", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient
+        // A view whose rows differ in each scan, without volatile functions.
+        yield* sql.unsafe(
+          `CREATE FUNCTION tick() RETURNS INTEGER STABLE LANGUAGE plpgsql AS $$
+            DECLARE n INTEGER := COALESCE(NULLIF(current_setting('df.tick', TRUE), ''), '0')::INTEGER + 1;
+            BEGIN PERFORM set_config('df.tick', n::TEXT, FALSE); RETURN n; END $$`
+        )
+        // Named with 63 bytes: names longer than that are one with it to PostgreSQL.
+        const view = "ticking".padEnd(63, "_")
+        yield* sql.unsafe(`CREATE VIEW "${view}" AS SELECT CASE WHEN tick() <= 1 THEN 'good' ELSE 'bad' END AS s`)
+        const ticking = (name = view) => Query.table(name, Schema.Struct({ s: Schema.Literal("good") }))
+        const tick = <R>(query: Query.Query<R>) =>
+          Effect.andThen(sql`SELECT set_config('df.tick', '0', FALSE)`, rowsOnSql(query))
+        assert.deepStrictEqual(yield* tick(ticking()), [{ s: "good" }])
+        assert.deepStrictEqual(
+          yield* tick(Query.concat([ticking(), ticking(), ticking(view + "s")])),
+          [{ s: "good" }, { s: "good" }, { s: "good" }]
+        )
+        yield* sql`CREATE SEQUENCE seq START 1`
+        yield* sql`CREATE VIEW fluctuating AS SELECT CASE WHEN nextval('seq') <= 2 THEN 'good' ELSE 'bad' END AS s`
+        const query = Query.table("fluctuating", Schema.Struct({ s: Schema.Literal("good") }))
+        const read = sql.withTransaction(
+          Effect.andThen(sql`SET TRANSACTION ISOLATION LEVEL REPEATABLE READ`, Effect.result(rowsOnSql(query)))
+        )
+        const results = [yield* read, yield* read, yield* read]
+        assert.deepStrictEqual(results.map((r) => Result.isSuccess(r) ? r.success : r.failure.message), [
+          [{ s: "good" }],
+          [{ s: "good" }],
+          `column "s" has values its schema rejects`
+        ])
+      }))
+
+    // DF-S007: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("tables are read from their names, whatever the compiler names", () =>
+      Effect.gen(function*() {
+        const s = (name: string) => Query.table(name, Schema.Struct({ s: Schema.String }))
+        assert.deepStrictEqual(
+          yield* rowsOnSql(Query.concat([s("contract"), s("__table0"), s("second"), s("__table1")])),
+          [{ s: "bad" }, { s: "good" }, { s: "bad" }, { s: "good" }, { s: "bad" }]
+        )
+        assert.strictEqual(
+          yield* rejects(Query.concat([
+            s("contract").pipe(Query.filter((c) => Expr.eq(c.s, "good"))),
+            s("second"),
+            Query.table("__table1", Schema.Struct({ s: Schema.Literal("good") }))
+          ])),
+          `column "s" has values its schema rejects`
+        )
+        assert.deepStrictEqual(yield* rowsOnSql(s("a.b")), [{ s: "good" }])
+        assert.deepStrictEqual(yield* rowsOnSql(s(long)), [{ s: "63" }])
+        const two = Query.concat([s(underscores), s("second")])
+        assert.deepStrictEqual(yield* rowsOnSql(two), [{ s: "57" }, { s: "good" }])
+      }))
+
+    // DF-S008: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("columns are one to PostgreSQL when their first 63 bytes are", () =>
+      Effect.gen(function*() {
+        // Declarations of one table read its one column `"z".repeat(63)`, each with its checks.
+        const shared = (name: string, schema: Schema.Top & { readonly Type: number } = Schema.Number) =>
+          Query.table("shared", Schema.Struct({ [name]: schema })).pipe(Query.select((c) => ({ x: c[name] })))
+        const [za, zb] = ["z".repeat(63) + "a", "z".repeat(63) + "b"]
+        assert.deepStrictEqual(yield* rowsOnSql(Query.concat([shared(za), shared(zb)])), [{ x: 1 }, { x: 1 }])
+        assert.strictEqual(
+          yield* rejects(Query.concat([shared(za), shared(zb, Schema.Literal(2))])),
+          `column ${JSON.stringify(zb)} has values its schema rejects`
+        )
+        // Columns of one relation are rejected: PostgreSQL keeps the whole characters within an identifier's first 63 bytes.
+        const pairs = [["x".repeat(63) + "a", "x".repeat(63) + "b"], ["x".repeat(62) + "é", "x".repeat(62) + "ж"]]
+        for (const [a, b] of pairs) {
+          const added = Query.from(DataFrame.fromColumns({ [a]: [1] })).pipe(
+            Query.withColumns(() => ({ [b]: Expr.lit(2) }))
+          )
+          assert.include(yield* rejects(added), `columns ${JSON.stringify(a)} and ${JSON.stringify(b)} are one name`)
+        }
+      }))
+
+    // DF-S009: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("timestamps with time zones are UTC, whatever the session's time zone", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient
+        const query = Query.table("odd", Schema.Struct({ at: Schema.DateTimeUtc })).pipe(
+          Query.select((c) => ({
+            at: c.at,
+            hour: Expr.hour(c.at),
+            early: Expr.lt(c.at, Expr.lit(DateTime.makeUnsafe("2024-01-01T00:45:00Z")))
+          }))
+        )
+        const rows = yield* sql`SET TIME ZONE 'Europe/Berlin'`.pipe(
+          Effect.andThen(rowsOnSql(query)),
+          Effect.ensuring(Effect.orDie(sql`RESET TIME ZONE`))
+        )
+        assert.deepStrictEqual(rows, [{ at: DateTime.makeUnsafe("2024-01-01T00:30:00Z"), hour: 0, early: true }])
+      }))
+
+    // DF-S010: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("filters, derives and sorts", () =>
+      both(table.pipe(
+        Query.filter((c) => Expr.and(Expr.isNotNull(c.units), Expr.gt(c.price, 20))),
+        Query.withColumns((c) => ({ revenue: Expr.multiply(c.units, c.price), tag: Expr.concat(c.region, "/", "x") })),
+        Query.sort((c) => [Expr.desc(c.revenue), c.id]),
+        Query.head(10)
+      )))
+
+    // DF-S011: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("groups in order of first appearance", () =>
+      both(table.pipe(
+        Query.groupBy("region"),
+        Query.agg((c) => ({
+          n: Expr.count(),
+          units: Expr.sum(c.units),
+          mean: Expr.mean(c.price),
+          min: Expr.min(c.price),
+          max: Expr.max(c.price),
+          first: Expr.first(c.id),
+          last: Expr.last(c.id),
+          median: Expr.median(c.price),
+          sd: Expr.std(c.price)
+        }))
+      )))
+
+    // DF-S012: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("joins keep the left row order", () =>
+      both(table.pipe(
+        Query.pick("id", "region"),
+        Query.join(Query.table("regions", Region), { on: "region", how: "left" }),
+        Query.filter((c) => Expr.lt(c.id, 15))
+      )))
+
+    // DF-S013: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("semi and anti joins, unique and slices", () =>
+      Effect.gen(function*() {
+        yield* both(table.pipe(Query.join(Query.table("regions", Region), { on: "region", how: "anti" })))
+        yield* both(table.pipe(Query.unique(["region"]), Query.pick("id", "region")))
+        yield* both(table.pipe(Query.tail(5)))
+        yield* both(table.pipe(Query.slice(7, 4)))
+      }))
+
+    // DF-S014: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("window functions over partitions", () =>
+      both(table.pipe(
+        Query.select((c) => ({
+          id: c.id,
+          region: c.region,
+          running: Expr.over(Expr.cumSum(c.units), [c.region]),
+          previous: Expr.over(Expr.shift(c.price), [c.region]),
+          rank: Expr.over(Expr.rank(c.price, { method: "min" }), [c.region]),
+          share: Expr.divide(c.price, Expr.over(Expr.sum(c.price), [c.region]))
+        }))
+      )))
+
+    // DF-S015: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("dates and times", () =>
+      both(table.pipe(
+        Query.select((c) => ({
+          id: c.id,
+          year: Expr.year(c.at),
+          month: Expr.month(c.at),
+          weekday: Expr.weekday(c.at),
+          hour: Expr.hour(c.at)
+        }))
+      )))
+
+    // DF-S016: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("explain shows the SQL", () =>
+      Effect.gen(function*() {
+        const text = yield* Query.explain(table.pipe(Query.head(1))).pipe(
+          Effect.provide(Sql.layer)
+        )
+        assert.include(text, `FROM "sales"`)
+      }))
+
+    // DF-S017: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("sums durations to durations, as in memory", () =>
+      Effect.gen(function*() {
+        const totals = spans.pipe(Query.groupBy("g"), Query.agg((c) => ({ total: Expr.sum(c.d) })))
+        yield* both(totals)
+        yield* both(spans.pipe(Query.select((c) => ({
+          over: Expr.over(Expr.sum(c.d), [c.g]),
+          running: Expr.cumSum(c.d),
+          last2: Expr.rollingSum(c.d, 2),
+          least2: Expr.rollingMin(c.d, 2),
+          step: Expr.diff(c.d)
+        }))))
+        // A group without values sums to the zero duration.
+        const result = yield* onSql(totals)
+        assert.deepStrictEqual(types(result)[1].type, ArrowSchema.duration("microsecond"))
+        assert.deepStrictEqual(DataFrame.toArray(result, "total").map(Duration.toNanosUnsafe), [16_000n, 4_000n, 0n])
+      }))
+
+    // DF-S018: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("rejects aggregates that durations and timestamps don't have, as in memory", () =>
+      Effect.gen(function*() {
+        // The types reject these columns too: they are read as numbers here.
+        type Numbers = Query.Query<{ readonly g: string; readonly d: number | null }>
+        const inMemory = <R>(query: Query.Query<R>) => Effect.map(Effect.flip(query), (e) => e.message)
+        const rejected = Effect.fnUntraced(function*<R>(query: Query.Query<R>, message: string) {
+          assert.strictEqual(yield* rejects(query), message)
+          assert.strictEqual(yield* inMemory(query), message)
+        })
+        const durations = spans as unknown as Numbers
+        for (const f of [Expr.mean, Expr.median, Expr.std, Expr.variance]) {
+          yield* rejected(
+            durations.pipe(Query.groupBy("g"), Query.agg((c) => ({ r: f(c.d) }))),
+            "expected a numeric column, got Duration[us]"
+          )
+        }
+        yield* rejected(
+          durations.pipe(Query.select((c) => ({ r: Expr.over(Expr.mean(c.d), [c.g]) }))),
+          "expected a numeric column, got Duration[us]"
+        )
+        yield* rejected(
+          durations.pipe(Query.select((c) => ({ r: Expr.rollingMean(c.d, 2) }))),
+          "rollingMean is not defined for Duration[us]"
+        )
+        const timestamps = arrow<{ g: string; d: number | null }>(
+          [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.timestamp("microsecond"))],
+          [["a", "a"], [7n, null]]
+        )
+        yield* rejected(
+          timestamps.pipe(Query.groupBy("g"), Query.agg((c) => ({ r: Expr.sum(c.d) }))),
+          "sum is not defined for Timestamp[us]"
+        )
+        yield* rejected(
+          timestamps.pipe(Query.select((c) => ({ r: Expr.cumSum(c.d) }))),
+          "cumSum is not defined for Timestamp[us]"
+        )
+      }))
+
+    // DF-N004: local policy for SQL results; pins in effect/test/dataframe/README.md.
+    it.effect("decimal results are read from their text, without BigDecimal values", () =>
+      Effect.gen(function*() {
+        const amounts = arrow<{ g: string; d: BigDecimal.BigDecimal | null }>(
+          [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.decimal(18, 2))],
+          [
+            ["a", "a", "b", "b", "c"],
+            [decimal("-12.34"), decimal("0"), decimal("9999999999999999.99"), null, decimal("-9999999999999999.99")]
+          ]
+        )
+        const query = amounts.pipe(
+          Query.groupBy("g"),
+          Query.agg((c) => ({ total: Expr.sum(c.d), all: Expr.list(c.d) }))
+        )
+        const { calls, grouped, plain } = yield* Effect.acquireUseRelease(
+          Effect.sync(() => [
+            vi.spyOn(BigDecimal, "make"),
+            vi.spyOn(BigDecimal, "round"),
+            vi.spyOn(BigDecimal, "fromStringUnsafe")
+          ]),
+          (spies) =>
+            Effect.gen(function*() {
+              const count = () => spies.reduce((n, spy) => n + spy.mock.calls.length, 0)
+              const plain = yield* onSql(amounts)
+              const grouped = yield* onSql(query)
+              const read = count()
+              DataFrame.toRows(plain)
+              DataFrame.toRows(grouped)
+              return { plain, grouped, calls: [read, count() - read] }
+            }),
+          (spies) => Effect.sync(() => spies.forEach((spy) => spy.mockRestore()))
+        )
+        // None to read the results; one per decimal of their rows: 4 in `d`, 3 in `total`, 4 in `all`.
+        assert.deepStrictEqual(calls, [0, 11])
+        const unscaled = (d: unknown) => BigDecimal.isBigDecimal(d) ? [d.value, d.scale] : d
+        assert.deepStrictEqual(types(plain).map((f) => f.type), [ArrowSchema.utf8, ArrowSchema.decimal(18, 2)])
+        assert.deepStrictEqual(DataFrame.toArray(plain, "d").map(unscaled), [
+          [-1234n, 2],
+          [0n, 2],
+          [999999999999999999n, 2],
+          null,
+          [-999999999999999999n, 2]
+        ])
+        assert.deepStrictEqual(types(grouped).map((f) => f.type), [
+          ArrowSchema.utf8,
+          ArrowSchema.decimal(38, 2),
+          ArrowSchema.list(ArrowSchema.field("item", ArrowSchema.decimal(18, 2)))
+        ])
+        assert.deepStrictEqual(
+          DataFrame.toRows(grouped).map((r) => [r.g, unscaled(r.total), r.all.map(unscaled)]),
+          [
+            ["a", [-1234n, 2], [[-1234n, 2], [0n, 2]]],
+            ["b", [999999999999999999n, 2], [[999999999999999999n, 2], null]],
+            ["c", [-999999999999999999n, 2], [[-999999999999999999n, 2]]]
+          ]
+        )
+        // Results beyond the 64 bits of a decimal column fail, in lists too.
+        const beyond = "decimal values beyond 18 digits are not supported (column of 128-bit decimals)"
+        assert.strictEqual(
+          yield* rejects(amounts.pipe(Query.select((c) => ({ p: Expr.multiply(c.d, c.d) })))),
+          beyond
+        )
+        assert.strictEqual(
+          yield* rejects(amounts.pipe(Query.aggregate((c) => ({ p: Expr.list(Expr.multiply(c.d, c.d)) })))),
+          beyond
+        )
+      }))
+
+    // DF-S020: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("decimals take the scales numeric does", () =>
+      Effect.gen(function*() {
+        const tens = (unscaled: bigint) => BigDecimal.make(unscaled, -1)
+        const negative = arrow<{ d: BigDecimal.BigDecimal | null }>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(18, -1))],
+          [[tens(7n), tens(-15n), tens(0n), null]]
+        )
+        yield* both(negative.pipe(Query.select((c) => ({
+          d: c.d,
+          lit: Expr.lit(tens(-7n)),
+          cast: Expr.castDecimal(c.d, 38, 2),
+          text: Expr.cast(c.d, "Utf8"),
+          above: Expr.gt(c.d, Expr.lit(tens(1n)))
+        }))))
+        assert.deepStrictEqual(
+          yield* rowsOnSql(negative.pipe(Query.select((c) => ({ d: c.d, lit: Expr.lit(tens(-7n)) })))),
+          [
+            { d: tens(7n), lit: tens(-7n) },
+            { d: tens(-15n), lit: tens(-7n) },
+            { d: tens(0n), lit: tens(-7n) },
+            { d: null, lit: tens(-7n) }
+          ]
+        )
+        for (const scale of [1001, -1001, 2147483647, -2147483648]) {
+          const message = `a decimal scale of ${scale} is not supported by the SQL engine`
+          const declared = Query.table("t", ArrowSchema.make([ArrowSchema.field("d", ArrowSchema.decimal(38, scale))]))
+          const literal = ints.pipe(Query.select(() => ({ d: Expr.lit(BigDecimal.make(7n, scale)) })))
+          for (const query of [declared, literal]) {
+            const compiled = Sql.compile(query.plan)
+            assert.strictEqual(Result.isFailure(compiled) && compiled.failure.message, message)
+            assert.strictEqual(yield* rejects(query), message)
+          }
+        }
+      }))
+
+    // DF-S021: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("decimals meet integers, literals and floats as in memory", () =>
+      Effect.gen(function*() {
+        // 70 in every row, next to 69, 70 and 71. The columns are untyped, as in a frame
+        // read from Arrow: typed columns don't compare a decimal with an integer.
+        const mixed = arrow<any>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(18, -1)), ArrowSchema.field("i", ArrowSchema.int32)],
+          [[7n, 7n, 7n].map((x) => BigDecimal.make(x, -1)), [69, 70, 71]]
+        )
+        const chosen = mixed.pipe(Query.select((c) => ({
+          equal: Expr.eq(c.d, c.i),
+          above: Expr.gt(c.d, c.i),
+          literal: Expr.eq(c.d, 69),
+          when: Expr.when(Expr.lit(false), c.d, c.i),
+          first: Expr.coalesce(c.i, c.d)
+        })))
+        yield* both(chosen)
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          { equal: false, above: true, literal: false, when: BigDecimal.make(69n, 0), first: BigDecimal.make(69n, 0) },
+          { equal: true, above: false, literal: false, when: BigDecimal.make(70n, 0), first: BigDecimal.make(70n, 0) },
+          { equal: false, above: false, literal: false, when: BigDecimal.make(71n, 0), first: BigDecimal.make(71n, 0) }
+        ])
+        // A literal's precision is at most 38, whatever its scale.
+        const small = BigDecimal.make(1n, 400)
+        const literal = ints.pipe(Query.head(1), Query.select(() => ({ d: Expr.lit(small) })))
+        yield* both(literal)
+        assert.deepStrictEqual(yield* rowsOnSql(literal), [{ d: small }])
+        // 10^18 units of 10^-310 are 10^-292, past the largest power of ten a float holds.
+        const held = arrow<{ d: BigDecimal.BigDecimal }>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(38, 310))],
+          [[BigDecimal.make(10n ** 18n, 310), BigDecimal.make(-(10n ** 18n), 310)]]
+        )
+        const floats = held.pipe(Query.select((c) => ({ f: Expr.cast(c.d, "Float64") })))
+        yield* both(floats)
+        assert.deepStrictEqual(yield* rowsOnSql(floats), [{ f: 1e-292 }, { f: -1e-292 }])
+      }))
+
+    // DF-S022: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("isIn compares decimals by value as in memory", () =>
+      Effect.gen(function*() {
+        const dec = (unscaled: bigint, scale: number) => BigDecimal.make(unscaled, scale)
+        // 7.00, 7.50 and -7.00 next to 70, 0 and 700. The columns are untyped, as in a frame
+        // read from Arrow: typed columns take candidates of their own type.
+        const held = arrow<any>(
+          [
+            ArrowSchema.field("d", ArrowSchema.decimal(18, 2)),
+            ArrowSchema.field("n", ArrowSchema.decimal(18, -1)),
+            ArrowSchema.field("at", ArrowSchema.timestamp("microsecond", "UTC")),
+            ArrowSchema.field("took", ArrowSchema.duration("microsecond"))
+          ],
+          [
+            [dec(700n, 2), dec(750n, 2), dec(-700n, 2), null],
+            [dec(7n, -1), dec(0n, -1), dec(70n, -1), null],
+            [0n, 1_000_000n, 5n, null],
+            [0n, 1_000_000n, 5n, null]
+          ]
+        )
+        const chosen = held.pipe(Query.select((c) => ({
+          same: Expr.isIn(c.d, [dec(700n, 2)]),
+          rescaled: Expr.isIn(c.d, [dec(7n, 0), dec(7500n, 3)]),
+          integer: Expr.isIn(c.d, [7, -7n]),
+          float: Expr.isIn(c.d, [7.5]),
+          units: Expr.isIn(c.d, [700, 750n]),
+          mixed: Expr.isIn(c.d, [7, dec(-700n, 2), null]),
+          none: Expr.not(Expr.isIn(c.d, [7, dec(750n, 2)])),
+          negative: Expr.isIn(c.n, [70, dec(700n, 0)]),
+          at: Expr.isIn(c.at, [DateTime.makeUnsafe(1000)]),
+          took: Expr.isIn(c.took, [Duration.seconds(1), Duration.micros(5n)])
+        })))
+        yield* both(chosen)
+        const row = (...values: ReadonlyArray<boolean | null>) => ({
+          same: values[0],
+          rescaled: values[1],
+          integer: values[2],
+          float: values[3],
+          units: values[4],
+          mixed: values[5],
+          none: values[6],
+          negative: values[7],
+          at: values[8],
+          took: values[9]
+        })
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          row(true, true, true, false, false, true, false, true, false, false),
+          row(false, true, false, true, false, false, false, false, true, true),
+          row(false, false, true, false, false, true, true, true, false, true),
+          row(null, null, null, null, null, null, null, null, null, null)
+        ])
+      }))
+
+    // DF-S023: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("isIn keeps exact candidates apart from fractions and takes long lists", () =>
+      Effect.gen(function*() {
+        const dec = (unscaled: bigint, scale: number) => BigDecimal.make(unscaled, scale)
+        // The first integer a float can't hold, next to the float below it.
+        const odd = 9007199254740993n
+        const below = 9007199254740992
+        const held = arrow<any>(
+          [
+            ArrowSchema.field("d", ArrowSchema.decimal(18, 0)),
+            ArrowSchema.field("e", ArrowSchema.decimal(18, 2)),
+            ArrowSchema.field("b", ArrowSchema.int64),
+            ArrowSchema.field("u", ArrowSchema.uint64)
+          ],
+          [
+            [dec(odd, 0), dec(0n, 0), null],
+            [dec(odd * 100n + 50n, 2), dec(50n, 2), null],
+            [odd, 0n, null],
+            [2n ** 64n - 1n, odd, null]
+          ]
+        )
+        const chosen = held.pipe(Query.select((c) => ({
+          // A fraction in the list doesn't round the other candidates or the column.
+          rounded: Expr.isIn(c.d, [0.5, below]),
+          exact: Expr.isIn(c.d, [0.5, odd]),
+          zero: Expr.isIn(c.d, [-0, NaN, 2n ** 70n]),
+          fraction: Expr.isIn(c.e, [0.5, below]),
+          integer: Expr.isIn(c.b, [0.5, below]),
+          wide: Expr.isIn(c.b, [2n ** 70n, -0, odd]),
+          unsigned: Expr.isIn(c.u, [0.5, 2n ** 64n - 1n, below]),
+          signed: Expr.isIn(c.u, [-1n]),
+          long: Expr.isIn(c.d, Array.from({ length: 3000 }, (_, i) => dec(BigInt(i), 0)))
+        })))
+        yield* both(chosen)
+        const row = (...values: ReadonlyArray<boolean | null>) => ({
+          rounded: values[0],
+          exact: values[1],
+          zero: values[2],
+          fraction: values[3],
+          integer: values[4],
+          wide: values[5],
+          unsigned: values[6],
+          signed: values[7],
+          long: values[8]
+        })
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          row(false, true, false, false, false, true, true, false, false),
+          row(false, false, true, true, false, true, false, false, true),
+          row(null, null, null, null, null, null, null, null, null)
+        ])
+      }))
+
+    // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("unions and nullable fields are checked as in memory", () =>
+      Effect.gen(function*() {
+        const contract = tableOf("contract")
+        const orNull = <S extends Schema.Top>(member: S) => Schema.Union([Schema.suspend(() => Schema.Null), member])
+        assert.deepStrictEqual(
+          yield* rowsOnSql(contract(Schema.Struct({ s: orNull(Schema.Literals(["bad", "good"])) }))),
+          [{ s: "bad" }, { s: "good" }]
+        )
+        const notNull = Schema.makeFilter((n: number | null) => n !== null)
+        for (
+          const [schema, column] of [
+            [Schema.Struct({ s: orNull(Schema.Literal("good")) }), "s"],
+            // A check of a nullable field is run on its nulls.
+            [Schema.Struct({ n: Schema.NullOr(Schema.Number).check(notNull) }), "n"],
+            // "good" is a value of both members.
+            [Schema.Struct({ s: Schema.Union([Schema.String, Schema.Literal("good")], { mode: "oneOf" }) }), "s"]
+          ] as const
+        ) {
+          assert.strictEqual(yield* rejects(contract(schema)), `column "${column}" has values its schema rejects`)
+        }
+      }))
+  })
+})
