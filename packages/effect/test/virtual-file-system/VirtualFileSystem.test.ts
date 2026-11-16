@@ -433,6 +433,33 @@ describe("VirtualFileSystem", () => {
       assert.deepStrictEqual(yield* caller.readFile("/file"), new Uint8Array([4, 5, 6]))
     }).pipe(withClock))
 
+  it.effect("requires a named entry for guarded recursive directory creation", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make()
+      const caller = yield* owner.authorize({ credentials })
+      const root = yield* caller.makeDirectory("/", { recursive: true })
+      const absent = { entry: { expected: "absent" as const } }
+      const current = { parentNamespace: root.namespaceRevision }
+      for (const conditions of [absent, current]) {
+        for (const target of ["/", path("///"), ".", ".."]) {
+          const result = yield* Effect.result(caller.makeDirectory(target, { recursive: true, conditions }))
+          assert.strictEqual(result._tag, "Failure")
+          if (Result.isFailure(result)) {
+            assert.strictEqual(result.failure._tag, "InvalidInput")
+            if (result.failure._tag === "InvalidInput") assert.strictEqual(result.failure.field, "name")
+          }
+        }
+      }
+      const empty = yield* Effect.flip(caller.makeDirectory("", { recursive: true, conditions: absent }))
+      assert.strictEqual(empty._tag, "InvalidInput")
+      if (empty._tag === "InvalidInput") assert.strictEqual(empty.field, "path")
+      const unchanged = yield* caller.makeDirectory("///", { recursive: true })
+      assert.isTrue(VFS.equalsNamespaceRevision(unchanged.namespaceRevision, root.namespaceRevision))
+      yield* caller.makeDirectory("/child", { recursive: true, conditions: current })
+      const existing = yield* Effect.flip(caller.makeDirectory("/child", { recursive: true, conditions: absent }))
+      assert.strictEqual(existing._tag, "ConditionFailed")
+    }).pipe(withClock))
+
   it.effect("should reject the old creation receipt when a directory binding is removed and reinserted", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make()
