@@ -44,25 +44,26 @@
  * - Text: every `STRING`, `ENUM` and `JSON` value, and every value of their
  *   converted types (`UTF8`, `ENUM`, `JSON`) on a node without a logical
  *   type, is checked to be UTF-8, and so is every value of such a column's
- *   dictionary. Anything else fails with `Malformed`. `JSON` values are not
- *   parsed.
- * - Annotations: an annotation added after 2.14.0, or one the spec doesn't
- *   define for the physical type it is on (a `STRING` on an `INT32`), is left
- *   out of the schema, and so is the order of the column's statistics. When
- *   that annotation is a logical type, the node's converted type is left out
- *   too, so only the physical type applies. A `DECIMAL` precision or scale and
- *   an `INTEGER` bit width that the spec forbids fail with `Malformed`.
+ *   dictionary. A value that is not UTF-8 fails with `Malformed`. `JSON`
+ *   values are not parsed.
+ * - Annotations: a logical type added after 2.14.0, or an annotation the
+ *   spec doesn't define for the physical type it is on (a `STRING` on an
+ *   `INT32`), is left out of the schema, and so is the order of the column's
+ *   statistics. A converted type added after 2.14.0 stays as its numeric
+ *   code, also without the order. When the annotation left out is a logical
+ *   type, the node's converted type is left out too, so only the physical
+ *   type applies. A `DECIMAL` precision or scale and an `INTEGER` bit width
+ *   that the spec forbids fail with `Malformed`.
  * - Encodings: `PLAIN`, `PLAIN_DICTIONARY` and `RLE_DICTIONARY` (values
  *   are looked up in the dictionary), `RLE` (booleans), `DELTA_BINARY_PACKED`,
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
  *   levels in `RLE` or the deprecated `BIT_PACKED`.
  * - Pages: data pages v1 and v2 and dictionary pages; index pages and page
- *   types added after 2.14.0 are skipped. Every page read on the way to the
- *   column chunk's last value, skipped ones included, is checked against the
- *   CRC-32 in its header when it has one, and fails with `Malformed` when its
- *   bytes don't match. Pages after the last value, and the pages of a chunk
- *   with no values, are not read and not checked. A page without a CRC-32 is
- *   read as it is.
+ *   types added after 2.14.0 are skipped. Every page read to decode the
+ *   column chunk's values, skipped ones included, is checked when its header
+ *   has a CRC-32, and fails with `Malformed` on a mismatch. A page without
+ *   one is not checked. Pages after the last value, and the pages of a chunk
+ *   with no values, are not read and so not checked.
  * - Nesting: any depth of optional, required and repeated fields, assembled from
  *   repetition and definition levels into {@link Layer}s.
  *
@@ -1020,7 +1021,7 @@ const annotates = (annotation: Annotation, e: Element, physicalType: PhysicalTyp
         : physicalType === "INT64"
         ? 18
         : physicalType === "FIXED_LEN_BYTE_ARRAY"
-        // floor(log10(2^(8n - 1) - 1)), which is this as no power of 2 is a power of 10
+        // floor(log10(2^(8n - 1) - 1)), computed without the last - 1, as no power of 2 is a power of 10
         ? Math.floor((8 * e.typeLength! - 1) * Math.log10(2))
         : undefined
       if (digits === undefined) return false
