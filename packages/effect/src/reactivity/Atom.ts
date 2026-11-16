@@ -2335,18 +2335,26 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
   readonly mode?: Mode | undefined
 }): Writable<"async" extends Mode ? AsyncResult.AsyncResult<S["Type"]> : S["Type"], S["Type"]> => {
   const setAtom = options.runtime.fn(
-    (value: S["Type"]) =>
+    (value: S["Type"], get) =>
       KeyValueStore.KeyValueStore.use((store) =>
-        KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
+        Effect.map(
+          KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value),
+          () => get.set(persistedAtom, value)
+        )
       )
   )
   const resultAtom = options.runtime.atom(
     KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
   )
+  const persistedAtom = writable(
+    (get) => get(resultAtom),
+    (ctx, value: S["Type"]) => ctx.setSelf(AsyncResult.success(Option.some(value)))
+  )
   return writable(
     options.mode === "async" ?
       (get) => {
         get.mount(setAtom)
+        get.mount(persistedAtom)
         const mapper = AsyncResult.map<Option.Option<S["Type"]>, S["Type"]>(
           Option.getOrElse(() => {
             const value = options.defaultValue()
@@ -2355,11 +2363,12 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
           })
         )
         get.subscribe(resultAtom, (result) => get.setSelf(mapper(result)))
-        return mapper(get.once(resultAtom))
+        return mapper(get.once(persistedAtom))
       } :
       (get) => {
         get.mount(setAtom)
-        get.subscribe(resultAtom, (result) => {
+        get.mount(persistedAtom)
+        const update = (result: AsyncResult.AsyncResult<Option.Option<S["Type"]>, unknown>) => {
           if (!AsyncResult.isSuccess(result)) return
           if (Option.isSome(result.value)) {
             get.setSelf(result.value.value)
@@ -2368,7 +2377,9 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
             get.setSelf(value)
             get.set(setAtom, value)
           }
-        }, { immediate: true })
+        }
+        get.subscribe(resultAtom, update)
+        update(get.once(persistedAtom))
         return Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
       },
     (ctx, value: S["Type"]) => {

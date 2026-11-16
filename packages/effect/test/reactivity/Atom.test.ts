@@ -3602,6 +3602,29 @@ describe("Atom", { concurrent: false }, () => {
       assert(AsyncResult.isSuccess(updated))
       expect(updated.value).toEqual(24)
     })
+
+    for (const mode of ["sync", "async"] as const) {
+      it(`${mode} mode retains persisted writes across refresh`, () => {
+        const atom = Atom.kvs({
+          mode,
+          runtime: Atom.runtime(KeyValueStore.layerMemory.pipe(
+            Layer.tap((services) =>
+              Context.get(services, KeyValueStore.KeyValueStore).set("theme", JSON.stringify("light"))
+            )
+          )),
+          key: "theme",
+          schema: Schema.String,
+          defaultValue: () => "light"
+        })
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        r.set(atom, "dark")
+        r.refresh(atom)
+        const value = r.get(atom)
+        assert.strictEqual(AsyncResult.isAsyncResult(value) ? AsyncResult.getOrThrow(value) : value, "dark")
+        r.dispose()
+      })
+    }
   })
 })
 
