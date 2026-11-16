@@ -10,8 +10,10 @@
  *   magic bytes and adds a footer that indexes them.
  * - Decoding returns a {@link ArrowTable.Table} whose buffers are views into
  *   the input bytes. Don't mutate the input while you use the table.
- * - Decoding validates the input fully (offsets, indices, views, buffer
- *   sizes), so any slot of the result can be read safely.
+ * - Decoding validates the structure of the input (offsets, indices, views,
+ *   buffer sizes, type metadata), so any slot of the result can be read
+ *   safely. It does not check stored values against their type: a decimal
+ *   with more digits than its precision decodes as it is stored.
  *
  * **Gotchas**
  *
