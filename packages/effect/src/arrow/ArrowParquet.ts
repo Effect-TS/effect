@@ -949,7 +949,14 @@ const readGroup = <E, R>(
     const columns: Array<Parquet.Column> = []
     let previous: Parquet.Column | undefined
     for (const index of plan.columns) {
-      const column = yield* Parquet.readColumn(source, metadata, { ...options, column: index })
+      const column = yield* Parquet.readColumn(source, metadata, {
+        rowGroup,
+        column: index,
+        codecs: options.codecs,
+        maxPageSize: options.maxPageSize,
+        maxValues: options.maxValues,
+        maxBinaryLength: options.maxBinaryLength
+      })
       if (previous !== undefined) yield* Effect.fromResult(attempt(() => checkShared(previous!, column, rowGroup)))
       columns[index] = previous = column
     }

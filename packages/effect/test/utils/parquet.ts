@@ -191,7 +191,7 @@ export interface Chunk {
 }
 
 /** Writes a Parquet file with one row group per entry of `rowGroups`. */
-export const files = (options: {
+export const groupedFile = (options: {
   readonly schema: ReadonlyArray<V>
   readonly rowGroups: ReadonlyArray<{ readonly numRows: number; readonly chunks: ReadonlyArray<Chunk> }>
   readonly metadata?: { readonly [id: number]: V } | undefined
@@ -237,7 +237,7 @@ export const file = (options: {
   readonly numRows: number
   readonly chunks: ReadonlyArray<Chunk>
   readonly metadata?: { readonly [id: number]: V } | undefined
-}): Uint8Array => files({ schema: options.schema, rowGroups: [options], metadata: options.metadata })
+}): Uint8Array => groupedFile({ schema: options.schema, rowGroups: [options], metadata: options.metadata })
 
 export type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
 

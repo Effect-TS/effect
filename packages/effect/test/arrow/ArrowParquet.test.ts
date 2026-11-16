@@ -15,8 +15,8 @@ import {
   element,
   failsWith,
   file,
-  files,
   flat,
+  groupedFile,
   gzip,
   int32s,
   integer,
@@ -286,7 +286,7 @@ const tree = (fields: ReadonlyArray<Node>, numRows = 0, pages: ReadonlyArray<rea
 
 /** A file with a required INT32 column `x` and one row group per entry of `groups`. */
 const rowGroups = (groups: ReadonlyArray<ReadonlyArray<number>>) =>
-  files({
+  groupedFile({
     schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
     rowGroups: groups.map((values) => ({
       numRows: values.length,
@@ -928,7 +928,7 @@ describe("ArrowParquet", () => {
   })
 
   describe("batches", () => {
-    const plainBytes = fixtureBytes("plain.parquet")
+    const plainFile = fixtureBytes("plain.parquet")
 
     // ARROW-PARQUET-013 (local): batch boundaries are row group boundaries.
     it.effect("emits one batch per row group, also without rows, and nothing without row groups", () =>
@@ -966,7 +966,7 @@ describe("ArrowParquet", () => {
     // ARROW-PARQUET-015 (local): projection, and usage errors as defects.
     it.effect("selects top-level fields by name, in the order given", () =>
       Effect.gen(function*() {
-        const source = Parquet.fromBytes(plainBytes)
+        const source = Parquet.fromBytes(plainFile)
         const metadata = yield* Parquet.readMetadata(source)
         const columns = ["string", "int32"]
         const all = yield* ArrowParquet.readRecordBatch(source, metadata, { rowGroup: 1 })
@@ -979,7 +979,7 @@ describe("ArrowParquet", () => {
           [5, 1].map((i) => valuesOf(all.schema.fields[i], all.columns[i]))
         )
         assert.deepStrictEqual(
-          (yield* batchesOf(plainBytes, { columns: [] })).map((batch) => [batch.length, batch.columns.length]),
+          (yield* batchesOf(plainFile, { columns: [] })).map((batch) => [batch.length, batch.columns.length]),
           [[25, 0], [15, 0]]
         )
         // Without a column to read, the row count alone gives the batch length, so it must not be negative
@@ -991,7 +991,7 @@ describe("ArrowParquet", () => {
         // A name the file doesn't have and a row group it doesn't have are bugs in the caller
         assert.throws(() => ArrowParquet.schema(metadata, { columns: ["nope"] }), /the file has no column "nope"/)
         yield* dies(ArrowParquet.readRecordBatch(source, metadata, { rowGroup: 0, columns: ["nope"] }))
-        yield* dies(batchesOf(plainBytes, { columns: ["nope"] }))
+        yield* dies(batchesOf(plainFile, { columns: ["nope"] }))
         yield* dies(ArrowParquet.readRecordBatch(source, metadata, { rowGroup: 2 }))
         yield* dies(ArrowParquet.readRecordBatch(source, metadata, { rowGroup: 0.5 }))
       }))
@@ -1000,12 +1000,12 @@ describe("ArrowParquet", () => {
     it.effect("passes codecs and limits on to the Parquet reader", () =>
       Effect.gen(function*() {
         yield* failsWith(batchesOf(fixtureBytes("gzip.parquet")), "Unsupported", /GZIP/)
-        yield* failsWith(batchesOf(plainBytes, { maxValues: 24 }), "Limit", /maxValues/)
-        yield* failsWith(batchesOf(plainBytes, { maxPageSize: 8 }), "Limit", /maxPageSize/)
-        yield* failsWith(batchesOf(plainBytes, { maxBinaryLength: 1, columns: ["string"] }), "Limit", /maxBinaryLength/)
-        yield* failsWith(batchesOf(plainBytes, { maxFooterLength: 8 }), "Limit", /maxFooterLength/)
+        yield* failsWith(batchesOf(plainFile, { maxValues: 24 }), "Limit", /maxValues/)
+        yield* failsWith(batchesOf(plainFile, { maxPageSize: 8 }), "Limit", /maxPageSize/)
+        yield* failsWith(batchesOf(plainFile, { maxBinaryLength: 1, columns: ["string"] }), "Limit", /maxBinaryLength/)
+        yield* failsWith(batchesOf(plainFile, { maxFooterLength: 8 }), "Limit", /maxFooterLength/)
         yield* failsWith(batchesOf(fixtureBytes("nested.parquet"), { maxDepth: 1 }), "Limit", /maxDepth/)
-        assert.strictEqual((yield* batchesOf(plainBytes, { maxValues: 25 })).length, 2)
+        assert.strictEqual((yield* batchesOf(plainFile, { maxValues: 25 })).length, 2)
       }))
 
     // ARROW-PARQUET-017 (local): batches own their buffers.
