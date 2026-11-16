@@ -1,6 +1,7 @@
 import { afterAll, assert, describe, it } from "@effect/vitest"
 import {
   Brand,
+  BytePath,
   Cause,
   type Codegen,
   Exit,
@@ -406,6 +407,21 @@ describe("Codegen.Module.addSchemas", { concurrent: false }, () => {
     example("URL", Schema.URL, "globalThis.URL", {
       accepts: [new URL("https://example.com")],
       rejects: ["https://example.com"]
+    })
+    for (
+      const [name, schema] of [
+        ["BytePath", Schema.BytePath],
+        ["BytePathFromBytes type", Schema.toType(Schema.BytePathFromBytes)]
+      ] as const
+    ) {
+      example(name, schema, "import(\"effect/BytePath\").BytePath", {
+        accepts: [Result.getOrThrow(BytePath.fromString("/file"))],
+        rejects: [new Uint8Array([1])]
+      })
+    }
+    example("BytePathFromBytes encoded", Schema.toEncoded(Schema.BytePathFromBytes), "globalThis.Uint8Array", {
+      accepts: [new Uint8Array([1])],
+      rejects: [[1]]
     })
     example("Uint8Array", Schema.Uint8Array, "globalThis.Uint8Array", {
       accepts: [new Uint8Array([1])],
