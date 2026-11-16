@@ -178,7 +178,8 @@ export const makeStorage = (options?: {
     })
     // Two instances can open the same table at once, and PostgreSQL and SQL
     // Server can fail the loser of a concurrent create, so creation retries.
-    // Inline SQL Server indexes avoid deadlocks between concurrent CREATE INDEX statements.
+    // SQL Server declares its indexes inline, as concurrent CREATE INDEX
+    // statements can deadlock.
     const createTable = (name: string, columns: string, indexes: ReadonlyArray<string> = []) =>
       sql.onDialectOrElse({
         mysql: () => {

@@ -24,7 +24,7 @@ const ids = (batches: ReadonlyArray<{ readonly entryIds: ReadonlyArray<EventJour
   batches.map((batch) => batch.entryIds.map((id) => Array.from(id).join(",")))
 
 // Waits until another connection is blocked on a lock held by an open transaction.
-const awaitLockWait = Effect.gen(function*() {
+export const awaitLockWait = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
   const waiting = sql.onDialectOrElse({
     pg: () =>

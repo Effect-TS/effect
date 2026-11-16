@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Layer } from "effect"
+import { Deferred, Effect, Layer } from "effect"
 import * as CompactionTest from "effect-test/eventlog/EventLogServerEncryptedCompactionTest"
 import * as EncryptedTest from "effect-test/eventlog/EventLogServerEncryptedTest"
 import * as SqlEventLogServerEncryptedStorageTest from "effect-test/eventlog/SqlEventLogServerEncryptedStorageTest"
@@ -27,17 +27,6 @@ CompactionTest.suite(
 
 SqlEventLogServerEncryptedStorageTest.compactionSuite("mssql", MssqlContainer.layerClient)
 
-// Succeeds once a request waits on a lock that session `spid` holds.
-const blockedBy = Effect.fnUntraced(function*(spid: number) {
-  const sql = yield* SqlClient.SqlClient
-  while (true) {
-    const [row] = yield* sql<{ n: number }>`
-      SELECT COUNT(*) AS n FROM sys.dm_exec_requests WHERE blocking_session_id = ${spid}`
-    if (row.n > 0) return "waited" as const
-    yield* Effect.sleep(20)
-  }
-})
-
 it.layer(Layer.mergeAll(Digest.layerWebCrypto, MssqlContainer.layerClient), {
   timeout: "60 seconds",
   excludeTestServices: true
@@ -47,27 +36,26 @@ it.layer(Layer.mergeAll(Digest.layerWebCrypto, MssqlContainer.layerClient), {
     it.effect("opens a store while another instance is creating an index", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
-        const prefix = `indexing_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
+        const prefix = "indexing"
         const stores = `${prefix}_compaction_stores`
-        // Hold index creation open to reproduce the old opener's lock wait.
         yield* sql`CREATE TABLE ${sql(stores)} (scope NVARCHAR(36) PRIMARY KEY, next_sweep_at BIGINT NULL)`
-        const indexing = yield* Deferred.make<number>()
-        const release = yield* Deferred.make<void>()
-        const other = yield* sql.withTransaction(Effect.gen(function*() {
-          yield* sql`CREATE INDEX ${sql(`${stores}_i0`)} ON ${sql(stores)} (next_sweep_at)`
-          const [row] = yield* sql<{ spid: number }>`SELECT @@SPID AS spid`
-          yield* Deferred.succeed(indexing, row.spid)
-          yield* Deferred.await(release)
-        })).pipe(Effect.forkChild)
-        const spid = yield* Deferred.await(indexing)
+        // Hold a separate index creation open, as an older instance would.
+        const indexing = yield* Deferred.make<void>()
+        yield* sql`CREATE INDEX ${sql(`${stores}_i0`)} ON ${sql(stores)} (next_sweep_at)`.pipe(
+          Effect.andThen(Deferred.succeed(indexing, undefined)),
+          Effect.andThen(Effect.never),
+          sql.withTransaction,
+          Effect.forkScoped
+        )
+        yield* Deferred.await(indexing)
 
-        const opened = SqlEventLogServerEncrypted.makeStorage({
-          entryTablePrefix: prefix,
-          remoteIdTable: `${prefix}_remote_id`
-        }).pipe(Effect.as("opened" as const), Effect.scoped)
-        const outcome = yield* Effect.race(opened, blockedBy(spid))
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(other)
+        const outcome = yield* Effect.race(
+          SqlEventLogServerEncrypted.makeStorage({ entryTablePrefix: prefix }).pipe(
+            Effect.as("opened"),
+            Effect.scoped
+          ),
+          Effect.as(SqlEventLogServerEncryptedStorageTest.awaitLockWait, "waited")
+        )
 
         assert.strictEqual(outcome, "opened")
       }))
