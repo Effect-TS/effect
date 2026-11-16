@@ -18,6 +18,33 @@ const makeWorker = Effect.gen(function*() {
 })
 
 describe("FiberMap", () => {
+  it.effect("run registers a fiber even when it interrupts its forker during startup", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const container = yield* FiberMap.make<string>().pipe(Scope.provide(scope))
+      const started = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+      const cleaning = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const forker = yield* Effect.withFiber((parent) => {
+        const work = Effect.withFiber((child) => Deferred.succeed(started, child)).pipe(
+          Effect.andThen(Effect.sync(() => parent.interruptUnsafe())),
+          Effect.andThen(Effect.never),
+          Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release))))
+        )
+        return FiberMap.run(container, "key", work, { startImmediately: true })
+      }).pipe(Effect.forkChild)
+      const child = yield* Deferred.await(started)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(forker)))
+      assert.isUndefined(child.pollUnsafe())
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* Deferred.await(cleaning)
+      yield* Effect.yieldNow
+      assert.isUndefined(closing.pollUnsafe())
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(closing)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+    }))
+
   it.effect("closing the scope waits for asynchronous cleanup of a replaced fiber", () =>
     Effect.gen(function*() {
       const events: Array<string> = []
