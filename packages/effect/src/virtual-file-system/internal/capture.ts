@@ -153,6 +153,26 @@ const captureValue = (snapshotRecords: CaptureRecords) => {
   return value
 }
 
+// Exported reads use typed-array slice. Only reuse plain, fixed-length file storage.
+const isOwnedFileData = (data: Uint8Array): data is Uint8Array<ArrayBuffer> =>
+  Object.getPrototypeOf(data) === Uint8Array.prototype && data.buffer instanceof ArrayBuffer &&
+  !("resizable" in data.buffer && data.buffer.resizable)
+
+/**
+ * The adapter owns these validated snapshot records and must keep their file bytes private
+ * and immutable for the lifetime of the capture and all restored volumes.
+ * @internal
+ */
+// oxlint-disable-next-line effect/no-unused-internal -- The downstream preview generates the adapter import.
+export const unsafeFromOwnedRecords = (records: ReadonlyArray<M.CaptureRecord>): M.Capture =>
+  captureValue(records.map((record): SnapshotRecord => {
+    if (record._tag === "alias") return { ...record }
+    const metadata = { ...record.metadata }
+    if (record._tag !== "file") return { ...record, metadata }
+    const { data } = record
+    return { ...record, metadata, data: isOwnedFileData(data) ? data : new Uint8Array(data) }
+  }))
+
 // -----------------------------------------------------------------------------
 // Graph capture
 // -----------------------------------------------------------------------------
@@ -288,7 +308,7 @@ class Candidate extends R.ChargedBytes {
     this.groupInheritance = groupInheritance
   }
 
-  accept(input: unknown) {
+  accept(input: unknown, captured?: SnapshotRecord) {
     const prepared = Result.gen(this, function*() {
       const limits = this.runtime.limits
       this.consumedRecords++
@@ -414,13 +434,14 @@ class Candidate extends R.ChargedBytes {
           bytes = currentBytes
         }
         yield* this.reserveResult(bytes)
-        const snapshot = yield* copy(record)
+        // Capture owns its private bytes. Writes replace the payload, and records() copies it on export.
+        const snapshot = captured ?? (yield* copy(record))
         if (snapshot._tag !== "root") this.entries.push(snapshot)
         if (snapshot._tag !== "alias") this.nodes.set(snapshot.id, snapshot)
         if (snapshot._tag === "root") this.root = snapshot
       })
     } finally {
-      // NOTE: The copied candidate has its own charge; release raw-record staging on every outcome.
+      // NOTE: The candidate has its own charge; release raw-record staging on every outcome.
       this.release(bytes)
     }
   }
@@ -571,31 +592,29 @@ export const restoreEngine: <Error = never, Requirements = never>(
       })
     )
     const candidate = new Candidate(runtime, state.accessTime, state.groupInheritance)
-    const stream = yield* Effect.suspend(() =>
+    const accept = (record: M.CaptureRecord, captured?: SnapshotRecord) =>
+      Effect.suspend(() =>
+        Result.match(Result.try(() => candidate.accept(record, captured)), {
+          onFailure: restoreFailure,
+          onSuccess: Effect.fromResult
+        })
+      )
+    const consume = yield* Effect.suspend(() =>
       Result.match(
         Result.try(() =>
           state.snapshotRecords !== undefined
-            ? Result.succeed(Stream.fromIterable(state.snapshotRecords))
+            ? Result.succeed(
+              Stream.runForEach(Stream.fromIterable(state.snapshotRecords), (record) => accept(record, record))
+            )
             : isRecordStream(source)
-            ? Result.succeed(source)
+            ? Result.succeed(Stream.runForEach(source, (record) => accept(record)))
             : Result.fail(new M.InvalidInput({ operation: "restore", field: "source", reason: "malformed" }))
         ),
         { onFailure: restoreFailure, onSuccess: Effect.fromResult }
       )
     )
     return yield* Effect.gen(function*() {
-      yield* Effect.scoped(
-        Stream.runForEach(stream, (record) =>
-          Effect.suspend(() =>
-            Result.match(
-              Result.try(() => candidate.accept(record)),
-              {
-                onFailure: restoreFailure,
-                onSuccess: Effect.fromResult
-              }
-            )
-          ))
-      )
+      yield* Effect.scoped(consume)
       return yield* Effect.suspend(() =>
         Result.match(Result.try(() => candidate.build()), {
           onFailure: restoreFailure,
