@@ -38,18 +38,14 @@ describe("PartitionedSemaphore", () => {
   it.effect("drains a long queue of synchronous withPermit tasks", () =>
     Effect.gen(function*() {
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-        override makeDispatcher(): Scheduler.SchedulerDispatcher {
-          return {
-            scheduleTask: (task) => tasks.push(task),
-            flush() {}
-          }
-        }
-
-        override shouldYield(): boolean {
-          return false
-        }
-      }()
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => tasks.push(task),
+          flush() {}
+        }),
+        shouldYield: () => false
+      }
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
       yield* sem.take("holder", 1)
       let completed = 0
@@ -160,20 +156,16 @@ describe("PartitionedSemaphore", () => {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
       const tasks: Array<() => void> = []
       let paused = false
-      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-        override makeDispatcher(): Scheduler.SchedulerDispatcher {
-          return {
-            scheduleTask: (task) => {
-              tasks.push(task)
-            },
-            flush() {}
-          }
-        }
-
-        override shouldYield(): boolean {
-          return !paused && (paused = Effect.runSync(sem.available) === 0)
-        }
-      }()
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield: () => !paused && (paused = Effect.runSync(sem.available) === 0)
+      }
 
       const taker = yield* sem.take("a", 1).pipe(
         Effect.provideService(Scheduler.Scheduler, scheduler),
@@ -194,20 +186,16 @@ describe("PartitionedSemaphore", () => {
         const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
         const tasks: Array<() => void> = []
         let checks = 0
-        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-          override makeDispatcher(): Scheduler.SchedulerDispatcher {
-            return {
-              scheduleTask: (task) => {
-                tasks.push(task)
-              },
-              flush() {}
-            }
-          }
-
-          override shouldYield(): boolean {
-            return ++checks === yieldPoint
-          }
-        }()
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield: () => ++checks === yieldPoint
+        }
 
         const first = yield* sem.take("first", 1).pipe(
           Effect.provideService(Scheduler.Scheduler, scheduler),
@@ -237,20 +225,16 @@ describe("PartitionedSemaphore", () => {
       const tasks: Array<() => void> = []
       let paused = false
       let ran = false
-      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-        override makeDispatcher(): Scheduler.SchedulerDispatcher {
-          return {
-            scheduleTask: (task) => {
-              tasks.push(task)
-            },
-            flush() {}
-          }
-        }
-
-        override shouldYield(): boolean {
-          return !paused && (paused = Effect.runSync(sem.available) === 0)
-        }
-      }()
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield: () => !paused && (paused = Effect.runSync(sem.available) === 0)
+      }
 
       const user = Effect.sync(() => {
         ran = true
@@ -274,22 +258,22 @@ describe("PartitionedSemaphore", () => {
       Effect.gen(function*() {
         const tasks: Array<() => void> = []
         let shouldYield = false
-        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-          override makeDispatcher(): Scheduler.SchedulerDispatcher {
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher() {
             return {
               scheduleTask(task) {
                 tasks.push(task)
               },
               flush() {}
             }
-          }
-
-          override shouldYield(): boolean {
+          },
+          shouldYield: () => {
             if (!shouldYield) return false
             shouldYield = false
             return true
           }
-        }()
+        }
 
         const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
         yield* sem.take("holder", 1)

@@ -14468,13 +14468,13 @@ Effect.map(self, Boolean.not)
 
 ### `effect/Scheduler`
 
-- `Scheduler.ControlledScheduler` -> `none`: No public step-controlled scheduler remains; implement Scheduler and SchedulerDispatcher for exact controlled stepping, delegating park to a MixedScheduler.
+- `Scheduler.ControlledScheduler` -> `none`: No public step-controlled scheduler remains; implement Scheduler and SchedulerDispatcher for exact controlled stepping.
 
 - `Scheduler.MixedScheduler` -> `Scheduler.MixedScheduler`: The class remains with a redesigned constructor and makeDispatcher-based task API. On Cloudflare Workers, request-owned scheduler timers can leave shared fibers suspended; provide new Scheduler.MixedScheduler("sync") to both layers and requests and build handlers at module scope (see HttpRouter.toWebHandler). Sync mode does not yield to the event loop and does not fix request-owned Effect.sleep timers or request-bound async contexts.
 
 - `Scheduler.PriorityBuckets` -> `none`: Priority buckets are now an internal Scheduler implementation detail.
 
-- `Scheduler.Scheduler` -> `Scheduler.Scheduler`: The interface remains but dispatch moved to SchedulerDispatcher returned by makeDispatcher, and implementations also provide park, which MixedScheduler implements.
+- `Scheduler.Scheduler` -> `Scheduler.Scheduler`: The interface remains but dispatch moved to SchedulerDispatcher returned by makeDispatcher.
 
 - `Scheduler.SchedulerRunner` -> `Scheduler.SchedulerDispatcher`: Task scheduling and flushing moved to the dispatcher returned by Scheduler.makeDispatcher.
 
@@ -14486,7 +14486,7 @@ Effect.map(self, Boolean.not)
 
 - `Scheduler.defaultShouldYield` -> `Scheduler.MixedScheduler#shouldYield`: The standalone function was removed; yielding is implemented by each Scheduler instance.
 
-- `Scheduler.make` -> `none`: Implement the redesigned Scheduler interface: return task dispatch through makeDispatcher, and fiber resumption through park, delegating to a MixedScheduler for the default.
+- `Scheduler.make` -> `none`: Implement the redesigned Scheduler interface and return task dispatch through makeDispatcher.
 
 - `Scheduler.makeBatched` -> `new Scheduler.MixedScheduler("async", schedule)`: Pass a cancellable scheduling function; the dispatcher performs priority batching.
 

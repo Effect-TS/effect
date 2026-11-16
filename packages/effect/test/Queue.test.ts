@@ -245,20 +245,16 @@ describe("Queue", () => {
     // Drive the queue's scheduler by hand so every taker release runs
     // synchronously inside the test instead of on a host timer.
     const tasks: Array<() => void> = []
-    const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-      override shouldYield(): boolean {
-        return false
-      }
-
-      override makeDispatcher(): Scheduler.SchedulerDispatcher {
-        return {
-          scheduleTask: (task) => {
-            tasks.push(task)
-          },
-          flush() {}
-        }
-      }
-    }()
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "async",
+      shouldYield: () => false,
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          tasks.push(task)
+        },
+        flush() {}
+      })
+    }
     const queue = Effect.runSync(
       Queue.unbounded<number>().pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
     )
@@ -532,14 +528,17 @@ describe("Queue", () => {
           do {
             at++
             seen = 0
-            const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-              override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
-                if (++seen !== at) return super.shouldYield(fiber)
+            const base = new Scheduler.MixedScheduler()
+            const scheduler: Scheduler.Scheduler = {
+              executionMode: base.executionMode,
+              makeDispatcher: () => base.makeDispatcher(),
+              shouldYield: (fiber) => {
+                if (++seen !== at) return base.shouldYield(fiber)
                 // Interrupt before the scheduler resumes the fiber.
                 queueMicrotask(() => fiber.interruptUnsafe())
                 return true
               }
-            }()
+            }
             const queue = yield* Queue.make<number>({ capacity })
             const offer = Effect.forkChild(Queue.offer(queue, 1), { startImmediately: true })
             if (offerFirst) yield* offer
@@ -852,8 +851,9 @@ describe("Queue", () => {
   it.effect("flushUnsafe coalesces scheduled releases across repeated offers", () =>
     Effect.gen(function*() {
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-        override makeDispatcher(): Scheduler.SchedulerDispatcher {
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher() {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -861,12 +861,9 @@ describe("Queue", () => {
             flush() {
             }
           }
-        }
-
-        override shouldYield(): boolean {
-          return false
-        }
-      }()
+        },
+        shouldYield: () => false
+      }
       const queue = yield* Queue.unbounded<number>().pipe(
         Effect.provideService(Scheduler.Scheduler, scheduler)
       )

@@ -266,17 +266,15 @@ describe("HttpMiddleware", () => {
         let yielded = false
         let original: Context.Context<never> | undefined
         let observed: Context.Context<never> | undefined
-        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-          override makeDispatcher(): Scheduler.SchedulerDispatcher {
-            return {
-              scheduleTask: (task) => {
-                tasks.push(task)
-              },
-              flush() {}
-            }
-          }
-
-          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield(fiber) {
             if (
               !yielded && original !== undefined && span !== undefined &&
               Context.getOrUndefined(fiber.context, Tracer.ParentSpan) === span
@@ -286,7 +284,7 @@ describe("HttpMiddleware", () => {
             }
             return false
           }
-        }()
+        }
         const child = yield* Effect.gen(function*() {
           original = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
           yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty()))
