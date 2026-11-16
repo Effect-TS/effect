@@ -507,6 +507,18 @@ describe("ArrowParquet", () => {
             ["1", null, "[]"]
           ],
           [optional(Type.BYTE_ARRAY, binaries([0xff], []), logical(13)), "x: Binary", ["ff", null, ""]],
+          // UTF8 maps only without a logical type: next to one that is unknown, or not for BYTE_ARRAY, the
+          // physical type does (LogicalTypes.md 53-57, 59-64)
+          [
+            optional(Type.BYTE_ARRAY, binaries([0xff], []), { ...logical(99), ...converted(Converted.UTF8) }),
+            "x: Binary",
+            ["ff", null, ""]
+          ],
+          [
+            optional(Type.BYTE_ARRAY, binaries([0xff], []), { ...logical(6), ...converted(Converted.UTF8) }),
+            "x: Binary",
+            ["ff", null, ""]
+          ],
           // One byte, and seventeen bytes that repeat the sign
           [
             optional(Type.BYTE_ARRAY, binaries([0x7f], [...new Array(16).fill(0xff), 0x85]), decimal(38, 2)),
@@ -570,6 +582,40 @@ describe("ArrowParquet", () => {
           [["ARROW:extension:name", "arrow.uuid"], ["PARQUET:field_id", "0"]]
         ])
         assert.deepStrictEqual(Array.from(schema.metadata), [["writer", "test"], ["flag", ""]])
+
+        // The annotations that map to the same Arrow type as another one, or as none
+        const time = (isAdjustedToUTC: boolean) =>
+          logical(7, { 1: Bool(isAdjustedToUTC), 2: Struct({ 1: Struct({}) }) })
+        const leaves: ReadonlyArray<
+          readonly [type: number, Annotation, metadata: ReadonlyArray<readonly [string, string]>]
+        > = [
+          [Type.BYTE_ARRAY, STRING, []],
+          [Type.BYTE_ARRAY, logical(4), [["PARQUET:logical_type", "ENUM"]]],
+          [Type.BYTE_ARRAY, converted(4), [["PARQUET:logical_type", "ENUM"]]],
+          [Type.BYTE_ARRAY, {}, []],
+          [Type.BYTE_ARRAY, logical(13), [["PARQUET:logical_type", "BSON"]]],
+          [Type.BYTE_ARRAY, converted(20), [["PARQUET:logical_type", "BSON"]]],
+          [Type.INT32, time(true), [["PARQUET:is_adjusted_to_utc", "true"]]],
+          [Type.INT32, time(false), [["PARQUET:is_adjusted_to_utc", "false"]]],
+          [Type.INT32, converted(Converted.TIME_MILLIS), [["PARQUET:is_adjusted_to_utc", "true"]]]
+        ]
+        const annotated = Result.getOrThrow(
+          yield* schemaOf(file({
+            schema: [
+              root(leaves.length),
+              ...leaves.map(([type, annotation], i) => element(`f${i}`, { type, repetition: REQUIRED, ...annotation }))
+            ],
+            numRows: 0,
+            chunks: leaves.map(([type], i) => ({ type, path: [`f${i}`], numValues: 0, pages: [] }))
+          }))
+        )
+        assert.deepStrictEqual(
+          annotated.fields.map((field) => [show(field), Array.from(field.metadata)]),
+          leaves.map(([type, , metadata], i) => [
+            `f${i}: ${type === Type.INT32 ? "Time<millisecond>" : i < 3 ? "Utf8" : "Binary"} not null`,
+            metadata
+          ])
+        )
       }))
 
     // ARROW-PARQUET-006 (local): range, precision and width checks.
@@ -753,7 +799,7 @@ describe("ArrowParquet", () => {
         )
       }))
 
-    // ARROW-PARQUET-010 (normative): LogicalTypes.md Maps and their backward-compatibility rules.
+    // ARROW-PARQUET-010 (normative + local): LogicalTypes.md Maps and their backward-compatibility rules.
     it.effect("maps MAP and MAP_KEY_VALUE groups, with the key and value by position", () =>
       Effect.gen(function*() {
         const keyValue = (name: string, key: Node, ...value: ReadonlyArray<Node>) =>
@@ -768,7 +814,8 @@ describe("ArrowParquet", () => {
               [keyValue("map", string("key", REQUIRED), leaf("value", OPTIONAL))],
               converted(Converted.MAP_KEY_VALUE)
             ),
-            // The repeated group of a MAP may itself be annotated MAP_KEY_VALUE
+            // Local: the repeated group of a MAP annotated MAP_KEY_VALUE, and a repeated value, which the
+            // Maps text doesn't allow, read as a list
             group(
               "inner",
               OPTIONAL,
@@ -980,6 +1027,15 @@ describe("ArrowParquet", () => {
           (yield* batchesOf(plainBytes, { columns: [] })).map((batch) => [batch.length, batch.columns.length]),
           [[25, 0], [15, 0]]
         )
+        // Without a column to read, the row count alone gives the batch length, so it must not be negative
+        const rows = (numRows: number) =>
+          file({
+            schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+            numRows,
+            chunks: [{ type: Type.INT32, path: ["x"], numValues: 0, pages: [] }]
+          })
+        assert.deepStrictEqual((yield* batchesOf(rows(0), { columns: [] })).map((batch) => batch.length), [0])
+        yield* failsWith(batchesOf(rows(-1), { columns: [] }), "Malformed", /num_rows is -1/)
 
         // A name the file doesn't have and a row group it doesn't have are bugs in the caller
         assert.throws(() => ArrowParquet.schema(metadata, { columns: ["nope"] }), /the file has no column "nope"/)

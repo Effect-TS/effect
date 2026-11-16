@@ -77,6 +77,9 @@
  *   kept as the field metadata `PARQUET:field_id`, as Arrow C++ does. The
  *   file's key/value metadata becomes the schema metadata. When a key
  *   repeats, its last value wins.
+ * - The annotations an Arrow type doesn't carry are kept as field metadata:
+ *   `PARQUET:logical_type` is `ENUM` or `BSON` for those annotations, and a
+ *   `Time` has `PARQUET:is_adjusted_to_utc` set to `true` or `false`.
  *
  * Nested fields:
  *
@@ -86,7 +89,8 @@
  *   legacy 2-level ones are read, whatever their fields are named.
  * - A `MAP` group, or a `MAP_KEY_VALUE` group that isn't the repeated group
  *   of a map, is a `Map`. Its key and value are the first and second field
- *   of the repeated group, whatever they are named.
+ *   of the repeated group, whatever they are named. A repeated value, which
+ *   the spec doesn't allow, is accepted and read as a list.
  * - A repeated field outside those is a required `List` of required
  *   elements.
  * - A null list has no elements, and the children of a null struct keep a
@@ -129,10 +133,13 @@
  *   Parquet storage: a `LargeUtf8` as `Utf8`, a dictionary as its values, a
  *   `Date` in milliseconds as days.
  * - `ENUM` and `BSON` are not kept in the Arrow type, and neither is the
- *   `isAdjustedToUTC` of a `TIME`. The field ids of the repeated groups of
- *   lists and maps are dropped with those groups.
+ *   `isAdjustedToUTC` of a `TIME`: they are only in the field metadata. The
+ *   field ids of the repeated groups of lists and maps are dropped with those
+ *   groups.
  * - An annotation `Parquet.readMetadata` left out, because it is unknown or
- *   not defined for the physical type, maps by physical type.
+ *   not defined for the physical type, maps by physical type, and so does a
+ *   converted type next to it: `UTF8` beside an unknown logical type is
+ *   `Binary`.
  * - Times of day and dates are not checked to be in range, and `JSON` values
  *   are not parsed.
  * - Like the rest of `effect/arrow`, this assumes a little-endian platform.
@@ -612,6 +619,13 @@ const isOptional = (node: Parquet.SchemaNode): boolean => node.repetition === "O
 const fieldOf = (node: Parquet.SchemaNode, type: ArrowSchema.DataType, extension?: string): ArrowSchema.Field => {
   const metadata = new Map(extension === undefined ? undefined : ArrowExtension.metadata(extension))
   if (node.fieldId !== undefined) metadata.set("PARQUET:field_id", String(node.fieldId))
+  // The annotations the Arrow type doesn't tell apart
+  const annotation = node.children === undefined ? annotationOf(node) : undefined
+  if (annotation?.type === "ENUM" || annotation?.type === "BSON") {
+    metadata.set("PARQUET:logical_type", annotation.type)
+  } else if (annotation?.type === "TIME") {
+    metadata.set("PARQUET:is_adjusted_to_utc", String(annotation.isAdjustedToUTC))
+  }
   return ArrowSchema.field(node.name, type, { nullable: isOptional(node), metadata })
 }
 
