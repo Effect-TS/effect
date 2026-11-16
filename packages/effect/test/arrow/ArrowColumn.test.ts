@@ -273,6 +273,37 @@ const sizes = (data: ArrowData.ArrowData) => {
 
 const build = (type: S.DataType, values: ReadonlyArray<unknown>) =>
   Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values))
+// Values given to fromValues, and what they read as with `representation: "storage"` when it differs
+const storageCases: ReadonlyArray<
+  readonly [label: string, type: S.DataType, values: ReadonlyArray<unknown>, storage?: ReadonlyArray<unknown>]
+> = [
+  ["date (days)", S.date("day"), [utc("2024-01-02T00:00:00Z"), null], [19724, null]],
+  ["date (milliseconds)", S.date("millisecond"), [utc("1970-01-02T00:00:00Z"), null], [86400000n, null]],
+  ["timestamp", S.timestamp("second"), [utc("1970-01-01T00:01:00Z"), null], [60n, null]],
+  ["timestamp with time zone", S.timestamp("millisecond", "Europe/Paris"), [paris(60000), null], [60000n, null]],
+  // Beyond the DateTime range and beyond what a millisecond count keeps
+  ["timestamp (nanoseconds)", S.timestamp("nanosecond"), [9223372036854775807n, -1n]],
+  ["duration", S.duration("microsecond"), [Duration.millis(1500), null], [1500000n, null]],
+  // A calendar interval is not an elapsed duration: it keeps its members
+  ["interval (yearMonth)", S.interval("yearMonth"), [{ months: 14 }]],
+  ["interval (monthDayNano)", S.interval("monthDayNano"), [{ months: 1, days: 2, nanoseconds: 3n }]],
+  ["time32", S.time("second"), [3661, null]],
+  // The unscaled value; the scale stays on the type
+  ["decimal32", S.decimal(9, 3, 32), [dec("-1.234"), dec("5"), null], [-1234n, 5000n, null]],
+  ["decimal64", S.decimal(18, 2, 64), [dec("123.45")], [12345n]],
+  ["decimal128", S.decimal(10, 2), [dec("123.45"), dec("-0.5")], [12345n, -50n]],
+  ["decimal256", S.decimal(40, 0, 256), [dec("-123456789012345678901234567890")], [-123456789012345678901234567890n]],
+  ["utf8", S.utf8, ["a", null]],
+  // Nested values are storage values too
+  ["list", S.list(item(S.duration("second"))), [[Duration.seconds(1), null]], [[1n, null]]],
+  ["struct", S.struct([S.field("at", S.date("day"))]), [{ at: utc("1970-01-02T00:00:00Z") }], [{ at: 1 }]],
+  ["map", S.map(S.field("key", S.utf8), S.field("value", S.decimal(5, 1))), [new Map([["k", dec("1.5")]])], [
+    new Map([["k", 15n]])
+  ]],
+  ["union", S.union("dense", [S.field("t", S.timestamp("second"))]), [utc("1970-01-01T00:00:01Z")], [1n]],
+  ["runEndEncoded", S.runEndEncoded(S.int16, S.field("v", S.duration("second"))), [Duration.seconds(2), 2n], [2n, 2n]],
+  ["dictionary", S.dictionary(S.timestamp("nanosecond")), [5n, 5n, null, 1000001n]]
+]
 describe("ArrowColumn", () => {
   // ARROW-LAYOUT-001 (normative): Columnar.rst, Validity bitmaps / Fixed-size Primitive Layout.
   // Source pin and scope: ./CONFORMANCE.md#sources
@@ -413,5 +444,57 @@ describe("ArrowColumn", () => {
     ) {
       assert.deepStrictEqual(ArrowData.offsets(build(type, values).chunks[0]), Option.none(), type._tag)
     }
+  })
+
+  // ARROW-COLUMN-004 (local): the storage representation of every reader, and what it leaves alone.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("reads storage values when asked, through every reader", () => {
+    for (const [label, type, values, expected = values] of storageCases) {
+      const column = ArrowColumn.make(S.field("x", type), build(type, values).chunks, { representation: "storage" })
+      assert.deepStrictEqual(ArrowColumn.toArray(column), expected, label)
+      assert.deepStrictEqual(expected.map((_, i) => ArrowColumn.getUnsafe(column, i)), expected, label)
+      assert.deepStrictEqual(ArrowColumn.get(column, 0), Option.some(expected[0]), label)
+    }
+  })
+
+  // ARROW-COLUMN-005 (local): exact nanoseconds in storage and in the buffers; default reads are unchanged.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("keeps every digit of a nanosecond timestamp in storage reads and in the values buffer", () => {
+    const field = S.field("at", S.dictionary(S.timestamp("nanosecond", "Europe/Paris")))
+    const nanos = [1704164645678901234n, -1n, null, 1704164645678901234n]
+    const { chunks } = Result.getOrThrow(ArrowColumn.fromValues(field, nanos))
+    const domain = [paris(1704164645678), paris(-1), null, paris(1704164645678)]
+
+    // Reads of one dictionary in both representations do not share decoded values
+    assertEquals(ArrowColumn.toArray(ArrowColumn.make(field, chunks)), domain)
+    const exact = ArrowColumn.make(field, chunks, { representation: "storage" })
+    assert.deepStrictEqual(ArrowColumn.toArray(exact), nanos)
+    assertEquals(ArrowColumn.toArray(ArrowColumn.make(field, chunks)), domain)
+
+    const entries = ArrowData.values(chunks[0].dictionary!)
+    assert.deepStrictEqual(entries, Option.some(BigInt64Array.of(1704164645678901234n, -1n)))
+  })
+
+  // ARROW-COLUMN-006 (local): extension decode is skipped in the storage representation.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("does not decode extension values in the storage representation", () => {
+    let decoded = 0
+    const hex = ArrowExtension.make({
+      name: "test.hex",
+      decode: (n: number) => {
+        decoded++
+        return n.toString(16)
+      },
+      encode: (s: string) => parseInt(s, 16)
+    })
+    const member = S.field("n", S.int32, { metadata: ArrowExtension.metadata("test.hex") })
+    const field = S.field("s", S.struct([member]))
+    const { chunks } = Result.getOrThrow(ArrowColumn.fromValues(field, [{ n: "ff" }], { extensions: [hex] }))
+
+    const storage = ArrowColumn.make(field, chunks, { extensions: [hex], representation: "storage" })
+    assert.deepStrictEqual(ArrowColumn.toArray(storage), [{ n: 255 }])
+    assert.strictEqual(decoded, 0)
+    assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, chunks, { extensions: [hex] })), [{ n: "ff" }])
+    assert.strictEqual(decoded, 1)
   })
 })

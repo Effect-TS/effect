@@ -21,13 +21,19 @@ export type Reader = (index: number) => unknown
 /** @internal */
 export interface Options {
   readonly extensions: ReadonlyMap<string, ArrowExtension.ArrowExtension<any, any>>
+  /** Read storage values: stored integers instead of `DateTime`, `Duration` and `BigDecimal`, no extension decoding. */
+  readonly storage: boolean
 }
 
 /** @internal */
 export const options = (
-  input: { readonly extensions?: Iterable<ArrowExtension.ArrowExtension<any, any>> | undefined } | undefined
+  input: {
+    readonly extensions?: Iterable<ArrowExtension.ArrowExtension<any, any>> | undefined
+    readonly representation?: "domain" | "storage" | undefined
+  } | undefined
 ): Options => ({
-  extensions: new Map(Array.from(input?.extensions ?? [], (e) => [e.name, e] as const))
+  extensions: new Map(Array.from(input?.extensions ?? [], (e) => [e.name, e] as const)),
+  storage: input?.representation === "storage"
 })
 
 const utf8Decoder = new TextDecoder("utf-8")
@@ -90,15 +96,15 @@ const intAsNumber = (type: S.Int, bytes: Uint8Array, offset: number): (i: number
   return type.bitWidth === 64 ? (i) => Number(read(i) as bigint) : (read as (i: number) => number)
 }
 
-const decimalReader = (type: S.Decimal, bytes: Uint8Array, offset: number): Reader => {
-  const scale = type.scale
+/** Reads the unscaled value of a decimal. */
+const unscaledReader = (type: S.Decimal, bytes: Uint8Array, offset: number): (i: number) => bigint => {
   if (type.bitWidth === 32) {
     const a = typed(Int32Array, bytes)
-    return (i) => BigDecimal.make(BigInt(a[i + offset]), scale)
+    return (i) => BigInt(a[i + offset])
   }
   if (type.bitWidth === 64) {
     const a = typed(BigInt64Array, bytes)
-    return (i) => BigDecimal.make(a[i + offset], scale)
+    return (i) => a[i + offset]
   }
   const words = type.bitWidth / 64
   const a = typed(BigUint64Array, bytes)
@@ -108,7 +114,7 @@ const decimalReader = (type: S.Decimal, bytes: Uint8Array, offset: number): Read
     const base = (i + offset) * words
     let v = a[base + words - 1]
     for (let w = words - 2; w >= 0; w--) v = (v << shift) | a[base + w]
-    return BigDecimal.make(BigInt.asIntN(Number(bits), v), scale)
+    return BigInt.asIntN(Number(bits), v)
   }
 }
 
@@ -185,18 +191,19 @@ const intervalReader = (type: S.Interval, bytes: Uint8Array, offset: number): Re
   }
 }
 
-/** Decoded dictionaries, per options (extensions change the values) and dictionary. */
+/** Decoded dictionaries, per options (extensions and the representation change the values) and dictionary. */
 const dictionaryValues = new WeakMap<Options, WeakMap<ArrowData.ArrowData, ReadonlyArray<unknown>>>()
 
 /**
  * Compiles a reader for `data` of `field`. Invalid slots read as `null`.
- * Extension types registered in `options` decode their storage values.
+ * Extension types registered in `options` decode their storage values, unless
+ * storage values are asked for.
  *
  * @internal
  */
 export const reader = (field: S.Field, data: ArrowData.ArrowData, options: Options): Reader => {
   const plain = readerFor(field.type, data, options)
-  const ext = extensionOf(field, options)
+  const ext = options.storage ? undefined : extensionOf(field, options)
   if (ext === undefined) return plain
   const { extension, metadata } = ext
   return (i) => {
@@ -230,6 +237,7 @@ const withValidity = (data: ArrowData.ArrowData, read: Reader): Reader => {
 const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options): Reader => {
   const offset = data.offset
   const buffers = data.buffers
+  const storage = options.storage
   switch (type._tag) {
     case "Null":
       return () => null
@@ -247,18 +255,25 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
       const a = type.bitWidth === 32 ? typed(Float32Array, buffers[0]) : typed(Float64Array, buffers[0])
       return withValidity(data, (i) => a[i + offset])
     }
-    case "Decimal":
-      return withValidity(data, decimalReader(type, buffers[0], offset))
+    case "Decimal": {
+      const unscaled = unscaledReader(type, buffers[0], offset)
+      const scale = type.scale
+      return withValidity(data, storage ? unscaled : (i) => BigDecimal.make(unscaled(i), scale))
+    }
     case "Date": {
       if (type.unit === "day") {
         const a = typed(Int32Array, buffers[0])
-        return withValidity(data, (i) => utc(a[i + offset] * msPerDay, a[i + offset]))
+        return withValidity(
+          data,
+          storage ? (i) => a[i + offset] : (i) => utc(a[i + offset] * msPerDay, a[i + offset])
+        )
       }
       const a = typed(BigInt64Array, buffers[0])
-      return withValidity(data, (i) => utc(Number(a[i + offset]), a[i + offset]))
+      return withValidity(data, storage ? (i) => a[i + offset] : (i) => utc(Number(a[i + offset]), a[i + offset]))
     }
     case "Timestamp": {
       const a = typed(BigInt64Array, buffers[0])
+      if (storage) return withValidity(data, (i) => a[i + offset])
       const unit = type.unit
       const zone = type.timezone === undefined
         ? undefined
@@ -281,7 +296,7 @@ const readerFor = (type: S.DataType, data: ArrowData.ArrowData, options: Options
     case "Duration": {
       const a = typed(BigInt64Array, buffers[0])
       const unit = type.unit
-      return withValidity(data, (i) => durationOf(unit, a[i + offset]))
+      return withValidity(data, storage ? (i) => a[i + offset] : (i) => durationOf(unit, a[i + offset]))
     }
     case "Interval":
       return withValidity(data, intervalReader(type, buffers[0], offset))

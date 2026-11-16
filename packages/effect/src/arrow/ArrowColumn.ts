@@ -11,37 +11,47 @@
  *
  * **Details**
  *
- * Values map as follows:
+ * Readers return domain values unless {@link Options} asks for
+ * `representation: "storage"`. Storage values are what the buffers hold:
+ * an integer where the domain value is a `DateTime`, `Duration` or
+ * `BigDecimal`, and the undecoded value of an extension field. Reading them
+ * creates none of those objects and loses no precision. Values map as
+ * follows, with the same representation inside lists, structs, maps, unions,
+ * run-end encoded and dictionary values:
  *
- * | Arrow type | Value |
- * | --- | --- |
- * | `Null` | `null` |
- * | `Bool` | `boolean` |
- * | `Int` 8–32 bits, `Float` | `number` |
- * | `Int` 64 bits | `bigint` |
- * | `Decimal` | `BigDecimal` |
- * | `Date`, `Timestamp` | `DateTime.Utc`, or `DateTime.Zoned` for timestamps with a time zone |
- * | `Time` | the time of day in its unit: `number` (32-bit) or `bigint` (64-bit) |
- * | `Duration` | `Duration` |
- * | `Interval` | `{ months }`, `{ days, milliseconds }` or `{ months, days, nanoseconds }` |
- * | `Binary`, `LargeBinary`, `BinaryView`, `FixedSizeBinary` | `Uint8Array` (a view, not a copy) |
- * | `Utf8`, `LargeUtf8`, `Utf8View` | `string` |
- * | `List`, `LargeList`, `ListView`, `LargeListView`, `FixedSizeList` | an array of item values |
- * | `Struct` | an object with one property per member |
- * | `Map` | a `ReadonlyMap` |
- * | `Union` | the value of the active member |
- * | `RunEndEncoded`, `Dictionary` | the decoded value |
+ * | Arrow type | Domain value | Storage value |
+ * | --- | --- | --- |
+ * | `Null` | `null` | same |
+ * | `Bool` | `boolean` | same |
+ * | `Int` 8–32 bits, `Float` | `number` | same |
+ * | `Int` 64 bits | `bigint` | same |
+ * | `Decimal` | `BigDecimal` | the unscaled value as a `bigint`; the scale is on the type |
+ * | `Date` | `DateTime.Utc` | days since 1970-01-01 as a `number`, or milliseconds as a `bigint` |
+ * | `Timestamp` | `DateTime.Utc`, or `DateTime.Zoned` with a time zone | the count since 1970-01-01 in the type's unit, as a `bigint`; the time zone is on the type |
+ * | `Time` | the time of day in its unit: `number` (32-bit) or `bigint` (64-bit) | same |
+ * | `Duration` | `Duration` | the count in the type's unit, as a `bigint` |
+ * | `Interval` | `{ months }`, `{ days, milliseconds }` or `{ months, days, nanoseconds }` | same |
+ * | `Binary`, `LargeBinary`, `BinaryView`, `FixedSizeBinary` | `Uint8Array` (a view, not a copy) | same |
+ * | `Utf8`, `LargeUtf8`, `Utf8View` | `string` | same |
+ * | `List`, `LargeList`, `ListView`, `LargeListView`, `FixedSizeList` | an array of item values | same |
+ * | `Struct` | an object with one property per member | same |
+ * | `Map` | a `ReadonlyMap` | same |
+ * | `Union` | the value of the active member | same |
+ * | `RunEndEncoded`, `Dictionary` | the decoded value | same |
+ * | extension field | what its registered extension decodes | the value of the field's type, not decoded |
  *
  * **Gotchas**
  *
  * - `DateTime` has millisecond precision: microsecond and nanosecond
- *   timestamps are rounded down to the millisecond. The exact value is in the
- *   column's buffers.
+ *   timestamps are rounded down to the millisecond. The storage value and
+ *   `ArrowData.values` are exact.
  * - Timestamps without a time zone are read as UTC.
  * - A `Date` or `Timestamp` outside the range `DateTime` supports (about
  *   275,000 years either side of 1970) reads as its stored integer in the
  *   type's unit: a `number` for days, a `bigint` otherwise. Building accepts
  *   that integer back.
+ * - An `Interval` is a calendar interval, not an elapsed time, and never
+ *   reads as a `Duration`.
  * - A struct with repeated member names keeps the last member of each name.
  * - Invalid UTF-8 reads as U+FFFD.
  *
@@ -63,6 +73,14 @@
  * - `Decimal` values must fit the type's scale without rounding and its bit
  *   width; the precision is not enforced, as in the reference implementations.
  *
+ * Builders ignore `representation`. They take storage values back for every
+ * type except two:
+ *
+ * - `Decimal` needs a `BigDecimal`. Make one from the unscaled value and the
+ *   type's scale with `BigDecimal.make`.
+ * - An extension given to a builder encodes every value of its fields. Leave
+ *   it out of the builder's options to pass storage values through.
+ *
  * **Example** (Building and reading a column)
  *
  * ```ts import.meta.vitest
@@ -75,6 +93,19 @@
  * ArrowColumn.toArray(column) // => [["a", "b"], null, []]
  * ArrowColumn.get(column, 1) // => Option.some(null)
  * ArrowColumn.get(column, 3) // => Option.none()
+ * ```
+ *
+ * **Example** (Reading the stored nanoseconds of a timestamp column)
+ *
+ * ```ts import.meta.vitest
+ * import { ArrowColumn, ArrowSchema } from "effect/arrow"
+ * import { DateTime, Result } from "effect"
+ *
+ * const field = ArrowSchema.field("at", ArrowSchema.timestamp("nanosecond"))
+ * const { chunks } = Result.getOrThrow(ArrowColumn.fromValues(field, [1704164645678901234n, null]))
+ *
+ * ArrowColumn.toArray(ArrowColumn.make(field, chunks)) // => [DateTime.makeUnsafe("2024-01-02T03:04:05.678Z"), null]
+ * ArrowColumn.toArray(ArrowColumn.make(field, chunks, { representation: "storage" })) // => [1704164645678901234n, null]
  * ```
  *
  * @stability experimental
@@ -116,6 +147,13 @@ export interface ArrowColumn extends Iterable<unknown> {
 export interface Options {
   /** Extensions that decode (when reading) and encode (when building) the storage values of extension fields. */
   readonly extensions?: Iterable<ArrowExtension.ArrowExtension<any, any>> | undefined
+  /**
+   * What the readers return: `"domain"` values such as `DateTime`, or the
+   * `"storage"` values they are made from. Builders ignore it.
+   *
+   * @default "domain"
+   */
+  readonly representation?: "domain" | "storage" | undefined
 }
 
 /**

@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Option, Result } from "effect"
-import { ArrowColumn, ArrowSchema as S, ArrowTable } from "effect/arrow"
+import { assertEquals } from "@effect/vitest/utils"
+import { DateTime, Duration, Option, Result } from "effect"
+import { ArrowColumn, ArrowExtension, ArrowSchema as S, ArrowTable } from "effect/arrow"
 
 const schema = S.make([
   S.field("id", S.int32, { nullable: false }),
@@ -140,5 +141,62 @@ describe("ArrowTable", () => {
     for (const [start, end] of [[-1, 2], [3, 2], [0, 6]]) {
       assert.throws(() => ArrowTable.slice(table, start, end), RangeError)
     }
+  })
+
+  // ARROW-TABLE-007 (local): storage rows through rows/toRows, and as builder input.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("storage rows build the same table again, except for decimals", () => {
+    const hex = ArrowExtension.make({
+      name: "test.hex",
+      decode: (n: number) => n.toString(16),
+      encode: (s: string) => parseInt(s, 16)
+    })
+    const temporal = S.make([
+      S.field("at", S.timestamp("nanosecond", "Europe/Paris")),
+      S.field("day", S.date("day")),
+      S.field("took", S.duration("microsecond")),
+      S.field("every", S.interval("yearMonth")),
+      S.field("seen", S.list(S.field("item", S.date("millisecond")))),
+      S.field("kind", S.dictionary(S.duration("second"))),
+      S.field("hex", S.int32, { metadata: ArrowExtension.metadata("test.hex") })
+    ])
+    const empty = { at: null, day: null, took: null, every: null, seen: null, kind: null, hex: null }
+    const domain = [{
+      at: DateTime.makeZonedUnsafe(1704164645678, { timeZone: "Europe/Paris" }),
+      day: DateTime.makeUnsafe("2024-01-02T00:00:00Z"),
+      took: Duration.millis(1500),
+      every: { months: 14 },
+      seen: [DateTime.makeUnsafe(60000), null],
+      kind: Duration.seconds(5),
+      hex: "ff"
+    }, empty]
+    const storage = [{
+      at: 1704164645678901234n,
+      day: 19724,
+      took: 1500000n,
+      every: { months: 14 },
+      seen: [60000n, null],
+      kind: 5n,
+      hex: 255
+    }, empty]
+    const options = { extensions: [hex] }
+    // Built from domain values, except for the nanoseconds a DateTime cannot hold
+    const built = Result.getOrThrow(
+      ArrowTable.fromRows(temporal, [{ ...domain[0], at: storage[0].at }, {}], { ...options, batchSize: 1 })
+    )
+    const read = ArrowTable.toRows(built, { ...options, representation: "storage" })
+    assert.deepStrictEqual(read, storage)
+    assert.deepStrictEqual(Array.from(ArrowTable.rows(built, { representation: "storage" })), storage)
+
+    // Extension storage values are given to a builder that does not encode them
+    const rebuilt = Result.getOrThrow(ArrowTable.fromRows(temporal, read))
+    assert.deepStrictEqual(ArrowTable.toRows(rebuilt, { representation: "storage" }), storage)
+    assertEquals(ArrowTable.toRows(rebuilt, options), domain)
+
+    // Builders take a BigDecimal, not the unscaled value
+    const decimals = S.make([S.field("d", S.decimal(5, 2))])
+    const result = ArrowTable.fromRows(decimals, [{ d: 150n }])
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) assert.deepStrictEqual(result.failure.path, [0, "d"])
   })
 })

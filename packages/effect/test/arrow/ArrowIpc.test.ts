@@ -1,8 +1,9 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
 import { BigDecimal, DateTime, Duration, Effect, Option, Result, Stream } from "effect"
 import { ArrowColumn, ArrowData, ArrowIpc, ArrowSchema as S, ArrowTable } from "effect/arrow"
 import { FlatBuffers } from "effect/encoding"
+import * as InternalDateTime from "effect/internal/dateTime"
 import { readFileSync } from "node:fs"
 
 // Written by pyarrow; see fixtures/arrow/generate.py
@@ -360,6 +361,27 @@ const dictionaryFile = (dictionaries: ReadonlyArray<Uint8Array>, batch: Uint8Arr
     length,
     text("ARROW1")
   )
+}
+
+// The DateTime, Duration and BigDecimal values the Arrow readers construct while `f` runs
+const constructions = (f: () => void) => {
+  const spies = {
+    utc: vi.spyOn(InternalDateTime, "makeUtc"),
+    zoned: vi.spyOn(InternalDateTime, "makeZonedProto"),
+    duration: vi.spyOn(Duration, "nanos"),
+    decimal: vi.spyOn(BigDecimal, "make")
+  }
+  try {
+    f()
+    return {
+      utc: spies.utc.mock.calls.length,
+      zoned: spies.zoned.mock.calls.length,
+      duration: spies.duration.mock.calls.length,
+      decimal: spies.decimal.mock.calls.length
+    }
+  } finally {
+    for (const spy of Object.values(spies)) spy.mockRestore()
+  }
 }
 
 describe("ArrowIpc", () => {
@@ -898,4 +920,70 @@ describe("ArrowIpc", () => {
         assert.strictEqual(error.kind, "Invalid")
       }
     }))
+
+  // ARROW-IPC-020 (local): where DateTime, Duration and BigDecimal values are constructed.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("constructs DateTime, Duration and BigDecimal values only for domain reads", () => {
+    const tokyoMillis = S.timestamp("millisecond", "Asia/Tokyo")
+    const schema = S.make([
+      S.field("utc", S.timestamp("nanosecond")),
+      S.field("zoned", tokyoMillis),
+      S.field("date", S.date("day")),
+      S.field("duration", S.duration("microsecond")),
+      S.field("decimal", S.decimal(10, 2)),
+      S.field("encoded", S.dictionary(S.timestamp("second"))),
+      S.field("name", S.utf8)
+    ])
+    const nulls = { utc: null, zoned: null, date: null, duration: null, decimal: null, encoded: null, name: null }
+    const stored = [
+      { utc: 1n, zoned: 1n, date: 1, duration: 1n, decimal: 1n, encoded: 60n, name: "a" },
+      {
+        utc: 1704164645678901234n,
+        zoned: 1704164645678n,
+        date: 19724,
+        duration: 1500000n,
+        decimal: 12345n,
+        encoded: 60n,
+        name: "b"
+      },
+      nulls,
+      { utc: -1n, zoned: -1n, date: -1, duration: -1n, decimal: -1n, encoded: 60n, name: "c" }
+    ]
+    const decimals = [dec("0.01"), dec("123.45"), null, dec("-0.01")]
+    const built = ArrowTable.fromRows(schema, stored.map((row, i) => ({ ...row, decimal: decimals[i] })), {
+      batchSize: 3
+    })
+    const input = Result.getOrThrow(ArrowIpc.encodeStream(Result.getOrThrow(built)))
+    const storage = { representation: "storage" } as const
+
+    let table!: ArrowTable.Table
+    let output!: Uint8Array
+    const columnar = constructions(() => {
+      table = ArrowTable.slice(Result.getOrThrow(ArrowIpc.decodeStream(input)), 1)
+      for (const [index, field] of schema.fields.entries()) {
+        const column = Option.getOrThrow(ArrowTable.column(table, index, storage))
+        const values = stored.slice(1).map((row) => row[field.name as keyof typeof nulls])
+        assert.deepStrictEqual(ArrowColumn.toArray(column), values, field.name)
+        assert.deepStrictEqual(ArrowColumn.get(column, 0), Option.some(values[0]), field.name)
+        for (const chunk of column.chunks) {
+          assert.strictEqual(Option.isSome(ArrowData.values(chunk)), field.name !== "decimal" && field.name !== "name")
+          assert.strictEqual(Option.isSome(ArrowData.offsets(chunk)), field.name === "name")
+        }
+      }
+      assert.deepStrictEqual(ArrowTable.toRows(table, storage), stored.slice(1))
+      output = Result.getOrThrow(ArrowIpc.encodeStream(table))
+    })
+    assert.deepStrictEqual(columnar, { utc: 0, zoned: 0, duration: 0, decimal: 0 })
+    // The unit and time zone travel on the type
+    assert.deepStrictEqual(table.batches[0].columns[1].type, tokyoMillis)
+    assert.deepStrictEqual(
+      ArrowTable.toRows(Result.getOrThrow(ArrowIpc.decodeStream(output)), storage),
+      stored.slice(1)
+    )
+
+    // Two rows hold values: one object per value read (a timestamp and a date
+    // are both a DateTime.Utc), and one for the dictionary entry the rows share
+    const rows = constructions(() => ArrowTable.toRows(table))
+    assert.deepStrictEqual(rows, { utc: 5, zoned: 2, duration: 2, decimal: 2 })
+  })
 })
