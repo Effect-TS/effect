@@ -41,6 +41,10 @@
  * follows its collation, and timestamps and durations keep PostgreSQL's
  * microseconds (finer timestamps round down, finer durations toward zero).
  * Decimals need a scale PostgreSQL's `numeric` takes, from -1000 to 1000.
+ * `Expr.isIn` gives the in-memory result for candidates of the value's
+ * kind. Candidates of another kind are written as they are and are not
+ * portable: PostgreSQL converts some (the string `"1"` is one of the
+ * integers equal to 1) and rejects others with its own error.
  * Pivots, unpivots, `explode` and `unnest` are not supported yet; tables
  * need declared columns (`Query.table` with a schema), and {@link engine}
  * checks that tables satisfy them, as the in-memory engine does.

@@ -102,7 +102,7 @@ export const literalNode = (u: unknown): Plan.Literal => {
     return {
       _tag: "Literal",
       value: u.value,
-      // At least the scale, as SQL has it, up to the 38 digits of a 128-bit decimal.
+      // The larger of the digits and the scale, as SQL has it, capped at the 38 digits of a 128-bit decimal.
       type: { _tag: "Decimal", precision: Math.min(Math.max(digits, u.scale, 1), 38), scale: u.scale }
     }
   }
@@ -119,7 +119,8 @@ export const call = <E>(
 /**
  * `isIn`: plain candidates are the `values` of the call. A `BigDecimal`,
  * `DateTime` or `Duration` has a literal type, which a plan value can't
- * carry, so it is compared with `eq`.
+ * carry, so it is compared with `eq`. The tests are joined in halves, so
+ * the expression is as deep as the logarithm of their number.
  *
  * @internal
  */
@@ -137,7 +138,12 @@ export const isIn = <E>(self: unknown, values: ReadonlyArray<unknown>): E => {
   const plain = literals.filter((literal) => literal.type === undefined).map((literal) => literal.value)
   const tests = typed.map((literal) => test("eq", [node, literal]))
   if (plain.length > 0) tests.unshift(test("isIn", [node], { values: plain }))
-  return makeExpr(tests.reduce((a, b) => test("or", [a, b])))
+  const anyOf = (tests: ReadonlyArray<Node>): Node => {
+    if (tests.length === 1) return tests[0]
+    const half = tests.length >> 1
+    return test("or", [anyOf(tests.slice(0, half)), anyOf(tests.slice(half))])
+  }
+  return makeExpr(anyOf(tests))
 }
 
 /** Readable form of an expression, used by `toString`. @internal */

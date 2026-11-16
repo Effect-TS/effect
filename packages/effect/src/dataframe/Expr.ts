@@ -276,8 +276,8 @@ export const fromPlan: {
 /**
  * A constant. Integers between -2^31 and 2^31 - 1 adopt the integer type of
  * the column they meet when it holds them; other numbers are Float64;
- * bigints are Int64. A `BigDecimal` is a decimal of its scale, with a precision of
- * at least that scale and at most 38.
+ * bigints are Int64. A `BigDecimal` is a decimal of its scale. Its precision
+ * is the larger of its number of digits and its scale, capped at 38.
  *
  * @stability experimental
  * @category constructors
@@ -550,6 +550,18 @@ export const between: {
  * Whether the value is one of `values`; `null` for `null`. A decimal is one
  * of the numbers equal to it, whatever its scale. `BigDecimal`, `DateTime`
  * and `Duration` candidates are compared as {@link eq} compares them.
+ *
+ * **Details**
+ *
+ * Candidates of the value's kind give the same result on every engine:
+ * strings for strings, booleans for booleans, numbers for floats and for
+ * integers of up to 32 bits, numbers and bigints for 64-bit integers and
+ * decimals, and `BigDecimal`, `DateTime` and `Duration` for decimals,
+ * timestamps and durations. A number with a fraction is compared with a
+ * decimal as a float and is never a 64-bit integer. Other candidates (a
+ * string or a bigint for an Int32, a number for a timestamp) are not
+ * portable: what they match depends on the engine, and a database can
+ * reject them.
  *
  * @stability experimental
  * @category comparisons

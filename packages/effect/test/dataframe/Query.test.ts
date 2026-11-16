@@ -577,7 +577,7 @@ describe("Query", () => {
           const table = Result.getOrThrow(ArrowIpc.decodeStream(bytes))
           return [table.schema.fields[0].type, DataFrame.toRows(DataFrame.fromArrowTable(table))] as const
         }
-        // The precision is at least the scale, up to the 38 digits of a 128-bit decimal.
+        // The precision is the larger of the digits and the scale, capped at the 38 digits of a 128-bit decimal.
         const inferred: ReadonlyArray<readonly [BigDecimal.BigDecimal, ArrowSchema.DataType]> = [
           [BigDecimal.make(5n, 2), ArrowSchema.decimal(2, 2)],
           [BigDecimal.make(12345n, 2), ArrowSchema.decimal(5, 2)],
@@ -702,6 +702,38 @@ describe("Query", () => {
           const plan = Schema.decodeSync(Plan.NodeFromJson)(Schema.encodeSync(Plan.NodeFromJson)(query.plan))
           assert.deepStrictEqual(yield* rows(Query.fromPlan(plan)), expected.map((x) => ({ x })))
         }
+      }))
+
+    // DF-Q056 (API contract): Expr.isIn; pinned source in README.md.
+    it.effect("isIn takes long lists of typed candidates", () =>
+      Effect.gen(function*() {
+        const count = 5000
+        const last = BigInt(count - 1)
+        const frame = arrowFrame<{
+          d: BigDecimal.BigDecimal | null
+          at: DateTime.Utc | null
+          took: Duration.Duration | null
+        }>({
+          d: [ArrowSchema.decimal(18, 0), [
+            BigDecimal.make(0n, 0),
+            BigDecimal.make(last, 0),
+            BigDecimal.make(last + 1n, 0),
+            null
+          ]],
+          at: [ArrowSchema.timestamp("millisecond", "UTC"), [0n, last, last + 1n, null]],
+          took: [ArrowSchema.duration("millisecond"), [0n, last, last + 1n, null]]
+        })
+        const candidates = <A>(make: (i: number) => A) => Array.from({ length: count }, (_, i) => make(i))
+        const query = Query.from(frame).pipe(Query.select((c) => ({
+          d: Expr.isIn(c.d, candidates((i) => BigDecimal.make(BigInt(i), 0))),
+          at: Expr.isIn(c.at, candidates((i) => DateTime.makeUnsafe(i))),
+          took: Expr.isIn(c.took, candidates((i) => Duration.millis(i)))
+        })))
+        const expected = [true, true, false, null].map((x) => ({ d: x, at: x, took: x }))
+        assert.deepStrictEqual(yield* rows(query), expected)
+        // The plan is as deep as the logarithm of the list, in its JSON form too.
+        const plan = Schema.decodeSync(Plan.NodeFromJson)(Schema.encodeSync(Plan.NodeFromJson)(query.plan))
+        assert.deepStrictEqual(yield* rows(Query.fromPlan(plan)), expected)
       }))
 
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.

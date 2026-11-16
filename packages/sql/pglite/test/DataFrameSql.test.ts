@@ -1077,6 +1077,58 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         ])
       }))
 
+    // DF-S023: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("isIn keeps exact candidates apart from fractions and takes long lists", () =>
+      Effect.gen(function*() {
+        const dec = (unscaled: bigint, scale: number) => BigDecimal.make(unscaled, scale)
+        // The first integer a float can't hold, next to the float below it.
+        const odd = 9007199254740993n
+        const below = 9007199254740992
+        const held = arrow<any>(
+          [
+            ArrowSchema.field("d", ArrowSchema.decimal(18, 0)),
+            ArrowSchema.field("e", ArrowSchema.decimal(18, 2)),
+            ArrowSchema.field("b", ArrowSchema.int64),
+            ArrowSchema.field("u", ArrowSchema.uint64)
+          ],
+          [
+            [dec(odd, 0), dec(0n, 0), null],
+            [dec(odd * 100n + 50n, 2), dec(50n, 2), null],
+            [odd, 0n, null],
+            [2n ** 64n - 1n, odd, null]
+          ]
+        )
+        const chosen = held.pipe(Query.select((c) => ({
+          // A fraction in the list doesn't round the other candidates or the column.
+          rounded: Expr.isIn(c.d, [0.5, below]),
+          exact: Expr.isIn(c.d, [0.5, odd]),
+          zero: Expr.isIn(c.d, [-0, NaN, 2n ** 70n]),
+          fraction: Expr.isIn(c.e, [0.5, below]),
+          integer: Expr.isIn(c.b, [0.5, below]),
+          wide: Expr.isIn(c.b, [2n ** 70n, -0, odd]),
+          unsigned: Expr.isIn(c.u, [0.5, 2n ** 64n - 1n, below]),
+          signed: Expr.isIn(c.u, [-1n]),
+          long: Expr.isIn(c.d, Array.from({ length: 3000 }, (_, i) => dec(BigInt(i), 0)))
+        })))
+        yield* both(chosen)
+        const row = (...values: ReadonlyArray<boolean | null>) => ({
+          rounded: values[0],
+          exact: values[1],
+          zero: values[2],
+          fraction: values[3],
+          integer: values[4],
+          wide: values[5],
+          unsigned: values[6],
+          signed: values[7],
+          long: values[8]
+        })
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          row(false, true, false, false, false, true, true, false, false),
+          row(false, false, true, true, false, true, false, false, true),
+          row(null, null, null, null, null, null, null, null, null)
+        ])
+      }))
+
     // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("unions and nullable fields are checked as in memory", () =>
       Effect.gen(function*() {

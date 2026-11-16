@@ -444,9 +444,26 @@ const call = (node: Plan.Call, scope: Scope): string => {
     }
     case "isIn": {
       const values = (o.values ?? []).filter((v) => v !== null)
-      return values.length === 0 ?
-        `(${a[0]} IS NULL AND NULL)` :
-        `(${a[0]} IN (${values.map((v) => literal(v, undefined)).join(", ")}))`
+      const isIn = (x: string, list: ReadonlyArray<string>) => `(${x} IN (${list.join(", ")}))`
+      // One float in a list makes PostgreSQL compare the whole list as floats, which
+      // rounds decimals and 64-bit integers. They take their floats in a list of its own.
+      const t = types[0]
+      if (t._tag !== "Decimal" && !(t._tag === "Int" && t.bitWidth === 64)) {
+        return values.length === 0 ?
+          `(${a[0]} IS NULL AND NULL)` :
+          isIn(a[0], values.map((v) => literal(v, undefined)))
+      }
+      const fraction = (v: Plan.Value) => typeof v === "number" && !Number.isInteger(v)
+      // An integer as its digits: exact, whatever its size.
+      const exact = values.filter((v) => !fraction(v)).map((v) =>
+        typeof v === "string" || typeof v === "boolean" ? literal(v, undefined) : String(BigInt(v as number | bigint))
+      )
+      const floats = values.filter(fraction).map((v) => literal(v, undefined))
+      const tests = [
+        ...(exact.length > 0 ? [isIn(a[0], exact)] : []),
+        ...(floats.length > 0 ? [isIn(`CAST(${a[0]} AS DOUBLE PRECISION)`, floats)] : [])
+      ]
+      return tests.length === 0 ? `(${a[0]} IS NULL AND NULL)` : `(${tests.join(" OR ")})`
     }
     case "not":
       return `(NOT ${a[0]})`

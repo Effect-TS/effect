@@ -1157,7 +1157,9 @@ export const isIn = (a: Value, candidates: ReadonlyArray<unknown>): Value => {
       const set = new Set(
         candidates.filter((c): c is bigint | number => typeof c === "bigint" || Number.isInteger(c)).map(BigInt)
       )
-      for (let i = 0; i < n; i++) o[i] = +set.has(v.values[i])
+      // A UInt64 is stored as the signed integer with the same bits.
+      const unsigned = V.isUnsigned64(v.type)
+      for (let i = 0; i < n; i++) o[i] = +set.has(unsigned ? BigInt.asUintN(64, v.values[i]) : v.values[i])
       break
     }
     case "bool": {
