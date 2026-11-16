@@ -20,7 +20,6 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
       flushed: Deferred.isDoneUnsafe(flushed),
       missedCallers
     })
-  const base = new Scheduler.MixedScheduler()
   const late = new Scheduler.MixedScheduler("async", (f) => {
     if (released) {
       const timer = setTimeout(f, 0)
@@ -32,11 +31,8 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
       if (index !== -1) held.splice(index, 1)
     }
   })
-  const scheduler: Scheduler.Scheduler = {
-    executionMode: base.executionMode,
-    shouldYield: (fiber) => base.shouldYield(fiber),
-    park: (fiber) => base.park(fiber),
-    makeDispatcher() {
+  const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+    override makeDispatcher(): Scheduler.SchedulerDispatcher {
       // Fiber dispatchers are created by the fiber runtime; only McpServer
       // calls `makeDispatcher` directly.
       const stack = new Error().stack ?? ""
@@ -46,7 +42,7 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
         if (stack.includes("McpServer.ts") && !stack.includes("currentDispatcher") && missedCallers.length < 3) {
           missedCallers.push(stack)
         }
-        return base.makeDispatcher()
+        return super.makeDispatcher()
       }
       counts.serverDispatchers++
       const dispatcher = late.makeDispatcher()
@@ -62,7 +58,7 @@ export const makeHeldServerScheduler = Effect.gen(function*() {
         flush: () => dispatcher.flush()
       }
     }
-  }
+  }()
   const release = Effect.sync(() => {
     released = true
     for (const f of held.splice(0)) setTimeout(f, 0)
