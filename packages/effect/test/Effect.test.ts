@@ -34,6 +34,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
+import { assertRegistersDuringStartup } from "./utils/forkRegistration.ts"
 import { collectGarbage } from "./utils/gc.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
@@ -61,70 +62,6 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
 }
 
 describe("Effect", () => {
-  describe("fork options", () => {
-    for (const name of ["forkChild", "forkDetach", "forkIn", "forkScoped"] as const) {
-      it.effect(`${name} defers startup by default and starts synchronously when requested`, () =>
-        Effect.gen(function*() {
-          const scope = yield* Effect.scope
-          for (const startImmediately of [undefined, true]) {
-            const release = yield* Deferred.make<void>()
-            const events: Array<string> = []
-            const work = Effect.sync(() => events.push("started")).pipe(
-              Effect.andThen(Deferred.await(release)),
-              Effect.andThen(Effect.sync(() => events.push("resumed")))
-            )
-            const options = { startImmediately }
-            const child = yield* (name === "forkIn" ?
-              Effect.forkIn(work, scope, options)
-              : name === "forkChild" ?
-              Effect.forkChild(work, options)
-              : name === "forkDetach" ?
-              Effect.forkDetach(work, options)
-              : Effect.forkScoped(work, options))
-            assert.deepStrictEqual(events, startImmediately ? ["started"] : [])
-            yield* Deferred.succeed(release, undefined)
-            yield* Fiber.join(child)
-            assert.deepStrictEqual(events, ["started", "resumed"])
-          }
-        }))
-    }
-
-    for (const uninterruptible of [undefined, true, "inherit"] as const) {
-      it.effect(`uninterruptible: ${uninterruptible} when forked from an uninterruptible region`, () =>
-        Effect.gen(function*() {
-          const release = yield* Deferred.make<string>()
-          const child = yield* Effect.forkChild(Deferred.await(release), {
-            startImmediately: true,
-            uninterruptible
-          }).pipe(Effect.uninterruptible)
-          const interrupting = yield* Effect.forkChild(Fiber.interrupt(child), { startImmediately: true })
-          if (uninterruptible === undefined) {
-            yield* Fiber.join(interrupting)
-            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-          } else {
-            assert.isUndefined(interrupting.pollUnsafe())
-            assert.isUndefined(child.pollUnsafe())
-            yield* Deferred.succeed(release, "own result")
-            yield* Fiber.join(interrupting)
-            assert.deepStrictEqual(yield* Fiber.await(child), Exit.succeed("own result"))
-          }
-        }))
-    }
-
-    it.effect("an explicitly interruptible region overrides the uninterruptible fork option", () =>
-      Effect.gen(function*() {
-        const started = yield* Deferred.make<void>()
-        const child = yield* Deferred.succeed(started, undefined).pipe(
-          Effect.andThen(Effect.never),
-          Effect.interruptible,
-          Effect.forkChild({ uninterruptible: true })
-        )
-        yield* Deferred.await(started)
-        yield* Fiber.interrupt(child)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-      }))
-  })
-
   it.effect("suspend treats a thrown value as a defect", () =>
     Effect.gen(function*() {
       const thrown = { message: "boom" }
@@ -135,86 +72,57 @@ describe("Effect", () => {
     }))
 
   describe("interrupted work cleanup", () => {
-    for (const name of ["race", "raceFirst", "raceAll", "raceAllFirst", "all", "forEach", "timeout"] as const) {
+    const cases: ReadonlyArray<
+      readonly [
+        name: string,
+        run: (
+          worker: Effect.Effect<never>,
+          winner: Effect.Effect<string>,
+          failure: Effect.Effect<never, string>
+        ) => Effect.Effect<unknown, unknown>,
+        expected: Exit.Exit<unknown, unknown>
+      ]
+    > = [
+      ["race", (worker, winner) => Effect.race(worker, winner), Exit.succeed("winner")],
+      ["raceFirst", (worker, winner) => Effect.raceFirst(worker, winner), Exit.succeed("winner")],
+      ["raceAll", (worker, winner) => Effect.raceAll([worker, winner]), Exit.succeed("winner")],
+      ["raceAllFirst", (worker, winner) => Effect.raceAllFirst([worker, winner]), Exit.succeed("winner")],
+      ["all", (worker, _, failure) => Effect.all([worker, failure], { concurrency: 2 }), Exit.fail("failure")],
+      [
+        "forEach",
+        (worker, _, failure) => Effect.forEach([worker, failure], (effect) => effect, { concurrency: 2 }),
+        Exit.fail("failure")
+      ],
+      [
+        "timeout",
+        (worker) => Effect.timeout(worker, 10),
+        Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
+      ]
+    ]
+
+    for (const [name, run, expected] of cases) {
       it.effect(`${name} waits for asynchronous finalizers`, () =>
         Effect.gen(function*() {
           const started = yield* Deferred.make<void>()
           const cleaning = yield* Deferred.make<void>()
           const release = yield* Deferred.make<void>()
-          let cleaned = false
           const worker = Deferred.succeed(started, undefined).pipe(
             Effect.andThen(Effect.never),
-            Effect.ensuring(
-              Deferred.succeed(cleaning, undefined).pipe(
-                Effect.andThen(Deferred.await(release)),
-                Effect.andThen(Effect.sync(() => {
-                  cleaned = true
-                }))
-              )
-            )
+            Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release))))
           )
           const winner = Deferred.await(started).pipe(Effect.as("winner"))
           const failure = Deferred.await(started).pipe(Effect.andThen(Effect.fail("failure")))
-          const work: Effect.Effect<unknown, string | Cause.TimeoutError> = name === "race" ?
-            Effect.race(worker, winner)
-            : name === "raceFirst" ?
-            Effect.raceFirst(worker, winner)
-            : name === "raceAll" ?
-            Effect.raceAll([worker, winner])
-            : name === "raceAllFirst" ?
-            Effect.raceAllFirst([worker, winner])
-            : name === "all" ?
-            Effect.all([worker, failure], { concurrency: 2 })
-            : name === "forEach" ?
-            Effect.forEach([worker, failure], (effect) => effect, { concurrency: 2 })
-            : Effect.timeout(worker, 10)
-          const fiber = yield* Effect.forkChild(Effect.exit(work))
+          const fiber = yield* Effect.forkChild(Effect.exit(run(worker, winner, failure)))
           yield* Deferred.await(started)
-          if (name === "timeout") yield* TestClock.adjust(10)
+          // Only the timeout case is waiting on the clock.
+          yield* TestClock.adjust(10)
           yield* Deferred.await(cleaning)
           yield* Effect.yieldNow
           assert.isUndefined(fiber.pollUnsafe())
-          assert.isFalse(cleaned)
           yield* Deferred.succeed(release, undefined)
-          const exit = yield* Fiber.join(fiber)
-          assert.isTrue(cleaned)
-          if (name === "all" || name === "forEach") {
-            assert.deepStrictEqual(exit, Exit.fail("failure"))
-          } else if (name === "timeout") {
-            assert.deepStrictEqual(exit, Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'")))
-          } else {
-            assert.deepStrictEqual(exit, Exit.succeed("winner"))
-          }
+          assert.deepStrictEqual(yield* Fiber.join(fiber), expected)
         }))
     }
-
-    it.effect("timeout waits for an uninterruptible source but discards its success", () =>
-      Effect.gen(function*() {
-        const started = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        let completed = false
-        const fiber = yield* Deferred.succeed(started, undefined).pipe(
-          Effect.andThen(Deferred.await(release)),
-          Effect.andThen(Effect.sync(() => {
-            completed = true
-            return "value"
-          })),
-          Effect.uninterruptible,
-          Effect.timeout(10),
-          Effect.exit,
-          Effect.forkChild
-        )
-        yield* Deferred.await(started)
-        yield* TestClock.adjust(10)
-        assert.isUndefined(fiber.pollUnsafe())
-        assert.isFalse(completed)
-        yield* Deferred.succeed(release, undefined)
-        assert.deepStrictEqual(
-          yield* Fiber.join(fiber),
-          Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
-        )
-        assert.isTrue(completed)
-      }))
   })
 
   describe("interruption before cleanup registration", () => {
@@ -2492,6 +2400,33 @@ describe("Effect", () => {
         )
         assert.isTrue(interrupted)
       }))
+
+    it.effect("timeout waits for an uninterruptible source but discards its success", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        let completed = false
+        const fiber = yield* Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Deferred.await(release)),
+          Effect.andThen(Effect.sync(() => {
+            completed = true
+            return "value"
+          })),
+          Effect.uninterruptible,
+          Effect.timeout(10),
+          Effect.exit,
+          Effect.forkChild
+        )
+        yield* Deferred.await(started)
+        yield* TestClock.adjust(10)
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* Deferred.succeed(release, undefined)
+        assert.deepStrictEqual(
+          yield* Fiber.join(fiber),
+          Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
+        )
+        assert.isTrue(completed)
+      }))
   })
 
   describe("interruption", () => {
@@ -3140,6 +3075,75 @@ describe("Effect", () => {
       }))
   })
 
+  describe("fork options", () => {
+    for (const name of ["forkChild", "forkDetach", "forkIn", "forkScoped"] as const) {
+      it.effect(`${name} defers startup by default and starts synchronously when requested`, () =>
+        Effect.gen(function*() {
+          const scope = yield* Effect.scope
+          for (const startImmediately of [undefined, true]) {
+            const release = yield* Deferred.make<void>()
+            const events: Array<string> = []
+            const work = Effect.sync(() => events.push("started")).pipe(
+              Effect.andThen(Deferred.await(release)),
+              Effect.andThen(Effect.sync(() => events.push("resumed")))
+            )
+            const options = { startImmediately }
+            const child = yield* (name === "forkIn" ?
+              Effect.forkIn(work, scope, options)
+              : name === "forkChild" ?
+              Effect.forkChild(work, options)
+              : name === "forkDetach" ?
+              Effect.forkDetach(work, options)
+              : Effect.forkScoped(work, options))
+            assert.deepStrictEqual(events, startImmediately ? ["started"] : [])
+            yield* Deferred.succeed(release, undefined)
+            yield* Fiber.join(child)
+            assert.deepStrictEqual(events, ["started", "resumed"])
+          }
+        }))
+    }
+
+    // Each row forks from the region that tells its option apart from the others.
+    for (
+      const [uninterruptible, region] of [
+        [undefined, "uninterruptible"],
+        [true, "interruptible"],
+        ["inherit", "uninterruptible"]
+      ] as const
+    ) {
+      it.effect(`uninterruptible: ${uninterruptible} when forked from an ${region} region`, () =>
+        Effect.gen(function*() {
+          const release = yield* Deferred.make<string>()
+          const fork = Effect.forkChild(Deferred.await(release), { startImmediately: true, uninterruptible })
+          const child = yield* (region === "uninterruptible" ? Effect.uninterruptible(fork) : fork)
+          const interrupting = yield* Effect.forkChild(Fiber.interrupt(child), { startImmediately: true })
+          if (uninterruptible === undefined) {
+            yield* Fiber.join(interrupting)
+            assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+          } else {
+            assert.isUndefined(interrupting.pollUnsafe())
+            assert.isUndefined(child.pollUnsafe())
+            yield* Deferred.succeed(release, "own result")
+            yield* Fiber.join(interrupting)
+            assert.deepStrictEqual(yield* Fiber.await(child), Exit.succeed("own result"))
+          }
+        }))
+    }
+
+    it.effect("an explicitly interruptible region overrides the uninterruptible fork option", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const child = yield* Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.never),
+          Effect.interruptible,
+          Effect.forkChild({ uninterruptible: true })
+        )
+        yield* Deferred.await(started)
+        yield* Fiber.interrupt(child)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+      }))
+  })
+
   describe("fork", () => {
     it.effect("is interrupted with parent", () =>
       Effect.gen(function*() {
@@ -3194,31 +3198,7 @@ describe("Effect", () => {
 
   describe("forkIn", () => {
     it.effect("registers a fiber even when it interrupts its forker during startup", () =>
-      Effect.gen(function*() {
-        const scope = yield* Scope.make()
-
-        const started = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-        const cleaning = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        const forker = yield* Effect.withFiber((parent) => {
-          const work = Effect.withFiber((child) => Deferred.succeed(started, child)).pipe(
-            Effect.andThen(Effect.sync(() => parent.interruptUnsafe())),
-            Effect.andThen(Effect.never),
-            Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release))))
-          )
-          return Effect.forkIn(work, scope, { startImmediately: true })
-        }).pipe(Effect.forkChild)
-        const child = yield* Deferred.await(started)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(forker)))
-        assert.isUndefined(child.pollUnsafe())
-        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-        yield* Deferred.await(cleaning)
-        yield* Effect.yieldNow
-        assert.isUndefined(closing.pollUnsafe())
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(closing)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-      }))
+      assertRegistersDuringStartup((work, scope) => Effect.forkIn(work, scope, { startImmediately: true })))
 
     for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
       it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
@@ -3266,31 +3246,9 @@ describe("Effect", () => {
 
   describe("forkScoped", () => {
     it.effect("registers a fiber even when it interrupts its forker during startup", () =>
-      Effect.gen(function*() {
-        const scope = yield* Scope.make()
-
-        const started = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-        const cleaning = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        const forker = yield* Effect.withFiber((parent) => {
-          const work = Effect.withFiber((child) => Deferred.succeed(started, child)).pipe(
-            Effect.andThen(Effect.sync(() => parent.interruptUnsafe())),
-            Effect.andThen(Effect.never),
-            Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release))))
-          )
-          return Effect.forkScoped(work, { startImmediately: true }).pipe(Scope.provide(scope))
-        }).pipe(Effect.forkChild)
-        const child = yield* Deferred.await(started)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(forker)))
-        assert.isUndefined(child.pollUnsafe())
-        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-        yield* Deferred.await(cleaning)
-        yield* Effect.yieldNow
-        assert.isUndefined(closing.pollUnsafe())
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(closing)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-      }))
+      assertRegistersDuringStartup((work, scope) =>
+        Effect.forkScoped(work, { startImmediately: true }).pipe(Scope.provide(scope))
+      ))
 
     for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
       it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>

@@ -2,34 +2,16 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
+import { assertRegistersDuringStartup } from "./utils/forkRegistration.ts"
 
 describe("FiberSet", () => {
   it.effect("run registers a fiber even when it interrupts its forker during startup", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.make()
-      const container = yield* FiberSet.make().pipe(Scope.provide(scope))
-      const started = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-      const cleaning = yield* Deferred.make<void>()
-      const release = yield* Deferred.make<void>()
-      const forker = yield* Effect.withFiber((parent) => {
-        const work = Effect.withFiber((child) => Deferred.succeed(started, child)).pipe(
-          Effect.andThen(Effect.sync(() => parent.interruptUnsafe())),
-          Effect.andThen(Effect.never),
-          Effect.ensuring(Deferred.succeed(cleaning, undefined).pipe(Effect.andThen(Deferred.await(release))))
-        )
-        return FiberSet.run(container, work, { startImmediately: true })
-      }).pipe(Effect.forkChild)
-      const child = yield* Deferred.await(started)
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(forker)))
-      assert.isUndefined(child.pollUnsafe())
-      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* Deferred.await(cleaning)
-      yield* Effect.yieldNow
-      assert.isUndefined(closing.pollUnsafe())
-      yield* Deferred.succeed(release, undefined)
-      yield* Fiber.join(closing)
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-    }))
+    assertRegistersDuringStartup((work, scope) =>
+      FiberSet.make().pipe(
+        Scope.provide(scope),
+        Effect.flatMap((container) => FiberSet.run(container, work, { startImmediately: true }))
+      )
+    ))
 
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
