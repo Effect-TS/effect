@@ -5484,29 +5484,44 @@ describe("Effect", () => {
         assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(["owner", "owner"]))
       })
 
-      for (const interruptFirst of [false, true]) {
-        it(`delivers a value before an interrupt ${interruptFirst ? "it overtakes" : "requested while it lands"}`, async () => {
-          const { land, scheduler } = makeScheduler()
-          const seen: Array<string> = []
-          let wake!: () => void
-          const fiber = Effect.runFork(
-            Effect.uninterruptibleMask((restore) =>
-              restore(Effect.callback<void>((resume) => {
-                wake = () => resume(Effect.void)
-              })).pipe(Effect.andThen(Effect.sync(() => seen.push(current()))))
-            ).pipe(Effect.andThen(Effect.never)),
-            { scheduler }
+      for (const forked of [false, true]) {
+        for (const interruptFirst of [false, true]) {
+          it(
+            `delivers a value before an interrupt ${interruptFirst ? "it overtakes" : "requested while it lands"}${
+              forked ? ", in a fork" : ""
+            }`,
+            async () => {
+              const { land, scheduler } = makeScheduler()
+              const seen: Array<string> = []
+              let wake!: () => void
+              const body = Effect.uninterruptibleMask((restore) =>
+                restore(Effect.callback<void>((resume) => {
+                  wake = () => resume(Effect.void)
+                })).pipe(Effect.andThen(Effect.sync(() => seen.push(current()))))
+              ).pipe(Effect.andThen(Effect.never))
+              let fiber!: Fiber.Fiber<never>
+              if (forked) {
+                // A fork's start lands through the captured context too, so the
+                // race must still be handled after it has started
+                Effect.runFork(
+                  Effect.forkDetach(body).pipe(Effect.tap((child) => Effect.sync(() => (fiber = child)))),
+                  { scheduler }
+                )
+              } else {
+                fiber = Effect.runFork(body, { scheduler })
+              }
+              await land()
+              storage.run("waker", () => {
+                if (interruptFirst) fiber.interruptUnsafe()
+                wake()
+                if (!interruptFirst) fiber.interruptUnsafe()
+              })
+              await land()
+              assert.deepStrictEqual(seen, ["owner"])
+              assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+            }
           )
-          await land()
-          storage.run("waker", () => {
-            if (interruptFirst) fiber.interruptUnsafe()
-            wake()
-            if (!interruptFirst) fiber.interruptUnsafe()
-          })
-          await land()
-          assert.deepStrictEqual(seen, ["owner"])
-          assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
-        })
+        }
       }
       for (const dispatched of [false, true]) {
         it(`interrupts a fork before it starts, ${dispatched ? "after" : "before"} its start is dispatched`, async () => {

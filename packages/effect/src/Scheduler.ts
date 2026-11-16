@@ -61,11 +61,14 @@ export interface Scheduler {
  *
  * **Details**
  *
- * Each captured context resumes its fiber once. `runInAsyncScope` either calls
- * `fn` synchronously, or arranges to call it exactly once later and returns.
- * A fiber whose resumption is still pending defers interrupts, and other
- * resumptions, until it lands. A fiber interrupted before its start lands never
- * runs. `emitDestroy` is called when `runInAsyncScope` returns.
+ * Each captured context resumes its fiber once. Fibers hand every resumption
+ * to `runInAsyncScope`, and the context decides where and when it runs: it
+ * either calls `fn` synchronously, as a `node:async_hooks` `AsyncResource`
+ * does, or arranges to call it exactly once later and returns. Fibers handle
+ * both the same way. Until `fn` is called, interrupts are deferred and a value
+ * that overtakes an interrupt is delivered first; a fiber interrupted before
+ * its start lands never runs. `emitDestroy` is called when `runInAsyncScope`
+ * returns.
  *
  * **Gotchas**
  *
