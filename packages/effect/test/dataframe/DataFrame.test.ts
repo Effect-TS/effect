@@ -250,6 +250,64 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(outcomes(Unseen, [{ kind: "x" }, { kind: "x", a: null }]), ["ok", "ok", "ok"])
     })
 
+    // DF-C032 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("accepts the stored values that Schema.is accepts", () => {
+      const rejects = `column "v" has values its schema rejects`
+      const NotNull = Schema.Struct({ v: Schema.NullOr(Schema.String).check(Schema.makeFilter((v) => v !== null)) })
+      assert.deepStrictEqual(outcomes(NotNull, [{ v: "a" }, { v: null }]), [rejects, rejects, rejects])
+      const OneOf = Schema.Struct({ v: Schema.Union([Schema.String, Schema.Literal("ok")], { mode: "oneOf" }) })
+      assert.deepStrictEqual(outcomes(OneOf, [{ v: "no" }, { v: "ok" }]), [rejects, rejects, rejects])
+
+      const Tagged = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), n: Schema.NullOr(Schema.Int) }),
+        Schema.Struct({ kind: Schema.Literals(["a", "b"]), n: Schema.NullOr(Schema.Number) })
+      ], { mode: "oneOf" })
+      const cases: ReadonlyArray<readonly [Schema.Struct<any>, ReadonlyArray<Record<string, unknown>>]> = [
+        [NotNull, [{ v: "a" }, { v: null }]],
+        [OneOf, [{ v: "no" }, { v: "ok" }]],
+        [Schema.Struct({ v: Schema.Array(Tagged) }), [
+          { v: [{ kind: "b", n: 1.5 }, { kind: "a", n: 1.5 }] },
+          { v: [{ kind: "a", n: 1 }] },
+          { v: [{ kind: "a", n: null }] },
+          { v: [{ kind: "c", n: 1 }] }
+        ]],
+        [Schema.Struct({ v: Schema.optional(Schema.String.check(Schema.isMinLength(2))) }), [
+          {},
+          { v: undefined },
+          { v: "ab" },
+          { v: "a" }
+        ]],
+        [Schema.Struct({ v: Schema.UndefinedOr(Schema.Number).check(Schema.makeFilter((v) => v !== 0)) }), [
+          { v: undefined },
+          { v: 1 },
+          { v: 0 }
+        ]],
+        [Schema.Struct({ v: Schema.Union([Schema.Null.check(Schema.makeFilter(() => false)), Schema.String]) }), [
+          { v: "a" },
+          { v: null }
+        ]],
+        [
+          Schema.Struct({ v: Schema.optionalKey(Schema.Number), w: Schema.NullOr(Schema.Number) }).check(
+            Schema.makeFilter((row) => ("v" in row) === (row.w === null))
+          ),
+          [{ v: 1, w: null }, { w: 1 }, { w: null }, { v: 1, w: 1 }]
+        ]
+      ]
+      const verdicts = new Set<boolean>()
+      for (const [schema, rows] of cases) {
+        for (const row of rows) {
+          const accepted = Schema.is(schema)(row)
+          verdicts.add(accepted)
+          assert.deepStrictEqual(
+            outcomes(schema, [row]).map((outcome) => outcome === "ok"),
+            [accepted, accepted, accepted],
+            JSON.stringify(row)
+          )
+        }
+      }
+      assert.strictEqual(verdicts.size, 2)
+    })
+
     // DF-C023 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows, empty and validate reject schemas that transform their rows", () => {
       const cases: ReadonlyArray<readonly [{ readonly Type: object; readonly ast: any }, string]> = [

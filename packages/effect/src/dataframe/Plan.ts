@@ -698,11 +698,11 @@ export interface TableColumn {
  *
  * `columns` pairs the name of a declared column with a test of one value
  * of it. Every value of that column is read (as `DataFrame.toArray` gives
- * it) and tested; a test must accept `null`, as nullability is part of the
- * column's declaration. `rows` tests one row object, as `DataFrame.toRows`
- * gives it, and is `undefined` when there is nothing to test across
- * columns. A table fails with a `DataFrameError` when a test returns
- * `false`.
+ * it) and tested, `null` included: a nullable column's test decides
+ * whether its missing values pass, as a schema's check on a nullable field
+ * does. `rows` tests one row object, as `DataFrame.toRows` gives it, and
+ * is `undefined` when there is nothing to test across columns. A table
+ * fails with a `DataFrameError` when a test returns `false`.
  *
  * **Gotchas**
  *

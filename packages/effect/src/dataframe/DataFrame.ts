@@ -189,6 +189,11 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * (`Schema.Struct(...).check(...)`) on every stored row. Fields without
  * them are not read back as values.
  *
+ * A field that has them accepts the stored values that `Schema.is` accepts
+ * for it: a check on a nullable field runs on its missing values too, a
+ * check on a union member runs on that member's values, and a union in
+ * `oneOf` mode takes a value of exactly one member.
+ *
  * A check is handed what the schema describes. The frame holds `null` for
  * every missing value, and a check sees it as the schema writes it: an
  * absent key for an optional field, `undefined` for `Schema.UndefinedOr`

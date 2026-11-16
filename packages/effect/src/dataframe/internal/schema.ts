@@ -15,6 +15,7 @@
  * @internal
  */
 import type * as S from "../../arrow/ArrowSchema.ts"
+import { identity } from "../../Function.ts"
 import * as Result from "../../Result.ts"
 import * as AST from "../../SchemaAST.ts"
 import * as Parser from "../../SchemaParser.ts"
@@ -280,55 +281,27 @@ const struct = (shapes: NonNullable<Shape["fields"]>): ((value: unknown) => unkn
 // -----------------------------------------------------------------------------
 
 /**
- * A test for values of a schema that it constrains beyond their column type
- * (literals, enums, template literals and checks), anywhere inside it, or
- * `undefined` when the column type says it all. Missing values (`null`, and
- * `undefined` in rows that are not in a frame yet) pass: nullability is
- * checked with the column. Union members are tried in turn.
+ * Whether a schema constrains its values beyond their column type and
+ * nullability, anywhere inside it: by a check, a literal, an enum, a
+ * template literal, or a union that takes the values of exactly one member.
  */
-const valuesCheck = (ast: AST.AST): ((value: unknown) => boolean) | undefined => {
-  const own = ast.checks === undefined
-    ? undefined
-    : (value: unknown) => Result.isSuccess(AST.runChecks(ast.checks!, value))
-  const inner = structural(ast)
-  if (own === undefined) return inner
-  return (value) => value == null || ((inner === undefined || inner(value)) && own(value))
-}
-
-/** Whether a schema holds only missing values, behind any `suspend`. */
-const isMissing = (ast: AST.AST): boolean =>
-  ast._tag === "Suspend" ? unsuspend(ast, "", isMissing) : ast._tag === "Null" || ast._tag === "Undefined"
-
-const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => {
+const constrains = (ast: AST.AST): boolean => {
+  if (ast.checks !== undefined) return true
   switch (ast._tag) {
     case "Literal":
     case "Enum":
-    case "TemplateLiteral": {
-      const is = Parser._is(AST.replaceChecks(ast, undefined))
-      return (value) => value == null || is(value)
-    }
+    case "TemplateLiteral":
+      return true
     case "Suspend":
-      return unsuspend(ast, "", valuesCheck)
-    case "Union": {
-      const members = ast.types.filter((t) => !isMissing(t)).map(valuesCheck)
-      if (members.some((m) => m === undefined)) return undefined
-      return (value) => value == null || members.some((m) => m!(value))
-    }
-    case "Arrays": {
-      const item = valuesCheck(ast.rest[0])
-      return item && ((value) => value == null || (value as ReadonlyArray<unknown>).every(item))
-    }
-    case "Objects": {
-      const fields = ast.propertySignatures.flatMap((ps) => {
-        const f = valuesCheck(ps.type)
-        return f === undefined ? [] : [[ps.name, f] as const]
-      })
-      return fields.length === 0
-        ? undefined
-        : (value) => value == null || fields.every(([name, f]) => f((value as any)[name]))
-    }
+      return unsuspend(ast, "", constrains)
+    case "Union":
+      return ast.options?.mode === "oneOf" || ast.types.some(constrains)
+    case "Arrays":
+      return constrains(ast.rest[0])
+    case "Objects":
+      return ast.propertySignatures.some((ps) => constrains(ps.type))
     default:
-      return undefined
+      return false
   }
 }
 
@@ -338,21 +311,25 @@ const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => 
  * has checks of its own. `undefined` when the column types say it all.
  *
  * The tests take values and rows as a frame stores them, and hand them to
- * the schema's checks as the schema writes them (see {@link shapeOf}).
+ * the schema as it writes them (see {@link shapeOf}). A field's test is the
+ * schema's own: a value passes when the field's type has it, so checks run
+ * on every value that reaches them (`null` too) and unions match as they
+ * do in Schema. An absent key has no value to test.
  */
 const checksOf = (ast: AST.Objects): Plan.TableChecks | undefined => {
   const checks = ast.checks
   const shapes: Array<readonly [string, Shape]> = []
   const columns = ast.propertySignatures.flatMap((ps) => {
     const name = String(ps.name)
-    const test = valuesCheck(ps.type)
-    if (test === undefined && checks === undefined) return []
+    const constrained = constrains(ps.type)
+    if (!constrained && checks === undefined) return []
     const shape = shapeOf(ps.type, name, checks !== undefined, AST.isOptional(ps.type))
     shapes.push([name, shape])
-    const restore = restorer(shape)
-    return test === undefined
-      ? []
-      : [[name, restore === undefined ? test : (value: unknown) => test(restore(value))] as const]
+    if (!constrained) return []
+    const is = Parser._is(ps.type)
+    const restore = restorer(shape) ?? identity
+    const absent = shape.missing === "absent"
+    return [[name, (value: unknown) => (absent && value === null) || is(restore(value))] as const]
   })
   // With checks of rows, every field has its shape.
   const restore = checks && struct(shapes)

@@ -898,10 +898,18 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           yield* rowsOnSql(contract(Schema.Struct({ s: orNull(Schema.Literals(["bad", "good"])) }))),
           [{ s: "bad" }, { s: "good" }]
         )
-        assert.strictEqual(
-          yield* rejects(contract(Schema.Struct({ s: orNull(Schema.Literal("good")) }))),
-          `column "s" has values its schema rejects`
-        )
+        const notNull = Schema.makeFilter((n: number | null) => n !== null)
+        for (
+          const [schema, column] of [
+            [Schema.Struct({ s: orNull(Schema.Literal("good")) }), "s"],
+            // A check of a nullable field is run on its nulls.
+            [Schema.Struct({ n: Schema.NullOr(Schema.Number).check(notNull) }), "n"],
+            // "good" is a value of both members.
+            [Schema.Struct({ s: Schema.Union([Schema.String, Schema.Literal("good")], { mode: "oneOf" }) }), "s"]
+          ] as const
+        ) {
+          assert.strictEqual(yield* rejects(contract(schema)), `column "${column}" has values its schema rejects`)
+        }
       }))
   })
 })
