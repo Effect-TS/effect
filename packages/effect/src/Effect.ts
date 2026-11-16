@@ -417,8 +417,8 @@ export declare namespace All {
  * With concurrent execution, a failure requests interruption of other effects
  * that have already started. The returned effect waits for those fibers to finish,
  * including their finalizers. Uninterruptible regions can delay completion.
- * This fail-fast behavior does not apply to `mode: "result"`.
- * Concurrent effects inherit the surrounding region's interruptibility.
+ * This fail-fast behavior does not apply to `mode: "result"`. Concurrent
+ * effects inherit the surrounding region's interruptibility.
  *
  * **Gotchas**
  *
@@ -9033,10 +9033,9 @@ export const requestUnsafe: <A extends Request.Any>(
  *
  * - `startImmediately` defaults to `false`: startup is deferred, and the fork
  *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs
- *   synchronously until it first suspends, yields, or completes, before the
- *   forking fiber continues. A synchronously completed fiber is already done
- *   when the fork returns.
+ *   is promised. With `true`, the fiber runs synchronously until it first
+ *   suspends, yields, or completes, before the forking fiber continues. A
+ *   synchronously completed fiber is already done when the fork returns.
  * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
  *   when forked from an uninterruptible region. With `true`, it starts
  *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
@@ -9101,10 +9100,9 @@ export const forkChild: <
  *
  * - `startImmediately` defaults to `false`: startup is deferred, and the fork
  *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs
- *   synchronously until it first suspends, yields, or completes, before the
- *   forking fiber continues. A synchronously completed fiber is already done
- *   when the fork returns.
+ *   is promised. With `true`, the fiber runs synchronously until it first
+ *   suspends, yields, or completes, before the forking fiber continues. A
+ *   synchronously completed fiber is already done when the fork returns.
  * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
  *   when forked from an uninterruptible region. With `true`, it starts
  *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
@@ -9177,10 +9175,9 @@ export const forkIn: {
  *
  * - `startImmediately` defaults to `false`: startup is deferred, and the fork
  *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs
- *   synchronously until it first suspends, yields, or completes, before the
- *   forking fiber continues. A synchronously completed fiber is already done
- *   when the fork returns.
+ *   is promised. With `true`, the fiber runs synchronously until it first
+ *   suspends, yields, or completes, before the forking fiber continues. A
+ *   synchronously completed fiber is already done when the fork returns.
  * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
  *   when forked from an uninterruptible region. With `true`, it starts
  *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
@@ -9247,10 +9244,9 @@ export const forkScoped: <
  *
  * - `startImmediately` defaults to `false`: startup is deferred, and the fork
  *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs
- *   synchronously until it first suspends, yields, or completes, before the
- *   forking fiber continues. A synchronously completed fiber is already done
- *   when the fork returns.
+ *   is promised. With `true`, the fiber runs synchronously until it first
+ *   suspends, yields, or completes, before the forking fiber continues. A
+ *   synchronously completed fiber is already done when the fork returns.
  * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
  *   when forked from an uninterruptible region. With `true`, it starts
  *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
