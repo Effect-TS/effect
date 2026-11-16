@@ -646,6 +646,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._resuming = true
     try {
       asyncContext.runInAsyncScope(this.resume, this, effect)
+      // A resumption handed off counts as delivered, unless an interrupt
+      // requested while entering the context got there first. Decide before
+      // releasing the context, so an interrupt from its cleanup comes after.
+      if (this._resuming && !this._deferredInterrupt) this._handedOff = true
     } catch (error) {
       this._resuming = false
       throw error
@@ -654,9 +658,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       // consumers like vitest's detectAsyncLeaks.
       asyncContext.emitDestroy()
     }
-    // A resumption handed off counts as delivered, unless an interrupt
-    // requested while entering the context got there first
-    if (this._resuming && !this._deferredInterrupt) this._handedOff = true
   }
   // Called by the captured context, synchronously or later. An interrupt
   // requested meanwhile is deferred until the resumption has landed.

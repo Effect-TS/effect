@@ -73,7 +73,7 @@ export interface Scheduler {
  *   runs synchronously or later.
  * - Once `runInAsyncScope` has returned with no interrupt pending, the
  *   resumption counts as delivered and runs before any interrupt requested
- *   later.
+ *   later, including from `emitDestroy`.
  * - An interrupt requested while the fiber is suspended is itself a
  *   resumption. A value that arrives before it lands is delivered first.
  * - A fiber interrupted before its start lands never runs.

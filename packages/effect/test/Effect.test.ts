@@ -5453,10 +5453,12 @@ describe("Effect", () => {
       // With `enterFromOwner`, resumptions from the owner run synchronously,
       // as CloudflareScheduler's do from the owning request. `onEnter` runs
       // once when the next resumption enters the context, before it runs or is
-      // queued, like an async_hooks `before` callback.
+      // queued, like an async_hooks `before` callback. `onDestroy` runs once
+      // when the next context is released, after runInAsyncScope returns.
       const makeScheduler = (options?: { readonly enterFromOwner?: boolean }) => {
         const pending: Array<() => void> = []
         let onEnter: (() => void) | undefined
+        let onDestroy: (() => void) | undefined
         const scheduler = new class extends Scheduler.MixedScheduler {
           readonly captureAsyncContext = (): Scheduler.AsyncContext => ({
             runInAsyncScope: (fn, thisArg, arg) => {
@@ -5466,7 +5468,11 @@ describe("Effect", () => {
               if (options?.enterFromOwner && current() === "owner") return fn.call(thisArg, arg)
               pending.push(() => storage.run("owner", () => fn.call(thisArg, arg)))
             },
-            emitDestroy() {}
+            emitDestroy() {
+              const destroy = onDestroy
+              onDestroy = undefined
+              destroy?.()
+            }
           })
         }("sync")
         const land = async () => {
@@ -5478,7 +5484,10 @@ describe("Effect", () => {
         const setOnEnter = (f: () => void) => {
           onEnter = f
         }
-        return { scheduler, land, setOnEnter }
+        const setOnDestroy = (f: () => void) => {
+          onDestroy = f
+        }
+        return { scheduler, land, setOnEnter, setOnDestroy }
       }
 
       it("resumes and starts forks in the captured context, including under TestClock", async () => {
@@ -5502,12 +5511,14 @@ describe("Effect", () => {
       // to the context. The interrupt replaces the value when it reaches the
       // fiber first: it landed before the value arrived, or was requested while
       // the value was entering the context. Otherwise the value is delivered
-      // first: it overtook an interrupt still landing, or had been handed off.
+      // first: it overtook an interrupt still landing, or had been handed off,
+      // including to an interrupt requested while the context is released.
       describe("value and interrupt timing", () => {
         const fibers = ["a root fiber", "a fork started synchronously", "a fork started later"] as const
         const timings = {
           before: "an interrupt requested before the value",
           entering: "an interrupt requested while the value enters the context",
+          released: "an interrupt requested while the context is released",
           after: "an interrupt requested after the value"
         } as const
         for (const kind of fibers) {
@@ -5515,7 +5526,7 @@ describe("Effect", () => {
             for (const [timing, label] of Object.entries(timings)) {
               const interruptWins = timing === "entering" || (timing === "before" && landing === "synchronously")
               it(`${kind}, value landing ${landing}, ${label}: ${interruptWins ? "interrupt" : "value"} first`, async () => {
-                const { land, scheduler, setOnEnter } = makeScheduler({ enterFromOwner: true })
+                const { land, scheduler, setOnDestroy, setOnEnter } = makeScheduler({ enterFromOwner: true })
                 const seen: Array<string> = []
                 let wake!: () => void
                 const body = Effect.uninterruptibleMask((restore) =>
@@ -5541,6 +5552,7 @@ describe("Effect", () => {
                 storage.run(landing === "synchronously" ? "owner" : "waker", () => {
                   if (timing === "before") fiber.interruptUnsafe()
                   if (timing === "entering") setOnEnter(() => fiber.interruptUnsafe())
+                  if (timing === "released") setOnDestroy(() => fiber.interruptUnsafe())
                   wake()
                   if (timing === "after") fiber.interruptUnsafe()
                 })
