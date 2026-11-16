@@ -493,10 +493,12 @@ class TrackingScheduler implements Scheduler.Scheduler {
   readonly clock: TestClockImpl
   readonly parent: Scheduler.Scheduler
   readonly executionMode: Scheduler.Scheduler["executionMode"]
+  readonly preserveAsyncContext: Scheduler.Scheduler["preserveAsyncContext"]
   constructor(clock: TestClockImpl, parent: Scheduler.Scheduler) {
     this.clock = clock
     this.parent = parent
     this.executionMode = parent.executionMode
+    this.preserveAsyncContext = parent.preserveAsyncContext
   }
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
     return this.parent.shouldYield(fiber)

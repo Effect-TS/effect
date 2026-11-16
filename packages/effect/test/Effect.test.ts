@@ -5445,6 +5445,20 @@ describe("Effect", () => {
     const storage = new AsyncLocalStorage<string>()
     const current = () => storage.getStore() ?? "none"
 
+    it("TestClock preserves the scheduler async-context opt-out", async () => {
+      const scheduler = new class extends Scheduler.MixedScheduler {
+        readonly preserveAsyncContext = false
+      }("sync")
+      const deferred = Deferred.makeUnsafe<void>()
+      const waiter = storage.run("waiter", () =>
+        Effect.runFork(
+          Effect.andThen(Deferred.await(deferred), Effect.sync(current)).pipe(Effect.provide(TestClock.layer())),
+          { scheduler }
+        ))
+      await storage.run("waker", () => Effect.runPromise(Deferred.succeed(deferred, undefined), { scheduler }))
+      assert.deepStrictEqual(waiter.pollUnsafe(), Exit.succeed("waker"))
+    })
+
     for (const preserveAsyncContext of [false, true, undefined]) {
       it(`resumes and forks with preserveAsyncContext=${preserveAsyncContext}`, async () => {
         const tasks: Array<() => void> = []
