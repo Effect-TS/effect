@@ -499,20 +499,49 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-const AsyncResource: (new(type: string) => Scheduler.AsyncContext) | undefined = (() => {
-  try {
-    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-  } catch {
-    return undefined
-  }
-})()
+const AsyncResource:
+  | (new(type: string) => {
+    runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
+    emitDestroy(): void
+  })
+  | undefined = (() => {
+    try {
+      return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
+    } catch {
+      return undefined
+    }
+  })()
 
-const captureAsyncContext = (scheduler: Scheduler.Scheduler): Scheduler.AsyncContext | undefined =>
-  scheduler.captureAsyncContext !== undefined
-    ? scheduler.captureAsyncContext()
-    : AsyncResource === undefined
+// The default resumption: runs the fiber synchronously, in the context it
+// parked in
+const NativeResumption: (new() => Scheduler.Resumption) | undefined = AsyncResource && class extends AsyncResource {
+  resumed = false
+  constructor() {
+    super("effect/Fiber")
+  }
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>): void {
+    // An entry from an async_hooks `before` callback, such as an interrupt,
+    // arrives while the first one enters the scope, and is already pending
+    if (this.resumed) return
+    this.resumed = true
+    try {
+      this.runInAsyncScope(fiber.run, fiber, effect)
+    } finally {
+      // Each resumption runs its fiber once, so release it for async_hooks
+      // consumers like vitest's detectAsyncLeaks.
+      this.emitDestroy()
+    }
+  }
+}
+
+const park = (fiber: FiberImpl): Scheduler.Resumption | undefined => {
+  const scheduler = fiber.cache.scheduler
+  return scheduler.park !== undefined
+    ? scheduler.park(fiber)
+    : NativeResumption === undefined
     ? undefined
-    : new AsyncResource("effect/Fiber")
+    : new NativeResumption()
+}
 
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
@@ -541,11 +570,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._asyncContext = undefined
-    this._resuming = false
-    this._handedOff = false
-    this._overtaken = undefined
-    this._pendingStart = false
+    this._resumption = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -569,16 +594,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  declare _asyncContext: Scheduler.AsyncContext | undefined
-  // A resumption was handed to the captured async context and has not landed
-  declare _resuming: boolean
-  // runInAsyncScope returned before the resumption landed, with no interrupt
-  // pending
-  declare _handedOff: boolean
-  // A resumption that arrived while an interrupt was still landing
-  declare _overtaken: Primitive | undefined
-  // The fiber's start was handed to the captured async context and has not run
-  declare _pendingStart: boolean
+  declare _resumption: Scheduler.Resumption | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -626,9 +642,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       ? causeAddInterrupts(this._interruptedCause, cause)
       : cause
     if (this.interruptible) {
-      if (this._running || this._resuming) {
-        this._deferredInterrupt = true
-      } else {
+      // A fiber that is not running acts on the interrupt when it next runs,
+      // even if its resumption runs it with another effect
+      this._deferredInterrupt = true
+      if (!this._running) {
         this.evaluate(failCause(this._interruptedCause) as any)
       }
     }
@@ -637,87 +654,25 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
+    if (this._resumption !== undefined) {
+      return this._resumption.resume(this, effect as any)
+    }
+    this.run(effect)
+  }
+  // Every effect a resumption receives is a primitive
+  run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
       return
-    } else if (this._resuming) {
-      // Interrupts are deferred while a resumption lands, so this one can only
-      // have overtaken an interrupt. It is delivered first, as if it had won.
-      this._overtaken = effect
-      return
     }
-    const asyncContext = this._asyncContext
-    if (asyncContext === undefined) {
-      return this.run(effect)
-    }
-    // The captured context runs the resumption, now or later
-    this._asyncContext = undefined
-    this._resuming = true
-    try {
-      asyncContext.runInAsyncScope(this.resume, this, effect)
-      // A resumption handed off counts as delivered, unless an interrupt
-      // requested while entering the context got there first. Decide before
-      // releasing the context, so an interrupt from its cleanup comes after.
-      if (this._resuming && !this._deferredInterrupt) this._handedOff = true
-    } catch (error) {
-      this._resuming = false
-      throw error
-    } finally {
-      // Each captured context is resumed once, so release it for async_hooks
-      // consumers like vitest's detectAsyncLeaks.
-      asyncContext.emitDestroy()
-    }
-  }
-  // Called by the captured context, synchronously or later. An interrupt
-  // requested meanwhile is deferred until the resumption has landed.
-  resume(effect: Primitive): void {
-    this._resuming = false
-    if (this._handedOff || this._deferredInterrupt || this._overtaken !== undefined || this._pendingStart) {
-      return this.resumeRaced(effect)
-    }
-    this.run(effect)
-  }
-  // The resumption is a fork's start, was handed off, or raced an interrupt
-  resumeRaced(effect: Primitive): void {
-    const handedOff = this._handedOff
-    this._handedOff = false
-    const overtaken = this._overtaken
-    this._overtaken = undefined
-    if (this._pendingStart) {
-      // A fiber interrupted before it starts never runs: an interrupt in flight
-      // drops the start that overtook it, and the run loop replaces a start
-      // with an interrupt deferred behind it.
-      this._pendingStart = false
-      return this.run(effect)
-    }
-    let interrupt = false
-    if (overtaken !== undefined) {
-      effect = overtaken
-      interrupt = true
-      this._deferredInterrupt = false
-    } else if (handedOff && this._deferredInterrupt) {
-      // Once handed off, the value counts as delivered, so it runs before an
-      // interrupt requested after that.
-      interrupt = true
-      this._deferredInterrupt = false
-    }
-    // An interrupt requested before runInAsyncScope returned, such as from an
-    // async_hooks `before` callback, stays deferred whether the resumption ran
-    // then or later, and the run loop delivers it in place of the value, as if
-    // the fiber had been running.
-    this.run(effect)
-    if (interrupt && this._exit === undefined && this.interruptible && !this._running) {
-      this.evaluate(failCause(this._interruptedCause!) as any)
-    }
-  }
-  run(effect: Primitive): void {
+    this._resumption = undefined
     if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
       yielded()
     }
-    const exit = this.runLoop(effect)
+    const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._asyncContext = captureAsyncContext(this.cache.scheduler)
+      this._resumption = park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -5757,8 +5712,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._asyncContext = captureAsyncContext(child.cache.scheduler)
-    child._pendingStart = child._asyncContext !== undefined
+    child._resumption = park(child)
     // Cancel the deferred start if an interrupt runs first.
     let resumed = false
     child.yieldWith(() => {
