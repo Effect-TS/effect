@@ -106,12 +106,12 @@ describe("Result", () => {
     })
 
     it("toJSON", () => {
-      deepStrictEqual(Result.succeed(1).toJSON(), { _id: "Result", _tag: "Success", value: 1 })
+      deepStrictEqual(Result.succeed(1).toJSON(), { _id: "Result", _tag: "Success", success: 1 })
       deepStrictEqual(Result.fail("e").toJSON(), { _id: "Result", _tag: "Failure", failure: "e" })
     })
 
     it("inspect", () => {
-      deepStrictEqual(inspect(Result.succeed(1)), inspect({ _id: "Result", _tag: "Success", value: 1 }))
+      deepStrictEqual(inspect(Result.succeed(1)), inspect({ _id: "Result", _tag: "Success", success: 1 }))
       deepStrictEqual(inspect(Result.fail("e")), inspect({ _id: "Result", _tag: "Failure", failure: "e" }))
     })
 
