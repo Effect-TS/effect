@@ -80,18 +80,19 @@ describe("Sharding startup", () => {
           shardsPerGroup: 1
         }))
       )
-      const scheduler = new Scheduler.MixedScheduler()
       const scope = yield* Scope.make()
       yield* Effect.withFiber((startupFiber) =>
         Layer.buildWithScope(layer, scope).pipe(
           Effect.provide(Logger.layer([logger])),
           // Let startup fibers run to their first suspension whenever construction yields.
-          Effect.provideService(Scheduler.Scheduler, {
-            executionMode: scheduler.executionMode,
-            makeDispatcher: () => scheduler.makeDispatcher(),
-            park: (fiber) => scheduler.park(fiber),
-            shouldYield: (fiber) => fiber === startupFiber && fiber.currentOpCount >= 4
-          })
+          Effect.provideService(
+            Scheduler.Scheduler,
+            new class extends Scheduler.MixedScheduler {
+              override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+                return fiber === startupFiber && fiber.currentOpCount >= 4
+              }
+            }()
+          )
         )
       )
       const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)

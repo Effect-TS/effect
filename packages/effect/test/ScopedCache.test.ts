@@ -1829,15 +1829,21 @@ describe("ScopedCache", () => {
           }, Effect.provideService(Scheduler.Scheduler, scheduler))
         }).pipe(Scope.provide(owner))
         const get: Fiber.Fiber<void> = yield* ScopedCache.get(cache, "key").pipe(
-          Effect.provideService(Scheduler.Scheduler, {
-            executionMode: "async",
-            park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-            makeDispatcher: () => ({
-              scheduleTask: (task) => tasks.push(task),
-              flush: () => {}
-            }),
-            shouldYield: (fiber) => stepping && fiber === get && fiber.currentOpCount > 3
-          }),
+          Effect.provideService(
+            Scheduler.Scheduler,
+            new class extends Scheduler.MixedScheduler {
+              override makeDispatcher(): Scheduler.SchedulerDispatcher {
+                return {
+                  scheduleTask: (task) => tasks.push(task),
+                  flush: () => {}
+                }
+              }
+
+              override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+                return stepping && fiber === get && fiber.currentOpCount > 3
+              }
+            }()
+          ),
           Effect.forkChild({ startImmediately: true })
         )
         const lookup = yield* Deferred.await(started)

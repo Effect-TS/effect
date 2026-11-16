@@ -130,23 +130,24 @@ describe("Effect", () => {
     const interruptAfterContextChange = (changed: (context: Context.Context<never>) => boolean) => {
       let yielded = false
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher: () => ({
-          scheduleTask: (task) => {
-            tasks.push(task)
-          },
-          flush() {}
-        }),
-        shouldYield(fiber) {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
+          return {
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }
+        }
+
+        override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
           if (!yielded && changed(fiber.context)) {
             yielded = true
             return true
           }
           return false
         }
-      }
+      }()
       return { scheduler, tasks, wasYielded: () => yielded }
     }
 
@@ -238,19 +239,20 @@ describe("Effect", () => {
               let seen = 0
               let computed = 0
               const tasks: Array<() => void> = []
-              const scheduler: Scheduler.Scheduler = {
-                executionMode: "async",
-                park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-                makeDispatcher: () => ({
-                  scheduleTask: (task) => {
-                    tasks.push(task)
-                  },
-                  flush() {}
-                }),
-                shouldYield() {
+              const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+                override makeDispatcher(): Scheduler.SchedulerDispatcher {
+                  return {
+                    scheduleTask: (task) => {
+                      tasks.push(task)
+                    },
+                    flush() {}
+                  }
+                }
+
+                override shouldYield(): boolean {
                   return armed && ++seen === target
                 }
-              }
+              }()
               const source = Effect.sync(() => ++computed)
               const cached = cacheKind === "cached"
                 ? yield* Effect.cached(source)
@@ -1706,21 +1708,22 @@ describe("Effect", () => {
         const tasks: Array<() => void> = []
         let parent: Fiber.Fiber<unknown, unknown> | undefined
         let yieldParent = false
-        const scheduler: Scheduler.Scheduler = {
-          executionMode: "async",
-          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-          makeDispatcher: () => ({
-            scheduleTask: (task) => {
-              tasks.push(task)
-            },
-            flush() {}
-          }),
-          shouldYield(fiber) {
+        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+          override makeDispatcher(): Scheduler.SchedulerDispatcher {
+            return {
+              scheduleTask: (task) => {
+                tasks.push(task)
+              },
+              flush() {}
+            }
+          }
+
+          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
             if (!yieldParent || fiber !== parent) return false
             yieldParent = false
             return true
           }
-        }
+        }()
         const winner = yield* Deferred.make<string>()
         const frame: References.StackFrame = { name: "race", stack: () => undefined, parent: undefined }
         let loserExit: Exit.Exit<string> | undefined

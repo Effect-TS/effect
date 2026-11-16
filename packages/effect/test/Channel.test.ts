@@ -958,14 +958,11 @@ describe("Channel", () => {
 const countOps = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<number, E> =>
   Effect.suspend(() => {
     let ops = 0
-    const scheduler: Scheduler.Scheduler = {
-      executionMode: "sync",
-      makeDispatcher: () => new Scheduler.MixedScheduler("sync").makeDispatcher(),
-      park: (fiber) => new Scheduler.MixedScheduler("sync").park(fiber),
-      shouldYield: () => {
+    const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+      override shouldYield(): boolean {
         ops++
         return false
       }
-    }
+    }("sync")
     return Effect.map(Effect.provideService(effect, Scheduler.Scheduler, scheduler), () => ops)
   })
