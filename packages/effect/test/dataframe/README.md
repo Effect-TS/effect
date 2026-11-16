@@ -40,6 +40,12 @@ The assertion column is the exact leaf test title. Combine it with the file and 
 | DF-C019 | C    | iterate as rows                                                                       | [DataFrame.DataFrame](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L81)          |
 | DF-C020 | P    | format as a text table                                                                | [DataFrame.format](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L467)            |
 | DF-C021 | C    | reuses compatible numeric buffers across Arrow conversion                             | [DataFrame layouts](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L6-L9)          |
+| DF-C022 | C    | fromRows checks rows against the schema's refinements, literals and row checks        | [DataFrame.fromRows](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L192)          |
+| DF-C023 | C    | fromRows, empty and validate reject schemas that transform their rows                 | [DataFrame.fromRows](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L192)          |
+| DF-C024 | P    | builds values only for the fields the schema constrains                               | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
+| DF-C025 | C    | takes an Arrow schema, converting the frame to its columns                            | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
+| DF-C026 | C    | rejects Arrow schemas with types a table can't declare                                | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
+| DF-C027 | C    | converts dates and times to the declared unit                                         | [DataFrame.validate](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L396)          |
 
 DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: import/export preserves the backing buffers, byte offsets and byte lengths, as well as values. It does not require typed-array wrapper identity or mutation-based aliasing. The compatible fixed-width layouts are described in Apache Arrow’s [Columnar format](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/docs/source/format/Columnar.rst#fixed-size-primitive-layout) and [Schema.fbs](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/format/Schema.fbs); the no-copy adapter promise is the Effect API contract, not a requirement that Arrow imposes on every adapter.
 
@@ -89,6 +95,37 @@ DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: 
 | DF-Q040 | C    | groups by keys of every type                                                                   | [Query.groupBy](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L610)                |
 | DF-Q041 | C    | joins on a high-cardinality key                                                                | [Query.join](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L680)                   |
 | DF-Q042 | C    | yields a long query so another fiber can interrupt it                                          | [Query yielding](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L65-L66)            |
+| DF-Q043 | C    | compiles a schema's checks when the table is declared, not per batch                           | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
+| DF-Q044 | C    | tables declared by an Arrow schema convert their input to its columns                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
+| DF-Q045 | C    | fails when a table is declared by a schema that has no columns for it                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
+
+DF-C022 to DF-C027 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, and tables declared by an Arrow schema. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only a frame whose columns already have the declared types.
+
+## Supported Schema subset
+
+`DataFrame.fromRows`, `DataFrame.empty`, `DataFrame.validate` and `Query.table` read a struct schema once and take from it column types and checks. They never decode or encode with it.
+
+| Schema                                    | Column type                                            |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `String`, template literals               | Utf8                                                   |
+| `Number`                                  | Float64, unless `options.types` names another type     |
+| `Boolean`                                 | Bool                                                   |
+| `BigInt`                                  | Int64                                                  |
+| `Null`, `Undefined`                       | Null                                                   |
+| literals and enums of one primitive type  | the type of their values                               |
+| `DateTimeUtc`                             | Timestamp in microseconds, without a time zone         |
+| `Duration`                                | Duration in microseconds                               |
+| `BigDecimal`                              | Decimal; `options.types` must give precision and scale |
+| `Array` of a supported schema             | List                                                   |
+| `Struct` of supported schemas             | Struct                                                 |
+| `NullOr`, `UndefinedOr`, optional fields  | the member's type, nullable                            |
+| unions whose members have one column type | that type                                              |
+
+Rejected with a `DataFrameError` that names the field: transformations (any schema with an encoding, such as `NumberFromString`, `decodeTo`, decoding defaults and renamed keys; `Schema.toType` gives the decoded side), `DateTimeZoned`, tuples, records, classes, unions of different column types, and recursive schemas.
+
+Refinements, literals, enums and template literals are value checks: every value of such a field is read and tested, inside structs, arrays and union members too. A struct's own checks are row checks: every row is read and tested. Fields without checks are checked by column type only, on the typed columns. `DataFrame.fromRows` tests the rows it is given; `DataFrame.validate` and `Query.table` test what they read. The checks are compiled when the schema is read (`Plan.TableChecks`) and are not part of a serialized plan: a plan decoded from JSON checks column types only. A SQL engine tests value checks on distinct values and fails for a table with row checks.
+
+A table declared by an Arrow schema (DF-C025, DF-C026, DF-Q044) involves no Effect Schema and has no checks.
 
 ## Oracle provenance and differential assertions
 
@@ -132,6 +169,7 @@ The actual SQL suite is **`packages/sql/pglite/test/DataFrameSql.test.ts`**, not
 - `fromRows takes the row type from the schema`
 - `fromRows, empty, validate and Query.table read missing values back as null`
 - `validate and Query.table take Arrow types for the schema's fields`
+- `validate and Query.table take an Arrow schema and give untyped rows`
 - `fromColumns infers column types`
 
 ### `Query`
@@ -177,6 +215,7 @@ Rejection assertions include unknown Arrow override fields (`DataFrame`), unknow
 - The callback timing contract now has a direct test (DF-Q002); it supplements, rather than replaces, lazy loading and per-run catalog tests.
 - DF-Q042 controls the host monotonic clock and disables automatic scheduler yields, then verifies a started public query lets its parent resume and interrupt it before completion. It does not assert a yield interval, timeout behavior, fairness among many fibers, or interruption within an operation.
 - DF-C021 covers buffer reuse only for the compatible numeric layouts described above. Sliced/multi-batch inputs, validity buffers, other layouts and mutation/ownership guarantees remain outside that assertion.
+- DF-C022 and DF-Q043 cover the check kinds named in their tests (a refinement, literals, an optional field, an array of structs, a row check). The subset table above is documentation: its rows are not each asserted here.
 - Dedicated coverage for public guards, every dual overload, and every malformed plan/IPC input is not established by this inventory. Those are gaps, not passing assertions.
 - Compiler inference/rejection coverage is inventoried above and is not counted as runtime coverage. Exact diagnostic strings and explain/format layouts are local regression details even where a test also verifies a public failure or result contract.
 
