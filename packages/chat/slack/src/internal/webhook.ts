@@ -57,17 +57,20 @@ export const makeVerifier = Effect.fnUntraced(function*(signingSecret: Redacted.
 })
 
 /**
- * The body, or `None` past `maxBytes` or when it can't be read, both
- * answered 413.
+ * The body, or `None` past `maxBodySize` or when it can't be read, both
+ * answered 413. The length is checked again because the request caches its
+ * body: one read earlier under a larger limit comes back as it was.
  */
 const readBody = (
   request: HttpServerRequest.HttpServerRequest,
-  maxBytes: number
+  maxBodySize: ByteSize.ByteSize
 ): Effect.Effect<Option.Option<Uint8Array>> =>
   request.arrayBuffer.pipe(
-    Effect.map((buffer) => Option.some(new Uint8Array(buffer))),
+    Effect.map((buffer) =>
+      buffer.byteLength > ByteSize.toNumberUnsafe(maxBodySize) ? Option.none() : Option.some(new Uint8Array(buffer))
+    ),
     Effect.catch(() => Effect.succeedNone),
-    Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(maxBytes))
+    Effect.provideService(HttpIncomingMessage.MaxBodySize, maxBodySize)
   )
 
 /** A slash command's form fields, as its payload. A repeated field keeps its first value. */
@@ -99,7 +102,7 @@ export interface Options {
   readonly botUserId: Effect.Effect<string, ChatError>
   readonly handle: (event: ChatEvent.ChatEvent) => Effect.Effect<void, NotAccepted>
   readonly deadline: Duration.Duration
-  readonly maxBodyBytes: number
+  readonly maxBodySize: ByteSize.ByteSize
 }
 
 /**
@@ -122,7 +125,7 @@ export const handleRequest = (
   options: Options
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
   Effect.gen(function*() {
-    const body = yield* readBody(request, options.maxBodyBytes)
+    const body = yield* readBody(request, options.maxBodySize)
     if (Option.isNone(body)) return status(413)
     if (!(yield* options.verify(request.headers, body.value))) return status(401)
     const envelope = Json.parse(decoder.decode(body.value))
@@ -160,7 +163,7 @@ export interface InteractivityOptions {
     options: { readonly deadline: Duration.Duration }
   ) => Effect.Effect<Schema.Json | undefined | ChatInteraction.Late>
   readonly deadline: Duration.Duration
-  readonly maxBodyBytes: number
+  readonly maxBodySize: ByteSize.ByteSize
 }
 
 const isLate = Schema.is(ChatInteraction.Late)
@@ -182,7 +185,7 @@ export const handleInteractivity = (
   options: InteractivityOptions
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
   Effect.gen(function*() {
-    const body = yield* readBody(request, options.maxBodyBytes)
+    const body = yield* readBody(request, options.maxBodySize)
     if (Option.isNone(body)) return status(413)
     if (!(yield* options.verify(request.headers, body.value))) return status(401)
     const form = new URLSearchParams(decoder.decode(body.value))

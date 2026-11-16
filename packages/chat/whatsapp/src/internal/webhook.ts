@@ -132,7 +132,7 @@ export interface Options {
   readonly handle: ReceiveOptions["handle"]
   readonly onUpdate?: ReceiveOptions["onUpdate"]
   readonly deadline: Duration.Duration
-  readonly maxBodyBytes: number
+  readonly maxBodySize: ByteSize.ByteSize
 }
 
 /** What a click leaves of the deadline for the rest of the request. */
@@ -141,8 +141,8 @@ const clickMargin = 250
 /**
  * One webhook POST.
  *
- * - 413 past the body limit, 401 for a bad signature, 400 for a body that
- *   is not a JSON object. Another `object` than
+ * - 413 past the body limit, 400 for a body that can't be read, then 401
+ *   for a bad signature and 400 for a body that is not a JSON object. Another `object` than
  *   `whatsapp_business_account` is answered 200 and dropped.
  * - 503 when an update fails `NotAccepted`, or the whole request takes
  *   longer than the deadline. Meta then delivers the batch again.
@@ -182,13 +182,15 @@ const work = (
   Effect.gen(function*() {
     const until = (yield* Clock.currentTimeMillis) + Duration.toMillis(options.deadline)
     const read = yield* request.arrayBuffer.pipe(
-      Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(options.maxBodyBytes)),
+      Effect.provideService(HttpIncomingMessage.MaxBodySize, options.maxBodySize),
       Effect.result
     )
     if (Result.isFailure(read)) {
       const { reason } = read.failure
       return status(reason._tag === "RequestParseError" && reason.reason === "BodyTooLarge" ? 413 : 400)
     }
+    // Measured again: the request caches its body, so one read earlier under a larger limit comes back whole.
+    if (read.success.byteLength > ByteSize.toNumberUnsafe(options.maxBodySize)) return status(413)
     const body = new Uint8Array(read.success)
     if (!(yield* options.verify(request.headers, body))) return status(401)
     let envelope: unknown

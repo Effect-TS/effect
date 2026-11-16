@@ -6,6 +6,7 @@ import { handleRequest, makeVerifier } from "@effect/chat-slack/internal/webhook
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import { dedupeKey } from "effect/chat/ChatEvent"
 import { checkEvent, sameMessage } from "effect/chat/ChatTest"
@@ -64,7 +65,7 @@ const deliver = Effect.fnUntraced(function*(delivery: Delivery) {
     botUserId: Effect.succeed(botUserId),
     handle: (event) => Effect.sync(() => void events.push(event)),
     deadline: Duration.seconds(2),
-    maxBodyBytes: 1024 * 1024
+    maxBodySize: ByteSize.mebibytes(1)
   })
   assert.strictEqual(response.status, 200)
   return events

@@ -22,6 +22,7 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import { Jwk, Jwt } from "effect/jose"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
@@ -61,6 +62,9 @@ const setup = Effect.fnUntraced(function*(options?: {
   readonly jwksUri?: string
   readonly teams?: Partial<Parameters<typeof TeamsChat.layer>[0]>
   readonly interactions?: ChatInteraction.Handler["Service"]
+  readonly maxBodyBytes?: number
+  /** Middleware that reads the whole body before the route does. */
+  readonly readFirst?: boolean
 }) {
   const pair = yield* Jwk.generateKeyPair({ algorithm: "RS256", kid: "k1" })
   const key = yield* Jwk.importPrivate(pair.privateKey, "RS256")
@@ -95,7 +99,15 @@ const setup = Effect.fnUntraced(function*(options?: {
     })
   )
   const events: Array<ChatEvent.ChatEvent> = []
-  const app = TeamsChat.layerWebhook({ path: "/api/messages" }).pipe(
+  const readFirst = HttpRouter.middleware(
+    (httpEffect) =>
+      Effect.andThen(Effect.flatMap(HttpServerRequest.HttpServerRequest, (r) => r.arrayBuffer), httpEffect),
+    { global: true }
+  )
+  const app = Layer.merge(
+    TeamsChat.layerWebhook({ path: "/api/messages", maxBodyBytes: options?.maxBodyBytes }),
+    options?.readFirst === true ? readFirst : Layer.empty
+  ).pipe(
     Layer.provide(TeamsChat.layer({ appId, tenantId, credentials: Redacted.make("secret"), ...options?.teams })),
     Layer.provide(Chat.layer),
     Layer.provide(
@@ -128,6 +140,15 @@ const setup = Effect.fnUntraced(function*(options?: {
 })
 
 describe("layerWebhook", () => {
+  it.effect("answers 413 past maxBodyBytes, also for a body middleware read first", () =>
+    Effect.gen(function*() {
+      for (const readFirst of [false, true]) {
+        const { events, send, token } = yield* setup({ maxBodyBytes: 100, readFirst })
+        assert.strictEqual(yield* send(activity(), `Bearer ${yield* token()}`), 413, `readFirst: ${readFirst}`)
+        assert.strictEqual(events.length, 0)
+      }
+    }).pipe(Effect.provide(crypto)))
+
   it.effect("answers 403 without a valid token, and for a token bound to another serviceUrl", () =>
     Effect.gen(function*() {
       const { events, send, token } = yield* setup()

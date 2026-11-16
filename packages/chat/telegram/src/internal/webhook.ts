@@ -1,4 +1,4 @@
-import type * as ByteSize from "effect/ByteSize"
+import * as ByteSize from "effect/ByteSize"
 import type { ChatError } from "effect/chat/ChatError"
 import { timingSafeEqual } from "effect/crypto/Mac"
 import * as Effect from "effect/Effect"
@@ -22,6 +22,15 @@ export const secretToken = (op: string, token: Redacted.Redacted<string>): Effec
 }
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+const parseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
 
 const status = (code: number) => HttpServerResponse.empty({ status: code })
 
@@ -29,7 +38,7 @@ const status = (code: number) => HttpServerResponse.empty({ status: code })
  * One webhook request.
  *
  * - 401 without the secret, before the body is read. 413 past
- *   `maxBodySize`, 400 for a body that is not an update.
+ *   `maxBodySize`, 400 for a body that can't be read or is not an update.
  * - 200 once the update was accepted, answered or sent to `onUnhandled`.
  * - 503 when its event was not accepted in time, or could not be read.
  *
@@ -48,13 +57,15 @@ export const handleRequest = (
     // Compared in constant time.
     if (header === undefined || !timingSafeEqual(encoder.encode(header), options.secret)) return status(401)
     const body = yield* Effect.result(
-      Effect.provideService(request.json, HttpIncomingMessage.MaxBodySize, options.maxBodySize)
+      Effect.provideService(request.arrayBuffer, HttpIncomingMessage.MaxBodySize, options.maxBodySize)
     )
     if (body._tag === "Failure") {
       const reason = body.failure.reason
       return status(reason._tag === "RequestParseError" && reason.reason === "BodyTooLarge" ? 413 : 400)
     }
-    const update = body.success
+    // Measured again: the request caches its body, so one read earlier under a larger limit comes back whole.
+    if (body.success.byteLength > ByteSize.toNumberUnsafe(options.maxBodySize)) return status(413)
+    const update = parseJson(decoder.decode(body.success))
     if (!Predicate.isObject(update) || typeof update.update_id !== "number") return status(400)
     switch (yield* options.receive(update)) {
       case "accepted":

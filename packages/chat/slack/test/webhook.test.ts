@@ -2,6 +2,7 @@ import { handleRequest, makeVerifier, type Options } from "@effect/chat-slack/in
 import * as SlackChat from "@effect/chat-slack/SlackChat"
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Chat from "effect/chat/Chat"
 import { ChatError, PlatformUnavailable } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
@@ -57,17 +58,20 @@ const request = async (body: string, options?: { readonly timestamp?: string; re
 
 const message = messageEnvelope({ ts: "1794509003.000001", user: "U080YLYB277", text: "hi <@U0CCLMD4S1L>" })
 
-const handle = Effect.fnUntraced(function*(options: Partial<Options>, web: Request) {
+const handle = Effect.fnUntraced(function*(
+  options: Partial<Options>,
+  web: Request | HttpServerRequest.HttpServerRequest
+) {
   const verify = yield* makeVerifier(Redacted.make(secret)).pipe(Effect.provide(NodeCrypto.layerMac))
   const events: Array<ChatEvent.ChatEvent> = []
-  const response = yield* handleRequest(HttpServerRequest.fromWeb(web), {
+  const response = yield* handleRequest(web instanceof Request ? HttpServerRequest.fromWeb(web) : web, {
     verify,
     appId,
     teamId: team,
     botUserId: Effect.succeed(botUserId),
     handle: (event) => Effect.sync(() => void events.push(event)),
     deadline: Duration.seconds(2),
-    maxBodyBytes: 1024 * 1024,
+    maxBodySize: ByteSize.mebibytes(1),
     ...options
   })
   return { status: response.status, response, events }
@@ -90,10 +94,16 @@ describe("webhook", () => {
       assert.strictEqual(wrongKey.events.length + old.events.length + unsigned.events.length, 0)
     }))
 
-  it.live("413 past the body limit", () =>
+  it.live("413 past the body limit, also for a body read earlier under a larger limit", () =>
     Effect.gen(function*() {
-      const big = yield* handle({ maxBodyBytes: 100 }, yield* Effect.promise(() => request("x".repeat(101))))
+      const limit = { maxBodySize: ByteSize.bytes(100) }
+      const big = yield* handle(limit, yield* Effect.promise(() => request("x".repeat(101))))
       assert.strictEqual(big.status, 413)
+      // Middleware read this signed event first; the request caches what it read.
+      const cached = HttpServerRequest.fromWeb(yield* Effect.promise(() => request(JSON.stringify(message))))
+      assert.isAbove((yield* cached.arrayBuffer).byteLength, 100)
+      const result = yield* handle(limit, cached)
+      assert.deepStrictEqual([result.status, result.events.length], [413, 0])
     }))
 
   it.live("answers url_verification with its challenge", () =>

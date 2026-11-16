@@ -43,6 +43,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as ByteSize from "effect/ByteSize"
 import { Registry } from "effect/chat/ChatAdapter"
 import { type ChatError, ChatErrorReason } from "effect/chat/ChatError"
 import type { ChatEvent } from "effect/chat/ChatEvent"
@@ -383,7 +384,11 @@ export const parts: (thread: ChatThread) => Option.Option<{
  *   body to the handler's return, takes longer than `deadline` (2.5 seconds
  *   by default). Each of the three is logged with its own message, the
  *   unreadable bot user as an error with its `ChatError` and the other two
- *   as warnings. Answers 413 past `maxBodyBytes` (1 MiB by default).
+ *   as warnings.
+ * - Answers 413 past `maxBodyBytes` (1 MiB by default), and for a body that
+ *   can't be read, before the signature is checked. `maxBodyBytes` must be
+ *   a non-negative safe integer; another value is a defect when the layer is
+ *   built.
  * - Slack redelivers on a timeout or an error, so an event can arrive twice.
  *   `ChatEvent.dedupeKey` gives the two deliveries equal keys.
  *
@@ -416,7 +421,7 @@ export const layerWebhook = (options: {
       botUserId: slack.botUserId,
       handle: handler.handle,
       deadline: options.deadline ?? Duration.millis(2500),
-      maxBodyBytes: options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes
+      maxBodySize: ByteSize.bytes(options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes)
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleRequest(request, webhookOptions))
   }))
@@ -435,8 +440,8 @@ export const layerWebhook = (options: {
  *   after the same signature and app checks.
  * - Hands the payload to `SlackChat.interaction` with `deadline` (2.5
  *   seconds by default). Its body is the response, and `Late` is answered
- *   with a 503, so the modal stays open with Slack's own error. Answers 413
- *   past `maxBodyBytes` (1 MiB by default).
+ *   with a 503, so the modal stays open with Slack's own error.
+ * - Answers 413 past `maxBodyBytes`, as `layerWebhook` does.
  * - Slack never redelivers an interaction, so a click or submit that is not
  *   answered in time is lost. A user can submit again, as a new request.
  *
@@ -468,7 +473,7 @@ export const layerInteractivity = (options: {
       interaction: (payload, interactionOptions) =>
         Effect.provideService(slack.interaction(payload, interactionOptions), ChatInteraction.Handler, handler),
       deadline: options.deadline ?? Interactions.defaultDeadline,
-      maxBodyBytes: options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes
+      maxBodySize: ByteSize.bytes(options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes)
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleInteractivity(request, interactivityOptions))
   }))

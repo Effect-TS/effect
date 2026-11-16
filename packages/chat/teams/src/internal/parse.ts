@@ -22,6 +22,15 @@ export const object = (value: unknown, key: string): JsonObject | undefined => {
   return isObject(field) ? field : undefined
 }
 
+/** The JSON value of `text`, or `undefined` when it is not JSON. @internal */
+export const parseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
 /** @internal */
 export const parseUrl = (input: string, base?: string): URL | undefined => {
   try {

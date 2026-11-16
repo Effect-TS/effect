@@ -233,8 +233,9 @@ export const secretHeader: string = Webhook.secretHeader
  *   `secretToken`, compared in constant time. Otherwise the answer is 401
  *   and the body is not read. The layer fails unless `secretToken` is 32 to
  *   256 characters of `A-Za-z0-9_-`.
- * - 413 past `maxBodyBytes` (1 MiB by default), 400 for a body that is not
- *   an update.
+ * - 413 past `maxBodyBytes` (1 MiB by default), 400 for a body that can't
+ *   be read or is not an update. `maxBodyBytes` must be a non-negative safe
+ *   integer; another value is a defect when the layer is built.
  * - The update goes through `receive`: 200 for `accepted` and
  *   `unhandled`, 503 for `notAccepted` and `invalid`, which Telegram
  *   sends again. A click or command is answered 200 after its reply

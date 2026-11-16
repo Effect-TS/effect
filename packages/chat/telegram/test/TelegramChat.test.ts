@@ -18,6 +18,7 @@ import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
 import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
@@ -159,7 +160,10 @@ it.effect("maps the rich message errors captured in live check 10", () =>
   }))
 
 describe("layerWebhook", () => {
-  const webhook = Effect.fnUntraced(function*(recorder: Recorder, server: Layer.Layer<never> = Layer.empty) {
+  const webhook = Effect.fnUntraced(function*(
+    recorder: Recorder,
+    server: Layer.Layer<never, never, HttpRouter.HttpRouter> = Layer.empty
+  ) {
     const app = TelegramChat.layerWebhook({ path: "/telegram", secretToken: Redacted.make(secret), maxBodyBytes: 4096 })
       .pipe(
         Layer.provide(telegramLayer(makeApi())),
@@ -193,6 +197,22 @@ describe("layerWebhook", () => {
       assert.strictEqual(yield* send(JSON.stringify({ message: {} }), secret), 400)
       assert.strictEqual(yield* send(update, secret), 200)
       assert.strictEqual(recorder.events.length, 1)
+    }))
+
+  it.effect("answers 413 for a body that middleware read first, past the limit", () =>
+    Effect.gen(function*() {
+      const recorder = makeRecorder()
+      const readFirst = HttpRouter.middleware(
+        (httpEffect) =>
+          Effect.andThen(
+            Effect.ignore(Effect.flatMap(HttpServerRequest.HttpServerRequest, (r) => r.arrayBuffer)),
+            httpEffect
+          ),
+        { global: true }
+      )
+      const send = yield* webhook(recorder, readFirst)
+      assert.strictEqual(yield* send(JSON.stringify(messageUpdate({ text: "x".repeat(5000) })), secret), 413)
+      assert.strictEqual(recorder.events.length, 0)
     }))
 
   it.effect("answers 503 when the handler does not accept", () =>

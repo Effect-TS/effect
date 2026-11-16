@@ -12,7 +12,7 @@ import { type Activity, tenantOf, type Verdict } from "./auth.ts"
 import type { InvokeResponse } from "./interactions.ts"
 import { isSubmitFallback } from "./interactions.ts"
 import { type Context, isTargeted, normalize } from "./normalize.ts"
-import { isObject, type JsonObject } from "./parse.ts"
+import { isObject, type JsonObject, parseJson } from "./parse.ts"
 
 const status = (code: number) => HttpServerResponse.empty({ status: code })
 
@@ -37,8 +37,10 @@ export interface Options {
   readonly invoke: (activity: JsonObject) => Effect.Effect<InvokeResponse>
   readonly command: (activity: JsonObject) => Effect.Effect<void>
   readonly deadline: Duration.Input
-  readonly maxBodyBytes: number
+  readonly maxBodySize: ByteSize.ByteSize
 }
+
+const decoder = new TextDecoder()
 
 const respond = (response: InvokeResponse) =>
   response.body === undefined
@@ -71,15 +73,17 @@ export const handleRequest = (
   options: Options
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
   Effect.gen(function*() {
-    const json = yield* request.json.pipe(
-      Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(options.maxBodyBytes)),
+    const read = yield* request.arrayBuffer.pipe(
+      Effect.provideService(HttpIncomingMessage.MaxBodySize, options.maxBodySize),
       Effect.result
     )
-    if (Result.isFailure(json)) {
-      const { reason } = json.failure
+    if (Result.isFailure(read)) {
+      const { reason } = read.failure
       return status(reason._tag === "RequestParseError" && reason.reason === "BodyTooLarge" ? 413 : 400)
     }
-    const activity = json.success
+    // Measured again: the request caches its body, so one read earlier under a larger limit comes back whole.
+    if (read.success.byteLength > ByteSize.toNumberUnsafe(options.maxBodySize)) return status(413)
+    const activity = parseJson(decoder.decode(read.success))
     if (!isObject(activity)) return status(400)
     const verdict = yield* options.verify(request.headers.authorization, {
       serviceUrl: activity.serviceUrl,

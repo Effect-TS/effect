@@ -24,6 +24,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as ByteSize from "effect/ByteSize"
 import { Registry } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
 import type { ChatEvent } from "effect/chat/ChatEvent"
@@ -318,7 +319,10 @@ export const layer = (options: {
  *   be normalised. An activity with no event goes to `onUnhandled` and is
  *   answered 200. Past `deadline` (10 seconds by default) the handler is
  *   interrupted and the answer is 503. Each 503 is logged with its reason.
- * - Answers 413 past `maxBodyBytes` (1 MiB by default).
+ * - Answers 413 past `maxBodyBytes` (1 MiB by default), and 400 for a body
+ *   that can't be read or is not a JSON object, both before the token is
+ *   checked. `maxBodyBytes` must be a non-negative safe integer; another
+ *   value is a defect when the layer is built.
  *
  * The metadata and the key set are fetched with redirects off, and the
  * metadata is read up to 64 KiB. A metadata document or `jwks_uri` that
@@ -391,7 +395,7 @@ export const layerWebhook = (options: {
             interactionHandler.value
           ),
       deadline: options.deadline ?? Duration.seconds(10),
-      maxBodyBytes: options.maxBodyBytes ?? 1024 * 1024
+      maxBodySize: ByteSize.bytes(options.maxBodyBytes ?? 1024 * 1024)
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleRequest(request, webhookOptions))
   }))

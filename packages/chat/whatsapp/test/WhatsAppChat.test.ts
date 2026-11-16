@@ -3,6 +3,7 @@ import * as WhatsAppChat from "@effect/chat-whatsapp/WhatsAppChat"
 import type { WhatsAppUpdate } from "@effect/chat-whatsapp/WhatsAppUpdate"
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
+import * as ByteSize from "effect/ByteSize"
 import * as Chat from "effect/chat/Chat"
 import type { File } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
@@ -259,6 +260,9 @@ const deliver = Effect.fnUntraced(function*(
     readonly onClick?: ChatInteraction.ClickReply
     readonly onRefused?: (error: ChatError) => Effect.Effect<void>
     readonly deadline?: Duration.Duration
+    readonly maxBodySize?: ByteSize.ByteSize
+    /** Read the whole body first, as a middleware might. */
+    readonly readFirst?: boolean
   }
 ) {
   const body = JSON.stringify(envelope)
@@ -267,10 +271,12 @@ const deliver = Effect.fnUntraced(function*(
   const seen: Array<string> = []
   const clicks: Array<ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged> = []
   const refused: Array<ChatError> = []
+  const request = HttpServerRequest.fromWeb(
+    new Request("http://localhost/whatsapp", { method: "POST", body, headers: { "x-hub-signature-256": signature } })
+  )
+  if (options?.readFirst === true) yield* request.arrayBuffer
   const response = yield* handleRequest(
-    HttpServerRequest.fromWeb(
-      new Request("http://localhost/whatsapp", { method: "POST", body, headers: { "x-hub-signature-256": signature } })
-    ),
+    request,
     {
       verify,
       normalize: (envelope) => WhatsAppChat.normalize(envelope, { phoneNumberId }),
@@ -282,7 +288,7 @@ const deliver = Effect.fnUntraced(function*(
           : Effect.sync(() => void seen.push(event._tag)),
       onUpdate: (update: WhatsAppUpdate) => Effect.sync(() => void seen.push(update._tag)),
       deadline: options?.deadline ?? Duration.seconds(4),
-      maxBodyBytes: 1024 * 1024
+      maxBodySize: options?.maxBodySize ?? ByteSize.mebibytes(1)
     }
   ).pipe(Effect.provideService(
     ChatInteraction.Handler,
@@ -313,6 +319,14 @@ describe("webhook", () => {
           Redacted.make("verify")
         ).status
       assert.deepStrictEqual([check("verify"), check("other")], [200, 403])
+    }))
+
+  it.effect("answers 413 past the body limit, also for a body read earlier", () =>
+    Effect.gen(function*() {
+      for (const readFirst of [false, true]) {
+        const result = yield* deliver(text, { maxBodySize: ByteSize.bytes(100), readFirst })
+        assert.deepStrictEqual([result.status, result.seen], [413, []], `readFirst: ${readFirst}`)
+      }
     }))
 
   it.effect("runs updates in order, drops a removed reaction and stops at NotAccepted with a 503", () =>
@@ -364,7 +378,7 @@ describe("webhook", () => {
             normalize: () => [],
             handle: () => Effect.void,
             deadline: Duration.seconds(4),
-            maxBodyBytes: 1024
+            maxBodySize: ByteSize.kibibytes(1)
           }
         ).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget))
         const fiber = yield* Effect.forkChild(request, { startImmediately: true })

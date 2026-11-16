@@ -26,6 +26,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as ByteSize from "effect/ByteSize"
 import { type Posted, Registry } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
@@ -280,9 +281,11 @@ export const parts: (thread: ChatThread) => Option.Option<{
  *
  * - `GET` answers Meta's check with `hub.challenge` when `hub.verify_token`
  *   is `verifyToken`, and 403 otherwise.
- * - `POST` checks `X-Hub-Signature-256` with the app secret (401), reads
- *   at most `maxBodyBytes` (3 MiB by default, 413), and drops a delivery
- *   for another object or another phone number with a 200.
+ * - `POST` reads at most `maxBodyBytes` (3 MiB by default, 413; a body
+ *   that can't be read is 400), checks `X-Hub-Signature-256` with the app
+ *   secret (401), and drops a delivery for another object or another phone
+ *   number with a 200. `maxBodyBytes` must be a non-negative safe integer;
+ *   another value is a defect when the layer is built.
  * - The updates run in order. Messages and reactions go to the
  *   `ChatHandler`, clicks to `ChatInteraction.handle`, and statuses and
  *   changed ids to `onUpdate`. A removed reaction is dropped.
@@ -339,7 +342,7 @@ export const layerWebhook = (options: {
       handle: handler.handle,
       onUpdate: options.onUpdate,
       deadline: options.deadline ?? Duration.seconds(10),
-      maxBodyBytes: options.maxBodyBytes ?? 3 * 1024 * 1024
+      maxBodySize: ByteSize.bytes(options.maxBodyBytes ?? 3 * 1024 * 1024)
     }
     yield* router.add(
       "GET",
