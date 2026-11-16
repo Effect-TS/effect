@@ -37,7 +37,7 @@ export const field = (
   extra: Partial<FieldProto> = {}
 ): FieldProto =>
   type.startsWith(".")
-    ? { name, number, label: 1, type: T.message, typeName: type, ...extra }
+    ? { name, number, label: 1, type: T.message, type_name: type, ...extra }
     : { name, number, label: 1, type: T[type as Scalar], ...extra }
 
 export const repeated = (field: FieldProto, extra: Partial<FieldProto> = {}): FieldProto => ({
@@ -57,12 +57,20 @@ export const map = (
   valueExtra: Partial<FieldProto> = {}
 ): readonly [FieldProto, MessageProto] => [
   repeated(field(name, number, `.${scope}.${entry}`)),
-  { name: entry, field: [field("key", 1, key), field("value", 2, value, valueExtra)], options: { mapEntry: true } }
+  { name: entry, field: [field("key", 1, key), field("value", 2, value, valueExtra)], options: { map_entry: true } }
 ]
 
 const [counts, CountsEntry] = map("test.Shape", "counts", "CountsEntry", 9, "string", "int32")
 const [byId, ByIdEntry] = map("test.Shape", "by_id", "ByIdEntry", 10, "int64", "string")
 const [flags, FlagsEntry] = map("test.Shape", "flags", "FlagsEntry", 11, "bool", ".test.Point")
+const [namedMap, NamedMapEntry] = map(
+  "test.NamedCollections",
+  "constructor",
+  "ConstructorEntry",
+  2,
+  "string",
+  ".test.Point"
+)
 const [modeByName, ModeByNameEntry] = map(
   "legacy.Legacy",
   "mode_by_name",
@@ -80,7 +88,7 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
   name: "test.proto",
   package: "test",
   syntax: "proto3",
-  messageType: [
+  message_type: [
     {
       // Each field's number is its type's number.
       name: "Scalars",
@@ -113,8 +121,8 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
     {
       // optional int32 a = 1;
       name: "Optional",
-      field: [field("a", 1, "int32", { oneofIndex: 0, proto3Optional: true })],
-      oneofDecl: [{ name: "_a" }]
+      field: [field("a", 1, "int32", { oneof_index: 0, proto3_optional: true })],
+      oneof_decl: [{ name: "_a" }]
     },
     { name: "Point", field: [field("x", 1, "int32"), field("y", 2, "int32")] },
     {
@@ -123,8 +131,8 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
         field("name", 1, "string"),
         field("origin", 2, ".test.Point"),
         repeated(field("points", 3, ".test.Point")),
-        field("label", 4, "string", { oneofIndex: 0 }),
-        field("center", 5, ".test.Point", { oneofIndex: 0 }),
+        field("label", 4, "string", { oneof_index: 0 }),
+        field("center", 5, ".test.Point", { oneof_index: 0 }),
         repeated(field("ids", 6, "int32")),
         repeated(field("weights", 7, "double")),
         repeated(field("tags", 8, "string")),
@@ -135,18 +143,34 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
         repeated(field("colors", 13, ".test.Color", { type: T.enum })),
         repeated(field("floats", 14, "float"))
       ],
-      oneofDecl: [{ name: "kind" }],
-      nestedType: [CountsEntry, ByIdEntry, FlagsEntry]
+      oneof_decl: [{ name: "kind" }],
+      nested_type: [CountsEntry, ByIdEntry, FlagsEntry]
     },
     { name: "Tree", field: [repeated(field("children", 1, ".test.Tree"))] },
-    { name: "Names", field: [field("constructor", 1, "int32"), field("foo_bar", 2, "int32", { jsonName: "fooBar" })] }
+    {
+      name: "Names",
+      field: [field("constructor", 1, "int32"), field("foo_bar", 2, "int32", { json_name: "customName" })]
+    },
+    {
+      name: "NamedOneof",
+      oneof_decl: [{ name: "__proto__" }],
+      field: [
+        field("child_value", 1, ".test.Point", { oneof_index: 0 }),
+        field("toString", 2, "int32", { oneof_index: 0 })
+      ]
+    },
+    {
+      name: "NamedCollections",
+      field: [repeated(field("__proto__", 1, "string")), namedMap],
+      nested_type: [NamedMapEntry]
+    }
   ],
-  enumType: [{ name: "Color", value: [{ name: "RED", number: 0 }, { name: "GREEN", number: 1 }] }],
+  enum_type: [{ name: "Color", value: [{ name: "RED", number: 0 }, { name: "GREEN", number: 1 }] }],
   service: [{
     name: "Shapes",
     method: [
-      { name: "Get", inputType: ".test.Point", outputType: ".test.Shape", options: { idempotencyLevel: 1 } },
-      { name: "Watch", inputType: ".test.Point", outputType: ".test.Shape", serverStreaming: true }
+      { name: "Get", input_type: ".test.Point", output_type: ".test.Shape", options: { idempotency_level: 1 } },
+      { name: "Watch", input_type: ".test.Point", output_type: ".test.Shape", server_streaming: true }
     ]
   }]
 }
@@ -155,7 +179,18 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
 export const proto2: ProtobufDescriptor.FileDescriptorProto = {
   name: "legacy.proto",
   package: "legacy",
-  messageType: [
+  message_type: [
+    {
+      name: "OriginalNames",
+      field: [
+        field("bar", 1, "int32"),
+        field("bar_", 2, "int32", { json_name: "barUnderscore" }),
+        field("constructor", 3, ".test.Point"),
+        field("__proto__", 4, ".test.Point"),
+        field("toString", 5, "int32")
+      ]
+    },
+    { name: "RequiredName", field: [field("constructor", 1, "int32", { label: 2 })] },
     {
       name: "Legacy",
       field: [
@@ -167,17 +202,18 @@ export const proto2: ProtobufDescriptor.FileDescriptorProto = {
         repeated(field("modes", 7, ".legacy.Mode", { type: T.enum, options: { packed: true } })),
         modeByName
       ],
-      nestedType: [{ name: "Item", field: [field("x", 5, "int32")] }, ModeByNameEntry],
-      extensionRange: [{ start: 100, end: 200 }]
+      nested_type: [{ name: "Item", field: [field("x", 5, "int32")] }, ModeByNameEntry],
+      extension_range: [{ start: 100, end: 200 }]
     },
-    { name: "Set", options: { messageSetWireFormat: true }, extensionRange: [{ start: 4, end: 536870912 }] },
+    { name: "Set", options: { message_set_wire_format: true }, extension_range: [{ start: 4, end: 536870912 }] },
     {
       name: "SetMember",
       field: [field("text", 1, "string")],
       extension: [field("member", 1000, ".legacy.SetMember", { extendee: ".legacy.Set" })]
     }
   ],
-  enumType: [{ name: "Mode", value: [{ name: "A", number: 1 }, { name: "B", number: 2 }] }],
+  dependency: ["test.proto"],
+  enum_type: [{ name: "Mode", value: [{ name: "A", number: 1 }, { name: "B", number: 2 }] }],
   extension: [
     field("priority", 100, "int32", { extendee: ".legacy.Legacy" }),
     repeated(field("labels", 101, "string", { extendee: ".legacy.Legacy" }))
@@ -190,23 +226,23 @@ export const editions: ProtobufDescriptor.FileDescriptorProto = {
   package: "editions",
   syntax: "editions",
   edition: 1000,
-  messageType: [
+  message_type: [
     {
       name: "E",
       field: [
         field("a", 1, "int32"),
-        field("b", 2, "int32", { options: { features: { fieldPresence: 2 } } }),
+        field("b", 2, "int32", { options: { features: { field_presence: 2 } } }),
         repeated(field("c", 3, "int32")),
-        field("d", 4, ".editions.E.Inner", { options: { features: { messageEncoding: 2 } } }),
+        field("d", 4, ".editions.E.Inner", { options: { features: { message_encoding: 2 } } }),
         field("e", 5, ".editions.Closed", { type: T.enum })
       ],
-      nestedType: [{ name: "Inner", field: [field("x", 1, "int32")] }]
+      nested_type: [{ name: "Inner", field: [field("x", 1, "int32")] }]
     }
   ],
-  enumType: [{
+  enum_type: [{
     name: "Closed",
     value: [{ name: "ONE", number: 1 }],
-    options: { features: { enumType: 2 } }
+    options: { features: { enum_type: 2 } }
   }]
 }
 

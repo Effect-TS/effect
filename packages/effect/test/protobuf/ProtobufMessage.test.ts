@@ -44,14 +44,14 @@ const shapeZeros = {
   weights: [],
   tags: [],
   counts: {},
-  byId: {},
+  by_id: {},
   flags: {},
   color: 0,
   colors: [],
   floats: []
 }
 
-const legacyZeros = { values: [], modes: [], modeByName: {} }
+const legacyZeros = { values: [], modes: [], mode_by_name: {} }
 
 describe("ProtobufMessage", () => {
   // Each case encodes to its bytes, and decodes back to its value, with the
@@ -74,11 +74,14 @@ describe("ProtobufMessage", () => {
       ["sfixed64 -2", "test.Scalars", { sfixed64: -2n }, "8101 feffffffffffffff", scalarZeros],
       ["sint32 -1", "test.Scalars", { sint32: -1 }, "8801 01", scalarZeros],
       ["sint64 -1", "test.Scalars", { sint64: -1n }, "9001 01", scalarZeros],
-      ["an int64 as a string", "test.Js", { asString: "-1" }, "08 ffffffffffffffffff01", {
-        asString: "0",
-        asNumber: 0
+      ["an int64 as a string", "test.Js", { as_string: "-1" }, "08 ffffffffffffffffff01", {
+        as_string: "0",
+        as_number: 0
       }],
-      ["an int64 as a number", "test.Js", { asNumber: 2 ** 53 }, "10 8080808080808010", { asString: "0", asNumber: 0 }],
+      ["an int64 as a number", "test.Js", { as_number: 2 ** 53 }, "10 8080808080808010", {
+        as_string: "0",
+        as_number: 0
+      }],
       ["an explicit zero", "test.Optional", { a: 0 }, "0800", {}],
       ["a message", "test.Shape", { origin: { x: 1, y: 0 } }, "12 02 0801", shapeZeros],
       [
@@ -95,7 +98,13 @@ describe("ProtobufMessage", () => {
       ["packed floats", "test.Shape", { floats: [1, -2] }, "72 08 0000803f000000c0", shapeZeros],
       ["repeated strings", "test.Shape", { tags: ["a", "b"] }, "42 01 61 42 01 62", shapeZeros],
       ["a map of strings", "test.Shape", { counts: { a: 1 } }, "4a 05 0a0161 1001", shapeZeros],
-      ["a map of int64 keys", "test.Shape", { byId: { "-5": "x" } }, "52 0e 08fbffffffffffffffff01 120178", shapeZeros],
+      [
+        "a map of int64 keys",
+        "test.Shape",
+        { by_id: { "-5": "x" } },
+        "52 0e 08fbffffffffffffffff01 120178",
+        shapeZeros
+      ],
       ["a map of messages", "test.Shape", { flags: { true: { x: 1, y: 0 } } }, "5a 06 0801 12020801", shapeZeros],
       ["an enum", "test.Shape", { color: 1 }, "60 01", shapeZeros],
       ["packed enums", "test.Shape", { colors: [1, 0] }, "6a 02 0100", shapeZeros],
@@ -108,7 +117,7 @@ describe("ProtobufMessage", () => {
       [
         "a map of a closed enum",
         "legacy.Legacy",
-        { id: 1, modeByName: { a: 1 } },
+        { id: 1, mode_by_name: { a: 1 } },
         "0801 4205 0a0161 1001",
         legacyZeros
       ],
@@ -135,7 +144,65 @@ describe("ProtobufMessage", () => {
   })
 
   it("rounds a JS_NUMBER int64 outside the safe integers, as Number does", () => {
-    assert.strictEqual(decode("test.Js", "10 8180808080808010").asNumber, 2 ** 53)
+    assert.strictEqual(decode("test.Js", "10 8180808080808010").as_number, 2 ** 53)
+  })
+
+  describe("original names", () => {
+    it("round-trips names that would collide after camel casing", () => {
+      const value = decode("legacy.OriginalNames", "08011002")
+      assert.deepStrictEqual(value, { bar: 1, bar_: 2 })
+      assert.strictEqual(encode("legacy.OriginalNames", value), "08011002")
+    })
+
+    it("preserves implicit field names, including Object.prototype names", () => {
+      assert.deepStrictEqual(decode("test.Names", ""), { constructor: 0, foo_bar: 0 })
+      const value = { constructor: 1, foo_bar: 2 }
+      assert.strictEqual(encode("test.Names", value), "08011002")
+      assert.deepStrictEqual(decode("test.Names", "08011002"), value)
+      assert.strictEqual(encode("test.Names", {}), "")
+    })
+
+    it("stores and merges explicit fields as own properties", () => {
+      const hex = "1a0208011a02100222020803220210042805"
+      const value = decode("legacy.OriginalNames", hex)
+      assert.deepStrictEqual(value, {
+        constructor: { x: 1, y: 2 },
+        ["__proto__"]: { x: 3, y: 4 },
+        toString: 5
+      })
+      assert.strictEqual(Object.getPrototypeOf(value), Object.prototype)
+      assert.strictEqual(Object.hasOwn(value, "__proto__"), true)
+      assert.strictEqual(encode("legacy.OriginalNames", value), "1a04080110022204080310042805")
+      assert.deepStrictEqual(decode("legacy.OriginalNames", ""), {})
+      assert.strictEqual(encode("legacy.OriginalNames", {}), "")
+    })
+
+    it("preserves oneof names and case tags without changing the object prototype", () => {
+      const value = { ["__proto__"]: { _tag: "child_value", value: { x: 1, y: 2 } } }
+      assert.deepStrictEqual(decode("test.NamedOneof", "0a0208010a021002"), value)
+      assert.strictEqual(encode("test.NamedOneof", value), "0a0408011002")
+      const replaced = decode("test.NamedOneof", "0a001003")
+      assert.deepStrictEqual(replaced, { ["__proto__"]: { _tag: "toString", value: 3 } })
+      assert.strictEqual(Object.getPrototypeOf(replaced), Object.prototype)
+      assert.strictEqual(encode("test.NamedOneof", {}), "")
+    })
+
+    it("preserves repeated field, map field and map key names", () => {
+      const value = { ["__proto__"]: ["a"], constructor: { ["__proto__"]: { x: 1, y: 0 } } }
+      const encoded = encode("test.NamedCollections", value)
+      const decoded = decode("test.NamedCollections", encoded)
+      assert.deepStrictEqual(decoded, value)
+      assert.strictEqual(Object.getPrototypeOf(decoded), Object.prototype)
+      assert.strictEqual(Object.getPrototypeOf(decoded.constructor), Object.prototype)
+      assert.deepStrictEqual(decode("test.NamedCollections", ""), { ["__proto__"]: [], constructor: {} })
+      assert.strictEqual(encode("test.NamedCollections", {}), "")
+    })
+
+    it("does not satisfy required fields with inherited properties", () => {
+      assert.isTrue(Result.isFailure(ProtobufMessage.decode(message("legacy.RequiredName"))(bytes(""))))
+      assert.isTrue(Result.isFailure(ProtobufMessage.encode(message("legacy.RequiredName"))({})))
+      assert.deepStrictEqual(decode("legacy.RequiredName", "0801"), { constructor: 1 })
+    })
   })
 
   describe("decodes", () => {
@@ -296,8 +363,8 @@ describe("ProtobufMessage", () => {
         "counts",
         "a"
       ]],
-      ["a map key", "test.Shape", { byId: { x: "a" } }, "byId.x: Expected an integer key for an int64, got \"x\"", [
-        "byId",
+      ["a map key", "test.Shape", { by_id: { x: "a" } }, "by_id.x: Expected an integer key for an int64, got \"x\"", [
+        "by_id",
         "x"
       ]],
       ["a uint64 out of range", "test.Scalars", { uint64: -1n }, "uint64: Expected a uint64 in range, got -1n", [

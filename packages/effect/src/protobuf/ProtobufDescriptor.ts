@@ -32,14 +32,14 @@
  *   package: "acme.v1",
  *   syntax: "proto3",
  *   dependency: [],
- *   messageType: [{
+ *   message_type: [{
  *     name: "User",
- *     field: [{ name: "display_name", number: 1, label: 1, type: 9, jsonName: "displayName" }]
+ *     field: [{ name: "display_name", number: 1, label: 1, type: 9, json_name: "displayName" }]
  *   }]
  * }]))
  *
  * const user = registry.getMessage("acme.v1.User")!
- * user.fields.map((field) => field.localName) // => ["displayName"]
+ * user.fields.map((field) => field.localName) // => ["display_name"]
  * ```
  *
  * @stability experimental
@@ -181,8 +181,7 @@ export interface MessageDescriptor {
  * - `"map"`: a map field, a record from keys to values
  *
  * `localName` is the property that holds the field in a message value: the
- * lowerCamelCase of its name, with a `$` appended when that is a property of
- * `Object.prototype`, such as `constructor$`.
+ * original protobuf name, without casing changes or escaping.
  *
  * @stability experimental
  * @category models
@@ -447,7 +446,7 @@ export class ProtobufDescriptorError extends Data.TaggedError("ProtobufDescripto
  *   name: "point.proto",
  *   syntax: "proto3",
  *   dependency: [],
- *   messageType: [{
+ *   message_type: [{
  *     name: "Point",
  *     field: [
  *       { name: "x", number: 1, label: 1, type: 5 },

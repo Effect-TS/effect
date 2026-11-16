@@ -142,6 +142,9 @@ interface Compiled {
 
 const cache = new WeakMap<D.MessageDescriptor, Compiled>()
 
+// Protobuf names can also be names inherited from Object.prototype.
+const ownValue = (message: any, key: string): any => Object.hasOwn(message, key) ? message[key] : undefined
+
 // Messages are registered before their fields are compiled, so that recursive
 // messages refer to themselves.
 const compile = (descriptor: D.MessageDescriptor): Compiled => {
@@ -177,7 +180,7 @@ const compile = (descriptor: D.MessageDescriptor): Compiled => {
   }
   out.create = () => {
     const value: any = {}
-    for (let i = 0; i < keys.length; i++) value[keys[i]] = zeros[i]()
+    for (let i = 0; i < keys.length; i++) InternalRecord.assignProperty(value, keys[i], zeros[i]())
     return value
   }
   for (const field of [...fields].sort((a, b) => a.number - b.number)) {
@@ -481,7 +484,7 @@ const toFailure = (e: unknown): Failure => {
 const checkRequired = (pending: ReadonlyArray<readonly [Compiled, any]>): void => {
   for (const [compiled, value] of pending) {
     for (const field of compiled.required) {
-      if (value[field.localName] === undefined) {
+      if (ownValue(value, field.localName) === undefined) {
         fail(`Expected required field ${field.name} of ${compiled.descriptor.typeName}`)
       }
     }
@@ -603,20 +606,20 @@ const singularReader = (field: D.SingularFieldDescriptor): FieldReader => {
     const tag = field.localName
     return (r, target, actual, depth) => {
       if (actual !== wireType) return SKIP
-      const current = target[key]
+      const current = ownValue(target, key)
       const before = merges && current !== undefined && current._tag === tag ? current.value : undefined
       const value = read(r, before, depth)
       if (value === KEEP_VALUE) return KEEP
-      target[key] = { _tag: tag, value }
+      InternalRecord.assignProperty(target, key, { _tag: tag, value })
       return STORED
     }
   }
   const key = field.localName
   return (r, target, actual, depth) => {
     if (actual !== wireType) return SKIP
-    const value = read(r, merges ? target[key] : undefined, depth)
+    const value = read(r, merges ? ownValue(target, key) : undefined, depth)
     if (value === KEEP_VALUE) return KEEP
-    target[key] = value
+    InternalRecord.assignProperty(target, key, value)
     return STORED
   }
 }
@@ -791,7 +794,7 @@ const writeFields = (
   const oneofs = compiled.oneofs
   for (let i = 0; i < oneofs.length; i++) {
     const { cases, key } = oneofs[i]
-    const value = message[key]
+    const value = ownValue(message, key)
     if (value !== undefined && (typeof value !== "object" || value === null || !cases.has(value._tag))) {
       rethrow(new Failure(`Expected a case of oneof ${key}, got ${show(value?._tag ?? value)}`), key)
     }
@@ -862,7 +865,7 @@ const singularWriter = (field: D.SingularFieldDescriptor): FieldWriter => {
     const key = oneof.localName
     const tag = field.localName
     return (w, message, depth, options) => {
-      const value = message[key]
+      const value = ownValue(message, key)
       if (value !== undefined && value._tag === tag) write(w, value.value, depth, options)
     }
   }
@@ -870,20 +873,20 @@ const singularWriter = (field: D.SingularFieldDescriptor): FieldWriter => {
   switch (field.presence) {
     case "required":
       return (w, message, depth, options) => {
-        const value = message[key]
+        const value = ownValue(message, key)
         if (value === undefined) fail(`Expected a value for required field ${field.name}`)
         write(w, value, depth, options)
       }
     case "explicit":
       return (w, message, depth, options) => {
-        const value = message[key]
+        const value = ownValue(message, key)
         if (value !== undefined) write(w, value, depth, options)
       }
     case "implicit": {
       // Messages always have explicit presence.
       const zero = isZero(field.type as D.ScalarValueType | D.EnumValueType)
       return (w, message, depth, options) => {
-        const value = message[key]
+        const value = ownValue(message, key)
         if (value !== undefined && !zero(value)) write(w, value, depth, options)
       }
     }
@@ -896,7 +899,7 @@ const listWriter = (field: D.ListFieldDescriptor): FieldWriter => {
   const writeList = field.packed && type.kind !== "message" ? packedWriter(type, field.number) : undefined
   const write = valueWriter(type, field.number)
   return (w, message, depth, options) => {
-    const list = message[key]
+    const list = ownValue(message, key)
     if (list === undefined) return
     if (!Array.isArray(list)) expected("an array", list)
     if (list.length === 0) return
@@ -955,7 +958,7 @@ const mapWriter = (field: D.MapFieldDescriptor): FieldWriter => {
   const writeValue = valueWriter(field.type, 2)
   const number = field.number
   return (w, message, depth, options) => {
-    const record = message[key]
+    const record = ownValue(message, key)
     if (record === undefined) return
     if (typeof record !== "object" || record === null || Array.isArray(record)) expected("a record", record)
     for (const k of Object.keys(record)) {
@@ -1078,7 +1081,7 @@ export const getExtension = (
     const target = holderOf(extension).create()
     readFields(r, holderOf(extension), target, undefined, 0)
     if (r.pending !== undefined) checkRequired(r.pending)
-    return Result.succeed(target[field.localName])
+    return Result.succeed(ownValue(target, field.localName))
   } catch (e) {
     return Result.fail(toFailure(e))
   }

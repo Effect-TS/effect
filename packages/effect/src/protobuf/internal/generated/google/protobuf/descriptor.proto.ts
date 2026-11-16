@@ -13,7 +13,7 @@ import type * as ProtobufDescriptor from "../../../../ProtobufDescriptor.ts"
 export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve([{
   name: "google/protobuf/descriptor.proto",
   package: "google.protobuf",
-  messageType: [
+  message_type: [
     {
       name: "FileDescriptorSet",
       field: [
@@ -22,179 +22,179 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FileDescriptorProto",
-          jsonName: "file"
+          type_name: ".google.protobuf.FileDescriptorProto",
+          json_name: "file"
         }
       ],
-      extensionRange: [{ start: 536000000, end: 536000001 }]
+      extension_range: [{ start: 536000000, end: 536000001 }]
     },
     {
       name: "FileDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
-        { name: "package", number: 2, label: 1, type: 9, jsonName: "package" },
-        { name: "dependency", number: 3, label: 3, type: 9, jsonName: "dependency" },
-        { name: "public_dependency", number: 10, label: 3, type: 5, jsonName: "publicDependency" },
-        { name: "weak_dependency", number: 11, label: 3, type: 5, jsonName: "weakDependency" },
-        { name: "option_dependency", number: 15, label: 3, type: 9, jsonName: "optionDependency" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
+        { name: "package", number: 2, label: 1, type: 9, json_name: "package" },
+        { name: "dependency", number: 3, label: 3, type: 9, json_name: "dependency" },
+        { name: "public_dependency", number: 10, label: 3, type: 5, json_name: "publicDependency" },
+        { name: "weak_dependency", number: 11, label: 3, type: 5, json_name: "weakDependency" },
+        { name: "option_dependency", number: 15, label: 3, type: 9, json_name: "optionDependency" },
         {
           name: "message_type",
           number: 4,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.DescriptorProto",
-          jsonName: "messageType"
+          type_name: ".google.protobuf.DescriptorProto",
+          json_name: "messageType"
         },
         {
           name: "enum_type",
           number: 5,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.EnumDescriptorProto",
-          jsonName: "enumType"
+          type_name: ".google.protobuf.EnumDescriptorProto",
+          json_name: "enumType"
         },
         {
           name: "service",
           number: 6,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.ServiceDescriptorProto",
-          jsonName: "service"
+          type_name: ".google.protobuf.ServiceDescriptorProto",
+          json_name: "service"
         },
         {
           name: "extension",
           number: 7,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FieldDescriptorProto",
-          jsonName: "extension"
+          type_name: ".google.protobuf.FieldDescriptorProto",
+          json_name: "extension"
         },
         {
           name: "options",
           number: 8,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FileOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.FileOptions",
+          json_name: "options"
         },
         {
           name: "source_code_info",
           number: 9,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.SourceCodeInfo",
-          jsonName: "sourceCodeInfo"
+          type_name: ".google.protobuf.SourceCodeInfo",
+          json_name: "sourceCodeInfo"
         },
-        { name: "syntax", number: 12, label: 1, type: 9, jsonName: "syntax" },
+        { name: "syntax", number: 12, label: 1, type: 9, json_name: "syntax" },
         {
           name: "edition",
           number: 14,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.Edition",
-          jsonName: "edition"
+          type_name: ".google.protobuf.Edition",
+          json_name: "edition"
         }
       ]
     },
     {
       name: "DescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
         {
           name: "field",
           number: 2,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FieldDescriptorProto",
-          jsonName: "field"
+          type_name: ".google.protobuf.FieldDescriptorProto",
+          json_name: "field"
         },
         {
           name: "extension",
           number: 6,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FieldDescriptorProto",
-          jsonName: "extension"
+          type_name: ".google.protobuf.FieldDescriptorProto",
+          json_name: "extension"
         },
         {
           name: "nested_type",
           number: 3,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.DescriptorProto",
-          jsonName: "nestedType"
+          type_name: ".google.protobuf.DescriptorProto",
+          json_name: "nestedType"
         },
         {
           name: "enum_type",
           number: 4,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.EnumDescriptorProto",
-          jsonName: "enumType"
+          type_name: ".google.protobuf.EnumDescriptorProto",
+          json_name: "enumType"
         },
         {
           name: "extension_range",
           number: 5,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.DescriptorProto.ExtensionRange",
-          jsonName: "extensionRange"
+          type_name: ".google.protobuf.DescriptorProto.ExtensionRange",
+          json_name: "extensionRange"
         },
         {
           name: "oneof_decl",
           number: 8,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.OneofDescriptorProto",
-          jsonName: "oneofDecl"
+          type_name: ".google.protobuf.OneofDescriptorProto",
+          json_name: "oneofDecl"
         },
         {
           name: "options",
           number: 7,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.MessageOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.MessageOptions",
+          json_name: "options"
         },
         {
           name: "reserved_range",
           number: 9,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.DescriptorProto.ReservedRange",
-          jsonName: "reservedRange"
+          type_name: ".google.protobuf.DescriptorProto.ReservedRange",
+          json_name: "reservedRange"
         },
-        { name: "reserved_name", number: 10, label: 3, type: 9, jsonName: "reservedName" },
+        { name: "reserved_name", number: 10, label: 3, type: 9, json_name: "reservedName" },
         {
           name: "visibility",
           number: 11,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.SymbolVisibility",
-          jsonName: "visibility"
+          type_name: ".google.protobuf.SymbolVisibility",
+          json_name: "visibility"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "ExtensionRange",
           field: [
-            { name: "start", number: 1, label: 1, type: 5, jsonName: "start" },
-            { name: "end", number: 2, label: 1, type: 5, jsonName: "end" },
+            { name: "start", number: 1, label: 1, type: 5, json_name: "start" },
+            { name: "end", number: 2, label: 1, type: 5, json_name: "end" },
             {
               name: "options",
               number: 3,
               label: 1,
               type: 11,
-              typeName: ".google.protobuf.ExtensionRangeOptions",
-              jsonName: "options"
+              type_name: ".google.protobuf.ExtensionRangeOptions",
+              json_name: "options"
             }
           ]
         },
         {
           name: "ReservedRange",
           field: [
-            { name: "start", number: 1, label: 1, type: 5, jsonName: "start" },
-            { name: "end", number: 2, label: 1, type: 5, jsonName: "end" }
+            { name: "start", number: 1, label: 1, type: 5, json_name: "start" },
+            { name: "end", number: 2, label: 1, type: 5, json_name: "end" }
           ]
         }
       ]
@@ -207,16 +207,16 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         },
         {
           name: "declaration",
           number: 2,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.ExtensionRangeOptions.Declaration",
-          jsonName: "declaration",
+          type_name: ".google.protobuf.ExtensionRangeOptions.Declaration",
+          json_name: "declaration",
           options: { retention: 2 }
         },
         {
@@ -224,78 +224,78 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 50,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "verification",
           number: 3,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.ExtensionRangeOptions.VerificationState",
-          defaultValue: "UNVERIFIED",
-          jsonName: "verification",
+          type_name: ".google.protobuf.ExtensionRangeOptions.VerificationState",
+          default_value: "UNVERIFIED",
+          json_name: "verification",
           options: { retention: 2 }
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "Declaration",
           field: [
-            { name: "number", number: 1, label: 1, type: 5, jsonName: "number" },
-            { name: "full_name", number: 2, label: 1, type: 9, jsonName: "fullName" },
-            { name: "type", number: 3, label: 1, type: 9, jsonName: "type" },
-            { name: "reserved", number: 5, label: 1, type: 8, jsonName: "reserved" },
-            { name: "repeated", number: 6, label: 1, type: 8, jsonName: "repeated" }
+            { name: "number", number: 1, label: 1, type: 5, json_name: "number" },
+            { name: "full_name", number: 2, label: 1, type: 9, json_name: "fullName" },
+            { name: "type", number: 3, label: 1, type: 9, json_name: "type" },
+            { name: "reserved", number: 5, label: 1, type: 8, json_name: "reserved" },
+            { name: "repeated", number: 6, label: 1, type: 8, json_name: "repeated" }
           ],
-          reservedRange: [{ start: 4, end: 5 }]
+          reserved_range: [{ start: 4, end: 5 }]
         }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "VerificationState",
           value: [{ name: "DECLARATION", number: 0 }, { name: "UNVERIFIED", number: 1 }]
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
     },
     {
       name: "FieldDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
-        { name: "number", number: 3, label: 1, type: 5, jsonName: "number" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
+        { name: "number", number: 3, label: 1, type: 5, json_name: "number" },
         {
           name: "label",
           number: 4,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FieldDescriptorProto.Label",
-          jsonName: "label"
+          type_name: ".google.protobuf.FieldDescriptorProto.Label",
+          json_name: "label"
         },
         {
           name: "type",
           number: 5,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FieldDescriptorProto.Type",
-          jsonName: "type"
+          type_name: ".google.protobuf.FieldDescriptorProto.Type",
+          json_name: "type"
         },
-        { name: "type_name", number: 6, label: 1, type: 9, jsonName: "typeName" },
-        { name: "extendee", number: 2, label: 1, type: 9, jsonName: "extendee" },
-        { name: "default_value", number: 7, label: 1, type: 9, jsonName: "defaultValue" },
-        { name: "oneof_index", number: 9, label: 1, type: 5, jsonName: "oneofIndex" },
-        { name: "json_name", number: 10, label: 1, type: 9, jsonName: "jsonName" },
+        { name: "type_name", number: 6, label: 1, type: 9, json_name: "typeName" },
+        { name: "extendee", number: 2, label: 1, type: 9, json_name: "extendee" },
+        { name: "default_value", number: 7, label: 1, type: 9, json_name: "defaultValue" },
+        { name: "oneof_index", number: 9, label: 1, type: 5, json_name: "oneofIndex" },
+        { name: "json_name", number: 10, label: 1, type: 9, json_name: "jsonName" },
         {
           name: "options",
           number: 8,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FieldOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.FieldOptions",
+          json_name: "options"
         },
-        { name: "proto3_optional", number: 17, label: 1, type: 8, jsonName: "proto3Optional" }
+        { name: "proto3_optional", number: 17, label: 1, type: 8, json_name: "proto3Optional" }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "Type",
           value: [
@@ -332,61 +332,61 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
     {
       name: "OneofDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
         {
           name: "options",
           number: 2,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.OneofOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.OneofOptions",
+          json_name: "options"
         }
       ]
     },
     {
       name: "EnumDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
         {
           name: "value",
           number: 2,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.EnumValueDescriptorProto",
-          jsonName: "value"
+          type_name: ".google.protobuf.EnumValueDescriptorProto",
+          json_name: "value"
         },
         {
           name: "options",
           number: 3,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.EnumOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.EnumOptions",
+          json_name: "options"
         },
         {
           name: "reserved_range",
           number: 4,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.EnumDescriptorProto.EnumReservedRange",
-          jsonName: "reservedRange"
+          type_name: ".google.protobuf.EnumDescriptorProto.EnumReservedRange",
+          json_name: "reservedRange"
         },
-        { name: "reserved_name", number: 5, label: 3, type: 9, jsonName: "reservedName" },
+        { name: "reserved_name", number: 5, label: 3, type: 9, json_name: "reservedName" },
         {
           name: "visibility",
           number: 6,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.SymbolVisibility",
-          jsonName: "visibility"
+          type_name: ".google.protobuf.SymbolVisibility",
+          json_name: "visibility"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "EnumReservedRange",
           field: [
-            { name: "start", number: 1, label: 1, type: 5, jsonName: "start" },
-            { name: "end", number: 2, label: 1, type: 5, jsonName: "end" }
+            { name: "start", number: 1, label: 1, type: 5, json_name: "start" },
+            { name: "end", number: 2, label: 1, type: 5, json_name: "end" }
           ]
         }
       ]
@@ -394,97 +394,97 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
     {
       name: "EnumValueDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
-        { name: "number", number: 2, label: 1, type: 5, jsonName: "number" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
+        { name: "number", number: 2, label: 1, type: 5, json_name: "number" },
         {
           name: "options",
           number: 3,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.EnumValueOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.EnumValueOptions",
+          json_name: "options"
         }
       ]
     },
     {
       name: "ServiceDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
         {
           name: "method",
           number: 2,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.MethodDescriptorProto",
-          jsonName: "method"
+          type_name: ".google.protobuf.MethodDescriptorProto",
+          json_name: "method"
         },
         {
           name: "options",
           number: 3,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.ServiceOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.ServiceOptions",
+          json_name: "options"
         }
       ],
-      reservedRange: [{ start: 4, end: 5 }],
-      reservedName: ["stream"]
+      reserved_range: [{ start: 4, end: 5 }],
+      reserved_name: ["stream"]
     },
     {
       name: "MethodDescriptorProto",
       field: [
-        { name: "name", number: 1, label: 1, type: 9, jsonName: "name" },
-        { name: "input_type", number: 2, label: 1, type: 9, jsonName: "inputType" },
-        { name: "output_type", number: 3, label: 1, type: 9, jsonName: "outputType" },
+        { name: "name", number: 1, label: 1, type: 9, json_name: "name" },
+        { name: "input_type", number: 2, label: 1, type: 9, json_name: "inputType" },
+        { name: "output_type", number: 3, label: 1, type: 9, json_name: "outputType" },
         {
           name: "options",
           number: 4,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.MethodOptions",
-          jsonName: "options"
+          type_name: ".google.protobuf.MethodOptions",
+          json_name: "options"
         },
         {
           name: "client_streaming",
           number: 5,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "clientStreaming"
+          default_value: "false",
+          json_name: "clientStreaming"
         },
         {
           name: "server_streaming",
           number: 6,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "serverStreaming"
+          default_value: "false",
+          json_name: "serverStreaming"
         }
       ]
     },
     {
       name: "FileOptions",
       field: [
-        { name: "java_package", number: 1, label: 1, type: 9, jsonName: "javaPackage" },
+        { name: "java_package", number: 1, label: 1, type: 9, json_name: "javaPackage" },
         {
           name: "java_outer_classname",
           number: 8,
           label: 1,
           type: 9,
-          jsonName: "javaOuterClassname"
+          json_name: "javaOuterClassname"
         },
         {
           name: "java_multiple_files",
           number: 10,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "javaMultipleFiles",
+          default_value: "false",
+          json_name: "javaMultipleFiles",
           options: {
-            featureSupport: {
-              editionIntroduced: 998,
-              editionRemoved: 1001,
-              removalError: "This behavior is enabled by default in editions 2024 and above. To disable it, you can set `features.(pb.java).nest_in_file_class = YES` on individual messages, enums, or services."
+            feature_support: {
+              edition_introduced: 998,
+              edition_removed: 1001,
+              removal_error: "This behavior is enabled by default in editions 2024 and above. To disable it, you can set `features.(pb.java).nest_in_file_class = YES` on individual messages, enums, or services."
             }
           }
         },
@@ -493,7 +493,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 20,
           label: 1,
           type: 8,
-          jsonName: "javaGenerateEqualsAndHash",
+          json_name: "javaGenerateEqualsAndHash",
           options: { deprecated: true }
         },
         {
@@ -501,96 +501,96 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 27,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "javaStringCheckUtf8"
+          default_value: "false",
+          json_name: "javaStringCheckUtf8"
         },
         {
           name: "optimize_for",
           number: 9,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FileOptions.OptimizeMode",
-          defaultValue: "SPEED",
-          jsonName: "optimizeFor"
+          type_name: ".google.protobuf.FileOptions.OptimizeMode",
+          default_value: "SPEED",
+          json_name: "optimizeFor"
         },
-        { name: "go_package", number: 11, label: 1, type: 9, jsonName: "goPackage" },
+        { name: "go_package", number: 11, label: 1, type: 9, json_name: "goPackage" },
         {
           name: "cc_generic_services",
           number: 16,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "ccGenericServices"
+          default_value: "false",
+          json_name: "ccGenericServices"
         },
         {
           name: "java_generic_services",
           number: 17,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "javaGenericServices"
+          default_value: "false",
+          json_name: "javaGenericServices"
         },
         {
           name: "py_generic_services",
           number: 18,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "pyGenericServices"
+          default_value: "false",
+          json_name: "pyGenericServices"
         },
         {
           name: "deprecated",
           number: 23,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "cc_enable_arenas",
           number: 31,
           label: 1,
           type: 8,
-          defaultValue: "true",
-          jsonName: "ccEnableArenas",
+          default_value: "true",
+          json_name: "ccEnableArenas",
           options: {
-            featureSupport: {
-              editionRemoved: 1002,
-              removalError: "cc_enable_arenas is enabled by default in every edition and overrides are ignored.This option is removed in editions 2026 and above."
+            feature_support: {
+              edition_removed: 1002,
+              removal_error: "cc_enable_arenas is enabled by default in every edition and overrides are ignored.This option is removed in editions 2026 and above."
             }
           }
         },
-        { name: "objc_class_prefix", number: 36, label: 1, type: 9, jsonName: "objcClassPrefix" },
-        { name: "csharp_namespace", number: 37, label: 1, type: 9, jsonName: "csharpNamespace" },
-        { name: "swift_prefix", number: 39, label: 1, type: 9, jsonName: "swiftPrefix" },
-        { name: "php_class_prefix", number: 40, label: 1, type: 9, jsonName: "phpClassPrefix" },
-        { name: "php_namespace", number: 41, label: 1, type: 9, jsonName: "phpNamespace" },
+        { name: "objc_class_prefix", number: 36, label: 1, type: 9, json_name: "objcClassPrefix" },
+        { name: "csharp_namespace", number: 37, label: 1, type: 9, json_name: "csharpNamespace" },
+        { name: "swift_prefix", number: 39, label: 1, type: 9, json_name: "swiftPrefix" },
+        { name: "php_class_prefix", number: 40, label: 1, type: 9, json_name: "phpClassPrefix" },
+        { name: "php_namespace", number: 41, label: 1, type: 9, json_name: "phpNamespace" },
         {
           name: "php_metadata_namespace",
           number: 44,
           label: 1,
           type: 9,
-          jsonName: "phpMetadataNamespace"
+          json_name: "phpMetadataNamespace"
         },
-        { name: "ruby_package", number: 45, label: 1, type: 9, jsonName: "rubyPackage" },
+        { name: "ruby_package", number: 45, label: 1, type: 9, json_name: "rubyPackage" },
         {
           name: "features",
           number: 50,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "OptimizeMode",
           value: [
@@ -600,9 +600,9 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           ]
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
-      reservedRange: [{ start: 42, end: 43 }, { start: 38, end: 39 }],
-      reservedName: ["php_generic_services"]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
+      reserved_range: [{ start: 42, end: 43 }, { start: 38, end: 39 }],
+      reserved_name: ["php_generic_services"]
     },
     {
       name: "MessageOptions",
@@ -612,32 +612,32 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "messageSetWireFormat"
+          default_value: "false",
+          json_name: "messageSetWireFormat"
         },
         {
           name: "no_standard_descriptor_accessor",
           number: 2,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "noStandardDescriptorAccessor"
+          default_value: "false",
+          json_name: "noStandardDescriptorAccessor"
         },
         {
           name: "deprecated",
           number: 3,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
-        { name: "map_entry", number: 7, label: 1, type: 8, jsonName: "mapEntry" },
+        { name: "map_entry", number: 7, label: 1, type: 8, json_name: "mapEntry" },
         {
           name: "deprecated_legacy_json_field_conflicts",
           number: 11,
           label: 1,
           type: 8,
-          jsonName: "deprecatedLegacyJsonFieldConflicts",
+          json_name: "deprecatedLegacyJsonFieldConflicts",
           options: { deprecated: true }
         },
         {
@@ -645,20 +645,20 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 12,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
-      reservedRange: [
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
+      reserved_range: [
         { start: 4, end: 5 },
         { start: 5, end: 6 },
         { start: 6, end: 7 },
@@ -674,44 +674,44 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FieldOptions.CType",
-          defaultValue: "STRING",
-          jsonName: "ctype"
+          type_name: ".google.protobuf.FieldOptions.CType",
+          default_value: "STRING",
+          json_name: "ctype"
         },
-        { name: "packed", number: 2, label: 1, type: 8, jsonName: "packed" },
+        { name: "packed", number: 2, label: 1, type: 8, json_name: "packed" },
         {
           name: "jstype",
           number: 6,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FieldOptions.JSType",
-          defaultValue: "JS_NORMAL",
-          jsonName: "jstype"
+          type_name: ".google.protobuf.FieldOptions.JSType",
+          default_value: "JS_NORMAL",
+          json_name: "jstype"
         },
-        { name: "lazy", number: 5, label: 1, type: 8, defaultValue: "false", jsonName: "lazy" },
+        { name: "lazy", number: 5, label: 1, type: 8, default_value: "false", json_name: "lazy" },
         {
           name: "unverified_lazy",
           number: 15,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "unverifiedLazy"
+          default_value: "false",
+          json_name: "unverifiedLazy"
         },
         {
           name: "deprecated",
           number: 3,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "weak",
           number: 10,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "weak",
+          default_value: "false",
+          json_name: "weak",
           options: { deprecated: true }
         },
         {
@@ -719,59 +719,59 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 16,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "debugRedact"
+          default_value: "false",
+          json_name: "debugRedact"
         },
         {
           name: "retention",
           number: 17,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FieldOptions.OptionRetention",
-          jsonName: "retention"
+          type_name: ".google.protobuf.FieldOptions.OptionRetention",
+          json_name: "retention"
         },
         {
           name: "targets",
           number: 19,
           label: 3,
           type: 14,
-          typeName: ".google.protobuf.FieldOptions.OptionTargetType",
-          jsonName: "targets"
+          type_name: ".google.protobuf.FieldOptions.OptionTargetType",
+          json_name: "targets"
         },
         {
           name: "edition_defaults",
           number: 20,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FieldOptions.EditionDefault",
-          jsonName: "editionDefaults"
+          type_name: ".google.protobuf.FieldOptions.EditionDefault",
+          json_name: "editionDefaults"
         },
         {
           name: "features",
           number: 21,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "feature_support",
           number: 22,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FieldOptions.FeatureSupport",
-          jsonName: "featureSupport"
+          type_name: ".google.protobuf.FieldOptions.FeatureSupport",
+          json_name: "featureSupport"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "EditionDefault",
           field: [
@@ -780,10 +780,10 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 3,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.Edition",
-              jsonName: "edition"
+              type_name: ".google.protobuf.Edition",
+              json_name: "edition"
             },
-            { name: "value", number: 2, label: 1, type: 9, jsonName: "value" }
+            { name: "value", number: 2, label: 1, type: 9, json_name: "value" }
           ]
         },
         {
@@ -794,37 +794,37 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 1,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.Edition",
-              jsonName: "editionIntroduced"
+              type_name: ".google.protobuf.Edition",
+              json_name: "editionIntroduced"
             },
             {
               name: "edition_deprecated",
               number: 2,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.Edition",
-              jsonName: "editionDeprecated"
+              type_name: ".google.protobuf.Edition",
+              json_name: "editionDeprecated"
             },
             {
               name: "deprecation_warning",
               number: 3,
               label: 1,
               type: 9,
-              jsonName: "deprecationWarning"
+              json_name: "deprecationWarning"
             },
             {
               name: "edition_removed",
               number: 4,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.Edition",
-              jsonName: "editionRemoved"
+              type_name: ".google.protobuf.Edition",
+              json_name: "editionRemoved"
             },
-            { name: "removal_error", number: 5, label: 1, type: 9, jsonName: "removalError" }
+            { name: "removal_error", number: 5, label: 1, type: 9, json_name: "removalError" }
           ]
         }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "CType",
           value: [
@@ -865,8 +865,8 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           ]
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
-      reservedRange: [{ start: 4, end: 5 }, { start: 18, end: 19 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
+      reserved_range: [{ start: 4, end: 5 }, { start: 18, end: 19 }]
     },
     {
       name: "OneofOptions",
@@ -876,38 +876,38 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
     },
     {
       name: "EnumOptions",
       field: [
-        { name: "allow_alias", number: 2, label: 1, type: 8, jsonName: "allowAlias" },
+        { name: "allow_alias", number: 2, label: 1, type: 8, json_name: "allowAlias" },
         {
           name: "deprecated",
           number: 3,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "deprecated_legacy_json_field_conflicts",
           number: 6,
           label: 1,
           type: 8,
-          jsonName: "deprecatedLegacyJsonFieldConflicts",
+          json_name: "deprecatedLegacyJsonFieldConflicts",
           options: { deprecated: true }
         },
         {
@@ -915,20 +915,20 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 7,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
-      reservedRange: [{ start: 5, end: 6 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }],
+      reserved_range: [{ start: 5, end: 6 }]
     },
     {
       name: "EnumValueOptions",
@@ -938,43 +938,43 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "features",
           number: 2,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "debug_redact",
           number: 3,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "debugRedact"
+          default_value: "false",
+          json_name: "debugRedact"
         },
         {
           name: "feature_support",
           number: 4,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FieldOptions.FeatureSupport",
-          jsonName: "featureSupport"
+          type_name: ".google.protobuf.FieldOptions.FeatureSupport",
+          json_name: "featureSupport"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
     },
     {
       name: "ServiceOptions",
@@ -984,27 +984,27 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 34,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "deprecated",
           number: 33,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
     },
     {
       name: "MethodOptions",
@@ -1014,36 +1014,36 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 33,
           label: 1,
           type: 8,
-          defaultValue: "false",
-          jsonName: "deprecated"
+          default_value: "false",
+          json_name: "deprecated"
         },
         {
           name: "idempotency_level",
           number: 34,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.MethodOptions.IdempotencyLevel",
-          defaultValue: "IDEMPOTENCY_UNKNOWN",
-          jsonName: "idempotencyLevel"
+          type_name: ".google.protobuf.MethodOptions.IdempotencyLevel",
+          default_value: "IDEMPOTENCY_UNKNOWN",
+          json_name: "idempotencyLevel"
         },
         {
           name: "features",
           number: 35,
           label: 1,
           type: 11,
-          typeName: ".google.protobuf.FeatureSet",
-          jsonName: "features"
+          type_name: ".google.protobuf.FeatureSet",
+          json_name: "features"
         },
         {
           name: "uninterpreted_option",
           number: 999,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption",
-          jsonName: "uninterpretedOption"
+          type_name: ".google.protobuf.UninterpretedOption",
+          json_name: "uninterpretedOption"
         }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "IdempotencyLevel",
           value: [
@@ -1053,7 +1053,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           ]
         }
       ],
-      extensionRange: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
+      extension_range: [{ start: 990, end: 999 }, { start: 1000, end: 536870912 }]
     },
     {
       name: "UninterpretedOption",
@@ -1063,22 +1063,22 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 2,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.UninterpretedOption.NamePart",
-          jsonName: "name"
+          type_name: ".google.protobuf.UninterpretedOption.NamePart",
+          json_name: "name"
         },
-        { name: "identifier_value", number: 3, label: 1, type: 9, jsonName: "identifierValue" },
-        { name: "positive_int_value", number: 4, label: 1, type: 4, jsonName: "positiveIntValue" },
-        { name: "negative_int_value", number: 5, label: 1, type: 3, jsonName: "negativeIntValue" },
-        { name: "double_value", number: 6, label: 1, type: 1, jsonName: "doubleValue" },
-        { name: "string_value", number: 7, label: 1, type: 12, jsonName: "stringValue" },
-        { name: "aggregate_value", number: 8, label: 1, type: 9, jsonName: "aggregateValue" }
+        { name: "identifier_value", number: 3, label: 1, type: 9, json_name: "identifierValue" },
+        { name: "positive_int_value", number: 4, label: 1, type: 4, json_name: "positiveIntValue" },
+        { name: "negative_int_value", number: 5, label: 1, type: 3, json_name: "negativeIntValue" },
+        { name: "double_value", number: 6, label: 1, type: 1, json_name: "doubleValue" },
+        { name: "string_value", number: 7, label: 1, type: 12, json_name: "stringValue" },
+        { name: "aggregate_value", number: 8, label: 1, type: 9, json_name: "aggregateValue" }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "NamePart",
           field: [
-            { name: "name_part", number: 1, label: 2, type: 9, jsonName: "namePart" },
-            { name: "is_extension", number: 2, label: 2, type: 8, jsonName: "isExtension" }
+            { name: "name_part", number: 1, label: 2, type: 9, json_name: "namePart" },
+            { name: "is_extension", number: 2, label: 2, type: 8, json_name: "isExtension" }
           ]
         }
       ]
@@ -1091,17 +1091,17 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.FieldPresence",
-          jsonName: "fieldPresence",
+          type_name: ".google.protobuf.FeatureSet.FieldPresence",
+          json_name: "fieldPresence",
           options: {
             retention: 1,
             targets: [4, 1],
-            editionDefaults: [
+            edition_defaults: [
               { edition: 900, value: "EXPLICIT" },
               { edition: 999, value: "IMPLICIT" },
               { edition: 1000, value: "EXPLICIT" }
             ],
-            featureSupport: { editionIntroduced: 1000 }
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1109,13 +1109,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 2,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.EnumType",
-          jsonName: "enumType",
+          type_name: ".google.protobuf.FeatureSet.EnumType",
+          json_name: "enumType",
           options: {
             retention: 1,
             targets: [6, 1],
-            editionDefaults: [{ edition: 900, value: "CLOSED" }, { edition: 999, value: "OPEN" }],
-            featureSupport: { editionIntroduced: 1000 }
+            edition_defaults: [{ edition: 900, value: "CLOSED" }, { edition: 999, value: "OPEN" }],
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1123,13 +1123,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 3,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.RepeatedFieldEncoding",
-          jsonName: "repeatedFieldEncoding",
+          type_name: ".google.protobuf.FeatureSet.RepeatedFieldEncoding",
+          json_name: "repeatedFieldEncoding",
           options: {
             retention: 1,
             targets: [4, 1],
-            editionDefaults: [{ edition: 900, value: "EXPANDED" }, { edition: 999, value: "PACKED" }],
-            featureSupport: { editionIntroduced: 1000 }
+            edition_defaults: [{ edition: 900, value: "EXPANDED" }, { edition: 999, value: "PACKED" }],
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1137,13 +1137,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 4,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.Utf8Validation",
-          jsonName: "utf8Validation",
+          type_name: ".google.protobuf.FeatureSet.Utf8Validation",
+          json_name: "utf8Validation",
           options: {
             retention: 1,
             targets: [4, 1],
-            editionDefaults: [{ edition: 900, value: "NONE" }, { edition: 999, value: "VERIFY" }],
-            featureSupport: { editionIntroduced: 1000 }
+            edition_defaults: [{ edition: 900, value: "NONE" }, { edition: 999, value: "VERIFY" }],
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1151,13 +1151,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 5,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.MessageEncoding",
-          jsonName: "messageEncoding",
+          type_name: ".google.protobuf.FeatureSet.MessageEncoding",
+          json_name: "messageEncoding",
           options: {
             retention: 1,
             targets: [4, 1],
-            editionDefaults: [{ edition: 900, value: "LENGTH_PREFIXED" }],
-            featureSupport: { editionIntroduced: 1000 }
+            edition_defaults: [{ edition: 900, value: "LENGTH_PREFIXED" }],
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1165,13 +1165,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 6,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.JsonFormat",
-          jsonName: "jsonFormat",
+          type_name: ".google.protobuf.FeatureSet.JsonFormat",
+          json_name: "jsonFormat",
           options: {
             retention: 1,
             targets: [3, 6, 1],
-            editionDefaults: [{ edition: 900, value: "LEGACY_BEST_EFFORT" }, { edition: 999, value: "ALLOW" }],
-            featureSupport: { editionIntroduced: 1000 }
+            edition_defaults: [{ edition: 900, value: "LEGACY_BEST_EFFORT" }, { edition: 999, value: "ALLOW" }],
+            feature_support: { edition_introduced: 1000 }
           }
         },
         {
@@ -1179,17 +1179,17 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 7,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.EnforceNamingStyle",
-          jsonName: "enforceNamingStyle",
+          type_name: ".google.protobuf.FeatureSet.EnforceNamingStyle",
+          json_name: "enforceNamingStyle",
           options: {
             retention: 2,
             targets: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            editionDefaults: [
+            edition_defaults: [
               { edition: 900, value: "STYLE_LEGACY" },
               { edition: 1001, value: "STYLE2024" },
               { edition: 1002, value: "STYLE2026" }
             ],
-            featureSupport: { editionIntroduced: 1001 }
+            feature_support: { edition_introduced: 1001 }
           }
         },
         {
@@ -1197,17 +1197,17 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 8,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.VisibilityFeature.DefaultSymbolVisibility",
-          jsonName: "defaultSymbolVisibility",
+          type_name: ".google.protobuf.FeatureSet.VisibilityFeature.DefaultSymbolVisibility",
+          json_name: "defaultSymbolVisibility",
           options: {
             retention: 2,
             targets: [1],
-            editionDefaults: [
+            edition_defaults: [
               { edition: 900, value: "EXPORT_ALL" },
               { edition: 1001, value: "EXPORT_TOP_LEVEL" },
               { edition: 1002, value: "STRICT" }
             ],
-            featureSupport: { editionIntroduced: 1001 }
+            feature_support: { edition_introduced: 1001 }
           }
         },
         {
@@ -1215,23 +1215,23 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 9,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.FeatureSet.ProtoLimitsFeature.EnforceProtoLimits",
-          jsonName: "enforceProtoLimits",
+          type_name: ".google.protobuf.FeatureSet.ProtoLimitsFeature.EnforceProtoLimits",
+          json_name: "enforceProtoLimits",
           options: {
             retention: 2,
             targets: [6, 3, 4, 5],
-            editionDefaults: [
+            edition_defaults: [
               { edition: 900, value: "LEGACY_NO_EXPLICIT_LIMITS" },
               { edition: 1002, value: "PROTO_LIMITS2026" }
             ],
-            featureSupport: { editionIntroduced: 1002 }
+            feature_support: { edition_introduced: 1002 }
           }
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "VisibilityFeature",
-          enumType: [
+          enum_type: [
             {
               name: "DefaultSymbolVisibility",
               value: [
@@ -1243,11 +1243,11 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               ]
             }
           ],
-          reservedRange: [{ start: 1, end: 536870912 }]
+          reserved_range: [{ start: 1, end: 536870912 }]
         },
         {
           name: "ProtoLimitsFeature",
-          enumType: [
+          enum_type: [
             {
               name: "EnforceProtoLimits",
               value: [
@@ -1259,7 +1259,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           ]
         }
       ],
-      enumType: [
+      enum_type: [
         {
           name: "FieldPresence",
           value: [
@@ -1292,7 +1292,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
             { name: "VERIFY", number: 2 },
             { name: "NONE", number: 3 }
           ],
-          reservedRange: [{ start: 1, end: 1 }]
+          reserved_range: [{ start: 1, end: 1 }]
         },
         {
           name: "MessageEncoding",
@@ -1320,8 +1320,8 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           ]
         }
       ],
-      extensionRange: [{ start: 1000, end: 9995 }, { start: 9995, end: 10000 }, { start: 10000, end: 10001 }],
-      reservedRange: [{ start: 999, end: 1000 }]
+      extension_range: [{ start: 1000, end: 9995 }, { start: 9995, end: 10000 }, { start: 10000, end: 10001 }],
+      reserved_range: [{ start: 999, end: 1000 }]
     },
     {
       name: "FeatureSetDefaults",
@@ -1331,27 +1331,27 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault",
-          jsonName: "defaults"
+          type_name: ".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault",
+          json_name: "defaults"
         },
         {
           name: "minimum_edition",
           number: 4,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.Edition",
-          jsonName: "minimumEdition"
+          type_name: ".google.protobuf.Edition",
+          json_name: "minimumEdition"
         },
         {
           name: "maximum_edition",
           number: 5,
           label: 1,
           type: 14,
-          typeName: ".google.protobuf.Edition",
-          jsonName: "maximumEdition"
+          type_name: ".google.protobuf.Edition",
+          json_name: "maximumEdition"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "FeatureSetEditionDefault",
           field: [
@@ -1360,28 +1360,28 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 3,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.Edition",
-              jsonName: "edition"
+              type_name: ".google.protobuf.Edition",
+              json_name: "edition"
             },
             {
               name: "overridable_features",
               number: 4,
               label: 1,
               type: 11,
-              typeName: ".google.protobuf.FeatureSet",
-              jsonName: "overridableFeatures"
+              type_name: ".google.protobuf.FeatureSet",
+              json_name: "overridableFeatures"
             },
             {
               name: "fixed_features",
               number: 5,
               label: 1,
               type: 11,
-              typeName: ".google.protobuf.FeatureSet",
-              jsonName: "fixedFeatures"
+              type_name: ".google.protobuf.FeatureSet",
+              json_name: "fixedFeatures"
             }
           ],
-          reservedRange: [{ start: 1, end: 2 }, { start: 2, end: 3 }],
-          reservedName: ["features"]
+          reserved_range: [{ start: 1, end: 2 }, { start: 2, end: 3 }],
+          reserved_name: ["features"]
         }
       ]
     },
@@ -1393,11 +1393,11 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.SourceCodeInfo.Location",
-          jsonName: "location"
+          type_name: ".google.protobuf.SourceCodeInfo.Location",
+          json_name: "location"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "Location",
           field: [
@@ -1406,7 +1406,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 1,
               label: 3,
               type: 5,
-              jsonName: "path",
+              json_name: "path",
               options: { packed: true }
             },
             {
@@ -1414,28 +1414,28 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 2,
               label: 3,
               type: 5,
-              jsonName: "span",
+              json_name: "span",
               options: { packed: true }
             },
-            { name: "leading_comments", number: 3, label: 1, type: 9, jsonName: "leadingComments" },
+            { name: "leading_comments", number: 3, label: 1, type: 9, json_name: "leadingComments" },
             {
               name: "trailing_comments",
               number: 4,
               label: 1,
               type: 9,
-              jsonName: "trailingComments"
+              json_name: "trailingComments"
             },
             {
               name: "leading_detached_comments",
               number: 6,
               label: 3,
               type: 9,
-              jsonName: "leadingDetachedComments"
+              json_name: "leadingDetachedComments"
             }
           ]
         }
       ],
-      extensionRange: [{ start: 536000000, end: 536000001 }]
+      extension_range: [{ start: 536000000, end: 536000001 }]
     },
     {
       name: "GeneratedCodeInfo",
@@ -1445,11 +1445,11 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
           number: 1,
           label: 3,
           type: 11,
-          typeName: ".google.protobuf.GeneratedCodeInfo.Annotation",
-          jsonName: "annotation"
+          type_name: ".google.protobuf.GeneratedCodeInfo.Annotation",
+          json_name: "annotation"
         }
       ],
-      nestedType: [
+      nested_type: [
         {
           name: "Annotation",
           field: [
@@ -1458,22 +1458,22 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
               number: 1,
               label: 3,
               type: 5,
-              jsonName: "path",
+              json_name: "path",
               options: { packed: true }
             },
-            { name: "source_file", number: 2, label: 1, type: 9, jsonName: "sourceFile" },
-            { name: "begin", number: 3, label: 1, type: 5, jsonName: "begin" },
-            { name: "end", number: 4, label: 1, type: 5, jsonName: "end" },
+            { name: "source_file", number: 2, label: 1, type: 9, json_name: "sourceFile" },
+            { name: "begin", number: 3, label: 1, type: 5, json_name: "begin" },
+            { name: "end", number: 4, label: 1, type: 5, json_name: "end" },
             {
               name: "semantic",
               number: 5,
               label: 1,
               type: 14,
-              typeName: ".google.protobuf.GeneratedCodeInfo.Annotation.Semantic",
-              jsonName: "semantic"
+              type_name: ".google.protobuf.GeneratedCodeInfo.Annotation.Semantic",
+              json_name: "semantic"
             }
           ],
-          enumType: [
+          enum_type: [
             {
               name: "Semantic",
               value: [
@@ -1487,7 +1487,7 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
       ]
     }
   ],
-  enumType: [
+  enum_type: [
     {
       name: "Edition",
       value: [
@@ -1517,13 +1517,13 @@ export const descriptorFile: ProtobufDescriptor.FileDescriptor = Resolve.resolve
     }
   ],
   options: {
-    javaPackage: "com.google.protobuf",
-    javaOuterClassname: "DescriptorProtos",
-    optimizeFor: 1,
-    goPackage: "google.golang.org/protobuf/types/descriptorpb",
-    ccEnableArenas: true,
-    objcClassPrefix: "GPB",
-    csharpNamespace: "Google.Protobuf.Reflection"
+    java_package: "com.google.protobuf",
+    java_outer_classname: "DescriptorProtos",
+    optimize_for: 1,
+    go_package: "google.golang.org/protobuf/types/descriptorpb",
+    cc_enable_arenas: true,
+    objc_class_prefix: "GPB",
+    csharp_namespace: "Google.Protobuf.Reflection"
   }
 }]).files[0]
 
@@ -1563,20 +1563,20 @@ export interface FileDescriptorProto {
   /** Names of files imported by this file. */
   readonly dependency?: ReadonlyArray<string>
   /** Indexes of the public imported files in the dependency list above. */
-  readonly publicDependency?: ReadonlyArray<number>
+  readonly public_dependency?: ReadonlyArray<number>
   /**
    * Indexes of the weak imported files in the dependency list.
    * For Google-internal migration only. Do not use.
    */
-  readonly weakDependency?: ReadonlyArray<number>
+  readonly weak_dependency?: ReadonlyArray<number>
   /**
    * Names of files imported by this file purely for the purpose of providing
    * option extensions. These are excluded from the dependency list above.
    */
-  readonly optionDependency?: ReadonlyArray<string>
+  readonly option_dependency?: ReadonlyArray<string>
   /** All top-level definitions in this file. */
-  readonly messageType?: ReadonlyArray<DescriptorProto>
-  readonly enumType?: ReadonlyArray<EnumDescriptorProto>
+  readonly message_type?: ReadonlyArray<DescriptorProto>
+  readonly enum_type?: ReadonlyArray<EnumDescriptorProto>
   readonly service?: ReadonlyArray<ServiceDescriptorProto>
   readonly extension?: ReadonlyArray<FieldDescriptorProto>
   readonly options?: FileOptions
@@ -1586,7 +1586,7 @@ export interface FileDescriptorProto {
    * functionality of the descriptors -- the information is needed only by
    * development tools.
    */
-  readonly sourceCodeInfo?: SourceCodeInfo
+  readonly source_code_info?: SourceCodeInfo
   /**
    * The syntax of the proto file.
    * The supported values are "proto2", "proto3", and "editions".
@@ -1626,17 +1626,17 @@ export interface DescriptorProto {
   readonly name?: string
   readonly field?: ReadonlyArray<FieldDescriptorProto>
   readonly extension?: ReadonlyArray<FieldDescriptorProto>
-  readonly nestedType?: ReadonlyArray<DescriptorProto>
-  readonly enumType?: ReadonlyArray<EnumDescriptorProto>
-  readonly extensionRange?: ReadonlyArray<DescriptorProto_ExtensionRange>
-  readonly oneofDecl?: ReadonlyArray<OneofDescriptorProto>
+  readonly nested_type?: ReadonlyArray<DescriptorProto>
+  readonly enum_type?: ReadonlyArray<EnumDescriptorProto>
+  readonly extension_range?: ReadonlyArray<DescriptorProto_ExtensionRange>
+  readonly oneof_decl?: ReadonlyArray<OneofDescriptorProto>
   readonly options?: MessageOptions
-  readonly reservedRange?: ReadonlyArray<DescriptorProto_ReservedRange>
+  readonly reserved_range?: ReadonlyArray<DescriptorProto_ReservedRange>
   /**
    * Reserved field names, which may not be used by fields in the same message.
    * A given name may only be reserved once.
    */
-  readonly reservedName?: ReadonlyArray<string>
+  readonly reserved_name?: ReadonlyArray<string>
   /** Support for `export` and `local` keywords on enums. */
   readonly visibility?: SymbolVisibility
 }
@@ -1704,7 +1704,7 @@ export const DescriptorProto_ReservedRange: ProtobufDescriptor.MessageDescriptor
  */
 export interface ExtensionRangeOptions {
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
   /**
    * For external users: DO NOT USE. We are in the process of open sourcing
    * extension declaration and executing internal cleanups before it can be
@@ -1742,7 +1742,7 @@ export interface ExtensionRangeOptions_Declaration {
    * The fully-qualified name of the extension field. There must be a leading
    * dot in front of the full name.
    */
-  readonly fullName?: string
+  readonly full_name?: string
   /**
    * The fully-qualified type name of the extension field. Unlike
    * Metadata.type, Declaration.type must have a leading dot for messages
@@ -1816,7 +1816,7 @@ export interface FieldDescriptorProto {
    * message are searched, then within the parent, on up to the root
    * namespace).
    */
-  readonly typeName?: string
+  readonly type_name?: string
   /**
    * For extensions, this is the name of the type being extended.  It is
    * resolved in the same manner as type_name.
@@ -1828,19 +1828,19 @@ export interface FieldDescriptorProto {
    * For strings, contains the default text contents (not escaped in any way).
    * For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
    */
-  readonly defaultValue?: string
+  readonly default_value?: string
   /**
    * If set, gives the index of a oneof in the containing type's oneof_decl
    * list.  This field is a member of that oneof.
    */
-  readonly oneofIndex?: number
+  readonly oneof_index?: number
   /**
    * JSON name of this field. The value is set by protocol compiler. If the
    * user has set a "json_name" option on this field, that option's value
    * will be used. Otherwise, it's deduced from the field's name by converting
    * it to camelCase.
    */
-  readonly jsonName?: string
+  readonly json_name?: string
   readonly options?: FieldOptions
   /**
    * If true, this is a proto3 "optional". When a proto3 field is optional, it
@@ -1865,7 +1865,7 @@ export interface FieldDescriptorProto {
    * Proto2 optional fields do not set this flag, because they already indicate
    * optional with `LABEL_OPTIONAL`.
    */
-  readonly proto3Optional?: boolean
+  readonly proto3_optional?: boolean
 }
 
 /**
@@ -1998,12 +1998,12 @@ export interface EnumDescriptorProto {
    * by enum values in the same enum declaration. Reserved ranges may not
    * overlap.
    */
-  readonly reservedRange?: ReadonlyArray<EnumDescriptorProto_EnumReservedRange>
+  readonly reserved_range?: ReadonlyArray<EnumDescriptorProto_EnumReservedRange>
   /**
    * Reserved enum value names, which may not be reused. A given name may only
    * be reserved once.
    */
-  readonly reservedName?: ReadonlyArray<string>
+  readonly reserved_name?: ReadonlyArray<string>
   /** Support for `export` and `local` keywords on enums. */
   readonly visibility?: SymbolVisibility
 }
@@ -2102,13 +2102,13 @@ export interface MethodDescriptorProto {
    * Input and output type names.  These are resolved in the same way as
    * FieldDescriptorProto.type_name, but must refer to a message type.
    */
-  readonly inputType?: string
-  readonly outputType?: string
+  readonly input_type?: string
+  readonly output_type?: string
   readonly options?: MethodOptions
   /** Identifies if client streams multiple client messages */
-  readonly clientStreaming?: boolean
+  readonly client_streaming?: boolean
   /** Identifies if server streams multiple server messages */
-  readonly serverStreaming?: boolean
+  readonly server_streaming?: boolean
 }
 
 /**
@@ -2132,7 +2132,7 @@ export interface FileOptions {
    * inappropriate because proto packages do not normally start with backwards
    * domain names.
    */
-  readonly javaPackage?: string
+  readonly java_package?: string
   /**
    * Controls the name of the wrapper Java class generated for the .proto file.
    * That class will always contain the .proto file's getDescriptor() method as
@@ -2140,7 +2140,7 @@ export interface FileOptions {
    * If java_multiple_files is disabled, then all the other classes from the
    * .proto file will be nested inside the single wrapper outer class.
    */
-  readonly javaOuterClassname?: string
+  readonly java_outer_classname?: string
   /**
    * If enabled, then the Java code generator will generate a separate .java
    * file for each top-level message, enum, and service defined in the .proto
@@ -2149,9 +2149,9 @@ export interface FileOptions {
    * generated to contain the file's getDescriptor() method as well as any
    * top-level extensions defined in the file.
    */
-  readonly javaMultipleFiles?: boolean
+  readonly java_multiple_files?: boolean
   /** This option does nothing. */
-  readonly javaGenerateEqualsAndHash?: boolean
+  readonly java_generate_equals_and_hash?: boolean
   /**
    * A proto2 file can set this to true to opt in to UTF-8 checking for Java,
    * which will throw an exception if invalid UTF-8 is parsed from the wire or
@@ -2164,8 +2164,8 @@ export interface FileOptions {
    * false has no effect: it cannot be used to opt proto3 files out of UTF-8
    * checks.
    */
-  readonly javaStringCheckUtf8?: boolean
-  readonly optimizeFor?: FileOptions_OptimizeMode
+  readonly java_string_check_utf8?: boolean
+  readonly optimize_for?: FileOptions_OptimizeMode
   /**
    * Sets the Go package where structs generated from this .proto will be
    * placed. If omitted, the Go package will be derived from the following:
@@ -2173,7 +2173,7 @@ export interface FileOptions {
    *   - Otherwise, the package statement in the .proto file, if present.
    *   - Otherwise, the basename of the .proto file, without extension.
    */
-  readonly goPackage?: string
+  readonly go_package?: string
   /**
    * Should generic services be generated in each language?  "Generic" services
    * are not specific to any particular RPC system.  They are generated by the
@@ -2186,9 +2186,9 @@ export interface FileOptions {
    * these default to false.  Old code which depends on generic services should
    * explicitly set them to true.
    */
-  readonly ccGenericServices?: boolean
-  readonly javaGenericServices?: boolean
-  readonly pyGenericServices?: boolean
+  readonly cc_generic_services?: boolean
+  readonly java_generic_services?: boolean
+  readonly py_generic_services?: boolean
   /**
    * Is this file deprecated?
    * Depending on the target platform, this can emit Deprecated annotations
@@ -2200,44 +2200,44 @@ export interface FileOptions {
    * Enables the use of arenas for the proto messages in this file. This applies
    * only to generated classes for C++.
    */
-  readonly ccEnableArenas?: boolean
+  readonly cc_enable_arenas?: boolean
   /**
    * Sets the objective c class prefix which is prepended to all objective c
    * generated classes from this .proto. There is no default.
    */
-  readonly objcClassPrefix?: string
+  readonly objc_class_prefix?: string
   /** Namespace for generated classes; defaults to the package. */
-  readonly csharpNamespace?: string
+  readonly csharp_namespace?: string
   /**
    * By default Swift generators will take the proto package and CamelCase it
    * replacing '.' with underscore and use that to prefix the types/symbols
    * defined. When this options is provided, they will use this value instead
    * to prefix the types/symbols defined.
    */
-  readonly swiftPrefix?: string
+  readonly swift_prefix?: string
   /**
    * Sets the php class prefix which is prepended to all php generated classes
    * from this .proto. Default is empty.
    */
-  readonly phpClassPrefix?: string
+  readonly php_class_prefix?: string
   /**
    * Use this option to change the namespace of php generated classes. Default
    * is empty. When this option is empty, the package name will be used for
    * determining the namespace.
    */
-  readonly phpNamespace?: string
+  readonly php_namespace?: string
   /**
    * Use this option to change the namespace of php generated metadata classes.
    * Default is empty. When this option is empty, the proto file name will be
    * used for determining the namespace.
    */
-  readonly phpMetadataNamespace?: string
+  readonly php_metadata_namespace?: string
   /**
    * Use this option to change the package of ruby generated classes. Default
    * is empty. When this option is not set, the package name will be used for
    * determining the ruby package.
    */
-  readonly rubyPackage?: string
+  readonly ruby_package?: string
   /**
    * Any features defined in the specific edition.
    * WARNING: This field should only be used by protobuf plugins or special
@@ -2249,7 +2249,7 @@ export interface FileOptions {
    * The parser stores options it doesn't recognize here.
    * See the documentation for the "Options" section above.
    */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2312,13 +2312,13 @@ export interface MessageOptions {
    * Because this is an option, the above two restrictions are not enforced by
    * the protocol compiler.
    */
-  readonly messageSetWireFormat?: boolean
+  readonly message_set_wire_format?: boolean
   /**
    * Disables the generation of the standard "descriptor()" accessor, which can
    * conflict with a field of the same name.  This is meant to make migration
    * from proto1 easier; new code should avoid fields named "descriptor".
    */
-  readonly noStandardDescriptorAccessor?: boolean
+  readonly no_standard_descriptor_accessor?: boolean
   /**
    * Is this message deprecated?
    * Depending on the target platform, this can emit Deprecated annotations
@@ -2349,7 +2349,7 @@ export interface MessageOptions {
    * instead. The option should only be implicitly set by the proto compiler
    * parser.
    */
-  readonly mapEntry?: boolean
+  readonly map_entry?: boolean
   /**
    * Enable the legacy handling of JSON field name conflicts.  This lowercases
    * and strips underscored from the fields before comparison in proto3 only.
@@ -2362,7 +2362,7 @@ export interface MessageOptions {
    * TODO This is legacy behavior we plan to remove once downstream
    * teams have had time to migrate.
    */
-  readonly deprecatedLegacyJsonFieldConflicts?: boolean
+  readonly deprecated_legacy_json_field_conflicts?: boolean
   /**
    * Any features defined in the specific edition.
    * WARNING: This field should only be used by protobuf plugins or special
@@ -2371,7 +2371,7 @@ export interface MessageOptions {
    */
   readonly features?: FeatureSet
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2453,7 +2453,7 @@ export interface FieldOptions {
    * only be used where lazy with verification is prohibitive for performance
    * reasons.
    */
-  readonly unverifiedLazy?: boolean
+  readonly unverified_lazy?: boolean
   /**
    * Is this field deprecated?
    * Depending on the target platform, this can emit Deprecated annotations
@@ -2470,10 +2470,10 @@ export interface FieldOptions {
    * Indicate that the field value should not be printed out when using debug
    * formats, e.g. when the field contains sensitive credentials.
    */
-  readonly debugRedact?: boolean
+  readonly debug_redact?: boolean
   readonly retention?: FieldOptions_OptionRetention
   readonly targets?: ReadonlyArray<FieldOptions_OptionTargetType>
-  readonly editionDefaults?: ReadonlyArray<FieldOptions_EditionDefault>
+  readonly edition_defaults?: ReadonlyArray<FieldOptions_EditionDefault>
   /**
    * Any features defined in the specific edition.
    * WARNING: This field should only be used by protobuf plugins or special
@@ -2481,9 +2481,9 @@ export interface FieldOptions {
    * developers should rely on the protoreflect APIs for their client language.
    */
   readonly features?: FeatureSet
-  readonly featureSupport?: FieldOptions_FeatureSupport
+  readonly feature_support?: FieldOptions_FeatureSupport
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2528,28 +2528,28 @@ export interface FieldOptions_FeatureSupport {
    * earlier than this one, the default assigned to EDITION_LEGACY will be
    * used, and proto files will not be able to override it.
    */
-  readonly editionIntroduced?: Edition
+  readonly edition_introduced?: Edition
   /**
    * The edition this feature becomes deprecated in.  Using this after this
    * edition may trigger warnings.
    */
-  readonly editionDeprecated?: Edition
+  readonly edition_deprecated?: Edition
   /**
    * The deprecation warning text if this feature is used after the edition it
    * was marked deprecated in.
    */
-  readonly deprecationWarning?: string
+  readonly deprecation_warning?: string
   /**
    * The edition this feature is no longer available in.  In editions after
    * this one, the last default assigned will be used, and proto files will
    * not be able to override it.
    */
-  readonly editionRemoved?: Edition
+  readonly edition_removed?: Edition
   /**
    * The removal error text if this feature is used after the edition it was
    * removed in.
    */
-  readonly removalError?: string
+  readonly removal_error?: string
 }
 
 /**
@@ -2680,7 +2680,7 @@ export interface OneofOptions {
    */
   readonly features?: FeatureSet
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2702,7 +2702,7 @@ export interface EnumOptions {
    * Set this option to true to allow mapping different tag names to the same
    * value.
    */
-  readonly allowAlias?: boolean
+  readonly allow_alias?: boolean
   /**
    * Is this enum deprecated?
    * Depending on the target platform, this can emit Deprecated annotations
@@ -2718,7 +2718,7 @@ export interface EnumOptions {
    * TODO Remove this legacy behavior once downstream teams have
    * had time to migrate.
    */
-  readonly deprecatedLegacyJsonFieldConflicts?: boolean
+  readonly deprecated_legacy_json_field_conflicts?: boolean
   /**
    * Any features defined in the specific edition.
    * WARNING: This field should only be used by protobuf plugins or special
@@ -2727,7 +2727,7 @@ export interface EnumOptions {
    */
   readonly features?: FeatureSet
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2764,11 +2764,11 @@ export interface EnumValueOptions {
    * out when using debug formats, e.g. when the field contains sensitive
    * credentials.
    */
-  readonly debugRedact?: boolean
+  readonly debug_redact?: boolean
   /** Information about the support window of a feature value. */
-  readonly featureSupport?: FieldOptions_FeatureSupport
+  readonly feature_support?: FieldOptions_FeatureSupport
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2801,7 +2801,7 @@ export interface ServiceOptions {
    */
   readonly deprecated?: boolean
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2826,7 +2826,7 @@ export interface MethodOptions {
    * this is a formalization for deprecating methods.
    */
   readonly deprecated?: boolean
-  readonly idempotencyLevel?: MethodOptions_IdempotencyLevel
+  readonly idempotency_level?: MethodOptions_IdempotencyLevel
   /**
    * Any features defined in the specific edition.
    * WARNING: This field should only be used by protobuf plugins or special
@@ -2835,7 +2835,7 @@ export interface MethodOptions {
    */
   readonly features?: FeatureSet
   /** The parser stores options it doesn't recognize here. See above. */
-  readonly uninterpretedOption?: ReadonlyArray<UninterpretedOption>
+  readonly uninterpreted_option?: ReadonlyArray<UninterpretedOption>
 }
 
 /**
@@ -2891,12 +2891,12 @@ export interface UninterpretedOption {
    * The value of the uninterpreted option, in whatever type the tokenizer
    * identified it as during parsing. Exactly one of these should be set.
    */
-  readonly identifierValue?: string
-  readonly positiveIntValue?: bigint
-  readonly negativeIntValue?: bigint
-  readonly doubleValue?: number
-  readonly stringValue?: Uint8Array
-  readonly aggregateValue?: string
+  readonly identifier_value?: string
+  readonly positive_int_value?: bigint
+  readonly negative_int_value?: bigint
+  readonly double_value?: number
+  readonly string_value?: Uint8Array
+  readonly aggregate_value?: string
 }
 
 /**
@@ -2920,8 +2920,8 @@ export const UninterpretedOption: ProtobufDescriptor.MessageDescriptor = descrip
  * @since 4.1.5
  */
 export interface UninterpretedOption_NamePart {
-  readonly namePart: string
-  readonly isExtension: boolean
+  readonly name_part: string
+  readonly is_extension: boolean
 }
 
 /**
@@ -2946,15 +2946,15 @@ export const UninterpretedOption_NamePart: ProtobufDescriptor.MessageDescriptor 
  * @since 4.1.5
  */
 export interface FeatureSet {
-  readonly fieldPresence?: FeatureSet_FieldPresence
-  readonly enumType?: FeatureSet_EnumType
-  readonly repeatedFieldEncoding?: FeatureSet_RepeatedFieldEncoding
-  readonly utf8Validation?: FeatureSet_Utf8Validation
-  readonly messageEncoding?: FeatureSet_MessageEncoding
-  readonly jsonFormat?: FeatureSet_JsonFormat
-  readonly enforceNamingStyle?: FeatureSet_EnforceNamingStyle
-  readonly defaultSymbolVisibility?: FeatureSet_VisibilityFeature_DefaultSymbolVisibility
-  readonly enforceProtoLimits?: FeatureSet_ProtoLimitsFeature_EnforceProtoLimits
+  readonly field_presence?: FeatureSet_FieldPresence
+  readonly enum_type?: FeatureSet_EnumType
+  readonly repeated_field_encoding?: FeatureSet_RepeatedFieldEncoding
+  readonly utf8_validation?: FeatureSet_Utf8Validation
+  readonly message_encoding?: FeatureSet_MessageEncoding
+  readonly json_format?: FeatureSet_JsonFormat
+  readonly enforce_naming_style?: FeatureSet_EnforceNamingStyle
+  readonly default_symbol_visibility?: FeatureSet_VisibilityFeature_DefaultSymbolVisibility
+  readonly enforce_proto_limits?: FeatureSet_ProtoLimitsFeature_EnforceProtoLimits
 }
 
 /**
@@ -3216,12 +3216,12 @@ export interface FeatureSetDefaults {
    * The minimum supported edition (inclusive) when this was constructed.
    * Editions before this will not have defaults.
    */
-  readonly minimumEdition?: Edition
+  readonly minimum_edition?: Edition
   /**
    * The maximum known edition (inclusive) when this was constructed. Editions
    * after this will not have reliable defaults.
    */
-  readonly maximumEdition?: Edition
+  readonly maximum_edition?: Edition
 }
 
 /**
@@ -3246,9 +3246,9 @@ export const FeatureSetDefaults: ProtobufDescriptor.MessageDescriptor = descript
 export interface FeatureSetDefaults_FeatureSetEditionDefault {
   readonly edition?: Edition
   /** Defaults of features that can be overridden in this edition. */
-  readonly overridableFeatures?: FeatureSet
+  readonly overridable_features?: FeatureSet
   /** Defaults of features that can't be overridden in this edition. */
-  readonly fixedFeatures?: FeatureSet
+  readonly fixed_features?: FeatureSet
 }
 
 /**
@@ -3432,9 +3432,9 @@ export interface SourceCodeInfo_Location {
    *
    *   // ignored detached comments.
    */
-  readonly leadingComments?: string
-  readonly trailingComments?: string
-  readonly leadingDetachedComments?: ReadonlyArray<string>
+  readonly leading_comments?: string
+  readonly trailing_comments?: string
+  readonly leading_detached_comments?: ReadonlyArray<string>
 }
 
 /**
@@ -3484,7 +3484,7 @@ export interface GeneratedCodeInfo_Annotation {
    */
   readonly path?: ReadonlyArray<number>
   /** Identifies the filesystem path to the original source .proto. */
-  readonly sourceFile?: string
+  readonly source_file?: string
   /**
    * Identifies the starting offset in bytes in the generated code
    * that relates to the identified object.

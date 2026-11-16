@@ -104,21 +104,21 @@ const editionOf = (file: D.FileDescriptorProto): { readonly number: number; read
 const merge = (features: Features, set: D.FeatureSet | undefined): Features => {
   if (set === undefined) return features
   return {
-    fieldPresence: set.fieldPresence === 1
+    fieldPresence: set.field_presence === 1
       ? "explicit"
-      : set.fieldPresence === 2
+      : set.field_presence === 2
       ? "implicit"
-      : set.fieldPresence === 3
+      : set.field_presence === 3
       ? "required"
       : features.fieldPresence,
-    enumType: set.enumType === 1 ? "open" : set.enumType === 2 ? "closed" : features.enumType,
-    repeatedFieldEncoding: set.repeatedFieldEncoding === 1
+    enumType: set.enum_type === 1 ? "open" : set.enum_type === 2 ? "closed" : features.enumType,
+    repeatedFieldEncoding: set.repeated_field_encoding === 1
       ? "packed"
-      : set.repeatedFieldEncoding === 2
+      : set.repeated_field_encoding === 2
       ? "expanded"
       : features.repeatedFieldEncoding,
-    utf8Validation: set.utf8Validation === 2 ? true : set.utf8Validation === 3 ? false : features.utf8Validation,
-    delimited: set.messageEncoding === 1 ? false : set.messageEncoding === 2 ? true : features.delimited
+    utf8Validation: set.utf8_validation === 2 ? true : set.utf8_validation === 3 ? false : features.utf8Validation,
+    delimited: set.message_encoding === 1 ? false : set.message_encoding === 2 ? true : features.delimited
   }
 }
 
@@ -133,7 +133,7 @@ const fieldFeatures = (edition: number, parent: Features, field: D.FieldDescript
     ...features,
     fieldPresence: field.label === LABEL_REQUIRED
       ? "required"
-      : field.proto3Optional === true
+      : field.proto3_optional === true
       ? "explicit"
       : features.fieldPresence,
     repeatedFieldEncoding: field.options?.packed === true
@@ -163,14 +163,6 @@ const camelCase = (name: string): string => {
     }
   }
   return out
-}
-
-// The property of a field or oneof in a message value. Names of
-// `Object.prototype` properties get a `$`, so that every property is a plain
-// own data property.
-const localName = (name: string): string => {
-  const camel = camelCase(name)
-  return camel in Object.prototype ? `${camel}$` : camel
 }
 
 // `.acme.v1.User` → `acme.v1.User`.
@@ -288,18 +280,18 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       messages: [],
       enums: [],
       extensions: [],
-      messageSetWireFormat: proto.options?.messageSetWireFormat === true,
+      messageSetWireFormat: proto.options?.message_set_wire_format === true,
       proto
     }
     messages.set(typeName, out)
     const entry: Pending = { message: out, proto, features, edition }
-    if (proto.options?.mapEntry === true) entries.set(typeName, entry)
+    if (proto.options?.map_entry === true) entries.set(typeName, entry)
     else pending.push(entry)
-    for (const nested of proto.nestedType ?? []) {
+    for (const nested of proto.nested_type ?? []) {
       const message = addMessage(file, out, typeName, nested, features, edition)
-      if (nested.options?.mapEntry !== true) out.messages.push(message)
+      if (nested.options?.map_entry !== true) out.messages.push(message)
     }
-    for (const nested of proto.enumType ?? []) out.enums.push(addEnum(file, out, typeName, nested, features))
+    for (const nested of proto.enum_type ?? []) out.enums.push(addEnum(file, out, typeName, nested, features))
     for (const extension of proto.extension ?? []) {
       pendingExtensions.push([file, out, extension, features, edition, typeName])
     }
@@ -338,10 +330,10 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     }
     files.set(name, file)
     const scope = file.package
-    for (const message of proto.messageType ?? []) {
+    for (const message of proto.message_type ?? []) {
       file.messages.push(addMessage(file, undefined, scope, message, features, edition.number))
     }
-    for (const e of proto.enumType ?? []) file.enums.push(addEnum(file, undefined, scope, e, features))
+    for (const e of proto.enum_type ?? []) file.enums.push(addEnum(file, undefined, scope, e, features))
     for (const extension of proto.extension ?? []) {
       pendingExtensions.push([file, undefined, extension, features, edition.number, scope])
     }
@@ -375,12 +367,12 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   ): D.ValueType => {
     const type = proto.type ?? fail(`${at}: a field without a type`)
     if (type === TYPE_MESSAGE || type === TYPE_GROUP) {
-      const typeName = typeRef(proto.typeName, at)
+      const typeName = typeRef(proto.type_name, at)
       const message = messages.get(typeName) ?? fail(`${at}: message ${typeName} is not defined`)
       return { kind: "message", message, delimited: features.delimited }
     }
     if (type === TYPE_ENUM) {
-      const typeName = typeRef(proto.typeName, at)
+      const typeName = typeRef(proto.type_name, at)
       return { kind: "enum", enum: enums.get(typeName) ?? fail(`${at}: enum ${typeName} is not defined`) }
     }
     const scalar = SCALARS[type] ?? fail(`${at}: field type ${type} is not supported`)
@@ -405,8 +397,8 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     const base = {
       _tag: "FieldDescriptor" as const,
       name,
-      localName: localName(name),
-      jsonName: proto.jsonName ?? camelCase(name),
+      localName: name,
+      jsonName: proto.json_name ?? camelCase(name),
       number: proto.number ?? fail(`${where}: a field without a number`),
       parent,
       oneof,
@@ -414,7 +406,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     }
     if (proto.label === LABEL_REPEATED) {
       if (proto.type === TYPE_MESSAGE) {
-        const entry = entries.get(typeRef(proto.typeName, where))
+        const entry = entries.get(typeRef(proto.type_name, where))
         if (entry !== undefined) {
           const key = entry.proto.field?.find((f) => f.number === 1) ?? fail(`${where}: a map entry without a key`)
           const value = entry.proto.field?.find((f) => f.number === 2) ?? fail(`${where}: a map entry without a value`)
@@ -448,16 +440,16 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
 
   for (const { edition, features, message, proto } of [...pending, ...entries.values()]) {
     const at = message.typeName
-    const oneofs = (proto.oneofDecl ?? []).map((decl, index): Mutable<D.OneofDescriptor> | undefined => {
+    const oneofs = (proto.oneof_decl ?? []).map((decl, index): Mutable<D.OneofDescriptor> | undefined => {
       // A synthetic oneof holds only a proto3 `optional` field.
-      const members = (proto.field ?? []).filter((f) => f.oneofIndex === index)
-      if (members.length > 0 && members.every((f) => f.proto3Optional === true)) return undefined
+      const members = (proto.field ?? []).filter((f) => f.oneof_index === index)
+      if (members.length > 0 && members.every((f) => f.proto3_optional === true)) return undefined
       const name = decl.name ?? fail(`${at}: a oneof without a name`)
-      return { _tag: "OneofDescriptor", name, localName: localName(name), parent: message, fields: [], proto: decl }
+      return { _tag: "OneofDescriptor", name, localName: name, parent: message, fields: [], proto: decl }
     })
     for (const oneof of oneofs) if (oneof !== undefined) message.oneofs.push(oneof)
     for (const f of proto.field ?? []) {
-      const oneof = f.oneofIndex === undefined ? undefined : oneofs[f.oneofIndex]
+      const oneof = f.oneof_index === undefined ? undefined : oneofs[f.oneof_index]
       const fieldFeaturesOf = fieldFeatures(
         edition,
         oneof === undefined ? features : merge(features, oneof.proto.options?.features),
@@ -501,17 +493,17 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   for (const [service, methods] of pendingMethods) {
     for (const method of service.proto.method ?? []) {
       const at = `${service.typeName}.${method.name}`
-      const input = typeRef(method.inputType, at)
-      const output = typeRef(method.outputType, at)
-      const level = method.options?.idempotencyLevel
+      const input = typeRef(method.input_type, at)
+      const output = typeRef(method.output_type, at)
+      const level = method.options?.idempotency_level
       methods.push({
         _tag: "MethodDescriptor",
         name: method.name ?? fail(`${service.typeName}: a method without a name`),
         parent: service,
         input: messages.get(input) ?? fail(`${at}: message ${input} is not defined`),
         output: messages.get(output) ?? fail(`${at}: message ${output} is not defined`),
-        clientStreaming: method.clientStreaming === true,
-        serverStreaming: method.serverStreaming === true,
+        clientStreaming: method.client_streaming === true,
+        serverStreaming: method.server_streaming === true,
         idempotency: level === 1 ? "noSideEffects" : level === 2 ? "idempotent" : "unknown",
         proto: method
       })

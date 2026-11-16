@@ -72,11 +72,21 @@ describe("ProtobufDescriptor", () => {
     assert.isUndefined(fieldOf("test.Optional", "a").oneof)
   })
 
-  it("names fields in lowerCamelCase, and escapes Object.prototype properties", () => {
+  it("preserves field and oneof names independently of JSON names", () => {
     assert.deepStrictEqual(
       message("test.Names").fields.map((f) => [f.localName, f.jsonName]),
-      [["constructor$", "constructor"], ["fooBar", "fooBar"]]
+      [["constructor", "constructor"], ["foo_bar", "customName"]]
     )
+    assert.deepStrictEqual(message("legacy.OriginalNames").fields.map((f) => f.localName), [
+      "bar",
+      "bar_",
+      "constructor",
+      "__proto__",
+      "toString"
+    ])
+    const oneof = message("test.NamedOneof").oneofs[0]
+    assert.strictEqual(oneof.localName, "__proto__")
+    assert.deepStrictEqual(oneof.fields.map((f) => f.localName), ["child_value", "toString"])
   })
 
   it("resolves services, extensions and enums", () => {
@@ -115,13 +125,13 @@ describe("ProtobufDescriptor", () => {
       ],
       [
         "an undefined type",
-        [{ name: "a.proto", messageType: [{ name: "A", field: [field("f", 1, ".x.Missing")] }] }],
+        [{ name: "a.proto", message_type: [{ name: "A", field: [field("f", 1, ".x.Missing")] }] }],
         "A.f: message x.Missing is not defined"
       ],
       ["a relative type name", [{
         name: "a.proto",
-        messageType: [
-          { name: "A", field: [{ name: "f", number: 1, label: 1, type: T.message, typeName: "Point" }] },
+        message_type: [
+          { name: "A", field: [{ name: "f", number: 1, label: 1, type: T.message, type_name: "Point" }] },
           point
         ]
       }], "A.f: expected a fully qualified type name, got Point"],
@@ -132,7 +142,7 @@ describe("ProtobufDescriptor", () => {
       ],
       [
         "a type defined twice",
-        [{ name: "a.proto", messageType: [point] }, { name: "b.proto", messageType: [point] }],
+        [{ name: "a.proto", message_type: [point] }, { name: "b.proto", message_type: [point] }],
         "Point is defined twice"
       ]
     ]
@@ -162,13 +172,15 @@ describe("ProtobufDescriptor", () => {
         request.fields.map((f) =>
           f.kind === "list" || f.type.kind !== "message" ? f.localName : f.type.message.typeName
         ),
-        ["fileToGenerate", "parameter", "protoFile", "sourceFileDescriptors", "google.protobuf.compiler.Version"]
+        ["file_to_generate", "parameter", "proto_file", "source_file_descriptors", "google.protobuf.compiler.Version"]
       )
     })
 
     it("encodes a decoded descriptor set to the same bytes", () => {
       const set = Result.getOrThrow(ProtobufMessage.decode(FileDescriptorSet)(bytes))
-      const comments = (set.file as any)[0].sourceCodeInfo.location.filter((l: any) => l.leadingComments !== undefined)
+      const comments = (set.file as any)[0].source_code_info.location.filter((l: any) =>
+        l.leading_comments !== undefined
+      )
       assert.isTrue(comments.length > 0)
       assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.encode(FileDescriptorSet)(set)), new Uint8Array(bytes))
     })
@@ -179,7 +191,7 @@ describe("ProtobufDescriptor", () => {
       // fields of `protoc` and written back.
       const encode = ProtobufMessage.encode(FileDescriptorProto)
       const set = Result.getOrThrow(ProtobufMessage.decode(FileDescriptorSet)(bytes))
-      const { sourceCodeInfo: _, ...protoc } = (set.file as any)[0]
+      const { source_code_info: _, ...protoc } = (set.file as any)[0]
       assert.deepStrictEqual(
         Result.getOrThrow(encode(ProtobufDescriptor.descriptorFile.proto)),
         Result.getOrThrow(encode(protoc))

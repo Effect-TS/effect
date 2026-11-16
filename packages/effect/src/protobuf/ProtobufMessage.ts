@@ -5,7 +5,7 @@
  * **Mental model**
  *
  * A message value is a plain object, keyed by the `localName` of each field,
- * the lowerCamelCase of its name:
+ * its original protobuf name without casing changes or escaping:
  *
  * - A field with implicit presence, such as a proto3 field without `optional`,
  *   always holds a value: its zero value when it is absent.
@@ -42,7 +42,7 @@
  * const registry = Result.getOrThrow(ProtobufDescriptor.make([{
  *   name: "point.proto",
  *   syntax: "proto3",
- *   messageType: [{
+ *   message_type: [{
  *     name: "Point",
  *     field: [
  *       { name: "x", number: 1, label: 1, type: 5 },
@@ -159,7 +159,7 @@ export interface EncodeOptions {
  * const registry = Result.getOrThrow(ProtobufDescriptor.make([{
  *   name: "test.proto",
  *   syntax: "proto3",
- *   messageType: [{ name: "Test", field: [{ name: "a", number: 1, label: 1, type: 5 }] }]
+ *   message_type: [{ name: "Test", field: [{ name: "a", number: 1, label: 1, type: 5 }] }]
  * }]))
  * const decode = ProtobufMessage.decode(registry.getMessage("Test")!)
  *
@@ -191,7 +191,7 @@ export const decode = (
  * const registry = Result.getOrThrow(ProtobufDescriptor.make([{
  *   name: "test.proto",
  *   syntax: "proto3",
- *   messageType: [{ name: "Test", field: [{ name: "a", number: 1, label: 1, type: 5 }] }]
+ *   message_type: [{ name: "Test", field: [{ name: "a", number: 1, label: 1, type: 5 }] }]
  * }]))
  * const encode = ProtobufMessage.encode(registry.getMessage("Test")!)
  *
@@ -236,10 +236,10 @@ export const getExtension = (
  * // extend Product { int32 priority = 100; }
  * const registry = Result.getOrThrow(ProtobufDescriptor.make([{
  *   name: "product.proto",
- *   messageType: [{
+ *   message_type: [{
  *     name: "Product",
  *     field: [{ name: "name", number: 1, label: 1, type: 9 }],
- *     extensionRange: [{ start: 100, end: 536870912 }]
+ *     extension_range: [{ start: 100, end: 536870912 }]
  *   }],
  *   extension: [{ name: "priority", number: 100, label: 1, type: 5, extendee: ".Product" }]
  * }]))
