@@ -282,6 +282,20 @@ const sizes = (data: ArrowData.ArrowData) => {
 
 const build = (type: S.DataType, values: ReadonlyArray<unknown>) =>
   Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values))
+
+const assertBuildError = (
+  field: S.Field,
+  values: ReadonlyArray<unknown>,
+  path: ReadonlyArray<string | number>,
+  label: string
+) => {
+  const result = ArrowColumn.fromValues(field, values)
+  assert.isTrue(Result.isFailure(result), label)
+  if (Result.isFailure(result)) {
+    assert.isTrue(ArrowColumn.isArrowBuildError(result.failure), label)
+    assert.deepStrictEqual(result.failure.path, path, label)
+  }
+}
 // Values given to fromValues, and what they read as with `representation: "storage"` when it differs
 const storageCases: ReadonlyArray<
   readonly [label: string, type: S.DataType, values: ReadonlyArray<unknown>, storage?: ReadonlyArray<unknown>]
@@ -347,14 +361,7 @@ describe("ArrowColumn", () => {
   // ARROW-COLUMN-002 (mixed): Schema.fbs type constraints; local rejection paths and input policy.
   // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("fromValues fails with an ArrowBuildError locating a value that does not fit", () => {
-    for (const [label, field, values, path] of rejections) {
-      const result = ArrowColumn.fromValues(field, values)
-      assert.isTrue(Result.isFailure(result), label)
-      if (Result.isFailure(result)) {
-        assert.isTrue(ArrowColumn.isArrowBuildError(result.failure), label)
-        assert.deepStrictEqual(result.failure.path, path, label)
-      }
-    }
+    for (const [label, field, values, path] of rejections) assertBuildError(field, values, path, label)
   })
 
   // ARROW-COLUMN-008 (mixed): Schema.fbs Decimal precision, the total number of decimal digits; local rejection path.
@@ -383,14 +390,7 @@ describe("ArrowColumn", () => {
       const label = `decimal(${type.precision}, ${type.scale}, ${type.bitWidth})`
       const column = Result.getOrThrow(ArrowColumn.fromValues(field, fits.map(dec), { representation: "storage" }))
       assert.deepStrictEqual(ArrowColumn.toArray(column), [...unscaled], label)
-      for (const value of tooLong) {
-        const result = ArrowColumn.fromValues(field, [dec(fits[0]), dec(value)])
-        assert.isTrue(Result.isFailure(result), `${value} in ${label}`)
-        if (Result.isFailure(result)) {
-          assert.isTrue(ArrowColumn.isArrowBuildError(result.failure))
-          assert.deepStrictEqual(result.failure.path, [1])
-        }
-      }
+      for (const value of tooLong) assertBuildError(field, [dec(fits[0]), dec(value)], [1], `${value} in ${label}`)
     }
   })
 
@@ -400,16 +400,9 @@ describe("ArrowColumn", () => {
     const rejected = (
       type: S.DataType,
       values: ReadonlyArray<unknown>,
-      path: ReadonlyArray<unknown>,
+      path: ReadonlyArray<string | number>,
       label: string
-    ) => {
-      const result = ArrowColumn.fromValues(S.field("i", type), values)
-      assert.isTrue(Result.isFailure(result), label)
-      if (Result.isFailure(result)) {
-        assert.isTrue(ArrowColumn.isArrowBuildError(result.failure), label)
-        assert.deepStrictEqual(result.failure.path, path, label)
-      }
-    }
+    ) => assertBuildError(S.field("i", type), values, path, label)
     const units: ReadonlyArray<readonly [unit: S.IntervalUnit, interval: Record<string, number | bigint>]> = [
       ["yearMonth", { months: 14 }],
       ["dayTime", { days: 1, milliseconds: -2 }],

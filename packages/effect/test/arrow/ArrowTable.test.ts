@@ -70,7 +70,8 @@ describe("ArrowTable", () => {
       [ArrowTable.fromRows(nested, [{ l: [1] }, { l: [] }, { l: [2, 300] }], { batchSize: 2 }), [2, "l", 1]],
       [ArrowTable.fromColumns(S.make([S.field("u", S.union("sparse", [S.field("a", S.int8)], [-1]))]), { u: [] }), [
         "u"
-      ]]
+      ]],
+      [ArrowTable.fromRows(S.make([S.field("d", S.decimal(10, 0, 32))]), []), ["d"]]
     ]
     for (const [result, path] of failures) {
       assert.isTrue(Result.isFailure(result))
