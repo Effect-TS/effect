@@ -127,11 +127,17 @@ import * as Values from "./internal/values.ts"
  * One field's values across the chunks of a table. Iterating yields every
  * value in order; null slots yield `null`.
  *
+ * **Details**
+ *
+ * `A` is the type of the non-null values. An Arrow type does not determine
+ * it, so the constructors of this module return columns of `unknown` values.
+ * Code that knows what a field reads as can give its columns a narrower `A`.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
-export interface ArrowColumn extends Iterable<unknown> {
+export interface ArrowColumn<out A = unknown> extends Iterable<A | null> {
   readonly field: ArrowSchema.Field
   readonly chunks: ReadonlyArray<ArrowData.ArrowData>
   readonly length: number
@@ -181,8 +187,8 @@ const column = (self: ArrowColumn): Column =>
  * @since 4.1.5
  */
 export const get: {
-  (index: number): (self: ArrowColumn) => Option.Option<unknown>
-  (self: ArrowColumn, index: number): Option.Option<unknown>
+  (index: number): <A>(self: ArrowColumn<A>) => Option.Option<A | null>
+  <A>(self: ArrowColumn<A>, index: number): Option.Option<A | null>
 } = dual(
   2,
   (self: ArrowColumn, index: number): Option.Option<unknown> =>
@@ -201,8 +207,8 @@ export const get: {
  * @since 4.1.5
  */
 export const getUnsafe: {
-  (index: number): (self: ArrowColumn) => unknown
-  (self: ArrowColumn, index: number): unknown
+  (index: number): <A>(self: ArrowColumn<A>) => A | null
+  <A>(self: ArrowColumn<A>, index: number): A | null
 } = dual(2, (self: ArrowColumn, index: number): unknown => {
   if (!(index >= 0 && index < self.length && Number.isInteger(index))) {
     throw new RangeError(`index ${index} is outside 0..${self.length}`)
@@ -217,8 +223,8 @@ export const getUnsafe: {
  * @category converting
  * @since 4.1.5
  */
-export const toArray = (self: ArrowColumn): Array<unknown> => {
-  const out = new Array<unknown>(self.length)
+export const toArray = <A>(self: ArrowColumn<A>): Array<A | null> => {
+  const out = new Array<A | null>(self.length)
   let i = 0
   for (const v of self) out[i++] = v
   return out

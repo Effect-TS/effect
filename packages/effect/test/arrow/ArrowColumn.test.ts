@@ -467,7 +467,10 @@ describe("ArrowColumn", () => {
 
     // Reads of one dictionary in both representations do not share decoded values
     assertEquals(ArrowColumn.toArray(ArrowColumn.make(field, chunks)), domain)
-    const exact = ArrowColumn.make(field, chunks, { representation: "storage" })
+    // The value type is known here, so the column can say so
+    const exact = ArrowColumn.make(field, chunks, { representation: "storage" }) as ArrowColumn.ArrowColumn<bigint>
+    const first: bigint | null = ArrowColumn.getUnsafe(exact, 0)
+    assert.strictEqual(first, 1704164645678901234n)
     assert.deepStrictEqual(ArrowColumn.toArray(exact), nanos)
     assertEquals(ArrowColumn.toArray(ArrowColumn.make(field, chunks)), domain)
 
