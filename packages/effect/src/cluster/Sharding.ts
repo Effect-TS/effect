@@ -426,6 +426,11 @@ const make = Effect.gen(function*() {
       return fibers
     })
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
+    // Release one lock at a time. Lock operations can share one storage
+    // session (SqlRunnerStorage on PostgreSQL and MySQL), so a burst of
+    // releases would queue together, and every release, refresh and acquire
+    // behind them could miss its deadline.
+    const withShardReleasePermit = Semaphore.makeUnsafe(1).withPermits(1)
     let forcedShardReleaseRunning = false
     // Called from the acquisition loop only, so no `acquire` is in flight
     const checkHandedOff = () => {
@@ -451,7 +456,7 @@ const make = Effect.gen(function*() {
       yield* startSyncSingletons
       yield* awaitStoppingSingletons(shardIds)
       yield* shardLocksHealthyLatch.await
-      yield* release
+      yield* withShardReleasePermit(release)
       for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
         MutableHashSet.remove(forceReleasingShards, shardId)
