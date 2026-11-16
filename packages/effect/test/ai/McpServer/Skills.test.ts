@@ -557,15 +557,11 @@ describe("McpServer skills", () => {
       Effect.gen(function*() {
         const uri = "skill://refunds/SKILL.md"
         const tasks: Array<() => void> = []
-        const gated: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
-            return fiber.currentOpCount > 2
-          }
-
-          override makeDispatcher(): Scheduler.SchedulerDispatcher {
-            return { scheduleTask: (task) => tasks.push(task), flush: () => {} }
-          }
-        }()
+        const gated: Scheduler.Scheduler = {
+          executionMode: "async",
+          shouldYield: (fiber) => fiber.currentOpCount > 2,
+          makeDispatcher: () => ({ scheduleTask: (task) => tasks.push(task), flush: () => {} })
+        }
         const step = () => tasks.shift()?.()
 
         const server = yield* McpServer.McpServer
