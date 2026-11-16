@@ -601,10 +601,8 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return Object.fromEntries(rows.map((row) => [row.name, String(row.value)]))
   })
 
-  // Holds the next lock check of exactly `shardId`, the refresh a runner
-  // makes before it stores the final reply of a persisted request on that
-  // shard, until the runner gives up on it after `shardLockRefreshInterval`.
-  // The runner's regular lock refreshes are not held.
+  // Holds the next matching singleton refresh until its caller times out.
+  // To isolate reply checks, use stable multi-shard ownership with no churn.
   const holdShardLockCheck = (shardId: ShardId.ShardId) =>
     Effect.sync(() => {
       lockChecks.held = shardId.toString()

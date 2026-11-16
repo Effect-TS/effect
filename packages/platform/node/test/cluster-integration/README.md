@@ -16,7 +16,9 @@ Both databases run with commits that skip the disk flush (PostgreSQL
 `fsync=off`, MySQL `innodb_flush_log_at_trx_commit=0` and `sync_binlog=0`). A
 slow flush can hold a lock refresh past the 500 ms `shardLockRefreshInterval`;
 the runner then fences the reply and the request replays, which breaks the
-exactly-once handler counts. `Smoke.test.ts` checks these settings.
+exactly-once handler counts. `Smoke.test.ts` checks these settings. The suite
+tests runner failures while the database stays alive, not database crash recovery
+or power-loss durability.
 
 ## Harness
 
@@ -29,7 +31,7 @@ exactly-once handler counts. `Smoke.test.ts` checks these settings.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
 - `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection.
 - `cutSocket(runner, { peer, direction })` to close one inbound or outbound client/runner connection without stopping either endpoint.
-- `holdShardLockCheck(shardId)` to hold the next lock check of that one shard, the refresh a runner makes before storing a persisted reply, until the runner gives up on it. Regular lock refreshes are not held.
+- `holdShardLockCheck(shardId)` to hold the next matching singleton refresh until its caller times out. To isolate a persisted reply check from periodic refreshes, use one runner with at least two shards, wait for stable ownership, and avoid ownership changes while the hold is armed.
 - `diskSyncSettings()` to read the database settings that decide whether a commit waits for the disk.
 - `insertMessage(row)` to inject a raw row into this cluster's prefixed message table.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.

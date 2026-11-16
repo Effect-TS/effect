@@ -97,6 +97,7 @@ const PersistenceEntity = Entity.make("ClusterIntegrationPersistence", [
 ]).annotateRpcs(ClusterSchema.Persisted, true)
 
 const freshState = () => ({
+  beforePersistedReply: Effect.void,
   completedUninterruptible: 0,
   completedVolatile: 0,
   counts: new Map<string, number>(),
@@ -160,11 +161,11 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
     Effect.sync(() => increment("NonJsonFailure", payload.id)).pipe(
       Effect.andThen(Effect.fail(new Error(`non-json:${payload.id}`)))
     ),
-  Persisted: ({ payload }) =>
-    Effect.sync(() => {
-      increment("Persisted", payload.id)
-      return `persisted:${payload.id}`
-    }),
+  Persisted: Effect.fnUntraced(function*({ payload }) {
+    increment("Persisted", payload.id)
+    yield* state.beforePersistedReply
+    return `persisted:${payload.id}`
+  }),
   Scheduled: Effect.fnUntraced(function*({ payload }) {
     increment("Scheduled", payload.id)
     const deliveredAt = yield* Clock.currentTimeMillis
@@ -261,6 +262,27 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
+      }))
+
+    it.live(`${backend}: replays a request whose reply was fenced by a slow lock check`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({
+          backend,
+          config: { shardsPerGroup: 2 },
+          entities: PersistenceEntityLayer
+        })
+        yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        const shard = yield* cluster.shardOfEntity(PersistenceEntity, "fence")
+        const id = `${backend}-fenced`
+        state.beforePersistedReply = Effect.gen(function*() {
+          if (count("Persisted", id) === 1) yield* cluster.holdShardLockCheck(shard)
+        })
+        const client = yield* cluster.getClient(PersistenceEntity)
+
+        assert.strictEqual(yield* client("fence").Persisted(new KeyedPayload({ id })), `persisted:${id}`)
+        assert.strictEqual(count("Persisted", id), 2)
       }))
 
     it.live(`${backend}: serves primary-key duplicates from the stored reply`, () =>
