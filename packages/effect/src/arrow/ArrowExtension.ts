@@ -9,7 +9,8 @@
  * - Readers that are given an {@link ArrowExtension} for that name pass each
  *   storage value through `decode`; builders pass each non-null value
  *   through `encode` exactly once. Without a registered extension, the
- *   storage values are used.
+ *   storage values are used. Readers asked for the storage representation
+ *   do not call `decode`.
  *
  * **Example** (A UUID extension over 16-byte binaries)
  *
