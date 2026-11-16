@@ -242,6 +242,7 @@ interface EntityManagerState {
 const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
   const shardLockInterval = effectiveInterval(config)
+  const shardLockIntervalMillis = Duration.toMillis(shardLockInterval)
   const shardGroups = shardGroupConfig(config)
   const getRunnerAddress = () => Option.getOrUndefined(config.runnerAddress)
   const clock = yield* Clock
@@ -430,9 +431,9 @@ const make = Effect.gen(function*() {
     })
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
     let forcedShardReleaseRunning = false
-    // When the current run of failed shard lock operations started. Only a
-    // successful lock operation clears it.
-    let shardLocksFailingSince: number | undefined
+    // When the current run of failed shard lock operations started, and the
+    // latest failure. Only a successful lock operation clears it.
+    let shardLockFailure: { readonly since: number; readonly cause: Cause.Cause<unknown> } | undefined
     // Called from the acquisition loop only, so no `acquire` is in flight
     const checkHandedOff = () => {
       if (
@@ -651,18 +652,26 @@ const make = Effect.gen(function*() {
           continue
         }
 
-        const oacquired = yield* runnerStorage.acquire(selfAddress, unacquiredShards).pipe(
-          Effect.timeoutOption(shardLockInterval),
-          Effect.tapCause(shardLockOperationFailed)
+        const acquireStartedAt = clock.currentTimeMillisUnsafe()
+        const acquireExit = yield* runnerStorage.acquire(selfAddress, unacquiredShards).pipe(
+          Effect.timeout(shardLockInterval),
+          Effect.exit
         )
-        if (Option.isNone(oacquired)) {
-          yield* shardLockOperationFailed(Cause.fail(new Cause.TimeoutError("Shard lock acquisition timed out")))
+        if (Exit.isFailure(acquireExit)) {
+          if (!Cause.hasInterruptsOnly(acquireExit.cause)) {
+            yield* Effect.logWarning("Could not acquire shards", acquireExit.cause)
+          }
+          yield* shardLockOperationFailed(acquireExit.cause)
+          // Retry at the lock refresh cadence, which bounds how late eviction can be
+          yield* Effect.sleep(
+            Math.max(0, shardLockIntervalMillis - (clock.currentTimeMillisUnsafe() - acquireStartedAt))
+          )
           activeShardsLatch.openUnsafe()
           continue
         }
-        shardLocksFailingSince = undefined
+        shardLockFailure = undefined
 
-        const acquired = oacquired.value
+        const acquired = acquireExit.value
         yield* storage.resetShards(acquired).pipe(
           Effect.ignore,
           Effect.timeoutOption(shardLockInterval)
@@ -733,15 +742,17 @@ const make = Effect.gen(function*() {
     // A runner whose lock operations keep failing holds none of its shards, but
     // stays registered while its heartbeat works, so every runner keeps
     // assigning them to it. When a lock operation fails and none has succeeded
-    // for `shardLockExpiration`, the locks it last held have expired, so it
-    // unregisters and other runners take its shards.
+    // for `shardLockExpiration` since the first failure, the locks it last held
+    // have expired, so it unregisters and other runners take its shards. While
+    // failures are pending, a lock operation is retried every lock refresh
+    // interval, which bounds how late this check runs.
     const shardLockExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
     function shardLockOperationFailed(cause: Cause.Cause<unknown>): Effect.Effect<void> {
       return Effect.suspend(() => {
         if (isShutdown.current || Cause.hasInterruptsOnly(cause)) return Effect.void
         const now = clock.currentTimeMillisUnsafe()
-        shardLocksFailingSince ??= now
-        if (shardLocksEvicted || now - shardLocksFailingSince < shardLockExpirationMillis) return Effect.void
+        shardLockFailure = { since: shardLockFailure?.since ?? now, cause }
+        if (shardLocksEvicted || now - shardLockFailure.since < shardLockExpirationMillis) return Effect.void
         shardLocksEvicted = true
         return Effect.andThen(
           markShardLocksUnhealthy(cause),
@@ -752,15 +763,19 @@ const make = Effect.gen(function*() {
         )
       })
     }
-    // While evicted, keep this runner unregistered and probe the lock path
-    // with `releaseAll`, which also drops any lock it may still hold. Once the
-    // probe succeeds, the registration loop registers it again.
+    // While evicted, keep this runner unregistered and probe the lock path.
+    // Only a successful `acquire` shows that it can take locks again. The probe
+    // shard is normally held by another runner, so it takes nothing, and
+    // `releaseAll` drops anything it did take along with any lock this runner
+    // may still hold. Once the probe succeeds, the runner registers again.
+    const lockProbeShards = Array.from(shardGroups.assigned, (group) => makeShardId(group, 1))
     const probeEvictedShardLocks = withRegistrationLock(runnerStorage.unregister(selfAddress)).pipe(
+      Effect.andThen(runnerStorage.acquire(selfAddress, lockProbeShards)),
       Effect.andThen(runnerStorage.releaseAll(selfAddress)),
       Effect.timeout(shardLockInterval),
       Effect.andThen(Effect.suspend(() => {
         shardLocksEvicted = false
-        shardLocksFailingSince = undefined
+        shardLockFailure = undefined
         return markShardLocksHealthy
       })),
       Effect.catchCause((cause) => Effect.logWarning("Shard lock storage is still unhealthy", cause))
@@ -785,7 +800,7 @@ const make = Effect.gen(function*() {
         runnerStorage.refresh(selfAddress, refreshed),
         (acquired) => {
           // an empty refresh is only the heartbeat, not a lock operation
-          if (refreshed.length > 0) shardLocksFailingSince = undefined
+          if (refreshed.length > 0) shardLockFailure = undefined
           releaseLostShards(refreshed, acquired)
         }
       )
@@ -801,6 +816,9 @@ const make = Effect.gen(function*() {
     const probeShardLocks = runnerStorage.refresh(selfAddress, []).pipe(
       Effect.timeout(shardLockInterval),
       Effect.andThen(markShardLocksHealthy),
+      // Retry a failed lock refresh now rather than at the next tick, so a
+      // runner holding shards attempts one every lock refresh interval
+      Effect.andThen(Effect.suspend(() => shardLockFailure === undefined ? Effect.void : refreshShardLocks)),
       Effect.catchCause((cause) => Effect.logWarning("Shard lock storage is still unhealthy", cause))
     )
 
