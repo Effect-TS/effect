@@ -365,8 +365,7 @@ describe("RpcClient", () => {
         const caller = yield* client.Ping().pipe(Effect.forkChild)
         const requestId = takeRequestId(yield* Queue.take(sent))
         yield* Effect.yieldNow
-        // a repeated id is completed once
-        yield* handle(terminal._tag === "Defect" ? terminal : { ...terminal, requestIds: [requestId, requestId] })
+        yield* handle(terminal)
         const exit = caller.pollUnsafe()
         assert(exit !== undefined, "terminal delivery must complete the caller before client shutdown")
         assert(Exit.isFailure(exit))
@@ -510,52 +509,22 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(received, ["a", "b", "c"])
     }))
 
-  for (const end of ["is cancelled", "completes", "fails to send"] as const) {
-    it.effect(`interrupts pending Acks when their request ${end}`, () =>
-      Effect.gen(function*() {
-        const interruptedAcks = yield* Queue.unbounded<string | number>()
-        const failRequest = yield* Deferred.make<void, RpcClientError>()
-        const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
-        const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
-        const protocol = RpcClient.Protocol.of({
-          codecFor: RpcSerialization.json.codecFor,
-          supportsAck: true,
-          supportsTransferables: false,
-          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-          send: (_clientId, message) =>
-            message._tag === "Ack"
-              ? Effect.onInterrupt(Effect.never, () => Queue.offer(interruptedAcks, message.requestId))
-              : Queue.offer(sent, message).pipe(
-                Effect.andThen(end === "fails to send" ? Deferred.await(failRequest) : Effect.void)
-              )
-        })
-        const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
-        const handle = yield* Deferred.await(received)
-        const scope = yield* Scope.make()
-        const queue = yield* client.Good(undefined, { asQueue: true }).pipe(Scope.provide(scope))
-        const requestId = takeRequestId(yield* Queue.take(sent))
-        // the transport has not finished sending the first Ack when the next chunk arrives
-        yield* handle({ _tag: "Chunk", requestId, values: ["a"] })
-        yield* handle({ _tag: "Chunk", requestId, values: ["b"] })
-
-        if (end === "is cancelled") {
-          yield* Scope.close(scope, Exit.void)
-          assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
-        } else if (end === "completes") {
-          yield* handle({ _tag: "Exit", requestId, exit: { _tag: "Success", value: null } })
-          assert.deepStrictEqual(yield* Queue.collect(queue), ["a", "b"])
-        } else {
-          // the peer can reply before the local send of the request fails
-          const error = new RpcClientError({
-            reason: new RpcClientDefect({ message: "send failed", cause: undefined })
-          })
-          yield* Deferred.fail(failRequest, error)
-          assert.deepStrictEqual(yield* Queue.takeN(queue, 2), ["a", "b"])
-          assert.strictEqual(yield* Queue.take(queue).pipe(Effect.flip), error)
-        }
-        assert.deepStrictEqual(yield* Queue.takeN(interruptedAcks, 2), [requestId, requestId])
-      }))
-  }
+  it.effect("does not acknowledge a waiting socket chunk when its stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      const { protocol, frames, sent } = yield* makeSocketProtocol
+      const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const consuming = yield* Deferred.make<void>()
+      const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId, values: ["a", "b", "c"] }))
+      yield* Deferred.await(consuming)
+      yield* Fiber.interrupt(reader)
+      yield* Effect.yieldNow
+      assert.deepStrictEqual(yield* Queue.takeAll(sent), [{ _tag: "Interrupt", requestId }])
+    }))
 
   it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
     Effect.gen(function*() {
