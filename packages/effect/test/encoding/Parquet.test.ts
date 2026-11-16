@@ -1,10 +1,60 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Bytes, Cause, Effect, Exit } from "effect"
+import { Effect } from "effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Parquet from "effect/encoding/Parquet"
-import * as Thrift from "effect/encoding/Thrift"
 import { readFileSync } from "node:fs"
 import { crc32, gunzipSync, gzipSync } from "node:zlib"
+import {
+  ALP,
+  type Annotation,
+  BIT_PACKED,
+  Bool,
+  BYTE_STREAM_SPLIT,
+  bytes,
+  dataPage,
+  dataPageV2,
+  delta,
+  DELTA_BINARY_PACKED,
+  DELTA_BYTE_ARRAY,
+  DELTA_LENGTH_BYTE_ARRAY,
+  dictionaryPage,
+  dies,
+  element,
+  failsWith,
+  file,
+  flat,
+  GZIP,
+  gzip,
+  I32,
+  I64,
+  int32s,
+  integer,
+  lengthPrefixed,
+  List,
+  logical,
+  OPTIONAL,
+  page,
+  PLAIN,
+  PLAIN_DICTIONARY,
+  plainBinary,
+  plainBytes,
+  REPEATED,
+  REQUIRED,
+  requiredColumn,
+  RLE,
+  RLE_DICTIONARY,
+  root,
+  runs,
+  Str,
+  STRING,
+  Struct,
+  text,
+  thrift,
+  Type,
+  u32,
+  uleb,
+  type V
+} from "../utils/parquet.ts"
 
 // Two kinds of evidence:
 // - "pyarrow fixtures": files written by pyarrow, read back and compared with
@@ -40,8 +90,6 @@ const gold: { readonly writer: string; readonly files: ReadonlyArray<GoldFile> }
 )
 const fixture = (name: string) =>
   Parquet.fromBytes(new Uint8Array(readFileSync(new URL("../fixtures/parquet/" + name, import.meta.url))))
-
-const gzip: Parquet.Decompress = (data) => Effect.sync(() => new Uint8Array(gunzipSync(data)))
 
 /** Turns a column's layers and values back into one nested value per row, like gold.json. */
 const rows = (column: Parquet.Column): Array<Gold> => {
@@ -81,283 +129,7 @@ const rows = (column: Parquet.Column): Array<Gold> => {
   return Array.from({ length: column.numRows }, (_, row) => below(-1, row))
 }
 
-// ---------------------------------------------------------------------------
-// Synthetic files, written with the Thrift writer
-// ---------------------------------------------------------------------------
-
-const text = (s: string) => new TextEncoder().encode(s)
-
-type V = Thrift.Value
-const I8 = (value: number): V => ({ _tag: "I8", value })
-const I32 = (value: number): V => ({ _tag: "I32", value })
-const I64 = (value: number): V => ({ _tag: "I64", value: BigInt(value) })
-const Bool = (value: boolean): V => ({ _tag: "Bool", value })
-const Str = (value: string): V => ({ _tag: "Binary", value: text(value) })
-const List = (elementType: Thrift.TypeName, elements: ReadonlyArray<V>): V => ({ _tag: "List", elementType, elements })
-const Struct = (fields: { readonly [id: number]: V | undefined }): V => ({
-  _tag: "Struct",
-  fields: Object.entries(fields).flatMap(([id, value]) => value === undefined ? [] : [{ id: Number(id), value }])
-})
-const thrift = (value: V): Uint8Array => {
-  const writer = Thrift.makeWriter()
-  writer.writeValue(value)
-  return writer.finish()
-}
-const bytes = (...parts: ReadonlyArray<Uint8Array | ReadonlyArray<number>>): Uint8Array =>
-  Bytes.concat(parts.map((part) => Uint8Array.from(part)))
-const u32 = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24]
-const uleb = (n: number): Array<number> => n < 0x80 ? [n] : [(n & 0x7f) | 0x80, ...uleb(Math.floor(n / 0x80))]
-const int32s = (...values: ReadonlyArray<number>) => new Uint8Array(Int32Array.from(values).buffer)
-const plainBinary = (...values: ReadonlyArray<string>) =>
-  bytes(...values.flatMap((v) => [u32(text(v).length), text(v)]))
-/** RLE/bit-packed hybrid runs of repeated values: [value, count] pairs. */
-const runs = (width: number, ...pairs: ReadonlyArray<readonly [number, number]>) =>
-  bytes(...pairs.map(([value, count]) => [...uleb(count * 2), ...u32(value).slice(0, (width + 7) >> 3)]))
-const lengthPrefixed = (data: Uint8Array) => bytes(u32(data.length), data)
-
-const Type = { BOOLEAN: 0, INT32: 1, INT64: 2, INT96: 3, FLOAT: 4, DOUBLE: 5, BYTE_ARRAY: 6, FIXED_LEN_BYTE_ARRAY: 7 }
-const REQUIRED = 0
-const OPTIONAL = 1
-const REPEATED = 2
-const PLAIN = 0
-const PLAIN_DICTIONARY = 2
-const RLE = 3
-const BIT_PACKED = 4
-const DELTA_BINARY_PACKED = 5
-const DELTA_LENGTH_BYTE_ARRAY = 6
-const DELTA_BYTE_ARRAY = 7
-const RLE_DICTIONARY = 8
-const BYTE_STREAM_SPLIT = 9
-const ALP = 10
-const GZIP = 2
-
-const element = (name: string, options: {
-  readonly type?: number | undefined
-  readonly typeLength?: number | undefined
-  readonly repetition?: number | undefined
-  readonly children?: number | undefined
-  readonly convertedType?: number | undefined
-  readonly scale?: number | undefined
-  readonly precision?: number | undefined
-  /** A LogicalType union: a struct with one field. */
-  readonly logicalType?: V | undefined
-}): V =>
-  Struct({
-    1: options.type === undefined ? undefined : I32(options.type),
-    2: options.typeLength === undefined ? undefined : I32(options.typeLength),
-    3: options.repetition === undefined ? undefined : I32(options.repetition),
-    4: Str(name),
-    5: options.children === undefined ? undefined : I32(options.children),
-    6: options.convertedType === undefined ? undefined : I32(options.convertedType),
-    7: options.scale === undefined ? undefined : I32(options.scale),
-    8: options.precision === undefined ? undefined : I32(options.precision),
-    10: options.logicalType
-  })
-const root = (children: number) => element("schema", { children })
-
-/** `crc` is the unsigned CRC-32, which the header holds as a signed i32. */
-const page = (
-  type: number,
-  header: { readonly [id: number]: V },
-  body: Uint8Array,
-  uncompressedSize = body.length,
-  crc?: number
-) =>
-  bytes(
-    thrift(Struct({
-      1: I32(type),
-      2: I32(uncompressedSize),
-      3: I32(body.length),
-      4: crc === undefined ? undefined : I32(crc | 0),
-      ...header
-    })),
-    body
-  )
-const dataPage = (numValues: number, body: Uint8Array, options?: {
-  readonly encoding?: number | undefined
-  readonly levels?: number | undefined
-  readonly uncompressedSize?: number | undefined
-  readonly crc?: number | undefined
-}) =>
-  page(
-    0,
-    {
-      5: Struct({
-        1: I32(numValues),
-        2: I32(options?.encoding ?? PLAIN),
-        3: I32(options?.levels ?? RLE),
-        4: I32(options?.levels ?? RLE)
-      })
-    },
-    body,
-    options?.uncompressedSize,
-    options?.crc
-  )
-const dictionaryPage = (
-  numValues: number,
-  body: Uint8Array,
-  encoding = PLAIN,
-  options?: { readonly uncompressedSize?: number | undefined; readonly crc?: number | undefined }
-) => page(2, { 7: Struct({ 1: I32(numValues), 2: I32(encoding) }) }, body, options?.uncompressedSize, options?.crc)
-const dataPageV2 = (options: {
-  readonly numValues: number
-  readonly numNulls: number
-  readonly numRows: number
-  readonly encoding?: number | undefined
-  readonly repetition?: Uint8Array
-  readonly definition?: Uint8Array
-  readonly values: Uint8Array
-  readonly compressed?: boolean | undefined
-  readonly uncompressedSize?: number | undefined
-  /** Defaults to the length of `definition`. */
-  readonly definitionLength?: number | undefined
-  /** Defaults to the length of `repetition`. */
-  readonly repetitionLength?: number | undefined
-  /** Computes the CRC from the page's bytes: levels, then values. */
-  readonly crc?: ((body: Uint8Array) => number) | undefined
-}) => {
-  const repetition = options.repetition ?? new Uint8Array(0)
-  const definition = options.definition ?? new Uint8Array(0)
-  const body = bytes(repetition, definition, options.values)
-  return page(
-    3,
-    {
-      8: Struct({
-        1: I32(options.numValues),
-        2: I32(options.numNulls),
-        3: I32(options.numRows),
-        4: I32(options.encoding ?? PLAIN),
-        5: I32(options.definitionLength ?? definition.length),
-        6: I32(options.repetitionLength ?? repetition.length),
-        7: options.compressed === undefined ? undefined : Bool(options.compressed)
-      })
-    },
-    body,
-    options.uncompressedSize,
-    options.crc?.(body)
-  )
-}
-
-interface Chunk {
-  readonly type: number
-  readonly path: ReadonlyArray<string>
-  readonly pages: ReadonlyArray<Uint8Array>
-  readonly numValues: number
-  readonly codec?: number | undefined
-  /** Whether the first page is a dictionary page. */
-  readonly dictionary?: boolean | undefined
-  readonly statistics?: V | undefined
-  readonly chunk?: { readonly [id: number]: V } | undefined
-}
-
-/** Writes a Parquet file with one row group. */
-const file = (options: {
-  readonly schema: ReadonlyArray<V>
-  readonly numRows: number
-  readonly chunks: ReadonlyArray<Chunk>
-  readonly metadata?: { readonly [id: number]: V } | undefined
-}): Uint8Array => {
-  const body: Array<Uint8Array> = []
-  let offset = 4
-  const columns = options.chunks.map((chunk) => {
-    const data = bytes(...chunk.pages)
-    const meta = Struct({
-      1: I32(chunk.type),
-      2: List("I32", [I32(PLAIN), I32(RLE)]),
-      3: List("Binary", chunk.path.map(Str)),
-      4: I32(chunk.codec ?? 0),
-      5: I64(chunk.numValues),
-      6: I64(data.length),
-      7: I64(data.length),
-      9: I64(chunk.dictionary === true ? offset + chunk.pages[0].length : offset),
-      11: chunk.dictionary === true ? I64(offset) : undefined,
-      12: chunk.statistics
-    })
-    body.push(data)
-    const column = Struct({ 2: I64(offset), 3: meta, ...chunk.chunk })
-    offset += data.length
-    return column
-  })
-  const footer = thrift(Struct({
-    1: I32(1),
-    2: List("Struct", options.schema),
-    3: I64(options.numRows),
-    4: List("Struct", [Struct({ 1: List("Struct", columns), 2: I64(offset - 4), 3: I64(options.numRows) })]),
-    ...options.metadata
-  }))
-  return bytes(text("PAR1"), ...body, footer, u32(footer.length), text("PAR1"))
-}
-
-type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
-
-/** A file with one top-level column. */
-const flat = (options: {
-  readonly type: number
-  readonly repetition: number
-  readonly numRows: number
-  /** Defaults to `numRows`. */
-  readonly numValues?: number | undefined
-  readonly pages: ReadonlyArray<Uint8Array>
-  readonly typeLength?: number | undefined
-  readonly codec?: number | undefined
-  readonly dictionary?: boolean | undefined
-  readonly statistics?: V | undefined
-  readonly chunk?: { readonly [id: number]: V } | undefined
-  readonly metadata?: { readonly [id: number]: V } | undefined
-  readonly annotation?: Annotation | undefined
-}) =>
-  file({
-    schema: [
-      root(1),
-      element("x", {
-        type: options.type,
-        repetition: options.repetition,
-        typeLength: options.typeLength,
-        ...options.annotation
-      })
-    ],
-    numRows: options.numRows,
-    chunks: [{ ...options, path: ["x"], numValues: options.numValues ?? options.numRows }],
-    metadata: options.metadata
-  })
-
-/** A file with one required top-level column of `n` values in one data page. */
-const requiredColumn = (type: number, n: number, data: Uint8Array, options?: {
-  readonly encoding?: number | undefined
-  readonly typeLength?: number | undefined
-  readonly codec?: number | undefined
-  readonly uncompressedSize?: number | undefined
-  readonly annotation?: Annotation | undefined
-  readonly crc?: number | undefined
-}) =>
-  flat({
-    type,
-    repetition: REQUIRED,
-    numRows: n,
-    typeLength: options?.typeLength,
-    codec: options?.codec,
-    annotation: options?.annotation,
-    pages: [dataPage(n, data, options)]
-  })
-
 const int32s3 = requiredColumn(Type.INT32, 3, int32s(1, 2, 3))
-
-/** DELTA_BINARY_PACKED for at most 128 small values: one block of four miniblocks. */
-const delta = (values: ReadonlyArray<number>): Uint8Array => {
-  const zigzag = (n: number) => n < 0 ? -2 * n - 1 : 2 * n
-  const header = [...uleb(128), 4, ...uleb(values.length), ...uleb(zigzag(values[0] ?? 0))]
-  if (values.length <= 1) return new Uint8Array(header)
-  const deltas = values.slice(1).map((v, i) => v - values[i])
-  const min = Math.min(...deltas)
-  const relative = deltas.map((d) => d - min)
-  const width = 32 - Math.clz32(Math.max(...relative))
-  const miniblocks = Math.ceil(relative.length / 32)
-  const packed = new Uint8Array(miniblocks * 32 * width / 8)
-  relative.forEach((value, i) => {
-    for (let b = 0; b < width; b++) if ((value >> b) & 1) packed[(i * width + b) >> 3] |= 1 << ((i * width + b) & 7)
-  })
-  return bytes(header, uleb(zigzag(min)), [0, 1, 2, 3].map((m) => m < miniblocks ? width : 0), packed)
-}
 
 const metadataOf = (bytes: Uint8Array) => Parquet.readMetadata(Parquet.fromBytes(bytes))
 type ReadOptions = Omit<Parameters<typeof Parquet.readColumn>[2], "rowGroup" | "column">
@@ -367,16 +139,6 @@ const read = Effect.fnUntraced(function*(bytes: Uint8Array, options?: ReadOption
   return yield* Parquet.readColumn(source, metadata, { rowGroup: 0, column: 0, ...options })
 })
 const values = (bytes: Uint8Array, options?: ReadOptions) => Effect.map(read(bytes, options), rows)
-const failsWith = Effect.fnUntraced(function*<A>(
-  effect: Effect.Effect<A, Parquet.ParquetError>,
-  kind: Parquet.ParquetError["kind"],
-  message?: RegExp
-) {
-  const error = yield* Effect.flip(effect)
-  assert.isTrue(Parquet.isParquetError(error))
-  assert.strictEqual(error.kind, kind, error.message)
-  if (message !== undefined) assert.match(error.message, message)
-})
 
 describe("Parquet", () => {
   describe("pyarrow " + gold.writer + " fixtures", () => {
@@ -474,6 +236,7 @@ describe("Parquet", () => {
     const TIMESTAMP = 8
     /** A TimeType or TimestampType with a TimeUnit union, or without its unit. */
     const temporal = (member: number, unit: V | undefined) => Struct({ [member]: Struct({ 1: Bool(true), 2: unit }) })
+    const time = (unit: number) => ({ logicalType: temporal(TIME, Struct({ [unit]: empty })) })
 
     describe("README.md#file-format", () => {
       it.effect("PQ-FILE-1 MUST start and end with the magic number PAR1", () =>
@@ -647,11 +410,6 @@ describe("Parquet", () => {
 
       const GROUP = undefined
       const FIXED = Type.FIXED_LEN_BYTE_ARRAY
-      const logical = (member: number, fields: { readonly [id: number]: V } = {}): Annotation => ({
-        logicalType: Struct({ [member]: Struct(fields) })
-      })
-      const integer = (bitWidth: number, isSigned: boolean) => logical(10, { 1: I8(bitWidth), 2: Bool(isSigned) })
-      const time = (unit: number) => ({ logicalType: temporal(TIME, Struct({ [unit]: empty })) })
       const utc = { isAdjustedToUTC: true }
 
       it.effect("PQ-LT-4 SHOULD ignore an annotation on a physical type it is not defined for, and the column's order (#unsupported-logical-types)", () =>
@@ -838,7 +596,7 @@ describe("Parquet", () => {
       const binaries = (form: typeof forms[number], values: Binaries, annotation?: Annotation) => {
         const n = values.length
         const lengths = values.map((value) => value.length)
-        const plain = bytes(...values.map((value) => lengthPrefixed(Uint8Array.from(value))))
+        const plain = plainBytes(values)
         switch (form) {
           case "PLAIN":
             return requiredColumn(Type.BYTE_ARRAY, n, plain, { annotation })
@@ -867,7 +625,6 @@ describe("Parquet", () => {
         }
       }
       const hex = (values: Binaries) => values.map((value) => Hex.encode(Uint8Array.from(value)))
-      const STRING = logical(1)
       const utf8 = [
         ["STRING", STRING],
         ["ENUM", logical(4)],
@@ -902,7 +659,7 @@ describe("Parquet", () => {
                 numValues: 1,
                 numNulls: 0,
                 numRows: 1,
-                values: lengthPrefixed(Uint8Array.from(value))
+                values: plainBytes([value])
               })]
             })
           assert.deepStrictEqual(yield* values(v2([0xc3, 0xa9])), ["c3a9"])
@@ -983,10 +740,7 @@ describe("Parquet", () => {
               dictionary: true,
               annotation: STRING,
               pages: [
-                dictionaryPage(
-                  dictionary.length,
-                  bytes(...dictionary.map((value) => lengthPrefixed(Uint8Array.from(value))))
-                ),
+                dictionaryPage(dictionary.length, plainBytes(dictionary)),
                 dataPage(2, bytes([1], runs(1, [0, 2])), { encoding: RLE_DICTIONARY })
               ]
             }))
@@ -1680,14 +1434,12 @@ describe("Parquet", () => {
 
       it.effect("PQ-UNSUP-6 fails with Unsupported on a TIME unit added after 2.14.0", () =>
         Effect.gen(function*() {
-          const time = (unit: number) =>
-            annotated(Type.INT64, { logicalType: temporal(TIME, Struct({ [unit]: empty })) })
-          assert.deepStrictEqual((yield* annotationOf(time(2))).logicalType, {
+          assert.deepStrictEqual((yield* annotationOf(annotated(Type.INT64, time(2)))).logicalType, {
             type: "TIME",
             isAdjustedToUTC: true,
             unit: "MICROS"
           })
-          yield* failsWith(metadataOf(time(4)), "Unsupported", /TIME unit 4/)
+          yield* failsWith(metadataOf(annotated(Type.INT64, time(4))), "Unsupported", /TIME unit 4/)
         }))
     })
   })
@@ -1777,8 +1529,6 @@ describe("Parquet", () => {
 
     it.effect("dies on invalid options and indexes", () =>
       Effect.gen(function*() {
-        const dies = <A, E>(effect: Effect.Effect<A, E>) =>
-          Effect.map(Effect.exit(effect), (exit) => assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause)))
         yield* dies(Parquet.readMetadata(Parquet.fromBytes(int32s3), { maxDepth: 0 }))
         yield* dies(read(int32s3, { maxPageSize: 1.5 }))
         const source = Parquet.fromBytes(int32s3)

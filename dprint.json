@@ -24,6 +24,7 @@
     "packages/tools/graphql-generator/test/generated/**/*.graphql.ts",
     "packages/effect/test/fixtures/thrift/gold.json",
     "packages/effect/test/fixtures/parquet/gold.json",
+    "packages/effect/test/fixtures/parquet/logical.gold.json",
     "!scratchpad/**/*",
     "**/.*",
     "!.agents",

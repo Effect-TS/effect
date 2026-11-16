@@ -20,6 +20,13 @@ column chunks several pages.
 | `nested_v2.parquet`    | The same table with data page v2                                                                                                                                                                                                                                                                       |
 | `gzip.parquet`         | GZIP, data page v2, dictionary: int64, string, list<int32>                                                                                                                                                                                                                                             |
 | `empty.parquet`        | An int32 and a string column, zero rows                                                                                                                                                                                                                                                                |
+| `logical.parquet`      | 2 row groups: uint8, int16, uint32, uint64, time32[ms], time64[ns], timestamp[ms], timestamp[us], timestamp[ns, UTC], float16, uuid, json, large_string, decimal128(9, 2) as INT32, decimal128(18, 4) as INT64, decimal128(38, 10), decimal256(76, 0) and null. Not part of `gold.json`                |
+
+`logical.parquet` is written after `gold.json` and has its own gold file,
+`logical.gold.json`: per column the physical and logical type, and the value of
+every row as Arrow stores it (a number, a decimal string for 64-bit integers and
+unscaled decimals, hex for binary, text for strings). `effect/arrow`'s
+`ArrowParquet` tests read it.
 
 All files are uncompressed except `gzip.parquet`. pyarrow accepted every
 requested encoding combination.

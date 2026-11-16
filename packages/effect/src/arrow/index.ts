@@ -33,6 +33,12 @@ export * as ArrowIpc from "./ArrowIpc.ts"
  * @stability experimental
  * @since 4.1.5
  */
+export * as ArrowParquet from "./ArrowParquet.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.5
+ */
 export * as ArrowSchema from "./ArrowSchema.ts"
 
 /**
