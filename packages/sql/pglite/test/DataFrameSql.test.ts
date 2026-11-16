@@ -76,6 +76,8 @@ const Setup = Layer.effectDiscard(
     yield* sql`INSERT INTO exact VALUES (-128, 0.5), (127, 'NaN'), (0, '-Infinity'), (1, ${
       2 ** -149
     }), (2, '-0'), (3, ${(2 - 2 ** -23) * 2 ** 127})`
+    yield* sql`CREATE TABLE arrowed (d DATE, at TIMESTAMP, n INTEGER, s TEXT, extra TEXT)`
+    yield* sql`INSERT INTO arrowed VALUES ('2024-01-01', '1970-01-01 00:00:01.5', 7, 'a', 'x'), (NULL, NULL, -7, NULL, 'y')`
     yield* sql`CREATE TYPE mood AS ENUM ('zzz', 'aaa')`
     yield* sql`CREATE TABLE texts (m mood, c CHAR(3), v VARCHAR(5), sm SMALLINT, r REAL)`
     yield* sql`INSERT INTO texts VALUES ('zzz', 'ab', 'xy', 20000, 16777216), ('aaa', 'abc', 'x', -20000, 0.5)`
@@ -124,6 +126,14 @@ const memory = Catalog.layer({
     ArrowSchema.field("i8", ArrowSchema.int32),
     ArrowSchema.field("f32", ArrowSchema.float64)
   ], [[-128, 127, 0, 1, 2, 3], [0.5, NaN, -Infinity, 2 ** -149, -0, (2 - 2 ** -23) * 2 ** 127]]),
+  // Dates in milliseconds and timestamps in seconds convert to the declared days and milliseconds.
+  arrowed: frame([
+    ArrowSchema.field("extra", ArrowSchema.utf8),
+    ArrowSchema.field("d", ArrowSchema.date("millisecond")),
+    ArrowSchema.field("at", ArrowSchema.timestamp("microsecond")),
+    ArrowSchema.field("n", ArrowSchema.int32),
+    ArrowSchema.field("s", ArrowSchema.utf8)
+  ], [["x", "y"], [BigInt(19723 * 86_400_000), null], [1_500_000n, null], [7, -7], ["a", null]]),
   // PostgreSQL converts char(n) values to text without their trailing spaces.
   texts: frame([
     ...["m", "c", "v"].map((name) => ArrowSchema.field(name, ArrowSchema.utf8)),
@@ -429,6 +439,18 @@ const cases: ReadonlyArray<readonly [string, Query.Query<any>]> = [
     Query.table("exact", Schema.Struct({ i8: Schema.Number, f32: Schema.Number }), {
       types: { i8: ArrowSchema.int8, f32: ArrowSchema.float32 }
     })
+  ],
+  [
+    "tables declared by an Arrow schema",
+    Query.table(
+      "arrowed",
+      ArrowSchema.make([
+        ArrowSchema.field("d", ArrowSchema.date("day")),
+        ArrowSchema.field("at", ArrowSchema.timestamp("millisecond")),
+        ArrowSchema.field("n", ArrowSchema.int32, { nullable: false }),
+        ArrowSchema.field("s", ArrowSchema.utf8)
+      ])
+    )
   ],
   [
     "enum, char, varchar, smallint and real columns, as their declared types",
