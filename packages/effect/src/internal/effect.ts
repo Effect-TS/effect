@@ -544,6 +544,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._asyncContext = undefined
     this._resuming = false
     this._overtaken = undefined
+    this._pendingStart = false
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -572,6 +573,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _resuming: boolean
   // A resumption that arrived while an interrupt was still landing
   declare _overtaken: Primitive | undefined
+  // The fiber's start was handed to the captured async context and has not run
+  declare _pendingStart: boolean
 
   // set in setContext
   declare context: Context.Context<never>
@@ -715,6 +718,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       effect = this._overtaken
       this._overtaken = undefined
       interrupt = this._interruptedCause !== undefined
+    }
+    if (this._pendingStart) {
+      // A fiber interrupted before it starts never runs, whichever landed first
+      this._pendingStart = false
+      if (interrupt) {
+        interrupt = false
+        effect = failCause(this._interruptedCause!) as any
+      }
     }
     this.evaluate(effect)
     if (interrupt && this._exit === undefined && this.interruptible && !this._running) {
@@ -5715,6 +5726,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext(child.cache.scheduler)
+    child._pendingStart = child._asyncContext !== undefined && child._asyncContext.constructor !== AsyncResource
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
