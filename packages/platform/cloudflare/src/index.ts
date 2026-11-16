@@ -33,6 +33,12 @@ export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 
 /**
  * @stability experimental
+ * @since 4.1.5
+ */
+export * as CloudflareTracer from "./CloudflareTracer.ts"
+
+/**
+ * @stability experimental
  * @since 4.1.3
  */
 export * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
