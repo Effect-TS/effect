@@ -224,6 +224,12 @@ export const make = Effect.gen(function*() {
         onEnter: options.onEnter,
         closeObjects: options.closeObjects,
         multipartSchemaRefs: multipart.refs,
+        binarySchemas: new Set(parsed.operations.flatMap((operation) =>
+          [
+            ...operation.requestBodyRepresentable,
+            ...operation.responses.flatMap((response) => response.representable)
+          ].flatMap((media) => media.encoding === "binary" && media.effectStream === undefined ? [media.schema] : [])
+        )),
         includeSchemas: options.includeSchemas
       }
       const module = new Codegen.Module(
@@ -287,6 +293,7 @@ const parseOpenApi = (
   const operations: Array<ParsedOperation.ParsedOperation> = []
   const reservedSchemaNames = new Set<string>(Object.keys(spec.components?.schemas ?? {}))
   const isHttpApi = format === "httpapi"
+  const dialect = getDialect(spec)
   const securitySchemes = isHttpApi ? parseSecuritySchemes(spec, resolveRef) : []
 
   const addSchema = (
@@ -701,7 +708,7 @@ const parseOpenApi = (
                 effectStream: "sse",
                 schema: addSchema(
                   `${schemaId}${status}Sse`,
-                  mediaType.schema as JsonSchema.JsonSchema,
+                  normalizeSseEventSchema(mediaType.schema as JsonSchema.JsonSchema, resolveRef, dialect),
                   op
                 ),
                 errorSchema: addSchema(
@@ -787,7 +794,7 @@ const parseOpenApi = (
             `${schemaId}${status}Sse`,
             httpClientResponses.sseSchemaMode === "event"
               ? makeSseEventSchema(
-                resolveReference(sseResponseSchema, resolveRef),
+                normalizeSseEventSchema(sseResponseSchema, resolveRef, dialect),
                 effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
               )
               : sseResponseSchema,
@@ -1288,10 +1295,9 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
 }
 
 const makeSseEventSchema = (
-  input: JsonSchema.JsonSchema,
+  eventSchema: JsonSchema.JsonSchema,
   failureEvent: string | undefined
 ): JsonSchema.JsonSchema => {
-  const eventSchema = normalizeSseEventSchema(input)
   if (failureEvent === undefined) {
     return eventSchema
   }
@@ -1302,7 +1308,7 @@ const makeSseEventSchema = (
         type: "object",
         properties: {
           id: { type: "string" },
-          event: { const: failureEvent },
+          event: { enum: [failureEvent] },
           data: { type: "string" }
         },
         required: ["event", "data"],
@@ -1312,32 +1318,49 @@ const makeSseEventSchema = (
   }
 }
 
-const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-  const schema = { ...input } as Record<string, any>
-  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
-    if (Array.isArray(schema[key])) {
-      schema[key] = schema[key].map(normalizeSseEventSchema)
+const normalizeSseEventSchema = (
+  root: JsonSchema.JsonSchema,
+  resolveRef: (ref: string) => unknown,
+  dialect: ReturnType<typeof getDialect>
+): JsonSchema.JsonSchema => {
+  const go = (input: JsonSchema.JsonSchema, ancestors: ReadonlySet<unknown>): JsonSchema.JsonSchema => {
+    if (ancestors.has(input)) return input
+    const nextAncestors = new Set(ancestors).add(input)
+    const schema = { ...input } as Record<string, any>
+    if (typeof schema.$ref === "string") {
+      const { $ref, ...siblings } = schema
+      const target = go(resolveRef($ref) as JsonSchema.JsonSchema, nextAncestors)
+      // OpenAPI 3.0 ignores reference siblings. In 3.1 they constrain the target; neither side overrides the other.
+      return dialect === "openapi-3.0" || Object.keys(siblings).length === 0
+        ? target
+        : { allOf: [target, go(siblings, nextAncestors)] }
     }
-  }
-  if (
-    schema.type !== "object" ||
-    !Predicate.isObject(schema.properties) ||
-    !Object.hasOwn(schema.properties, "id") ||
-    !Object.hasOwn(schema.properties, "event") ||
-    !Object.hasOwn(schema.properties, "data")
-  ) {
+    for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+      if (Array.isArray(schema[key])) {
+        schema[key] = schema[key].map((member) => go(member, nextAncestors))
+      }
+    }
+    if (
+      schema.type !== "object" ||
+      !Predicate.isObject(schema.properties) ||
+      !Object.hasOwn(schema.properties, "id") ||
+      !Object.hasOwn(schema.properties, "event") ||
+      !Object.hasOwn(schema.properties, "data")
+    ) {
+      return schema as JsonSchema.JsonSchema
+    }
+
+    // OpenAPI represents `undefined` as required nullable; restore the SSE parser's optional wire field.
+    schema.properties = {
+      ...schema.properties,
+      id: { type: "string" }
+    }
+    if (Array.isArray(schema.required)) {
+      schema.required = schema.required.filter((name: unknown) => name !== "id")
+    }
     return schema as JsonSchema.JsonSchema
   }
-
-  // OpenAPI represents `undefined` as required nullable; restore the SSE parser's optional wire field.
-  schema.properties = {
-    ...schema.properties,
-    id: { type: "string" }
-  }
-  if (Array.isArray(schema.required)) {
-    schema.required = schema.required.filter((name: unknown) => name !== "id")
-  }
-  return schema as JsonSchema.JsonSchema
+  return go(root, new Set())
 }
 
 const primitiveSchemaTypes = new Set(["string", "number", "integer", "boolean", "null"])

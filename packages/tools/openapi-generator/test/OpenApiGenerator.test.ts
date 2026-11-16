@@ -1,6 +1,7 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Sse from "effect/encoding/Sse"
 import * as Exit from "effect/Exit"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
@@ -1682,6 +1683,120 @@ export const TestClientError = <Tag extends string, E>(
   })
 
   describe("httpapi", () => {
+    const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
+    const event = (name: string) =>
+      Schema.Struct({ ...Sse.EventEncoded.fields, event: Schema.Literal(name) }).annotate({ identifier: name })
+
+    itGeneratedClientsCompile(
+      "round-trips buffered binary payloads and responses into compilable HttpApi declarations",
+      OpenApi.fromApi(
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("files").add(
+            HttpApiEndpoint.post("upload", "/upload", { payload: Bytes }),
+            HttpApiEndpoint.get("download", "/download", { success: Bytes })
+          )
+        )
+      ),
+      { formats: ["httpapi"] }
+    )
+
+    itGeneratedClientsCompile(
+      "round-trips SSE responses into compilable HttpApi declarations",
+      OpenApi.fromApi(
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("events").add(
+            HttpApiEndpoint.get("events", "/events", {
+              success: HttpApiSchema.StreamSse({ data: Schema.Struct({ count: Schema.Number }) })
+            }),
+            HttpApiEndpoint.get("namedEvents", "/named-events", {
+              success: HttpApiSchema.StreamSse({ events: Schema.Union([event("FirstEvent"), event("SecondEvent")]) })
+            })
+          )
+        )
+      ),
+      { formats: ["httpapi"] }
+    )
+
+    const constrainedSseSpec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "Events", version: "1.0.0" },
+      security: [],
+      tags: [{ name: "Events" }],
+      paths: {
+        "/events": {
+          get: {
+            operationId: "events",
+            parameters: [],
+            tags: ["Events"],
+            security: [],
+            responses: {
+              "200": {
+                description: "Events",
+                content: {
+                  "text/event-stream": {
+                    schema: {
+                      anyOf: ["first", "second"].map((event) => ({
+                        $ref: "#/components/schemas/BaseEvent",
+                        type: "object",
+                        properties: { event: { enum: [event] } }
+                      }))
+                    },
+                    "x-effect-stream": {
+                      encoding: "sse",
+                      errorSchema: { not: {} },
+                      causeSchema: { type: "object" },
+                      failureEvent: "effect/http-api/stream/failure"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      components: {
+        securitySchemes: {},
+        schemas: {
+          BaseEvent: {
+            type: "object",
+            properties: { id: { type: "string" }, event: { type: "string" }, data: { type: "string" } },
+            required: ["event", "data"]
+          }
+        }
+      }
+    }
+
+    for (const format of ["httpapi", "httpclient"] as const) {
+      itGeneratedClientsCompile(
+        `preserves SSE reference sibling constraints (${format})`,
+        constrainedSseSpec,
+        {
+          formats: [format],
+          usage: `
+const first: Events200Sse = { event: "first", data: "payload" }
+const second: Events200Sse = { event: "second", data: "payload" }
+// @ts-expect-error The reference sibling restricts the event name.
+const unrelated: Events200Sse = { event: "unrelated", data: "payload" }
+`
+        }
+      )
+    }
+
+    it.effect("preserves SSE reference sibling constraints (httpclient-type-only)", () =>
+      assertTypeOnlyIncludes(constrainedSseSpec, ["\"event\": \"first\"", "\"event\": \"second\""]))
+
+    const openApi30SseSpec = { ...constrainedSseSpec, openapi: "3.0.3" } as unknown as OpenAPISpec
+    for (
+      const [format, assertIncludes] of [
+        ["httpapi", assertHttpApiIncludes],
+        ["httpclient", assertRuntimeIncludes],
+        ["httpclient-type-only", assertTypeOnlyIncludes]
+      ] as const
+    ) {
+      it.effect(`ignores OpenAPI 3.0 SSE reference siblings (${format})`, () =>
+        assertIncludes(openApi30SseSpec, ["\"event\": string"], ["\"event\": \"first\"", "\"event\": \"second\""]))
+    }
+
     it.effect("generates tagged groups with endpoint annotations and representable parameters", () =>
       assertHttpApiIncludes(
         {
