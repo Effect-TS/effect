@@ -51,7 +51,12 @@ const cases: ReadonlyArray<readonly [string, string]> = [
     "\\[a][b]: tg://x\n\n \\[c]: tg://x\n\ntext\n\\[d]: https://e.com"
   ],
   ["a\\:b \\@c \\^d \\&amp;", "a&#58;b &#64;c &#94;d &#38;amp;"],
-  ["2 * 3 * 4 a _ b\n\n***", "2 \\* 3 \\* 4 a \\_ b\n\n***"]
+  ["2 * 3 * 4 a _ b\n\n***", "2 \\* 3 \\* 4 a \\_ b\n\n***"],
+  // a definition is refused once, keeps no title, and loses no text
+  [
+    "[a[b]: https://e.com\n\n[^ a]: https://e.com\n\n[c]: https://e.com \"t\"\n[d]: https://e.com d",
+    "\\[a[b]: https://e.com\n\n\\[^ a]: https://e.com\n\n[c]: https://e.com\n\\[d]: https://e.com d"
+  ]
 ]
 
 const bytes = (s: string) => new TextEncoder().encode(s).length
@@ -157,6 +162,12 @@ describe("render", () => {
         // a footnote's text, or an indented delimiter row, is no table
         "[^a]: x|y\n---|---\n||secret||",
         "x|y\n\t---|---",
+        // nor a delimiter row that starts a list item
+        "a|b\n- |-|",
+        // nor a lone pipe a header
+        "|\n-|",
+        // a table goes on past a line it does not end at
+        "|a|\n|---|\n[a]: mailto:x\nb `<b>|`",
         // a line of U+00A0 is text, so it ends no paragraph
         ">".repeat(15) + " x\n\u00a0\n" + "_".repeat(14) + "x" + "_".repeat(14),
         "[^a]: z\n\u00a0\nx|y\n---|---\n||secret||",
@@ -173,7 +184,29 @@ describe("render", () => {
         "[](mailto:$(> )",
         // a definition's label may span lines
         "[\n[a]: [",
-        "[x\\](a)\n]: tg://user?id=1\n\n[x&#93;(a)\n]"
+        "[x\\](a)\n]: tg://user?id=1\n\n[x&#93;(a)\n]",
+        // nor a definition with a nested, blank or overlong label, or with
+        // more than a destination and a title on its line
+        "[a[b]: mailto:[pwn](tg://user?id=1)",
+        "[]: mailto:[pwn](tg://user?id=1)",
+        "[a]: mailto:[pwn](tg://user?id=1)(",
+        "[ ]: mailto:[pwn](tg://user?id=1)",
+        "[" + "a".repeat(1000) + "]: mailto:[pwn](tg://user?id=1)",
+        "[a]: mailto:[pwn](tg://user?id=1) b",
+        "[a]: mailto:[pwn](tg://user?id=1) \"t",
+        "[a]: mailto:\u007f[pwn](tg://user?id=1)",
+        "[a]: mailto:x [b]: mailto:[pwn](tg://user?id=1)",
+        // a code span or an autolink hides no label's end from CommonMark
+        "[`]: x` ](tg://user?id=1)",
+        "[\u0001`> >\\\"]: `]\"^<>",
+        "[<https://a]:x>",
+        "[>\\]: mailto:]:[^a]",
+        // indented, a footnote's label is a definition's
+        "[a]: mailto:x\n\t[^a]: tg://x",
+        "[a]: mailto:x\n    [^a]: tg://x",
+        "[^a]: [a]:<",
+        // nor is an autolink with a control character one
+        "<https://e.com|\u0001|>"
       ]
     ) assertInert(input)
     fc.assert(fc.property(hostile, (input) => assertInert(input)), { numRuns: 2000 })
@@ -215,6 +248,9 @@ describe("render", () => {
     // four nodes a repeat, 40 past the cap
     const mixed = "[a] `b` [c](https://e.com) [d][a] ".repeat(maxInlineNodes / 4 + 10) + "\n\n[a]: https://e.com"
     assert.isAtMost(inspect(render(mixed)).inline, maxInlineNodes)
+    // a definition past the cap keeps no destination behind its escaped label
+    const definitions = "[a]: https://e.com\n".repeat(maxInlineNodes) + "[b]: mailto:[pwn](tg://user?id=1)"
+    assert.deepStrictEqual(inspect(render(definitions)).links.filter((url) => url.startsWith("tg:")), [])
     const references = render(Array.from({ length: 10 }, () => "x[^1]".repeat(100)).join("\n\n") + "\n\n[^1]: n")
     assert.strictEqual(references.match(/(?<!\\)\[\^1\]/g)?.length, maxFootnoteReferences + 1)
   })

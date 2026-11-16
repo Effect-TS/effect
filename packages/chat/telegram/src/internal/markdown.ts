@@ -170,7 +170,8 @@ const cellCount = (line: string): number => {
  */
 const isBlank = (line: string): boolean => /^[ \t]*$/.test(line)
 
-const hasPipe = (line: string) => cellCount(line) > 1 || line.trim().startsWith("|")
+/** Whether a line can head a table: GFM reads no cell in a lone `|`. */
+const hasPipe = (line: string) => (cellCount(line) > 1 || line.trim().startsWith("|")) && line.trim() !== "|"
 
 /** The decoded form of a link destination, as a Markdown parser and then a URL parser read it. */
 const decodeDestination = (raw: string): { readonly unescaped: string; readonly decoded: string } | undefined => {
@@ -202,15 +203,20 @@ const allowedDestination = (raw: string, mentions: ReadonlySet<string>): boolean
   return mention !== null && destination.unescaped === destination.decoded && mentions.has(mention[1])
 }
 
+const blank = (c: string | undefined): boolean => c === " " || c === "\t"
+
 /**
- * A link's `(destination "title")` from the `(` at `start`, when all of it
- * is on this line and the destination is not in angle brackets. A tail
- * that goes on to the next line, as CommonMark allows, is not one: the
- * link is then refused.
+ * The destination and optional title from `start`, as CommonMark reads
+ * them when they are on this line: a destination not in angle brackets, up
+ * to a space, a control character or a `)` it did not open, with its
+ * parentheses balanced, then a title after a space. `end` is past the
+ * title and the blanks after it.
  */
-const linkTail = (line: string, start: number): { readonly destination: string; readonly end: number } | undefined => {
-  const blank = (c: string | undefined) => c === " " || c === "\t"
-  let i = start + 1
+const destinationAndTitle = (
+  line: string,
+  start: number
+): { readonly destination: string; readonly end: number } | undefined => {
+  let i = start
   while (blank(line[i])) i++
   if (line[i] === "<") return undefined
   const from = i
@@ -221,14 +227,14 @@ const linkTail = (line: string, start: number): { readonly destination: string; 
       i++
       continue
     }
-    if (c.charCodeAt(0) <= 0x20) break
+    const code = c.charCodeAt(0)
+    if (code <= 0x20 || code === 0x7f) break
     if (c === "(") depth++
     else if (c === ")") {
       if (depth === 0) break
       depth--
     }
   }
-  // CommonMark keeps only balanced parentheses in a destination.
   if (depth > 0) return undefined
   const destination = line.slice(from, i)
   const spaced = blank(line[i])
@@ -244,7 +250,17 @@ const linkTail = (line: string, start: number): { readonly destination: string; 
     i++
     while (blank(line[i])) i++
   }
-  return line[i] === ")" ? { destination, end: i + 1 } : undefined
+  return { destination, end: i }
+}
+
+/**
+ * A link's `(destination "title")` from the `(` at `start`, when all of it
+ * is on this line. A tail that goes on to the next line, as CommonMark
+ * allows, is not one: the link is then refused.
+ */
+const linkTail = (line: string, start: number): { readonly destination: string; readonly end: number } | undefined => {
+  const tail = destinationAndTitle(line, start + 1)
+  return tail !== undefined && line[tail.end] === ")" ? { destination: tail.destination, end: tail.end + 1 } : undefined
 }
 
 /**
@@ -277,15 +293,44 @@ const percentEncoded: Readonly<Record<string, string>> = {
   ">": "%3E"
 }
 
-/** The destination of a reference definition after `]:`, when it is on this line. */
-const definitionDestination = (
+/**
+ * The destination of a reference definition after `]:`, when the rest of
+ * the line is a nonempty destination and an optional title. Anything else
+ * after it, a title that goes on to the next line, or a destination there,
+ * makes it no definition here.
+ */
+const definitionDestination = (line: string, start: number): string | undefined => {
+  const tail = destinationAndTitle(line, start)
+  return tail !== undefined && tail.end === line.length ? tail.destination : undefined
+}
+
+/** The most characters CommonMark reads between a label's brackets. */
+const maxLabelLength = 999
+
+/**
+ * A label CommonMark and the renderer both close at its first `]`: no
+ * other bracket, code span or autolink in it, and no escape at its end.
+ */
+const simpleLabel = /^(?:[^\\[\]`<]|\\.)*$/
+
+/**
+ * The reference definition the line whose first `[` is at `start` may
+ * keep: a simple label, not blank, not a footnote's and at most 999
+ * characters, closed by `]:`, then a destination it allows.
+ */
+const keptDefinition = (
   line: string,
-  start: number
-): { readonly destination: string; readonly end: number } | undefined => {
-  const match = /^[ \t]*(\S+)/.exec(line.slice(start))
-  return match === null || match[1].startsWith("<")
-    ? undefined
-    : { destination: match[1], end: start + match[0].length }
+  start: number,
+  mentions: ReadonlySet<string>
+): { readonly close: number; readonly destination: string } | undefined => {
+  const close = line.indexOf("]", start)
+  const text = line.slice(start + 1, close)
+  if (
+    close < 0 || line[close + 1] !== ":" || !simpleLabel.test(text) || isBlank(text) || text[0] === "^" ||
+    text.length > maxLabelLength
+  ) return undefined
+  const destination = definitionDestination(line, close + 2)
+  return destination !== undefined && allowedDestination(destination, mentions) ? { close, destination } : undefined
 }
 
 /**
@@ -321,7 +366,7 @@ const bareUrl = /^(?:https?:\/\/|www\.)/i
 /** A thematic break, whose delimiters stand alone. */
 const thematicBreak = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
 
-const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}):[^\s<>`]*>/
+const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}):[^\s<>`\p{Cc}]*>/u
 
 /**
  * What one paragraph may already nest. `open` counts every delimiter that
@@ -350,6 +395,8 @@ export const maxFootnoteReferences = 700
 
 interface LineContext {
   readonly tableRow: boolean
+  /** Whether GFM may read the line as a table row, which splits code spans at pipes. */
+  readonly cells: boolean
   readonly widePipes: boolean
   readonly setext: boolean
   readonly inline: Inline
@@ -391,7 +438,10 @@ const renderPrefix = (line: string): { readonly text: string; readonly rest: num
 
 const renderLine = (line: string, context: LineContext): string => {
   const prefix = renderPrefix(line)
-  const footnote = /^\[\^[\w-]+\]:/.test(line.slice(prefix.rest))
+  // A footnote definition opens a block, so not behind a tab or four
+  // spaces: there, after a definition, GFM reads one with a label `^a`.
+  const indent = /[ \t]*$/.exec(line.slice(0, prefix.rest))![0]
+  const footnote = !indent.includes("\t") && indent.length < 4 && /^\[\^[\w-]+\]:/.test(line.slice(prefix.rest))
   const inline = context.inline
   inline.containers = Math.max(inline.containers, prefix.depth)
   const limit = Math.max(0, maxDepth - 1 - inline.containers)
@@ -401,11 +451,20 @@ const renderLine = (line: string, context: LineContext): string => {
     inline.nodes += n
     return true
   }
-  // Where the line's opening `[` is in `out`, for a definition refused at its `]:`.
-  const label = line[prefix.rest] === "[" ? prefix.text.length : undefined
-  let labelEscaped = false
-  const definitionAllowed = context.definitions.allowed && prefix.depth === 0
+  // Telegram reads a definition wherever the line's first `[` closes at a
+  // `]:`, also past other brackets, code or autolinks, and GFM reads one
+  // at the start of a footnote's text. One is kept only where CommonMark
+  // reads the same, with a label and destination both accept. Otherwise
+  // the line's `[` is escaped before it is read, so no raw destination is
+  // sent behind a label that is text.
+  const shaped = line[prefix.rest] === "[" &&
+    line.includes("]:", footnote ? line.indexOf("]:", prefix.rest) + 2 : prefix.rest)
+  const definition = shaped && context.definitions.allowed && prefix.depth === 0 ?
+    keptDefinition(line, prefix.rest, context.mentions) :
+    undefined
   context.definitions.allowed = false
+  // Where the line's opening `[` is in `out`, while it may close on a later line.
+  const label = line[prefix.rest] === "[" ? prefix.text.length : undefined
   // Where the `[` of a label with no other bracket in it is, until a `]`
   // closes it. Only such a label keeps its destination: around a nested
   // label, a reference or a footnote, whether the outer brackets make a
@@ -417,6 +476,10 @@ const renderLine = (line: string, context: LineContext): string => {
   let out = prefix.text
   let urlEnd = -1
   let i = prefix.rest
+  if (shaped && definition === undefined) {
+    out += "\\["
+    i++
+  }
   while (i < line.length) {
     const c = line[i]
     const next = line[i + 1]
@@ -439,7 +502,7 @@ const renderLine = (line: string, context: LineContext): string => {
     }
     switch (c) {
       case "`": {
-        const end = inUrl ? undefined : codeSpanEnd(line, i, context.tableRow)
+        const end = inUrl ? undefined : codeSpanEnd(line, i, context.cells)
         if (end !== undefined && node(1)) {
           out += line.slice(i, end)
           i = end
@@ -503,12 +566,11 @@ const renderLine = (line: string, context: LineContext): string => {
         continue
       case "]": {
         // Telegram closes a link at `]` even when it is escaped, so a refused
-        // link loses its `(` and a refused definition its opening `[`. A
-        // kept destination is sent verbatim, which is inert only if it is
-        // read as one: a link needs an opener on its line, a definition the
-        // start of a line where one may stand.
-        // Not `[a][b](…)` or `[a][](…)`, where `[a]` may be the link.
+        // link loses its `(`. A kept destination is sent verbatim, which is
+        // inert only if it is read as one: a link needs an opener on its
+        // line, and not `[a][b](…)` or `[a][](…)`, where `[a]` may be the link.
         const plain = opener !== undefined && line[opener - 1] !== "]"
+        const labelOpener = opener
         opener = undefined
         unclosed.pop()
         if (next === "(") {
@@ -522,23 +584,10 @@ const renderLine = (line: string, context: LineContext): string => {
           i += 2
           continue
         }
-        if (next === ":" && !(footnote && i === line.indexOf("]", prefix.rest))) {
-          const definition = definitionDestination(line, i + 2)
-          if (
-            definitionAllowed && label !== undefined && out[label] === "[" && i === line.indexOf("]", prefix.rest) &&
-            definition !== undefined && allowedDestination(definition.destination, context.mentions)
-          ) {
-            out += "]: " + destinationOf(definition.destination)
-            i = definition.end
-            context.definitions.allowed = true
-            continue
-          }
-          // Telegram reads a definition wherever the line's first `[` closes
-          // at a `]:`, also past other brackets.
-          if (label !== undefined && !labelEscaped && out[label] === "[") {
-            out = out.slice(0, label) + "\\" + out.slice(label)
-            labelEscaped = true
-          }
+        // The `[` at the line's start counted as a node, so it is still a label.
+        if (definition !== undefined && i === definition.close && labelOpener === prefix.rest) {
+          context.definitions.allowed = true
+          return out + "]: " + destinationOf(definition.destination)
         }
         out += "]"
         i++
@@ -611,9 +660,15 @@ export interface RenderOptions {
  *   mailto is text: a link loses its `(`, a definition its opening `[`.
  *   A `tg://user` link stays for an id in `mentions`. A kept link needs its
  *   `[` and its whole tail on its line, a label with no other bracket in
- *   it, and no `]` right before it, a kept definition the top level
- *   after a blank line or another definition. Its destination is sent as
- *   Telegram reads it, verbatim, and its title is dropped.
+ *   it, and no `]` right before it. A line whose first `[` meets a `]:`
+ *   is a definition to Telegram, and is kept only at the top level after
+ *   a blank line or another definition, with a label that starts the
+ *   line, holds no other bracket, code span, autolink or escaped `]`, is
+ *   not blank or a footnote's and is at most 999 characters, and with
+ *   nothing after its destination but a title. Otherwise its `[` is
+ *   escaped. Either needs balanced parentheses and no control character
+ *   in its destination. Its destination is sent as Telegram reads it,
+ *   verbatim, and its title is dropped.
  * - A `*`, `_` or `~` run with space on both sides is escaped, outside a
  *   thematic break: Telegram would open emphasis with it.
  * - Code spans, `[` that could open a link or reference, and footnote
@@ -658,6 +713,7 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     fenced.push(false)
   }
   const tableRows = new Map<number, boolean>()
+  const cellLines = new Set<number>()
   for (let i = 0; i + 1 < lines.length; i++) {
     if (fenced[i] || fenced[i + 1] || tableRows.has(i) || blockStart.test(lines[i])) continue
     // Neither row indented, nor the header after a line it could continue.
@@ -665,12 +721,17 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     const above = i === 0 ? "" : lines[i - 1]
     if (!isBlank(above) && !/^#{1,6}(?: |$)/.test(above)) continue
     if (!delimiterRow.test(lines[i + 1]) || !lines[i + 1].includes("|") || !hasPipe(lines[i])) continue
+    // A delimiter row that is also a list item ends the paragraph first.
+    if (/^ {0,3}-[ \t]+\S/.test(lines[i + 1])) continue
     const columns = cellCount(lines[i])
     if (columns !== cellCount(lines[i + 1])) continue
     let end = i + 2
     while (end < lines.length && !fenced[end] && !isBlank(lines[end]) && !blockStart.test(lines[end])) end++
     const rows = Array.from({ length: end - i }, (_, k) => i + k)
     for (const row of rows) tableRows.set(row, columns > maxColumns || cellCount(lines[row]) > maxColumns)
+    // GFM ends a table at fewer lines than `blockStart` names, so a line
+    // past its rows here may still be one of its rows there.
+    for (let k = end; k < lines.length && !fenced[k] && !isBlank(lines[k]); k++) cellLines.add(k)
     i = end - 1
   }
   const inline: Inline = { open: 0, containers: 0, nodes: 0 }
@@ -699,6 +760,7 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     }
     const rendered = renderLine(line, {
       tableRow: wide !== undefined,
+      cells: wide !== undefined || cellLines.has(i),
       widePipes: wide === true,
       setext,
       inline,
