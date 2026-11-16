@@ -656,6 +656,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly flatten?: Flatten | undefined
   } | undefined
 ) {
+  const scope = yield* Effect.scope
   const clientId = clientIdCounter++
   const { codecFor, run, send, supportsAck, supportsTransferables } = yield* Protocol
   const rpcSchemas = makeRpcSchemas(codecFor)
@@ -750,7 +751,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             decodeChunk(message.values).pipe(
               Effect.provideContext(entry.context),
               Effect.orDie,
-              Effect.flatMap((chunk) => write({ _tag: "Chunk", clientId: 0, requestId, values: chunk }))
+              Effect.flatMap((chunk) => {
+                const deliver = write({ _tag: "Chunk", clientId: 0, requestId, values: chunk })
+                // The server waits for each chunk's Ack, so a chunk waiting for
+                // buffer space must not block other responses on this
+                // connection. Starting immediately keeps it ahead of the Exit.
+                return supportsAck ? Effect.forkIn(deliver, scope, { startImmediately: true }) : deliver
+              })
             )
           ).pipe(
             Effect.onError((cause) =>
