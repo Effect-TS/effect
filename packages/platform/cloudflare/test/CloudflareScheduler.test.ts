@@ -34,9 +34,9 @@ it("resumes a shared fiber from a later Worker request", async () => {
     assert.strictEqual(await start.json(), "started")
     const resume = await miniflare.dispatchFetch("http://localhost/resume")
     assert.strictEqual(resume.status, 200, await resume.clone().text())
-    assert.deepStrictEqual(await resume.json(), { done: true })
+    assert.deepStrictEqual(await resume.json(), { done: true, initialized: true })
     const status = await miniflare.dispatchFetch("http://localhost/status")
-    assert.deepStrictEqual(await status.json(), { done: true })
+    assert.deepStrictEqual(await status.json(), { done: true, initialized: true })
   } finally {
     await miniflare.dispose()
   }

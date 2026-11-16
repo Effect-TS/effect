@@ -12,11 +12,14 @@ import * as Scheduler from "effect/Scheduler"
  *
  * **When to use**
  *
- * Use when fibers or services are shared across
- * requests. Pass an instance as the `scheduler` option to Effect runners, or
- * build a shared runtime with
+ * Use when fibers or services are shared across requests. Pass an instance as
+ * the `scheduler` option to Effect runners. For a shared runtime, build it with
  * `ManagedRuntime.make(AppLayer.pipe(Layer.provideMerge(CloudflareScheduler.layer)))`.
- * Install it before starting fibers, including those created while building layers.
+ * Also pass `{ scheduler: new CloudflareScheduler() }` to the runtime runners,
+ * including `runFork` and `runPromise`: the layer alone does not configure callers
+ * waiting for lazy initialization. To initialize explicitly, run
+ * `Effect.runPromise(runtime.contextEffect, { scheduler: new CloudflareScheduler() })`
+ * instead of `runtime.context()`, which does not accept a scheduler.
  *
  * **Gotchas**
  *
