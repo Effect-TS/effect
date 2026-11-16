@@ -180,7 +180,7 @@ describe("DataFrame", () => {
           `column "waits[].d" has values that Duration[us] can't hold exactly`
         ],
         [{ m: BigDecimal.make(1_234n, 3) }, "1.234 has more than 2 decimal places"],
-        [{ m: BigDecimal.make(1_234n, 1) }, `column "m" has values that Decimal[4, 2] can't hold exactly`]
+        [{ m: BigDecimal.make(1_234n, 1) }, "123.4 has more than 4 digits at scale 2"]
       ]
       for (const [fields, message] of cases) {
         assert.throws(
@@ -189,11 +189,22 @@ describe("DataFrame", () => {
           message
         )
       }
-      // A frame that holds such a decimal under the declared type fails too.
+      // A frame that holds such a decimal under the declared type fails too. Arrow builders
+      // refuse to store one, so the integers of a wider decimal are put under the declared type.
       const Amount = Schema.Struct({ m: Schema.BigDecimal })
-      const held = ArrowTable.fromRows(DataFrame.empty(Amount, { types }).schema, [{ m: BigDecimal.make(1_234n, 1) }])
-      const validated = DataFrame.validate(DataFrame.fromArrowTable(Result.getOrThrow(held)), Amount, { types })
-      assert.include(Result.isFailure(validated) && validated.failure.message, cases[5][1])
+      const schema = DataFrame.empty(Amount, { types }).schema
+      const wide = Result.getOrThrow(ArrowTable.fromRows(
+        ArrowSchema.make([ArrowSchema.field("m", ArrowSchema.decimal(5, 2), { nullable: false })]),
+        [{ m: BigDecimal.make(1_234n, 1) }]
+      ))
+      const held = ArrowTable.make(schema, [
+        ArrowTable.recordBatch(schema, 1, [{ ...wide.batches[0].columns[0], type: types.m }])
+      ])
+      const validated = DataFrame.validate(DataFrame.fromArrowTable(held), Amount, { types })
+      assert.include(
+        Result.isFailure(validated) && validated.failure.message,
+        `column "m" has values that Decimal[4, 2] can't hold exactly`
+      )
     })
 
     // DF-C030 (API contract): DataFrame.fromRows; pinned source in README.md.

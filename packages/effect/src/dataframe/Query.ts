@@ -245,7 +245,8 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  * refinements, literals or enums has its values read and tested one by one,
  * and a struct with checks of its own (`Schema.Struct(...).check(...)`) has
  * every row read and tested. Other fields are checked by column type only,
- * on the typed columns.
+ * on the typed columns. The tests see missing values as the schema writes
+ * them (an absent key, `undefined` or `null`), as in `DataFrame.fromRows`.
  *
  * An Arrow schema declares its fields as they are (type, nullability,
  * nested fields, decimal precision and scale, time unit), with untyped rows
@@ -260,9 +261,10 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  * **Gotchas**
  *
  * - Throws a `DataFrameError` for a schema that declares no columns: a
- *   struct schema that transforms its rows or has fields without a column
- *   type (see `DataFrame.fromRows`), or an Arrow schema with types a
- *   declaration can't take.
+ *   struct schema that transforms its rows, has fields without a column
+ *   type or has a check that would see a missing value the schema writes in
+ *   several ways (see `DataFrame.fromRows`), or an Arrow schema with types
+ *   a declaration can't take.
  * - A SQL engine can't check a struct's own checks on whole rows: a query
  *   over such a table fails.
  * - The tests are functions and have no JSON form: `Plan.NodeFromJson`
