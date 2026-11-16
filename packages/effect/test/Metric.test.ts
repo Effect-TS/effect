@@ -907,6 +907,20 @@ describe("Metric", () => {
           sum: 200
         })
       }))
+
+    it.effect("rejects quantiles outside [0, 1], including NaN", () =>
+      Effect.gen(function*() {
+        const quantiles = [-0.1, 1.5, Number.NaN]
+        const exits = yield* Effect.forEach(quantiles, (quantile) =>
+          Metric.update(
+            Metric.summary(nextId(), { maxAge: "1 minute", maxSize: 10, quantiles: [quantile] }),
+            1
+          ).pipe(Effect.exit))
+        assert.deepStrictEqual(
+          exits,
+          quantiles.map((quantile) => Exit.die(new Error(`Quantile must be between 0 and 1, found: ${quantile}`)))
+        )
+      }))
   })
 
   describe("track, trackErrors and trackDefects", () => {
