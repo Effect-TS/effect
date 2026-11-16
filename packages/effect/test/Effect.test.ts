@@ -5444,15 +5444,20 @@ describe("Effect", () => {
   describe("AsyncLocalStorage", () => {
     const storage = new AsyncLocalStorage<string>()
     const current = () => storage.getStore() ?? "none"
+    // Bun's async_hooks report no trigger ids, before or destroy events
+    const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
 
     describe("Scheduler.captureAsyncContext", () => {
       // Holds every resumption until `land` runs it in the "owner" store, like a
       // context that hands resumptions back to the request owning the fiber.
-      const makeScheduler = () => {
+      // With `enterFromOwner`, resumptions from the owner run synchronously,
+      // as CloudflareScheduler's do from the owning request.
+      const makeScheduler = (options?: { readonly enterFromOwner?: boolean }) => {
         const pending: Array<() => void> = []
         const scheduler = new class extends Scheduler.MixedScheduler {
           readonly captureAsyncContext = (): Scheduler.AsyncContext => ({
             runInAsyncScope: (fn, thisArg, arg) => {
+              if (options?.enterFromOwner && current() === "owner") return fn.call(thisArg, arg)
               pending.push(() => storage.run("owner", () => fn.call(thisArg, arg)))
             },
             emitDestroy() {}
@@ -5491,7 +5496,9 @@ describe("Effect", () => {
               forked ? ", in a fork" : ""
             }`,
             async () => {
-              const { land, scheduler } = makeScheduler()
+              // The fork starts in its owner, so its start lands synchronously
+              // and only the wake-up is handed off
+              const { land, scheduler } = makeScheduler({ enterFromOwner: forked })
               const seen: Array<string> = []
               let wake!: () => void
               const body = Effect.uninterruptibleMask((restore) =>
@@ -5503,10 +5510,11 @@ describe("Effect", () => {
               if (forked) {
                 // A fork's start lands through the captured context too, so the
                 // race must still be handled after it has started
-                Effect.runFork(
-                  Effect.forkDetach(body).pipe(Effect.tap((child) => Effect.sync(() => (fiber = child)))),
-                  { scheduler }
-                )
+                storage.run("owner", () =>
+                  Effect.runFork(
+                    Effect.forkDetach(body).pipe(Effect.tap((child) => Effect.sync(() => (fiber = child)))),
+                    { scheduler }
+                  ))
               } else {
                 fiber = Effect.runFork(body, { scheduler })
               }
@@ -5523,6 +5531,41 @@ describe("Effect", () => {
           )
         }
       }
+      itWithAsyncHooks("runs an interrupt requested while entering a native context before the value", () => {
+        // An async_hooks `before` callback runs inside runInAsyncScope, before
+        // the resumption, so the interrupt reaches the fiber first, as it did
+        // before the context was entered
+        const fiberResources = new Set<number>()
+        let capturing = false
+        let fiber: Fiber.Fiber<number> | undefined
+        const hook = createHook({
+          init(asyncId, type) {
+            if (capturing && type === "effect/Fiber") fiberResources.add(asyncId)
+          },
+          before(asyncId) {
+            if (fiber !== undefined && fiberResources.delete(asyncId)) fiber.interruptUnsafe()
+          }
+        })
+        let wake!: (effect: Effect.Effect<number>) => void
+        let continued = false
+        hook.enable()
+        try {
+          capturing = true
+          fiber = Effect.runFork(
+            Effect.callback<number>((resume) => {
+              wake = resume
+            }).pipe(Effect.tap(() => Effect.sync(() => (continued = true))))
+          )
+          capturing = false
+          assert.strictEqual(fiberResources.size, 1)
+          wake(Effect.succeed(42))
+        } finally {
+          hook.disable()
+        }
+        assert.strictEqual(fiberResources.size, 0)
+        assert.isFalse(continued)
+        assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+      })
       for (const dispatched of [false, true]) {
         it(`interrupts a fork before it starts, ${dispatched ? "after" : "before"} its start is dispatched`, async () => {
           const { land, scheduler } = makeScheduler()
@@ -5617,10 +5660,6 @@ describe("Effect", () => {
         })
       })
     }
-
-    // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
-    // in the worker, including from concurrent tests, would count as a leak.
-    const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
 
     itWithAsyncHooks("does not leave async resources open after the effect completes", async () => {
       // Mirrors vitest's detectAsyncLeaks: track every resource descended from a root scope

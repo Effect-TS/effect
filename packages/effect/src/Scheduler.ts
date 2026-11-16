@@ -65,10 +65,13 @@ export interface Scheduler {
  * to `runInAsyncScope`, and the context decides where and when it runs: it
  * either calls `fn` synchronously, as a `node:async_hooks` `AsyncResource`
  * does, or arranges to call it exactly once later and returns. Fibers handle
- * both the same way. Until `fn` is called, interrupts are deferred and a value
- * that overtakes an interrupt is delivered first; a fiber interrupted before
- * its start lands never runs. `emitDestroy` is called when `runInAsyncScope`
- * returns.
+ * both the same way. Until `fn` is called, interrupts are deferred. One
+ * requested before `runInAsyncScope` returns, such as from an `async_hooks`
+ * `before` callback, replaces the resumption. Once `runInAsyncScope` has
+ * returned, the resumption counts as delivered and runs before any interrupt
+ * requested later, and a value that overtakes an interrupt in flight is also
+ * delivered first. A fiber interrupted before its start lands never runs.
+ * `emitDestroy` is called when `runInAsyncScope` returns.
  *
  * **Gotchas**
  *

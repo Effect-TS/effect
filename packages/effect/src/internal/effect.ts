@@ -538,6 +538,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._parent = undefined
     this._asyncContext = undefined
     this._resuming = false
+    this._handedOff = false
     this._overtaken = undefined
     this._pendingStart = false
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
@@ -563,6 +564,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _asyncContext: Scheduler.AsyncContext | undefined
   // A resumption was handed to the captured async context and has not landed
   declare _resuming: boolean
+  // runInAsyncScope returned before the resumption landed
+  declare _handedOff: boolean
   // A resumption that arrived while an interrupt was still landing
   declare _overtaken: Primitive | undefined
   // The fiber's start was handed to the captured async context and has not run
@@ -650,19 +653,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       // consumers like vitest's detectAsyncLeaks.
       asyncContext.emitDestroy()
     }
+    if (this._resuming) this._handedOff = true
   }
   // Called by the captured context, synchronously or later. An interrupt
-  // requested meanwhile is deferred until the resumption has landed, so a value
-  // handed to the fiber is never dropped.
+  // requested meanwhile is deferred until the resumption has landed.
   resume(effect: Primitive): void {
     this._resuming = false
-    if (this._deferredInterrupt || this._overtaken !== undefined || this._pendingStart) {
+    if (this._handedOff || this._deferredInterrupt || this._overtaken !== undefined || this._pendingStart) {
       return this.resumeRaced(effect)
     }
     this.run(effect)
   }
-  // The resumption is a fork's start, or raced an interrupt
+  // The resumption is a fork's start, was handed off, or raced an interrupt
   resumeRaced(effect: Primitive): void {
+    const handedOff = this._handedOff
+    this._handedOff = false
     const overtaken = this._overtaken
     this._overtaken = undefined
     if (this._pendingStart) {
@@ -672,12 +677,20 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._pendingStart = false
       return this.run(effect)
     }
-    let interrupt = this._deferredInterrupt
-    this._deferredInterrupt = false
+    let interrupt = false
     if (overtaken !== undefined) {
       effect = overtaken
       interrupt = true
+      this._deferredInterrupt = false
+    } else if (handedOff && this._deferredInterrupt) {
+      // Once handed off, the value counts as delivered, so it runs before an
+      // interrupt requested after that.
+      interrupt = true
+      this._deferredInterrupt = false
     }
+    // An interrupt requested before runInAsyncScope returned, such as from an
+    // async_hooks `before` callback, stays deferred, and the run loop delivers
+    // it in place of the value, as if the fiber had been running.
     this.run(effect)
     if (interrupt && this._exit === undefined && this.interruptible && !this._running) {
       this.evaluate(failCause(this._interruptedCause!) as any)
