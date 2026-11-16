@@ -462,6 +462,19 @@ const constInterruptedFiber = (function() {
  * when it completes. Set `startImmediately: false` to defer startup. By default,
  * the effect starts immediately.
  *
+ * **Details**
+ *
+ * The forked fiber is not a child of the caller. It is owned by the set
+ * and can keep running after the caller completes or is interrupted. Forking
+ * and registration are interruption-safe: interrupting the caller cannot
+ * leave the new fiber untracked. Closing the owning scope from another fiber
+ * interrupts managed fibers and waits for their finalizers.
+ *
+ * **Gotchas**
+ *
+ * A managed fiber that closes its own scope is not interrupted or awaited by
+ * that close. Uninterruptible work can delay scope closure.
+ *
  * **Example** (Forking effects into a set)
  *
  * ```ts import.meta.vitest

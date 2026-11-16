@@ -5,6 +5,11 @@
  * interrupt one or many fibers, check unknown values, access the current fiber,
  * and attach manually managed fibers to a `Scope` for cleanup.
  *
+ * Waiting on a fiber does not make it a child of the waiting fiber. Interrupting
+ * an observer only stops that wait, but does not change existing ownership:
+ * a child created with `Effect.forkChild` is still interrupted when its parent
+ * exits, whether or not the parent was waiting on it.
+ *
  * @stability stable
  * @since 2.0.0
  */
@@ -197,8 +202,10 @@ export {
    *
    * **Details**
    *
-   * The returned Effect always succeeds with an `Exit` describing the fiber's
-   * outcome.
+   * When the wait completes, it succeeds with an `Exit` describing the fiber's
+   * outcome. Interrupting the waiting fiber only stops the wait; it does not
+   * itself interrupt the awaited fiber. Existing parent-child lifetime rules
+   * still apply.
    *
    * **Gotchas**
    *
@@ -235,6 +242,10 @@ export {
  * interruptions.
  *
  * **Details**
+ *
+ * Interrupting the waiting fiber only stops the wait; it does not itself
+ * interrupt the awaited fibers. Existing parent-child lifetime rules still
+ * apply.
  *
  * The returned array is ordered like the input iterable.
  *
@@ -282,6 +293,12 @@ export const awaitAll: <A extends Fiber<any, any>>(
  * Use when you need a forked fiber's failure to fail the current Effect because
  * that fiber is part of the current workflow.
  *
+ * **Details**
+ *
+ * Interrupting the waiting fiber only stops the wait; it does not itself
+ * interrupt the awaited fiber. Existing parent-child lifetime rules still
+ * apply.
+ *
  * **Gotchas**
  *
  * Joining a failed fiber propagates the fiber's Cause. Use {@link await_ await} when
@@ -318,6 +335,10 @@ export const join: <A, E>(self: Fiber<A, E>) => Effect<A, E> = effect.fiberJoin
  * rather than the `Exit` values.
  *
  * **Details**
+ *
+ * Interrupting the waiting fiber only stops the wait; it does not itself
+ * interrupt the awaited fibers. Existing parent-child lifetime rules still
+ * apply.
  *
  * If any fiber fails, the returned `Effect` fails with that fiber's cause and
  * stops waiting for additional results. This does not interrupt the remaining
