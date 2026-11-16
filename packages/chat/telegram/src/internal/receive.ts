@@ -5,7 +5,7 @@ import * as ChatInteraction from "effect/chat/ChatInteraction"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
+import type * as Schema from "effect/Schema"
 import type { TelegramBotApi } from "../TelegramBotApi.ts"
 import * as Actions from "./actions.ts"
 import type { Made } from "./adapter.ts"
@@ -66,16 +66,14 @@ export interface Environment {
   readonly username: Effect.Effect<string, ChatError>
 }
 
-const isLate = Schema.is(ChatInteraction.Late)
-
 const duration = (input: Duration.Input | undefined, fallback: Duration.Duration) =>
   input === undefined ? fallback : Duration.fromInputUnsafe(input)
 
-const refused = (
+/** Modals are not in this version: an `OpenModal` reply is refused. */
+const refuseModal = (
   handler: ChatInteraction.Handler["Service"],
-  event: ChatInteraction.ButtonClicked | ChatInteraction.CommandInvoked,
-  error: ChatError
-) => handler.refused(event, error)
+  event: ChatInteraction.ButtonClicked | ChatInteraction.CommandInvoked
+) => handler.refused(event, Errors.chatError("openModal", Errors.unsupported("modals")))
 
 const answerQuery = (api: TelegramBotApi["Service"], id: string) =>
   api.call("answerCallbackQuery", { callback_query_id: id }, { write: true, retry: false }).pipe(
@@ -147,9 +145,7 @@ const click = (
       handler.value
     )
     yield* answer
-    if (!isLate(reply) && reply._tag === "OpenModal") {
-      yield* refused(handler.value, event, Errors.chatError("openModal", Errors.unsupported("modals")))
-    }
+    if (reply._tag === "OpenModal") yield* refuseModal(handler.value, event)
   })
 
 /** The command of a message update, for this bot. @internal */
@@ -187,19 +183,19 @@ const command = (
       ChatInteraction.Handler,
       handler.value
     )
-    if (isLate(reply)) return true
     switch (reply._tag) {
       case "Ack":
         return false
+      case "Late":
       case "Defer":
         return true
       case "OpenModal":
-        yield* refused(handler.value, event, Errors.chatError("openModal", Errors.unsupported("modals")))
+        yield* refuseModal(handler.value, event)
         return true
       case "Respond": {
         // No `ephemeral` in this version: a private answer is refused, never posted.
         if (reply.visibility === "ephemeral") {
-          yield* refused(handler.value, event, Errors.chatError("respond", Errors.unsupported("ephemeral")))
+          yield* handler.value.refused(event, Errors.chatError("respond", Errors.unsupported("ephemeral")))
           return true
         }
         const origin = originOf(event)
@@ -207,7 +203,7 @@ const command = (
         yield* env.answer("respond", origin, {
           markdown: reply.markdown,
           ...(reply.actions === undefined ? {} : { actions: reply.actions })
-        }).pipe(Effect.catch((error) => refused(handler.value, event, error)))
+        }).pipe(Effect.catch((error) => handler.value.refused(event, error)))
         return true
       }
     }
@@ -239,14 +235,13 @@ export const receive = (
     const handler = yield* Effect.serviceOption(ChatInteraction.Handler)
     const query = object(update, "callback_query")
     if (query !== undefined) {
+      const id = string(query, "id")
       if (isForeignCallback(query)) {
         // A business chat's button is answered, so its client stops waiting, but never dispatched.
-        const id = string(query, "id")
         const message = object(query, "message")
         if (id !== undefined && message !== undefined && isExcluded(message)) yield* answerQuery(env.api, id)
         return yield* unhandled
       }
-      const id = string(query, "id")
       if (id === undefined) return "invalid"
       return yield* Effect.as(click(update, id, env, options, handler), "accepted" as const)
     }

@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Errors from "./internal/errors.ts"
@@ -62,8 +63,6 @@ export class SlackWebApi extends Context.Service<SlackWebApi, {
   ) => Effect.Effect<Schema.Json, ChatError>
 }>()("@effect/chat-slack/SlackWebApi") {}
 
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
 const formBody = (body: Readonly<Record<string, unknown>>): Record<string, string> => {
   const out: Record<string, string> = {}
   for (const [key, value] of Object.entries(body)) {
@@ -103,7 +102,7 @@ export const make = Effect.fnUntraced(function*(options: {
         return response.json.pipe(
           Effect.catch((error) => fail(Errors.invalidResponse(write, "invalid_json", error))),
           Effect.flatMap((json): Effect.Effect<Schema.Json, ChatError> => {
-            if (!isObject(json) || typeof json.ok !== "boolean") {
+            if (!Predicate.isObject(json) || typeof json.ok !== "boolean") {
               return fail(Errors.invalidResponse(write, "invalid_response"))
             }
             if (json.ok) return Effect.succeed(json)

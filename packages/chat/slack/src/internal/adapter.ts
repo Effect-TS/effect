@@ -31,51 +31,20 @@ import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import * as Str from "effect/String"
+import type { SlackUser } from "../SlackChat.ts"
+import type { SlackWebApi } from "../SlackWebApi.ts"
 import * as Address from "./address.ts"
 import * as Errors from "./errors.ts"
 import * as Escape from "./escape.ts"
 import * as Interactions from "./interactions.ts"
+import { isObject, type JsonObject, object, parse, string } from "./json.ts"
 import * as Length from "./length.ts"
 import * as Normalize from "./normalize.ts"
 import { CurrentPostOptions, type SessionStatus } from "./options.ts"
 import * as Text from "./text.ts"
 
 type Json = Schema.Json
-type JsonObject = { readonly [key: string]: Json }
-
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
-
-const string = (object: JsonObject, key: string): string | undefined => {
-  const value = object[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-const object = (object: JsonObject, key: string): JsonObject | undefined => {
-  const value = object[key]
-  return isObject(value) ? value : undefined
-}
-
-/** @internal */
-export interface Api {
-  readonly call: (
-    method: string,
-    body: Readonly<Record<string, unknown>>,
-    options?: { readonly write?: boolean | undefined; readonly retry?: boolean | undefined }
-  ) => Effect.Effect<Json, ChatError>
-}
-
-/** @internal */
-export interface SlackUser {
-  readonly id: string
-  readonly teamId: string
-  readonly name: string
-  readonly isBot: boolean
-  readonly isRestricted: boolean
-  readonly isUltraRestricted: boolean
-  readonly isStranger: boolean
-  readonly deleted: boolean
-  readonly raw: Json
-}
 
 /** @internal */
 export const descriptor: Descriptor = {
@@ -177,32 +146,28 @@ interface StreamState {
   readonly ended: boolean
 }
 
-/**
- * Whether the cleanup edit runs for a stream message that holds an allowed
- * token. It does: an edit that keeps a real mention sends no second push
- * (EFF-3740). If that ever changes, the skip comes back here.
- */
-const cleanupWithAllowedToken = true
-
-/**
- * A stream write with every lone surrogate as U+FFFD, as `toWellFormed`
- * gives. Slack blanks a message whose surrogate pair is split across two
- * appends.
- */
-const wellFormed = (text: string): string =>
-  text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "\ufffd")
+/** The state of an open, unstopped stream that has sent `sent` for `markdown`. */
+const openStream = (escape: Escape.State, markdown: string, sent: string): StreamState => ({
+  escape,
+  markdown,
+  sent,
+  stopped: false,
+  settled: true,
+  cleaned: false,
+  ended: false
+})
 
 const hasDetail = (code: string) => (error: ChatError): boolean => error.reason.detail === code
 
 const userName = (user: JsonObject): string => {
   const profile = object(user, "profile")
-  return (profile === undefined ? undefined : string(profile, "display_name") ?? string(profile, "real_name")) ??
-    string(user, "real_name") ?? string(user, "name") ?? string(user, "id") ?? ""
+  return string(profile, "display_name") ?? string(profile, "real_name") ?? string(user, "real_name") ??
+    string(user, "name") ?? string(user, "id") ?? ""
 }
 
 /** @internal */
 export const make = (options: {
-  readonly api: Api
+  readonly api: SlackWebApi["Service"]
   readonly http: HttpClient.HttpClient
   readonly botToken: Redacted.Redacted
   readonly teamId: string
@@ -301,7 +266,7 @@ export const make = (options: {
   }
 
   const tsOf = (op: string, write: boolean) => (answer: Json): Effect.Effect<string, ChatError> => {
-    const ts = isObject(answer) ? string(answer, "ts") : undefined
+    const ts = string(answer, "ts")
     return ts === undefined ? fail(op, Errors.invalidResponse(write, "missing_ts")) : Effect.succeed(ts)
   }
 
@@ -335,11 +300,8 @@ export const make = (options: {
   const messages = (answer: Json): ReadonlyArray<Json> =>
     isObject(answer) && Array.isArray(answer.messages) ? answer.messages : []
 
-  const nextCursor = (answer: Json): Option.Option<string> => {
-    const metadata = isObject(answer) ? object(answer, "response_metadata") : undefined
-    const cursor = metadata === undefined ? undefined : string(metadata, "next_cursor")
-    return cursor === undefined ? Option.none() : Option.some(cursor)
-  }
+  const nextCursor = (answer: Json): Option.Option<string> =>
+    Option.fromUndefinedOr(string(object(answer, "response_metadata"), "next_cursor"))
 
   /** One message by ts, in or out of a thread, as Slack stores it. */
   const fetchRaw = (op: string, channel: string, ts: string): Effect.Effect<Json, ChatError> =>
@@ -364,13 +326,11 @@ export const make = (options: {
         write: true,
         retry: false
       }).pipe(
-        Effect.tapError((error) =>
-          Effect.sync(() => {
-            if (hasDetail("not_authorized")(error)) declaredAgent = false
-          })
-        ),
-        Effect.catch((error) => Effect.logDebug("agents.sessions.setStatus failed", error)),
-        Effect.asVoid
+        Effect.asVoid,
+        Effect.catch((error) => {
+          if (hasDetail("not_authorized")(error)) declaredAgent = false
+          return Effect.logDebug("agents.sessions.setStatus failed", error)
+        })
       )
       : Effect.void
 
@@ -386,8 +346,8 @@ export const make = (options: {
         filename: file.name,
         length: file.content.length
       })
-      const uploadUrl = isObject(answer) ? string(answer, "upload_url") : undefined
-      const fileId = isObject(answer) ? string(answer, "file_id") : undefined
+      const uploadUrl = string(answer, "upload_url")
+      const fileId = string(answer, "file_id")
       if (uploadUrl === undefined || fileId === undefined) {
         return yield* fail("post", Errors.invalidResponse(false, "missing_upload_url"))
       }
@@ -527,10 +487,10 @@ export const make = (options: {
         )
       const reversed = (stream: Stream.Stream<ChatMessage, ChatError>) =>
         Stream.unwrap(Effect.map(Stream.runCollect(stream), (all) => Stream.fromIterable(Array.from(all).reverse())))
+      const bound = from === undefined ? {} : direction === "forward" ? { oldest: from } : { latest: from }
       if (parts.threadTs !== undefined) {
         // Oldest first, from the thread's start. Slack puts the opener on every page.
         const threadTs = parts.threadTs
-        const bound = from === undefined ? {} : direction === "forward" ? { oldest: from } : { latest: from }
         const replies = page("history", "conversations.replies", {
           channel: parts.channel,
           ts: threadTs,
@@ -550,7 +510,6 @@ export const make = (options: {
         return direction === "forward" ? stream : reversed(stream)
       }
       // Newest first. A reply broadcast to the channel is the thread's.
-      const bound = from === undefined ? {} : direction === "forward" ? { oldest: from } : { latest: from }
       const stream = normalized(
         Stream.paginate(
           undefined as string | undefined,
@@ -571,7 +530,9 @@ export const make = (options: {
    * It is skipped when the block would pass 12,000 and when the edit fails,
    * leaving the characters, failing nothing and saying so on the span. A
    * message whose last append is unsettled is left to the layer's repair,
-   * which rewrites it, so it gets no second edit.
+   * which rewrites it, so it gets no second edit. An allowed token in the
+   * message does not skip it: an edit that keeps a real mention sends no
+   * second push (EFF-3740).
    *
    * An interrupted cleanup leaves the message marked not cleaned, so the
    * stop the layer's finaliser sends again runs it again.
@@ -583,11 +544,9 @@ export const make = (options: {
     state: StreamState,
     notify: Escape.Notify
   ) {
-    let tokens = 0
-    const block = Escape.escape(state.markdown, notify, { flush: true, onToken: () => tokens++ }).sent
+    const block = Escape.escape(state.markdown, notify, { flush: true }).sent
     if (block === state.sent) return
     const skip = (reason: string) => Effect.annotateCurrentSpan("slack.stream.cleanup", reason)
-    if (tokens > 0 && !cleanupWithAllowedToken) return yield* skip("allowed_token")
     if (!state.settled) return yield* skip("unsettled")
     const body = Text.body(state.markdown, notify, Text.updateBudget)
     if (Length.codePoints(body.sent) > Length.messageLength) return yield* skip("too_long")
@@ -647,7 +606,8 @@ export const make = (options: {
         return yield* fail(op, new Unsupported({ capability: "nativeStream" }))
       }
       const escaped = Escape.escapeStream(start.markdown, postOptions.notify ?? {}, { flush: true })
-      const sent = wellFormed(escaped.sent)
+      // Slack blanks a message whose surrogate pair is split across two appends.
+      const sent = Str.toWellFormed(escaped.sent)
       yield* checkSent(op, sent)
       const startCall = call(op, "chat.startStream", {
         channel: parts.channel,
@@ -675,38 +635,21 @@ export const make = (options: {
       const ts = yield* tsOf(op, true)(answer)
       const backoff = continues === undefined ? undefined : backoffs.get(continues)
       if (backoff !== undefined) backoffs.set(ts, backoff)
-      streams.set(ts, {
-        escape: escaped.state,
-        markdown: start.markdown,
-        sent,
-        stopped: false,
-        settled: true,
-        cleaned: false,
-        ended: false
-      })
+      streams.set(ts, openStream(escaped.state, start.markdown, sent))
       return { id: ts, thread, timestamp: Normalize.timestamp(ts) }
     }),
     append: Effect.fnUntraced(function*(thread, messageId, markdown, appendOptions) {
       const op = "nativeStream.append"
       const parts = yield* resolve(op, thread)
       const postOptions = yield* CurrentPostOptions
-      const state = streams.get(messageId) ??
-        {
-          escape: Escape.initialState,
-          markdown: "",
-          sent: "",
-          stopped: false,
-          settled: true,
-          cleaned: false,
-          ended: false
-        }
+      const state = streams.get(messageId) ?? openStream(Escape.initialState, "", "")
       const flush = appendOptions?.flush === true
       // A trailing high surrogate waits for its other half.
       const input = !flush && /[\ud800-\udbff]$/.test(markdown) ? markdown.slice(0, -1) : markdown
       const escaped = Escape.escapeStream(input, postOptions.notify ?? {}, { state: state.escape, flush })
       const held = markdown.length - escaped.consumed
       if (escaped.sent === "") return { state: "open" as const, held }
-      const sent = wellFormed(escaped.sent)
+      const sent = Str.toWellFormed(escaped.sent)
       yield* checkSent(op, state.sent + sent)
       const unsettle = Effect.sync(() => streams.set(messageId, { ...state, settled: false }))
       return yield* paced(
@@ -721,15 +664,10 @@ export const make = (options: {
         "stream"
       ).pipe(
         Effect.map(() => {
-          streams.set(messageId, {
-            escape: escaped.state,
-            markdown: state.markdown + input.slice(0, escaped.consumed),
-            sent: state.sent + sent,
-            stopped: false,
-            settled: true,
-            cleaned: false,
-            ended: false
-          })
+          streams.set(
+            messageId,
+            openStream(escaped.state, state.markdown + input.slice(0, escaped.consumed), state.sent + sent)
+          )
           return { state: "open" as const, held }
         }),
         Effect.catchIf(
@@ -782,14 +720,10 @@ export const make = (options: {
           })
         )
       const answer = yield* stop.pipe(
-        Effect.map(Option.some),
-        Effect.catchIf(hasDetail("message_not_in_streaming_state"), () => Effect.succeed(Option.none<Json>()))
+        Effect.catchIf(hasDetail("message_not_in_streaming_state"), () => Effect.succeed(undefined))
       )
-      const message = Option.isSome(answer) && isObject(answer.value) ? object(answer.value, "message") : undefined
-      const context = message === undefined ? undefined : object(message, "ai_context")
-      const result = Option.isSome(answer) && isObject(answer.value) ? answer.value.result_status : undefined
-      const stopped = state?.stopped === true || result === "stopped_by_user" ||
-        (context !== undefined && context.result_status === "stopped_by_user")
+      const stopped = state?.stopped === true || string(answer, "result_status") === "stopped_by_user" ||
+        string(object(object(answer, "message"), "ai_context"), "result_status") === "stopped_by_user"
       // Remember stopped_by_user across interruptions, even if a retry finds no open stream.
       const current = streams.get(messageId)
       if (stopped && current !== undefined) streams.set(messageId, { ...current, stopped: true })
@@ -808,8 +742,8 @@ export const make = (options: {
   const user = (id: string): Effect.Effect<SlackUser, ChatError> =>
     call("user", "users.info", { user: id }).pipe(
       Effect.flatMap((answer) => {
-        const raw = isObject(answer) ? object(answer, "user") : undefined
-        const userId = raw === undefined ? undefined : string(raw, "id")
+        const raw = object(answer, "user")
+        const userId = string(raw, "id")
         if (raw === undefined || userId === undefined) {
           return fail("user", Errors.invalidResponse(false, "missing_user"))
         }
@@ -854,7 +788,7 @@ export const make = (options: {
 
   const responseUrl = (op: string, deferred: Defer): Effect.Effect<URL, ChatError> => {
     const raw = deferred.command.raw
-    const value = isObject(raw) ? string(raw, "response_url") : undefined
+    const value = string(raw, "response_url")
     const url = value === undefined || !URL.canParse(value) ? undefined : new URL(value)
     return url !== undefined && url.protocol === "https:" && isSlackHost(url.hostname)
       ? Effect.succeed(url)
@@ -874,13 +808,10 @@ export const make = (options: {
     ).pipe(Effect.mapError((error) => Errors.chatError(op, Errors.transport(true, error.reason._tag, error))))
     if (response.status >= 200 && response.status < 300) return
     const text = yield* Effect.orElseSucceed(response.text, () => "")
-    let code: string | undefined
-    try {
-      const parsed: unknown = JSON.parse(text)
-      code = isObject(parsed) ? string(parsed, "error") : undefined
-    } catch {
-      code = text.trim() === "" ? undefined : text.trim()
-    }
+    const parsed = parse(text)
+    const code = parsed === undefined
+      ? text.trim() === "" ? undefined : text.trim()
+      : string(parsed, "error")
     if (response.status === 404 || response.status === 410 || (code !== undefined && spentResponseUrl.has(code))) {
       return yield* fail(
         op,
@@ -962,8 +893,8 @@ export const make = (options: {
         const tooLarge = Errors.chatError(op, new TooLarge({ subject: "files", detail: "max_bytes" }))
         if (attachment.size !== undefined && attachment.size > maxBytes) return yield* Effect.fail(tooLarge)
         const answer = yield* call(op, "files.info", { file: attachment.id })
-        const file = isObject(answer) ? object(answer, "file") : undefined
-        const url = file === undefined ? undefined : string(file, "url_private_download") ?? string(file, "url_private")
+        const file = object(answer, "file")
+        const url = string(file, "url_private_download") ?? string(file, "url_private")
         if (url === undefined) return yield* fail(op, Errors.invalidResponse(false, "missing_url"))
         const response = yield* options.http.execute(
           HttpClientRequest.get(url).pipe(HttpClientRequest.bearerToken(Redacted.value(options.botToken)))
@@ -991,11 +922,10 @@ export const make = (options: {
     getThread: Effect.fnUntraced(function*(thread) {
       const parts = yield* resolve("getThread", thread)
       const answer = yield* call("getThread", "conversations.info", { channel: parts.channel })
-      const channel = isObject(answer) ? object(answer, "channel") : undefined
+      const channel = object(answer, "channel")
       if (channel === undefined) return yield* fail("getThread", Errors.invalidResponse(false, "missing_channel"))
       const direct = channel.is_im === true || channel.is_mpim === true
-      const topic = object(channel, "topic")
-      const topicValue = topic === undefined ? undefined : string(topic, "value")
+      const topicValue = string(object(channel, "topic"), "value")
       const name = direct ? undefined : string(channel, "name")
       const created = channel.created
       const createdAt = parts.threadTs !== undefined

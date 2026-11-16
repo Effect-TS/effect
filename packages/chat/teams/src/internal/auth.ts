@@ -7,11 +7,14 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Jwks from "effect/jose/Jwks"
 import * as Jwt from "effect/jose/Jwt"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
-import { type Cloud, noRedirects, send } from "./connector.ts"
+import type { Cloud } from "../TeamsChat.ts"
+import { noRedirects, send } from "./connector.ts"
+import { parseUrl } from "./parse.ts"
 
 /** The longest `Authorization` header read. Anything longer is refused unread. */
 const maxAuthorizationLength = 16 * 1024
@@ -39,14 +42,6 @@ export const endorsedForTeams = (jwk: { readonly [key: string]: unknown }): bool
     endorsements.includes("msteams")
 }
 
-const parseUrl = (input: string): URL | undefined => {
-  try {
-    return new URL(input)
-  } catch {
-    return undefined
-  }
-}
-
 /** The body, or `undefined` once it passes `maxBytes` or can't be read. Never reads past the limit. */
 const readBounded = (
   response: HttpClientResponse.HttpClientResponse,
@@ -67,8 +62,6 @@ const readBounded = (
     )
 }
 
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
 /** @internal */
 export type Verdict = "ok" | "forbidden" | "unavailable"
 
@@ -82,9 +75,12 @@ export interface Activity {
 /** The tenant of an activity: `conversation.tenantId`, else `channelData.tenant.id`. @internal */
 export const tenantOf = (activity: Record<string, unknown>): string | undefined => {
   const conversation = activity.conversation
-  if (isObject(conversation) && typeof conversation.tenantId === "string") return conversation.tenantId
+  if (Predicate.isObject(conversation) && typeof conversation.tenantId === "string") return conversation.tenantId
   const channelData = activity.channelData
-  if (isObject(channelData) && isObject(channelData.tenant) && typeof channelData.tenant.id === "string") {
+  if (
+    Predicate.isObject(channelData) && Predicate.isObject(channelData.tenant) &&
+    typeof channelData.tenant.id === "string"
+  ) {
     return channelData.tenant.id
   }
   return undefined
@@ -132,7 +128,7 @@ export const makeVerifier = Effect.fnUntraced(function*(options: {
     } catch {
       return yield* Effect.fail("metadata_json" as const)
     }
-    const uri = isObject(json) ? json.jwks_uri : undefined
+    const uri = Predicate.isObject(json) ? json.jwks_uri : undefined
     const parsed = typeof uri === "string" ? parseUrl(uri) : undefined
     if (parsed === undefined) return yield* Effect.fail("metadata_jwks_uri" as const)
     if (parsed.protocol !== "https:" || parsed.port !== "" || parsed.hostname !== metadataUrl.hostname) {

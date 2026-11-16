@@ -1,20 +1,18 @@
 import type { Capability, ChatError } from "effect/chat/ChatError"
 import * as ChatInteraction from "effect/chat/ChatInteraction"
-import type { ChatThread } from "effect/chat/ChatThread"
 import type * as ChatUi from "effect/chat/ChatUi"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as Schema from "effect/Schema"
+import type * as Schema from "effect/Schema"
+import * as Str from "effect/String"
 import type { Made } from "./adapter.ts"
 import { modalFields, modalMetadataLength } from "./adapter.ts"
-import * as Address from "./address.ts"
 import * as Envelope from "./envelope.ts"
 import * as Errors from "./errors.ts"
-import { isObject, object, string, threadOf, userId } from "./normalize.ts"
+import { locate, threadOf, userId } from "./normalize.ts"
+import { isObject, type JsonObject, object, string } from "./parse.ts"
 import * as Render from "./render.ts"
-
-type JsonObject = { readonly [key: string]: Schema.Json }
 
 /** The default share of Teams' invoke timeout the handler gets. @internal */
 export const defaultDeadline = Duration.seconds(4)
@@ -24,8 +22,6 @@ export interface InvokeResponse {
   readonly status: number
   readonly body?: Schema.Json | undefined
 }
-
-const isLate = Schema.is(ChatInteraction.Late)
 
 const ok: InvokeResponse = { status: 200 }
 
@@ -60,19 +56,6 @@ export interface Options {
 const refused = (event: ChatInteraction.ButtonClicked | ChatInteraction.CommandInvoked, error: ChatError) =>
   Effect.flatMap(ChatInteraction.Handler, (handler) => handler.refused(event, error))
 
-/**
- * Where the message an invoke came from lives. A card posted as a channel
- * post has the channel as its address, as `normalize` gives it.
- */
-const cardThread = (conversationId: string | undefined, messageId: string | undefined): ChatThread | undefined => {
-  if (conversationId === undefined || conversationId.length > Address.maxIdLength) return undefined
-  const parts = Address.parts(Address.thread(conversationId))
-  if (Option.isNone(parts)) return undefined
-  return parts.value.root !== undefined && parts.value.root === messageId
-    ? Address.thread(parts.value.base)
-    : Address.thread(conversationId)
-}
-
 /** The adaptive card of a dialog, built only from the signed definition. */
 const dialogCard = (
   modal: ChatUi.Modal,
@@ -92,7 +75,7 @@ const dialogCard = (
   const body: Array<unknown> = []
   for (const element of modal.elements) {
     if (element._tag === "Text") {
-      body.push(Render.textBlock(Render.escapeText(Render.wellFormed(element.text))))
+      body.push(Render.textBlock(Render.escapeText(Str.toWellFormed(element.text))))
       continue
     }
     if (element._tag === "TextInput") {
@@ -120,7 +103,7 @@ const dialogCard = (
     }
     const error = submitted === undefined ? undefined : own(submitted.errors, element.id)
     if (error !== undefined) {
-      body.push({ ...Render.textBlock(Render.escapeText(Render.wellFormed(error))), color: "attention" })
+      body.push({ ...Render.textBlock(Render.escapeText(Str.toWellFormed(error))), color: "attention" })
     }
   }
   return {
@@ -175,8 +158,7 @@ export const invoke = (
     const envelope = options.envelope
     if (envelope === undefined || !options.capabilities.has("buttons")) return failure
     const conversationId = string(object(activity, "conversation"), "id")
-    const from = object(activity, "from")
-    const user = from === undefined ? undefined : userId(from)
+    const user = userId(object(activity, "from"))
     if (conversationId === undefined || user === undefined) return failure
     const value = object(activity, "value")
     const data = name === "adaptiveCard/action"
@@ -193,7 +175,7 @@ export const invoke = (
       const values = Envelope.validateSubmission(dialog.value.modal, data)
       // The thread of the click that opened it, from the signed conversation
       // id and message, never from the submit.
-      const origin = cardThread(dialog.value.conversationId, dialog.value.messageId)
+      const origin = locate(dialog.value.conversationId, dialog.value.messageId)?.thread
       if (Option.isNone(values) || origin === undefined) return failure
       const modal = dialog.value.modal
       const event = ChatInteraction.ModalSubmitted.make({
@@ -206,7 +188,7 @@ export const invoke = (
         raw: activity
       })
       const reply = yield* ChatInteraction.handle(event, options.deadline)
-      if (isLate(reply)) return failure
+      if (reply._tag === "Late") return failure
       if (reply._tag === "Errors") {
         return {
           status: 200,
@@ -219,7 +201,8 @@ export const invoke = (
     if (name !== "adaptiveCard/action" && name !== "message" && name !== "task/fetch") return failure
     const button = yield* envelope.verifyButton(token, { conversationId })
     const messageId = string(activity, "replyToId")
-    const thread = cardThread(conversationId, messageId)
+    // A card posted as a channel post has the channel as its address, as `normalize` gives it.
+    const thread = locate(conversationId, messageId)?.thread
     if (Option.isNone(button) || thread === undefined || messageId === undefined) return failure
     const opensDialog = name === "task/fetch"
     if (opensDialog !== options.modalButtons.has(button.value.id)) return failure
@@ -233,7 +216,7 @@ export const invoke = (
     })
     const reply = yield* ChatInteraction.handle(event, options.deadline)
     const acked = name === "adaptiveCard/action" ? executeAck : name === "message" ? ok : failure
-    if (isLate(reply) || reply._tag === "Ack") return acked
+    if (reply._tag === "Late" || reply._tag === "Ack") return acked
     if (!opensDialog || !options.capabilities.has("modals")) {
       yield* refused(event, Errors.chatError("openModal", Errors.unsupported("modals")))
       return acked
@@ -278,8 +261,7 @@ export const command = (
     const text = typeof activity.text === "string" ? activity.text : ""
     const rest = text.replace(commandPrefix, "")
     const match = /^(\S+)\s*([\s\S]*)$/.exec(rest)
-    const from = object(activity, "from")
-    const user = from === undefined ? undefined : userId(from)
+    const user = userId(object(activity, "from"))
     const at = threadOf(activity)
     if (match === null || user === undefined || at === undefined) return
     const id = match[1]
@@ -292,8 +274,8 @@ export const command = (
       raw: activity
     })
     const reply = yield* ChatInteraction.handle(event, options.deadline)
-    if (isLate(reply)) return
     switch (reply._tag) {
+      case "Late":
       case "Ack":
       case "Defer":
         return

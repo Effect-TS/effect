@@ -1,38 +1,34 @@
-import type * as ChatEvent from "effect/chat/ChatEvent"
-import type * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { Attachment, ChatMessage } from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
 import * as DateTime from "effect/DateTime"
+import * as Predicate from "effect/Predicate"
 import type * as Schema from "effect/Schema"
+import type { Inbound } from "../WhatsAppChat.ts"
 import type * as Update from "../WhatsAppUpdate.ts"
 import { parseWireId } from "./actions.ts"
 import * as Address from "./address.ts"
 import { reasonForGraphError } from "./errors.ts"
 
 type Json = Schema.Json
-type JsonObject = { readonly [key: string]: Json }
 
-/** What one webhook delivery holds, in order. @internal */
-export type Inbound =
-  | ChatEvent.MessageCreated
-  | ChatEvent.ReactionAdded
-  | ChatInteraction.ButtonClicked
-  | ChatInteraction.SelectChanged
-  | Update.WhatsAppUpdate
+/** @internal */
+export type JsonObject = { readonly [key: string]: Json }
 
 /** A phone number without its formatting: Meta may show `display_phone_number` with `+`, spaces or dashes. */
 const digits = (phone: string) => phone.replace(/\D/g, "")
 
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
+/** @internal */
+export const isObject = (u: unknown): u is JsonObject => Predicate.isObject(u)
 
-const string = (object: JsonObject | undefined, key: string): string | undefined => {
-  const value = object?.[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
+/** A non-empty string field of `value`, when `value` is an object. @internal */
+export const string = (value: unknown, key: string): string | undefined => {
+  const field = isObject(value) ? value[key] : undefined
+  return typeof field === "string" && field.length > 0 ? field : undefined
 }
 
-const object = (object: JsonObject | undefined, key: string): JsonObject | undefined => {
-  const value = object?.[key]
-  return isObject(value) ? value : undefined
+const object = (value: unknown, key: string): JsonObject | undefined => {
+  const field = isObject(value) ? value[key] : undefined
+  return isObject(field) ? field : undefined
 }
 
 const array = (value: Json | undefined): ReadonlyArray<Json> => Array.isArray(value) ? value : []
@@ -54,7 +50,7 @@ export const groupMessages = (envelope: unknown): number => {
   if (!isObject(envelope)) return count
   for (const entry of array(envelope.entry)) {
     for (const change of array(isObject(entry) ? entry.changes : undefined)) {
-      const value = isObject(change) ? object(change, "value") : undefined
+      const value = object(change, "value")
       for (const message of array(value?.messages)) if (isGroupMessage(message)) count++
       for (const status of array(value?.statuses)) if (isObject(status) && status.recipient_type === "group") count++
     }

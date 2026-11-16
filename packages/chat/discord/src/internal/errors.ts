@@ -16,6 +16,7 @@ import {
   Unsupported
 } from "effect/chat/ChatError"
 import * as Duration from "effect/Duration"
+import { isObject } from "effect/Predicate"
 import { platform } from "./normalize.ts"
 
 /** Discord's JSON error codes, by what they mean. */
@@ -24,10 +25,9 @@ const forbiddenCodes = new Set([20001, 20028, 50001, 50005, 50013, 50021, 50083,
 const unauthenticatedCodes = new Set([0, 40001])
 const tooLargeFiles = new Set([40005, 50045])
 
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
 /** A 50035 whose errors say a field is too long. */
-const isTooLong = (data: Record<string, unknown>): boolean => JSON.stringify(data.errors ?? {}).includes("MAX_LENGTH")
+const isTooLong = (data: { readonly [x: PropertyKey]: unknown }): boolean =>
+  JSON.stringify(data.errors ?? {}).includes("MAX_LENGTH")
 
 const withCause = (cause: unknown) => (cause === undefined ? {} : { cause })
 

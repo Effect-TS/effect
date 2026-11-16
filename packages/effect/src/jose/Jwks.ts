@@ -22,6 +22,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as Layer from "../Layer.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
@@ -356,7 +357,7 @@ export const makeRemote = Effect.fnUntraced(function*(
     }
     const filtered = filter === undefined || !Array.isArray(rawKeys) ? document : {
       ...document,
-      keys: rawKeys.filter((jwk) => typeof jwk === "object" && jwk !== null && !Array.isArray(jwk) && filter(jwk))
+      keys: rawKeys.filter((jwk) => Predicate.isObject(jwk) && filter(jwk))
     }
     const keySet = yield* Schema.decodeUnknownEffect(KeySet)(filtered).pipe(
       Effect.mapError((cause) => unavailable("The key set document is invalid", cause))

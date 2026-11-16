@@ -14,6 +14,7 @@ import type { Action } from "effect/chat/ChatUi"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Hex from "effect/encoding/Hex"
 import * as Fiber from "effect/Fiber"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as Redacted from "effect/Redacted"
@@ -237,7 +238,7 @@ const sign = async (body: string) => {
     ["sign"]
   )
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)))
-  return "sha256=" + Array.from(mac, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  return "sha256=" + Hex.encode(mac)
 }
 
 const deliver = Effect.fnUntraced(function*(

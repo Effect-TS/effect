@@ -29,5 +29,5 @@ export const parts = (address: ChatThread.ChatThread): Option.Option<Parts> => {
 /** The prefix of the label a private answer's message id gets: `e{ephemeral_message_id}.{date}`. @internal */
 export const ephemeralPrefix = "e"
 
-/** A message id as Telegram takes it, or undefined. @internal */
-export const messageId = (id: string): number | undefined => /^[1-9]\d{0,15}$/.test(id) ? Number(id) : undefined
+/** A message or user id as Telegram takes it, or undefined. @internal */
+export const numericId = (id: string): number | undefined => /^[1-9]\d{0,15}$/.test(id) ? Number(id) : undefined

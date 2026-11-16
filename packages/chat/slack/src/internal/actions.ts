@@ -51,7 +51,8 @@ export type Element =
     readonly initial_option?: SelectOption
   }
 
-const plainText = (text: string): PlainText => ({ type: "plain_text", text })
+/** @internal */
+export const plainText = (text: string): PlainText => ({ type: "plain_text", text })
 
 /** @internal */
 export const option = (label: string, value: string): SelectOption => ({ text: plainText(label), value })

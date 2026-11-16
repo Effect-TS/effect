@@ -13,6 +13,7 @@ import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Errors from "./internal/errors.ts"
@@ -110,9 +111,9 @@ export const make = Effect.fnUntraced(function*(options: {
                 ? fail(Errors.invalidResponse(write, "invalid_json", error))
                 : fail(Errors.reasonForStatus(response.status, { write })),
             onSuccess: (json): Effect.Effect<Schema.Json, ChatError> => {
-              if (response.status >= 200 && response.status < 300) return Effect.succeed(json as Schema.Json)
+              if (response.status >= 200 && response.status < 300) return Effect.succeed(json)
               const graph = Errors.graphError(json)
-              const cause = typeof json === "object" && json !== null && "error" in json ? json.error : json
+              const cause = Predicate.hasProperty(json, "error") ? json.error : json
               return fail(
                 graph === undefined
                   ? Errors.reasonForStatus(response.status, { write, cause })

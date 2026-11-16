@@ -1,6 +1,8 @@
 import type { ChatErrorReason } from "effect/chat/ChatError"
 import type * as ChatUi from "effect/chat/ChatUi"
+import * as Predicate from "effect/Predicate"
 import * as Errors from "./errors.ts"
+import { string } from "./normalize.ts"
 
 /** The adapter's own cap, as Telegram publishes no button count. @internal */
 export const actionsPerMessage = 100
@@ -80,17 +82,13 @@ export const keyboard = (
 /** Every `callback_data` in a message's `reply_markup`. @internal */
 export const keyboardData = (replyMarkup: unknown): ReadonlySet<string> => {
   const data = new Set<string>()
-  const rows = typeof replyMarkup === "object" && replyMarkup !== null
-    ? (replyMarkup as { readonly inline_keyboard?: unknown }).inline_keyboard
-    : undefined
+  const rows = Predicate.isObject(replyMarkup) ? replyMarkup.inline_keyboard : undefined
   if (!Array.isArray(rows)) return data
   for (const row of rows) {
     if (!Array.isArray(row)) continue
     for (const button of row) {
-      const value = typeof button === "object" && button !== null
-        ? (button as { readonly callback_data?: unknown }).callback_data
-        : undefined
-      if (typeof value === "string") data.add(value)
+      const value = string(button, "callback_data")
+      if (value !== undefined) data.add(value)
     }
   }
   return data

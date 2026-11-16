@@ -16,7 +16,7 @@
  * @since 4.1.5
  */
 import { type File, retrySafe } from "effect/chat/ChatAdapter"
-import type { ChatError, ChatErrorReason } from "effect/chat/ChatError"
+import type { ChatError } from "effect/chat/ChatError"
 import { ChatThread } from "effect/chat/ChatThread"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -25,6 +25,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
+import { isObject } from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
@@ -124,8 +125,6 @@ export const defaultApiUrl = "https://api.telegram.org"
 const methodName = /^[A-Za-z]{1,64}$/
 const filePath = /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/
 
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
 const formValue = (value: unknown): string => typeof value === "string" ? value : JSON.stringify(value)
 
 /**
@@ -151,7 +150,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const apiUrl = (options.apiUrl ?? defaultApiUrl).replace(/\/+$/, "")
   const botId = /^(\d{1,20}):[A-Za-z0-9_-]+$/.exec(Redacted.value(options.token))?.[1]
   if (botId === undefined) {
-    return yield* Effect.fail(Errors.chatError("layer", Errors.unauthenticatedToken))
+    return yield* Errors.fail("layer", Errors.unauthenticatedToken)
   }
   const suffix = environment === "test" ? "/test" : ""
   const methodUrl = (method: string) => `${apiUrl}/bot${Redacted.value(options.token)}${suffix}/${method}`
@@ -169,29 +168,28 @@ export const make = Effect.fnUntraced(function*(options: {
         Effect.mapError((error) => Errors.chatError(op, Errors.transport(write, error.reason._tag)))
       ))
 
-  const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
-
-  const decode = (op: string, write: boolean, response: HttpClientResponse.HttpClientResponse) =>
-    response.json.pipe(
+  const decode = (op: string, write: boolean, response: HttpClientResponse.HttpClientResponse) => {
+    const success = response.status >= 200 && response.status < 300
+    const statusError: Errors.ApiError = { code: response.status, description: "" }
+    return response.json.pipe(
       Effect.matchEffect({
         onFailure: () =>
-          response.status >= 200 && response.status < 300
-            ? fail(op, Errors.invalidResponse(write, "invalid_json"))
-            : fail(op, Errors.reasonForApiError({ code: response.status, description: "" }, { write })),
+          Errors.fail(
+            op,
+            success ? Errors.invalidResponse(write, "invalid_json") : Errors.reasonForApiError(statusError, { write })
+          ),
         onSuccess: (body): Effect.Effect<Schema.Json, ChatError> => {
           if (isObject(body) && body.ok === true && "result" in body) return Effect.succeed(body.result as Schema.Json)
-          const error = Errors.apiError(body, response.status) ??
-            (response.status >= 200 && response.status < 300
-              ? undefined
-              : { code: response.status, description: "" })
-          if (error === undefined) return fail(op, Errors.invalidResponse(write, "invalid_answer"))
+          const error = Errors.apiError(body, response.status) ?? (success ? undefined : statusError)
+          if (error === undefined) return Errors.fail(op, Errors.invalidResponse(write, "invalid_answer"))
           const cause = error.migrateTo === undefined
             ? undefined
             : new TelegramChatMigrated({ thread: Address.thread(error.migrateTo) })
-          return fail(op, Errors.reasonForApiError(error, { write, cause }))
+          return Errors.fail(op, Errors.reasonForApiError(error, { write, cause }))
         }
       })
     )
+  }
 
   const once = (method: string, params: Readonly<Record<string, unknown>>, callOptions: CallOptions) => {
     const write = callOptions.write === true
@@ -225,7 +223,7 @@ export const make = Effect.fnUntraced(function*(options: {
   }
 
   const call: TelegramBotApi["Service"]["call"] = (method, params = {}, callOptions = {}) => {
-    if (!methodName.test(method)) return fail(method, Errors.invalidRequest("invalid_method"))
+    if (!methodName.test(method)) return Errors.fail(method, Errors.invalidRequest("invalid_method"))
     const effect = once(method, params, callOptions)
     return callOptions.retry === false ? effect : retrySafe(effect)
   }
@@ -235,16 +233,18 @@ export const make = Effect.fnUntraced(function*(options: {
       Effect.gen(function*() {
         const op = "download"
         if (!filePath.test(path) || path.split("/").some((segment) => segment === "." || segment === "..")) {
-          return yield* fail(op, Errors.invalidResponse(false, "untrusted_file_path"))
+          return yield* Errors.fail(op, Errors.invalidResponse(false, "untrusted_file_path"))
         }
         const url = fileUrl(path)
         const response = yield* send(HttpClientRequest.get(url), op, false)
-        if (response.status >= 300 && response.status < 400) {
-          return yield* fail(op, Errors.invalidResponse(false, "redirect"))
+        if ((response.status >= 300 && response.status < 400) || response.url !== url) {
+          return yield* Errors.fail(op, Errors.invalidResponse(false, "redirect"))
         }
-        if (response.url !== url) return yield* fail(op, Errors.invalidResponse(false, "redirect"))
         if (response.status < 200 || response.status >= 300) {
-          return yield* fail(op, Errors.reasonForApiError({ code: response.status, description: "" }, { write: false }))
+          return yield* Errors.fail(
+            op,
+            Errors.reasonForApiError({ code: response.status, description: "" }, { write: false })
+          )
         }
         const tooLarge = Errors.chatError(op, Errors.tooLarge("files", "max_bytes"))
         const length = Number(response.headers["content-length"])

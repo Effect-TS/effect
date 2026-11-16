@@ -285,7 +285,7 @@ export const layer = (options: {
         appId: options.appId,
         tenantId: options.tenantId,
         cloud,
-        call: (method, path, body, callOptions) => connector.call(method, path, body, callOptions)
+        call: connector.call
       })
       Adapter.internals.set(service, { capabilities: adapter.descriptor.capabilities, envelope, modalButtons, answer })
       return service

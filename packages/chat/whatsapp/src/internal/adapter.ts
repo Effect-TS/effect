@@ -17,22 +17,14 @@ import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { Template } from "../WhatsAppChat.ts"
 import type { WhatsAppGraphApi } from "../WhatsAppGraphApi.ts"
 import * as Actions from "./actions.ts"
 import * as Address from "./address.ts"
 import * as Errors from "./errors.ts"
+import { isObject, type JsonObject, string } from "./normalize.ts"
 import { CurrentPostOptions } from "./options.ts"
 import * as Text from "./text.ts"
-
-type Json = Schema.Json
-type JsonObject = { readonly [key: string]: Json }
-
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
-
-const string = (object: JsonObject | undefined, key: string): string | undefined => {
-  const value = object?.[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
 
 /** @internal */
 export const descriptor: Descriptor = {
@@ -52,31 +44,30 @@ type MediaType = "image" | "video" | "audio" | "document"
 
 const megabytes = (n: number) => n * 1024 * 1024
 
+const image = { type: "image", maxBytes: megabytes(5) } as const
+const video = { type: "video", maxBytes: megabytes(16) } as const
+const audio = { type: "audio", maxBytes: megabytes(16) } as const
+const doc = { type: "document", maxBytes: megabytes(100) } as const
+
 /** Meta's supported media, by MIME type, with the largest upload of each. */
 const mediaTypes: Record<string, { readonly type: MediaType; readonly maxBytes: number }> = {
-  "image/jpeg": { type: "image", maxBytes: megabytes(5) },
-  "image/png": { type: "image", maxBytes: megabytes(5) },
-  "video/mp4": { type: "video", maxBytes: megabytes(16) },
-  "video/3gpp": { type: "video", maxBytes: megabytes(16) },
-  "audio/aac": { type: "audio", maxBytes: megabytes(16) },
-  "audio/amr": { type: "audio", maxBytes: megabytes(16) },
-  "audio/mpeg": { type: "audio", maxBytes: megabytes(16) },
-  "audio/mp4": { type: "audio", maxBytes: megabytes(16) },
-  "audio/ogg": { type: "audio", maxBytes: megabytes(16) },
-  "text/plain": { type: "document", maxBytes: megabytes(100) },
-  "application/pdf": { type: "document", maxBytes: megabytes(100) },
-  "application/msword": { type: "document", maxBytes: megabytes(100) },
-  "application/vnd.ms-excel": { type: "document", maxBytes: megabytes(100) },
-  "application/vnd.ms-powerpoint": { type: "document", maxBytes: megabytes(100) },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    type: "document",
-    maxBytes: megabytes(100)
-  },
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { type: "document", maxBytes: megabytes(100) },
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
-    type: "document",
-    maxBytes: megabytes(100)
-  }
+  "image/jpeg": image,
+  "image/png": image,
+  "video/mp4": video,
+  "video/3gpp": video,
+  "audio/aac": audio,
+  "audio/amr": audio,
+  "audio/mpeg": audio,
+  "audio/mp4": audio,
+  "audio/ogg": audio,
+  "text/plain": doc,
+  "application/pdf": doc,
+  "application/msword": doc,
+  "application/vnd.ms-excel": doc,
+  "application/vnd.ms-powerpoint": doc,
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": doc,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": doc,
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": doc
 }
 
 /** The MIME type a file is uploaded as: without parameters, and `text/markdown` as `text/plain`. @internal */
@@ -86,13 +77,6 @@ export const uploadType = (contentType: string): string => {
 }
 
 const refused = new TooLarge({ subject: "files", detail: fileRefused })
-
-/** A template message: its name, its language and Meta's `components`. @internal */
-export interface Template {
-  readonly name: string
-  readonly language: string
-  readonly components?: ReadonlyArray<Json> | undefined
-}
 
 /** @internal */
 export const make = (options: {
@@ -130,7 +114,7 @@ export const make = (options: {
       write: true
     }).pipe(Effect.mapError(withOp(op)))
     const messages = isObject(answer) && Array.isArray(answer.messages) ? answer.messages : []
-    const id = isObject(messages[0]) ? string(messages[0], "id") : undefined
+    const id = string(messages[0], "id")
     if (id === undefined) return yield* fail(op, Errors.invalidResponse(true, "missing_message_id"))
     const timestamp = yield* DateTime.now
     return { id, thread, timestamp } satisfies Posted
@@ -169,7 +153,7 @@ export const make = (options: {
         )
       ),
       Effect.flatMap((answer) => {
-        const id = isObject(answer) ? string(answer, "id") : undefined
+        const id = string(answer, "id")
         return id === undefined ? fail(op, Errors.invalidResponse(false, "missing_media_id")) : Effect.succeed(id)
       })
     )
@@ -207,7 +191,7 @@ export const make = (options: {
           type: plan.interactive.type,
           ...(header === undefined ? {} : { header }),
           body: { text },
-          action: plan.interactive.action as Json
+          action: plan.interactive.action as Schema.Json
         }
       })
     }

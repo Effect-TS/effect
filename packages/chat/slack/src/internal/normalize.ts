@@ -5,6 +5,7 @@ import * as DateTime from "effect/DateTime"
 import type * as Schema from "effect/Schema"
 import { isDirectChannel, thread } from "./address.ts"
 import * as Emoji from "./emoji.ts"
+import { isObject, type JsonObject, object, string } from "./json.ts"
 import * as Mentions from "./mentions.ts"
 import * as RichText from "./richText.ts"
 
@@ -22,15 +23,6 @@ export const messageSubtypes: ReadonlySet<string> = new Set([
   "me_message"
 ])
 
-type JsonObject = { readonly [key: string]: Schema.Json }
-
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
-
-const string = (object: JsonObject, key: string): string | undefined => {
-  const value = object[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
 const tsPattern = /^\d+\.\d+$/
 
 /** When a Slack `ts` was sent. @internal */
@@ -44,17 +36,9 @@ export interface MessageContext {
 }
 
 const authorName = (message: JsonObject): string | undefined => {
-  const profile = message.user_profile
-  if (isObject(profile)) {
-    const name = string(profile, "display_name") ?? string(profile, "real_name") ?? string(profile, "name")
-    if (name !== undefined) return name
-  }
-  const bot = message.bot_profile
-  if (isObject(bot)) {
-    const name = string(bot, "name")
-    if (name !== undefined) return name
-  }
-  return string(message, "username")
+  const profile = object(message, "user_profile")
+  return string(profile, "display_name") ?? string(profile, "real_name") ?? string(profile, "name") ??
+    string(object(message, "bot_profile"), "name") ?? string(message, "username")
 }
 
 const attachments = (message: JsonObject): Array<ChatMessage.Attachment> => {

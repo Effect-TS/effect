@@ -1,4 +1,5 @@
 import type { Mention } from "effect/chat/ChatMessage"
+import { isObject } from "effect/Predicate"
 
 type Kind = Mention["kind"]
 
@@ -54,8 +55,6 @@ const tokens = (text: string, skipCode: boolean): Array<Token> => {
   }
   return found
 }
-
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 interface Item extends Target {
   readonly real: boolean

@@ -215,7 +215,7 @@ describe("ChatInteraction", () => {
         )
         yield* TestClock.adjust("3 seconds")
         const reply = yield* Fiber.join(fiber)
-        assert.isTrue(Schema.is(ChatInteraction.Late)(reply))
+        assert.strictEqual(reply._tag, "Late")
         // The click's handler is still running, and its modal can no longer open.
         yield* TestClock.adjust("2 seconds")
         const error = yield* Deferred.await(refused)
@@ -241,7 +241,7 @@ describe("ChatInteraction", () => {
         yield* TestClock.adjust("3 seconds")
         const exit = fiber.pollUnsafe()
         assert.isDefined(exit)
-        assert.isTrue(Exit.isSuccess(exit!) && Schema.is(ChatInteraction.Late)(exit.value))
+        assert.isTrue(Exit.isSuccess(exit!) && exit.value._tag === "Late")
         // The interrupt was requested, and the cleanup still runs to its end.
         assert.isFalse(yield* Deferred.isDone(cleaned))
         yield* TestClock.adjust("5 seconds")

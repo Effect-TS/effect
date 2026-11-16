@@ -20,28 +20,16 @@ import * as Option from "effect/Option"
 import type * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { Cloud, Unverified } from "../TeamsChat.ts"
 import * as Address from "./address.ts"
-import { type Cloud, type Connector, segment } from "./connector.ts"
+import { type Connector, segment } from "./connector.ts"
 import * as Download from "./download.ts"
 import type * as Envelope from "./envelope.ts"
 import * as Errors from "./errors.ts"
 import * as Length from "./length.ts"
-import { botId, isObject, object, string, userId } from "./normalize.ts"
+import { botId, userId } from "./normalize.ts"
+import { isObject, object, string } from "./parse.ts"
 import * as Render from "./render.ts"
-
-/**
- * The capabilities a layer may turn on that no tenant run has confirmed
- * yet. Each is off by default.
- *
- * @internal
- */
-export interface Unverified {
-  readonly buttons?: boolean | undefined
-  readonly modals?: boolean | undefined
-  readonly commands?: boolean | undefined
-  readonly startThread?: boolean | undefined
-  readonly download?: boolean | undefined
-}
 
 /** The adapter's own cap on elements in one message. @internal */
 export const actionsPerMessage = Render.actionsPerRow
@@ -148,6 +136,13 @@ export const make = (options: Options): Made => {
   const descriptor = makeDescriptor(capabilities, options.envelope?.tokenLength ?? noKeys)
   const { connector } = options
   const self = botId(options.appId)
+  const downloadOptions = {
+    token: options.token,
+    connectorHosts: new Set(options.cloud.connectorHosts),
+    fileHostSuffixes: options.cloud.fileHostSuffixes,
+    redirectHosts: new Set(options.cloud.redirectHosts),
+    http: options.http
+  }
 
   const unsupported = (op: string, capability: Capability) => fail(op, Errors.unsupported(capability))
 
@@ -203,7 +198,7 @@ export const make = (options: Options): Made => {
   const now = Effect.map(Clock.currentTimeMillis, (millis) => DateTime.makeUnsafe(millis))
 
   const activityId = (op: string, answer: Schema.Json | undefined): Effect.Effect<string, ChatError> => {
-    const id = isObject(answer) ? string(answer, "id") : undefined
+    const id = string(answer, "id")
     return id === undefined ? fail(op, Errors.invalidResponse(true, "missing_id")) : Effect.succeed(id)
   }
 
@@ -244,16 +239,9 @@ export const make = (options: Options): Made => {
     }),
     fetchMessage: () => unsupported("fetchMessage", "fetchMessage"),
     history: () => Stream.fail(Errors.chatError("history", Errors.unsupported("history"))),
-    download: (_thread: ChatThread, attachment: Attachment, downloadOptions: { readonly maxBytes: number }) =>
+    download: (_thread: ChatThread, attachment: Attachment, { maxBytes }: { readonly maxBytes: number }) =>
       capabilities.has("download")
-        ? Download.download(attachment.id, {
-          maxBytes: downloadOptions.maxBytes,
-          token: options.token,
-          connectorHosts: new Set(options.cloud.connectorHosts),
-          fileHostSuffixes: options.cloud.fileHostSuffixes,
-          redirectHosts: new Set(options.cloud.redirectHosts),
-          http: options.http
-        })
+        ? Download.download(attachment.id, { ...downloadOptions, maxBytes })
         : Stream.fail(Errors.chatError("download", Errors.unsupported("download"))),
     startThread: Effect.fnUntraced(function*(thread, messageId) {
       const op = "startThread"
@@ -294,8 +282,8 @@ export const make = (options: Options): Made => {
         undefined,
         { op }
       )
-      const connectorId = isObject(raw) ? string(raw, "id") : undefined
-      const canonical = isObject(raw) ? userId(raw) : undefined
+      const connectorId = string(raw, "id")
+      const canonical = userId(raw)
       if (!isObject(raw) || connectorId === undefined || canonical === undefined) {
         return yield* fail(op, Errors.invalidResponse(false, "invalid_member"))
       }
@@ -312,7 +300,7 @@ export const make = (options: Options): Made => {
       const op = "followUp"
       if (!capabilities.has("commands")) return yield* unsupported(op, "commands")
       const raw = deferred.command.raw
-      const sent = isObject(raw) ? string(raw, "timestamp") : undefined
+      const sent = string(raw, "timestamp")
       const at = sent === undefined ? undefined : Option.getOrUndefined(DateTime.make(sent))
       const current = yield* Clock.currentTimeMillis
       if (at === undefined || current - DateTime.toEpochMillis(at) > Duration.toMillis(followUpAge)) {
@@ -327,8 +315,7 @@ export const make = (options: Options): Made => {
     const serviceUrl = string(raw, "serviceUrl")
     const conversationId = string(object(raw, "conversation"), "id")
     const messageId = string(raw, "id")
-    const from = object(raw, "from")
-    const recipientId = string(from, "id")
+    const recipientId = string(object(raw, "from"), "id")
     if (
       serviceUrl === undefined || conversationId === undefined || messageId === undefined ||
       recipientId === undefined

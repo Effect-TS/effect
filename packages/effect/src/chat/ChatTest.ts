@@ -16,6 +16,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as Bytes from "../Bytes.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as DateTime from "../DateTime.ts"
@@ -24,13 +25,16 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
+import * as Str from "../String.ts"
 import * as Chat from "./Chat.ts"
 import type { ChatAdapter, Descriptor, File, NativeStream, Posted } from "./ChatAdapter.ts"
 import { checkMessageLength, Registry, retrySafe } from "./ChatAdapter.ts"
-import type { Capability, ChatErrorReason } from "./ChatError.ts"
+import type { ChatErrorReason } from "./ChatError.ts"
 import {
+  Capability,
   ChatError,
   fileRefused,
   Forbidden,
@@ -220,26 +224,7 @@ export class ChatTest extends Context.Service<ChatTest, {
 // fake adapter
 // -----------------------------------------------------------------------------
 
-const allCapabilities: ReadonlyArray<Capability> = [
-  "edit",
-  "delete",
-  "fetchMessage",
-  "history",
-  "download",
-  "files",
-  "replyTo",
-  "startThread",
-  "getThread",
-  "opener",
-  "getUser",
-  "nativeStream",
-  "buttons",
-  "selects",
-  "modals",
-  "modalErrors",
-  "commands",
-  "ephemeral"
-]
+const allCapabilities: ReadonlyArray<Capability> = Capability.literals
 
 /** Counts code points. */
 const codePoints = (markdown: string): number => {
@@ -256,10 +241,6 @@ interface StoredStream {
 
 /** An append holds back an unclosed `<` tail, as Slack does, up to this many characters. */
 const heldBound = 100
-
-/** Every lone surrogate as U+FFFD, as `String.prototype.toWellFormed` gives. */
-const wellFormed = (text: string): string =>
-  text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, "\ufffd")
 
 interface StoredThread {
   readonly thread: ChatThread.ChatThread
@@ -431,6 +412,28 @@ const makeFake = (options: {
       content: file.content
     }))
 
+  /** Stores a message from the bot. The author `replyTo` names is read from the stored target. */
+  const postOwn = Effect.fnUntraced(function*(op: string, thread: ChatThread.ChatThread, message: {
+    readonly text: string
+    readonly replyTo: ReplyTo | undefined
+    readonly attachments: StoredMessage["attachments"]
+    readonly actions: ReadonlyArray<ChatUi.Action>
+  }) {
+    const target = message.replyTo === undefined
+      ? undefined
+      : yield* findMessage(op, thread, message.replyTo.messageId)
+    const stored = yield* store({
+      ...message,
+      thread,
+      authorId: selfId,
+      isBot: true,
+      isSelf: true,
+      mentions: [],
+      replyTo: target === undefined ? undefined : { messageId: target.id, authorId: target.authorId }
+    })
+    return { id: stored.id, thread, timestamp: stored.timestamp } satisfies Posted
+  })
+
   const createThread = (
     op: string,
     thread: ChatThread.ChatThread,
@@ -510,11 +513,8 @@ const makeFake = (options: {
   ): Array<Capability> => [...(visibility === "ephemeral" ? ["ephemeral" as const] : []), ...actionNeeds(actions)]
 
   /** The id the fake gave a command it built, which keys its deferral. */
-  const commandKey = (command: ChatInteraction.CommandInvoked): string | undefined => {
-    const raw = command.raw
-    const id = typeof raw === "object" && raw !== null ? (raw as { readonly id?: unknown }).id : undefined
-    return typeof id === "string" ? id : undefined
-  }
+  const commandKey = ({ raw }: ChatInteraction.CommandInvoked): string | undefined =>
+    Predicate.hasProperty(raw, "id") && typeof raw.id === "string" ? raw.id : undefined
 
   const takeFault = (op: string): Fault | undefined => {
     const queue = faults.get(op)
@@ -578,24 +578,14 @@ const makeFake = (options: {
           if (descriptor.measure(content.markdown) > streamLength()) {
             return yield* fail("nativeStream.start", new TooLarge({ subject: "text", detail: "msg_too_long" }))
           }
-          let replyTo: ReplyTo | undefined
-          if (content.replyTo !== undefined) {
-            const target = yield* findMessage("nativeStream.start", thread, content.replyTo.messageId)
-            replyTo = { messageId: target.id, authorId: target.authorId }
-          }
-          const stored = yield* store({
-            thread,
-            authorId: selfId,
-            isBot: true,
-            isSelf: true,
-            text: wellFormed(content.markdown),
-            mentions: [],
-            replyTo,
+          const posted = yield* postOwn("nativeStream.start", thread, {
+            text: Str.toWellFormed(content.markdown),
+            replyTo: content.replyTo,
             attachments: [],
             actions: []
           })
-          streams.set(stored.id, { startedAt: yield* Clock.currentTimeMillis, open: true, clicked: false })
-          return { id: stored.id, thread, timestamp: stored.timestamp } satisfies Posted
+          streams.set(posted.id, { startedAt: yield* Clock.currentTimeMillis, open: true, clicked: false })
+          return posted
         })
       ),
     append: (thread, messageId, markdown, appendOptions) =>
@@ -617,7 +607,7 @@ const makeFake = (options: {
           }
           // A trailing high surrogate waits for its other half.
           if (!flush && held === 0 && /[\ud800-\udbff]$/.test(markdown)) held = 1
-          const sent = wellFormed(markdown.slice(0, markdown.length - held))
+          const sent = Str.toWellFormed(markdown.slice(0, markdown.length - held))
           if (descriptor.measure(message.text + sent) > streamLength()) {
             return yield* fail("nativeStream.append", new TooLarge({ subject: "text", detail: "msg_too_long" }))
           }
@@ -670,23 +660,12 @@ const makeFake = (options: {
           ) {
             return yield* fail("post", new TooLarge({ subject: "files", detail: fileRefused }))
           }
-          let replyTo: ReplyTo | undefined
-          if (content.replyTo !== undefined) {
-            const target = yield* findMessage("post", thread, content.replyTo.messageId)
-            replyTo = { messageId: target.id, authorId: target.authorId }
-          }
-          const stored = yield* store({
-            thread,
-            authorId: selfId,
-            isBot: true,
-            isSelf: true,
+          return yield* postOwn("post", thread, {
             text: content.markdown,
-            mentions: [],
-            replyTo,
+            replyTo: content.replyTo,
             attachments: storeFiles(files),
             actions: content.actions ?? []
           })
-          return { id: stored.id, thread, timestamp: stored.timestamp } satisfies Posted
         })
       )
     },
@@ -980,7 +959,7 @@ const makeFake = (options: {
               ),
               false
             ))
-            refusal = Exit.isFailure(exit) ? Option.getOrUndefined(Exit.findErrorOption(exit)) : undefined
+            refusal = Option.getOrUndefined(Exit.findErrorOption(exit))
             break
           }
           case "Defer": {
@@ -1136,7 +1115,7 @@ export const sameMessage = (a: ChatMessage.ChatMessage, b: ChatMessage.ChatMessa
 
 const canonicalJson = (value: unknown): string =>
   JSON.stringify(value, (_, v) =>
-    v !== null && typeof v === "object" && !Array.isArray(v)
+    Predicate.isObject(v)
       ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
       : v)
 
@@ -1460,14 +1439,14 @@ class Tester {
 
   readonly recording = new Recording()
 
+  /** Runs an interaction hook with the suite's recording handler. */
+  recorded<A, E>(effect: Effect.Effect<A, E, ChatInteraction.Handler>): Effect.Effect<A, E> {
+    return Effect.provideService(effect, ChatInteraction.Handler, this.recording.handler)
+  }
+
   /** Clicks through the hook, with the suite's recording handler. */
   clickExit(messageId: string, id: string, options?: { readonly option?: string | undefined }) {
-    const interactions = this.options.interactions!
-    return Effect.exit(Effect.provideService(
-      interactions.click(messageId, id, options),
-      ChatInteraction.Handler,
-      this.recording.handler
-    ))
+    return Effect.exit(this.recorded(this.options.interactions!.click(messageId, id, options)))
   }
 
   click(messageId: string, id: string, options?: { readonly option?: string | undefined }) {
@@ -1485,19 +1464,11 @@ class Tester {
 
   /** Sends a command through the hook, with the suite's recording handler. */
   command(id: string, options?: { readonly text?: string | undefined }) {
-    return Effect.provideService(
-      this.options.interactions!.command!(this.thread, id, options),
-      ChatInteraction.Handler,
-      this.recording.handler
-    )
+    return this.recorded(this.options.interactions!.command!(this.thread, id, options))
   }
 
   submit(values: Readonly<Record<string, string>>) {
-    return Effect.provideService(
-      this.options.interactions!.submit(values),
-      ChatInteraction.Handler,
-      this.recording.handler
-    )
+    return this.recorded(this.options.interactions!.submit(values))
   }
 
   /** Checks a received interaction with `checkInteraction`, under this rule's name. */
@@ -1544,6 +1515,11 @@ class Tester {
 
   check(condition: boolean, expected: string, actual: () => string) {
     return check(this.rule, condition, expected, actual)
+  }
+
+  /** Marks a message the rule posted in its thread for cleanup. */
+  track(posted: Posted) {
+    this.created.push({ thread: this.thread, id: posted.id })
   }
 
   post(
@@ -1615,7 +1591,19 @@ class Tester {
           Option.getOrUndefined(error)
         ))
       })
-    const track = (posted: Posted) => void this.created.push({ thread: this.thread, id: posted.id })
+    const track = (posted: Posted) => this.track(posted)
+    /** Whether the suite's handler was refused `Unsupported` exactly when the capability is not listed. */
+    const checkRefusal = Effect.suspend(() => {
+      const { refused } = this.recording
+      const refusal = refused.find((error) => error.reason._tag === "Unsupported")
+      return this.check(
+        listed
+          ? refusal === undefined
+          : refusal?.reason._tag === "Unsupported" && refusal.reason.capability === capability,
+        listed ? "no refusal Unsupported for listed " + capability : "a refusal Unsupported(" + capability + ")",
+        () => refused.length === 0 ? "no refusal" : refused.map(describeError).join(", ")
+      )
+    })
     const { chat, thread } = this
     const text = conformanceText(this.rule)
     switch (capability) {
@@ -1655,21 +1643,7 @@ class Tester {
         // Probing a modal requires the interaction hook and a clickable element.
         return this.options.interactions === undefined || !(this.has("buttons") || this.has("selects"))
           ? Effect.void
-          : Effect.gen({ self: this }, function*() {
-            yield* this.openModal(probeModal.open())
-            const refusal = this.recording.refused.find((error) => error.reason._tag === "Unsupported")
-            const holds = listed
-              ? refusal === undefined
-              : refusal?.reason._tag === "Unsupported" && refusal.reason.capability === "modals"
-            yield* this.check(
-              holds,
-              listed ? "no refusal Unsupported for listed modals" : "a refusal Unsupported(modals)",
-              () =>
-                this.recording.refused.length === 0
-                  ? "no refusal"
-                  : this.recording.refused.map(describeError).join(", ")
-            )
-          })
+          : Effect.andThen(this.openModal(probeModal.open()), checkRefusal)
       case "modalErrors":
         // Its absence means a degraded answer, not a refusal, so it has no inverse.
         return Effect.void
@@ -1692,21 +1666,9 @@ class Tester {
         // Probing a private answer requires the command hook.
         return this.options.interactions?.command === undefined
           ? Effect.void
-          : Effect.gen({ self: this }, function*() {
+          : Effect.suspend(() => {
             this.recording.onCommand = () => ChatInteraction.respond({ markdown: text })
-            yield* this.command("conformance")
-            const refusal = this.recording.refused.find((error) => error.reason._tag === "Unsupported")
-            const holds = listed
-              ? refusal === undefined
-              : refusal?.reason._tag === "Unsupported" && refusal.reason.capability === "ephemeral"
-            yield* this.check(
-              holds,
-              listed ? "no refusal Unsupported for listed ephemeral" : "a refusal Unsupported(ephemeral)",
-              () =>
-                this.recording.refused.length === 0
-                  ? "no refusal"
-                  : this.recording.refused.map(describeError).join(", ")
-            )
+            return Effect.andThen(this.command("conformance"), checkRefusal)
           })
       case "nativeStream":
         return Effect.flatMap(
@@ -1786,19 +1748,18 @@ const valueCases: ReadonlyArray<{ readonly schema: ChatInteraction.ValueSchema; 
 
 const sameValue = (a: unknown, b: unknown) => typeof a === typeof b && canonicalJson(a) === canonicalJson(b)
 
-interface ConformanceOptions {
-  readonly platform: string
-  readonly thread: ChatThread.ChatThread
-  readonly userPosts: (thread: ChatThread.ChatThread, text: string) => Effect.Effect<ChatEvent.ChatEvent>
-  readonly parseMention: ParseMention
-  readonly refuseFiles?: (() => Effect.Effect<void>) | undefined
-  readonly interactions?: Interactions | undefined
-  readonly failNext?:
-    | ((op: string, reason: ChatErrorReason, options?: {
-      readonly times?: number | undefined
-      readonly landed?: boolean | undefined
-    }) => Effect.Effect<void>)
-    | undefined
+type ConformanceOptions = Parameters<typeof conformance>[0]
+
+/** The largest `n` in `[0, limit]` that `fits`, for a `fits` that holds up to some `n` and fails past it. */
+const largestFitting = (limit: number, fits: (n: number) => boolean): number => {
+  let low = 0
+  let high = limit
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2)
+    if (fits(middle)) low = middle
+    else high = middle - 1
+  }
+  return low
 }
 
 /**
@@ -1927,10 +1888,9 @@ export const conformance = (options: {
       const chunks = yield* t.collect(
         t.chat.download(t.thread, message.attachments[0], { maxBytes: file.content.length })
       )
-      const bytes = new Uint8Array(chunks.reduce((n, chunk) => n + chunk.length, 0))
-      chunks.reduce((offset, chunk) => (bytes.set(chunk, offset), offset + chunk.length), 0)
+      const bytes = Bytes.concat(chunks)
       yield* t.check(
-        bytes.length === file.content.length && bytes.every((byte, i) => byte === file.content[i]),
+        Bytes.Equivalence(bytes, file.content),
         "the uploaded bytes",
         () => bytes.length + " different bytes"
       )
@@ -1946,7 +1906,7 @@ export const conformance = (options: {
           markdown: conformanceText(t.rule),
           files: [conformanceFile(t.rule)]
         }))
-        if (Exit.isSuccess(exit)) t.created.push({ thread: t.thread, id: exit.value.id })
+        if (Exit.isSuccess(exit)) t.track(exit.value)
         const after = yield* t.collect(t.chat.history(t.thread, { direction: "forward" }))
         const beforeIds = new Set(before.map((message) => message.id))
         for (const message of after) {
@@ -1974,7 +1934,7 @@ export const conformance = (options: {
     t.expectReason(
       "TooLarge",
       t.chat.post(t.thread, { markdown: "x".repeat(t.descriptor.limits.messageLength + 1) }),
-      (posted) => t.created.push({ thread: t.thread, id: posted.id }),
+      (posted) => t.track(posted),
       textTooLarge
     ))
 
@@ -1982,16 +1942,7 @@ export const conformance = (options: {
     Effect.gen(function*() {
       const { measure } = t.descriptor
       const limit = t.descriptor.limits.messageLength
-      const largest = (make: (n: number) => string) => {
-        let low = 0
-        let high = limit
-        while (low < high) {
-          const middle = Math.ceil((low + high) / 2)
-          if (measure(make(middle)) <= limit) low = middle
-          else high = middle - 1
-        }
-        return make(low)
-      }
+      const largest = (make: (n: number) => string) => make(largestFitting(limit, (n) => measure(make(n)) <= limit))
       const blocks = largest((n) => measureFitsBlock.repeat(n))
       const markdown = largest((n) => blocks + "x".repeat(n))
       yield* t.post({ markdown })
@@ -2208,7 +2159,7 @@ export const conformance = (options: {
     const native = adapter.nativeStream!
     const event = yield* t.userPosts()
     const posted = yield* t.call(native.start(t.thread, { markdown, recipient: event.message.author.id }))
-    t.created.push({ thread: t.thread, id: posted.id })
+    t.track(posted)
     return { native, posted }
   })
 
@@ -2271,7 +2222,7 @@ export const conformance = (options: {
       yield* t.expectReason(
         "TooLarge",
         t.chat.post(t.thread, { markdown: conformanceText(t.rule), actions }),
-        (posted) => t.created.push({ thread: t.thread, id: posted.id })
+        (posted) => t.track(posted)
       )
     }))
 
@@ -2284,7 +2235,7 @@ export const conformance = (options: {
       yield* t.expectReason(
         "TooLarge",
         t.chat.post(t.thread, { markdown: conformanceText(t.rule), actions: [button] }),
-        (posted) => t.created.push({ thread: t.thread, id: posted.id })
+        (posted) => t.track(posted)
       )
     }))
 
@@ -2321,14 +2272,8 @@ export const conformance = (options: {
       const most = t.descriptor.limits.messageLength
       // A short label, so a platform whose labels are short still takes the button.
       const actions = [{ ...conformanceButton(t.rule), label: "fits", value: "x" }]
-      let low = 0
-      let high = most
-      while (low < high) {
-        const middle = Math.ceil((low + high) / 2)
-        if (measure("x".repeat(middle), actions) <= most) low = middle
-        else high = middle - 1
-      }
-      yield* t.post({ markdown: "x".repeat(low), actions })
+      const length = largestFitting(most, (n) => measure("x".repeat(n), actions) <= most)
+      yield* t.post({ markdown: "x".repeat(length), actions })
     }))
 
   const interactions = options.interactions
@@ -2626,7 +2571,7 @@ export const conformance = (options: {
         yield* t.expectReason(
           "RateLimited",
           Chat.withoutRetries(t.chat.post(t.thread, { markdown: conformanceText(t.rule) })),
-          (posted) => t.created.push({ thread: t.thread, id: posted.id })
+          (posted) => t.track(posted)
         )
       }))
 
@@ -2651,7 +2596,7 @@ export const conformance = (options: {
         yield* t.expectReason(
           "Transport",
           t.chat.post(t.thread, { markdown: conformanceText(t.rule) }),
-          (posted) => t.created.push({ thread: t.thread, id: posted.id })
+          (posted) => t.track(posted)
         )
       }))
   }

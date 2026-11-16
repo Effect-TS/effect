@@ -3,7 +3,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type { TelegramBotApi } from "../TelegramBotApi.ts"
 import * as Errors from "./errors.ts"
-import { integer, isObject } from "./normalize.ts"
+import { integer } from "./normalize.ts"
 import { allowedUpdates, type Outcome } from "./receive.ts"
 
 /** @internal */
@@ -39,7 +39,7 @@ export const runUpdate = (update: unknown, options: Options): Effect.Effect<void
       if (outcome === "accepted" || outcome === "unhandled") return
       if (attempt >= options.maxAttempts) {
         return yield* Effect.logError("telegram polling: an update was not accepted, skipped").pipe(
-          Effect.annotateLogs({ "telegram.update_id": isObject(update) ? integer(update, "update_id") : undefined })
+          Effect.annotateLogs({ "telegram.update_id": integer(update, "update_id") })
         )
       }
       yield* Effect.sleep(Duration.seconds(2 ** (attempt - 1)))
@@ -60,7 +60,7 @@ export const loop = (first: ReadonlyArray<unknown>, options: Options): Effect.Ef
     for (;;) {
       for (const update of batch) {
         yield* runUpdate(update, options)
-        const id = isObject(update) ? integer(update, "update_id") : undefined
+        const id = integer(update, "update_id")
         if (id !== undefined) offset = id + 1
       }
       const next = yield* Effect.result(getUpdates(options.api, offset, options.timeout))

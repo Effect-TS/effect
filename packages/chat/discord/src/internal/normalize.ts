@@ -3,6 +3,7 @@ import type { Attachment, ChatMessage, Mention } from "effect/chat/ChatMessage"
 import * as ChatThread from "effect/chat/ChatThread"
 import * as DateTime from "effect/DateTime"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Mentions from "./mentions.ts"
 
@@ -47,9 +48,15 @@ export const kindOf = (channelType: number): ThreadKind =>
 /** @internal */
 export const isThreadType = (channelType: number): boolean => kindOf(channelType) === "thread"
 
-const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
+/**
+ * A field Discord may leave out or send as `null`.
+ *
+ * @internal
+ */
+export const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
 
-const UserFields = Schema.Struct({
+/** @internal */
+export const UserFields = Schema.Struct({
   id: Schema.String,
   username: optional(Schema.String),
   global_name: optional(Schema.String),
@@ -166,7 +173,8 @@ const mentionsOf = (fields: MessageFields, text: string, botUserId: string): Arr
   return found
 }
 
-const nonEmpty = (value: string | null | undefined): string | undefined =>
+/** @internal */
+export const nonEmpty = (value: string | null | undefined): string | undefined =>
   value === null || value === undefined || value === "" ? undefined : value
 
 /**
@@ -295,28 +303,36 @@ export const normalize = (
   }
 }
 
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
+/** @internal */
+export const guildIdOf = (raw: unknown): Option.Option<string> =>
+  Predicate.isObject(raw) && typeof raw.guild_id === "string" && raw.guild_id !== ""
+    ? Option.some(raw.guild_id)
+    : Option.none()
 
 /** @internal */
 export const memberOf = (raw: unknown): Option.Option<{
   readonly guildId: string
   readonly roles: ReadonlyArray<string>
   readonly nick?: string | undefined
-}> => {
-  if (!isObject(raw)) return Option.none()
-  const guildId = raw.guild_id
-  const member = raw.member
-  if (typeof guildId !== "string" || guildId === "" || !isObject(member)) return Option.none()
-  const roles = Array.isArray(member.roles) ? member.roles.filter((role) => typeof role === "string") : []
-  const nick = typeof member.nick === "string" && member.nick !== "" ? member.nick : undefined
-  return Option.some({ guildId, roles, ...(nick === undefined ? {} : { nick }) })
-}
+}> =>
+  Option.flatMap(guildIdOf(raw), (guildId) => {
+    const member = (raw as { readonly member?: unknown }).member
+    if (!Predicate.isObject(member)) return Option.none()
+    const roles = Array.isArray(member.roles) ? member.roles.filter((role) => typeof role === "string") : []
+    const nick = typeof member.nick === "string" && member.nick !== "" ? member.nick : undefined
+    return Option.some({ guildId, roles, ...(nick === undefined ? {} : { nick }) })
+  })
 
-/** @internal */
-export const guildIdOf = (raw: unknown): Option.Option<string> =>
-  isObject(raw) && typeof raw.guild_id === "string" && raw.guild_id !== "" ? Option.some(raw.guild_id) : Option.none()
+/** The start of Discord's snowflake clock, in Unix milliseconds. */
+const discordEpoch = 1_420_070_400_000
 
-const discordEpoch = BigInt(1420070400000)
+/**
+ * When a snowflake was made, in Unix milliseconds. Throws for an id that is
+ * not a number.
+ *
+ * @internal
+ */
+export const snowflakeMillis = (id: string): number => Number(BigInt(id) >> BigInt(22)) + discordEpoch
 
 /**
  * When a snowflake was made.
@@ -325,7 +341,7 @@ const discordEpoch = BigInt(1420070400000)
  */
 export const snowflakeTime = (id: string): DateTime.Utc | undefined => {
   try {
-    return DateTime.makeUnsafe(Number((BigInt(id) >> BigInt(22)) + discordEpoch))
+    return DateTime.makeUnsafe(snowflakeMillis(id))
   } catch {
     return undefined
   }

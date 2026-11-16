@@ -16,6 +16,7 @@ import * as Base64Url from "effect/encoding/Base64Url"
 import * as Jwk from "effect/jose/Jwk"
 import * as Jwt from "effect/jose/Jwt"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { baseConversation, maxIdLength } from "./address.ts"
@@ -229,8 +230,8 @@ export const validateSubmission = (
   definition: ChatUi.Modal,
   values: unknown
 ): Option.Option<Record<string, string>> => {
-  if (typeof values !== "object" || values === null || Array.isArray(values)) return Option.none()
-  const input = values as Record<string, unknown>
+  if (!Predicate.isObject(values)) return Option.none()
+  const input = values
   const fields = new Map<string, ChatUi.TextInput | ChatUi.SelectInput>()
   for (const element of definition.elements) {
     if (element._tag !== "Text") fields.set(element.id, element)

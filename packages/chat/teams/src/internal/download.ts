@@ -9,6 +9,7 @@ import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Stream from "effect/Stream"
 import * as Errors from "./errors.ts"
+import { isObject, object, parseUrl, string } from "./parse.ts"
 
 const op = "download"
 
@@ -49,14 +50,6 @@ export const underSuffix = (host: string, suffixes: ReadonlyArray<string>): bool
 
 const isIpLiteral = (host: string): boolean => host.startsWith("[") || /^\d+\.\d+\.\d+\.\d+$/.test(host)
 
-const parse = (input: string, base?: string): URL | undefined => {
-  try {
-    return new URL(input, base)
-  } catch {
-    return undefined
-  }
-}
-
 /**
  * Parses `input` and checks the parts every hop needs: `https:`, no userinfo,
  * the default port and a host name rather than an IP literal. The fragment is
@@ -65,7 +58,7 @@ const parse = (input: string, base?: string): URL | undefined => {
  * @internal
  */
 export const safeUrl = (input: string, base?: string): URL | undefined => {
-  const url = parse(input, base)
+  const url = parseUrl(input, base)
   if (
     url === undefined || url.protocol !== "https:" || url.username !== "" || url.password !== "" ||
     url.port !== "" || url.hostname.length === 0 || isIpLiteral(url.hostname)
@@ -76,15 +69,7 @@ export const safeUrl = (input: string, base?: string): URL | undefined => {
   return url
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-
-const string = (record: Record<string, unknown>, key: string): string | undefined => {
-  const value = record[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-const size = (record: Record<string, unknown>): number | undefined => {
+const size = (record: { readonly [key: string]: unknown }): number | undefined => {
   const value = record.size
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined
 }
@@ -114,7 +99,7 @@ export const classify = (attachment: unknown, context: {
   if (!isObject(attachment)) return undefined
   const contentType = string(attachment, "contentType")
   const name = string(attachment, "name")
-  const content = isObject(attachment.content) ? attachment.content : undefined
+  const content = object(attachment, "content")
   const make = (id: string, type: string | undefined, bytes: number | undefined): ChatMessage.Attachment => ({
     id,
     ...(name === undefined ? {} : { name }),
@@ -134,14 +119,14 @@ export const classify = (attachment: unknown, context: {
   if (raw === undefined) return undefined
   const type = contentType === fileDownloadInfo ? undefined : contentType
   const url = safeUrl(raw)
-  const service = parse(context.serviceUrl)
+  const service = parseUrl(context.serviceUrl)
   if (
     url !== undefined && service !== undefined && url.origin === service.origin &&
     context.connectorHosts.has(url.hostname) && url.search === "" && connectorPath.test(url.pathname)
   ) {
     return make(`connector:${url.href}`, type, size(attachment))
   }
-  const other = parse(raw)
+  const other = parseUrl(raw)
   if (other === undefined || (other.protocol !== "https:" && other.protocol !== "http:")) return undefined
   return make(`url:${other.href}`, type, size(attachment))
 }

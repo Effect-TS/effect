@@ -1,49 +1,18 @@
+import * as ByteSize from "effect/ByteSize"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import type { NotAccepted } from "effect/chat/ChatHandler"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
 import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Option from "effect/Option"
-import type * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
-import { tenantOf, type Verdict } from "./auth.ts"
+import * as Result from "effect/Result"
+import { type Activity, tenantOf, type Verdict } from "./auth.ts"
 import type { InvokeResponse } from "./interactions.ts"
 import { isSubmitFallback } from "./interactions.ts"
-import { type Context, isObject, isTargeted, normalize } from "./normalize.ts"
-
-type JsonObject = { readonly [key: string]: Schema.Json }
-
-/** The body, or `None` once it passes `maxBytes`. @internal */
-export const readBody = (
-  request: HttpServerRequest.HttpServerRequest,
-  maxBytes: number
-): Effect.Effect<Option.Option<Uint8Array>> => {
-  const length = request.headers["content-length"]
-  if (length !== undefined && Number(length) > maxBytes) return Effect.succeed(Option.none())
-  return Effect.gen(function*() {
-    const chunks: Array<Uint8Array> = []
-    let total = 0
-    const tooLarge = yield* request.stream.pipe(
-      Stream.takeUntil((chunk) => {
-        total += chunk.length
-        chunks.push(chunk)
-        return total > maxBytes
-      }),
-      Stream.runDrain,
-      Effect.as(false),
-      Effect.catch(() => Effect.succeed(true))
-    )
-    if (tooLarge || total > maxBytes) return Option.none()
-    const body = new Uint8Array(total)
-    let offset = 0
-    for (const chunk of chunks) {
-      body.set(chunk, offset)
-      offset += chunk.length
-    }
-    return Option.some(body)
-  })
-}
+import { type Context, isTargeted, normalize } from "./normalize.ts"
+import { isObject, type JsonObject } from "./parse.ts"
 
 const status = (code: number) => HttpServerResponse.empty({ status: code })
 
@@ -61,11 +30,7 @@ export const unavailable = {
 
 /** @internal */
 export interface Options {
-  readonly verify: (authorization: string | undefined, activity: {
-    readonly serviceUrl: unknown
-    readonly channelId: unknown
-    readonly tenantId: string | undefined
-  }) => Effect.Effect<Verdict>
+  readonly verify: (authorization: string | undefined, activity: Activity) => Effect.Effect<Verdict>
   readonly context: Context
   readonly handle: (event: ChatEvent.ChatEvent) => Effect.Effect<void, NotAccepted>
   readonly onUnhandled: (activity: JsonObject) => Effect.Effect<void>
@@ -106,14 +71,15 @@ export const handleRequest = (
   options: Options
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> =>
   Effect.gen(function*() {
-    const body = yield* readBody(request, options.maxBodyBytes)
-    if (Option.isNone(body)) return status(413)
-    let activity: unknown
-    try {
-      activity = JSON.parse(new TextDecoder().decode(body.value))
-    } catch {
-      return status(400)
+    const json = yield* request.json.pipe(
+      Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(options.maxBodyBytes)),
+      Effect.result
+    )
+    if (Result.isFailure(json)) {
+      const { reason } = json.failure
+      return status(reason._tag === "RequestParseError" && reason.reason === "BodyTooLarge" ? 413 : 400)
     }
+    const activity = json.success
     if (!isObject(activity)) return status(400)
     const verdict = yield* options.verify(request.headers.authorization, {
       serviceUrl: activity.serviceUrl,

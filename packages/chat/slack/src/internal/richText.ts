@@ -8,11 +8,10 @@
  * nothing.
  */
 import type { Mention } from "effect/chat/ChatMessage"
+import { isObject } from "effect/Predicate"
 import * as Emoji from "./emoji.ts"
 
 type JsonObject = { readonly [key: string]: unknown }
-
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
 
 const stringOf = (object: JsonObject, key: string): string | undefined => {
   const value = object[key]

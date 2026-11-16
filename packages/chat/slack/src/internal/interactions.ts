@@ -17,13 +17,14 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import type { SlackWebApi } from "../SlackWebApi.ts"
 import * as Actions from "./actions.ts"
 import * as Address from "./address.ts"
 import * as Errors from "./errors.ts"
+import { isObject, type JsonObject, object, setOwn, string } from "./json.ts"
 import { codePoints } from "./length.ts"
 
 type Json = Schema.Json
-type JsonObject = { readonly [key: string]: Json }
 
 /** @internal */
 export const limits = {
@@ -107,19 +108,17 @@ const unpackMetadata = (
   }
 }
 
-const plainText = (text: string) => ({ type: "plain_text", text }) as const
-
 const inputBlock = (element: ChatUi.TextInput | ChatUi.SelectInput) => ({
   type: "input",
   block_id: element.id,
-  label: plainText(element.label),
+  label: Actions.plainText(element.label),
   optional: element.optional === true,
   element: element._tag === "TextInput"
     ? {
       type: "plain_text_input",
       action_id: element.id,
       multiline: element.multiline === true,
-      ...(element.placeholder === undefined ? {} : { placeholder: plainText(element.placeholder) }),
+      ...(element.placeholder === undefined ? {} : { placeholder: Actions.plainText(element.placeholder) }),
       ...(element.initial === undefined ? {} : { initial_value: element.initial }),
       ...(element.minLength === undefined ? {} : { min_length: element.minLength }),
       ...(element.maxLength === undefined ? {} : { max_length: element.maxLength })
@@ -163,7 +162,7 @@ export const view = (
   const blocks: Array<unknown> = []
   for (const element of modal.elements) {
     if (element._tag === "Text") {
-      blocks.push({ type: "section", text: plainText(element.text) })
+      blocks.push({ type: "section", text: Actions.plainText(element.text) })
       continue
     }
     if (codePoints(element.label) > labelLength) return refuse(new TooLarge({ detail: "label_too_long" }))
@@ -173,8 +172,8 @@ export const view = (
     view: {
       type: "modal",
       callback_id: modal.id,
-      title: plainText(modal.title),
-      submit: plainText(modal.submitLabel ?? defaultSubmitLabel),
+      title: Actions.plainText(modal.title),
+      submit: Actions.plainText(modal.submitLabel ?? defaultSubmitLabel),
       private_metadata: packMetadata(
         { ...parts.value, messageId: from._tag === "CommandInvoked" ? undefined : from.messageId },
         modal.metadata
@@ -186,19 +185,7 @@ export const view = (
 
 // Inbound
 
-const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
-
 const isJson = Schema.is(Schema.Json)
-
-const string = (object: JsonObject | undefined, key: string): string | undefined => {
-  const value = object?.[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-const object = (object: JsonObject | undefined, key: string): JsonObject | undefined => {
-  const value = object?.[key]
-  return isObject(value) ? value : undefined
-}
 
 /** The payload without its verification `token`. */
 const raw = (payload: JsonObject): Json => {
@@ -212,10 +199,6 @@ const threadOf = (teamId: string, origin: Origin) =>
     channel: origin.channel,
     threadTs: origin.threadTs === origin.messageId ? undefined : origin.threadTs
   })
-
-/** An own property, so an id such as `__proto__` keeps its answer. */
-const setOwn = (record: Record<string, string>, key: string, value: string) =>
-  Object.defineProperty(record, key, { value, enumerable: true, writable: true, configurable: true })
 
 const clicked = (payload: JsonObject, teamId: string): Option.Option<ChatInteraction.Interaction> => {
   const actions = payload.actions
@@ -319,15 +302,6 @@ export const normalize = (
   return Option.none()
 }
 
-/** @internal */
-export interface Api {
-  readonly call: (
-    method: string,
-    body: Readonly<Record<string, unknown>>,
-    options?: { readonly write?: boolean | undefined; readonly retry?: boolean | undefined }
-  ) => Effect.Effect<Json, ChatError>
-}
-
 /** A trigger past its 3 seconds is the same refusal `handle` gives a late click. */
 const expired = (error: ChatError): ChatError =>
   error.reason.detail === "expired_trigger_id"
@@ -352,7 +326,7 @@ const expired = (error: ChatError): ChatError =>
  * @internal
  */
 export const make = (options: {
-  readonly api: Api
+  readonly api: SlackWebApi["Service"]
   readonly teamId: string
   readonly answer: (
     op: string,
@@ -398,7 +372,7 @@ export const make = (options: {
           yield* handler.refused(click, Errors.chatError("openModal", built.refusal))
           return undefined
         }
-        const triggerId = isObject(payload) ? string(payload, "trigger_id") : undefined
+        const triggerId = string(payload, "trigger_id")
         if (triggerId === undefined) {
           yield* handler.refused(click, Errors.chatError("openModal", new InvalidRequest({ detail: "no_trigger_id" })))
           return undefined

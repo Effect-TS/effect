@@ -6,7 +6,7 @@ import {
   type Posted,
   type ThreadInfo
 } from "effect/chat/ChatAdapter"
-import { type Capability, type ChatError, type ChatErrorReason, interactionExpired } from "effect/chat/ChatError"
+import { type Capability, type ChatError, interactionExpired } from "effect/chat/ChatError"
 import type * as ChatInteraction from "effect/chat/ChatInteraction"
 import type { ChatThread } from "effect/chat/ChatThread"
 import type * as ChatUi from "effect/chat/ChatUi"
@@ -20,8 +20,8 @@ import * as Actions from "./actions.ts"
 import * as Address from "./address.ts"
 import * as Errors from "./errors.ts"
 import * as Markdown from "./markdown.ts"
-import { integer, isObject, messageOf, object, string } from "./normalize.ts"
-import { CurrentPostOptions } from "./options.ts"
+import { displayName, fullName, integer, messageOf, object, string } from "./normalize.ts"
+import { CurrentPostOptions, type PostOptions } from "./options.ts"
 
 /** Capabilities that are built but not yet confirmed against Telegram. @internal */
 export interface Unverified {
@@ -78,8 +78,7 @@ export interface Origin {
  * @internal
  */
 export const originOf = (command: ChatInteraction.CommandInvoked): Origin | undefined => {
-  const raw = command.raw
-  const message = isObject(raw) ? messageOf(raw) : undefined
+  const message = messageOf(command.raw)
   const id = integer(message, "message_id")
   const date = integer(message, "date")
   if (id === undefined || date === undefined) return undefined
@@ -94,13 +93,11 @@ export const make = (options: {
   const { api, capabilities } = options
   const descriptor = descriptorOf(capabilities)
 
-  const fail = (op: string, reason: ChatErrorReason) => Effect.fail(Errors.chatError(op, reason))
-
-  const unsupported = (op: string, capability: Capability) => fail(op, Errors.unsupported(capability))
+  const unsupported = (op: string, capability: Capability) => Errors.fail(op, Errors.unsupported(capability))
 
   const resolve = (op: string, thread: ChatThread): Effect.Effect<Address.Parts, ChatError> => {
     const parts = Address.parts(thread)
-    return Option.isNone(parts) ? fail(op, Errors.invalidRequest("invalid_thread")) : Effect.succeed(parts.value)
+    return Option.isNone(parts) ? Errors.fail(op, Errors.invalidRequest("invalid_thread")) : Effect.succeed(parts.value)
   }
 
   const target = (parts: Address.Parts) => ({
@@ -110,8 +107,8 @@ export const make = (options: {
 
   /** A message id Telegram can act on, or `NotFound` without a call: a private answer's label reaches nothing. */
   const messageId = (op: string, id: string): Effect.Effect<number, ChatError> => {
-    const n = Address.messageId(id)
-    return n === undefined ? fail(op, Errors.notFound("message_not_found")) : Effect.succeed(n)
+    const n = Address.numericId(id)
+    return n === undefined ? Errors.fail(op, Errors.notFound("message_not_found")) : Effect.succeed(n)
   }
 
   const markup = (op: string, actions: ReadonlyArray<ChatUi.Action>) => {
@@ -119,39 +116,32 @@ export const make = (options: {
     if (actions.some((action) => action._tag === "Select")) return unsupported(op, "selects")
     if (!capabilities.has("buttons")) return unsupported(op, "buttons")
     const keyboard = Actions.keyboard(actions)
-    return "inline_keyboard" in keyboard ? Effect.succeed(keyboard) : fail(op, keyboard)
+    return "inline_keyboard" in keyboard ? Effect.succeed(keyboard) : Errors.fail(op, keyboard)
   }
 
   const checkFiles = (op: string, files: ReadonlyArray<File>) => {
     if (files.length === 0) return Effect.void
     if (!capabilities.has("files")) return unsupported(op, "files")
-    if (files.length > descriptor.limits.filesPerMessage) return fail(op, Errors.refusedFile)
-    if (files.some((file) => file.content.length > descriptor.limits.uploadBytes)) return fail(op, Errors.refusedFile)
-    return Effect.void
+    const refused = files.length > descriptor.limits.filesPerMessage ||
+      files.some((file) => file.content.length > descriptor.limits.uploadBytes)
+    return refused ? Errors.fail(op, Errors.refusedFile) : Effect.void
   }
 
-  const richMessage = Effect.fnUntraced(function*(markdown: string, files: number) {
-    const postOptions = yield* CurrentPostOptions
-    return {
-      markdown: Markdown.render(markdown, {
-        mentions: new Set(postOptions.notify?.users ?? []),
-        files
-      }),
-      skip_entity_detection: true,
-      ...(files === 0 ? {} : {
-        media: Array.from({ length: files }, (_, i) => ({
-          id: `f${i + 1}`,
-          media: { type: "document", media: `attach://f${i + 1}` }
-        }))
-      })
-    }
+  const richMessage = (markdown: string, files: number, postOptions: PostOptions) => ({
+    markdown: Markdown.render(markdown, { mentions: new Set(postOptions.notify?.users ?? []), files }),
+    skip_entity_detection: true,
+    ...(files === 0 ? {} : {
+      media: Array.from({ length: files }, (_, i) => ({
+        id: `f${i + 1}`,
+        media: { type: "document", media: `attach://f${i + 1}` }
+      }))
+    })
   })
 
   const posted = (op: string, thread: ChatThread, answer: unknown): Effect.Effect<Posted, ChatError> => {
-    const message = isObject(answer) ? answer : undefined
-    const id = integer(message, "message_id")
-    const date = integer(message, "date")
-    if (id === undefined || id === 0) return fail(op, Errors.invalidResponse(true, "missing_message_id"))
+    const id = integer(answer, "message_id")
+    const date = integer(answer, "date")
+    if (id === undefined || id === 0) return Errors.fail(op, Errors.invalidResponse(true, "missing_message_id"))
     return Effect.map(
       date === undefined ? DateTime.now : Effect.succeed(DateTime.makeUnsafe(date * 1000)),
       (timestamp) => ({ id: String(id), thread, timestamp })
@@ -173,12 +163,12 @@ export const make = (options: {
     yield* checkFiles(op, files)
     yield* checkMessageLength(descriptor, op, content.markdown, actions)
     if (content.markdown.trim() === "" && files.length === 0) {
-      return yield* fail(op, Errors.invalidRequest("empty_message"))
+      return yield* Errors.fail(op, Errors.invalidRequest("empty_message"))
     }
     const postOptions = yield* CurrentPostOptions
     const answer = yield* api.call("sendRichMessage", {
       ...target(parts),
-      rich_message: yield* richMessage(content.markdown, files.length),
+      rich_message: richMessage(content.markdown, files.length, postOptions),
       ...(content.replyTo === undefined
         ? {}
         : { reply_parameters: { message_id: content.replyTo, allow_sending_without_reply: false } }),
@@ -204,11 +194,11 @@ export const make = (options: {
     const actions = content.actions ?? []
     const replyMarkup = yield* markup(op, actions)
     yield* checkMessageLength(descriptor, op, content.markdown, actions)
-    if (content.markdown.trim() === "") return yield* fail(op, Errors.invalidRequest("empty_message"))
+    if (content.markdown.trim() === "") return yield* Errors.fail(op, Errors.invalidRequest("empty_message"))
     yield* api.call("editMessageText", {
       chat_id: Number(parts.chatId),
       message_id: message,
-      rich_message: yield* richMessage(content.markdown, 0),
+      rich_message: richMessage(content.markdown, 0, yield* CurrentPostOptions),
       // An edit replaces the whole message: no actions removes the keyboard.
       reply_markup: replyMarkup ?? { inline_keyboard: [] }
     }, { write: true }).pipe(
@@ -235,13 +225,12 @@ export const make = (options: {
       yield* resolve(op, thread)
       const limit = Math.min(maxBytes, downloadLimit)
       const tooLarge = Errors.tooLarge("files", "max_bytes")
-      if (attachment.size !== undefined && attachment.size > limit) return yield* fail(op, tooLarge)
+      if (attachment.size !== undefined && attachment.size > limit) return yield* Errors.fail(op, tooLarge)
       const answer = yield* api.call("getFile", { file_id: attachment.id }).pipe(Effect.mapError(Errors.withOp(op)))
-      const info = isObject(answer) ? answer : undefined
-      const path = string(info, "file_path")
-      const size = integer(info, "file_size")
-      if (size !== undefined && size > limit) return yield* fail(op, tooLarge)
-      if (path === undefined) return yield* fail(op, Errors.invalidResponse(false, "missing_file_path"))
+      const path = string(answer, "file_path")
+      const size = integer(answer, "file_size")
+      if (size !== undefined && size > limit) return yield* Errors.fail(op, tooLarge)
+      if (path === undefined) return yield* Errors.fail(op, Errors.invalidResponse(false, "missing_file_path"))
       return api.file(path, { maxBytes: limit })
     }))
 
@@ -251,17 +240,14 @@ export const make = (options: {
     const answer = yield* api.call("getChat", { chat_id: Number(parts.chatId) }).pipe(
       Effect.mapError(Errors.withOp(op))
     )
-    const chat = isObject(answer) ? answer : undefined
     if (parts.messageThreadId !== undefined) {
       return { thread, kind: "thread", parent: Address.thread(parts.chatId), raw: answer } satisfies ThreadInfo
     }
-    const name = string(chat, "title") ??
-      ([string(chat, "first_name"), string(chat, "last_name")].filter((part) => part !== undefined).join(" ") ||
-        undefined)
-    const topic = string(chat, "description")
+    const name = string(answer, "title") ?? (fullName(answer) || undefined)
+    const topic = string(answer, "description")
     return {
       thread,
-      kind: chat?.type === "private" ? "direct" : "channel",
+      kind: string(answer, "type") === "private" ? "direct" : "channel",
       ...(name === undefined ? {} : { name }),
       ...(topic === undefined ? {} : { topic }),
       raw: answer
@@ -270,20 +256,20 @@ export const make = (options: {
 
   const getUser: ChatAdapter["getUser"] = Effect.fnUntraced(function*(id, userOptions) {
     const op = "getUser"
-    if (userOptions?.in === undefined) return yield* fail(op, Errors.invalidRequest("in_required"))
+    if (userOptions?.in === undefined) return yield* Errors.fail(op, Errors.invalidRequest("in_required"))
     const parts = yield* resolve(op, userOptions.in)
-    if (!/^[1-9]\d{0,15}$/.test(id)) return yield* fail(op, Errors.notFound("user_not_found"))
-    const answer = yield* api.call("getChatMember", { chat_id: Number(parts.chatId), user_id: Number(id) }).pipe(
+    const userId = Address.numericId(id)
+    if (userId === undefined) return yield* Errors.fail(op, Errors.notFound("user_not_found"))
+    const answer = yield* api.call("getChatMember", { chat_id: Number(parts.chatId), user_id: userId }).pipe(
       Effect.mapError(Errors.withOp(op))
     )
-    const user = object(isObject(answer) ? answer : undefined, "user")
+    const user = object(answer, "user")
     if (user === undefined || String(integer(user, "id")) !== id) {
-      return yield* fail(op, Errors.invalidResponse(false, "missing_user"))
+      return yield* Errors.fail(op, Errors.invalidResponse(false, "missing_user"))
     }
-    const name = [string(user, "first_name"), string(user, "last_name")].filter((part) => part !== undefined).join(" ")
     return {
       id,
-      name: name === "" ? string(user, "username") ?? id : name,
+      name: displayName(user) ?? id,
       isBot: user.is_bot === true,
       isSelf: id === api.botId,
       raw: answer
@@ -304,10 +290,10 @@ export const make = (options: {
     if (!capabilities.has("commands")) return yield* unsupported(op, "commands")
     if (deferred.visibility === "ephemeral") return yield* unsupported(op, "ephemeral")
     const origin = originOf(deferred.command)
-    if (origin === undefined) return yield* fail(op, Errors.invalidRequest("invalid_command"))
+    if (origin === undefined) return yield* Errors.fail(op, Errors.invalidRequest("invalid_command"))
     const now = yield* DateTime.now
     const deadline = (origin.date + 1) * 1000 + Duration.toMillis(followUpAge)
-    if (DateTime.toEpochMillis(now) > deadline) return yield* fail(op, Errors.notFound(interactionExpired))
+    if (DateTime.toEpochMillis(now) > deadline) return yield* Errors.fail(op, Errors.notFound(interactionExpired))
     yield* answer(op, origin, content)
   })
 

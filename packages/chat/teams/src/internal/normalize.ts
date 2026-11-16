@@ -3,26 +3,9 @@ import type * as ChatMessage from "effect/chat/ChatMessage"
 import type * as ChatThread from "effect/chat/ChatThread"
 import * as DateTime from "effect/DateTime"
 import * as Option from "effect/Option"
-import type * as Schema from "effect/Schema"
 import * as Address from "./address.ts"
 import * as Download from "./download.ts"
-
-type JsonObject = { readonly [key: string]: Schema.Json }
-
-/** @internal */
-export const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
-
-/** @internal */
-export const string = (object: JsonObject | undefined, key: string): string | undefined => {
-  const value = object?.[key]
-  return typeof value === "string" && value.length > 0 ? value : undefined
-}
-
-/** @internal */
-export const object = (object: JsonObject | undefined, key: string): JsonObject | undefined => {
-  const value = object?.[key]
-  return isObject(value) ? value : undefined
-}
+import { isObject, type JsonObject, object, string } from "./parse.ts"
 
 /** @internal */
 export interface Context {
@@ -40,8 +23,7 @@ export const botId = (appId: string): string => `28:${appId}`
  *
  * @internal
  */
-export const userId = (account: JsonObject): string | undefined =>
-  string(account, "aadObjectId") ?? string(account, "id")
+export const userId = (account: unknown): string | undefined => string(account, "aadObjectId") ?? string(account, "id")
 
 /**
  * Whether the activity was sent to the bot alone, as a targeted message.
@@ -52,29 +34,32 @@ export const userId = (account: JsonObject): string | undefined =>
 export const isTargeted = (activity: JsonObject): boolean => object(activity, "recipient")?.isTargeted === true
 
 /**
- * Where an activity's message lives, and what kind of address it is. A
- * channel post's conversation names the post itself as its reply chain
- * root: such a post is addressed to the channel, and is the opener of the
- * thread under it.
+ * Where a message lives, and what kind of address it is. A channel post's
+ * conversation names the post itself as its reply chain root: such a post
+ * is addressed to the channel, and is the opener of the thread under it.
  *
  * @internal
  */
-export const threadOf = (
-  activity: JsonObject
+export const locate = (
+  conversationId: string | undefined,
+  messageId: string | undefined,
+  conversationType?: string | undefined
 ): { readonly thread: ChatThread.ChatThread; readonly kind: ChatEvent.ThreadKind } | undefined => {
-  const conversationId = string(object(activity, "conversation"), "id")
   if (conversationId === undefined || conversationId.length > Address.maxIdLength) return undefined
   const parts = Address.parts(Address.thread(conversationId))
   if (Option.isNone(parts)) return undefined
-  const id = string(activity, "id")
-  if (parts.value.root !== undefined && parts.value.root === id) {
-    return { thread: Address.thread(parts.value.base), kind: "channel" }
-  }
-  const conversationType = string(object(activity, "conversation"), "conversationType")
+  const { base, root } = parts.value
+  if (root !== undefined && root === messageId) return { thread: Address.thread(base), kind: "channel" }
   return {
     thread: Address.thread(conversationId),
-    kind: parts.value.root !== undefined ? "thread" : conversationType === "personal" ? "direct" : "channel"
+    kind: root !== undefined ? "thread" : conversationType === "personal" ? "direct" : "channel"
   }
+}
+
+/** Where an activity's message lives. @internal */
+export const threadOf = (activity: JsonObject) => {
+  const conversation = object(activity, "conversation")
+  return locate(string(conversation, "id"), string(activity, "id"), string(conversation, "conversationType"))
 }
 
 const timestamp = (activity: JsonObject): DateTime.Utc | undefined => {
@@ -104,7 +89,7 @@ const mentions = (activity: JsonObject, text: string, self: string): Array<ChatM
     if (!isObject(entity) || entity.type !== "mention") continue
     const mentioned = object(entity, "mentioned")
     const token = string(entity, "text")
-    const id = mentioned === undefined ? undefined : userId(mentioned)
+    const id = userId(mentioned)
     if (mentioned === undefined || token === undefined || id === undefined) continue
     const start = text.indexOf(token, from)
     if (start === -1) continue
@@ -151,10 +136,10 @@ const attachments = (activity: JsonObject, context: Context): Array<ChatMessage.
 export const message = (activity: JsonObject, context: Context): ChatMessage.ChatMessage | undefined => {
   const id = string(activity, "id")
   const from = object(activity, "from")
-  const author = from === undefined ? undefined : userId(from)
+  const author = userId(from)
   const at = threadOf(activity)
   const time = timestamp(activity)
-  if (id === undefined || from === undefined || author === undefined || at === undefined || time === undefined) {
+  if (id === undefined || author === undefined || at === undefined || time === undefined) {
     return undefined
   }
   const self = botId(context.appId)
@@ -197,8 +182,7 @@ export const emoji = (type: string): string => reactionEmoji[type] ?? `custom:${
 
 const reactions = (activity: JsonObject): Array<ChatEvent.ChatEvent> => {
   const messageId = string(activity, "replyToId")
-  const from = object(activity, "from")
-  const user = from === undefined ? undefined : userId(from)
+  const user = userId(object(activity, "from"))
   const at = threadOf(activity)
   if (messageId === undefined || user === undefined || at === undefined) return []
   const time = timestamp(activity)
@@ -207,7 +191,7 @@ const reactions = (activity: JsonObject): Array<ChatEvent.ChatEvent> => {
     const list = activity[key]
     if (!Array.isArray(list)) continue
     for (const reaction of list) {
-      const type = isObject(reaction) ? string(reaction, "type") : undefined
+      const type = string(reaction, "type")
       if (type === undefined) continue
       out.push({
         _tag: tag,

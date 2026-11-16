@@ -22,6 +22,7 @@
  * @stability unstable
  * @since 4.1.5
  */
+import * as ByteSize from "effect/ByteSize"
 import { Registry } from "effect/chat/ChatAdapter"
 import type { ChatError } from "effect/chat/ChatError"
 import type { ChatEvent } from "effect/chat/ChatEvent"
@@ -37,7 +38,7 @@ import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Redacted from "effect/Redacted"
+import type * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Adapter from "./internal/adapter.ts"
 import * as Address from "./internal/address.ts"
@@ -184,10 +185,8 @@ export const layer = (options: {
         username: Effect.suspend(() =>
           username !== undefined ? Effect.succeed(username) : api.call("getMe").pipe(
             Effect.flatMap((me) => {
-              const name = Normalize.isObject(me) ? Normalize.string(me, "username") : undefined
-              if (name === undefined) {
-                return Effect.fail(Errors.chatError("getMe", Errors.invalidResponse(false, "missing_username")))
-              }
+              const name = Normalize.string(me, "username")
+              if (name === undefined) return Errors.fail("getMe", Errors.invalidResponse(false, "missing_username"))
               username = name
               return Effect.succeed(name)
             })
@@ -204,6 +203,13 @@ export const layer = (options: {
       })
     })
   ).pipe(Layer.provideMerge(TelegramBotApi.layer(options)))
+
+/** `TelegramChat.receive` with the layer's `ChatHandler`, as a transport runs it. */
+const transportReceive = Effect.fnUntraced(function*(options: ReceiveOptions) {
+  const telegram = yield* TelegramChat
+  const context = yield* Effect.context<ChatHandler>()
+  return (update: unknown) => Effect.provideContext(telegram.receive(update, options), context)
+})
 
 /**
  * The header Telegram sends the webhook secret in. An app that records
@@ -246,19 +252,14 @@ export const layerWebhook = (
   }
 ): Layer.Layer<never, ChatError, HttpRouter.HttpRouter | TelegramChat | ChatHandler> =>
   HttpRouter.use(Effect.fnUntraced(function*(router) {
-    const secret = Redacted.value(options.secretToken)
-    if (!Webhook.validSecret(secret)) {
-      return yield* Effect.fail(Errors.chatError("layerWebhook", Errors.invalidRequest("invalid_secret_token")))
-    }
-    const telegram = yield* TelegramChat
-    const context = yield* Effect.context<ChatHandler>()
-    const encoded = new TextEncoder().encode(secret)
-    yield* router.add("POST", options.path, (request) =>
-      Webhook.handleRequest(request, {
-        secret: encoded,
-        maxBodyBytes: options.maxBodyBytes ?? 1024 * 1024,
-        receive: (update) => Effect.provideContext(telegram.receive(update, options), context)
-      }))
+    const secret = new TextEncoder().encode(yield* Webhook.secretToken("layerWebhook", options.secretToken))
+    const maxBodySize = ByteSize.bytes(options.maxBodyBytes ?? 1024 * 1024)
+    const receive = yield* transportReceive(options)
+    yield* router.add(
+      "POST",
+      options.path,
+      (request) => Webhook.handleRequest(request, { secret, maxBodySize, receive })
+    )
   }))
 
 /**
@@ -287,14 +288,12 @@ export const layerPolling = (options: ReceiveOptions & {
   readonly maxAttempts?: number | undefined
 } = {}): Layer.Layer<never, ChatError, TelegramChat | TelegramBotApi.TelegramBotApi | ChatHandler> =>
   Layer.effectDiscard(Effect.gen(function*() {
-    const telegram = yield* TelegramChat
     const api = yield* TelegramBotApi.TelegramBotApi
-    const context = yield* Effect.context<ChatHandler>()
     const pollingOptions: Polling.Options = {
       api,
       timeout: options.timeout === undefined ? Duration.seconds(30) : Duration.fromInputUnsafe(options.timeout),
       maxAttempts: Math.max(1, options.maxAttempts ?? 3),
-      receive: (update) => Effect.provideContext(telegram.receive(update, options), context)
+      receive: yield* transportReceive(options)
     }
     const first = yield* Polling.getUpdates(api, undefined, Duration.zero).pipe(Effect.mapError(Polling.conflict))
     yield* Effect.forkScoped(Polling.loop(first, pollingOptions))
@@ -315,10 +314,7 @@ export const setWebhook = (options: {
   readonly dropPendingUpdates?: boolean | undefined
 }): Effect.Effect<void, ChatError, TelegramBotApi.TelegramBotApi> =>
   Effect.gen(function*() {
-    const secret = Redacted.value(options.secretToken)
-    if (!Webhook.validSecret(secret)) {
-      return yield* Effect.fail(Errors.chatError("setWebhook", Errors.invalidRequest("invalid_secret_token")))
-    }
+    const secret = yield* Webhook.secretToken("setWebhook", options.secretToken)
     const api = yield* TelegramBotApi.TelegramBotApi
     yield* api.call("setWebhook", {
       url: options.url,
@@ -354,7 +350,7 @@ export const commandRequests = (
 > => {
   const result = Commands.botCommands(group)
   return "invalid" in result
-    ? Effect.fail(Errors.chatError("commandRequests", Errors.invalidRequest("invalid_command_names")))
+    ? Errors.fail("commandRequests", Errors.invalidRequest("invalid_command_names"))
     : Effect.succeed(result)
 }
 

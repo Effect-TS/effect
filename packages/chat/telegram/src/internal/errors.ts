@@ -16,10 +16,16 @@ import {
   Unsupported
 } from "effect/chat/ChatError"
 import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import { isObject } from "effect/Predicate"
 import { platform } from "./address.ts"
 
 /** @internal */
 export const chatError = (op: string, reason: ChatErrorReason): ChatError => new ChatError({ platform, op, reason })
+
+/** @internal */
+export const fail = (op: string, reason: ChatErrorReason): Effect.Effect<never, ChatError> =>
+  Effect.fail(chatError(op, reason))
 
 /** @internal */
 export const withOp = (op: string) => (error: ChatError): ChatError => chatError(op, error.reason)
@@ -50,8 +56,6 @@ export interface ApiError {
   readonly retryAfter?: number | undefined
   readonly migrateTo?: number | undefined
 }
-
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 /** The error in a body that says `ok: false`, or undefined. @internal */
 export const apiError = (body: unknown, status: number): ApiError | undefined => {

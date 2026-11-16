@@ -1,3 +1,4 @@
+import * as ByteSize from "effect/ByteSize"
 import type { ChatError } from "effect/chat/ChatError"
 import type * as ChatEvent from "effect/chat/ChatEvent"
 import type { NotAccepted } from "effect/chat/ChatHandler"
@@ -6,18 +7,25 @@ import * as Clock from "effect/Clock"
 import * as Mac from "effect/crypto/Mac"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Hex from "effect/encoding/Hex"
+import * as HttpIncomingMessage from "effect/http/HttpIncomingMessage"
 import type * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
+import * as Json from "./json.ts"
 import { normalize } from "./normalize.ts"
 
 /** How far a request's timestamp may be from now, as Slack recommends. */
 const maxSkewSeconds = 60 * 5
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+/** The default of `maxBodyBytes`. @internal */
+export const defaultMaxBodyBytes = 1024 * 1024
 
 /**
  * Checks Slack's `v0` request signature: an HMAC-SHA256 of
@@ -35,10 +43,8 @@ export const makeVerifier = Effect.fnUntraced(function*(signingSecret: Redacted.
       const timestamp = headers["x-slack-request-timestamp"]
       const signature = headers["x-slack-signature"]
       if (timestamp === undefined || signature === undefined || !/^\d+$/.test(timestamp)) return false
-      if (!/^v0=(?:[0-9a-fA-F]{2})+$/.test(signature)) return false
-      const hex = signature.slice(3)
-      const tag = new Uint8Array(hex.length / 2)
-      for (let i = 0; i < tag.length; i++) tag[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+      const tag = signature.startsWith("v0=") ? Hex.decode(signature.slice(3)) : undefined
+      if (tag === undefined || Result.isFailure(tag) || tag.success.length === 0) return false
       const now = yield* Clock.currentTimeMillis
       if (Math.abs(now / 1000 - Number(timestamp)) > maxSkewSeconds) return false
       const prefix = encoder.encode(`v0:${timestamp}:`)
@@ -46,46 +52,30 @@ export const makeVerifier = Effect.fnUntraced(function*(signingSecret: Redacted.
       message.set(prefix)
       message.set(body, prefix.length)
       // Crypto failures fail closed, like a mismatched signature.
-      return yield* mac.verify(key, tag, message).pipe(Effect.catch(() => Effect.succeed(false)))
+      return yield* mac.verify(key, tag.success, message).pipe(Effect.catch(() => Effect.succeed(false)))
     })
 })
 
-/** The body, or `None` once it passes `maxBytes`. @internal */
-export const readBody = (
+/**
+ * The body, or `None` past `maxBytes` or when it can't be read, both
+ * answered 413.
+ */
+const readBody = (
   request: HttpServerRequest.HttpServerRequest,
   maxBytes: number
-): Effect.Effect<Option.Option<Uint8Array>> => {
-  const length = request.headers["content-length"]
-  if (length !== undefined && Number(length) > maxBytes) return Effect.succeed(Option.none())
-  return Effect.gen(function*() {
-    const chunks: Array<Uint8Array> = []
-    let total = 0
-    const tooLarge = yield* request.stream.pipe(
-      Stream.takeUntil((chunk) => {
-        total += chunk.length
-        chunks.push(chunk)
-        return total > maxBytes
-      }),
-      Stream.runDrain,
-      Effect.as(false),
-      Effect.catch(() => Effect.succeed(true))
-    )
-    if (tooLarge || total > maxBytes) return Option.none()
-    const body = new Uint8Array(total)
-    let offset = 0
-    for (const chunk of chunks) {
-      body.set(chunk, offset)
-      offset += chunk.length
-    }
-    return Option.some(body)
-  })
+): Effect.Effect<Option.Option<Uint8Array>> =>
+  request.arrayBuffer.pipe(
+    Effect.map((buffer) => Option.some(new Uint8Array(buffer))),
+    Effect.catch(() => Effect.succeedNone),
+    Effect.provideService(HttpIncomingMessage.MaxBodySize, ByteSize.bytes(maxBytes))
+  )
+
+/** A slash command's form fields, as its payload. A repeated field keeps its first value. */
+const commandFields = (form: URLSearchParams): Record<string, string> => {
+  const fields: Record<string, string> = {}
+  for (const [key, value] of form) if (!Object.hasOwn(fields, key)) Json.setOwn(fields, key, value)
+  return fields
 }
-
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
-/** An own property, so a field such as `__proto__` stays a field. */
-const setOwn = (record: Record<string, string>, key: string, value: string) =>
-  Object.defineProperty(record, key, { value, enumerable: true, writable: true, configurable: true })
 
 const ok = HttpServerResponse.empty({ status: 200 })
 const status = (code: number) => HttpServerResponse.empty({ status: code })
@@ -135,26 +125,20 @@ export const handleRequest = (
     const body = yield* readBody(request, options.maxBodyBytes)
     if (Option.isNone(body)) return status(413)
     if (!(yield* options.verify(request.headers, body.value))) return status(401)
-    let envelope: unknown
-    try {
-      envelope = JSON.parse(new TextDecoder().decode(body.value))
-    } catch {
-      return status(400)
-    }
-    if (!isObject(envelope)) return status(400)
+    const envelope = Json.parse(decoder.decode(body.value))
+    if (!Json.isObject(envelope)) return status(400)
     if (envelope.type === "url_verification") {
       return typeof envelope.challenge === "string"
         ? HttpServerResponse.text(envelope.challenge)
         : status(400)
     }
     if (envelope.type !== "event_callback" || envelope.api_app_id !== options.appId) return ok
-    const callback = envelope
     const botUserId = yield* Effect.catch(
       Effect.asSome(options.botUserId),
       (error) => Effect.as(Effect.logError(unavailable.botUser, error), Option.none<string>())
     )
     if (Option.isNone(botUserId)) return status(503)
-    const events = normalize(callback, { teamId: options.teamId, botUserId: botUserId.value })
+    const events = normalize(envelope, { teamId: options.teamId, botUserId: botUserId.value })
     return yield* Effect.forEach(events, options.handle, { discard: true }).pipe(
       Effect.as(ok),
       Effect.catchTag("NotAccepted", () => Effect.as(Effect.logWarning(unavailable.notAccepted), status(503)))
@@ -201,22 +185,10 @@ export const handleInteractivity = (
     const body = yield* readBody(request, options.maxBodyBytes)
     if (Option.isNone(body)) return status(413)
     if (!(yield* options.verify(request.headers, body.value))) return status(401)
-    const form = new URLSearchParams(new TextDecoder().decode(body.value))
+    const form = new URLSearchParams(decoder.decode(body.value))
     const field = form.get("payload")
-    let payload: unknown
-    if (field === null && form.has("command")) {
-      // A slash command: its fields are the payload. A repeated field keeps its first value.
-      const fields: Record<string, string> = {}
-      for (const [key, value] of form) if (!Object.hasOwn(fields, key)) setOwn(fields, key, value)
-      payload = fields
-    } else {
-      try {
-        payload = field === null ? undefined : JSON.parse(field)
-      } catch {
-        return status(400)
-      }
-    }
-    if (!isObject(payload)) return status(400)
+    const payload = field !== null ? Json.parse(field) : form.has("command") ? commandFields(form) : undefined
+    if (!Json.isObject(payload)) return status(400)
     if (payload.api_app_id !== options.appId) return ok
     const answer = yield* options.interaction(payload, { deadline: options.deadline })
     if (answer === undefined) return ok

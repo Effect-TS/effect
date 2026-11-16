@@ -9,6 +9,7 @@
  * and nothing is sent beyond the templates below and the source text.
  */
 import type { Action, Button, LinkButton } from "effect/chat/ChatUi"
+import { toWellFormed } from "effect/String"
 
 /** @internal */
 export const cardContentType = "application/vnd.microsoft.card.adaptive"
@@ -21,10 +22,6 @@ export const cardContentType = "application/vnd.microsoft.card.adaptive"
  */
 export const actionsPerRow = 6
 
-/** Lone surrogates become U+FFFD, which JSON sends as one unit. @internal */
-export const wellFormed = (text: string): string =>
-  text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD")
-
 /**
  * Escapes `<` and `&`, so that no HTML tag, `<at>` mention or entity
  * forms in text Teams reads as Markdown.
@@ -36,7 +33,7 @@ export const escapeText = (text: string): string => text.replace(/[<&]/g, (c) =>
 /** @internal */
 export const textActivity = (markdown: string): Record<string, unknown> => ({
   type: "message",
-  text: escapeDollars(escapeText(wellFormed(markdown))),
+  text: escapeDollars(escapeText(toWellFormed(markdown))),
   textFormat: "extendedmarkdown"
 })
 
@@ -89,7 +86,7 @@ const styles = { primary: "positive", danger: "destructive" } as const
  * @internal
  */
 export const buttonAction = (button: Button, token: string) => {
-  const title = wellFormed(button.label)
+  const title = toWellFormed(button.label)
   const style = button.style === "primary" || button.style === "danger" ? { style: styles[button.style] } : {}
   return {
     type: "Action.Execute",
@@ -109,15 +106,15 @@ export const buttonAction = (button: Button, token: string) => {
  */
 export const dialogAction = (button: Button, token: string) => ({
   type: "Action.Submit",
-  title: wellFormed(button.label),
+  title: toWellFormed(button.label),
   data: { msteams: { type: "task/fetch" }, effect: token }
 })
 
 /** @internal */
 export const linkAction = (link: LinkButton) => ({
   type: "Action.OpenUrl",
-  title: wellFormed(link.label),
-  url: wellFormed(link.url)
+  title: toWellFormed(link.label),
+  url: toWellFormed(link.url)
 })
 
 /**
@@ -270,7 +267,7 @@ const flatten = (line: string): string => {
  * @internal
  */
 export const blocks = (markdown: string): Array<unknown> => {
-  const lines = wellFormed(markdown).split(/\r\n|\r|\n/)
+  const lines = toWellFormed(markdown).split(/\r\n|\r|\n/)
   const body: Array<unknown> = []
   let text: Array<string> = []
   const flush = () => {

@@ -33,12 +33,15 @@ import { flow } from "effect/Function"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Option from "effect/Option"
+import { isObject } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { DiscordPostOptions } from "../DiscordChat.ts"
 import * as Errors from "./errors.ts"
 import * as Interactions from "./interactions.ts"
 import * as Length from "./length.ts"
 import * as Normalize from "./normalize.ts"
+import { nonEmpty, optional, UserFields } from "./normalize.ts"
 import { allowedMentions, CurrentPostOptions, flags } from "./options.ts"
 
 type Json = Schema.Json
@@ -91,13 +94,6 @@ const UNKNOWN_INTERACTION = 10062
  * EFF-3802. 10015 "Unknown Webhook" is from the docs' list and was not seen.
  */
 const SPENT_TOKEN = [50027, 10015]
-/** The start of Discord's snowflake clock, in Unix milliseconds. */
-const DISCORD_EPOCH = 1_420_070_400_000
-
-/** When a snowflake was made, in Unix milliseconds. */
-const snowflakeMillis = (id: string): number => Number(BigInt(id) >> BigInt("22")) + DISCORD_EPOCH
-
-const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
 
 const ChannelFields = Schema.Struct({
   id: Schema.String,
@@ -118,25 +114,17 @@ export type Channel = typeof ChannelFields.Type & { readonly raw: Json }
 
 const decodeChannel = Schema.decodeUnknownOption(ChannelFields)
 
-const UserFields = Schema.Struct({
-  id: Schema.String,
-  username: optional(Schema.String),
-  global_name: optional(Schema.String),
-  bot: optional(Schema.Boolean)
-})
-
 const decodeUser = Schema.decodeUnknownOption(UserFields)
 
 const MemberFields = Schema.Struct({ nick: optional(Schema.String), user: optional(UserFields) })
 
 const decodeMember = Schema.decodeUnknownOption(MemberFields)
 
-const nonEmpty = (value: string | null | undefined): string | undefined =>
-  value === null || value === undefined || value === "" ? undefined : value
-
-const isObject = (u: unknown): u is Record<string, Json> => typeof u === "object" && u !== null && !Array.isArray(u)
-
 const snowflake = /^\d{1,20}$/
+
+/** Whether `thread` is a Discord address. */
+const isAddress = (thread: ChatThread.ChatThread): boolean =>
+  thread.platform === Normalize.platform && snowflake.test(thread.id)
 
 /**
  * Discord's API, as dfx's `DiscordConfig` has it by default.
@@ -183,19 +171,18 @@ export const make = Effect.fnUntraced(function*(options: {
     retrySafe(Effect.mapError(effect, (error) => Errors.chatError(op, Errors.reasonForRestError(error, { write }))))
 
   const resolve = (op: string, thread: ChatThread.ChatThread): Effect.Effect<string, ChatError> =>
-    thread.platform === Normalize.platform && snowflake.test(thread.id)
-      ? Effect.succeed(thread.id)
-      : fail(op, Errors.invalidRequest("invalid_thread"))
+    isAddress(thread) ? Effect.succeed(thread.id) : fail(op, Errors.invalidRequest("invalid_thread"))
 
-  const readChannel = (op: string, raw: unknown): Effect.Effect<Channel, ChatError> =>
-    Option.match(decodeChannel(raw), {
-      onNone: () => fail(op, Errors.invalidResponse(false, "invalid_channel")),
-      onSome: (fields) => Effect.succeed({ ...fields, raw: raw as Json })
-    })
+  const getChannel = (op: string, id: string): Effect.Effect<Channel, ChatError> =>
+    Effect.flatMap(call(op, rest.getChannel(id)), (raw: unknown) =>
+      Option.match(decodeChannel(raw), {
+        onNone: () => fail(op, Errors.invalidResponse(false, "invalid_channel")),
+        onSome: (fields) => Effect.succeed({ ...fields, raw: raw as Json })
+      }))
 
   /** Channels by id, for their type, parent and guild, none of which change. Failures are not kept. */
   const channels = yield* Cache.makeWith(
-    (id: string) => Effect.flatMap(call("getChannel", rest.getChannel(id)), (raw) => readChannel("getChannel", raw)),
+    (id: string) => getChannel("getChannel", id),
     {
       capacity: 1024,
       timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.hours(1) : Duration.zero
@@ -215,13 +202,18 @@ export const make = Effect.fnUntraced(function*(options: {
   const getMessage = (op: string, channelId: string, messageId: string): Effect.Effect<Json, ChatError> =>
     call(op, rest.getMessage(channelId, messageId)).pipe(Effect.map((raw) => raw as unknown as Json))
 
-  const fetchMessage = Effect.fnUntraced(function*(op: string, thread: ChatThread.ChatThread, messageId: string) {
+  const fetchMessage: ChatAdapter["fetchMessage"] = Effect.fnUntraced(function*(thread, messageId) {
+    const op = "fetchMessage"
     const channelId = yield* resolve(op, thread)
     const botUserId = yield* options.botUserId
     const raw = yield* getMessage(op, channelId, messageId)
     const message = toMessage(raw, botUserId)
     return message === undefined ? yield* fail(op, Errors.notFound("not_a_message")) : message
   })
+
+  /** The `interaction_expired` failure, with the reason Discord gave as its `cause`. */
+  const expired = (op: string, cause?: ChatErrorReason) =>
+    Errors.chatError(op, new NotFound({ detail: interactionExpired, ...(cause === undefined ? {} : { cause }) }))
 
   /** An optional read: none when the message is gone or the bot may not read it. */
   const orNone = <A>(effect: Effect.Effect<A, ChatError>): Effect.Effect<Option.Option<A>, ChatError> =>
@@ -235,15 +227,33 @@ export const make = Effect.fnUntraced(function*(options: {
 
   // Writes
 
+  /**
+   * A write's message, after the checks every write makes before a call.
+   * `components` is absent when there are none.
+   */
+  const messageBody = Effect.fnUntraced(function*(
+    op: string,
+    content: { readonly markdown: string; readonly actions?: ReadonlyArray<Action> | undefined },
+    postOptions: DiscordPostOptions
+  ) {
+    const rows = yield* components(op, content.actions)
+    yield* checkMessageLength(descriptor, op, content.markdown)
+    return {
+      content: content.markdown,
+      allowed_mentions: allowedMentions(postOptions.notify),
+      flags: flags(postOptions),
+      ...(rows.length === 0 ? {} : { components: rows })
+    }
+  })
+
   const toFile = (file: File) =>
     new globalThis.File([file.content as Uint8Array<ArrayBuffer>], file.name, { type: file.contentType })
 
   const post: ChatAdapter["post"] = Effect.fnUntraced(function*(thread, content) {
     const op = "post"
     const channelId = yield* resolve(op, thread)
-    const rows = yield* components(op, content.actions)
     const postOptions = yield* CurrentPostOptions
-    yield* checkMessageLength(descriptor, op, content.markdown)
+    const body = yield* messageBody(op, content, postOptions)
     const files = content.files ?? []
     // The adapter's own count and size check refuses the file the way Discord would.
     if (
@@ -253,10 +263,7 @@ export const make = Effect.fnUntraced(function*(options: {
       return yield* fail(op, new TooLarge({ subject: "files", detail: fileRefused }))
     }
     const create = rest.createMessage(channelId, {
-      content: content.markdown,
-      allowed_mentions: allowedMentions(postOptions.notify),
-      flags: flags(postOptions),
-      ...(rows.length === 0 ? {} : { components: rows }),
+      ...body,
       ...(content.replyTo === undefined ? {} : {
         message_reference: {
           message_id: content.replyTo.messageId,
@@ -282,20 +289,9 @@ export const make = Effect.fnUntraced(function*(options: {
   const edit: ChatAdapter["edit"] = Effect.fnUntraced(function*(thread, messageId, content) {
     const op = "edit"
     const channelId = yield* resolve(op, thread)
-    const rows = yield* components(op, content.actions)
-    const postOptions = yield* CurrentPostOptions
-    yield* checkMessageLength(descriptor, op, content.markdown)
-    yield* call(
-      op,
-      rest.updateMessage(channelId, messageId, {
-        content: content.markdown,
-        allowed_mentions: allowedMentions(postOptions.notify),
-        flags: flags(postOptions),
-        // Send empty components to clear existing elements.
-        components: rows
-      }),
-      true
-    )
+    const body = yield* messageBody(op, content, yield* CurrentPostOptions)
+    // Send empty components to clear existing elements.
+    yield* call(op, rest.updateMessage(channelId, messageId, { ...body, components: body.components ?? [] }), true)
   })
 
   const startThread: ChatAdapter["startThread"] = Effect.fnUntraced(function*(thread, messageId, startOptions) {
@@ -420,7 +416,7 @@ export const make = Effect.fnUntraced(function*(options: {
   const getThread: ChatAdapter["getThread"] = Effect.fnUntraced(function*(thread) {
     const op = "getThread"
     const channelId = yield* resolve(op, thread)
-    const found = yield* Effect.flatMap(call(op, rest.getChannel(channelId)), (raw) => readChannel(op, raw))
+    const found = yield* getChannel(op, channelId)
     const kind = Normalize.kindOf(found.type)
     const name = kind === "direct" ? undefined : nonEmpty(found.name)
     const topic = nonEmpty(found.topic)
@@ -444,6 +440,13 @@ export const make = Effect.fnUntraced(function*(options: {
   const getUser: ChatAdapter["getUser"] = Effect.fnUntraced(function*(id, userOptions) {
     const op = "getUser"
     const botUserId = yield* options.botUserId
+    const toUser = (user: typeof UserFields.Type, nick: string | null | undefined, raw: unknown): User => ({
+      id: user.id,
+      name: nonEmpty(nick) ?? nonEmpty(user.global_name) ?? nonEmpty(user.username) ?? user.id,
+      isBot: user.bot === true,
+      isSelf: user.id === botUserId,
+      raw: raw as Json
+    })
     const where = userOptions?.in
     const guildId = where === undefined
       ? undefined
@@ -453,27 +456,13 @@ export const make = Effect.fnUntraced(function*(options: {
       if (Option.isSome(member)) {
         const fields = Option.getOrUndefined(decodeMember(member.value))
         const user = fields?.user
-        if (fields !== undefined && user !== null && user !== undefined) {
-          return {
-            id: user.id,
-            name: nonEmpty(fields.nick) ?? nonEmpty(user.global_name) ?? nonEmpty(user.username) ?? user.id,
-            isBot: user.bot === true,
-            isSelf: user.id === botUserId,
-            raw: member.value as unknown as Json
-          } satisfies User
-        }
+        if (fields !== undefined && user !== null && user !== undefined) return toUser(user, fields.nick, member.value)
       }
     }
     const raw = yield* call(op, rest.getUser(id))
     const user = Option.getOrUndefined(decodeUser(raw))
     if (user === undefined) return yield* fail(op, Errors.invalidResponse(false, "invalid_user"))
-    return {
-      id: user.id,
-      name: nonEmpty(user.global_name) ?? nonEmpty(user.username) ?? user.id,
-      isBot: user.bot === true,
-      isSelf: user.id === botUserId,
-      raw: raw as unknown as Json
-    } satisfies User
+    return toUser(user, undefined, raw)
   })
 
   const download: ChatAdapter["download"] = (thread, attachment, { maxBytes }) =>
@@ -481,6 +470,8 @@ export const make = Effect.fnUntraced(function*(options: {
       const op = "download"
       const channelId = yield* resolve(op, thread)
       const tooLarge = Errors.chatError(op, new TooLarge({ subject: "files", detail: "max_bytes" }))
+      const transport = (error: { readonly reason: { readonly _tag: string } }) =>
+        Errors.chatError(op, Errors.transport(false, error.reason._tag, error))
       if (attachment.size !== undefined && attachment.size > maxBytes) return yield* Effect.fail(tooLarge)
       const ids = Normalize.parseAttachmentId(attachment.id)
       if (ids === undefined) return yield* fail(op, Errors.invalidRequest("invalid_attachment"))
@@ -489,15 +480,13 @@ export const make = Effect.fnUntraced(function*(options: {
       const found = list.find((item) => isObject(item) && item.id === ids.attachmentId)
       const url = isObject(found) && typeof found.url === "string" ? found.url : undefined
       if (url === undefined) return yield* fail(op, Errors.notFound("attachment_not_found"))
-      const response = yield* options.http.execute(HttpClientRequest.get(url)).pipe(
-        Effect.mapError((error) => Errors.chatError(op, Errors.transport(false, error.reason._tag, error)))
-      )
+      const response = yield* Effect.mapError(options.http.execute(HttpClientRequest.get(url)), transport)
       if (response.status < 200 || response.status >= 300) {
         return yield* fail(op, Errors.reasonForResponse(response.status, undefined, { write: false }))
       }
       let received = 0
       return response.stream.pipe(
-        Stream.mapError((error) => Errors.chatError(op, Errors.transport(false, error.reason._tag, error))),
+        Stream.mapError(transport),
         Stream.mapEffect((chunk) => {
           received += chunk.length
           return received > maxBytes ? Effect.fail(tooLarge) : Effect.succeed(chunk)
@@ -510,19 +499,10 @@ export const make = Effect.fnUntraced(function*(options: {
    * options, after the same checks: no mentions and no embeds.
    * `withPostOptions` does not reach a command's answer.
    */
-  const message = Effect.fnUntraced(function*(
+  const answerBody = (
     op: string,
     content: { readonly markdown: string; readonly actions?: ReadonlyArray<Action> | undefined }
-  ) {
-    const rows = yield* components(op, content.actions)
-    yield* checkMessageLength(descriptor, op, content.markdown)
-    return {
-      content: content.markdown,
-      allowed_mentions: allowedMentions(undefined),
-      flags: flags({}),
-      ...(rows.length === 0 ? {} : { components: rows })
-    }
-  })
+  ) => messageBody(op, content, {})
 
   /**
    * Edits the original response of a deferred command in one HTTP request:
@@ -533,24 +513,18 @@ export const make = Effect.fnUntraced(function*(options: {
    */
   const followUp: ChatAdapter["followUp"] = Effect.fnUntraced(function*(deferred, content) {
     const op = "followUp"
-    const to = deferred.command.thread.platform === Normalize.platform && snowflake.test(deferred.command.thread.id)
-      ? Interactions.followUpTo(deferred.command.raw)
-      : undefined
+    const to = isAddress(deferred.command.thread) ? Interactions.followUpTo(deferred.command.raw) : undefined
     if (to === undefined || !snowflake.test(to.id)) return yield* fail(op, Errors.invalidRequest("invalid_interaction"))
-    const expired = new NotFound({ detail: interactionExpired })
     const now = yield* Clock.currentTimeMillis
-    if (now - snowflakeMillis(to.id) >= Duration.toMillis(descriptor.limits.followUpAge!)) {
-      return yield* fail(op, expired)
+    if (now - Normalize.snowflakeMillis(to.id) >= Duration.toMillis(descriptor.limits.followUpAge!)) {
+      return yield* Effect.fail(expired(op))
     }
-    const body = yield* message(op, content)
-    const ephemeral = deferred.visibility === "ephemeral" ? 1 << 6 : 0
+    const body = yield* answerBody(op, content)
     yield* webhooks.updateOriginalWebhookMessage(to.applicationId, to.token, {
-      payload: { ...body, flags: body.flags | ephemeral }
+      payload: Interactions.withVisibility(body, deferred.visibility)
     }).pipe(Effect.mapError((cause) => {
       const error = Errors.chatError(op, Errors.reasonForRestError(cause, { write: true }))
-      return SPENT_TOKEN.some((code) => Errors.hasCode(code)(error))
-        ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
-        : error
+      return SPENT_TOKEN.some((code) => Errors.hasCode(code)(error)) ? expired(op, error.reason) : error
     }))
   })
 
@@ -563,7 +537,7 @@ export const make = Effect.fnUntraced(function*(options: {
       const channelId = yield* resolve("delete", thread)
       yield* call("delete", rest.deleteMessage(channelId, messageId), true)
     }),
-    fetchMessage: (thread, messageId) => fetchMessage("fetchMessage", thread, messageId),
+    fetchMessage,
     history,
     download,
     startThread,
@@ -640,7 +614,7 @@ export const make = Effect.fnUntraced(function*(options: {
             event.value as ChatInteraction.CommandInvoked,
             "respond",
             to,
-            Effect.map(message("respond", reply), (body) => Interactions.respondCallback(body, reply.visibility))
+            Effect.map(answerBody("respond", reply), (body) => Interactions.respondCallback(body, reply.visibility))
           )
         case "Defer":
           return yield* answer(
@@ -669,9 +643,7 @@ export const make = Effect.fnUntraced(function*(options: {
         Effect.catch((error) =>
           handler.refused(
             event,
-            Errors.hasCode(UNKNOWN_INTERACTION)(error)
-              ? Errors.chatError(op, new NotFound({ detail: interactionExpired, cause: error.reason }))
-              : error
+            Errors.hasCode(UNKNOWN_INTERACTION)(error) ? expired(op, error.reason) : error
           )
         )
       )

@@ -66,14 +66,13 @@ import * as Address from "./internal/address.ts"
 import * as Emoji from "./internal/emoji.ts"
 import * as Errors from "./internal/errors.ts"
 import * as Interactions from "./internal/interactions.ts"
+import * as Json from "./internal/json.ts"
 import * as Mentions from "./internal/mentions.ts"
 import * as Normalize from "./internal/normalize.ts"
 import { CurrentPostOptions } from "./internal/options.ts"
 import * as Webhook from "./internal/webhook.ts"
 import { SlackWebApi } from "./SlackWebApi.ts"
 import * as WebApi from "./SlackWebApi.ts"
-
-const isRecord = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 /**
  * A Slack user from `users.info`, with guest and Slack Connect status.
@@ -285,8 +284,8 @@ export const layer = (options: {
         return api.call("auth.test", {}).pipe(
           Effect.mapError(Errors.withOp("botUserId")),
           Effect.flatMap((answer) => {
-            const id = isRecord(answer) ? answer.user_id : undefined
-            if (typeof id !== "string" || id === "") {
+            const id = Json.string(answer, "user_id")
+            if (id === undefined) {
               return Effect.fail(Errors.chatError("botUserId", Errors.invalidResponse(false, "missing_user_id")))
             }
             cached = id
@@ -417,7 +416,7 @@ export const layerWebhook = (options: {
       botUserId: slack.botUserId,
       handle: handler.handle,
       deadline: options.deadline ?? Duration.millis(2500),
-      maxBodyBytes: options.maxBodyBytes ?? 1024 * 1024
+      maxBodyBytes: options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleRequest(request, webhookOptions))
   }))
@@ -469,7 +468,7 @@ export const layerInteractivity = (options: {
       interaction: (payload, interactionOptions) =>
         Effect.provideService(slack.interaction(payload, interactionOptions), ChatInteraction.Handler, handler),
       deadline: options.deadline ?? Interactions.defaultDeadline,
-      maxBodyBytes: options.maxBodyBytes ?? 1024 * 1024
+      maxBodyBytes: options.maxBodyBytes ?? Webhook.defaultMaxBodyBytes
     }
     yield* router.add("POST", options.path, (request) => Webhook.handleInteractivity(request, interactivityOptions))
   }))

@@ -1,14 +1,8 @@
 import * as Context from "effect/Context"
+import type { WhatsAppPostOptions } from "../WhatsAppChat.ts"
 
 /** @internal */
-export interface PostOptions {
-  readonly linkPreview?: boolean | undefined
-  readonly listButton?: string | undefined
-  readonly buttonsSection?: string | undefined
-}
-
-/** @internal */
-export const CurrentPostOptions = Context.Reference<PostOptions>("@effect/chat-whatsapp/CurrentPostOptions", {
+export const CurrentPostOptions = Context.Reference<WhatsAppPostOptions>("@effect/chat-whatsapp/CurrentPostOptions", {
   defaultValue: () => ({})
 })
 

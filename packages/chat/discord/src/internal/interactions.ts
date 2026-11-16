@@ -38,6 +38,9 @@ const DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
 const MODAL = 9
 const EPHEMERAL = 1 << 6
 
+/** The ephemeral flag for a private answer, none otherwise. */
+const visibilityFlags = (visibility: ChatInteraction.Visibility): number => visibility === "ephemeral" ? EPHEMERAL : 0
+
 /** `custom_id` for an id and an optional value. */
 const customId = (id: string, value: string | undefined): string => value === undefined ? id : id + join + value
 
@@ -64,54 +67,49 @@ export const rows = (actions: ReadonlyArray<ChatUi.Action>): Array<Row> | ChatEr
   const out: Array<{ type: 1; components: Array<Component> }> = []
   let open: Array<Component> | undefined
   for (const action of actions) {
-    switch (action._tag) {
-      case "Button":
-      case "LinkButton": {
-        if (action._tag === "Button") {
-          if (action.id.includes(join)) return new InvalidRequest({ detail: "invalid_action_id" })
-          if (codePoints(action.id) + codePoints(action.value ?? "") > limits.actionDataLength) {
-            return new TooLarge({ detail: "action_data_too_long" })
-          }
-        }
-        const button: Component = action._tag === "Button"
-          ? {
-            type: 2,
-            style: buttonStyle(action.style),
-            label: action.label,
-            custom_id: customId(action.id, action.value)
-          }
-          : { type: 2, style: 5, label: action.label, url: action.url }
-        if (open === undefined || open.length === buttonsPerRow) {
-          open = [button]
-          out.push({ type: 1, components: open })
-        } else {
-          open.push(button)
-        }
-        break
+    if (action._tag === "Select") {
+      const id = codePoints(action.id)
+      if (action.options.some((option) => id + codePoints(option.value) > limits.actionDataLength)) {
+        return new TooLarge({ detail: "action_data_too_long" })
       }
-      case "Select": {
-        const id = codePoints(action.id)
-        if (action.options.some((option) => id + codePoints(option.value) > limits.actionDataLength)) {
-          return new TooLarge({ detail: "action_data_too_long" })
-        }
-        open = undefined
-        out.push({
-          type: 1,
-          components: [{
-            type: 3,
-            custom_id: action.id,
-            ...(action.placeholder === undefined ? {} : { placeholder: action.placeholder }),
-            options: action.options.map((option) => ({
-              label: option.label,
-              value: option.value,
-              ...(option.value === action.selected ? { default: true } : {})
-            })),
-            min_values: 1,
-            max_values: 1
-          }]
-        })
-        break
+      open = undefined
+      out.push({
+        type: 1,
+        components: [{
+          type: 3,
+          custom_id: action.id,
+          ...(action.placeholder === undefined ? {} : { placeholder: action.placeholder }),
+          options: action.options.map((option) => ({
+            label: option.label,
+            value: option.value,
+            ...(option.value === action.selected ? { default: true } : {})
+          })),
+          min_values: 1,
+          max_values: 1
+        }]
+      })
+      continue
+    }
+    let button: Component
+    if (action._tag === "LinkButton") {
+      button = { type: 2, style: 5, label: action.label, url: action.url }
+    } else {
+      if (action.id.includes(join)) return new InvalidRequest({ detail: "invalid_action_id" })
+      if (codePoints(action.id) + codePoints(action.value ?? "") > limits.actionDataLength) {
+        return new TooLarge({ detail: "action_data_too_long" })
       }
+      button = {
+        type: 2,
+        style: buttonStyle(action.style),
+        label: action.label,
+        custom_id: customId(action.id, action.value)
+      }
+    }
+    if (open === undefined || open.length === buttonsPerRow) {
+      open = [button]
+      out.push({ type: 1, components: open })
+    } else {
+      open.push(button)
     }
   }
   return out.length > rowsPerMessage ? new TooLarge({ detail: "too_many_actions" }) : out
@@ -203,6 +201,17 @@ export const errorsCallback = (errors: Readonly<Record<string, string>>): Callba
 })
 
 /**
+ * A message as an interaction's answer sends it: with the ephemeral flag
+ * when private.
+ *
+ * @internal
+ */
+export const withVisibility = <M extends { readonly flags: number }>(
+  message: M,
+  visibility: ChatInteraction.Visibility
+): M => ({ ...message, flags: message.flags | visibilityFlags(visibility) })
+
+/**
  * The answer to a `respond` reply: the message a `post` sends, with the
  * ephemeral flag when private.
  *
@@ -215,7 +224,7 @@ export const respondCallback = (message: {
   readonly components?: ReadonlyArray<Row> | undefined
 }, visibility: ChatInteraction.Visibility): Callback => ({
   type: CHANNEL_MESSAGE_WITH_SOURCE,
-  data: { ...message, flags: message.flags | (visibility === "ephemeral" ? EPHEMERAL : 0) }
+  data: withVisibility(message, visibility)
 })
 
 /**
@@ -231,7 +240,7 @@ export const deferCallback = (visibility: ChatInteraction.Visibility): Callback 
 
 // Inbound
 
-const optional = <S extends Schema.Top>(schema: S) => Schema.optionalKey(Schema.NullOr(schema))
+const { optional } = Normalize
 
 const Input = Schema.Struct({
   type: Schema.Number,
@@ -402,35 +411,25 @@ const submitted = (
   }))
 }
 
+interface CommandRequest {
+  readonly type: 1
+  readonly name: string
+  readonly description: string
+  readonly options?: ReadonlyArray<{
+    readonly type: 3
+    readonly name: string
+    readonly description: string
+    readonly required: boolean
+  }>
+}
+
 /**
  * The create payload of each command in `group`, in the group's order.
  *
  * @internal
  */
-export const commandRequests = (group: ChatInteraction.Group<any>): ReadonlyArray<{
-  readonly type: 1
-  readonly name: string
-  readonly description: string
-  readonly options?:
-    | ReadonlyArray<{
-      readonly type: 3
-      readonly name: string
-      readonly description: string
-      readonly required: boolean
-    }>
-    | undefined
-}> => {
-  const out: Array<{
-    readonly type: 1
-    readonly name: string
-    readonly description: string
-    readonly options?: ReadonlyArray<{
-      readonly type: 3
-      readonly name: string
-      readonly description: string
-      readonly required: boolean
-    }>
-  }> = []
+export const commandRequests = (group: ChatInteraction.Group<any>): ReadonlyArray<CommandRequest> => {
+  const out: Array<CommandRequest> = []
   for (const definition of (group.definitions as ReadonlyMap<string, ChatInteraction.Definition>).values()) {
     if (definition.kind !== "command") continue
     const { argument } = definition

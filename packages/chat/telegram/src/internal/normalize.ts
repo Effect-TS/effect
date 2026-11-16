@@ -2,6 +2,7 @@ import * as ChatEvent from "effect/chat/ChatEvent"
 import type * as ChatMessage from "effect/chat/ChatMessage"
 import type { ChatThread } from "effect/chat/ChatThread"
 import * as DateTime from "effect/DateTime"
+import * as Predicate from "effect/Predicate"
 import type * as Schema from "effect/Schema"
 import * as Address from "./address.ts"
 
@@ -9,23 +10,25 @@ import * as Address from "./address.ts"
 export type JsonObject = { readonly [key: string]: Schema.Json }
 
 /** @internal */
-export const isObject = (u: unknown): u is JsonObject => typeof u === "object" && u !== null && !Array.isArray(u)
+export const isObject = (u: unknown): u is JsonObject => Predicate.isObject(u)
 
-/** @internal */
-export const object = (o: JsonObject | undefined, key: string): JsonObject | undefined => {
-  const value = o?.[key]
+const field = (o: unknown, key: string): unknown => isObject(o) ? o[key] : undefined
+
+/** The object at `key` of `o`, when `o` is an object. @internal */
+export const object = (o: unknown, key: string): JsonObject | undefined => {
+  const value = field(o, key)
   return isObject(value) ? value : undefined
 }
 
 /** @internal */
-export const string = (o: JsonObject | undefined, key: string): string | undefined => {
-  const value = o?.[key]
+export const string = (o: unknown, key: string): string | undefined => {
+  const value = field(o, key)
   return typeof value === "string" ? value : undefined
 }
 
 /** @internal */
-export const integer = (o: JsonObject | undefined, key: string): number | undefined => {
-  const value = o?.[key]
+export const integer = (o: unknown, key: string): number | undefined => {
+  const value = field(o, key)
   return typeof value === "number" && Number.isSafeInteger(value) ? value : undefined
 }
 
@@ -76,10 +79,12 @@ export const messageIdOf = (message: JsonObject): string | undefined => {
   return ephemeral === undefined ? undefined : `${Address.ephemeralPrefix}${ephemeral}.${integer(message, "date") ?? 0}`
 }
 
-const displayName = (user: JsonObject) => {
-  const name = [string(user, "first_name"), string(user, "last_name")].filter((part) => part !== undefined).join(" ")
-  return name === "" ? string(user, "username") : name
-}
+/** A user's or private chat's first and last name, `""` without either. @internal */
+export const fullName = (o: unknown): string =>
+  [string(o, "first_name"), string(o, "last_name")].filter((part) => part !== undefined).join(" ")
+
+/** A user's full name, else their username. @internal */
+export const displayName = (user: JsonObject): string | undefined => fullName(user) || string(user, "username")
 
 const authorOf = (message: JsonObject, context: Context): ChatMessage.Author | undefined => {
   const senderChat = object(message, "sender_chat")
@@ -172,7 +177,7 @@ const replyToOf = (message: JsonObject, context: Context): ChatMessage.ReplyTo |
 }
 
 /** The message of an update that carries one: `message` or `channel_post`. @internal */
-export const messageOf = (update: JsonObject): JsonObject | undefined =>
+export const messageOf = (update: unknown): JsonObject | undefined =>
   object(update, "message") ?? object(update, "channel_post")
 
 /** The text of a message, verbatim, and its entities. @internal */
@@ -255,7 +260,7 @@ export const commandOf = (message: JsonObject, context: Context): Command | unde
 }
 
 /** The date of an update's message or callback message, 0 when there is none. */
-const dateOf = (update: JsonObject): number =>
+const dateOf = (update: unknown): number =>
   integer(messageOf(update), "date") ?? integer(object(object(update, "callback_query"), "message"), "date") ?? 0
 
 /**
@@ -265,7 +270,6 @@ const dateOf = (update: JsonObject): number =>
  * @internal
  */
 export const deliveryId = (update: unknown, context: Pick<Context, "botId" | "environment">): string | undefined => {
-  if (!isObject(update)) return undefined
   const id = integer(update, "update_id")
   if (id === undefined) return undefined
   return `${context.environment === "test" ? "test." : ""}${context.botId}.${id}.${dateOf(update)}`

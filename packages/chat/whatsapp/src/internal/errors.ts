@@ -12,6 +12,7 @@ import {
   Unauthenticated,
   Unknown
 } from "effect/chat/ChatError"
+import { isObject } from "effect/Predicate"
 import { platform } from "./address.ts"
 
 /** The detail of a send refused outside the 24 hour window, Graph error 131047. @internal */
@@ -42,8 +43,6 @@ export interface GraphError {
   readonly code: number
   readonly subcode?: number | undefined
 }
-
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 /** The Graph error in an answer's body, if it has one. @internal */
 export const graphError = (body: unknown): GraphError | undefined => {

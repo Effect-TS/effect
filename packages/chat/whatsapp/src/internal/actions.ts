@@ -1,6 +1,7 @@
 import { type ChatErrorReason, InvalidRequest, TooLarge } from "effect/chat/ChatError"
 import type { Action, Button, LinkButton, Select } from "effect/chat/ChatUi"
-import { defaultButtonsSection, defaultListButton, type PostOptions } from "./options.ts"
+import type { WhatsAppPostOptions } from "../WhatsAppChat.ts"
+import { defaultButtonsSection, defaultListButton } from "./options.ts"
 import { shortBodyLength, utf8Bytes } from "./text.ts"
 
 /** Between an element's id and its value in a wire id. @internal */
@@ -126,7 +127,7 @@ const invalid = (detail: string) => new InvalidRequest({ detail })
  *
  * @internal
  */
-export const plan = (actions: ReadonlyArray<Action>, options: PostOptions): Plan | ChatErrorReason => {
+export const plan = (actions: ReadonlyArray<Action>, options: WhatsAppPostOptions): Plan | ChatErrorReason => {
   if (actions.length === 0) return { kind: "none" }
   if (actions.length > limits.actionsPerMessage) return tooLarge("too_many_actions")
   for (const action of actions) {

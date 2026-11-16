@@ -9,37 +9,15 @@ import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import * as Semaphore from "effect/Semaphore"
+import type { Cloud, Credentials } from "../TeamsChat.ts"
 import * as Errors from "./errors.ts"
+import { parseUrl } from "./parse.ts"
 
-/**
- * The endpoints and hosts of one Microsoft cloud. All of it is privileged
- * configuration: nothing here is ever read from an activity.
- *
- * @internal
- */
-export interface Cloud {
-  /** The Connector base for thread ops, such as `https://smba.trafficmanager.net/teams`. */
-  readonly connectorUrl: string
-  /** The exact hosts an activity's `serviceUrl` may name. */
-  readonly connectorHosts: ReadonlyArray<string>
-  /** Bot Framework's OpenID metadata. Its `jwks_uri` must be on the same host. */
-  readonly openIdMetadataUrl: string
-  /** The `iss` of an inbound token. */
-  readonly issuer: string
-  /** The Entra authority, without the tenant: `https://login.microsoftonline.com`. */
-  readonly loginUrl: string
-  /** The scope of a Connector token. */
-  readonly connectorScope: string
-  /** The host suffixes of a personal chat's pre-authorised file URL. */
-  readonly fileHostSuffixes: ReadonlyArray<string>
-  /** Extra exact hosts a download may be redirected to. */
-  readonly redirectHosts: ReadonlyArray<string>
-}
-
-/** @internal */
+/** A cloud is privileged configuration: nothing in it is ever read from an activity. @internal */
 export const publicCloud: Cloud = {
   connectorUrl: "https://smba.trafficmanager.net/teams",
   connectorHosts: ["smba.trafficmanager.net"],
@@ -50,17 +28,6 @@ export const publicCloud: Cloud = {
   fileHostSuffixes: ["sharepoint.com"],
   redirectHosts: []
 }
-
-/** A token and when it stops working. @internal */
-export interface Token {
-  readonly token: Redacted.Redacted<string>
-  readonly expiresAt?: DateTime.DateTime | undefined
-}
-
-/** @internal */
-export type Credentials =
-  | Redacted.Redacted<string>
-  | ((scope: string) => Effect.Effect<Token, ChatError>)
 
 /** How long before `expiresAt` a cached token is dropped. */
 const refreshMargin = Duration.minutes(5)
@@ -73,22 +40,16 @@ const refreshMargin = Duration.minutes(5)
  * @internal
  */
 export const trustedServiceUrl = (url: string, hosts: ReadonlyArray<string>): string | undefined => {
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return undefined
-  }
+  const parsed = parseUrl(url)
   if (
-    parsed.protocol !== "https:" || parsed.port !== "" || parsed.username !== "" || parsed.password !== "" ||
+    parsed === undefined || parsed.protocol !== "https:" || parsed.port !== "" || parsed.username !== "" ||
+    parsed.password !== "" ||
     parsed.search !== "" || parsed.hash !== "" || !hosts.includes(parsed.hostname)
   ) {
     return undefined
   }
   return parsed.origin + parsed.pathname.replace(/\/+$/, "")
 }
-
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 /**
  * Gets a token by client credentials, or from the consumer's provider, and
@@ -108,7 +69,7 @@ export const makeTokens = (options: {
   const lock = Semaphore.makeUnsafe(1)
   const fail = (reason: ChatErrorReason) => Effect.fail(Errors.chatError("token", reason))
 
-  const clientCredentials = (secret: Redacted.Redacted<string>) => (scope: string): Effect.Effect<Token, ChatError> =>
+  const clientCredentials = (secret: Redacted.Redacted<string>) => (scope: string) =>
     Effect.gen(function*() {
       const url = `${options.cloud.loginUrl}/${encodeURIComponent(options.tenantId)}/oauth2/v2.0/token`
       const request = HttpClientRequest.post(url).pipe(
@@ -126,7 +87,7 @@ export const makeTokens = (options: {
       const json = yield* response.json.pipe(
         Effect.catch((cause) => fail(Errors.invalidResponse(false, "invalid_json", cause)))
       )
-      if (!isObject(json) || typeof json.access_token !== "string" || json.access_token === "") {
+      if (!Predicate.isObject(json) || typeof json.access_token !== "string" || json.access_token === "") {
         return yield* fail(Errors.invalidResponse(false, "missing_access_token"))
       }
       const now = yield* Clock.currentTimeMillis
@@ -265,7 +226,7 @@ export const make = (options: {
       const retryAfter = Errors.parseRetryAfter(response.headers["retry-after"])
       if (response.status < 200 || response.status >= 300) {
         const json = yield* Effect.orElseSucceed(response.json, () => undefined)
-        const error = isObject(json) && isObject(json.error) ? json.error : undefined
+        const error = Predicate.isObject(json) && Predicate.isObject(json.error) ? json.error : undefined
         const code = typeof error?.code === "string" ? error.code : undefined
         return yield* fail(Errors.reasonForStatus(response.status, { write, retryAfter, code }))
       }

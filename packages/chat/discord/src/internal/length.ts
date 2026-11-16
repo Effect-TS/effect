@@ -5,6 +5,9 @@
  */
 export const messageLength = 2000
 
+/** The index past the code point at `i`: a surrogate pair is one, a lone surrogate one too. */
+const next = (text: string, i: number): number => text.codePointAt(i)! > 0xffff ? i + 2 : i + 1
+
 /**
  * Code points, which is what Discord counts: a recorded probe took 2,000
  * astral emoji (4,000 UTF-16 units) and refused 1,999 letters and a flag.
@@ -13,14 +16,7 @@ export const messageLength = 2000
  */
 export const codePoints = (text: string): number => {
   let count = 0
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i)
-    if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
-      const low = text.charCodeAt(i + 1)
-      if (low >= 0xdc00 && low <= 0xdfff) i++
-    }
-    count++
-  }
+  for (let i = 0; i < text.length; i = next(text, i)) count++
   return count
 }
 
@@ -30,15 +26,8 @@ export const codePoints = (text: string): number => {
  * @internal
  */
 export const cut = (text: string, max: number): string => {
-  let count = 0
-  for (let i = 0; i < text.length; i++) {
+  for (let i = 0, count = 0; i < text.length; i = next(text, i), count++) {
     if (count === max) return text.slice(0, i)
-    const code = text.charCodeAt(i)
-    if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
-      const low = text.charCodeAt(i + 1)
-      if (low >= 0xdc00 && low <= 0xdfff) i++
-    }
-    count++
   }
   return text
 }

@@ -493,14 +493,19 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
 
     let current = newPart(0, undefined)
 
-    const toPart = (part: Current, posted: Posted, markdown: string, end: number): Part => ({
-      messageId: posted.id,
-      timestamp: posted.timestamp,
-      markdown,
-      text: input.slice(part.start, end),
-      kind: "text",
-      transport: part.transport
-    })
+    const partOf = (
+      posted: Posted,
+      markdown: string,
+      text: string,
+      kind: Part["kind"],
+      transport: Part["transport"]
+    ): Part => ({ messageId: posted.id, timestamp: posted.timestamp, markdown, text, kind, transport })
+
+    const toPart = (part: Current, posted: Posted, markdown: string, end: number): Part =>
+      partOf(posted, markdown, input.slice(part.start, end), "text", part.transport)
+
+    /** Only the reply's first message replies to `replyTo`. */
+    const firstReplyTo = () => parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}
 
     /** The open fence at `index` of the input, read from the current part's complete lines. */
     const fenceAtInput = (part: Current, index: number): Fence | undefined => {
@@ -681,7 +686,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
         create(
           chat.post(thread, {
             markdown,
-            ...(parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}),
+            ...firstReplyTo(),
             ...(files === undefined ? {} : { files }),
             ...(withActions ? { actions } : {})
           }),
@@ -715,14 +720,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
 
     /** Posts a message after the text that is not part of it: the unattached note, or the actions alone. */
     const postAfter = (text: string, withActions: boolean): Effect.Effect<void, never, R2> => {
-      const part = (posted: Posted): Part => ({
-        messageId: posted.id,
-        timestamp: posted.timestamp,
-        markdown: text,
-        text: "",
-        kind: "text",
-        transport: "post"
-      })
+      const part = (posted: Posted) => partOf(posted, text, "", "text", "post")
       const post = chat.post(thread, { markdown: text, ...(withActions ? { actions } : {}) })
       return Effect.flatMap(
         create(post, part, (exit) => {
@@ -900,7 +898,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           create(
             native!.start(thread, {
               markdown,
-              ...(parts.length === 0 && options.replyTo !== undefined ? { replyTo: options.replyTo } : {}),
+              ...firstReplyTo(),
               ...(parts.length === 0 ? {} : { continues: parts[parts.length - 1].messageId }),
               recipient: options.recipient
             }),
@@ -1062,14 +1060,7 @@ const reply = <E, R, R2>(options: ReplyOptions<E, R, R2>): Effect.Effect<Result,
           contentType: "text/markdown",
           content: new TextEncoder().encode(rest)
         }
-        const part = (markdown: string) => (posted: Posted): Part => ({
-          messageId: posted.id,
-          timestamp: posted.timestamp,
-          markdown,
-          text: rest,
-          kind: "overflowFile",
-          transport: "post"
-        })
+        const part = (markdown: string) => (posted: Posted) => partOf(posted, markdown, rest, "overflowFile", "post")
         // Attach consumer files to the final message.
         const attempt = (markdown: string, files: ReadonlyArray<File>, fallback: boolean) =>
           create(
