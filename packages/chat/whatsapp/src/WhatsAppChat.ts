@@ -153,10 +153,13 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   Markdown it replaces, so the text never grows; anything else is sent as
  *   typed, including reference links and their definitions, and code fenced
  *   inside a quote or a list item.
- * - `descriptor.measure` and the label limits count UTF-16 units. Meta
- *   counts text, bodies, labels and row ids in code points, so the count is
- *   exact for most text and stricter only for characters outside the Basic
- *   Multilingual Plane, such as emoji.
+ * - `descriptor.measure` and the label limits count UTF-16 units. In live
+ *   checks on Graph `v23.0`, Meta counted text bodies, interactive bodies,
+ *   reply button titles, list row titles and row ids in code points, which a
+ *   UTF-16 count never undercounts: it is stricter only for characters
+ *   outside the Basic Multilingual Plane, such as emoji. Captions, the list
+ *   button and section titles were not measured, and are counted the same
+ *   way.
  * - Link previews are off unless `withPostOptions({ linkPreview: true })`.
  * - One file per post. It is uploaded, then sent as one media message with
  *   the text as its caption, or as the header of a message with reply
@@ -195,9 +198,12 @@ export class WhatsAppChat extends Context.Service<WhatsAppChat, {
  *   `limits.minWriteInterval`. Meta accepts short bursts above that rate
  *   but refuses a sustained faster pace with error 131056, `RateLimited`.
  * - `messagingAccountId` is sent as `messaging_account_id` on every
- *   message. Meta needs it when the access token can send from more than
- *   one Messaging account on the phone number, and picks the token's only
- *   one when it is left out.
+ *   message. Include it to say which Messaging account sends when the
+ *   access token can send from more than one on the phone number. Meta
+ *   documents it as optional for now, required for such a token on the
+ *   newest Graph version from H1 2027, and on every version from H1 2028.
+ *   Without it, Meta picks the account from the token. Not yet checked
+ *   against a production number.
  * - Built against Graph API `v24.0`, the default `baseUrl`. The
  *   adapter's live checks ran on `v23.0`.
  *

@@ -30,7 +30,7 @@ For other runtimes such as Workers, provide
 
 Checked on Graph API `v23.0` from a Meta test number to one phone. The default `baseUrl` is `v24.0`, where these have not been repeated.
 
-- Meta counts text, interactive bodies, button and row titles, and row ids in code points. The adapter counts UTF-16 units, which is never less. A reply button id is counted in UTF-8 bytes, up to 256, and the adapter checks it that way.
+- Meta counts text bodies, interactive bodies, reply button titles, list row titles and row ids in code points. The adapter counts UTF-16 units, which is never less. Captions, the list button and section titles were not measured. A reply button id is counted in UTF-8 bytes, up to 256, and the adapter checks it that way.
 - The rendered formatting displays as intended, and literal `*`, `_` and escapes display as typed.
 - A `.md` file sent as `text/plain` arrives with its name.
 - A media header beside reply buttons or a link button renders.
