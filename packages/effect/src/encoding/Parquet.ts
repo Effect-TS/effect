@@ -85,6 +85,7 @@
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { crc32 } from "../internal/crc32.ts"
+import { type Annotation, logicalOf } from "../internal/parquet/annotations.ts"
 import * as Encodings from "../internal/parquet/encodings.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Thrift from "./Thrift.ts"
@@ -959,9 +960,6 @@ const rowCount = (n: number | undefined, what: string): number => {
   return value
 }
 
-/** A logical type, or a converted type as the logical type that replaced it. */
-type Annotation = LogicalType | { readonly type: Exclude<ConvertedType, "DECIMAL"> }
-
 /**
  * The physical type LogicalTypes.md defines each annotation for, `undefined`
  * for a group. The annotations that are not here depend on more than that.
@@ -977,26 +975,13 @@ const annotated: {
   VARIANT: undefined,
   FILE: undefined,
   STRING: "BYTE_ARRAY",
-  UTF8: "BYTE_ARRAY",
   ENUM: "BYTE_ARRAY",
   JSON: "BYTE_ARRAY",
   BSON: "BYTE_ARRAY",
   GEOMETRY: "BYTE_ARRAY",
   GEOGRAPHY: "BYTE_ARRAY",
   DATE: "INT32",
-  TIME_MILLIS: "INT32",
-  UINT_8: "INT32",
-  UINT_16: "INT32",
-  UINT_32: "INT32",
-  INT_8: "INT32",
-  INT_16: "INT32",
-  INT_32: "INT32",
-  TIME_MICROS: "INT64",
-  TIMESTAMP: "INT64",
-  TIMESTAMP_MILLIS: "INT64",
-  TIMESTAMP_MICROS: "INT64",
-  UINT_64: "INT64",
-  INT_64: "INT64"
+  TIMESTAMP: "INT64"
 }
 const annotatedLengths = { UUID: 16, FLOAT16: 2, INTERVAL: 12 } as const
 
@@ -1059,34 +1044,29 @@ const annotations = (e: Element, physicalType: PhysicalType | undefined): {
   readonly convertedType: ConvertedType | number | undefined
   readonly known: boolean
 } => {
-  let logicalType: LogicalType | undefined
-  let convertedType = e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType)
-  let known = typeof e.logicalType !== "number" && typeof convertedType !== "number"
-  if (typeof e.logicalType === "object") {
-    if (annotates(e.logicalType, e, physicalType)) logicalType = e.logicalType
-    else known = false
-  }
+  const converted = e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType)
+  const logicalType = typeof e.logicalType === "object" && annotates(e.logicalType, e, physicalType)
+    ? e.logicalType
+    : undefined
   // The converted type stands in for a logical type only when there is none.
-  // An ignored one leaves only the physical type (#unsupported-logical-types).
-  if (e.logicalType !== undefined && logicalType === undefined) convertedType = undefined
-  if (typeof convertedType === "string") {
-    let annotation: Annotation
-    if (convertedType !== "DECIMAL") annotation = { type: convertedType }
-    // A DecimalType supersedes the scale and precision of the schema element.
-    else if (typeof e.logicalType === "object" && e.logicalType.type === "DECIMAL") annotation = e.logicalType
-    else {
-      annotation = {
-        type: "DECIMAL",
-        scale: e.scale ?? 0,
-        precision: required(e.precision, `the precision of DECIMAL schema element "${e.name}"`)
-      }
-    }
-    if (!annotates(annotation, e, physicalType)) {
-      convertedType = undefined
-      known = false
-    }
+  // An ignored logical type leaves only the physical type (#unsupported-logical-types).
+  if (e.logicalType !== undefined && logicalType === undefined) {
+    return { logicalType, convertedType: undefined, known: false }
   }
-  return { logicalType, convertedType, known }
+  if (typeof converted !== "string") return { logicalType, convertedType: converted, known: converted === undefined }
+  const annotation: Annotation = converted !== "DECIMAL"
+    ? logicalOf[converted]
+    // A DecimalType supersedes the scale and precision of the schema element.
+    : logicalType?.type === "DECIMAL"
+    ? logicalType
+    : {
+      type: "DECIMAL",
+      scale: e.scale ?? 0,
+      precision: required(e.precision, `the precision of DECIMAL schema element "${e.name}"`)
+    }
+  return annotates(annotation, e, physicalType)
+    ? { logicalType, convertedType: converted, known: true }
+    : { logicalType, convertedType: undefined, known: false }
 }
 
 interface Schema {
