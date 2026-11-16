@@ -11,10 +11,9 @@
  *   `editMessageText` with `rich_message`), in Markdown escaped so that
  *   consumer text reaches no raw HTML, image, math, spoiler or non-web
  *   link.
- * - Nothing here has run against Telegram yet, the default capabilities
- *   included, and the package stays private until the base live checks
- *   pass. Files, buttons and commands need further checks, so they are
- *   behind `unverified` options, off by default.
+ * - The base live checks ran against production. Files, buttons and
+ *   commands need further checks, so they are behind `unverified`
+ *   options, off by default.
  * - There is no `ephemeral`: a private answer to a command is refused
  *   through `Handler.refused`, never posted. `fetchMessage`, `history`,
  *   `opener`, `startThread`, selects, modals, native streams and reaction

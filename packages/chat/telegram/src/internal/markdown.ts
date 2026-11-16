@@ -9,7 +9,7 @@
 /** What one line break or block marker costs, so that a message in budget stays under 500 blocks. @internal */
 export const block = 65
 
-/** Telegram's rich message limit, read as UTF-8 bytes. @internal */
+/** Telegram's rich message limit. It counts rendered characters, which UTF-8 bytes of the source bound. @internal */
 export const richLimit = 32_768
 
 /** Files one post may carry. @internal */
@@ -49,7 +49,8 @@ const isDigit = (c: string) => c >= "0" && c <= "9"
  * - a code point in the Basic Multilingual Plane costs its UTF-8 length,
  *   and each UTF-16 surrogate 3, enough for the U+FFFD a lone one becomes.
  *   NUL costs 3 too, as Markdown turns it into U+FFFD.
- * - `<` costs 4, a backslash 3 (`%5C` in a bare URL), and
+ * - `<` costs 4, a backslash 5 (the numeric reference, such as `&#93;`,
+ *   that an escape Telegram ignores becomes), and
  *   `$ = | ! [ ] * _ ~` and the backtick 2, their escaped length or more,
  *   whether or not they are escaped in context.
  * - `\n` and `\r` cost `block`, as does a block marker (`>`, a bullet,
@@ -84,7 +85,9 @@ export const measure = (markdown: string): number => {
       }
       prefix = false
     }
-    cost += code === 0 || c === "\\"
+    cost += c === "\\"
+      ? 5
+      : code === 0
       ? 3
       : c === "<"
       ? 4
@@ -242,32 +245,45 @@ const linkTail = (line: string, start: number): { readonly destination: string; 
   return line[i] === ")" ? { destination, end: i + 1 } : undefined
 }
 
-const tailEscapes = new Set(["`", "$", "=", "|", "!", "[", "]", "*", "_", "~"])
+/**
+ * The punctuation whose backslash escape Telegram honors. Before any other
+ * punctuation the backslash stays as text and the character is read as
+ * syntax: `\<b>` is bold. `\]` hides the bracket from emphasis but still
+ * closes a link or a definition label, so it is not here either.
+ */
+const honored = new Set("!#$()*+-.=>[\\_`{|}~")
+
+/** A consumer's escape of `c` as Telegram reads it: kept, or a numeric character reference. */
+const escapeOf = (c: string): string => honored.has(c) ? "\\" + c : `&#${c.charCodeAt(0)};`
 
 /**
- * A kept link's tail with every character that is syntax elsewhere
- * escaped. CommonMark decodes the escapes in destinations and titles, so
- * the link is the same, and a parser that does not read the link sees
- * inert text.
+ * A kept destination as Telegram needs it. Telegram reads a destination
+ * verbatim, with no escapes, so they are decoded, a parenthesis or
+ * backslash percent-encoded, and a `<` too, which would end the link.
  */
-const escapeTail = (tail: string): string => {
-  let out = ""
-  for (let i = 0; i < tail.length; i++) {
-    const c = tail[i]
-    if (c === "\\" && punctuation.test(tail[i + 1] ?? "")) {
-      // `\<` and `&lt;` decode alike, but after a bare URL only one is inert.
-      out += tail[++i] === "<" ? "&lt;" : c + tail[i]
-      continue
-    }
-    out += c === "<" ? "&lt;" : tailEscapes.has(c) ? "\\" + c : c
-  }
-  return out
+const destinationOf = (raw: string): string =>
+  raw.replace(/\\([!-/:-@[-`{-~])|</g, (match, escaped: string | undefined) => {
+    const c = escaped ?? match
+    return percentEncoded[c] ?? c
+  })
+
+const percentEncoded: Readonly<Record<string, string>> = {
+  "(": "%28",
+  ")": "%29",
+  "\\": "%5C",
+  "<": "%3C",
+  ">": "%3E"
 }
 
 /** The destination of a reference definition after `]:`, when it is on this line. */
-const definitionDestination = (line: string, start: number): string | undefined => {
+const definitionDestination = (
+  line: string,
+  start: number
+): { readonly destination: string; readonly end: number } | undefined => {
   const match = /^[ \t]*(\S+)/.exec(line.slice(start))
-  return match === null || match[1].startsWith("<") ? undefined : match[1]
+  return match === null || match[1].startsWith("<")
+    ? undefined
+    : { destination: match[1], end: start + match[0].length }
 }
 
 /**
@@ -300,6 +316,9 @@ const codeSpanEnd = (line: string, start: number, tableRow: boolean): number | u
  */
 const bareUrl = /^(?:https?:\/\/|www\.)/i
 
+/** A thematic break, whose delimiters stand alone. */
+const thematicBreak = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
+
 const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}):[^\s<>`]*>/
 
 /**
@@ -308,12 +327,24 @@ const autolink = /^<([A-Za-z][A-Za-z0-9+.-]{1,31}):[^\s<>`]*>/
  * whether a run closes, and what, depends on flanking rules and links that
  * this renderer does not follow, and a node needs at least one opener.
  * `containers` is the most container depth of the paragraph's lines, as a
- * lazy continuation line stays in containers it does not repeat.
+ * lazy continuation line stays in containers it does not repeat. `nodes`
+ * counts the code spans, links and footnote references, which Telegram
+ * caps per paragraph.
  */
 interface Inline {
   open: number
   containers: number
+  nodes: number
 }
+
+/** The inline nodes one paragraph may hold. Telegram refuses a paragraph past about 4,387. @internal */
+export const maxInlineNodes = 4000
+
+/** What one footnote reference costs against `maxInlineNodes`: its superscript, anchor and link. */
+const footnoteNodes = 3
+
+/** The footnote references one message may hold. Telegram refuses about 774 to one footnote. @internal */
+export const maxFootnoteReferences = 700
 
 interface LineContext {
   readonly tableRow: boolean
@@ -321,6 +352,14 @@ interface LineContext {
   readonly setext: boolean
   readonly inline: Inline
   readonly mentions: ReadonlySet<string>
+  /** Footnote references so far in the message. */
+  readonly footnotes: { count: number }
+  /**
+   * Whether a definition may start this line: after a blank line, the
+   * start of the text or another definition, outside containers. Set to
+   * whether this line kept one.
+   */
+  readonly definitions: { allowed: boolean }
 }
 
 /**
@@ -354,6 +393,20 @@ const renderLine = (line: string, context: LineContext): string => {
   const inline = context.inline
   inline.containers = Math.max(inline.containers, prefix.depth)
   const limit = Math.max(0, maxDepth - 1 - inline.containers)
+  /** Counts `n` inline nodes, or says no when the paragraph has no room left. */
+  const node = (n: number): boolean => {
+    if (inline.nodes + n > maxInlineNodes) return false
+    inline.nodes += n
+    return true
+  }
+  // Where the line's opening `[` is in `out`, for a definition refused at its `]:`.
+  const label = line[prefix.rest] === "[" ? prefix.text.length : undefined
+  let labelEscaped = false
+  const definitionAllowed = context.definitions.allowed && prefix.depth === 0
+  context.definitions.allowed = false
+  // The `[` that could still open a link, as CommonMark counts them: each
+  // \`]` takes the nearest, and a link takes them all.
+  let openers = 0
   let out = prefix.text
   let urlEnd = -1
   let i = prefix.rest
@@ -373,14 +426,14 @@ const renderLine = (line: string, context: LineContext): string => {
       continue
     }
     if (c === "\\" && next !== undefined && punctuation.test(next)) {
-      out += c + next
+      out += escapeOf(next)
       i += 2
       continue
     }
     switch (c) {
       case "`": {
         const end = inUrl ? undefined : codeSpanEnd(line, i, context.tableRow)
-        if (end !== undefined) {
+        if (end !== undefined && node(1)) {
           out += line.slice(i, end)
           i = end
           continue
@@ -393,7 +446,7 @@ const renderLine = (line: string, context: LineContext): string => {
       }
       case "<": {
         const match = inUrl ? null : autolink.exec(line.slice(i))
-        if (match !== null && /^(?:https?|mailto)$/i.test(match[1])) {
+        if (match !== null && /^(?:https?|mailto)$/i.test(match[1]) && node(1)) {
           out += match[0]
           i += match[0].length
         } else {
@@ -418,21 +471,62 @@ const renderLine = (line: string, context: LineContext): string => {
         out += next === "[" ? "\\!" : "!"
         i++
         continue
-      case "]": {
-        if (next === "(") {
-          const tail = linkTail(line, i + 1)
-          if (tail !== undefined && allowedDestination(tail.destination, context.mentions)) {
-            out += "](" + escapeTail(line.slice(i + 2, tail.end - 1)) + ")"
-            i = tail.end
+      case "[":
+        // A footnote reference, unless it opens the line's footnote definition.
+        if (next === "^" && !(footnote && i === prefix.rest)) {
+          if (context.footnotes.count >= maxFootnoteReferences || !node(footnoteNodes)) {
+            out += "\\["
+            i++
             continue
           }
-          out += "\\]"
-        } else if (next === ":" && !(footnote && i === line.indexOf("]", prefix.rest))) {
-          const destination = definitionDestination(line, i + 2)
-          out += destination !== undefined && allowedDestination(destination, context.mentions) ? "]" : "\\]"
-        } else {
-          out += "]"
+          context.footnotes.count++
+        } else if (!inUrl) {
+          openers++
         }
+        out += "["
+        i++
+        continue
+      case "]": {
+        // Telegram closes a link at `]` even when it is escaped, so a refused
+        // link loses its `(` and a refused definition its opening `[`. A
+        // kept destination is sent verbatim, which is inert only if it is
+        // read as one: a link needs an opener on its line, a definition the
+        // start of a line where one may stand.
+        const opened = openers > 0
+        if (opened) openers--
+        if (next === "(") {
+          const tail = linkTail(line, i + 1)
+          if (
+            opened && tail !== undefined && allowedDestination(tail.destination, context.mentions) && node(1)
+          ) {
+            out += "](" + destinationOf(tail.destination) + ")"
+            i = tail.end
+            openers = 0
+            continue
+          }
+          out += "]\\("
+          i += 2
+          continue
+        }
+        if (next === ":" && !(footnote && i === line.indexOf("]", prefix.rest))) {
+          const definition = definitionDestination(line, i + 2)
+          if (
+            definitionAllowed && label !== undefined && i === line.indexOf("]", prefix.rest) &&
+            definition !== undefined && allowedDestination(definition.destination, context.mentions)
+          ) {
+            out += "]: " + destinationOf(definition.destination)
+            i = definition.end
+            context.definitions.allowed = true
+            continue
+          }
+          // Telegram reads a definition wherever the line's first `[` closes
+          // at a `]:`, also past other brackets.
+          if (label !== undefined && !labelEscaped && out[label] === "[") {
+            out = out.slice(0, label) + "\\" + out.slice(label)
+            labelEscaped = true
+          }
+        }
+        out += "]"
         i++
         continue
       }
@@ -443,9 +537,17 @@ const renderLine = (line: string, context: LineContext): string => {
         while (line[end] === c) end++
         const run = line.slice(i, end)
         const after = line[end]
+        const spaced = (ch: string | undefined) => ch === undefined || ch === " " || ch === "\t"
+        // A run with space on both sides is text to CommonMark, but Telegram
+        // opens emphasis with it: `2 * 3 * 4` (live check 2).
+        if (spaced(i === prefix.rest ? undefined : line[i - 1]) && spaced(after) && !thematicBreak.test(line)) {
+          out += run.split("").map((char) => "\\" + char).join("")
+          i = end
+          continue
+        }
         // A run of n delimiters can open n levels: `***a*b*c*` is three.
         // One followed by a space or the line's end can't open.
-        if (after !== undefined && after !== " " && after !== "\t") {
+        if (!spaced(after)) {
           if (inline.open + run.length > limit) {
             out += run.split("").map((char) => "\\" + char).join("")
             i = end
@@ -485,11 +587,20 @@ export interface RenderOptions {
  *   backslash with it. `$` and `=` are escaped (math, marks), except `=`
  *   under a paragraph of plain top-level lines (a setext heading), as is `|` outside tables
  *   (spoilers), and `!` before `[` (images).
+ * - A backslash escape Telegram ignores becomes a numeric character
+ *   reference, so `\<` is no HTML and `\]` closes no link.
  * - A link or reference definition whose destination, decoded as a
  *   Markdown parser and then a URL parser would, is not http, https or
- *   mailto has its `]` escaped, so it is text. A `tg://user` link stays
- *   for an id in `mentions`. A kept link's tail must end on its line and
- *   has its syntax characters escaped.
+ *   mailto is text: a link loses its `(`, a definition its opening `[`.
+ *   A `tg://user` link stays for an id in `mentions`. A kept link needs its
+ *   `[` and its whole tail on its line, a kept definition the top level
+ *   after a blank line or another definition. Its destination is sent as
+ *   Telegram reads it, verbatim, and its title is dropped.
+ * - A `*`, `_` or `~` run with space on both sides is escaped, outside a
+ *   thematic break: Telegram would open emphasis with it.
+ * - Code spans, links and footnote references past `maxInlineNodes` in a
+ *   paragraph, or footnote references past `maxFootnoteReferences` in the
+ *   message, are text.
  * - Container markers and emphasis past 16 levels are escaped. Every
  *   delimiter that could open emphasis counts as a level until the
  *   paragraph ends, at a blank line or a line that surely starts a block,
@@ -542,7 +653,9 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     for (const row of rows) tableRows.set(row, columns > maxColumns || cellCount(lines[row]) > maxColumns)
     i = end - 1
   }
-  const inline: Inline = { open: 0, containers: 0 }
+  const inline: Inline = { open: 0, containers: 0, nodes: 0 }
+  const footnotes = { count: 0 }
+  const definitions = { allowed: true }
   let item: string | undefined
   // Whether every line since the last blank one is plain text at the top
   // level: no container, definition, table or other block that a `=` under
@@ -552,15 +665,29 @@ export const render = (markdown: string, options: RenderOptions = {}): string =>
     const blank = isBlank(line)
     const setext = plain && i > 0 && !isBlank(lines[i - 1]) && /^ {0,3}=+[ \t]*$/.test(line)
     plain = !fenced[i] && (blank || (plain && !/^\s/.test(line) && !blockStart.test(line) && !line.includes("|")))
-    if (fenced[i]) return line
+    if (fenced[i]) {
+      definitions.allowed = false
+      return line
+    }
     const wide = tableRows.get(i)
     const starts = blank ? undefined : startsBlock(line, item)
     item = typeof starts === "string" ? starts : undefined
     if (blank || starts !== undefined || wide !== undefined) {
       inline.open = 0
       inline.containers = 0
+      inline.nodes = 0
     }
-    return renderLine(line, { tableRow: wide !== undefined, widePipes: wide === true, setext, inline, mentions })
+    const rendered = renderLine(line, {
+      tableRow: wide !== undefined,
+      widePipes: wide === true,
+      setext,
+      inline,
+      mentions,
+      footnotes,
+      definitions
+    })
+    if (blank) definitions.allowed = true
+    return rendered
   })
   let text = out.join("\n")
   const files = options.files ?? 0

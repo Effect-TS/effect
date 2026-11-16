@@ -87,8 +87,15 @@ const refinements: ReadonlyArray<readonly [string, (detail: string) => ChatError
   ["bot was blocked", (detail) => new Forbidden({ detail }), "blocked"],
   ["bot was kicked", (detail) => new Forbidden({ detail }), "kicked"],
   ["bot is not a member", (detail) => new Forbidden({ detail }), "not_a_member"],
+  // A rich message's limits, as live check 3 found them.
+  ["rich_message_text_too_long", (detail) => tooLarge("text", detail), "message_too_long"],
+  ["rich_message_too_large", (detail) => tooLarge("text", detail), "message_too_large"],
+  ["rich_message_blocks_too_many", (detail) => tooLarge("text", detail), "too_many_blocks"],
+  ["rich_message_depth_invalid", invalidRequest, "too_deep"],
+  ["rich_message_table_cols_too_many", invalidRequest, "too_many_columns"],
+  ["rich_message_empty", invalidRequest, "empty_message"],
+  ["rich_message_markdown_invalid", invalidRequest, "invalid_markdown"],
   ["too long", (detail) => tooLarge("text", detail), "message_too_long"],
-  ["too many blocks", (detail) => tooLarge("text", detail), "too_many_blocks"],
   ["file is too big", () => refusedFile, fileRefused],
   ["wrong file", () => refusedFile, fileRefused]
 ]

@@ -13,7 +13,15 @@ export interface Findings {
   readonly blocks: number
   /** Text that reached the parser with an unescaped `|`, `$` or `=`, Telegram's spoiler, math and mark syntax. */
   readonly active: ReadonlyArray<string>
+  /**
+   * Text holding a backslash escape Telegram does not honor, which it shows
+   * as a backslash and then reads the character as syntax (live check 2).
+   */
+  readonly unhonored: ReadonlyArray<string>
 }
+
+/** Punctuation whose backslash escape Telegram honors. */
+const honored = /[!#$()*+\-.=>[\\_`{|}~]/
 
 const nesting = new Set(["blockquote", "listItem", "emphasis", "strong", "delete"])
 const blockTypes = new Set([
@@ -38,6 +46,7 @@ export const inspect = (markdown: string): Findings => {
   let maxColumns = 0
   let blocks = 0
   const active: Array<string> = []
+  const unhonored: Array<string> = []
   const visit = (node: Mdast.Nodes, depth: number) => {
     const d = nesting.has(node.type) ? depth + 1 : depth
     maxDepth = Math.max(maxDepth, d)
@@ -47,6 +56,9 @@ export const inspect = (markdown: string): Findings => {
         if (node.position === undefined) break
         const source = markdown.slice(node.position.start.offset, node.position.end.offset)
         if (/(?:^|[^\\])(?:\\\\)*[|$=]/.test(source)) active.push(source)
+        for (const match of source.matchAll(/(?:^|[^\\])(?:\\\\)*\\([!-/:-@[-`{-~])/g)) {
+          if (!honored.test(match[1])) unhonored.push(source)
+        }
         break
       }
       case "html":
@@ -71,5 +83,5 @@ export const inspect = (markdown: string): Findings => {
     if ("children" in node) { for (const child of node.children) visit(child as Mdast.Nodes, d) }
   }
   visit(parse(markdown), 0)
-  return { html, images, links, maxDepth, maxColumns, blocks, active }
+  return { html, images, links, maxDepth, maxColumns, blocks, active, unhonored }
 }

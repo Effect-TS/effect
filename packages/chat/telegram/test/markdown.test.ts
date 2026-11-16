@@ -7,6 +7,8 @@
 import {
   maxColumns,
   maxDepth,
+  maxFootnoteReferences,
+  maxInlineNodes,
   measure,
   messageLength,
   render,
@@ -19,19 +21,37 @@ import { inspect } from "./gfm.ts"
 /** The most blocks Telegram renders in one message. */
 const maxBlocks = 500
 
+// Live check 2 found that Telegram ignores the escapes `\]` and `\<`, reads destinations
+// verbatim, reads definitions more loosely than CommonMark and opens emphasis
+// between spaces: the last six cases.
 const cases: ReadonlyArray<readonly [string, string]> = [
   ["<b>hi</b> <https://e.com> <javascript:alert(1)>", "&lt;b>hi&lt;/b> <https://e.com> &lt;javascript:alert(1)>"],
   ["![a](https://e.com/a.png) ![b][r]", "\\![a](https://e.com/a.png) \\![b][r]"],
-  ["[me](tg://user?id=1) [ok](tg://user?id=2)", "[me\\](tg://user?id\\=1) [ok](tg://user?id\\=2)"],
+  ["[me](tg://user?id=1) [ok](tg://user?id=2)", "[me]\\(tg://user?id\\=1) [ok](tg://user?id=2)"],
   [
     "[a](tg&#58;//x) [b](tg%3A//x) [c](tg\\://x) [d](javascript:x)",
-    "[a\\](tg&#58;//x) [b\\](tg%3A//x) [c\\](tg\\://x) [d\\](javascript:x)"
+    "[a]\\(tg&#58;//x) [b]\\(tg%3A//x) [c]\\(tg&#58;//x) [d]\\(javascript:x)"
   ],
-  ["[r]\n\n[r]: tg://user?id=1", "[r]\n\n[r\\]: tg://user?id\\=1"],
+  ["[r]\n\n[r]: tg://user?id=1", "[r]\n\n\\[r]: tg://user?id\\=1"],
   ["$x$ ==m== ||s||", "\\$x\\$ \\=\\=m\\=\\= \\|\\|s\\|\\|"],
   ["| a | b |\n|---|---|\n| 1 | 2 |", "| a | b |\n|---|---|\n| 1 | 2 |"],
   ["`<b>` and `open", "`<b>` and \\`open"],
-  [">".repeat(17) + " x", ">".repeat(15) + "\\>\\> x"]
+  [">>>>>>>>>>>>>>>>> x", ">>>>>>>>>>>>>>>\\>\\> x"],
+  ["[x\\](tg://resolve?domain=telegram) \\<b>x\\</b>", "[x&#93;(tg://resolve?domain\\=telegram) &#60;b>x&#60;/b>"],
+  [
+    "[a](https://e.com/?q=1&x=2 \"t\") [b](https://e.com/a_b*c\\(d\\))",
+    "[a](https://e.com/?q=1&x=2) [b](https://e.com/a_b*c%28d%29)"
+  ],
+  [
+    "](https://e.com||s||) [a [b](https://e.com) c](https://e.com)",
+    "]\\(https://e.com\\|\\|s\\|\\|) [a [b](https://e.com) c]\\(https://e.com)"
+  ],
+  [
+    "[a][b]: tg://x\n\n [c]: tg://x\n\ntext\n[d]: https://e.com",
+    "\\[a][b]: tg://x\n\n \\[c]: tg://x\n\ntext\n\\[d]: https://e.com"
+  ],
+  ["a\\:b \\@c \\^d \\&amp;", "a&#58;b &#64;c &#94;d &#38;amp;"],
+  ["2 * 3 * 4 a _ b\n\n***", "2 \\* 3 \\* 4 a \\_ b\n\n***"]
 ]
 
 const bytes = (s: string) => new TextEncoder().encode(s).length
@@ -51,6 +71,7 @@ const assertInert = (input: string) => {
     context
   )
   assert.deepStrictEqual(found.active, [], context)
+  assert.deepStrictEqual(found.unhonored, [], context)
   assert.isAtMost(found.maxDepth, maxDepth, context)
   assert.isAtMost(found.maxColumns, maxColumns, context)
   if (measure(input) <= messageLength) assert.isAtMost(found.blocks, maxBlocks, context)
@@ -163,6 +184,15 @@ describe("render", () => {
       }),
       { numRuns: 40 }
     )
+  })
+
+  it("caps the code spans, links and footnote references Telegram refuses past a limit", () => {
+    const spans = render("`a` ".repeat(maxInlineNodes + 10))
+    assert.strictEqual(spans.match(/(?<!\\)`a(?<!\\)`/g)?.length, maxInlineNodes)
+    const links = render("[a](https://e.com) ".repeat(maxInlineNodes + 10))
+    assert.strictEqual(links.split("](").length - 1, maxInlineNodes)
+    const references = render(Array.from({ length: 10 }, () => "x[^1]".repeat(100)).join("\n\n") + "\n\n[^1]: n")
+    assert.strictEqual(references.match(/(?<!\\)\[\^1\]/g)?.length, maxFootnoteReferences + 1)
   })
 
   it("escapes the pipes of a table wider than 20 columns", () => {

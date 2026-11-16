@@ -171,6 +171,31 @@ const webhook = Effect.fnUntraced(function*(
     ).pipe(Effect.map((response) => response.status))
 })
 
+describe("errors", () => {
+  it.effect("maps the rich message errors captured in live check 10", () =>
+    Effect.gen(function*() {
+      const captured: ReadonlyArray<readonly [string, string, string]> = [
+        ["RICH_MESSAGE_TEXT_TOO_LONG", "TooLarge", "message_too_long"],
+        ["RICH_MESSAGE_TOO_LARGE", "TooLarge", "message_too_large"],
+        ["RICH_MESSAGE_BLOCKS_TOO_MANY", "TooLarge", "too_many_blocks"],
+        ["RICH_MESSAGE_DEPTH_INVALID", "InvalidRequest", "too_deep"],
+        ["RICH_MESSAGE_TABLE_COLS_TOO_MANY", "InvalidRequest", "too_many_columns"],
+        ["RICH_MESSAGE_EMPTY", "InvalidRequest", "empty_message"],
+        ["RICH_MESSAGE_MARKDOWN_INVALID", "InvalidRequest", "invalid_markdown"]
+      ]
+      for (const [description, tag, detail] of captured) {
+        const api = makeApi()
+        api.next.set("sendRichMessage", apiError(400, `Bad Request: ${description}`))
+        const error = yield* Effect.flatMap(Chat.Chat, (chat) => chat.post(thread, { markdown: "hi" })).pipe(
+          Effect.flip,
+          Effect.provide(telegramLayer(api))
+        )
+        assert.strictEqual(error.reason._tag, tag, description)
+        assert.strictEqual("detail" in error.reason ? error.reason.detail : undefined, detail, description)
+      }
+    }))
+})
+
 describe("layerWebhook", () => {
   it.effect("needs the secret, then answers for the body and the outcome", () =>
     Effect.gen(function*() {
