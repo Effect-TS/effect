@@ -57,10 +57,13 @@ import * as ArrowIpc from "../arrow/ArrowIpc.ts"
 import * as Effect from "../Effect.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
+import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaParser from "../SchemaParser.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import { type DataFrame, isDataFrame } from "./DataFrame.ts"
 import * as F from "./internal/frame.ts"
+import * as Q from "./internal/query.ts"
 
 // -----------------------------------------------------------------------------
 // Values
@@ -706,9 +709,10 @@ export interface TableColumn {
  *
  * **Gotchas**
  *
- * The tests are functions, so they are not part of the JSON form of a plan.
- * A SQL engine runs `columns` tests on the distinct values of each column
- * and fails for a table with a `rows` test.
+ * The tests are functions and have no JSON form: {@link NodeFromJson} fails
+ * for a table that has them (see {@link withoutChecks}). A SQL engine runs
+ * `columns` tests on the distinct values of each column and fails for a
+ * table with a `rows` test.
  *
  * @stability experimental
  * @category models
@@ -756,7 +760,9 @@ export interface TableChecks {
  *
  * **Gotchas**
  *
- * `checks` is not part of the JSON form: a plan decoded from JSON checks
+ * `checks` has no JSON form. {@link NodeFromJson} fails to encode a table
+ * that has them, naming the table, and fails to decode JSON with a `checks`
+ * key. {@link withoutChecks} removes them: the plan then encodes, and checks
  * column types only.
  *
  * @stability experimental
@@ -1079,12 +1085,63 @@ const TableColumnSchema: Schema.Codec<TableColumn> = Schema.Struct({
   unit: Schema.optional(TimeUnit)
 })
 
+const isTableChecks = (u: unknown): u is TableChecks =>
+  typeof u === "object" && u !== null && "columns" in u && Array.isArray(u.columns) &&
+  u.columns.every((c) =>
+    Array.isArray(c) && c.length === 2 && typeof c[0] === "string" && typeof c[1] === "function"
+  ) &&
+  (!("rows" in u) || u.rows === undefined || typeof u.rows === "function")
+
+const tableFields = { name: Schema.String, columns: Schema.optional(Schema.Array(TableColumnSchema)) }
+
+const TableStruct = Schema.TaggedStruct("Table", {
+  ...tableFields,
+  checks: Schema.optional(Schema.declare(isTableChecks, { expected: "TableChecks" }))
+})
+
+/** A table in JSON; `checks` is only there to be refused. */
+const TableJson = Schema.TaggedStruct("Table", { ...tableFields, checks: Schema.optional(Schema.Unknown) })
+
+/** Fails for a table with checks: dropping them would drop the validation they do. */
+const layoutOnly = <A extends { readonly name: string; readonly checks?: unknown }>(
+  table: A
+): Effect.Effect<A, SchemaIssue.Issue> =>
+  table.checks === undefined
+    ? Effect.succeed(table)
+    : Effect.fail(
+      new SchemaIssue.Forbidden({
+        message: `table ${JSON.stringify(table.name)} has checks, which are functions without a JSON form: ` +
+          "encode Plan.withoutChecks(plan), and declare the table again with Query.table to check the decoded plan's rows"
+      }, table)
+    )
+
+const tableFromJson: SchemaTransformation.Transformation<Table, typeof TableJson.Type> = SchemaTransformation
+  .transformEffect({
+    decode: (json) => layoutOnly(json as Table),
+    encode: (table) => layoutOnly(table as typeof TableJson.Type)
+  })
+
+/**
+ * A table as it is, checks included, so that validating a plan keeps them;
+ * the JSON form refuses a table with checks instead of dropping them.
+ */
+const TableSchema = Schema.declareConstructor<Table>()(
+  [],
+  () => (u, _, options) => Effect.as(SchemaParser.decodeUnknownEffect(TableStruct)(u, options), u as Table),
+  {
+    expected: "Table",
+    // A union picks this member by its tag, as it does a struct.
+    "~sentinels": SchemaAST.collectSentinels(TableStruct.ast),
+    toCodecJson: () => Schema.link<Table>()(TableJson, tableFromJson)
+  }
+)
+
 const NodeSchema = Schema.suspend((): Schema.Codec<Node, unknown> => NodeUnion)
 const Columns = Schema.Array(Schema.String)
 
 const NodeUnion = Schema.Union([
   Schema.TaggedStruct("Values", { frame: Frame }),
-  Schema.TaggedStruct("Table", { name: Schema.String, columns: Schema.optional(Schema.Array(TableColumnSchema)) }),
+  TableSchema,
   Schema.TaggedStruct("Filter", { input: NodeSchema, predicate: ExpressionSchema }),
   Schema.TaggedStruct("Select", { input: NodeSchema, columns: Schema.Array(NamedSchema) }),
   Schema.TaggedStruct("WithColumns", { input: NodeSchema, columns: Schema.Array(NamedSchema) }),
@@ -1121,6 +1178,10 @@ const NodeUnion = Schema.Union([
 /**
  * Schema of {@link Node}.
  *
+ * **Details**
+ *
+ * A valid plan decodes and encodes to itself: tables keep their `checks`.
+ *
  * @stability experimental
  * @category schemas
  * @since 4.1.5
@@ -1130,11 +1191,69 @@ export const Node: Schema.Codec<Node, unknown> = NodeSchema
 /**
  * A {@link Node} from its JSON form.
  *
+ * **Gotchas**
+ *
+ * A table's `checks` are functions and have no JSON form. Encoding a plan
+ * fails for a table that has them instead of leaving them out, and so does
+ * decoding JSON with a `checks` key (the plan as `JSON.stringify` writes
+ * it). Encode {@link withoutChecks} of the plan to send it without them. A
+ * decoded plan never has checks: to test its tables' rows, build the query
+ * from `Query.table` with the schema where the plan is decoded.
+ *
  * @stability experimental
  * @category schemas
  * @since 4.1.5
  */
 export const NodeFromJson: Schema.Codec<Node, Schema.Json> = Schema.toCodecJson(Node) as any
+
+/**
+ * The plan with the {@link TableChecks} of its tables removed, so that
+ * {@link NodeFromJson} encodes it.
+ *
+ * **When to use**
+ *
+ * Use to send or store a plan whose tables were declared by a struct schema
+ * with refinements, literals or enums, when the reader of the plan doesn't
+ * need those values tested.
+ *
+ * **Details**
+ *
+ * Tables keep their names and declared columns: the result still fails for a
+ * table without those columns, with nulls in non-nullable ones or with values
+ * a column's type can't hold.
+ *
+ * **Gotchas**
+ *
+ * The result accepts values the schema rejects, here and after decoding.
+ * Checks can't be attached to a decoded plan: to test the rows again, build
+ * the query from `Query.table` with the schema where the plan is decoded.
+ *
+ * **Example** (Encoding a plan over a table with refinements)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, Schema } from "effect"
+ * import { Plan, Query } from "effect/dataframe"
+ *
+ * const Reading = Schema.Struct({ temp: Schema.Number.check(Schema.isGreaterThan(-273.15)) })
+ * const query = Query.table("readings", Reading)
+ *
+ * const encode = Schema.encodeResult(Plan.NodeFromJson)
+ * Result.isFailure(encode(query.plan)) // => true
+ *
+ * const columns = [{ name: "temp", type: "Float64", nullable: false }]
+ * Result.getOrThrow(encode(Plan.withoutChecks(query.plan))) // => { _tag: "Table", name: "readings", columns }
+ * ```
+ *
+ * @stability experimental
+ * @category combinators
+ * @since 4.1.5
+ */
+export const withoutChecks = (plan: Node): Node =>
+  Q.mapTables(plan as Q.Node, (table) => {
+    if (table.checks === undefined) return table
+    const { checks: _, ...layout } = table
+    return layout
+  }) as Node
 
 /**
  * An {@link Expression} from its JSON form.

@@ -197,7 +197,7 @@ describe("Query", () => {
       }))
 
     // DF-Q043 (API contract): Query.table; pinned source in README.md.
-    it.effect("compiles a schema's checks when the table is declared, not per batch", () =>
+    it.effect("compiles a schema's checks when the table is declared, and does not encode them to JSON", () =>
       Effect.gen(function*() {
         const Kind = Schema.Struct({ kind: Schema.Literals(["a", "b"]) })
         let reads = 0
@@ -218,13 +218,30 @@ describe("Query", () => {
         const error = yield* Effect.flip(read(query, [good, good, bad]))
         assert.strictEqual(error.message, `column "kind" has values its schema rejects`)
         assert.strictEqual(reads, declared)
-        // The checks are functions: they stay out of the JSON form of the plan.
-        const json = JSON.stringify(Schema.encodeSync(Plan.NodeFromJson)(query.plan))
+        // The checks are functions without a JSON form: a plan that carries them is not encoded.
+        const first = query.pipe(Query.head(3))
+        const rejected = /table "t" has checks[^]*Plan\.withoutChecks/
+        assert.throws(() => Schema.encodeSync(Plan.NodeFromJson)(first.plan), rejected)
+        assert.throws(() => Schema.encodeSync(Schema.toCodecJson(Schema.Struct({ plan: Plan.Node })))(first), rejected)
+        // Nor is one decoded from JSON written without the codec, where the functions are lost.
+        assert.throws(
+          () => Schema.decodeUnknownSync(Plan.NodeFromJson)(JSON.parse(JSON.stringify(first.plan))),
+          /table "t" has checks/
+        )
+        // Validating a plan keeps its checks.
+        const validated = Query.fromPlan(Schema.decodeUnknownSync(Plan.Node)(first.plan))
+        assert.strictEqual(
+          (yield* Effect.flip(read(validated, [good, bad]))).message,
+          `column "kind" has values its schema rejects`
+        )
+        // Removing them is explicit: the plan then encodes, and checks column types only.
+        const json = JSON.stringify(Schema.encodeSync(Plan.NodeFromJson)(Plan.withoutChecks(first.plan)))
         const decoded = Query.fromPlan(Schema.decodeUnknownSync(Plan.NodeFromJson)(JSON.parse(json)))
         assert.deepStrictEqual(decoded.plan, {
-          _tag: "Table",
-          name: "t",
-          columns: [{ name: "kind", type: "Utf8", nullable: false }]
+          _tag: "Slice",
+          input: { _tag: "Table", name: "t", columns: [{ name: "kind", type: "Utf8", nullable: false }] },
+          offset: 0,
+          length: 3
         })
         assert.strictEqual((yield* read(decoded, [good, bad])).length, 3)
       }))

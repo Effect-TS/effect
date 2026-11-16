@@ -264,8 +264,10 @@ export const from = <R>(frame: DataFrame<R>): Query<R> => make({ _tag: "Values",
  *   declaration can't take.
  * - A SQL engine can't check a struct's own checks on whole rows: a query
  *   over such a table fails.
- * - The tests are functions and not part of the plan's JSON form: a plan
- *   decoded from JSON checks column types only.
+ * - The tests are functions and have no JSON form: `Plan.NodeFromJson`
+ *   fails to encode a plan over a table that has them. Encode
+ *   `Plan.withoutChecks` of the plan to send it without them, and declare
+ *   the table again where the plan is decoded to test its rows there.
  *
  * **Example** (Declaring a table by an Arrow schema)
  *
