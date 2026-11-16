@@ -486,6 +486,15 @@ describe("ArrowParquet", () => {
             "x: Timestamp<nanosecond>",
             ["86400000000005", null, "-1"]
           ],
+          // The first and the last nanosecond 64 bits reach
+          [
+            optional(
+              Type.INT96,
+              bytes(int96(2440588 - 106752, 763145224192n), int96(2440588 + 106751, 85636854775807n))
+            ),
+            "x: Timestamp<nanosecond>",
+            ["-9223372036854775808", null, "9223372036854775807"]
+          ],
           [optional(Type.BYTE_ARRAY, binaries([0x61], [0x62, 0x63]), converted(Converted.UTF8)), "x: Utf8", [
             "a",
             null,
@@ -850,6 +859,23 @@ describe("ArrowParquet", () => {
           [3, 0, undefined]
         ])
         assert.deepStrictEqual(Option.getOrThrow(ArrowData.values(g.children[0])), Int32Array.of(5, 0, 7))
+
+        // The slot of a required field in a null struct is no value: neither a decimal without bytes nor a timestamp
+        const hidden = [
+          group("g", OPTIONAL, [leaf("d", REQUIRED, Type.BYTE_ARRAY, decimal(38, 0)), leaf("t", REQUIRED, Type.INT96)])
+        ]
+        const [inside] = yield* batchesOf(
+          tree(hidden, 3, [
+            [3, bytes(someNull, binaries([0x05], [0xfb]))],
+            [3, bytes(someNull, int96(2440588, 1n), int96(2440588, 2n))]
+          ])
+        )
+        assert.deepStrictEqual(valuesOf(inside.schema.fields[0], inside.columns[0]), [
+          { d: "5", t: "1" },
+          null,
+          { d: "-5", t: "2" }
+        ])
+        assert.deepStrictEqual(inside.columns[0].children.map((child) => child.nullCount), [0, 0])
 
         // A 2-level list: [1, 2], null, [], [3]. Levels (r, d) = (0, 2) (1, 2) (0, 0) (0, 1) (0, 2)
         const list = [group("l", OPTIONAL, [leaf("element", REPEATED)], LIST)]

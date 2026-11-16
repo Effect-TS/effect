@@ -337,12 +337,13 @@ const bytesDecimal = (annotation: Decimal, path: string): Leaf => {
   if (precision > 76) {
     unsupported(`column "${path}" is a DECIMAL of ${precision} digits, more than the 76 of a 256-bit decimal`)
   }
-  const width = precision <= 38 ? 16 : 32
+  const bitWidth = precision <= 38 ? 128 : 256
+  const width = bitWidth / 8
   return {
-    type: ArrowSchema.decimal(precision, scale, precision <= 38 ? 128 : 256),
+    type: ArrowSchema.decimal(precision, scale, bitWidth),
     convert: (values, slots) => {
       const out = new Uint8Array(slots.length * width)
-      const tooWide = (i: number) => malformed(`${slots.where}: value ${i} does not fit in ${width * 8} bits`)
+      const tooWide = (i: number) => malformed(`${slots.where}: value ${i} does not fit in ${bitWidth} bits`)
       if (values.type === "FIXED_LEN_BYTE_ARRAY") {
         const size = values.width
         for (let i = 0; i < slots.length; i++) {
@@ -383,6 +384,7 @@ const int96: Leaf = {
     const from = bytesOf(values.values)
     const view = new DataView(from.buffer, from.byteOffset, from.byteLength)
     const out = new Int32Array(slots.length * 2)
+    const wide = new DataView(out.buffer)
     for (let i = 0; i < slots.length; i++) {
       // A null slot holds zero bytes, which are not a timestamp in range.
       if (!hasValue(slots, i)) continue
@@ -401,7 +403,7 @@ const int96: Leaf = {
         if (nanos < BIG_INT64_MIN || nanos > BIG_INT64_MAX) {
           unsupported(`${slots.where}: INT96 timestamp ${i} is outside the range of 64-bit nanoseconds`)
         }
-        new DataView(out.buffer).setBigInt64(i * 8, nanos, true)
+        wide.setBigInt64(i * 8, nanos, true)
       }
     }
     return [bytesOf(out)]
