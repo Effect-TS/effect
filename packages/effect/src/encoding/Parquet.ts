@@ -346,6 +346,12 @@ export interface KeyValue {
  * {@link ColumnDescriptor.columnOrder}; `min` and `max` are the deprecated
  * fields, ordered by signed comparison.
  *
+ * **Gotchas**
+ *
+ * - When the column order is `undefined`, `minValue` and `maxValue` have no
+ *   known order. They are returned as written: don't compare values with
+ *   them.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
