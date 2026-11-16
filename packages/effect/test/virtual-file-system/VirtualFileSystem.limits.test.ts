@@ -103,6 +103,21 @@ describe("VirtualFileSystem finite limits", () => {
       assert.deepStrictEqual(yield* caller.readFile(file.reference), new Uint8Array([1]))
     }).pipe(withClock))
 
+  it.effect("reports the file quota when a path truncate also exceeds the safe integer range", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make({ limits: { fileBytes: 3 } })
+      const caller = yield* owner.authorize({ credentials })
+      yield* caller.writeFile("/file", new Uint8Array([7]))
+      const before = yield* caller.stat("/file")
+      const error = yield* Effect.flip(caller.truncate("/file", BigInt(Number.MAX_SAFE_INTEGER) + 1n))
+      assert.strictEqual(error._tag, "LimitExceeded")
+      if (error._tag === "LimitExceeded") {
+        assert.strictEqual(error.domain, "file")
+        assert.strictEqual(error.stage, "publication")
+      }
+      assert.deepStrictEqual(yield* caller.stat("/file"), before)
+    }).pipe(withClock))
+
   it.effect("should return a typed range failure without publication when a truncate length cannot be represented", () =>
     Effect.gen(function*() {
       const length = BigInt(Number.MAX_SAFE_INTEGER) + 1n

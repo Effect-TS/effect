@@ -253,15 +253,17 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
 // Transaction helpers
 // -----------------------------------------------------------------------------
 
-const reserveFile = (tx: E.Transaction, amount: bigint): Result.Result<void, M.OperationError> =>
+/** @internal */
+export const reserveFile = (tx: E.Transaction, amount: bigint): Result.Result<number, M.OperationError> =>
   Result.gen(function*() {
-    if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
-      return yield* Result.fail(new M.InvalidInput({ operation: tx.operation, field: "length", reason: "range" }))
-    }
     if (amount > tx.engine.runtime.limits.fileBytes) {
       return yield* Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "file", stage: "publication" }))
     }
+    if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return yield* Result.fail(new M.InvalidInput({ operation: tx.operation, field: "length", reason: "range" }))
+    }
     yield* tx.reserveResult(amount)
+    return Number(amount)
   })
 
 // -----------------------------------------------------------------------------
@@ -643,10 +645,10 @@ export const truncate = (
     }
     yield* tx.requireResult(node, E.WRITE_PERMISSION)
     yield* tx.revisionResult(node, options)
-    yield* reserveFile(tx, requested)
+    const size = yield* reserveFile(tx, requested)
     tx.recordUpdate(node.id)
     if (requested === BigInt(node.data.length) && (node.mode & E.SET_ID_BITS) === 0) return
-    const data = new Uint8Array(Number(requested))
+    const data = new Uint8Array(size)
     data.set(node.data.subarray(0, data.length))
     const edited = yield* tx.editResult(node.id)
     if (edited.kind !== "file") {
@@ -734,18 +736,11 @@ export const attributesFor = (
       if (writeAccess === undefined) yield* tx.requireResult(node, E.WRITE_PERMISSION)
     }
     yield* tx.revisionResult(node, options)
-    if (requested !== undefined) {
-      if (requested > tx.engine.runtime.limits.fileBytes) {
-        return yield* Result.fail(
-          new M.LimitExceeded({ operation: tx.operation, domain: "file", stage: "publication" })
-        )
-      }
-      yield* reserveFile(tx, requested)
-    }
+    const size = requested === undefined ? undefined : yield* reserveFile(tx, requested)
     let changed = false
     const edited = yield* tx.editResult(node.id)
-    if (requested !== undefined && edited.kind === "file" && requested !== BigInt(edited.data.length)) {
-      const data = new Uint8Array(Number(requested))
+    if (size !== undefined && edited.kind === "file" && size !== edited.data.length) {
+      const data = new Uint8Array(size)
       data.set(edited.data.subarray(0, data.length))
       edited.data = data
       changed = true

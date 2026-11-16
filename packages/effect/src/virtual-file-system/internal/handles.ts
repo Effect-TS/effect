@@ -50,18 +50,6 @@ const io = (work: R.Work, length: number) =>
     ? Result.fail(new M.LimitExceeded({ operation: work.operation, domain: "io", stage: "admission" }))
     : Result.succeed(undefined)
 
-const candidate = (tx: E.Transaction, length: bigint) =>
-  Result.gen(function*() {
-    if (length > tx.engine.runtime.limits.fileBytes) {
-      return yield* Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "file", stage: "publication" }))
-    }
-    if (length > maxSafe) {
-      return yield* Result.fail(new M.InvalidInput({ operation: tx.operation, field: "length", reason: "range" }))
-    }
-    yield* tx.reserveResult(length)
-    return Number(length)
-  })
-
 const position = (value: unknown, operation: string) =>
   typeof value !== "bigint" || value < zero
     ? Result.fail(new M.InvalidInput({ operation, field: "position", reason: "range" }))
@@ -218,13 +206,13 @@ const prepareWrite = (
         const file = yield* node(tx, state)
         yield* tx.revisionResult(file, fixedOptions)
         if (length === 0) {
-          yield* candidate(tx, BigInt(file.data.length))
+          yield* A.reserveFile(tx, BigInt(file.data.length))
           return
         }
         const start = state.append ? BigInt(file.data.length) : fixedOptions.position ?? state.position
         const end = start + BigInt(length)
         const total = end > BigInt(file.data.length) ? end : BigInt(file.data.length)
-        const output = new Uint8Array(yield* candidate(tx, total))
+        const output = new Uint8Array(yield* A.reserveFile(tx, total))
         output.set(file.data)
         output.set(input, Number(start))
         const edited = yield* tx.editResult(file.id)
@@ -260,7 +248,7 @@ const prepareTruncate = (
         }
         const file = yield* node(tx, state)
         yield* tx.revisionResult(file, fixedOptions)
-        const size = yield* candidate(tx, length)
+        const size = yield* A.reserveFile(tx, length)
         tx.recordUpdate(file.id)
         if (file.data.length !== size || (file.mode & E.SET_ID_BITS) !== 0) {
           const output = new Uint8Array(size)
@@ -665,7 +653,7 @@ const openNode = (
         created = true
         if (options.initialSize !== undefined && selected.kind === "file") {
           const size = yield* R.sizeResult(options.initialSize, tx.operation, "initialSize")
-          selected.data = new Uint8Array(yield* candidate(tx, size))
+          selected.data = new Uint8Array(yield* A.reserveFile(tx, size))
         }
         if (options.preserveTimes !== undefined) {
           yield* tx.explicitTimeResult(selected.id, "atime", options.preserveTimes.atime)
@@ -685,7 +673,7 @@ const openNode = (
     }
     if (options.truncate && !created) {
       tx.recordUpdate(selected.id)
-      yield* candidate(tx, zero)
+      yield* A.reserveFile(tx, zero)
       if (selected.data.length > 0 || (selected.mode & E.SET_ID_BITS) !== 0) {
         const edited = yield* tx.editResult(selected.id)
         if (edited.kind !== "file") {
