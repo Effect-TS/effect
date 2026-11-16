@@ -64,8 +64,8 @@ export interface Scheduler {
  * Each captured context resumes its fiber once. `runInAsyncScope` either calls
  * `fn` synchronously, or arranges to call it exactly once later and returns.
  * A fiber whose resumption is still pending defers interrupts, and other
- * resumptions, until it lands. `emitDestroy` is called when `runInAsyncScope`
- * returns.
+ * resumptions, until it lands. A fiber interrupted before its start lands never
+ * runs. `emitDestroy` is called when `runInAsyncScope` returns.
  *
  * **Gotchas**
  *
