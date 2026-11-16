@@ -177,6 +177,11 @@ const decimals = arrow<{ d: BigDecimal.BigDecimal | null }>(
     s === null ? null : decimal(s)
   )]
 )
+/** Durations in microseconds, with a group that has none. */
+const spans = arrow<{ g: string; d: Duration.Duration | null }>(
+  [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.duration("microsecond"))],
+  [["a", "a", "a", "b", "c"], [7n, 9n, null, 4n, null]]
+)
 const units = { s: "second", ms: "millisecond", us: "microsecond", ns: "nanosecond" } as const
 const unitNames = ["s", "ms", "us", "ns"] as const
 /** One column `v` of `type`, its integers microsecond multiples in every unit (PostgreSQL keeps microseconds). */
@@ -821,6 +826,63 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         assert.include(text, `FROM "sales"`)
       }))
 
+    // DF-S017: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("sums durations to durations, as in memory", () =>
+      Effect.gen(function*() {
+        const totals = spans.pipe(Query.groupBy("g"), Query.agg((c) => ({ total: Expr.sum(c.d) })))
+        yield* both(totals)
+        yield* both(spans.pipe(Query.select((c) => ({
+          over: Expr.over(Expr.sum(c.d), [c.g]),
+          running: Expr.cumSum(c.d),
+          last2: Expr.rollingSum(c.d, 2),
+          least2: Expr.rollingMin(c.d, 2),
+          step: Expr.diff(c.d)
+        }))))
+        // A group without values sums to the zero duration.
+        const result = yield* onSql(totals)
+        assert.deepStrictEqual(types(result)[1].type, ArrowSchema.duration("microsecond"))
+        assert.deepStrictEqual(DataFrame.toArray(result, "total").map(Duration.toNanosUnsafe), [16_000n, 4_000n, 0n])
+      }))
+
+    // DF-S018: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("rejects aggregates that durations and timestamps don't have, as in memory", () =>
+      Effect.gen(function*() {
+        // The types reject these columns too: they are read as numbers here.
+        type Numbers = Query.Query<{ readonly g: string; readonly d: number | null }>
+        const inMemory = <R>(query: Query.Query<R>) => Effect.map(Effect.flip(query), (e) => e.message)
+        const rejected = Effect.fnUntraced(function*<R>(query: Query.Query<R>, message: string) {
+          assert.strictEqual(yield* rejects(query), message)
+          assert.strictEqual(yield* inMemory(query), message)
+        })
+        const durations = spans as unknown as Numbers
+        for (const f of [Expr.mean, Expr.median, Expr.std, Expr.variance]) {
+          yield* rejected(
+            durations.pipe(Query.groupBy("g"), Query.agg((c) => ({ r: f(c.d) }))),
+            "expected a numeric column, got Duration[us]"
+          )
+        }
+        yield* rejected(
+          durations.pipe(Query.select((c) => ({ r: Expr.over(Expr.mean(c.d), [c.g]) }))),
+          "expected a numeric column, got Duration[us]"
+        )
+        yield* rejected(
+          durations.pipe(Query.select((c) => ({ r: Expr.rollingMean(c.d, 2) }))),
+          "rollingMean is not defined for Duration[us]"
+        )
+        const timestamps = arrow<{ g: string; d: number | null }>(
+          [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.timestamp("microsecond"))],
+          [["a", "a"], [7n, null]]
+        )
+        yield* rejected(
+          timestamps.pipe(Query.groupBy("g"), Query.agg((c) => ({ r: Expr.sum(c.d) }))),
+          "sum is not defined for Timestamp[us]"
+        )
+        yield* rejected(
+          timestamps.pipe(Query.select((c) => ({ r: Expr.cumSum(c.d) }))),
+          "cumSum is not defined for Timestamp[us]"
+        )
+      }))
+
     // DF-N004: local policy for SQL results; pins in effect/test/dataframe/README.md.
     it.effect("decimal results are read from their text, without BigDecimal values", () =>
       Effect.gen(function*() {
@@ -889,7 +951,7 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         )
       }))
 
-    // DF-S017: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("unions and nullable fields are checked as in memory", () =>
       Effect.gen(function*() {
         const contract = tableOf("contract")

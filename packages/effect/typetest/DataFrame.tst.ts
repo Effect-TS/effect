@@ -221,6 +221,31 @@ describe("Expr", () => {
     expect(s.pipe(Expr.startsWith("a"))).type.toBe<Expr.Expr<boolean | null>>()
     expect(n.pipe(Expr.round(2))).type.toBe<Expr.Expr<number>>()
   })
+
+  it("durations sum to durations and have no mean", () => {
+    expect(Expr.sum(took)).type.toBe<Expr.Aggregate<Duration.Duration>>()
+    expect(Expr.cumSum(took)).type.toBe<Expr.Expr<Duration.Duration | null>>()
+    expect(Expr.rollingSum(took, 2)).type.toBe<Expr.Expr<Duration.Duration | null>>()
+    expect(took.pipe(Expr.rollingMin(2))).type.toBe<Expr.Expr<Duration.Duration | null>>()
+    expect(Expr.diff(took)).type.toBe<Expr.Expr<Duration.Duration | null>>()
+    expect(Expr.listSum(tookEach)).type.toBe<Expr.Expr<Duration.Duration>>()
+    expect(events.pipe(Query.pivot({ on: "id", index: [], values: "took", aggregate: "sum", columns: ["a", "b"] })))
+      .type.toBe<Query.Query<{ readonly a: Duration.Duration; readonly b: Duration.Duration }>>()
+    // @ts-expect-error: is not assignable to parameter of type 'Expr<Numeric | null>'
+    Expr.mean(took)
+    // @ts-expect-error: is not assignable to parameter of type 'Expr<Numeric | null>'
+    Expr.median(took)
+    // @ts-expect-error: is not assignable to parameter of type 'Expr<Numeric | null>'
+    Expr.std(took)
+    // @ts-expect-error: is not assignable to parameter of type 'Expr<Numeric | null>'
+    Expr.variance(took)
+    // @ts-expect-error: is not assignable to parameter of type 'Expr<Numeric | null>'
+    Expr.rollingMean(took, 2)
+    // @ts-expect-error: is not assignable to parameter of type
+    Expr.listMean(tookEach)
+    // @ts-expect-error: is not assignable to parameter of type
+    Expr.sum(at)
+  })
 })
 
 const Event = Schema.Struct({
@@ -233,6 +258,9 @@ const Event = Schema.Struct({
 })
 declare const events: Query.Query<typeof Event.Type>
 declare const price: Expr.Expr<BigDecimal.BigDecimal>
+declare const at: Expr.Expr<DateTime.Utc>
+declare const took: Expr.Expr<Duration.Duration | null>
+declare const tookEach: Expr.Expr<ReadonlyArray<Duration.Duration>>
 
 describe("Windows and reshaping", () => {
   it("over keeps the value type; window functions type their results", () => {

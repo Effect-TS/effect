@@ -103,8 +103,10 @@ DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: 
 | DF-Q043 | C    | compiles a schema's checks when the table is declared, and does not encode them to JSON        | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 | DF-Q044 | C    | tables declared by an Arrow schema convert their input to its columns                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 | DF-Q045 | C    | fails when a table is declared by a schema that has no columns for it                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
+| DF-Q046 | C    | sums durations to durations in the column's unit                                               | [Expr.sum](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Expr.ts#L827)                      |
+| DF-Q047 | C    | rejects aggregates that durations, timestamps, dates and times don't have                      | [Expr.mean](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Expr.ts#L838)                     |
 
-DF-C022 to DF-C032 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, tables declared by an Arrow schema, `DataFrame.column`, which has no symbol at the baseline and links to the layouts it exposes, and the checks `DataFrame.fromRows` runs on the frame it built. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only `DataFrame.fromRows` on rows that hold such values already, and a frame whose columns already have the declared types.
+DF-C022 to DF-C032 and DF-Q043 to DF-Q047 assert behaviour added after the baseline: checks compiled from the schema and refused by the JSON form of a plan, rejected transformations, tables declared by an Arrow schema, sums of durations, aggregates rejected for durations and points in time, `DataFrame.column`, which has no symbol at the baseline and links to the layouts it exposes, and the checks `DataFrame.fromRows` runs on the frame it built. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only `DataFrame.fromRows` on rows that hold such values already, and a frame whose columns already have the declared types.
 
 ## Supported Schema subset
 
@@ -190,7 +192,9 @@ The actual SQL suite is **`packages/sql/pglite/test/DataFrameSql.test.ts`**, not
 | DF-S014 | C / I | window functions over partitions                                           | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
 | DF-S015 | C / I | dates and times                                                            | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
 | DF-S016 | C / I | explain shows the SQL                                                      | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
-| DF-S017 | C / I | unions and nullable fields are checked as in memory                        | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
+| DF-S017 | C / I | sums durations to durations, as in memory                                  | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
+| DF-S018 | C / I | rejects aggregates that durations and timestamps don't have, as in memory  | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
+| DF-S019 | C / I | unions and nullable fields are checked as in memory                        | [Sql contract](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Sql.ts#L1-L45) |
 
 ## Compiler assertions
 
@@ -220,6 +224,7 @@ The actual SQL suite is **`packages/sql/pglite/test/DataFrameSql.test.ts`**, not
 
 - `propagates nullability`
 - `data-last forms`
+- `durations sum to durations and have no mean`
 
 ### `Windows and reshaping`
 
@@ -238,7 +243,7 @@ The actual SQL suite is **`packages/sql/pglite/test/DataFrameSql.test.ts`**, not
 
 - `Query.stream emits frames of the row type`
 
-Rejection assertions include unknown Arrow override fields (`DataFrame`), unknown columns/group keys, incompatible comparisons/arithmetic, non-aggregate aggregation, aggregate predicates and duplicate non-key join columns (`Query` / `rejects mistakes`), exploding a non-list column (`Windows and reshaping` / `explode and unnest`), and extracting a year from a number (`Types` / `dates, times and durations`). Other entries assert exact inferred types, including nullability, Effect errors and stream elements.
+Rejection assertions include unknown Arrow override fields (`DataFrame`), unknown columns/group keys, incompatible comparisons/arithmetic, non-aggregate aggregation, aggregate predicates and duplicate non-key join columns (`Query` / `rejects mistakes`), exploding a non-list column (`Windows and reshaping` / `explode and unnest`), extracting a year from a number (`Types` / `dates, times and durations`), and the mean, median, deviation and rolling mean of a duration and the sum of a timestamp (`Expr` / `durations sum to durations and have no mean`). Other entries assert exact inferred types, including nullability, Effect errors and stream elements.
 
 ## Exclusions and remaining gaps
 

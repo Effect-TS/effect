@@ -33,6 +33,7 @@ export const cumSum = (v: V.Vector, p: Partition): V.Vector => {
   const ids = p.ids
   const type = D.sumType(v.type)
   const valid = validOf(v)
+  if (D.isPointInTime(v.type)) return V.fail(`cumSum is not defined for ${D.describe(v.type)}`)
   switch (v.kind) {
     case "null":
       return V.nulls(n)
@@ -219,7 +220,10 @@ export const rolling = (
     })
     return V.take(v, idx)
   }
-  if (v.kind === "str" || v.kind === "null" || v.kind === "list" || v.kind === "struct") {
+  if (
+    v.kind === "str" || v.kind === "null" || v.kind === "list" || v.kind === "struct" || D.isPointInTime(v.type) ||
+    (fn === "rollingMean" && v.type._tag === "Duration")
+  ) {
     return V.fail(`${fn} is not defined for ${D.describe(v.type)}`)
   }
   const type = fn === "rollingMean" ? D.meanType(v.type) : D.sumType(v.type)

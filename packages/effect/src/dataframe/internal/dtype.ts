@@ -133,6 +133,15 @@ export const sumType = (t: S.DataType): S.DataType => {
   return t
 }
 
+/**
+ * Whether values of type `t` are points in time, which have neither a sum
+ * nor a mean: dates, times of day and timestamps. Durations add up.
+ *
+ * @internal
+ */
+export const isPointInTime = (t: S.DataType): boolean =>
+  t._tag === "Date" || t._tag === "Time" || t._tag === "Timestamp"
+
 /** Type of `mean`, `median`, `std` and `var` over a column of type `t`. @internal */
 export const meanType = divisionType
 

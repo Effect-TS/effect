@@ -190,6 +190,8 @@ type Numeric = number | bigint | BigDecimal.BigDecimal
 type NumericOf<A> = NonNullable<A> extends bigint ? bigint
   : NonNullable<A> extends BigDecimal.BigDecimal ? BigDecimal.BigDecimal
   : number
+/** The type of a sum of `A`s: durations add up to a duration, the rest to their numeric family. */
+type SumOf<A> = NonNullable<A> extends Numeric | boolean ? NumericOf<A> : Duration.Duration
 type InputType<I> = I extends Expr<infer A> ? A : I
 
 /**
@@ -820,16 +822,33 @@ const agg = (fn: Plan.AggregateName, self?: unknown) =>
  * The sum of the values; 0 for a group without values. Sums of 8- and 16-bit
  * integers are Int32.
  *
+ * **Details**
+ *
+ * Durations sum to a duration in the column's unit, the zero duration for a
+ * group without values. Like 64-bit integer sums, they wrap on overflow.
+ *
+ * **Gotchas**
+ *
+ * Dates, times and timestamps have no sum: a query that sums them fails with
+ * a `DataFrameError`.
+ *
  * @stability experimental
  * @category aggregates
  * @since 4.1.5
  */
-export const sum = <A extends Numeric | boolean | null>(
+export const sum = <A extends Numeric | boolean | Duration.Duration | null>(
   self: Expr<A>
-): Aggregate<NumericOf<A>> => agg("sum", self)
+): Aggregate<SumOf<A>> => agg("sum", self)
 
 /**
  * The mean of the values; `null` for a group without values.
+ *
+ * **Gotchas**
+ *
+ * Durations, dates, times and timestamps are not numbers: a query that takes
+ * their {@link mean}, {@link median}, {@link std} or {@link variance} fails
+ * with a `DataFrameError`. Aggregate a count of units instead, such as
+ * {@link totalMilliseconds} of a duration.
  *
  * @stability experimental
  * @category aggregates
@@ -970,15 +989,15 @@ export const over: {
 /**
  * The running sum: on each row, the sum of the values so far (in the
  * partition, with {@link over}). Nulls stay null and are skipped; NaN
- * propagates.
+ * propagates. Durations sum to durations, as with {@link sum}.
  *
  * @stability experimental
  * @category windows
  * @since 4.1.5
  */
-export const cumSum = <A extends Numeric | boolean | null>(
+export const cumSum = <A extends Numeric | boolean | Duration.Duration | null>(
   self: Expr<A>
-): Expr<NumericOf<A> | Nullish<A>> => internal.call("cumSum", [self])
+): Expr<SumOf<A> | Nullish<A>> => internal.call("cumSum", [self])
 
 /**
  * The running minimum. Nulls stay null; NaN is skipped.
@@ -1024,15 +1043,16 @@ export const shift: {
 } = lag("shift")
 
 /**
- * The difference to the value `n` rows earlier (1 by default).
+ * The difference to the value `n` rows earlier (1 by default), of numbers
+ * or of durations.
  *
  * @stability experimental
  * @category windows
  * @since 4.1.5
  */
 export const diff: {
-  (n?: number): <A extends Numeric | null>(self: Expr<A>) => Expr<A | null>
-  <A extends Numeric | null>(self: Expr<A>, n?: number): Expr<A | null>
+  (n?: number): <A extends Numeric | Duration.Duration | null>(self: Expr<A>) => Expr<A | null>
+  <A extends Numeric | Duration.Duration | null>(self: Expr<A>, n?: number): Expr<A | null>
 } = lag("diff")
 
 type RankOptions = {
@@ -1065,10 +1085,10 @@ export const rank: {
 type RollingOptions = { readonly minPeriods?: number | undefined }
 
 type Rolling = {
-  (window: number, options?: RollingOptions): <A extends Numeric | null>(
+  (window: number, options?: RollingOptions): <A extends Numeric | Duration.Duration | null>(
     self: Expr<A>
   ) => Expr<NonNullable<A> | null>
-  <A extends Numeric | null>(
+  <A extends Numeric | Duration.Duration | null>(
     self: Expr<A>,
     window: number,
     options?: RollingOptions
@@ -1085,6 +1105,7 @@ const rolling = (fn: "rollingSum" | "rollingMean" | "rollingMin" | "rollingMax")
 /**
  * The sum of the last `window` values (the current one included). Null
  * while fewer than `minPeriods` (default: `window`) of them are non-null.
+ * Durations sum to durations, as with {@link sum}.
  *
  * @stability experimental
  * @category windows
@@ -1093,7 +1114,8 @@ const rolling = (fn: "rollingSum" | "rollingMean" | "rollingMin" | "rollingMax")
 export const rollingSum: Rolling = rolling("rollingSum")
 
 /**
- * The mean of the last `window` values; see {@link rollingSum}.
+ * The mean of the last `window` values; see {@link rollingSum}. Durations
+ * have no mean, as with {@link mean}.
  *
  * @stability experimental
  * @category windows
@@ -1340,15 +1362,15 @@ export const listGet: {
 
 /**
  * The sum of each list's elements: 0 for an empty list, null for a null
- * list.
+ * list. Lists of durations sum to durations, as with {@link sum}.
  *
  * @stability experimental
  * @category lists and structs
  * @since 4.1.5
  */
-export const listSum = <A extends ReadonlyArray<Numeric | boolean | null> | null>(
+export const listSum = <A extends ReadonlyArray<Numeric | boolean | Duration.Duration | null> | null>(
   self: Expr<A>
-): Expr<NumericOf<Element<A>> | Nullish<A>> => internal.call("listSum", [self])
+): Expr<SumOf<Element<A>> | Nullish<A>> => internal.call("listSum", [self])
 
 /**
  * The mean of each list's elements; null for an empty or null list.

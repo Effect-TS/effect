@@ -70,6 +70,7 @@
  */
 import type * as ArrowSchema from "../arrow/ArrowSchema.ts"
 import type * as BigDecimal from "../BigDecimal.ts"
+import type * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import { dual } from "../Function.ts"
@@ -758,6 +759,10 @@ export const join: {
 /**
  * The value type of a pivot cell for an aggregate of values of type `A`.
  *
+ * **Details**
+ *
+ * Sums have the type `Expr.sum` gives: durations sum to a duration.
+ *
  * @stability experimental
  * @category type-level
  * @since 4.1.5
@@ -765,6 +770,7 @@ export const join: {
 export type PivotCell<A, F extends Plan.PivotAggregate> = F extends "len" | "count" | "countDistinct" ? number
   : F extends "sum" ? (NonNullable<A> extends bigint ? bigint
       : NonNullable<A> extends BigDecimal.BigDecimal ? BigDecimal.BigDecimal
+      : NonNullable<A> extends Duration.Duration ? Duration.Duration
       : number)
   : F extends "mean" | "median" | "std" | "variance" ? number | null
   : NonNullable<A> | null

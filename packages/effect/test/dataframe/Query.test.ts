@@ -572,6 +572,134 @@ describe("Query", () => {
           }
         ])
       }))
+
+    // DF-Q046 (API contract): Expr.sum; pinned source in README.md.
+    it.effect("sums durations to durations in the column's unit", () =>
+      Effect.gen(function*() {
+        type Row = { readonly g: string; readonly q: string; readonly d: Duration.Duration | null }
+        const unit = ArrowSchema.duration("nanosecond")
+        const frame = (g: ReadonlyArray<string>, q: ReadonlyArray<string>, d: ReadonlyArray<bigint | null>) =>
+          arrowFrame<Row>({ g: [ArrowSchema.utf8, g], q: [ArrowSchema.utf8, q], d: [unit, d] })
+        const whole = Query.from(frame(["a", "a", "a", "b", "c"], ["x", "y", "x", "x", "y"], [7n, 9n, null, 4n, null]))
+        const streamed = Query.table("t", whole.pipe(Effect.runSync).schema) as unknown as Query.Query<Row>
+        const batches = Catalog.layer({
+          t: Stream.make(
+            frame(["a", "a"], ["x", "y"], [7n, 9n]),
+            frame(["a", "b", "c"], ["x", "x", "y"], [null, 4n, null])
+          )
+        })
+        // Every column but the keys: its type and its values in nanoseconds.
+        const nanos = (query: Query.Query<any>) =>
+          Effect.map(query, (df) =>
+            Object.fromEntries(
+              df.schema.fields.filter((f) => f.name !== "g").map((f) => [f.name, [
+                f.type,
+                (DataFrame.toArray(df, f.name) as Array<Duration.Duration | null>).map((d) =>
+                  d === null ? null : Duration.toNanosUnsafe(d)
+                )
+              ]])
+            ))
+        // A group without values sums to the zero duration.
+        const grouped = (input: Query.Query<Row>) =>
+          input.pipe(Query.groupBy("g"), Query.agg((c) => ({ total: Expr.sum(c.d) })))
+        assert.deepStrictEqual(yield* nanos(grouped(whole)), { total: [unit, [16n, 4n, 0n]] })
+        assert.deepStrictEqual(yield* nanos(grouped(streamed)).pipe(Effect.provide(batches)), {
+          total: [unit, [16n, 4n, 0n]]
+        })
+        assert.deepStrictEqual(
+          yield* nanos(whole.pipe(Query.select((c) => ({
+            over: Expr.over(Expr.sum(c.d), [c.g]),
+            running: Expr.cumSum(c.d),
+            last2: Expr.rollingSum(c.d, 2),
+            least2: Expr.rollingMin(c.d, 2),
+            step: Expr.diff(c.d)
+          })))),
+          {
+            over: [unit, [16n, 16n, 16n, 4n, 0n]],
+            running: [unit, [7n, 16n, null, 20n, null]],
+            last2: [unit, [null, 16n, null, null, null]],
+            least2: [unit, [null, 7n, null, null, null]],
+            step: [unit, [null, 2n, null, null, null]]
+          }
+        )
+        assert.deepStrictEqual(
+          yield* nanos(whole.pipe(
+            Query.groupBy("g"),
+            Query.agg((c) => ({ all: Expr.list(c.d) })),
+            Query.select((c) => ({ g: c.g, total: Expr.listSum(c.all) }))
+          )),
+          { total: [unit, [16n, 4n, 0n]] }
+        )
+        assert.deepStrictEqual(
+          yield* nanos(
+            whole.pipe(Query.pivot({ on: "q", index: ["g"], values: "d", aggregate: "sum", columns: ["x", "y"] }))
+          ),
+          { x: [unit, [7n, 4n, 0n]], y: [unit, [9n, 0n, 0n]] }
+        )
+      }))
+
+    // DF-Q047 (API contract): Expr.mean; pinned source in README.md.
+    it.effect("rejects aggregates that durations, timestamps, dates and times don't have", () =>
+      Effect.gen(function*() {
+        const frame = (type: ArrowSchema.DataType, values: ReadonlyArray<unknown>) =>
+          arrowFrame<{ readonly g: string; readonly v: number | null }>({
+            g: [ArrowSchema.utf8, values.map(() => "a")],
+            v: [type, values]
+          })
+        // The types reject these columns too: `v` is read as a number here.
+        const message = (query: Query.Query<unknown>) => Effect.map(Effect.flip(query), (e) => e.message)
+        const aggregated =
+          (input: Query.Query<{ readonly g: string; readonly v: number | null }>) =>
+          (f: (v: Expr.Expr<number | null>) => Expr.Aggregate<unknown>) =>
+            message(input.pipe(Query.groupBy("g"), Query.agg((c) => ({ r: f(c.v) }))))
+        const selected =
+          (input: Query.Query<{ readonly g: string; readonly v: number | null }>) =>
+          (f: (v: Expr.Expr<number | null>) => Expr.Expr<unknown>) =>
+            message(input.pipe(Query.select((c) => ({ r: f(c.v) }))))
+
+        const durations = frame(ArrowSchema.duration("microsecond"), [7n, 9n, null])
+        const notNumeric = "expected a numeric column, got Duration[us]"
+        for (const f of [Expr.mean, Expr.median, Expr.std, Expr.variance]) {
+          assert.strictEqual(yield* aggregated(Query.from(durations))(f), notNumeric)
+        }
+        // A streamed table's means combine from partial aggregates.
+        const streamed = Query.table("t", durations.schema) as unknown as Query.Query<{ g: string; v: number | null }>
+        const batches = Catalog.layer({ t: Stream.make(durations, durations) })
+        for (const f of [Expr.mean, Expr.std]) {
+          assert.strictEqual(yield* aggregated(streamed)(f).pipe(Effect.provide(batches)), notNumeric)
+        }
+        assert.strictEqual(
+          yield* selected(Query.from(durations))((v) => Expr.rollingMean(v, 2)),
+          "rollingMean is not defined for Duration[us]"
+        )
+        assert.strictEqual(
+          yield* message(
+            Query.from(durations).pipe(
+              Query.groupBy("g"),
+              Query.agg((c) => ({ all: Expr.list(c.v) })),
+              Query.select((c) => ({ r: Expr.listMean(c.all) }))
+            )
+          ),
+          notNumeric
+        )
+
+        // Points in time have neither a sum nor a mean.
+        const points: ReadonlyArray<readonly [ArrowSchema.DataType, ReadonlyArray<unknown>, string]> = [
+          [ArrowSchema.timestamp("microsecond"), [7n, 9n, null], "Timestamp[us]"],
+          [ArrowSchema.date("day"), [7, 9, null], "Date"],
+          [ArrowSchema.time("microsecond"), [7n, 9n, null], "Time"]
+        ]
+        for (const [type, values, name] of points) {
+          const input = Query.from(frame(type, values))
+          assert.strictEqual(yield* aggregated(input)(Expr.sum), `sum is not defined for ${name}`)
+          assert.strictEqual(yield* aggregated(input)(Expr.mean), `expected a numeric column, got ${name}`)
+          assert.strictEqual(yield* selected(input)(Expr.cumSum), `cumSum is not defined for ${name}`)
+          assert.strictEqual(
+            yield* selected(input)((v) => Expr.rollingSum(v, 2)),
+            `rollingSum is not defined for ${name}`
+          )
+        }
+      }))
   })
 
   describe("explain", () => {

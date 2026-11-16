@@ -132,6 +132,7 @@ export type Sums = Float64Array | ReadonlyArray<bigint>
 export const sums = (v: V.Vector, g: Grouping): Sums => {
   const ids = g.ids
   const n = ids.length
+  if (D.isPointInTime(v.type)) return V.fail(`sum is not defined for ${D.describe(v.type)}`)
   switch (v.kind) {
     case "null":
       return new Array<bigint>(g.count).fill(I0)
@@ -182,8 +183,14 @@ export const sumColumn = (inputType: S.DataType, sums: Sums): V.Vector => {
   }
 }
 
-/** Every value as a float, with validity. */
+/**
+ * Every value as a float, with validity. Durations and points in time are
+ * not numbers: their integers count units, which a mean would lose.
+ */
 const asFloat = (v: V.Vector): { readonly x: Float64Array; readonly valid: Uint8Array | undefined } => {
+  if (v.type._tag === "Duration" || D.isPointInTime(v.type)) {
+    return V.fail(`expected a numeric column, got ${D.describe(v.type)}`)
+  }
   switch (v.kind) {
     case "f64":
       return { x: v.values, valid: v.valid }
