@@ -1400,28 +1400,71 @@ describe("Pool", () => {
   }
 
   describe("stats", () => {
+    it.effect("counts an acquisition that outlives its interrupted borrower", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.andThen(Deferred.succeed(started, undefined), Deferred.await(gate)),
+          min: 0,
+          max: 2,
+          timeToLive: "1 minute"
+        })
+        const fiber = yield* Effect.scoped(Pool.get(pool)).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        const waiting = yield* Pool.stats(pool)
+        yield* Fiber.interrupt(fiber)
+        const interrupted = yield* Pool.stats(pool)
+        yield* Deferred.succeed(gate, undefined)
+        const completed = yield* Effect.andThen(Effect.yieldNow, Pool.stats(pool)).pipe(
+          Effect.repeat({ until: (stats) => stats.idle === 1 })
+        )
+        deepStrictEqual([waiting, interrupted, completed], [
+          { idle: 0, used: 0, acquiring: 1, pending: 1, min: 0, max: 2 },
+          { idle: 0, used: 0, acquiring: 1, pending: 0, min: 0, max: 2 },
+          { idle: 1, used: 0, acquiring: 0, pending: 0, min: 0, max: 2 }
+        ])
+      }))
+
+    it.effect("stops counting a pre-warming acquisition when the pool scope closes", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const scope = yield* Scope.fork(yield* Effect.scope)
+        const pool = yield* Pool.make({
+          acquire: Effect.andThen(Deferred.succeed(started, undefined), Effect.never),
+          size: 1
+        }).pipe(Scope.provide(scope))
+        yield* Deferred.await(started)
+        const acquiring = yield* Pool.stats(pool)
+        yield* Scope.close(scope, Exit.void)
+        deepStrictEqual([acquiring, yield* Pool.stats(pool)], [
+          { idle: 0, used: 0, acquiring: 1, pending: 0, min: 1, max: 1 },
+          { idle: 0, used: 0, acquiring: 0, pending: 0, min: 1, max: 1 }
+        ])
+      }))
+
     it.effect("counts leased items rather than borrowers, and parked waiters as pending", () =>
       Effect.gen(function*() {
         let acquired = 0
         const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 2, concurrency: 2 })
         yield* waitUntil(() => acquired === 2)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 2, used: 0, pending: 0, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 2, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
 
         const leases = yield* Scope.fork(yield* Effect.scope)
         yield* Scope.provide(Pool.get(pool), leases)
         yield* Scope.provide(Pool.get(pool), leases)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, acquiring: 0, pending: 0, min: 2, max: 2 })
         yield* Scope.provide(Pool.get(pool), leases)
         yield* Scope.provide(Pool.get(pool), leases)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, pending: 0, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, acquiring: 0, pending: 0, min: 2, max: 2 })
 
         const waiter = yield* Scope.fork(yield* Effect.scope)
         const fiber = yield* Scope.provide(Pool.get(pool), waiter).pipe(Effect.forkChild({ startImmediately: true }))
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, pending: 1, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 2, acquiring: 0, pending: 1, min: 2, max: 2 })
 
         yield* Scope.close(leases, Exit.void)
         yield* Fiber.join(fiber)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, acquiring: 0, pending: 0, min: 2, max: 2 })
         yield* Scope.close(waiter, Exit.void)
       }))
 
@@ -1433,9 +1476,9 @@ describe("Pool", () => {
         yield* Scope.provide(Pool.get(pool), lease)
         yield* Scope.provide(Pool.reserve(pool, "resource"), reservation)
         yield* Scope.close(lease, Exit.void)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 1, pending: 0, min: 1, max: 1 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 })
         yield* Scope.close(reservation, Exit.void)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 1, max: 1 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 1, max: 1 })
       }))
 
     it.effect("counts an invalidated item as used until its last borrower returns", () =>
@@ -1447,9 +1490,9 @@ describe("Pool", () => {
         yield* Pool.invalidate(pool, item)
         yield* waitUntil(() => acquired === 2)
         // The invalidated session is still open, so both count against `max`.
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, pending: 0, min: 1, max: 1 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 })
         yield* Scope.close(lease, Exit.void)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 1, max: 1 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 1, max: 1 })
       }))
 
     it.effect("does not count failed acquisitions", () =>
@@ -1460,7 +1503,7 @@ describe("Pool", () => {
           size: 2
         })
         yield* waitUntil(() => pool.state.items.size === 2)
-        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, pending: 0, min: 2, max: 2 })
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
   })
 })
