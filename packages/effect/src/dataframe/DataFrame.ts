@@ -181,12 +181,21 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * **Details**
  *
  * The rows are decoded values (the schema's `Type`). The schema describes
- * them and is not run as a decoder. Its refinements, literals and enums are
- * tested on the value of every field that has them (inside structs, arrays
- * and union members too), and a struct's own checks
- * (`Schema.Struct(...).check(...)`) on every row, so the frame holds only
- * rows that {@link validate} accepts. Fields without them are stored without
- * further work.
+ * them and is not run as a decoder. The frame is built and then checked as
+ * {@link validate} checks one, so it validates against the same schema and
+ * options. The schema's refinements, literals and enums are tested on the
+ * values the frame stores, in every field that has them (inside structs,
+ * arrays and union members too), and a struct's own checks
+ * (`Schema.Struct(...).check(...)`) on every stored row. Fields without
+ * them are not read back as values.
+ *
+ * A value is stored exactly or the row is rejected. A `DateTime` or
+ * `Duration` finer than its column's unit fails, and so do a `DateTime`
+ * beyond the range of valid dates, a `BigDecimal` with more digits than
+ * its column's scale or precision, and a number an integer column can't
+ * hold. A
+ * `Float32` override is the exception: it rounds each number to the
+ * nearest 32-bit float, and the schema's checks test the rounded number.
  *
  * Missing values read back as `null` (see {@link Normalize}). An override
  * must hold its field's values, as {@link validate} checks columns: a
@@ -219,9 +228,9 @@ export const fromRows = <S extends StructSchema>(
     const { checks, columns } = Schema_.declare(schema, options?.types as any)
     const input: ReadonlyArray<any> = Array.isArray(rows) ? rows : Array.from(rows)
     const table = Result.getOrThrowWith(ArrowTable.fromRows(T.toArrowSchema(columns), input), fromDefect)
-    // The rows are values already: test them as given instead of reading them back from the frame.
-    if (checks !== undefined) T.runChecks(checks, (name) => input.map((row) => row[name]), () => input)
-    return wrap(F.fromArrowTable(table))
+    T.checkExact(columns, input)
+    // The frame is checked as validate checks one, so it holds what its declaration accepts.
+    return wrap(T.conform(F.fromArrowTable(table), columns, checks))
   })
 
 type ColumnInput =
@@ -403,8 +412,8 @@ export const empty = <S extends StructSchema>(
  * precision and scale, `DateTimeUtc` and `Duration` take timestamps and
  * durations in any unit, and structs and arrays need compatible fields and
  * items. Every value must convert to the declared type exactly: a decimal
- * with more digits than the declared scale, or a timestamp finer than the
- * declared unit, fails.
+ * with more digits than the declared scale or precision, or a timestamp
+ * finer than the declared unit, fails.
  *
  * The types are checked and converted on the typed columns, without reading
  * values. A field the schema constrains further (literals, enums,

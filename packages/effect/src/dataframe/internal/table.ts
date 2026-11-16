@@ -19,6 +19,8 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
+import * as DateTime from "../../DateTime.ts"
+import * as Duration from "../../Duration.ts"
 import type * as Plan from "../Plan.ts"
 import * as D from "./dtype.ts"
 import * as F from "./frame.ts"
@@ -291,6 +293,17 @@ const checkRange = (path: string, v: V.I64, unit: S.TimeUnit, rows: Uint8Array |
   }
 }
 
+/**
+ * Fails for a decimal with more digits than its column's precision. A
+ * column holds one all the same, and a conversion to its own type finds none.
+ */
+const checkPrecision = (path: string, v: V.I64, type: S.Decimal, rows: Uint8Array | undefined): void => {
+  const limit = BigInt(10) ** BigInt(type.precision)
+  for (let i = 0; i < v.length; i++) {
+    if (inRows(rows, i) && V.isValid(v, i) && (v.values[i] >= limit || v.values[i] <= -limit)) inexact(path, type)
+  }
+}
+
 const sameValue = (a: V.Vector, b: V.Vector, i: number): boolean => {
   switch (a.kind) {
     case "f64": {
@@ -354,6 +367,68 @@ const rescale = (path: string, v: V.I32 | V.I64, target: S.Date | S.Time, rows: 
   return out instanceof Int32Array ? V.i32(target, out, v.valid) : V.i64(target, out, v.valid)
 }
 
+/**
+ * A test of the values rows give a column, failing for a `DateTime` or
+ * `Duration` that is not a whole number of the column's unit: building the
+ * column rounds it down. `undefined` when the unit holds them all (a
+ * `DateTime` is in milliseconds, a `Duration` in nanoseconds).
+ */
+const exact = (path: string, column: Plan.TableColumn): ((value: unknown) => void) | undefined => {
+  switch (column.type) {
+    case "Timestamp":
+      return column.unit !== "second" ? undefined : (value) => {
+        if (DateTime.isDateTime(value) && DateTime.toEpochMillis(value) % 1000 !== 0) {
+          inexact(path, arrowType(column, path))
+        }
+      }
+    case "Duration": {
+      const [mul, div] = microseconds[column.unit ?? "microsecond"]
+      const nanos = mul * BigInt(1000) / div
+      return nanos === BigInt(1) ? undefined : (value) => {
+        if (Duration.isDuration(value) && Duration.toNanosUnsafe(value) % nanos !== BigInt(0)) {
+          inexact(path, arrowType(column, path))
+        }
+      }
+    }
+    case "List": {
+      const item = exact(`${path}[]`, column.fields![0])
+      return item && ((value) => {
+        if (value == null) return
+        // Any other iterable may be spent by now, with nothing left to test.
+        if (!Array.isArray(value)) return V.fail(`column ${JSON.stringify(path)} needs its lists as arrays`)
+        value.forEach(item)
+      })
+    }
+    case "Struct": {
+      const fields = column.fields!.flatMap((f, k) => {
+        const test = exact(field(path, f.name), f)
+        return test === undefined ? [] : [[f.name, k, test] as const]
+      })
+      return fields.length === 0 ? undefined : (value) => {
+        if (value == null) return
+        // An array gives a struct's values by position.
+        for (const [name, k, test] of fields) test(Array.isArray(value) ? value[k] : (value as any)[name])
+      }
+    }
+    default:
+      return undefined
+  }
+}
+
+/**
+ * Fails unless building the columns from `rows` keeps their `DateTime`
+ * and `Duration` values exactly: one finer than its column's unit fails,
+ * as it does when a frame is converted ({@link conform}).
+ *
+ * @internal
+ */
+export const checkExact = (columns: ReadonlyArray<Plan.TableColumn>, rows: ReadonlyArray<any>): void => {
+  for (const column of columns) {
+    const test = exact(column.name, column)
+    if (test !== undefined) { for (const row of rows) test(row[column.name]) }
+  }
+}
+
 /** A column checked against its declaration and converted to its declared type. */
 const check = (path: string, v: V.Vector, expected: Plan.TableColumn, rows: Uint8Array | undefined): V.Vector => {
   if (expected.type === "Null") {
@@ -392,6 +467,9 @@ const check = (path: string, v: V.Vector, expected: Plan.TableColumn, rows: Uint
     checkRange(path, v, v.type.unit, rows)
   }
   const target = arrowType(expected, path)
+  if (target._tag === "Decimal" && v.kind === "i64" && D.sameType(v.type, target)) {
+    checkPrecision(path, v, target, rows)
+  }
   return (target._tag === "Date" || target._tag === "Time") && !D.sameType(v.type, target)
     ? rescale(path, v as V.I32 | V.I64, target, rows)
     : convert(path, v, target, rows)

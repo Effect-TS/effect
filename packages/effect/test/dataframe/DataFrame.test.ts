@@ -128,6 +128,57 @@ describe("DataFrame", () => {
       }
     })
 
+    // DF-C029 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("fromRows returns a frame that validates against the same declaration", () => {
+      const Row = Schema.Struct({
+        n: Schema.Number.check(Schema.isGreaterThan(0)),
+        at: Schema.NullOr(Schema.DateTimeUtc),
+        waits: Schema.Array(Schema.Struct({ d: Schema.optional(Schema.Duration) })),
+        m: Schema.BigDecimal
+      })
+      const types = { n: ArrowSchema.float32, at: ArrowSchema.timestamp("second"), m: ArrowSchema.decimal(4, 2) }
+      const row = {
+        n: 0.1,
+        at: DateTime.makeUnsafe(2000),
+        waits: [{ d: Duration.nanos(1_000n) }, {}],
+        m: BigDecimal.make(15n, 1)
+      }
+      const df = DataFrame.fromRows(Row, [row, { ...row, at: null }], { types })
+      // A Float32 column rounds its numbers, and the frame holds the rounded ones.
+      assert.strictEqual(DataFrame.toArray(df, "n")[0], Math.fround(0.1))
+      for (const built of [df, DataFrame.empty(Row, { types })]) {
+        const validated = Result.getOrThrow(DataFrame.validate(built, Row, { types }))
+        assert.deepStrictEqual(validated.schema, built.schema)
+        assert.deepStrictEqual(DataFrame.toRows(validated), DataFrame.toRows(built))
+      }
+
+      const beyond = DateTime.fromEpochSeconds(8_640_000_000_001)
+      const cases: ReadonlyArray<readonly [object, string]> = [
+        // The check sees what the column stores: Math.fround(1e-46) is 0.
+        [{ n: 1e-46 }, `column "n" has values its schema rejects`],
+        [{ at: DateTime.makeUnsafe(1500) }, `column "at" has values that Timestamp[s] can't hold exactly`],
+        [{ at: beyond }, `column "at" has timestamps outside the range of DateTime`],
+        [
+          { waits: [{ d: Duration.nanos(1_001n) }] },
+          `column "waits[].d" has values that Duration[us] can't hold exactly`
+        ],
+        [{ m: BigDecimal.make(1_234n, 3) }, "1.234 has more than 2 decimal places"],
+        [{ m: BigDecimal.make(1_234n, 1) }, `column "m" has values that Decimal[4, 2] can't hold exactly`]
+      ]
+      for (const [fields, message] of cases) {
+        assert.throws(
+          () => DataFrame.fromRows(Row, [row, { ...row, ...fields }], { types }),
+          DataFrame.DataFrameError,
+          message
+        )
+      }
+      // A frame that holds such a decimal under the declared type fails too.
+      const Amount = Schema.Struct({ m: Schema.BigDecimal })
+      const held = ArrowTable.fromRows(DataFrame.empty(Amount, { types }).schema, [{ m: BigDecimal.make(1_234n, 1) }])
+      const validated = DataFrame.validate(DataFrame.fromArrowTable(Result.getOrThrow(held)), Amount, { types })
+      assert.include(Result.isFailure(validated) && validated.failure.message, cases[5][1])
+    })
+
     // DF-C023 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows, empty and validate reject schemas that transform their rows", () => {
       const cases: ReadonlyArray<readonly [{ readonly Type: object; readonly ast: any }, string]> = [
@@ -373,9 +424,11 @@ describe("DataFrame", () => {
         d: [ArrowSchema.duration("second"), [1n, 2n, 3n]],
         m: [ArrowSchema.decimal(9, 2), ["1.5", "2.5", "3.5"].map(BigDecimal.fromStringUnsafe)]
       })
+      const row = { t: DateTime.makeUnsafe(1), d: Duration.seconds(1), m: BigDecimal.fromStringUnsafe("1.5") }
       const built = [vi.spyOn(InternalDateTime, "makeUtc"), vi.spyOn(Duration, "nanos"), vi.spyOn(BigDecimal, "make")]
       const counts = () => built.map((spy) => spy.mock.calls.length)
       try {
+        assert.strictEqual(DataFrame.fromRows(Row, [row, row], { types }).length, 2)
         const validated = Result.getOrThrow(DataFrame.validate(df, Row, { types }))
         const table = Query.table("t", Row, { types }).pipe(Effect.provide(Catalog.layer({ t: Stream.make(df, df) })))
         assert.strictEqual(Effect.runSync(table).length, 6)
