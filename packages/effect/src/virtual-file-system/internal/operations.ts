@@ -1,6 +1,7 @@
 import * as BytePath from "../../BytePath.ts"
 import type * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
+import * as Exit from "../../Exit.ts"
 import * as Option from "../../Option.ts"
 import * as Result from "../../Result.ts"
 import * as Scope from "../../Scope.ts"
@@ -234,17 +235,14 @@ export const acquireTraversal = Effect.fnUntraced(
         { onFailure: R.failure, onSuccess: Effect.fromResult }
       )
     )
-    const session = yield* acquireOperation(
-      source,
-      options === undefined ? undefined : {
-        ...(options.maxVisits === undefined ? {} : { maxVisits: options.maxVisits }),
-        ...(options.maxComparisons === undefined ? {} : { maxComparisons: options.maxComparisons }),
-        ...(options.maxCopyBytes === undefined ? {} : { maxCopyBytes: options.maxCopyBytes })
-      }
-    )
-    return yield* Effect.onError(
-      session.traversal(options?.base === undefined ? undefined : { base: options.base }),
-      () => session.close
+    return yield* Effect.acquireUseRelease(
+      acquireOperation(source, {
+        maxVisits: options?.maxVisits,
+        maxComparisons: options?.maxComparisons,
+        maxCopyBytes: options?.maxCopyBytes
+      }),
+      (session) => session.traversal({ base: options?.base }),
+      (session, exit) => Exit.isFailure(exit) ? session.close : Effect.void
     )
   }
 )

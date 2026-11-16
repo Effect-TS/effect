@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BytePath, Clock, Effect, Exit, Fiber, Option, Result, Scope, Stream } from "effect"
+import { BytePath, Cause, Clock, Effect, Exit, Fiber, Option, Result, Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as VFS from "effect/virtual-file-system/VirtualFileSystem"
 
@@ -43,6 +43,42 @@ describe("VirtualFileSystem session ownership", () => {
       assert.deepStrictEqual(yield* owner.usage, before)
       const operation = yield* caller.acquireOperation()
       yield* operation.close
+      assert.deepStrictEqual(yield* owner.usage, before)
+    }).pipe(withClock))
+
+  it.effect("should release private session charges when reading the traversal base throws", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make()
+      const caller = yield* owner.authorize({ credentials })
+      const before = yield* owner.usage
+      const defect = new Error("base unavailable")
+      class TraversalOptions {
+        get base(): string {
+          throw defect
+        }
+      }
+      const exit = yield* Effect.exit(caller.acquireTraversal(new TraversalOptions()))
+      if (Exit.isSuccess(exit)) return assert.fail("Expected the traversal base to fail")
+      assert.strictEqual(Result.getOrThrow(Cause.findDefect(exit.cause)), defect)
+      assert.deepStrictEqual(yield* owner.usage, before)
+    }).pipe(withClock))
+
+  it.effect("should release the private session when traversal acquisition is interrupted", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make()
+      const caller = yield* owner.authorize({ credentials })
+      const scope = yield* makeScope
+      const before = yield* owner.usage
+      const acquiring = yield* Effect.withFiber((fiber) => {
+        class TraversalOptions {
+          get base() {
+            fiber.interruptUnsafe()
+            return "/"
+          }
+        }
+        return caller.acquireTraversal(new TraversalOptions()).pipe(Scope.provide(scope))
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(acquiring)))
       assert.deepStrictEqual(yield* owner.usage, before)
     }).pipe(withClock))
 
