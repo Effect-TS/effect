@@ -20,7 +20,7 @@ every file is also read back with pyarrow and compared to its source table.
 import json
 import random
 import struct
-from decimal import Decimal
+from decimal import Context, Decimal
 from pathlib import Path
 
 import pyarrow as pa
@@ -317,3 +317,98 @@ write("empty.parquet", {"int32": [], "string": []}, pa.schema([("int32", pa.int3
 
 (HERE / "gold.json").write_text(json.dumps({"writer": pa.__version__, "files": files}, separators=(",", ":")) + "\n")
 print(", ".join(f"{f['name']} ({f['numRows']} rows)" for f in files))
+
+# --- logical.parquet ----------------------------------------------------------
+# Logical types the files above don't have, for the Arrow adapter
+# (effect/arrow ArrowParquet). Written after gold.json, which it is not part of:
+# logical.gold.json holds its leaf columns with the same schema facts, and the
+# value of every row as Arrow stores it: a number, a decimal string for 64-bit
+# integers and unscaled decimals, hex for binary, text for strings.
+
+U64_MAX = 2**64 - 1
+logical_values = {
+    "uint8": [0, 255, None, 7],
+    "int16": [-32768, 32767, None, -1],
+    "uint32": [0, 2**32 - 1, None, 2**31],
+    "uint64": [0, U64_MAX, None, 2**63],
+    "time32_ms": [0, 86_399_999, None, 1],
+    "time64_ns": [0, NS_PER_DAY - 1, None, 1],
+    "timestamp_ms": [0, -1, None, 2**41],
+    "timestamp_us": [I64_MIN, I64_MAX, None, -1],
+    "timestamp_ns_utc": [I64_MIN, I64_MAX, None, 1],
+    "float16": [0.5, -65504.0, None, 2.0**-24],
+    "uuid": [bytes(range(16)), bytes([0xFF] * 16), None, bytes(16)],
+    "json": ['{"a":1}', "[]", None, '"é"'],
+    "large_string": ["a", "", None, "日本語"],
+    # Decimals are given unscaled.
+    "decimal_int32": [10**9 - 1, 1 - 10**9, None, 1],
+    "decimal_int64": [10**18 - 1, 1 - 10**18, None, -1],
+    "decimal128": [10**38 - 1, 1 - 10**38, None, -(10**10)],
+    "decimal256": [10**76 - 1, 1 - 10**76, None, -256],
+    "null": [None, None, None, None],
+}
+LOGICAL_SCHEMA = pa.schema([
+    ("uint8", pa.uint8()),
+    ("int16", pa.int16()),
+    ("uint32", pa.uint32()),
+    ("uint64", pa.uint64()),
+    ("time32_ms", pa.time32("ms")),
+    ("time64_ns", pa.time64("ns")),
+    ("timestamp_ms", pa.timestamp("ms")),
+    ("timestamp_us", pa.timestamp("us")),
+    ("timestamp_ns_utc", pa.timestamp("ns", tz="UTC")),
+    ("float16", pa.float16()),
+    ("uuid", pa.uuid()),
+    ("json", pa.json_()),
+    ("large_string", pa.large_string()),
+    ("decimal_int32", pa.decimal128(9, 2)),
+    ("decimal_int64", pa.decimal128(18, 4)),
+    ("decimal128", pa.decimal128(38, 10)),
+    ("decimal256", pa.decimal256(76, 0)),
+    ("null", pa.null()),
+])
+
+
+def arrow_array(values, t):
+    if pa.types.is_decimal(t):
+        exact = Context(prec=t.precision)
+        values = [None if v is None else Decimal(v).scaleb(-t.scale, exact) for v in values]
+    if isinstance(t, pa.BaseExtensionType):
+        return pa.ExtensionArray.from_storage(t, pa.array(values, t.storage_type))
+    return pa.array(values, t)
+
+
+def arrow_value(v, t):
+    if v is None:
+        return None
+    if pa.types.is_decimal(t):
+        return str(v)
+    if isinstance(v, bytes):
+        return v.hex()
+    if isinstance(v, int) and (pa.types.is_timestamp(t) or t.bit_width == 64):
+        return str(v)
+    return v
+
+
+logical_table = pa.table(
+    {f.name: arrow_array(logical_values[f.name], f.type) for f in LOGICAL_SCHEMA}, schema=LOGICAL_SCHEMA
+)
+pq.write_table(logical_table, HERE / "logical.parquet", compression="NONE", store_decimal_as_integer=True,
+               row_group_size=3)
+assert pq.read_table(HERE / "logical.parquet", arrow_extensions_enabled=True).equals(logical_table)
+logical_schema = pq.ParquetFile(HERE / "logical.parquet").metadata.schema
+logical_columns = []
+for i, f in enumerate(LOGICAL_SCHEMA):
+    column = logical_schema.column(i)
+    assert column.path == f.name
+    logical_columns.append({
+        "name": f.name,
+        "physicalType": column.physical_type,
+        "typeLength": column.length if column.physical_type == "FIXED_LEN_BYTE_ARRAY" else None,
+        "logicalType": logical_type(column),
+        "values": [arrow_value(v, f.type) for v in logical_values[f.name]],
+    })
+(HERE / "logical.gold.json").write_text(
+    json.dumps({"writer": pa.__version__, "columns": logical_columns}, separators=(",", ":"), allow_nan=False) + "\n"
+)
+print(f"logical.parquet ({logical_table.num_rows} rows)")
