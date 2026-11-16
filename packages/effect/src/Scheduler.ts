@@ -41,6 +41,7 @@ export interface Scheduler {
    * forked and its start is scheduled. The returned `Resumption` decides where
    * and when the fiber runs next.
    *
+   * @stability unstable
    * @since 4.2.0
    */
   park(fiber: Fiber.Fiber<unknown, unknown>): Resumption
@@ -81,11 +82,17 @@ export interface Scheduler {
  * If `fiber.run` is never called, the fiber never resumes and cannot be
  * interrupted.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.2.0
  */
 export interface Resumption {
+  /**
+   * Resumes the parked fiber with the selected effect in its scheduler context.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
   resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
 }
 
@@ -97,11 +104,17 @@ export interface Resumption {
  * `run` runs the fiber synchronously with the given effect, until it parks
  * again or exits. It does nothing once the fiber has exited.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.2.0
  */
 export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
+  /**
+   * Runs the fiber synchronously until it parks again or exits.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
   run(effect: Effect<unknown, unknown>): void
 }
 
@@ -346,6 +359,7 @@ export class MixedScheduler implements Scheduler {
    * resumes in the caller's context. The runtime is detected once, when this
    * module loads.
    *
+   * @stability unstable
    * @since 4.2.0
    */
   park(_fiber: Fiber.Fiber<unknown, unknown>): Resumption {

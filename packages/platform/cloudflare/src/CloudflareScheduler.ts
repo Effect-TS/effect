@@ -1,7 +1,7 @@
 /**
  * Fiber scheduling for applications shared across Cloudflare Worker requests.
  *
- * @stability stable
+ * @stability unstable
  * @since 4.2.0
  */
 import { waitUntil } from "cloudflare:workers"
@@ -125,11 +125,17 @@ class OwnerResumption implements Scheduler.Resumption {
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.2.0
  */
 export class CloudflareScheduler extends Scheduler.MixedScheduler {
+  /**
+   * Creates a scheduler for request-owned fiber resumption.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
   constructor() {
     super("sync")
     if (compatibilityFlags?.handle_cross_request_promise_resolution === false) {
@@ -142,6 +148,7 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
   /**
    * Returns how a parked fiber resumes: in the request it parks in.
    *
+   * @stability unstable
    * @since 4.2.0
    */
   override park(_fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
@@ -153,7 +160,7 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
  * A layer that installs a `CloudflareScheduler` for an application and its
  * fibers.
  *
- * @stability stable
+ * @stability unstable
  * @category layers
  * @since 4.2.0
  */
