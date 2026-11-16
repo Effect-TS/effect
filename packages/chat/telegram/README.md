@@ -2,7 +2,7 @@
 
 A [Telegram](https://telegram.org) adapter for `effect/chat`, over the Bot API. It includes a webhook endpoint, a long-polling loop, a pure update normaliser, and the address helpers.
 
-The live checks ran against production on 16 Nov 2026, and their results are below. Not verified: a forged click, and what a bystander sees of a command. Files, buttons and commands stay behind the `unverified` options.
+The live checks ran against production on 16 Nov 2026, and their results are below. Not verified: what a bystander sees of a command. Files, buttons and commands stay behind the `unverified` options.
 
 ## Setup
 
@@ -71,7 +71,7 @@ Updates from business connections, a channel's direct messages and guest mode ar
   ```
 - Consumer Markdown is escaped so that it reaches no raw HTML, image, math, spoiler, highlight, or link outside `http`, `https` and `mailto`. A `tg://user` link stays only for users listed in `withPostOptions({ notify: { users } })`. Telegram honors only some backslash escapes, and it closes a link at an escaped `]`, so the other escapes become numeric character references, and a refused link or definition is broken at its `(` or its opening `[`. A kept link is sent with its destination verbatim, as Telegram reads it, and without its title. It is kept only when its `[` is on the same line, its label has no other bracket in it and no `]` comes right before it, and a definition only at the top level after a blank line.
 - Where Markdown is ambiguous the escaping errs toward plain text: a table keeps its pipes only after a blank line or a heading; a `*` or `_` with space on both sides is escaped, as Telegram would open emphasis with it; and past 15 delimiters that could open emphasis, or 4,000 code spans, footnote references and `[` that could open a link or reference in one paragraph, or 700 footnote references in a message, the rest are shown as written. Telegram still pairs emphasis more loosely than CommonMark: `a* b*` is italic.
-- A click is dispatched only when its `data` matches a button in Telegram's own copy of the message. That shows the bot put the button there, not that it is still current or that this user may press it.
+- A click is dispatched only when its `data` matches a button in Telegram's own copy of the message, and Telegram already refuses data that is not on the current keyboard (live check 8). Neither says that this user may press it.
 
 ## Redelivery
 
@@ -104,7 +104,7 @@ Checks 1 to 16 ran on production on 16 Nov 2026, with a bot, a second non-admin 
 5. A plain `@user` notifies nobody, and an allowed `tg://user` link is a mention.
 6. Rich-message media over multipart `attach://`: up to 50 files in one message, 51 is refused with 413; 10 MB files; file names and MIME types kept, except that Telegram turns some characters outside Latin-1, such as `–`, into spaces. An edit drops the media. A download through the adapter is byte for byte.
 7. Webhook redelivery after a 503 or a dropped connection, as described under Redelivery. Not run: the polling side, and whether a refused update holds back other chats.
-8. Callback queries carry Telegram's copy of `reply_markup`, which an edit replaces. Telegram keeps at most 100 buttons and 8 per row, and drops the rest without an error. A click answered at the 2.5-second deadline stops spinning about 4 seconds after the tap. Not tried: a forged `data` from a modified client.
+8. Callback queries carry Telegram's copy of `reply_markup`, which an edit replaces. Telegram keeps at most 100 buttons and 8 per row, and drops the rest without an error. A click answered at the 2.5-second deadline stops spinning about 4 seconds after the tap. Telegram itself refuses, with `DATA_INVALID`, a click whose `data` is not on the message's current keyboard: forged, tampered, from another message, or from a keyboard an edit replaced. The adapter's own check is a second layer.
 9. Commands, with the author only. A typed command and one picked from the menu arrive alike. In a group, a command registered with `is_ephemeral` arrives with `message_id` 0, an `ephemeral_message_id` and `receiver_user`, and goes only to the command handler; in a private chat it is an ordinary command. A private answer is refused with `Unsupported` and nothing is posted. A public follow-up within 15 seconds replies to the command, and later fails `NotFound` with `interaction_expired`. Not tried: a bystander.
 10. The error responses behind the error mapping.
 11. Forum topics and the General topic. Topics in private chats were not tried.
