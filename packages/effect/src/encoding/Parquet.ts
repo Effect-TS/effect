@@ -1637,6 +1637,7 @@ export const readColumn = <E, R>(
       return yield* error("Unsupported", `${where} is encrypted`)
     }
     const meta = chunk.metaData
+    if (meta.numValues < 0) return yield* error("Malformed", `${where} has ${meta.numValues} values`)
     if (meta.numValues > maxValues) {
       return yield* error("Limit", `${where} has ${meta.numValues} values, more than maxValues (${maxValues})`)
     }

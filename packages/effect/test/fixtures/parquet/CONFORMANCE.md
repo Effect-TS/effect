@@ -29,8 +29,10 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-NULL-1   | README.md#nulls                                                            | Nulls are encoded in the definition levels only, not in the data                        |
 | PQ-PAGE-1   | README.md#data-pages                                                       | A required, non-nested column's page holds only the values                              |
 | PQ-PAGE-2   | README.md#data-pages                                                       | `uncompressed_page_size` covers levels and values together                              |
+| PQ-PAGE-3   | parquet.thrift L707, L733, L754-772, L835-838                              | A page header's counts and sizes are not negative (rejected when they are)              |
 | PQ-CHUNK-1  | README.md#column-chunks, parquet.thrift L727-729                           | The dictionary page comes first, and there is at most one                               |
 | PQ-CHUNK-2  | README.md#column-chunks                                                    | Readers can skip pages they don't read (index pages, later page types)                  |
+| PQ-CHUNK-3  | parquet.thrift L922-923                                                    | A column chunk's `num_values` is not negative (rejected when it is)                     |
 | PQ-V2-1     | parquet.thrift L759-761                                                    | Every v2 data page begins at a row boundary                                             |
 | PQ-V2-2     | parquet.thrift L744-745, L767                                              | v2 levels are uncompressed RLE without a length prefix                                  |
 | PQ-V2-3     | parquet.thrift L745, L779                                                  | v2 values are compressed only when `is_compressed` is true                              |

@@ -179,6 +179,8 @@ const dataPageV2 = (options: {
   readonly uncompressedSize?: number | undefined
   /** Defaults to the length of `definition`. */
   readonly definitionLength?: number | undefined
+  /** Defaults to the length of `repetition`. */
+  readonly repetitionLength?: number | undefined
 }) => {
   const repetition = options.repetition ?? new Uint8Array(0)
   const definition = options.definition ?? new Uint8Array(0)
@@ -192,7 +194,7 @@ const dataPageV2 = (options: {
         3: I32(options.numRows),
         4: I32(options.encoding ?? PLAIN),
         5: I32(options.definitionLength ?? definition.length),
-        6: I32(repetition.length),
+        6: I32(options.repetitionLength ?? repetition.length),
         7: options.compressed === undefined ? undefined : Bool(options.compressed)
       })
     },
@@ -562,6 +564,50 @@ describe("Parquet", () => {
           assert.deepStrictEqual(yield* values(make(body.length), { codecs: { GZIP: gzip } }), [5, null, 7])
           yield* failsWith(values(make(body.length + 1), { codecs: { GZIP: gzip } }), "Malformed", /decompressed to/)
         }))
+
+      it.effect("PQ-PAGE-3 MUST reject a negative count or size in a page header (parquet.thrift PageHeader)", () =>
+        Effect.gen(function*() {
+          const present = runs(1, [1, 1])
+          const column = (repetition: number, ...pages: ReadonlyArray<Uint8Array>) =>
+            flat({ type: Type.INT32, repetition, numRows: 1, pages })
+          const v2 = (options: Partial<Parameters<typeof dataPageV2>[0]>) =>
+            dataPageV2({ numValues: 1, numNulls: 0, numRows: 1, values: int32s(7), ...options })
+          const rejects = (bytes_: Uint8Array, message: RegExp) => failsWith(values(bytes_), "Malformed", message)
+          // with and without levels
+          yield* rejects(
+            column(OPTIONAL, dataPage(-1, bytes(lengthPrefixed(present), int32s(7)))),
+            /DataPageHeader\.num_values is negative/
+          )
+          yield* rejects(column(REQUIRED, dataPage(-1, int32s(7))), /DataPageHeader\.num_values is negative/)
+          yield* rejects(
+            column(OPTIONAL, v2({ numValues: -1, definition: present })),
+            /DataPageHeaderV2\.num_values is negative/
+          )
+          yield* rejects(column(REQUIRED, v2({ numValues: -1 })), /DataPageHeaderV2\.num_values is negative/)
+          yield* rejects(column(REQUIRED, v2({ numNulls: -1 })), /num_nulls is negative/)
+          yield* rejects(column(REQUIRED, v2({ numRows: -1 })), /num_rows is negative/)
+          yield* rejects(column(REQUIRED, v2({ definitionLength: -1 })), /definition_levels_byte_length is negative/)
+          yield* rejects(column(REQUIRED, v2({ repetitionLength: -1 })), /repetition_levels_byte_length is negative/)
+          yield* rejects(
+            flat({
+              type: Type.INT32,
+              repetition: REQUIRED,
+              numRows: 1,
+              dictionary: true,
+              pages: [
+                dictionaryPage(-1, int32s(7)),
+                dataPage(1, bytes([1], runs(1, [0, 1])), { encoding: RLE_DICTIONARY })
+              ]
+            }),
+            /DictionaryPageHeader\.num_values is negative/
+          )
+          yield* rejects(column(REQUIRED, dataPage(1, int32s(7), { uncompressedSize: -1 })), /negative size/)
+          const header = Struct({ 1: I32(1), 2: I32(PLAIN), 3: I32(RLE), 4: I32(RLE) })
+          yield* rejects(
+            column(REQUIRED, bytes(thrift(Struct({ 1: I32(0), 2: I32(4), 3: I32(-1), 5: header })), int32s(7))),
+            /negative size/
+          )
+        }))
     })
 
     describe("README.md#column-chunks", () => {
@@ -591,6 +637,30 @@ describe("Parquet", () => {
               })
             ),
             [1, 2, 3]
+          )
+        }))
+
+      it.effect("PQ-CHUNK-3 MUST reject a column chunk whose num_values is negative (parquet.thrift L922-923)", () =>
+        Effect.gen(function*() {
+          const levels = lengthPrefixed(runs(1, [0, 1]))
+          // with repetition and definition levels, and without any
+          yield* failsWith(
+            values(repeatedInt32([dataPage(1, bytes(levels, levels))], 1, -1)),
+            "Malformed",
+            /has -1 values/
+          )
+          yield* failsWith(
+            values(
+              flat({
+                type: Type.INT32,
+                repetition: REQUIRED,
+                numRows: 1,
+                numValues: -1,
+                pages: [dataPage(1, int32s(7))]
+              })
+            ),
+            "Malformed",
+            /has -1 values/
           )
         }))
     })
