@@ -206,10 +206,17 @@ const allowedDestination = (raw: string, mentions: ReadonlySet<string>): boolean
 const blank = (c: string | undefined): boolean => c === " " || c === "\t"
 
 /**
+ * The deepest parentheses a kept destination may nest. CommonMark lets a
+ * parser refuse deeper ones once it supports three, and GFM refuses past
+ * 32 in a link, which would leave the rest of the link as Markdown.
+ */
+const maxDestinationDepth = 3
+
+/**
  * The destination and optional title from `start`, as CommonMark reads
  * them when they are on this line: a destination not in angle brackets, up
  * to a space, a control character or a `)` it did not open, with its
- * parentheses balanced, then a title after a space. `end` is past the
+ * parentheses balanced and at most three deep, then a title after a space. `end` is past the
  * title and the blanks after it.
  */
 const destinationAndTitle = (
@@ -229,8 +236,9 @@ const destinationAndTitle = (
     }
     const code = c.charCodeAt(0)
     if (code <= 0x20 || code === 0x7f) break
-    if (c === "(") depth++
-    else if (c === ")") {
+    if (c === "(") {
+      if (++depth > maxDestinationDepth) return undefined
+    } else if (c === ")") {
       if (depth === 0) break
       depth--
     }
@@ -308,6 +316,22 @@ const definitionDestination = (line: string, start: number): string | undefined 
 const maxLabelLength = 999
 
 /**
+ * The most characters the renderer can make of a simple label: an escape
+ * becomes at most `%5C&lt;`, and each of `$ = | * _ ~` at most two. The
+ * label it sends, not the consumer's, must fit in 999.
+ */
+const renderedLabelBound = (text: string): number => {
+  let n = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\\") {
+      n += 7
+      i++
+    } else n += "$=|*_~".includes(text[i]) ? 2 : 1
+  }
+  return n
+}
+
+/**
  * A label CommonMark and the renderer both close at its first `]`: no
  * other bracket, code span or autolink in it, and no escape at its end.
  */
@@ -316,7 +340,7 @@ const simpleLabel = /^(?:[^\\[\]`<]|\\.)*$/
 /**
  * The reference definition the line whose first `[` is at `start` may
  * keep: a simple label, not blank, not a footnote's and at most 999
- * characters, closed by `]:`, then a destination it allows.
+ * characters once rendered, closed by `]:`, then a destination it allows.
  */
 const keptDefinition = (
   line: string,
@@ -327,7 +351,7 @@ const keptDefinition = (
   const text = line.slice(start + 1, close)
   if (
     close < 0 || line[close + 1] !== ":" || !simpleLabel.test(text) || isBlank(text) || text[0] === "^" ||
-    text.length > maxLabelLength
+    renderedLabelBound(text) > maxLabelLength
   ) return undefined
   const destination = definitionDestination(line, close + 2)
   return destination !== undefined && allowedDestination(destination, mentions) ? { close, destination } : undefined

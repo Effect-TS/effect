@@ -56,7 +56,13 @@ const cases: ReadonlyArray<readonly [string, string]> = [
   [
     "[a[b]: https://e.com\n\n[^ a]: https://e.com\n\n[c]: https://e.com \"t\"\n[d]: https://e.com d",
     "\\[a[b]: https://e.com\n\n\\[^ a]: https://e.com\n\n[c]: https://e.com\n\\[d]: https://e.com d"
-  ]
+  ],
+  // a label that renders to 999 characters stays a definition, one of 1,000 does not
+  ["[" + "$".repeat(499) + "]: mailto:x", "[" + "\\$".repeat(499) + "]: mailto:x"],
+  ["[" + "$".repeat(500) + "]: mailto:x", "\\[" + "\\$".repeat(500) + "]: mailto:x"],
+  // a destination keeps parentheses three deep, not four
+  ["[a](https://e.com/(((x))))", "[a](https://e.com/(((x))))"],
+  ["[a](https://e.com/((((x)))))", "[a]\\(https://e.com/((((x)))))"]
 ]
 
 const bytes = (s: string) => new TextEncoder().encode(s).length
@@ -192,6 +198,17 @@ describe("render", () => {
         "[a]: mailto:[pwn](tg://user?id=1)(",
         "[ ]: mailto:[pwn](tg://user?id=1)",
         "[" + "a".repeat(1000) + "]: mailto:[pwn](tg://user?id=1)",
+        // nor one whose label grows past 999 characters as it is escaped
+        "[" + "$".repeat(500) + "]: mailto:[pwn](tg://user?id=1)",
+        "[" + "|".repeat(500) + "]: mailto:[pwn](tg://user?id=1)",
+        "[" + "\\^".repeat(200) + "]: mailto:[pwn](tg://user?id=1)",
+        "[" + "\\<".repeat(150) + "]: mailto:[pwn](tg://user?id=1)",
+        // in a bare URL each `\<` becomes `%5C&lt;`
+        "[www.e.co/" + "\\<".repeat(142) + "]: mailto:[pwn](tg://user?id=1)",
+        // nor a destination nested deeper than a parser may read
+        "[x](mailto:" + "(".repeat(32) + "[pwn](tg://user?id=1)" + ")".repeat(32) + ")",
+        "[x](mailto:" + "(".repeat(3) + "[pwn](tg://user?id=1)" + ")".repeat(3) + ")",
+        "[x]: mailto:" + "(".repeat(32) + "[pwn](tg://user?id=1)" + ")".repeat(32),
         "[a]: mailto:[pwn](tg://user?id=1) b",
         "[a]: mailto:[pwn](tg://user?id=1) \"t",
         "[a]: mailto:\u007f[pwn](tg://user?id=1)",
