@@ -87,6 +87,7 @@ This monorepo contains the core `effect` package alongside integration packages 
 | [`@effect/chat-slack`](packages/chat/slack)                           | Slack adapter for `effect/chat`                          | [docs](https://effect.website/docs/v4/api/chat-slack)              |
 | [`@effect/chat-whatsapp`](packages/chat/whatsapp)                     | WhatsApp Cloud API adapter for `effect/chat`             | [docs](https://effect.website/docs/v4/api/chat-whatsapp)           |
 | [`@effect/chat-discord`](packages/chat/discord)                       | Discord adapter for `effect/chat`                        | [docs](https://effect.website/docs/v4/api/chat-discord)            |
+| [`@effect/chat-telegram`](packages/chat/telegram)                     | Telegram Bot API adapter for `effect/chat`               | [docs](https://effect.website/docs/v4/api/chat-telegram)           |
 | [`@effect/atom-react`](packages/atom/react)                           | React bindings for Effect Atom                           | [docs](https://effect.website/docs/v4/api/atom-react)              |
 | [`@effect/atom-solid`](packages/atom/solid)                           | SolidJS bindings for Effect Atom                         | [docs](https://effect.website/docs/v4/api/atom-solid)              |
 | [`@effect/atom-vue`](packages/atom/vue)                               | Vue bindings for Effect Atom                             | [docs](https://effect.website/docs/v4/api/atom-vue)                |

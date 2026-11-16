@@ -2,7 +2,7 @@
 
 A [Telegram](https://telegram.org) adapter for `effect/chat`, over the Bot API. It includes a webhook endpoint, a long-polling loop, a pure update normaliser, and the address helpers.
 
-This package is private, and it is not released. The base live checks (1, 2, 3, 4, 5, 7, 10, 11, 15, 16 and 17) ran against production on 16 Nov 2026, and their results are below. Checks 8 and 9 ran too, except for a forged click and check 9's bystander, which needs a second person. Files and reactions are not verified. Releasing it means removing `private`, adding the package to the release setup, and adding its changeset.
+The live checks ran against production on 16 Nov 2026, and their results are below. Not verified: files, reactions, a forged click, and what a bystander sees of a command. Files, buttons and commands stay behind the `unverified` options.
 
 ## Setup
 
