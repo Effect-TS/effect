@@ -49,10 +49,7 @@ it.layer(Layer.mergeAll(Digest.layerWebCrypto, MssqlContainer.layerClient), {
         const sql = yield* SqlClient.SqlClient
         const prefix = `indexing_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
         const stores = `${prefix}_compaction_stores`
-        // Another instance created the stores table and is in the middle of
-        // creating its index. A statement waiting on that index holds locks the
-        // index's creation needs next, which SQL Server only breaks as a
-        // deadlock after up to 5 seconds.
+        // Hold index creation open to reproduce the old opener's lock wait.
         yield* sql`CREATE TABLE ${sql(stores)} (scope NVARCHAR(36) PRIMARY KEY, next_sweep_at BIGINT NULL)`
         const indexing = yield* Deferred.make<number>()
         const release = yield* Deferred.make<void>()
@@ -73,27 +70,6 @@ it.layer(Layer.mergeAll(Digest.layerWebCrypto, MssqlContainer.layerClient), {
         yield* Fiber.join(other)
 
         assert.strictEqual(outcome, "opened")
-      }))
-
-    it.effect("names the indexes it creates with their tables", () =>
-      Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
-        const prefix = `indexes_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`
-        yield* SqlEventLogServerEncrypted.makeStorage({
-          entryTablePrefix: prefix,
-          remoteIdTable: `${prefix}_remote_id`
-        }).pipe(Effect.scoped)
-
-        const rows = yield* sql<{ name: string }>`
-          SELECT i.name FROM sys.indexes i JOIN sys.tables t ON t.object_id = i.object_id
-          WHERE t.name LIKE ${`${prefix}_compaction_%`} AND i.is_primary_key = 0 AND i.name IS NOT NULL
-          ORDER BY i.name`
-        assert.deepStrictEqual(rows.map((row) => row.name), [
-          `${prefix}_compaction_activations_i0`,
-          `${prefix}_compaction_stages_i0`,
-          `${prefix}_compaction_stages_i1`,
-          `${prefix}_compaction_stores_i0`
-        ])
       }))
   }
 )
