@@ -120,8 +120,10 @@ import type * as ArrowData from "./ArrowData.ts"
 import type * as ArrowExtension from "./ArrowExtension.ts"
 import type * as ArrowSchema from "./ArrowSchema.ts"
 import * as Builders from "./internal/builders.ts"
-import { Column } from "./internal/column.ts"
+import { Column, TypeId as ColumnTypeId } from "./internal/column.ts"
 import * as Values from "./internal/values.ts"
+
+const TypeId = ColumnTypeId
 
 /**
  * One field's values across the chunks of a table. Iterating yields every
@@ -133,11 +135,16 @@ import * as Values from "./internal/values.ts"
  * it, so the constructors of this module return columns of `unknown` values.
  * Code that knows what a field reads as can give its columns a narrower `A`.
  *
+ * Columns are opaque. {@link make}, {@link fromValues} and `ArrowTable.column`
+ * create them, and every reader of a column returns the representation it was
+ * made with. An object with the same properties is not a column.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
  */
 export interface ArrowColumn<out A = unknown> extends Iterable<A | null> {
+  readonly [TypeId]: typeof TypeId
   readonly field: ArrowSchema.Field
   readonly chunks: ReadonlyArray<ArrowData.ArrowData>
   readonly length: number
@@ -175,8 +182,8 @@ export const make = (
   options?: Options
 ): ArrowColumn => new Column(field, chunks, Values.options(options))
 
-const column = (self: ArrowColumn): Column =>
-  self instanceof Column ? self : new Column(self.field, self.chunks, Values.options(undefined))
+/** The value at `index`, assuming `0 <= index < length`. Every `ArrowColumn` is a `Column`. */
+const read = (self: ArrowColumn, index: number): unknown => (self as Column).read(index)
 
 /**
  * The value at `index`: `Option.some(null)` for a null slot, `Option.none()`
@@ -192,7 +199,7 @@ export const get: {
 } = dual(
   2,
   (self: ArrowColumn, index: number): Option.Option<unknown> =>
-    index >= 0 && index < self.length && Number.isInteger(index) ? Option.some(column(self).read(index)) : Option.none()
+    index >= 0 && index < self.length && Number.isInteger(index) ? Option.some(read(self, index)) : Option.none()
 )
 
 /**
@@ -213,7 +220,7 @@ export const getUnsafe: {
   if (!(index >= 0 && index < self.length && Number.isInteger(index))) {
     throw new RangeError(`index ${index} is outside 0..${self.length}`)
   }
-  return column(self).read(index)
+  return read(self, index)
 })
 
 /**

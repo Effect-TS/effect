@@ -9,7 +9,11 @@ import type * as S from "../ArrowSchema.ts"
 import * as Values from "./values.ts"
 
 /** @internal */
+export const TypeId = "~effect/arrow/ArrowColumn"
+
+/** @internal */
 export class Column implements Iterable<unknown> {
+  readonly [TypeId]: typeof TypeId = TypeId
   readonly field: S.Field
   readonly chunks: ReadonlyArray<ArrowData.ArrowData>
   readonly length: number

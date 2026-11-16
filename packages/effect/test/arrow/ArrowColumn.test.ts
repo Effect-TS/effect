@@ -500,4 +500,36 @@ describe("ArrowColumn", () => {
     assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, chunks, { extensions: [hex] })), [{ n: "ff" }])
     assert.strictEqual(decoded, 1)
   })
+
+  // ARROW-COLUMN-007 (local): columns are opaque, so one column has one representation in every reader.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("reads a column alike through every reader and rejects look-alike objects", () => {
+    const field = S.field("at", S.timestamp("nanosecond"))
+    const nanos = [1704164645678901234n, null]
+    const { chunks } = Result.getOrThrow(ArrowColumn.fromValues(field, nanos))
+
+    // An object with the properties of a column is not one, whatever it yields
+    // @ts-expect-error
+    const lookAlike: ArrowColumn.ArrowColumn<bigint> = {
+      field,
+      chunks,
+      length: 2,
+      [Symbol.iterator]: () => nanos.values()
+    }
+    // No reader answers for it in a representation of its own choosing
+    assert.throws(() => ArrowColumn.getUnsafe(lookAlike, 0))
+    assert.throws(() => ArrowColumn.get(lookAlike, 0))
+
+    const readings: ReadonlyArray<readonly [ArrowColumn.Options, Array<unknown>]> = [
+      [{}, [utc("2024-01-02T03:04:05.678Z"), null]],
+      [{ representation: "storage" }, nanos]
+    ]
+    for (const [options, expected] of readings) {
+      const column = ArrowColumn.make(field, chunks, options)
+      assertEquals(Array.from(column), expected)
+      assertEquals(ArrowColumn.toArray(column), expected)
+      assertEquals(expected.map((_, i) => ArrowColumn.getUnsafe(column, i)), expected)
+      assertEquals(expected.map((_, i) => ArrowColumn.get(column, i)), expected.map(Option.some))
+    }
+  })
 })
