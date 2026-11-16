@@ -1010,23 +1010,16 @@ const annotates = (annotation: Annotation, e: Element, physicalType: PhysicalTyp
         fail("Malformed", `schema element "${e.name}" is a DECIMAL with ${reason}`)
       if (precision < 1) invalid(`a precision of ${precision}`)
       if (scale < 0 || scale > precision) invalid(`a scale of ${scale} for a precision of ${precision}`)
-      let digits: number
-      switch (physicalType) {
-        case "INT32":
-          digits = 9
-          break
-        case "INT64":
-          digits = 18
-          break
-        case "FIXED_LEN_BYTE_ARRAY":
-          // floor(log10(2^(8n - 1) - 1)), which is this as no power of 2 is a power of 10
-          digits = Math.floor((8 * e.typeLength! - 1) * Math.log10(2))
-          break
-        case "BYTE_ARRAY":
-          return true
-        default:
-          return false
-      }
+      if (physicalType === "BYTE_ARRAY") return true
+      const digits = physicalType === "INT32"
+        ? 9
+        : physicalType === "INT64"
+        ? 18
+        : physicalType === "FIXED_LEN_BYTE_ARRAY"
+        // floor(log10(2^(8n - 1) - 1)), which is this as no power of 2 is a power of 10
+        ? Math.floor((8 * e.typeLength! - 1) * Math.log10(2))
+        : undefined
+      if (digits === undefined) return false
       if (precision > digits) {
         invalid(`a precision of ${precision}, more than the ${digits} digits of its ${physicalType}`)
       }
