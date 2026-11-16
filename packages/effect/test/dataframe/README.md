@@ -49,6 +49,7 @@ The assertion column is the exact leaf test title. Combine it with the file and 
 | DF-C028 | C    | column gives a column's buffers and values without building rows                      | [DataFrame layouts](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L6-L9)          |
 | DF-C029 | C    | fromRows returns a frame that validates against the same declaration                  | [DataFrame.fromRows](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L192)          |
 | DF-C030 | C    | a null member of a union keeps the checks of the other members                        | [DataFrame.fromRows](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L192)          |
+| DF-C031 | C    | checks see stored values as the schema writes them, missing ones included             | [DataFrame.fromRows](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/DataFrame.ts#L192)          |
 
 DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: import/export preserves the backing buffers, byte offsets and byte lengths, as well as values. It does not require typed-array wrapper identity or mutation-based aliasing. The compatible fixed-width layouts are described in Apache Arrow’s [Columnar format](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/docs/source/format/Columnar.rst#fixed-size-primitive-layout) and [Schema.fbs](https://github.com/apache/arrow/blob/ee4d09ebef61c663c1efbfa4c18e518a03b798be/format/Schema.fbs); the no-copy adapter promise is the Effect API contract, not a requirement that Arrow imposes on every adapter.
 
@@ -102,7 +103,7 @@ DF-C021 checks a single, unsliced, non-null batch of Int32 and Float64 columns: 
 | DF-Q044 | C    | tables declared by an Arrow schema convert their input to its columns                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 | DF-Q045 | C    | fails when a table is declared by a schema that has no columns for it                          | [Query.table](https://github.com/Effect-TS/effect/blob/d7121ccbd69f9f437ac60b09a704f216c0ca44ee/packages/effect/src/dataframe/Query.ts#L254)                  |
 
-DF-C022 to DF-C030 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, tables declared by an Arrow schema, `DataFrame.column`, which has no symbol at the baseline and links to the layouts it exposes, and the checks `DataFrame.fromRows` runs on the frame it built. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only `DataFrame.fromRows` on rows that hold such values already, and a frame whose columns already have the declared types.
+DF-C022 to DF-C031 and DF-Q043 to DF-Q045 assert behaviour added after the baseline: checks compiled from the schema, rejected transformations, tables declared by an Arrow schema, `DataFrame.column`, which has no symbol at the baseline and links to the layouts it exposes, and the checks `DataFrame.fromRows` runs on the frame it built. Their links locate the symbol at the baseline; the documentation of that symbol in the checked-out source is their contract. DF-C024 observes which value constructors run (`DateTime`, `Duration`, `BigDecimal`) and covers only `DataFrame.fromRows` on rows that hold such values already, and a frame whose columns already have the declared types.
 
 ## Supported Schema subset
 
@@ -127,6 +128,15 @@ DF-C022 to DF-C030 and DF-Q043 to DF-Q045 assert behaviour added after the basel
 Rejected with a `DataFrameError` that names the field: transformations (any schema with an encoding, such as `NumberFromString`, `decodeTo`, decoding defaults and renamed keys; `Schema.toType` gives the decoded side), `DateTimeZoned`, tuples, records, classes, unions of different column types, and recursive schemas.
 
 Refinements, literals, enums and template literals are value checks: every value of such a field is read and tested, inside structs, arrays and union members too. A struct's own checks are row checks: every row is read and tested. Fields without checks are checked by column type only, on the typed columns. `DataFrame.fromRows` builds its frame and then checks it as `DataFrame.validate` does, so all of them test what the frame stores: a `Float32` column's check sees the rounded number. `DataFrame.fromRows` rejects a `DateTime` or `Duration` finer than its column's unit instead of rounding it, and a decimal column holds no more digits than its precision, whichever of them checks it (DF-C029). The checks are compiled when the schema is read (`Plan.TableChecks`) and are not part of a serialized plan: a plan decoded from JSON checks column types only. A SQL engine tests value checks on distinct values and fails for a table with row checks.
+
+Checks are handed stored values as the schema writes them (DF-C031), in `DataFrame.fromRows`, `DataFrame.empty`, `DataFrame.validate` and `Query.table` alike. A frame holds `null` for every missing value, and a check sees an absent key for an optional field, `undefined` for `UndefinedOr` and `null` for `NullOr`. The rows `{}` and `{ a: undefined }` are one stored row, and a check sees an absent key for both.
+
+A declaration is rejected with a `DataFrameError` that names the field when a check would see a missing value the schema writes in several ways, as the frame holds `null` for each of them:
+
+- `null` next to `undefined` or an optional key (`optional(NullOr(String))`, `UndefinedOr(NullOr(String))`), under any check that is handed the value: a check of the field itself, or of a struct, array or union around it, row checks included.
+- a union whose struct or array members write the same missing value in different ways, when its values are checked.
+
+Such fields are accepted where no check is handed their value.
 
 A table declared by an Arrow schema (DF-C025, DF-C026, DF-Q044) involves no Effect Schema and has no checks.
 

@@ -158,6 +158,124 @@ const rejectEncodings = (ast: AST.AST, path: string): void => {
 }
 
 // -----------------------------------------------------------------------------
+// Missing values
+// -----------------------------------------------------------------------------
+
+type Missing = "null" | "undefined" | "absent"
+
+/**
+ * How a schema writes the values a frame stores. A frame holds `null` for
+ * every missing value, and a schema writes one as `null`, as `undefined`
+ * or as an absent key: `missing` is the one it writes where values can be
+ * missing, for a list's items and a struct's fields too.
+ */
+interface Shape {
+  readonly missing?: Missing | undefined
+  readonly item?: Shape | undefined
+  readonly fields?: ReadonlyArray<readonly [name: string, shape: Shape]> | undefined
+}
+
+const written: { readonly [M in Missing]: string } = { null: "null", undefined: "undefined", absent: "an absent key" }
+
+/**
+ * The shape of the values of a schema, the type of an `optional` key or
+ * not. `seen` says that a check around them is handed these values (one of
+ * a struct, an array or a union they are in).
+ *
+ * A check must be handed what the schema describes, so a missing value it
+ * sees needs one way of being written. An optional field's is an absent
+ * key, whether or not its type has `undefined` too. It fails when the
+ * schema writes it as `null` and another way.
+ */
+const shapeOf = (ast: AST.AST, path: string, seen: boolean, optional = false): Shape => {
+  const ways = new Set<Missing>(optional ? ["absent"] : [])
+  const members: Array<Shape> = []
+  // Whether a check inside this field is handed a missing value.
+  let own = false
+  const visit = (ast: AST.AST, checked: boolean): void => {
+    checked ||= ast.checks !== undefined
+    switch (ast._tag) {
+      case "Null":
+      case "Undefined":
+        ways.add(ast._tag === "Null" ? "null" : "undefined")
+        own ||= checked
+        return
+      case "Suspend":
+        return unsuspend(ast, "", (inner) => visit(inner, checked))
+      case "Union":
+        // Matching exactly one member tells the members apart, as a check does.
+        return ast.types.forEach((member) => visit(member, checked || ast.options?.mode === "oneOf"))
+      case "Arrays":
+        members.push({ item: shapeOf(ast.rest[0], `${path}[]`, seen || checked) })
+        return
+      case "Objects":
+        members.push({
+          fields: ast.propertySignatures.map((ps) => {
+            const name = String(ps.name)
+            return [name, shapeOf(ps.type, T.field(path, name), seen || checked, AST.isOptional(ps.type))] as const
+          })
+        })
+    }
+  }
+  visit(ast, false)
+  if (ways.size > 1 && ways.has("null") && (own || seen)) {
+    V.fail(
+      `field ${JSON.stringify(path)}: a check sees a missing value that the schema writes in several ways (${
+        [...ways].map((way) => written[way]).join(", ")
+      }), and a frame holds null for each of them`
+    )
+  }
+  if (new Set(members.map((member) => JSON.stringify(member))).size > 1) {
+    V.fail(
+      `field ${JSON.stringify(path)}: the members of a union write missing values in different ways, ` +
+        "and a frame holds null for each of them"
+    )
+  }
+  const missing = ways.has("null")
+    ? "null"
+    : ways.has("absent")
+    ? "absent"
+    : ways.has("undefined")
+    ? "undefined"
+    : undefined
+  return { missing, ...members[0] }
+}
+
+/**
+ * The values a frame stores for `shape`, as the schema writes them, or
+ * `undefined` when it stores them that way.
+ */
+const restorer = (shape: Shape): ((value: unknown) => unknown) | undefined => {
+  const present = shape.item !== undefined
+    ? items(shape.item)
+    : shape.fields !== undefined
+    ? struct(shape.fields)
+    : undefined
+  const missing = shape.missing === "undefined" ? undefined : null
+  if (present === undefined && missing === null) return undefined
+  return (value) => value === null ? missing : present === undefined ? value : present(value)
+}
+
+const items = (shape: Shape): ((value: unknown) => unknown) | undefined => {
+  const item = restorer(shape)
+  return item && ((value) => (value as ReadonlyArray<unknown>).map(item))
+}
+
+const struct = (shapes: NonNullable<Shape["fields"]>): ((value: unknown) => unknown) | undefined => {
+  const fields = shapes.map(([name, shape]) => [name, shape.missing === "absent", restorer(shape)] as const)
+  if (fields.every(([, absent, restore]) => !absent && restore === undefined)) return undefined
+  return (value) => {
+    const out: Record<string, unknown> = {}
+    for (const [name, absent, restore] of fields) {
+      const v = (value as Record<string, unknown>)[name]
+      if (v === null && absent) continue
+      out[name] = restore === undefined ? v : restore(v)
+    }
+    return out
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Checks
 // -----------------------------------------------------------------------------
 
@@ -218,14 +336,28 @@ const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => 
  * The tests of a struct schema: one for each field whose values it
  * constrains beyond their column type, and one of whole rows when the struct
  * has checks of its own. `undefined` when the column types say it all.
+ *
+ * The tests take values and rows as a frame stores them, and hand them to
+ * the schema's checks as the schema writes them (see {@link shapeOf}).
  */
-const checksOf = (struct: AST.Objects): Plan.TableChecks | undefined => {
-  const columns = struct.propertySignatures.flatMap((ps) => {
+const checksOf = (ast: AST.Objects): Plan.TableChecks | undefined => {
+  const checks = ast.checks
+  const shapes: Array<readonly [string, Shape]> = []
+  const columns = ast.propertySignatures.flatMap((ps) => {
+    const name = String(ps.name)
     const test = valuesCheck(ps.type)
-    return test === undefined ? [] : [[String(ps.name), test] as const]
+    if (test === undefined && checks === undefined) return []
+    const shape = shapeOf(ps.type, name, checks !== undefined, AST.isOptional(ps.type))
+    shapes.push([name, shape])
+    const restore = restorer(shape)
+    return test === undefined
+      ? []
+      : [[name, restore === undefined ? test : (value: unknown) => test(restore(value))] as const]
   })
-  const checks = struct.checks
-  const rows = checks && ((row: unknown) => Result.isSuccess(AST.runChecks(checks, row)))
+  // With checks of rows, every field has its shape.
+  const restore = checks && struct(shapes)
+  const rows = checks &&
+    ((row: unknown) => Result.isSuccess(AST.runChecks(checks, restore === undefined ? row : restore(row))))
   return columns.length === 0 && rows === undefined ? undefined : { columns, rows }
 }
 

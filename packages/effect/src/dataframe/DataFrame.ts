@@ -189,6 +189,12 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * (`Schema.Struct(...).check(...)`) on every stored row. Fields without
  * them are not read back as values.
  *
+ * A check is handed what the schema describes. The frame holds `null` for
+ * every missing value, and a check sees it as the schema writes it: an
+ * absent key for an optional field, `undefined` for `Schema.UndefinedOr`
+ * and `null` for `Schema.NullOr`. The rows `{}` and `{ a: undefined }`
+ * are one row to a frame, so a check sees an absent key for both.
+ *
  * A value is stored exactly or the row is rejected. A `DateTime` or
  * `Duration` finer than its column's unit fails, and so do a `DateTime`
  * beyond the range of valid dates, a `BigDecimal` with more digits than
@@ -214,6 +220,12 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  *   `Schema.toType(schema)` to describe the decoded rows of such a schema.
  * - Tuples, records, classes, `DateTimeZoned`, unions of different column
  *   types and recursive schemas have no column type.
+ * - A schema is rejected when a check would see a missing value that the
+ *   schema writes in several ways, as the frame holds `null` for each of
+ *   them: a struct with checks and a
+ *   `Schema.optional(Schema.NullOr(...))` field, or a check on
+ *   `Schema.UndefinedOr(Schema.NullOr(...))`. Such a field is fine where
+ *   no check is handed its value.
  *
  * @stability experimental
  * @category constructors
@@ -386,7 +398,8 @@ export const decodeArrowStream = <E, R>(
  * **Gotchas**
  *
  * Throws a {@link DataFrameError} for the schemas {@link fromRows} rejects:
- * one that transforms its rows, or has fields without a column type.
+ * one that transforms its rows, has fields without a column type, or has a
+ * check that would see a missing value the schema writes in several ways.
  *
  * @stability experimental
  * @category constructors
@@ -420,8 +433,10 @@ export const empty = <S extends StructSchema>(
  * refinements, including inside structs, arrays and union members) has its
  * values read and tested one by one, and a struct with checks of its own
  * (`Schema.Struct(...).check(...)`) has every row read and tested. The
- * schema is not run as a decoder: one that transforms its rows fails, as in
- * {@link fromRows}.
+ * checks see missing values as the schema writes them (an absent key,
+ * `undefined` or `null`), and a schema that writes one in several ways
+ * under a check fails, as in {@link fromRows}. The schema is not run as a
+ * decoder: one that transforms its rows fails, as in {@link fromRows}.
  *
  * An Arrow schema declares its fields as they are: type, nullability,
  * nested fields, decimal precision and scale, and time unit. The result has

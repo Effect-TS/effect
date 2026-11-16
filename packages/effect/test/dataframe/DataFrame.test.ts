@@ -204,6 +204,52 @@ describe("DataFrame", () => {
       assert.deepStrictEqual(outcomes(Row, [{ s: "ok" }, { s: "bad" }]), [message, message, message])
     })
 
+    // DF-C031 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("checks see stored values as the schema writes them, missing ones included", () => {
+      const seen: Array<unknown> = []
+      const record = Schema.makeFilter((value: unknown) => {
+        seen.push(value)
+        return true
+      })
+      const Item = Schema.Struct({ unit: Schema.optional(Schema.String), qty: Schema.UndefinedOr(Schema.Number) })
+      const Row = Schema.Struct({
+        note: Schema.optional(Schema.String),
+        rain: Schema.NullOr(Schema.Number),
+        items: Schema.Array(Item).check(record)
+      }).check(record)
+      const rows = [{ rain: null, items: [{ qty: undefined }] }, {
+        note: undefined,
+        rain: 1,
+        items: [{ unit: "kg", qty: 2 }]
+      }]
+      assert.deepStrictEqual(outcomes(Row, rows), ["ok", "ok", "ok"])
+      // What each of the three hands to the checks: the items of both rows, then both rows.
+      const items = [[{ qty: undefined }], [{ unit: "kg", qty: 2 }]]
+      const checked = [...items, { rain: null, items: items[0] }, { rain: 1, items: items[1] }]
+      assert.deepStrictEqual(seen, [...checked, ...checked, ...checked])
+
+      // A frame can't tell null from undefined or an absent key, so a check that could is rejected.
+      const Either = Schema.optional(Schema.NullOr(Schema.String))
+      const rejected: ReadonlyArray<readonly [Schema.Struct<any>, string]> = [
+        [Schema.Struct({ a: Either }).check(record), `field "a"`],
+        [
+          Schema.Struct({ p: Schema.Struct({ xs: Schema.Array(Schema.Struct({ a: Either })) }).check(record) }),
+          `field "p.xs[].a"`
+        ],
+        [Schema.Struct({ a: Schema.Union([Schema.Null, Schema.Undefined, Schema.String]).check(record) }), `field "a"`]
+      ]
+      for (const [schema, field] of rejected) {
+        const message = `${field}: a check sees a missing value that the schema writes in several ways`
+        assert.throws(() => DataFrame.fromRows(schema, []), DataFrame.DataFrameError, message)
+        assert.throws(() => Query.table("t", schema), DataFrame.DataFrameError, message)
+        const validated = DataFrame.validate(readings, schema)
+        assert.include(Result.isFailure(validated) && validated.failure.message, message)
+      }
+      // No check sees it here: the literal is tested on its own column.
+      const Unseen = Schema.Struct({ kind: Schema.Literal("x"), a: Either })
+      assert.deepStrictEqual(outcomes(Unseen, [{ kind: "x" }, { kind: "x", a: null }]), ["ok", "ok", "ok"])
+    })
+
     // DF-C023 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows, empty and validate reject schemas that transform their rows", () => {
       const cases: ReadonlyArray<readonly [{ readonly Type: object; readonly ast: any }, string]> = [
