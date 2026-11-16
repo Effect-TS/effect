@@ -271,7 +271,9 @@ const decodeType = (
       if (bitWidth !== 32 && bitWidth !== 64 && bitWidth !== 128 && bitWidth !== 256) {
         invalid(`invalid decimal bit width ${bitWidth}`)
       }
-      return { _tag: "Decimal", precision: d.int32(0), scale: d.int32(1), bitWidth }
+      const type: S.Decimal = { _tag: "Decimal", precision: d.int32(0), scale: d.int32(1), bitWidth }
+      Layout.checkDecimal(type, invalid)
+      return type
     }
     case TypeId.Date:
       return { _tag: "Date", unit: enumValue(dateUnits, table().int16(0, 1), "date unit") }

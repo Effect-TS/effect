@@ -889,6 +889,52 @@ describe("ArrowIpc", () => {
     }
   })
 
+  // ARROW-IPC-021 (mixed): Schema.fbs Decimal precision / scale / bitWidth; digit limits of each bit width as in
+  // Arrow C++ (type.h kMinPrecision / kMaxPrecision); local Invalid error.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("rejects decimal precisions outside the digits of the bit width", () => {
+    const decimals = (precision: number, scale: number, bitWidth: S.Decimal["bitWidth"]) =>
+      ArrowTable.make(S.make([S.field("d", S.decimal(precision, scale, bitWidth))]), [])
+    // The schema's Decimal table, bitWidth 32, scale 3, precision 7, rewritten
+    const valid = Result.getOrThrow(ArrowIpc.encodeStream(decimals(7, 3, 32)))
+    const decimalTable = [32, 0, 0, 0, 3, 0, 0, 0, 7, 0, 0, 0]
+    const at = valid.findIndex((_, i) => decimalTable.every((b, k) => valid[i + k] === b))
+    assert.isAtLeast(at, 0)
+    const patched = (precision: number, bitWidth: number) => {
+      const out = valid.slice()
+      const view = new DataView(out.buffer)
+      view.setInt32(at, bitWidth, true)
+      view.setInt32(at + 8, precision, true)
+      return ArrowIpc.decodeStream(out)
+    }
+    for (const [bitWidth, max] of [[32, 9], [64, 18], [128, 38], [256, 76]] as const) {
+      for (const precision of [1, max]) {
+        const table = decimals(precision, 3, bitWidth)
+        const type = table.schema.fields[0].type
+        assert.deepStrictEqual(Result.getOrThrow(patched(precision, bitWidth)).schema.fields[0].type, type)
+        for (const format of formats) {
+          const decoded = Result.getOrThrow(format.decode(Result.getOrThrow(format.encode(table))))
+          assert.deepStrictEqual(decoded.schema.fields[0].type, type)
+        }
+      }
+      for (const precision of [0, -1, max + 1]) {
+        assertIpcError(patched(precision, bitWidth))
+        assertIpcError(ArrowIpc.encodeStream(decimals(precision, 3, bitWidth)))
+        assertIpcError(ArrowIpc.encodeFile(decimals(precision, 3, bitWidth)))
+      }
+    }
+    // Schema.fbs stores both as 32-bit integers; the scale has no other bound
+    for (const [precision, scale] of [[2.5, 0], [5, 1.5], [5, 2 ** 31]]) {
+      assertIpcError(ArrowIpc.encodeStream(decimals(precision, scale, 128)))
+      assertIpcError(ArrowIpc.encodeFile(decimals(precision, scale, 128)))
+    }
+    for (const scale of [-2, 9, -(2 ** 31), 2 ** 31 - 1]) {
+      const table = decimals(5, scale, 128)
+      const decoded = Result.getOrThrow(ArrowIpc.decodeStream(Result.getOrThrow(ArrowIpc.encodeStream(table))))
+      assert.deepStrictEqual(decoded.schema.fields[0].type, table.schema.fields[0].type)
+    }
+  })
+
   // ARROW-IPC-008 (mixed): Schema.fbs MetadataVersion.V5 removes union validity; local Unsupported error.
   // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("does not write unions with null slots of their own", () => {

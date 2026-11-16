@@ -41,6 +41,9 @@ const cases: ReadonlyArray<
   ["decimal32", S.decimal(9, 3, 32), [dec("-1.234"), dec("5")]],
   ["decimal128", S.decimal(10, 2), [dec("123.45"), dec("-0.5"), null]],
   ["decimal256", S.decimal(40, 0, 256), [dec("-123456789012345678901234567890")]],
+  // The format bounds the precision, not the scale
+  ["decimal with a negative scale", S.decimal(5, -2), [dec("12300")]],
+  ["decimal with a scale above its precision", S.decimal(2, 5), [dec("0.00012")]],
   ["date (days)", S.date("day"), [utc("2024-01-02T00:00:00Z"), 19724, null], [
     utc("2024-01-02T00:00:00Z"),
     utc("2024-01-02T00:00:00Z"),
@@ -176,6 +179,13 @@ const rejections: ReadonlyArray<
   ["no union member accepts it", S.field("u", S.union("sparse", [S.field("int", S.int32)])), ["s"], [0]],
   ["duplicate union type ids", S.field("u", S.union("sparse", twoInts, [0, 0])), [ArrowColumn.unionValue(0, 5)], []],
   ["union type id above 127", S.field("u", S.union("dense", [S.field("a", S.int32)], [200])), [], []],
+  // A decimal type holds 1..9, 18, 38 or 76 digits in 32, 64, 128 or 256 bits; precision and scale are integers
+  ["decimal precision below 1", S.field("d", S.decimal(0, 0, 32)), [], []],
+  ["negative decimal precision", S.field("d", S.decimal(-1, 0, 32)), [], []],
+  ["decimal precision above 9 digits in 32 bits", S.field("d", S.decimal(10, 0, 32)), [], []],
+  ["decimal precision above 38 digits in a list item", S.field("l", S.list(item(S.decimal(39, 0)))), [], []],
+  ["decimal precision that is not an integer", S.field("d", S.decimal(2.5, 0)), [], []],
+  ["decimal scale that is not an integer", S.field("d", S.decimal(5, 1.5)), [dec("1")], []],
   // Temporal storage is int32 or int64
   ["timestamp beyond int64", S.field("t", S.timestamp("millisecond")), [1, 1n << 64n], [1]],
   ["DateTime beyond int64 nanoseconds", S.field("t", S.timestamp("nanosecond")), [utc("2300-01-01T00:00:00Z")], [0]],

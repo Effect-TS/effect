@@ -816,7 +816,7 @@ const collectDictionaries = (columns: ReadonlyArray<ArrowData.ArrowData>) => {
 }
 
 const schemaMessage = (schema: S.Schema) => {
-  for (const f of schema.fields) Layout.checkUnions(f.type, invalid)
+  for (const f of schema.fields) Layout.checkType(f.type, invalid)
   return frame(0, [], () => ({ _tag: "Schema", schema }))
 }
 

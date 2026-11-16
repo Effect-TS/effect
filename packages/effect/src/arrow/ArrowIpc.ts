@@ -68,7 +68,8 @@ const ArrowIpcErrorTypeId = "~effect/arrow/ArrowIpc/ArrowIpcError"
  * The `kind` field identifies the failure:
  *
  * - `Invalid`: the bytes are not valid Arrow IPC, or a table to encode has
- *   an invalid schema (union type ids that are not unique or not in 0..127).
+ *   an invalid schema (union type ids that are not unique or not in 0..127,
+ *   a decimal precision or scale out of range).
  *   When the FlatBuffers metadata itself is malformed, `cause` holds the
  *   `FlatBuffersError`.
  * - `BigEndian`: the data is big-endian, which is not supported.

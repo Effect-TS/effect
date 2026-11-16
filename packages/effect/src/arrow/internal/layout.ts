@@ -2,7 +2,8 @@
  * Layout operations on `ArrowData`: slicing (free), normalising to offset 0
  * (for writing), and concatenating (for delta dictionaries). They follow the
  * Columnar format's rules for how each layout's buffers and children relate,
- * and check the rules a type must follow (union type ids).
+ * and check the rules a type must follow (union type ids, decimal precision
+ * and scale).
  *
  * @internal
  */
@@ -119,28 +120,49 @@ export const checkUnionTypeIds = (
   }
 }
 
-/** Checks the type ids of every union in `type`, including nested ones. @internal */
-export const checkUnions = (type: S.DataType, fail: (message: string) => never): void => {
+/** The most digits each decimal bit width holds, as in Arrow C++ (`kMaxPrecision`). */
+const maxPrecision: Record<S.Decimal["bitWidth"], number> = { 32: 9, 64: 18, 128: 38, 256: 76 }
+
+/**
+ * Calls `fail` unless the precision of `type` is an integer from 1 to the
+ * most digits its bit width holds, and its scale a 32-bit integer (Schema.fbs
+ * bounds the scale no further). @internal
+ */
+export const checkDecimal = (type: S.Decimal, fail: (message: string) => never): void => {
+  const max = maxPrecision[type.bitWidth]
+  if (!(Number.isInteger(type.precision) && type.precision >= 1 && type.precision <= max)) {
+    fail(`invalid decimal${type.bitWidth} precision ${type.precision}, expected an integer in 1..${max}`)
+  }
+  if ((type.scale | 0) !== type.scale) fail(`invalid decimal scale ${type.scale}, expected a 32-bit integer`)
+}
+
+/**
+ * Checks the type ids of every union and the precision and scale of every
+ * decimal in `type`, including nested ones. @internal
+ */
+export const checkType = (type: S.DataType, fail: (message: string) => never): void => {
   switch (type._tag) {
+    case "Decimal":
+      return checkDecimal(type, fail)
     case "Union":
       checkUnionTypeIds(type.typeIds, type.fields.length, fail)
-      for (const f of type.fields) checkUnions(f.type, fail)
+      for (const f of type.fields) checkType(f.type, fail)
       return
     case "Struct":
-      for (const f of type.fields) checkUnions(f.type, fail)
+      for (const f of type.fields) checkType(f.type, fail)
       return
     case "List":
     case "LargeList":
     case "ListView":
     case "LargeListView":
     case "FixedSizeList":
-      return checkUnions(type.child.type, fail)
+      return checkType(type.child.type, fail)
     case "Map":
-      return checkUnions(type.entries.type, fail)
+      return checkType(type.entries.type, fail)
     case "RunEndEncoded":
-      return checkUnions(type.values.type, fail)
+      return checkType(type.values.type, fail)
     case "Dictionary":
-      return checkUnions(type.valueType, fail)
+      return checkType(type.valueType, fail)
   }
 }
 

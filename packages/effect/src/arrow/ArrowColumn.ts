@@ -241,9 +241,12 @@ const ArrowBuildErrorTypeId = "~effect/arrow/ArrowColumn/ArrowBuildError"
 
 /**
  * The error returned when values cannot be stored in a field: a value of the
- * wrong kind, out of range, or null in a non-nullable field. `path` locates
- * the value from the top of the input: its index (for tables, its row index
- * and column name), then struct member names, list item indices and so on.
+ * wrong kind, out of range, or null in a non-nullable field, or a field whose
+ * type is invalid (union type codes, decimal precision or scale). `path`
+ * locates the value from the top of the input: its index (for tables, its row
+ * index and column name), then struct member names, list item indices and so
+ * on. An invalid type is reported before any value, with an empty `path` for
+ * a column and the column name for a table.
  *
  * **Example** (A value out of range)
  *

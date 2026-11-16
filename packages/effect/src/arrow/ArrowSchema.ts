@@ -153,7 +153,7 @@ export interface Float {
 
 /**
  * Fixed-point decimals stored as two's complement integers of `bitWidth`
- * bits, scaled by 10^`scale`.
+ * bits, scaled by 10^`scale`, with at most `precision` digits.
  *
  * @stability experimental
  * @category models
@@ -634,7 +634,20 @@ export const float32: Float = { _tag: "Float", bitWidth: 32 }
 export const float64: Float = { _tag: "Float", bitWidth: 64 }
 
 /**
- * Creates a decimal type. The bit width defaults to 128.
+ * Creates a decimal type of `precision` digits, `scale` of them after the
+ * decimal point. The bit width defaults to 128.
+ *
+ * **Details**
+ *
+ * The precision is 1 to 9 digits in 32 bits, 18 in 64, 38 in 128 and 76 in
+ * 256. The scale is any 32-bit integer: it can be negative (`scale` -2 stores
+ * hundreds) and it can exceed the precision.
+ *
+ * **Gotchas**
+ *
+ * - The precision and scale are not checked here: building values or
+ *   encoding IPC fails when the precision is not an integer in that range,
+ *   or the scale is not a 32-bit integer.
  *
  * @stability experimental
  * @category constructors

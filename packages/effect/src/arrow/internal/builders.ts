@@ -88,9 +88,9 @@ const fail = (path: Path, message: string): never => {
 
 const failAt = (at: At, index: number, message: string): never => fail(at(index), message)
 
-/** Fails with a `BuildFailure` at `path` when `type` is invalid (union type ids). @internal */
+/** Fails with a `BuildFailure` at `path` when `type` is invalid (union type ids, decimal precision and scale). @internal */
 export const checkType = (type: S.DataType, path: Path): void =>
-  Layout.checkUnions(type, (message) => fail(path, message))
+  Layout.checkType(type, (message) => fail(path, message))
 
 const describe = (v: unknown) =>
   v === null ? "null" : typeof v === "object" ? (v.constructor?.name ?? "object") : `${typeof v} ${String(v)}`
