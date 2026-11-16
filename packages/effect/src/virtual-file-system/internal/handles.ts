@@ -827,7 +827,7 @@ const acquireDirectory = (
   target: M.Target
 ) =>
   Result.gen(function*() {
-    const { object: found } = yield* tx.targetResult(target)
+    const found = yield* tx.objectResult(target)
     if (found.kind !== "directory") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }

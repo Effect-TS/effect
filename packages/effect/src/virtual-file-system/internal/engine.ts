@@ -764,6 +764,7 @@ export class Transaction {
         seen.add(id)
         const node = yield* this.getResult(id)
         if (node.kind !== "directory" || node.parent === undefined) return false
+        if (root === this.engine.root && this.caller.policy.root === root && this.caller.policy.privileged) return true
         id = node.parent
       }
     })
@@ -786,11 +787,20 @@ export class Transaction {
     })
   }
 
-  referenceRouteResult(value: M.ObjectReference) {
+  referenceRouteResult(value: M.ObjectReference, selection: "route" | "object" = "route") {
     return Result.gen(this, function*() {
       const info = yield* this.tokenResult(value, "object")
-      yield* this.getResult(info.object)
+      const object = yield* this.getResult(info.object)
       yield* this.authorityResult()
+      // A linked directory has one parent chain to the volume root. A privileged caller
+      // at that root needs no search proof when the operation only consumes the object.
+      if (
+        selection === "object" && object.kind === "directory" && object.nlink > BigInt("0") &&
+        this.caller.policy.privileged && this.caller.policy.root === this.engine.root
+      ) {
+        yield* this.visitResult()
+        return { object }
+      }
       const stack: Array<{ readonly node: DirectoryNode; readonly support: ReadonlyArray<RouteEdge> }> = [{
         node: yield* this.directoryResult(this.caller.policy.root),
         support: []
@@ -824,7 +834,8 @@ export class Transaction {
 
   selectDirectoryRouteResult(
     selector: M.DirectorySelector,
-    state: ResolutionState = { follows: 0 }
+    state: ResolutionState = { follows: 0 },
+    selection: "route" | "object" = "route"
   ) {
     return Result.gen(this, function*() {
       let route: Route
@@ -832,7 +843,7 @@ export class Transaction {
         const path = yield* pathValueResult(selector, this.operation)
         route = yield* this.resolveResult(path, true, undefined, state.follows, [], state)
       } else if (M.isToken(selector)) {
-        route = yield* this.referenceRouteResult(selector)
+        route = yield* this.referenceRouteResult(selector, selection)
       } else {
         const handle = directoryHandleState(selector)
         if (handle === undefined) {
@@ -845,7 +856,7 @@ export class Transaction {
         }
         if (handle.resource.state !== "open") return yield* Result.fail(R.closed(this.operation, handle.resource.state))
         yield* this.work.borrowResult(handle.resource)
-        route = yield* this.referenceRouteResult(this.engine.reference(handle.id))
+        route = yield* this.referenceRouteResult(this.engine.reference(handle.id), selection)
       }
       if (route.object.kind !== "directory") {
         return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
@@ -858,7 +869,7 @@ export class Transaction {
     selector: M.DirectorySelector,
     state: ResolutionState = { follows: 0 }
   ) {
-    return Result.map(this.selectDirectoryRouteResult(selector, state), (route) => route.object)
+    return Result.map(this.selectDirectoryRouteResult(selector, state, "object"), (route) => route.object)
   }
 
   consumeLinkResult(state: ResolutionState, target: BytePath.BytePath) {
@@ -918,9 +929,14 @@ export class Transaction {
           let expanded = false
           for (let index = 0; index < components.length; index++) {
             const component = components[index]
-            const directory = yield* this.directoryResult(id)
-            yield* this.requireResult(directory, EXECUTE_PERMISSION)
-            yield* this.visitResult()
+            const directory = route.object
+            if (directory.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
+            }
+            const searchable = this.requireResult(directory, EXECUTE_PERMISSION)
+            if (Result.isFailure(searchable)) return yield* Result.fail(searchable.failure)
+            const visit = this.visitResult()
+            if (Result.isFailure(visit)) return yield* Result.fail(visit.failure)
             if (isDot(component)) {
               route = { object: directory, support }
               continue
@@ -931,15 +947,15 @@ export class Transaction {
               route = { object: yield* this.directoryResult(id), support }
               continue
             }
-            const name = yield* Result.mapError(
-              BytePath.fromBytes(component),
-              () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
-            )
-            let binding = directory.entries.get(key(name))
+            let binding = directory.entries.get(Hex.encode(component))
             if (binding === undefined) {
               if (mkdir === undefined) {
                 return yield* Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
               }
+              const name = yield* Result.mapError(
+                BytePath.fromBytes(component),
+                () => new M.InvalidInput({ operation: this.operation, field: "path", reason: "malformed" })
+              )
               yield* nameValueResult(name, this.operation)
               if (BigInt(BytePath.byteLength(name)) > this.engine.runtime.limits.nameBytes) {
                 return yield* Result.fail(
@@ -956,7 +972,9 @@ export class Transaction {
               }
               yield* this.conditionsResult(directory, binding, mkdir.conditions)
             }
-            const node = yield* this.getResult(binding.object)
+            const observed = this.getResult(binding.object)
+            if (Result.isFailure(observed)) return yield* Result.fail(observed.failure)
+            const node = observed.success
             support.push({ parent: directory.id, name: binding.name, version: binding.version, object: node.id })
             route = { object: node, parent: directory, binding, support }
             const terminal = index === components.length - 1
@@ -993,9 +1011,6 @@ export class Transaction {
               break
             }
             id = node.id
-            if (!terminal && node.kind !== "directory") {
-              return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
-            }
           }
           if (expanded) continue
           if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH && route.object.kind !== "directory") {
@@ -1113,6 +1128,11 @@ export class Transaction {
       yield* this.consumeLinkResult(state, route.object.target)
       return yield* this.resolveResult(route.object.target, true, route.parent.id, state.follows, saved.support, state)
     })
+  }
+
+  objectResult(target: M.Target) {
+    const route = M.isToken(target) ? this.referenceRouteResult(target, "object") : this.targetResult(target)
+    return Result.map(route, (route) => route.object)
   }
 
   targetResult(
