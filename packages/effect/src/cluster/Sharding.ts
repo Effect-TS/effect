@@ -743,10 +743,17 @@ const make = Effect.gen(function*() {
     // stays registered while its heartbeat works, so every runner keeps
     // assigning them to it. When a lock operation fails and none has succeeded
     // for `shardLockExpiration` since the first failure, the locks it last held
-    // have expired, so it unregisters and other runners take its shards. While
-    // failures are pending, a lock operation is retried every lock refresh
-    // interval, which bounds how late this check runs.
+    // have expired, so it unregisters and other runners take its shards.
+    //
+    // While failures are pending, the next lock operation starts within one
+    // lock interval of the last one failing. It takes at most one interval, and
+    // a refresh can follow a heartbeat that takes one too. So once
+    // `shardLockExpiration` has passed, a failure is seen within three
+    // intervals, and unregistering takes at most one more.
     const shardLockExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
+    const unregisterSelf = withRegistrationLock(runnerStorage.unregister(selfAddress)).pipe(
+      Effect.timeout(shardLockInterval)
+    )
     function shardLockOperationFailed(cause: Cause.Cause<unknown>): Effect.Effect<void> {
       return Effect.suspend(() => {
         if (isShutdown.current || Cause.hasInterruptsOnly(cause)) return Effect.void
@@ -754,25 +761,30 @@ const make = Effect.gen(function*() {
         shardLockFailure = { since: shardLockFailure?.since ?? now, cause }
         if (shardLocksEvicted || now - shardLockFailure.since < shardLockExpirationMillis) return Effect.void
         shardLocksEvicted = true
-        return Effect.andThen(
-          markShardLocksUnhealthy(cause),
-          Effect.logError(
+        return markShardLocksUnhealthy(cause).pipe(
+          Effect.andThen(Effect.logError(
             "Shard lock operations kept failing for shardLockExpiration, unregistering this runner so other runners can take its shards",
             cause
-          )
+          )),
+          Effect.andThen(unregisterSelf),
+          // the probe below unregisters again
+          Effect.catchCause((cause) => Effect.logWarning("Could not unregister runner, retrying", cause))
         )
       })
     }
     // While evicted, keep this runner unregistered and probe the lock path.
     // Only a successful `acquire` shows that it can take locks again. The probe
-    // shard is normally held by another runner, so it takes nothing, and
-    // `releaseAll` drops anything it did take along with any lock this runner
-    // may still hold. Once the probe succeeds, the runner registers again.
+    // shard is normally held by another runner, so it takes nothing. Any lock
+    // it did take is released before the next `acquire`: `releaseAll` runs both
+    // before and after it, and a probe stops at the first operation that fails
+    // or outlasts its own deadline. Once a probe succeeds, the runner registers
+    // again.
     const lockProbeShards = Array.from(shardGroups.assigned, (group) => makeShardId(group, 1))
-    const probeEvictedShardLocks = withRegistrationLock(runnerStorage.unregister(selfAddress)).pipe(
-      Effect.andThen(runnerStorage.acquire(selfAddress, lockProbeShards)),
-      Effect.andThen(runnerStorage.releaseAll(selfAddress)),
-      Effect.timeout(shardLockInterval),
+    const releaseAllWithDeadline = Effect.timeout(runnerStorage.releaseAll(selfAddress), shardLockInterval)
+    const probeEvictedShardLocks = unregisterSelf.pipe(
+      Effect.andThen(releaseAllWithDeadline),
+      Effect.andThen(Effect.timeout(runnerStorage.acquire(selfAddress, lockProbeShards), shardLockInterval)),
+      Effect.andThen(releaseAllWithDeadline),
       Effect.andThen(Effect.suspend(() => {
         shardLocksEvicted = false
         shardLockFailure = undefined

@@ -91,13 +91,16 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    *
    * It also bounds how long a runner whose shard lock operations keep failing,
    * while its heartbeat still succeeds, keeps shards assigned to it. Counting
-   * from its first failed lock operation, the runner unregisters once this
-   * duration has passed without a successful one, and at most three lock
-   * refresh intervals (the smaller of `shardLockRefreshInterval` and a third of
-   * this duration) later. It never unregisters earlier, so the locks it last
-   * refreshed have expired. Other runners take its shards on their next
-   * assignment refresh (`refreshAssignmentsInterval`). It registers again once
-   * it can acquire shard locks.
+   * from when its first failed lock operation returns, the runner unregisters
+   * no earlier than this duration, so the locks it last refreshed have
+   * expired, and at most four lock refresh intervals after it. The lock
+   * refresh interval is the smaller of `shardLockRefreshInterval` and a third
+   * of this duration. It is also the deadline for each lock operation,
+   * heartbeat and unregistration, so once this duration has passed, a failing
+   * lock operation returns within three intervals, and unregistering takes at
+   * most one more. Other runners take its shards on their next assignment
+   * refresh (`refreshAssignmentsInterval`). It registers again once it can
+   * acquire shard locks.
    */
   readonly shardLockExpiration: Duration.Input
   /**

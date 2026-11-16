@@ -5029,9 +5029,10 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
 
 describe("Sharding persistent lock failures", { concurrent: false }, () => {
   const shards = globalThis.Array.from({ length: 8 }, (_, i) => ShardId.make("default", i + 1))
-  // Lock refreshes run every 250ms, and leases expire 1s after the last one
-  const expiration = 1000
-  const refreshInterval = 250
+  // Leases expire 1.1s after the last refresh, which is not a multiple of the
+  // 250ms lock interval
+  const expiration = 1100
+  const lockInterval = 250
 
   const makeLockCluster = Effect.fnUntraced(function*() {
     const cluster = makeSharedCluster({ lockExpiration: expiration })
@@ -5047,7 +5048,7 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
             runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
             shardsPerGroup: shards.length,
             shardLockExpiration: expiration,
-            shardLockRefreshInterval: refreshInterval,
+            shardLockRefreshInterval: lockInterval,
             entityTerminationTimeout: 0,
             refreshAssignmentsInterval: 100
           }))
@@ -5065,25 +5066,28 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
       }
       return done()
     })
-    // Asserts that the runner on `port` unregisters no earlier than
-    // `shardLockExpiration` after `since`, and at most `slack` later.
-    const assertUnregisters = Effect.fnUntraced(function*(port: number, since: number, slack: number) {
+    // The runner's first failed lock operation returns within one lock interval
+    // of the storage call failing, and it unregisters between
+    // `shardLockExpiration` and four lock intervals after that.
+    const assertUnregisters = Effect.fnUntraced(function*(port: number) {
       assert.isTrue(yield* advanceUntil(5000, () => !isRegistered(port)), "the failing runner did not unregister")
-      const elapsed = (yield* Clock.currentTimeMillis) - since
+      const elapsed = (yield* Clock.currentTimeMillis) - cluster.lockFaultedAt.get(port)!
       assert.isAtLeast(elapsed, expiration, "the failing runner unregistered before its locks expired")
-      assert.isAtMost(elapsed, expiration + slack, "the failing runner unregistered late")
+      assert.isAtMost(elapsed, expiration + 5 * lockInterval, "the failing runner unregistered late")
     })
     yield* Effect.addFinalizer(() =>
       Effect.gen(function*() {
         cluster.failLocks.clear()
         cluster.failAcquire.clear()
+        cluster.lockDelays.clear()
+        cluster.releaseAllDelays.clear()
         const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
         while (closing.pollUnsafe() === undefined) {
           yield* TestClock.adjust(100)
         }
       })
     )
-    return { cluster, start, advanceUntil, assertUnregisters }
+    return { cluster, start, advanceUntil, assertUnregisters, isRegistered }
   })
 
   it.effect("hands off the shards of a runner whose lock operations keep failing until they recover", () =>
@@ -5094,15 +5098,17 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
       const balanced = () => ownedByA() > 0 && ownedByB() > 0 && ownedByA() + ownedByB() === shards.length
       assert.isTrue(yield* advanceUntil(5000, balanced))
 
+      // each lock operation and unregistration fits its deadline on its own,
+      // but a refresh with retries times out
+      cluster.lockDelays.set(1234, 240)
       cluster.failLocks.add(1234)
-      // the first refresh after the fault fails within one interval, then the
-      // runner unregisters within three intervals of its locks expiring
-      yield* assertUnregisters(1234, yield* Clock.currentTimeMillis, 4 * refreshInterval)
+      yield* assertUnregisters(1234)
       assert.isTrue(
         yield* advanceUntil(5000, () => ownedByB() === shards.length),
         "the healthy runner did not take over the shards of the failing runner"
       )
 
+      // storage stays slow, so the probe's operations together outlast a lock interval
       cluster.failLocks.delete(1234)
       assert.isTrue(yield* advanceUntil(5000, balanced), "the recovered runner did not rejoin")
     }).pipe(Effect.scoped))
@@ -5115,15 +5121,12 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
 
       // releasing still works, so only `acquire` shows the lock path is broken
       cluster.failAcquire.add(1235)
-      const joinedAt = yield* Clock.currentTimeMillis
       const ownedByB = yield* start(1235)
       assert.isTrue(
         yield* advanceUntil(1000, () => ownedByA() < shards.length),
         "the joining runner was not assigned shards"
       )
-      // its first acquisition fails as soon as the join is published, then it
-      // unregisters within three intervals of its locks expiring
-      yield* assertUnregisters(1235, joinedAt, 3 * refreshInterval)
+      yield* assertUnregisters(1235)
       assert.isTrue(
         yield* advanceUntil(5000, () => ownedByA() === shards.length),
         "the healthy runner did not take back the shards of the joining runner"
@@ -5139,6 +5142,39 @@ describe("Sharding persistent lock failures", { concurrent: false }, () => {
         yield* advanceUntil(5000, () => ownedByB() > 0 && ownedByA() + ownedByB() === shards.length),
         "the recovered runner did not rejoin"
       )
+    }).pipe(Effect.scoped))
+
+  it.effect("does not acquire again while a probe lock is not released", () =>
+    Effect.gen(function*() {
+      const { advanceUntil, cluster, isRegistered, start } = yield* makeLockCluster()
+      const ownedByA = yield* start(1234)
+      assert.isTrue(yield* advanceUntil(5000, () => ownedByA() === shards.length))
+      cluster.failLocks.add(1234)
+      assert.isTrue(yield* advanceUntil(5000, () => !isRegistered(1234)))
+
+      // The lone runner's next probe releases its old locks and takes the probe shard. Once its
+      // acquisition is underway, `releaseAll` starts outlasting its deadline.
+      cluster.acquireDelays.set(1234, 100)
+      cluster.failLocks.delete(1234)
+      assert.isTrue(yield* advanceUntil(1000, () => !cluster.acquireDelays.has(1234)))
+      cluster.releaseAllDelays.set(1234, 60_000)
+      const probeLock = shards[0].toString()
+      const now = yield* Clock.currentTimeMillis
+      assert.isTrue(
+        yield* advanceUntil(
+          1000,
+          () => cluster.locks.get(probeLock)?.port === 1234 && cluster.lockExpiresAt.get(probeLock)! > now + expiration
+        ),
+        "the probe did not take the free probe shard"
+      )
+
+      // The lock is never renewed, so it expires and another runner can take it
+      const ownedByB = yield* start(1235)
+      assert.isTrue(
+        yield* advanceUntil(5000, () => ownedByB() === shards.length),
+        "the probe kept its lock while it could not release it"
+      )
+      assert.isFalse(isRegistered(1234), "the runner rejoined before it could release its probe lock")
     }).pipe(Effect.scoped))
 })
 
@@ -5174,6 +5210,12 @@ interface SharedCluster {
   readonly failLocks: Set<number>
   /** Ports whose `acquire` fails, while their other operations succeed. */
   readonly failAcquire: Set<number>
+  /** When each port's first faulted lock operation was called. */
+  readonly lockFaultedAt: Map<number, number>
+  /** Milliseconds each lock operation, heartbeat and unregistration of a port takes. */
+  readonly lockDelays: Map<number, number>
+  /** Milliseconds each `releaseAll` of a port takes, overriding `lockDelays`. */
+  readonly releaseAllDelays: Map<number, number>
   /** Milliseconds after which an unrefreshed lock can be taken by another runner. */
   readonly lockExpiration: number
   /** When each lock expires. */
@@ -5189,6 +5231,9 @@ const makeSharedCluster = (options?: { readonly lockExpiration?: number }): Shar
   acquireDelays: new Map(),
   failLocks: new Set(),
   failAcquire: new Set(),
+  lockFaultedAt: new Map(),
+  lockDelays: new Map(),
+  releaseAllDelays: new Map(),
   lockExpiration: options?.lockExpiration ?? Infinity,
   lockExpiresAt: new Map()
 })
@@ -5200,12 +5245,25 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
     return owner !== undefined && Equal.equals(owner, address)
   }
   const lockFailure = new ClusterError.PersistenceError({ cause: "lock operation failed" })
+  // Storage calls read the fault and delay settings when they run, not when
+  // they are created, since a runner may build an operation once and repeat it
+  const delayed = <A, E>(effect: Effect.Effect<A, E>, delays?: Map<number, number>) =>
+    Effect.suspend(() => {
+      const delay = delays?.get(port) ?? cluster.lockDelays.get(port) ?? 0
+      return delay > 0 ? Effect.delay(effect, delay) : effect
+    })
   // Fails while this runner's lock operations, or the given one, are faulted
-  const lockOperation = <A>(f: (now: number) => A, faulted?: Set<number>) =>
-    Effect.flatMap(
-      Clock.currentTimeMillis,
-      (now) => cluster.failLocks.has(port) || faulted?.has(port) ? Effect.fail(lockFailure) : Effect.sync(() => f(now))
-    )
+  const lockOperation = <A>(
+    f: (now: number) => A,
+    options?: { readonly faulted?: Set<number>; readonly delays?: Map<number, number> }
+  ) =>
+    Effect.flatMap(Clock.currentTimeMillis, (calledAt) => {
+      if (cluster.failLocks.has(port) || options?.faulted?.has(port)) {
+        if (!cluster.lockFaultedAt.has(port)) cluster.lockFaultedAt.set(port, calledAt)
+        return delayed(Effect.fail(lockFailure), options?.delays)
+      }
+      return delayed(Effect.map(Clock.currentTimeMillis, f), options?.delays)
+    })
   return RunnerStorage.RunnerStorage.of({
     getRunners: Effect.suspend(() => {
       const failed = Effect.fail(new ClusterError.PersistenceError({ cause: "getRunners failed" }))
@@ -5222,37 +5280,38 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
         return MachineId.make(port)
       }),
     unregister: (address) =>
-      Effect.sync(() => {
+      delayed(Effect.sync(() => {
         const index = cluster.membership.findIndex(([runner]) => Equal.equals(runner.address, address))
         if (index >= 0) cluster.membership.splice(index, 1)
-      }),
+      })),
     setRunnerHealth: () => Effect.void,
-    acquire: (address, shardIds) => {
-      const requested = globalThis.Array.from(shardIds)
-      const acquire = lockOperation((now) => {
-        const acquired: Array<ShardId.ShardId> = []
-        for (const shardId of requested) {
-          const key = shardId.toString()
-          const expired = (cluster.lockExpiresAt.get(key) ?? Infinity) <= now
-          if (cluster.locks.has(key) && !isOwner(shardId, address) && !expired) continue
-          cluster.locks.set(key, address)
-          cluster.lockExpiresAt.set(key, now + cluster.lockExpiration)
-          const owners = cluster.owners.get(key) ?? []
-          if (owners[owners.length - 1] !== address.port) owners.push(address.port)
-          cluster.owners.set(key, owners)
-          acquired.push(shardId)
-        }
-        return acquired
-      }, cluster.failAcquire)
-      const delay = cluster.acquireDelays.get(port)
-      if (delay === undefined || requested.length === 0) return acquire
-      cluster.acquireDelays.delete(port)
-      return Effect.delay(acquire, delay)
-    },
+    acquire: (address, shardIds) =>
+      Effect.suspend(() => {
+        const requested = globalThis.Array.from(shardIds)
+        const acquire = lockOperation((now) => {
+          const acquired: Array<ShardId.ShardId> = []
+          for (const shardId of requested) {
+            const key = shardId.toString()
+            const expired = (cluster.lockExpiresAt.get(key) ?? Infinity) <= now
+            if (cluster.locks.has(key) && !isOwner(shardId, address) && !expired) continue
+            cluster.locks.set(key, address)
+            cluster.lockExpiresAt.set(key, now + cluster.lockExpiration)
+            const owners = cluster.owners.get(key) ?? []
+            if (owners[owners.length - 1] !== address.port) owners.push(address.port)
+            cluster.owners.set(key, owners)
+            acquired.push(shardId)
+          }
+          return acquired
+        }, { faulted: cluster.failAcquire })
+        const delay = cluster.acquireDelays.get(port)
+        if (delay === undefined || requested.length === 0) return acquire
+        cluster.acquireDelays.delete(port)
+        return Effect.delay(acquire, delay)
+      }),
     // An empty refresh is only the heartbeat, which does not use the lock path
     refresh: (address, shardIds) => {
       const requested = globalThis.Array.from(shardIds)
-      if (requested.length === 0) return Effect.succeed([])
+      if (requested.length === 0) return delayed(Effect.succeed([]))
       return lockOperation((now) => {
         const refreshed = requested.filter((shardId) => isOwner(shardId, address))
         for (const shardId of refreshed) {
@@ -5270,7 +5329,7 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
         for (const [key, owner] of cluster.locks) {
           if (Equal.equals(owner, address)) cluster.locks.delete(key)
         }
-      })
+      }, { delays: cluster.releaseAllDelays })
   })
 }
 
