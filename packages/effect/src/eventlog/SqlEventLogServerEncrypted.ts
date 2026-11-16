@@ -178,21 +178,19 @@ export const makeStorage = (options?: {
     })
     // Two instances can open the same table at once, and PostgreSQL and SQL
     // Server can fail the loser of a concurrent create, so creation retries.
-    const createTable = (name: string, columns: string, indexes: ReadonlyArray<string> = []) =>
-      sql.onDialectOrElse({
-        mysql: () => {
-          const definitions = [columns, ...indexes.map((index) => `INDEX (${index})`)].join(", ")
-          return Effect.asVoid(sql`CREATE TABLE IF NOT EXISTS ${sql(name)} (${sql.literal(definitions)})`)
-        },
+    // MySQL and SQL Server declare the indexes inside the CREATE TABLE: on SQL
+    // Server, two instances running separate CREATE INDEX statements on the
+    // same table can deadlock, which stalls the loser for seconds.
+    const createTable = (name: string, columns: string, indexes: ReadonlyArray<string> = []) => {
+      const definitions = (index: (columns: Statement.Fragment, name: string) => Statement.Fragment) =>
+        sql.csv([sql.literal(columns), ...indexes.map((cols, i) => index(sql.literal(cols), `${name}_i${i}`))])
+      return sql.onDialectOrElse({
+        mysql: () =>
+          Effect.asVoid(sql`CREATE TABLE IF NOT EXISTS ${sql(name)} (${definitions((cols) => sql`INDEX (${cols})`)})`),
         mssql: () =>
-          sql`IF OBJECT_ID(${name}, N'U') IS NULL CREATE TABLE ${sql(name)} (${sql.literal(columns)})`.pipe(
-            Effect.andThen(Effect.forEach(indexes, (index, i) => {
-              const indexName = `${name}_i${i}`
-              return sql`
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = ${indexName} AND object_id = OBJECT_ID(${name}))
-                CREATE INDEX ${sql(indexName)} ON ${sql(name)} (${sql.literal(index)})`
-            }, { discard: true }))
-          ),
+          sql`IF OBJECT_ID(${name}, N'U') IS NULL CREATE TABLE ${sql(name)} (${
+            definitions((cols, indexName) => sql`INDEX ${sql(indexName)} NONCLUSTERED (${cols})`)
+          })`,
         orElse: () =>
           sql`CREATE TABLE IF NOT EXISTS ${sql(name)} (${sql.literal(columns)})`.pipe(
             Effect.andThen(Effect.forEach(
@@ -203,6 +201,7 @@ export const makeStorage = (options?: {
             ))
           )
       }).pipe(Effect.retry({ times: 3 }))
+    }
 
     const storesTable = `${tablePrefix}_compaction_stores`
     const bucketsTable = `${tablePrefix}_compaction_buckets`
