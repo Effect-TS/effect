@@ -762,8 +762,7 @@ const constInterruptedFiber = (function() {
  *
  * **Gotchas**
  *
- * A managed fiber that closes its own scope is not interrupted or awaited by
- * that close. Uninterruptible work can delay scope closure.
+ * Uninterruptible work can delay scope closure.
  *
  * Replacing a fiber requests interruption of the previous fiber without
  * waiting for its cleanup to finish before starting the replacement.

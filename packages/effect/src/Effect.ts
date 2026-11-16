@@ -7062,10 +7062,7 @@ export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
  * whose cause contains the interruption. In an uninterruptible region, `use`
  * runs to completion unless it explicitly restores interruptibility.
  *
- * If interruption is requested during acquisition in an interruptible region,
- * acquisition is allowed to finish. If it succeeds, `use` is skipped and
- * `release` receives the interrupted `Exit`. The returned effect waits for
- * release to finish, including when interrupted.
+ * The returned effect waits for release to finish, including when interrupted.
  *
  * If the `release` `Effect` value fails, then the entire `Effect` value will
  * fail, even if the `use` `Effect` value succeeds. If this fail-fast behavior
