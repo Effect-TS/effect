@@ -5027,6 +5027,99 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
   )
 })
 
+describe("Sharding persistent lock failures", { concurrent: false }, () => {
+  const shards = globalThis.Array.from({ length: 8 }, (_, i) => ShardId.make("default", i + 1))
+
+  // Runners sharing membership and shard locks that expire one second after
+  // their last refresh.
+  const makeLockCluster = Effect.fnUntraced(function*() {
+    const cluster = makeSharedCluster({ lockExpiration: 1000 })
+    const scope = yield* Scope.make()
+    const start = Effect.fnUntraced(function*(port: number) {
+      const context = yield* Layer.buildWithScope(
+        Sharding.layer.pipe(
+          Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, makeSharedClusterStorage(cluster, port))),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(Runners.layerNoop),
+          Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
+            shardsPerGroup: shards.length,
+            shardLockExpiration: 1000,
+            entityTerminationTimeout: 0,
+            refreshAssignmentsInterval: 100
+          }))
+        ),
+        scope
+      )
+      const sharding = Context.get(context, Sharding.Sharding)
+      return () => shards.filter((shardId) => sharding.hasShardId(shardId)).length
+    })
+    // Advances the clock in 100ms steps until `done` holds, for at most `millis`
+    const advanceUntil = Effect.fnUntraced(function*(millis: number, done: () => boolean) {
+      for (let elapsed = 0; elapsed < millis && !done(); elapsed += 100) {
+        yield* TestClock.adjust(100)
+      }
+      return done()
+    })
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function*() {
+        cluster.failLocks.clear()
+        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+        while (closing.pollUnsafe() === undefined) {
+          yield* TestClock.adjust(100)
+        }
+      })
+    )
+    return { cluster, start, advanceUntil }
+  })
+
+  it.effect(
+    "hands off the shards of a runner whose lock operations keep failing until they recover",
+    () =>
+      Effect.gen(function*() {
+        const { advanceUntil, cluster, start } = yield* makeLockCluster()
+        const ownedByA = yield* start(1234)
+        const ownedByB = yield* start(1235)
+        const balanced = () => ownedByA() > 0 && ownedByB() > 0 && ownedByA() + ownedByB() === shards.length
+        assert.isTrue(yield* advanceUntil(5000, balanced))
+
+        cluster.failLocks.add(1234)
+        assert.isTrue(
+          yield* advanceUntil(5000, () => ownedByB() === shards.length),
+          "the healthy runner did not take over the shards of the failing runner"
+        )
+
+        cluster.failLocks.delete(1234)
+        assert.isTrue(
+          yield* advanceUntil(5000, balanced),
+          "the recovered runner did not rejoin"
+        )
+      }).pipe(Effect.scoped)
+  )
+
+  it.effect(
+    "hands off the shards assigned to a joining runner that cannot acquire locks",
+    () =>
+      Effect.gen(function*() {
+        const { advanceUntil, cluster, start } = yield* makeLockCluster()
+        const ownedByA = yield* start(1234)
+        assert.isTrue(yield* advanceUntil(5000, () => ownedByA() === shards.length))
+
+        cluster.failLocks.add(1235)
+        yield* start(1235)
+        assert.isTrue(
+          yield* advanceUntil(1000, () => ownedByA() < shards.length),
+          "the joining runner was not assigned shards"
+        )
+        assert.isTrue(
+          yield* advanceUntil(5000, () => ownedByA() === shards.length),
+          "the healthy runner did not take back the shards of the joining runner"
+        )
+      }).pipe(Effect.scoped)
+  )
+})
+
 // Runner membership the test controls; the local runner joins on registration.
 const makeMembershipStorage = (membership: Array<readonly [Runner.Runner, boolean]>) =>
   RunnerStorage.RunnerStorage.of({
@@ -5055,15 +5148,24 @@ interface SharedCluster {
   readonly stallGetRunners: Map<number, number>
   /** Ports whose next acquisition of any shards completes after the given milliseconds. */
   readonly acquireDelays: Map<number, number>
+  /** Ports whose lock operations fail, while their heartbeat still succeeds. */
+  readonly failLocks: Set<number>
+  /** Milliseconds after which an unrefreshed lock can be taken by another runner. */
+  readonly lockExpiration: number
+  /** When each lock expires. */
+  readonly lockExpiresAt: Map<string, number>
 }
 
-const makeSharedCluster = (): SharedCluster => ({
+const makeSharedCluster = (options?: { readonly lockExpiration?: number }): SharedCluster => ({
   membership: [],
   locks: new Map(),
   owners: new Map(),
   failGetRunners: new Set(),
   stallGetRunners: new Map(),
-  acquireDelays: new Map()
+  acquireDelays: new Map(),
+  failLocks: new Set(),
+  lockExpiration: options?.lockExpiration ?? Infinity,
+  lockExpiresAt: new Map()
 })
 
 // One runner's view of shared membership and exclusive shard locks.
@@ -5072,6 +5174,13 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
     const owner = cluster.locks.get(shardId.toString())
     return owner !== undefined && Equal.equals(owner, address)
   }
+  const lockFailure = new ClusterError.PersistenceError({ cause: "lock operation failed" })
+  // Fails while this runner's lock operations are faulted
+  const lockOperation = <A>(f: (now: number) => A) =>
+    Effect.flatMap(
+      Clock.currentTimeMillis,
+      (now) => cluster.failLocks.has(port) ? Effect.fail(lockFailure) : Effect.sync(() => f(now))
+    )
   return RunnerStorage.RunnerStorage.of({
     getRunners: Effect.suspend(() => {
       const failed = Effect.fail(new ClusterError.PersistenceError({ cause: "getRunners failed" }))
@@ -5095,12 +5204,14 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
     setRunnerHealth: () => Effect.void,
     acquire: (address, shardIds) => {
       const requested = globalThis.Array.from(shardIds)
-      const acquire = Effect.sync(() => {
+      const acquire = lockOperation((now) => {
         const acquired: Array<ShardId.ShardId> = []
         for (const shardId of requested) {
           const key = shardId.toString()
-          if (cluster.locks.has(key) && !isOwner(shardId, address)) continue
+          const expired = (cluster.lockExpiresAt.get(key) ?? Infinity) <= now
+          if (cluster.locks.has(key) && !isOwner(shardId, address) && !expired) continue
           cluster.locks.set(key, address)
+          cluster.lockExpiresAt.set(key, now + cluster.lockExpiration)
           const owners = cluster.owners.get(key) ?? []
           if (owners[owners.length - 1] !== address.port) owners.push(address.port)
           cluster.owners.set(key, owners)
@@ -5113,14 +5224,24 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
       cluster.acquireDelays.delete(port)
       return Effect.delay(acquire, delay)
     },
-    refresh: (address, shardIds) =>
-      Effect.sync(() => globalThis.Array.from(shardIds).filter((shardId) => isOwner(shardId, address))),
+    // An empty refresh is only the heartbeat, which does not use the lock path
+    refresh: (address, shardIds) => {
+      const requested = globalThis.Array.from(shardIds)
+      if (requested.length === 0) return Effect.succeed([])
+      return lockOperation((now) => {
+        const refreshed = requested.filter((shardId) => isOwner(shardId, address))
+        for (const shardId of refreshed) {
+          cluster.lockExpiresAt.set(shardId.toString(), now + cluster.lockExpiration)
+        }
+        return refreshed
+      })
+    },
     release: (address, shardId) =>
-      Effect.sync(() => {
+      lockOperation(() => {
         if (isOwner(shardId, address)) cluster.locks.delete(shardId.toString())
       }),
     releaseAll: (address) =>
-      Effect.sync(() => {
+      lockOperation(() => {
         for (const [key, owner] of cluster.locks) {
           if (Equal.equals(owner, address)) cluster.locks.delete(key)
         }

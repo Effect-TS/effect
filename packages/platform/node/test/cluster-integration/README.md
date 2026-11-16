@@ -21,7 +21,7 @@ prefix, and every runner listens on an operating-system-assigned port.
 - `stop(runner)` for graceful deregistration and shard handoff.
 - `kill(runner)` for abrupt teardown without deregistration or explicit lock cleanup.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
-- `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection. `blackhole` and `fail` affect the current connection only, so a rebuild clears them; `stuck`, `failAlways` and `hangRelease` also affect every rebuilt connection.
+- `faultLock(runner, mode)` to blackhole, stick, fail, stick while blocking release of, or clear faults on a runner's reserved lock connection.
 - `cutSocket(runner, { peer, direction })` to close one inbound or outbound client/runner connection without stopping either endpoint.
 - `insertMessage(row)` to inject a raw row into this cluster's prefixed message table.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.
