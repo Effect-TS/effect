@@ -150,6 +150,7 @@
  */
 import * as Effect from "../Effect.ts"
 import * as Parquet from "../encoding/Parquet.ts"
+import { type Annotation, logicalOf } from "../internal/parquet/annotations.ts"
 import * as Result from "../Result.ts"
 import * as Stream from "../Stream.ts"
 import * as ArrowData from "./ArrowData.ts"
@@ -423,16 +424,6 @@ const int96: Leaf = {
 
 type Decimal = Extract<Parquet.LogicalType, { readonly type: "DECIMAL" }>
 
-/** A logical type, or a converted type that no logical type replaced. */
-type Annotation = Parquet.LogicalType | { readonly type: "INTERVAL" | "MAP_KEY_VALUE" }
-
-const utc = (type: "TIME" | "TIMESTAMP", unit: "MILLIS" | "MICROS"): Annotation => ({
-  type,
-  isAdjustedToUTC: true,
-  unit
-})
-const integer = (bitWidth: number, isSigned: boolean): Annotation => ({ type: "INTEGER", bitWidth, isSigned })
-
 /**
  * The annotation of a schema node: its logical type, or its converted type as
  * the logical type LogicalTypes.md gives for it. `undefined` for a node without
@@ -440,48 +431,10 @@ const integer = (bitWidth: number, isSigned: boolean): Annotation => ({ type: "I
  */
 const annotationOf = (node: Parquet.SchemaNode): Annotation | undefined => {
   if (node.logicalType !== undefined) return node.logicalType
-  switch (node.convertedType) {
-    case "UTF8":
-      return { type: "STRING" }
-    case "DECIMAL":
-      // readMetadata requires the precision of a DECIMAL it keeps.
-      return { type: "DECIMAL", scale: node.scale ?? 0, precision: node.precision! }
-    case "TIME_MILLIS":
-      return utc("TIME", "MILLIS")
-    case "TIME_MICROS":
-      return utc("TIME", "MICROS")
-    case "TIMESTAMP_MILLIS":
-      return utc("TIMESTAMP", "MILLIS")
-    case "TIMESTAMP_MICROS":
-      return utc("TIMESTAMP", "MICROS")
-    case "INT_8":
-      return integer(8, true)
-    case "INT_16":
-      return integer(16, true)
-    case "INT_32":
-      return integer(32, true)
-    case "INT_64":
-      return integer(64, true)
-    case "UINT_8":
-      return integer(8, false)
-    case "UINT_16":
-      return integer(16, false)
-    case "UINT_32":
-      return integer(32, false)
-    case "UINT_64":
-      return integer(64, false)
-    case "MAP":
-    case "MAP_KEY_VALUE":
-    case "LIST":
-    case "ENUM":
-    case "DATE":
-    case "JSON":
-    case "BSON":
-    case "INTERVAL":
-      return { type: node.convertedType }
-    default:
-      return undefined
-  }
+  const converted = node.convertedType
+  // readMetadata requires the precision of a DECIMAL it keeps.
+  if (converted === "DECIMAL") return { type: "DECIMAL", scale: node.scale ?? 0, precision: node.precision! }
+  return typeof converted === "string" ? logicalOf[converted] : undefined
 }
 
 const timeUnits = { MILLIS: "millisecond", MICROS: "microsecond", NANOS: "nanosecond" } as const
