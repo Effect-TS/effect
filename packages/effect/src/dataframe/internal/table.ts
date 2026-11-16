@@ -296,7 +296,8 @@ const checkRange = (path: string, v: V.I64, unit: S.TimeUnit, rows: Uint8Array |
 
 /**
  * Fails for a decimal with more digits than its column's precision. A
- * column holds one all the same, and a conversion to its own type finds none.
+ * column can hold one (IPC decoding does not check stored values), and
+ * `convert` returns a column that has the target type as it is.
  */
 const checkPrecision = (path: string, v: V.I64, type: S.Decimal, rows: Uint8Array | undefined): void => {
   const limit = BigInt(10) ** BigInt(type.precision)

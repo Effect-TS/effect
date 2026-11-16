@@ -180,14 +180,14 @@ interface Shape {
 const written: { readonly [M in Missing]: string } = { null: "null", undefined: "undefined", absent: "an absent key" }
 
 /**
- * The shape of the values of a schema, the type of an `optional` key or
- * not. `seen` says that a check around them is handed these values (one of
- * a struct, an array or a union they are in).
+ * The shape of the values of `ast`. `optional` says that `ast` is the type
+ * of an optional key. `seen` says that a check of a struct, array or union
+ * around the values is handed them.
  *
  * A check must be handed what the schema describes, so a missing value it
- * sees needs one way of being written. An optional field's is an absent
- * key, whether or not its type has `undefined` too. It fails when the
- * schema writes it as `null` and another way.
+ * sees needs one way of being written. For an optional field it is an
+ * absent key, whether or not its type has `undefined` too. Fails when a
+ * check sees a missing value the schema writes as `null` and another way.
  */
 const shapeOf = (ast: AST.AST, path: string, seen: boolean, optional = false): Shape => {
   const ways = new Set<Missing>(optional ? ["absent"] : [])
@@ -244,8 +244,8 @@ const shapeOf = (ast: AST.AST, path: string, seen: boolean, optional = false): S
 }
 
 /**
- * The values a frame stores for `shape`, as the schema writes them, or
- * `undefined` when it stores them that way.
+ * The function that turns a value a frame stores for `shape` into the form
+ * the schema writes. `undefined` when the frame stores that form already.
  */
 const restorer = (shape: Shape): ((value: unknown) => unknown) | undefined => {
   const present = shape.item !== undefined
@@ -332,7 +332,7 @@ const checksOf = (ast: AST.Objects): Plan.TableChecks | undefined => {
     const absent = shape.missing === "absent"
     return [[name, (value: unknown) => (absent && value === null) || is(restore(value))] as const]
   })
-  // With checks of rows, every field has its shape.
+  // When the struct has checks, `shapes` holds every field.
   const restore = checks && struct(shapes)
   const rows = checks &&
     ((row: unknown) => Result.isSuccess(AST.runChecks(checks, restore === undefined ? row : restore(row))))

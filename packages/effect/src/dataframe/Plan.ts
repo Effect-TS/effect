@@ -760,10 +760,8 @@ export interface TableChecks {
  *
  * **Gotchas**
  *
- * `checks` has no JSON form. {@link NodeFromJson} fails to encode a table
- * that has them, naming the table, and fails to decode JSON with a `checks`
- * key. {@link withoutChecks} removes them: the plan then encodes, and checks
- * column types only.
+ * `checks` has no JSON form. See {@link NodeFromJson} and
+ * {@link withoutChecks}.
  *
  * @stability experimental
  * @category models
@@ -1197,11 +1195,12 @@ export const Node: Schema.Codec<Node, unknown> = NodeSchema
  * **Gotchas**
  *
  * A table's `checks` are functions and have no JSON form. Encoding a plan
- * fails for a table that has them instead of leaving them out, and so does
- * decoding JSON with a `checks` key (the plan as `JSON.stringify` writes
- * it). Encode {@link withoutChecks} of the plan to send it without them. A
- * decoded plan never has checks: to test its tables' rows, build the query
- * from `Query.table` with the schema where the plan is decoded.
+ * fails for a table that has them, naming the table, instead of leaving
+ * them out, and so does decoding JSON with a `checks` key (the plan as
+ * `JSON.stringify` writes it). Encode {@link withoutChecks} of the plan to
+ * send it without them. A decoded plan never has checks: to test its
+ * tables' rows, build the query from `Query.table` with the schema where
+ * the plan is decoded.
  *
  * @stability experimental
  * @category schemas
@@ -1228,8 +1227,7 @@ export const NodeFromJson: Schema.Codec<Node, Schema.Json> = Schema.toCodecJson(
  * **Gotchas**
  *
  * The result accepts values the schema rejects, here and after decoding.
- * Checks can't be attached to a decoded plan: to test the rows again, build
- * the query from `Query.table` with the schema where the plan is decoded.
+ * {@link NodeFromJson} says how to test the rows of a decoded plan.
  *
  * **Example** (Encoding a plan over a table with refinements)
  *

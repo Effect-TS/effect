@@ -185,8 +185,8 @@ export const sumColumn = (inputType: S.DataType, sums: Sums): V.Vector => {
 }
 
 /**
- * Every value as a float, with validity. Durations and points in time are
- * not numbers: their integers count units, which a mean would lose.
+ * Every value as a float, with validity. Fails for durations and points in
+ * time: their integers count units, which a mean would lose.
  */
 const asFloat = (v: V.Vector): { readonly x: Float64Array; readonly valid: Uint8Array | undefined } => {
   if (T.isTemporal(v.type)) {

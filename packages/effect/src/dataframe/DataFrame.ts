@@ -204,9 +204,8 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * `Duration` finer than its column's unit fails, and so do a `DateTime`
  * beyond the range of valid dates, a `BigDecimal` with more digits than
  * its column's scale or precision, and a number an integer column can't
- * hold. A
- * `Float32` override is the exception: it rounds each number to the
- * nearest 32-bit float, and the schema's checks test the rounded number.
+ * hold. A `Float32` override is the exception: it rounds each number to
+ * the nearest 32-bit float, and the schema's checks test the rounded number.
  *
  * Missing values read back as `null` (see {@link Normalize}). An override
  * must hold its field's values, as {@link validate} checks columns: a
@@ -246,7 +245,6 @@ export const fromRows = <S extends StructSchema>(
     const input: ReadonlyArray<any> = Array.isArray(rows) ? rows : Array.from(rows)
     const table = Result.getOrThrowWith(ArrowTable.fromRows(T.toArrowSchema(columns), input), fromDefect)
     T.checkExact(columns, input)
-    // The frame is checked as validate checks one, so it holds what its declaration accepts.
     return wrap(T.conform(F.fromArrowTable(table), columns, checks))
   })
 
