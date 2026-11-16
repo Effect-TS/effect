@@ -42,22 +42,27 @@
  *   types and converted types are decoded into the schema but not applied
  *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes).
  * - Text: every `STRING`, `ENUM` and `JSON` value, and every value of their
- *   converted types (`UTF8`, `ENUM`, `JSON`), is checked to be UTF-8, and so
- *   is every value of such a column's dictionary. Anything else fails with
- *   `Malformed`. `JSON` values are not parsed.
+ *   converted types (`UTF8`, `ENUM`, `JSON`) on a node without a logical
+ *   type, is checked to be UTF-8, and so is every value of such a column's
+ *   dictionary. Anything else fails with `Malformed`. `JSON` values are not
+ *   parsed.
  * - Annotations: an annotation added after 2.14.0, or one the spec doesn't
  *   define for the physical type it is on (a `STRING` on an `INT32`), is left
- *   out of the schema, and so is the order of the column's statistics. A
- *   `DECIMAL` precision or scale and an `INTEGER` bit width that the spec
- *   forbids fail with `Malformed`.
+ *   out of the schema, and so is the order of the column's statistics. When
+ *   that annotation is a logical type, the node's converted type is left out
+ *   too, so only the physical type applies. A `DECIMAL` precision or scale and
+ *   an `INTEGER` bit width that the spec forbids fail with `Malformed`.
  * - Encodings: `PLAIN`, `PLAIN_DICTIONARY` and `RLE_DICTIONARY` (values
  *   are looked up in the dictionary), `RLE` (booleans), `DELTA_BINARY_PACKED`,
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
  *   levels in `RLE` or the deprecated `BIT_PACKED`.
  * - Pages: data pages v1 and v2 and dictionary pages; index pages and page
- *   types added after 2.14.0 are skipped. A page with a CRC-32 in its header
- *   is checked against it, the skipped ones too, and fails with `Malformed`
- *   when its bytes don't match. A page without one is read as it is.
+ *   types added after 2.14.0 are skipped. Every page read on the way to the
+ *   column chunk's last value, skipped ones included, is checked against the
+ *   CRC-32 in its header when it has one, and fails with `Malformed` when its
+ *   bytes don't match. Pages after the last value, and the pages of a chunk
+ *   with no values, are not read and not checked. A page without a CRC-32 is
+ *   read as it is.
  * - Nesting: any depth of optional, required and repeated fields, assembled from
  *   repetition and definition levels into {@link Layer}s.
  *
@@ -273,7 +278,9 @@ export type ColumnOrder = "TYPE_ORDER" | "IEEE_754_TOTAL_ORDER" | "INT96_TIMESTA
  *
  * `convertedType` and `logicalType` are each `undefined` when the spec doesn't
  * define the annotation for this node: for its physical type and
- * `typeLength`, or for a group. They are not compared with each other.
+ * `typeLength`, or for a group. `convertedType` is also `undefined` when the
+ * node has a logical type that is ignored, as the spec then says to use only
+ * the physical type. Otherwise they are not compared with each other.
  *
  * @stability experimental
  * @category models
@@ -942,8 +949,14 @@ const rowGroup = (r: Reader): RowGroup => {
   return {
     columns: required(f.columns, "RowGroup.columns"),
     totalByteSize: required(f.totalByteSize, "RowGroup.total_byte_size"),
-    numRows: required(f.numRows, "RowGroup.num_rows")
+    numRows: rowCount(f.numRows, "RowGroup.num_rows")
   }
+}
+
+const rowCount = (n: number | undefined, what: string): number => {
+  const value = required(n, what)
+  if (value < 0) fail("Malformed", `${what} is ${value}`)
+  return value
 }
 
 /** A logical type, or a converted type as the logical type that replaced it. */
@@ -1053,6 +1066,9 @@ const annotations = (e: Element, physicalType: PhysicalType | undefined): {
     if (annotates(e.logicalType, e, physicalType)) logicalType = e.logicalType
     else known = false
   }
+  // The converted type stands in for a logical type only when there is none.
+  // An ignored one leaves only the physical type (#unsupported-logical-types).
+  if (e.logicalType !== undefined && logicalType === undefined) convertedType = undefined
   if (typeof convertedType === "string") {
     let annotation: Annotation
     if (convertedType !== "DECIMAL") annotation = { type: convertedType }
@@ -1183,7 +1199,7 @@ const fileMetaData = (footer: Uint8Array, maxDepth: number): FileMetaData => {
   }
   return {
     version: required(f.version, "FileMetaData.version"),
-    numRows: required(f.numRows, "FileMetaData.num_rows"),
+    numRows: rowCount(f.numRows, "FileMetaData.num_rows"),
     createdBy: f.createdBy,
     keyValueMetadata: f.keyValueMetadata ?? [],
     schema: root,

@@ -302,6 +302,21 @@ describe("Parquet", () => {
           assert.deepStrictEqual(metadata.columns.map((c) => c.columnOrder), ["TYPE_ORDER", "IEEE_754_TOTAL_ORDER"])
           yield* failsWith(metadataOf(make([Struct({ 1: Struct({}) })])), "Malformed", /column orders/)
         }))
+
+      it.effect("PQ-META-3 MUST reject a negative num_rows in the file or a row group (L1058-1059, L1426-1427)", () =>
+        Effect.gen(function*() {
+          const make = (file_: number, rowGroup: number) =>
+            metadataOf(file({
+              schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+              numRows: rowGroup,
+              chunks: [{ type: Type.INT32, path: ["x"], numValues: 0, pages: [] }],
+              metadata: { 3: I64(file_) }
+            }))
+          const metadata = yield* make(0, 0)
+          assert.deepStrictEqual([metadata.numRows, metadata.rowGroups[0].numRows], [0, 0])
+          yield* failsWith(make(0, -1), "Malformed", /RowGroup\.num_rows is -1/)
+          yield* failsWith(make(-1, 0), "Malformed", /FileMetaData\.num_rows is -1/)
+        }))
     })
 
     describe("parquet.thrift SchemaElement", () => {
@@ -387,6 +402,15 @@ describe("Parquet", () => {
             convertedType: undefined,
             columnOrder: undefined
           })
+          // the converted type doesn't stand in for a logical type that is there but ignored (#convertedtype)
+          for (const type of [Type.BYTE_ARRAY, undefined]) {
+            const annotation = { logicalType: Struct({ 99: empty }), convertedType: type === undefined ? 3 : 0 }
+            assert.deepStrictEqual(yield* annotationOf(annotated(type, annotation)), {
+              logicalType: undefined,
+              convertedType: undefined,
+              columnOrder: type === undefined ? "TYPE_ORDER" : undefined
+            })
+          }
         }))
 
       const GROUP = undefined
@@ -488,7 +512,7 @@ describe("Parquet", () => {
           }
         }))
 
-      it.effect("PQ-LT-5 reads a node's logical type and converted type independently of each other", () =>
+      it.effect("PQ-LT-5 reads a node's logical type and converted type independently of each other, unless the logical type is ignored", () =>
         Effect.gen(function*() {
           // both defined for INT32, though DATE corresponds to the converted type DATE
           assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT32, { ...logical(6), convertedType: 7 })), {
@@ -496,10 +520,11 @@ describe("Parquet", () => {
             convertedType: "TIME_MILLIS",
             columnOrder: "TYPE_ORDER"
           })
-          // STRING is not defined for INT32, INT_32 is
+          // STRING is not defined for INT32, so it is ignored, and so is INT_32, which only stands in for a
+          // logical type when there is none (#convertedtype, #unsupported-logical-types)
           assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT32, { ...logical(1), convertedType: 17 })), {
             logicalType: undefined,
-            convertedType: "INT_32",
+            convertedType: undefined,
             columnOrder: undefined
           })
           // the DecimalType supersedes the scale and precision of the schema element (parquet.thrift L557-564)
@@ -740,7 +765,18 @@ describe("Parquet", () => {
       it.effect("PQ-LT-12 doesn't check the bytes of other BYTE_ARRAY and FIXED_LEN_BYTE_ARRAY columns", () =>
         Effect.gen(function*() {
           const binary: Binaries = [[0xff], ...split]
-          for (const annotation of [undefined, logical(13), { convertedType: 20 }, logical(17)]) {
+          const annotations: ReadonlyArray<Annotation | undefined> = [
+            undefined,
+            logical(13),
+            { convertedType: 20 },
+            logical(17),
+            // a logical type supersedes UTF8, also when it is ignored for being unknown or not for BYTE_ARRAY
+            // (#convertedtype, #unsupported-logical-types); without one, UTF8 is checked (PQ-LT-8)
+            { ...logical(13), convertedType: 0 },
+            { logicalType: Struct({ 99: empty }), convertedType: 0 },
+            { ...logical(6), convertedType: 0 }
+          ]
+          for (const annotation of annotations) {
             for (const form of forms) {
               assert.deepStrictEqual(yield* values(binaries(form, binary, annotation)), hex(binary))
             }

@@ -22,20 +22,21 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-FILE-2   | README.md#file-format                                                      | The metadata is found from the 4-byte little-endian length before the final magic                       |
 | PQ-META-1   | parquet.thrift L1411-1413                                                  | Readers should accept versions 1 and 2 interchangeably                                                  |
 | PQ-META-2   | parquet.thrift L1440-1455                                                  | `column_orders` has one entry per leaf column, in schema order                                          |
+| PQ-META-3   | parquet.thrift L1058-1059, L1426-1427                                      | `num_rows` of the file and of a row group is not negative (rejected when it is)                         |
 | PQ-SCHEMA-1 | parquet.thrift L535-537                                                    | Every schema node but the root has a repetition                                                         |
 | PQ-SCHEMA-2 | parquet.thrift L518-523, L542-547                                          | The schema tree is the depth-first list of elements, groups giving `num_children`                       |
 | PQ-LT-1     | LogicalTypes.md#timestamp                                                  | Unknown `TIMESTAMP` units are unsupported features, not errors in the file                              |
 | PQ-LT-2     | parquet.thrift L370-373, L380-383                                          | `TimestampType.unit` and `TimeType.unit` are required (rejected when missing)                           |
-| PQ-LT-3     | LogicalTypes.md#unsupported-logical-types                                  | An unrecognized logical type is ignored, and so is its column's order                                   |
+| PQ-LT-3     | LogicalTypes.md#unsupported-logical-types                                  | An unrecognized logical type is ignored, with its column's order and its node's converted type          |
 | PQ-LT-4     | LogicalTypes.md#unsupported-logical-types                                  | An annotation on a physical type it isn't defined for is ignored, with the column order                 |
-| PQ-LT-5     | LogicalTypes.md#convertedtype                                              | Local policy: a logical type and a converted type are checked independently                             |
+| PQ-LT-5     | LogicalTypes.md#convertedtype                                              | Local policy: both are checked independently; an ignored logical type drops the converted type          |
 | PQ-LT-6     | LogicalTypes.md#decimal                                                    | `DECIMAL` precision and scale fit the rules and the physical type (rejected otherwise)                  |
 | PQ-LT-7     | LogicalTypes.md#signed-integers, parquet.thrift L388                       | `INTEGER` bit widths are 8, 16, 32 or 64 (rejected otherwise)                                           |
 | PQ-LT-8     | LogicalTypes.md#string, #enum, #json, parquet.thrift L50, L322, L326       | `STRING`, `ENUM` and `JSON` values, and those of their converted types, are UTF-8 (rejected otherwise)  |
 | PQ-LT-9     | LogicalTypes.md#string                                                     | Local policy: UTF-8 is the well-formed sequences of the Unicode Standard, which the spec doesn't define |
 | PQ-LT-10    | Encodings.md#delta-strings-delta_byte_array--7                             | `DELTA_BYTE_ARRAY` values are checked whole, after their prefix is added                                |
 | PQ-LT-11    | LogicalTypes.md#string                                                     | Local policy: a dictionary is checked once with its page, values no page refers to included             |
-| PQ-LT-12    | LogicalTypes.md#bson, README.md#types                                      | Unannotated, `BSON` and geospatial `BYTE_ARRAY` values and `FIXED_LEN_BYTE_ARRAY` values are any bytes  |
+| PQ-LT-12    | LogicalTypes.md#bson, README.md#types                                      | `BYTE_ARRAY` values with no text annotation in effect and `FIXED_LEN_BYTE_ARRAY` values are any bytes   |
 | PQ-NEST-1   | README.md#nested-encoding                                                  | Maximum levels follow from the optional and repeated nodes of the path                                  |
 | PQ-NEST-2   | README.md#nested-encoding                                                  | Repetition and definition levels encode lists (Dremel)                                                  |
 | PQ-NULL-1   | README.md#nulls                                                            | Nulls are encoded in the definition levels only, not in the data                                        |
@@ -75,7 +76,7 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-CRC-2    | parquet.thrift L840-852                                                    | A v2 data page's `crc` is of its levels and its values as stored                                        |
 | PQ-CRC-3    | parquet.thrift L840-852                                                    | A dictionary page's `crc` is checked the same way                                                       |
 | PQ-CRC-4    | README.md#checksumming, parquet.thrift L842-843                            | The CRC is the standard CRC-32 of GZIP; the i32 of the header is read as unsigned                       |
-| PQ-CRC-5    | parquet.thrift L844-845                                                    | Local policy: the `crc` of a skipped page is checked too                                                |
+| PQ-CRC-5    | parquet.thrift L844-845                                                    | Local policy: the `crc` of a skipped page before the chunk's last value is checked too                  |
 
 ## Unsupported: fails with `Unsupported`
 
