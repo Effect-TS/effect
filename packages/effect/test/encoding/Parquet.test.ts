@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit } from "effect"
+import { Effect } from "effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Parquet from "effect/encoding/Parquet"
 import { readFileSync } from "node:fs"
@@ -18,21 +18,26 @@ import {
   DELTA_BYTE_ARRAY,
   DELTA_LENGTH_BYTE_ARRAY,
   dictionaryPage,
+  dies,
   element,
+  failsWith,
   file,
   flat,
   GZIP,
+  gzip,
   I32,
   I64,
-  I8,
   int32s,
+  integer,
   lengthPrefixed,
   List,
+  logical,
   OPTIONAL,
   page,
   PLAIN,
   PLAIN_DICTIONARY,
   plainBinary,
+  plainBytes,
   REPEATED,
   REQUIRED,
   requiredColumn,
@@ -41,6 +46,7 @@ import {
   root,
   runs,
   Str,
+  STRING,
   Struct,
   text,
   thrift,
@@ -84,8 +90,6 @@ const gold: { readonly writer: string; readonly files: ReadonlyArray<GoldFile> }
 )
 const fixture = (name: string) =>
   Parquet.fromBytes(new Uint8Array(readFileSync(new URL("../fixtures/parquet/" + name, import.meta.url))))
-
-const gzip: Parquet.Decompress = (data) => Effect.sync(() => new Uint8Array(gunzipSync(data)))
 
 /** Turns a column's layers and values back into one nested value per row, like gold.json. */
 const rows = (column: Parquet.Column): Array<Gold> => {
@@ -135,16 +139,6 @@ const read = Effect.fnUntraced(function*(bytes: Uint8Array, options?: ReadOption
   return yield* Parquet.readColumn(source, metadata, { rowGroup: 0, column: 0, ...options })
 })
 const values = (bytes: Uint8Array, options?: ReadOptions) => Effect.map(read(bytes, options), rows)
-const failsWith = Effect.fnUntraced(function*<A>(
-  effect: Effect.Effect<A, Parquet.ParquetError>,
-  kind: Parquet.ParquetError["kind"],
-  message?: RegExp
-) {
-  const error = yield* Effect.flip(effect)
-  assert.isTrue(Parquet.isParquetError(error))
-  assert.strictEqual(error.kind, kind, error.message)
-  if (message !== undefined) assert.match(error.message, message)
-})
 
 describe("Parquet", () => {
   describe("pyarrow " + gold.writer + " fixtures", () => {
@@ -242,6 +236,7 @@ describe("Parquet", () => {
     const TIMESTAMP = 8
     /** A TimeType or TimestampType with a TimeUnit union, or without its unit. */
     const temporal = (member: number, unit: V | undefined) => Struct({ [member]: Struct({ 1: Bool(true), 2: unit }) })
+    const time = (unit: number) => ({ logicalType: temporal(TIME, Struct({ [unit]: empty })) })
 
     describe("README.md#file-format", () => {
       it.effect("PQ-FILE-1 MUST start and end with the magic number PAR1", () =>
@@ -415,11 +410,6 @@ describe("Parquet", () => {
 
       const GROUP = undefined
       const FIXED = Type.FIXED_LEN_BYTE_ARRAY
-      const logical = (member: number, fields: { readonly [id: number]: V } = {}): Annotation => ({
-        logicalType: Struct({ [member]: Struct(fields) })
-      })
-      const integer = (bitWidth: number, isSigned: boolean) => logical(10, { 1: I8(bitWidth), 2: Bool(isSigned) })
-      const time = (unit: number) => ({ logicalType: temporal(TIME, Struct({ [unit]: empty })) })
       const utc = { isAdjustedToUTC: true }
 
       it.effect("PQ-LT-4 SHOULD ignore an annotation on a physical type it is not defined for, and the column's order (#unsupported-logical-types)", () =>
@@ -606,7 +596,7 @@ describe("Parquet", () => {
       const binaries = (form: typeof forms[number], values: Binaries, annotation?: Annotation) => {
         const n = values.length
         const lengths = values.map((value) => value.length)
-        const plain = bytes(...values.map((value) => lengthPrefixed(Uint8Array.from(value))))
+        const plain = plainBytes(values)
         switch (form) {
           case "PLAIN":
             return requiredColumn(Type.BYTE_ARRAY, n, plain, { annotation })
@@ -635,7 +625,6 @@ describe("Parquet", () => {
         }
       }
       const hex = (values: Binaries) => values.map((value) => Hex.encode(Uint8Array.from(value)))
-      const STRING = logical(1)
       const utf8 = [
         ["STRING", STRING],
         ["ENUM", logical(4)],
@@ -670,7 +659,7 @@ describe("Parquet", () => {
                 numValues: 1,
                 numNulls: 0,
                 numRows: 1,
-                values: lengthPrefixed(Uint8Array.from(value))
+                values: plainBytes([value])
               })]
             })
           assert.deepStrictEqual(yield* values(v2([0xc3, 0xa9])), ["c3a9"])
@@ -751,10 +740,7 @@ describe("Parquet", () => {
               dictionary: true,
               annotation: STRING,
               pages: [
-                dictionaryPage(
-                  dictionary.length,
-                  bytes(...dictionary.map((value) => lengthPrefixed(Uint8Array.from(value))))
-                ),
+                dictionaryPage(dictionary.length, plainBytes(dictionary)),
                 dataPage(2, bytes([1], runs(1, [0, 2])), { encoding: RLE_DICTIONARY })
               ]
             }))
@@ -1448,14 +1434,12 @@ describe("Parquet", () => {
 
       it.effect("PQ-UNSUP-6 fails with Unsupported on a TIME unit added after 2.14.0", () =>
         Effect.gen(function*() {
-          const time = (unit: number) =>
-            annotated(Type.INT64, { logicalType: temporal(TIME, Struct({ [unit]: empty })) })
-          assert.deepStrictEqual((yield* annotationOf(time(2))).logicalType, {
+          assert.deepStrictEqual((yield* annotationOf(annotated(Type.INT64, time(2)))).logicalType, {
             type: "TIME",
             isAdjustedToUTC: true,
             unit: "MICROS"
           })
-          yield* failsWith(metadataOf(time(4)), "Unsupported", /TIME unit 4/)
+          yield* failsWith(metadataOf(annotated(Type.INT64, time(4))), "Unsupported", /TIME unit 4/)
         }))
     })
   })
@@ -1545,8 +1529,6 @@ describe("Parquet", () => {
 
     it.effect("dies on invalid options and indexes", () =>
       Effect.gen(function*() {
-        const dies = <A, E>(effect: Effect.Effect<A, E>) =>
-          Effect.map(Effect.exit(effect), (exit) => assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause)))
         yield* dies(Parquet.readMetadata(Parquet.fromBytes(int32s3), { maxDepth: 0 }))
         yield* dies(read(int32s3, { maxPageSize: 1.5 }))
         const source = Parquet.fromBytes(int32s3)

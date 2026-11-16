@@ -1,5 +1,8 @@
-import { Bytes } from "effect"
+import { assert } from "@effect/vitest"
+import { Bytes, Cause, Effect, Exit } from "effect"
+import * as Parquet from "effect/encoding/Parquet"
 import * as Thrift from "effect/encoding/Thrift"
+import { gunzipSync } from "node:zlib"
 
 // Builders of synthetic Parquet files, shared by the Parquet reader tests and
 // the tests of the Arrow adapter.
@@ -35,8 +38,10 @@ export const bytes = (...parts: ReadonlyArray<Uint8Array | ReadonlyArray<number>
 export const u32 = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24]
 export const uleb = (n: number): Array<number> => n < 0x80 ? [n] : [(n & 0x7f) | 0x80, ...uleb(Math.floor(n / 0x80))]
 export const int32s = (...values: ReadonlyArray<number>) => new Uint8Array(Int32Array.from(values).buffer)
-export const plainBinary = (...values: ReadonlyArray<string>) =>
-  bytes(...values.flatMap((v) => [u32(text(v).length), text(v)]))
+/** PLAIN byte arrays: the length of each value, then its bytes. */
+export const plainBytes = (values: ReadonlyArray<Uint8Array | ReadonlyArray<number>>) =>
+  bytes(...values.flatMap((v) => [u32(v.length), v]))
+export const plainBinary = (...values: ReadonlyArray<string>) => plainBytes(values.map(text))
 /** RLE/bit-packed hybrid runs of repeated values: [value, count] pairs. */
 export const runs = (width: number, ...pairs: ReadonlyArray<readonly [number, number]>) =>
   bytes(...pairs.map(([value, count]) => [...uleb(count * 2), ...u32(value).slice(0, (width + 7) >> 3)]))
@@ -66,6 +71,7 @@ export const RLE_DICTIONARY = 8
 export const BYTE_STREAM_SPLIT = 9
 export const ALP = 10
 export const GZIP = 2
+export const gzip: Parquet.Decompress = (data) => Effect.sync(() => new Uint8Array(gunzipSync(data)))
 
 export const element = (name: string, options: {
   readonly type?: number | undefined
@@ -188,45 +194,64 @@ export interface Chunk {
   readonly chunk?: { readonly [id: number]: V } | undefined
 }
 
+/** Writes a Parquet file with one row group per entry of `rowGroups`. */
+export const files = (options: {
+  readonly schema: ReadonlyArray<V>
+  readonly rowGroups: ReadonlyArray<{ readonly numRows: number; readonly chunks: ReadonlyArray<Chunk> }>
+  readonly metadata?: { readonly [id: number]: V } | undefined
+}): Uint8Array => {
+  const body: Array<Uint8Array> = []
+  let offset = 4
+  const groups = options.rowGroups.map((group) => {
+    const start = offset
+    const columns = group.chunks.map((chunk) => {
+      const data = bytes(...chunk.pages)
+      const meta = Struct({
+        1: I32(chunk.type),
+        2: List("I32", [I32(PLAIN), I32(RLE)]),
+        3: List("Binary", chunk.path.map(Str)),
+        4: I32(chunk.codec ?? 0),
+        5: I64(chunk.numValues),
+        6: I64(data.length),
+        7: I64(data.length),
+        9: I64(chunk.dictionary === true ? offset + chunk.pages[0].length : offset),
+        11: chunk.dictionary === true ? I64(offset) : undefined,
+        12: chunk.statistics
+      })
+      body.push(data)
+      const column = Struct({ 2: I64(offset), 3: meta, ...chunk.chunk })
+      offset += data.length
+      return column
+    })
+    return Struct({ 1: List("Struct", columns), 2: I64(offset - start), 3: I64(group.numRows) })
+  })
+  const footer = thrift(Struct({
+    1: I32(1),
+    2: List("Struct", options.schema),
+    3: I64(options.rowGroups.reduce((sum, group) => sum + group.numRows, 0)),
+    4: List("Struct", groups),
+    ...options.metadata
+  }))
+  return bytes(text("PAR1"), ...body, footer, u32(footer.length), text("PAR1"))
+}
+
 /** Writes a Parquet file with one row group. */
 export const file = (options: {
   readonly schema: ReadonlyArray<V>
   readonly numRows: number
   readonly chunks: ReadonlyArray<Chunk>
   readonly metadata?: { readonly [id: number]: V } | undefined
-}): Uint8Array => {
-  const body: Array<Uint8Array> = []
-  let offset = 4
-  const columns = options.chunks.map((chunk) => {
-    const data = bytes(...chunk.pages)
-    const meta = Struct({
-      1: I32(chunk.type),
-      2: List("I32", [I32(PLAIN), I32(RLE)]),
-      3: List("Binary", chunk.path.map(Str)),
-      4: I32(chunk.codec ?? 0),
-      5: I64(chunk.numValues),
-      6: I64(data.length),
-      7: I64(data.length),
-      9: I64(chunk.dictionary === true ? offset + chunk.pages[0].length : offset),
-      11: chunk.dictionary === true ? I64(offset) : undefined,
-      12: chunk.statistics
-    })
-    body.push(data)
-    const column = Struct({ 2: I64(offset), 3: meta, ...chunk.chunk })
-    offset += data.length
-    return column
-  })
-  const footer = thrift(Struct({
-    1: I32(1),
-    2: List("Struct", options.schema),
-    3: I64(options.numRows),
-    4: List("Struct", [Struct({ 1: List("Struct", columns), 2: I64(offset - 4), 3: I64(options.numRows) })]),
-    ...options.metadata
-  }))
-  return bytes(text("PAR1"), ...body, footer, u32(footer.length), text("PAR1"))
-}
+}): Uint8Array => files({ schema: options.schema, rowGroups: [options], metadata: options.metadata })
 
 export type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
+
+/** A member of the LogicalType union. */
+export const logical = (member: number, fields: { readonly [id: number]: V } = {}): Annotation => ({
+  logicalType: Struct({ [member]: Struct(fields) })
+})
+export const STRING = logical(1)
+export const decimal = (precision: number, scale: number) => logical(5, { 1: I32(scale), 2: I32(precision) })
+export const integer = (bitWidth: number, isSigned: boolean) => logical(10, { 1: I8(bitWidth), 2: Bool(isSigned) })
 
 /** A file with one top-level column. */
 export const flat = (options: {
@@ -294,3 +319,18 @@ export const delta = (values: ReadonlyArray<number>): Uint8Array => {
   })
   return bytes(header, uleb(zigzag(min)), [0, 1, 2, 3].map((m) => m < miniblocks ? width : 0), packed)
 }
+
+// Assertions the two test files share.
+
+export const failsWith = Effect.fnUntraced(function*<A, R>(
+  effect: Effect.Effect<A, Parquet.ParquetError, R>,
+  kind: Parquet.ParquetError["kind"],
+  message?: RegExp
+) {
+  const error = yield* Effect.flip(effect)
+  assert.isTrue(Parquet.isParquetError(error))
+  assert.strictEqual(error.kind, kind, error.message)
+  if (message !== undefined) assert.match(error.message, message)
+})
+export const dies = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.map(Effect.exit(effect), (exit) => assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause)))

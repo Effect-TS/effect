@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Option, Result, Stream } from "effect"
+import { Effect, Option, Result, Stream } from "effect"
 import { ArrowColumn, ArrowData, ArrowIpc, ArrowParquet, type ArrowSchema as S, ArrowTable } from "effect/arrow"
 import * as Hex from "effect/encoding/Hex"
 import * as Parquet from "effect/encoding/Parquet"
@@ -10,28 +10,29 @@ import {
   Bool,
   bytes,
   dataPage,
+  decimal,
+  dies,
   element,
+  failsWith,
   file,
+  files,
   flat,
-  I32,
-  I64,
-  I8,
+  gzip,
   int32s,
+  integer,
   lengthPrefixed,
   List,
+  logical,
   OPTIONAL,
-  PLAIN,
+  plainBytes,
   REPEATED,
   REQUIRED,
-  RLE,
   root,
   runs,
   Str,
+  STRING,
   Struct,
-  text,
-  thrift,
   Type,
-  u32,
   type V
 } from "../utils/parquet.ts"
 
@@ -62,7 +63,6 @@ const logicalGold: {
 } = fixtureJson("logical.gold.json")
 
 const unhex = (hex: string) => Result.getOrThrow(Hex.decode(hex))
-const gzip: Parquet.Decompress = (data) => Effect.sync(() => new Uint8Array(gunzipSync(data)))
 const codecs = { GZIP: gzip }
 
 type ReadOptions = Parameters<typeof ArrowParquet.recordBatches>[1]
@@ -96,15 +96,6 @@ const columnOf = (bytes: Uint8Array) =>
     return { field, data, values: valuesOf(field, data) }
   })
 
-const failsWith = Effect.fnUntraced(function*<A, R>(
-  effect: Effect.Effect<A, Parquet.ParquetError, R>,
-  kind: Parquet.ParquetError["kind"],
-  message: RegExp
-) {
-  const error = yield* Effect.flip(effect)
-  assert.strictEqual(error.kind, kind, error.message)
-  assert.match(error.message, message)
-})
 const schemaFailsWith = Effect.fnUntraced(function*(
   bytes: Uint8Array,
   kind: Parquet.ParquetError["kind"],
@@ -112,8 +103,6 @@ const schemaFailsWith = Effect.fnUntraced(function*(
 ) {
   yield* failsWith(Effect.flatMap(schemaOf(bytes), Effect.fromResult), kind, message)
 })
-const dies = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.map(Effect.exit(effect), (exit) => assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause)))
 
 // ---------------------------------------------------------------------------
 // Gold values of the pyarrow fixtures, as Arrow stores them
@@ -201,15 +190,8 @@ const showSchema = (schema: S.Schema) => schema.fields.map(show)
 // Synthetic files
 // ---------------------------------------------------------------------------
 
-/** A member of the LogicalType union. */
-const logical = (member: number, fields: { readonly [id: number]: V } = {}): Annotation => ({
-  logicalType: Struct({ [member]: Struct(fields) })
-})
 const LIST = logical(3)
 const MAP = logical(2)
-const STRING = logical(1)
-const decimal = (precision: number, scale: number) => logical(5, { 1: I32(scale), 2: I32(precision) })
-const integer = (bitWidth: number, signed: boolean) => logical(10, { 1: I8(bitWidth), 2: Bool(signed) })
 const converted = (convertedType: number): Annotation => ({ convertedType })
 const Converted = {
   UTF8: 0,
@@ -226,8 +208,7 @@ const Converted = {
 }
 
 const int64s = (...values: ReadonlyArray<bigint>) => new Uint8Array(BigInt64Array.from(values).buffer)
-const binaries = (...values: ReadonlyArray<ReadonlyArray<number>>) =>
-  bytes(...values.flatMap((v) => [u32(v.length), v]))
+const binaries = (...values: ReadonlyArray<ReadonlyArray<number>>) => plainBytes(values)
 // Definition levels 1, 0, 1 of a column with one optional node.
 const someNull = lengthPrefixed(runs(1, [1, 1], [0, 1], [1, 1]))
 
@@ -304,38 +285,19 @@ const tree = (fields: ReadonlyArray<Node>, numRows = 0, pages: ReadonlyArray<rea
   })
 
 /** A file with a required INT32 column `x` and one row group per entry of `groups`. */
-const rowGroups = (groups: ReadonlyArray<ReadonlyArray<number>>): Uint8Array => {
-  const body: Array<Uint8Array> = []
-  let offset = 4
-  const footer = thrift(Struct({
-    1: I32(1),
-    2: List("Struct", [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })]),
-    3: I64(groups.reduce((sum, values) => sum + values.length, 0)),
-    4: List(
-      "Struct",
-      groups.map((values) => {
-        const data = values.length === 0 ? new Uint8Array(0) : dataPage(values.length, int32s(...values))
-        const chunk = Struct({
-          2: I64(offset),
-          3: Struct({
-            1: I32(Type.INT32),
-            2: List("I32", [I32(PLAIN), I32(RLE)]),
-            3: List("Binary", [Str("x")]),
-            4: I32(0),
-            5: I64(values.length),
-            6: I64(data.length),
-            7: I64(data.length),
-            9: I64(offset)
-          })
-        })
-        body.push(data)
-        offset += data.length
-        return Struct({ 1: List("Struct", [chunk]), 2: I64(data.length), 3: I64(values.length) })
-      })
-    )
-  }))
-  return bytes(text("PAR1"), ...body, footer, u32(footer.length), text("PAR1"))
-}
+const rowGroups = (groups: ReadonlyArray<ReadonlyArray<number>>) =>
+  files({
+    schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
+    rowGroups: groups.map((values) => ({
+      numRows: values.length,
+      chunks: [{
+        type: Type.INT32,
+        path: ["x"],
+        numValues: values.length,
+        pages: values.length === 0 ? [] : [dataPage(values.length, int32s(...values))]
+      }]
+    }))
+  })
 
 describe("ArrowParquet", () => {
   describe("pyarrow " + gold.writer + " fixtures", () => {
@@ -343,10 +305,10 @@ describe("ArrowParquet", () => {
     for (const goldFile of gold.files) {
       it.effect(goldFile.name, () =>
         Effect.gen(function*() {
-          const batches = yield* batchesOf(fixtureBytes(goldFile.name), { codecs })
+          const bytes = fixtureBytes(goldFile.name)
+          const batches = yield* batchesOf(bytes, { codecs })
           assert.deepStrictEqual(batches.map((batch) => batch.length), goldFile.rowGroups.map((group) => group.numRows))
-          const metadata = yield* Parquet.readMetadata(Parquet.fromBytes(fixtureBytes(goldFile.name)))
-          const schema = Result.getOrThrow(ArrowParquet.schema(metadata))
+          const schema = Result.getOrThrow(yield* schemaOf(bytes))
           for (const batch of batches) assert.deepStrictEqual(batch.schema, schema)
           const columns = columnsOf(batches, schema)
           for (const column of goldFile.columns) {
@@ -600,14 +562,7 @@ describe("ArrowParquet", () => {
           [Type.INT32, converted(Converted.TIME_MILLIS), [["PARQUET:is_adjusted_to_utc", "true"]]]
         ]
         const annotated = Result.getOrThrow(
-          yield* schemaOf(file({
-            schema: [
-              root(leaves.length),
-              ...leaves.map(([type, annotation], i) => element(`f${i}`, { type, repetition: REQUIRED, ...annotation }))
-            ],
-            numRows: 0,
-            chunks: leaves.map(([type], i) => ({ type, path: [`f${i}`], numValues: 0, pages: [] }))
-          }))
+          yield* schemaOf(tree(leaves.map(([type, annotation], i) => leaf(`f${i}`, REQUIRED, type, annotation))))
         )
         assert.deepStrictEqual(
           annotated.fields.map((field) => [show(field), Array.from(field.metadata)]),
@@ -1029,11 +984,7 @@ describe("ArrowParquet", () => {
         )
         // Without a column to read, the row count alone gives the batch length, so it must not be negative
         const rows = (numRows: number) =>
-          file({
-            schema: [root(1), element("x", { type: Type.INT32, repetition: REQUIRED })],
-            numRows,
-            chunks: [{ type: Type.INT32, path: ["x"], numValues: 0, pages: [] }]
-          })
+          flat({ type: Type.INT32, repetition: REQUIRED, numRows, numValues: 0, pages: [] })
         assert.deepStrictEqual((yield* batchesOf(rows(0), { columns: [] })).map((batch) => batch.length), [0])
         yield* failsWith(batchesOf(rows(-1), { columns: [] }), "Malformed", /num_rows is -1/)
 
@@ -1091,9 +1042,9 @@ describe("ArrowParquet", () => {
     it.effect("gives batches that an Arrow IPC stream encodes and decodes to the same schema and values", () =>
       Effect.gen(function*() {
         for (const name of ["plain.parquet", "int96.parquet", "nested.parquet", "logical.parquet", "empty.parquet"]) {
-          const batches = yield* batchesOf(fixtureBytes(name))
-          const metadata = yield* Parquet.readMetadata(Parquet.fromBytes(fixtureBytes(name)))
-          const schema = Result.getOrThrow(ArrowParquet.schema(metadata))
+          const bytes = fixtureBytes(name)
+          const batches = yield* batchesOf(bytes)
+          const schema = Result.getOrThrow(yield* schemaOf(bytes))
           const table = ArrowTable.make(schema, batches)
           const decoded = Result.getOrThrow(ArrowIpc.decodeStream(Result.getOrThrow(ArrowIpc.encodeStream(table))))
           assert.deepStrictEqual(decoded.schema, schema, name)
