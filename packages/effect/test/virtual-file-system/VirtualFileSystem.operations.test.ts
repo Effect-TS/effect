@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BytePath, Cause, Clock, Effect, Exit, Fiber, Option, Result, Scope, Stream } from "effect"
+import { BytePath, Cause, Clock, Effect, Exit, Fiber, Option, Predicate, Result, Scope, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as VFS from "effect/virtual-file-system/VirtualFileSystem"
 
@@ -640,6 +640,33 @@ describe("VirtualFileSystem live walk and recursive removal", () => {
 })
 
 describe("VirtualFileSystem reference-route work", () => {
+  it.effect("should copy the directory prefix only for the matching leaf in a reference lookup", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make({ limits: { synchronous: true } })
+      const caller = yield* owner.authorize({ credentials })
+      const parent = yield* caller.makeDirectory("/parent")
+      for (let i = 0; i < 64; i++) yield* caller.createFile("/parent/f" + i)
+      const target = yield* caller.stat("/parent/f63")
+      const sync = yield* caller.acquireSync
+      const iterate = Array.prototype[Symbol.iterator]
+      let copies = 0
+      // Count spreads of the route to /parent during this single synchronous lookup.
+      // eslint-disable-next-line no-extend-native
+      Array.prototype[Symbol.iterator] = function(this: Array<unknown>) {
+        const first = this[0]
+        if (Predicate.hasProperty(first, "object") && first.object === parent.metadata.objectNumber) copies++
+        return iterate.call(this)
+      }
+      try {
+        const observed = Result.getOrThrow(sync.stat(target.reference))
+        assert.isTrue(VFS.equalsObjectReference(observed.reference, target.reference))
+      } finally {
+        // eslint-disable-next-line no-extend-native
+        Array.prototype[Symbol.iterator] = iterate
+      }
+      assert.isAtMost(copies, 1)
+    }).pipe(withClock))
+
   it.effect("should fail route search without changing usage when a reference exceeds its visit budget", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make({ limits: { namespaceVisits: 6 } })
