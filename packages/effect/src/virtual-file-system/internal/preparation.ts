@@ -27,7 +27,8 @@ const checkKeys = (
 
 // NOTE: Snapshots read declared fields once, including inherited and non-enumerable values.
 // Shape checks must not read getters; token authorization stays in the transaction.
-const checkShape = (
+/** @internal */
+export const checkShape = (
   input: unknown,
   allowed: ReadonlyArray<string>,
   operation: string

@@ -30,6 +30,44 @@ describe("VirtualFileSystem handles", () => {
       }))
   }
 
+  for (const api of ["effect", "sync"] as const) {
+    it.effect(`uses the sampled append option for each ${api} open`, () =>
+      Effect.gen(function*() {
+        const owner = yield* VFS.make({ limits: { synchronous: true } })
+        const caller = yield* owner.authorize({ credentials })
+        const sync = yield* caller.acquireSync
+        yield* caller.writeFile("/file", bytes(1))
+        let append = false
+        let next: boolean
+        class Options {
+          get access() {
+            next = append
+            return "readwrite" as const
+          }
+          get append() {
+            const value = next
+            next = !value
+            return value
+          }
+        }
+        const options = new Options()
+        const open = caller.open("/file", options)
+        for (const byte of [2, 3]) {
+          if (api === "effect") {
+            const handle = yield* open
+            yield* handle.write(bytes(byte))
+            yield* handle.close()
+          } else {
+            const handle = Result.getOrThrow(sync.open("/file", options))
+            Result.getOrThrow(handle.write(bytes(byte)))
+            Result.getOrThrow(handle.close())
+          }
+          assert.deepStrictEqual(yield* caller.readFile("/file"), append ? bytes(2, 3) : bytes(2))
+          append = true
+        }
+      }))
+  }
+
   it.effect("should share cursor state only through one handle when sequential and positioned I/O are mixed", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make()

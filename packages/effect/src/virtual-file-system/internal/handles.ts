@@ -492,21 +492,23 @@ const validateOpen = (
   operation: string
 ) =>
   Result.gen(function*() {
-    yield* E.checkOptionsResult(options, [
-      "access",
-      "create",
-      "append",
-      "truncate",
-      "appendCursor",
-      "truncateCursor",
-      "noFollow",
-      "mode",
-      "initialSize",
-      "owner",
-      "preserveTimes",
-      "conditions",
-      "expectedRevision"
-    ], operation)
+    if (options !== undefined) {
+      yield* P.checkShape(options, [
+        "access",
+        "create",
+        "append",
+        "truncate",
+        "appendCursor",
+        "truncateCursor",
+        "noFollow",
+        "mode",
+        "initialSize",
+        "owner",
+        "preserveTimes",
+        "conditions",
+        "expectedRevision"
+      ], operation)
+    }
     const access = options?.access ?? "read"
     const create = options?.create ?? "existing"
     const appendCursor = options?.appendCursor ?? "advance"
@@ -523,24 +525,33 @@ const validateOpen = (
     if (truncateCursor !== "preserve" && truncateCursor !== "clamp") {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "truncateCursor", reason: "malformed" }))
     }
+    const flags = { append: options?.append, truncate: options?.truncate, noFollow: options?.noFollow }
     for (const field of ["append", "truncate", "noFollow"] as const) {
-      if (options?.[field] !== undefined && typeof options[field] !== "boolean") {
+      const value = flags[field]
+      if (value !== undefined && typeof value !== "boolean") {
         return yield* Result.fail(new M.InvalidInput({ operation, field, reason: "malformed" }))
       }
     }
-    if ((options?.append || options?.truncate) && access === "read") {
+    if ((flags.append || flags.truncate) && access === "read") {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "access", reason: "malformed" }))
     }
-    if (options?.expectedRevision !== undefined && (!options.truncate || create === "exclusive")) {
+    const expectedRevision = options?.expectedRevision
+    if (expectedRevision !== undefined && (!flags.truncate || create === "exclusive")) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "expectedRevision", reason: "malformed" }))
     }
-    if (options?.mode !== undefined) yield* E.modeResult(options.mode, operation)
-    const owner = yield* E.checkOptionsResult(options?.owner, ["uid", "gid"], operation)
-    if (owner !== undefined && create === "existing") {
-      return yield* Result.fail(new M.InvalidInput({ operation, field: "owner", reason: "malformed" }))
+    const mode = options?.mode
+    if (mode !== undefined) yield* E.modeResult(mode, operation)
+    const owner = options?.owner
+    if (owner !== undefined) {
+      yield* P.checkShape(owner, ["uid", "gid"], operation)
+      if (create === "existing") {
+        return yield* Result.fail(new M.InvalidInput({ operation, field: "owner", reason: "malformed" }))
+      }
     }
-    const uid = owner?.uid === undefined ? undefined : yield* E.identityResult(owner.uid, operation, "uid")
-    const gid = owner?.gid === undefined ? undefined : yield* E.identityResult(owner.gid, operation, "gid")
+    const uid = owner?.uid
+    if (uid !== undefined) yield* E.identityResult(uid, operation, "uid")
+    const gid = owner?.gid
+    if (gid !== undefined) yield* E.identityResult(gid, operation, "gid")
     const initialSize = options?.initialSize
     if (initialSize !== undefined && create === "existing") {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "initialSize", reason: "malformed" }))
@@ -551,31 +562,30 @@ const validateOpen = (
         return yield* Result.fail(new M.InvalidInput({ operation, field: "preserveTimes", reason: "malformed" }))
       }
     }
-    if (
-      M.isToken(target) &&
-      (options?.conditions !== undefined || options?.mode !== undefined || create !== "existing")
-    ) return yield* Result.fail(new M.InvalidInput({ operation, field: "options", reason: "malformed" }))
-    if ((typeof target === "string" || BytePath.isBytePath(target)) && options?.conditions !== undefined) {
+    const entryConditions = options?.conditions
+    if (M.isToken(target) && (entryConditions !== undefined || mode !== undefined || create !== "existing")) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "options", reason: "malformed" }))
+    }
+    if ((typeof target === "string" || BytePath.isBytePath(target)) && entryConditions !== undefined) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "conditions", reason: "malformed" }))
     }
-    yield* A.condition(options?.conditions, operation)
-    const conditions = yield* P.snapshotConditions(options?.conditions, operation)
+    const conditions = yield* P.snapshotConditions(entryConditions, operation)
     yield* A.condition(conditions, operation)
     return {
-      mode: options?.mode,
+      mode,
       uid,
       gid,
       initialSize,
       preserveTimes,
       conditions,
-      expectedRevision: options?.expectedRevision,
+      expectedRevision,
       access,
       create,
       appendCursor,
       truncateCursor,
-      append: options?.append ?? false,
-      truncate: options?.truncate ?? false,
-      noFollow: options?.noFollow ?? false
+      append: flags.append ?? false,
+      truncate: flags.truncate ?? false,
+      noFollow: flags.noFollow ?? false
     }
   })
 
