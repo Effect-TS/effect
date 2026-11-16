@@ -15,6 +15,7 @@
  * @internal
  */
 import type * as S from "../../arrow/ArrowSchema.ts"
+import * as Values from "../../arrow/internal/values.ts"
 import { identity } from "../../Function.ts"
 import * as Result from "../../Result.ts"
 import * as AST from "../../SchemaAST.ts"
@@ -268,9 +269,9 @@ const struct = (shapes: NonNullable<Shape["fields"]>): ((value: unknown) => unkn
   return (value) => {
     const out: Record<string, unknown> = {}
     for (const [name, absent, restore] of fields) {
-      const v = (value as Record<string, unknown>)[name]
+      const v = Values.getProperty(value as object, name)
       if (v === null && absent) continue
-      out[name] = restore === undefined ? v : restore(v)
+      Values.setProperty(out, name, restore === undefined ? v : restore(v))
     }
     return out
   }

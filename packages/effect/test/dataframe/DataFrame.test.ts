@@ -302,6 +302,28 @@ describe("DataFrame", () => {
             Schema.makeFilter((row) => ("v" in row) === (row.w === null))
           ),
           [{ v: 1, w: null }, { w: 1 }, { w: null }, { v: 1, w: 1 }]
+        ],
+        // An optional field makes the check see a rebuilt row, which must keep
+        // `__proto__` as an own property
+        [
+          Schema.Struct({ ["__proto__"]: Schema.String, opt: Schema.optional(Schema.Number) }).check(
+            Schema.makeFilter((row) => Object.keys(row).length === 0)
+          ),
+          [{ ["__proto__"]: "good" }]
+        ],
+        [
+          Schema.Struct({ ["__proto__"]: Schema.String, opt: Schema.optional(Schema.Number) }).check(
+            Schema.makeFilter((row) => Object.hasOwn(row, "__proto__") && row["__proto__"] === "good")
+          ),
+          [{ ["__proto__"]: "good" }, { ["__proto__"]: "bad", opt: 1 }]
+        ],
+        [
+          Schema.Struct({
+            s: Schema.Struct({ ["__proto__"]: Schema.String, opt: Schema.optional(Schema.Number) }).check(
+              Schema.makeFilter((s) => Object.hasOwn(s, "__proto__") && s["__proto__"] === "good")
+            )
+          }),
+          [{ s: { ["__proto__"]: "good" } }, { s: { ["__proto__"]: "bad" } }]
         ]
       ]
       const verdicts = new Set<boolean>()
