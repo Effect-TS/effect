@@ -21,6 +21,23 @@ const readings = DataFrame.fromRows(Reading, [
 const types = (df: DataFrame.DataFrame<unknown>) =>
   df.schema.fields.map((f) => `${f.name}:${f.type._tag}:${f.nullable}`)
 
+/**
+ * What `fromRows`, `validate` and `Query.table` (in memory) say to rows
+ * held in the schema's columns: `"ok"`, or the message they fail with.
+ */
+const outcomes = (
+  schema: Schema.Struct<any>,
+  rows: ReadonlyArray<Record<string, unknown>>
+): ReadonlyArray<string> => {
+  const stored = DataFrame.fromArrowTable(Result.getOrThrow(ArrowTable.fromRows(DataFrame.empty(schema).schema, rows)))
+  const table = Query.table("t", schema).pipe(Effect.provide(Catalog.layer({ t: stored })))
+  return [
+    Result.try({ try: () => DataFrame.fromRows(schema, rows), catch: (e) => e as DataFrame.DataFrameError }),
+    DataFrame.validate(stored, schema),
+    Effect.runSync(Effect.result(table))
+  ].map((result) => Result.isFailure(result) ? result.failure.message : "ok")
+}
+
 describe("DataFrame", () => {
   describe("constructors", () => {
     // DF-C001 (API contract): DataFrame.fromRows; pinned source in README.md.
@@ -177,6 +194,14 @@ describe("DataFrame", () => {
       const held = ArrowTable.fromRows(DataFrame.empty(Amount, { types }).schema, [{ m: BigDecimal.make(1_234n, 1) }])
       const validated = DataFrame.validate(DataFrame.fromArrowTable(Result.getOrThrow(held)), Amount, { types })
       assert.include(Result.isFailure(validated) && validated.failure.message, cases[5][1])
+    })
+
+    // DF-C030 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("a null member of a union keeps the checks of the other members", () => {
+      const Row = Schema.Struct({ s: Schema.Union([Schema.suspend(() => Schema.Null), Schema.Literal("ok")]) })
+      assert.deepStrictEqual(outcomes(Row, [{ s: "ok" }, { s: null }]), ["ok", "ok", "ok"])
+      const message = `column "s" has values its schema rejects`
+      assert.deepStrictEqual(outcomes(Row, [{ s: "ok" }, { s: "bad" }]), [message, message, message])
     })
 
     // DF-C023 (API contract): DataFrame.fromRows; pinned source in README.md.

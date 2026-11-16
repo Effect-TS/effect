@@ -888,5 +888,20 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           beyond
         )
       }))
+
+    // DF-S017: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("unions and nullable fields are checked as in memory", () =>
+      Effect.gen(function*() {
+        const contract = tableOf("contract")
+        const orNull = <S extends Schema.Top>(member: S) => Schema.Union([Schema.suspend(() => Schema.Null), member])
+        assert.deepStrictEqual(
+          yield* rowsOnSql(contract(Schema.Struct({ s: orNull(Schema.Literals(["bad", "good"])) }))),
+          [{ s: "bad" }, { s: "good" }]
+        )
+        assert.strictEqual(
+          yield* rejects(contract(Schema.Struct({ s: orNull(Schema.Literal("good")) }))),
+          `column "s" has values its schema rejects`
+        )
+      }))
   })
 })

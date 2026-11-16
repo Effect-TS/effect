@@ -177,6 +177,10 @@ const valuesCheck = (ast: AST.AST): ((value: unknown) => boolean) | undefined =>
   return (value) => value == null || ((inner === undefined || inner(value)) && own(value))
 }
 
+/** Whether a schema holds only missing values, behind any `suspend`. */
+const isMissing = (ast: AST.AST): boolean =>
+  ast._tag === "Suspend" ? unsuspend(ast, "", isMissing) : ast._tag === "Null" || ast._tag === "Undefined"
+
 const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => {
   switch (ast._tag) {
     case "Literal":
@@ -188,7 +192,7 @@ const structural = (ast: AST.AST): ((value: unknown) => boolean) | undefined => 
     case "Suspend":
       return unsuspend(ast, "", valuesCheck)
     case "Union": {
-      const members = ast.types.filter((t) => t._tag !== "Null" && t._tag !== "Undefined").map(valuesCheck)
+      const members = ast.types.filter((t) => !isMissing(t)).map(valuesCheck)
       if (members.some((m) => m === undefined)) return undefined
       return (value) => value == null || members.some((m) => m!(value))
     }
