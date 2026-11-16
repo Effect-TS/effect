@@ -137,6 +137,42 @@ describe("VirtualFileSystem traversal locations and selections", () => {
       }
     }).pipe(withClock))
 
+  it.effect("charges one saved-route validation when classifying a selected symlink", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make({ limits: { symlinkFollows: 1 } })
+      const caller = yield* owner.authorize({ credentials })
+      yield* caller.makeDirectory("/a/b/target", { recursive: true })
+      yield* caller.makeSymlink("/a/b/link", "target")
+      // Opening the view and selecting cost 16 visits. Validation costs 10 and following the target costs 3.
+      for (const maxVisits of [28, 29]) {
+        const operation = yield* caller.acquireOperation({ maxVisits })
+        const view = yield* operation.traversal({ base: "/a/b" })
+        const selected = Option.getOrThrow(yield* view.select(view.base, name("link")))
+        if (maxVisits === 29) {
+          assert.strictEqual((yield* view.classify(selected)).kind, "directory")
+        } else {
+          const error = yield* Effect.flip(view.classify(selected))
+          assert.strictEqual(error._tag, "LimitExceeded")
+          if (error._tag === "LimitExceeded") assert.strictEqual(error.domain, "visits")
+        }
+        yield* operation.close
+      }
+    }).pipe(withClock))
+
+  it.effect("distinguishes a dangling selected symlink from a replaced binding", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make()
+      const caller = yield* owner.authorize({ credentials })
+      yield* caller.makeSymlink("/link", "missing")
+      const operation = yield* caller.acquireOperation()
+      const view = yield* operation.traversal()
+      const selected = Option.getOrThrow(yield* view.select(view.base, name("link")))
+      assert.strictEqual((yield* view.classify(selected)).kind, "nonDirectory")
+      yield* caller.unlink("/link")
+      yield* caller.makeSymlink("/link", "missing")
+      assert.strictEqual((yield* Effect.flip(view.classify(selected)))._tag, "NamespaceChanged")
+    }).pipe(withClock))
+
   it.effect("should retain a followed link until its directory location releases when the selection and base release", () =>
     Effect.gen(function*() {
       const owner = yield* VFS.make()

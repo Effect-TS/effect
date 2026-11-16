@@ -1211,16 +1211,15 @@ export class Transaction {
     })
   }
 
-  followRouteResult(saved: SavedRoute) {
+  followValidatedRouteResult(route: Route) {
     return Result.gen(this, function*() {
-      const route = yield* this.validateRouteResult(saved)
       if (route.object.kind !== "symlink") return route
       if (route.parent === undefined) {
         return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
       }
       const state: ResolutionState = { follows: 0 }
       yield* this.consumeLinkResult(state, route.object.target)
-      return yield* this.resolveResult(route.object.target, true, route.parent.id, state.follows, saved.support, state)
+      return yield* this.resolveResult(route.object.target, true, route.parent.id, state.follows, route.support, state)
     })
   }
 

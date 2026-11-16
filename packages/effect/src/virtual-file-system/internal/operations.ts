@@ -501,7 +501,7 @@ const classify = (
           Result.gen(function*() {
             let route = yield* tx.validateRouteResult(lease.route)
             if (route.object.kind === "symlink") {
-              const followed = tx.followRouteResult(lease.route)
+              const followed = tx.followValidatedRouteResult(route)
               if (
                 Result.isFailure(followed) && followed.failure instanceof M.NotFound &&
                 followed.failure.reason === "missingEntry"
@@ -610,8 +610,12 @@ const readForCopy = (
                   resolve = (tx) => tx.targetResult(target, follow)
                 } else {
                   const selected = sourcePlan.lease
-                  resolve = (tx) =>
-                    follow ? tx.followRouteResult(selected.route) : tx.validateRouteResult(selected.route)
+                  resolve = (tx) => {
+                    const route = tx.validateRouteResult(selected.route)
+                    return follow
+                      ? Result.flatMap(route, (validated) => tx.followValidatedRouteResult(validated))
+                      : route
+                  }
                 }
                 return (tx: E.Transaction) =>
                   Result.gen(function*() {
