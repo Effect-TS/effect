@@ -192,10 +192,9 @@ const rejections: ReadonlyArray<
   ["date (days) beyond int32", S.field("d", S.date("day")), [2 ** 32], [0]],
   ["time32 beyond int32", S.field("t", S.time("second")), [2 ** 32], [0]],
   ["duration beyond int64", S.field("d", S.duration("nanosecond")), [Duration.nanos(1n << 64n)], [0]],
-  ["interval nanoseconds beyond int64", S.field("i", S.interval("monthDayNano")), [{ nanoseconds: 1n << 64n }], [
-    0,
-    "nanoseconds"
-  ]],
+  ["interval nanoseconds beyond int64", S.field("i", S.interval("monthDayNano")), [
+    { months: 0, days: 0, nanoseconds: 1n << 64n }
+  ], [0, "nanoseconds"]],
   // Nested values are located by row, then member name or item index
   ["list item", S.field("l", S.list(item(S.int8))), [[1], null, [], [2, 300]], [3, 1]],
   ["largeListView item", S.field("l", S.largeListView(item(S.int8))), [[1], [2, 300]], [1, 1]],
@@ -395,6 +394,72 @@ describe("ArrowColumn", () => {
     }
   })
 
+  // ARROW-COLUMN-009 (mixed): Schema.fbs IntervalUnit members and widths; local input policy and rejection paths.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("fromValues accepts only the members of an interval unit", () => {
+    const rejected = (
+      type: S.DataType,
+      values: ReadonlyArray<unknown>,
+      path: ReadonlyArray<unknown>,
+      label: string
+    ) => {
+      const result = ArrowColumn.fromValues(S.field("i", type), values)
+      assert.isTrue(Result.isFailure(result), label)
+      if (Result.isFailure(result)) {
+        assert.isTrue(ArrowColumn.isArrowBuildError(result.failure), label)
+        assert.deepStrictEqual(result.failure.path, path, label)
+      }
+    }
+    const units: ReadonlyArray<readonly [unit: S.IntervalUnit, interval: Record<string, number | bigint>]> = [
+      ["yearMonth", { months: 14 }],
+      ["dayTime", { days: 1, milliseconds: -2 }],
+      ["monthDayNano", { months: 1, days: 2, nanoseconds: 3n }]
+    ]
+    const unrelated: ReadonlyArray<readonly [label: string, value: unknown]> = [
+      ["a Duration", Duration.millis(5)],
+      ["an empty object", {}],
+      ["an array", []],
+      ["a Date", new Date(0)],
+      ["a Map", new Map([["months", 1]])],
+      ["a string", "P1M"],
+      ["a number", 3],
+      ["a misspelled member", { nanosecond: 3n }]
+    ]
+    for (const [unit, interval] of units) {
+      const type = S.interval(unit)
+      assert.deepStrictEqual(ArrowColumn.toArray(build(type, [interval])), [interval], unit)
+      for (const [label, value] of unrelated) rejected(type, [interval, value], [1], `${label} as ${unit}`)
+      rejected(type, [interval, { ...interval, weeks: 0 }], [1], `an extra member in ${unit}`)
+      for (const key of Object.keys(interval)) {
+        const { [key]: member, ...missing } = interval
+        rejected(type, [interval, missing], [1], `${unit} without ${key}`)
+        rejected(type, [interval, { ...missing, [`${key}x`]: member }], [1], `${unit} with ${key} misspelled`)
+        for (const component of [1.5, "1", null, undefined, true, Duration.millis(5)]) {
+          rejected(type, [interval, { ...interval, [key]: component }], [1, key], `${unit} ${key} ${component}`)
+        }
+      }
+    }
+    // Members are int32, nanoseconds int64
+    rejected(S.interval("yearMonth"), [{ months: 2 ** 31 }], [0, "months"], "months beyond int32")
+    rejected(S.interval("dayTime"), [{ days: 0, milliseconds: -(2 ** 31) - 1 }], [0, "milliseconds"], "ms beyond int32")
+    const tooLong = { months: 0, days: 0, nanoseconds: 1n << 63n }
+    rejected(S.interval("monthDayNano"), [tooLong], [0, "nanoseconds"], "nanoseconds beyond int64")
+
+    // Like integer types, members take a number or a bigint
+    const mixed = build(S.interval("monthDayNano"), [{ months: 1n, days: -(2 ** 31), nanoseconds: 3 }])
+    assert.deepStrictEqual(ArrowColumn.toArray(mixed), [{ months: 1, days: -(2 ** 31), nanoseconds: 3n }])
+
+    // Other objects are not merged with a zero interval in a dictionary, nor taken by an interval union member
+    rejected(S.dictionary(S.interval("yearMonth")), [{ months: 0 }, {}], [1], "an empty object in a dictionary")
+    const union = S.union("sparse", [
+      S.field("every", S.interval("yearMonth")),
+      S.field("took", S.duration("millisecond")),
+      S.field("point", S.struct([S.field("x", S.int32)]))
+    ])
+    const members = [{ months: 1 }, Duration.millis(5), { x: 1 }]
+    assertEquals(ArrowColumn.toArray(build(union, members)), members)
+  })
+
   // ARROW-COLUMN-003 (local): extension callbacks and storage fallback.
   // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("extensions encode values when building and decode them when reading", () => {
@@ -444,8 +509,8 @@ describe("ArrowColumn", () => {
         [S.bool, [true]],
         [S.float16, [1.5]],
         [S.decimal(10, 2), [dec("1")]],
-        [S.interval("dayTime"), [{ days: 1 }]],
-        [S.interval("monthDayNano"), [{ months: 1 }]],
+        [S.interval("dayTime"), [{ days: 1, milliseconds: 0 }]],
+        [S.interval("monthDayNano"), [{ months: 1, days: 0, nanoseconds: 0n }]],
         [S.fixedSizeBinary(4), [bytes(1, 2, 3, 4)]],
         [S.utf8, ["a"]],
         [S.utf8View, ["a"]],

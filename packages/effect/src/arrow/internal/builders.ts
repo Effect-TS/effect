@@ -289,21 +289,27 @@ const intervalParts: Record<S.IntervalUnit, ReadonlyArray<readonly [string, S.In
   monthDayNano: [["months", S.int32], ["days", S.int32], ["nanoseconds", S.int64]]
 }
 
+/** Whether `v` is an object with exactly the members of `unit`, as the readers return. */
+const isInterval = (unit: S.IntervalUnit, v: unknown): v is Record<string, unknown> => {
+  if (typeof v !== "object" || v === null) return false
+  const parts = intervalParts[unit]
+  const keys = Object.keys(v)
+  return keys.length === parts.length && parts.every(([k]) => keys.includes(k))
+}
+
 const intervalBuffer = (t: S.Interval, values: ReadonlyArray<unknown>, at: At): Uint8Array => {
   const parts = intervalParts[t.unit]
+  const members = parts.map(([k]) => k).join(", ")
   const width = parts.reduce((w, [, type]) => w + type.bitWidth / 8, 0)
   const out = new Uint8Array(values.length * width)
   const view = new DataView(out.buffer)
   values.forEach((v, i) => {
     if (isNull(v)) return
-    const o = (typeof v === "object" ? v : failAt(at, i, `expected an interval object, got ${describe(v)}`)) as Record<
-      string,
-      unknown
-    >
+    if (!isInterval(t.unit, v)) return failAt(at, i, `expected an interval { ${members} }, got ${describe(v)}`)
     let position = i * width
     for (const [k, type] of parts) {
       const partAt = () => [...at(i), k]
-      const big = checked(type, toBigInt(o[k] ?? 0, partAt, 0, `int${type.bitWidth}`), partAt, 0)
+      const big = checked(type, toBigInt(v[k], partAt, 0, `int${type.bitWidth}`), partAt, 0)
       if (type.bitWidth === 64) view.setBigInt64(position, big, true)
       else view.setInt32(position, Number(big), true)
       position += type.bitWidth / 8
@@ -354,8 +360,8 @@ const typeKey = (type: S.DataType, v: unknown): string | undefined => {
         : joinKeys([String(member), keyOf(type.fields[member], isUnionValue(v) ? v.value : v)])
     }
     case "Interval":
-      return typeof v === "object" && v !== null
-        ? joinKeys(intervalParts[type.unit].map(([k]) => scalarKey((v as Record<string, unknown>)[k] ?? 0)))
+      return isInterval(type.unit, v)
+        ? joinKeys(intervalParts[type.unit].map(([k]) => scalarKey(v[k])))
         : undefined
     case "RunEndEncoded":
       return keyOf(type.values, v)
@@ -831,6 +837,8 @@ const accepts = (type: S.DataType, v: unknown): boolean => {
       return DateTime.isDateTime(v)
     case "Duration":
       return Duration.isDuration(v)
+    case "Interval":
+      return isInterval(type.unit, v)
     case "Utf8":
     case "LargeUtf8":
     case "Utf8View":

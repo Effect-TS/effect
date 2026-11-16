@@ -64,6 +64,9 @@
  * - Integer types accept `number` or `bigint`, range-checked.
  * - `Date`, `Timestamp`, `Time` and `Duration` also accept the raw integer in
  *   the type's unit (`number` or `bigint`), which keeps full precision.
+ * - `Interval` members also accept `number` or `bigint`, range-checked. An
+ *   interval needs every member of its unit and no other: a `Duration`, a
+ *   `Date` or an object with a member missing or misspelled is rejected.
  * - `Struct` also accepts an array of member values by position, for structs
  *   with repeated member names.
  * - List types also accept any iterable of items, and `Map` any iterable of
