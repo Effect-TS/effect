@@ -202,12 +202,12 @@ export const capture = (engine: E.Engine) =>
             Result.succeed({
               execute: () =>
                 Result.gen(function*() {
+                  yield* engine.runtime.visitResult(work.ticket, "capture")
                   const stack: Array<Pending> = [{ object: engine.root }]
                   const ids = new Map<bigint, bigint>()
                   const plan: Array<Planned> = []
                   let bytes = zero
                   for (let pending = stack.pop(); pending !== undefined; pending = stack.pop()) {
-                    yield* engine.runtime.visitResult(work.ticket, "capture")
                     const node = engine.nodes.get(pending.object)
                     if (node === undefined) throw new TypeError("Unreachable VFS binding during capture")
                     const prior = ids.get(node.id)
@@ -219,6 +219,7 @@ export const capture = (engine: E.Engine) =>
                     if (node.kind === "file") bytes += BigInt(node.data.length)
                     else if (node.kind === "symlink") bytes += BigInt(BytePath.byteLength(node.target))
                     else {
+                      yield* engine.runtime.visitResult(work.ticket, "capture", node.entries.size)
                       const entries = Array.from(node.entries.values()).sort((a, b) => BytePath.Order(a.name, b.name))
                       for (let index = entries.length - 1; index >= 0; index--) {
                         const entry = entries[index]

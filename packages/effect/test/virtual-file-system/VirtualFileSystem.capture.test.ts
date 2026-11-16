@@ -1,5 +1,6 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { BytePath, Cause, Clock, DateTime, Deferred, Effect, Exit, Fiber, Result, Schema, Scope, Stream } from "effect"
+import { owners } from "effect/virtual-file-system/internal/engine"
 import * as VFS from "effect/virtual-file-system/VirtualFileSystem"
 
 const path = (input: string) => Result.getOrThrow(BytePath.fromString(input))
@@ -172,6 +173,39 @@ describe("VirtualFileSystem public observations", () => {
 })
 
 describe("VirtualFileSystem capture and restore", () => {
+  it.effect("should reject capture before enumerating children when pending bindings exhaust the visit budget", () =>
+    Effect.gen(function*() {
+      const names = ["h", "g", "f", "e", "d", "c", "b", "a"]
+      const visits = 3 + names.length // Root, directory, pending sibling, and every child binding.
+      for (const namespaceVisits of [visits - 1, visits]) {
+        const owner = yield* VFS.make({ limits: { namespaceVisits } })
+        const caller = yield* owner.authorize({ credentials })
+        yield* caller.createFile("/z")
+        yield* caller.makeDirectory("/dir")
+        for (const name of names) yield* caller.makeHardLink({ entry: "/z" }, "/dir/" + name)
+        if (namespaceVisits < visits) {
+          const directory = yield* caller.stat("/dir")
+          const node = owners.get(owner)!.nodes.get(directory.metadata.objectNumber)
+          if (node?.kind !== "directory") return assert.fail("Expected the capture fixture directory")
+          const enumerate = vi.spyOn(node.entries, "values")
+          const error = yield* Effect.flip(owner.capture())
+          assert.strictEqual(error._tag, "LimitExceeded")
+          if (error._tag === "LimitExceeded") {
+            assert.strictEqual(error.operation, "capture")
+            assert.strictEqual(error.domain, "visits")
+            assert.strictEqual(error.stage, "resolution")
+          }
+          assert.strictEqual(enumerate.mock.calls.length, 0)
+        } else {
+          const capture = yield* owner.capture()
+          const records = yield* Stream.runCollect(capture.records())
+          const captured = records.map((record) => record._tag === "root" ? "/" : text(record.name))
+          assert.deepStrictEqual(captured, ["/", "dir", "a", "b", "c", "d", "e", "f", "g", "h", "z"])
+          assert.strictEqual(records.filter((record) => record._tag === "alias").length, names.length)
+        }
+      }
+    }).pipe(withClock))
+
   it.effect("should retain an independent byte-sorted graph when the source scope and output bytes change", () =>
     Effect.gen(function*() {
       const sourceScope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
