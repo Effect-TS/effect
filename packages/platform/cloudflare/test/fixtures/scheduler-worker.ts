@@ -7,6 +7,24 @@ declare const WebSocketPair: new() => Record<0 | 1, { readyState: number }>
 const als = new AsyncLocalStorage<string>()
 const scheduler = new CloudflareScheduler()
 
+// Tracks the scheduler's pending timers, which never fire, by the test that
+// set them, to check that each is cleared once its fiber resumes
+const testIds = new AsyncLocalStorage<string>()
+const pendingTimers = new Map<unknown, string | undefined>()
+const pendingTimerCount = (id: string) => [...pendingTimers.values()].filter((owner) => owner === id).length
+const { clearTimeout, setTimeout } = globalThis
+Object.assign(globalThis, {
+  setTimeout(callback: () => void, millis?: number) {
+    const timer = setTimeout(callback, millis)
+    if (millis === 2_147_483_647) pendingTimers.set(timer, testIds.getStore())
+    return timer
+  },
+  clearTimeout(timer: ReturnType<typeof setTimeout>) {
+    pendingTimers.delete(timer)
+    clearTimeout(timer)
+  }
+})
+
 // I/O objects can only be used by the request that created them
 const makeIoProbe = () => {
   const pair = new WebSocketPair()
@@ -27,8 +45,12 @@ interface Slot {
 const slots = new Map<string, Slot>()
 
 // Request A runs a fiber that request B wakes or interrupts
-const handle = async (url: URL): Promise<Response> => {
+const handle = (url: URL): Promise<Response> => {
   const id = url.searchParams.get("id")!
+  return testIds.run(id, () => route(url, id))
+}
+
+const route = async (url: URL, id: string): Promise<Response> => {
   switch (url.pathname) {
     case "/park":
     case "/background": {
@@ -45,13 +67,9 @@ const handle = async (url: URL): Promise<Response> => {
           Effect.andThen(Effect.sleep(20)),
           Effect.andThen(note("slept"))
         )
-        // Work of the owner's own, which keeps it running while it waits
-        const work = url.searchParams.get("work")
         const program = url.pathname === "/background"
           ? Effect.sleep(20).pipe(Effect.andThen(note("slept")))
-          : work === null
-          ? parked
-          : Effect.race(parked, Effect.sleep(Number(work)).pipe(Effect.andThen(Effect.never)))
+          : parked
         const fiber = slot.fiber = Effect.runFork(program.pipe(Effect.onInterrupt(() => note("interrupted"))), {
           scheduler
         })
@@ -75,7 +93,11 @@ const handle = async (url: URL): Promise<Response> => {
       const slot = slots.get(id)
       return slot === undefined
         ? new Response("not found", { status: 404 })
-        : Response.json({ log: slot.log, exited: slot.fiber!.pollUnsafe() !== undefined })
+        : Response.json({
+          log: slot.log,
+          exited: slot.fiber!.pollUnsafe() !== undefined,
+          timers: pendingTimerCount(id)
+        })
     }
     case "/same": {
       // Woken by the same request, from another AsyncLocalStorage scope
@@ -92,8 +114,9 @@ const handle = async (url: URL): Promise<Response> => {
   return new Response("not found", { status: 404 })
 }
 
-// A shared runtime whose initialization takes a while
-const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.sleep(100)).pipe(Layer.provideMerge(layer)))
+// A shared runtime whose initialization waits for another request
+const ready = Deferred.makeUnsafe<void>()
+const runtime = ManagedRuntime.make(Layer.effectDiscard(Deferred.await(ready)).pipe(Layer.provideMerge(layer)))
 let initialized = false
 
 // Requests to a Durable Object share one I/O context
@@ -114,26 +137,8 @@ export default {
     }
   ) {
     const url = new URL(request.url)
-    switch (url.pathname) {
-      // Starts initializing the runtime and responds without waiting for it
-      case "/runtime/start": {
-        als.run("A", () =>
-          runtime.runFork(
-            Effect.sync(() => {
-              initialized = true
-            }),
-            { scheduler }
-          ))
-        return Response.json(initialized)
-      }
-      // Waits for the initialization another request started
-      case "/runtime/join":
-        return als.run(
-          "B",
-          async () => Response.json(await runtime.runPromise(Effect.sync(() => als.getStore()), { scheduler }))
-        )
-      case "/runtime/status":
-        return Response.json(initialized)
+    if (url.pathname.startsWith("/runtime/")) {
+      return testIds.run("runtime", () => runtimeRoute(url))
     }
     if (url.pathname.startsWith("/room/")) {
       const room = env.ROOM.get(env.ROOM.idFromName("room"))
@@ -141,4 +146,33 @@ export default {
     }
     return handle(url)
   }
+}
+
+const runtimeRoute = async (url: URL): Promise<Response> => {
+  switch (url.pathname) {
+    // Starts initializing the runtime and responds without waiting for it
+    case "/runtime/start": {
+      als.run("A", () =>
+        runtime.runFork(
+          Effect.sync(() => {
+            initialized = true
+          }),
+          { scheduler }
+        ))
+      return Response.json(initialized)
+    }
+    // Waits for the initialization another request started
+    case "/runtime/join":
+      return als.run(
+        "B",
+        async () => Response.json(await runtime.runPromise(Effect.sync(() => als.getStore()), { scheduler }))
+      )
+    // Lets the initialization finish
+    case "/runtime/ready":
+      await Effect.runPromise(Deferred.succeed(ready, undefined), { scheduler })
+      return Response.json("ready")
+    case "/runtime/status":
+      return Response.json({ initialized, timers: pendingTimerCount("runtime") })
+  }
+  return new Response("not found", { status: 404 })
 }
