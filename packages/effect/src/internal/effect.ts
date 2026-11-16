@@ -512,8 +512,10 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
   }
 })()
 
-const captureAsyncContext = (): AsyncContext | undefined =>
-  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
+const captureAsyncContext = (scheduler: Scheduler.Scheduler): AsyncContext | undefined =>
+  AsyncResource === undefined || scheduler.preserveAsyncContext === false
+    ? undefined
+    : new AsyncResource("effect/Fiber")
 
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
@@ -644,7 +646,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect)
     if (exit === Yield) {
-      this._asyncContext = captureAsyncContext()
+      this._asyncContext = captureAsyncContext(this.cache.scheduler)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -5684,7 +5686,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._asyncContext = captureAsyncContext()
+    child._asyncContext = captureAsyncContext(child.cache.scheduler)
     // Cancel the deferred start if an interrupt runs first.
     let resumed = false
     child.yieldWith(() => {

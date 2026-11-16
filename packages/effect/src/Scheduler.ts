@@ -33,6 +33,16 @@ import type * as Fiber from "./Fiber.ts"
  */
 export interface Scheduler {
   readonly executionMode: "sync" | "async"
+  /**
+   * Controls whether fibers preserve native async context across suspension and
+   * deferred forks. Set to `false` on runtimes with request-bound async resources;
+   * continuations then run in the context that resumes them. Omission preserves
+   * the current behavior.
+   *
+   * @default true
+   * @since 4.2.0
+   */
+  readonly preserveAsyncContext?: boolean | undefined
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
 }

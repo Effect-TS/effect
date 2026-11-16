@@ -32,6 +32,12 @@ export * as CloudflareDurableObjects from "./CloudflareDurableObjects.ts"
 export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 
 /**
+ * @stability stable
+ * @since 4.2.0
+ */
+export * as CloudflareScheduler from "./CloudflareScheduler.ts"
+
+/**
  * @stability experimental
  * @since 4.1.5
  */
