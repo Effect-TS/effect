@@ -25,8 +25,20 @@ const compatibilityFlags: Record<string, boolean | undefined> | undefined = (glo
 const canEnter = AsyncResource !== undefined &&
   compatibilityFlags?.bind_asynclocalstorage_snapshot_to_request !== false
 
-const run = (task: () => void): void => task()
 const noop = (): void => {}
+
+// The longest delay a timer accepts. It only marks pending work, so it is
+// cleared before it fires.
+const maxTimerMillis = 2_147_483_647
+
+const setPendingTimer = (): ReturnType<typeof setTimeout> | undefined => {
+  try {
+    return setTimeout(noop, maxTimerMillis)
+  } catch {
+    // Workers do not allow timers in global scope
+    return undefined
+  }
+}
 
 const keepOwnerAlive = (promise: Promise<void>): void => {
   try {
@@ -40,19 +52,27 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
 // Entering the AsyncResource resumes the fiber synchronously with the owner's
 // AsyncLocalStorage state. workerd refuses that from any other request, so the
 // resumption is then handed to a promise the owner created: workerd runs its
-// reactions in the owner's IoContext. The owner waits on that promise, so it
-// stays alive after responding until the fiber resumes.
+// reactions in the owner's IoContext.
+//
+// The owner waits on that promise with waitUntil, so it keeps running after it
+// responds. workerd still cancels a request whose only pending work is a
+// promise another request settles, so a timer set in the owner marks the fiber
+// as pending work. The owner clears it when the fiber resumes.
 class OwnerContext implements Scheduler.AsyncContext {
   readonly resource: Scheduler.AsyncContext | undefined
   readonly resolve: (task: () => void) => void
 
   constructor() {
     this.resource = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
+    const timer = setPendingTimer()
     let resolve!: (task: () => void) => void
     keepOwnerAlive(
       new Promise<() => void>((resolve_) => {
         resolve = resolve_
-      }).then(run)
+      }).then((task) => {
+        if (timer !== undefined) clearTimeout(timer)
+        task()
+      })
     )
     this.resolve = resolve
   }
@@ -111,26 +131,25 @@ class OwnerContext implements Scheduler.AsyncContext {
  * waking request continues without waiting for it. Inside a Durable Object,
  * requests share these, so fibers resume immediately.
  *
- * Each waiting fiber is registered with its owner through `waitUntil` from
- * `cloudflare:workers`, so the owner keeps running after it responds until
- * the fiber resumes. The module imports `cloudflare:workers`, so it only loads
- * in workerd.
+ * While a fiber waits, its owner registers the pending resumption with
+ * `waitUntil` from `cloudflare:workers` and holds a timer, which counts as
+ * pending work. The owner keeps running after it responds, and is not
+ * cancelled as hung, until the fiber resumes and the owner clears the timer.
+ * The timer never ends or interrupts the fiber. The module imports
+ * `cloudflare:workers`, so it only loads in workerd.
  *
  * **Gotchas**
  *
- * workerd cancels a request once nothing it waits on can make progress, and
- * another request's fibers do not count. Then:
+ * This does not extend Cloudflare's request lifetime limits, such as the limit
+ * on how long `waitUntil` work may run once the response is sent or the client
+ * disconnects. A fiber whose owner has ended can no longer resume: workerd
+ * drops the resumption and logs a warning, and the fiber never completes or
+ * runs its finalizers. Anything handed to it, such as a `Semaphore` permit or
+ * a `Queue` item, is lost.
  *
- * - A request that only waits on another request's work, such as a shared
- *   runtime's initialization, fails as hung. Give it work of its own to wait on.
- * - A fiber whose owner was cancelled, or has finished after responding, can no
- *   longer resume. workerd drops the resumption and logs a warning, and the
- *   fiber never completes or runs its finalizers. Anything handed to it, such
- *   as a `Semaphore` permit or a `Queue` item, is lost. Interrupt such fibers
- *   before their owner runs out of work.
- *
- * `waitUntil` work is also subject to the platform's limit on how long a
- * request may run after responding.
+ * A fiber that is never woken keeps its owner running until those limits end
+ * it, and keeps a Durable Object from hibernating. Interrupt fibers that will
+ * not be woken, for example with a scope that closes when the request ends.
  *
  * Owner resumption needs the `handle_cross_request_promise_resolution`
  * compatibility flag, enabled by default from 2024-10-14; the constructor
