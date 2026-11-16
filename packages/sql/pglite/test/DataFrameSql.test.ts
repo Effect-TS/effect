@@ -8,6 +8,7 @@ import { BigDecimal, DateTime, Duration, Effect, Layer, Result, Schema } from "e
 import { ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Query, Sql } from "effect/dataframe"
 import { SqlClient } from "effect/sql/SqlClient"
+import { vi } from "vitest"
 
 const Sale = Schema.Struct({
   id: Schema.Number,
@@ -796,6 +797,74 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
           Effect.provide(Sql.layer)
         )
         assert.include(text, `FROM "sales"`)
+      }))
+
+    // DF-N004: local policy for SQL results; pins in effect/test/dataframe/README.md.
+    it.effect("decimal results are read from their text, without BigDecimal values", () =>
+      Effect.gen(function*() {
+        const amounts = arrow<{ g: string; d: BigDecimal.BigDecimal | null }>(
+          [ArrowSchema.field("g", ArrowSchema.utf8), ArrowSchema.field("d", ArrowSchema.decimal(18, 2))],
+          [
+            ["a", "a", "b", "b", "c"],
+            [decimal("-12.34"), decimal("0"), decimal("9999999999999999.99"), null, decimal("-9999999999999999.99")]
+          ]
+        )
+        const query = amounts.pipe(
+          Query.groupBy("g"),
+          Query.agg((c) => ({ total: Expr.sum(c.d), all: Expr.list(c.d) }))
+        )
+        const { calls, grouped, plain } = yield* Effect.acquireUseRelease(
+          Effect.sync(() => [
+            vi.spyOn(BigDecimal, "make"),
+            vi.spyOn(BigDecimal, "round"),
+            vi.spyOn(BigDecimal, "fromStringUnsafe")
+          ]),
+          (spies) =>
+            Effect.gen(function*() {
+              const count = () => spies.reduce((n, spy) => n + spy.mock.calls.length, 0)
+              const plain = yield* onSql(amounts)
+              const grouped = yield* onSql(query)
+              const read = count()
+              DataFrame.toRows(plain)
+              DataFrame.toRows(grouped)
+              return { plain, grouped, calls: [read, count() - read] }
+            }),
+          (spies) => Effect.sync(() => spies.forEach((spy) => spy.mockRestore()))
+        )
+        // None to read the results; one per decimal of their rows: 4 in `d`, 3 in `total`, 4 in `all`.
+        assert.deepStrictEqual(calls, [0, 11])
+        const unscaled = (d: unknown) => BigDecimal.isBigDecimal(d) ? [d.value, d.scale] : d
+        assert.deepStrictEqual(types(plain).map((f) => f.type), [ArrowSchema.utf8, ArrowSchema.decimal(18, 2)])
+        assert.deepStrictEqual(DataFrame.toArray(plain, "d").map(unscaled), [
+          [-1234n, 2],
+          [0n, 2],
+          [999999999999999999n, 2],
+          null,
+          [-999999999999999999n, 2]
+        ])
+        assert.deepStrictEqual(types(grouped).map((f) => f.type), [
+          ArrowSchema.utf8,
+          ArrowSchema.decimal(38, 2),
+          ArrowSchema.list(ArrowSchema.field("item", ArrowSchema.decimal(18, 2)))
+        ])
+        assert.deepStrictEqual(
+          DataFrame.toRows(grouped).map((r) => [r.g, unscaled(r.total), r.all.map(unscaled)]),
+          [
+            ["a", [-1234n, 2], [[-1234n, 2], [0n, 2]]],
+            ["b", [999999999999999999n, 2], [[999999999999999999n, 2], null]],
+            ["c", [-999999999999999999n, 2], [[-999999999999999999n, 2]]]
+          ]
+        )
+        // Results beyond the 64 bits of a decimal column fail, in lists too.
+        const beyond = "decimal values beyond 18 digits are not supported (column of 128-bit decimals)"
+        assert.strictEqual(
+          yield* rejects(amounts.pipe(Query.select((c) => ({ p: Expr.multiply(c.d, c.d) })))),
+          beyond
+        )
+        assert.strictEqual(
+          yield* rejects(amounts.pipe(Query.aggregate((c) => ({ p: Expr.list(Expr.multiply(c.d, c.d)) })))),
+          beyond
+        )
       }))
   })
 })

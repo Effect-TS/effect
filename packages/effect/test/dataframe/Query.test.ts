@@ -1,18 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import {
-  BigDecimal,
-  type DateTime,
-  type Duration,
-  Effect,
-  Exit,
-  Fiber,
-  Result,
-  Scheduler,
-  Schema,
-  Stream
-} from "effect"
-import { ArrowSchema, ArrowTable } from "effect/arrow"
+import { BigDecimal, DateTime, Duration, Effect, Equal, Exit, Fiber, Result, Scheduler, Schema, Stream } from "effect"
+import { ArrowIpc, ArrowSchema, ArrowTable } from "effect/arrow"
 import { Catalog, DataFrame, Expr, Plan, Query } from "effect/dataframe"
+import * as InternalDateTime from "effect/internal/dateTime"
 import { vi } from "vitest"
 import * as Compare from "./oracle/Compare.ts"
 import * as Gold from "./oracle/Gold.ts"
@@ -1331,6 +1321,291 @@ describe("Query", () => {
             }
           })
           assert.deepStrictEqual(yield* rows(result), expected)
+        }
+      }))
+  })
+
+  // Columns hold temporal and decimal values as integers. Only rows and
+  // arrays of values turn them into DateTime, Duration and BigDecimal.
+  describe("columnar path", () => {
+    type Event = {
+      readonly us: DateTime.Utc | null
+      readonly zoned: DateTime.Utc | null
+      readonly ns: DateTime.Utc | null
+      readonly nsUtc: DateTime.Utc | null
+      readonly day: DateTime.Utc | null
+      readonly took: Duration.Duration | null
+      readonly amount: BigDecimal.BigDecimal | null
+      readonly key: string | null
+    }
+    const ns = [1_700_000_000_123_456_789n, 1_700_000_100_000_000_001n, null, -1n, 1_600_000_000_999_999_999n, 5n]
+    const micros = ns.map((x) => (x === null ? null : x / 1000n))
+    const input = Result.getOrThrow(ArrowTable.fromColumns(
+      ArrowSchema.make([
+        ArrowSchema.field("us", ArrowSchema.timestamp("microsecond")),
+        ArrowSchema.field("zoned", ArrowSchema.timestamp("microsecond", "Europe/Berlin")),
+        ArrowSchema.field("ns", ArrowSchema.timestamp("nanosecond")),
+        ArrowSchema.field("nsUtc", ArrowSchema.timestamp("nanosecond", "UTC")),
+        ArrowSchema.field("day", ArrowSchema.date("day")),
+        ArrowSchema.field("took", ArrowSchema.duration("microsecond")),
+        ArrowSchema.field("amount", ArrowSchema.decimal(18, 2)),
+        ArrowSchema.field("key", ArrowSchema.utf8)
+      ]),
+      [
+        micros,
+        micros,
+        ns,
+        ns,
+        [19_000, 19_001, 19_000, null, -1, 0],
+        [1_500_000n, -250n, 90_000_000_000n, null, 7n, 0n],
+        ["12.34", "-0.05", null, "100.25", "0.35", "7.45"].map((s) =>
+          s === null ? null : BigDecimal.fromStringUnsafe(s)
+        ),
+        ["a", "b", "a", "b", "a", null]
+      ]
+    ))
+    const bytes = Result.getOrThrow(ArrowIpc.encodeStream(input))
+    /** Non-null values per column of `input`. */
+    const present = 5
+
+    /**
+     * The DateTime, Duration and BigDecimal values built while `f` runs, by
+     * the functions `effect/arrow` and `effect/dataframe` build them with.
+     * `f` is synchronous, so no other test of this file runs meanwhile.
+     */
+    const built = <A>(f: () => A) => {
+      const count = (spies: ReadonlyArray<{ readonly mock: { readonly calls: ReadonlyArray<unknown> } }>) =>
+        spies.reduce((n, spy) => n + spy.mock.calls.length, 0)
+      const dateTimes = [vi.spyOn(InternalDateTime, "makeUtc"), vi.spyOn(InternalDateTime, "makeZonedProto")]
+      const durations = [vi.spyOn(Duration, "nanos")]
+      const decimals = [
+        vi.spyOn(BigDecimal, "make"),
+        vi.spyOn(BigDecimal, "round"),
+        vi.spyOn(BigDecimal, "fromStringUnsafe")
+      ]
+      try {
+        const value = f()
+        return { value, dateTimes: count(dateTimes), durations: count(durations), decimals: count(decimals) }
+      } finally {
+        for (const spy of [...dateTimes, ...durations, ...decimals]) spy.mockRestore()
+      }
+    }
+    const none = { dateTimes: 0, durations: 0, decimals: 0 }
+
+    // DF-N001 (local policy): columnar path; pinned source in README.md.
+    it("decoding, querying and encoding build no DateTime, Duration or BigDecimal", () => {
+      const since = DateTime.makeUnsafe(1_650_000_000_000)
+      const selected = (events: Query.Query<Event>) =>
+        events.pipe(
+          Query.filter((c) => Expr.gt(c.us, since)),
+          Query.sort((c) => [Expr.desc(c.us), c.ns]),
+          Query.select((c) => ({
+            us: c.us,
+            zoned: c.zoned,
+            ns: c.ns,
+            year: Expr.year(c.us),
+            month: Expr.month(c.ns),
+            weekday: Expr.weekday(c.day),
+            millisecond: Expr.millisecond(c.us),
+            hourly: Expr.truncate(c.ns, "1h"),
+            later: Expr.add(c.us, c.took),
+            elapsed: Expr.subtract(c.ns, c.us),
+            seconds: Expr.totalSeconds(c.took),
+            tenths: Expr.castDecimal(c.amount, 18, 1),
+            rounded: Expr.round(c.amount, 1)
+          }))
+        )
+      const grouped = (events: Query.Query<Event>) =>
+        events.pipe(
+          Query.groupBy("key"),
+          Query.agg((c) => ({
+            total: Expr.sum(c.amount),
+            mean: Expr.mean(c.amount),
+            least: Expr.min(c.amount),
+            most: Expr.max(c.amount),
+            tookTotal: Expr.sum(Expr.totalMilliseconds(c.took)),
+            tookMean: Expr.mean(Expr.totalSeconds(c.took)),
+            tookLeast: Expr.min(c.took),
+            tookMost: Expr.max(c.took),
+            first: Expr.min(c.us),
+            last: Expr.max(c.ns)
+          }))
+        )
+      const table = Query.fromPlan({ _tag: "Table", name: "events" }) as Query.Query<unknown> as Query.Query<Event>
+      const run = built(() => {
+        const frame = DataFrame.fromArrowTable(Result.getOrThrow(ArrowIpc.decodeStream(bytes))) as DataFrame.DataFrame<
+          unknown
+        > as DataFrame.DataFrame<Event>
+        const batches = Effect.runSync(Stream.runCollect(
+          DataFrame.decodeArrowStream(Stream.make(bytes.subarray(0, 200), bytes.subarray(200)))
+        ))
+        const streamed = (query: Query.Query<unknown>) =>
+          Effect.runSync(
+            Stream.runCollect(Query.stream(query)).pipe(
+              Effect.provide(Catalog.layer({ events: Stream.fromIterable([...batches, ...batches]) }))
+            )
+          )
+        const results = {
+          selected: Effect.runSync(selected(Query.from(frame))),
+          grouped: Effect.runSync(grouped(Query.from(frame))),
+          streamed: [...streamed(selected(table)), ...streamed(grouped(table))]
+        }
+        const frames: ReadonlyArray<DataFrame.DataFrame<unknown>> = [
+          results.selected,
+          results.grouped,
+          ...results.streamed
+        ]
+        return {
+          ...results,
+          encoded: frames.map((df) =>
+            [df, Result.getOrThrow(ArrowIpc.encodeStream(DataFrame.toArrowTable(df)))] as const
+          )
+        }
+      })
+      assert.deepStrictEqual({ dateTimes: run.dateTimes, durations: run.durations, decimals: run.decimals }, none)
+      // The results, read as rows afterwards: nothing was built, though the work was done.
+      const { encoded, grouped: groups, selected: events, streamed } = run.value
+      assert.deepStrictEqual(
+        DataFrame.toRows(events).map((r) => [
+          r.us && DateTime.toEpochMillis(r.us),
+          r.year,
+          r.tenths && BigDecimal.format(r.tenths),
+          r.rounded && BigDecimal.format(r.rounded),
+          r.seconds
+        ]),
+        [
+          [1_700_000_100_000, 2023, "0", "0", 0n],
+          [1_700_000_000_123, 2023, "12.3", "12.3", 1n]
+        ]
+      )
+      assert.deepStrictEqual(
+        DataFrame.toRows(groups).map((r) => [
+          r.key,
+          r.total && BigDecimal.format(r.total),
+          r.tookMost && Duration.toMillis(r.tookMost)
+        ]),
+        [["a", "12.69", 90_000_000], ["b", "100.2", -0.25], [null, "7.45", 0]]
+      )
+      // Over the two batches: the sorted rows of both, then one row per group.
+      assert.deepStrictEqual(streamed.map((df) => df.length), [4, 3])
+      for (const [df, bytes] of encoded) {
+        assert.isTrue(Equal.equals(DataFrame.fromArrowTable(Result.getOrThrow(ArrowIpc.decodeStream(bytes))), df))
+      }
+    })
+
+    // DF-N002 (local policy): DataFrame.toRows and DataFrame.toArray; pinned source in README.md.
+    it("rows build one DateTime, Duration or BigDecimal per value; columns keep nanoseconds", () => {
+      const frame = DataFrame.fromArrowTable(input)
+      const rows = built(() => DataFrame.toRows(frame))
+      // us, zoned, ns, nsUtc and day; took; amount.
+      assert.deepStrictEqual(
+        { dateTimes: rows.dateTimes, durations: rows.durations, decimals: rows.decimals },
+        { dateTimes: 5 * present, durations: present, decimals: present }
+      )
+      for (const name of ["us", "zoned", "ns", "nsUtc", "day", "took", "amount"]) {
+        const column = built(() => DataFrame.toArray(frame, name))
+        assert.strictEqual(column.dateTimes + column.durations + column.decimals, present, name)
+      }
+      // Rows read nanoseconds as DateTime, which keeps milliseconds.
+      assert.deepStrictEqual(
+        rows.value.map((r) => r.ns === null ? null : DateTime.toEpochMillis(r.ns as DateTime.Utc)),
+        [1_700_000_000_123, 1_700_000_100_000, null, -1, 1_600_000_000_999, 0]
+      )
+      const output = built(() => Result.getOrThrow(ArrowIpc.encodeStream(DataFrame.toArrowTable(frame))))
+      assert.deepStrictEqual(
+        { dateTimes: output.dateTimes, durations: output.durations, decimals: output.decimals },
+        none
+      )
+      assert.deepStrictEqual(output.value, bytes)
+      const stored = Effect.runSync(
+        Query.from(DataFrame.fromArrowTable(Result.getOrThrow(ArrowIpc.decodeStream(output.value)))).pipe(
+          Query.select((c) => ({ ns: Expr.cast(c.ns as Expr.Expr<DateTime.Utc | null>, "Int64") }))
+        )
+      )
+      assert.deepStrictEqual(DataFrame.toArray(stored, "ns"), ns)
+    })
+
+    // DF-N003 (API contract): Expr.castDecimal and Expr.round; pinned source in README.md.
+    it.effect("dropping decimal digits rounds half to even, exactly", () =>
+      Effect.gen(function*() {
+        /**
+         * Texts with `k` fraction digits brought to scale 0: parsed from the
+         * text, cast from a decimal of scale `k`, and rounded at that scale,
+         * the last two when 64 bits hold the text at scale `k`.
+         */
+        const whole = (texts: ReadonlyArray<string>, k: number) =>
+          Query.from(DataFrame.fromColumns({ s: texts })).pipe(
+            Query.select((c) => {
+              const exact = Expr.castDecimal(c.s, 38, k)
+              return {
+                parsed: Expr.cast(Expr.castDecimal(c.s, 38, 0), "Int64"),
+                ...(k <= 18 && {
+                  cast: Expr.cast(Expr.castDecimal(exact, 38, 0), "Int64"),
+                  rounded: Expr.cast(Expr.round(exact, 0), "Int64")
+                })
+              }
+            }),
+            Effect.map((df) => DataFrame.columnNames(df).map((name) => DataFrame.toArray(df, name)))
+          )
+        const zeros = "0".repeat(38)
+        const pinned: ReadonlyArray<readonly [k: number, text: string, expected: bigint]> = [
+          [0, "7", 7n],
+          [0, "-7", -7n],
+          [1, "0.5", 0n],
+          [1, "1.5", 2n],
+          [1, "2.5", 2n],
+          [1, "-0.5", 0n],
+          [1, "-1.5", -2n],
+          [1, "-2.5", -2n],
+          [2, "0.51", 1n],
+          [2, "0.49", 0n],
+          [2, "-0.51", -1n],
+          [2, "-0.49", 0n],
+          [2, "-2.50", -2n],
+          [2, "-3.50", -4n],
+          [18, "8.500000000000000000", 8n],
+          [18, "-7.500000000000000000", -8n],
+          [18, "8.500000000000000001", 9n],
+          [18, "-8.499999999999999999", -8n],
+          [39, `0.5${zeros}`, 0n],
+          [39, `1.5${zeros}`, 2n],
+          [39, `-2.5${zeros}`, -2n],
+          [40, `0.5${zeros}1`, 1n],
+          [40, `-2.5${zeros}1`, -3n],
+          [39, `0.4${"9".repeat(38)}`, 0n]
+        ]
+        for (const k of new Set(pinned.map(([k]) => k))) {
+          const cases = pinned.filter((c) => c[0] === k)
+          for (const column of yield* whole(cases.map(([, text]) => text), k)) {
+            assert.deepStrictEqual(column, cases.map(([, , expected]) => expected), `${k} digits`)
+          }
+        }
+        // Against BigDecimal.round, over random values around and away from ties.
+        let state = 0x9e3779b9
+        const next = (bound: number) => {
+          state ^= state << 13
+          state ^= state >>> 17
+          state ^= state << 5
+          return Math.floor(((state >>> 0) / 4294967296) * bound)
+        }
+        const digits = (n: number) => Array.from({ length: n }, () => next(10)).join("")
+        for (const k of [0, 1, 2, 9, 17, 18, 25, 40]) {
+          const fractions = k === 0 ? [""] : [
+            "0".repeat(k),
+            `5${"0".repeat(k - 1)}`,
+            `4${"9".repeat(k - 1)}`,
+            `5${"0".repeat(k - 1)}`.replace(/0$/, "1"),
+            digits(k)
+          ]
+          // Up to 18 digits in all (below 9 at 18 fraction digits), so 64 bits hold the texts at scale `k`, rounded up too.
+          const integer = () => k === 18 ? String(next(9)) : digits(1 + next(k < 18 ? 18 - k : 17))
+          const texts = Array.from({ length: 60 }, integer).flatMap((integer) =>
+            fractions.map((fraction) => `${next(2) === 0 ? "-" : ""}${integer}${k === 0 ? "" : "."}${fraction}`)
+          )
+          const expected = texts.map((text) =>
+            BigDecimal.round(BigDecimal.make(BigInt(text.replace(".", "")), k), { scale: 0, mode: "half-even" }).value
+          )
+          for (const column of yield* whole(texts, k)) assert.deepStrictEqual(column, expected, `${k} digits`)
         }
       }))
   })
