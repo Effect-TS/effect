@@ -269,11 +269,15 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * This check prevents appending "Z" to strings that already have a zone
  * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
  * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
- * such as `pdt` in any case. Only that trailing match is case-insensitive, so lowercase
+ * such as `pdt` in any case. Only the suffix checks are case-insensitive, so lowercase
  * letters in a comment like "(xyz)" do not count as a zone.
+ * A whitespace-separated zone can also be followed by whitespace and one non-nested comment,
+ * as in "... 17:14:06 -0500 (EST)".
  */
 const hasZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input)
+  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) ||
+  /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
+  /\s(?:[+-]\d{2}(?::?\d{2})?|z|gmt|utc?|[ecmp][sd]t)\s*(?:\([^()]*\)\s*)?$/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
