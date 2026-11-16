@@ -5447,27 +5447,28 @@ describe("Effect", () => {
     // Bun's async_hooks report no trigger ids, before or destroy events
     const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
 
-    describe("Scheduler.park", () => {
+    describe("ParkingScheduler", () => {
       // Runs each parked fiber in the "owner" store when `land` runs, like a
-      // scheduler that hands fibers back to the request that owns them
+      // scheduler that hands fibers back to the request that owns them. Its
+      // queue is an instance field, so wrappers must keep the receiver.
       const makeScheduler = () => {
-        const pending: Array<() => void> = []
-        const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
-          park(): Scheduler.Resumption {
-            let resumed = false
-            return {
-              resume(fiber, effect) {
-                if (resumed) return
-                resumed = true
-                pending.push(() => storage.run("owner", () => fiber.run(effect)))
-              }
-            }
+        const scheduler = new class extends Scheduler.MixedScheduler
+          implements Scheduler.ParkingScheduler<{ resumed: boolean }>
+        {
+          readonly pending: Array<() => void> = []
+          park() {
+            return { resumed: false }
+          }
+          resume(fiber: Scheduler.ParkedFiber, parked: { resumed: boolean }, effect: Effect.Effect<unknown, unknown>) {
+            if (parked.resumed) return
+            parked.resumed = true
+            this.pending.push(() => storage.run("owner", () => fiber.run(effect)))
           }
         }("sync")
         const land = async () => {
           for (let i = 0; i < 5; i++) {
             await Promise.resolve()
-            while (pending.length > 0) pending.shift()!()
+            while (scheduler.pending.length > 0) scheduler.pending.shift()!()
           }
         }
         return { scheduler, land }

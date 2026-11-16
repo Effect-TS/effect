@@ -36,8 +36,8 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
   }
 }
 
-// Created in the request a fiber parks in, which owns it. The fiber resumes
-// in a reaction to a promise the owner created: workerd runs promise reactions
+// Settles the promise of one wait, created in the request the fiber parks in,
+// which owns it. The fiber resumes in a reaction to that promise: workerd runs promise reactions
 // in the request that created the promise, with the AsyncLocalStorage state
 // they were registered in, so the fiber has the owner's I/O objects, timers
 // and store.
@@ -49,29 +49,7 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
 //
 // workerd has no way to ask which request is running, so a fiber woken by its
 // owner also resumes through the promise, a microtask later.
-class OwnerResumption implements Scheduler.Resumption {
-  readonly settle: (task: () => void) => void
-
-  constructor() {
-    const timer = setPendingTimer()
-    let settle!: (task: () => void) => void
-    keepOwnerAlive(
-      new Promise<() => void>((resolve) => {
-        settle = resolve
-      }).then((task) => {
-        if (timer !== undefined) clearTimeout(timer)
-        task()
-      })
-    )
-    this.settle = settle
-  }
-
-  resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
-    // Only the first call settles the promise, so the fiber runs once, with the
-    // first entry. An interrupt arriving later is already recorded on it.
-    this.settle(() => fiber.run(effect))
-  }
-}
+type Settle = (task: () => void) => void
 
 /**
  * A synchronous scheduler that resumes each fiber in the Worker request that
@@ -129,7 +107,7 @@ class OwnerResumption implements Scheduler.Resumption {
  * @category models
  * @since 4.2.0
  */
-export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler<Settle> {
   /**
    * Creates a scheduler for request-owned fiber resumption.
    *
@@ -146,13 +124,36 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
   }
 
   /**
-   * Returns how a parked fiber resumes: in the request it parks in.
+   * Starts a wait owned by the current request, and returns the function that
+   * ends it.
    *
    * @stability unstable
    * @since 4.2.0
    */
-  park(_fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
-    return new OwnerResumption()
+  park(_fiber: Fiber.Fiber<unknown, unknown>): Settle {
+    const timer = setPendingTimer()
+    let settle!: Settle
+    keepOwnerAlive(
+      new Promise<() => void>((resolve) => {
+        settle = resolve
+      }).then((task) => {
+        if (timer !== undefined) clearTimeout(timer)
+        task()
+      })
+    )
+    return settle
+  }
+
+  /**
+   * Hands the fiber to the request that parked it.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  resume(fiber: Scheduler.ParkedFiber, settle: Settle, effect: Effect<unknown, unknown>): void {
+    // Only the first call settles the promise, so the fiber runs once, with the
+    // first entry. An interrupt arriving later is already recorded on it.
+    settle(() => fiber.run(effect))
   }
 }
 
