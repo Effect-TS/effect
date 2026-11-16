@@ -553,15 +553,27 @@ export const between: {
  *
  * **Details**
  *
- * Candidates of the value's kind give the same result on every engine:
- * strings for strings, booleans for booleans, numbers for floats and for
- * integers of up to 32 bits, numbers and bigints for 64-bit integers and
- * decimals, and `BigDecimal`, `DateTime` and `Duration` for decimals,
- * timestamps and durations. A number with a fraction is compared with a
- * decimal as a float and is never a 64-bit integer. Other candidates (a
- * string or a bigint for an Int32, a number for a timestamp) are not
- * portable: what they match depends on the engine, and a database can
- * reject them.
+ * The supported candidates are those of the value's kind: strings for
+ * strings, booleans for booleans, numbers for floats and for integers of
+ * up to 32 bits, numbers and bigints for 64-bit integers and decimals, and
+ * `BigDecimal`, `DateTime` and `Duration` for decimals, timestamps and
+ * durations. A number with a fraction is compared with a decimal as a
+ * float and is never a 64-bit integer.
+ *
+ * Each engine compares them by its own rules, as it does for {@link eq},
+ * so two comparisons can differ between engines:
+ *
+ * - A decimal with a number that is not an integer (`NaN` and the
+ *   infinities included). Engines round a decimal of more digits than a
+ *   float holds differently, and a database can fail on a decimal outside
+ *   the range of a float.
+ * - A timestamp that has a time zone with a `DateTime`, which is a
+ *   timestamp without one. A database reads it in its session's time
+ *   zone, so the results agree in a UTC session only.
+ *
+ * Other candidates (a string or a bigint for an Int32, a number for a
+ * timestamp) are not portable: what they match depends on the engine, and
+ * a database can reject them.
  *
  * @stability experimental
  * @category comparisons
