@@ -27,6 +27,10 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 | PQ-LT-1     | LogicalTypes.md#timestamp                                                  | Unknown `TIMESTAMP` units are unsupported features, not errors in the file              |
 | PQ-LT-2     | parquet.thrift L370-373, L380-383                                          | `TimestampType.unit` and `TimeType.unit` are required (rejected when missing)           |
 | PQ-LT-3     | LogicalTypes.md#unsupported-logical-types                                  | An unrecognized logical type is ignored, and so is its column's order                   |
+| PQ-LT-4     | LogicalTypes.md#unsupported-logical-types                                  | An annotation on a physical type it isn't defined for is ignored, with the column order |
+| PQ-LT-5     | LogicalTypes.md#convertedtype                                              | Local policy: a logical type and a converted type are checked independently             |
+| PQ-LT-6     | LogicalTypes.md#decimal                                                    | `DECIMAL` precision and scale fit the rules and the physical type (rejected otherwise)  |
+| PQ-LT-7     | LogicalTypes.md#signed-integers, parquet.thrift L388                       | `INTEGER` bit widths are 8, 16, 32 or 64 (rejected otherwise)                           |
 | PQ-NEST-1   | README.md#nested-encoding                                                  | Maximum levels follow from the optional and repeated nodes of the path                  |
 | PQ-NEST-2   | README.md#nested-encoding                                                  | Repetition and definition levels encode lists (Dremel)                                  |
 | PQ-NULL-1   | README.md#nulls                                                            | Nulls are encoded in the definition levels only, not in the data                        |
@@ -80,7 +84,7 @@ reader rejects, what it doesn't read yet, and what applies only to writers.
 - Bloom filters (BloomFilter.md).
 - Page checksums (README.md#checksumming). `crc` is skipped, not verified.
 - Statistics semantics (parquet.thrift L1100-1219): sort orders, NaN rules and exactness are exposed as written, not interpreted. Size and geospatial statistics are skipped.
-- Logical types (LogicalTypes.md): annotations are decoded into the schema, values stay in their physical type. This includes the LIST and MAP backward-compatibility rules, Variant and Geometry.
+- Logical types (LogicalTypes.md): annotations are decoded into the schema and checked against the node they are on (PQ-LT-1 to PQ-LT-7). Values stay in their physical type and are not checked against the annotation: the range of a narrow `INTEGER`, which the spec leaves to the implementation, the digits of a `DECIMAL`, the nulls of `UNKNOWN`. The structure of `LIST`, `MAP`, `VARIANT` and `FILE` groups is not checked or interpreted, which includes the LIST and MAP backward-compatibility rules. Variant and Geometry values are not read.
 - Error recovery (README.md#error-recovery): each `readColumn` call is independent, so a corrupt column chunk doesn't affect the others, but nothing inside a chunk is recovered.
 - Binary protocol extensions (BinaryProtocolExtensions.md).
 

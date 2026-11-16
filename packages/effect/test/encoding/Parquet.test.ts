@@ -408,15 +408,26 @@ describe("Parquet", () => {
     // def levels 1, 0, 1 as RLE runs, for a column with one optional node
     const someNull = runs(1, [1, 1], [0, 1], [1, 1])
     type Annotation = Omit<Parameters<typeof element>[1], "type" | "repetition" | "children">
-    /** A file with one required column `x` that has statistics in TYPE_ORDER, and no rows. */
-    const annotated = (type: number, annotation: Annotation) =>
-      file({
-        schema: [root(1), element("x", { type, repetition: REQUIRED, ...annotation })],
+    /**
+     * A file with one required column `x` that has statistics in TYPE_ORDER, and no rows. The annotation is on `x`,
+     * or without a `type` on a group around it.
+     */
+    const annotated = (type: number | undefined, annotation: Annotation) => {
+      const leaf = type ?? Type.BYTE_ARRAY
+      return file({
+        schema: type === undefined
+          ? [
+            root(1),
+            element("g", { repetition: REQUIRED, children: 1, ...annotation }),
+            element("x", { type: leaf, repetition: REQUIRED })
+          ]
+          : [root(1), element("x", { type, repetition: REQUIRED, ...annotation })],
         numRows: 0,
-        chunks: [{ type, path: ["x"], numValues: 0, pages: [] }],
+        chunks: [{ type: leaf, path: type === undefined ? ["g", "x"] : ["x"], numValues: 0, pages: [] }],
         metadata: { 7: List("Struct", [Struct({ 1: Struct({}) })]) }
       })
-    /** What the reader says about column `x`. */
+    }
+    /** What the reader says about the annotated node and the order of column `x`. */
     const annotationOf = (bytes: Uint8Array) =>
       Effect.map(metadataOf(bytes), ({ columns: [column] }) => ({
         logicalType: column.nodes[0].logicalType,
@@ -573,6 +584,193 @@ describe("Parquet", () => {
             convertedType: undefined,
             columnOrder: undefined
           })
+        }))
+
+      const GROUP = undefined
+      const FIXED = Type.FIXED_LEN_BYTE_ARRAY
+      const logical = (member: number, fields: { readonly [id: number]: V } = {}): Annotation => ({
+        logicalType: Struct({ [member]: Struct(fields) })
+      })
+      const integer = (bitWidth: number, isSigned: boolean) => logical(10, { 1: I8(bitWidth), 2: Bool(isSigned) })
+      const time = (unit: number) => ({ logicalType: temporal(TIME, Struct({ [unit]: empty })) })
+      const utc = { isAdjustedToUTC: true }
+
+      it.effect("PQ-LT-4 SHOULD ignore an annotation on a physical type it is not defined for, and the column's order (#unsupported-logical-types)", () =>
+        Effect.gen(function*() {
+          type Node = readonly [type: number | undefined, typeLength?: number]
+          // the annotation as written and as read, a node the spec defines it for, and one it doesn't
+          const cases: ReadonlyArray<
+            readonly [Annotation, Parquet.LogicalType | Parquet.ConvertedType, defined: Node, other: Node]
+          > = [
+            [logical(1), { type: "STRING" }, [Type.BYTE_ARRAY], [Type.INT32]],
+            [logical(2), { type: "MAP" }, [GROUP], [Type.BYTE_ARRAY]],
+            [logical(3), { type: "LIST" }, [GROUP], [Type.INT32]],
+            [logical(4), { type: "ENUM" }, [Type.BYTE_ARRAY], [FIXED, 4]],
+            [logical(5, { 1: I32(2), 2: I32(9) }), { type: "DECIMAL", scale: 2, precision: 9 }, [Type.INT32], [
+              Type.DOUBLE
+            ]],
+            [logical(6), { type: "DATE" }, [Type.INT32], [Type.INT64]],
+            [time(1), { type: "TIME", ...utc, unit: "MILLIS" }, [Type.INT32], [Type.INT64]],
+            [time(2), { type: "TIME", ...utc, unit: "MICROS" }, [Type.INT64], [Type.INT32]],
+            [time(3), { type: "TIME", ...utc, unit: "NANOS" }, [Type.INT64], [Type.INT32]],
+            [
+              { logicalType: temporal(TIMESTAMP, Struct({ 1: empty })) },
+              { type: "TIMESTAMP", ...utc, unit: "MILLIS" },
+              [
+                Type.INT64
+              ],
+              [Type.INT96]
+            ],
+            [integer(8, true), { type: "INTEGER", bitWidth: 8, isSigned: true }, [Type.INT32], [Type.INT64]],
+            [integer(16, false), { type: "INTEGER", bitWidth: 16, isSigned: false }, [Type.INT32], [Type.INT64]],
+            [integer(32, true), { type: "INTEGER", bitWidth: 32, isSigned: true }, [Type.INT32], [Type.INT64]],
+            [integer(64, false), { type: "INTEGER", bitWidth: 64, isSigned: false }, [Type.INT64], [Type.INT32]],
+            [logical(12), { type: "JSON" }, [Type.BYTE_ARRAY], [Type.INT64]],
+            [logical(13), { type: "BSON" }, [Type.BYTE_ARRAY], [Type.INT32]],
+            [logical(14), { type: "UUID" }, [FIXED, 16], [FIXED, 4]],
+            [logical(15), { type: "FLOAT16" }, [FIXED, 2], [Type.FLOAT]],
+            [logical(16), { type: "VARIANT", specificationVersion: undefined }, [GROUP], [Type.BYTE_ARRAY]],
+            [logical(17), { type: "GEOMETRY", crs: undefined }, [Type.BYTE_ARRAY], [GROUP]],
+            [logical(18), { type: "GEOGRAPHY", crs: undefined, algorithm: undefined }, [Type.BYTE_ARRAY], [FIXED, 21]],
+            [logical(19), { type: "FILE" }, [GROUP], [Type.BYTE_ARRAY]],
+            // converted types, by their code in parquet.thrift
+            [{ convertedType: 0 }, "UTF8", [Type.BYTE_ARRAY], [Type.INT32]],
+            [{ convertedType: 1 }, "MAP", [GROUP], [Type.BYTE_ARRAY]],
+            [{ convertedType: 2 }, "MAP_KEY_VALUE", [GROUP], [Type.BYTE_ARRAY]],
+            [{ convertedType: 3 }, "LIST", [GROUP], [Type.INT32]],
+            [{ convertedType: 4 }, "ENUM", [Type.BYTE_ARRAY], [Type.INT32]],
+            [{ convertedType: 5, scale: 2, precision: 9 }, "DECIMAL", [Type.INT32], [Type.FLOAT]],
+            [{ convertedType: 6 }, "DATE", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 7 }, "TIME_MILLIS", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 8 }, "TIME_MICROS", [Type.INT64], [Type.INT32]],
+            [{ convertedType: 9 }, "TIMESTAMP_MILLIS", [Type.INT64], [Type.INT32]],
+            [{ convertedType: 10 }, "TIMESTAMP_MICROS", [Type.INT64], [Type.INT96]],
+            [{ convertedType: 11 }, "UINT_8", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 12 }, "UINT_16", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 13 }, "UINT_32", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 14 }, "UINT_64", [Type.INT64], [Type.INT32]],
+            [{ convertedType: 15 }, "INT_8", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 16 }, "INT_16", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 17 }, "INT_32", [Type.INT32], [Type.INT64]],
+            [{ convertedType: 18 }, "INT_64", [Type.INT64], [Type.INT32]],
+            [{ convertedType: 19 }, "JSON", [Type.BYTE_ARRAY], [Type.INT32]],
+            [{ convertedType: 20 }, "BSON", [Type.BYTE_ARRAY], [GROUP]],
+            [{ convertedType: 21 }, "INTERVAL", [FIXED, 12], [FIXED, 4]]
+          ]
+          for (const [annotation, expected, [type, typeLength], [otherType, otherLength]] of cases) {
+            const label = JSON.stringify(expected)
+            const kept = yield* annotationOf(annotated(type, { ...annotation, typeLength }))
+            assert.deepStrictEqual(
+              kept,
+              typeof expected === "string"
+                ? { logicalType: undefined, convertedType: expected, columnOrder: "TYPE_ORDER" }
+                : { logicalType: expected, convertedType: undefined, columnOrder: "TYPE_ORDER" },
+              label
+            )
+            const ignored = yield* annotationOf(annotated(otherType, { ...annotation, typeLength: otherLength }))
+            assert.deepStrictEqual(ignored, {
+              logicalType: undefined,
+              convertedType: undefined,
+              // the order belongs to the leaf, so it stays when the annotation was on the group around it
+              columnOrder: otherType === GROUP ? "TYPE_ORDER" : undefined
+            }, label)
+          }
+          // UNKNOWN is for "a column that is always null", whatever its type
+          for (const type of [Type.BOOLEAN, Type.INT32, Type.BYTE_ARRAY]) {
+            assert.deepStrictEqual(yield* annotationOf(annotated(type, logical(11))), {
+              logicalType: { type: "UNKNOWN" },
+              convertedType: undefined,
+              columnOrder: "TYPE_ORDER"
+            })
+          }
+        }))
+
+      it.effect("PQ-LT-5 reads a node's logical type and converted type independently of each other", () =>
+        Effect.gen(function*() {
+          // both defined for INT32, though DATE corresponds to the converted type DATE
+          assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT32, { ...logical(6), convertedType: 7 })), {
+            logicalType: { type: "DATE" },
+            convertedType: "TIME_MILLIS",
+            columnOrder: "TYPE_ORDER"
+          })
+          // STRING is not defined for INT32, INT_32 is
+          assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT32, { ...logical(1), convertedType: 17 })), {
+            logicalType: undefined,
+            convertedType: "INT_32",
+            columnOrder: undefined
+          })
+          // the DecimalType supersedes the scale and precision of the schema element (parquet.thrift L557-564)
+          assert.deepStrictEqual(
+            yield* annotationOf(annotated(Type.INT32, { ...logical(5, { 1: I32(2), 2: I32(9) }), convertedType: 5 })),
+            {
+              logicalType: { type: "DECIMAL", scale: 2, precision: 9 },
+              convertedType: "DECIMAL",
+              columnOrder: "TYPE_ORDER"
+            }
+          )
+          // a converted type 2.14.0 doesn't have
+          assert.deepStrictEqual(yield* annotationOf(annotated(Type.INT32, { convertedType: 99 })), {
+            logicalType: undefined,
+            convertedType: 99,
+            columnOrder: undefined
+          })
+        }))
+
+      it.effect("PQ-LT-6 MUST reject a DECIMAL whose precision or scale breaks the rules (#decimal)", () =>
+        Effect.gen(function*() {
+          type Case = readonly [
+            type: number,
+            scale: number | undefined,
+            precision: number | undefined,
+            typeLength?: number
+          ]
+          const forms = (
+            [type, scale, precision, typeLength]: Case
+          ) => [
+            // the converted type takes its parameters from the schema element, where the scale defaults to 0
+            annotated(type, { convertedType: 5, scale, precision, typeLength }),
+            ...(scale === undefined || precision === undefined
+              ? []
+              : [annotated(type, { ...logical(5, { 1: I32(scale), 2: I32(precision) }), typeLength })])
+          ]
+          const valid: ReadonlyArray<Case> = [
+            [Type.INT32, 0, 1],
+            [Type.INT32, 9, 9],
+            [Type.INT32, undefined, 9],
+            [Type.INT64, 2, 18],
+            // floor(log10(2^(8n - 1) - 1)) digits: 2^7 - 1 = 127, 2^31 - 1 = 2147483647, 2^127 - 1 is about 1.7e38
+            [FIXED, 0, 2, 1],
+            [FIXED, 0, 9, 4],
+            [FIXED, 10, 38, 16],
+            [Type.BYTE_ARRAY, 0, 1000]
+          ]
+          for (const case_ of valid) {
+            for (const bytes_ of forms(case_)) {
+              assert.strictEqual((yield* annotationOf(bytes_)).columnOrder, "TYPE_ORDER", JSON.stringify(case_))
+            }
+          }
+          const invalid: ReadonlyArray<readonly [Case, RegExp]> = [
+            [[Type.INT32, 5, 2], /scale/],
+            [[Type.INT32, -1, 2], /scale/],
+            [[Type.INT32, 0, 0], /precision/],
+            [[Type.BYTE_ARRAY, 0, -1], /precision/],
+            [[Type.BYTE_ARRAY, 0, undefined], /precision/],
+            [[Type.INT32, 0, 10], /precision/],
+            [[Type.INT64, 0, 19], /precision/],
+            [[FIXED, 0, 3, 1], /precision/],
+            [[FIXED, 0, 10, 4], /precision/],
+            [[FIXED, 0, 39, 16], /precision/]
+          ]
+          for (const [case_, message] of invalid) {
+            for (const bytes_ of forms(case_)) yield* failsWith(metadataOf(bytes_), "Malformed", message)
+          }
+        }))
+
+      it.effect("PQ-LT-7 MUST reject an INTEGER whose bit width is not 8, 16, 32 or 64 (#signed-integers)", () =>
+        Effect.gen(function*() {
+          for (const bitWidth of [0, 24, 65, -8]) {
+            yield* failsWith(metadataOf(annotated(Type.INT32, integer(bitWidth, true))), "Malformed", /bit width/)
+          }
         }))
     })
 

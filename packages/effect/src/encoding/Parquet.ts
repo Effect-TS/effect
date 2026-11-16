@@ -40,9 +40,12 @@
  *
  * - Physical types: all eight. Values stay in their physical type; logical
  *   types and converted types are decoded into the schema but not applied
- *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes). A
- *   logical type added after 2.14.0 is left out of the schema, and so is the
- *   order of its column's statistics.
+ *   (a `DATE` column reads as `INT32` days, a `STRING` as UTF-8 bytes).
+ * - Annotations: an annotation added after 2.14.0, or one the spec doesn't
+ *   define for the physical type it is on (a `STRING` on an `INT32`), is left
+ *   out of the schema, and so is the order of the column's statistics. A
+ *   `DECIMAL` precision or scale and an `INTEGER` bit width that the spec
+ *   forbids fail with `Malformed`.
  * - Encodings: `PLAIN`, `PLAIN_DICTIONARY` and `RLE_DICTIONARY` (values
  *   are looked up in the dictionary), `RLE` (booleans), `DELTA_BINARY_PACKED`,
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
@@ -261,6 +264,10 @@ export type ColumnOrder = "TYPE_ORDER" | "IEEE_754_TOTAL_ORDER" | "INT96_TIMESTA
  * Enum-valued fields hold the spec's name, or the numeric code of a value this
  * module doesn't know.
  *
+ * `convertedType` and `logicalType` are each `undefined` when the spec doesn't
+ * define the annotation for this node: for its physical type and
+ * `typeLength`, or for a group. They are not compared with each other.
+ *
  * @stability experimental
  * @category models
  * @since 4.1.5
@@ -304,7 +311,8 @@ export interface ColumnDescriptor {
   readonly maxRepetitionLevel: number
   /**
    * `undefined` when the file has no column orders, or one this module doesn't
-   * know, or when the column's logical type is one this module doesn't know.
+   * know, or when the leaf has an annotation this module doesn't know or the
+   * spec doesn't define for its physical type.
    */
   readonly columnOrder: ColumnOrder | undefined
 }
@@ -925,6 +933,140 @@ const rowGroup = (r: Reader): RowGroup => {
   }
 }
 
+/** A logical type, or a converted type as the logical type that replaced it. */
+type Annotation = LogicalType | { readonly type: Exclude<ConvertedType, "DECIMAL"> }
+
+/**
+ * The physical type LogicalTypes.md defines each annotation for, `undefined`
+ * for a group. The annotations that are not here depend on more than that.
+ */
+const annotated: {
+  readonly [
+    K in Exclude<Annotation["type"], "DECIMAL" | "TIME" | "INTEGER" | "UNKNOWN" | "UUID" | "FLOAT16" | "INTERVAL">
+  ]: PhysicalType | undefined
+} = {
+  MAP: undefined,
+  MAP_KEY_VALUE: undefined,
+  LIST: undefined,
+  VARIANT: undefined,
+  FILE: undefined,
+  STRING: "BYTE_ARRAY",
+  UTF8: "BYTE_ARRAY",
+  ENUM: "BYTE_ARRAY",
+  JSON: "BYTE_ARRAY",
+  BSON: "BYTE_ARRAY",
+  GEOMETRY: "BYTE_ARRAY",
+  GEOGRAPHY: "BYTE_ARRAY",
+  DATE: "INT32",
+  TIME_MILLIS: "INT32",
+  UINT_8: "INT32",
+  UINT_16: "INT32",
+  UINT_32: "INT32",
+  INT_8: "INT32",
+  INT_16: "INT32",
+  INT_32: "INT32",
+  TIME_MICROS: "INT64",
+  TIMESTAMP: "INT64",
+  TIMESTAMP_MILLIS: "INT64",
+  TIMESTAMP_MICROS: "INT64",
+  UINT_64: "INT64",
+  INT_64: "INT64"
+}
+const annotatedLengths = { UUID: 16, FLOAT16: 2, INTERVAL: 12 } as const
+
+/**
+ * Whether LogicalTypes.md defines `annotation` for the node of schema element
+ * `e`: a leaf of `physicalType`, or a group. Fails on parameters it forbids
+ * for every node.
+ */
+const annotates = (annotation: Annotation, e: Element, physicalType: PhysicalType | undefined): boolean => {
+  switch (annotation.type) {
+    case "UNKNOWN":
+      // "a column that is always null", of any type
+      return true
+    case "UUID":
+    case "FLOAT16":
+    case "INTERVAL":
+      return physicalType === "FIXED_LEN_BYTE_ARRAY" && e.typeLength === annotatedLengths[annotation.type]
+    case "TIME":
+      return physicalType === (annotation.unit === "MILLIS" ? "INT32" : "INT64")
+    case "INTEGER": {
+      const { bitWidth } = annotation
+      if (bitWidth !== 8 && bitWidth !== 16 && bitWidth !== 32 && bitWidth !== 64) {
+        fail("Malformed", `schema element "${e.name}" is an INTEGER with a bit width of ${bitWidth}`)
+      }
+      return physicalType === (bitWidth === 64 ? "INT64" : "INT32")
+    }
+    case "DECIMAL": {
+      const { precision, scale } = annotation
+      const invalid = (reason: string): never =>
+        fail("Malformed", `schema element "${e.name}" is a DECIMAL with ${reason}`)
+      if (precision < 1) invalid(`a precision of ${precision}`)
+      if (scale < 0 || scale > precision) invalid(`a scale of ${scale} for a precision of ${precision}`)
+      let digits: number
+      switch (physicalType) {
+        case "INT32":
+          digits = 9
+          break
+        case "INT64":
+          digits = 18
+          break
+        case "FIXED_LEN_BYTE_ARRAY":
+          // floor(log10(2^(8n - 1) - 1)), which is this as no power of 2 is a power of 10
+          digits = Math.floor((8 * e.typeLength! - 1) * Math.log10(2))
+          break
+        case "BYTE_ARRAY":
+          return true
+        default:
+          return false
+      }
+      if (precision > digits) {
+        invalid(`a precision of ${precision}, more than the ${digits} digits of its ${physicalType}`)
+      }
+      return true
+    }
+    default:
+      return physicalType === annotated[annotation.type]
+  }
+}
+
+/**
+ * The annotations of a schema element's node, without those the spec doesn't
+ * define for it. `known` is whether the node kept all it had: when it didn't,
+ * the order of its values is unknown too.
+ */
+const annotations = (e: Element, physicalType: PhysicalType | undefined): {
+  readonly logicalType: LogicalType | undefined
+  readonly convertedType: ConvertedType | number | undefined
+  readonly known: boolean
+} => {
+  let logicalType: LogicalType | undefined
+  let convertedType = e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType)
+  let known = typeof e.logicalType !== "number" && typeof convertedType !== "number"
+  if (typeof e.logicalType === "object") {
+    if (annotates(e.logicalType, e, physicalType)) logicalType = e.logicalType
+    else known = false
+  }
+  if (typeof convertedType === "string") {
+    let annotation: Annotation
+    if (convertedType !== "DECIMAL") annotation = { type: convertedType }
+    // A DecimalType supersedes the scale and precision of the schema element.
+    else if (typeof e.logicalType === "object" && e.logicalType.type === "DECIMAL") annotation = e.logicalType
+    else {
+      annotation = {
+        type: "DECIMAL",
+        scale: e.scale ?? 0,
+        precision: required(e.precision, `the precision of DECIMAL schema element "${e.name}"`)
+      }
+    }
+    if (!annotates(annotation, e, physicalType)) {
+      convertedType = undefined
+      known = false
+    }
+  }
+  return { logicalType, convertedType, known }
+}
+
 interface Schema {
   readonly root: SchemaNode
   readonly columns: Array<ColumnDescriptor>
@@ -954,8 +1096,6 @@ const schemaTree = (
       name: e.name,
       repetition,
       typeLength: e.typeLength,
-      convertedType: e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType),
-      logicalType: typeof e.logicalType === "number" ? undefined : e.logicalType,
       scale: e.scale,
       precision: e.precision,
       fieldId: e.fieldId
@@ -964,7 +1104,8 @@ const schemaTree = (
       const count = required(e.numChildren, `the type or children of schema element "${e.name}"`)
       if (count < 0) fail("Malformed", `schema element "${e.name}" has ${count} children`)
       const children: Array<SchemaNode> = []
-      const self: SchemaNode = { ...base, physicalType: undefined, children }
+      const { convertedType, logicalType } = annotations(e, undefined)
+      const self: SchemaNode = { ...base, convertedType, logicalType, physicalType: undefined, children }
       const nodes = isRoot ? path : [...path, self]
       for (let i = 0; i < count; i++) children.push(node(nodes, definition, repetitionLevel))
       return self
@@ -977,7 +1118,8 @@ const schemaTree = (
     if (physicalType === "FIXED_LEN_BYTE_ARRAY" && !(e.typeLength !== undefined && e.typeLength > 0)) {
       fail("Malformed", `FIXED_LEN_BYTE_ARRAY column "${e.name}" has no positive type_length`)
     }
-    const self: SchemaNode = { ...base, physicalType, children: undefined }
+    const { convertedType, known, logicalType } = annotations(e, physicalType)
+    const self: SchemaNode = { ...base, convertedType, logicalType, physicalType, children: undefined }
     const nodes = [...path, self]
     const order = orders?.[columns.length]
     columns.push({
@@ -987,8 +1129,7 @@ const schemaTree = (
       typeLength: physicalType === "FIXED_LEN_BYTE_ARRAY" ? e.typeLength : undefined,
       maxDefinitionLevel: definition,
       maxRepetitionLevel: repetitionLevel,
-      // The order of a logical type this module doesn't know is unknown too.
-      columnOrder: typeof order === "number" || typeof e.logicalType === "number" ? undefined : order
+      columnOrder: typeof order === "number" || !known ? undefined : order
     })
     return self
   }
