@@ -650,9 +650,23 @@ describe("BunHttpServer", () => {
       assert.deepStrictEqual(frames.map((frame) => new TextDecoder().decode(frame.payload)), [payload, payload])
     }))
 
-  for (const phase of ["before reader startup", "with an active reader"] as const) {
+  for (
+    const { highWaterMark, name, overflow, phase, queued } of [
+      { phase: "before reader startup", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
+      { phase: "with an active reader", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
+      { phase: "before reader startup", name: "empty frames", highWaterMark: 2, queued: ["", ""], overflow: "" },
+      // "€" is 3 bytes and is retained because the queue is below the mark when it arrives
+      {
+        phase: "before reader startup",
+        name: "a multibyte frame crossing the mark",
+        highWaterMark: 3,
+        queued: ["a", "€"],
+        overflow: "b"
+      }
+    ] as const
+  ) {
     it.live(
-      `bounds inbound WebSocket messages ${phase}`,
+      `bounds inbound WebSocket bytes ${phase}: ${name}`,
       () =>
         Effect.gen(function*() {
           const closed = yield* Deferred.make<CloseEvent>()
@@ -661,7 +675,7 @@ describe("BunHttpServer", () => {
           const server = yield* BunHttpServer.make({
             hostname: "127.0.0.1",
             port: 0,
-            websocket: { maxBufferedMessages: 2 }
+            websocket: { highWaterMark }
           })
           yield* server.serve(Effect.gen(function*() {
             const request = yield* HttpServerRequest.HttpServerRequest
@@ -675,19 +689,17 @@ describe("BunHttpServer", () => {
                   // pulling a full queue frees its capacity
                   yield* writer.write("fill")
                   let drained = 0
-                  while (drained < 2) drained += (yield* activeReader.pull).length
+                  while (drained < queued.length) drained += (yield* activeReader.pull).length
                 }
                 yield* writer.write("overflow")
                 yield* Deferred.await(read)
                 const reader = activeReader ?? (yield* socket.reader)
-                assert.deepStrictEqual(yield* reader.pull, ["first", "second"])
+                assert.deepStrictEqual(yield* reader.pull, queued)
                 const error = yield* Effect.flip(reader.pull)
-                assert.deepStrictEqual(
-                  error.reason,
-                  new Socket.SocketCloseError({
-                    code: 1008,
-                    closeReason: "Inbound message buffer limit exceeded"
-                  })
+                assert(error.reason._tag === "SocketReadError")
+                assert.strictEqual(
+                  String(error.reason.cause),
+                  `Error: Socket highWaterMark of ${highWaterMark} bytes exceeded`
                 )
               })
             )
@@ -699,9 +711,8 @@ describe("BunHttpServer", () => {
             (ws) => Effect.sync(() => ws.close())
           )
           ws.addEventListener("message", (event) => {
-            ws.send("first")
-            ws.send("second")
-            if (event.data === "overflow") ws.send("third")
+            for (const frame of queued) ws.send(frame)
+            if (event.data === "overflow") ws.send(overflow)
           })
           ws.addEventListener("close", (event) => Deferred.doneUnsafe(closed, Effect.succeed(event)))
           const event = yield* Deferred.await(closed).pipe(
