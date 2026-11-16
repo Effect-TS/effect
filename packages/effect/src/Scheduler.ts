@@ -316,7 +316,7 @@ export class MixedScheduler implements Scheduler {
    *
    * @since 2.0.0
    */
-  shouldYield(fiber: Fiber.Fiber<unknown, unknown>) {
+  shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
     return fiber.currentOpCount >= fiber.cache.maxOpsBeforeYield
   }
 
@@ -330,7 +330,7 @@ export class MixedScheduler implements Scheduler {
    *
    * @since 4.0.0
    */
-  makeDispatcher() {
+  makeDispatcher(): SchedulerDispatcher {
     return new MixedSchedulerDispatcher(this.setImmediate)
   }
 

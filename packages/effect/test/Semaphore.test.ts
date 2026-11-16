@@ -343,10 +343,8 @@ describe("Semaphore", () => {
     Effect.gen(function*() {
       const tasks: Array<() => void> = []
       let shouldYield = false
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher() {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -354,15 +352,16 @@ describe("Semaphore", () => {
             flush() {
             }
           }
-        },
-        shouldYield: () => {
+        }
+
+        override shouldYield(): boolean {
           if (shouldYield) {
             shouldYield = false
             return true
           }
           return false
         }
-      }
+      }()
       const step = Effect.sync(() => {
         const task = tasks.shift()
         if (task !== undefined) {
@@ -421,17 +420,16 @@ describe("Semaphore", () => {
   it.effect("withPermits interrupted at any operation does not leak permits", () =>
     Effect.gen(function*() {
       let operations = 0
-      const counted = new Scheduler.MixedScheduler()
       const baseline = yield* (yield* Semaphore.make(1)).withPermits(1)(Effect.void).pipe(
-        Effect.provideService(Scheduler.Scheduler, {
-          executionMode: counted.executionMode,
-          makeDispatcher: () => counted.makeDispatcher(),
-          park: (fiber) => counted.park(fiber),
-          shouldYield: (fiber) => {
-            operations++
-            return counted.shouldYield(fiber)
-          }
-        }),
+        Effect.provideService(
+          Scheduler.Scheduler,
+          new class extends Scheduler.MixedScheduler {
+            override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+              operations++
+              return super.shouldYield(fiber)
+            }
+          }()
+        ),
         Effect.forkChild
       )
       yield* Fiber.await(baseline)
@@ -441,17 +439,13 @@ describe("Semaphore", () => {
 
       for (let at = 1; at <= operations; at++) {
         const sem = yield* Semaphore.make(1)
-        const base = new Scheduler.MixedScheduler()
         let seen = 0
-        const scheduler: Scheduler.Scheduler = {
-          executionMode: base.executionMode,
-          makeDispatcher: () => base.makeDispatcher(),
-          park: (fiber) => base.park(fiber),
-          shouldYield: (fiber) => {
+        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
             if (++seen === at) fiber.interruptUnsafe()
-            return base.shouldYield(fiber)
+            return super.shouldYield(fiber)
           }
-        }
+        }()
 
         const holder = yield* sem.withPermits(1)(
           Effect.sync(() => {
@@ -477,20 +471,21 @@ describe("Semaphore", () => {
         tasks: Array<() => void>,
         onOperation: (fiber: Fiber.Fiber<unknown, unknown>) => void
       ) => {
-        const scheduler: Scheduler.Scheduler = {
-          executionMode: "async",
-          park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-          makeDispatcher: () => ({
-            scheduleTask(task) {
-              tasks.push(task)
-            },
-            flush() {}
-          }),
-          shouldYield: (fiber) => {
+        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+          override makeDispatcher(): Scheduler.SchedulerDispatcher {
+            return {
+              scheduleTask(task) {
+                tasks.push(task)
+              },
+              flush() {}
+            }
+          }
+
+          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
             onOperation(fiber)
             return false
           }
-        }
+        }()
         return scheduler
       }
 

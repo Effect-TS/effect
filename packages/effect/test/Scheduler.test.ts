@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit } from "effect"
+import { Effect, Exit, type Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Scheduler", () => {
@@ -80,17 +80,16 @@ describe("Scheduler", () => {
   it.effect("PreventSchedulerYield disables shouldYield checks", () =>
     Effect.gen(function*() {
       let calls = 0
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "sync",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        shouldYield: () => {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override shouldYield(): boolean {
           calls++
           return false
-        },
-        makeDispatcher() {
+        }
+
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {} as any
         }
-      }
+      }("sync")
 
       yield* Effect.sync(() => undefined).pipe(
         Effect.provideService(Scheduler.Scheduler, scheduler)
@@ -109,19 +108,22 @@ describe("Scheduler", () => {
     const defect = new Error("dispatch failed")
     const tasks: Array<() => void> = []
     let attempts = 0
-    const scheduler: Scheduler.Scheduler = {
-      executionMode: "async",
-      park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-      shouldYield: (fiber) => fiber.currentOpCount >= 2,
-      makeDispatcher: () => ({
-        scheduleTask: (task) => {
-          // Bound failures so a runtime that retries dispatch cannot spin forever.
-          if (++attempts <= 5) throw defect
-          tasks.push(task)
-        },
-        flush() {}
-      })
-    }
+    const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+      override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+        return fiber.currentOpCount >= 2
+      }
+
+      override makeDispatcher(): Scheduler.SchedulerDispatcher {
+        return {
+          scheduleTask: (task) => {
+            // Bound failures so a runtime that retries dispatch cannot spin forever.
+            if (++attempts <= 5) throw defect
+            tasks.push(task)
+          },
+          flush() {}
+        }
+      }
+    }()
     const fiber = Effect.runFork(
       Effect.forEach([1, 2, 3], Effect.succeed, { concurrency: "unbounded" }),
       { scheduler }

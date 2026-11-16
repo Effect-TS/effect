@@ -58,10 +58,8 @@ describe("Latch", () => {
     Effect.gen(function*() {
       const latch = yield* Latch.make(false)
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher() {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -69,9 +67,12 @@ describe("Latch", () => {
             flush() {
             }
           }
-        },
-        shouldYield: () => false
-      }
+        }
+
+        override shouldYield(): boolean {
+          return false
+        }
+      }()
 
       const first = yield* Effect.forkChild(
         Latch.await(latch),
@@ -118,10 +119,8 @@ describe("Latch", () => {
     Effect.gen(function*() {
       const latch = Latch.makeUnsafe(false)
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher() {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -129,9 +128,12 @@ describe("Latch", () => {
             flush() {
             }
           }
-        },
-        shouldYield: () => false
-      }
+        }
+
+        override shouldYield(): boolean {
+          return false
+        }
+      }()
 
       let second: Fiber.Fiber<void> | undefined
       yield* Effect.forkChild(
@@ -156,10 +158,8 @@ describe("Latch", () => {
     Effect.gen(function*() {
       const latch = yield* Latch.make(false)
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher() {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -167,9 +167,12 @@ describe("Latch", () => {
             flush() {
             }
           }
-        },
-        shouldYield: () => false
-      }
+        }
+
+        override shouldYield(): boolean {
+          return false
+        }
+      }()
 
       const resumed: Array<string> = []
       const waiter = yield* Effect.forkChild(
@@ -196,10 +199,8 @@ describe("Latch", () => {
     Effect.gen(function*() {
       const latch = yield* Latch.make(false)
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = {
-        executionMode: "async",
-        park: (fiber) => new Scheduler.MixedScheduler().park(fiber),
-        makeDispatcher() {
+      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
+        override makeDispatcher(): Scheduler.SchedulerDispatcher {
           return {
             scheduleTask(task, _priority) {
               tasks.push(task)
@@ -207,9 +208,12 @@ describe("Latch", () => {
             flush() {
             }
           }
-        },
-        shouldYield: () => false
-      }
+        }
+
+        override shouldYield(): boolean {
+          return false
+        }
+      }()
       const resumed: Array<string> = []
       const interrupted = yield* Effect.forkChild(
         Effect.gen(function*() {
