@@ -825,8 +825,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                   })
                 )
                 // a later reader does not see messages this one left unread
-                ws.data.buffer = []
-                ws.data.bufferedBytes = 0
+                takeBuffer()
                 ws.data.onMessage = constVoid
                 ws.data.onClose = constVoid
                 ws.close(closeCode(exit))

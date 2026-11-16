@@ -951,9 +951,8 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  *
  * **Gotchas**
  *
- * The frame that crosses the `highWaterMark` is still buffered, so the buffer
- * can hold the limit plus one frame. Pair the limit with the transport's
- * maximum payload size.
+ * The buffer can hold the `highWaterMark` plus one frame, so pair the limit
+ * with the transport's maximum payload size.
  *
  * @stability unstable
  * @category constructors

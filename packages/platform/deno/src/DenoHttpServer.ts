@@ -605,7 +605,6 @@ const bufferedWebSocket = (ws: WebSocket, highWaterMark: number | undefined): So
   const buffered: Array<[string, Socket.WebSocketEvent]> = []
   let buffering = true
   let bufferedBytes = 0
-  let overflowed = false
 
   ws.binaryType = "arraybuffer"
 
@@ -627,14 +626,14 @@ const bufferedWebSocket = (ws: WebSocket, highWaterMark: number | undefined): So
     return (event: Event) => {
       const wsEvent = event as unknown as Socket.WebSocketEvent
       if (buffering) {
-        if (type === "message" && highWaterMark !== undefined) {
-          if (overflowed) return
+        const counted = type === "message" && highWaterMark !== undefined
+        if (counted) {
+          if (bufferedBytes > highWaterMark) return
           const data = wsEvent.data as string | ArrayBuffer
           bufferedBytes += (typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength) || 1
         }
         buffered.push([type, wsEvent])
-        if (!overflowed && bufferedBytes > highWaterMark!) {
-          overflowed = true
+        if (counted && bufferedBytes > highWaterMark) {
           const error = new globalThis.Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
           buffered.push(["error", Object.assign(error, { type: "error" })])
           ws.close(1008, "Inbound message buffer limit exceeded")
