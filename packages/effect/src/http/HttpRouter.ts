@@ -1440,8 +1440,9 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * `cloudflare:workers` via its `env` export.
  * Prefer request-local work or a Durable Object's supported lifecycle APIs,
  * not indefinite background execution. For shared fibers, provide a sync
- * scheduler to both layers and requests as below; see `Scheduler.MixedScheduler`
- * for its limitations. Bound waits for shared work with request-local timeouts.
+ * scheduler to both layers and requests as below, preferably `CloudflareScheduler`
+ * from `@effect/platform-cloudflare`; see `Scheduler.MixedScheduler` for its
+ * limitations. Bound waits for shared work with request-local timeouts.
  *
  * **Example** (Opting in to the sync scheduler on Workers)
  *
