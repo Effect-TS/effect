@@ -56,8 +56,8 @@ export interface Scheduler {
  * state: the effect its wait produced, its start, or an interrupt. `resume`
  * runs the fiber once, with the first entry, by calling `fiber.run(effect)`,
  * either synchronously or later, in whatever context it chooses. Entries that
- * arrive before then can be ignored. Effect changes a fiber's scheduler only
- * while the fiber runs, so the scheduler that parked a fiber also resumes it.
+ * arrive before then can be ignored. The scheduler that parked a fiber also
+ * resumes it, even if the fiber's scheduler has changed since.
  *
  * An interrupt requested while the fiber is parked is recorded on the fiber
  * before it reaches `resume`, the same way as one requested while the fiber
@@ -80,8 +80,6 @@ export interface Scheduler {
  *
  * - If `fiber.run` is never called, the fiber never resumes and cannot be
  *   interrupted.
- * - Calling `setContext` on a parked fiber with a context that has another
- *   scheduler hands its wait to that scheduler's `resume`.
  * - A scheduler that wraps another one must define `park` and `resume` only
  *   when the wrapped scheduler does, and forward both, so that the wrapped
  *   scheduler's choice is kept.
