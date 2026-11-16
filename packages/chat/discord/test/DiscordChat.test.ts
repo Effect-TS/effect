@@ -58,7 +58,7 @@ describe("post", () => {
         const content = new TextEncoder().encode("hello from effect/chat\n")
         yield* discord.post(channel, {
           markdown: "hi <@1> @everyone **bold**",
-          files: [{ name: "fixture.txt", contentType: "text/plain", content }]
+          files: [{ name: "fixture.txt", contentType: "application/x-effect-fixture", content }]
         })
         assert.deepStrictEqual(fake.called("createMessage"), [[scratch, {
           content: "hi <@1> @everyone **bold**",
@@ -76,7 +76,7 @@ describe("post", () => {
             )
           )
         )
-        assert.deepStrictEqual(uploaded, [[["fixture.txt", "text/plain", content]]])
+        assert.deepStrictEqual(uploaded, [[["fixture.txt", "application/x-effect-fixture", content]]])
       })))
 
   it.effect("withPostOptions sets mentions, embeds and the reference, merging nested calls", () =>
