@@ -545,6 +545,8 @@ export class StreamDecoder {
   private available = 0
   private ended = false
   private state: ReadState | undefined
+  /** The message whose metadata is decoded and whose body is not all there yet. */
+  private pending: { readonly message: Format.Message; readonly bodyStart: number; readonly total: number } | undefined
 
   push(chunk: Uint8Array): void {
     if (this.ended || chunk.length === 0) return
@@ -584,31 +586,36 @@ export class StreamDecoder {
   /** Decodes every complete message, adding record batches to `out`. */
   drain(out: Array<ArrowTable.RecordBatch>): void {
     while (!this.ended && this.available >= 4) {
-      const head = this.contiguous(Math.min(8, this.available))
-      const view = new DataView(head.buffer, head.byteOffset, head.byteLength)
-      let metadataLength = view.getInt32(0, true)
-      let start = 4
-      if (metadataLength === -1) {
-        if (head.length < 8) return
-        metadataLength = view.getInt32(4, true)
-        start = 8
+      // The metadata is decoded once, however many chunks its body arrives in.
+      let pending = this.pending
+      if (pending === undefined) {
+        const head = this.contiguous(Math.min(8, this.available))
+        const view = new DataView(head.buffer, head.byteOffset, head.byteLength)
+        let metadataLength = view.getInt32(0, true)
+        let start = 4
+        if (metadataLength === -1) {
+          if (head.length < 8) return
+          metadataLength = view.getInt32(4, true)
+          start = 8
+        }
+        if (metadataLength === 0) {
+          this.ended = true
+          this.chunks = []
+          this.available = 0
+          return
+        }
+        if (metadataLength < 0) invalid(`invalid message metadata length ${metadataLength}`)
+        const bodyStart = start + metadataLength
+        if (this.available < bodyStart) return
+        const message = Format.decodeMessage(this.contiguous(bodyStart).subarray(start))
+        if (message.bodyLength < 0) invalid(`invalid body length ${message.bodyLength}`)
+        pending = this.pending = { message, bodyStart, total: bodyStart + message.bodyLength }
       }
-      if (metadataLength === 0) {
-        this.ended = true
-        this.chunks = []
-        this.available = 0
-        return
-      }
-      if (metadataLength < 0) invalid(`invalid message metadata length ${metadataLength}`)
-      if (this.available < start + metadataLength) return
-      const metadata = this.contiguous(start + metadataLength).subarray(start)
-      const message = Format.decodeMessage(metadata)
-      if (message.bodyLength < 0) invalid(`invalid body length ${message.bodyLength}`)
-      const total = start + metadataLength + message.bodyLength
-      if (this.available < total) return
-      const body = this.contiguous(total).subarray(start + metadataLength)
-      this.consume(total)
-      this.apply(message, body, out)
+      if (this.available < pending.total) return
+      const body = this.contiguous(pending.total).subarray(pending.bodyStart)
+      this.consume(pending.total)
+      this.pending = undefined
+      this.apply(pending.message, body, out)
     }
   }
 
