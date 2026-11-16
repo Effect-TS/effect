@@ -233,19 +233,31 @@ const instant = (unit: S.TimeUnit, v: unknown, at: At, index: number): bigint =>
   return toBigInt(v, at, index, `a DateTime or an integer in ${unit}s`)
 }
 
-const decimalWords = (t: S.Decimal, v: unknown, path: Path): bigint => {
+/**
+ * The unscaled integer of `v` at the scale of `t`. It must be exact and have
+ * at most as many digits as the precision: below `limit`, 10^precision, which
+ * fits every bit width (`Layout.checkDecimal`).
+ */
+const unscaledDecimal = (t: S.Decimal, limit: bigint, v: unknown, path: Path): bigint => {
   if (!BigDecimal.isBigDecimal(v)) return fail(path, `expected a BigDecimal, got ${describe(v)}`)
+  if (v.value === BigInt(0)) return v.value
+  const places = v.scale - t.scale
   let unscaled: bigint
-  if (v.scale <= t.scale) {
-    unscaled = v.value * BigInt(10) ** BigInt(t.scale - v.scale)
+  if (places <= 0) {
+    // Every place added is a digit more; past the precision the power is not needed, and may not fit a bigint
+    unscaled = -places < t.precision ? v.value * BigInt(10) ** BigInt(-places) : limit
   } else {
-    const divisor = BigInt(10) ** BigInt(v.scale - t.scale)
-    if (v.value % divisor !== BigInt(0)) fail(path, `${BigDecimal.format(v)} has more than ${t.scale} decimal places`)
+    // A multiple of 10^places has more digits than that; checked first, as the power may not fit a bigint
+    const digits = String(v.value).length - (v.value < BigInt(0) ? 1 : 0)
+    const divisor = digits > places ? BigInt(10) ** BigInt(places) : undefined
+    if (divisor === undefined || v.value % divisor !== BigInt(0)) {
+      return fail(path, `${BigDecimal.format(v)} has more than ${t.scale} decimal places`)
+    }
     unscaled = v.value / divisor
   }
-  // Precision is not enforced, as in the reference implementations; the value must fit the bit width.
-  const limit = BigInt(1) << BigInt(t.bitWidth - 1)
-  if (unscaled >= limit || unscaled < -limit) fail(path, `${BigDecimal.format(v)} does not fit decimal${t.bitWidth}`)
+  if (unscaled >= limit || unscaled <= -limit) {
+    fail(path, `${BigDecimal.format(v)} has more than ${t.precision} digits at scale ${t.scale}`)
+  }
   return unscaled
 }
 
@@ -254,9 +266,10 @@ const decimalBuffer = (t: S.Decimal, values: ReadonlyArray<unknown>, at: At): Ui
   const out = new Uint8Array(values.length * width)
   const view = new DataView(out.buffer)
   const mask = (BigInt(1) << BigInt(64)) - BigInt(1)
+  const limit = BigInt(10) ** BigInt(t.precision)
   values.forEach((v, i) => {
     if (isNull(v)) return
-    let n = BigInt.asUintN(t.bitWidth, decimalWords(t, v, at(i)))
+    let n = BigInt.asUintN(t.bitWidth, unscaledDecimal(t, limit, v, at(i)))
     if (width === 4) {
       view.setUint32(i * 4, Number(n), true)
       return

@@ -358,6 +358,43 @@ describe("ArrowColumn", () => {
     }
   })
 
+  // ARROW-COLUMN-008 (mixed): Schema.fbs Decimal precision, the total number of decimal digits; local rejection path.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("fromValues rejects decimals with more digits than the precision", () => {
+    const nines = "9".repeat(76)
+    const decimals: ReadonlyArray<
+      readonly [
+        type: S.Decimal,
+        fits: ReadonlyArray<string>,
+        unscaled: ReadonlyArray<bigint>,
+        tooLong: ReadonlyArray<string>
+      ]
+    > = [
+      [S.decimal(2, 0, 32), ["99", "-99", "0"], [99n, -99n, 0n], ["123", "100", "-100"]],
+      [S.decimal(18, 0, 64), ["999999999999999999"], [999999999999999999n], ["1000000000000000000"]],
+      [S.decimal(4, 2), ["99.99", "-99.99", "1.5"], [9999n, -9999n, 150n], ["100", "-100"]],
+      [S.decimal(3, -2), ["99900", "100"], [999n, 1n], ["100000"]],
+      [S.decimal(76, 0, 256), [nines, "-" + nines], [BigInt(nines), -BigInt(nines)], ["1" + "0".repeat(76)]],
+      // Scales no power of ten reaches: only zero fits
+      [S.decimal(5, 2 ** 31 - 1), ["0"], [0n], ["5"]],
+      [S.decimal(5, -(2 ** 31)), ["0"], [0n], ["5"]]
+    ]
+    for (const [type, fits, unscaled, tooLong] of decimals) {
+      const field = S.field("d", type)
+      const label = `decimal(${type.precision}, ${type.scale}, ${type.bitWidth})`
+      const column = Result.getOrThrow(ArrowColumn.fromValues(field, fits.map(dec), { representation: "storage" }))
+      assert.deepStrictEqual(ArrowColumn.toArray(column), [...unscaled], label)
+      for (const value of tooLong) {
+        const result = ArrowColumn.fromValues(field, [dec(fits[0]), dec(value)])
+        assert.isTrue(Result.isFailure(result), `${value} in ${label}`)
+        if (Result.isFailure(result)) {
+          assert.isTrue(ArrowColumn.isArrowBuildError(result.failure))
+          assert.deepStrictEqual(result.failure.path, [1])
+        }
+      }
+    }
+  })
+
   // ARROW-COLUMN-003 (local): extension callbacks and storage fallback.
   // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
   it("extensions encode values when building and decode them when reading", () => {

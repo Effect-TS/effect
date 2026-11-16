@@ -70,8 +70,8 @@
  *   `[key, value]` entries.
  * - A `Union` value goes to the first member whose type accepts it; use
  *   {@link unionValue} to choose the member.
- * - `Decimal` values must fit the type's scale without rounding and its bit
- *   width; the precision is not enforced, as in the reference implementations.
+ * - `Decimal` values must fit the type's scale without rounding, and its
+ *   precision: `decimal(4, 2)` holds up to 99.99.
  *
  * Builders ignore `representation`. They take storage values back for every
  * type except two:
