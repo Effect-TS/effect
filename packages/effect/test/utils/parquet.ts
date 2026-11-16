@@ -4,12 +4,8 @@ import * as Parquet from "effect/encoding/Parquet"
 import * as Thrift from "effect/encoding/Thrift"
 import { gunzipSync } from "node:zlib"
 
-// Builders of synthetic Parquet files, shared by the Parquet reader tests and
-// the tests of the Arrow adapter.
-
-// ---------------------------------------------------------------------------
-// Synthetic files, written with the Thrift writer
-// ---------------------------------------------------------------------------
+// Builders of synthetic Parquet files, written with the Thrift writer. Shared
+// by the Parquet reader tests and the tests of the Arrow adapter.
 
 export const text = (s: string) => new TextEncoder().encode(s)
 

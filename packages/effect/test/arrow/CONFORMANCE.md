@@ -147,8 +147,8 @@ inventoried in test/fixtures/parquet/CONFORMANCE.md and not repeated here.
 | ARROW-PARQUET-018 | gives batches that an Arrow IPC stream encodes and decodes to the same schema and values     | **L**: plain, int96, nested, logical and empty through ArrowIpc.encodeStream and decodeStream: equal schema with field and extension metadata, batch lengths and storage values. A self round trip, not independent evidence of the layouts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 logical.parquet and logical.gold.json are written by test/fixtures/parquet/generate.py
-with pyarrow 26.0.1, after the files of gold.json, which are byte for byte unchanged.
-Its gold values are the source data as Arrow stores it.
+with pyarrow 26.0.1 and are not part of gold.json. The gold values are the
+source data as Arrow stores it.
 
 ## Exclusions and actual gaps
 

@@ -320,10 +320,8 @@ print(", ".join(f"{f['name']} ({f['numRows']} rows)" for f in files))
 
 # --- logical.parquet ----------------------------------------------------------
 # Logical types the files above don't have, for the Arrow adapter
-# (effect/arrow ArrowParquet). Written after gold.json, which it is not part of:
-# logical.gold.json holds its leaf columns with the same schema facts, and the
-# value of every row as Arrow stores it: a number, a decimal string for 64-bit
-# integers and unscaled decimals, hex for binary, text for strings.
+# (effect/arrow ArrowParquet). Not part of gold.json: logical.gold.json holds
+# its leaf columns, with every value as Arrow stores it (see README.md).
 
 U64_MAX = 2**64 - 1
 logical_values = {

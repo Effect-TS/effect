@@ -13,9 +13,10 @@
  * - The files are read through a `Parquet.Source`, so they can be in memory,
  *   on disk or behind HTTP range requests. Compressed pages need a
  *   `Parquet.Decompress` per codec in the `codecs` option.
- * - Every failure is a `Parquet.ParquetError`. A file that breaks the
- *   format fails with kind `Malformed`, and a valid file this module can't
- *   map to Arrow fails with `Unsupported`.
+ * - Every failure of this module is a `Parquet.ParquetError`; the errors of
+ *   the `Parquet.Source` pass through. A file that breaks the format fails
+ *   with kind `Malformed`, and a valid file this module can't map to Arrow
+ *   fails with `Unsupported`.
  *
  * **Example** (Reading a file batch by batch)
  *
@@ -118,7 +119,9 @@
  * - The `maxPageSize`, `maxValues` and `maxBinaryLength` options are those of
  *   `Parquet.readColumn` and apply to every column chunk. The copies made
  *   here are bounded by `maxValues`: at most 32 bytes per slot.
- * - Column chunks are read one after the other, in schema order.
+ * - Column chunks are read one after the other. The fields are read in the
+ *   order of `columns`, or in schema order without it, and the column chunks
+ *   of a field in schema order.
  *
  * Not supported, failing with `Unsupported` when the column is selected:
  * `INTERVAL`, `VARIANT`, `GEOMETRY`, `GEOGRAPHY` and `FILE` annotations, an
@@ -132,10 +135,8 @@
  *   out of the schema metadata. Types it would restore come back as their
  *   Parquet storage: a `LargeUtf8` as `Utf8`, a dictionary as its values, a
  *   `Date` in milliseconds as days.
- * - `ENUM` and `BSON` are not kept in the Arrow type, and neither is the
- *   `isAdjustedToUTC` of a `TIME`: they are only in the field metadata. The
- *   field ids of the repeated groups of lists and maps are dropped with those
- *   groups.
+ * - The field ids of the repeated groups of lists and maps are dropped with
+ *   those groups.
  * - An annotation `Parquet.readMetadata` left out, because it is unknown or
  *   not defined for the physical type, maps by physical type, and so does a
  *   converted type next to it: `UTF8` beside an unknown logical type is
