@@ -26,19 +26,21 @@ const assertInterruptedOnClose = Effect.fnUntraced(function*(
 
 // Runs a fiber normally until `holding` is set, then queues its tasks and runs
 // them one at a time through `step`, so a test can stop it between two operations.
-class SteppedScheduler extends Scheduler.MixedScheduler {
+class SteppedScheduler implements Scheduler.Scheduler {
+  readonly executionMode = "async"
   holding = false
+  private readonly fallback = new Scheduler.MixedScheduler()
   private readonly held: Array<() => void> = []
   private onHeld: (() => void) | undefined
 
   // While holding, yield after one operation; the first operation after a
   // yield only resumes the yielded continuation.
-  override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
-    return this.holding ? fiber.currentOpCount > 2 : super.shouldYield(fiber)
+  shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+    return this.holding ? fiber.currentOpCount > 2 : this.fallback.shouldYield(fiber)
   }
 
-  override makeDispatcher(): Scheduler.SchedulerDispatcher {
-    const dispatcher = super.makeDispatcher()
+  makeDispatcher(): Scheduler.SchedulerDispatcher {
+    const dispatcher = this.fallback.makeDispatcher()
     return {
       scheduleTask: (task, priority) => {
         if (!this.holding) return dispatcher.scheduleTask(task, priority)

@@ -129,7 +129,7 @@ class OwnerResumption implements Scheduler.Resumption {
  * @category models
  * @since 4.2.0
  */
-export class CloudflareScheduler extends Scheduler.MixedScheduler {
+export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
   /**
    * Creates a scheduler for request-owned fiber resumption.
    *
@@ -151,7 +151,7 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
    * @stability unstable
    * @since 4.2.0
    */
-  override park(_fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
+  park(_fiber: Fiber.Fiber<unknown, unknown>): Scheduler.Resumption {
     return new OwnerResumption()
   }
 }

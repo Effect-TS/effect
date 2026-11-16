@@ -499,11 +499,57 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-// How entries reach a fiber that is not parked
-const unparked: Scheduler.Resumption = {
+// Runs the fiber synchronously in the caller's async context. Entries reach a
+// fiber that is not parked this way, as do entries of a parked fiber in
+// runtimes without node:async_hooks.
+const directResumption: Scheduler.Resumption = {
   resume(fiber, effect) {
     fiber.run(effect)
   }
+}
+
+const AsyncResource:
+  | (new(type: string) => {
+    runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
+    emitDestroy(): void
+  })
+  | undefined = (() => {
+    try {
+      return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
+    } catch {
+      return undefined
+    }
+  })()
+
+// Runs the fiber synchronously in the async context it parked in, restored
+// with node:async_hooks. Each one is an async resource for one wait of the
+// fiber: when the fiber parks again, it gets a new one.
+const AsyncResourceResumption = AsyncResource && class extends AsyncResource implements Scheduler.Resumption {
+  declare resumed: true | undefined
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>): void {
+    // Only an interrupt can arrive before the first entry has run the fiber,
+    // for example from an async_hooks `before` callback, and the fiber has
+    // already recorded it
+    if (this.resumed) return
+    this.resumed = true
+    try {
+      this.runInAsyncScope(fiber.run, fiber, effect)
+    } finally {
+      // The wait has ended, even if the run threw, so the resource has no more
+      // callbacks to run. Node calls destroy hooks later, so this cannot
+      // re-enter the fiber. Without it, async_hooks consumers would see the
+      // resource as live until it is garbage collected.
+      this.emitDestroy()
+    }
+  }
+}
+
+// How fibers park when their scheduler does not implement ParkingScheduler,
+// selected once from the runtime
+const defaultParking: Pick<Scheduler.ParkingScheduler, "park"> = {
+  park: AsyncResourceResumption
+    ? () => new AsyncResourceResumption("effect/Fiber")
+    : () => directResumption
 }
 
 /** @internal */
@@ -533,7 +579,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._resumption = unparked
+    this._resumption = directResumption
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -558,6 +604,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
   declare _resumption: Scheduler.Resumption
+  // Chosen when the scheduler changes, so parking makes no fallback decision
+  declare _parking: Pick<Scheduler.ParkingScheduler, "park">
 
   // set in setContext
   declare context: Context.Context<never>
@@ -624,7 +672,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if (this._exit) {
       return
     }
-    this._resumption = unparked
+    this._resumption = directResumption
     if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
@@ -632,7 +680,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._resumption = this.cache.scheduler.park(this)
+      this._resumption = this._parking.park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -799,6 +847,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
+      this._parking = (cache.scheduler as Partial<Scheduler.ParkingScheduler>).park
+        ? cache.scheduler as Scheduler.ParkingScheduler
+        : defaultParking
     }
     this.cache = cache
   }
@@ -5662,7 +5713,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._resumption = child.cache.scheduler.park(child)
+    child._resumption = child._parking.park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child

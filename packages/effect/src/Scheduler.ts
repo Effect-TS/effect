@@ -32,12 +32,40 @@ import type * as Fiber from "./Fiber.ts"
  * @category services
  * @since 2.0.0
  */
-// Existing scheduler APIs remain stable; only the new park contract is unstable.
-// @effect-diagnostics-next-line apiStabilityLeak:off
 export interface Scheduler {
   readonly executionMode: "sync" | "async"
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
+}
+
+/**
+ * A `Scheduler` that also decides how its fibers resume after they park.
+ *
+ * **When to use**
+ *
+ * Use to control how fibers resume in a runtime with its own way of resuming
+ * a fiber, such as Cloudflare Workers, where async contexts belong to the
+ * request that created them.
+ *
+ * **Details**
+ *
+ * A scheduler is a `ParkingScheduler` when it has a `park` property; the
+ * fiber checks this when its scheduler changes. Fibers of any other scheduler
+ * park the default way: where `node:async_hooks` is available, as in Node.js,
+ * Bun and Deno, a fiber resumes inside an `AsyncResource` created where it
+ * parked, so `AsyncLocalStorage` state is preserved. Elsewhere, such as in
+ * browsers, it resumes in the caller's context.
+ *
+ * **Gotchas**
+ *
+ * A scheduler that wraps another one must define `park` only when the wrapped
+ * scheduler does, so that the wrapped scheduler's choice is kept.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ParkingScheduler extends Scheduler {
   /**
    * Called when a fiber stops running with more to do: it suspended, or it was
    * forked and its start is scheduled. The returned `Resumption` decides where
@@ -50,14 +78,11 @@ export interface Scheduler {
 }
 
 /**
- * Owns a parked fiber until it runs it, returned by `Scheduler.park`.
+ * Owns a parked fiber until it runs it, returned by `ParkingScheduler.park`.
  *
  * **When to use**
  *
- * Use to implement `Scheduler.park` for a runtime with its own way of resuming
- * a fiber, such as Cloudflare Workers, where async contexts belong to the
- * request that created them. Other schedulers can delegate to
- * `MixedScheduler.park`.
+ * Use to implement `ParkingScheduler.park`.
  *
  * **Details**
  *
@@ -119,58 +144,6 @@ export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
    */
   run(effect: Effect<unknown, unknown>): void
 }
-
-const AsyncResource:
-  | (new(type: string) => {
-    runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
-    emitDestroy(): void
-  })
-  | undefined = (() => {
-    try {
-      return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-    } catch {
-      return undefined
-    }
-  })()
-
-// Runs the fiber synchronously in the caller's async context, for runtimes
-// without node:async_hooks
-const directResumption: Resumption = {
-  resume(fiber, effect) {
-    fiber.run(effect)
-  }
-}
-
-// Runs the fiber synchronously in the async context it parked in, restored
-// with node:async_hooks. Each one is an async resource for one wait of the
-// fiber: when the fiber parks again, it gets a new one.
-const AsyncResourceResumption = AsyncResource && class extends AsyncResource implements Resumption {
-  resumed = false
-  constructor() {
-    super("effect/Fiber")
-  }
-  resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void {
-    // Only an interrupt can arrive before the first entry has run the fiber,
-    // for example from an async_hooks `before` callback, and the fiber has
-    // already recorded it
-    if (this.resumed) return
-    this.resumed = true
-    try {
-      this.runInAsyncScope(fiber.run, fiber, effect)
-    } finally {
-      // The wait has ended, even if the run threw, so the resource has no more
-      // callbacks to run. Node calls destroy hooks later, so this cannot
-      // re-enter the fiber. Without it, async_hooks consumers would see the
-      // resource as live until it is garbage collected.
-      this.emitDestroy()
-    }
-  }
-}
-
-// Selected once, from the runtime
-const makeResumption: () => Resumption = AsyncResourceResumption === undefined
-  ? () => directResumption
-  : () => new AsyncResourceResumption()
 
 /**
  * A dispatcher created by a `Scheduler` for enqueuing tasks and forcing queued
@@ -309,8 +282,6 @@ class PriorityBuckets {
  * @category models
  * @since 2.0.0
  */
-// Existing scheduler APIs remain stable; only the new park contract is unstable.
-// @effect-diagnostics-next-line apiStabilityLeak:off
 export class MixedScheduler implements Scheduler {
   readonly executionMode: "sync" | "async"
   readonly setImmediate: (f: () => void) => () => void
@@ -333,7 +304,7 @@ export class MixedScheduler implements Scheduler {
    *
    * @since 2.0.0
    */
-  shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+  shouldYield(fiber: Fiber.Fiber<unknown, unknown>) {
     return fiber.currentOpCount >= fiber.cache.maxOpsBeforeYield
   }
 
@@ -347,27 +318,8 @@ export class MixedScheduler implements Scheduler {
    *
    * @since 4.0.0
    */
-  makeDispatcher(): SchedulerDispatcher {
+  makeDispatcher() {
     return new MixedSchedulerDispatcher(this.setImmediate)
-  }
-
-  /**
-   * Returns how a parked fiber resumes: synchronously, in the async context it
-   * parked in.
-   *
-   * **Details**
-   *
-   * Where `node:async_hooks` is available, as in Node.js, Bun and Deno, the
-   * fiber resumes inside an `AsyncResource` created where it parked, so
-   * `AsyncLocalStorage` state is preserved. Elsewhere, such as in browsers, it
-   * resumes in the caller's context. The runtime is detected once, when this
-   * module loads.
-   *
-   * @stability unstable
-   * @since 4.2.0
-   */
-  park(_fiber: Fiber.Fiber<unknown, unknown>): Resumption {
-    return makeResumption()
   }
 }
 

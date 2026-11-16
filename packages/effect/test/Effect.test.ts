@@ -129,24 +129,22 @@ describe("Effect", () => {
     const interruptAfterContextChange = (changed: (context: Context.Context<never>) => boolean) => {
       let yielded = false
       const tasks: Array<() => void> = []
-      const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-        override makeDispatcher(): Scheduler.SchedulerDispatcher {
-          return {
-            scheduleTask: (task) => {
-              tasks.push(task)
-            },
-            flush() {}
-          }
-        }
-
-        override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield(fiber) {
           if (!yielded && changed(fiber.context)) {
             yielded = true
             return true
           }
           return false
         }
-      }()
+      }
       return { scheduler, tasks, wasYielded: () => yielded }
     }
 
@@ -238,20 +236,18 @@ describe("Effect", () => {
               let seen = 0
               let computed = 0
               const tasks: Array<() => void> = []
-              const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-                override makeDispatcher(): Scheduler.SchedulerDispatcher {
-                  return {
-                    scheduleTask: (task) => {
-                      tasks.push(task)
-                    },
-                    flush() {}
-                  }
-                }
-
-                override shouldYield(): boolean {
+              const scheduler: Scheduler.Scheduler = {
+                executionMode: "async",
+                makeDispatcher: () => ({
+                  scheduleTask: (task) => {
+                    tasks.push(task)
+                  },
+                  flush() {}
+                }),
+                shouldYield() {
                   return armed && ++seen === target
                 }
-              }()
+              }
               const source = Effect.sync(() => ++computed)
               const cached = cacheKind === "cached"
                 ? yield* Effect.cached(source)
@@ -1671,22 +1667,20 @@ describe("Effect", () => {
         const tasks: Array<() => void> = []
         let parent: Fiber.Fiber<unknown, unknown> | undefined
         let yieldParent = false
-        const scheduler: Scheduler.Scheduler = new class extends Scheduler.MixedScheduler {
-          override makeDispatcher(): Scheduler.SchedulerDispatcher {
-            return {
-              scheduleTask: (task) => {
-                tasks.push(task)
-              },
-              flush() {}
-            }
-          }
-
-          override shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield(fiber) {
             if (!yieldParent || fiber !== parent) return false
             yieldParent = false
             return true
           }
-        }()
+        }
         const winner = yield* Deferred.make<string>()
         const frame: References.StackFrame = { name: "race", stack: () => undefined, parent: undefined }
         let loserExit: Exit.Exit<string> | undefined
@@ -5663,8 +5657,8 @@ describe("Effect", () => {
       // scheduler that hands fibers back to the request that owns them
       const makeScheduler = () => {
         const pending: Array<() => void> = []
-        const scheduler = new class extends Scheduler.MixedScheduler {
-          override park(): Scheduler.Resumption {
+        const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+          park(): Scheduler.Resumption {
             let resumed = false
             return {
               resume(fiber, effect) {
