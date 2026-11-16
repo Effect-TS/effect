@@ -371,6 +371,9 @@ describe("Xml", () => {
       }
       assert.throws(() => Xml.elements([]))
       assert.throws(() => Xml.elements(["a b"]))
+      for (const segment of ["{urn:a", "{*}*", "{urn:a}b:c", "a}b"]) {
+        assert.throws(() => Xml.elements([segment]), segment)
+      }
       assert.throws(() => Xml.decodeString({ namespaces: "lenient" } as unknown as Xml.DecodeOptions))
     })
   })
@@ -591,6 +594,46 @@ describe("Xml", () => {
           { id: "2" },
           {}
         ])
+      }))
+
+    it.effect("matches namespaces in Clark notation", () =>
+      Effect.gen(function*() {
+        const collect = (xml: string, path: ReadonlyArray<string>) =>
+          Stream.make(xml).pipe(
+            Stream.pipeThroughChannel(Xml.decodeString({ namespaces: "strict" })),
+            Stream.pipeThroughChannel(Xml.elements(path)),
+            Stream.runCollect
+          )
+        const xml = "<feed xmlns=\"urn:atom\" xmlns:x=\"urn:a}b\"><entry><title>A</title></entry><x:entry/>" +
+          "<entry xmlns=\"\"/></feed>"
+        assert.deepStrictEqual(yield* collect(xml, ["{urn:atom}feed", "{urn:atom}entry"]), [
+          {
+            name: "entry",
+            namespace: "urn:atom",
+            localName: "entry",
+            attributes: {},
+            children: [{ name: "title", namespace: "urn:atom", localName: "title", attributes: {}, children: ["A"] }]
+          }
+        ])
+        const cases: ReadonlyArray<readonly [ReadonlyArray<string>, Array<[string, string]>]> = [
+          [["*", "{*}entry"], [["entry", "urn:atom"], ["x:entry", "urn:a}b"], ["entry", ""]]],
+          [["*", "{}entry"], [["entry", ""]]],
+          // Namespaces can contain "}", which local names cannot
+          [["*", "{urn:a}b}entry"], [["x:entry", "urn:a}b"]]],
+          [["feed", "x:entry"], [["x:entry", "urn:a}b"]]]
+        ]
+        for (const [path, expected] of cases) {
+          const collected = yield* collect(xml, path)
+          assert.deepStrictEqual(collected.map((element) => [element.name, element.namespace]), expected, path.join())
+        }
+        assert.strictEqual((yield* Effect.flip(elements(xml, ["other", "{urn:atom}entry"]))).kind, "InvalidEvent")
+        const root: Xml.Event = { _tag: "StartElement", name: "r", attributes: {}, namespace: "", localName: "r" }
+        const error = yield* Stream.make(root, start("c"), end("c"), end("r")).pipe(
+          Stream.pipeThroughChannel(Xml.elements(["{}r"])),
+          Stream.runDrain,
+          Effect.flip
+        )
+        assert.strictEqual(error.kind, "InvalidEvent")
       }))
 
     it.effect("fails on oversized elements and unbalanced events", () =>

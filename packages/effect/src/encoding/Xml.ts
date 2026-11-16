@@ -276,12 +276,28 @@ export type Event =
  * Adjacent text is merged into one string; comments and processing
  * instructions are dropped.
  *
+ * When the events were decoded with `namespaces: "strict"`, `namespace` and
+ * `localName` give the element's resolved name. Otherwise they are absent.
+ *
  * @stability experimental
  * @category models
  * @since 4.0.6
  */
 export interface Element {
   readonly name: string
+  /**
+   * Namespace name of the element, or `""` for none, with
+   * `namespaces: "strict"`.
+   *
+   * @since 4.1.5
+   */
+  readonly namespace?: string | undefined
+  /**
+   * Local part of the element name, with `namespaces: "strict"`.
+   *
+   * @since 4.1.5
+   */
+  readonly localName?: string | undefined
   readonly attributes: Readonly<Record<string, string>>
   readonly children: ReadonlyArray<Element | string>
 }
@@ -341,8 +357,8 @@ export interface DecodeOptions {
  *
  * `maxElementSize` is the maximum size of one collected element, counted as
  * the UTF-16 code units of its names, attribute names and values, and text.
- * Defaults to 16 MiB; `Infinity` disables the limit. Invalid options throw when
- * the channel is created.
+ * `namespace` and `localName` are not counted. Defaults to 16 MiB; `Infinity`
+ * disables the limit. Invalid options throw when the channel is created.
  *
  * @stability experimental
  * @category configuration
@@ -473,17 +489,21 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  *
  * **Details**
  *
- * `path` lists element names from the root, and `"*"` matches any name. Each
- * element whose ancestors and own name match the path is emitted once its end
- * tag arrives, with all of its descendants; everything outside the matched
- * elements is skipped. Because paths start at the root, an element nested in a
- * matched element is part of its tree and is not emitted separately.
+ * `path` lists element names from the root, and `"*"` matches any name. A name
+ * in Clark notation, `{uri}local`, matches an element with that namespace and
+ * local name, `{*}local` matches the local name in any namespace or none, and
+ * `{}local` matches it in no namespace. Each element whose ancestors and own
+ * name match the path is emitted once its end tag arrives, with all of its
+ * descendants; everything outside the matched elements is skipped. Because
+ * paths start at the root, an element nested in a matched element is part of
+ * its tree and is not emitted separately.
  *
  * **Gotchas**
  *
  * - A path that does not start at the root element matches nothing.
- * - Paths and `Element` names are names as written, including prefixes, even
- *   with `namespaces: "strict"`, which only adds namespaces to events.
+ * - Except in Clark notation, names in a path are matched as written,
+ *   including prefixes, even with `namespaces: "strict"`. `Element` names are
+ *   always as written.
  * - Whitespace between child elements, such as indentation, is kept as string
  *   children.
  * - A collected element larger than `maxElementSize` fails with a `Limit`
@@ -492,6 +512,9 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  *   limit for untrusted input.
  * - Events that end inside an element, or end an element that was never
  *   started, fail with an `InvalidEvent` `XmlError`.
+ * - A path with a name in Clark notation needs events decoded with
+ *   `namespaces: "strict"`; a start tag without `localName` fails with an
+ *   `InvalidEvent` `XmlError`.
  * - A path that is empty or contains an invalid name throws when the channel is
  *   created.
  *
@@ -537,13 +560,8 @@ export const elements = <IE = never, Done = unknown>(
   if (path.length === 0) {
     throw new Error("Xml: elements path must not be empty")
   }
-  for (const name of path) {
-    if (name !== "*" && !isName(name)) {
-      throw new Error(`Xml: invalid element name in path: ${JSON.stringify(name)}`)
-    }
-  }
+  const segments = path.map(parseSegment)
   const maxElementSize = checkLimit("maxElementSize", options?.maxElementSize, defaultMaxElementSize)
-  const segments = Array.from(path)
   return makeChannel<Event, Element, IE, Done>(() => new Collector(segments, maxElementSize))
 }
 
@@ -2047,9 +2065,32 @@ class Utf8Input implements Machine<Uint8Array, Event> {
 
 interface MutableElement {
   readonly name: string
+  namespace?: string | undefined
+  localName?: string | undefined
   readonly attributes: Readonly<Record<string, string>>
   readonly children: Array<MutableElement | string>
 }
+
+// A path segment: "*", a name as written, or a local name and a namespace,
+// which is `undefined` for any namespace
+type Segment = string | { readonly namespace: string | undefined; readonly localName: string }
+
+const parseSegment = (segment: string): Segment => {
+  if (segment === "*" || isName(segment)) return segment
+  // The last "}" ends the namespace: a namespace can contain "}", a local name cannot
+  const close = segment.lastIndexOf("}")
+  const localName = segment.slice(close + 1)
+  if (segment.startsWith("{") && close !== -1 && isName(localName) && !localName.includes(":")) {
+    const namespace = segment.slice(1, close)
+    return { namespace: namespace === "*" ? undefined : namespace, localName }
+  }
+  throw new Error(`Xml: invalid element name in path: ${JSON.stringify(segment)}`)
+}
+
+const matches = (segment: Segment, event: StartElement): boolean =>
+  typeof segment === "string" ?
+    segment === "*" || segment === event.name :
+    segment.localName === event.localName && (segment.namespace === undefined || segment.namespace === event.namespace)
 
 class Collector implements Machine<Event, Element> {
   out: Array<Element> = []
@@ -2059,25 +2100,35 @@ class Collector implements Machine<Event, Element> {
   // The element being collected and its open descendants
   private readonly stack: Array<MutableElement> = []
   private size = 0
-  private readonly path: ReadonlyArray<string>
+  private readonly path: ReadonlyArray<Segment>
   private readonly maxElementSize: number
+  private readonly clark: boolean
 
-  constructor(path: ReadonlyArray<string>, maxElementSize: number) {
+  constructor(path: ReadonlyArray<Segment>, maxElementSize: number) {
     this.path = path
     this.maxElementSize = maxElementSize
+    this.clark = path.some((segment) => typeof segment !== "string")
   }
 
   push(event: Event): void {
     switch (event._tag) {
       case "StartElement": {
+        if (this.clark && event.localName === undefined) {
+          throw invalidEvent(
+            `start tag <${event.name}> without localName for a path in Clark notation: decode with namespaces: "strict"`
+          )
+        }
         const depth = this.depth++
         if (this.stack.length === 0) {
-          const segment = this.path[depth]
-          if (this.matched !== depth || (segment !== "*" && segment !== event.name)) return
+          if (this.matched !== depth || !matches(this.path[depth], event)) return
           if (++this.matched < this.path.length) return
           this.size = 0
         }
         const element: MutableElement = { name: event.name, attributes: event.attributes, children: [] }
+        if (event.localName !== undefined) {
+          element.namespace = event.namespace
+          element.localName = event.localName
+        }
         if (this.stack.length > 0) this.stack[this.stack.length - 1].children.push(element)
         this.stack.push(element)
         let size = event.name.length
