@@ -234,9 +234,10 @@ const instant = (unit: S.TimeUnit, v: unknown, at: At, index: number): bigint =>
 }
 
 /**
- * The unscaled integer of `v` at the scale of `t`. It must be exact and have
- * at most as many digits as the precision: below `limit`, 10^precision, which
- * fits every bit width (`Layout.checkDecimal`).
+ * The unscaled integer of `v` at the scale of `t`. Fails unless the
+ * conversion is exact and the result is strictly between -`limit` and
+ * `limit`, which is 10^precision. `Layout.checkDecimal` makes sure that
+ * range fits the bit width.
  */
 const unscaledDecimal = (t: S.Decimal, limit: bigint, v: unknown, path: Path): bigint => {
   if (!BigDecimal.isBigDecimal(v)) return fail(path, `expected a BigDecimal, got ${describe(v)}`)
@@ -244,10 +245,10 @@ const unscaledDecimal = (t: S.Decimal, limit: bigint, v: unknown, path: Path): b
   const places = v.scale - t.scale
   let unscaled: bigint
   if (places <= 0) {
-    // Every place added is a digit more; past the precision the power is not needed, and may not fit a bigint
+    // `precision` or more added places exceed the precision, so the power, which may not fit a bigint, is skipped
     unscaled = -places < t.precision ? v.value * BigInt(10) ** BigInt(-places) : limit
   } else {
-    // A multiple of 10^places has more digits than that; checked first, as the power may not fit a bigint
+    // A multiple of 10^places has more than `places` digits, counted first as the power may not fit a bigint
     const digits = String(v.value).length - (v.value < BigInt(0) ? 1 : 0)
     const divisor = digits > places ? BigInt(10) ** BigInt(places) : undefined
     if (divisor === undefined || v.value % divisor !== BigInt(0)) {

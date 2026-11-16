@@ -44,25 +44,26 @@
  * - Text: every `STRING`, `ENUM` and `JSON` value, and every value of their
  *   converted types (`UTF8`, `ENUM`, `JSON`) on a node without a logical
  *   type, is checked to be UTF-8, and so is every value of such a column's
- *   dictionary. Anything else fails with `Malformed`. `JSON` values are not
- *   parsed.
- * - Annotations: an annotation added after 2.14.0, or one the spec doesn't
- *   define for the physical type it is on (a `STRING` on an `INT32`), is left
- *   out of the schema, and so is the order of the column's statistics. When
- *   that annotation is a logical type, the node's converted type is left out
- *   too, so only the physical type applies. A `DECIMAL` precision or scale and
- *   an `INTEGER` bit width that the spec forbids fail with `Malformed`.
+ *   dictionary. A value that is not UTF-8 fails with `Malformed`. `JSON`
+ *   values are not parsed.
+ * - Annotations: a logical type added after 2.14.0, or an annotation the
+ *   spec doesn't define for the physical type it is on (a `STRING` on an
+ *   `INT32`), is left out of the schema, and so is the order of the column's
+ *   statistics. A converted type added after 2.14.0 stays as its numeric
+ *   code, also without the order. When the annotation left out is a logical
+ *   type, the node's converted type is left out too, so only the physical
+ *   type applies. A `DECIMAL` precision or scale and an `INTEGER` bit width
+ *   that the spec forbids fail with `Malformed`.
  * - Encodings: `PLAIN`, `PLAIN_DICTIONARY` and `RLE_DICTIONARY` (values
  *   are looked up in the dictionary), `RLE` (booleans), `DELTA_BINARY_PACKED`,
  *   `DELTA_LENGTH_BYTE_ARRAY`, `DELTA_BYTE_ARRAY` and `BYTE_STREAM_SPLIT`;
  *   levels in `RLE` or the deprecated `BIT_PACKED`.
  * - Pages: data pages v1 and v2 and dictionary pages; index pages and page
- *   types added after 2.14.0 are skipped. Every page read on the way to the
- *   column chunk's last value, skipped ones included, is checked against the
- *   CRC-32 in its header when it has one, and fails with `Malformed` when its
- *   bytes don't match. Pages after the last value, and the pages of a chunk
- *   with no values, are not read and not checked. A page without a CRC-32 is
- *   read as it is.
+ *   types added after 2.14.0 are skipped. Every page read to decode the
+ *   column chunk's values, skipped ones included, is checked when its header
+ *   has a CRC-32, and fails with `Malformed` on a mismatch. A page without
+ *   one is not checked. Pages after the last value, and the pages of a chunk
+ *   with no values, are not read and so not checked.
  * - Nesting: any depth of optional, required and repeated fields, assembled from
  *   repetition and definition levels into {@link Layer}s.
  *
@@ -85,6 +86,7 @@
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { crc32 } from "../internal/crc32.ts"
+import { type Annotation, logicalOf } from "../internal/parquet/annotations.ts"
 import * as Encodings from "../internal/parquet/encodings.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Thrift from "./Thrift.ts"
@@ -959,9 +961,6 @@ const rowCount = (n: number | undefined, what: string): number => {
   return value
 }
 
-/** A logical type, or a converted type as the logical type that replaced it. */
-type Annotation = LogicalType | { readonly type: Exclude<ConvertedType, "DECIMAL"> }
-
 /**
  * The physical type LogicalTypes.md defines each annotation for, `undefined`
  * for a group. The annotations that are not here depend on more than that.
@@ -977,26 +976,13 @@ const annotated: {
   VARIANT: undefined,
   FILE: undefined,
   STRING: "BYTE_ARRAY",
-  UTF8: "BYTE_ARRAY",
   ENUM: "BYTE_ARRAY",
   JSON: "BYTE_ARRAY",
   BSON: "BYTE_ARRAY",
   GEOMETRY: "BYTE_ARRAY",
   GEOGRAPHY: "BYTE_ARRAY",
   DATE: "INT32",
-  TIME_MILLIS: "INT32",
-  UINT_8: "INT32",
-  UINT_16: "INT32",
-  UINT_32: "INT32",
-  INT_8: "INT32",
-  INT_16: "INT32",
-  INT_32: "INT32",
-  TIME_MICROS: "INT64",
-  TIMESTAMP: "INT64",
-  TIMESTAMP_MILLIS: "INT64",
-  TIMESTAMP_MICROS: "INT64",
-  UINT_64: "INT64",
-  INT_64: "INT64"
+  TIMESTAMP: "INT64"
 }
 const annotatedLengths = { UUID: 16, FLOAT16: 2, INTERVAL: 12 } as const
 
@@ -1035,7 +1021,7 @@ const annotates = (annotation: Annotation, e: Element, physicalType: PhysicalTyp
         : physicalType === "INT64"
         ? 18
         : physicalType === "FIXED_LEN_BYTE_ARRAY"
-        // floor(log10(2^(8n - 1) - 1)), which is this as no power of 2 is a power of 10
+        // floor(log10(2^(8n - 1) - 1)), computed without the last - 1, as no power of 2 is a power of 10
         ? Math.floor((8 * e.typeLength! - 1) * Math.log10(2))
         : undefined
       if (digits === undefined) return false
@@ -1059,34 +1045,29 @@ const annotations = (e: Element, physicalType: PhysicalType | undefined): {
   readonly convertedType: ConvertedType | number | undefined
   readonly known: boolean
 } => {
-  let logicalType: LogicalType | undefined
-  let convertedType = e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType)
-  let known = typeof e.logicalType !== "number" && typeof convertedType !== "number"
-  if (typeof e.logicalType === "object") {
-    if (annotates(e.logicalType, e, physicalType)) logicalType = e.logicalType
-    else known = false
-  }
+  const converted = e.convertedType === undefined ? undefined : name(convertedTypes, e.convertedType)
+  const logicalType = typeof e.logicalType === "object" && annotates(e.logicalType, e, physicalType)
+    ? e.logicalType
+    : undefined
   // The converted type stands in for a logical type only when there is none.
-  // An ignored one leaves only the physical type (#unsupported-logical-types).
-  if (e.logicalType !== undefined && logicalType === undefined) convertedType = undefined
-  if (typeof convertedType === "string") {
-    let annotation: Annotation
-    if (convertedType !== "DECIMAL") annotation = { type: convertedType }
-    // A DecimalType supersedes the scale and precision of the schema element.
-    else if (typeof e.logicalType === "object" && e.logicalType.type === "DECIMAL") annotation = e.logicalType
-    else {
-      annotation = {
-        type: "DECIMAL",
-        scale: e.scale ?? 0,
-        precision: required(e.precision, `the precision of DECIMAL schema element "${e.name}"`)
-      }
-    }
-    if (!annotates(annotation, e, physicalType)) {
-      convertedType = undefined
-      known = false
-    }
+  // An ignored logical type leaves only the physical type (#unsupported-logical-types).
+  if (e.logicalType !== undefined && logicalType === undefined) {
+    return { logicalType, convertedType: undefined, known: false }
   }
-  return { logicalType, convertedType, known }
+  if (typeof converted !== "string") return { logicalType, convertedType: converted, known: converted === undefined }
+  const annotation: Annotation = converted !== "DECIMAL"
+    ? logicalOf[converted]
+    // A DecimalType supersedes the scale and precision of the schema element.
+    : logicalType?.type === "DECIMAL"
+    ? logicalType
+    : {
+      type: "DECIMAL",
+      scale: e.scale ?? 0,
+      precision: required(e.precision, `the precision of DECIMAL schema element "${e.name}"`)
+    }
+  return annotates(annotation, e, physicalType)
+    ? { logicalType, convertedType: converted, known: true }
+    : { logicalType, convertedType: undefined, known: false }
 }
 
 interface Schema {

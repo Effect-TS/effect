@@ -381,7 +381,7 @@ describe("ArrowColumn", () => {
       [S.decimal(4, 2), ["99.99", "-99.99", "1.5"], [9999n, -9999n, 150n], ["100", "-100"]],
       [S.decimal(3, -2), ["99900", "100"], [999n, 1n], ["100000"]],
       [S.decimal(76, 0, 256), [nines, "-" + nines], [BigInt(nines), -BigInt(nines)], ["1" + "0".repeat(76)]],
-      // Scales no power of ten reaches: only zero fits
+      // Scales whose power of ten does not fit a bigint: only zero fits
       [S.decimal(5, 2 ** 31 - 1), ["0"], [0n], ["5"]],
       [S.decimal(5, -(2 ** 31)), ["0"], [0n], ["5"]]
     ]
@@ -621,7 +621,7 @@ describe("ArrowColumn", () => {
       length: 2,
       [Symbol.iterator]: () => nanos.values()
     }
-    // No reader answers for it in a representation of its own choosing
+    // get and getUnsafe throw for it instead of reading its chunks
     assert.throws(() => ArrowColumn.getUnsafe(lookAlike, 0))
     assert.throws(() => ArrowColumn.get(lookAlike, 0))
 
