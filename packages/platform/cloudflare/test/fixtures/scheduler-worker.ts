@@ -41,6 +41,7 @@ interface Slot {
   readonly log: Array<{ readonly at: string; readonly store: string | undefined; readonly io: string }>
   readonly deferred: Deferred.Deferred<void>
   fiber?: Fiber.Fiber<unknown>
+  resume?: () => void
 }
 const slots = new Map<string, Slot>()
 
@@ -62,7 +63,13 @@ const route = async (url: URL, id: string): Promise<Response> => {
           Effect.sync(() => {
             slot.log.push({ at, store: als.getStore(), io: probe() })
           })
-        const parked = Deferred.await(slot.deferred).pipe(
+        // A wait without cleanup does not check for interrupts itself
+        const wait = url.searchParams.has("callback")
+          ? Effect.callback<void>((resume) => {
+            slot.resume = () => resume(Effect.void)
+          })
+          : Deferred.await(slot.deferred)
+        const parked = wait.pipe(
           Effect.andThen(note("resumed")),
           Effect.andThen(Effect.sleep(20)),
           Effect.andThen(note("slept"))
@@ -83,6 +90,9 @@ const route = async (url: URL, id: string): Promise<Response> => {
       return als.run("B", async () => {
         const slot = slots.get(id)!
         if (url.searchParams.has("interrupt")) {
+          // Optionally wakes the fiber first, so the interrupt arrives before
+          // the owner has run it
+          if (url.searchParams.has("wake")) slot.resume!()
           slot.fiber!.interruptUnsafe()
         } else {
           await Effect.runPromise(Deferred.succeed(slot.deferred, undefined), { scheduler })

@@ -11,6 +11,7 @@
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
+import type { Effect } from "./Effect.ts"
 import type * as Fiber from "./Fiber.ts"
 
 /**
@@ -34,24 +35,25 @@ import type * as Fiber from "./Fiber.ts"
 export interface Scheduler {
   readonly executionMode: "sync" | "async"
   /**
-   * Captures the native async context a fiber suspends or is forked in, which
-   * its next resumption runs in.
+   * Called when a fiber stops running with more to do: it suspended, or it was
+   * forked and its start is scheduled. The returned `Resumption` decides where
+   * and when the fiber runs next.
    *
    * **Details**
    *
-   * When omitted, fibers capture a `node:async_hooks` `AsyncResource` where
-   * one is available. Return `undefined` to capture nothing.
+   * When omitted, a fiber resumes synchronously, inside a `node:async_hooks`
+   * `AsyncResource` created where it parked, where one is available. Return
+   * `undefined` to resume the fiber synchronously in the caller's context.
    *
    * @since 4.2.0
    */
-  readonly captureAsyncContext?: (() => AsyncContext | undefined) | undefined
+  readonly park?: ((fiber: Fiber.Fiber<unknown, unknown>) => Resumption | undefined) | undefined
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
 }
 
 /**
- * The native async context a fiber resumes in, captured by
- * `Scheduler.captureAsyncContext`.
+ * Owns a parked fiber until it runs it, returned by `Scheduler.park`.
  *
  * **When to use**
  *
@@ -61,36 +63,45 @@ export interface Scheduler {
  *
  * **Details**
  *
- * Each captured context resumes its fiber once. Fibers hand every resumption
- * to `runInAsyncScope`, and the context decides where and when it runs: it
- * either calls `fn` synchronously, as a `node:async_hooks` `AsyncResource`
- * does, or arranges to call it exactly once later and returns. Fibers handle
- * both the same way. Until `fn` is called, interrupts are deferred, and the
- * first to reach the fiber wins:
+ * While a fiber is parked, everything that would make it run again is passed
+ * to `resume`: the effect its wait produced, its start, or an interrupt. The
+ * resumption runs the fiber once, with the first entry, by calling
+ * `fiber.run(effect)`, either synchronously or later, in whatever context it
+ * chooses. Entries that arrive before then can be ignored.
  *
- * - An interrupt requested before `runInAsyncScope` returns, such as from an
- *   `async_hooks` `before` callback, replaces the resumption, whether `fn`
- *   runs synchronously or later.
- * - Once `runInAsyncScope` has returned with no interrupt pending, the
- *   resumption counts as delivered and runs before any interrupt requested
- *   later, including from `emitDestroy`.
- * - An interrupt requested while the fiber is suspended is itself a
- *   resumption. A value that arrives before it lands is delivered first.
- * - A fiber interrupted before its start lands never runs.
- *
- * `emitDestroy` is called when `runInAsyncScope` returns.
+ * An interrupt requested while the fiber is parked is recorded on the fiber
+ * before it reaches `resume`, the same way as one requested while the fiber
+ * is running. The fiber acts on it at its first interruptible step, so it
+ * replaces the effect `fiber.run` is called with, and a fork interrupted
+ * before it starts never runs.
  *
  * **Gotchas**
  *
- * If `fn` is never called, the fiber never resumes and cannot be interrupted.
+ * If `fiber.run` is never called, the fiber never resumes and cannot be
+ * interrupted.
  *
  * @stability stable
  * @category models
  * @since 4.2.0
  */
-export interface AsyncContext {
-  runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
-  emitDestroy(): void
+export interface Resumption {
+  resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
+}
+
+/**
+ * A parked fiber, as passed to `Resumption.resume`.
+ *
+ * **Details**
+ *
+ * `run` runs the fiber synchronously with the given effect, until it parks
+ * again or exits. It does nothing once the fiber has exited.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
+  run(effect: Effect<unknown, unknown>): void
 }
 
 /**

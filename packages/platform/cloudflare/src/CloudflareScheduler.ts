@@ -5,10 +5,16 @@
  * @since 4.2.0
  */
 import { waitUntil } from "cloudflare:workers"
+import type { Effect } from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
-const AsyncResource: (new(type: string) => Scheduler.AsyncContext) | undefined = (() => {
+interface AsyncResource {
+  runInAsyncScope<This>(fn: (this: This) => void, thisArg?: This): void
+  emitDestroy(): void
+}
+
+const AsyncResource: (new(type: string) => AsyncResource) | undefined = (() => {
   try {
     return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
   } catch {
@@ -48,61 +54,70 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
   }
 }
 
-// Captured in the request a fiber suspends or is forked in, which owns it.
-// Entering the AsyncResource resumes the fiber synchronously with the owner's
+// Created in the request a fiber parks in, which owns it. Entering the
+// AsyncResource runs the fiber synchronously with the owner's
 // AsyncLocalStorage state. workerd refuses that from any other request, so the
-// resumption is then handed to a promise the owner created: workerd runs its
+// fiber is then handed to a promise the owner created: workerd runs its
 // reactions in the owner's IoContext.
 //
 // The owner waits on that promise with waitUntil, so it keeps running after it
 // responds. workerd still cancels a request whose only pending work is a
 // promise another request settles, so a timer set in the owner marks the fiber
-// as pending work. The owner clears it when the fiber resumes.
-class OwnerContext implements Scheduler.AsyncContext {
-  readonly resource: Scheduler.AsyncContext | undefined
-  readonly resolve: (task: () => void) => void
+// as pending work. The owner clears it when the promise settles.
+class OwnerResumption implements Scheduler.Resumption {
+  readonly resource: AsyncResource | undefined
+  readonly settle: (task: () => void) => void
+  resumed = false
 
   constructor() {
     this.resource = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
     const timer = setPendingTimer()
-    let resolve!: (task: () => void) => void
+    let settle!: (task: () => void) => void
     keepOwnerAlive(
-      new Promise<() => void>((resolve_) => {
-        resolve = resolve_
+      new Promise<() => void>((resolve) => {
+        settle = resolve
       }).then((task) => {
         if (timer !== undefined) clearTimeout(timer)
         task()
       })
     )
-    this.resolve = resolve
+    this.settle = settle
   }
 
-  runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void {
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
+    // The fiber runs once, with the first entry. An interrupt arriving later
+    // is already pending on it.
+    if (this.resumed) return
+    this.resumed = true
     const resource = this.resource
     if (canEnter) {
       let entered = false
       try {
-        resource!.runInAsyncScope(
-          () => {
-            entered = true
-            fn.call(thisArg, arg)
-          },
-          undefined,
-          undefined
-        )
-        return this.resolve(noop)
+        resource!.runInAsyncScope(() => {
+          entered = true
+          fiber.run(effect)
+        })
+        return this.release()
       } catch (error) {
         if (entered) {
-          this.resolve(noop)
+          this.release()
           throw error
         }
       }
     }
-    this.resolve(() => resource === undefined ? fn.call(thisArg, arg) : resource.runInAsyncScope(fn, thisArg, arg))
+    this.settle(() => {
+      if (resource === undefined) return fiber.run(effect)
+      try {
+        resource.runInAsyncScope(() => fiber.run(effect))
+      } finally {
+        resource.emitDestroy()
+      }
+    })
   }
 
-  emitDestroy(): void {
-    this.resource?.emitDestroy()
+  release(): void {
+    this.resource!.emitDestroy()
+    this.settle(noop)
   }
 }
 
@@ -177,12 +192,12 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
   }
 
   /**
-   * Captures the request a fiber suspends or is forked in, so it resumes there.
+   * Records the request a fiber parks in, so it resumes there.
    *
    * @since 4.2.0
    */
-  captureAsyncContext(): Scheduler.AsyncContext {
-    return new OwnerContext()
+  park(): Scheduler.Resumption {
+    return new OwnerResumption()
   }
 }
 

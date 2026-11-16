@@ -117,6 +117,17 @@ describe.each(["2026-07-01", "2025-01-01"])("CloudflareScheduler (compatibility 
     })
   })
 
+  it("interrupts a woken fiber that has not resumed before it continues", async () => {
+    assert.deepStrictEqual(await json("/park?id=woken-interrupt&callback"), [])
+    await sleep(100)
+    assert.strictEqual(await json("/wake?id=woken-interrupt&wake&interrupt"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=woken-interrupt", (body) => body.exited), {
+      log: [{ at: "interrupted", store: "A", io: "owner" }],
+      exited: true,
+      timers: 0
+    })
+  })
+
   it("resumes a Durable Object fiber after its request has ended", async () => {
     assert.deepStrictEqual(await json("/room/park?id=room"), [])
     await sleep(50)
