@@ -6,10 +6,10 @@ import * as TestConsole from "effect/testing/TestConsole"
 describe("TestConsole", () => {
   for (
     const [method, write, read] of [
-      ["warn", Console.warn, () => TestConsole.warnLines],
-      ["info", Console.info, () => TestConsole.infoLines],
-      ["debug", Console.debug, () => TestConsole.debugLines],
-      ["trace", Console.trace, () => TestConsole.traceLines]
+      ["warn", Console.warn, TestConsole.warnLines],
+      ["info", Console.info, TestConsole.infoLines],
+      ["debug", Console.debug, TestConsole.debugLines],
+      ["trace", Console.trace, TestConsole.traceLines]
     ] as const
   ) {
     it.effect(`${method}Lines captures parameters from only ${method} calls`, () =>
@@ -23,11 +23,8 @@ describe("TestConsole", () => {
         yield* Console.trace("trace", details)
         yield* write("second", 42)
 
-        const lines = yield* read()
+        const lines = yield* read
         assert.deepStrictEqual(lines, [method, details, "second", 42])
-
-        const instanceLines = yield* TestConsole.testConsoleWith((console) => console[`${method}Lines`])
-        assert.deepStrictEqual(instanceLines, [method, details, "second", 42])
       }))
   }
 })

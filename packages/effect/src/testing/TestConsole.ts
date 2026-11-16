@@ -283,10 +283,6 @@ export const make = Effect.gen(function*() {
  * @see {@link layer} for providing the test console service
  * @see {@link logLines} for reading captured `Console.log` calls directly
  * @see {@link errorLines} for reading captured `Console.error` calls directly
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  *
  * @stability unstable
  * @category testing
@@ -362,10 +358,6 @@ export const layer: Layer.Layer<TestConsole> = Layer.effect(Console.Console)(mak
  * ```
  *
  * @see {@link errorLines} for reading captured `Console.error` output
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  * @see {@link layer} for capturing console calls during a test
  *
  * @stability unstable
@@ -405,10 +397,6 @@ export const logLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = tes
  * ```
  *
  * @see {@link logLines} for reading captured `Console.log` output
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  * @see {@link layer} for capturing console calls during a test
  *
  * @stability unstable
@@ -428,13 +416,8 @@ export const errorLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = t
  * Use to assert on captured `Console.warn` output from a program provided with
  * `TestConsole.layer`.
  *
+ * @see {@link TestConsole} for the readers of other console methods
  * @see {@link layer} for capturing console calls during a test
- * @see {@link testConsoleWith} for accessing the test console instance
- * @see {@link logLines} for reading captured `Console.log` calls
- * @see {@link errorLines} for reading captured `Console.error` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  *
  * @stability unstable
  * @category testing
@@ -453,13 +436,8 @@ export const warnLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = te
  * Use to assert on captured `Console.info` output from a program provided with
  * `TestConsole.layer`.
  *
+ * @see {@link TestConsole} for the readers of other console methods
  * @see {@link layer} for capturing console calls during a test
- * @see {@link testConsoleWith} for accessing the test console instance
- * @see {@link logLines} for reading captured `Console.log` calls
- * @see {@link errorLines} for reading captured `Console.error` calls
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  *
  * @stability unstable
  * @category testing
@@ -478,13 +456,8 @@ export const infoLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = te
  * Use to assert on captured `Console.debug` output from a program provided with
  * `TestConsole.layer`.
  *
+ * @see {@link TestConsole} for the readers of other console methods
  * @see {@link layer} for capturing console calls during a test
- * @see {@link testConsoleWith} for accessing the test console instance
- * @see {@link logLines} for reading captured `Console.log` calls
- * @see {@link errorLines} for reading captured `Console.error` calls
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link traceLines} for reading captured `Console.trace` calls
  *
  * @stability unstable
  * @category testing
@@ -503,13 +476,8 @@ export const debugLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = t
  * Use to assert on captured `Console.trace` output from a program provided with
  * `TestConsole.layer`.
  *
+ * @see {@link TestConsole} for the readers of other console methods
  * @see {@link layer} for capturing console calls during a test
- * @see {@link testConsoleWith} for accessing the test console instance
- * @see {@link logLines} for reading captured `Console.log` calls
- * @see {@link errorLines} for reading captured `Console.error` calls
- * @see {@link warnLines} for reading captured `Console.warn` calls
- * @see {@link infoLines} for reading captured `Console.info` calls
- * @see {@link debugLines} for reading captured `Console.debug` calls
  *
  * @stability unstable
  * @category testing
