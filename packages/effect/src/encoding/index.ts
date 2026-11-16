@@ -72,6 +72,12 @@ export * as Jsonc from "./Jsonc.ts"
 export * as Ndjson from "./Ndjson.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as Parquet from "./Parquet.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
@@ -88,6 +94,12 @@ export * as Sse from "./Sse.ts"
  * @since 4.0.5
  */
 export * as Tar from "./Tar.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as Thrift from "./Thrift.ts"
 
 /**
  * @stability unstable

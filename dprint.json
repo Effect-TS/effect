@@ -22,6 +22,8 @@
     "**/CHANGELOG.md",
     "packages/effect/src/StandardSchema.ts",
     "packages/tools/graphql-generator/test/generated/**/*.graphql.ts",
+    "packages/effect/test/fixtures/thrift/gold.json",
+    "packages/effect/test/fixtures/parquet/gold.json",
     "!scratchpad/**/*",
     "**/.*",
     "!.agents",
