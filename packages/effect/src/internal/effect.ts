@@ -572,7 +572,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _asyncContext: Scheduler.AsyncContext | undefined
   // A resumption was handed to the captured async context and has not landed
   declare _resuming: boolean
-  // runInAsyncScope returned before the resumption landed
+  // runInAsyncScope returned before the resumption landed, with no interrupt
+  // pending
   declare _handedOff: boolean
   // A resumption that arrived while an interrupt was still landing
   declare _overtaken: Primitive | undefined
@@ -661,7 +662,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       // consumers like vitest's detectAsyncLeaks.
       asyncContext.emitDestroy()
     }
-    if (this._resuming) this._handedOff = true
+    // A resumption handed off counts as delivered, unless an interrupt
+    // requested while entering the context got there first
+    if (this._resuming && !this._deferredInterrupt) this._handedOff = true
   }
   // Called by the captured context, synchronously or later. An interrupt
   // requested meanwhile is deferred until the resumption has landed.
@@ -697,8 +700,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._deferredInterrupt = false
     }
     // An interrupt requested before runInAsyncScope returned, such as from an
-    // async_hooks `before` callback, stays deferred, and the run loop delivers
-    // it in place of the value, as if the fiber had been running.
+    // async_hooks `before` callback, stays deferred whether the resumption ran
+    // then or later, and the run loop delivers it in place of the value, as if
+    // the fiber had been running.
     this.run(effect)
     if (interrupt && this._exit === undefined && this.interruptible && !this._running) {
       this.evaluate(failCause(this._interruptedCause!) as any)
