@@ -987,6 +987,43 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         }
       }))
 
+    // DF-S021: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("decimals meet integers, literals and floats as in memory", () =>
+      Effect.gen(function*() {
+        // 70 in every row, next to 69, 70 and 71. The columns are untyped, as in a frame
+        // read from Arrow: typed columns don't compare a decimal with an integer.
+        const mixed = arrow<any>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(18, -1)), ArrowSchema.field("i", ArrowSchema.int32)],
+          [[7n, 7n, 7n].map((x) => BigDecimal.make(x, -1)), [69, 70, 71]]
+        )
+        const chosen = mixed.pipe(Query.select((c) => ({
+          equal: Expr.eq(c.d, c.i),
+          above: Expr.gt(c.d, c.i),
+          literal: Expr.eq(c.d, 69),
+          when: Expr.when(Expr.lit(false), c.d, c.i),
+          first: Expr.coalesce(c.i, c.d)
+        })))
+        yield* both(chosen)
+        assert.deepStrictEqual(yield* rowsOnSql(chosen), [
+          { equal: false, above: true, literal: false, when: BigDecimal.make(69n, 0), first: BigDecimal.make(69n, 0) },
+          { equal: true, above: false, literal: false, when: BigDecimal.make(70n, 0), first: BigDecimal.make(70n, 0) },
+          { equal: false, above: false, literal: false, when: BigDecimal.make(71n, 0), first: BigDecimal.make(71n, 0) }
+        ])
+        // A literal's precision is at most 38, whatever its scale.
+        const small = BigDecimal.make(1n, 400)
+        const literal = ints.pipe(Query.head(1), Query.select(() => ({ d: Expr.lit(small) })))
+        yield* both(literal)
+        assert.deepStrictEqual(yield* rowsOnSql(literal), [{ d: small }])
+        // 10^18 units of 10^-310 are 10^-292, past the largest power of ten a float holds.
+        const held = arrow<{ d: BigDecimal.BigDecimal }>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(38, 310))],
+          [[BigDecimal.make(10n ** 18n, 310), BigDecimal.make(-(10n ** 18n), 310)]]
+        )
+        const floats = held.pipe(Query.select((c) => ({ f: Expr.cast(c.d, "Float64") })))
+        yield* both(floats)
+        assert.deepStrictEqual(yield* rowsOnSql(floats), [{ f: 1e-292 }, { f: -1e-292 }])
+      }))
+
     // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("unions and nullable fields are checked as in memory", () =>
       Effect.gen(function*() {

@@ -230,7 +230,7 @@ export const rolling = (
   if (v.kind === "i64") {
     // Exact sums: 64-bit integers wrap and decimals fail outside 64 bits.
     const fit = Dec.fit(type)
-    const unit = Dec.isDecimal(v.type) ? 10 ** v.type.scale : 1
+    const scale = Dec.isDecimal(v.type) ? v.type.scale : 0
     const sums = new BigInt64Array(n)
     const means = new Float64Array(n)
     windows((row, first, last) => {
@@ -244,8 +244,7 @@ export const rolling = (
       }
       if (count < minPeriods) return
       ok[row] = 1
-      // Zero is zero at any scale, also where `10^scale` is zero.
-      if (fn === "rollingMean") means[row] = sum === BigInt(0) ? 0 : Number(sum) / unit / count
+      if (fn === "rollingMean") means[row] = Dec.toNumber(sum, scale) / count
       else sums[row] = fit(sum)
     })
     return fn === "rollingMean" ? V.f64(type, means, ok) : V.i64(type, sums, ok)

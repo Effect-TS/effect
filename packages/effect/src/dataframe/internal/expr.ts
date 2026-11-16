@@ -102,7 +102,8 @@ export const literalNode = (u: unknown): Plan.Literal => {
     return {
       _tag: "Literal",
       value: u.value,
-      type: { _tag: "Decimal", precision: Math.max(digits, u.scale, 1), scale: u.scale }
+      // At least the scale, as SQL has it, up to the 38 digits of a 128-bit decimal.
+      type: { _tag: "Decimal", precision: Math.min(Math.max(digits, u.scale, 1), 38), scale: u.scale }
     }
   }
   return { _tag: "Literal", value: u as Plan.Value }
@@ -162,8 +163,9 @@ const literalOfType = (value: unknown, type: Plan.LiteralType): K.Value => {
     case "Duration":
       return K.scalar(V.i64(S.duration(type.unit), BigInt64Array.of(big)))
     case "Decimal": {
-      const unscaled = BigInt64Array.of(Dec.checked(big))
-      return K.scalar(V.i64(S.decimal(type.precision, type.scale), unscaled))
+      const decimal = S.decimal(type.precision, type.scale)
+      Layout.checkDecimal(decimal, (message) => V.fail(`decimal literal: ${message}`))
+      return K.scalar(V.i64(decimal, BigInt64Array.of(Dec.literal(big, decimal))))
     }
   }
 }

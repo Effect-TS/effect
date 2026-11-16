@@ -508,6 +508,156 @@ describe("Query", () => {
         assert.deepStrictEqual(yield* rows(square(1)), [{ d: BigDecimal.make(4900n, 2) }])
       }))
 
+    // DF-Q052 (API contract): Expr.Expr; pinned source in README.md.
+    it.effect("integers keep their value next to a decimal with a negative scale", () =>
+      Effect.gen(function*() {
+        const tens = (unscaled: bigint) => BigDecimal.make(unscaled, -1)
+        const whole = (n: bigint) => BigDecimal.make(n, 0)
+        // 70 in every row, next to 69, 70 and 71. The columns are untyped, as in a frame
+        // read from Arrow: typed columns don't compare a decimal with an integer.
+        const mixed = Query.from(arrowFrame<any>({
+          d: [ArrowSchema.decimal(18, -1), [tens(7n), tens(7n), tens(7n)]],
+          i: [ArrowSchema.int32, [69, 70, 71]],
+          b: [ArrowSchema.int64, [69n, 70n, 71n]],
+          f: [ArrowSchema.float64, [69, 70, 71]]
+        }))
+        const compared = mixed.pipe(Query.select((c) => ({
+          i: Expr.eq(c.d, c.i),
+          b: Expr.gt(c.d, c.b),
+          literal: Expr.eq(c.d, 69),
+          f: Expr.eq(c.d, c.f)
+        })))
+        assert.deepStrictEqual(yield* rows(compared), [
+          { i: false, b: true, literal: false, f: false },
+          { i: true, b: false, literal: false, f: true },
+          { i: false, b: false, literal: false, f: false }
+        ])
+        const chosen = mixed.pipe(Query.select((c) => ({
+          when: Expr.when(Expr.lit(false), c.d, c.i),
+          first: Expr.coalesce(c.i, c.d)
+        })))
+        assert.deepStrictEqual(yield* rows(chosen), [
+          { when: whole(69n), first: whole(69n) },
+          { when: whole(70n), first: whole(70n) },
+          { when: whole(71n), first: whole(71n) }
+        ])
+        const stacked = Query.concat([
+          mixed.pipe(Query.select((c) => ({ x: c.d }))),
+          mixed.pipe(Query.select((c) => ({ x: c.i })))
+        ])
+        assert.deepStrictEqual(
+          yield* rows(stacked),
+          [70n, 70n, 70n, 69n, 70n, 71n].map((n) => ({ x: whole(n) }))
+        )
+        // Only the explicit cast rounds.
+        assert.deepStrictEqual(
+          yield* rows(mixed.pipe(Query.select((c) => ({ d: Expr.castDecimal(c.i, 38, -1) })))),
+          [{ d: tens(7n) }, { d: tens(7n) }, { d: tens(7n) }]
+        )
+        // A decimal that scale 0 can't hold fails, as with any common type.
+        const far = Query.from(arrowFrame<any>({
+          d: [ArrowSchema.decimal(38, -400), [BigDecimal.make(7n, -400)]],
+          i: [ArrowSchema.int32, [1]]
+        }))
+        const error = yield* Effect.flip(far.pipe(Query.select((c) => ({ x: Expr.gt(c.d, c.i) }))))
+        assert.instanceOf(error, DataFrame.DataFrameError)
+        assert.strictEqual(error.message, "Decimal[38, -400] values don't fit their common type Decimal[38, 0]")
+      }))
+
+    // DF-Q053 (API contract): Expr.lit; pinned source in README.md.
+    it.effect("decimal literals have a type their value fits", () =>
+      Effect.gen(function*() {
+        const one = Query.from(DataFrame.fromColumns({ x: [1] }))
+        const select = (d: Expr.Expr<unknown>) => one.pipe(Query.select(() => ({ d })))
+        const typed = (value: bigint, precision: number, scale: number) =>
+          select(Expr.fromPlan({ _tag: "Literal", value, type: { _tag: "Decimal", precision, scale } }))
+        /** The frame's only type and value, after a round trip through Arrow IPC. */
+        const read = (df: DataFrame.DataFrame<unknown>) => {
+          const bytes = Result.getOrThrow(ArrowIpc.encodeStream(DataFrame.toArrowTable(df)))
+          const table = Result.getOrThrow(ArrowIpc.decodeStream(bytes))
+          return [table.schema.fields[0].type, DataFrame.toRows(DataFrame.fromArrowTable(table))] as const
+        }
+        // The precision is at least the scale, up to the 38 digits of a 128-bit decimal.
+        const inferred: ReadonlyArray<readonly [BigDecimal.BigDecimal, ArrowSchema.DataType]> = [
+          [BigDecimal.make(5n, 2), ArrowSchema.decimal(2, 2)],
+          [BigDecimal.make(12345n, 2), ArrowSchema.decimal(5, 2)],
+          [BigDecimal.make(7n, -5), ArrowSchema.decimal(1, -5)],
+          [BigDecimal.make(1n, 400), ArrowSchema.decimal(38, 400)],
+          [BigDecimal.make(0n, 400), ArrowSchema.decimal(38, 400)],
+          [BigDecimal.make(-1n, 2147483647), ArrowSchema.decimal(38, 2147483647)]
+        ]
+        for (const [value, type] of inferred) {
+          assert.deepStrictEqual(read(yield* select(Expr.lit(value))), [type, [{ d: value }]])
+        }
+        assert.deepStrictEqual(read(yield* typed(1n, 1, 400)), [
+          ArrowSchema.decimal(1, 400),
+          [{ d: BigDecimal.make(1n, 400) }]
+        ])
+        assert.deepStrictEqual(read(yield* typed(-9n, 1, 0)), [ArrowSchema.decimal(1, 0), [{
+          d: BigDecimal.make(-9n, 0)
+        }]])
+        const precision = (p: number) =>
+          `decimal literal: invalid decimal128 precision ${p}, expected an integer in 1..38`
+        const failures: ReadonlyArray<readonly [Query.Query<unknown>, string]> = [
+          [typed(1n, 39, 0), precision(39)],
+          [typed(1n, 0, 0), precision(0)],
+          [typed(1n, 2, 2 ** 31), "decimal literal: invalid decimal scale 2147483648, expected a 32-bit integer"],
+          [
+            select(Expr.lit(BigDecimal.make(1n, 2 ** 31))),
+            "decimal literal: invalid decimal scale 2147483648, expected a 32-bit integer"
+          ],
+          [typed(10n, 1, 0), "decimal literal 10 has more digits than its precision 1"],
+          [typed(-10n, 1, 0), "decimal literal -10 has more digits than its precision 1"],
+          [typed(2n ** 63n, 38, 0), "decimal value overflows 64 bits"]
+        ]
+        for (const [query, message] of failures) {
+          const error = yield* Effect.flip(query)
+          assert.instanceOf(error, DataFrame.DataFrameError)
+          assert.strictEqual(error.message, message)
+        }
+      }))
+
+    // DF-Q054 (API contract): Expr.cast, Expr.castDecimal, Expr.mean; pinned source in README.md.
+    it.effect("converts between floats and decimals at scales past a float's largest power of ten", () =>
+      Effect.gen(function*() {
+        const tiny = Query.from(DataFrame.fromColumns({ f: [1e-310, -1e-310, 0, 1] })).pipe(
+          Query.select((c) => ({ d: Expr.castDecimal(c.f, 38, 310) }))
+        )
+        assert.deepStrictEqual(yield* rows(tiny), [
+          { d: BigDecimal.make(1n, 310) },
+          { d: BigDecimal.make(-1n, 310) },
+          { d: BigDecimal.make(0n, 310) },
+          { d: null }
+        ])
+        // 10^18 units of 10^-310 are 10^-292.
+        const held = (scale: number, unscaled: ReadonlyArray<bigint>) =>
+          Query.from(arrowFrame<{ d: BigDecimal.BigDecimal }>({
+            d: [ArrowSchema.decimal(38, scale), unscaled.map((x) => BigDecimal.make(x, scale))]
+          }))
+        const read = (query: Query.Query<{ d: BigDecimal.BigDecimal }>) =>
+          Effect.all([
+            query.pipe(
+              Query.select((c) => ({ float: Expr.cast(c.d, "Float64"), rolling: Expr.rollingMean(c.d, 2) })),
+              rows
+            ),
+            query.pipe(Query.aggregate((c) => ({ mean: Expr.mean(c.d) })), rows)
+          ])
+        const big = 10n ** 18n
+        assert.deepStrictEqual(yield* read(held(310, [big, big, -big])), [
+          [
+            { float: 1e-292, rolling: null },
+            { float: 1e-292, rolling: 1e-292 },
+            { float: -1e-292, rolling: 0 }
+          ],
+          [{ mean: 1e-292 / 3 }]
+        ])
+        // Below the smallest float the value is zero.
+        assert.deepStrictEqual(yield* read(held(400, [big, big])), [
+          [{ float: 0, rolling: null }, { float: 0, rolling: 0 }],
+          [{ mean: 0 }]
+        ])
+      }))
+
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {

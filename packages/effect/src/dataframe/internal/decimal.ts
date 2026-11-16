@@ -48,7 +48,14 @@ const PRECISION = 38
 /** @internal */
 export const decimal = (scale: number): S.Decimal => S.decimal(PRECISION, scale)
 
-/** The common type of a decimal and another numeric type. @internal */
+/**
+ * The common type of a decimal and another numeric type. It holds every
+ * value of both exactly or not at all: the larger scale of two decimals,
+ * and with an integer a scale of at least zero, as a negative scale would
+ * round the integer.
+ *
+ * @internal
+ */
 export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined => {
   if (isDecimal(a) && isDecimal(b)) {
     return a.scale === b.scale && a.precision === b.precision
@@ -56,7 +63,7 @@ export const supertype = (a: S.DataType, b: S.DataType): S.DataType | undefined 
       : decimal(Math.max(a.scale, b.scale))
   }
   const [d, other] = isDecimal(a) ? [a, b] : [b as S.Decimal, a]
-  if (other._tag === "Int") return decimal(d.scale)
+  if (other._tag === "Int") return decimal(Math.max(d.scale, 0))
   if (other._tag === "Float") return S.float64
   return undefined
 }
@@ -65,6 +72,49 @@ const inRange = (x: bigint): boolean => x <= MAX && x >= MIN
 
 /** `x`, or a failure when it overflows 64-bit decimal storage. @internal */
 export const checked = (x: bigint): bigint => (inRange(x) ? x : V.fail("decimal value overflows 64 bits"))
+
+/**
+ * `x` as the unscaled value of a literal of `type`, or a failure when it
+ * overflows 64-bit storage or has more digits than the type's precision.
+ *
+ * @internal
+ */
+export const literal = (x: bigint, type: S.Decimal): bigint => {
+  const limit = factor(type.precision)
+  return checked(x) < limit && -x < limit
+    ? x
+    : V.fail(`decimal literal ${x} has more digits than its precision ${type.precision}`)
+}
+
+/**
+ * The largest power of ten a float holds is `10^308`. A larger one is
+ * applied in two steps, so that a finite result isn't lost to an infinite
+ * factor.
+ */
+const FLOAT_DIGITS = 308
+
+/** `x * 10^scale` as a float. */
+const scaleFloat = (x: number, scale: number): number =>
+  // Zero is zero at any scale, also where `10^scale` is infinite.
+  x === 0
+    ? 0
+    : scale > FLOAT_DIGITS
+    ? x * 10 ** FLOAT_DIGITS * 10 ** (scale - FLOAT_DIGITS)
+    : x * 10 ** scale
+
+/**
+ * `unscaled / 10^scale` as a float. Past {@link FLOAT_DIGITS} digits it
+ * reads the value's decimal notation, which rounds once.
+ *
+ * @internal
+ */
+export const toNumber = (unscaled: bigint, scale: number): number =>
+  // Zero is zero at any scale, also where `10^scale` is zero.
+  unscaled === I0
+    ? 0
+    : scale > FLOAT_DIGITS
+    ? Number(`${unscaled}e-${scale}`)
+    : Number(unscaled) / 10 ** scale
 
 const wrap = (x: bigint): bigint => BigInt.asIntN(64, x)
 
@@ -225,8 +275,7 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
           put(i, toScale(BigInt(v.values[i]), target.scale))
           break
         case "f64": {
-          // Zero is zero at any scale, also where `10^scale` is infinite.
-          const scaled = v.values[i] === 0 ? 0 : v.values[i] * 10 ** target.scale
+          const scaled = scaleFloat(v.values[i], target.scale)
           if (Number.isFinite(scaled)) {
             const floor = Math.floor(scaled)
             const rest = scaled - floor
@@ -327,8 +376,6 @@ export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
 /** Unscaled values as floats. @internal */
 export const toFloat = (values: BigInt64Array, scale: number): Float64Array => {
   const out = new Float64Array(values.length)
-  const unit = 10 ** scale
-  // Zero is zero at any scale, also where `10^scale` is zero or infinite.
-  for (let i = 0; i < values.length; i++) out[i] = values[i] === I0 ? 0 : Number(values[i]) / unit
+  for (let i = 0; i < values.length; i++) out[i] = toNumber(values[i], scale)
   return out
 }
