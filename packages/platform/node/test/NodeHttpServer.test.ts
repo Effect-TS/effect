@@ -1881,8 +1881,19 @@ describe("HttpServer", () => {
   it.effect("a websocket highWaterMark pauses the peer instead of closing it", () =>
     Effect.gen(function*() {
       const frames = Array.from({ length: 100 }, (_, i) => String(i % 10))
-      const sent = yield* Deferred.make<void>()
+      // 100 bytes stay below the 64 KiB default, so only the configured mark pauses
+      const paused = yield* Deferred.make<void>()
       const checked = yield* Deferred.make<void, unknown>()
+      const pause = NodeWS.WebSocket.prototype.pause
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          NodeWS.WebSocket.prototype.pause = function(this: NodeWS.WebSocket) {
+            Deferred.doneUnsafe(paused, Effect.void)
+            return pause.call(this)
+          }
+        }),
+        () => Effect.sync(() => NodeWS.WebSocket.prototype.pause = pause)
+      )
       yield* HttpRouter.add(
         "GET",
         "/ws",
@@ -1893,7 +1904,7 @@ describe("HttpServer", () => {
             checked,
             Effect.gen(function*() {
               const { pull } = yield* socket.reader
-              yield* Deferred.await(sent)
+              yield* Deferred.await(paused)
               const received: Array<string | Uint8Array> = []
               while (received.length < frames.length) received.push(...(yield* pull))
               assert.deepStrictEqual(received.map((frame) => Buffer.Buffer.from(frame).toString()), frames)
@@ -1912,9 +1923,7 @@ describe("HttpServer", () => {
         }),
         (ws) => Effect.sync(() => ws.close())
       )
-      frames.forEach((frame, i) =>
-        ws.send(frame, i === frames.length - 1 ? () => Deferred.doneUnsafe(sent, Effect.void) : undefined)
-      )
+      for (const frame of frames) ws.send(frame)
       yield* Deferred.await(checked)
       assert.strictEqual(ws.readyState, NodeWS.WebSocket.OPEN)
     }).pipe(

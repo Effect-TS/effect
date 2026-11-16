@@ -92,11 +92,11 @@ export type ServeOptions<R extends string> =
  *
  * The `highWaterMark` option bounds the bytes of inbound messages waiting for
  * a reader pull, including messages received before reader startup. Every
- * message counts as at least one byte. A message arriving once the queue has
- * reached the limit is discarded, and the connection is closed with code 1008
- * and reason "Inbound message buffer limit exceeded". Queued messages remain
- * readable in order, followed by a `SocketError` wrapping a
- * `SocketReadError`.
+ * message counts as at least one byte. A message that takes the queue above
+ * the limit is still queued, then the connection is closed with code 1008 and
+ * reason "Inbound message buffer limit exceeded" and later messages are
+ * discarded. Queued messages remain readable in order, followed by a
+ * `SocketError` wrapping a `SocketReadError`.
  *
  * **Gotchas**
  *
@@ -127,8 +127,7 @@ export type WebSocketOptions =
     readonly compressionThreshold?: number | undefined
     /**
      * The number of inbound bytes that may wait for a reader pull. A message
-     * arriving once the queue has reached it is not retained, and the socket
-     * is closed with code 1008.
+     * that takes the queue above it closes the socket with code 1008.
      *
      * @default unbounded
      */
@@ -218,23 +217,22 @@ export const make = Effect.fnUntraced(
         message(ws, message) {
           const data = ws.data
           if (data.closeError !== undefined) return
+          data.buffer.push(message)
           if (highWaterMark !== undefined) {
-            if (data.bufferedBytes >= highWaterMark) {
-              const error = new Socket.SocketError({
-                reason: new Socket.SocketReadError({
-                  cause: new globalThis.Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
-                })
-              })
-              // set before closing, so the close handler keeps this error
-              data.closeError = error
-              data.onClose(error)
-              ws.close(1008, "Inbound message buffer limit exceeded")
-              return
-            }
             data.bufferedBytes += (typeof message === "string" ? Buffer.byteLength(message) : message.byteLength) || 1
           }
-          data.buffer.push(message)
           data.onMessage()
+          if (highWaterMark !== undefined && data.bufferedBytes > highWaterMark) {
+            const error = new Socket.SocketError({
+              reason: new Socket.SocketReadError({
+                cause: new globalThis.Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
+              })
+            })
+            // set before closing, so the close handler keeps this error
+            data.closeError = error
+            data.onClose(error)
+            ws.close(1008, "Inbound message buffer limit exceeded")
+          }
         },
         close(ws, code, closeReason) {
           code = typeof code === "number" ? code : 1001

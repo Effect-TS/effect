@@ -655,13 +655,13 @@ describe("BunHttpServer", () => {
       { phase: "before reader startup", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
       { phase: "with an active reader", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
       { phase: "before reader startup", name: "empty frames", highWaterMark: 2, queued: ["", ""], overflow: "" },
-      // "€" is 3 bytes and is retained because the queue is below the mark when it arrives
+      // "€" is 3 bytes, so it is the frame that takes the queue above the mark
       {
         phase: "before reader startup",
         name: "a multibyte frame crossing the mark",
         highWaterMark: 3,
-        queued: ["a", "€"],
-        overflow: "b"
+        queued: ["a"],
+        overflow: "€"
       }
     ] as const
   ) {
@@ -694,7 +694,8 @@ describe("BunHttpServer", () => {
                 yield* writer.write("overflow")
                 yield* Deferred.await(read)
                 const reader = activeReader ?? (yield* socket.reader)
-                assert.deepStrictEqual(yield* reader.pull, queued)
+                // the frame crossing the mark stays readable, and the later "late" is dropped
+                assert.deepStrictEqual(yield* reader.pull, [...queued, overflow])
                 const error = yield* Effect.flip(reader.pull)
                 assert(error.reason._tag === "SocketReadError")
                 assert.strictEqual(
@@ -712,7 +713,10 @@ describe("BunHttpServer", () => {
           )
           ws.addEventListener("message", (event) => {
             for (const frame of queued) ws.send(frame)
-            if (event.data === "overflow") ws.send(overflow)
+            if (event.data === "overflow") {
+              ws.send(overflow)
+              ws.send("late")
+            }
           })
           ws.addEventListener("close", (event) => Deferred.doneUnsafe(closed, Effect.succeed(event)))
           const event = yield* Deferred.await(closed).pipe(

@@ -1194,52 +1194,68 @@ describe("DenoHttpServer", () => {
       yield* Deferred.await(checked)
     }).pipe(Effect.timeout("5 seconds"), Effect.provide(DenoHttpServer.layerTest)))
 
-  for (const phase of ["before reader startup", "with an active reader"] as const) {
-    it.live(`bounds inbound WebSocket bytes ${phase}`, () =>
-      Effect.gen(function*() {
-        const clientClosed = yield* Deferred.make<void>()
-        const checked = yield* Deferred.make<void, unknown>()
-        const server = yield* DenoHttpServer.make({
-          hostname: "127.0.0.1",
-          port: 0,
-          onListen: () => {},
-          websocket: { highWaterMark: 3 }
-        })
-        yield* server.serve(Effect.gen(function*() {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const socket = yield* request.upgrade
-          yield* Deferred.complete(
-            checked,
-            Effect.gen(function*() {
-              const activeReader = phase === "with an active reader" ? yield* socket.reader : undefined
-              if (activeReader !== undefined) yield* (yield* socket.writer).write("ready")
-              yield* Deferred.await(clientClosed)
-              const { frames, reason } = yield* readUntilFailure(activeReader ?? (yield* socket.reader))
-              // "€" is 3 bytes and crosses the mark, so "b" overflows and "c" arrives after the overflow
-              assert.deepStrictEqual(frames, ["a", "€"])
-              assert(reason._tag === "SocketReadError")
-              assert.strictEqual(String(reason.cause), "Error: Socket highWaterMark of 3 bytes exceeded")
-            })
+  for (
+    const { highWaterMark, name, retained, sent } of [
+      // a pull waiting during the replay must not free room for a rejected frame
+      { name: "byte frames", highWaterMark: 2, sent: ["a", "b", "c", "d"], retained: ["a", "b", "c"] },
+      // "€" is 3 bytes and takes the queue above the mark, so "b" and "c" are dropped
+      {
+        name: "a multibyte frame crossing the mark",
+        highWaterMark: 3,
+        sent: ["a", "€", "b", "c"],
+        retained: ["a", "€"]
+      }
+    ]
+  ) {
+    for (const phase of ["before reader startup", "with an active reader"] as const) {
+      it.live(`bounds inbound WebSocket bytes ${phase}: ${name}`, () =>
+        Effect.gen(function*() {
+          const clientClosed = yield* Deferred.make<void>()
+          const checked = yield* Deferred.make<void, unknown>()
+          const server = yield* DenoHttpServer.make({
+            hostname: "127.0.0.1",
+            port: 0,
+            onListen: () => {},
+            websocket: { highWaterMark }
+          })
+          yield* server.serve(Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            yield* Deferred.complete(
+              checked,
+              Effect.gen(function*() {
+                const activeReader = phase === "with an active reader" ? yield* socket.reader : undefined
+                if (activeReader !== undefined) yield* (yield* socket.writer).write("ready")
+                yield* Deferred.await(clientClosed)
+                const { frames, reason } = yield* readUntilFailure(activeReader ?? (yield* socket.reader))
+                assert.deepStrictEqual(frames, retained)
+                assert(reason._tag === "SocketReadError")
+                assert.strictEqual(
+                  String(reason.cause),
+                  `Error: Socket highWaterMark of ${highWaterMark} bytes exceeded`
+                )
+              })
+            )
+            return HttpServerResponse.empty()
+          }))
+          const port = (server.address as NetAddress.InetAddress).port
+          const ws = yield* Effect.acquireRelease(
+            Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
+            (ws) => Effect.sync(() => ws.close())
           )
-          return HttpServerResponse.empty()
-        }))
-        const port = (server.address as NetAddress.InetAddress).port
-        const ws = yield* Effect.acquireRelease(
-          Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
-          (ws) => Effect.sync(() => ws.close())
-        )
-        ws.addEventListener(phase === "with an active reader" ? "message" : "open", () => {
-          for (const frame of ["a", "€", "b", "c"]) ws.send(frame)
-        }, { once: true })
-        // Deno does not report a stable close code while the client is still sending
-        yield* Effect.callback<void>((resume) => {
-          ws.addEventListener("close", () => resume(Effect.void), { once: true })
-        }).pipe(
-          Effect.timeout("1 second"),
-          Effect.ensuring(Deferred.succeed(clientClosed, undefined))
-        )
-        yield* Deferred.await(checked)
-      }).pipe(Effect.timeout("5 seconds")))
+          ws.addEventListener(phase === "with an active reader" ? "message" : "open", () => {
+            for (const frame of sent) ws.send(frame)
+          }, { once: true })
+          // Deno does not report a stable close code while the client is still sending
+          yield* Effect.callback<void>((resume) => {
+            ws.addEventListener("close", () => resume(Effect.void), { once: true })
+          }).pipe(
+            Effect.timeout("1 second"),
+            Effect.ensuring(Deferred.succeed(clientClosed, undefined))
+          )
+          yield* Deferred.await(checked)
+        }).pipe(Effect.timeout("5 seconds")))
+    }
   }
 
   it.effect("delivers binary WebSocket frames as Uint8Array", () =>

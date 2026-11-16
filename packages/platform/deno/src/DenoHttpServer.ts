@@ -83,11 +83,11 @@ export type ServeOptions =
  * Deno's upgrade options pass through to `Deno.upgradeWebSocket`.
  * `highWaterMark` bounds the bytes of inbound messages waiting for a reader
  * pull, including messages received before reader startup. Every message
- * counts as at least one byte. A message arriving once the queue has reached
- * the limit is discarded, and the connection is closed with code 1008 and
- * reason "Inbound message buffer limit exceeded". Queued messages remain
- * readable in order, followed by a `SocketError` wrapping a
- * `SocketReadError`.
+ * counts as at least one byte. A message that takes the queue above the limit
+ * is still queued, then the connection is closed with code 1008 and reason
+ * "Inbound message buffer limit exceeded" and later messages are discarded.
+ * Queued messages remain readable in order, followed by a `SocketError`
+ * wrapping a `SocketReadError`.
  *
  * **Gotchas**
  *
@@ -592,9 +592,10 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 // message, error, and close events until listeners attach, then replays them
 // so they come out of the first pull.
 //
-// With a highWaterMark, the facade keeps the first message that arrives at
-// the limit, so `Socket.fromWebSocket` reports the overflow on replay, closes
-// the socket, and drops every later message.
+// With a highWaterMark, a message that takes the buffered bytes above it
+// closes the socket, and every later message is dropped. An error event is
+// buffered after that message, so the reader fails with a `SocketReadError`
+// on replay however much it drains while the events are replayed.
 const bufferedWebSocket = (ws: WebSocket, highWaterMark: number | undefined): Socket.WebSocketLike => {
   interface Entry {
     readonly listener: (event: Socket.WebSocketEvent) => void
@@ -628,15 +629,16 @@ const bufferedWebSocket = (ws: WebSocket, highWaterMark: number | undefined): So
       if (buffering) {
         if (type === "message" && highWaterMark !== undefined) {
           if (overflowed) return
-          if (bufferedBytes >= highWaterMark) {
-            overflowed = true
-            ws.close(1008, "Inbound message buffer limit exceeded")
-          } else {
-            const data = wsEvent.data as string | ArrayBuffer
-            bufferedBytes += (typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength) || 1
-          }
+          const data = wsEvent.data as string | ArrayBuffer
+          bufferedBytes += (typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength) || 1
         }
         buffered.push([type, wsEvent])
+        if (!overflowed && bufferedBytes > highWaterMark!) {
+          overflowed = true
+          const error = new globalThis.Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
+          buffered.push(["error", Object.assign(error, { type: "error" })])
+          ws.close(1008, "Inbound message buffer limit exceeded")
+        }
       } else {
         dispatch(type, wsEvent)
       }

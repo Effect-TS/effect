@@ -943,16 +943,17 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  * contains one element per frame.
  *
  * Implementations without pause (browsers) buffer incoming frames without
- * limit by default. With a `highWaterMark`, a frame arriving once the buffer
- * has reached it is discarded along with every later frame. The reader
- * receives the frames already buffered, then fails with a `SocketReadError`,
- * and the WebSocket is closed with code 1008, or without a code where the
- * runtime rejects 1008.
+ * limit by default. With a `highWaterMark`, a frame that takes the buffered
+ * bytes above it fails the socket: the reader receives the buffered frames,
+ * including that one, then fails with a `SocketReadError`. Every later frame
+ * is discarded, and the WebSocket is closed with code 1008, or without a code
+ * where the runtime rejects 1008.
  *
  * **Gotchas**
  *
- * A single frame larger than the `highWaterMark` is accepted while the buffer
- * is below it, so pair the limit with the transport's maximum payload size.
+ * The frame that crosses the `highWaterMark` is still buffered, so the buffer
+ * can hold the limit plus one frame. Pair the limit with the transport's
+ * maximum payload size.
  *
  * @stability unstable
  * @category constructors
@@ -1026,13 +1027,16 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
       function push(data: Uint8Array | string) {
         if (overflowed) return
+        buffer.push(data)
         if (highWaterMark !== undefined) {
-          if (!pausable && bufferSize >= highWaterMark) return overflow()
           bufferSize += (typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength) || 1
         }
-        buffer.push(data)
         if (waiter !== undefined) deliver()
-        if (pausable && bufferSize >= highWaterMark!) pauseWebSocket()
+        if (pausable && bufferSize >= highWaterMark!) {
+          pauseWebSocket()
+        } else if (!pausable && bufferSize > highWaterMark!) {
+          overflow()
+        }
       }
 
       function overflow() {

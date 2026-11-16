@@ -240,21 +240,22 @@ describe("Socket", () => {
 
     for (
       const { closes, frames, highWaterMark, name, rejectsCloseCode, retained } of [
-        { name: "byte frames", highWaterMark: 2, frames: ["a", "b", "c", "d"], retained: 2 },
-        { name: "empty frames", highWaterMark: 2, frames: ["", "", "", ""], retained: 2 },
-        // "€" is 3 bytes and is retained because the queue is below the mark when it arrives
+        { name: "byte frames", highWaterMark: 2, frames: ["a", "b", "c", "d"], retained: 3 },
+        { name: "empty frames", highWaterMark: 2, frames: ["", "", "", ""], retained: 3 },
+        // "€" is 3 bytes, so it is the frame that takes the queue above the mark
         { name: "a multibyte frame crossing the mark", highWaterMark: 3, frames: ["a", "€", "b", "c"], retained: 2 },
+        { name: "a single frame larger than the mark", highWaterMark: 2, frames: ["abc", "d"], retained: 1 },
         {
           name: "a transport rejecting close code 1008",
           highWaterMark: 2,
-          frames: ["a", "b", "c"],
-          retained: 2,
+          frames: ["a", "b", "c", "d"],
+          retained: 3,
           rejectsCloseCode: true,
           closes: [[]]
         }
       ]
     ) {
-      it.effect(`fails a socket without pause once the highWaterMark is reached: ${name}`, () =>
+      it.effect(`fails a socket without pause once the highWaterMark is exceeded: ${name}`, () =>
         Effect.gen(function*() {
           const ws = new TestWebSocket(Latch.makeUnsafe(false))
           ws.readyState = 1
