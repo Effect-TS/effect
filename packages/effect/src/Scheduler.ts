@@ -32,6 +32,8 @@ import type * as Fiber from "./Fiber.ts"
  * @category services
  * @since 2.0.0
  */
+// Existing scheduler APIs remain stable; only the new park contract is unstable.
+// @effect-diagnostics-next-line apiStabilityLeak:off
 export interface Scheduler {
   readonly executionMode: "sync" | "async"
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
@@ -307,6 +309,8 @@ class PriorityBuckets {
  * @category models
  * @since 2.0.0
  */
+// Existing scheduler APIs remain stable; only the new park contract is unstable.
+// @effect-diagnostics-next-line apiStabilityLeak:off
 export class MixedScheduler implements Scheduler {
   readonly executionMode: "sync" | "async"
   readonly setImmediate: (f: () => void) => () => void

@@ -692,5 +692,7 @@ export {
    * @category references
    * @since 4.0.0
    */
+  // Existing scheduler APIs remain stable; only the new park contract is unstable.
+  // @effect-diagnostics-next-line apiStabilityLeak:off
   Scheduler
 } from "./Scheduler.ts"
