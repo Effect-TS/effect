@@ -30,7 +30,7 @@ import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
 export type LockMode = "advisory" | "row"
-export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
+export type LockFaultMode = "blackhole" | "stuck" | "fail" | "failAlways" | "hangRelease" | "clear"
 export type SocketDirection = "inbound" | "outbound"
 
 export interface ClusterRunner {
@@ -150,7 +150,7 @@ interface LockSession {
 
 const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   const releaseGate = Latch.makeUnsafe(true)
-  let persistentFault: "stuck" | "hangRelease" | undefined
+  let persistentFault: "stuck" | "failAlways" | "hangRelease" | undefined
   let currentSession: LockSession | undefined
 
   const wrapConnection = (
@@ -164,7 +164,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
         // the separate gate below, after the database lock has been dropped.
         if (sql.includes("pg_advisory_unlock_all") || sql.includes("RELEASE_ALL_LOCKS")) return effect
         const mode = session.fault ?? persistentFault
-        if (mode === "fail") {
+        if (mode === "fail" || mode === "failAlways") {
           return Effect.fail(
             new SqlError.SqlError({
               reason: new SqlError.ConnectionError({ cause: new Error("lock connection lost") })

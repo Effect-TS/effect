@@ -1,9 +1,66 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer } from "effect"
-import { type Backend, make } from "./harness.ts"
+import { Clock, Effect, Layer } from "effect"
+import { type Backend, type ClusterRunner, make } from "./harness.ts"
+
+const addressOf = (runner: ClusterRunner) => `${runner.address.host}:${runner.address.port}`
+
+// Starts two runners, keeps every lock operation of one of them failing while
+// its heartbeat on the shared pool still works, and waits until the peer owns
+// every shard the faulted runner held. No shard may have two owners, and the
+// peer may not take a shard before the faulted runner's locks have expired.
+const handOffFromFailingLocks = Effect.fnUntraced(function*(backend: Backend) {
+  const cluster = yield* make({ backend, entities: Layer.empty, config: { shardsPerGroup: 8 } })
+  const [faulted, peer] = yield* cluster.start(2)
+  const stable = yield* cluster.waitForStableAssignments()
+  const faultedShards = Object.keys(stable).filter((shard) => stable[shard].includes(addressOf(faulted)))
+  assert.isAbove(faultedShards.length, 0)
+
+  const faultedAt = yield* Clock.currentTimeMillis
+  yield* cluster.faultLock(faulted, "failAlways")
+  yield* cluster.waitUntil(
+    "The peer did not take over the shards of the runner whose lock operations keep failing",
+    Effect.gen(function*() {
+      const assignments = cluster.assignmentMap()
+      assert(Object.values(assignments).every((owners) => owners.length <= 1), "A shard had multiple owners")
+      const taken = faultedShards.filter((shard) => assignments[shard].includes(addressOf(peer)))
+      if (taken.length > 0) {
+        const elapsed = (yield* Clock.currentTimeMillis) - faultedAt
+        assert.isAtLeast(elapsed, 1_750, "The peer took a shard before the faulted runner's locks expired")
+      }
+      return taken.length === faultedShards.length
+    })
+  )
+  return { cluster, faulted, peer }
+})
 
 describe("cluster lock-storage integration", () => {
   for (const backend of ["pg", "mysql"] satisfies ReadonlyArray<Backend>) {
+    it.live(`${backend}: hands off the shards of a runner whose lock operations keep failing`, () =>
+      Effect.asVoid(handOffFromFailingLocks(backend)))
+
+    it.live(`${backend}: a runner whose lock operations kept failing rejoins once they recover`, () =>
+      Effect.gen(function*() {
+        const { cluster, faulted } = yield* handOffFromFailingLocks(backend)
+
+        yield* cluster.faultLock(faulted, "clear")
+        let previous = ""
+        let stablePolls = 0
+        yield* cluster.waitUntil(
+          "The recovered runner did not rejoin the shard assignments",
+          Effect.sync(() => {
+            const assignments = cluster.assignmentMap()
+            const owners = Object.values(assignments)
+            assert(owners.every((shardOwners) => shardOwners.length <= 1), "A shard had multiple owners")
+            const complete = owners.every((shardOwners) => shardOwners.length === 1) &&
+              owners.some((shardOwners) => shardOwners.includes(addressOf(faulted)))
+            const encoded = complete ? JSON.stringify(assignments) : ""
+            stablePolls = encoded !== "" && encoded === previous ? stablePolls + 1 : 0
+            previous = encoded
+            return stablePolls >= 3
+          })
+        )
+      }))
+
     it.live(
       `${backend}: rebuilds a blackholed reserved lock connection and rejoins without split brain`,
       () =>
