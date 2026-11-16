@@ -28,7 +28,7 @@ export interface OptionsByOperation {
   readonly writeFile: M.WriteFileOptions | undefined
   readonly createFile: M.CreateOptions | undefined
   readonly makeDirectory: M.MkdirOptions | undefined
-  readonly makeDirectoryEntry: M.CreateOptions | undefined
+  readonly makeDirectoryEntry: Omit<M.MkdirOptions, "recursive"> | undefined
   readonly makeSymlink: M.AbsentConditions | undefined
   readonly makeHardLink: M.AbsentConditions | undefined
   readonly unlink: M.EntryConditions | undefined
@@ -46,10 +46,19 @@ export type Operation = keyof OptionsByOperation
 /** @internal */
 export const optionFields = {
   access: ["read", "write", "execute"],
-  writeFile: ["placement", "access", "create", "mode", "conditions", "expectedRevision"],
+  writeFile: [
+    "placement",
+    "access",
+    "create",
+    "mode",
+    "conditions",
+    "expectedRevision",
+    "finalMode",
+    "replaceFinalSymlink"
+  ],
   createFile: ["mode", "conditions"],
-  makeDirectory: ["mode", "conditions", "recursive"],
-  makeDirectoryEntry: ["mode", "conditions"],
+  makeDirectory: ["mode", "conditions", "recursive", "preserveTimes"],
+  makeDirectoryEntry: ["mode", "conditions", "preserveTimes"],
   makeSymlink: ["entry", "parentNamespace"],
   makeHardLink: ["entry", "parentNamespace"],
   unlink: ["entry", "parentNamespace"],
@@ -78,7 +87,7 @@ export const slotVariantFields = {
 export const timeFields = ["atime", "mtime"] as const
 
 /** @internal */
-export const attributeFields = ["mode", "uid", "gid", "atime", "mtime"] as const
+export const attributeFields = ["size", "mode", "uid", "gid", "atime", "mtime"] as const
 
 /** @internal */
 export const hardLinkSourceFields = {
@@ -148,6 +157,12 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
     Match.when("writeFile", () =>
       Result.gen(function*() {
         const object = yield* E.checkOptionsResult(options, optionFields.writeFile, operation)
+        if (object?.finalMode !== undefined) yield* E.modeResult(object.finalMode, operation)
+        if (object?.replaceFinalSymlink !== undefined && !isBoolean(object.replaceFinalSymlink)) {
+          return yield* Result.fail(
+            new M.InvalidInput({ operation, field: "replaceFinalSymlink", reason: "malformed" })
+          )
+        }
         const placement = object?.placement
         if (placement !== undefined && !isPlacement(placement)) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "placement", reason: "malformed" }))
@@ -160,7 +175,7 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
         if (create !== undefined && !M.isCreation(create)) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "create", reason: "malformed" }))
         }
-        if (object?.mode !== undefined) yield* E.modeResult(object.mode, "file", operation)
+        if (object?.mode !== undefined) yield* E.modeResult(object.mode, operation)
         yield* condition(object?.conditions, operation)
         if (object?.create === "exclusive" && object.expectedRevision !== undefined) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "expectedRevision", reason: "malformed" }))
@@ -170,12 +185,18 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
       Result.gen(function*() {
         const object = yield* E.checkOptionsResult(options, optionFields[operation], operation)
         if (object?.mode !== undefined) {
-          yield* E.modeResult(object.mode, operation === "createFile" ? "file" : "directory", operation)
+          yield* E.modeResult(object.mode, operation)
         }
         if (operation === "makeDirectory") {
           const recursive = object?.recursive
           if (recursive !== undefined && !isBoolean(recursive)) {
             return yield* Result.fail(new M.InvalidInput({ operation, field: "recursive", reason: "malformed" }))
+          }
+        }
+        if (operation !== "createFile") {
+          const times = yield* E.checkOptionsResult(object?.preserveTimes, timeFields, operation)
+          if (object?.preserveTimes !== undefined && (!isUnixNano(times?.atime) || !isUnixNano(times?.mtime))) {
+            return yield* Result.fail(new M.InvalidInput({ operation, field: "preserveTimes", reason: "malformed" }))
           }
         }
         yield* condition(object?.conditions, operation, true)
@@ -216,7 +237,7 @@ export const validate = (operation: Operation, options: unknown): Result.Result<
         if (overwrite !== undefined && !isBoolean(overwrite)) {
           return yield* Result.fail(new M.InvalidInput({ operation, field: "overwrite", reason: "malformed" }))
         }
-        if (object?.mode !== undefined) yield* E.modeResult(object.mode, "file", operation)
+        if (object?.mode !== undefined) yield* E.modeResult(object.mode, operation)
         yield* condition(object?.destination, operation)
         const times = yield* E.checkOptionsResult(object?.preserveTimes, timeFields, operation)
         if (object?.preserveTimes !== undefined && (!isUnixNano(times?.atime) || !isUnixNano(times?.mtime))) {
@@ -468,7 +489,7 @@ const writable = (
   Result.gen(function*() {
     if (M.isToken(target)) {
       if (
-        options.conditions !== undefined || options.mode !== undefined ||
+        options.conditions !== undefined || options.mode !== undefined || options.replaceFinalSymlink !== undefined ||
         (options.create !== undefined && options.create !== "existing")
       ) {
         return yield* Result.fail(
@@ -502,7 +523,19 @@ const writable = (
         return yield* Result.fail(new M.AlreadyExists({ operation: tx.operation, reason: "occupiedEntry" }))
       }
     } else {
-      selected = yield* tx.followFinalSlotResult(initial, state)
+      selected = options.replaceFinalSymlink ? initial : yield* tx.followFinalSlotResult(initial, state)
+      if (
+        selected.binding !== undefined && options.replaceFinalSymlink &&
+        (yield* tx.getResult(selected.binding.object)).kind === "symlink"
+      ) {
+        const victim = yield* tx.getResult(selected.binding.object)
+        yield* tx.stickyResult(selected.parent, victim)
+        yield* tx.authorizeCreateResult(selected.parent, options.mode, "file")
+        yield* tx.conditionsResult(initial.parent, initial.binding, options.conditions)
+        yield* tx.revisionResult(victim, options)
+        yield* tx.removeResult(selected.parent, selected.binding)
+        return yield* createWritableFile(tx, selected, options.mode)
+      }
       if (selected.binding !== undefined) {
         const node = yield* tx.getResult(selected.binding.object)
         yield* tx.requireResult(
@@ -526,7 +559,16 @@ const writable = (
     if (options.expectedRevision !== undefined) {
       return yield* Result.fail(new M.ConditionFailed({ operation: tx.operation, reason: "objectRevision" }))
     }
-    const node = yield* tx.createResult("file", selected.parent, options.mode)
+    return yield* createWritableFile(tx, selected, options.mode)
+  })
+
+const createWritableFile = (
+  tx: E.Transaction,
+  selected: { parent: E.DirectoryNode; name: BytePath.BytePath },
+  mode?: number
+) =>
+  Result.gen(function*() {
+    const node = yield* tx.createResult("file", selected.parent, mode)
     if (node.kind !== "file") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
@@ -544,6 +586,7 @@ export const writeFile = (
   Result.gen(function*() {
     yield* validate("writeFile", options)
     const node = yield* writable(tx, target, options ?? {})
+    if (options?.finalMode !== undefined) yield* attributesFor(tx, node, { mode: options.finalMode })
     if (BigInt(data.length) > tx.engine.runtime.limits.ioBytes) {
       return yield* Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "io", stage: "reservation" }))
     }
@@ -562,6 +605,7 @@ export const writeFile = (
     if (edited.kind !== "file") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
+    if (options?.finalMode === undefined) edited.mode &= ~E.SET_ID_BITS
     edited.data = next
     yield* tx.changedResult(node.id, ["mtime", "ctime"])
   })
@@ -583,7 +627,7 @@ export const truncate = (
     yield* tx.requireResult(node, E.WRITE_PERMISSION)
     yield* tx.revisionResult(node, options)
     yield* reserveFile(tx, requested)
-    if (requested === BigInt(node.data.length)) return
+    if (requested === BigInt(node.data.length) && (node.mode & E.SET_ID_BITS) === 0) return
     const data = new Uint8Array(Number(requested))
     data.set(node.data.subarray(0, data.length))
     const edited = yield* tx.editResult(node.id)
@@ -591,6 +635,7 @@ export const truncate = (
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
     edited.data = data
+    edited.mode &= ~E.SET_ID_BITS
     yield* tx.changedResult(node.id, ["mtime", "ctime"])
   })
 
@@ -604,13 +649,14 @@ export const validateAttributes = (
     if (attributes === undefined) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "attributes", reason: "malformed" }))
     }
-    if (attributes.mode !== undefined) yield* E.modeResult(attributes.mode, "directory", operation)
+    if (attributes.size !== undefined) yield* R.sizeResult(attributes.size, operation, "size")
+    if (attributes.mode !== undefined) yield* E.modeResult(attributes.mode, operation)
     if (attributes.uid !== undefined) yield* E.identityResult(attributes.uid, operation, "uid")
     if (attributes.gid !== undefined) yield* E.identityResult(attributes.gid, operation, "gid")
-    if (attributes.atime !== undefined && !isUnixNano(attributes.atime)) {
+    if (attributes.atime !== undefined && attributes.atime !== "now" && !isUnixNano(attributes.atime)) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "atime", reason: "malformed" }))
     }
-    if (attributes.mtime !== undefined && !isUnixNano(attributes.mtime)) {
+    if (attributes.mtime !== undefined && attributes.mtime !== "now" && !isUnixNano(attributes.mtime)) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "mtime", reason: "malformed" }))
     }
   })
@@ -624,15 +670,18 @@ export const attributesFor = (
   tx: E.Transaction,
   node: E.Node,
   attributes: M.Attributes,
-  options?: M.RevisionCondition
+  options?: M.RevisionCondition,
+  writeAccess?: boolean
 ) =>
   Result.gen(function*() {
     yield* validateAttributes(attributes, tx.operation)
+    const requested = attributes.size === undefined
+      ? undefined
+      : yield* R.sizeResult(attributes.size, tx.operation, "size")
+    if (requested !== undefined && node.kind !== "file") {
+      return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+    }
     if (attributes.mode !== undefined) {
-      if (node.kind === "symlink") {
-        return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
-      }
-      yield* E.modeResult(attributes.mode, node.kind, tx.operation)
       yield* tx.ownsResult(node)
       if (
         node.kind === "directory" && (attributes.mode & E.SET_GID_BIT) !== 0 && (node.mode & E.SET_GID_BIT) === 0 &&
@@ -640,7 +689,10 @@ export const attributesFor = (
       ) return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
     }
     if (attributes.uid !== undefined && !tx.caller.policy.privileged) {
-      return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
+      yield* tx.ownsResult(node)
+      if (attributes.uid !== node.uid) {
+        return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
+      }
     }
     if (attributes.gid !== undefined) {
       yield* tx.ownsResult(node)
@@ -649,17 +701,56 @@ export const attributesFor = (
         !tx.caller.policy.groups.includes(attributes.gid)
       ) return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
     }
-    if (attributes.atime !== undefined || attributes.mtime !== undefined) yield* tx.ownsResult(node)
+    if (attributes.atime !== undefined || attributes.mtime !== undefined) {
+      if (
+        attributes.atime === "now" && attributes.mtime === "now" &&
+        !tx.caller.policy.privileged && tx.caller.policy.uid !== node.uid
+      ) yield* tx.requireResult(node, E.WRITE_PERMISSION)
+      else yield* tx.ownsResult(node)
+    }
+    if (requested !== undefined) {
+      // Handles supply their open-time grant; path and reference updates check current permissions.
+      if (writeAccess === false) {
+        return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "permission" }))
+      }
+      if (writeAccess === undefined) yield* tx.requireResult(node, E.WRITE_PERMISSION)
+    }
     yield* tx.revisionResult(node, options)
+    if (requested !== undefined) {
+      if (requested > tx.engine.runtime.limits.fileBytes) {
+        return yield* Result.fail(
+          new M.LimitExceeded({ operation: tx.operation, domain: "file", stage: "publication" })
+        )
+      }
+      yield* reserveFile(tx, requested)
+    }
     let changed = false
     const edited = yield* tx.editResult(node.id)
+    if (requested !== undefined && edited.kind === "file" && requested !== BigInt(edited.data.length)) {
+      const data = new Uint8Array(Number(requested))
+      data.set(edited.data.subarray(0, data.length))
+      edited.data = data
+      changed = true
+      yield* tx.touchResult(node.id, ["mtime"])
+    }
+    const clearSetId = requested !== undefined || attributes.uid !== undefined || attributes.gid !== undefined
+    const mode = attributes.mode ?? (clearSetId && edited.kind === "file" ? edited.mode & ~E.SET_ID_BITS : edited.mode)
+    const finalMode = attributes.mode !== undefined && edited.kind === "file"
+      ? tx.fileMode(mode, attributes.gid ?? edited.gid)
+      : mode
+    if (finalMode !== edited.mode) {
+      edited.mode = finalMode
+      changed = true
+    }
     for (const field of attributeFields) {
+      if (field === "size" || field === "mode") continue
       const value = attributes[field]
       if (value === undefined) continue
-      if (value !== node[field]) changed = true
+      if (value !== "now" && value !== node[field]) changed = true
       if (field === "atime" || field === "mtime") {
         const requested = attributes[field]
-        if (requested !== undefined) yield* tx.explicitTimeResult(node.id, field, requested)
+        if (requested === "now") yield* tx.touchResult(node.id, [field, "ctime"])
+        else if (requested !== undefined) yield* tx.explicitTimeResult(node.id, field, requested)
       } else Object.assign(edited, { [field]: value })
     }
     if (changed) yield* tx.changedResult(node.id, ["ctime"])
@@ -761,27 +852,23 @@ export const makeDirectory = (
           const supplied = Result.getOrThrow(BytePath.fromBytes(bytes.subarray(0, end)))
           const route = yield* tx.resolveResult(supplied, false, undefined, 0, [], undefined, options)
           node = route.object
-          if (node.kind === "directory") {
-            const result = tx.observation(node)
-            if (result.kind !== "directory") {
+          if (node.kind === "directory") prefixEnd = end
+          else {
+            if (node.kind !== "symlink" || route.parent === undefined || route.mkdirPrefixEnd === undefined) {
               return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
             }
-            return result
+            const state: E.ResolutionState = { follows: 0 }
+            yield* tx.consumeLinkResult(state, node.target)
+            const followed = tx.resolveResult(node.target, true, route.parent.id, state.follows, [], state)
+            if (Result.isFailure(followed) && followed.failure instanceof M.NotFound) {
+              return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+            }
+            node = (yield* followed).object
+            if (node.kind !== "directory") {
+              return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
+            }
+            prefixEnd = route.mkdirPrefixEnd
           }
-          if (node.kind !== "symlink" || route.parent === undefined || route.mkdirPrefixEnd === undefined) {
-            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
-          }
-          const state: E.ResolutionState = { follows: 0 }
-          yield* tx.consumeLinkResult(state)
-          const followed = tx.resolveResult(node.target, true, route.parent.id, state.follows, [], state)
-          if (Result.isFailure(followed) && followed.failure instanceof M.NotFound) {
-            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
-          }
-          node = (yield* followed).object
-          if (node.kind !== "directory") {
-            return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
-          }
-          prefixEnd = route.mkdirPrefixEnd
         }
         // Prefix resolution preserves error order under constrained budgets and through symlinks.
         for (let index = prefixEnd + 1; index <= end; index++) {
@@ -806,6 +893,10 @@ export const makeDirectory = (
         }
       }
     }
+    if (options?.preserveTimes !== undefined && !tx.engine.nodes.has(node.id)) {
+      yield* tx.explicitTimeResult(node.id, "atime", options.preserveTimes.atime)
+      yield* tx.explicitTimeResult(node.id, "mtime", options.preserveTimes.mtime)
+    }
     const observation = tx.observation(node)
     if (observation.kind !== "directory") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -817,7 +908,7 @@ export const makeDirectory = (
 export const makeDirectoryEntry = (
   tx: E.Transaction,
   target: M.EntryTarget,
-  options?: M.CreateOptions
+  options?: Omit<M.MkdirOptions, "recursive">
 ) =>
   Result.gen(function*() {
     const directory = yield* makeDirectory(tx, target, options)
@@ -842,11 +933,6 @@ export const makeSymlink = (
   Result.gen(function*() {
     yield* validate("makeSymlink", options)
     const spelling = yield* E.pathValueResult(linkTarget, tx.operation)
-    if (BytePath.byteLength(spelling) === 0) {
-      return yield* Result.fail(
-        new M.InvalidInput({ operation: tx.operation, field: "linkTarget", reason: "malformed" })
-      )
-    }
     if (BigInt(BytePath.byteLength(spelling)) > tx.engine.runtime.limits.pathBytes) {
       return yield* Result.fail(new M.LimitExceeded({ operation: tx.operation, domain: "path", stage: "resolution" }))
     }
@@ -1054,6 +1140,7 @@ export const publishCopiedFile = (
     next.data = data.slice()
     if (existing === undefined) yield* tx.insertResult(slot.parent.id, slot.name, node.id)
     if (data.length > 0 || (existing !== undefined && existing.data.length !== 0)) {
+      next.mode &= ~E.SET_ID_BITS
       yield* tx.changedResult(node.id, ["mtime", "ctime"])
     }
     if (options?.preserveTimes !== undefined) {
@@ -1071,7 +1158,7 @@ export const publishCopiedSymlink = (
 ) =>
   Result.gen(function*() {
     yield* validate("publishCopiedSymlink", options)
-    if (!BytePath.isBytePath(target) || BytePath.byteLength(target) === 0) {
+    if (!BytePath.isBytePath(target)) {
       return yield* Result.fail(new M.InvalidInput({ operation: tx.operation, field: "target", reason: "malformed" }))
     }
     if (BigInt(BytePath.byteLength(target)) > tx.engine.runtime.limits.pathBytes) {

@@ -56,7 +56,7 @@ describe("VirtualFileSystem capture schemas", () => {
       const malformed of [
         { ...file, id: 0n },
         { ...file, metadata: { ...file.metadata, uid: -1 } },
-        { ...file, metadata: { ...file.metadata, mode: 0o4000 } },
+        { ...file, metadata: { ...file.metadata, mode: 0o10000 } },
         { ...file, name: path("a/b") }
       ]
     ) assert.isFalse(Schema.is(VFS.CaptureRecord)(malformed))

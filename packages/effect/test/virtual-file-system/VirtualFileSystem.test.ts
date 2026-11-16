@@ -160,7 +160,8 @@ describe("VirtualFileSystem", () => {
       yield* admin.writeFile("/private", bytes(8), { mode: 0 })
       const zero = yield* owner.authorize({ credentials })
       assert.strictEqual((yield* Effect.flip(zero.readFile("/private")))._tag, "AccessDenied")
-      assert.strictEqual((yield* Effect.flip(own.setAttributes("/group", { uid: 100 })))._tag, "AccessDenied")
+      yield* own.setAttributes("/group", { uid: 100 })
+      assert.strictEqual((yield* Effect.flip(own.setAttributes("/group", { uid: 200 })))._tag, "AccessDenied")
       yield* own.setAttributes("/group", { gid: 20 })
       assert.strictEqual((yield* Effect.flip(own.setAttributes("/group", { gid: 21 })))._tag, "AccessDenied")
     }).pipe(withClock))
@@ -533,10 +534,8 @@ describe("VirtualFileSystem", () => {
         (yield* Effect.flip(caller.setAttributes("/group/child", { mode: 0o2755 })))._tag,
         "AccessDenied"
       )
-      assert.strictEqual(
-        (yield* Effect.flip(caller.setAttributes("/group/child/file", { mode: 0o2644 })))._tag,
-        "InvalidInput"
-      )
+      yield* caller.setAttributes("/group/child/file", { mode: 0o2644 })
+      assert.strictEqual((yield* caller.stat("/group/child/file")).metadata.mode, 0o644)
     }).pipe(withClock))
 
   it.effect("should check requested permissions without touching metadata when access follows a symlink", () =>
@@ -594,7 +593,7 @@ describe("VirtualFileSystem", () => {
       assert.strictEqual(read.accessTimeBeforeRead, before.metadata.atime)
       assert.strictEqual(read.object.metadata.atime, 1_000_000_000n)
       assert.isTrue(VFS.equalsObjectRevision(read.object.revision, (yield* caller.stat("/file")).revision))
-      assert.isFalse(VFS.equalsObjectRevision(read.object.revision, before.revision))
+      assert.isTrue(VFS.equalsObjectRevision(read.object.revision, before.revision))
     }).pipe(withClock))
 
   it.effect("should preserve all attributes when a combined request exceeds the caller's authority", () =>

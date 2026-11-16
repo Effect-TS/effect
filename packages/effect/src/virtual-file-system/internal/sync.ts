@@ -106,6 +106,9 @@ const make = (caller: E.Caller) =>
           const fixed = yield* P.snapshotTruncateOptions(options)
           return (tx: E.Transaction) => A.truncate(tx, selected, amount, fixed)
         })),
+    setHandleAttributes: (handle, attributes, options) =>
+      invokeResult(caller, "setHandleAttributes", [], (work) =>
+        H.prepareCallerAttributes(handle, attributes, options, work)),
     setAttributes: (target, attributes, options) =>
       invokeResult(caller, "setAttributes", [target], () =>
         Result.gen(function*() {
@@ -114,12 +117,14 @@ const make = (caller: E.Caller) =>
           const selected = yield* E.snapshotTargetResult(target)
           const fixed = yield* P.snapshotOptions.setAttributes(options)
           const attrs = yield* P.snapshotAttributes(attributes, "setAttributes")
-          return (tx: E.Transaction) => A.setAttributes(tx, selected, attrs, fixed)
+          return (tx: E.Transaction) =>
+            A.setAttributes(tx, selected, attrs, fixed)
         })),
-    createFile: (target, options) => withOptions(caller, "createFile", target, options, A.createFile),
+    createFile: (target, options) =>
+      withOptions(caller, "createFile", target, options, A.createFile),
     makeDirectory: (target, options) => withOptions(caller, "makeDirectory", target, options, A.makeDirectory),
     makeSymlink: (target, link, options) =>
-      invokeResult(caller, "makeSymlink", [target, link], () =>
+      invokeResult(caller, "makeSymlink", E.symlinkInputs(target, link), () =>
         Result.gen(function*() {
           yield* A.validate("makeSymlink", options)
           const selected = yield* E.snapshotTargetResult(target)

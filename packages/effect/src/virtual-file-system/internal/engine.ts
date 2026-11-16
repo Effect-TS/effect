@@ -20,6 +20,7 @@ export const WRITE_PERMISSION = 2
 export const EXECUTE_PERMISSION = 1
 const STICKY_BIT = 0o1000
 export const SET_GID_BIT = 0o2000
+export const SET_ID_BITS = 0o6000
 
 export interface Binding {
   readonly name: BytePath.BytePath
@@ -225,7 +226,7 @@ export const registerDirectoryHandle = (
   directoryHandles.set(value, state)
 }
 
-const directoryHandleState = (candidate: unknown) =>
+export const directoryHandleState = (candidate: unknown) =>
   typeof candidate === "object" && candidate !== null ? directoryHandles.get(candidate) : undefined
 
 // NOTE: Registration records issued views. Membership proves identity, while the
@@ -266,17 +267,28 @@ export const identityResult = (
   operation: string,
   field: string
 ) =>
-  M.isUint32(input)
+  M.isIdentity(input)
     ? Result.succeed(input)
     : Result.fail(new M.InvalidInput({ operation, field, reason: "range" }))
 
 /** @internal */
+export const groupInheritanceResult = (input: unknown, operation: string) =>
+  input === undefined || input === "setgid" || input === "parent"
+    ? Result.succeed<"setgid" | "parent">(input ?? "setgid")
+    : Result.fail(new M.InvalidInput({ operation, field: "groupInheritance", reason: "malformed" }))
+
+/** @internal */
+export const accessTimeResult = (input: unknown, operation: string) =>
+  input === undefined || input === "strict" || input === "relatime"
+    ? Result.succeed<"strict" | "relatime">(input ?? "strict")
+    : Result.fail(new M.InvalidInput({ operation, field: "accessTime", reason: "malformed" }))
+
+/** @internal */
 export const modeResult = (
   input: unknown,
-  kind: Node["kind"],
   operation: string
 ) => {
-  if (!M.isPermissionMode(input) || (kind !== "directory" && input > 0o777)) {
+  if (!M.isPermissionMode(input)) {
     return Result.fail(new M.InvalidInput({ operation, field: "mode", reason: "unsupportedBits" }))
   }
   return Result.succeed(input)
@@ -354,12 +366,19 @@ export class Engine {
   nextObject = BigInt("2")
   nextBinding = BigInt("1")
 
+  readonly accessTime: "strict" | "relatime"
+  readonly groupInheritance: "setgid" | "parent"
+
   constructor(
     runtime: R.Runtime,
     root: { readonly uid: number; readonly gid: number; readonly mode: number },
-    rootId = BigInt("1")
+    rootId = BigInt("1"),
+    accessTime: "strict" | "relatime" = "strict",
+    groupInheritance: "setgid" | "parent" = "setgid"
   ) {
     this.runtime = runtime
+    this.accessTime = accessTime
+    this.groupInheritance = groupInheritance
     this.inputLimits = Object.freeze({ ioBytes: runtime.limits.ioBytes, pathBytes: runtime.limits.pathBytes })
     this.root = rootId
     this.nextObject = rootId + BigInt("1")
@@ -701,21 +720,32 @@ export class Transaction {
       : Result.fail(new M.AccessDenied({ operation: this.operation, reason: "permission" }))
   }
 
+  creationGroup(parent: DirectoryNode) {
+    return this.engine.groupInheritance === "parent" || (parent.mode & SET_GID_BIT) !== 0
+      ? parent.gid
+      : this.caller.policy.gid
+  }
+
   authorizeCreateResult(parent: DirectoryNode, requested: number | undefined, kind: Node["kind"]) {
     return Result.gen(this, function*() {
       yield* this.requireResult(parent, WRITE_PERMISSION | EXECUTE_PERMISSION)
-      if (requested !== undefined) yield* modeResult(requested, kind, this.operation)
+      if (requested !== undefined) yield* modeResult(requested, this.operation)
       if (
         kind === "directory" && requested !== undefined && (requested & SET_GID_BIT) !== 0 &&
         !this.caller.policy.privileged
       ) {
         const policy = this.caller.policy
-        const gid = (parent.mode & SET_GID_BIT) !== 0 ? parent.gid : policy.gid
+        const gid = this.creationGroup(parent)
         if (gid !== policy.gid && !policy.groups.includes(gid)) {
           return yield* Result.fail(new M.AccessDenied({ operation: this.operation, reason: "ownership" }))
         }
       }
     })
+  }
+
+  fileMode(mode: number, gid: number) {
+    const policy = this.caller.policy
+    return policy.privileged || gid === policy.gid || policy.groups.includes(gid) ? mode : mode & ~SET_GID_BIT
   }
 
   ownsResult(node: Node) {
@@ -831,10 +861,14 @@ export class Transaction {
     return Result.map(this.selectDirectoryRouteResult(selector, state), (route) => route.object)
   }
 
-  consumeLinkResult(state: ResolutionState) {
-    return ++state.follows > this.engine.runtime.limits.symlinkFollows
-      ? Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" }))
-      : Result.succeed(undefined)
+  consumeLinkResult(state: ResolutionState, target: BytePath.BytePath) {
+    if (++state.follows > this.engine.runtime.limits.symlinkFollows) {
+      return Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkLimit" }))
+    }
+    if (BytePath.byteLength(target) === 0) {
+      return Result.fail(new M.NotFound({ operation: this.operation, reason: "missingEntry" }))
+    }
+    return Result.succeed(undefined)
   }
 
   resolveResult(
@@ -930,7 +964,7 @@ export class Transaction {
               return { ...route, mkdirPrefixEnd: component.byteOffset - bytes.byteOffset + component.length }
             }
             if (node.kind === "symlink" && (!terminal || followFinal)) {
-              yield* this.consumeLinkResult(state)
+              yield* this.consumeLinkResult(state, node.target)
               let length = BytePath.byteLength(node.target)
               for (let rest = index + 1; rest < components.length; rest++) length += 1 + components[rest].length
               if (bytes[bytes.length - 1] === CHAR_FORWARD_SLASH) length++
@@ -1076,7 +1110,7 @@ export class Transaction {
         return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "wrongKind" }))
       }
       const state: ResolutionState = { follows: 0 }
-      yield* this.consumeLinkResult(state)
+      yield* this.consumeLinkResult(state, route.object.target)
       return yield* this.resolveResult(route.object.target, true, route.parent.id, state.follows, saved.support, state)
     })
   }
@@ -1108,7 +1142,7 @@ export class Transaction {
       }
       const node = yield* this.getResult(binding.object)
       if (node.kind === "symlink" && followFinal) {
-        yield* this.consumeLinkResult(state)
+        yield* this.consumeLinkResult(state, node.target)
         return yield* this.resolveResult(node.target, true, directory.id, state.follows, [{
           parent: directory.id,
           name: binding.name,
@@ -1214,7 +1248,7 @@ export class Transaction {
           return yield* Result.fail(new M.InvalidResource({ operation: this.operation, reason: "symlinkCycle" }))
         }
         seen.add(routeKey)
-        yield* this.consumeLinkResult(state)
+        yield* this.consumeLinkResult(state, node.target)
         const bytes = BytePath.toBytes(node.target)
         let start = bytes.length
         while (start > 0 && bytes[start - 1] !== CHAR_FORWARD_SLASH) start--
@@ -1367,17 +1401,20 @@ export class Transaction {
     kind: Node["kind"],
     parent: DirectoryNode,
     modeInput: number | undefined,
-    payload?: BytePath.BytePath
+    payload?: BytePath.BytePath,
+    owner?: Pick<M.Attributes, "uid" | "gid">
   ) {
     return Result.gen(this, function*() {
       const policy = this.caller.policy
-      const requested = yield* modeResult(modeInput ?? (kind === "directory" ? 0o777 : 0o666), kind, this.operation)
+      const requested = yield* modeResult(modeInput ?? (kind === "directory" ? 0o777 : 0o666), this.operation)
       const now = DateTime.unixNanoFromNanoseconds(BigInt("0"))
+      const gid = owner?.gid ?? this.creationGroup(parent)
+      const mode = requested & ~policy.umask
       const common: Base = {
         id: this.engine.nextObject++,
-        uid: policy.uid,
-        gid: (parent.mode & SET_GID_BIT) !== 0 ? parent.gid : policy.gid,
-        mode: kind === "symlink" ? 0o777 : requested & ~policy.umask,
+        uid: owner?.uid ?? policy.uid,
+        gid,
+        mode: kind === "symlink" ? 0o777 : kind === "file" ? this.fileMode(mode, gid) : mode,
         nlink: kind === "directory" ? BigInt("2") : BigInt("1"),
         revision: BigInt("1"),
         atime: now,
@@ -1387,14 +1424,14 @@ export class Transaction {
       }
       let node: Node
       if (kind === "directory") {
-        if ((parent.mode & SET_GID_BIT) !== 0) common.mode |= SET_GID_BIT
+        if (this.engine.groupInheritance === "setgid" && (parent.mode & SET_GID_BIT) !== 0) common.mode |= SET_GID_BIT
         node = { ...common, kind, entries: new Map(), namespace: BigInt("1"), parent: parent.id }
         const edited = yield* this.editDirectoryResult(parent.id)
         edited.nlink++
         yield* this.changedResult(parent.id, ["ctime"])
       } else if (kind === "file") node = { ...common, kind, data: new Uint8Array(0) }
       else {
-        if (payload === undefined || BytePath.byteLength(payload) === 0) {
+        if (payload === undefined) {
           return yield* Result.fail(
             new M.InvalidInput({ operation: this.operation, field: "target", reason: "malformed" })
           )
@@ -1512,12 +1549,17 @@ export class Transaction {
           const node = yield* this.editResult(id)
           let changed = false
           for (const field of fields) {
+            if (
+              field === "atime" && fields.size === 1 && engine.accessTime === "relatime" &&
+              node.atime > node.mtime && node.atime > node.ctime &&
+              now - node.atime < BigInt("86400000000000")
+            ) continue
             if (node[field] !== now) {
               node[field] = now
               changed = true
             }
           }
-          if (changed) node.revision++
+          if (changed && (fields.size > 1 || !fields.has("atime"))) node.revision++
         }
       }
       for (const product of this.products) {
@@ -1563,6 +1605,13 @@ export class Transaction {
 // -----------------------------------------------------------------------------
 // Admission and request snapshots
 // -----------------------------------------------------------------------------
+
+// An empty link payload has no admission cost and is never a namespace address.
+/** @internal */
+export const symlinkInputs = (destination: M.EntryTarget, payload: M.Path) =>
+  payload === "" || (BytePath.isBytePath(payload) && BytePath.byteLength(payload) === 0)
+    ? [destination]
+    : [destination, payload]
 
 /** @internal */
 export const addressBytesResult = (

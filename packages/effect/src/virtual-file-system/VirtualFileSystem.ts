@@ -208,7 +208,7 @@ export {
    */
   ListedEntry,
   /**
-   * Complete logical metadata. Object numbers are positive, uid/gid are uint32, and modes reject
+   * Complete logical metadata. Object numbers are positive, uid/gid are nonnegative safe integers, and modes reject
    * unsupported bits.
    *
    * @stability experimental
@@ -349,9 +349,9 @@ export type {
    */
   AccessOptions,
   /**
-   * Concrete atomic destination content-and-times publication. Existing regular files retain identity,
-   * grants, birthtime, mode and ownership. New objects use ordinary supplied source mode bits through
-   * caller umask and inheritance. All requested times and content authorize against prestate.
+   * Publishes content and optional exact times together. An existing regular file retains its identity,
+   * grants, birthtime and ownership. Publishing nonempty content or clearing a nonempty file clears its
+   * set-user-ID and set-group-ID bits. Creation applies the caller's umask and group inheritance.
    *
    * @stability experimental
    * @category models
@@ -359,7 +359,7 @@ export type {
    */
   AtomicCopyOptions,
   /**
-   * Atomic symlink-copy options. Symlink mode is always 0777 and ignores umask.
+   * Atomic symlink-copy options. New symlinks have mode 0777 regardless of umask.
    *
    * @stability experimental
    * @category models
@@ -375,8 +375,8 @@ export type {
    */
   AttributeOptions,
   /**
-   * Atomic attribute request. Every field is authorized against prestate; no-follow symlink chmod is
-   * invalid.
+   * Applies mode, ownership, size and timestamps in one transaction. Each requested field requires
+   * authority on the original object. With followFinalSymlink disabled, mode updates affect the link itself.
    *
    * @stability experimental
    * @category models
@@ -448,7 +448,7 @@ export type {
    */
   CreateOptions,
   /**
-   * Copied uint32 identity. Supplementary groups default empty; privilege defaults false. uid zero has no
+   * Copied nonnegative safe-integer identity. Supplementary groups default empty; privilege defaults false. uid zero has no
    * implicit privilege.
    *
    * @stability experimental
@@ -609,7 +609,8 @@ export type {
    */
   ObjectReference,
   /**
-   * Opaque object revision bound to its object and instance.
+   * Opaque object revision bound to its object and instance. Automatic read access-time updates do not advance it;
+   * explicit timestamp and other mutations retain their revision checks and advancement.
    *
    * @stability experimental
    * @category models
@@ -635,8 +636,8 @@ export type {
    * With truncate true, expectedRevision guards the resolved file before truncation, including through a
    * symlink. Entry conditions independently guard its named binding. Authorization precedes guard
    * evaluation; all guards, truncation and handle acquisition share one atomic publication boundary. A
-   * mismatch returns ConditionFailed without truncation or a delivered handle. Check even an empty file;
-   * successful size-preserving truncation changes no timestamps or revisions.
+   * mismatch returns ConditionFailed without truncation or a delivered handle. The guard also applies to
+   * empty files. Truncating an empty file updates metadata only when it clears set-ID bits.
    *
    * **Gotchas**
    *
@@ -765,8 +766,8 @@ export type {
    */
   PathOpenOptions,
   /**
-   * Followed-path whole-file options. Object revisions guard the resolved object; named slot and parent
-   * conditions require an explicit EntryAddress.
+   * Whole-file path options. Writes follow the final symlink by default. Set replaceFinalSymlink to
+   * replace its binding with a regular file. Named slot and parent conditions require an explicit EntryAddress.
    *
    * @stability experimental
    * @category models
@@ -1138,15 +1139,19 @@ export const make: (
       Result.match(
         Result.try(() =>
           Result.gen(function*() {
-            yield* E.checkOptionsResult(configuration, ["limits", "root"], "make")
+            yield* E.checkOptionsResult(configuration, ["limits", "root", "accessTime", "groupInheritance"], "make")
+            const groupInheritance = yield* E.groupInheritanceResult(configuration?.groupInheritance, "make")
+            const accessTime = yield* E.accessTimeResult(configuration?.accessTime, "make")
             const limits = yield* R.configureResult(configuration?.limits)
             yield* E.checkOptionsResult(configuration?.root, ["uid", "gid", "mode"], "make")
             const root = {
               uid: yield* E.identityResult(configuration?.root?.uid ?? 0, "make", "uid"),
               gid: yield* E.identityResult(configuration?.root?.gid ?? 0, "make", "gid"),
-              mode: yield* E.modeResult(configuration?.root?.mode ?? DEFAULT_ROOT_MODE, "directory", "make")
+              mode: yield* E.modeResult(configuration?.root?.mode ?? DEFAULT_ROOT_MODE, "make")
             }
-            return yield* ownerFor(new E.Engine(new R.Runtime(limits, clock), root))
+            return yield* ownerFor(
+              new E.Engine(new R.Runtime(limits, clock), root, undefined, accessTime, groupInheritance)
+            )
           })
         ),
         { onFailure: R.failure, onSuccess: Effect.fromResult }
@@ -1241,7 +1246,9 @@ export const layer = (
     Effect.gen(function*() {
       const owner = yield* make({
         ...(configuration.limits === undefined ? {} : { limits: configuration.limits }),
-        ...(configuration.root === undefined ? {} : { root: configuration.root })
+        ...(configuration.root === undefined ? {} : { root: configuration.root }),
+        ...(configuration.accessTime === undefined ? {} : { accessTime: configuration.accessTime }),
+        ...(configuration.groupInheritance === undefined ? {} : { groupInheritance: configuration.groupInheritance })
       })
       return yield* owner.authorize(configuration.caller)
     })
@@ -1341,7 +1348,7 @@ const write = <Target extends M.Target, Operation extends "writeFile" | "publish
 const Umask = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o777 }))
 
 const isBoolean = Schema.is(Schema.Boolean)
-const isGroups = Schema.is(Schema.Array(M.Uint32))
+const isGroups = Schema.is(Schema.Array(M.Identity))
 const isUmask = Schema.is(Umask)
 
 const credentials = (
@@ -1406,6 +1413,14 @@ const makeCaller = (caller: E.Caller) => {
             return (tx: E.Transaction) => A.truncate(tx, copy, length, fixed)
           })
       ),
+    setHandleAttributes: (handle, attributes, options) =>
+      E.runAtomicResult(
+        caller,
+        "setHandleAttributes",
+        [],
+        () => A.validateAttributes(attributes, "setHandleAttributes"),
+        (work) => H.prepareCallerAttributes(handle, attributes, options, work)
+      ),
     setAttributes: (target, attributes, options) =>
       E.runAtomicResult(caller, "setAttributes", [target], () =>
         Result.gen(function*() {
@@ -1426,7 +1441,7 @@ const makeCaller = (caller: E.Caller) => {
       E.runAtomicResult(
         caller,
         "makeSymlink",
-        [target, linkTarget],
+        () => Result.succeed(E.symlinkInputs(target, linkTarget)),
         () => A.validate("makeSymlink", options),
         () =>
           Result.gen(function*() {
@@ -1491,7 +1506,7 @@ const makeCaller = (caller: E.Caller) => {
       E.runAtomicResult(
         caller,
         "publishCopiedSymlink",
-        [destination, target],
+        () => Result.succeed(E.symlinkInputs(destination, target)),
         () => A.validate("publishCopiedSymlink", options),
         () =>
           Result.gen(function*() {

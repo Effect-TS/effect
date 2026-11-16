@@ -92,13 +92,13 @@ const Count = Schema.Natural
 const PositiveCount = Count.check(Schema.isGreaterThan(0))
 
 /** @internal */
-export const Uint32 = Schema.Number.check(Schema.isUint32())
+export const Identity = Schema.Natural.check(Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER))
 
 /** @internal */
-export const isUint32 = Schema.is(Uint32)
+export const isIdentity = Schema.is(Identity)
 
 /** @internal */
-export const PermissionMode = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o3777 }))
+export const PermissionMode = Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 0o7777 }))
 
 /** @internal */
 export const isPermissionMode = Schema.is(PermissionMode)
@@ -135,8 +135,6 @@ const Namespace = Schema.declare<NamespaceRevision>((value): value is NamespaceR
   tokenInfo(value)?.kind === "namespace"
 )
 
-const NonEmptyPath = Schema.BytePath.check(Schema.makeFilter((path) => BytePath.byteLength(path) > 0))
-
 export const Name = Schema.BytePath.check(Schema.makeFilter((path) => {
   const bytes = BytePath.toBytes(path)
   return bytes.length > 0 && !bytes.includes(CHAR_FORWARD_SLASH) &&
@@ -149,15 +147,11 @@ const sortedNames = (names: ReadonlyArray<BytePath.BytePath>) =>
 
 const validMetadata = (metadata: {
   readonly kind: "file" | "directory" | "symlink"
-  readonly mode: number
   readonly size: ByteSize.ByteSize
   readonly nlink: bigint
 }) =>
-  metadata.kind === "file" ?
-    metadata.mode <= 0o777 :
-    metadata.kind === "symlink" ?
-    metadata.mode === 0o777 && metadata.size > bigint0 :
-    metadata.size === bigint0 && (metadata.nlink === bigint0 || metadata.nlink >= bigint2)
+  metadata.kind !== "directory" ||
+  (metadata.size === bigint0 && (metadata.nlink === bigint0 || metadata.nlink >= bigint2))
 
 const coherentObservation = (observation: {
   readonly reference: ObjectReference
@@ -231,8 +225,8 @@ export type EntryTarget = Path | EntryAddress
 export const Metadata = Schema.Struct({
   kind: Schema.Literals(["file", "directory", "symlink"]),
   objectNumber: PositiveBigInt,
-  uid: Uint32,
-  gid: Uint32,
+  uid: Identity,
+  gid: Identity,
   mode: PermissionMode,
   atime: Schema.UnixNano,
   mtime: Schema.UnixNano,
@@ -408,12 +402,19 @@ export type HardLinkSource = { readonly reference: ObjectReference } | {
   readonly conditions?: EntryConditions | undefined
 }
 
+/**
+ * Resizing a regular file or setting its ownership clears set-ID bits unless a mode is supplied.
+ * Timestamps set to "now" share the transaction clock.
+ * A write-authorized non-owner may request both times as "now". Literal or mixed timestamp updates require ownership.
+ */
 export interface Attributes {
+  /** Resizes a regular file atomically; file-handle updates preserve cursors and use open-time write access. */
+  readonly size?: ByteSize.Input | undefined
   readonly mode?: number | undefined
   readonly uid?: number | undefined
   readonly gid?: number | undefined
-  readonly atime?: DateTime.UnixNano | undefined
-  readonly mtime?: DateTime.UnixNano | undefined
+  readonly atime?: DateTime.UnixNano | "now" | undefined
+  readonly mtime?: DateTime.UnixNano | "now" | undefined
 }
 
 export interface AttributeOptions extends RevisionCondition {
@@ -421,6 +422,12 @@ export interface AttributeOptions extends RevisionCondition {
 }
 
 export interface OpenOptions extends RevisionCondition {
+  /** Initial ownership on creation. Unprivileged callers may select their own uid and a member group. */
+  readonly owner?: Pick<Attributes, "uid" | "gid"> | undefined
+  /** Zero-filled length on creation. Existing files ignore the initial size. */
+  readonly initialSize?: ByteSize.Input | undefined
+  /** Exact initial times when creating a file; an existing file retains its timestamps. Requires creation intent. */
+  readonly preserveTimes?: { readonly atime: DateTime.UnixNano; readonly mtime: DateTime.UnixNano } | undefined
   readonly access?: typeof OpenAccess["Type"] | undefined
   readonly create?: typeof Creation["Type"] | undefined
   readonly append?: boolean | undefined
@@ -435,6 +442,10 @@ export interface OpenOptions extends RevisionCondition {
 }
 
 export interface WriteFileOptions extends RevisionCondition {
+  /** Final mode to publish with the bytes, subject to the same ownership and group checks as chmod. */
+  readonly finalMode?: number | undefined
+  /** Replace the final symbolic link itself with a regular file, retaining any other links to it. */
+  readonly replaceFinalSymlink?: boolean | undefined
   readonly placement?: "replace" | "start" | "append" | undefined
   readonly access?: typeof WriteAccess["Type"] | undefined
   readonly create?: typeof Creation["Type"] | undefined
@@ -448,6 +459,8 @@ export interface CreateOptions {
 }
 
 export interface MkdirOptions extends CreateOptions {
+  /** Exact times for a newly created final directory; existing directories and recursive prefixes are unchanged. */
+  readonly preserveTimes?: { readonly atime: DateTime.UnixNano; readonly mtime: DateTime.UnixNano } | undefined
   readonly recursive?: boolean | undefined
 }
 
@@ -689,6 +702,14 @@ export interface CallerOptions {
 }
 
 export interface Configuration {
+  /**
+   * By default, children inherit the parent group only in setgid directories, where new directories
+   * also inherit the setgid bit. With "parent", children always inherit the parent group and their
+   * mode comes from the creation request. An explicitly authorized file owner takes precedence.
+   */
+  readonly groupInheritance?: "setgid" | "parent" | undefined
+  /** Read access-time policy. Defaults to "strict"; "relatime" refreshes after metadata changes or 24 hours. */
+  readonly accessTime?: "strict" | "relatime" | undefined
   readonly limits?: LimitOptions | undefined
   readonly root?: {
     readonly uid?: number | undefined
@@ -698,6 +719,10 @@ export interface Configuration {
 }
 
 export interface RestoreOptions {
+  /** Group policy for entries created after restore. Existing ownership and modes are preserved. */
+  readonly groupInheritance?: Configuration["groupInheritance"]
+  /** Instance policy, independent of the captured metadata. Defaults to "strict". */
+  readonly accessTime?: "strict" | "relatime" | undefined
   readonly limits?: LimitOptions | undefined
 }
 
@@ -713,8 +738,8 @@ export interface CaptureTraversalOptions {
 
 export const SemanticMetadata = Schema.Struct({
   objectNumber: PositiveBigInt,
-  uid: Uint32,
-  gid: Uint32,
+  uid: Identity,
+  gid: Identity,
   mode: PermissionMode,
   atime: Schema.UnixNano,
   mtime: Schema.UnixNano,
@@ -745,7 +770,7 @@ export const FileRecord = Schema.TaggedStruct("file", {
   parentId: PositiveBigInt,
   name: Name,
   data: Schema.Uint8Array.check(Schema.makeFilter((value) => Result.isSuccess(Bytes.byteLength(value)))),
-  metadata: SemanticMetadata.check(Schema.makeFilter((metadata) => metadata.mode <= 0o777))
+  metadata: SemanticMetadata
 })
 
 export type FileRecord = typeof FileRecord["Type"]
@@ -754,8 +779,8 @@ export const SymlinkRecord = Schema.TaggedStruct("symlink", {
   id: PositiveBigInt,
   parentId: PositiveBigInt,
   name: Name,
-  target: NonEmptyPath,
-  metadata: SemanticMetadata.check(Schema.makeFilter((metadata) => metadata.mode === 0o777))
+  target: Schema.BytePath,
+  metadata: SemanticMetadata
 })
 
 export type SymlinkRecord = typeof SymlinkRecord["Type"]
@@ -807,13 +832,17 @@ type Scoped<A> = Effect.Effect<A, OperationError, Scope.Scope>
 
 type SyncResult<A> = Result.Result<A, OperationError>
 
-export type ReferenceOpenOptions = Omit<OpenOptions, "create" | "mode" | "conditions"> & {
-  readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
-}
+export type ReferenceOpenOptions =
+  & Omit<OpenOptions, "create" | "mode" | "conditions" | "preserveTimes" | "initialSize" | "owner">
+  & {
+    readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
+  }
 
-export type ReferenceWriteFileOptions = Omit<WriteFileOptions, "create" | "mode" | "conditions"> & {
-  readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
-}
+export type ReferenceWriteFileOptions =
+  & Omit<WriteFileOptions, "create" | "mode" | "conditions" | "replaceFinalSymlink">
+  & {
+    readonly create?: Extract<typeof Creation["Type"], "existing"> | undefined
+  }
 
 export interface AccessOptions {
   readonly read?: boolean | undefined
@@ -945,7 +974,7 @@ export interface OperationFiles {
     data: Uint8Array,
     options?: AtomicCopyOptions
   ) => Fx<ObjectObservation>
-  /** Atomically publishes a literal copied link and optional exact times, preserving the fixed symlink mode. */
+  /** Atomically publishes a literal copied link and optional exact times, with initial mode 0777. */
   readonly publishCopiedSymlink: (
     destination: OperationEntryTarget,
     target: BytePath.BytePath,
@@ -1068,6 +1097,16 @@ export interface VirtualFileSystem {
   readonly truncate: (target: Target, length: ByteSize.Input, options?: RevisionCondition) => Fx<void>
   /** Publishes all changed attributes atomically after checking every requested field against prestate. */
   readonly setAttributes: (target: Target, attributes: Attributes, options?: AttributeOptions) => Fx<void>
+  /**
+   * Updates a retained file or directory using this caller's permissions, including current write permission for file resize.
+   * Linked objects must be reachable by both the acting caller and the opening policy. Unlinked objects
+   * require both policies to cover the whole filesystem.
+   */
+  readonly setHandleAttributes: (
+    handle: FileHandle | DirectoryHandle,
+    attributes: Attributes,
+    options?: RevisionCondition
+  ) => Fx<void>
   /** Creates an exclusive empty regular file. Default mode is 0666 before caller umask. */
   readonly createFile: (target: EntryTarget, options?: CreateOptions) => Fx<ObjectObservation>
   /** Creates real directories with default mode 0777 before umask. Recursive creation is one atomic transition. */
@@ -1076,9 +1115,9 @@ export interface VirtualFileSystem {
   /** Creates one exclusive directory and returns its original binding atomically. */
   readonly makeDirectoryEntry: (
     target: EntryTarget,
-    options?: CreateOptions
+    options?: Omit<MkdirOptions, "recursive">
   ) => Fx<PresentEntry & { readonly object: DirectoryObservation }>
-  /** Creates an exclusive symlink with exact nonempty NUL-free target bytes, fixed 0777 and inherited gid. */
+  /** Creates an exclusive symlink with exact NUL-free target bytes, initial mode 0777 and inherited gid. Following an empty target fails with NotFound. */
   readonly makeSymlink: (target: EntryTarget, linkTarget: Path, options?: AbsentConditions) => Fx<ObjectObservation>
   /** Links a regular file or symlink, never a directory. Relative symlinks resolve through each followed entry. */
   readonly makeHardLink: (
@@ -1189,6 +1228,7 @@ type AtomicMethods = Pick<
   | "readDirectoryEntries"
   | "truncate"
   | "setAttributes"
+  | "setHandleAttributes"
   | "createFile"
   | "makeDirectory"
   | "makeSymlink"

@@ -2,6 +2,7 @@ import * as BytePath from "../../BytePath.ts"
 import type * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
 import * as Result from "../../Result.ts"
+import * as Schema from "../../Schema.ts"
 import * as Scope from "../../Scope.ts"
 import * as A from "./atomic.ts"
 import * as E from "./engine.ts"
@@ -16,12 +17,15 @@ import * as R from "./runtime.ts"
 const CHAR_DOT = 46
 const CHAR_FORWARD_SLASH = 47
 
+const isUnixNano = Schema.is(Schema.UnixNano)
+
 const zero = BigInt(0)
 const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
 
 type HandleBody<A> = (tx: E.Transaction) => Result.Result<A, M.OperationError>
 
 const effects = new WeakMap<E.FileState, M.FileHandle>()
+const states = new WeakMap<object, E.FileState>()
 const synchronous = new WeakMap<E.FileState, M.SyncFileHandle>()
 
 interface DirectoryState {
@@ -225,6 +229,7 @@ const prepareWrite = (
         if (edited.kind !== "file") {
           return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
         }
+        edited.mode &= ~E.SET_ID_BITS
         edited.data = output
         yield* tx.changedResult(file.id, ["mtime", "ctime"])
         const next = state.append
@@ -253,13 +258,14 @@ const prepareTruncate = (
         const file = yield* node(tx, state)
         yield* tx.revisionResult(file, fixedOptions)
         const size = yield* candidate(tx, length)
-        if (file.data.length !== size) {
+        if (file.data.length !== size || (file.mode & E.SET_ID_BITS) !== 0) {
           const output = new Uint8Array(size)
           output.set(file.data.subarray(0, size))
           const edited = yield* tx.editResult(file.id)
           if (edited.kind !== "file") {
             return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
           }
+          edited.mode &= ~E.SET_ID_BITS
           edited.data = output
           yield* tx.changedResult(file.id, ["mtime", "ctime"])
         }
@@ -309,7 +315,47 @@ const prepareAttributes = (
     yield* A.validateAttributes(attributes, work.operation)
     const fixed = yield* P.snapshotAttributes(attributes, work.operation)
     const revision = yield* revisionOptions(options, work.operation)
-    return (tx: E.Transaction) => Result.flatMap(node(tx, state), (file) => A.attributesFor(tx, file, fixed, revision))
+    return (tx: E.Transaction) =>
+      Result.flatMap(node(tx, state), (file) => A.attributesFor(tx, file, fixed, revision, state.write))
+  })
+
+/** @internal */
+export const prepareCallerAttributes = (
+  handle: M.FileHandle | M.DirectoryHandle,
+  attributes: M.Attributes,
+  options: M.RevisionCondition | undefined,
+  work: R.Work
+) =>
+  Result.gen(function*() {
+    const operation = work.operation
+    const state = states.get(handle) ?? E.directoryHandleState(handle)
+    if (state === undefined) {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "handle", reason: "malformed" }))
+    }
+    if (state.caller.runtime !== work.ticket.runtime) {
+      return yield* Result.fail(new M.InvalidResource({ operation, reason: "foreign" }))
+    }
+    const fixed = yield* P.snapshotAttributes(attributes, operation)
+    const revision = yield* revisionOptions(options, operation)
+    return (tx: E.Transaction) =>
+      Result.gen(function*() {
+        yield* work.borrowResult(state.resource)
+        const object = yield* tx.getResult(state.id)
+        const checkVisibility = (view: E.Transaction) =>
+          Result.gen(function*() {
+            if (object.nlink !== zero) {
+              yield* view.referenceRouteResult(view.engine.reference(object.id))
+              return
+            }
+            yield* view.authorityResult()
+            if (view.caller.policy.root !== view.engine.root) {
+              return yield* Result.fail(new M.AccessDenied({ operation, reason: "confinement" }))
+            }
+          })
+        yield* checkVisibility(tx)
+        if (tx.caller.policy !== state.caller.policy) yield* checkVisibility(new E.Transaction(state.caller, work))
+        yield* A.attributesFor(tx, object, fixed, revision)
+      })
   })
 
 // -----------------------------------------------------------------------------
@@ -393,6 +439,7 @@ const effectFileHandle = (state: E.FileState) => {
         ))
   })
   effects.set(state, handle)
+  states.set(handle, state)
   return handle
 }
 
@@ -450,6 +497,9 @@ const validateOpen = (
       "truncateCursor",
       "noFollow",
       "mode",
+      "initialSize",
+      "owner",
+      "preserveTimes",
       "conditions",
       "expectedRevision"
     ], operation)
@@ -480,7 +530,23 @@ const validateOpen = (
     if (options?.expectedRevision !== undefined && (!options.truncate || create === "exclusive")) {
       return yield* Result.fail(new M.InvalidInput({ operation, field: "expectedRevision", reason: "malformed" }))
     }
-    if (options?.mode !== undefined) yield* E.modeResult(options.mode, "file", operation)
+    if (options?.mode !== undefined) yield* E.modeResult(options.mode, operation)
+    const owner = yield* E.checkOptionsResult(options?.owner, ["uid", "gid"], operation)
+    if (owner !== undefined && create === "existing") {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "owner", reason: "malformed" }))
+    }
+    const uid = owner?.uid === undefined ? undefined : yield* E.identityResult(owner.uid, operation, "uid")
+    const gid = owner?.gid === undefined ? undefined : yield* E.identityResult(owner.gid, operation, "gid")
+    const initialSize = options?.initialSize
+    if (initialSize !== undefined && create === "existing") {
+      return yield* Result.fail(new M.InvalidInput({ operation, field: "initialSize", reason: "malformed" }))
+    }
+    const preserveTimes = yield* P.snapshotTimes(options?.preserveTimes, operation)
+    if (preserveTimes !== undefined) {
+      if (!isUnixNano(preserveTimes.atime) || !isUnixNano(preserveTimes.mtime) || create === "existing") {
+        return yield* Result.fail(new M.InvalidInput({ operation, field: "preserveTimes", reason: "malformed" }))
+      }
+    }
     if (
       M.isToken(target) &&
       (options?.conditions !== undefined || options?.mode !== undefined || create !== "existing")
@@ -493,6 +559,10 @@ const validateOpen = (
     yield* A.condition(conditions, operation)
     return {
       mode: options?.mode,
+      uid,
+      gid,
+      initialSize,
+      preserveTimes,
       conditions,
       expectedRevision: options?.expectedRevision,
       access,
@@ -517,6 +587,7 @@ const openNode = (
       ? E.WRITE_PERMISSION
       : (E.READ_PERMISSION | E.WRITE_PERMISSION)
     const resolution: E.ResolutionState = { follows: 0 }
+    let created = false
     let selected: E.Node
     if (M.isToken(target)) {
       selected = (yield* tx.targetResult(target, true, resolution)).object
@@ -569,7 +640,23 @@ const openNode = (
         if (options.expectedRevision !== undefined) {
           return yield* Result.fail(new M.ConditionFailed({ operation: tx.operation, reason: "objectRevision" }))
         }
-        selected = yield* tx.createResult("file", slot.parent, options.mode)
+        const policy = tx.caller.policy
+        if (
+          !policy.privileged && (
+            (options.uid !== undefined && options.uid !== policy.uid) ||
+            (options.gid !== undefined && options.gid !== policy.gid && !policy.groups.includes(options.gid))
+          )
+        ) return yield* Result.fail(new M.AccessDenied({ operation: tx.operation, reason: "ownership" }))
+        selected = yield* tx.createResult("file", slot.parent, options.mode, undefined, options)
+        created = true
+        if (options.initialSize !== undefined && selected.kind === "file") {
+          const size = yield* R.sizeResult(options.initialSize, tx.operation, "initialSize")
+          selected.data = new Uint8Array(yield* candidate(tx, size))
+        }
+        if (options.preserveTimes !== undefined) {
+          yield* tx.explicitTimeResult(selected.id, "atime", options.preserveTimes.atime)
+          yield* tx.explicitTimeResult(selected.id, "mtime", options.preserveTimes.mtime)
+        }
         yield* tx.insertResult(slot.parent.id, slot.name, selected.id)
       }
     }
@@ -582,13 +669,14 @@ const openNode = (
         return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
       }
     }
-    if (options.truncate) {
+    if (options.truncate && !created) {
       yield* candidate(tx, zero)
-      if (selected.data.length > 0) {
+      if (selected.data.length > 0 || (selected.mode & E.SET_ID_BITS) !== 0) {
         const edited = yield* tx.editResult(selected.id)
         if (edited.kind !== "file") {
           return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
         }
+        edited.mode &= ~E.SET_ID_BITS
         edited.data = new Uint8Array(0)
         yield* tx.changedResult(selected.id, ["mtime", "ctime"])
       }

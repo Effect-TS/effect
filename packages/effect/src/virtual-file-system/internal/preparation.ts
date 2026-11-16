@@ -98,7 +98,8 @@ export function snapshotConditions(
 // Operation options
 // -----------------------------------------------------------------------------
 
-const snapshotTimes = (
+/** @internal */
+export const snapshotTimes = (
   input: M.AtomicCopyOptions["preserveTimes"],
   operation: string
 ) =>
@@ -148,6 +149,8 @@ export const snapshotOptions: {
       yield* checkShape(input, A.optionFields.writeFile, "writeFile")
       return {
         placement: input.placement,
+        finalMode: input.finalMode,
+        replaceFinalSymlink: input.replaceFinalSymlink,
         access: input.access,
         create: input.create,
         mode: input.mode,
@@ -156,7 +159,16 @@ export const snapshotOptions: {
       }
     }),
   createFile: (input) => createOptions(input, "createFile"),
-  makeDirectoryEntry: (input) => createOptions(input, "makeDirectoryEntry"),
+  makeDirectoryEntry: (input): Result.Result<Complete<Omit<M.MkdirOptions, "recursive">> | undefined, M.InvalidInput> =>
+    Result.gen(function*() {
+      if (input === undefined) return undefined
+      yield* checkShape(input, A.optionFields.makeDirectoryEntry, "makeDirectoryEntry")
+      return {
+        mode: input.mode,
+        conditions: yield* snapshotConditions(input.conditions, "makeDirectoryEntry"),
+        preserveTimes: yield* snapshotTimes(input.preserveTimes, "makeDirectoryEntry")
+      }
+    }),
   makeDirectory: (input): Result.Result<Complete<M.MkdirOptions> | undefined, M.InvalidInput> =>
     Result.gen(function*() {
       if (input === undefined) return undefined
@@ -164,7 +176,8 @@ export const snapshotOptions: {
       return {
         mode: input.mode,
         conditions: yield* snapshotConditions(input.conditions, "makeDirectory"),
-        recursive: input.recursive
+        recursive: input.recursive,
+        preserveTimes: yield* snapshotTimes(input.preserveTimes, "makeDirectory")
       }
     }),
   makeSymlink: (input) => snapshotConditions(input, "makeSymlink"),
@@ -271,5 +284,12 @@ export const snapshotAttributes = (
 ): Result.Result<Complete<M.Attributes>, M.InvalidInput> =>
   Result.gen(function*() {
     yield* checkShape(input, A.attributeFields, operation)
-    return { mode: input.mode, uid: input.uid, gid: input.gid, atime: input.atime, mtime: input.mtime }
+    return {
+      size: input.size,
+      mode: input.mode,
+      uid: input.uid,
+      gid: input.gid,
+      atime: input.atime,
+      mtime: input.mtime
+    }
   })
