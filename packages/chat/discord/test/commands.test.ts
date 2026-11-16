@@ -51,7 +51,12 @@ const reply = (command: ChatInteraction.CommandInvoked): ChatInteraction.Command
 
 const handler = ChatInteraction.Handler.of({
   click: () => Effect.succeed(ChatInteraction.ack),
-  submit: () => Effect.succeed(ChatInteraction.close),
+  submit: (submitted) =>
+    Effect.succeed(
+      submitted.values.note === "err"
+        ? ChatInteraction.errors({ note: "That is the error you asked for" })
+        : ChatInteraction.close
+    ),
   command: (command) => Effect.succeed(reply(command)),
   refused: (_, error) => Effect.die(error)
 })
@@ -59,18 +64,25 @@ const handler = ChatInteraction.Handler.of({
 const normalize = (payload: unknown) => Option.getOrThrow(DiscordChat.normalizeInteraction(payload))
 
 describe("recorded slash commands", () => {
-  it.effect("answers each command with the callback Discord took", () =>
+  it.effect("answers each command, and the submits of its modal, with the callback Discord took", () =>
     Effect.gen(function*() {
-      for (const what of ["private", "public", "mention", "modal", "defer", "deferPublic"]) {
+      const answered = [
+        ...["private", "public", "mention", "modal", "defer", "deferPublic"].map((what) =>
+          [what, recorded.commands[what], recorded.callbacks[what].payload] as const
+        ),
+        // Discord has no field errors, so the errors go out as a private message that notifies nobody.
+        ["submitErrors", recorded.commandModal.submitErrors, recorded.commandModal.errorsCallback.payload] as const,
+        ["submitClose", recorded.commandModal.submitClose, recorded.commandModal.closeCallback.payload] as const
+      ]
+      for (const [what, payload, callback] of answered) {
         const fake = makeFake({ createInteractionResponse: () => Effect.succeed(null) })
-        const payload = recorded.commands[what]
         yield* Effect.flatMap(DiscordChat.DiscordChat, (discord) => discord.interaction(payload)).pipe(
           Effect.provideService(ChatInteraction.Handler, handler),
           Effect.provide(discordLayer(fake))
         )
         assert.deepStrictEqual(
           fake.called("createInteractionResponse").map(([id, token, options]) => [id, token, options.payload]),
-          [[payload.id, "<redacted>", recorded.callbacks[what].payload]],
+          [[payload.id, "<redacted>", callback]],
           what
         )
       }

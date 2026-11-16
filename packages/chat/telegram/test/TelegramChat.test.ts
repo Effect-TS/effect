@@ -281,11 +281,16 @@ it.effect("sends business and channel direct-message updates to onUnhandled, and
     const api = makeApi()
     const recorder = makeRecorder()
     const business = { message_id: 3, date: 1, chat: { id: 1, type: "private" }, business_connection_id: "b" }
+    const excluded = [
+      messageUpdate({ text: "hi", business_connection_id: "b" }),
+      messageUpdate({ text: "hi", chat: { id: chatId, type: "supergroup", is_direct_messages: true } })
+    ]
+    // The pure normalizer leaves them out too, not only receive.
+    assert.deepStrictEqual(excluded.map((update) => TelegramChat.normalize(update, context)), [[], []])
     yield* receive(
       api,
       recorder,
-      messageUpdate({ text: "hi", business_connection_id: "b" }),
-      messageUpdate({ text: "hi", chat: { id: chatId, type: "supergroup", is_direct_messages: true } }),
+      ...excluded,
       callbackUpdate({ ...business, reply_markup: { inline_keyboard: [[{ text: "a", callback_data: "a" }]] } }, "a")
     )
     assert.strictEqual(recorder.unhandled.length, 3)

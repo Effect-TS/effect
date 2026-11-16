@@ -481,6 +481,13 @@ describe("nativeStream", () => {
         yield* native.stop(replyThread, ts, { end: "rotating" })
         // Another reply in the thread starts and appends at once.
         yield* native.start(replyThread, { markdown: "x", recipient })
+        assert.deepStrictEqual(fake.called("chat.startStream")[0].params, {
+          channel,
+          thread_ts: root,
+          recipient_user_id: recipient,
+          recipient_team_id: team,
+          markdown_text: "x"
+        })
         yield* native.append(replyThread, other, "y", { flush: true })
         assert.strictEqual(fake.called("chat.appendStream").length, 2)
         // The reply's next part waits for the retry-after.

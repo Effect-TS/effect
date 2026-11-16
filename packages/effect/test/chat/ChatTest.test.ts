@@ -192,7 +192,7 @@ describe("ChatTest", () => {
       assert.strictEqual(failure.actual, "an empty messageId")
     }))
 
-  it.effect("repliesToSelf is true only for a reply to the bot's message, and is not a mention", () =>
+  it.effect("repliesToSelf is true only for a reply to the bot's message; checkMessage rejects bad replyTo and mentions", () =>
     Effect.gen(function*() {
       const test = yield* ChatTest.ChatTest
       const chat = yield* Chat.Chat
@@ -214,6 +214,15 @@ describe("ChatTest", () => {
         )
         assert.isTrue(Exit.isFailure(exit))
       }
+      // It also rejects a mention whose slice is not its token.
+      const mentioning = message(yield* test.userPosts(thread, { text: "hi", mentionsSelf: true }))
+      yield* ChatTest.checkMessage(mentioning, { platform: "test", parseMention })
+      const shifted = {
+        ...mentioning,
+        mentions: mentioning.mentions.map((mention) => ({ ...mention, start: mention.start + 1 }))
+      }
+      const exit = yield* Effect.exit(ChatTest.checkMessage(shifted, { platform: "test", parseMention }))
+      assert.isTrue(Exit.isFailure(exit))
     }).pipe(Effect.provide(ChatTest.layer())))
 
   it.effect("ChatHandler.layer drops the bot's own messages unless deliverSelf", () =>

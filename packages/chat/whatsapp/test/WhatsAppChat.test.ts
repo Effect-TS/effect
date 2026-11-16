@@ -138,6 +138,15 @@ describe("post", () => {
           "duplicate_label"
         ],
         [post({ markdown: "x", actions: [button("a\u241F", "A")] }), "InvalidRequest", "invalid_action_id"],
+        // The body is the text, "\n\n" and "Docs: https://example.com": 1,027 units, over the 1,024 of reply buttons.
+        [
+          post({
+            markdown: "x".repeat(1000),
+            actions: [button("a", "Yes"), { _tag: "LinkButton", label: "Docs", url: "https://example.com" }]
+          }),
+          "TooLarge",
+          "message_too_long"
+        ],
         // The wire id "bx\u241F" + 126 "é" is 257 UTF-8 bytes, though within actionDataLength.
         [
           post({ markdown: "x", actions: [button("x", "Yes", "é".repeat(126))] }),
@@ -256,6 +265,7 @@ const deliver = Effect.fnUntraced(function*(
   const signature = options?.signature ?? (yield* Effect.promise(() => sign(body)))
   const verify = yield* makeVerifier(Redacted.make(secret)).pipe(Effect.provide(NodeCrypto.layerMac))
   const seen: Array<string> = []
+  const clicks: Array<ChatInteraction.ButtonClicked | ChatInteraction.SelectChanged> = []
   const refused: Array<ChatError> = []
   const response = yield* handleRequest(
     HttpServerRequest.fromWeb(
@@ -277,14 +287,15 @@ const deliver = Effect.fnUntraced(function*(
   ).pipe(Effect.provideService(
     ChatInteraction.Handler,
     ChatInteraction.Handler.of({
-      click: (event) => Effect.sync(() => (seen.push(event._tag), options?.onClick ?? ChatInteraction.ack)),
+      click: (event) =>
+        Effect.sync(() => (seen.push(event._tag), clicks.push(event), options?.onClick ?? ChatInteraction.ack)),
       submit: () => Effect.succeed(ChatInteraction.close),
       command: () => Effect.succeed(ChatInteraction.ack),
       refused: (_, error) =>
         Effect.andThen(Effect.sync(() => void refused.push(error)), options?.onRefused?.(error) ?? Effect.void)
     })
   ))
-  return { status: response.status, seen, refused }
+  return { status: response.status, seen, clicks, refused }
 })
 
 describe("webhook", () => {
@@ -379,6 +390,17 @@ describe("webhook", () => {
         deadline: Duration.millis(500)
       })
       assert.deepStrictEqual([result.status, result.seen], [200, ["SelectChanged"]])
+      const [event] = result.clicks
+      assert.deepStrictEqual(event._tag === "SelectChanged" && [event.id, event.value, event.messageId], [
+        "env",
+        "p\u241Fq",
+        "wamid.out1"
+      ])
+      // The key is the webhook message's id, not the clicked card's.
+      assert.strictEqual(
+        WhatsAppChat.deliveryKey(event),
+        `${phoneNumberId}/${click.entry[0].changes[0].value.messages[0].id}`
+      )
       assert.strictEqual((yield* Deferred.await(refusal)).reason._tag, "Unsupported")
     }))
 })

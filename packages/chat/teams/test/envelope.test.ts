@@ -21,7 +21,7 @@ describe("envelope", () => {
   it.effect("refuses a button from another conversation, a tampered token and an unknown kid", () =>
     Effect.gen(function*() {
       const envelope = yield* Envelope.make({ ...options, keys: [k1] })
-      const token = yield* envelope.signButton(conversation, { id: "approve" })
+      const token = yield* envelope.signButton(conversation, { id: "approve", value: "42" })
       assert.isTrue(Option.isNone(yield* envelope.verifyButton(token, { conversationId: "19:other@thread.tacv2" })))
 
       const [header, payload, signature] = token.split(".")
@@ -33,7 +33,10 @@ describe("envelope", () => {
       assert.isTrue(Option.isNone(yield* envelope.verifyButton(unknownKid, { conversationId: conversation })))
 
       const rotated = yield* Envelope.make({ ...options, keys: [k2, k1] })
-      assert.isTrue(Option.isSome(yield* rotated.verifyButton(token, { conversationId: conversation })))
+      assert.deepStrictEqual(
+        yield* rotated.verifyButton(token, { conversationId: conversation }),
+        Option.some({ id: "approve", value: "42" })
+      )
     }).pipe(Effect.provide(layer)))
 
   it.effect("binds a dialog to its user and reply chain, and a submit to its definition", () =>

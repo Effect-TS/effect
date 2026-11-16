@@ -52,15 +52,31 @@ const forbidden = () => Effect.fail(errorResponse(403, { code: 50001, message: "
 const noMentions = { parse: [], users: [], roles: [], replied_user: false }
 
 describe("post", () => {
-  it.effect("sends the Markdown as is, notifying nobody and suppressing embeds", () =>
+  it.effect("sends the Markdown as is, notifying nobody and suppressing embeds, with its files", () =>
     withAdapter(answers, (discord, fake) =>
       Effect.gen(function*() {
-        yield* discord.post(channel, { markdown: "hi <@1> @everyone **bold**" })
+        const content = new TextEncoder().encode("hello from effect/chat\n")
+        yield* discord.post(channel, {
+          markdown: "hi <@1> @everyone **bold**",
+          files: [{ name: "fixture.txt", contentType: "text/plain", content }]
+        })
         assert.deepStrictEqual(fake.called("createMessage"), [[scratch, {
           content: "hi <@1> @everyone **bold**",
           allowed_mentions: noMentions,
-          flags: 4
+          flags: 4,
+          attachments: [{ id: "0", filename: "fixture.txt" }]
         }]])
+        // The multipart part for attachment 0, sent with the message.
+        const uploaded = yield* Effect.promise(() =>
+          Promise.all(
+            fake.called("withFiles").map(([files]) =>
+              Promise.all(
+                files.map(async (file: File) => [file.name, file.type, new Uint8Array(await file.arrayBuffer())])
+              )
+            )
+          )
+        )
+        assert.deepStrictEqual(uploaded, [[["fixture.txt", "text/plain", content]]])
       })))
 
   it.effect("withPostOptions sets mentions, embeds and the reference, merging nested calls", () =>
@@ -173,7 +189,7 @@ describe("actions", () => {
               options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
               selected: "b"
             },
-            ...Array.from({ length: 3 }, (_, i) => ({ _tag: "Button" as const, id: "b" + i, label: "B" + i }))
+            ...Array.from({ length: 6 }, (_, i) => ({ _tag: "Button" as const, id: "b" + i, label: "B" + i }))
           ]
         })
         assert.deepStrictEqual(fake.called("createMessage")[0][1].components, [
@@ -195,17 +211,27 @@ describe("actions", () => {
               max_values: 1
             }]
           },
-          { type: 1, components: [0, 1, 2].map((i) => ({ type: 2, style: 2, label: "B" + i, custom_id: "b" + i })) }
+          ...[[0, 1, 2, 3, 4], [5]].map((row) => ({
+            type: 1,
+            components: row.map((i) => ({ type: 2, style: 2, label: "B" + i, custom_id: "b" + i }))
+          }))
         ])
       })))
 
-  it.effect("an id holding the join, which would forge a value, fails before the call", () =>
+  it.effect("an id holding the join, which would forge a value, or a sixth row fails before the call", () =>
     withAdapter({}, (discord, fake) =>
       Effect.gen(function*() {
-        const result = yield* reason(
-          discord.post(channel, { markdown: "x", actions: [{ _tag: "Button", id: "a\u241Fb", label: "x" }] })
-        )
-        assert.strictEqual(result.tag, "InvalidRequest")
+        const select = (id: string) => ({ _tag: "Select" as const, id, options: [{ label: "A", value: "a" }] })
+        for (
+          const [actions, expected] of [
+            [[{ _tag: "Button", id: "a\u241Fb", label: "x" }], ["InvalidRequest", "invalid_action_id"]],
+            // Six selects are six rows, one past Discord's five, though far under 25 actions.
+            [["1", "2", "3", "4", "5", "6"].map(select), ["TooLarge", "too_many_actions"]]
+          ] as const
+        ) {
+          const result = yield* reason(discord.post(channel, { markdown: "x", actions }))
+          assert.deepStrictEqual([result.tag, result.detail], expected)
+        }
         assert.strictEqual(fake.calls.length, 0)
       })))
 })

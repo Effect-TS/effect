@@ -72,11 +72,15 @@ describe("normalize", () => {
 
   it("a person's reply to the bot is a reply, not a mention, with the ping on or off", () => {
     const [pingOn, pingOff] = events("reply-ping").filter((dispatch) => dispatch.d.author.id === tim)
+    const own = events("reply-ping").find((dispatch) => dispatch.d.author.id === botUserId)!
+    const author = ({ id, isBot, isSelf }: ChatMessage.ChatMessage["author"]) => ({ id, isBot, isSelf })
+    assert.deepStrictEqual(author(created(own).message.author), { id: botUserId, isBot: true, isSelf: true })
     // Discord lists the replied-to bot in mentions when the ping is on, with no token in content.
     assert.deepStrictEqual(pingOn.d.mentions.map((user: any) => user.id), [botUserId])
     assert.deepStrictEqual(pingOff.d.mentions, [])
     for (const dispatch of [pingOn, pingOff]) {
       const event = created(dispatch)
+      assert.deepStrictEqual(author(event.message.author), { id: tim, isBot: false, isSelf: false })
       assert.deepStrictEqual(event.message.mentions, [])
       assert.isTrue(ChatMessage.repliesToSelf(event.message))
       assert.deepStrictEqual(Option.getOrThrow(DiscordChat.member(event)).roles, dispatch.d.member.roles)

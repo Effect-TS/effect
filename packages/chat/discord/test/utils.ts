@@ -83,12 +83,19 @@ export interface Fake {
 /**
  * A `DiscordREST` that answers from `handlers` and records every call. A
  * method with no handler dies, so a test sees any call it didn't expect.
+ * `withFiles` passes the request through and records the files it sent.
  */
 export const makeFake = (handlers: Record<string, Handler>): Fake => {
   const calls: Array<{ method: string; args: ReadonlyArray<any> }> = []
   const service = new Proxy({}, {
     get: (_, method: string) => {
-      if (method === "withFiles") return () => (effect: Effect.Effect<any, any>) => effect
+      if (method === "withFiles") {
+        return (files: ReadonlyArray<File>) => (effect: Effect.Effect<any, any>) =>
+          Effect.suspend(() => {
+            calls.push({ method, args: [files] })
+            return effect
+          })
+      }
       return (...args: Array<any>) =>
         Effect.suspend(() => {
           calls.push({ method, args })
