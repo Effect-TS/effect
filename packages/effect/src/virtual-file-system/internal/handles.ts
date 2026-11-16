@@ -751,7 +751,9 @@ export const open = Effect.fnUntraced(
                     const tx = new E.Transaction(caller, work)
                     const file = yield* openNode(tx, selected, fixed)
                     const state = yield* fileState(caller, acquired, file, fixed)
-                    const transition = yield* tx.transitionResult(effectFileHandle(state), durable)
+                    // A linked read handle only adds a volatile pin. Creation still offers its staged changes.
+                    const forceOffer = durable && (fixed.access !== "read" || file.nlink === zero)
+                    const transition = yield* tx.transitionResult(effectFileHandle(state), forceOffer)
                     if (!durable) return transition
                     deciding = true
                     return {

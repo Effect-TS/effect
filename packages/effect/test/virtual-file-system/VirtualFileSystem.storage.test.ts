@@ -15,6 +15,28 @@ it.effect("removes the scope finalizer after explicit durable handle close", () 
     assert.strictEqual(scope.state._tag, "Empty")
   }))
 
+it.effect("opens an existing linked file for reading without a storage offer", () =>
+  Effect.gen(function*() {
+    const owner = yield* VFS.make()
+    const caller = yield* owner.authorize({ credentials: { uid: 0, gid: 0 } })
+    let offers = 0
+    yield* installStorage(owner, () =>
+      Effect.sync(() => {
+        offers++
+      }), () => false)
+    const created = yield* caller.open("/file", { access: "read", create: "ifmissing" })
+    yield* created.close()
+    assert.strictEqual(offers, 1)
+    offers = 0
+
+    for (const create of ["existing", "ifmissing"] as const) {
+      const handle = yield* caller.open("/file", { access: "read", create })
+      assert.strictEqual(offers, 0)
+      yield* handle.close()
+      assert.strictEqual(offers, 0)
+    }
+  }))
+
 it.effect("rejects storage installation on an owner that permits synchronous publication", () =>
   Effect.gen(function*() {
     const owner = yield* VFS.make({ limits: { synchronous: true } })
