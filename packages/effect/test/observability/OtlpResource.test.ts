@@ -213,5 +213,37 @@ describe("OtlpResource", () => {
         { stringValue: "-9223372036854775809" }
       )
     })
+
+    it("replaces an array that contains itself with a circular marker", () => {
+      const array: Array<unknown> = [1]
+      array.push(array)
+
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue(array), {
+        arrayValue: { values: [{ intValue: 1 }, { stringValue: "[Circular]" }] }
+      })
+    })
+
+    it("replaces an array that contains itself through a nested array", () => {
+      const outer: Array<unknown> = ["outer"]
+      outer.push(["inner", outer])
+
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue(outer), {
+        arrayValue: {
+          values: [
+            { stringValue: "outer" },
+            { arrayValue: { values: [{ stringValue: "inner" }, { stringValue: "[Circular]" }] } }
+          ]
+        }
+      })
+    })
+
+    it("converts an array that appears more than once without a cycle each time", () => {
+      const shared = [1]
+      const sharedValue = { arrayValue: { values: [{ intValue: 1 }] } }
+
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue([shared, [shared]]), {
+        arrayValue: { values: [sharedValue, { arrayValue: { values: [sharedValue] } }] }
+      })
+    })
   })
 })
