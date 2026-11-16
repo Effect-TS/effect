@@ -1387,7 +1387,9 @@ export const makeProtocolSocket = (options?: {
     const write = (request: FromClientEncoded) =>
       Effect.suspend(() => {
         const encoded = parser.encode(request)
-        return encoded === undefined ? Effect.void : Effect.orDie(writer.write(encoded))
+        return encoded === undefined
+          ? Effect.void
+          : Effect.mapError(writer.write(encoded), (error) => new RpcClientError({ reason: error.reason }))
       })
 
     return {

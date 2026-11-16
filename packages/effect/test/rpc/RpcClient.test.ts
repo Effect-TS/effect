@@ -1064,6 +1064,58 @@ describe("RpcClient", () => {
       }))
   })
 
+  for (const failedMessage of ["Request", "Ack"] as const) {
+    it.effect(
+      `reports socket ${failedMessage} write failures as RpcClientError`,
+      () =>
+        Effect.gen(function*() {
+          const reason = new Socket.SocketWriteError({ cause: new Error("write EPIPE") })
+          const frames = yield* Queue.unbounded<string>()
+          const write: Socket.Writer["write"] = Effect.fnUntraced(function*(data) {
+            if (Socket.isCloseEvent(data)) return
+            const message = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data))
+            if (message._tag === failedMessage) {
+              return yield* Effect.fail(new Socket.SocketError({ reason }))
+            }
+            if (message._tag === "Request") {
+              yield* Queue.offer(
+                frames,
+                JSON.stringify({
+                  _tag: "Chunk",
+                  requestId: message.id,
+                  values: ["event"]
+                }) + "\n"
+              )
+            }
+          })
+          const socket = Socket.make({
+            // Keep the read side open so only the write can report the failure.
+            reader: Effect.succeed({
+              pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+              upgrade: Socket.SocketUpgradeError.unsupported
+            }),
+            writer: Effect.succeed({
+              write,
+              writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true })
+            })
+          })
+          const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+            Effect.provideService(Socket.Socket, socket),
+            Effect.provide(RpcSerialization.layerNdjson)
+          )
+          const client = yield* RpcClient.make(TestGroup).pipe(
+            Effect.provideService(RpcClient.Protocol, protocol)
+          )
+          const error = yield* Effect.flip(
+            failedMessage === "Request" ? Effect.asVoid(client.Ping()) : Stream.runDrain(client.Events())
+          )
+
+          assert.instanceOf(error, RpcClientError)
+          assert.strictEqual(error.reason, reason)
+        })
+    )
+  }
+
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
