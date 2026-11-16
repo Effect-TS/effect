@@ -4,22 +4,40 @@
  * (precision 38, scales added for products, the larger scale for sums).
  * Every computed decimal is stored through `checked` (or `fit`), so a
  * value outside 64 bits fails instead of wrapping; casts make such values
- * null instead. Rescaling down rounds half to even.
+ * null instead. Rescaling down rounds half to even. Scales are any 32-bit
+ * integers, negative ones included; see {@link FAR} for scales far apart.
  *
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
 import * as V from "./vector.ts"
 
+/**
+ * From this many digits on, the 64 bits of storage decide a rescale, so no
+ * larger power of ten is built for one: `10^20` is more than twice any
+ * 64-bit value (a quotient rounds to zero, see {@link divRound}), and a
+ * nonzero value times `10^20` is outside 64 bits and stays outside with a
+ * 64-bit value added (see {@link factor}).
+ */
+const FAR = 20
+
 const powers: Array<bigint> = []
-/** `10^k` as a bigint. */
-const pow10 = (k: number): bigint => (powers[k] ??= BigInt(10) ** BigInt(k))
+/** `10^k` as a bigint, for `k >= 0`. Only the powers up to {@link FAR} are kept. */
+const pow10 = (k: number): bigint => k <= FAR ? (powers[k] ??= BigInt(10) ** BigInt(k)) : BigInt(10) ** BigInt(k)
+
+/**
+ * What to multiply by to add `k >= 0` digits: `10^k`, or `10^FAR` from
+ * {@link FAR} digits on. The product is then zero for zero and outside 64
+ * bits otherwise, as it is with `10^k`, and every product is range-checked.
+ */
+const factor = (k: number): bigint => pow10(Math.min(k, FAR))
 
 const I0 = BigInt(0)
 const I1 = BigInt(1)
 const I2 = BigInt(2)
 const MAX = BigInt("9223372036854775807")
 const MIN = -BigInt("9223372036854775808")
+const UMAX = BigInt("18446744073709551615")
 
 /** @internal */
 export const isDecimal = (t: S.DataType): t is S.Decimal => t._tag === "Decimal"
@@ -61,6 +79,8 @@ export const fit = (type: S.DataType): (x: bigint) => bigint => isDecimal(type) 
 /** Rounds `x / 10^k` half to even. */
 const divRound = (x: bigint, k: number): bigint => {
   if (k === 0) return x
+  // `10^k` is more than twice `x`, which has fewer than `k` digits.
+  if (k >= FAR && (inRange(x) || k > x.toString().length)) return I0
   const divisor = pow10(k)
   // Truncated towards zero; the remainder has the sign of `x`.
   const quotient = x / divisor
@@ -70,13 +90,46 @@ const divRound = (x: bigint, k: number): bigint => {
   return x < I0 ? quotient - I1 : quotient + I1
 }
 
-/** `unscaled / 10^scale` as a decimal string, all `scale` digits shown. */
-const format = (unscaled: bigint, scale: number): string => {
+/**
+ * `unscaled / 10^scale` as a decimal string, all `scale` digits shown. A
+ * negative scale writes its zeros out (`7` at scale `-2` is `700`).
+ *
+ * @internal
+ */
+export const format = (unscaled: bigint, scale: number): string => {
   const negative = unscaled < I0
-  const digits = (negative ? -unscaled : unscaled).toString().padStart(scale + 1, "0")
-  const text = scale === 0 ? digits : `${digits.slice(0, digits.length - scale)}.${digits.slice(digits.length - scale)}`
+  const digits = (negative ? -unscaled : unscaled).toString()
+  if (scale <= 0) return unscaled === I0 ? digits : `${negative ? "-" : ""}${digits}${"0".repeat(-scale)}`
+  const padded = digits.padStart(scale + 1, "0")
+  const text = `${padded.slice(0, padded.length - scale)}.${padded.slice(padded.length - scale)}`
   return negative ? `-${text}` : text
 }
+
+/**
+ * {@link format} for every value. The text has as many digits as the scale,
+ * so it fails where the scale is more than a string can hold.
+ */
+const formatAll = (v: V.I64, type: S.Decimal): Array<string | null> => {
+  try {
+    return Array.from({ length: v.length }, (_, i) => (V.isValid(v, i) ? format(v.values[i], type.scale) : null))
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error
+    return V.fail(`Decimal[${type.precision}, ${type.scale}] values are too long to write as text`)
+  }
+}
+
+/**
+ * The integer part of `unscaled / 10^scale`, truncated towards zero. A
+ * negative scale can take it outside 64 bits (see {@link factor}).
+ */
+const integerPart = (unscaled: bigint, scale: number): bigint =>
+  scale < 0 ? unscaled * factor(-scale) : scale >= FAR ? I0 : unscaled / pow10(scale)
+
+/**
+ * The integer `x` in unscaled units of `scale`: rounded half to even for a
+ * negative scale, and possibly outside 64 bits otherwise (see {@link factor}).
+ */
+const toScale = (x: bigint, scale: number): bigint => scale < 0 ? divRound(x, -scale) : x * factor(scale)
 
 const DECIMAL_SYNTAX = /^\s*([+-]?)(\d*)(?:\.(\d*))?\s*$/
 /** {@link DECIMAL_SYNTAX} without the spaces around it. */
@@ -96,7 +149,7 @@ const parse = (
   if (m === null || (m[2] === "" && (m[3] ?? "") === "")) return undefined
   const fraction = m[3] ?? ""
   const all = BigInt(`${m[1]}${m[2] || "0"}${fraction}`)
-  return fraction.length >= scale ? drop(all, fraction.length - scale) : all * pow10(scale - fraction.length)
+  return fraction.length >= scale ? drop(all, fraction.length - scale) : all * factor(scale - fraction.length)
 }
 
 /** For {@link parse}: a fraction longer than the scale is invalid. */
@@ -144,7 +197,8 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
   if (isDecimal(target)) {
     const out = new BigInt64Array(n)
     // At most `precision` digits: |x| < 10^precision.
-    const limit = target.precision >= 1 ? pow10(target.precision) : I0
+    // From `FAR` digits on, the 64 bits of storage are the tighter limit.
+    const limit = target.precision >= 1 ? factor(target.precision) : I0
     const put = (i: number, x: bigint | undefined) => {
       if (x !== undefined && inRange(x) && x < limit && -x < limit) {
         out[i] = x
@@ -161,17 +215,18 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
             isDecimal(from)
               ? from.scale >= target.scale
                 ? divRound(x, from.scale - target.scale)
-                : x * pow10(target.scale - from.scale)
-              : x * pow10(target.scale)
+                : x * factor(target.scale - from.scale)
+              : toScale(x, target.scale)
           )
           break
         }
         case "i32":
         case "bool":
-          put(i, BigInt(v.values[i]) * pow10(target.scale))
+          put(i, toScale(BigInt(v.values[i]), target.scale))
           break
         case "f64": {
-          const scaled = v.values[i] * 10 ** target.scale
+          // Zero is zero at any scale, also where `10^scale` is infinite.
+          const scaled = v.values[i] === 0 ? 0 : v.values[i] * 10 ** target.scale
           if (Number.isFinite(scaled)) {
             const floor = Math.floor(scaled)
             const rest = scaled - floor
@@ -188,7 +243,6 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
   }
   // from a decimal
   if (v.kind !== "i64" || !isDecimal(from)) return V.fail("expected decimal storage")
-  const scale = pow10(from.scale)
   switch (target._tag) {
     case "Float":
       return V.f64(target, toFloat(v.values, from.scale), v.valid)
@@ -196,8 +250,8 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
       if (target.bitWidth === 64) {
         const out = new BigInt64Array(n)
         for (let i = 0; i < n; i++) {
-          const x = v.values[i] / scale
-          if (V.isValid(v, i) && (target.signed || x >= I0)) {
+          const x = integerPart(v.values[i], from.scale)
+          if (V.isValid(v, i) && (target.signed ? inRange(x) : x >= I0 && x <= UMAX)) {
             out[i] = x
             valid[i] = 1
           }
@@ -208,19 +262,16 @@ export const cast = (v: V.Vector, target: S.DataType): V.Vector | undefined => {
       const out = new Float64Array(n)
       for (let i = 0; i < n; i++) {
         if (!V.isValid(v, i)) continue
-        const x = Number(v.values[i] / scale)
+        const x = integerPart(v.values[i], from.scale)
         if (x >= lo && x <= hi) {
-          out[i] = x
+          out[i] = Number(x)
           valid[i] = 1
         }
       }
       return V.kindOf(target) === "f64" ? V.f64(target, out, valid) : V.i32(target, Int32Array.from(out), valid)
     }
     case "Utf8":
-      return V.stringsFrom(
-        S.utf8,
-        Array.from({ length: n }, (_, i) => (V.isValid(v, i) ? format(v.values[i], from.scale) : null))
-      )
+      return V.stringsFrom(S.utf8, formatAll(v, from))
     case "Bool":
       return V.bool(Uint8Array.from(v.values, (x) => (x === I0 ? 0 : 1)), v.valid)
     default:
@@ -240,12 +291,14 @@ export const arith = (
   const n = a.length
   const out = new BigInt64Array(n)
   if (op === "mul") {
+    const scale = aScale + bScale
+    if ((scale | 0) !== scale) V.fail(`the scale ${scale} of a decimal product is not a 32-bit integer`)
     for (let i = 0; i < n; i++) out[i] = checked(a[i] * (scalar ? b[0] : b[i]))
-    return { values: out, type: decimal(aScale + bScale) }
+    return { values: out, type: decimal(scale) }
   }
   const scale = Math.max(aScale, bScale)
-  const fa = pow10(scale - aScale)
-  const fb = pow10(scale - bScale)
+  const fa = factor(scale - aScale)
+  const fb = factor(scale - bScale)
   for (let i = 0; i < n; i++) {
     const x = a[i] * fa
     const y = (scalar ? b[0] : b[i]) * fb
@@ -263,10 +316,10 @@ export const arith = (
 export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
   if (places >= type.scale) return v
   const k = type.scale - places
-  const factor = pow10(k)
+  const up = factor(k)
   return V.i64(
     S.decimal(Math.min(type.precision + 1, PRECISION), type.scale),
-    BigInt64Array.from(v.values, (x) => checked(divRound(x, k) * factor)),
+    BigInt64Array.from(v.values, (x) => checked(divRound(x, k) * up)),
     v.valid
   )
 }
@@ -275,6 +328,7 @@ export const round = (v: V.I64, type: S.Decimal, places: number): V.Vector => {
 export const toFloat = (values: BigInt64Array, scale: number): Float64Array => {
   const out = new Float64Array(values.length)
   const unit = 10 ** scale
-  for (let i = 0; i < values.length; i++) out[i] = Number(values[i]) / unit
+  // Zero is zero at any scale, also where `10^scale` is zero or infinite.
+  for (let i = 0; i < values.length; i++) out[i] = values[i] === I0 ? 0 : Number(values[i]) / unit
   return out
 }

@@ -951,6 +951,42 @@ describe("effect/dataframe on PostgreSQL (PGlite)", { concurrent: false }, () =>
         )
       }))
 
+    // DF-S020: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
+    it.effect("decimals take the scales numeric does", () =>
+      Effect.gen(function*() {
+        const tens = (unscaled: bigint) => BigDecimal.make(unscaled, -1)
+        const negative = arrow<{ d: BigDecimal.BigDecimal | null }>(
+          [ArrowSchema.field("d", ArrowSchema.decimal(18, -1))],
+          [[tens(7n), tens(-15n), tens(0n), null]]
+        )
+        yield* both(negative.pipe(Query.select((c) => ({
+          d: c.d,
+          lit: Expr.lit(tens(-7n)),
+          cast: Expr.castDecimal(c.d, 38, 2),
+          text: Expr.cast(c.d, "Utf8"),
+          above: Expr.gt(c.d, Expr.lit(tens(1n)))
+        }))))
+        assert.deepStrictEqual(
+          yield* rowsOnSql(negative.pipe(Query.select((c) => ({ d: c.d, lit: Expr.lit(tens(-7n)) })))),
+          [
+            { d: tens(7n), lit: tens(-7n) },
+            { d: tens(-15n), lit: tens(-7n) },
+            { d: tens(0n), lit: tens(-7n) },
+            { d: null, lit: tens(-7n) }
+          ]
+        )
+        for (const scale of [1001, -1001, 2147483647, -2147483648]) {
+          const message = `a decimal scale of ${scale} is not supported by the SQL engine`
+          const declared = Query.table("t", ArrowSchema.make([ArrowSchema.field("d", ArrowSchema.decimal(38, scale))]))
+          const literal = ints.pipe(Query.select(() => ({ d: Expr.lit(BigDecimal.make(7n, scale)) })))
+          for (const query of [declared, literal]) {
+            const compiled = Sql.compile(query.plan)
+            assert.strictEqual(Result.isFailure(compiled) && compiled.failure.message, message)
+            assert.strictEqual(yield* rejects(query), message)
+          }
+        }
+      }))
+
     // DF-S019: Sql API contract; pins and oracle policy in effect/test/dataframe/README.md.
     it.effect("unions and nullable fields are checked as in memory", () =>
       Effect.gen(function*() {

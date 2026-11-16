@@ -122,6 +122,15 @@ const decimalType = (path: string, precision: number, scale: number): S.Decimal 
   return type
 }
 
+/**
+ * The decimal type an Arrow decimal declares. Declared decimals are 128-bit,
+ * so another width fails instead of being declared as one.
+ */
+const declaredDecimal = (path: string, t: S.Decimal): S.Decimal =>
+  t.bitWidth === 128
+    ? decimalType(path, t.precision, t.scale)
+    : undeclarable(path, `${t.bitWidth}-bit decimals`, "declared decimals are 128-bit")
+
 /** The column declared for a field's `column` with Arrow type `t`, or its default type. @internal */
 export const declareColumn = (path: string, column: Plan.TableColumn, t: S.DataType | undefined): Plan.TableColumn => {
   if (t !== undefined) checkType(path, t, column)
@@ -141,7 +150,7 @@ export const declareColumn = (path: string, column: Plan.TableColumn, t: S.DataT
       }
     case "Decimal": {
       if (t?._tag !== "Decimal") return column
-      const { precision, scale } = decimalType(path, t.precision, t.scale)
+      const { precision, scale } = declaredDecimal(path, t)
       return { ...column, precision, scale }
     }
     case "Timestamp":
@@ -199,8 +208,7 @@ const fieldColumn = (path: string, f: S.Field): Plan.TableColumn => {
     case "Duration":
       return { ...column, type: "Duration", unit: t.unit }
     case "Decimal": {
-      if (t.bitWidth !== 128) return undeclarable(path, `${t.bitWidth}-bit decimals`, "declared decimals are 128-bit")
-      const { precision, scale } = decimalType(path, t.precision, t.scale)
+      const { precision, scale } = declaredDecimal(path, t)
       return { ...column, type: "Decimal", precision, scale }
     }
     case "List":

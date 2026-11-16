@@ -53,6 +53,13 @@ const list = (names: ReadonlyArray<string>) => names.map(quote).join(", ")
 
 const unsupported = (what: string): never => V.fail(`${what} is not supported by the SQL engine`)
 
+/**
+ * A decimal scale PostgreSQL's `numeric` can declare (-1000 to 1000). The
+ * SQL for a decimal writes out as many digits as its scale.
+ */
+const numericScale = (scale: number): number =>
+  scale >= -1000 && scale <= 1000 ? scale : unsupported(`a decimal scale of ${scale}`)
+
 // -----------------------------------------------------------------------------
 // Types and literals
 // -----------------------------------------------------------------------------
@@ -82,7 +89,7 @@ const sqlType = (t: S.DataType): string => {
     case "Duration":
       return "INTERVAL"
     case "Decimal":
-      return `DECIMAL(${t.precision}, ${t.scale})`
+      return `DECIMAL(${t.precision}, ${numericScale(t.scale)})`
     case "Null":
       return "INTEGER"
     default:
@@ -134,10 +141,8 @@ const literal = (value: unknown, type: Plan.LiteralType | undefined): string => 
       case "Duration":
         return fromInteger(`CAST(${big} AS BIGINT)`, S.duration(type.unit))
       case "Decimal": {
-        const negative = big < BigInt(0)
-        const digits = (negative ? -big : big).toString().padStart(type.scale + 1, "0")
-        const text = type.scale === 0 ? digits : `${digits.slice(0, -type.scale)}.${digits.slice(-type.scale)}`
-        return `CAST('${negative ? "-" : ""}${text}' AS DECIMAL(${type.precision}, ${type.scale}))`
+        const scale = numericScale(type.scale)
+        return `CAST('${Dec.format(big, scale)}' AS DECIMAL(${type.precision}, ${scale}))`
       }
     }
   }
@@ -996,7 +1001,8 @@ const tableTypes: {
   Decimal: {
     accepts: ["numeric"],
     conditions: (x, type) => {
-      const { precision, scale } = type as S.Decimal
+      const { precision } = type as S.Decimal
+      const scale = numericScale((type as S.Decimal).scale)
       return [{
         holds: `ROUND(${x}, ${scale}) = ${x} AND ABS(${x}) < ${power(precision - scale)} AND ${x} * ${
           power(scale)

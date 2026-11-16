@@ -175,8 +175,8 @@ export const isDataFrame = (u: unknown): u is DataFrame<unknown> => F.isFrame(u)
  * are microsecond timestamps and durations, arrays are lists, structs are
  * structs, and `NullOr`/optional fields are nullable. `options.types`
  * overrides the Arrow type of individual columns (for example
- * `ArrowSchema.int32`); `BigDecimal` fields need one, with the decimal's
- * precision and scale.
+ * `ArrowSchema.int32`); `BigDecimal` fields need one, a 128-bit decimal
+ * with the precision and scale (decimals of other widths fail).
  *
  * **Details**
  *

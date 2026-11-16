@@ -692,7 +692,10 @@ export const cast: {
 /**
  * Converts to a decimal with `precision` digits, `scale` of them after the
  * point. Values that don't fit (more than `precision` digits, or outside
- * 64-bit decimal storage) become null; extra digits round half to even.
+ * 64-bit decimal storage) become null; extra digits round half to even. A
+ * negative scale rounds before the point: at scale `-2`, `1250` is `1200`.
+ * The query fails for a precision outside 1 to 38 or a scale that isn't a
+ * 32-bit integer.
  *
  * @stability experimental
  * @category conversions

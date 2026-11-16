@@ -349,6 +349,165 @@ describe("Query", () => {
         }
       }))
 
+    // DF-Q049 (API contract): Query.table, Expr.castDecimal; pinned source in README.md.
+    it.effect("decides decimal scales far apart from the 64 bits of storage", () =>
+      Effect.gen(function*() {
+        const source = Catalog.layer({ t: price("7", 2, 0), zero: price("0", 2, 0) })
+        const declared = (name: string, scale: number) =>
+          Query.table(
+            name,
+            ArrowSchema.make([ArrowSchema.field("d", ArrowSchema.decimal(38, scale), { nullable: false })])
+          )
+        const cast = (name: string, scale: number) =>
+          declared(name, 0).pipe(Query.select((c) => ({ d: Expr.castDecimal(c.d, 38, scale) })), rows)
+        for (const scale of [2147483647, -2147483648, 10_000_000, 20, -20]) {
+          // The exact conversion of a declaration fails, the explicit cast gives null or rounds.
+          const inexact = `column "d" has values that Decimal[38, ${scale}] can't hold exactly`
+          const error = yield* Effect.flip(declared("t", scale).pipe(Effect.provide(source)))
+          assert.instanceOf(error, DataFrame.DataFrameError)
+          assert.strictEqual(error.message, inexact)
+          const streamed = Query.stream(declared("t", scale)).pipe(Stream.runCollect, Effect.provide(source))
+          assert.strictEqual((yield* Effect.flip(streamed)).message, inexact)
+          assert.deepStrictEqual(yield* cast("t", scale).pipe(Effect.provide(source)), [
+            { d: scale > 0 ? null : BigDecimal.make(0n, scale) }
+          ])
+          // Zero is zero at every scale.
+          const zero = [{ d: BigDecimal.make(0n, scale) }]
+          assert.deepStrictEqual(yield* rows(declared("zero", scale)).pipe(Effect.provide(source)), zero)
+          assert.deepStrictEqual(yield* cast("zero", scale).pipe(Effect.provide(source)), zero)
+        }
+        // Up to 19 digits apart, values are rescaled as before: exactly, or half to even.
+        assert.deepStrictEqual(yield* rows(declared("t", 18)).pipe(Effect.provide(source)), [
+          { d: BigDecimal.make(7_000_000_000_000_000_000n, 18) }
+        ])
+        const halves = Query.from(DataFrame.fromColumns({ s: ["0.5", "1.5", "-2.5", "0.5000000000000000001"] })).pipe(
+          Query.select((c) => ({ d: Expr.castDecimal(c.s, 38, 19) })),
+          Query.select((c) => ({ d: Expr.castDecimal(c.d, 38, 0) }))
+        )
+        assert.deepStrictEqual(yield* rows(halves), [
+          { d: BigDecimal.make(0n, 0) },
+          { d: null },
+          { d: null },
+          { d: BigDecimal.make(1n, 0) }
+        ])
+        // Values held at the far scales: 7 and 0 units of 10^-2147483647 and of 10^2147483648.
+        const held = (scale: number) =>
+          Query.from(arrowFrame<{ d: BigDecimal.BigDecimal }>({
+            d: [ArrowSchema.decimal(38, scale), [BigDecimal.make(7n, scale), BigDecimal.make(0n, scale)]]
+          }))
+        const read = (scale: number) =>
+          held(scale).pipe(
+            Query.select((c) => ({
+              round: Expr.round(c.d, 0),
+              unit: Expr.castDecimal(c.d, 38, 0),
+              int: Expr.cast(c.d, "Int64"),
+              float: Expr.cast(c.d, "Float64"),
+              mean: Expr.rollingMean(c.d, 1)
+            })),
+            rows
+          )
+        const whole = (n: bigint) => Expr.lit(BigDecimal.make(n, 0))
+        const none = { unit: BigDecimal.make(0n, 0), int: 0n, float: 0, mean: 0 }
+        assert.deepStrictEqual(yield* read(2147483647), [
+          { round: BigDecimal.make(0n, 2147483647), ...none },
+          { round: BigDecimal.make(0n, 2147483647), ...none }
+        ])
+        assert.deepStrictEqual(yield* read(-2147483648), [
+          { round: BigDecimal.make(7n, -2147483648), unit: null, int: null, float: Infinity, mean: Infinity },
+          { round: BigDecimal.make(0n, -2147483648), ...none }
+        ])
+        for (const scale of [2147483647, -2147483648]) {
+          const sum = yield* Effect.flip(held(scale).pipe(Query.select((c) => ({ d: Expr.add(c.d, whole(1n)) }))))
+          assert.strictEqual(sum.message, "decimal value overflows 64 bits")
+          const text = yield* Effect.flip(held(scale).pipe(Query.select((c) => ({ d: Expr.cast(c.d, "Utf8") }))))
+          assert.strictEqual(text.message, `Decimal[38, ${scale}] values are too long to write as text`)
+          assert.deepStrictEqual(
+            yield* held(scale).pipe(Query.aggregate((c) => ({ mean: Expr.mean(Expr.multiply(c.d, whole(0n))) })), rows),
+            [{ mean: 0 }]
+          )
+        }
+      }))
+
+    // DF-Q050 (API contract): Expr.cast, Expr.castDecimal; pinned source in README.md.
+    it.effect("casts to and from decimals with a negative scale", () =>
+      Effect.gen(function*() {
+        const tens = (unscaled: bigint) => BigDecimal.make(unscaled, -1)
+        const values = Query.from(DataFrame.fromColumns({
+          i: Int32Array.of(0, 7, -15, 25),
+          b: BigInt64Array.of(0n, 7n, -15n, 25n),
+          f: [0, 7.5, -15, 26],
+          s: ["0", "7", "-15", "25.01"]
+        }))
+        // Half to even at the tens: 7 is 10, -15 is -20, 25 is 20.
+        const to = values.pipe(Query.select((c) => ({
+          i: Expr.castDecimal(c.i, 38, -1),
+          b: Expr.castDecimal(c.b, 38, -1),
+          f: Expr.castDecimal(c.f, 38, -1),
+          s: Expr.castDecimal(c.s, 38, -1)
+        })))
+        assert.deepStrictEqual(yield* rows(to), [
+          { i: tens(0n), b: tens(0n), f: tens(0n), s: tens(0n) },
+          { i: tens(1n), b: tens(1n), f: tens(1n), s: tens(1n) },
+          { i: tens(-2n), b: tens(-2n), f: tens(-2n), s: tens(-2n) },
+          { i: tens(2n), b: tens(2n), f: tens(3n), s: tens(3n) }
+        ])
+        const from = (scale: number) =>
+          values.pipe(
+            Query.select((c) => ({ d: Expr.castDecimal(c.b, 38, 0) })),
+            Query.select((c) => ({ d: Expr.castDecimal(c.d, 38, scale) })),
+            Query.select((c) => ({
+              int: Expr.cast(c.d, "Int64"),
+              small: Expr.cast(c.d, "Int8"),
+              float: Expr.cast(c.d, "Float64"),
+              text: Expr.cast(c.d, "Utf8"),
+              above: Expr.gt(c.d, Expr.lit(BigDecimal.make(5n, 0)))
+            })),
+            rows
+          )
+        assert.deepStrictEqual(yield* from(-1), [
+          { int: 0n, small: 0, float: 0, text: "0", above: false },
+          { int: 10n, small: 10, float: 10, text: "10", above: true },
+          { int: -20n, small: -20, float: -20, text: "-20", above: false },
+          { int: 20n, small: 20, float: 20, text: "20", above: true }
+        ])
+      }))
+
+    // DF-Q051 (API contract): Expr.castDecimal, Expr.multiply; pinned source in README.md.
+    it.effect("rejects decimal types a cast or a product can't have", () =>
+      Effect.gen(function*() {
+        const sevens = Query.from(DataFrame.fromColumns({ b: BigInt64Array.of(7n) }))
+        const cast = (precision: number, scale: number) =>
+          sevens.pipe(Query.select((c) => ({ d: Expr.castDecimal(c.b, precision, scale) })))
+        const precision = (p: number) => `cast: invalid decimal128 precision ${p}, expected an integer in 1..38`
+        const scale = (s: number) => `cast: invalid decimal scale ${s}, expected a 32-bit integer`
+        const cases: ReadonlyArray<readonly [precision: number, scale: number, message: string]> = [
+          [2.5, 0, precision(2.5)],
+          [0, 0, precision(0)],
+          [39, 0, precision(39)],
+          [1e9, 0, precision(1e9)],
+          [2, 0.5, scale(0.5)],
+          [2, 2 ** 31, scale(2 ** 31)]
+        ]
+        for (const [p, s, message] of cases) {
+          const error = yield* Effect.flip(cast(p, s))
+          assert.instanceOf(error, DataFrame.DataFrameError)
+          assert.strictEqual(error.message, message)
+        }
+        assert.deepStrictEqual(yield* rows(cast(38, 2)), [{ d: BigDecimal.make(700n, 2) }])
+        // A product adds the scales of its factors.
+        const square = (s: number) =>
+          cast(38, 0).pipe(
+            Query.select((c) => ({ d: Expr.castDecimal(c.d, 38, s) })),
+            Query.select((c) => ({ d: Expr.multiply(c.d, c.d) }))
+          )
+        assert.strictEqual(
+          (yield* Effect.flip(square(-2147483648))).message,
+          "the scale -4294967296 of a decimal product is not a 32-bit integer"
+        )
+        assert.deepStrictEqual(yield* rows(square(-1073741824)), [{ d: BigDecimal.make(0n, -2147483648) }])
+        assert.deepStrictEqual(yield* rows(square(1)), [{ d: BigDecimal.make(4900n, 2) }])
+      }))
+
     // DF-Q008 (API contract): DataFrame.DataFrameError; pinned source in README.md.
     it.effect("fails with DataFrameError on invalid expressions", () =>
       Effect.gen(function*() {

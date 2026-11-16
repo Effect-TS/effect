@@ -4,6 +4,7 @@
  * @internal
  */
 import * as S from "../../arrow/ArrowSchema.ts"
+import * as Layout from "../../arrow/internal/layout.ts"
 import * as BigDecimal from "../../BigDecimal.ts"
 import * as DateTime from "../../DateTime.ts"
 import * as Duration from "../../Duration.ts"
@@ -394,7 +395,9 @@ const evaluateCall = (node: Plan.Call, ctx: Context): K.Value => {
     case "cast": {
       const to = option<string>("to")
       if (to === "Decimal") {
-        return K.castValue(arg(0), S.decimal(option<number>("precision"), option<number>("scale")))
+        const type = S.decimal(option<number>("precision"), option<number>("scale"))
+        Layout.checkDecimal(type, (message) => V.fail(`cast: ${message}`))
+        return K.castValue(arg(0), type)
       }
       const target = D.castTargets[to]
       if (target === undefined) return V.fail(`unknown cast target ${to}`)

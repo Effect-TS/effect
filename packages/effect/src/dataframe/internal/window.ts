@@ -244,7 +244,8 @@ export const rolling = (
       }
       if (count < minPeriods) return
       ok[row] = 1
-      if (fn === "rollingMean") means[row] = Number(sum) / unit / count
+      // Zero is zero at any scale, also where `10^scale` is zero.
+      if (fn === "rollingMean") means[row] = sum === BigInt(0) ? 0 : Number(sum) / unit / count
       else sums[row] = fit(sum)
     })
     return fn === "rollingMean" ? V.f64(type, means, ok) : V.i64(type, sums, ok)

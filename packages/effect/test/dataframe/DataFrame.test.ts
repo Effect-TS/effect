@@ -86,6 +86,21 @@ describe("DataFrame", () => {
       )
     })
 
+    // DF-C033 (API contract): DataFrame.fromRows; pinned source in README.md.
+    it("rejects decimal overrides that aren't 128-bit", () => {
+      const Price = Schema.Struct({ n: Schema.BigDecimal })
+      const df = DataFrame.fromRows(Price, [{ n: BigDecimal.make(7n, 0) }], { types: { n: ArrowSchema.decimal(9, 0) } })
+      for (const width of [32, 64, 256] as const) {
+        const types = { n: ArrowSchema.decimal(9, 0, width) }
+        const message = `column "n": ${width}-bit decimals can't be declared: declared decimals are 128-bit`
+        assert.throws(() => DataFrame.fromRows(Price, [], { types }), DataFrame.DataFrameError, message)
+        assert.throws(() => DataFrame.empty(Price, { types }), DataFrame.DataFrameError, message)
+        assert.throws(() => Query.table("t", Price, { types }), DataFrame.DataFrameError, message)
+        const result = DataFrame.validate(df, Price, { types })
+        assert.strictEqual(Result.isFailure(result) && result.failure.message, message)
+      }
+    })
+
     // DF-C005 (API contract): DataFrame.fromRows; pinned source in README.md.
     it("fromRows rejects schemas without a column type", () => {
       interface Tree {
