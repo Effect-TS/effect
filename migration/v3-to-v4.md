@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `4b32f7ccb759d9ae9d0b063afbad90ce7c6e0dc8` (`4b32f7ccb759d9ae9d0b063afbad90ce7c6e0dc8`)
+Head: `3d13d1e84a933bfd4b90952ad9a221728326e923` (`3d13d1e84a933bfd4b90952ad9a221728326e923`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -1431,7 +1431,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CacheCreation` -> `Generated.CacheCreation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.Client` -> `Generated.AnthropicClient`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Client` -> `Generated.AnthropicClient`: Renamed to `Generated.AnthropicClient<E, R>`. Endpoint effects include E alongside generated client errors and require R. E defaults to HttpClientError.HttpClientError and R to never; carry custom client error and context types through explicit annotations.
 
 - `Generated.ClientError` -> `Generated.AnthropicClientError`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1679,7 +1679,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WebSearchToolResultErrorCode` -> `Generated.WebSearchToolResultErrorCode`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.make` -> `Generated.make`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.make` -> `Generated.make`: make now infers E and R from `HttpClient.With<E, R>` and returns `Generated.AnthropicClient<E, R>`. Preserve those type parameters in wrappers; endpoint effects include the supplied client error E and require R. transformClient must preserve the same E and R.
 
 ### `@effect/ai-openai/Generated`
 
@@ -1835,7 +1835,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.AutomaticThreadTitlingParam` -> `Generated.AutomaticThreadTitlingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.Batch` -> `Generated.Batch`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Batch` -> `Generated.Batch`: Use the current Generated.Batch schema. The object shapes at errors have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.BatchError` -> `Generated.BatchError`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
@@ -1953,7 +1953,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ChatCompletionRequestUserMessageRole` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ChatCompletionResponseMessage` -> `Generated.ChatCompletionResponseMessage`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ChatCompletionResponseMessage` -> `Generated.ChatCompletionResponseMessage`: Use the current Generated.ChatCompletionResponseMessage schema. The object shapes at function\_call have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.ChatCompletionResponseMessageRole` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2003,7 +2003,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ClickParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.Client` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.Client` -> `Generated.OpenAiClient`: Renamed to `Generated.OpenAiClient<E, R>`. Endpoint effects include E alongside generated client errors and require R. E defaults to HttpClientError.HttpClientError and R to never; carry custom client error and context types through explicit annotations.
 
 - `Generated.ClientError` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2131,7 +2131,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateBatchRequestEndpoint` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateChatCompletionRequest` -> `Generated.CreateChatCompletionRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateChatCompletionRequest` -> `Generated.CreateChatCompletionRequest`: Use the current Generated.CreateChatCompletionRequest schema. The object shapes at web\_search\_options.user\_location and audio have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.CreateChatCompletionRequestAudioFormat` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2309,7 +2309,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateSpeechRequestStreamFormat` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateThreadAndRunRequest` -> `Generated.CreateThreadAndRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateThreadAndRunRequest` -> `Generated.CreateThreadAndRunRequest`: Use the current Generated.CreateThreadAndRunRequest schema. The object shapes at tool\_resources have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.CreateThreadAndRunRequestModelEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2655,7 +2655,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FineTuningIntegrationType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.FineTuningJob` -> `Generated.FineTuningJob`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.FineTuningJob` -> `Generated.FineTuningJob`: Use the current Generated.FineTuningJob schema. The object shapes at hyperparameters in both union branches have no catch-all index signature; use their declared fields rather than arbitrary JSON properties. The error field still includes a JSON record alternative.
 
 - `Generated.FineTuningJobCheckpoint` -> `Generated.FineTuningJobCheckpoint`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3079,7 +3079,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListMessagesParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListMessagesResponse` -> `Generated.ListMessagesResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListMessagesResponse` -> `Generated.ListMessagesResponse`: Use the current Generated.ListMessagesResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListModelsResponse` -> `Generated.ListModelsResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3133,7 +3133,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListRunStepsParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListRunStepsResponse` -> `Generated.ListRunStepsResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListRunStepsResponse` -> `Generated.ListRunStepsResponse`: Use the current Generated.ListRunStepsResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListRunsParams` -> `Generated.ListRunsParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3157,13 +3157,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListVectorStoreFilesParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListVectorStoreFilesResponse` -> `Generated.ListVectorStoreFilesResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListVectorStoreFilesResponse` -> `Generated.ListVectorStoreFilesResponse`: Use the current Generated.ListVectorStoreFilesResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListVectorStoresParams` -> `Generated.ListVectorStoresParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.ListVectorStoresParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListVectorStoresResponse` -> `Generated.ListVectorStoresResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListVectorStoresResponse` -> `Generated.ListVectorStoresResponse`: Use the current Generated.ListVectorStoresResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListVideosParams` -> `Generated.ListVideosParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3283,7 +3283,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.Metadata` -> `Generated.Metadata`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.Model` -> `Generated.Model`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Model` -> `Generated.Model`: Use the current Generated.Model schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ModelIdsResponses` -> `Generated.ModelIdsResponses`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3317,7 +3317,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.NoiseReductionType` -> `Generated.NoiseReductionType`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.OpenAIFile` -> `Generated.OpenAIFile`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.OpenAIFile` -> `Generated.OpenAIFile`: Use the current Generated.OpenAIFile schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.OpenAIFileObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3495,7 +3495,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateRequest` -> `Generated.RealtimeSessionCreateRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RealtimeSessionCreateRequestGA` -> `Generated.RealtimeSessionCreateRequestGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateRequestGA` -> `Generated.RealtimeSessionCreateRequestGA`: Use the current Generated.RealtimeSessionCreateRequestGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeSessionCreateRequestGAMaxOutputTokensEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3509,9 +3509,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateRequestTracingEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RealtimeSessionCreateResponse` -> `Generated.RealtimeSessionCreateResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateResponse` -> `Generated.RealtimeSessionCreateResponse`: Use the current Generated.RealtimeSessionCreateResponse schema. The object shapes at audio.input.noise\_reduction, audio.input.turn\_detection, and turn\_detection have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
-- `Generated.RealtimeSessionCreateResponseGA` -> `Generated.RealtimeSessionCreateResponseGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateResponseGA` -> `Generated.RealtimeSessionCreateResponseGA`: Use the current Generated.RealtimeSessionCreateResponseGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeSessionCreateResponseGAMaxOutputTokensEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3525,9 +3525,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateResponseTracingEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RealtimeTranscriptionSessionCreateRequest` -> `Generated.RealtimeTranscriptionSessionCreateRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateRequest` -> `Generated.RealtimeTranscriptionSessionCreateRequest`: Use the current Generated.RealtimeTranscriptionSessionCreateRequest schema. The object shapes at input\_audio\_noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
-- `Generated.RealtimeTranscriptionSessionCreateRequestGA` -> `Generated.RealtimeTranscriptionSessionCreateRequestGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateRequestGA` -> `Generated.RealtimeTranscriptionSessionCreateRequestGA`: Use the current Generated.RealtimeTranscriptionSessionCreateRequestGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeTranscriptionSessionCreateRequestGAType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3537,7 +3537,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeTranscriptionSessionCreateResponse` -> `Generated.RealtimeTranscriptionSessionCreateResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RealtimeTranscriptionSessionCreateResponseGA` -> `Generated.RealtimeTranscriptionSessionCreateResponseGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateResponseGA` -> `Generated.RealtimeTranscriptionSessionCreateResponseGA`: Use the current Generated.RealtimeTranscriptionSessionCreateResponseGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeTranscriptionSessionCreateResponseGAType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3643,7 +3643,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RunGraderResponse` -> `Generated.RunGraderResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RunObject` -> `Generated.RunObject`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RunObject` -> `Generated.RunObject`: Use the current Generated.RunObject schema. The object shapes at required\_action, last\_error, and incomplete\_details have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RunObjectIncompleteDetailsReason` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -4159,7 +4159,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WorkflowTracingParam` -> `Generated.WorkflowTracingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.make` -> `Generated.make`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.make` -> `Generated.make`: make now infers E and R from `HttpClient.With<E, R>` and returns `Generated.OpenAiClient<E, R>`. Preserve those type parameters in wrappers; endpoint effects include the supplied client error E and require R. transformClient must preserve the same E and R.
 
 ### `@effect/ai-openai/OpenAiClient`
 
@@ -7384,6 +7384,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/http-api.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
+
+- `HttpLayerRouter.disableLogger` -> `HttpRouter.disableLogger`: Moved to the consolidated HttpRouter module; provide this layer to disable HTTP request logging. CloudflareTracer.layer installs tracing and is not a replacement.
 
 - `HttpLayerRouter.layer` -> `HttpRouter.layer`: Use the layer for the consolidated HttpRouter service.
 
