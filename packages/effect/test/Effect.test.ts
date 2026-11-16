@@ -5508,6 +5508,32 @@ describe("Effect", () => {
           assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
         })
       }
+      for (const dispatched of [false, true]) {
+        it(`interrupts a fork before it starts, ${dispatched ? "after" : "before"} its start is dispatched`, async () => {
+          const { land, scheduler } = makeScheduler()
+          const seen: Array<string> = []
+          let child!: Fiber.Fiber<number>
+          Effect.runFork(
+            Effect.forkDetach(Effect.sync(() => {
+              seen.push(current())
+              return 42
+            })).pipe(Effect.tap((fiber) =>
+              Effect.sync(() => {
+                child = fiber
+                if (!dispatched) fiber.interruptUnsafe()
+              })
+            )),
+            { scheduler }
+          )
+          if (dispatched) {
+            await Promise.resolve()
+            storage.run("waker", () => child.interruptUnsafe())
+          }
+          await land()
+          assert.deepStrictEqual(seen, [])
+          assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
+        })
+      }
     })
 
     const runWithStore = <A, E>(store: string | undefined, effect: Effect.Effect<A, E>): Promise<A> =>

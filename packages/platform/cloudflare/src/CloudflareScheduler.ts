@@ -4,7 +4,7 @@
  * @stability stable
  * @since 4.2.0
  */
-import * as Duration from "effect/Duration"
+import { waitUntil } from "cloudflare:workers"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
@@ -16,19 +16,23 @@ const AsyncResource: (new(type: string) => Scheduler.AsyncContext) | undefined =
   }
 })()
 
-const defaultKeepAliveMillis = 30_000
-// Longer delays overflow to an immediate timer
-const maxTimerMillis = 2_147_483_647
+const compatibilityFlags: Record<string, boolean | undefined> | undefined = (globalThis as any).Cloudflare
+  ?.compatibilityFlags
+
+// Entering another request's AsyncResource only fails when AsyncLocalStorage
+// snapshots are bound to their request. Otherwise it succeeds in the wrong
+// request, so every resumption goes through the owner's promise instead.
+const canEnter = AsyncResource !== undefined &&
+  compatibilityFlags?.bind_asynclocalstorage_snapshot_to_request !== false
 
 const run = (task: () => void): void => task()
 const noop = (): void => {}
 
-const setKeepAlive = (millis: number): unknown => {
+const keepOwnerAlive = (promise: Promise<void>): void => {
   try {
-    return setTimeout(noop, millis)
+    waitUntil(promise)
   } catch {
-    // Workers do not allow timers in global scope
-    return undefined
+    // Outside a request, for example in global scope, there is no owner to keep
   }
 }
 
@@ -36,57 +40,55 @@ const setKeepAlive = (millis: number): unknown => {
 // Entering the AsyncResource resumes the fiber synchronously with the owner's
 // AsyncLocalStorage state. workerd refuses that from any other request, so the
 // resumption is then handed to a promise the owner created: workerd runs its
-// reactions in the owner's IoContext, or drops them if the owner has ended.
-class RequestContext implements Scheduler.AsyncContext {
-  readonly resource: Scheduler.AsyncContext
+// reactions in the owner's IoContext. The owner waits on that promise, so it
+// stays alive after responding until the fiber resumes.
+class OwnerContext implements Scheduler.AsyncContext {
+  readonly resource: Scheduler.AsyncContext | undefined
   readonly resolve: (task: () => void) => void
-  // Keeps the owner from being cancelled as hung while the fiber waits. Timers
-  // belong to the request that set them, so only the owner clears it.
-  readonly timer: unknown
 
-  constructor(Resource: new(type: string) => Scheduler.AsyncContext, keepAliveMillis: number | undefined) {
-    this.resource = new Resource("effect/Fiber")
+  constructor() {
+    this.resource = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
     let resolve!: (task: () => void) => void
-    new Promise<() => void>((resolve_) => {
-      resolve = resolve_
-    }).then(run)
+    keepOwnerAlive(
+      new Promise<() => void>((resolve_) => {
+        resolve = resolve_
+      }).then(run)
+    )
     this.resolve = resolve
-    this.timer = keepAliveMillis === undefined ? undefined : setKeepAlive(keepAliveMillis)
   }
 
   runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void {
-    let entered = false
-    try {
-      this.resource.runInAsyncScope(
-        () => {
-          entered = true
-          this.clearKeepAlive()
-          fn.call(thisArg, arg)
-        },
-        undefined,
-        undefined
-      )
-    } catch (error) {
-      if (entered) throw error
-      this.resolve(() => {
-        this.clearKeepAlive()
-        fn.call(thisArg, arg)
-      })
+    const resource = this.resource
+    if (canEnter) {
+      let entered = false
+      try {
+        resource!.runInAsyncScope(
+          () => {
+            entered = true
+            fn.call(thisArg, arg)
+          },
+          undefined,
+          undefined
+        )
+        return this.resolve(noop)
+      } catch (error) {
+        if (entered) {
+          this.resolve(noop)
+          throw error
+        }
+      }
     }
-  }
-
-  clearKeepAlive(): void {
-    if (this.timer !== undefined) clearTimeout(this.timer as any)
+    this.resolve(() => resource === undefined ? fn.call(thisArg, arg) : resource.runInAsyncScope(fn, thisArg, arg))
   }
 
   emitDestroy(): void {
-    this.resource.emitDestroy()
+    this.resource?.emitDestroy()
   }
 }
 
 /**
  * A synchronous scheduler that resumes each fiber in the Worker request that
- * owns it.
+ * owns it, and keeps that request running while the fiber waits.
  *
  * **When to use**
  *
@@ -94,7 +96,7 @@ class RequestContext implements Scheduler.AsyncContext {
  * a module-scope `ManagedRuntime`, `Deferred`, `Queue`, `PubSub`, or
  * `Semaphore`. Pass an instance as the `scheduler` option to Effect runners.
  * For a shared runtime, build it with
- * `ManagedRuntime.make(AppLayer.pipe(Layer.provideMerge(CloudflareScheduler.layer())))`.
+ * `ManagedRuntime.make(AppLayer.pipe(Layer.provideMerge(CloudflareScheduler.layer)))`.
  * Also pass `{ scheduler: new CloudflareScheduler() }` to the runtime runners,
  * including `runFork` and `runPromise`: the layer alone does not configure callers
  * waiting for lazy initialization. To initialize explicitly, run
@@ -109,53 +111,50 @@ class RequestContext implements Scheduler.AsyncContext {
  * waking request continues without waiting for it. Inside a Durable Object,
  * requests share these, so fibers resume immediately.
  *
- * While a fiber waits, a timer keeps workerd from cancelling its owner as hung
- * for up to `keepAlive` (30 seconds by default). Without it, a request that
- * awaits only work another request will finish is cancelled, because a pending
- * promise does not count as pending work. The timer does not extend a request
- * that has already responded; use `ctx.waitUntil` for that. Pass
- * `keepAlive: false` to disable it.
+ * Each waiting fiber is registered with its owner through `waitUntil` from
+ * `cloudflare:workers`, so the owner keeps running after it responds until
+ * the fiber resumes. The module imports `cloudflare:workers`, so it only loads
+ * in workerd.
  *
  * **Gotchas**
  *
- * A fiber whose owner has ended cannot resume: workerd drops the resumption and
- * logs a warning, and the fiber never completes or runs its finalizers.
- * Anything handed to it, such as a `Semaphore` permit or a `Queue` item, is
- * lost. Keep the owner alive with `ctx.waitUntil` while its fibers may still
- * be woken, or interrupt them before it ends.
+ * workerd cancels a request once nothing it waits on can make progress, and
+ * another request's fibers do not count. Then:
  *
- * Owner resumption needs `node:async_hooks`, available with the `nodejs_compat`
- * or `nodejs_als` compatibility flags, or a compatibility date of 2026-08-15 or
- * later. Without it, fibers resume in the request that wakes them, and the
- * owner's I/O objects cannot be used there.
+ * - A request that only waits on another request's work, such as a shared
+ *   runtime's initialization, fails as hung. Give it work of its own to wait on.
+ * - A fiber whose owner was cancelled, or has finished after responding, can no
+ *   longer resume. workerd drops the resumption and logs a warning, and the
+ *   fiber never completes or runs its finalizers. Anything handed to it, such
+ *   as a `Semaphore` permit or a `Queue` item, is lost. Interrupt such fibers
+ *   before their owner runs out of work.
  *
- * In a Durable Object, the keep-alive timer delays hibernation; consider
- * `keepAlive: false` there. Synchronous execution does not yield to the event
- * loop, so CPU-heavy work delays other requests.
+ * `waitUntil` work is also subject to the platform's limit on how long a
+ * request may run after responding.
+ *
+ * Owner resumption needs the `handle_cross_request_promise_resolution`
+ * compatibility flag, enabled by default from 2024-10-14; the constructor
+ * throws without it. `AsyncLocalStorage` state is restored with
+ * `node:async_hooks`, available with the `nodejs_compat` or `nodejs_als`
+ * flags. Without the `bind_asynclocalstorage_snapshot_to_request` flag, enabled
+ * by default from 2025-06-16, every resumption is handed to the owner, so fibers
+ * woken by their own request also resume a microtask later.
+ *
+ * Synchronous execution does not yield to the event loop, so CPU-heavy work
+ * delays other requests.
  *
  * @stability stable
  * @category models
  * @since 4.2.0
  */
 export class CloudflareScheduler extends Scheduler.MixedScheduler {
-  readonly keepAliveMillis: number | undefined
-
-  constructor(options?: {
-    /**
-     * How long a waiting fiber keeps its owner request alive, or `false` to
-     * not keep it alive.
-     *
-     * @default "30 seconds"
-     */
-    readonly keepAlive?: Duration.Input | false | undefined
-  }) {
+  constructor() {
     super("sync")
-    const keepAlive = options?.keepAlive
-    this.keepAliveMillis = keepAlive === false
-      ? undefined
-      : keepAlive === undefined
-      ? defaultKeepAliveMillis
-      : Math.min(Duration.toMillis(Duration.fromInputUnsafe(keepAlive)), maxTimerMillis)
+    if (compatibilityFlags?.handle_cross_request_promise_resolution === false) {
+      throw new Error(
+        "CloudflareScheduler requires the handle_cross_request_promise_resolution compatibility flag"
+      )
+    }
   }
 
   /**
@@ -163,19 +162,17 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler {
    *
    * @since 4.2.0
    */
-  captureAsyncContext(): Scheduler.AsyncContext | undefined {
-    return AsyncResource === undefined ? undefined : new RequestContext(AsyncResource, this.keepAliveMillis)
+  captureAsyncContext(): Scheduler.AsyncContext {
+    return new OwnerContext()
   }
 }
 
 /**
- * Creates a layer that installs a `CloudflareScheduler` for an application and
- * its fibers.
+ * A layer that installs a `CloudflareScheduler` for an application and its
+ * fibers.
  *
  * @stability stable
  * @category layers
  * @since 4.2.0
  */
-export const layer = (options?: {
-  readonly keepAlive?: Duration.Input | false | undefined
-}): Layer.Layer<never> => Layer.succeed(Scheduler.Scheduler, new CloudflareScheduler(options))
+export const layer: Layer.Layer<never> = Layer.sync(Scheduler.Scheduler, () => new CloudflareScheduler())
