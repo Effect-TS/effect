@@ -91,26 +91,18 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
    *
    * It also bounds how long a runner whose shard lock operations keep failing,
    * while its heartbeat still succeeds, keeps shards assigned to it. Once this
-   * duration has passed since its first failed lock operation returned, the
-   * next lock operation to fail evicts the runner: it drops its shards and
-   * starts unregistering. The locks it last refreshed have expired by then.
+   * duration has passed since its first failed lock operation, the next one to
+   * fail makes the runner drop its shards and unregister, so that other
+   * runners take them on their next `refreshAssignmentsInterval`. It registers
+   * again once it can acquire shard locks.
    *
-   * The lock refresh interval is the smaller of `shardLockRefreshInterval` and
-   * a third of this duration. It is the deadline for each lock operation,
-   * heartbeat and unregistration attempt. Unregistration waits for any
-   * registration in flight, and that wait counts toward its deadline. If every
-   * heartbeat succeeds and the first unregistration attempt completes within
-   * its deadline, the runner is unregistered at most four lock refresh
-   * intervals after this duration. Otherwise an attempt that fails or times
-   * out is retried every lock refresh interval until one succeeds, and the
-   * runner stays evicted meanwhile. A registration responds within its own
-   * five second deadline, so it delays unregistration by at most that long.
-   * If heartbeats fail too, no lock operation runs, and the runner leaves
-   * through heartbeat expiry instead.
-   *
-   * Other runners take its shards on their next assignment refresh
-   * (`refreshAssignmentsInterval`). The runner registers again once it can
-   * acquire shard locks.
+   * The runner is unregistered at most four lock refresh intervals (the
+   * smaller of `shardLockRefreshInterval` and a third of this duration) after
+   * this duration, provided every heartbeat and the first unregistration
+   * attempt, including its wait for a registration in flight, succeed within
+   * one interval each. An attempt that fails or times out is retried every
+   * interval. If heartbeats fail too, the runner leaves through heartbeat
+   * expiry instead.
    */
   readonly shardLockExpiration: Duration.Input
   /**

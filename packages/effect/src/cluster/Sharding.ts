@@ -431,9 +431,9 @@ const make = Effect.gen(function*() {
     })
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
     let forcedShardReleaseRunning = false
-    // When the current run of failed shard lock operations started, and the
-    // latest failure. Only a successful lock operation clears it.
-    let shardLockFailure: { readonly since: number; readonly cause: Cause.Cause<unknown> } | undefined
+    // When the current run of failed shard lock operations started. Only a
+    // successful lock operation clears it.
+    let shardLockFailingSince: number | undefined
     // Called from the acquisition loop only, so no `acquire` is in flight
     const checkHandedOff = () => {
       if (
@@ -669,7 +669,7 @@ const make = Effect.gen(function*() {
           activeShardsLatch.openUnsafe()
           continue
         }
-        shardLockFailure = undefined
+        shardLockFailingSince = undefined
 
         const acquired = acquireExit.value
         yield* storage.resetShards(acquired).pipe(
@@ -745,24 +745,21 @@ const make = Effect.gen(function*() {
     // for `shardLockExpiration` since the first failure, the locks it last held
     // have expired, so it unregisters and other runners take its shards.
     //
-    // While failures are pending, the next lock operation starts within one
-    // lock interval of the last one failing. It takes at most one interval, and
-    // a refresh follows a heartbeat that takes up to one too. So once
-    // `shardLockExpiration` has passed, a failure is seen within three
-    // intervals if heartbeats succeed. The first unregistration attempt runs
-    // straight away and takes at most one more interval, including the wait for
-    // a registration in flight. If it fails or times out, the probe below
-    // retries it every interval.
+    // With working heartbeats, a failure is seen within three lock intervals of
+    // `shardLockExpiration` passing: the next lock operation starts within one
+    // interval of the last failure and takes up to one, after a heartbeat that
+    // takes up to one too. Unregistering takes up to one more, including the
+    // wait for a registration in flight.
     const shardLockExpirationMillis = Duration.toMillis(Duration.fromInputUnsafe(config.shardLockExpiration))
     const unregisterSelf = withRegistrationLock(runnerStorage.unregister(selfAddress)).pipe(
       Effect.timeout(shardLockInterval)
     )
-    function shardLockOperationFailed(cause: Cause.Cause<unknown>): Effect.Effect<void> {
-      return Effect.suspend(() => {
+    const shardLockOperationFailed = (cause: Cause.Cause<unknown>) =>
+      Effect.suspend(() => {
         if (isShutdown.current || Cause.hasInterruptsOnly(cause)) return Effect.void
         const now = clock.currentTimeMillisUnsafe()
-        shardLockFailure = { since: shardLockFailure?.since ?? now, cause }
-        if (shardLocksEvicted || now - shardLockFailure.since < shardLockExpirationMillis) return Effect.void
+        shardLockFailingSince ??= now
+        if (shardLocksEvicted || now - shardLockFailingSince < shardLockExpirationMillis) return Effect.void
         shardLocksEvicted = true
         return markShardLocksUnhealthy(cause).pipe(
           Effect.andThen(Effect.logError(
@@ -774,14 +771,11 @@ const make = Effect.gen(function*() {
           Effect.catchCause((cause) => Effect.logWarning("Could not unregister runner, retrying", cause))
         )
       })
-    }
     // While evicted, keep this runner unregistered and probe the lock path.
     // Only a successful `acquire` shows that it can take locks again. The probe
-    // shard is normally held by another runner, so it takes nothing. Any lock
-    // it did take is released before the next `acquire`: `releaseAll` runs both
-    // before and after it, and a probe stops at the first operation that fails
-    // or outlasts its own deadline. Once a probe succeeds, the runner registers
-    // again.
+    // shard is normally held by another runner, so it takes nothing. Each step
+    // has its own deadline, and `releaseAll` runs first so a probe lock that
+    // could not be released is never renewed.
     const lockProbeShards = Array.from(shardGroups.assigned, (group) => makeShardId(group, 1))
     const releaseAllWithDeadline = Effect.timeout(runnerStorage.releaseAll(selfAddress), shardLockInterval)
     const probeEvictedShardLocks = unregisterSelf.pipe(
@@ -790,7 +784,7 @@ const make = Effect.gen(function*() {
       Effect.andThen(releaseAllWithDeadline),
       Effect.andThen(Effect.suspend(() => {
         shardLocksEvicted = false
-        shardLockFailure = undefined
+        shardLockFailingSince = undefined
         return markShardLocksHealthy
       })),
       Effect.catchCause((cause) => Effect.logWarning("Shard lock storage is still unhealthy", cause))
@@ -815,7 +809,7 @@ const make = Effect.gen(function*() {
         runnerStorage.refresh(selfAddress, refreshed),
         (acquired) => {
           // an empty refresh is only the heartbeat, not a lock operation
-          if (refreshed.length > 0) shardLockFailure = undefined
+          if (refreshed.length > 0) shardLockFailingSince = undefined
           releaseLostShards(refreshed, acquired)
         }
       )
@@ -833,7 +827,7 @@ const make = Effect.gen(function*() {
       Effect.andThen(markShardLocksHealthy),
       // Retry a failed lock refresh now rather than at the next tick, so a
       // runner holding shards attempts one every lock refresh interval
-      Effect.andThen(Effect.suspend(() => shardLockFailure === undefined ? Effect.void : refreshShardLocks)),
+      Effect.andThen(Effect.suspend(() => shardLockFailingSince === undefined ? Effect.void : refreshShardLocks)),
       Effect.catchCause((cause) => Effect.logWarning("Shard lock storage is still unhealthy", cause))
     )
 
