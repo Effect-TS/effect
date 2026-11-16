@@ -934,14 +934,25 @@ const isPausable = (ws: WebSocketLike): ws is WebSocketLike & Pausable =>
  * **Details**
  *
  * Reader acquisition runs `acquire`, attaches event listeners, then waits for
- * the socket to open. Implementations exposing `pause`/`resume` (the `ws`
- * package) remain flowing until buffered frames reach the configured
- * `highWaterMark` (64 KiB by default). Draining the buffer resumes the
- * transport. Incoming frames that arrive in the same tick are coalesced into
- * one batch. Implementations without pause (browsers) buffer incoming frames,
- * optionally failing the socket with a `SocketReadError` when `highWaterMark`
- * bytes are exceeded (default unbounded). Message boundaries survive: each
- * pulled batch contains one element per frame.
+ * the socket to open. `highWaterMark` counts the bytes of frames waiting for
+ * a pull, with every frame counting as at least one byte. Implementations
+ * exposing `pause`/`resume` (the `ws` package) remain flowing until buffered
+ * frames reach the `highWaterMark` (64 KiB by default), and draining the
+ * buffer resumes the transport. Incoming frames that arrive in the same tick
+ * are coalesced into one batch. Message boundaries survive: each pulled batch
+ * contains one element per frame.
+ *
+ * Implementations without pause (browsers) buffer incoming frames without
+ * limit by default. With a `highWaterMark`, a frame arriving once the buffer
+ * has reached it is discarded along with every later frame. The reader
+ * receives the frames already buffered, then fails with a `SocketReadError`,
+ * and the WebSocket is closed with code 1008, or without a code where the
+ * runtime rejects 1008.
+ *
+ * **Gotchas**
+ *
+ * A single frame larger than the `highWaterMark` is accepted while the buffer
+ * is below it, so pair the limit with the transport's maximum payload size.
  *
  * @stability unstable
  * @category constructors
@@ -976,6 +987,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       let paused = pausable && "isPaused" in ws && ws.isPaused === true
       let buffer: Array<Uint8Array | string> = []
       let bufferSize = 0
+      let overflowed = false
       let error: SocketError | undefined
       let waiter: ReadResume | undefined
       let openWaiter:
@@ -1013,21 +1025,30 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       }
 
       function push(data: Uint8Array | string) {
-        buffer.push(data)
+        if (overflowed) return
         if (highWaterMark !== undefined) {
-          bufferSize += typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength
+          if (!pausable && bufferSize >= highWaterMark) return overflow()
+          bufferSize += (typeof data === "string" ? encoder.encode(data).byteLength : data.byteLength) || 1
         }
+        buffer.push(data)
         if (waiter !== undefined) deliver()
-        if (pausable && bufferSize >= highWaterMark!) {
-          pauseWebSocket()
-        } else if (!pausable && !waiter && highWaterMark !== undefined && bufferSize > highWaterMark) {
-          fail(
-            new SocketError({
-              reason: new SocketReadError({
-                cause: new Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
-              })
+        if (pausable && bufferSize >= highWaterMark!) pauseWebSocket()
+      }
+
+      function overflow() {
+        overflowed = true
+        fail(
+          new SocketError({
+            reason: new SocketReadError({
+              cause: new Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
             })
-          )
+          })
+        )
+        try {
+          ws.close(1008, "Inbound message buffer limit exceeded")
+        } catch {
+          // global WebSocket clients only accept 1000 and 3000-4999
+          ws.close()
         }
       }
 
