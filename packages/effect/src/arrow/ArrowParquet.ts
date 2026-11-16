@@ -198,7 +198,7 @@ interface Leaf {
   readonly type: ArrowSchema.DataType
   readonly convert: Convert
   /** The canonical extension the field is marked with. */
-  readonly extension?: string
+  readonly extension?: string | undefined
 }
 
 const bytesOf = (array: ArrayBufferView): Uint8Array => new Uint8Array(array.buffer, array.byteOffset, array.byteLength)
@@ -216,8 +216,7 @@ const shared: Convert = (values) =>
     ? [bytesOf(values.offsets), values.values]
     : [bytesOf(values.values)]
 
-const view = (type: ArrowSchema.DataType, extension?: string): Leaf =>
-  extension === undefined ? { type, convert: shared } : { type, convert: shared, extension }
+const view = (type: ArrowSchema.DataType, extension?: string): Leaf => ({ type, convert: shared, extension })
 
 const unknown: Leaf = {
   type: ArrowSchema.nullType,
@@ -949,14 +948,7 @@ const readGroup = <E, R>(
     const columns: Array<Parquet.Column> = []
     let previous: Parquet.Column | undefined
     for (const index of plan.columns) {
-      const column = yield* Parquet.readColumn(source, metadata, {
-        rowGroup,
-        column: index,
-        codecs: options.codecs,
-        maxPageSize: options.maxPageSize,
-        maxValues: options.maxValues,
-        maxBinaryLength: options.maxBinaryLength
-      })
+      const column = yield* Parquet.readColumn(source, metadata, { ...options, column: index })
       if (previous !== undefined) yield* Effect.fromResult(attempt(() => checkShared(previous!, column, rowGroup)))
       columns[index] = previous = column
     }
