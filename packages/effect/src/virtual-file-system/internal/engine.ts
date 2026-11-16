@@ -2,9 +2,11 @@ import * as BytePath from "../../BytePath.ts"
 import * as Bytes from "../../Bytes.ts"
 import * as ByteSize from "../../ByteSize.ts"
 import * as DateTime from "../../DateTime.ts"
+import * as Effect from "../../Effect.ts"
 import * as Hex from "../../encoding/Hex.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as M from "./model.ts"
 import * as R from "./runtime.ts"
 
@@ -209,6 +211,39 @@ export interface FileState {
   position: bigint
 }
 
+export const owners = new WeakMap<M.Owner, Engine>()
+const storageEngine = (owner: M.Owner) => {
+  const engine = owners.get(owner)
+  if (!engine) throw new Error("Unknown preview owner")
+  return engine
+}
+
+// Core v1 persists its own revision numbers. Preview observation tokens are session-local.
+export const resumeAllocator = (owner: M.Owner, nextObject: bigint) => {
+  const engine = storageEngine(owner)
+
+  if (nextObject < engine.nextObject) throw new Error("Invalid restored allocator")
+  engine.nextObject = nextObject
+
+  return (ino: bigint) => engine.reference(ino)
+}
+
+export const installStorage = (
+  owner: M.Owner,
+  offer: NonNullable<Engine["offer"]>,
+  frozen: () => boolean
+) => {
+  const engine = storageEngine(owner)
+  if (engine.offer) throw new Error("Storage already installed")
+  if (engine.runtime.limits.synchronous) throw new Error("Storage requires synchronous operations to be disabled")
+  const gate = Semaphore.makeUnsafe(1)
+  engine.offer = offer
+  engine.runtime.storageUnavailable = frozen
+  engine.runtime.storageTurn = <A, E, R>(effect: Effect.Effect<A, E, R>) => gate.withPermit(effect)
+
+  return gate.withPermit(Effect.void)
+}
+
 export const callers = new WeakMap<M.VirtualFileSystem, Caller>()
 
 interface DirectoryHandleState {
@@ -355,9 +390,38 @@ export const asciiPath = (path: string) => Result.getOrThrow(BytePath.fromString
 // -----------------------------------------------------------------------------
 
 export class Engine {
+  offer?: (
+    nodes: ReadonlyMap<bigint, Node>,
+    changed: ReadonlySet<bigint>,
+    nextObject: bigint,
+    operation: string
+  ) => R.StorageOffer
+
+  offerState(
+    changes: ReadonlyMap<bigint, Node>,
+    removed: ReadonlyArray<bigint>,
+    nextObject: bigint,
+    operation: string,
+    acquiringFile = false
+  ) {
+    if (!this.offer) return undefined
+    const changed = new Set<bigint>()
+    for (const [id, node] of changes) {
+      const prior = this.nodes.get(id)
+      // A read can refresh atime without advancing the object's revision.
+      if (!prior || prior.revision !== node.revision || prior.atime !== node.atime) changed.add(id)
+    }
+    if (!acquiringFile && changed.size === 0 && removed.length === 0 && nextObject === this.nextObject) return undefined
+    const nodes = new Map(this.nodes)
+    for (const [id, node] of changes) nodes.set(id, node)
+    for (const id of removed) nodes.delete(id)
+    return this.offer(nodes, changed, nextObject, operation)
+  }
+
   readonly runtime: R.Runtime
   readonly inputLimits: Readonly<Pick<M.Limits, "ioBytes" | "pathBytes">>
   readonly root: bigint
+  readonly listeners = new Set<(batch: ReadonlyArray<M.CommittedMutation>) => void>()
   readonly nodes = new Map<bigint, Node>()
   readonly pins = new Map<bigint, number>()
   private readonly releaseCandidates = new Set<bigint>()
@@ -550,6 +614,22 @@ interface BorrowedDestination {
 
 export class Transaction {
   readonly changes = new Map<bigint, Node>()
+  private mutations?: Array<M.CommittedMutation>
+  nextObject: bigint
+  private nextBinding: bigint
+
+  private record(mutation: M.CommittedMutation) {
+    const mutations = this.mutations ??= []
+    mutations.push(mutation)
+  }
+
+  recordUpdate(object: bigint) {
+    // Initial contents and metadata belong to the Create or Replace event.
+    if (!this.engine.nodes.has(object)) return
+    const last = this.mutations?.[this.mutations.length - 1]
+    if (last?._tag !== "Update" || last.object !== object) this.record({ _tag: "Update", object })
+  }
+
   private readonly timeRequests = new Map<bigint, Set<"atime" | "mtime" | "ctime" | "birthtime">>()
   private readonly products: Array<{ readonly node: Node; readonly value: M.ObjectObservation }> = []
   private pendingPosition: { readonly state: FileState; readonly next: bigint } | undefined
@@ -561,6 +641,8 @@ export class Transaction {
   constructor(caller: Caller, work: R.Work) {
     this.caller = caller
     this.work = work
+    this.nextObject = this.engine.nextObject
+    this.nextBinding = this.engine.nextBinding
   }
 
   get engine() {
@@ -1373,12 +1455,18 @@ export class Transaction {
     })
   }
 
-  insertResult(parentId: bigint, name: BytePath.BytePath, object: bigint) {
+  insertResult(parentId: bigint, name: BytePath.BytePath, object: bigint, previous?: bigint) {
     return Result.gen(this, function*() {
       yield* this.reserveResult(BigInt(BytePath.byteLength(name)))
-      const binding = { name, object, version: this.engine.nextBinding++ }
+      const binding = { name, object, version: this.nextBinding++ }
       const parent = yield* this.editDirectoryResult(parentId)
       parent.entries.set(key(name), binding)
+      const last = this.mutations?.[this.mutations.length - 1]
+      if (last?._tag === "Remove" && last.parent === parentId && BytePath.Order(last.name, name) === 0) {
+        this.mutations?.pop()
+        this.record({ _tag: "Replace", parent: parentId, name, object, previous: last.object })
+      } else if (previous === undefined) this.record({ _tag: "Create", parent: parentId, name, object })
+      else this.record({ _tag: "Create", parent: parentId, name, object, previous })
       yield* this.childChangedResult(parentId)
       return binding
     })
@@ -1395,7 +1483,8 @@ export class Transaction {
 
   moveResult(from: EntrySlot, to: EntrySlot, node: Node) {
     return Result.gen(this, function*() {
-      if (to.binding !== undefined) yield* this.removeResult(to.parent, to.binding)
+      if (to.binding !== undefined) yield* this.removeResult(to.parent, to.binding, false)
+      this.record({ _tag: "Remove", parent: from.parent.id, name: from.name, object: node.id })
       const source = yield* this.editDirectoryResult(from.parent.id)
       source.entries.delete(key(from.name))
       yield* this.childChangedResult(from.parent.id)
@@ -1412,7 +1501,7 @@ export class Transaction {
         }
         moved.parent = to.parent.id
       }
-      yield* this.insertResult(to.parent.id, to.name, node.id)
+      yield* this.insertResult(to.parent.id, to.name, node.id, to.binding?.object)
       yield* this.changedResult(node.id, ["ctime"])
     })
   }
@@ -1431,7 +1520,7 @@ export class Transaction {
       const gid = owner?.gid ?? this.creationGroup(parent)
       const mode = requested & ~policy.umask
       const common: Base = {
-        id: this.engine.nextObject++,
+        id: this.nextObject++,
         uid: owner?.uid ?? policy.uid,
         gid,
         mode: kind === "symlink" ? 0o777 : kind === "file" ? this.fileMode(mode, gid) : mode,
@@ -1465,11 +1554,12 @@ export class Transaction {
     })
   }
 
-  removeResult(parent: DirectoryNode, binding: Binding) {
+  removeResult(parent: DirectoryNode, binding: Binding, report = true) {
     return Result.gen(this, function*() {
       const node = yield* this.editResult(binding.object)
       const directory = yield* this.editDirectoryResult(parent.id)
       directory.entries.delete(key(binding.name))
+      if (report) this.record({ _tag: "Remove", parent: parent.id, name: binding.name, object: node.id })
       yield* this.childChangedResult(parent.id)
       if (node.kind === "directory") {
         node.nlink = BigInt("0")
@@ -1486,7 +1576,7 @@ export class Transaction {
   // Atomic publication
   // ---------------------------------------------------------------------------
 
-  transitionResult<A>(value: A) {
+  transitionResult<A>(value: A, acquiringFile = false) {
     return Result.gen(this, function*() {
       const engine = this.engine
       let capacityUnchanged = true
@@ -1563,6 +1653,7 @@ export class Transaction {
           )
         }
       }
+      let readAtimeChanged = false
       if (this.timeRequests.size > 0) {
         const now = engine.now()
         for (const [id, fields] of this.timeRequests) {
@@ -1579,7 +1670,10 @@ export class Transaction {
               changed = true
             }
           }
-          if (changed && (fields.size > 1 || !fields.has("atime"))) node.revision++
+          if (changed) {
+            if (fields.size === 1 && fields.has("atime")) readAtimeChanged = true
+            else node.revision++
+          }
         }
       }
       for (const product of this.products) {
@@ -1587,10 +1681,25 @@ export class Transaction {
         Object.assign(product.value, engine.observation(node))
       }
       const read = this.pendingRead
+      // The destination can detach while storage decides whether to persist atime.
+      if (read !== undefined && engine.offer !== undefined && readAtimeChanged) {
+        return yield* Result.fail(new M.Busy({ operation: this.operation, reason: "accessTimeUpdate" }))
+      }
       const position = this.pendingPosition
       const caller = this.pendingCaller
       return {
         value,
+        readAtimeChanged,
+        offer: engine.offer && (acquiringFile || this.changes.size > 0)
+          ? () =>
+            engine.offerState(
+              this.changes,
+              [...removed ?? [], ...released ?? []],
+              this.nextObject,
+              this.operation,
+              acquiringFile
+            )
+          : undefined,
         publish: () =>
           Result.gen(this, function*() {
             // NOTE: Clock may have changed the borrowed view. Validate before any publication.
@@ -1612,10 +1721,26 @@ export class Transaction {
             if (released !== undefined) { for (const id of released) engine.reclaim(id) }
             if (removed !== undefined) { for (const id of removed) engine.nodes.delete(id) }
             for (const [id, node] of this.changes) if (!removed?.has(id)) engine.publishNode(node)
+            engine.nextObject = this.nextObject
+            engine.nextBinding = this.nextBinding
             engine.entryCount += entryDelta
             engine.contentBytes += contentDelta
             if (read !== undefined) Uint8Array.prototype.set.call(read.destination.view, read.bytes)
             if (position !== undefined) position.state.position = position.next
+            if (this.mutations !== undefined && engine.listeners.size > 0) {
+              const batch = Object.freeze(this.mutations.map((mutation) => Object.freeze(mutation)))
+              const sinks = Array.from(engine.listeners)
+              this.work.afterCommit = () => {
+                for (const sink of sinks) {
+                  if (!engine.listeners.has(sink)) continue
+                  try {
+                    sink(batch)
+                  } catch {
+                    engine.listeners.delete(sink)
+                  }
+                }
+              }
+            }
           })
       }
     })

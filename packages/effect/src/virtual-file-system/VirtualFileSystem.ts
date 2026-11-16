@@ -269,6 +269,16 @@ export {
    */
   ReentrantOperation,
   /**
+   * When true, an Effect operation that would change an automatic read access time
+   * fails before publication with Busy("accessTimeUpdate"). Explicit attribute
+   * updates and synchronous calls retain their usual behavior. Defaults to false.
+   *
+   * @stability experimental
+   * @category references
+   * @since 4.1.0
+   */
+  RequireStableReadAtime,
+  /**
    * Constructible root capture record. Local ids are positive and separate from preserved object numbers.
    *
    * @stability experimental
@@ -418,6 +428,14 @@ export type {
    * @since 4.1.0
    */
   CaptureTraversalOptions,
+  /**
+   * An owner-only namespace or object mutation in a committed operation.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.1.0
+   */
+  CommittedMutation,
   /**
    * Fresh instance configuration. Root defaults 0:0/0755 without umask; its four times use one captured
    * Clock sample.
@@ -1606,6 +1624,18 @@ const ownerFor = (engine: E.Engine) =>
       limits: engine.runtime.limits,
       usage: Effect.sync(() => engine.usage()),
       capture: () => C.capture(engine),
+      onCommit: (listener) =>
+        Effect.asVoid(Effect.acquireRelease(
+          Effect.sync(() => {
+            const sink = (batch: ReadonlyArray<M.CommittedMutation>) => listener(batch)
+            engine.listeners.add(sink)
+            return sink
+          }),
+          (sink) =>
+            Effect.sync(() => {
+              engine.listeners.delete(sink)
+            })
+        )),
       authorize: Effect.fnUntraced(function*(options: M.CallerOptions) {
         const scope = yield* Scope.Scope
 
@@ -1674,5 +1704,6 @@ const ownerFor = (engine: E.Engine) =>
       })
     }
 
+    E.owners.set(owner, engine)
     return Object.freeze(owner)
   })

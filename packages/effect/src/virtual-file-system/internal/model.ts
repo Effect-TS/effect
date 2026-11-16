@@ -544,6 +544,9 @@ export class InvalidResource extends Schema.TaggedError<InvalidResource>()("Inva
     "foreign",
     "stale",
     "wrongKind",
+    "storageRejected",
+    "outcomeUnknown",
+    "volumeUnavailable",
     "refusedSymlink",
     "symlinkCycle",
     "symlinkLimit"
@@ -585,9 +588,13 @@ export class LimitExceeded extends Schema.TaggedError<LimitExceeded>()("LimitExc
   stage: Schema.Literals(["admission", "reservation", "resolution", "publication", "traversal", "restore"])
 }) {}
 
+export const RequireStableReadAtime = Context.Reference<boolean>("effect/VirtualFileSystem/RequireStableReadAtime", {
+  defaultValue: () => false
+})
+
 export class Busy extends Schema.TaggedError<Busy>()("Busy", {
   ...ErrorContext,
-  reason: Schema.Literals(["pending", "draining", "nonemptyDirectory"])
+  reason: Schema.Literals(["pending", "draining", "nonemptyDirectory", "accessTimeUpdate"])
 }) {}
 
 export class ReentrantOperation extends Schema.TaggedError<ReentrantOperation>()("ReentrantOperation", {
@@ -1204,6 +1211,7 @@ export const DirectoryHandleTypeId: unique symbol = Symbol("effect/virtual-file-
 export interface FileHandle {
   readonly [FileHandleTypeId]: typeof FileHandleTypeId
   readonly stat: () => ReadEffect<ObjectObservation>
+  /** A storage-backed read that must update atime fails with Busy(accessTimeUpdate). Use readAlloc for that case. */
   readonly read: (destination: Uint8Array, options?: ReadOptions) => ReadEffect<number>
   readonly readAlloc: (count: number, options?: ReadOptions) => ReadEffect<Uint8Array>
   readonly write: (source: Uint8Array, options?: WriteOptions) => Fx<void>
@@ -1304,9 +1312,28 @@ export interface SyncDirectoryHandle {
 
 export const OwnerTypeId: unique symbol = Symbol("effect/virtual-file-system/OwnerTypeId")
 
+type CommittedEntry = {
+  readonly parent: bigint
+  readonly name: BytePath.BytePath
+  readonly object: bigint
+}
+
+export type CommittedMutation =
+  | (CommittedEntry & { readonly _tag: "Create"; readonly previous?: bigint })
+  | (CommittedEntry & { readonly _tag: "Replace"; readonly previous: bigint })
+  | (CommittedEntry & { readonly _tag: "Remove" })
+  | { readonly _tag: "Update"; readonly object: bigint }
+
 export interface Owner {
   readonly [OwnerTypeId]: typeof OwnerTypeId
   readonly authorize: (options: CallerOptions) => Scoped<VirtualFileSystem>
+  /** Receives immutable batches of future committed mutations after the turn is released.
+   * Delivery is synchronous and ordered; reentrant filesystem calls are rejected. A throwing listener is detached.
+   * Rename emits Remove and Create; the latter names an overwritten destination. Replace denotes an atomic entry replacement.
+   * Automatic access times, handle positions and rejected transactions produce no events. */
+  readonly onCommit: (
+    listener: (mutations: ReadonlyArray<CommittedMutation>) => void
+  ) => Effect.Effect<void, never, Scope.Scope>
   readonly capture: () => Fx<Capture>
   readonly usage: Effect.Effect<Usage>
   readonly limits: Limits

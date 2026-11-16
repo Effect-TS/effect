@@ -26,6 +26,8 @@ type HandleBody<A> = (tx: E.Transaction) => Result.Result<A, M.OperationError>
 
 const effects = new WeakMap<E.FileState, M.FileHandle>()
 const states = new WeakMap<object, E.FileState>()
+export const cleanupError = (handle: M.FileHandle | M.DirectoryHandle) =>
+  (states.get(handle) ?? E.directoryHandleState(handle))?.resource.cleanupError
 const synchronous = new WeakMap<E.FileState, M.SyncFileHandle>()
 
 interface DirectoryState {
@@ -231,6 +233,7 @@ const prepareWrite = (
         }
         edited.mode &= ~E.SET_ID_BITS
         edited.data = output
+        tx.recordUpdate(file.id)
         yield* tx.changedResult(file.id, ["mtime", "ctime"])
         const next = state.append
           ? state.appendCursor === "advance" ? end : state.position
@@ -258,6 +261,7 @@ const prepareTruncate = (
         const file = yield* node(tx, state)
         yield* tx.revisionResult(file, fixedOptions)
         const size = yield* candidate(tx, length)
+        tx.recordUpdate(file.id)
         if (file.data.length !== size || (file.mode & E.SET_ID_BITS) !== 0) {
           const output = new Uint8Array(size)
           output.set(file.data.subarray(0, size))
@@ -670,6 +674,7 @@ const openNode = (
       }
     }
     if (options.truncate && !created) {
+      tx.recordUpdate(selected.id)
       yield* candidate(tx, zero)
       if (selected.data.length > 0 || (selected.mode & E.SET_ID_BITS) !== 0) {
         const edited = yield* tx.editResult(selected.id)
@@ -684,6 +689,18 @@ const openNode = (
     return selected
   })
 
+const retainHandle = (engine: E.Engine, resource: R.Resource, id: bigint) =>
+  Result.map(engine.retainObjectsResult(resource, [id]), () => {
+    if (engine.offer) {
+      resource.cleanupOffer = () => {
+        if (
+          engine.runtime.storageUnavailable?.() || engine.pins.get(id) !== 1 || engine.nodes.get(id)?.nlink !== zero
+        ) return undefined
+        return engine.offerState(new Map(), [id], engine.nextObject, "close")
+      }
+    }
+  })
+
 const fileState = (
   caller: E.Caller,
   resource: R.Resource,
@@ -692,7 +709,7 @@ const fileState = (
 ) =>
   Result.gen(function*() {
     const engine = E.resolveEngine(caller)
-    yield* engine.retainObjectsResult(resource, [file.id])
+    yield* retainHandle(engine, resource, file.id)
     return {
       caller: yield* E.createCallerResult(engine, caller.policy, resource),
       resource,
@@ -725,15 +742,39 @@ export const open = Effect.fnUntraced(
               const fixed = yield* validateOpen(target, options, "open")
               const selected = yield* E.snapshotTargetResult(target)
               const acquired = yield* work.acquireResourceResult("handle")
+              // Work owns rollback until the storage decision completes. A closing scope
+              // must not wait on the storage turn held by its own pending open.
+              const durable = E.resolveEngine(caller).offer !== undefined
+              let deciding = false
+              let abandoned = false
               return {
-                enroll: acquired.enroll(scope, "open"),
+                enroll: durable ?
+                  Scope.addFinalizer(
+                    scope,
+                    Effect.suspend(() => {
+                      if (!deciding) return acquired.close
+                      abandoned = true
+                      return Effect.void
+                    })
+                  ) :
+                  acquired.enroll(scope, "open"),
                 execute: () =>
                   Result.gen(function*() {
                     yield* acquired.checkOpenResult("open")
                     const tx = new E.Transaction(caller, work)
                     const file = yield* openNode(tx, selected, fixed)
                     const state = yield* fileState(caller, acquired, file, fixed)
-                    return yield* tx.transitionResult(effectFileHandle(state))
+                    const transition = yield* tx.transitionResult(effectFileHandle(state), durable)
+                    if (!durable) return transition
+                    deciding = true
+                    return {
+                      ...transition,
+                      publish: () =>
+                        Result.flatMap(transition.publish(), () => {
+                          deciding = false
+                          return abandoned ? Result.fail(R.closed("open")) : Result.succeed(undefined)
+                        })
+                    }
                   })
               }
             })
@@ -832,7 +873,7 @@ const acquireDirectory = (
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
     }
     yield* tx.requireResult(found, E.EXECUTE_PERMISSION)
-    yield* tx.engine.retainObjectsResult(resource, [found.id])
+    yield* retainHandle(tx.engine, resource, found.id)
     return { caller: yield* E.createCallerResult(tx.engine, caller.policy, resource), resource, id: found.id }
   })
 

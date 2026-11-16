@@ -613,6 +613,7 @@ export const writeFile = (
       ? Math.max(node.data.length, data.length)
       : node.data.length + data.length
     yield* reserveFile(tx, BigInt(length))
+    if (placement === "replace" || data.length > 0) tx.recordUpdate(node.id)
     if (data.length === 0 && (placement !== "replace" || node.data.length === 0)) return
     const next = new Uint8Array(length)
     if (placement !== "replace") next.set(node.data)
@@ -643,6 +644,7 @@ export const truncate = (
     yield* tx.requireResult(node, E.WRITE_PERMISSION)
     yield* tx.revisionResult(node, options)
     yield* reserveFile(tx, requested)
+    tx.recordUpdate(node.id)
     if (requested === BigInt(node.data.length) && (node.mode & E.SET_ID_BITS) === 0) return
     const data = new Uint8Array(Number(requested))
     data.set(node.data.subarray(0, data.length))
@@ -769,6 +771,7 @@ export const attributesFor = (
         else if (requested !== undefined) yield* tx.explicitTimeResult(node.id, field, requested)
       } else Object.assign(edited, { [field]: value })
     }
+    if (attributeFields.some((field) => attributes[field] !== undefined)) tx.recordUpdate(node.id)
     if (changed) yield* tx.changedResult(node.id, ["ctime"])
   })
 
@@ -1158,6 +1161,7 @@ export const publishCopiedFile = (
     }
     next.data = data.slice()
     if (existing === undefined) yield* tx.insertResult(slot.parent.id, slot.name, node.id)
+    else tx.recordUpdate(node.id)
     if (data.length > 0 || (existing !== undefined && existing.data.length !== 0)) {
       next.mode &= ~E.SET_ID_BITS
       yield* tx.changedResult(node.id, ["mtime", "ctime"])

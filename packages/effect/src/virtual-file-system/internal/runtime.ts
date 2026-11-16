@@ -208,7 +208,11 @@ export interface ContextCell<A> {
   value: A | undefined
 }
 
+export type StorageOffer = Effect.Effect<void, M.InvalidResource>
+
 export class Resource {
+  cleanupOffer?: () => StorageOffer | undefined
+  cleanupError?: M.InvalidResource
   private currentState: "open" | "closing" | "closed" = "open"
   private readonly uses = new Set<Work>()
   private readonly owned = new Set<Resource>()
@@ -237,7 +241,18 @@ export class Resource {
           const exit = yield* Effect.exit(child.close)
           if (Exit.isFailure(exit)) reasons.push(...exit.cause.reasons)
         }
-        this.releaseLocal(reasons)
+        const release = () =>
+          Effect.gen({ self: this }, function*() {
+            const offer = this.cleanupOffer?.()
+            if (offer) {
+              yield* Effect.catch(offer, (e) =>
+                Effect.sync(() => {
+                  this.cleanupError = e
+                }))
+            }
+          }).pipe(Effect.ensuring(Effect.sync(() => this.releaseLocal(reasons))))
+        if (this.cleanupOffer && this.runtime.storageTurn) yield* this.runtime.storageTurn(release())
+        else this.releaseLocal(reasons)
         return yield* closeExit(reasons)
       })
       return Effect.onExit(drain, (exit) => Effect.sync(() => this.completeClose(exit)))
@@ -351,6 +366,8 @@ export class Resource {
 /** @internal */
 export interface ResultTransition<A> {
   readonly value: A
+  readonly offer?: (() => StorageOffer | undefined) | undefined
+  readonly readAtimeChanged?: boolean | undefined
   readonly publish?: (() => Result.Result<void, M.OperationError>) | undefined
 }
 
@@ -418,6 +435,7 @@ export class ChargedBytes {
 }
 
 export class Work extends ChargedBytes {
+  afterCommit?: () => void
   private finished = false
   private request: TurnRequest | undefined
   private readonly borrowed = new Set<Resource>()
@@ -534,6 +552,8 @@ const closeExit = (reasons: ReadonlyArray<Cause.Reason<never>>) =>
 // -----------------------------------------------------------------------------
 
 export class Runtime {
+  storageTurn?: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  storageUnavailable?: () => boolean
   readonly instanceNumber = allocateInstance()
   readonly limits: M.Limits
   readonly clock: Clock.Clock
@@ -667,13 +687,14 @@ export class Runtime {
   // Effectful execution
   // ---------------------------------------------------------------------------
 
-  runResult<A>(
+  runResult<A, E = never>(
     receiver: Resource,
     operation: string,
     prepare: () => Result.Result<ResultPreparation<A>, M.OperationError>,
-    ticket?: Ticket
+    ticket?: Ticket,
+    beforePublish?: (candidate: A) => Effect.Effect<void, E>
   ) {
-    return Effect.suspend(() => {
+    return Effect.uninterruptibleMask((restoreExecution) => {
       let work: Work | undefined
       const attempt = Result.try(() =>
         Result.gen(this, function*() {
@@ -719,51 +740,63 @@ export class Runtime {
       const execute = Effect.uninterruptibleMask((restore) =>
         Effect.gen({ self: this }, function*() {
           if (enroll !== undefined) yield* enroll
-          yield* Effect.interruptible(Deferred.await(request.ready))
-          const transition = yield* restore(Effect.suspend(() => {
-            this.inTurn = true
-            try {
-              return Result.match(Result.try(action), {
-                onFailure: failure,
-                onSuccess: Effect.fromResult
-              })
-            } finally {
-              this.inTurn = false
+          yield* restore(Deferred.await(request.ready))
+          const turn = Effect.gen({ self: this }, function*() {
+            if (this.storageUnavailable?.()) {
+              return yield* new M.InvalidResource({ operation, reason: "volumeUnavailable" })
             }
-          }))
-          // Observe interruption before publication, while filesystem changes remain staged.
-          yield* Effect.interruptible(Effect.void)
-          const publish = transition.publish
-          if (publish !== undefined) {
-            yield* Effect.suspend(() => {
+            const transition = yield* restore(Effect.suspend(() => {
               this.inTurn = true
               try {
-                return Result.match(Result.try(() => publish.call(transition)), {
+                return Result.match(Result.try(action), {
                   onFailure: failure,
                   onSuccess: Effect.fromResult
                 })
               } finally {
                 this.inTurn = false
               }
-            })
-          }
-          return transition.value
+            }))
+            // Observe interruption before publication, while filesystem changes remain staged.
+            yield* restore(Effect.void)
+            if (transition.readAtimeChanged && (yield* M.RequireStableReadAtime)) {
+              return yield* new M.Busy({ operation, reason: "accessTimeUpdate" })
+            }
+            const publish = transition.publish
+            if (publish !== undefined) {
+              const offer = transition.offer?.()
+              if (offer) {
+                yield* offer
+              }
+              if (beforePublish !== undefined) yield* beforePublish(transition.value)
+              yield* Effect.suspend(() => {
+                this.inTurn = true
+                try {
+                  return Result.match(Result.try(() => publish.call(transition)), {
+                    onFailure: failure,
+                    onSuccess: Effect.fromResult
+                  })
+                } finally {
+                  this.inTurn = false
+                }
+              })
+            }
+            return transition.value
+          })
+          return yield* (this.storageTurn ? this.storageTurn(turn) : turn)
         })
       )
-      return Effect.uninterruptibleMask((restore) =>
-        Effect.gen({ self: this }, function*() {
-          const exit = yield* Effect.exit(restore(execute))
-          const reasons: Array<Cause.Reason<M.OperationError>> = Exit.isFailure(exit) ? [...exit.cause.reasons] : []
-          if (Exit.isFailure(exit)) {
-            this.cancel(admitted)
-            const cleanup = yield* Effect.exit(admitted.rollback())
-            if (Exit.isFailure(cleanup)) reasons.push(...cleanup.cause.reasons)
-          }
-          this.finish(admitted)
-          if (Exit.isFailure(exit)) return yield* Effect.failCause(Cause.fromReasons(reasons))
-          return exit.value
-        })
-      )
+      return Effect.gen({ self: this }, function*() {
+        const exit = yield* Effect.exit(restoreExecution(execute))
+        const reasons: Array<Cause.Reason<M.OperationError | E>> = Exit.isFailure(exit) ? [...exit.cause.reasons] : []
+        if (Exit.isFailure(exit)) {
+          this.cancel(admitted)
+          const cleanup = yield* Effect.exit(admitted.rollback())
+          if (Exit.isFailure(cleanup)) reasons.push(...cleanup.cause.reasons)
+        }
+        this.finish(admitted)
+        if (Exit.isFailure(exit)) return yield* Effect.failCause(Cause.fromReasons(reasons))
+        return exit.value
+      })
     })
   }
 
@@ -895,6 +928,14 @@ export class Runtime {
       request.state = "released"
     }
     work.finish()
+    if (work.afterCommit !== undefined) {
+      this.inTurn = true
+      try {
+        work.afterCommit()
+      } finally {
+        this.inTurn = false
+      }
+    }
     this.next()
   }
 }
