@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertEquals } from "@effect/vitest/utils"
-import { BigDecimal, DateTime, Duration, Result } from "effect"
+import { BigDecimal, DateTime, Duration, Option, Result } from "effect"
 import { ArrowColumn, ArrowData, ArrowExtension, ArrowSchema as S } from "effect/arrow"
 
 const bytes = (...values: Array<number>) => new Uint8Array(values)
@@ -201,6 +201,78 @@ const rejections: ReadonlyArray<
   ["dictionary value", S.field("d", S.dictionary(int8Member)), [{ a: 1 }, { a: 1 }, { a: 300 }], [2, "a"]]
 ]
 
+// Values given to fromValues, the typed array `ArrowData.values` returns and the number each slot holds when it differs
+const native: ReadonlyArray<
+  readonly [
+    label: string,
+    type: S.DataType,
+    values: ReadonlyArray<unknown>,
+    array: new() => ArrowData.Values,
+    stored?: ReadonlyArray<unknown>
+  ]
+> = [
+  ["int8", S.int8, [-128, null, 127], Int8Array],
+  ["uint8", S.uint8, [0, null, 255], Uint8Array],
+  ["int16", S.int16, [-32768, null, 32767], Int16Array],
+  ["uint16", S.uint16, [0, null, 65535], Uint16Array],
+  ["int32", S.int32, [-2147483648, null, 7], Int32Array],
+  ["uint32", S.uint32, [4294967295, null, 1], Uint32Array],
+  ["int64", S.int64, [-9223372036854775808n, null, 1n], BigInt64Array],
+  ["uint64", S.uint64, [18446744073709551615n, null, 1n], BigUint64Array],
+  ["float32", S.float32, [1.5, null, -0.25], Float32Array],
+  ["float64", S.float64, [0.1, null, -Infinity], Float64Array],
+  ["date (days)", S.date("day"), [utc("2024-01-02T00:00:00Z"), null, -1], Int32Array, [19724, null, -1]],
+  ["date (milliseconds)", S.date("millisecond"), [utc("1970-01-02T00:00:00Z"), null, -1], BigInt64Array, [
+    86400000n,
+    null,
+    -1n
+  ]],
+  ["time32", S.time("second"), [3661, null, 1], Int32Array],
+  ["time64", S.time("nanosecond"), [3661000000001n, null, 1n], BigInt64Array],
+  ["timestamp", S.timestamp("nanosecond", "Europe/Paris"), [1704164645678901234n, null, -1n], BigInt64Array],
+  ["duration", S.duration("microsecond"), [Duration.millis(1500), null, -1n], BigInt64Array, [1500000n, null, -1n]],
+  ["decimal32", S.decimal(9, 3, 32), [dec("-1.234"), null, dec("5")], Int32Array, [-1234, null, 5000]],
+  ["decimal64", S.decimal(18, 2, 64), [dec("123.45"), null, dec("-0.01")], BigInt64Array, [12345n, null, -1n]],
+  ["interval (yearMonth)", S.interval("yearMonth"), [{ months: 14 }, null, { months: -1 }], Int32Array, [14, null, -1]]
+]
+
+// Values given to fromValues, the typed array `ArrowData.offsets` returns and the size of each slot it bounds
+const offsetCases: ReadonlyArray<
+  readonly [
+    label: string,
+    type: S.DataType,
+    values: ReadonlyArray<unknown>,
+    array: new() => Int32Array | BigInt64Array,
+    sizes: ReadonlyArray<unknown>
+  ]
+> = [
+  ["utf8", S.utf8, ["a", null, "héllo", ""], Int32Array, [1, null, 6, 0]],
+  ["largeUtf8", S.largeUtf8, ["a", null, "héllo", ""], BigInt64Array, [1, null, 6, 0]],
+  ["binary", S.binary, [bytes(0, 1), null, bytes()], Int32Array, [2, null, 0]],
+  ["largeBinary", S.largeBinary, [bytes(0, 1), null, bytes()], BigInt64Array, [2, null, 0]],
+  ["list", S.list(item(S.int32)), [[1, 2], null, [], [3]], Int32Array, [2, null, 0, 1]],
+  ["largeList", S.largeList(item(S.int32)), [[1, 2], null, [], [3]], BigInt64Array, [2, null, 0, 1]],
+  ["map", intMap, [new Map([["k", 1]]), null, new Map([["l", 2], ["m", 3]])], Int32Array, [1, null, 2]]
+]
+
+// The number each slot holds, through `ArrowData.values`. Null slots hold unspecified numbers.
+const stored = (data: ArrowData.ArrowData) =>
+  Array.from<number | bigint, unknown>(
+    Option.getOrThrow(ArrowData.values(data)),
+    (v, i) => ArrowData.isValid(data, i) ? v : null
+  )
+
+// The size of each slot, through `ArrowData.offsets`
+const sizes = (data: ArrowData.ArrowData) => {
+  const offsets = Option.getOrThrow(ArrowData.offsets(data))
+  return Array.from(
+    { length: data.length },
+    (_, i) => ArrowData.isValid(data, i) ? Number(offsets[i + 1]) - Number(offsets[i]) : null
+  )
+}
+
+const build = (type: S.DataType, values: ReadonlyArray<unknown>) =>
+  Result.getOrThrow(ArrowColumn.fromValues(S.field("x", type), values))
 describe("ArrowColumn", () => {
   // ARROW-LAYOUT-001 (normative): Columnar.rst, Validity bitmaps / Fixed-size Primitive Layout.
   // Source pin and scope: ./CONFORMANCE.md#sources
@@ -259,5 +331,87 @@ describe("ArrowColumn", () => {
     assert.deepStrictEqual(ArrowColumn.toArray(column), ["0xff", null])
     // Without the extension, the storage values
     assert.deepStrictEqual(ArrowColumn.toArray(ArrowColumn.make(field, column.chunks)), [255, null])
+  })
+
+  // ARROW-DATA-001 (local): typed views of the values buffer; slot, offset and alignment handling.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("values reads one number per slot of fixed-width arrays, also when sliced or unaligned", () => {
+    for (const [label, type, values, array, expected = values] of native) {
+      const [data] = build(type, values).chunks
+      assert.instanceOf(Option.getOrThrow(ArrowData.values(data)), array, label)
+      assert.deepStrictEqual(stored(data), expected, label)
+      assert.deepStrictEqual(stored(ArrowData.slice(data, 1)), expected.slice(1), label)
+    }
+    // Dictionary arrays give their indices, in the index type
+    const [encoded] = build(S.dictionary(S.utf8, { indexType: S.int8 }), ["x", null, "y", "x"]).chunks
+    const entries = ArrowColumn.toArray(ArrowColumn.make(S.field("x", S.utf8), [encoded.dictionary!]))
+    assert.instanceOf(Option.getOrThrow(ArrowData.values(encoded)), Int8Array)
+    assert.deepStrictEqual(stored(encoded).map((i) => i === null ? null : entries[i as number]), ["x", null, "y", "x"])
+
+    // Literal int32 values [1, 2, 3]: an aligned buffer is viewed in place, an unaligned one is copied
+    const raw = bytes(9, 9, 9, 9, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0)
+    const aligned = ArrowData.make({ type: S.int32, length: 2, offset: 1, buffers: [raw.subarray(4)] })
+    const view = Option.getOrThrow(ArrowData.values(aligned))
+    assert.deepStrictEqual(view, Int32Array.of(2, 3))
+    assert.strictEqual(view.buffer, raw.buffer)
+    assert.strictEqual(view.byteOffset, 8)
+    const odd = bytes(9, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0).subarray(1)
+    const unaligned = ArrowData.make({ type: S.int32, length: 2, offset: 1, buffers: [odd] })
+    assert.deepStrictEqual(ArrowData.values(unaligned), Option.some(Int32Array.of(2, 3)))
+
+    assert.deepStrictEqual(ArrowData.values(build(S.float64, []).chunks[0]), Option.some(new Float64Array(0)))
+    for (
+      const [type, values] of [
+        [S.nullType, [null]],
+        [S.bool, [true]],
+        [S.float16, [1.5]],
+        [S.decimal(10, 2), [dec("1")]],
+        [S.interval("dayTime"), [{ days: 1 }]],
+        [S.interval("monthDayNano"), [{ months: 1 }]],
+        [S.fixedSizeBinary(4), [bytes(1, 2, 3, 4)]],
+        [S.utf8, ["a"]],
+        [S.utf8View, ["a"]],
+        [S.list(item(S.int32)), [[1]]],
+        [S.struct([S.field("a", S.int32)]), [{ a: 1 }]],
+        [S.union("dense", [S.field("a", S.int32)]), [1]],
+        [S.runEndEncoded(S.int16, S.field("v", S.int32)), [1]]
+      ] as const
+    ) {
+      assert.deepStrictEqual(ArrowData.values(build(type, values).chunks[0]), Option.none(), type._tag)
+    }
+  })
+
+  // ARROW-DATA-002 (local): typed views of the offsets buffer; slot, offset and alignment handling.
+  // Source pin, exact assertions and exclusions: ./CONFORMANCE.md
+  it("offsets bounds each slot of variable-size arrays, also when sliced or unaligned", () => {
+    for (const [label, type, values, array, expected] of offsetCases) {
+      const [data] = build(type, values).chunks
+      const offsets = Option.getOrThrow(ArrowData.offsets(data))
+      assert.instanceOf(offsets, array, label)
+      assert.strictEqual(offsets.length, values.length + 1, label)
+      assert.deepStrictEqual(sizes(data), expected, label)
+      assert.deepStrictEqual(sizes(ArrowData.slice(data, 1)), expected.slice(1), label)
+    }
+    // Literal offsets [0, 1, 3, 3] at an odd address: slot 1 of ["a", "bc", ""] is bytes 1..3
+    const raw = bytes(9, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
+    const strings = ArrowData.make({ type: S.utf8, length: 3, buffers: [raw.subarray(1), text("abc")] })
+    assert.deepStrictEqual(ArrowData.offsets(strings), Option.some(Int32Array.of(0, 1, 3, 3)))
+    assert.deepStrictEqual(ArrowData.offsets(ArrowData.slice(strings, 1, 2)), Option.some(Int32Array.of(1, 3)))
+
+    // An empty array may have an empty offsets buffer
+    const empty = ArrowData.make({ type: S.largeUtf8, length: 0, buffers: [bytes(), bytes()] })
+    assert.deepStrictEqual(ArrowData.offsets(empty), Option.some(BigInt64Array.of(0n)))
+    for (
+      const [type, values] of [
+        [S.int32, [1]],
+        [S.utf8View, ["a"]],
+        [S.listView(item(S.int32)), [[1]]],
+        [S.fixedSizeList(item(S.int32), 1), [[1]]],
+        [S.union("dense", [S.field("a", S.int32)]), [1]],
+        [S.dictionary(S.utf8), ["a"]]
+      ] as const
+    ) {
+      assert.deepStrictEqual(ArrowData.offsets(build(type, values).chunks[0]), Option.none(), type._tag)
+    }
   })
 })

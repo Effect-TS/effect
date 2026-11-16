@@ -8,6 +8,7 @@
  */
 import type * as ArrowData from "../ArrowData.ts"
 import type * as S from "../ArrowSchema.ts"
+import * as Buffers from "./buffers.ts"
 
 /** @internal */
 export class LayoutFailure extends Error {}
@@ -140,6 +141,72 @@ export const checkUnions = (type: S.DataType, fail: (message: string) => never):
       return checkUnions(type.values.type, fail)
     case "Dictionary":
       return checkUnions(type.valueType, fail)
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Typed views
+// -----------------------------------------------------------------------------
+
+const intArray = (type: S.Int): Buffers.TypedArrayConstructor<ArrowData.Values> => {
+  switch (type.bitWidth) {
+    case 8:
+      return type.signed ? Int8Array : Uint8Array
+    case 16:
+      return type.signed ? Int16Array : Uint16Array
+    case 32:
+      return type.signed ? Int32Array : Uint32Array
+    case 64:
+      return type.signed ? BigInt64Array : BigUint64Array
+  }
+}
+
+/** The typed array whose elements are the slots of `type`'s first buffer, for the types that have one. */
+const valuesArray = (type: S.DataType): Buffers.TypedArrayConstructor<ArrowData.Values> | undefined => {
+  switch (type._tag) {
+    case "Int":
+      return intArray(type)
+    case "Dictionary":
+      return intArray(type.indexType)
+    case "Float":
+      return type.bitWidth === 32 ? Float32Array : type.bitWidth === 64 ? Float64Array : undefined
+    case "Decimal":
+      return type.bitWidth === 32 ? Int32Array : type.bitWidth === 64 ? BigInt64Array : undefined
+    case "Date":
+      return type.unit === "day" ? Int32Array : BigInt64Array
+    case "Time":
+      return type.bitWidth === 32 ? Int32Array : BigInt64Array
+    case "Timestamp":
+    case "Duration":
+      return BigInt64Array
+    case "Interval":
+      return type.unit === "yearMonth" ? Int32Array : undefined
+  }
+}
+
+/** The slots of `data` as a typed array, for arrays holding one number per slot. @internal */
+export const values = (data: ArrowData.ArrowData): ArrowData.Values | undefined => {
+  const array = valuesArray(data.type)
+  return array && Buffers.typed(array, data.buffers[0]).subarray(data.offset, data.offset + data.length)
+}
+
+/** The `length + 1` offsets bounding the slots of `data`, for layouts with an offsets buffer. @internal */
+export const offsets = (data: ArrowData.ArrowData): Int32Array | BigInt64Array | undefined => {
+  switch (data.type._tag) {
+    case "Binary":
+    case "Utf8":
+    case "LargeBinary":
+    case "LargeUtf8":
+    case "List":
+    case "LargeList":
+    case "Map": {
+      const array = isLargeOffsets(data.type) ? BigInt64Array : Int32Array
+      // An empty array may have an empty offsets buffer.
+      return data.length === 0 && data.buffers[0].length === 0
+        ? new array(1)
+        : Buffers.typed<Int32Array | BigInt64Array>(array, data.buffers[0])
+          .subarray(data.offset, data.offset + data.length + 1)
+    }
   }
 }
 
