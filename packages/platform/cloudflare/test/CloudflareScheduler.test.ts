@@ -74,16 +74,16 @@ describe("CloudflareScheduler", () => {
     })
   })
 
-  // The owner stops waiting for the fiber, which runs in the request that wakes
-  // it, as the new scheduler did not park it
-  it("releases a fiber that setContext moves to another scheduler", async () => {
+  // The wait the fiber parked in still resumes it, and its next wait, started
+  // by the new scheduler while it runs in the owner, is owned there too
+  it("keeps the owner of a fiber that setContext moves to another scheduler", async () => {
     assert.deepStrictEqual(await json("/park?id=move"), [])
     await sleep(100)
     assert.strictEqual(await json("/wake?id=move&move"), "woken")
     assert.deepStrictEqual(await poll("/log?id=move", (body) => body.exited), {
       log: [
-        { at: "resumed", store: "waker", io: "foreign" },
-        { at: "slept", store: "waker", io: "foreign" }
+        { at: "resumed", store: "move", io: "owner" },
+        { at: "slept", store: "move", io: "owner" }
       ],
       exited: true,
       timers: 0
@@ -91,11 +91,12 @@ describe("CloudflareScheduler", () => {
   })
 
   // The owner's wake reaction runs after the interrupt has been handed over,
-  // while the interrupted fiber waits in its cleanup
+  // while the interrupted fiber waits in its cleanup. The fiber's scheduler is
+  // replaced before the interrupt, which still runs it in the owner.
   it("runs an interrupted fiber once when its owner wakes it before the interrupt lands", async () => {
     assert.deepStrictEqual(await json("/park?id=run-once&owner-wake"), [])
     await sleep(100)
-    assert.strictEqual(await json("/wake?id=run-once&interrupt"), "woken")
+    assert.strictEqual(await json("/wake?id=run-once&interrupt&move"), "woken")
     assert.deepStrictEqual(await poll("/log?id=run-once", (body) => body.log.length > 0), {
       log: [{ at: "cleanup", store: "run-once", io: "owner" }],
       exited: false,
