@@ -512,9 +512,6 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
   }
 })()
 
-const captureAsyncContext = (): AsyncContext | undefined =>
-  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
-
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
 
@@ -650,7 +647,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._asyncContext = captureAsyncContext()
       park(this)
       return
     }
@@ -689,15 +685,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
-    // Take the scheduler setContext gave the fiber while it was suspended, or
-    // while async_hooks entered it
-    if (this.cache !== (this.cache = (this.context as any).cacheRoot._fiberCache)) {
-      this._dispatcher = undefined
-    }
     const prevFiber = (globalThis as any)[currentFiberTypeId]
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
     this._running = true
+    // Take the scheduler setContext gave the fiber while it was suspended, or
+    // while async_hooks entered it
+    if (this.cache !== (this.context as any).cacheRoot._fiberCache) this.setContext(this.context)
     let yielding = false
     let resuming = this._autoYielded
     this._autoYielded = false
@@ -811,11 +805,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return pipeArguments(this, arguments)
   }
   setContext(context: Context.Context<never>): void {
-    const previous = this.context
     this.context = context
-    // Every key cached below opts in to Context caching, so contexts related
-    // only by non-caching adds cannot have changed any of them
-    if (previous !== undefined && Context.hasSameCache(previous, context)) return
     // Contexts sharing a cacheRoot resolve every cached key identically, so
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
@@ -839,9 +829,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-// Out of line, so that `run` stays small enough for V8 to inline it into
-// the callbacks that resume a fiber
+// Where a fiber stops: keeps the async context it resumes in and tells a
+// ParkingScheduler. Out of line, so that `run` stays small enough for V8 to
+// inline it into the callbacks that resume a fiber
 const park = (fiber: FiberImpl): void => {
+  fiber._asyncContext = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
   const scheduler = fiber.cache.scheduler
   if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(fiber)
 }
@@ -5710,7 +5702,6 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._asyncContext = captureAsyncContext()
     park(child)
     // Cancel the deferred start if an interrupt runs first.
     let resumed = false
