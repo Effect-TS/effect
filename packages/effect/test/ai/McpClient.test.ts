@@ -438,6 +438,52 @@ describe("McpClient", () => {
       assert.strictEqual(error.reason._tag, "ValidationError")
     }))
 
+  it.effect("should combine the cache hints of a modern tool list's pages", () =>
+    Effect.gen(function*() {
+      const tool = (name: string) => ({ name, inputSchema: { type: "object" } })
+      const listing = (pages: ReadonlyArray<{ readonly ttlMs: number; readonly cacheScope: string }>) =>
+        scriptedHttp((message) => {
+          if (message.method !== "tools/list") return scriptedReply(McpProtocol.v2026_07_28, message)
+          const params = (message.params ?? {}) as { readonly cursor?: string }
+          const index = params.cursor === undefined ? 0 : Number(params.cursor)
+          return jsonRpcResult(message, {
+            resultType: "complete",
+            ...pages[index],
+            tools: [tool(`t${index}`)],
+            ...(index + 1 < pages.length ? { nextCursor: String(index + 1) } : {})
+          })
+        })
+
+      const mixed = yield* listing([{ ttlMs: 60_000, cacheScope: "public" }, { ttlMs: 5_000, cacheScope: "private" }])
+      const fromMixed = yield* mixed.client.listToolsWithCacheHint()
+      assert.deepStrictEqual(fromMixed.tools.map((tool) => tool.name), ["t0", "t1"])
+      assert.deepStrictEqual(fromMixed.cacheHint, { ttlMs: 5_000, cacheScope: "private" })
+
+      const shared = yield* listing([{ ttlMs: 60_000, cacheScope: "public" }, { ttlMs: 90_000, cacheScope: "public" }])
+      assert.deepStrictEqual((yield* shared.client.listToolsWithCacheHint()).cacheHint, {
+        ttlMs: 60_000,
+        cacheScope: "public"
+      })
+      // The plain list is unchanged.
+      assert.deepStrictEqual((yield* shared.client.listTools()).map((tool) => tool.name), ["t0", "t1"])
+    }))
+
+  it.effect("should give no cache hint for a tool list on a protocol without hints", () =>
+    Effect.gen(function*() {
+      const client = yield* connect(McpProtocol.v2025_11_25)
+      const listed = yield* client.listToolsWithCacheHint()
+      assert.isTrue(listed.tools.some((tool) => tool.name === "add"))
+      assert.isUndefined(listed.cacheHint)
+    }))
+
+  it.effect("should report a modern server's configured tool list hint", () =>
+    Effect.gen(function*() {
+      const client = yield* connect(McpProtocol.v2026_07_28)
+      const listed = yield* client.listToolsWithCacheHint()
+      assert.isTrue(listed.tools.some((tool) => tool.name === "add"))
+      assert.deepStrictEqual(listed.cacheHint, { ttlMs: 0, cacheScope: "private" })
+    }))
+
   // A single page larger than the item limit must fail with LimitError, not exceed the call argument limit.
   it.effect("should fail with LimitError when one discovery page exceeds the item limit", () =>
     Effect.gen(function*() {
