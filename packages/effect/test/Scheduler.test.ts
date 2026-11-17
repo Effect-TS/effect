@@ -307,6 +307,9 @@ describe("Scheduler", () => {
       await land()
       assert.isFalse(continued)
       assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+      // Running it again after it has exited leaves it as it is
+      scheduler.resume(fiber as any, Effect.void)
+      assert.strictEqual(fiber.cache.scheduler, scheduler)
     })
   })
 })

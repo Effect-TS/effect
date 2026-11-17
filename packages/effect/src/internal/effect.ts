@@ -620,16 +620,25 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   evaluate(effect: Primitive): void {
     const scheduler = this.cache.scheduler
     if (Scheduler.isParkingScheduler(scheduler)) scheduler.resume(this, effect as any)
-    else this.run(effect)
+    else this.runNow(effect)
   }
-  run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
+  run(effect: Effect.Effect<unknown, unknown>): void {
+    // Take the scheduler setContext gave the fiber while it was suspended
+    const cache = (this.context as any).cacheRoot._fiberCache
+    if (this.cache !== cache && !this._exit) {
+      this.cache = cache
+      this._dispatcher = undefined
+    }
+    this.runNow(effect as any)
+  }
+  runNow(effect: Primitive): void {
     if (this._exit) {
       return
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
       try {
-        return asyncContext.runInAsyncScope(this.run, this, effect)
+        return asyncContext.runInAsyncScope(this.runNow, this, effect)
       } finally {
         // Each captured context is resumed once, so release it for async_hooks
         // consumers like vitest's detectAsyncLeaks.
@@ -640,17 +649,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._yielded = undefined
       yielded()
     }
-    // Take the scheduler setContext gave the fiber while it was suspended
-    const current = (this.context as any).cacheRoot._fiberCache
-    if (this.cache !== current) {
-      this.cache = current
-      this._dispatcher = undefined
-    }
-    const exit = this.runLoop(effect as Primitive)
+    const exit = this.runLoop(effect)
     if (exit === Yield) {
       this._asyncContext = captureAsyncContext()
-      const scheduler = this.cache.scheduler
-      if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(this)
+      park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -830,6 +832,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const span = this.cache.span
     return span?._tag === "Span" ? span : undefined
   }
+}
+
+// Out of line, so that `runNow` stays small enough for V8 to inline it into
+// the callbacks that resume a fiber
+const park = (fiber: FiberImpl): void => {
+  const scheduler = fiber.cache.scheduler
+  if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(fiber)
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
@@ -5653,8 +5662,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    const scheduler = child.cache.scheduler
-    if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(child)
+    park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
