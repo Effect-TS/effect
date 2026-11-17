@@ -5777,6 +5777,39 @@ describe("Effect", () => {
         }
       )
 
+      itWithAsyncHooks("ends the async resource of a wait even if resuming the fiber throws", async () => {
+        const created = new Set<number>()
+        const destroyed: Array<number> = []
+        let tracking = false
+        const hook = createHook({
+          init(asyncId, type) {
+            if (tracking && type === "effect/Fiber") created.add(asyncId)
+          },
+          destroy(asyncId) {
+            if (created.has(asyncId)) destroyed.push(asyncId)
+          }
+        })
+        hook.enable()
+        try {
+          let wake!: () => void
+          tracking = true
+          const fiber = Effect.runFork(Effect.callback<void>((resume) => {
+            wake = () => resume(Effect.void)
+          }))
+          tracking = false
+          fiber.addObserver(() => {
+            throw new Error("observer")
+          })
+          assert.throws(wake, "observer")
+          // Node runs destroy callbacks asynchronously
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          assert.strictEqual(created.size, 1)
+          assert.deepStrictEqual(destroyed, [...created])
+        } finally {
+          hook.disable()
+        }
+      })
+
       describe("an entry from an async_hooks init callback during the next park", () => {
         // The fiber resumes from its first wait and parks in a second one. The
         // second wait's resource is created synchronously in park, so its init
