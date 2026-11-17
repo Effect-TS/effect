@@ -3226,6 +3226,68 @@ describe("Sharding metrics", { concurrent: false }, () => {
 })
 
 describe("Sharding shard lock failover", { concurrent: false }, () => {
+  it.effect("unregisters during persistent lock failures despite successful empty probes", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      let failing = false
+      const failure = Effect.fail(new ClusterError.PersistenceError({ cause: "lock connection failed" }))
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => {
+          const storage = makeFailoverStorage(storageState, clock)
+          return RunnerStorage.RunnerStorage.of({
+            ...storage,
+            acquire: (address, shards) => Effect.suspend(() => failing ? failure : storage.acquire(address, shards)),
+            refresh: (address, shardIds) =>
+              Effect.suspend(() => {
+                const shards = globalThis.Array.from(shardIds)
+                return failing && shards.length > 0 ? failure : storage.refresh(address, shards)
+              }),
+            release: (address, shard) => Effect.suspend(() => failing ? failure : storage.release(address, shard)),
+            releaseAll: (address) => Effect.suspend(() => failing ? failure : storage.releaseAll(address))
+          })
+        })
+      )
+      const layer = Sharding.layer.pipe(
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1,
+          shardLockExpiration: 300,
+          shardLockRefreshInterval: 1000,
+          entityTerminationTimeout: 0,
+          refreshAssignmentsInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        failing = true
+        yield* TestClock.adjust(1000)
+        const runnerAfterExpiration = storageState.runner
+        yield* TestClock.adjust(1000)
+        const runnerWhileStillFailing = storageState.runner
+
+        // Clear the fault before asserting so a failure cannot hang scope teardown.
+        failing = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        assert.isUndefined(runnerAfterExpiration, "runner must unregister after persistent lock failures")
+        assert.isUndefined(runnerWhileStillFailing, "empty probes must not re-register the runner")
+        assert.isDefined(storageState.runner, "runner must re-register after lock storage recovers")
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
       const warnings: Array<unknown> = []
