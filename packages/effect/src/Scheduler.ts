@@ -61,8 +61,11 @@ export interface Scheduler {
  * - A fiber that `resume` never runs cannot complete or be interrupted.
  * - An interrupt requested before `resume` runs a woken fiber still interrupts
  *   it, so the effect it was woken with may never be delivered.
- * - A parked fiber keeps the scheduler that parked it. `Fiber.setContext`
- *   replaces a `ParkingScheduler` only while the fiber is running.
+ * - `Fiber.setContext` replaces a `ParkingScheduler` only while the fiber is
+ *   running. On a fiber that is suspended or has not started, it applies the
+ *   rest of the context and keeps the scheduler. That holds whatever the new
+ *   scheduler is, including another `ParkingScheduler`, and even if the
+ *   current one was installed after the fiber suspended.
  * - A scheduler that wraps another one forwards `park` and `resume` only if
  *   the wrapped scheduler has them.
  *

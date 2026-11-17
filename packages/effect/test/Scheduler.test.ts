@@ -241,7 +241,7 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
     })
 
-    it("keeps the scheduler of a parked fiber when setContext replaces it", async () => {
+    it("keeps a ParkingScheduler that setContext replaces while the fiber is suspended", async () => {
       const { land, scheduler } = makeScheduler()
       let wake!: () => void
       const fiber = Effect.runFork(
@@ -250,11 +250,16 @@ describe("Scheduler", () => {
         }),
         { scheduler }
       )
-      fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
+      const other = new Scheduler.MixedScheduler("sync")
+      fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, other))
       wake()
       assert.isUndefined(fiber.pollUnsafe())
       await land()
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
+      // An exited fiber takes the context it is given
+      const context = Context.add(fiber.context, Scheduler.Scheduler, other)
+      fiber.setContext(context)
+      assert.strictEqual(fiber.context, context)
     })
 
     it("interrupts a fiber woken before the interrupt, once it runs", async () => {
