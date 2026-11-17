@@ -12,10 +12,15 @@ The first command regenerates
 fails if that file differs from the generator output. The descriptor tests run
 this check too.
 
-This bootstrap script generates only the built-in descriptor definitions and
-interfaces. It is independent of the generated output and can recreate a deleted
-or broken module. It uses the existing `protobufjs` development dependency to
-read the inputs, with no network access or installed `protoc` required.
+This script generates only the built-in descriptor definitions and interfaces.
+It uses Effect's `ProtobufMessage` and the checked-in `FileDescriptorSet`
+descriptor to read its input. The generated file therefore supplies the
+definitions needed to produce its next version. This is self-hosted generation.
+
+Run generation again after changing the generated definitions, then run
+`--check`. The second run must produce the same output. If the generated file is
+missing or broken, restore a working version from Git before running the script.
+No network access or installed `protoc` is required for generation.
 
 ## Pinned inputs
 
@@ -24,9 +29,9 @@ Both inputs come from Protocol Buffers v36.2, commit
 digests before generating output.
 
 - [descriptor.proto](https://github.com/protocolbuffers/protobuf/blob/2c74169b34066ceb8ddb6b882fcb3fb32d737a55/src/google/protobuf/descriptor.proto)
-  is copied unchanged into this directory. It defines the format of descriptor
-  sets, allowing the script to decode its input independently of Effect's
-  generated module.
+  is copied unchanged into this directory and retained as the upstream source
+  reference. The script verifies its checksum but reads the compiled descriptor
+  set using Effect's checked-in definitions.
 - `../../test/fixtures/protobuf/descriptor-set.binpb` contains descriptors for
   `descriptor.proto` and `compiler/plugin.proto`, including source information.
   This supplies the descriptor values and upstream comments used in the output.
@@ -58,4 +63,5 @@ in [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 
 The renderer is deliberately limited to this descriptor file. It fails on
 unsupported constructs such as oneofs so an upstream change requires an explicit
-renderer update.
+renderer update. It also rejects fields that the checked-in descriptor definitions
+do not recognize, so an update cannot silently lose them from the generated output.

@@ -1,25 +1,39 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
-import protobuf from "protobufjs"
+import { FileDescriptorProto, FileDescriptorSet } from "../../src/protobuf/ProtobufDescriptorProto.ts"
+import * as ProtobufMessage from "../../src/protobuf/ProtobufMessage.ts"
+import * as Result from "../../src/Result.ts"
 
-// Bootstrap independently of the generated module, so missing or broken output
-// can be rebuilt. Both inputs come from protobuf v36.2; see README.md.
+// The checked-in descriptor definitions let Effect read the input for its next
+// generation. Both pinned inputs come from protobuf v36.2; see README.md.
 const input = (path, digest) => {
   const bytes = readFileSync(new URL(path, import.meta.url))
   assert.equal(createHash("sha256").update(bytes).digest("hex"), digest, `Unexpected input: ${path}`)
   return bytes
 }
-const source = input("descriptor.proto", "c96db5406336ebcc82523c1dfb122721986a1f43c4aaed45a4a4ad6996efacc2")
+input("descriptor.proto", "c96db5406336ebcc82523c1dfb122721986a1f43c4aaed45a4a4ad6996efacc2")
 const bytes = input(
   "../../test/fixtures/protobuf/descriptor-set.binpb",
   "948853f065aa75d8f7ab994ac2c7ba493ec5868195e78d152c651e46529f80ac"
 )
-const root = protobuf.parse(source.toString("utf8"), { keepCase: true }).root.resolveAll()
-const setType = root.lookupType("google.protobuf.FileDescriptorSet")
-const set = setType.toObject(setType.decode(bytes), { longs: String })
+const set = Result.getOrThrow(ProtobufMessage.decode(FileDescriptorSet)(bytes))
 const file = set.file.find((file) => file.name === "google/protobuf/descriptor.proto")
 assert.ok(file?.source_code_info?.location.length, "Descriptor source information is required")
+
+// Omit empty repeated fields and order properties by field number to keep the
+// embedded descriptor compact and identical to the previous generated output.
+const compact = (value, descriptor) => {
+  assert.equal(value[ProtobufMessage.unknownFields], undefined, `Unknown fields in ${descriptor.typeName}`)
+  const out = {}
+  for (const field of [...descriptor.fields].sort((a, b) => a.number - b.number)) {
+    const item = value[field.name]
+    if (item === undefined || (field.kind === "list" && item.length === 0)) continue
+    const element = (item) => field.type.kind === "message" ? compact(item, field.type.message) : item
+    out[field.name] = field.kind === "list" ? item.map(element) : element(item)
+  }
+  return out
+}
 
 const locations = new Map(file.source_code_info.location.map((location) => [(location.path ?? []).join("."), location]))
 const prefix = `.${file.package}.`
@@ -45,9 +59,10 @@ const doc = (comment, publicApi = false, indent = "") => {
   return `${indent}/**\n${body.map((line) => `${indent} *${line ? ` ${line}` : ""}\n`).join("")}${indent} */\n`
 }
 
-// Keep the embedded descriptor readable without depending on a formatter's
-// version or on the output file already existing.
+// Keep the embedded descriptor readable without depending on a formatter's version.
 const literal = (value, depth = 0) => {
+  if (typeof value === "bigint") return `${value}n`
+  if (value instanceof Uint8Array) return `new Uint8Array([${[...value].join(", ")}])`
   if (value === null || typeof value !== "object") return JSON.stringify(value)
   const array = Array.isArray(value)
   const parts = array
@@ -73,7 +88,7 @@ const fieldType = (field) => {
   return field.label === 3 ? `ReadonlyArray<${type}>` : type
 }
 
-const { source_code_info: _, ...descriptor } = file
+const { source_code_info: _, ...descriptor } = compact(file, FileDescriptorProto)
 let output = `/**
  * Built-in types and descriptors for Google's \`google/protobuf/descriptor.proto\`.
  * These definitions describe protobuf files, messages, fields, enums and services.
