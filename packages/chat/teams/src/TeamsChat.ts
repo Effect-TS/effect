@@ -9,9 +9,9 @@
  *   registration. The cloud's endpoints and host allowlists come as a unit
  *   from `publicCloud` or a `Cloud` of the consumer's own. They are
  *   privileged configuration and never read from an activity.
- * - Nothing here has run against a real tenant, the default capabilities
- *   included. The package stays private until every release check in the
- *   README has tenant evidence.
+ * - Nothing here has run against a real tenant yet, the default
+ *   capabilities included. Live testing is follow-up work, and the README
+ *   lists its checks. Until a check passes, what it covers is unverified.
  * - Implemented but unverified, and off by default: `buttons`, `modals`,
  *   `modalErrors`, `commands`, `ephemeral`, `startThread` and
  *   `download`, each behind an `unverified` option. Turning one on

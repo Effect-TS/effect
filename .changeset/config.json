@@ -27,6 +27,7 @@
       "@effect/chat-whatsapp",
       "@effect/chat-discord",
       "@effect/chat-telegram",
+      "@effect/chat-teams",
       "@effect/atom-solid",
       "@effect/atom-vue",
       "@effect/docgen",
