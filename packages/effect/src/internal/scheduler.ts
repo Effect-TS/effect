@@ -4,11 +4,17 @@ import type * as Scheduler from "../Scheduler.ts"
 // The scheduler side of parking a fiber. A fiber parks by asking its
 // scheduler for a wait, and hands every entry that would make it run again,
 // the effect its wait produced, its start, or an interrupt, back here. The
-// fiber keeps no state about either.
+// fiber only provides the slot this module keeps its wait in.
 
 /** @internal */
-export interface RunnableFiber extends Fiber.Fiber<unknown, unknown> {
+export interface ParkableFiber extends Fiber.Fiber<unknown, unknown> {
   run(effect: unknown): void
+  // The outstanding wait of the fiber, kept here whatever its scheduler is
+  // now, so the wait resumes it even after Fiber.setContext replaces its
+  // scheduler. null once an entry has been passed to the wait, until the
+  // fiber runs: later entries are dropped, and an interrupt among them is
+  // already recorded on the fiber. Only this module reads or writes it.
+  _wait: Scheduler.Wait | null | undefined
 }
 
 interface AsyncResource {
@@ -33,27 +39,21 @@ const DefaultWait: (new(type: string) => Scheduler.Wait) | undefined = AsyncReso
     try {
       this.runInAsyncScope(task)
     } finally {
-      // The wait has ended, even if the task threw. Node calls destroy hooks
-      // later, so this cannot re-enter the fiber. Without it, async_hooks
-      // consumers would see the resource as live until it is collected.
+      // Cleanup, not a fallback: the wait has ended even if the task threw,
+      // for example from an exit observer. Node calls destroy hooks later, so
+      // this cannot re-enter the fiber. Without it, async_hooks consumers
+      // would see the resource as live until it is collected.
       this.emitDestroy()
     }
   }
 }
 
-// The outstanding wait of each parked fiber, shared by every scheduler, so a
-// wait resumes the fiber even after Fiber.setContext replaces its scheduler.
-// null once an entry has been passed to the wait, until the fiber runs: later
-// entries are dropped, and an interrupt among them is already recorded on the
-// fiber. Weak, so a fiber that is never woken can be collected.
-const waits = new WeakMap<Fiber.Fiber<unknown, unknown>, Scheduler.Wait | null>()
-
 // The fiber whose wait is being created. Creating it can run code that wakes
 // the fiber, such as async_hooks init callbacks, before the wait is stored.
-let installing: Fiber.Fiber<unknown, unknown> | undefined
+let installing: ParkableFiber | undefined
 
 /** @internal */
-export const park = (scheduler: Scheduler.Scheduler, fiber: Fiber.Fiber<unknown, unknown>): void => {
+export const park = (scheduler: Scheduler.Scheduler, fiber: ParkableFiber): void => {
   const parking = (scheduler as Partial<Scheduler.ParkingScheduler>).park !== undefined
   if (!parking && DefaultWait === undefined) return
   const previous = installing
@@ -65,17 +65,17 @@ export const park = (scheduler: Scheduler.Scheduler, fiber: Fiber.Fiber<unknown,
     // The fiber already ran where it parked, so the wait only needs ending
     wait.resume(noop)
   } else {
-    waits.set(fiber, wait)
+    fiber._wait = wait
   }
 }
 
 /** @internal */
-export const resume = (fiber: RunnableFiber, effect: unknown): void => {
-  const wait = waits.get(fiber)
+export const resume = (fiber: ParkableFiber, effect: unknown): void => {
+  const wait = fiber._wait
   if (wait) {
-    waits.set(fiber, null)
+    fiber._wait = null
     wait.resume(() => {
-      waits.delete(fiber)
+      fiber._wait = undefined
       fiber.run(effect)
     })
   } else if (wait === undefined) {
