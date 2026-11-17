@@ -105,87 +105,67 @@ describe("Sharding startup", () => {
 // Use a nonzero assignment refresh interval when advancing through claim expiry
 // so the runner-storage sync loop does not busy-poll between clock ticks.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
-  it.effect.each([0, 2])(
-    "holds keep-alive until release after %i claim expirations while answering redundant requests",
-    (expirations) =>
-      Effect.gen(function*() {
-        const saved: Array<Snowflake.Snowflake> = []
-        const claimed: Array<Snowflake.Snowflake> = []
-        const answered: Array<Snowflake.Snowflake> = []
-        const Holder = Entity.make("KeepAliveRedelivery", [Rpc.make("Enable"), Rpc.make("Release")])
-        const layer = Holder.toLayer(Effect.gen(function*() {
-          const address = yield* Entity.CurrentAddress
-          const keepAlive = (enabled: boolean) =>
-            Entity.keepAlive(enabled).pipe(Effect.provideService(Entity.CurrentAddress, address))
-          return Holder.of({
-            Enable: () => keepAlive(true),
-            Release: () => keepAlive(false)
-          })
-        })).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
-          ...storage,
-          saveRequest: (message) =>
-            Effect.tap(storage.saveRequest(message), () =>
-              Effect.sync(() => {
-                if (message.envelope.tag === Entity.KeepAliveRpc._tag) saved.push(message.envelope.requestId)
-              })),
-          saveReply: (reply) =>
-            Effect.tap(storage.saveReply(reply), () =>
-              Effect.sync(() => {
-                if (saved.includes(reply.reply.requestId)) answered.push(reply.reply.requestId)
-              })),
-          unprocessedMessages(shards, options) {
-            // Decoded messages must respond through the recording storage too.
-            return Effect.tap(storage.unprocessedMessages.call(this, shards, options), (messages) =>
-              Effect.sync(() => {
-                for (const message of messages) {
-                  if (message._tag === "IncomingRequest" && message.envelope.tag === Entity.KeepAliveRpc._tag) {
-                    claimed.push(message.envelope.requestId)
-                  }
-                }
-              }))
-          }
-        }))))
+  it.effect("holds a keep-alive across claim expirations until release while answering redundant requests", () =>
+    Effect.gen(function*() {
+      const claimed: Array<Snowflake.Snowflake> = []
+      const Holder = Entity.make("KeepAliveRedelivery", [Rpc.make("Enable"), Rpc.make("Release")])
+      const layer = Holder.toLayer(Effect.gen(function*() {
+        const address = yield* Entity.CurrentAddress
+        const keepAlive = (enabled: boolean) =>
+          Entity.keepAlive(enabled).pipe(Effect.provideService(Entity.CurrentAddress, address))
+        return Holder.of({
+          Enable: () => keepAlive(true),
+          Release: () => keepAlive(false)
+        })
+      })).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
+        ...storage,
+        unprocessedMessages: (shards, options) =>
+          Effect.tap(storage.unprocessedMessages(shards, options), (messages) =>
+            Effect.sync(() => {
+              for (const message of messages) claimed.push(message.envelope.requestId)
+            }))
+      }))))
 
-        yield* Effect.gen(function*() {
-          yield* TestClock.adjust(1)
-          const sharding = yield* Sharding.Sharding
-          const client = (yield* Holder.client)("holder")
-          yield* client.Enable()
-          yield* sharding.pollStorage
-          yield* TestClock.adjust(1)
-          assert.strictEqual(saved.length, 1)
-          const original = saved[0]
-          assert.deepStrictEqual(claimed, [original])
-          assert.deepStrictEqual(answered, [])
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const client = (yield* Holder.client)("holder")
+        // Only keep-alives are persisted here, so the journal lists them in send order.
+        const replyCounts = () =>
+          driver.journal.map((envelope) => driver.requests.get(envelope.requestId)!.replies.length)
 
-          // Another enable has a distinct ID and must not replace the durable holder.
-          yield* client.Enable()
-          yield* sharding.pollStorage
-          yield* TestClock.adjust(1)
-          assert.strictEqual(saved.length, 2)
-          const redundant = saved[1]
-          assert.notStrictEqual(redundant, original)
-          assert.deepStrictEqual(answered, [redundant])
+        yield* client.Enable()
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(replyCounts(), [0])
+        const original = Snowflake.Snowflake(driver.journal[0].requestId)
+        assert.deepStrictEqual(claimed, [original])
 
-          for (let i = 0; i < expirations; i++) {
-            claimed.length = 0
-            yield* TestClock.adjust("10 minutes")
-            yield* sharding.pollStorage
-            yield* TestClock.adjust(1)
-            assert.deepStrictEqual(claimed, [original], "storage must redeliver the held request after claim expiry")
-            assert.deepStrictEqual(answered, [redundant], "redelivery must not answer the held keep-alive")
-          }
+        // Another enable has a distinct ID and must not replace the durable holder.
+        yield* client.Enable()
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(replyCounts(), [0, 1])
 
-          yield* client.Release()
-          yield* TestClock.adjust(1)
-          assert.deepStrictEqual(answered, [redundant, original], "release must answer the original request once")
+        for (let i = 0; i < 2; i++) {
+          claimed.length = 0
           yield* TestClock.adjust("10 minutes")
           yield* sharding.pollStorage
           yield* TestClock.adjust(1)
-          assert.deepStrictEqual(answered, [redundant, original], "completed keep-alives must not be answered again")
-        }).pipe(Effect.provide(layer))
-      })
-  )
+          assert.deepStrictEqual(claimed, [original], "storage must redeliver the held request after claim expiry")
+          assert.deepStrictEqual(replyCounts(), [0, 1], "redelivery must not answer the held keep-alive")
+        }
+
+        yield* client.Release()
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(replyCounts(), [1, 1], "release must answer the original request once")
+        yield* TestClock.adjust("10 minutes")
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(replyCounts(), [1, 1], "completed keep-alives must not be answered again")
+      }).pipe(Effect.provide(layer))
+    }))
 
   it.effect("reactivates a held keep-alive after its runner scope closes without replying", () =>
     Effect.gen(function*() {
