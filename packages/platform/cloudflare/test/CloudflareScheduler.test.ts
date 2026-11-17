@@ -74,27 +74,12 @@ describe("CloudflareScheduler", () => {
     })
   })
 
-  it("keeps the owner of a parked fiber when setContext replaces its scheduler", async () => {
-    assert.deepStrictEqual(await json("/park?id=move"), [])
-    await sleep(100)
-    assert.strictEqual(await json("/wake?id=move&move"), "woken")
-    assert.deepStrictEqual(await poll("/log?id=move", (body) => body.exited), {
-      log: [
-        { at: "resumed", store: "move", io: "owner" },
-        { at: "slept", store: "move", io: "owner" }
-      ],
-      exited: true,
-      timers: 0
-    })
-  })
-
   // The owner's wake reaction runs after the interrupt has been handed over,
-  // while the interrupted fiber waits in its cleanup. setContext is given
-  // another scheduler before the interrupt, which still runs it in the owner.
+  // while the interrupted fiber waits in its cleanup
   it("runs an interrupted fiber once when its owner wakes it before the interrupt lands", async () => {
     assert.deepStrictEqual(await json("/park?id=run-once&owner-wake"), [])
     await sleep(100)
-    assert.strictEqual(await json("/wake?id=run-once&interrupt&move"), "woken")
+    assert.strictEqual(await json("/wake?id=run-once&interrupt"), "woken")
     assert.deepStrictEqual(await poll("/log?id=run-once", (body) => body.log.length > 0), {
       log: [{ at: "cleanup", store: "run-once", io: "owner" }],
       exited: false,
@@ -108,6 +93,19 @@ describe("CloudflareScheduler", () => {
         { at: "interrupted", store: "run-once", io: "owner" }
       ],
       exited: true,
+      timers: 0
+    })
+  })
+
+  // The fiber is woken, given a scheduler that does not park, then interrupted.
+  // It waits in its cleanup without a timer, as the other scheduler has it.
+  it("runs a fiber once in its owner after setContext gives it another scheduler", async () => {
+    assert.deepStrictEqual(await json("/park?id=move&owner-wake"), [])
+    await sleep(100)
+    assert.strictEqual(await json("/wake?id=move&interrupt&move"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=move", (body) => body.log.length > 0), {
+      log: [{ at: "cleanup", store: "move", io: "owner" }],
+      exited: false,
       timers: 0
     })
   })

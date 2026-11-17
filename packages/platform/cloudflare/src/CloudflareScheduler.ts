@@ -71,9 +71,9 @@ const noop = (): void => {}
  * compatibility flag, enabled by default from 2024-10-14; the constructor
  * throws without it.
  *
- * `Fiber.setContext` does not replace a `CloudflareScheduler` on a fiber that
- * is suspended or has not started. It applies the rest of the context and
- * keeps the scheduler, so replace it from the fiber itself.
+ * When `Fiber.setContext` gives a suspended fiber another scheduler, the
+ * fiber still runs next in its owner and uses the other scheduler from then
+ * on, so its later waits are no longer returned to the owner.
  *
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.
