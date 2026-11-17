@@ -5692,18 +5692,17 @@ describe("Effect", () => {
     describe("ParkingScheduler", () => {
       // Runs each parked fiber in the "owner" store when `land` runs, like a
       // scheduler that hands fibers back to the request that owns them. Its
-      // queue is an instance field, so wrappers must keep the receiver.
+      // state is in instance fields, so wrappers must keep the receiver, and it
+      // throws if a wait is resumed more than once.
       const makeScheduler = () => {
-        const scheduler = new class extends Scheduler.MixedScheduler
-          implements Scheduler.ParkingScheduler<{ resumed: boolean }>
-        {
+        const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+          readonly parked = new Set<Fiber.Fiber<unknown, unknown>>()
           readonly pending: Array<() => void> = []
-          park() {
-            return { resumed: false }
+          park(fiber: Fiber.Fiber<unknown, unknown>) {
+            this.parked.add(fiber)
           }
-          resume(fiber: Scheduler.ParkedFiber, parked: { resumed: boolean }, effect: Effect.Effect<unknown, unknown>) {
-            if (parked.resumed) return
-            parked.resumed = true
+          resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>) {
+            if (!this.parked.delete(fiber)) throw new Error("not parked")
             this.pending.push(() => storage.run("owner", () => fiber.run(effect)))
           }
         }("sync")
@@ -5775,26 +5774,21 @@ describe("Effect", () => {
       })
 
       it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-        "does not retain the state of a wait after the fiber exits",
+        "does not retain the async resource of a wait after the fiber exits",
         async () => {
-          const { land, scheduler } = makeScheduler()
           let reference: WeakRef<object> | undefined
-          const park = scheduler.park
-          scheduler.park = function() {
-            const parked = park.call(this)
-            reference = new WeakRef(parked)
-            return parked
-          }
+          const hook = createHook({
+            init(_asyncId, type, _triggerAsyncId, resource) {
+              if (type === "effect/Fiber") reference = new WeakRef(resource)
+            }
+          })
           let wake!: () => void
-          const fiber = Effect.runFork(
-            Effect.callback<void>((resume) => {
-              wake = () => resume(Effect.void)
-            }),
-            { scheduler }
-          )
-          await land()
+          hook.enable()
+          const fiber = Effect.runFork(Effect.callback<void>((resume) => {
+            wake = () => resume(Effect.void)
+          }))
+          hook.disable()
           wake()
-          await land()
           await Effect.runPromise(collectGarbage)
           assert.isTrue(Exit.isSuccess(fiber.pollUnsafe()!))
           assert.isUndefined(reference!.deref())

@@ -521,7 +521,7 @@ class TrackingScheduler implements Scheduler.Scheduler {
     const parking = parent as Partial<Scheduler.ParkingScheduler>
     if (parking.park) {
       this.park = (fiber) => parking.park!(fiber)
-      this.resume = (fiber, parked, effect) => parking.resume!(fiber, parked, effect)
+      this.resume = (fiber, effect) => parking.resume!(fiber, effect)
     }
   }
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
