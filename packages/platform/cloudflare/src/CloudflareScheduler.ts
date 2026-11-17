@@ -18,9 +18,6 @@ const compatibilityFlags: Record<string, boolean | undefined> | undefined = (glo
 // they were registered in, so settling it from any request runs the fiber in
 // its owner. workerd cannot tell which request is running, so a fiber woken by
 // its owner takes the same path, a microtask later.
-//
-// Every instance shares these, so a fiber keeps its owner if its scheduler is
-// replaced by another CloudflareScheduler.
 const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
 
 const noop = (): void => {}
@@ -73,10 +70,6 @@ const noop = (): void => {}
  * Owner resumption needs the `handle_cross_request_promise_resolution`
  * compatibility flag, enabled by default from 2024-10-14; the constructor
  * throws without it.
- *
- * A fiber keeps its owner only while its scheduler is a `CloudflareScheduler`.
- * If `Fiber.setContext` gives a parked fiber another kind of scheduler, the
- * fiber resumes in the request that wakes it.
  *
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.
