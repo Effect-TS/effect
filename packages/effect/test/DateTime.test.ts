@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import { DateTime, Duration, Effect, Equal, Hash, Option } from "effect"
+import { Cause, DateTime, Duration, Effect, Equal, Hash, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { vi } from "vitest"
 
@@ -523,6 +523,14 @@ describe("DateTime", () => {
         assertSome(Option.map(dt, (value) => value.zone._tag), "Offset")
         assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T14:42:34.112Z")
       }))
+
+    it.effect("parses a zoneless prefix before a bracketed UTC zone", () =>
+      Effect.gen(function*() {
+        const dt = DateTime.makeZonedFromString("January 15, 2024 (Z)[UTC]")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-01-15T00:00:00.000Z")
+        assertSome(Option.map(dt, (value) => value.epochMilliseconds), 1705276800000)
+        assertSome(Option.map(dt, (value) => DateTime.zoneToString(value.zone)), "UTC")
+      }))
   })
 
   it("parts equality", () => {
@@ -726,6 +734,52 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
     })
 
+    it("reads zoneless strings as UTC outside the host zone", { concurrent: false }, () => {
+      const previousTZ = process.env.TZ
+      try {
+        process.env.TZ = "America/New_York"
+        strictEqual(new Date("2026-01-27T17:14:06.000Z").getTimezoneOffset(), 300)
+        strictEqual(DateTime.makeUnsafe("2024-1-15").toJSON(), "2024-01-15T00:00:00.000Z")
+        assertSomeIso(DateTime.make("2024-1-15"), "2024-01-15T00:00:00.000Z")
+        strictEqual(DateTime.makeUnsafe("2024-3-7").toJSON(), "2024-03-07T00:00:00.000Z")
+        strictEqual(DateTime.makeUnsafe("2024-1-5").toJSON(), "2024-01-05T00:00:00.000Z")
+        strictEqual(DateTime.makeUnsafe("January 15, 2024 (Z)").toJSON(), "2024-01-15T00:00:00.000Z")
+        strictEqual(DateTime.makeUnsafe("March 7, 2024 (GMT)").toJSON(), "2024-03-07T00:00:00.000Z")
+        strictEqual(DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 (XYZ)").toJSON(), "2026-01-27T17:14:06.000Z")
+        strictEqual(DateTime.makeUnsafe("+000001-01-15T00:00:00").toJSON(), "0001-01-15T00:00:00.000Z")
+      } finally {
+        if (previousTZ === undefined) {
+          delete process.env.TZ
+        } else {
+          process.env.TZ = previousTZ
+        }
+      }
+    })
+
+    it("keeps expanded date-only years and GMT numeric offsets", () => {
+      strictEqual(DateTime.makeUnsafe("+000001-01-15").toJSON(), "0001-01-15T00:00:00.000Z")
+      strictEqual(DateTime.makeUnsafe("+000000-01-15").toJSON(), "0000-01-15T00:00:00.000Z")
+      strictEqual(DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 GMT+0000").toJSON(), "2026-01-27T17:14:06.000Z")
+    })
+
+    it("rejects unparseable strings", () => {
+      assertNone(DateTime.make("not a date"))
+      throws(() => DateTime.makeUnsafe("not a date"), (error) => {
+        assertTrue(Cause.isIllegalArgumentError(error))
+      })
+    })
+
+    it("rejects oversized repeated time markers", () => {
+      const repeated = "11:11:".repeat(20_000)
+      for (const suffix of ["", "+0100", "x+0100"]) {
+        const input = repeated + suffix
+        assertNone(DateTime.make(input))
+        throws(() => DateTime.makeUnsafe(input), (error) => {
+          assertTrue(Cause.isIllegalArgumentError(error))
+        })
+      }
+    })
+
     it("treats strings with lowercase letters in comments as UTC", { concurrent: false }, () => {
       const previousTZ = process.env.TZ
       try {
@@ -754,6 +808,15 @@ describe("DateTime", () => {
     it("does not append Z to strings with explicit offset", () => {
       const dt = DateTime.makeUnsafe("2020-02-01T11:17:00+1100")
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
+    })
+
+    it.each([
+      ["2024-01-01 1:00+01", "2024-01-01T00:00:00.000Z"],
+      ["2024-01-01 01:00-0130", "2024-01-01T02:30:00.000Z"],
+      ["2024-01-01T01:00:00.000+01:30", "2023-12-31T23:30:00.000Z"]
+    ])("preserves glued numeric offsets: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
+      assertSomeIso(DateTime.make(input), expected)
     })
 
     it("does not append Z to strings containing GMT", () => {

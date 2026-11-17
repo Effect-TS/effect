@@ -256,7 +256,7 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
     const date = new Date(0)
     setPartsDate(date, input)
     return fromDateUnsafe(date) as DateTime.DateTime.PreserveZone<A>
-  } else if (typeof input === "string" && !hasZone(input)) {
+  } else if (typeof input === "string" && !hasZone(input) && !dateOnlyRegExp.test(input)) {
     return fromDateUnsafe(new Date(input + "Z")) as DateTime.DateTime.PreserveZone<A>
   }
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
@@ -264,20 +264,37 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
 
 /**
  * Detects whether a date string already contains timezone info.
- * Without a zone, `new Date("2024-01-01T12:00:00")` is parsed as local time,
- * so `makeUnsafe` appends "Z" to force UTC interpretation.
- * This check prevents appending "Z" to strings that already have a zone
- * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
- * `Date.parse` also accepts a trailing `z`, `gmt`, `ut`, `utc` or US zone abbreviation
- * such as `pdt` in any case. Only the suffix checks are case-insensitive, so lowercase
- * letters in a comment like "(xyz)" do not count as a zone.
- * A whitespace-separated zone can also be followed by whitespace and one non-nested comment,
- * as in "... 17:14:06 -0500 (EST)".
+ * A string with no zone is read as UTC because `makeUnsafe` appends "Z" before
+ * `new Date`, and "Z" is not appended when the string already carries a zone
+ * such as a trailing `Z`, a numeric offset like `+05:30`, or `GMT`.
+ * `Z` and `GMT` count only as a suffix, so a `Z` or `GMT` inside a comment is
+ * not a zone. `GMT` may be followed immediately by `±HH`, `±HHMM`, or `±HH:MM`,
+ * and that suffix may have trailing whitespace and one non-nested comment.
+ * A glued numeric offset counts only when a time precedes it (`T…` or `H:MM` /
+ * `HH:MM`) and only digits, `:`, and `.` sit between that time and the offset,
+ * so a date ending in `-DD` is not an offset.
+ * ECMA-262 date-only forms (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`, and a sign plus a
+ * six-digit year) are UTC, while a date-time form with no offset is local.
+ * `makeUnsafe` appends "Z" only for zoneless strings outside those date-only forms.
+ * `Date.parse` accepts a trailing `z`, `gmt`, `ut`, `utc`, or US abbreviation
+ * (`est`, `edt`, `cst`, `cdt`, `mst`, `mdt`, `pst`, `pdt`) in any case, and a
+ * whitespace-separated zone may be followed by whitespace and one non-nested
+ * comment, as in `17:14:06 -0500 (EST)`.
  */
+const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
+
 const hasZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) ||
+  /(?:Z|GMT(?:[+-]\d{2}(?::?\d{2})?)?)\s*(?:\([^()]*\)\s*)?$/i.test(input) ||
+  hasTimeOffset(input) ||
+  /\]$/.test(input) ||
   /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
   /\s(?:[+-]\d{2}(?::?\d{2})?|z|gmt|utc?|[ecmp][sd]t)\s*(?:\([^()]*\)\s*)?$/i.test(input)
+
+const hasTimeOffset = (input: string): boolean => {
+  // Start only at a run boundary so a failed suffix cannot rescan the same run for every time marker.
+  const match = /((?:^|[^\d:.])[\d:.]*)[+-]\d{2}(?::?\d{2})?$/.exec(input)
+  return match !== null && /(?:T\d|\d{1,2}:\d{2})/.test(match[1])
+}
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
