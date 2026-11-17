@@ -5,8 +5,6 @@
  * @since 4.2.0
  */
 import { waitUntil } from "cloudflare:workers"
-import type { Effect } from "effect/Effect"
-import type * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
@@ -36,11 +34,11 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
   }
 }
 
-// Settles the promise of one wait, created in the request the fiber parks in,
-// which owns it. The fiber resumes in a reaction to that promise: workerd runs promise reactions
-// in the request that created the promise, with the AsyncLocalStorage state
-// they were registered in, so the fiber has the owner's I/O objects, timers
-// and store.
+// Each wait is a promise created in the request the fiber parks in, which owns
+// it. Resuming settles it, and the fiber runs in a reaction to it: workerd
+// runs promise reactions in the request that created the promise, with the
+// AsyncLocalStorage state they were registered in, so the fiber has the
+// owner's I/O objects, timers and store.
 //
 // The owner waits on that promise with waitUntil, so it keeps running after it
 // responds. workerd still cancels a request whose only pending work is a
@@ -49,7 +47,6 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
 //
 // workerd has no way to ask which request is running, so a fiber woken by its
 // owner also resumes through the promise, a microtask later.
-type Settle = (task: () => void) => void
 
 /**
  * A synchronous scheduler that resumes each fiber in the Worker request that
@@ -108,10 +105,6 @@ type Settle = (task: () => void) => void
  * @since 4.2.0
  */
 export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
-  // The wait of each parked fiber, until it runs. Weak, so a fiber that is
-  // never woken can still be garbage collected.
-  readonly #waits = new WeakMap<Fiber.Fiber<unknown, unknown>, Settle>()
-
   /**
    * Creates a scheduler for request-owned fiber resumption.
    *
@@ -133,53 +126,18 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    * @stability unstable
    * @since 4.2.0
    */
-  park(fiber: Fiber.Fiber<unknown, unknown>): void {
+  park(): Scheduler.Wait {
     const timer = setPendingTimer()
-    let settle!: Settle
+    let resume!: (task: () => void) => void
     keepOwnerAlive(
       new Promise<() => void>((resolve) => {
-        settle = resolve
+        resume = resolve
       }).then((task) => {
         if (timer !== undefined) clearTimeout(timer)
-        if (this.#waits.get(fiber) === settle) this.#waits.delete(fiber)
         task()
       })
     )
-    this.#waits.set(fiber, settle)
-  }
-
-  /**
-   * Hands the fiber to the request that parked it.
-   *
-   * @stability unstable
-   * @since 4.2.0
-   */
-  resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
-    const settle = this.#waits.get(fiber)
-    if (settle === undefined) {
-      // Not parked here: the fiber has not started, has exited, or was parked
-      // by the scheduler it had before setContext replaced it
-      fiber.run(effect)
-      return
-    }
-    // The wait stays until the fiber runs. Only the first call settles the
-    // promise, so the fiber runs once, with the first entry. An interrupt
-    // arriving later is already recorded on it.
-    settle(() => fiber.run(effect))
-  }
-
-  /**
-   * Ends the wait of a fiber that `Fiber.setContext` moved to another
-   * scheduler, without running it, so its owner stops waiting for it.
-   *
-   * @since 4.2.0
-   */
-  release(fiber: Fiber.Fiber<unknown, unknown>): void {
-    const settle = this.#waits.get(fiber)
-    if (settle !== undefined) {
-      this.#waits.delete(fiber)
-      settle(noop)
-    }
+    return { resume }
   }
 }
 

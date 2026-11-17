@@ -91,18 +91,21 @@ export default {
       case "/wake":
         return als.run("waker", async () => {
           const slot = slots.get(id)!
-          if (url.searchParams.has("interrupt")) {
-            // Wakes the fiber first, so the interrupt arrives before the owner
-            // has run it
-            slot.wake!()
-            slot.fiber!.interruptUnsafe()
-          } else if (url.searchParams.has("finish")) {
+          const interrupt = url.searchParams.has("interrupt")
+          if (url.searchParams.has("finish")) {
             slot.finish!()
+            return Response.json("woken")
+          }
+          // Wakes the fiber first, so the interrupt arrives before the owner
+          // has run it
+          if (interrupt) slot.wake!()
+          if (url.searchParams.has("move")) {
+            // Replaces the scheduler of the parked fiber
+            slot.fiber!.setContext(Context.add(slot.fiber!.context, Scheduler.Scheduler, otherScheduler))
+          }
+          if (interrupt) {
+            slot.fiber!.interruptUnsafe()
           } else {
-            if (url.searchParams.has("move")) {
-              // Moves the parked fiber to another scheduler, which did not park it
-              slot.fiber!.setContext(Context.add(slot.fiber!.context, Scheduler.Scheduler, otherScheduler))
-            }
             await Effect.runPromise(Deferred.succeed(slot.deferred, undefined), { scheduler })
           }
           return Response.json("woken")
