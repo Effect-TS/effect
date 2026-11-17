@@ -515,17 +515,7 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
 const captureAsyncContext = (): AsyncContext | undefined =>
   AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
-type Parking = Pick<Scheduler.ParkingScheduler, "park" | "resume">
-
-const noParking: Parking = {
-  park() {},
-  resume(fiber, effect) {
-    fiber.run(effect)
-  }
-}
-
-const parking = (scheduler: Scheduler.Scheduler): Parking =>
-  "park" in scheduler ? scheduler as Scheduler.ParkingScheduler : noParking
+type Parking = Partial<Pick<Scheduler.ParkingScheduler, "park" | "resume">>
 
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
@@ -638,7 +628,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    parking(this.cache.scheduler).resume(this, effect as any)
+    const scheduler = this.cache.scheduler as Parking
+    if (scheduler.resume) scheduler.resume(this, effect as any)
+    else this.run(effect)
   }
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
@@ -658,10 +650,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._yielded = undefined
       yielded()
     }
+    // Take the scheduler setContext gave the fiber while it was suspended
+    const current = (this.context as any).cacheRoot._fiberCache
+    if (this.cache !== current) {
+      this.cache = current
+      this._dispatcher = undefined
+    }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
       this._asyncContext = captureAsyncContext()
-      parking(this.cache.scheduler).park(this)
+      ;(this.cache.scheduler as Parking).park?.(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -826,12 +824,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
-    const scheduler = this.cache?.scheduler
+    const scheduler = this.cache?.scheduler as Scheduler.Scheduler & Parking | undefined
     if (scheduler !== cache.scheduler) {
-      // A ParkingScheduler may hold the effect the fiber runs with next, so it
-      // is kept unless the fiber is running or has exited
-      if (scheduler !== undefined && !this._running && !this._exit && "park" in scheduler) {
-        return this.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
+      // A ParkingScheduler may hold the effect a suspended fiber runs with
+      // next, so the fiber keeps it until it runs
+      if (scheduler?.park && !this._running && !this._exit) {
+        this.cache = { ...cache, scheduler }
+        return
       }
       this._dispatcher = undefined
     }
@@ -5708,7 +5707,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    parking(child.cache.scheduler).park(child)
+    ;(child.cache.scheduler as Parking).park?.(child)
     // Cancel the deferred start if an interrupt runs first.
     let resumed = false
     child.yieldWith(() => {

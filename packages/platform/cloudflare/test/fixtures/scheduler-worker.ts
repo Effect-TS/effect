@@ -100,7 +100,7 @@ export default {
           // has run it
           if (interrupt) slot.wake!()
           if (url.searchParams.has("move")) {
-            // Replaces the scheduler of the parked fiber
+            // Gives the suspended fiber another scheduler
             slot.fiber!.setContext(Context.add(slot.fiber!.context, Scheduler.Scheduler, otherScheduler))
           }
           if (interrupt) {
