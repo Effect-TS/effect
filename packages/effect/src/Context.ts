@@ -649,12 +649,6 @@ const Proto: Omit<
   }
 }
 
-/** @internal */
-export const hasSameCache = <Services, Services2>(
-  self: Context<Services>,
-  that: Context<Services2>
-): boolean => (self as ContextImpl<Services>).cacheRoot === (that as ContextImpl<Services2>).cacheRoot
-
 /**
  * Checks whether the provided argument is a `Context`.
  *
