@@ -530,31 +530,52 @@ const AsyncResource:
 const defaultParking: Parking = AsyncResource === undefined ? directParking : (() => {
   // null marks a wait that has been resumed, while the fiber runs
   const waits = new WeakMap<Fiber.Fiber<unknown, unknown>, InstanceType<typeof AsyncResource> | null>()
+  // The fiber whose wait's resource is being created. Creating it runs
+  // async_hooks init callbacks, which can wake the fiber before the wait is
+  // installed.
+  let installing: Fiber.Fiber<unknown, unknown> | undefined
   return {
     park(fiber) {
-      waits.set(fiber, new AsyncResource("effect/Fiber"))
+      const previous = installing
+      installing = fiber
+      const wait = new AsyncResource("effect/Fiber")
+      const resumed = installing !== fiber
+      installing = previous
+      if (resumed) {
+        // The fiber ran while the resource was created, so the wait is over
+        wait.emitDestroy()
+      } else {
+        waits.set(fiber, wait)
+      }
     },
     resume(fiber, effect) {
       const wait = waits.get(fiber)
-      if (wait === undefined) {
-        // Not parked here: the fiber has not started, has exited, or was parked
-        // by the scheduler it had before setContext replaced it
-        return fiber.run(effect)
+      if (wait) {
+        waits.set(fiber, null)
+        try {
+          wait.runInAsyncScope(fiber.run, fiber, effect)
+        } finally {
+          // The wait has ended, even if the run threw. Node calls destroy hooks
+          // later, so this cannot re-enter the fiber. Without it, async_hooks
+          // consumers would see the resource as live until it is collected.
+          wait.emitDestroy()
+          if (waits.get(fiber) === null) waits.delete(fiber)
+        }
+        return
       }
-      // Only an interrupt can arrive while the fiber enters the resource, for
-      // example from an async_hooks `before` callback, and the fiber has
-      // already recorded it
-      if (wait === null) return
-      waits.set(fiber, null)
-      try {
-        wait.runInAsyncScope(fiber.run, fiber, effect)
-      } finally {
-        // The wait has ended, even if the run threw. Node calls destroy hooks
-        // later, so this cannot re-enter the fiber. Without it, async_hooks
-        // consumers would see the resource as live until it is collected.
-        wait.emitDestroy()
-        if (waits.get(fiber) === null) waits.delete(fiber)
+      if (installing === fiber) {
+        // Woken while its next wait is being installed: the fiber is parked in
+        // the context it ran in, so it runs here
+        installing = undefined
+      } else if (wait === null) {
+        // Only an interrupt can arrive while the fiber enters the resource, for
+        // example from an async_hooks `before` callback, or while it runs, and
+        // the fiber has already recorded it
+        return
       }
+      // Otherwise not parked here: the fiber has not started, has exited, or
+      // was parked by the scheduler it had before setContext replaced it
+      fiber.run(effect)
     }
   }
 })()

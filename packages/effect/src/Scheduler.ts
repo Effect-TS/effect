@@ -89,6 +89,9 @@ export interface Scheduler {
  *   it once the fiber runs. A fiber that is never woken stays parked, so key
  *   the state weakly, for example in a `WeakMap`, to let such a fiber be
  *   garbage collected.
+ * - If `park` runs code that can wake or interrupt the fiber, such as
+ *   `async_hooks` callbacks, `resume` can be called for the fiber before
+ *   `park` returns. That entry must not be lost.
  * - When `Fiber.setContext` replaces the scheduler of a parked fiber, the new
  *   scheduler resumes it, and the wait the old scheduler started is never
  *   resumed. The old scheduler can release it when it next parks the fiber.
