@@ -86,6 +86,8 @@ const defaults = {
   entries: 65536,
   callers: 256,
   handles: 1024,
+  watchers: 256,
+  watchEvents: 1024,
   operations: 128,
   nameBytes: ByteSize.bytes(255),
   pathBytes: ByteSize.bytes(4096),
@@ -142,6 +144,8 @@ export const configureResult = (options: M.LimitOptions | undefined) =>
       "entries",
       "callers",
       "handles",
+      "watchers",
+      "watchEvents",
       "operations",
       "symlinkFollows",
       "namespaceVisits",
@@ -149,7 +153,12 @@ export const configureResult = (options: M.LimitOptions | undefined) =>
     ] as const
     for (const key of countKeys) {
       if (options[key] !== undefined) {
-        output[key] = yield* countResult(options[key], "make", key, key === "objects" || key === "operations" ? 1 : 0)
+        output[key] = yield* countResult(
+          options[key],
+          "make",
+          key,
+          key === "objects" || key === "operations" || key === "watchEvents" ? 1 : 0
+        )
       }
     }
     const byteKeys = [
@@ -224,7 +233,7 @@ export class Resource {
   private outcome: Exit.Exit<void> | undefined
   readonly close: Effect.Effect<void>
   readonly runtime: Runtime
-  readonly kind: "caller" | "handle" | "region" | "operation" | "lease"
+  readonly kind: "caller" | "handle" | "region" | "operation" | "lease" | "watch"
   private readonly operation: string
 
   constructor(runtime: Runtime, kind: Resource["kind"], operation: string) {
@@ -350,6 +359,7 @@ export class Resource {
     this.owned.clear()
     if (this.kind === "caller" || this.kind === "region" || this.kind === "operation") this.runtime.callers--
     if (this.kind === "handle") this.runtime.handles--
+    if (this.kind === "watch") this.runtime.watchers--
     const released = Result.try(() => this.runtime.onRelease())
     if (Result.isFailure(released)) reasons.push(Cause.makeDieReason(released.failure))
   }
@@ -568,6 +578,7 @@ export class Runtime {
   readonly limits: M.Limits
   readonly clock: Clock.Clock
   callers = 0
+  watchers = 0
   handles = 0
   ordinary = 0
   private payloadBytes = BigInt("0")
@@ -589,6 +600,10 @@ export class Runtime {
     if (kind === "handle" && this.handles >= this.limits.handles) {
       return Result.fail(new M.LimitExceeded({ operation, domain: "handles", stage: "admission" }))
     }
+    if (kind === "watch" && this.watchers >= this.limits.watchers) {
+      return Result.fail(new M.LimitExceeded({ operation, domain: "watchers", stage: "admission" }))
+    }
+    if (kind === "watch") this.watchers++
     if (policy) this.callers++
     if (kind === "handle") this.handles++
     return Result.succeed(new Resource(this, kind, operation))

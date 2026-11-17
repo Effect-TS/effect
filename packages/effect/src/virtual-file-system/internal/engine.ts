@@ -567,6 +567,7 @@ export class Engine {
       unreachableRetainedContentBytes: ByteSize.bytes(retainedContent),
       callers: this.runtime.callers,
       handles: this.runtime.handles,
+      watchers: this.runtime.watchers,
       operations: this.runtime.ordinary,
       reservedTransientBytes: ByteSize.bytes(this.runtime.payload)
     }

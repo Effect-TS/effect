@@ -25,6 +25,7 @@ const emptyUsage = {
   unreachableRetainedContentBytes: 0n,
   callers: 0,
   handles: 0,
+  watchers: 0,
   operations: 0,
   reservedTransientBytes: 0n
 }
@@ -123,6 +124,8 @@ describe("VirtualFileSystem", () => {
         fileBytes: 16777216n,
         callers: 256,
         handles: 1024,
+        watchers: 256,
+        watchEvents: 1024,
         operations: 128,
         transientBytes: 268435456n,
         ioBytes: 16777216n,

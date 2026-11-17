@@ -572,6 +572,7 @@ export class LimitExceeded extends Schema.TaggedError<LimitExceeded>()("LimitExc
     "file",
     "callers",
     "handles",
+    "watchers",
     "operations",
     "transient",
     "io",
@@ -654,6 +655,8 @@ export const Limits = Schema.Struct({
   entries: Count,
   callers: Count,
   handles: Count,
+  watchers: Count,
+  watchEvents: PositiveCount,
   operations: PositiveCount,
   nameBytes: PositiveByteSize,
   pathBytes: PositiveByteSize,
@@ -675,6 +678,10 @@ export interface LimitOptions {
   readonly objects?: number | undefined
   readonly entries?: number | undefined
   readonly callers?: number | undefined
+  /** Maximum simultaneously retained watch subscriptions, including ended streams until their scopes close. */
+  readonly watchers?: number | undefined
+  /** Positive per-subscription capacity. Overflow replaces lost events with Rescan. */
+  readonly watchEvents?: number | undefined
   readonly handles?: number | undefined
   readonly operations?: number | undefined
   readonly nameBytes?: ByteSize.Input | undefined
@@ -699,6 +706,7 @@ export const Usage = Schema.Struct({
   unreachableRetainedContentBytes: Schema.ByteSize,
   callers: Count,
   handles: Count,
+  watchers: Count,
   operations: Count,
   reservedTransientBytes: Schema.ByteSize
 }).check(Schema.makeFilter((usage) =>
@@ -1066,6 +1074,22 @@ export interface NamespaceTraversal {
 
 export const CallerTypeId: unique symbol = Symbol("effect/virtual-file-system/CallerTypeId")
 
+export interface WatchOptions {
+  /** Includes descendants. Defaults to true; false includes the object and its direct children. */
+  readonly recursive?: boolean | undefined
+  /** Defaults to all visible hard links. Resolved follows the name selected during acquisition. */
+  readonly alias?: "all" | "resolved" | undefined
+}
+
+export const Change = Schema.TaggedUnion({
+  Create: { path: Schema.BytePath },
+  Update: { path: Schema.BytePath },
+  Remove: { path: Schema.BytePath },
+  Rescan: { path: Schema.BytePath }
+})
+
+export type Change = typeof Change.Type
+
 export interface VirtualFileSystem {
   readonly [CallerTypeId]: typeof CallerTypeId
   /**
@@ -1086,6 +1110,12 @@ export interface VirtualFileSystem {
   readonly instanceNumber: bigint
   /** Construction-fixed input limits for validating requests. Grants no Owner authority. */
   readonly inputLimits: Readonly<Pick<Limits, "ioBytes" | "pathBytes">>
+  /** Installs a scoped read grant before returning the event stream. Defaults to recursive watching of all visible aliases.
+   * Resolved watches follow the selected name through rename and end when it disappears. File reference targets require alias "all".
+   * Paths are relative to the caller root at publication. Confinement remains enforced; later chmod does not revoke this grant.
+   * Rescan indicates lost events. Closing the acquisition scope removes the subscription and interrupts pending reads.
+   * The watch retains its own lifetime when its creator closes. Consuming the stream does not release the acquisition scope. */
+  readonly watch: (target: Target, options?: WatchOptions) => Scoped<Stream.Stream<Change, ReadError>>
   /** Returns a nonretaining identity after authorized traversal without touching times. */
   readonly lookup: (target: Target) => ReadEffect<ObjectReference>
   /** Returns coherent followed-object metadata without a content-read permission check or atime touch. */

@@ -25,6 +25,7 @@ import * as P from "./internal/preparation.ts"
 import * as R from "./internal/runtime.ts"
 import * as S from "./internal/sync.ts"
 import * as W from "./internal/walk.ts"
+import * as Watch from "./internal/watch.ts"
 
 const DEFAULT_ROOT_MODE = 0o755
 
@@ -79,6 +80,14 @@ export {
    * @since 4.1.0
    */
   CaptureRecord,
+  /**
+   * Committed create, update, removal, or event-loss notification with a byte-preserving caller-relative path.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.2.0
+   */
+  Change,
   /**
    * ConditionFailed expected failure with typed reasons and safe operation context.
    *
@@ -344,7 +353,15 @@ export {
    * @category schemas
    * @since 4.1.0
    */
-  WalkRecord
+  WalkRecord,
+  /**
+   * Recursive depth and hard-link alias selection for scoped caller watches.
+   *
+   * @stability experimental
+   * @category configuration
+   * @since 4.2.0
+   */
+  type WatchOptions
 } from "./internal/model.ts"
 
 export type {
@@ -1406,6 +1423,7 @@ const makeCaller = (caller: E.Caller) => {
     [M.CallerTypeId]: M.CallerTypeId,
     instanceNumber: caller.runtime.instanceNumber,
     inputLimits: caller.inputLimits,
+    watch: (target, options) => Watch.watch(caller, target, options),
     lookup: (target) => R.readOnly(simple(caller, "lookup", target, A.lookup)),
     stat: (target) => R.readOnly(simple(caller, "stat", target, A.stat)),
     linkStat: (target) => R.readOnly(simple(caller, "linkStat", target, A.linkStat)),
