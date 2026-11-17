@@ -1,7 +1,7 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
 import { NodeHttpClient, NodeHttpServer, NodeHttpServerRequest, NodeWS } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
+import { ByteSize, Context, Effect, Exit, Formatter, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -412,6 +412,27 @@ describe("HttpServer", () => {
       assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
       assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
     }))
+
+  it.effect("serves requests with the app's context and memo map", () =>
+    Effect.gen(function*() {
+      const Greeting = Context.Reference<string>("Greeting", { defaultValue: () => "default" })
+      let builds = 0
+      const Built = Layer.effectDiscard(Effect.sync(() => builds++))
+
+      yield* Layer.mergeAll(
+        Layer.succeed(Greeting)("app"),
+        Built,
+        HttpRouter.add(
+          "GET",
+          "/",
+          Effect.service(Greeting).pipe(Effect.map(HttpServerResponse.text), Effect.provide(Built))
+        )
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const response = yield* HttpClient.get("/")
+      assert.strictEqual(yield* response.text, "app")
+      assert.strictEqual(builds, 1)
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("takes the host header from the HTTP/2 authority", () =>
     Effect.gen(function*() {

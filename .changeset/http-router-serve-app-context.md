@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Provide the app's services to the server in `HttpRouter.serve`. References set in the app, such as `HttpMiddleware.TracerDisabledWhen`, now apply to the server's tracer and logger, and `Effect.provide` inside a handler reuses layers the app already built.
+Fix `HttpRouter.serve` ignoring app-provided references in server middleware and rebuilding app-provided layers in request handlers.
