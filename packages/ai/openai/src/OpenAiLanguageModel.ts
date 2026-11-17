@@ -2440,6 +2440,16 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               case "message": {
+                for (const contentPart of event.item.content) {
+                  if (contentPart.type === "refusal") {
+                    parts.push({
+                      type: "text-delta",
+                      id: event.item.id,
+                      delta: "",
+                      metadata: { openai: { refusal: contentPart.refusal } }
+                    })
+                  }
+                }
                 const annotations = activeAnnotations.length > 0
                   ? { annotations: activeAnnotations.slice() }
                   : undefined
