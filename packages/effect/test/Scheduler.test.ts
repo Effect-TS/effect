@@ -241,25 +241,34 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
     })
 
-    it("keeps a ParkingScheduler that setContext replaces while the fiber is suspended", async () => {
+    it("resumes a suspended fiber that setContext gives another scheduler, which it uses from then on", async () => {
       const { land, scheduler } = makeScheduler()
+      const other = new Scheduler.MixedScheduler("sync")
       let wake!: () => void
+      let resumed = false
+      const wait = Effect.callback<void>((resume) => {
+        wake = () => resume(Effect.void)
+      })
       const fiber = Effect.runFork(
-        Effect.callback<void>((resume) => {
-          wake = () => resume(Effect.void)
-        }),
+        wait.pipe(Effect.andThen(Effect.sync(() => (resumed = true))), Effect.andThen(wait)),
         { scheduler }
       )
-      const other = new Scheduler.MixedScheduler("sync")
-      fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, other))
-      wake()
-      assert.isUndefined(fiber.pollUnsafe())
-      await land()
-      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
-      // An exited fiber takes the context it is given
       const context = Context.add(fiber.context, Scheduler.Scheduler, other)
       fiber.setContext(context)
       assert.strictEqual(fiber.context, context)
+      const dispatcher = fiber.currentDispatcher
+      wake()
+      assert.isFalse(resumed)
+      await land()
+      assert.isTrue(resumed)
+      assert.notStrictEqual(fiber.currentDispatcher, dispatcher)
+      // The second wait is not held back by the first scheduler
+      wake()
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
+      // An exited fiber takes a scheduler at once
+      fiber.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
+      fiber.setContext(context)
+      assert.strictEqual(fiber.cache.scheduler, other)
     })
 
     it("interrupts a fiber woken before the interrupt, once it runs", async () => {
