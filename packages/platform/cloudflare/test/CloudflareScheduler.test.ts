@@ -98,8 +98,9 @@ describe("CloudflareScheduler", () => {
   })
 
   // The fiber is woken, given a scheduler that does not park, then interrupted.
-  // It waits in its cleanup without a timer, as the other scheduler has it.
-  it("runs a fiber once in its owner after setContext gives it another scheduler", async () => {
+  // Only its next run is the owner's: the cleanup then waits under the other
+  // scheduler, with no timer, and nothing returns that wait to the owner.
+  it("enters a fiber once in its owner after setContext gives it another scheduler", async () => {
     assert.deepStrictEqual(await json("/park?id=move&owner-wake"), [])
     await sleep(100)
     assert.strictEqual(await json("/wake?id=move&interrupt&move"), "woken")

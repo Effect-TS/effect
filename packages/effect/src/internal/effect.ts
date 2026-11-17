@@ -514,8 +514,6 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
 const captureAsyncContext = (): AsyncContext | undefined =>
   AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
-type Parking = Partial<Pick<Scheduler.ParkingScheduler, "park" | "resume">>
-
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -620,8 +618,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    const scheduler = this.cache.scheduler as Parking
-    if (scheduler.resume) scheduler.resume(this, effect as any)
+    const scheduler = this.cache.scheduler
+    if (Scheduler.isParkingScheduler(scheduler)) scheduler.resume(this, effect as any)
     else this.run(effect)
   }
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
@@ -651,7 +649,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
       this._asyncContext = captureAsyncContext()
-      ;(this.cache.scheduler as Parking).park?.(this)
+      const scheduler = this.cache.scheduler
+      if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -815,11 +814,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
-    const scheduler = this.cache?.scheduler as Scheduler.Scheduler & Parking | undefined
+    const scheduler = this.cache?.scheduler
     if (scheduler !== cache.scheduler) {
       // A ParkingScheduler may hold the effect a suspended fiber runs with
       // next, so the fiber keeps it until it runs
-      if (scheduler?.park && !this._running && !this._exit) {
+      if (scheduler && !this._running && !this._exit && Scheduler.isParkingScheduler(scheduler)) {
         this.cache = { ...cache, scheduler }
         return
       }
@@ -5654,7 +5653,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    ;(child.cache.scheduler as Parking).park?.(child)
+    const scheduler = child.cache.scheduler
+    if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child

@@ -241,6 +241,23 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
     })
 
+    it("runs the fibers of a scheduler that has only one of the two methods", () => {
+      for (const method of ["park", "resume"]) {
+        let calls = 0
+        const scheduler = Object.assign(new Scheduler.MixedScheduler("sync"), { [method]: () => calls++ })
+        let wake!: () => void
+        const wait = Effect.callback<void>((resume) => {
+          wake = () => resume(Effect.void)
+        })
+        for (const effect of [wait, wait.pipe(Effect.provide(TestClock.layer()))]) {
+          const fiber = Effect.runFork(effect, { scheduler })
+          wake()
+          assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void, method)
+        }
+        assert.strictEqual(calls, 0, method)
+      }
+    })
+
     it("resumes a suspended fiber that setContext gives another scheduler, which it uses from then on", async () => {
       const { land, scheduler } = makeScheduler()
       const other = new Scheduler.MixedScheduler("sync")
