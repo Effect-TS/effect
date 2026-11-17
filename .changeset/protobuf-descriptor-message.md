@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Add `ProtobufDescriptor` and `ProtobufMessage` for protobuf codecs that preserve original names, validate completed messages, and retain unknown fields.
+Add `ProtobufDescriptor`, `ProtobufDescriptorProto`, and `ProtobufMessage` for protobuf codecs that preserve original names, validate completed messages, and retain unknown fields.
 
 Replace `reader.enter(); read(reader); reader.leave()` with `read(reader.delimited())`. The child reader is bounded to the payload, and the parent advances past it immediately.
 

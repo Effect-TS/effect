@@ -67,7 +67,9 @@ The protobuf descriptor definitions and copied comments come from
 [protocolbuffers/protobuf v36.2](https://github.com/protocolbuffers/protobuf/tree/2c74169b34066ceb8ddb6b882fcb3fb32d737a55),
 commit `2c74169b34066ceb8ddb6b882fcb3fb32d737a55`:
 
-- [The generated descriptor module](src/protobuf/internal/generated/google/protobuf/descriptor.proto.ts)
+- [The bootstrap source](scripts/protobuf/descriptor.proto) is an unchanged copy
+  of upstream `descriptor.proto`. See the [regeneration procedure](scripts/protobuf/README.md).
+- [The generated descriptor module](src/protobuf/ProtobufDescriptorProto.ts)
   contains definitions and comments from upstream
   [descriptor.proto](https://github.com/protocolbuffers/protobuf/blob/2c74169b34066ceb8ddb6b882fcb3fb32d737a55/src/google/protobuf/descriptor.proto).
 - [The descriptor-set test fixture](test/fixtures/protobuf/descriptor-set.binpb)

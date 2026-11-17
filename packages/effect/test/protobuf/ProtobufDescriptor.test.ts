@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ProtobufDescriptor, ProtobufMessage } from "effect/protobuf"
 import * as Result from "effect/Result"
+import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { field, message, registry, T } from "./descriptors.ts"
@@ -72,10 +73,10 @@ describe("ProtobufDescriptor", () => {
     assert.isUndefined(fieldOf("test.Optional", "a").oneof)
   })
 
-  it("preserves field and oneof names independently of JSON names", () => {
+  it("preserves original field and oneof names", () => {
     assert.deepStrictEqual(
-      message("test.Names").fields.map((f) => [f.name, f.jsonName]),
-      [["constructor", "constructor"], ["foo_bar", "customName"]]
+      message("test.Names").fields.map((f) => f.name),
+      ["constructor", "foo_bar"]
     )
     assert.deepStrictEqual(message("legacy.OriginalNames").fields.map((f) => f.name), [
       "bar",
@@ -244,6 +245,13 @@ describe("ProtobufDescriptor", () => {
     // google/protobuf/descriptor.proto and google/protobuf/compiler/plugin.proto.
     const bytes = readFileSync(fileURLToPath(new URL("../fixtures/protobuf/descriptor-set.binpb", import.meta.url)))
     const { FileDescriptorProto, FileDescriptorSet } = ProtobufDescriptor
+
+    it("has reproducible built-in definitions", () => {
+      execFileSync(process.execPath, [
+        fileURLToPath(new URL("../../scripts/protobuf/generate.mjs", import.meta.url)),
+        "--check"
+      ], { stdio: "pipe" })
+    })
 
     it("resolves the files of a descriptor set", () => {
       const resolved = Result.getOrThrow(ProtobufDescriptor.fromFileDescriptorSet(bytes))

@@ -149,22 +149,6 @@ const fieldFeatures = (edition: number, parent: Features, field: D.FieldDescript
 // names
 // -----------------------------------------------------------------------------
 
-// `foo_bar` → `fooBar`, as protoc computes JSON names.
-const camelCase = (name: string): string => {
-  let out = ""
-  let upper = false
-  for (let i = 0; i < name.length; i++) {
-    const c = name[i]
-    if (c === "_") {
-      upper = true
-    } else {
-      out += upper ? c.toUpperCase() : c
-      upper = false
-    }
-  }
-  return out
-}
-
 // `.acme.v1.User` → `acme.v1.User`.
 const typeRef = (name: string | undefined, at: string): string => {
   if (name === undefined || !name.startsWith(".")) {
@@ -406,7 +390,6 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     const base = {
       _tag: "FieldDescriptor" as const,
       name,
-      jsonName: proto.json_name ?? camelCase(name),
       number,
       parent,
       oneof,

@@ -168,7 +168,7 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
     },
     {
       name: "Names",
-      field: [field("constructor", 1, "int32"), field("foo_bar", 2, "int32", { json_name: "customName" })]
+      field: [field("constructor", 1, "int32"), field("foo_bar", 2, "int32")]
     },
     {
       name: "NamedOneof",
@@ -203,7 +203,7 @@ export const proto2: ProtobufDescriptor.FileDescriptorProto = {
       name: "OriginalNames",
       field: [
         field("bar", 1, "int32"),
-        field("bar_", 2, "int32", { json_name: "barUnderscore" }),
+        field("bar_", 2, "int32"),
         field("constructor", 3, ".test.Point"),
         field("__proto__", 4, ".test.Point"),
         field("toString", 5, "int32")

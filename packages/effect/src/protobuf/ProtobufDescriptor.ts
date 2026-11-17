@@ -14,7 +14,6 @@
  *   Neither module depends on Effect Schema. A Schema can separately transform
  *   these plain values into application types.
  * - Field and oneof names are preserved exactly in JavaScript values.
- *   `jsonName` is separate metadata for protobuf's JSON representation.
  *
  * **Gotchas**
  *
@@ -38,7 +37,7 @@
  *   dependency: [],
  *   message_type: [{
  *     name: "User",
- *     field: [{ name: "display_name", number: 1, label: 1, type: 9, json_name: "displayName" }]
+ *     field: [{ name: "display_name", number: 1, label: 1, type: 9 }]
  *   }]
  * }]))
  *
@@ -52,7 +51,8 @@
 import * as Data from "../Data.ts"
 import * as Result from "../Result.ts"
 import * as Binary from "./internal/binary.ts"
-import { FileDescriptorSet as FileDescriptorSetMessage } from "./internal/generated/google/protobuf/descriptor.proto.ts"
+import * as Resolve from "./internal/resolve.ts"
+import { FileDescriptorSet as FileDescriptorSetMessage } from "./ProtobufDescriptorProto.ts"
 import type {
   DescriptorProto,
   EnumDescriptorProto,
@@ -63,8 +63,7 @@ import type {
   MethodDescriptorProto,
   OneofDescriptorProto,
   ServiceDescriptorProto
-} from "./internal/generated/google/protobuf/descriptor.proto.ts"
-import * as Resolve from "./internal/resolve.ts"
+} from "./ProtobufDescriptorProto.ts"
 
 // -----------------------------------------------------------------------------
 // descriptors
@@ -196,7 +195,6 @@ export type FieldDescriptor = SingularFieldDescriptor | ListFieldDescriptor | Ma
 interface FieldBase {
   readonly _tag: "FieldDescriptor"
   readonly name: string
-  readonly jsonName: string
   readonly number: number
   /** The message the field belongs to, or that an extension extends. */
   readonly parent: MessageDescriptor
@@ -499,4 +497,4 @@ export const fromFileDescriptorSet = (bytes: Uint8Array): Result.Result<Registry
 // descriptor.proto
 // -----------------------------------------------------------------------------
 
-export * from "./internal/generated/google/protobuf/descriptor.proto.ts"
+export * from "./ProtobufDescriptorProto.ts"
