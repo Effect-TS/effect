@@ -46,6 +46,51 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const finish of ["complete", "interrupt"] as const) {
+    it.effect(`retains workflow finalizers through a timer wake before ${finish}`, () =>
+      Effect.gen(function*() {
+        const workflow = Workflow.make(`TimerWakeFinalizers/${finish}`, {
+          payload: {},
+          idempotencyKey: () => "one"
+        })
+        const release = yield* Latch.make()
+        const finalized: Array<Exit.Exit<unknown, unknown>> = []
+        let runs = 0
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            runs++
+            yield* Workflow.addFinalizer((exit) =>
+              Effect.sync(() => {
+                finalized.push(exit)
+              })
+            )
+            yield* Effect.all([
+              Activity.make({ name: "waiting", execute: release.await }),
+              DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })
+            ], { concurrency: "unbounded", discard: true })
+          })
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* pollStorageUntil(() => runs >= 2, "timer must replay the workflow")
+          assert.deepStrictEqual(finalized, [], "suspension must retain workflow finalizers")
+          if (finish === "interrupt") {
+            const engine = yield* WorkflowEngine
+            yield* engine.interruptUnsafe(workflow, executionId)
+          } else {
+            yield* release.open
+          }
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert(result._tag === "Complete")
+          assert.strictEqual(Exit.hasInterrupts(result.exit), finish === "interrupt")
+          if (finish === "complete") assert.isTrue(Exit.isSuccess(result.exit))
+          assert.strictEqual(finalized.length, runs, "every attempt must be finalized")
+          assert.strictEqual(finalized.filter(Exit.hasInterrupts).length, finish === "interrupt" ? 1 : 0)
+          assert.strictEqual(finalized.filter(Exit.isSuccess).length, runs - (finish === "interrupt" ? 1 : 0))
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+
   for (const complete of [true, false]) {
     it.effect(`releases all workflow scopes after multiple suspensions on ${complete ? "completion" : "teardown"}`, () =>
       Effect.gen(function*() {

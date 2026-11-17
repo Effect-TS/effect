@@ -100,6 +100,50 @@ describe("deferred self-completion", () => {
 })
 
 describe("WorkflowEngine", () => {
+  it.effect("layerMemory retains finalizers through an active timer wake", () =>
+    Effect.gen(function*() {
+      const release = yield* Latch.make()
+      const finalized: Array<Exit.Exit<unknown, unknown>> = []
+      let runs = 0
+      const workflow = Workflow.make("MemoryTimerWakeFinalizers", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          runs++
+          yield* Workflow.addFinalizer((exit) =>
+            Effect.sync(() => {
+              finalized.push(exit)
+            })
+          )
+          yield* Effect.all([
+            Activity.make({ name: "waiting", execute: release.await }),
+            DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })
+          ], { concurrency: "unbounded", discard: true })
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        for (let i = 0; i < 1000; i++) {
+          if (runs >= 2) break
+          yield* TestClock.adjust(1)
+        }
+        assert.isAtLeast(runs, 2, "timer must replay the workflow")
+        assert.deepStrictEqual(finalized, [], "suspension must retain workflow finalizers")
+        yield* release.open
+        let result = yield* workflow.poll(executionId)
+        for (let i = 0; i < 1000 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
+          yield* Effect.yieldNow
+          result = yield* workflow.poll(executionId)
+        }
+        assert(Option.isSome(result) && result.value._tag === "Complete")
+        assert.isTrue(Exit.isSuccess(result.value.exit))
+        assert.strictEqual(finalized.length, runs)
+        assert.isTrue(finalized.every(Exit.isSuccess))
+      }).pipe(Effect.provide(layer))
+    }))
+
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
     payload: { value: Schema.Number },
     success: Schema.Number,
