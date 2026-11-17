@@ -53,8 +53,8 @@ export interface Scheduler {
  * forked and its start is scheduled. It calls `park` where it stops, and
  * passes every effect that would make it run again to `resume`: the result it
  * waited for, its start, or an interrupt. The scheduler keeps what it needs in
- * between. A fiber of a scheduler that does not have both methods runs where
- * it is resumed, and neither method is called.
+ * between. A fiber of a scheduler that does not have both as methods runs
+ * where it is resumed, and neither is called.
  *
  * **Gotchas**
  *
@@ -108,8 +108,8 @@ export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
 }
 
 /**
- * Checks whether a `Scheduler` is a `ParkingScheduler`: it has both `park`
- * and `resume`.
+ * Checks whether a `Scheduler` is a `ParkingScheduler`: both `park` and
+ * `resume` are functions.
  *
  * **When to use**
  *
@@ -120,7 +120,8 @@ export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
  * @since 4.2.0
  */
 export const isParkingScheduler = (scheduler: Scheduler): scheduler is ParkingScheduler =>
-  !!((scheduler as Partial<ParkingScheduler>).park && (scheduler as Partial<ParkingScheduler>).resume)
+  typeof (scheduler as Partial<ParkingScheduler>).park === "function" &&
+  typeof (scheduler as Partial<ParkingScheduler>).resume === "function"
 
 /**
  * A dispatcher created by a `Scheduler` for enqueuing tasks and forcing queued
