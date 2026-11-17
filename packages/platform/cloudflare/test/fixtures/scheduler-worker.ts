@@ -1,11 +1,12 @@
 import { CloudflareScheduler } from "@effect/platform-cloudflare/CloudflareScheduler"
-import { Deferred, Effect, type Fiber } from "effect"
+import { Context, Deferred, Effect, type Fiber, Scheduler } from "effect"
 import { AsyncLocalStorage } from "node:async_hooks"
 
 declare const WebSocketPair: new() => Record<0 | 1, { readyState: number }>
 
 const als = new AsyncLocalStorage<string>()
 const scheduler = new CloudflareScheduler()
+const otherScheduler = new CloudflareScheduler()
 
 // Tracks the scheduler's pending timers, which never fire, by the owner that
 // set them, to check that each is cleared once its fiber resumes
@@ -98,6 +99,10 @@ export default {
           } else if (url.searchParams.has("finish")) {
             slot.finish!()
           } else {
+            if (url.searchParams.has("move")) {
+              // Moves the parked fiber to another scheduler, which did not park it
+              slot.fiber!.setContext(Context.add(slot.fiber!.context, Scheduler.Scheduler, otherScheduler))
+            }
             await Effect.runPromise(Deferred.succeed(slot.deferred, undefined), { scheduler })
           }
           return Response.json("woken")

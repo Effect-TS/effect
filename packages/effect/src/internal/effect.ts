@@ -498,7 +498,7 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-type Parking = Pick<Scheduler.ParkingScheduler, "park" | "resume">
+type Parking = Pick<Scheduler.ParkingScheduler, "park" | "resume" | "release">
 
 interface AsyncResource {
   runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
@@ -506,12 +506,12 @@ interface AsyncResource {
 }
 
 const AsyncResource: (new(type: string) => AsyncResource) | undefined = (() => {
-    try {
-      return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
-    } catch {
-      return undefined
-    }
-  })()
+  try {
+    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
+  } catch {
+    return undefined
+  }
+})()
 
 // How fibers park when their scheduler does not implement ParkingScheduler.
 // Where node:async_hooks is available, each wait is an async resource created
@@ -568,6 +568,13 @@ const defaultParking: Parking = (() => {
       // Otherwise not parked here: the fiber has not started, has exited, or
       // was parked by the scheduler it had before setContext replaced it
       fiber.run(effect)
+    },
+    release(fiber) {
+      const wait = waits.get(fiber)
+      if (wait) {
+        waits.delete(fiber)
+        wait.emitDestroy()
+      }
     }
   }
 })()
@@ -858,6 +865,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
+      // A fiber moved to a scheduler that parks differently no longer waits
+      // with the previous one, which ends its wait, if any, without running it
+      if (this.cache !== undefined) {
+        const parking = parkingOf(this.cache.scheduler)
+        if (parking !== parkingOf(cache.scheduler)) parking.release(this)
+      }
     }
     this.cache = cache
   }
