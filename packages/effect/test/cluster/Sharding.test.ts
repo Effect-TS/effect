@@ -187,6 +187,62 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
       })
   )
 
+  it.effect("reactivates a held keep-alive after its runner scope closes without replying", () =>
+    Effect.gen(function*() {
+      const inner = yield* makeSharedMemoryStorage
+      const saved = yield* Queue.make<Snowflake.Snowflake>()
+      const activated = yield* Queue.make<void>()
+      let stopped = 0
+      const storage = MessageStorage.MessageStorage.of({
+        ...inner,
+        saveRequest: (message) =>
+          Effect.tap(inner.saveRequest(message), () =>
+            message.envelope.tag === Entity.KeepAliveRpc._tag
+              ? Queue.offer(saved, message.envelope.requestId)
+              : Effect.void)
+      })
+      const Holder = Entity.make("KeepAliveRecovery", [Rpc.make("Start")])
+      const holder = Holder.toLayer(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() => Effect.sync(() => stopped++))
+        yield* Entity.keepAlive(true)
+        yield* Queue.offer(activated, void 0)
+        return Holder.of({ Start: () => Effect.void })
+      }))
+      const layer = RestartSharding(holder, storage, {
+        refreshAssignmentsInterval: 60_000,
+        entityTerminationTimeout: 0
+      })
+      const scope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+      const runner = yield* Layer.buildWithScope(layer, scope)
+      yield* Effect.gen(function*() {
+        yield* advanceUntil((yield* Holder.client)("holder").Start())
+        yield* Queue.take(activated)
+        yield* TestClock.adjust(1)
+        yield* TestClock.adjust("10 minutes")
+        yield* (yield* Sharding.Sharding).pollStorage
+        yield* TestClock.adjust(1)
+      }).pipe(Effect.provide(runner))
+      const original = yield* Queue.take(saved)
+      assert.deepStrictEqual(yield* storage.repliesForUnfiltered([original]), [])
+
+      yield* advanceUntil(Scope.close(scope, Exit.void))
+      assert.strictEqual(stopped, 1, "closing the runner must stop the activation")
+      assert.deepStrictEqual(
+        yield* storage.repliesForUnfiltered([original]),
+        [],
+        "scope close must not acknowledge work"
+      )
+
+      // No client request on the new runner: the persisted keep-alive must activate it.
+      yield* Effect.gen(function*() {
+        yield* advanceUntil(Queue.take(activated))
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(yield* storage.repliesForUnfiltered([original]), [])
+        assert.strictEqual(stopped, 1, "the recovered activation must remain alive")
+      }).pipe(Effect.provide(layer))
+      assert.strictEqual(stopped, 2)
+    }))
+
   it.effect("keeps the claim of an active request replayed after an entity defect", () =>
     Effect.gen(function*() {
       const started = yield* Queue.make<number>()
