@@ -71,9 +71,10 @@ const noop = (): void => {}
  * compatibility flag, enabled by default from 2024-10-14; the constructor
  * throws without it.
  *
- * When `Fiber.setContext` gives a suspended fiber another scheduler, the
- * fiber still runs next in its owner and uses the other scheduler from then
- * on, so its later waits are no longer returned to the owner.
+ * When `Fiber.setContext` gives a suspended fiber another scheduler, only the
+ * fiber's next run is in its owner. It uses the other scheduler from then on:
+ * unless that scheduler parks too, a later wait is not returned to the owner
+ * and does not keep the owner running, so it may fail or never complete.
  *
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.

@@ -518,10 +518,9 @@ class TrackingScheduler implements Scheduler.Scheduler {
     this.parent = parent
     this.executionMode = parent.executionMode
     // Parks fibers only if the parent does, so they keep the default otherwise
-    if ("park" in parent) {
-      const parking = parent as Scheduler.ParkingScheduler
-      this.park = (fiber) => parking.park(fiber)
-      this.resume = (fiber, effect) => parking.resume(fiber, effect)
+    if (Scheduler.isParkingScheduler(parent)) {
+      this.park = (fiber) => parent.park(fiber)
+      this.resume = (fiber, effect) => parent.resume(fiber, effect)
     }
   }
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
