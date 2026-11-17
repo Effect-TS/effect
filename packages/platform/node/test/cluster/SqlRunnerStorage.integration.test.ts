@@ -161,20 +161,25 @@ describe("SqlRunnerStorage", () => {
         for (const shard of shards.slice(1)) {
           releases.push(
             yield* storage.release(runnerAddress1, shard).pipe(
+              Effect.tap(() => Effect.sync(() => partitionConnection(partitioned))),
               Effect.forkScoped({ startImmediately: true })
             )
           )
         }
         assert.strictEqual(partitioned.activeQueries, 1)
+        // Each release takes less than one interval, but the third waits longer than one.
+        for (const release of releases) {
+          yield* waitUntil(() => partitioned.activeQueries === 1).pipe(TestClock.withLive)
+          yield* TestClock.adjust(lockOperationInterval * 0.75)
+          restoreConnection(partitioned)
+          yield* Fiber.join(release)
+        }
         restoreConnection(partitioned)
-        yield* Effect.forEach(releases, Fiber.join)
         assert.strictEqual(partitioned.reservedConnections, 1)
-        assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, [shards[0]]), [shards[0]])
-        assert.deepStrictEqual(yield* storage.acquire(runnerAddress2, shards.slice(1)), shards.slice(1))
+        assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, shards), [shards[0]])
       }).pipe(
         Effect.ensuring(Effect.sync(() => restoreConnection(partitioned))),
-        Effect.provide(layer),
-        TestClock.withLive
+        Effect.provide(layer)
       )
     })
 
