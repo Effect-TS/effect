@@ -11302,7 +11302,7 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
   readonly error: E["Iso"]
 } | {
   readonly _tag: "Die"
-  readonly error: D["Iso"]
+  readonly defect: D["Iso"]
 } | {
   readonly _tag: "Interrupt"
   readonly fiberId: number | undefined
