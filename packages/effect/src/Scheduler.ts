@@ -59,10 +59,12 @@ export interface Scheduler {
  * calling `fiber.run(effect)`, either synchronously or later, in whatever
  * context it chooses, and ignores later entries until the fiber runs.
  *
- * `resume` is also called for a fiber the scheduler did not park: one that has
- * not started, one that has exited, or one whose scheduler `Fiber.setContext`
- * replaced while it was parked. It runs such a fiber directly, which does
- * nothing once the fiber has exited.
+ * When `Fiber.setContext` moves a parked fiber to a scheduler that parks
+ * differently, the fiber calls `release` on its previous scheduler, which ends
+ * the wait without running the fiber and frees its state. The new scheduler
+ * then resumes the fiber although it did not park it. `resume` runs a fiber
+ * this scheduler did not park directly: one released this way, one that has not
+ * started, or one that has exited, where running does nothing.
  *
  * An interrupt requested while the fiber is parked is recorded on the fiber
  * before it reaches `resume`, the same way as one requested while the fiber
@@ -75,8 +77,8 @@ export interface Scheduler {
  * a resource that is dropped.
  *
  * A scheduler is a `ParkingScheduler` when it has a `park` property; the
- * fiber checks this each time it parks or is resumed. Fibers of any other scheduler
- * park the default way: where `node:async_hooks` is available, as in Node.js,
+ * fiber checks this each time it parks, is resumed or changes scheduler.
+ * Fibers of any other scheduler park the default way: where `node:async_hooks` is available, as in Node.js,
  * Bun and Deno, a fiber resumes inside an `AsyncResource` created where it
  * parked, so `AsyncLocalStorage` state is preserved. Elsewhere, such as in
  * browsers, it resumes in the caller's context.
@@ -92,12 +94,11 @@ export interface Scheduler {
  * - If `park` runs code that can wake or interrupt the fiber, such as
  *   `async_hooks` callbacks, `resume` can be called for the fiber before
  *   `park` returns. That entry must not be lost.
- * - When `Fiber.setContext` replaces the scheduler of a parked fiber, the new
- *   scheduler resumes it, and the wait the old scheduler started is never
- *   resumed. The old scheduler can release it when it next parks the fiber.
- * - A scheduler that wraps another one must define `park` and `resume` only
- *   when the wrapped scheduler does, and forward both, so that the wrapped
- *   scheduler's choice is kept.
+ * - A scheduler that wraps another one must define `park`, `resume` and
+ *   `release` only when the wrapped scheduler does, and forward all three, so
+ *   that the wrapped scheduler's choice is kept. A fiber moved between the
+ *   wrapper and the wrapped scheduler is released, as they are different
+ *   schedulers.
  *
  * @stability unstable
  * @category models
@@ -120,6 +121,15 @@ export interface ParkingScheduler extends Scheduler {
    * @since 4.2.0
    */
   resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
+  /**
+   * Called when `Fiber.setContext` moves a fiber that is not running from
+   * this scheduler to one that parks differently. Ends the fiber's wait, if
+   * this scheduler parked it, without running the fiber.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  release(fiber: Fiber.Fiber<unknown, unknown>): void
 }
 
 /**

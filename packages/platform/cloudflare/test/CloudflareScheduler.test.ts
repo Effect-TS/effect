@@ -74,6 +74,22 @@ describe("CloudflareScheduler", () => {
     })
   })
 
+  // The owner stops waiting for the fiber, which runs in the request that wakes
+  // it, as the new scheduler did not park it
+  it("releases a fiber that setContext moves to another scheduler", async () => {
+    assert.deepStrictEqual(await json("/park?id=move"), [])
+    await sleep(100)
+    assert.strictEqual(await json("/wake?id=move&move"), "woken")
+    assert.deepStrictEqual(await poll("/log?id=move", (body) => body.exited), {
+      log: [
+        { at: "resumed", store: "waker", io: "foreign" },
+        { at: "slept", store: "waker", io: "foreign" }
+      ],
+      exited: true,
+      timers: 0
+    })
+  })
+
   // The owner's wake reaction runs after the interrupt has been handed over,
   // while the interrupted fiber waits in its cleanup
   it("runs an interrupted fiber once when its owner wakes it before the interrupt lands", async () => {

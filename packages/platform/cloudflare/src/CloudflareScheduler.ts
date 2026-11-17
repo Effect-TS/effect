@@ -145,8 +145,6 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
         task()
       })
     )
-    // A wait left by a scheduler replacement ends without running the fiber
-    this.#waits.get(fiber)?.(noop)
     this.#waits.set(fiber, settle)
   }
 
@@ -168,6 +166,20 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
     // promise, so the fiber runs once, with the first entry. An interrupt
     // arriving later is already recorded on it.
     settle(() => fiber.run(effect))
+  }
+
+  /**
+   * Ends the wait of a fiber that `Fiber.setContext` moved to another
+   * scheduler, without running it, so its owner stops waiting for it.
+   *
+   * @since 4.2.0
+   */
+  release(fiber: Fiber.Fiber<unknown, unknown>): void {
+    const settle = this.#waits.get(fiber)
+    if (settle !== undefined) {
+      this.#waits.delete(fiber)
+      settle(noop)
+    }
   }
 }
 
