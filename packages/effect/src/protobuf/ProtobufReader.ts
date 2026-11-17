@@ -9,19 +9,23 @@
  * - The reader knows nothing about messages or schemas. The caller reads a
  *   tag, picks the value to read by its field number, and skips the fields it
  *   does not know with {@link ProtobufReader.skip}.
- * - A nested message is read in place, between {@link ProtobufReader.enter},
- *   which reads its length and stops the reader at its end, and
- *   {@link ProtobufReader.leave}, which continues with the enclosing message.
- *   Offsets are always positions in the whole input.
+ * - {@link ProtobufReader.delimited} reads a length prefix and returns a child
+ *   reader restricted to that range. The parent advances past the range.
+ *   Both readers report offsets in the original input.
+ * - The reader borrows its input. {@link ProtobufReader.bytes} returns an
+ *   independent copy; {@link ProtobufReader.bytesView} returns a view sharing
+ *   the input's memory.
  *
  * **Gotchas**
  *
  * - Malformed input throws a {@link ProtobufReaderError}: a truncated value, a
  *   varint longer than ten bytes, a length past the end of the input, a tag
  *   with field number 0 or wire type 6 or 7, an unmatched group tag, or a
- *   string that is not valid UTF-8.
+ *   string that is not valid UTF-8, unless validation is explicitly disabled.
  * - As in protobuf, `int32`, `uint32`, `sint32`, and enum varints of up to ten
  *   bytes are accepted and truncated to 32 bits.
+ * - Skipping unknown groups uses a bounded stack. Callers can supply the
+ *   remaining nesting budget to {@link ProtobufReader.skip}.
  *
  * **Example** (Reading a message with a nested message)
  *
@@ -52,17 +56,13 @@
  * const { Len, Varint } = ProtobufWriter.WireType
  * const w = ProtobufWriter.make()
  * w.tag(1, Len).string("box")
- * w.tag(2, Len).fork()
- * w.tag(2, Varint).int32(-1)
- * w.join()
+ * w.tag(2, Len).fork().tag(2, Varint).int32(-1).join()
  *
  * const r = ProtobufReader.make(w.finish())
  * r.tag()
  * r.string() // => "box"
  * r.tag()
- * r.enter()
- * readPoint(r) // => { x: 0, y: -1 }
- * r.leave()
+ * readPoint(r.delimited()) // => { x: 0, y: -1 }
  * r.isDone() // => true
  * ```
  *
@@ -161,15 +161,15 @@ export class ProtobufReaderError extends Data.TaggedError("ProtobufReaderError")
 export class ProtobufReader {
   private readonly buf: Uint8Array
   private pos = 0
-  // The end of the message being read, and the ends of the messages it is in.
+  // The end of this reader's range in the original input.
   private limit: number
-  private readonly limits: Array<number> = []
   // The halves of the last 64-bit varint.
   private lo = 0
   private hi = 0
 
   /**
-   * Creates a reader of `bytes`.
+   * Creates a reader borrowing `bytes`. Mutating `bytes` affects subsequent
+   * reads and any views returned by {@link ProtobufReader.bytesView}.
    *
    * @since 4.1.5
    */
@@ -587,96 +587,102 @@ export class ProtobufReader {
    * @since 4.1.5
    */
   bytes(): Uint8Array<ArrayBuffer> {
-    const end = this.end()
     // A copy, also of a Node.js `Buffer`, whose `slice` is a view.
-    const out = new Uint8Array(this.buf.subarray(this.pos, end))
+    return new Uint8Array(this.bytesView())
+  }
+
+  /**
+   * Reads length-prefixed bytes as a view of the input. Mutating the input or
+   * the returned view changes the other; use {@link ProtobufReader.bytes}
+   * when the result must own its bytes.
+   *
+   * @since 4.1.5
+   */
+  bytesView(): Uint8Array {
+    const end = this.end()
+    const out = this.buf.subarray(this.pos, end)
     this.pos = end
     return out
   }
 
   /**
-   * Reads a length-prefixed string, which must be valid UTF-8.
+   * Reads a length-prefixed string. Invalid UTF-8 fails by default; setting
+   * `validateUtf8` to `false` replaces invalid sequences with U+FFFD.
    *
    * @since 4.1.5
    */
-  string(): string {
+  string(options?: { readonly validateUtf8?: boolean | undefined }): string {
     const end = this.end()
-    const out = Utf8.decode(this.buf, this.pos, end)
+    const out = options?.validateUtf8 === false
+      ? Utf8.decodeLax(this.buf, this.pos, end)
+      : Utf8.decode(this.buf, this.pos, end)
     if (out === undefined) return this.fail("valid UTF-8")
     this.pos = end
     return out
   }
 
   /**
-   * Reads the length of a length-delimited value, such as a nested message or
-   * a packed repeated field, and stops the reader at its end until
-   * {@link ProtobufReader.leave}.
+   * Reads a length prefix and returns a child reader restricted to its payload.
+   * Advances this reader past the payload immediately. The child borrows the
+   * same input and reports absolute offsets; it cannot read enclosing fields.
+   * Leaving part of the child unread does not affect the parent's position.
    *
    * @since 4.1.5
    */
-  enter(): void {
+  delimited(): ProtobufReader {
     const end = this.end()
-    this.limits.push(this.limit)
-    this.limit = end
+    const child = new ProtobufReader(this.buf)
+    child.pos = this.pos
+    child.limit = end
+    this.pos = end
+    return child
   }
 
   /**
-   * Skips what is left of the value of the last {@link ProtobufReader.enter},
-   * and continues with the enclosing message.
+   * Skips the value of the field of `tag`, including all of a group. Group
+   * nesting is bounded by `maxDepth`, 512 by default, and uses an explicit
+   * stack. A zero limit rejects groups but permits other wire types. The limit
+   * must be a non-negative integer; otherwise this throws `RangeError`.
    *
    * @since 4.1.5
    */
-  leave(): void {
-    const limit = this.limits.pop()
-    if (limit === undefined) throw new Error("ProtobufReader.leave without an enter")
-    this.pos = this.limit
-    this.limit = limit
-  }
-
-  /**
-   * Skips the value of the field of `tag`, including all of a group.
-   *
-   * @since 4.1.5
-   */
-  skip(tag: number): void {
-    this.skipValue(tag, 0)
-  }
-
-  // `depth` is the number of groups the field is in.
-  private skipValue(tag: number, depth: number): void {
-    switch (tag & 7) {
-      case VARINT:
-        this.varint64()
-        return
-      case I64:
-        this.need(8)
-        this.pos += 8
-        return
-      case LEN:
-        this.pos = this.end()
-        return
-      case START_GROUP:
-        this.skipGroup(tag >>> 3, depth + 1)
-        return
-      case I32:
-        this.need(4)
-        this.pos += 4
-        return
-      default:
-        this.fail(`a start group tag before the end group tag of field ${tag >>> 3}`)
+  skip(tag: number, maxDepth = MAX_GROUP_DEPTH): void {
+    if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+      throw new RangeError("ProtobufReader.skip maxDepth must be a non-negative integer")
     }
-  }
-
-  // Skips the fields of a group of field `number`, and its end group tag.
-  private skipGroup(number: number, depth: number): void {
-    if (depth > MAX_GROUP_DEPTH) this.fail(`groups nested at most ${MAX_GROUP_DEPTH} deep`)
+    let groups: Array<number> | undefined
     while (true) {
-      const tag = this.tag()
-      if ((tag & 7) === END_GROUP) {
-        if (tag >>> 3 !== number) this.fail(`an end group tag for field ${number}`)
-        return
+      switch (tag & 7) {
+        case VARINT:
+          this.varint64()
+          break
+        case I64:
+          this.need(8)
+          this.pos += 8
+          break
+        case LEN:
+          this.pos = this.end()
+          break
+        case START_GROUP:
+          groups ??= []
+          if (groups.length >= maxDepth) this.fail(`groups nested at most ${maxDepth} deep`)
+          groups.push(tag >>> 3)
+          break
+        case END_GROUP: {
+          const number = groups?.pop()
+          if (number === undefined) this.fail(`a start group tag before the end group tag of field ${tag >>> 3}`)
+          if (tag >>> 3 !== number) this.fail(`an end group tag for field ${number}`)
+          break
+        }
+        case I32:
+          this.need(4)
+          this.pos += 4
+          break
+        default:
+          this.fail("a wire type up to 5")
       }
-      this.skipValue(tag, depth)
+      if (groups === undefined || groups.length === 0) return
+      tag = this.tag()
     }
   }
 }
@@ -722,8 +728,7 @@ export const make = (bytes: Uint8Array): ProtobufReader => new ProtobufReader(by
 
 const { EndGroup: END_GROUP, I32, I64, Len: LEN, StartGroup: START_GROUP, Varint: VARINT } = internal.WireType
 
-// Groups nest at most this deep, so that skipping one cannot overflow the
-// stack.
+// Default bound on the explicit stack used to skip unknown groups.
 const MAX_GROUP_DEPTH = 512
 
 const COMPLETE = "a complete value"

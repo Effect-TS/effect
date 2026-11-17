@@ -58,6 +58,39 @@ describe("ProtobufWriter", () => {
     assert.throws(() => ProtobufWriter.make().tag(1, ProtobufWriter.WireType.Len).fork().finish(), /not joined/)
   })
 
+  it("rejects invalid tags without changing the written bytes", () => {
+    const w = ProtobufWriter.make().uint32(42)
+    for (const number of [0, -1, 0.5, 536870912, NaN, Infinity]) {
+      assert.throws(() => w.tag(number, ProtobufWriter.WireType.Varint), RangeError)
+    }
+    for (const wireType of [-1, 0.5, 6, 7, NaN, Infinity]) {
+      assert.throws(() => w.tag(1, wireType as ProtobufWriter.WireType), RangeError)
+    }
+    assert.strictEqual(Hex.encode(w.finish()), "2a")
+    assert.strictEqual(write((w) => w.tag(536870911, ProtobufWriter.WireType.I32)), "fdffffff0f")
+  })
+
+  it("writes exact lengths at prefix-width boundaries", () => {
+    for (
+      const [length, prefix] of [[0, "00"], [127, "7f"], [128, "8001"], [16383, "ff7f"], [16384, "808001"]] as const
+    ) {
+      assert.strictEqual(
+        write((w) => w.fork().raw(new Uint8Array(length)).join()),
+        prefix + "00".repeat(length)
+      )
+    }
+  })
+
+  it("owns its output across input mutation and buffer reuse", () => {
+    const input = new Uint8Array([1, 2])
+    const w = ProtobufWriter.make().bytes(input)
+    input.fill(9)
+    const output = w.finish()
+    w.raw(new Uint8Array(1000).fill(8)).finish()
+    ProtobufWriter.make().raw(new Uint8Array(1000).fill(7)).finish()
+    assert.deepStrictEqual(output, new Uint8Array([2, 1, 2]))
+  })
+
   it("keeps writers apart and starts over after finish", () => {
     const a = ProtobufWriter.make().uint32(1)
     const b = ProtobufWriter.make().uint32(2)
