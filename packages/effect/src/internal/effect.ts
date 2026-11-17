@@ -499,25 +499,18 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
-type Parking = Pick<Scheduler.ParkingScheduler<any>, "park" | "resume">
+type Resumer = Pick<Scheduler.ParkingScheduler, "resume">
 
-interface FiberCache extends Fiber.Fiber.Cache {
-  readonly parking: Parking
-}
-
-// Runs a parked fiber synchronously in the caller's async context, in
-// runtimes without node:async_hooks. Also resumes a fiber that is not parked,
-// which runs it if it has not started and does nothing once it has exited.
-const directParking: Parking = {
-  park: constUndefined,
-  resume(fiber, _parked, effect) {
+// Resumes a fiber that is not parked: runs it if it has not started, and does
+// nothing once it has exited
+const runDirectly: Resumer = {
+  resume(fiber, effect) {
     fiber.run(effect)
   }
 }
 
 const AsyncResource:
   | (new(type: string) => {
-    resumed: true | undefined
     runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
     emitDestroy(): void
   })
@@ -529,30 +522,31 @@ const AsyncResource:
     }
   })()
 
-// How fibers park when their scheduler does not implement ParkingScheduler,
-// selected once from the runtime. With node:async_hooks, each wait gets an
-// async resource created where the fiber parked, and the fiber runs in it.
-const defaultParking: Parking = AsyncResource
-  ? {
-    park: () => new AsyncResource("effect/Fiber"),
-    resume(fiber, resource: InstanceType<typeof AsyncResource>, effect) {
-      // Only an interrupt can arrive before the first entry has run the fiber,
-      // for example from an async_hooks `before` callback, and the fiber has
-      // already recorded it
-      if (resource.resumed) return
-      resource.resumed = true
-      try {
-        resource.runInAsyncScope(fiber.run, fiber, effect)
-      } finally {
-        // The wait has ended, even if the run threw, so the resource has no more
-        // callbacks to run. Node calls destroy hooks later, so this cannot
-        // re-enter the fiber. Without it, async_hooks consumers would see the
-        // resource as live until it is garbage collected.
-        resource.emitDestroy()
-      }
+// The default wait where node:async_hooks is available: an async resource
+// created where the fiber parked, which resumes the fiber inside it
+const FiberResource = AsyncResource && class extends AsyncResource implements Resumer {
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>) {
+    try {
+      this.runInAsyncScope(fiber.run, fiber, effect)
+    } finally {
+      // The wait has ended, even if the run threw. Node calls destroy hooks
+      // later, so this cannot re-enter the fiber. Without it, async_hooks
+      // consumers would see the resource as live until it is garbage collected.
+      this.emitDestroy()
     }
   }
-  : directParking
+}
+
+// Starts a wait and returns its owner. A ParkingScheduler keeps the state of
+// the wait itself; otherwise the fiber waits the default way.
+const park = (fiber: FiberImpl): Resumer => {
+  const scheduler = fiber.cache.scheduler as Partial<Scheduler.ParkingScheduler>
+  if (scheduler.park) {
+    scheduler.park(fiber)
+    return scheduler as Scheduler.ParkingScheduler
+  }
+  return FiberResource ? new FiberResource("effect/Fiber") : runDirectly
+}
 
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
@@ -581,8 +575,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._parkedBy = directParking
-    this._parked = undefined
+    this._parkedBy = runDirectly
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -606,16 +599,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  // The strategy that parked the fiber, which resumes its current wait even if
-  // setContext changes the fiber's scheduler before the wait ends
-  declare _parkedBy: Parking
-  // The state of the current wait, as returned by park. Cleared when the fiber
-  // exits, so a retained fiber does not keep it alive.
-  declare _parked: unknown
+  // The owner of the current wait, which resumes it even if setContext changes
+  // the fiber's scheduler before the wait ends. Cleared once the wait is
+  // resumed: an entry that arrives before the fiber runs, such as an interrupt
+  // the fiber has already recorded, does nothing, and an exited fiber does not
+  // keep the owner alive.
+  declare _parkedBy: Resumer | undefined
 
   // set in setContext
   declare context: Context.Context<never>
-  declare cache: FiberCache
+  declare cache: Fiber.Fiber.Cache
 
   declare _dispatcher: Scheduler.SchedulerDispatcher | undefined
   get currentDispatcher(): Scheduler.SchedulerDispatcher {
@@ -671,7 +664,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    this._parkedBy.resume(this, this._parked, effect as any)
+    const parkedBy = this._parkedBy
+    this._parkedBy = undefined
+    parkedBy?.resume(this, effect as any)
   }
   // Every effect a scheduler resumes the fiber with is a primitive
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
@@ -685,7 +680,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      this._parked = (this._parkedBy = this.cache.parking).park(this)
+      this._parkedBy = park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -714,8 +709,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     this._stack.length = 0
     this._children = undefined
-    this._parkedBy = directParking
-    this._parked = undefined
     this.context = Context.empty()
     // The cache is shared with other fibers, so replace it rather than mutate
     // it, letting the ended span and its parents be collected
@@ -851,7 +844,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: FiberCache = root._fiberCache ??= makeFiberContextCache(context)
+    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
@@ -863,17 +856,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-const makeFiberContextCache = (context: Context.Context<never>): FiberCache => {
+const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
-  const scheduler = Context.get(context, Scheduler.Scheduler)
   return {
-    scheduler,
-    // Chosen once per cache, so parking makes no fallback decision
-    parking: (scheduler as Partial<Scheduler.ParkingScheduler>).park
-      ? scheduler as Scheduler.ParkingScheduler
-      : defaultParking,
+    scheduler: Context.get(context, Scheduler.Scheduler),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
     tracerEnabled: Context.get(context, TracerEnabled),
@@ -5722,7 +5710,7 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child.run(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    child._parked = (child._parkedBy = child.cache.parking).park(child)
+    child._parkedBy = park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
