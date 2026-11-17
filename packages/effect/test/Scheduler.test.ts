@@ -241,20 +241,23 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
     })
 
-    it("runs the fibers of a scheduler that has only one of the two methods", () => {
+    it("runs the fibers of a scheduler that does not have both methods", () => {
       for (const method of ["park", "resume"]) {
-        let calls = 0
-        const scheduler = Object.assign(new Scheduler.MixedScheduler("sync"), { [method]: () => calls++ })
-        let wake!: () => void
-        const wait = Effect.callback<void>((resume) => {
-          wake = () => resume(Effect.void)
-        })
-        for (const effect of [wait, wait.pipe(Effect.provide(TestClock.layer()))]) {
-          const fiber = Effect.runFork(effect, { scheduler })
-          wake()
-          assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void, method)
+        // The other one is missing, or is not a method
+        for (const other of [{}, { park: true, resume: true }]) {
+          let calls = 0
+          const scheduler = Object.assign(new Scheduler.MixedScheduler("sync"), other, { [method]: () => calls++ })
+          let wake!: () => void
+          const wait = Effect.callback<void>((resume) => {
+            wake = () => resume(Effect.void)
+          })
+          for (const effect of [wait, wait.pipe(Effect.provide(TestClock.layer()))]) {
+            const fiber = Effect.runFork(effect, { scheduler })
+            wake()
+            assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void, method)
+          }
+          assert.strictEqual(calls, 0, method)
         }
-        assert.strictEqual(calls, 0, method)
       }
     })
 
