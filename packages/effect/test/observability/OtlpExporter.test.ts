@@ -113,18 +113,23 @@ describe("OtlpExporter", () => {
     Effect.gen(function*() {
       const events: Array<OtlpExporter.Event> = []
       const { attempts, httpClient } = yield* makeHttpClient("1")
-      yield* Effect.scoped(Effect.gen(function*() {
-        const exporter = yield* makeExporter(httpClient)
-        exporter.push({ value: 1 })
-        yield* yieldNowN(3)
-        yield* TestClock.adjust("1 second")
-      }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event))))
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const exporter = yield* makeExporter(httpClient)
+          exporter.push({ value: 1 })
+          yield* yieldNowN(3)
+          yield* TestClock.adjust("1 second")
+        }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event)))
+      )
       assert.strictEqual(yield* Ref.get(attempts), 2)
       assert.strictEqual(events.length, 2)
       assert.strictEqual(events[0]._tag, "Batch")
       if (events[0]._tag === "Batch") assert.isTrue(Exit.isSuccess(events[0].exit))
       assert.deepStrictEqual(events[1], {
-        _tag: "Shutdown", label: "OtlpExporterTest", timedOut: false, disabled: false
+        _tag: "Shutdown",
+        label: "OtlpExporterTest",
+        timedOut: false,
+        disabled: false
       })
     }))
 
@@ -132,14 +137,19 @@ describe("OtlpExporter", () => {
     Effect.gen(function*() {
       const events: Array<OtlpExporter.Event> = []
       const { httpClient } = yield* makeStatusHttpClient(400)
-      yield* Effect.scoped(Effect.gen(function*() {
-        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
-        exporter.push({ value: 1 })
-      }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event))))
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+          exporter.push({ value: 1 })
+        }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event)))
+      )
       assert.strictEqual(events[0]._tag, "Batch")
       if (events[0]._tag === "Batch") assert.isTrue(Exit.isFailure(events[0].exit))
       assert.deepStrictEqual(events[1], {
-        _tag: "Shutdown", label: "OtlpExporterTest", timedOut: false, disabled: true
+        _tag: "Shutdown",
+        label: "OtlpExporterTest",
+        timedOut: false,
+        disabled: true
       })
     }))
 
@@ -163,13 +173,15 @@ describe("OtlpExporter", () => {
   it.effect("does not let observer defects replace the application result", () =>
     Effect.gen(function*() {
       const { httpClient } = yield* makeStatusHttpClient(200)
-      const result = yield* Effect.scoped(Effect.gen(function*() {
-        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
-        exporter.push({ value: 1 })
-        return "domain result"
-      }).pipe(Effect.provideService(OtlpExporter.Observer, () => {
-        throw new Error("observer defect")
-      })))
+      const result = yield* Effect.scoped(
+        Effect.gen(function*() {
+          const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+          exporter.push({ value: 1 })
+          return "domain result"
+        }).pipe(Effect.provideService(OtlpExporter.Observer, () => {
+          throw new Error("observer defect")
+        }))
+      )
       assert.strictEqual(result, "domain result")
     }))
 
