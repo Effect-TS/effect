@@ -9,6 +9,7 @@ import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as E from "./engine.ts"
 import * as M from "./model.ts"
+import * as P from "./preparation.ts"
 import * as CallerWatch from "./watchSelection.ts"
 import type { CallerWatchSelection, Event, Link } from "./watchSelection.ts"
 
@@ -243,21 +244,13 @@ export const watch = Effect.fnUntraced(function*(caller: E.Caller, target: M.Tar
   )
   return yield* caller.runtime.runResult(caller.resource, "watch", () =>
     Result.gen(function*() {
-      yield* E.checkOptionsResult(options, ["recursive", "alias"], "watch")
-      if (options?.recursive !== undefined && typeof options.recursive !== "boolean") {
-        return yield* Result.fail(new M.InvalidInput({ operation: "watch", field: "recursive", reason: "malformed" }))
-      }
-      if (options?.alias !== undefined && options.alias !== "all" && options.alias !== "resolved") {
-        return yield* Result.fail(new M.InvalidInput({ operation: "watch", field: "alias", reason: "malformed" }))
-      }
+      const { recursive, alias } = yield* P.snapshotWatchOptions(options)
       const bytes = yield* E.addressBytesResult(target, "watch", caller.runtime.limits)
       return {
         bytes,
         snapshot: (work) =>
           Result.gen(function*() {
             const fixed = yield* E.snapshotTargetResult(target)
-            const recursive = options?.recursive ?? true
-            const alias = options?.alias ?? "all"
             const resource = yield* work.acquireResourceResult("watch")
             return {
               enroll: resource.enroll(

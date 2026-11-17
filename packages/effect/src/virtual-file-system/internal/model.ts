@@ -656,7 +656,7 @@ export const Limits = Schema.Struct({
   callers: Count,
   handles: Count,
   watchers: Count,
-  watchEvents: PositiveCount,
+  watchEvents: Count.check(Schema.isGreaterThanOrEqualTo(2)),
   operations: PositiveCount,
   nameBytes: PositiveByteSize,
   pathBytes: PositiveByteSize,
@@ -680,7 +680,7 @@ export interface LimitOptions {
   readonly callers?: number | undefined
   /** Maximum simultaneously retained watch subscriptions, including ended streams until their scopes close. */
   readonly watchers?: number | undefined
-  /** Positive per-subscription capacity. Overflow replaces lost events with Rescan. */
+  /** Per-subscription capacity of at least two, including the Rescan slot for lost events. */
   readonly watchEvents?: number | undefined
   readonly handles?: number | undefined
   readonly operations?: number | undefined

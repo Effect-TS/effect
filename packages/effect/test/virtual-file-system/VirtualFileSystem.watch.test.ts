@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { BytePath, Context, Deferred, Effect, Exit, Fiber, Result, Scope, Stream } from "effect"
+import { BytePath, Context, Deferred, Effect, Exit, Fiber, Queue, Result, Schema, Scope, Stream } from "effect"
 import { installStorage } from "effect/virtual-file-system/internal/engine"
 import * as Vfs from "effect/virtual-file-system/VirtualFileSystem"
 
@@ -525,9 +525,13 @@ it.effect("does not notify watchers about a storage-rejected mutation", () =>
     assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(Stream.take(stream, 1))), ["Create /accepted"])
   }))
 
-it.effect("rejects zero event capacity and supports disabling subscriptions", () =>
+it.effect("should reject zero capacity when watch limits are configured", () =>
   Effect.gen(function*() {
     assert.strictEqual((yield* Effect.flip(Vfs.make({ limits: { watchEvents: 0 } })))._tag, "InvalidInput")
+  }))
+
+it.effect("should refuse subscriptions when watchers are disabled", () =>
+  Effect.gen(function*() {
     const volume = yield* Vfs.make({ limits: { watchers: 0 } })
     const caller = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
     const failure = yield* Effect.flip(caller.watch("/"))
@@ -535,3 +539,161 @@ it.effect("rejects zero event capacity and supports disabling subscriptions", ()
     if (failure._tag === "LimitExceeded") assert.strictEqual(failure.domain, "watchers")
     assert.strictEqual((yield* volume.usage).watchers, 0)
   }))
+
+for (const destination of ["/b", "/a/child"]) {
+  it.effect(`should publish /a before ${destination} when caller finalization resumes another writer`, () =>
+    Effect.gen(function*() {
+      const volume = yield* Vfs.make()
+      const admin = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
+      const scope = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+      const writer = yield* Scope.provide(volume.authorize({ credentials: { uid: 0, gid: 0 } }), scope)
+      const stream = yield* admin.watch("/")
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      yield* installStorage(
+        volume,
+        () => Deferred.succeed(entered, undefined).pipe(Effect.andThen(Deferred.await(release))),
+        () => false
+      )
+      const writing = yield* writer.makeDirectory("/a").pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Deferred.await(entered)
+      // The caller's last active use wakes this continuation as its write completes.
+      const closing = yield* Scope.close(scope, Exit.void).pipe(
+        Effect.andThen(admin.makeDirectory(destination)),
+        Effect.forkChild({ startImmediately: true })
+      )
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(writing)
+      yield* Fiber.join(closing)
+      yield* admin.makeDirectory("/sentinel")
+      const events = yield* Stream.runCollect(
+        Stream.takeUntil(stream, (event) => Result.getOrThrow(BytePath.toString(event.path)) === "/sentinel")
+      )
+      assert.deepStrictEqual(yield* rendered(events), ["Create /a", `Create ${destination}`, "Create /sentinel"])
+    }))
+}
+
+it.effect("should reject capacity one and deliver changes at capacity two when watch limits are configured", () =>
+  Effect.gen(function*() {
+    const result = yield* Effect.result(Vfs.make({ limits: { watchEvents: 1 } }))
+    assert.isTrue(Result.isFailure(result))
+    if (Result.isFailure(result)) assert.strictEqual(result.failure._tag, "InvalidInput")
+    const volume = yield* Vfs.make({ limits: { watchEvents: 2 } })
+    assert.isFalse(Schema.is(Vfs.Limits)({ ...volume.limits, watchEvents: 1 }))
+    assert.isTrue(Schema.is(Vfs.Limits)(volume.limits))
+    const caller = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
+    const stream = yield* caller.watch("/")
+    yield* caller.makeDirectory("/first")
+    assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(Stream.take(stream, 1))), ["Create /first"])
+    yield* caller.makeDirectory("/second")
+    assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(Stream.take(stream, 1))), ["Create /second"])
+  }))
+
+it.effect("should use the first recursive value when watch options have getters", () =>
+  Effect.gen(function*() {
+    const { owner } = yield* setup
+    let reads = 0
+    const stream = yield* owner.watch("/", {
+      get recursive() {
+        return ++reads !== 1
+      }
+    })
+    assert.strictEqual(reads, 1)
+    yield* owner.makeDirectory("/tenant/nested")
+    yield* owner.makeDirectory("/sentinel")
+    assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(Stream.take(stream, 1))), ["Create /sentinel"])
+  }))
+
+it.effect("should use the first alias value when watch options have getters", () =>
+  Effect.gen(function*() {
+    const { owner } = yield* setup
+    yield* owner.makeHardLink({ entry: "/tenant/file" }, "/tenant/alias")
+    let reads = 0
+    const stream = yield* owner.watch("/tenant/file", {
+      get alias(): "resolved" | "all" {
+        return ++reads === 1 ? "resolved" : "all"
+      }
+    })
+    assert.strictEqual(reads, 1)
+    yield* owner.writeFile("/tenant/file", bytes("new"))
+    yield* owner.unlink("/tenant/file")
+    assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(stream)), [
+      "Update /tenant/file",
+      "Remove /tenant/file"
+    ])
+  }))
+
+for (const outcome of ["success", "failure", "interruption"] as const) {
+  it.effect(`should release active watches when their acquiring scope ends by ${outcome}`, () =>
+    Effect.gen(function*() {
+      const volume = yield* Vfs.make({ limits: { watchers: 1 } })
+      const caller = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
+      const ready = yield* Deferred.make<Stream.Stream<Vfs.Change, Vfs.ReadError>>()
+      const holding = yield* Effect.scoped(Effect.gen(function*() {
+        const stream = yield* caller.watch("/")
+        yield* Deferred.succeed(ready, stream)
+        if (outcome === "failure") return yield* Effect.fail("expected")
+        if (outcome === "interruption") return yield* Effect.never
+      })).pipe(Effect.forkChild({ startImmediately: true }))
+      const stream = yield* Deferred.await(ready)
+      if (outcome === "interruption") yield* Fiber.interrupt(holding)
+      else yield* Fiber.await(holding)
+      assert.isTrue(Exit.hasInterrupts(yield* Effect.exit(Stream.runDrain(stream))))
+      assert.strictEqual((yield* volume.usage).watchers, 0)
+      yield* Effect.asVoid(caller.watch("/"))
+    }))
+}
+
+it.effect("should isolate slow subscribers when the same watch acquisition is run twice", () =>
+  Effect.gen(function*() {
+    const volume = yield* Vfs.make({ limits: { watchEvents: 3 } })
+    const caller = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
+    const acquire = caller.watch("/")
+    const slow = yield* acquire
+    const fast = yield* acquire
+    const received = yield* Queue.bounded<void>(4)
+    const consuming = yield* fast.pipe(
+      Stream.tap(() => Queue.offer(received, undefined)),
+      Stream.take(4),
+      Stream.runCollect,
+      Effect.forkChild({ startImmediately: true })
+    )
+    for (const name of ["a", "b", "c", "d"]) {
+      yield* caller.makeDirectory(`/${name}`)
+      yield* Queue.take(received)
+    }
+    assert.deepStrictEqual(yield* rendered(yield* Fiber.join(consuming)), [
+      "Create /a",
+      "Create /b",
+      "Create /c",
+      "Create /d"
+    ])
+    assert.deepStrictEqual(yield* rendered(yield* Stream.runCollect(Stream.take(slow, 3))), [
+      "Create /a",
+      "Create /b",
+      "Rescan /"
+    ])
+  }))
+
+for (const [field, value] of [["recursive", "invalid"], ["alias", "invalid"]] as const) {
+  it.effect(`should reject invalid ${field} without retaining quota when a watch getter returns it`, () =>
+    Effect.gen(function*() {
+      const volume = yield* Vfs.make({ limits: { watchers: 1 } })
+      const caller = yield* volume.authorize({ credentials: { uid: 0, gid: 0 } })
+      const options: Vfs.WatchOptions = {}
+      let reads = 0
+      Object.defineProperty(options, field, {
+        enumerable: true,
+        get: () => {
+          reads++
+          return value
+        }
+      })
+      const failure = yield* Effect.flip(caller.watch("/", options))
+      assert.strictEqual(failure._tag, "InvalidInput")
+      if (failure._tag === "InvalidInput") assert.strictEqual(failure.field, field)
+      assert.strictEqual(reads, 1)
+      assert.strictEqual((yield* volume.usage).watchers, 0)
+      yield* Effect.asVoid(caller.watch("/"))
+    }))
+}

@@ -110,6 +110,21 @@ export const snapshotTimes = (
     return { atime: input.atime, mtime: input.mtime }
   })
 
+/** @internal */
+export const snapshotWatchOptions = (input: M.WatchOptions | undefined) =>
+  Result.gen(function*() {
+    if (input !== undefined) yield* checkShape(input, ["recursive", "alias"], "watch")
+    const recursive = input?.recursive
+    const alias = input?.alias
+    if (recursive !== undefined && typeof recursive !== "boolean") {
+      return yield* Result.fail(new M.InvalidInput({ operation: "watch", field: "recursive", reason: "malformed" }))
+    }
+    if (alias !== undefined && alias !== "all" && alias !== "resolved") {
+      return yield* Result.fail(new M.InvalidInput({ operation: "watch", field: "alias", reason: "malformed" }))
+    }
+    return { recursive: recursive ?? true, alias: alias ?? "all" }
+  })
+
 const createOptions = (
   input: M.CreateOptions | undefined,
   operation: "createFile" | "makeDirectoryEntry"

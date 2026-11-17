@@ -153,12 +153,8 @@ export const configureResult = (options: M.LimitOptions | undefined) =>
     ] as const
     for (const key of countKeys) {
       if (options[key] !== undefined) {
-        output[key] = yield* countResult(
-          options[key],
-          "make",
-          key,
-          key === "objects" || key === "operations" || key === "watchEvents" ? 1 : 0
-        )
+        const minimum = key === "watchEvents" ? 2 : key === "objects" || key === "operations" ? 1 : 0
+        output[key] = yield* countResult(options[key], "make", key, minimum)
       }
     }
     const byteKeys = [
@@ -558,9 +554,22 @@ export class Work extends ChargedBytes {
     this.clear()
     if (this.ownTicket) runtime.releaseTicket(this.ticket)
     this.rollbackResources.length = 0
-    for (const resource of this.borrowed) resource.endUse(this)
-    this.borrowed.clear()
-    this.receiver.endUse(this)
+    // Closing callers can synchronously resume writers. Publish this commit before waking them,
+    // after releasing its accounting so listeners still observe completed work.
+    try {
+      if (this.afterCommit !== undefined) {
+        runtime.inTurn = true
+        try {
+          this.afterCommit()
+        } finally {
+          runtime.inTurn = false
+        }
+      }
+    } finally {
+      for (const resource of this.borrowed) resource.endUse(this)
+      this.borrowed.clear()
+      this.receiver.endUse(this)
+    }
   }
 }
 
@@ -953,14 +962,6 @@ export class Runtime {
       request.state = "released"
     }
     work.finish()
-    if (work.afterCommit !== undefined) {
-      this.inTurn = true
-      try {
-        work.afterCommit()
-      } finally {
-        this.inTurn = false
-      }
-    }
     this.next()
   }
 }
