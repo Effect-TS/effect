@@ -5802,6 +5802,66 @@ describe("Effect", () => {
         }
       )
 
+      describe("an entry from an async_hooks init callback during the next park", () => {
+        // The fiber resumes from its first wait and parks in a second one. The
+        // second wait's resource is created synchronously in park, so its init
+        // callback runs before the wait is installed. Every wait resource
+        // created meanwhile must also be destroyed.
+        const parkTwice = async (onSecondPark: (fiber: Fiber.Fiber<number>, wake: (n: number) => void) => void) => {
+          let fiber: Fiber.Fiber<number> | undefined
+          let wakeFirst!: () => void
+          let wakeSecond!: (n: number) => void
+          let armed = false
+          let tracking = false
+          // Held strongly, so a resource is not destroyed by garbage collection
+          const live = new Map<number, object>()
+          const hook = createHook({
+            init(asyncId, type, _triggerAsyncId, resource) {
+              if (!tracking || type !== "effect/Fiber") return
+              live.set(asyncId, resource)
+              if (armed) {
+                armed = false
+                onSecondPark(fiber!, wakeSecond)
+              }
+            },
+            destroy(asyncId) {
+              live.delete(asyncId)
+            }
+          })
+          fiber = Effect.runFork(
+            Effect.callback<void>((resume) => {
+              wakeFirst = () => resume(Effect.void)
+            }).pipe(Effect.andThen(Effect.callback<number>((resume) => {
+              wakeSecond = (n) => resume(Effect.succeed(n))
+            })))
+          )
+          hook.enable()
+          try {
+            armed = tracking = true
+            wakeFirst()
+            tracking = false
+            assert.isFalse(armed)
+            // Node runs destroy callbacks asynchronously
+            await new Promise((resolve) => setTimeout(resolve, 10))
+          } finally {
+            hook.disable()
+          }
+          return { exit: fiber.pollUnsafe(), live: [...live.keys()] }
+        }
+
+        itWithAsyncHooks("delivers the value", async () => {
+          const { exit, live } = await parkTwice((_, wake) => wake(42))
+          assert.deepStrictEqual(exit, Exit.succeed(42))
+          assert.deepStrictEqual(live, [])
+        })
+
+        itWithAsyncHooks("delivers the interrupt", async () => {
+          const { exit, live } = await parkTwice((fiber) => fiber.interruptUnsafe())
+          assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+          assert.deepStrictEqual(live, [])
+        })
+      })
+
       itWithAsyncHooks("runs an interrupt requested while entering a native context before the value", () => {
         // An async_hooks `before` callback runs inside runInAsyncScope, before
         // the fiber runs, so the interrupt replaces the value. The value is not
