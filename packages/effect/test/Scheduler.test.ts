@@ -2,6 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { Context, Deferred, Effect, Exit, Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
+import { createHook } from "node:async_hooks"
 
 describe("Scheduler", () => {
   it("runSyncExit does not create a dispatcher for synchronous effects", () => {
@@ -262,33 +263,59 @@ describe("Scheduler", () => {
     })
 
     it("resumes a suspended fiber that setContext gives another scheduler, which it uses from then on", async () => {
-      const { land, scheduler } = makeScheduler()
-      const other = new Scheduler.MixedScheduler("sync")
-      let wake!: () => void
-      let resumed = false
-      const wait = Effect.callback<void>((resume) => {
-        wake = () => resume(Effect.void)
-      })
-      const fiber = Effect.runFork(
-        wait.pipe(Effect.andThen(Effect.sync(() => (resumed = true))), Effect.andThen(wait)),
-        { scheduler }
-      )
-      const context = Context.add(fiber.context, Scheduler.Scheduler, other)
-      fiber.setContext(context)
-      assert.strictEqual(fiber.context, context)
-      const dispatcher = fiber.currentDispatcher
-      wake()
-      assert.isFalse(resumed)
-      await land()
-      assert.isTrue(resumed)
-      assert.notStrictEqual(fiber.currentDispatcher, dispatcher)
-      // The second wait is not held back by the first scheduler
-      wake()
-      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
-      // An exited fiber takes a scheduler at once
-      fiber.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
-      fiber.setContext(context)
-      assert.strictEqual(fiber.cache.scheduler, other)
+      // async_hooks consumers run as a fiber is entered, and can call setContext
+      let entry = 0
+      let onEnter: (() => void) | undefined
+      const hook = createHook({
+        init(id, type) {
+          if (type === "effect/Fiber") entry = id
+        },
+        before(id) {
+          if (id === entry) onEnter?.()
+        }
+      }).enable()
+      try {
+        for (const entering of [false, true]) {
+          const { land, scheduler } = makeScheduler()
+          const other = new Scheduler.MixedScheduler("sync")
+          let wake!: () => void
+          let moved = false
+          const wait = Effect.callback<void>((resume) => {
+            wake = () => resume(Effect.void)
+          })
+          const fiber = Effect.runFork(
+            wait.pipe(
+              Effect.andThen(Effect.withFiber((self) => Effect.sync(() => (moved = self.cache.scheduler === other)))),
+              Effect.andThen(wait)
+            ),
+            { scheduler }
+          )
+          const context = Context.add(fiber.context, Scheduler.Scheduler, other)
+          const dispatcher = fiber.currentDispatcher
+          const replace = () => {
+            onEnter = undefined
+            fiber.setContext(context)
+            assert.strictEqual(fiber.context, context)
+          }
+          if (entering) onEnter = replace
+          else replace()
+          wake()
+          assert.isFalse(moved)
+          await land()
+          assert.isTrue(moved, `entering: ${entering}`)
+          assert.isUndefined(onEnter)
+          assert.notStrictEqual(fiber.currentDispatcher, dispatcher)
+          // The second wait is not held back by the first scheduler
+          wake()
+          assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
+          // An exited fiber takes a scheduler at once
+          fiber.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
+          fiber.setContext(context)
+          assert.strictEqual(fiber.cache.scheduler, other)
+        }
+      } finally {
+        hook.disable()
+      }
     })
 
     it("interrupts a fiber woken before the interrupt, once it runs", async () => {
