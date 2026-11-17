@@ -500,22 +500,12 @@ const fiberIdStore = { id: 0 }
 
 type Parking = Pick<Scheduler.ParkingScheduler, "park" | "resume">
 
-// How fibers park when their scheduler does not implement ParkingScheduler,
-// in runtimes without node:async_hooks: a fiber resumes in the caller's async
-// context
-const directParking: Parking = {
-  park: constVoid,
-  resume(fiber, effect) {
-    fiber.run(effect)
-  }
+interface AsyncResource {
+  runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
+  emitDestroy(): void
 }
 
-const AsyncResource:
-  | (new(type: string) => {
-    runInAsyncScope<This, Arg>(fn: (this: This, arg: Arg) => void, thisArg: This, arg: Arg): void
-    emitDestroy(): void
-  })
-  | undefined = (() => {
+const AsyncResource: (new(type: string) => AsyncResource) | undefined = (() => {
     try {
       return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
     } catch {
@@ -523,19 +513,21 @@ const AsyncResource:
     }
   })()
 
-// How fibers park when their scheduler does not implement ParkingScheduler,
-// where node:async_hooks is available: each wait is an async resource created
+// How fibers park when their scheduler does not implement ParkingScheduler.
+// Where node:async_hooks is available, each wait is an async resource created
 // where the fiber parked, and the fiber resumes inside it. Waits are keyed
 // weakly by fiber, so a fiber that is never woken can still be collected.
-const defaultParking: Parking = AsyncResource === undefined ? directParking : (() => {
+// Elsewhere, such as in browsers, the fiber resumes in the caller's context.
+const defaultParking: Parking = (() => {
   // null marks a wait that has been resumed, while the fiber runs
-  const waits = new WeakMap<Fiber.Fiber<unknown, unknown>, InstanceType<typeof AsyncResource> | null>()
+  const waits = new WeakMap<Fiber.Fiber<unknown, unknown>, AsyncResource | null>()
   // The fiber whose wait's resource is being created. Creating it runs
   // async_hooks init callbacks, which can wake the fiber before the wait is
   // installed.
   let installing: Fiber.Fiber<unknown, unknown> | undefined
   return {
     park(fiber) {
+      if (AsyncResource === undefined) return
       const previous = installing
       installing = fiber
       const wait = new AsyncResource("effect/Fiber")
