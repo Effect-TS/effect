@@ -109,6 +109,68 @@ const makeControlledHttpClient = Effect.fnUntraced(function*(requestCount: numbe
 })
 
 describe("OtlpExporter", () => {
+  it.effect("observes terminal retry success without reporting failed attempts", () =>
+    Effect.gen(function*() {
+      const events: Array<OtlpExporter.Event> = []
+      const { attempts, httpClient } = yield* makeHttpClient("0")
+      yield* Effect.scoped(Effect.gen(function*() {
+        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+        exporter.push({ value: 1 })
+      }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event))))
+      assert.strictEqual(yield* Ref.get(attempts), 2)
+      assert.strictEqual(events.length, 2)
+      assert.strictEqual(events[0]._tag, "Batch")
+      if (events[0]._tag === "Batch") assert.isTrue(Exit.isSuccess(events[0].exit))
+      assert.deepStrictEqual(events[1], {
+        _tag: "Shutdown", label: "OtlpExporterTest", timedOut: false, disabled: false
+      })
+    }))
+
+  it.effect("observes a dropped batch and disabled shutdown", () =>
+    Effect.gen(function*() {
+      const events: Array<OtlpExporter.Event> = []
+      const { httpClient } = yield* makeStatusHttpClient(400)
+      yield* Effect.scoped(Effect.gen(function*() {
+        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+        exporter.push({ value: 1 })
+      }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event))))
+      assert.strictEqual(events[0]._tag, "Batch")
+      if (events[0]._tag === "Batch") assert.isTrue(Exit.isFailure(events[0].exit))
+      assert.deepStrictEqual(events[1], {
+        _tag: "Shutdown", label: "OtlpExporterTest", timedOut: false, disabled: true
+      })
+    }))
+
+  it.effect("observes the real shutdown timeout while a batch is in flight", () =>
+    Effect.gen(function*() {
+      const events: Array<OtlpExporter.Event> = []
+      const scope = yield* Scope.make()
+      const { httpClient, started } = yield* makeControlledHttpClient(1)
+      const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 }).pipe(
+        Effect.provideService(OtlpExporter.Observer, (event) => events.push(event)),
+        Scope.provide(scope)
+      )
+      exporter.push({ value: 1 })
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      yield* Deferred.await(started[0])
+      yield* TestClock.adjust("1 second")
+      yield* Fiber.join(closing)
+      assert.isTrue(events.some((event) => event._tag === "Shutdown" && event.timedOut))
+    }))
+
+  it.effect("does not let observer defects replace the application result", () =>
+    Effect.gen(function*() {
+      const { httpClient } = yield* makeStatusHttpClient(200)
+      const result = yield* Effect.scoped(Effect.gen(function*() {
+        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+        exporter.push({ value: 1 })
+        return "domain result"
+      }).pipe(Effect.provideService(OtlpExporter.Observer, () => {
+        throw new Error("observer defect")
+      })))
+      assert.strictEqual(result, "domain result")
+    }))
+
   it.effect("appends the versioned exporter User-Agent to a user-supplied value", () =>
     Effect.gen(function*() {
       const userAgents: Array<string> = []

@@ -13,6 +13,7 @@ import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import type * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberSet from "../FiberSet.ts"
 import { identity } from "../Function.ts"
@@ -23,6 +24,7 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
@@ -53,6 +55,42 @@ const policy = Schedule.forever.pipe(
     return Effect.succeed(Duration.seconds(1))
   })
 )
+
+/**
+ * Terminal batch and shutdown outcomes. Batch outcomes are emitted after retries,
+ * not for individual HTTP attempts. A successful shutdown does not imply that
+ * earlier batches were delivered; observe batch failures as well.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Event =
+  | {
+    readonly _tag: "Batch"
+    readonly label: string
+    readonly exit: Exit.Exit<void, HttpClientError.HttpClientError>
+  }
+  | {
+    readonly _tag: "Shutdown"
+    readonly label: string
+    readonly timedOut: boolean
+    readonly disabled: boolean
+  }
+
+/**
+ * Optional, synchronous observer captured when an exporter is constructed.
+ * Callbacks must not block. Thrown callback errors are ignored so diagnostics
+ * cannot change export, shutdown, or application exit behavior.
+ *
+ * @stability unstable
+ * @category references
+ * @since 4.0.0
+ */
+export class Observer extends Context.Reference<((event: Event) => void) | undefined>(
+  "effect/observability/OtlpExporter/Observer",
+  { defaultValue: () => undefined }
+) {}
 
 /**
  * Registry of exporter flush operations, used to manually drain buffered
@@ -190,6 +228,11 @@ export const make: (
   const services = yield* Effect.context<Scope.Scope | HttpClient.HttpClient>()
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
+  const observer = yield* Observer
+  const notify = (event: Event) =>
+    observer === undefined
+      ? Effect.void
+      : Effect.sync(() => observer(event)).pipe(Effect.catchCause(() => Effect.void))
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
@@ -226,16 +269,20 @@ export const make: (
     }
     const items = buffer
     buffer = []
-    const [body, onSuccess] = options.body(items)
-    const batchRequest = HttpClientRequest.setBody(request, body)
-    // Compress before client.execute so transient retries reuse the encoded bytes.
-    const response = options.compression === "gzip"
-      ? HttpClientRequest.compressBody(batchRequest, "gzip").pipe(Effect.flatMap(client.execute))
-      : client.execute(batchRequest)
-    return response.pipe(
-      Effect.andThen(onSuccess),
-      Effect.asVoid,
-      Effect.withTracerEnabled(false)
+    return Effect.suspend(() => {
+      const [body, onSuccess] = options.body(items)
+      const batchRequest = HttpClientRequest.setBody(request, body)
+      // Compress before client.execute so transient retries reuse the encoded bytes.
+      const response = options.compression === "gzip"
+        ? HttpClientRequest.compressBody(batchRequest, "gzip").pipe(Effect.flatMap(client.execute))
+        : client.execute(batchRequest)
+      return response.pipe(
+        Effect.andThen(onSuccess),
+        Effect.asVoid,
+        Effect.withTracerEnabled(false)
+      )
+    }).pipe(
+      Effect.onExit((exit) => notify({ _tag: "Batch", label: options.label, exit }))
     )
   }).pipe(
     Effect.catchCause((cause) => {
@@ -262,7 +309,15 @@ export const make: (
     }).pipe(
       Effect.ignore,
       Effect.interruptible,
-      Effect.timeoutOption(options.shutdownTimeout)
+      Effect.timeoutOption(options.shutdownTimeout),
+      Effect.flatMap((result) =>
+        notify({
+          _tag: "Shutdown",
+          label: options.label,
+          timedOut: Option.isNone(result),
+          disabled: disabledUntil !== undefined
+        })
+      )
     )
   )
 
