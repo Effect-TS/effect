@@ -5,7 +5,8 @@
  * `decode` and `decodeString` turn UTF-8 bytes or text into events, and
  * `encode` and `encodeString` write events back as XML. `elements` collects
  * repeated elements, such as the items of a feed, into small trees, so that a
- * large document can be processed one record at a time.
+ * large document can be processed one record at a time. `toEvents` turns such
+ * a tree back into events for the encoders.
  *
  * The decoder checks that documents are well-formed. It never reads external
  * resources and never expands entities declared in a DOCTYPE, so external
@@ -518,6 +519,7 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  * ```
  *
  * @see {@link decode} for producing events from bytes
+ * @see {@link toEvents} for writing collected elements
  *
  * @stability experimental
  * @category decoding
@@ -632,6 +634,71 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
   Done
 > =>
   Channel.map(makeChannel<Event, string, IE, Done>(() => new Writer(true)), Arr.map((text) => textEncoder.encode(text)))
+
+/**
+ * Converts an element tree back into events.
+ *
+ * **Details**
+ *
+ * The events are the element's start tag, the events of its children in
+ * order, and its end tag. Each string child becomes one `Text` event, even an
+ * empty one. Names and characters are not checked; `encode` and
+ * `encodeString` check them.
+ *
+ * **Example** (Writing an element)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Stream } from "effect"
+ * import { Xml } from "effect/encoding"
+ *
+ * const note: Xml.Element = {
+ *   name: "note",
+ *   attributes: { id: "1" },
+ *   children: ["Hi ", { name: "b", attributes: {}, children: ["there"] }]
+ * }
+ *
+ * const xml = Stream.fromIterable(Xml.toEvents(note)).pipe(
+ *   Stream.pipeThroughChannel(Xml.encodeString()),
+ *   Stream.mkString
+ * )
+ * await Effect.runPromise(xml) // => '<note id="1">Hi <b>there</b></note>'
+ * ```
+ *
+ * @see {@link elements} for collecting elements into trees
+ * @see {@link encodeString} for writing the events
+ *
+ * @stability experimental
+ * @category encoding
+ * @since 4.1.5
+ */
+export const toEvents = (element: Element): Arr.NonEmptyReadonlyArray<Event> => {
+  const out: Arr.NonEmptyArray<Event> = [{ _tag: "StartElement", name: element.name, attributes: element.attributes }]
+  // The open elements, and the index of the next child of each, so that deep
+  // trees do not overflow the call stack
+  const open: Array<Element> = [element]
+  const next: Array<number> = [0]
+  while (open.length > 0) {
+    const top = open.length - 1
+    const current = open[top]
+    const index = next[top]
+    if (index === current.children.length) {
+      out.push({ _tag: "EndElement", name: current.name })
+      open.pop()
+      next.pop()
+      continue
+    }
+    next[top] = index + 1
+    const child = current.children[index]
+    if (typeof child === "string") {
+      out.push({ _tag: "Text", text: child })
+    } else {
+      out.push({ _tag: "StartElement", name: child.name, attributes: child.attributes })
+      open.push(child)
+      next.push(0)
+    }
+  }
+  return out
+}
 
 const defaultMaxTokenSize = 10 * 1024 * 1024
 const defaultMaxDepth = 1024
