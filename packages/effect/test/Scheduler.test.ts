@@ -291,11 +291,13 @@ describe("Scheduler", () => {
             { scheduler }
           )
           const context = Context.add(fiber.context, Scheduler.Scheduler, other)
-          const dispatcher = fiber.currentDispatcher
+          let dispatcher: Scheduler.SchedulerDispatcher | undefined
           const replace = () => {
             onEnter = undefined
             fiber.setContext(context)
             assert.strictEqual(fiber.context, context)
+            // Read before the fiber runs, so the run has to replace it
+            dispatcher = fiber.currentDispatcher
           }
           if (entering) onEnter = replace
           else replace()

@@ -682,9 +682,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     // Take the scheduler setContext gave the fiber while it was suspended, or
     // while async_hooks entered it
-    const latest = (this.context as any).cacheRoot._fiberCache
-    if (this.cache !== latest) {
-      this.cache = latest
+    if (this.cache !== (this.cache = (this.context as any).cacheRoot._fiberCache)) {
       this._dispatcher = undefined
     }
     const prevFiber = (globalThis as any)[currentFiberTypeId]
@@ -816,13 +814,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     const scheduler = this.cache?.scheduler
     if (scheduler !== cache.scheduler) {
+      this._dispatcher = undefined
       // A ParkingScheduler may hold the effect a suspended fiber runs with
       // next, so the fiber keeps it until it runs
       if (scheduler && !this._running && !this._exit && Scheduler.isParkingScheduler(scheduler)) {
         this.cache = { ...cache, scheduler }
         return
       }
-      this._dispatcher = undefined
     }
     this.cache = cache
   }
