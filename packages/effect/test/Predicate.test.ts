@@ -111,6 +111,14 @@ describe("Struct", () => {
     assert.equal(p({ a: 1, b: "ok", extra: true } as any), false)
     assert.equal(calls, 1)
   })
+
+  it("checks symbol fields", () => {
+    const tag = Symbol("tag")
+    const p = Predicate.Struct({ a: isPositive, [tag]: isNegative })
+
+    assert.equal(p({ a: 1, [tag]: -1 }), true)
+    assert.equal(p({ a: 1, [tag]: 1 }), false)
+  })
 })
 
 describe("not", () => {

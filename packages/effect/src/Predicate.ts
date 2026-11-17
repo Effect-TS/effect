@@ -1527,7 +1527,8 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  * **Details**
  *
  * Returns a refinement if any field predicate is a refinement. Only the
- * specified keys are checked, and extra keys are ignored.
+ * specified keys are checked, and extra keys are ignored. Symbol keys are
+ * checked after string keys.
  *
  * **Example** (Checking structs)
  *
@@ -1556,8 +1557,8 @@ export function Struct<R extends Record<string, Predicate.Any>>(
     { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.Out<R[K]> : Predicate.In<R[K]> }
   >
 {
-  const keys = Object.keys(fields)
-  return ((a: Record<string, unknown>) => {
+  const keys = Reflect.ownKeys(fields) as Array<keyof R>
+  return ((a: Record<PropertyKey, unknown>) => {
     for (const key of keys) {
       if (!fields[key](a[key] as never)) {
         return false
