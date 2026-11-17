@@ -22,7 +22,6 @@ import {
   Scheduler,
   Schema,
   Scope,
-  Semaphore,
   Stream
 } from "effect"
 import {
@@ -5028,118 +5027,6 @@ describe("Sharding assignment settling", { concurrent: false }, () => {
   )
 })
 
-const ReleaseBurstEntity = Entity.make("ReleaseBurstEntity", [
-  Rpc.make("Work").annotate(ClusterSchema.Persisted, true)
-])
-
-describe("Sharding shard release burst", { concurrent: false }, () => {
-  // Runner A locks all 300 shards, then B joins and A hands half of them off
-  // while A's entities process persisted requests. Each runner's lock
-  // operations share one session (see `withLockSession`) whose statements take
-  // 5ms, so 150 releases issued together would queue for longer than the 500ms
-  // lock operation deadline.
-  it.effect(
-    "keeps the shards it holds while releasing the shards handed off to a joining runner",
-    () =>
-      Effect.gen(function*() {
-        const cluster = makeSharedCluster()
-        const dropped: Array<string> = []
-        // Handler runs per entity id
-        const runs = new Map<string, number>()
-        const errors: Array<string> = []
-        const logger = Logger.make((options) => {
-          if (options.logLevel === "Error") errors.push(String(options.message))
-        })
-        const scope = yield* Scope.make()
-        const startRunner = (port: number) =>
-          Layer.buildWithScope(
-            Sharding.layer.pipe(
-              Layer.provide(Layer.succeed(
-                RunnerStorage.RunnerStorage,
-                withLockSession(cluster, port, { statementMillis: 5, deadline: 500, dropped })
-              )),
-              Layer.provide(RunnerHealth.layerNoop),
-              Layer.provide(Runners.layerNoop),
-              Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-              // The cluster-integration harness settings
-              Layer.provide(ShardingConfig.layer({
-                runnerAddress: Option.some(RunnerAddress.make("localhost", port)),
-                shardsPerGroup: 300,
-                entityTerminationTimeout: 0,
-                entityMessagePollInterval: 500,
-                refreshAssignmentsInterval: 150,
-                shardLockExpiration: 1750,
-                shardLockRefreshInterval: 500
-              })),
-              Layer.provide(Logger.layer([logger]))
-            ),
-            scope
-          )
-        const locksOf = (port: number) => globalThis.Array.from(cluster.locks.values()).filter((a) => a.port === port)
-        const advanceUntil = Effect.fnUntraced(function*(done: () => boolean) {
-          for (let i = 0; i < 200 && !done(); i++) {
-            yield* TestClock.adjust(50)
-          }
-        })
-
-        const runnerA = yield* startRunner(1234)
-        yield* advanceUntil(() => locksOf(1234).length === 300)
-        const shardingA = Context.get(runnerA, Sharding.Sharding)
-        yield* shardingA.registerEntity(
-          ReleaseBurstEntity,
-          Effect.map(Entity.CurrentAddress, (address) =>
-            ReleaseBurstEntity.of({
-              Work: () =>
-                Effect.sync(() => {
-                  runs.set(address.entityId, (runs.get(address.entityId) ?? 0) + 1)
-                }).pipe(Effect.andThen(Effect.sleep(2000)))
-            }))
-        ).pipe(Effect.provideService(Scope.Scope, scope))
-        const makeClient = yield* ReleaseBurstEntity.client.pipe(Effect.provideContext(runnerA))
-        const shardOf = new Map<string, string>()
-        for (let id = 1; id <= 40; id++) {
-          const entityId = String(id)
-          shardOf.set(entityId, shardingA.getShardId(EntityId.make(entityId), "default").toString())
-          yield* Effect.forkIn(makeClient(entityId).Work(), scope)
-        }
-        yield* TestClock.adjust(10)
-        assert.strictEqual(runs.size, 40)
-
-        yield* startRunner(1235)
-        yield* advanceUntil(() => locksOf(1235).length === 150)
-        // Let the next lock refreshes run
-        yield* TestClock.adjust(2000)
-
-        // Shut down before asserting, as closing the runners waits on the test clock
-        const locks = new Map(globalThis.Array.from(cluster.locks, ([shard, owner]) => [shard, owner.port]))
-        const owners = structuredClone(cluster.owners)
-        const loggedErrors = errors.slice()
-        const runsOnKeptShards = new Map(
-          globalThis.Array.from(runs).filter(([entityId]) => locks.get(shardOf.get(entityId)!) !== 1235)
-        )
-        const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-        while (closing.pollUnsafe() === undefined) {
-          yield* TestClock.adjust(100)
-        }
-
-        assert.deepStrictEqual(dropped, [], "a lock session holding shards was replaced")
-        assert.deepStrictEqual(loggedErrors, [])
-        assert.strictEqual(owners.size, 300)
-        for (const [shard, history] of owners) {
-          // A kept or handed off each shard once, and never lost one it kept
-          assert.deepStrictEqual(history, locks.get(shard) === 1234 ? [1234] : [1234, 1235], `shard ${shard}`)
-        }
-        assert.strictEqual([...locks.values()].filter((port) => port === 1234).length, 150)
-        // Requests on the shards A keeps ran once, without a replay
-        assert.isAbove(runsOnKeptShards.size, 0)
-        for (const [entityId, count] of runsOnKeptShards) {
-          assert.strictEqual(count, 1, `entity ${entityId} ran ${count} times`)
-        }
-      }),
-    30_000
-  )
-})
-
 // Runner membership the test controls; the local runner joins on registration.
 const makeMembershipStorage = (membership: Array<readonly [Runner.Runner, boolean]>) =>
   RunnerStorage.RunnerStorage.of({
@@ -5238,48 +5125,6 @@ const makeSharedClusterStorage = (cluster: SharedCluster, port: number) => {
           if (Equal.equals(owner, address)) cluster.locks.delete(key)
         }
       })
-  })
-}
-
-// Runs one runner's lock operations on a single session, as SqlRunnerStorage
-// does on PostgreSQL and MySQL. Statements run one at a time in arrival order,
-// and an operation that misses its deadline replaces the session, which drops
-// every lock the session holds. Dropped shards are added to `dropped`.
-const withLockSession = (cluster: SharedCluster, port: number, options: {
-  readonly statementMillis: number
-  readonly deadline: number
-  readonly dropped: Array<string>
-}): RunnerStorage.RunnerStorage["Service"] => {
-  const storage = makeSharedClusterStorage(cluster, port)
-  const session = Semaphore.makeUnsafe(1)
-  const replaceSession = Effect.suspend(() => {
-    for (const [shard, owner] of cluster.locks) {
-      if (owner.port !== port) continue
-      cluster.locks.delete(shard)
-      options.dropped.push(shard)
-    }
-    return Effect.fail(new ClusterError.PersistenceError({ cause: "lock operation deadline" }))
-  })
-  const onSession = Effect.fnUntraced(
-    function*<A>(statements: number, operation: Effect.Effect<A, ClusterError.PersistenceError>) {
-      for (let i = 0; i < statements; i++) {
-        yield* session.withPermit(Effect.sleep(options.statementMillis))
-      }
-      return yield* operation
-    },
-    Effect.timeoutOrElse({ duration: options.deadline, orElse: () => replaceSession })
-  )
-  return RunnerStorage.RunnerStorage.of({
-    ...storage,
-    acquire: (address, shardIds) => onSession(1, storage.acquire(address, shardIds)),
-    // The empty refresh is a heartbeat on the shared pool
-    refresh: (address, shardIds) => {
-      const shards = globalThis.Array.from(shardIds)
-      return shards.length === 0 ? storage.refresh(address, shards) : onSession(2, storage.refresh(address, shards))
-    },
-    // Unlock, then check the lock is no longer held
-    release: (address, shardId) => onSession(2, storage.release(address, shardId)),
-    releaseAll: (address) => onSession(1, storage.releaseAll(address))
   })
 }
 

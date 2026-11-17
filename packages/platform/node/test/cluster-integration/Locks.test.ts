@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Layer } from "effect"
+import { Effect, Layer } from "effect"
 import { type Backend, make } from "./harness.ts"
 
 describe("cluster lock-storage integration", () => {
@@ -150,43 +150,6 @@ describe("cluster lock-storage integration", () => {
 
         yield* cluster.faultLock(faulted, "clear")
         yield* cluster.waitForStableAssignments()
-      }))
-
-    it.live(`${backend}: keeps the shards it holds while handing a burst of shards to a joining runner`, () =>
-      Effect.gen(function*() {
-        const cluster = yield* make({ backend, entities: Layer.empty })
-        const [holder] = yield* cluster.start(1)
-        yield* cluster.waitForStableAssignments()
-        const holderAddress = `${holder.address.host}:${holder.address.port}`
-        // Releasing about 150 of the 300 shards together takes longer than the
-        // 500ms lock operation deadline on this lock connection.
-        yield* cluster.faultLock(holder, "slow")
-
-        // The owners of each shard as they change
-        const history = new Map<string, Array<string>>()
-        const record = Effect.sync(() => {
-          for (const [shard, owners] of Object.entries(cluster.assignmentMap())) {
-            const changes = history.get(shard) ?? []
-            const current = owners.join(",")
-            if (changes[changes.length - 1] !== current) changes.push(current)
-            history.set(shard, changes)
-          }
-        })
-        yield* record
-        const recorder = yield* Effect.forkChild(Effect.forever(Effect.andThen(Effect.sleep(10), record)))
-        const [joiner] = yield* cluster.start(1)
-        const joinerAddress = `${joiner.address.host}:${joiner.address.port}`
-        const assignments = yield* cluster.waitForStableAssignments("30 seconds")
-        // Run a few more lock refreshes
-        yield* Effect.sleep(1500)
-        yield* Fiber.interrupt(recorder)
-        yield* record
-
-        assert(Object.values(assignments).some((owners) => owners.includes(joinerAddress)), "No shard moved")
-        for (const [shard, owners] of Object.entries(assignments)) {
-          if (!owners.includes(holderAddress)) continue
-          assert.deepStrictEqual(history.get(shard), [holderAddress], `The holder lost shard ${shard}`)
-        }
       }))
   }
 })

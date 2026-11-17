@@ -1,20 +1,7 @@
 import { NodeClusterSocket, NodeCrypto, NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
-import {
-  Clock,
-  type Config,
-  Context,
-  Duration,
-  Effect,
-  Exit,
-  Latch,
-  Layer,
-  Option,
-  Redacted,
-  Scope,
-  Semaphore
-} from "effect"
+import { Clock, type Config, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
 import {
   ClusterWorkflowEngine,
   type Entity,
@@ -43,7 +30,7 @@ import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
 export type LockMode = "advisory" | "row"
-export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "slow" | "clear"
+export type LockFaultMode = "blackhole" | "stuck" | "fail" | "hangRelease" | "clear"
 export type SocketDirection = "inbound" | "outbound"
 
 export interface ClusterRunner {
@@ -159,16 +146,11 @@ let nextCluster = 0
 
 interface LockSession {
   fault: "blackhole" | "fail" | undefined
-  // Statements in arrival order, as the connection runs them
-  readonly statements: Semaphore.Semaphore
 }
-
-// How long each statement holds a lock connection in the `slow` mode
-const slowStatementMillis = 5
 
 const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   const releaseGate = Latch.makeUnsafe(true)
-  let persistentFault: "stuck" | "hangRelease" | "slow" | undefined
+  let persistentFault: "stuck" | "hangRelease" | undefined
   let currentSession: LockSession | undefined
 
   const wrapConnection = (
@@ -195,9 +177,6 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
         if (mode === "stuck" || mode === "hangRelease") {
           return Effect.never
         }
-        if (mode === "slow") {
-          return session.statements.withPermit(Effect.andThen(Effect.sleep(slowStatementMillis), effect))
-        }
         return effect
       })
     return {
@@ -215,7 +194,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
     get(target, property, receiver) {
       if (property === "reserve") {
         return Effect.gen(function*() {
-          const session: LockSession = { fault: undefined, statements: Semaphore.makeUnsafe(1) }
+          const session: LockSession = { fault: undefined }
           currentSession = session
           yield* Effect.addFinalizer(() =>
             Effect.uninterruptible(

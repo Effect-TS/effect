@@ -143,6 +143,41 @@ describe("SqlRunnerStorage", () => {
   // These tests each get an empty database on one shared container, so
   // container startup counts against the hook timeout, not each test's.
   it.layer(PgContainer.layer, { timeout: 120_000 })((it) => {
+    it.effect("serializes shard releases without losing retained locks", () => {
+      const partitioned = makePartitionState()
+      const layer = StorageLayer.pipe(
+        Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+        Layer.provide(ShardingConfig.layer(partitionConfig))
+      )
+
+      return Effect.gen(function*() {
+        const storage = yield* RunnerStorage.RunnerStorage
+        const shards = [1, 2, 3, 4].map((id) => ShardId.make("default", id))
+        yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
+        assert.deepStrictEqual(yield* storage.acquire(runnerAddress1, shards), shards)
+        partitionConnection(partitioned)
+
+        const releases = []
+        for (const shard of shards.slice(1)) {
+          releases.push(
+            yield* storage.release(runnerAddress1, shard).pipe(
+              Effect.forkScoped({ startImmediately: true })
+            )
+          )
+        }
+        assert.strictEqual(partitioned.activeQueries, 1)
+        restoreConnection(partitioned)
+        yield* Effect.forEach(releases, Fiber.join)
+        assert.strictEqual(partitioned.reservedConnections, 1)
+        assert.deepStrictEqual(yield* storage.refresh(runnerAddress1, [shards[0]]), [shards[0]])
+        assert.deepStrictEqual(yield* storage.acquire(runnerAddress2, shards.slice(1)), shards.slice(1))
+      }).pipe(
+        Effect.ensuring(Effect.sync(() => restoreConnection(partitioned))),
+        Effect.provide(layer),
+        TestClock.withLive
+      )
+    })
+
     it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
       const partitioned = makePartitionState()
       const layer = StorageLayer.pipe(

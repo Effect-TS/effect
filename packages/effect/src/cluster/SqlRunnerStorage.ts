@@ -22,8 +22,10 @@ import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { Connection } from "../sql/SqlConnection.ts"
@@ -592,6 +594,9 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       })
     })
 
+  // Wait outside the deadline so queued releases cannot rebuild a healthy session.
+  const withReleasePermit = lockConn ? Semaphore.makeUnsafe(1).withPermits(1) : identity
+
   const releaseShard = sql.onDialectOrElse({
     pg: () => {
       if (disableAdvisoryLocks) {
@@ -728,7 +733,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     },
 
     release: (address, shardId) =>
-      withLockOperationDeadline(releaseShard(address, shardId)).pipe(
+      withReleasePermit(withLockOperationDeadline(releaseShard(address, shardId))).pipe(
         Effect.asVoid,
         PersistenceError.refail,
         withTracerDisabled
