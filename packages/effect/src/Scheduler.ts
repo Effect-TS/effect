@@ -122,9 +122,9 @@ export interface ParkingScheduler extends Scheduler {
    */
   resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
   /**
-   * Called when `Fiber.setContext` moves a fiber that is not running from
-   * this scheduler to one that parks differently. Ends the fiber's wait, if
-   * this scheduler parked it, without running the fiber.
+   * Called when `Fiber.setContext` moves a fiber from this scheduler to one
+   * that parks differently. Ends the fiber's wait, if this scheduler parked it
+   * and has not resumed it yet, without running the fiber.
    *
    * @stability unstable
    * @since 4.2.0
