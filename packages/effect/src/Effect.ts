@@ -406,6 +406,8 @@ export declare namespace All {
  * results under the same keys. By default, the combined effect fails on the
  * first failure; with concurrent execution, effects that have already started
  * may be interrupted, while effects not yet started are skipped.
+ * Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * Options:
  *

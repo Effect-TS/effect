@@ -493,6 +493,10 @@ Once you have elementary schemas, you can combine them into composite schemas th
 
 A struct schema describes a JavaScript object with a known set of keys. Each key maps to a schema that validates and types its value.
 
+`Schema.Struct(fields)` discovers definitions from the own enumerable properties of `fields`, including string and symbol keys. Non-enumerable and inherited definitions are ignored, as they are when copying an object with `{ ...fields }`. The same discovery rule applies when transforming field definitions with `mapFields`, `encodeKeys`, or `extendTo`.
+
+This rule selects the field definitions, not the properties that can be read from an input value. Once a field is declared, its input value is validated even if that property is non-enumerable or inherited. The `__proto__` field must be an own property of the input.
+
 ### Optional and Mutable Keys
 
 By default, every key in a struct is required and readonly. Use `Schema.optionalKey` to make a key optional (the key can be absent from the object), and `Schema.mutableKey` to make it writable.

@@ -5,6 +5,8 @@
  * fields that are shared by all variants or specific to some variants. From
  * those definitions it can create schema classes, unions, extracted struct
  * schemas, and helpers for changing fields across variants.
+ * Field definitions use own enumerable string and symbol properties.
+ * Non-enumerable and inherited definitions are ignored.
  *
  * @stability unstable
  * @since 4.0.0
@@ -247,8 +249,8 @@ const extract: {
     if (Object.hasOwn(cache, variant)) {
       return cache[variant] as any
     }
-    const fields: Record<string, any> = {}
-    for (const key of Object.keys(self[TypeId])) {
+    const fields: Record<PropertyKey, any> = {}
+    for (const key of InternalRecord.ownEnumerableKeys(self[TypeId])) {
       const value = self[TypeId][key]
       if (value === undefined) {
         continue

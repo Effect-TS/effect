@@ -14,6 +14,7 @@ import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import { identity } from "./Function.ts"
+import * as InternalRecord from "./internal/record.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import * as Layer from "./Layer.ts"
 import type * as Option from "./Option.ts"
@@ -217,6 +218,9 @@ export const make: <
  *
  * The record keys become the keys accepted by the returned `LayerMap`, and the
  * record values are the layers built for those keys.
+ * Preloading discovers own enumerable string and symbol keys. Non-enumerable
+ * and inherited entries are ignored during preloading; explicitly requested
+ * keys are still looked up directly.
  *
  * **Example** (Creating a layer map from a record)
  *
@@ -287,7 +291,7 @@ export const fromRecord = <
 > =>
   make((key: keyof Layers) => layers[key], {
     ...options,
-    preloadKeys: options?.preload ? Object.keys(layers) : undefined
+    preloadKeys: options?.preload ? InternalRecord.ownEnumerableKeys(layers) as Array<keyof Layers> : undefined
   }) as any
 
 /**

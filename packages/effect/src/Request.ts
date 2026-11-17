@@ -229,6 +229,8 @@ const requestVariance = Equal.byReferenceUnsafe({
  * created by `Request.of`, `Request.tagged`, `Request.Class`, and
  * `Request.TaggedClass`. Most users should use those constructors instead of
  * interacting with the prototype directly.
+ * Request equality and hashing use own enumerable string and symbol fields.
+ * Non-enumerable and inherited fields are ignored.
  *
  * @stability stable
  * @category prototypes

@@ -1,3 +1,14 @@
+/**
+ * Lists own enumerable string and symbol keys without reading property values.
+ * Use this when discovering struct fields; explicitly selected fields are read
+ * independently of their enumerability.
+ *
+ * @internal
+ */
+export function ownEnumerableKeys(self: object): Array<string | symbol> {
+  return Reflect.ownKeys(self).filter((key) => Object.prototype.propertyIsEnumerable.call(self, key))
+}
+
 /** @internal */
 export function assignProperty(self: object, key: PropertyKey, value: unknown): void {
   if (key === "__proto__") {
@@ -20,9 +31,7 @@ export function assignProperties(self: object, source: object): void {
     Object.assign(self, source)
     return
   }
-  for (const key of Reflect.ownKeys(source)) {
-    if (Object.prototype.propertyIsEnumerable.call(source, key)) {
-      assignProperty(self, key, (source as any)[key])
-    }
+  for (const key of ownEnumerableKeys(source)) {
+    assignProperty(self, key, (source as any)[key])
   }
 }

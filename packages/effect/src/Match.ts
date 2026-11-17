@@ -8,6 +8,10 @@
  * patterns, and common checks such as strings, numbers, records, and class
  * instances.
  *
+ * Object patterns use their own enumerable string and symbol properties.
+ * Non-enumerable and inherited pattern properties are ignored. The selected
+ * properties may be non-enumerable or inherited on the value being matched.
+ *
  * @stability stable
  * @since 4.0.0
  */

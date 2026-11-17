@@ -12,6 +12,7 @@
  */
 import { dual } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
+import * as InternalRecord from "./internal/record.ts"
 import type { TupleOf, TupleOfAtLeast } from "./Types.ts"
 
 /**
@@ -1528,6 +1529,9 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  *
  * Returns a refinement if any field predicate is a refinement. Only the
  * specified keys are checked, and extra keys are ignored.
+ * Field predicates are discovered from own enumerable string and symbol
+ * properties of `fields`. Non-enumerable and inherited definitions are ignored.
+ * Selected properties are read from the input regardless of enumerability.
  *
  * **Example** (Checking structs)
  *
@@ -1556,8 +1560,8 @@ export function Struct<R extends Record<string, Predicate.Any>>(
     { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.Out<R[K]> : Predicate.In<R[K]> }
   >
 {
-  const keys = Object.keys(fields)
-  return ((a: Record<string, unknown>) => {
+  const keys = InternalRecord.ownEnumerableKeys(fields) as Array<keyof R>
+  return ((a: Record<keyof R, unknown>) => {
     for (const key of keys) {
       if (!fields[key](a[key] as never)) {
         return false

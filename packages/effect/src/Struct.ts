@@ -8,6 +8,13 @@
  * list of keys. The module also includes type-level helpers for simplifying and
  * merging object shapes.
  *
+ * Field traversal uses own enumerable string and symbol properties, matching
+ * object spread. Non-enumerable and inherited properties are ignored. This also
+ * applies to the field definitions passed to comparison and combination
+ * constructors. These constructors read selected properties from their input
+ * values regardless of enumerability. `keys` deliberately lists only enumerable
+ * string keys, and `get` performs direct property access.
+ *
  * @stability stable
  * @since 2.0.0
  */
@@ -509,6 +516,8 @@ export const renameKeys: {
  * This is an alias of `Equivalence.Struct`. Each property's equivalence is
  * checked independently; all must return `true` for the overall result to be
  * `true`.
+ * Only own enumerable string and symbol properties of `fields` define
+ * comparisons. Non-enumerable and inherited definitions are ignored.
  *
  * **Example** (Comparing structs for equivalence)
  *
@@ -545,6 +554,9 @@ export const makeEquivalence = Equivalence.Struct
  *
  * This is an alias of `Order.Struct`. The order of keys in the `fields` object
  * determines comparison priority.
+ * Only own enumerable string and symbol properties of `fields` define
+ * comparisons. Non-enumerable and inherited definitions are ignored. String
+ * fields take precedence over symbol fields.
  *
  * **Example** (Ordering structs by name then age)
  *
@@ -693,6 +705,7 @@ export const lambda = <L extends (a: any) => any>(
  *
  * The lambda must be created with {@link lambda} so the compiler can track the
  * output types.
+ * Only own enumerable string and symbol properties of the input are mapped.
  *
  * **Example** (Wrapping every value in an array)
  *
@@ -862,8 +875,7 @@ function buildStruct<
   f: f
 ): any {
   const out: Record<PropertyKey, unknown> = {}
-  for (const k of Reflect.ownKeys(source) as Array<keyof S>) {
-    if (!Object.prototype.propertyIsEnumerable.call(source, k)) continue
+  for (const k of InternalRecord.ownEnumerableKeys(source) as Array<keyof S>) {
     const res = f(k, source[k])
     if (res) {
       const [nk, nv] = res
@@ -887,6 +899,9 @@ function buildStruct<
  *
  * Pass `omitKeyWhen` to drop properties whose merged value matches a predicate,
  * such as omitting zero counters.
+ * Only own enumerable string and symbol properties of `combiners` define fields.
+ * Non-enumerable and inherited definitions are ignored. Selected properties
+ * are read from the combined values regardless of enumerability.
  *
  * **Example** (Combining struct properties)
  *
@@ -914,7 +929,7 @@ export function makeCombiner<A>(
 ): Combiner.Combiner<A> {
   const omitKeyWhen = options?.omitKeyWhen ?? (() => false)
   return Combiner.make((self, that) => {
-    const keys = Reflect.ownKeys(combiners) as Array<keyof A>
+    const keys = InternalRecord.ownEnumerableKeys(combiners) as Array<keyof A>
     const out = {} as A
     for (const key of keys) {
       const merge = combiners[key].combine(self[key], that[key])
@@ -940,6 +955,9 @@ export function makeCombiner<A>(
  *
  * Pass `omitKeyWhen` to drop properties whose reduced value matches a
  * predicate.
+ * Only own enumerable string and symbol properties of `reducers` define fields,
+ * both for the initial value and for combination. Non-enumerable and inherited
+ * definitions are ignored.
  *
  * **Example** (Reducing a collection of structs)
  *
@@ -972,7 +990,7 @@ export function makeReducer<A>(
 ): Reducer.Reducer<A> {
   const combine = makeCombiner(reducers, options).combine
   const initialValue = {} as A
-  for (const key of Reflect.ownKeys(reducers) as Array<keyof A>) {
+  for (const key of InternalRecord.ownEnumerableKeys(reducers) as Array<keyof A>) {
     const iv = reducers[key].initialValue
     if (options?.omitKeyWhen?.(iv)) continue
     InternalRecord.assignProperty(initialValue as object, key, iv)

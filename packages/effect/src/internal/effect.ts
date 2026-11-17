@@ -4786,15 +4786,18 @@ export const all = <
     return options?.mode === "result"
       ? (forEach as any)(arg, result, options)
       : (forEach as any)(arg, identity, options)
-  } else if (options?.discard) {
+  }
+  const fields = arg as Record<PropertyKey, Effect.Effect<any, any, any>>
+  if (options?.discard) {
+    const effects = InternalRecord.ownEnumerableKeys(fields).map((key) => fields[key])
     return options.mode === "result"
-      ? (forEach as any)(Object.values(arg), result, options)
-      : (forEach as any)(Object.values(arg), identity, options)
+      ? (forEach as any)(effects, result, options)
+      : (forEach as any)(effects, identity, options)
   }
   return suspend(() =>
     map(
       forEach(
-        Object.entries(arg),
+        InternalRecord.ownEnumerableKeys(fields).map((key) => [key, fields[key]] as const),
         ([key, effect]) => map(options?.mode === "result" ? result(effect) : effect, (value) => [key, value] as const),
         {
           concurrency: options?.concurrency

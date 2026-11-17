@@ -223,6 +223,9 @@ export declare namespace Command {
    * `Command.Config` can contain individual flags and arguments using `Param`
    * types, nested configuration objects for organization, and arrays of
    * parameters for repeated elements.
+   * Configuration objects use own enumerable string and symbol fields;
+   * non-enumerable and inherited fields are ignored. Field keys are independent
+   * of the textual flag and argument names.
    *
    * **Example** (Configuring command input)
    *
@@ -269,6 +272,7 @@ export declare namespace Command {
    * **Details**
    *
    * Only flags are allowed here; arguments are intentionally excluded.
+   * Field discovery follows the same rules as {@link Config}.
    *
    * @stability unstable
    * @category models

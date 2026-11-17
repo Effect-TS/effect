@@ -659,6 +659,7 @@ export const flatMap: {
  * Accepts a tuple or array, an iterable, or a record of Arbitraries. Tuple positions and record keys are preserved in
  * the generated value. Members are generated in a randomized internal order so recursive members share the generation
  * budget fairly, while shrinking changes one member at a time.
+ * Record inputs use own enumerable string and symbol properties.
  *
  * **Gotchas**
  *

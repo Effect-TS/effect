@@ -1403,6 +1403,8 @@ export const andThen: {
  * - An iterable: returns `Result` with an array of success values
  *
  * Short-circuits on the first `Failure` encountered; later elements are not inspected.
+ * Struct inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * **Example** (Collecting a tuple and a struct)
  *
@@ -1448,9 +1450,10 @@ export const all: <const I extends Iterable<Result<any, any>> | Record<string, R
       return succeed(out)
     }
 
-    const out: Record<string, any> = {}
-    for (const key of Object.keys(input)) {
-      const e = input[key]
+    const fields = input as Record<PropertyKey, Result<any, any>>
+    const out: Record<PropertyKey, any> = {}
+    for (const key of InternalRecord.ownEnumerableKeys(fields)) {
+      const e = fields[key]
       if (isFailure(e)) {
         return e
       }

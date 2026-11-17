@@ -339,8 +339,10 @@ export function all(
   input: Iterable<Arbitrary<any>> | Record<string, Arbitrary<any>>
 ): Arbitrary<any> {
   const iterable = Symbol.iterator in input
-  const keys = iterable ? undefined : Object.keys(input)
-  const members = iterable ? Array.from(input as Iterable<Arbitrary<any>>) : keys!.map((key) => input[key])
+  const keys = iterable ? undefined : InternalRecord.ownEnumerableKeys(input)
+  const members = iterable
+    ? Array.from(input as Iterable<Arbitrary<any>>)
+    : keys!.map((key) => (input as Record<PropertyKey, Arbitrary<any>>)[key])
   const generators = members.map((member) => member.gen)
   let minCost = 0
   for (let index = 0; index < generators.length; index++) minCost += generators[index].minCost

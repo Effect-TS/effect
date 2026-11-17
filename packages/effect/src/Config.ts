@@ -394,6 +394,7 @@ export const orElse: {
  *
  * Accepts a tuple (preserves positions), an iterable, or a record of configs.
  * Returns a config whose parsed value mirrors the input shape.
+ * Record inputs use own enumerable string and symbol properties.
  *
  * A combined config is absent when any child is absent and no child fails.
  * Validation and source errors propagate even when another child is absent.
@@ -438,7 +439,7 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
       }
     : never
 > {
-  const configs: Array<Config<any>> | Record<string, Config<any>> = globalThis.Array.isArray(arg)
+  const configs: Array<Config<any>> | Record<PropertyKey, Config<any>> = globalThis.Array.isArray(arg)
     ? arg
     : Symbol.iterator in arg
     ? [...arg as any]
@@ -450,7 +451,9 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
         Result.all
       )
       : Effect.mapEager(
-        Effect.all(Rec.map(configs, (config) => evaluateAt(config, provider, pathPrefix))),
+        Effect.all(Object.fromEntries(
+          InternalRecord.ownEnumerableKeys(configs).map((key) => [key, evaluateAt(configs[key], provider, pathPrefix)])
+        )),
         Result.all
       )
   ) as any
