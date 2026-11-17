@@ -112,10 +112,12 @@ describe("OtlpExporter", () => {
   it.effect("observes terminal retry success without reporting failed attempts", () =>
     Effect.gen(function*() {
       const events: Array<OtlpExporter.Event> = []
-      const { attempts, httpClient } = yield* makeHttpClient("0")
+      const { attempts, httpClient } = yield* makeHttpClient("1")
       yield* Effect.scoped(Effect.gen(function*() {
-        const exporter = yield* makeExporter(httpClient, { maxBatchSize: 10 })
+        const exporter = yield* makeExporter(httpClient)
         exporter.push({ value: 1 })
+        yield* yieldNowN(3)
+        yield* TestClock.adjust("1 second")
       }).pipe(Effect.provideService(OtlpExporter.Observer, (event) => events.push(event))))
       assert.strictEqual(yield* Ref.get(attempts), 2)
       assert.strictEqual(events.length, 2)
