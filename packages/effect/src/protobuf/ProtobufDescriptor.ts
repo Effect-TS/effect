@@ -11,6 +11,10 @@
  *   encoding and UTF-8 validation, as the file's syntax or edition and its
  *   features decide them, and refers to the descriptor of its type.
  * - `ProtobufMessage` encodes and decodes the values of a message descriptor.
+ *   Neither module depends on Effect Schema. A Schema can separately transform
+ *   these plain values into application types.
+ * - Field and oneof names are preserved exactly in JavaScript values.
+ *   `jsonName` is separate metadata for protobuf's JSON representation.
  *
  * **Gotchas**
  *
@@ -39,7 +43,7 @@
  * }]))
  *
  * const user = registry.getMessage("acme.v1.User")!
- * user.fields.map((field) => field.localName) // => ["display_name"]
+ * user.fields.map((field) => field.name) // => ["display_name"]
  * ```
  *
  * @stability experimental
@@ -180,7 +184,7 @@ export interface MessageDescriptor {
  * - `"list"`: a repeated field, an array of values
  * - `"map"`: a map field, a record from keys to values
  *
- * `localName` is the property that holds the field in a message value: the
+ * `name` is the property that holds the field in a message value: the
  * original protobuf name, without casing changes or escaping.
  *
  * @stability experimental
@@ -192,7 +196,6 @@ export type FieldDescriptor = SingularFieldDescriptor | ListFieldDescriptor | Ma
 interface FieldBase {
   readonly _tag: "FieldDescriptor"
   readonly name: string
-  readonly localName: string
   readonly jsonName: string
   readonly number: number
   /** The message the field belongs to, or that an extension extends. */
@@ -303,7 +306,6 @@ export interface MessageValueType {
 export interface OneofDescriptor {
   readonly _tag: "OneofDescriptor"
   readonly name: string
-  readonly localName: string
   readonly parent: MessageDescriptor
   readonly fields: ReadonlyArray<FieldDescriptor>
   readonly proto: OneofDescriptorProto
@@ -435,6 +437,13 @@ export class ProtobufDescriptorError extends Data.TaggedError("ProtobufDescripto
 /**
  * Resolves `FileDescriptorProto`s into a {@link Registry}. Files may come in
  * any order, but every dependency must be among them.
+ *
+ * **Details**
+ *
+ * Resolving checks references and the field layout used by the message codec,
+ * including field-number bounds, duplicate names and numbers, oneof membership,
+ * and map key types. Invalid layouts return a {@link ProtobufDescriptorError}.
+ * This does not replace protoc's validation of `.proto` source files.
  *
  * **Example** (Resolving a file)
  *

@@ -1,28 +1,18 @@
-// The binary encoding of message values, compiled per message descriptor into
-// a reader and a writer per field: closures that hold what they need, so that
-// encoding and decoding read no descriptors.
-//
-// A message value is a plain object, keyed by the `localName` of its fields:
-//
-// - implicit-presence fields always hold a value, their zero value when absent
-// - explicit-presence fields are left out when absent
-// - repeated fields hold an array, and map fields a record
-// - a oneof holds `{ _tag, value }`, with the `localName` of its case
-// - unknown fields are kept as their encoded bytes, under `unknownFields`
-//
-// Decoding merges a later occurrence of a message field into the value of the
-// earlier one, as protobuf does, so values are built in place.
+// Prepares resolved descriptors for shared wire operations. Decoding builds JavaScript
+// objects and merges subsequent occurrences into the existing value. Defaults
+// are installed only when a message is created. A final walk checks required
+// fields and owns borrowed bytes, but is skipped when neither is present.
+// Descriptor preparation selects field operations and wire tags once. Each
+// call owns its message state, independently of the wire reader.
 
 import * as Bytes from "../../Bytes.ts"
 import * as InternalRecord from "../../internal/record.ts"
-import * as Utf8 from "../../internal/utf8.ts"
 import * as Result from "../../Result.ts"
 import type * as D from "../ProtobufDescriptor.ts"
 import * as ProtobufReader from "../ProtobufReader.ts"
 import * as ProtobufWriter from "../ProtobufWriter.ts"
 import { WireType } from "./wireType.ts"
 
-// `ProtobufMessage.unknownFields`, the same symbol.
 const unknownFields: unique symbol = Symbol.for("effect/protobuf/ProtobufMessage/unknownFields")
 
 /** @internal */
@@ -37,16 +27,24 @@ export interface EncodeOptions {
   readonly maxDepth?: number | undefined
 }
 
+interface Message {
+  [name: string]: any
+  [unknownFields]?: Uint8Array
+}
+type Reader = ProtobufReader.ProtobufReader
+type Writer = ProtobufWriter.ProtobufWriter
+
 const DEFAULT_MAX_DEPTH = 100
 
-// -----------------------------------------------------------------------------
-// failures
-// -----------------------------------------------------------------------------
+const depthLimit = (value: number | undefined): number => {
+  const depth = value ?? DEFAULT_MAX_DEPTH
+  if (!Number.isInteger(depth) || depth < 0) fail("Expected maxDepth to be a non-negative integer")
+  return depth
+}
 
 /**
- * Why a value does not encode or bytes do not decode, and where. The path is
- * filled in while the failure propagates. It is not an `Error`, so throwing it
- * captures no stack.
+ * A message failure and its field path. Throwing this internal value avoids
+ * capturing a stack for expected malformed input; public functions return Result.
  *
  * @internal
  */
@@ -110,112 +108,6 @@ const expected = (what: string, value: unknown): never => fail(`Expected ${what}
 // "a uint64", "an int64".
 const a = (scalar: string): string => scalar.startsWith("int") ? `an ${scalar}` : `a ${scalar}`
 
-// -----------------------------------------------------------------------------
-// compiled messages
-// -----------------------------------------------------------------------------
-
-// How decoding a field went: its value is stored, or the occurrence is kept as
-// an unknown field, after it was read or before, when its wire type is not the
-// field's.
-const STORED = 0
-const KEEP = 1
-const SKIP = 2
-
-type FieldReader = (r: Input, target: any, wireType: number, depth: number) => number
-type FieldWriter = (w: ProtobufWriter.ProtobufWriter, message: any, depth: number, options: EncodeOptions) => void
-
-interface Compiled {
-  readonly descriptor: D.MessageDescriptor
-  // Creates an empty value: implicit-presence fields hold their zero value,
-  // repeated and map fields an empty array and record.
-  create: () => any
-  // Readers by field number, as an array unless the numbers are large.
-  table: Array<FieldReader | undefined>
-  byNumber: Map<number, FieldReader>
-  // Field writers in field-number order, with their keys for paths.
-  writers: Array<FieldWriter>
-  writerKeys: Array<string>
-  // The keys of oneofs and their cases, checked before writing.
-  oneofs: Array<{ readonly key: string; readonly cases: ReadonlySet<string> }>
-  required: Array<D.FieldDescriptor>
-}
-
-const cache = new WeakMap<D.MessageDescriptor, Compiled>()
-
-// Protobuf names can also be names inherited from Object.prototype.
-const ownValue = (message: any, key: string): any => Object.hasOwn(message, key) ? message[key] : undefined
-
-// Messages are registered before their fields are compiled, so that recursive
-// messages refer to themselves.
-const compile = (descriptor: D.MessageDescriptor): Compiled => {
-  const cached = cache.get(descriptor)
-  if (cached !== undefined) return cached
-  const out: Compiled = {
-    descriptor,
-    create: () => ({}),
-    table: [],
-    byNumber: new Map(),
-    writers: [],
-    writerKeys: [],
-    oneofs: [],
-    required: []
-  }
-  cache.set(descriptor, out)
-  const fields = descriptor.fields
-  const keys: Array<string> = []
-  const zeros: Array<() => unknown> = []
-  for (const field of fields) {
-    out.byNumber.set(field.number, fieldReader(field))
-    const zero = zeroOf(field)
-    if (zero !== undefined) {
-      keys.push(field.localName)
-      zeros.push(zero)
-    }
-    if (field.kind === "singular" && field.presence === "required") out.required.push(field)
-  }
-  const max = fields.reduce((max, field) => Math.max(max, field.number), 0)
-  if (max <= 1024) {
-    out.table = new Array(max + 1).fill(undefined)
-    for (const [number, reader] of out.byNumber) out.table[number] = reader
-  }
-  out.create = () => {
-    const value: any = {}
-    for (let i = 0; i < keys.length; i++) InternalRecord.assignProperty(value, keys[i], zeros[i]())
-    return value
-  }
-  for (const field of [...fields].sort((a, b) => a.number - b.number)) {
-    out.writers.push(fieldWriter(field))
-    out.writerKeys.push(field.oneof?.localName ?? field.localName)
-  }
-  for (const oneof of descriptor.oneofs) {
-    out.oneofs.push({ key: oneof.localName, cases: new Set(oneof.fields.map((field) => field.localName)) })
-  }
-  return out
-}
-
-// The value of a field in an empty message, or `undefined` for a field that
-// is left out.
-const zeroOf = (field: D.FieldDescriptor): (() => unknown) | undefined => {
-  switch (field.kind) {
-    case "list":
-      return () => []
-    case "map":
-      return () => ({})
-    case "singular": {
-      if (field.presence !== "implicit" || field.oneof !== undefined) return undefined
-      const type = field.type
-      if (type.kind === "enum") {
-        const zero = type.enum.open ? 0 : type.enum.values[0].number
-        return () => zero
-      }
-      if (type.kind === "message") return undefined
-      if (type.scalar === "bytes") return () => new Uint8Array(0)
-      const zero = scalarZero(type)
-      return () => zero
-    }
-  }
-}
-
 const scalarZero = (type: D.ScalarValueType): unknown => {
   switch (type.scalar) {
     case "bool":
@@ -236,10 +128,6 @@ const scalarZero = (type: D.ScalarValueType): unknown => {
 }
 
 const BIGINT_ZERO = BigInt(0)
-
-// -----------------------------------------------------------------------------
-// scalars
-// -----------------------------------------------------------------------------
 
 const wireTypeOf = (type: D.ValueType): number => {
   switch (type.kind) {
@@ -271,59 +159,6 @@ const is64Bit = (scalar: D.ScalarType): boolean =>
 
 const isUnsigned = (scalar: D.ScalarType): boolean =>
   scalar === "uint32" || scalar === "fixed32" || scalar === "uint64" || scalar === "fixed64"
-
-const scalarReader = (type: D.ScalarValueType): (r: Input) => unknown => {
-  switch (type.scalar) {
-    case "double":
-      return (r) => r.double()
-    case "float":
-      return (r) => r.float()
-    case "int32":
-      return (r) => r.int32()
-    case "uint32":
-      return (r) => r.uint32()
-    case "sint32":
-      return (r) => r.sint32()
-    case "fixed32":
-      return (r) => r.fixed32()
-    case "sfixed32":
-      return (r) => r.sfixed32()
-    case "bool":
-      return (r) => r.bool()
-    case "bytes":
-      return (r) => r.bytes()
-    case "string":
-      return type.validateUtf8 ? (r) => r.string() : (r) => {
-        const bytes = delimitedView(r)
-        return Utf8.decodeLax(bytes, 0, bytes.length)
-      }
-    case "int64":
-      return int64Reader(type, (r) => r.int64(), (r) => r.int64Number())
-    case "uint64":
-      return int64Reader(type, (r) => r.uint64(), (r) => r.uint64Number())
-    case "sint64":
-      return int64Reader(type, (r) => r.sint64(), (r) => r.sint64Number())
-    case "fixed64":
-      return int64Reader(type, (r) => r.fixed64(), (r) => r.fixed64Number())
-    case "sfixed64":
-      return int64Reader(type, (r) => r.sfixed64(), (r) => r.sfixed64Number())
-  }
-}
-
-const int64Reader = (
-  type: D.ScalarValueType,
-  bigint: (r: Input) => bigint,
-  number: (r: Input) => number
-): (r: Input) => unknown => {
-  switch (type.jsType) {
-    case "bigint":
-      return bigint
-    case "number":
-      return number
-    case "string":
-      return (r) => String(bigint(r))
-  }
-}
 
 const INT32_MIN = -2147483648
 const INT32_MAX = 2147483647
@@ -366,95 +201,202 @@ const uint32 = (scalar: D.ScalarType, value: unknown): number =>
     ? value
     : expected(`a non-negative integer for ${a(scalar)}`, value)
 
-type ScalarWriter = (w: ProtobufWriter.ProtobufWriter, value: unknown) => void
-
-const scalarWriter = (scalar: D.ScalarType): ScalarWriter => {
-  switch (scalar) {
-    case "double":
-      return (w, v) => w.double(typeof v === "number" ? v : expected("a number for a double", v))
-    case "float":
-      return (w, v) => w.float(float(v))
-    case "int32":
-      return (w, v) => w.int32(int32(scalar, v))
-    case "sint32":
-      return (w, v) => w.sint32(int32(scalar, v))
-    case "sfixed32":
-      return (w, v) => w.sfixed32(int32(scalar, v))
-    case "uint32":
-      return (w, v) => w.uint32(uint32(scalar, v))
-    case "fixed32":
-      return (w, v) => w.fixed32(uint32(scalar, v))
-    case "int64":
-    case "uint64":
-      return (w, v) => w.int64(toInt64(scalar, v))
-    case "sint64":
-      return (w, v) => w.sint64(toInt64(scalar, v))
-    case "fixed64":
-    case "sfixed64":
-      return (w, v) => w.fixed64(toInt64(scalar, v))
-    case "bool":
-      return (w, v) => w.bool(typeof v === "boolean" ? v : expected("a boolean", v))
-    case "string":
-      return (w, v) => w.string(typeof v === "string" ? v : expected("a string", v))
-    case "bytes":
-      return (w, v) => w.bytes(v instanceof Uint8Array ? v : expected("a Uint8Array", v))
-  }
-}
-
 const float = (v: unknown): number =>
   typeof v === "number" && !(Number.isFinite(v) && Math.abs(v) > FLOAT32_MAX)
     ? v
     : expected("a number in the range of a float", v)
 
-const enumWriter: ScalarWriter = (w, v) => w.int32(int32("int32", v))
+const ownValue = (message: Message, key: string): any => Object.hasOwn(message, key) ? message[key] : undefined
+const assign = InternalRecord.assignProperty
 
-// Whether an implicit-presence value is its zero value, which is not
-// written. -0 is written, as other implementations write it.
-const isZero = (type: D.ScalarValueType | D.EnumValueType): (value: unknown) => boolean => {
-  if (type.kind === "enum") return (v) => v === 0
+interface Layout {
+  readonly byNumber: { readonly [number: number]: ReadField | undefined }
+  readonly ordered: ReadonlyArray<WriteField>
+  readonly oneofs: ReadonlyArray<readonly [D.OneofDescriptor, ReadonlySet<string>]>
+  readonly defaults: ReadonlyArray<readonly [string, () => unknown]>
+  readonly finish: ReadonlyArray<D.FieldDescriptor>
+  readonly required: boolean
+}
+
+interface ReadField {
+  readonly key: string
+  readonly wire: number
+  readonly packed: boolean
+  readonly read: (
+    context: DecodeContext,
+    r: Reader,
+    target: Message,
+    depth: number,
+    start: number,
+    packed: boolean
+  ) => void
+}
+
+interface WriteField {
+  readonly key: string
+  readonly write: (context: EncodeContext, w: Writer, target: Message, depth: number) => void
+}
+
+const layouts = new WeakMap<D.MessageDescriptor, Layout>()
+const layoutOf = (descriptor: D.MessageDescriptor): Layout => {
+  let layout = layouts.get(descriptor)
+  if (layout === undefined) {
+    const max = descriptor.fields.reduce((max, field) => Math.max(max, field.number), 0)
+    const byNumber: { [number: number]: ReadField | undefined } = max <= 1024
+      ? new Array(max + 1).fill(undefined)
+      : Object.create(null)
+    const defaults: Array<readonly [string, () => unknown]> = []
+    const finish: Array<D.FieldDescriptor> = []
+    let required = false
+    for (const field of descriptor.fields) {
+      byNumber[field.number] = {
+        key: field.oneof?.name ?? field.name,
+        wire: field.kind === "map" ? WireType.Len : wireTypeOf(field.type),
+        packed: field.kind === "list" && packable(field.type),
+        read: prepareRead(field)
+      }
+      if (
+        field.oneof === undefined &&
+        (field.kind !== "singular" || field.presence === "implicit" && field.type.kind !== "message")
+      ) {
+        const zero = field.kind === "list" ? emptyList : field.kind === "map" ?
+          emptyMessage
+          : field.type.kind === "scalar" && field.type.scalar === "bytes" ?
+          emptyBytes
+          : constantDefault(valueDefault(field.type))
+        defaults.push([field.name, zero])
+      }
+      if (field.kind === "singular" && field.presence === "required") required = true
+      if (
+        field.type.kind === "message" || field.type.kind === "scalar" && field.type.scalar === "bytes" ||
+        field.kind === "singular" && field.presence === "required"
+      ) finish.push(field)
+    }
+    layout = {
+      byNumber,
+      ordered: [...descriptor.fields].sort((a, b) => a.number - b.number).map((field) => ({
+        key: field.oneof?.name ?? field.name,
+        write: prepareWrite(field)
+      })),
+      oneofs: descriptor.oneofs.map((oneof) => [oneof, new Set(oneof.fields.map((field) => field.name))]),
+      defaults,
+      finish,
+      required
+    }
+    layouts.set(descriptor, layout)
+  }
+  return layout
+}
+
+const emptyList = (): Array<unknown> => []
+const emptyMessage = (): Message => ({})
+const emptyBytes = (): Uint8Array => new Uint8Array(0)
+const constantDefault = (value: unknown): () => unknown => () => value
+
+const createMessage = (context: DecodeContext, layout: Layout): Message => {
+  const target: Message = {}
+  for (const [key, zero] of layout.defaults) assign(target, key, zero())
+  if (layout.required) context.needsFinish = true
+  return target
+}
+
+const enumNumbers = new WeakMap<D.EnumDescriptor, ReadonlySet<number>>()
+const acceptsEnum = (descriptor: D.EnumDescriptor, value: number): boolean => {
+  if (descriptor.open) return true
+  let numbers = enumNumbers.get(descriptor)
+  if (numbers === undefined) {
+    numbers = new Set(descriptor.values.map((value) => value.number))
+    enumNumbers.set(descriptor, numbers)
+  }
+  return numbers.has(value)
+}
+
+const packable = (type: D.ValueType): type is D.ScalarValueType | D.EnumValueType =>
+  type.kind === "enum" || (type.kind === "scalar" && type.scalar !== "string" && type.scalar !== "bytes")
+
+const valueDefault = (type: D.ValueType): unknown => {
+  switch (type.kind) {
+    case "message":
+      return {}
+    case "enum":
+      return type.enum.open ? 0 : type.enum.values[0].number
+    case "scalar":
+      return scalarZero(type)
+  }
+}
+
+const LAX_UTF8 = { validateUtf8: false } as const
+
+const readScalar = (r: Reader, type: D.ScalarValueType, jsType = type.jsType): unknown => scalarReader(type, jsType)(r)
+
+const writeScalar = (w: Writer, scalar: D.ScalarType, value: unknown): void => {
+  scalarWriters[scalar](w, value)
+}
+
+const writeEnum = (w: Writer, type: D.EnumValueType, value: unknown): void => {
+  const number = int32("int32", value)
+  if (!acceptsEnum(type.enum, number)) expected(`a value of ${type.enum.typeName}`, value)
+  w.int32(number)
+}
+
+const isZero = (type: D.ValueType, value: unknown): boolean => {
+  if (type.kind === "message") return false
+  if (type.kind === "enum") return value === valueDefault(type)
   switch (type.scalar) {
     case "double":
     case "float":
-      return (v) => v === 0 && 1 / v > 0
+      return value === 0 && 1 / value > 0
     case "bool":
-      return (v) => v === false
+      return value === false
     case "string":
-      return (v) => v === ""
+      return value === ""
     case "bytes":
-      return (v) => v instanceof Uint8Array && v.length === 0
+      return value instanceof Uint8Array && value.length === 0
     default:
-      return is64Bit(type.scalar) ? (v) => v === 0 || v === BIGINT_ZERO || v === "0" : (v) => v === 0
+      return is64Bit(type.scalar) ? value === 0 || value === BIGINT_ZERO || value === "0" : value === 0
   }
 }
 
-// The bytes of a length-delimited value, without a copy.
-const delimitedView = (r: Input): Uint8Array => {
-  r.enter()
-  const start = r.offset
-  r.leave()
-  return r.input.subarray(start, r.offset)
-}
-
 // -----------------------------------------------------------------------------
-// decode
+// decoding
 // -----------------------------------------------------------------------------
 
-class Input extends ProtobufReader.ProtobufReader {
+interface DecodeContext {
   readonly input: Uint8Array
-  readonly keepUnknown: boolean
   readonly maxDepth: number
-  // Fields that the last field read leaves for the unknown fields, such as
-  // the unknown numbers of a packed closed enum.
-  extra: Array<Uint8Array> | undefined = undefined
-  // Messages with required fields, checked once all occurrences are merged.
-  pending: Array<readonly [Compiled, any]> | undefined = undefined
+  readonly keepUnknown: boolean
+  needsFinish: boolean
+  // Weak keys let replaced messages and their spans become unreachable together.
+  unknown: WeakMap<Message, Array<Uint8Array>> | undefined
+}
 
-  constructor(input: Uint8Array, options: DecodeOptions | undefined) {
-    super(input)
-    this.input = input
-    this.keepUnknown = options?.readUnknownFields !== false
-    this.maxDepth = options?.maxDepth ?? DEFAULT_MAX_DEPTH
+const retain = (context: DecodeContext, message: Message, bytes: Uint8Array): void => {
+  if (!context.keepUnknown) return
+  context.unknown ??= new WeakMap()
+  const chunks = context.unknown.get(message)
+  if (chunks === undefined) context.unknown.set(message, [bytes])
+  else chunks.push(bytes)
+}
+
+const retainOccurrence = (context: DecodeContext, target: Message, start: number, end: number): void => {
+  if (context.keepUnknown) retain(context, target, context.input.subarray(start, end))
+}
+
+const checkDepth = (depth: number, limit: number): void => {
+  if (depth > limit) fail(`Expected messages nested at most ${limit} deep`)
+}
+
+const decodeMessage = (descriptor: D.MessageDescriptor, bytes: Uint8Array, options?: DecodeOptions): Message => {
+  const context: DecodeContext = {
+    input: bytes,
+    maxDepth: depthLimit(options?.maxDepth),
+    keepUnknown: options?.readUnknownFields !== false,
+    needsFinish: false,
+    unknown: undefined
   }
+  const target = readFields(context, ProtobufReader.make(bytes), descriptor, undefined, 0)
+  if (context.needsFinish || context.unknown !== undefined) finishMessage(context, descriptor, target)
+  return target
 }
 
 /** @internal */
@@ -464,303 +406,376 @@ export const decode = (
   options: DecodeOptions | undefined
 ): Result.Result<Record<string, unknown>, Failure> => {
   try {
-    const compiled = compile(descriptor)
-    const r = new Input(bytes, options)
-    const value = compiled.create()
-    readFields(r, compiled, value, undefined, 0)
-    if (r.pending !== undefined) checkRequired(r.pending)
-    return Result.succeed(value)
-  } catch (e) {
-    return Result.fail(toFailure(e))
+    return Result.succeed(decodeMessage(descriptor, bytes, options))
+  } catch (error) {
+    return Result.fail(toFailure(error))
   }
 }
 
-const toFailure = (e: unknown): Failure => {
-  if (e instanceof Failure) return e
-  if (e instanceof ProtobufReader.ProtobufReaderError) return new Failure(e.message)
-  throw e
+const toFailure = (error: unknown): Failure => {
+  if (error instanceof Failure) return error
+  if (error instanceof ProtobufReader.ProtobufReaderError) return new Failure(error.message)
+  throw error
 }
 
-const checkRequired = (pending: ReadonlyArray<readonly [Compiled, any]>): void => {
-  for (const [compiled, value] of pending) {
-    for (const field of compiled.required) {
-      if (ownValue(value, field.localName) === undefined) {
-        fail(`Expected required field ${field.name} of ${compiled.descriptor.typeName}`)
-      }
+const readFields = (
+  context: DecodeContext,
+  r: Reader,
+  descriptor: D.MessageDescriptor,
+  before: Message | undefined,
+  depth: number,
+  group?: number
+): Message => {
+  checkDepth(depth, context.maxDepth)
+  const layout = layoutOf(descriptor)
+  const target = before ?? createMessage(context, layout)
+  const fields = layout.byNumber
+  while (true) {
+    if (group === undefined && r.isDone()) return target
+    const start = r.offset
+    const tag = r.tag()
+    const number = tag >>> 3
+    const actual = tag & 7
+    if (actual === WireType.EndGroup) {
+      if (number === group) return target
+      fail(`Expected a start group tag before the end group tag of field ${number}`)
     }
-  }
-}
-
-// Reads the fields of a message into `target` up to the end of the reader, or
-// up to the end group tag of field `group`.
-const readFields = (r: Input, compiled: Compiled, target: any, group: number | undefined, depth: number): void => {
-  if (depth > r.maxDepth) fail(`Expected messages nested at most ${r.maxDepth} deep`)
-  const table = compiled.table
-  const byNumber = compiled.byNumber
-  let unknown: Array<Uint8Array> | undefined
-  // The number of the field being read, for the path of a failure.
-  let reading = -1
-  try {
-    while (true) {
-      // A message ends with its bytes, and a group with its end group tag.
-      if (group === undefined && r.isDone()) break
-      const start = r.offset
-      const tag = r.tag()
-      const wireType = tag & 7
-      const number = tag >>> 3
-      if (wireType === WireType.EndGroup) {
-        if (number === group) break
-        fail(`Expected a start group tag before the end group tag of field ${number}`)
-      }
-      const read = number < table.length ? table[number] : byNumber.get(number)
-      let status = SKIP
-      if (read !== undefined) {
-        reading = number
-        status = read(r, target, wireType, depth)
-        reading = -1
-      }
-      if (status === SKIP) r.skip(tag)
-      if (status !== STORED && r.keepUnknown) (unknown ??= []).push(r.input.subarray(start, r.offset))
-      if (r.extra !== undefined) {
-        if (r.keepUnknown) (unknown ??= []).push(...r.extra)
-        r.extra = undefined
-      }
+    const entry = fields[number]
+    const packed = actual === WireType.Len && entry?.packed === true
+    if (entry === undefined || (actual !== entry.wire && !packed)) {
+      r.skip(tag, context.maxDepth - depth)
+      retainOccurrence(context, target, start, r.offset)
+      continue
     }
-  } catch (e) {
-    if (reading === -1) throw e
-    rethrow(e, numberKey(compiled, reading))
-  }
-  if (unknown !== undefined) {
-    const before = target[unknownFields]
-    target[unknownFields] = Bytes.concat(before === undefined ? unknown : [before, ...unknown])
-  }
-  if (compiled.required.length > 0) (r.pending ??= []).push([compiled, target])
-}
-
-// The key of a field in paths: its oneof's, or its own.
-const numberKey = (compiled: Compiled, number: number): string => {
-  for (const field of compiled.descriptor.fields) {
-    if (field.number === number) return field.oneof?.localName ?? field.localName
-  }
-  return String(number)
-}
-
-const readMessage = (r: Input, compiled: Compiled, target: any, group: number | undefined, depth: number): void => {
-  if (group !== undefined) return readFields(r, compiled, target, group, depth + 1)
-  r.enter()
-  readFields(r, compiled, target, undefined, depth + 1)
-  r.leave()
-}
-
-const fieldReader = (field: D.FieldDescriptor): FieldReader => {
-  switch (field.kind) {
-    case "singular":
-      return singularReader(field)
-    case "list":
-      return listReader(field)
-    case "map":
-      return mapReader(field)
-  }
-}
-
-// Reads one value of a type, given the value before, which a message merges
-// into, and returns `KEEP` for an unknown number of a closed enum.
-type ValueReader = (r: Input, before: unknown, depth: number) => unknown
-
-const KEEP_VALUE = Symbol("effect/protobuf/keep")
-
-const valueReader = (type: D.ValueType, number: number): ValueReader => {
-  switch (type.kind) {
-    case "scalar": {
-      const read = scalarReader(type)
-      return (r) => read(r)
-    }
-    case "enum": {
-      if (type.enum.open) return (r) => r.int32()
-      const numbers = new Set(type.enum.values.map((value) => value.number))
-      return (r) => {
-        const n = r.int32()
-        return numbers.has(n) ? n : KEEP_VALUE
-      }
-    }
-    case "message": {
-      const group = type.delimited ? number : undefined
-      let compiled: Compiled | undefined
-      return (r, before, depth) => {
-        compiled ??= compile(type.message)
-        const target = before === undefined ? compiled.create() : before
-        readMessage(r, compiled, target, group, depth)
-        return target
-      }
-    }
-  }
-}
-
-const singularReader = (field: D.SingularFieldDescriptor): FieldReader => {
-  const wireType = wireTypeOf(field.type)
-  const read = valueReader(field.type, field.number)
-  const merges = field.type.kind === "message"
-  const oneof = field.oneof
-  if (oneof !== undefined) {
-    const key = oneof.localName
-    const tag = field.localName
-    return (r, target, actual, depth) => {
-      if (actual !== wireType) return SKIP
-      const current = ownValue(target, key)
-      const before = merges && current !== undefined && current._tag === tag ? current.value : undefined
-      const value = read(r, before, depth)
-      if (value === KEEP_VALUE) return KEEP
-      InternalRecord.assignProperty(target, key, { _tag: tag, value })
-      return STORED
-    }
-  }
-  const key = field.localName
-  return (r, target, actual, depth) => {
-    if (actual !== wireType) return SKIP
-    const value = read(r, merges ? ownValue(target, key) : undefined, depth)
-    if (value === KEEP_VALUE) return KEEP
-    InternalRecord.assignProperty(target, key, value)
-    return STORED
-  }
-}
-
-const listReader = (field: D.ListFieldDescriptor): FieldReader => {
-  const key = field.localName
-  const type = field.type
-  const wireType = wireTypeOf(type)
-  const read = valueReader(type, field.number)
-  const readPacked = type.kind === "message" ? undefined : packedReader(type, field.number)
-  return (r, target, actual, depth) => {
-    const list = target[key]
-    if (actual === WireType.Len && readPacked !== undefined) {
-      readPacked(r, list)
-      return STORED
-    }
-    if (actual !== wireType) return SKIP
-    let value: unknown
     try {
-      value = read(r, undefined, depth)
-    } catch (e) {
-      rethrow(e, list.length)
+      entry.read(context, r, target, depth, start, packed)
+    } catch (error) {
+      rethrow(error, entry.key)
     }
-    if (value === KEEP_VALUE) return KEEP
-    list.push(value)
-    return STORED
   }
 }
 
-// Reads the elements of a packed field, after its tag.
-const packedReader = (
-  type: D.ScalarValueType | D.EnumValueType,
-  number: number
-): ((r: Input, list: Array<unknown>) => void) | undefined => {
-  if (type.kind === "enum") {
-    const numbers = type.enum.open ? undefined : new Set(type.enum.values.map((value) => value.number))
-    return (r, list) => {
-      r.enter()
-      while (!r.isDone()) {
-        const n = r.int32()
-        if (numbers === undefined || numbers.has(n)) list.push(n)
-        // The unknown numbers of a closed enum are kept as unpacked fields.
-        else (r.extra ??= []).push(ProtobufWriter.make().tag(number, WireType.Varint).int32(n).finish())
+const prepareRead = (field: D.FieldDescriptor): ReadField["read"] => {
+  if (field.kind === "singular") {
+    if (field.oneof === undefined && field.type.kind === "scalar") {
+      const key = field.name
+      const read = scalarReader(field.type)
+      if (field.type.scalar === "bytes") {
+        return (context, r, target) => {
+          assign(target, key, read(r))
+          context.needsFinish = true
+        }
       }
-      r.leave()
+      return (_context, r, target) => {
+        assign(target, key, read(r))
+      }
+    }
+    return (context, r, target, depth, start) => readSingular(context, r, field, target, depth, start)
+  }
+  if (field.kind === "list") {
+    if (packable(field.type)) {
+      const key = field.name
+      const readPacked = preparePackedRead(field.type, field.number)
+      return (context, r, target, depth, start, packed) => {
+        if (packed) readPacked(context, r, target, target[key])
+        else readList(context, r, field, target, depth, start)
+      }
+    }
+    return (context, r, target, depth, start) => readList(context, r, field, target, depth, start)
+  }
+  return (context, r, target, depth, start) => readMap(context, r, field, target, depth, start)
+}
+
+const readValue = (
+  context: DecodeContext,
+  r: Reader,
+  type: D.ValueType,
+  number: number,
+  before: unknown,
+  depth: number
+): unknown => {
+  switch (type.kind) {
+    case "scalar":
+      if (type.scalar === "bytes") context.needsFinish = true
+      return readScalar(r, type)
+    case "enum":
+      return r.int32()
+    case "message": {
+      return readFields(
+        context,
+        type.delimited ? r : r.delimited(),
+        type.message,
+        before as Message | undefined,
+        depth + 1,
+        type.delimited ? number : undefined
+      )
     }
   }
-  const wireType = wireTypeOf(type)
-  // Strings and bytes are never packed.
-  if (wireType === WireType.Len) return undefined
+}
+
+const readSingular = (
+  context: DecodeContext,
+  r: Reader,
+  field: D.SingularFieldDescriptor,
+  target: Message,
+  depth: number,
+  start: number
+): void => {
+  const key = field.oneof?.name ?? field.name
+  let before: unknown
+  if (field.type.kind === "message") {
+    const current = ownValue(target, key)
+    before = field.oneof === undefined ? current : current?._tag === field.name ? current.value : undefined
+  }
+  const value = readValue(context, r, field.type, field.number, before, depth)
+  // Classify the occurrence before changing the active oneof case.
+  if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) {
+    retainOccurrence(context, target, start, r.offset)
+    return
+  }
+  assign(target, key, field.oneof === undefined ? value : { _tag: field.name, value })
+}
+
+const readList = (
+  context: DecodeContext,
+  r: Reader,
+  field: D.ListFieldDescriptor,
+  target: Message,
+  depth: number,
+  start: number
+): void => {
+  // Creation installs an own container for every repeated field, including
+  // names such as __proto__ and constructor.
+  const list = target[field.name] as Array<unknown>
+  try {
+    const value = readValue(context, r, field.type, field.number, undefined, depth)
+    if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) {
+      retainOccurrence(context, target, start, r.offset)
+    } else list.push(value)
+  } catch (error) {
+    rethrow(error, list.length)
+  }
+}
+
+// Prepared fields and packed payloads share these scalar operations. Packed
+// arrays select an operation once, outside the element loop.
+type PackedScalar = Exclude<D.ScalarType, "string" | "bytes">
+const numericReaders: Record<PackedScalar, (r: Reader) => unknown> = {
+  double: (r) => r.double(),
+  float: (r) => r.float(),
+  int32: (r) => r.int32(),
+  uint32: (r) => r.uint32(),
+  sint32: (r) => r.sint32(),
+  fixed32: (r) => r.fixed32(),
+  sfixed32: (r) => r.sfixed32(),
+  bool: (r) => r.bool(),
+  int64: (r) => r.int64(),
+  uint64: (r) => r.uint64(),
+  sint64: (r) => r.sint64(),
+  fixed64: (r) => r.fixed64(),
+  sfixed64: (r) => r.sfixed64()
+}
+const numberReaders: Partial<Record<D.ScalarType, (r: Reader) => number>> = {
+  int64: (r) => r.int64Number(),
+  uint64: (r) => r.uint64Number(),
+  sint64: (r) => r.sint64Number(),
+  fixed64: (r) => r.fixed64Number(),
+  sfixed64: (r) => r.sfixed64Number()
+}
+const stringReaders: Partial<Record<D.ScalarType, (r: Reader) => string>> = {
+  int64: (r) => String(r.int64()),
+  uint64: (r) => String(r.uint64()),
+  sint64: (r) => String(r.sint64()),
+  fixed64: (r) => String(r.fixed64()),
+  sfixed64: (r) => String(r.sfixed64())
+}
+
+const readString = (r: Reader): string => r.string()
+const readStringLax = (r: Reader): string => r.string(LAX_UTF8)
+const readBytes = (r: Reader): Uint8Array => r.bytesView()
+const scalarReader = (type: D.ScalarValueType, jsType = type.jsType): (r: Reader) => unknown => {
+  if (type.scalar === "string") return type.validateUtf8 ? readString : readStringLax
+  if (type.scalar === "bytes") return readBytes
+  const base = numericReaders[type.scalar]
+  return jsType === "number" ?
+    numberReaders[type.scalar] ?? base
+    : jsType === "string"
+    ? stringReaders[type.scalar] ?? base
+    : base
+}
+
+type PackedReader = (context: DecodeContext, r: Reader, target: Message, list: Array<unknown>) => void
+
+// Separate loops let scalar and floating-point arrays keep their own element
+// types in the hot path. The operation is selected during descriptor preparation.
+const preparePackedRead = (type: D.ScalarValueType | D.EnumValueType, number: number): PackedReader => {
+  if (type.kind === "enum") {
+    return (context, r, target, list) => {
+      const child = r.delimited()
+      let unknown: Writer | undefined
+      try {
+        while (!child.isDone()) {
+          const value = child.int32()
+          if (acceptsEnum(type.enum, value)) list.push(value)
+          else if (context.keepUnknown) {
+            unknown ??= ProtobufWriter.make()
+            unknown.tag(number, WireType.Varint).int32(value)
+          }
+        }
+      } catch (error) {
+        rethrow(error, list.length)
+      }
+      if (unknown !== undefined) retain(context, target, unknown.finish())
+    }
+  }
   if (type.scalar === "double" || type.scalar === "float") {
-    // Floats are read together through one view of their bytes, which is
-    // faster than a read per element.
     const size = type.scalar === "double" ? 8 : 4
-    return (r, list) => {
-      const bytes = delimitedView(r)
-      const length = bytes.length - bytes.length % size
-      if (length !== bytes.length) fail(`Expected a complete value at offset ${r.offset - bytes.length + length}`)
-      const view = new DataView(bytes.buffer, bytes.byteOffset, length)
-      if (size === 8) { for (let p = 0; p < length; p += 8) list.push(view.getFloat64(p, true)) }
-      else for (let p = 0; p < length; p += 4) list.push(view.getFloat32(p, true))
+    return (_context, r, _target, list) => {
+      const bytes = r.bytesView()
+      if (bytes.length % size !== 0) {
+        const complete = bytes.length - bytes.length % size
+        throw new Failure(`Expected a complete value at offset ${r.offset - bytes.length + complete}`, [
+          list.length + complete / size
+        ])
+      }
+      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length)
+      if (size === 8) {
+        for (let i = 0; i < bytes.length; i += 8) list.push(view.getFloat64(i, true))
+      } else {
+        for (let i = 0; i < bytes.length; i += 4) list.push(view.getFloat32(i, true))
+      }
     }
   }
   const read = scalarReader(type)
-  return (r, list) => {
-    r.enter()
-    while (!r.isDone()) list.push(read(r))
-    r.leave()
+  return (_context, r, _target, list) => {
+    const child = r.delimited()
+    try {
+      while (!child.isDone()) list.push(read(child))
+    } catch (error) {
+      rethrow(error, list.length)
+    }
   }
 }
 
-const mapReader = (field: D.MapFieldDescriptor): FieldReader => {
-  const key = field.localName
-  const keyWireType = wireTypeOf(field.key)
-  const readKey = mapKeyReader(field.key)
-  const valueWireType = wireTypeOf(field.type)
-  const readValue = valueReader(field.type, 2)
-  const valueZero = field.type.kind === "message" ? undefined : field.type.kind === "enum"
-    ? (field.type.enum.open ? 0 : field.type.enum.values[0].number)
-    : scalarZero(field.type)
-  const message = field.type.kind === "message" ? field.type.message : undefined
-  const keyZero = mapKeyZero(field.key)
-  return (r, target, actual, depth) => {
-    if (actual !== WireType.Len) return SKIP
-    let k: string | undefined
-    let value: unknown = undefined
-    let keep = false
-    r.enter()
-    while (!r.isDone()) {
-      const tag = r.tag()
-      const number = tag >>> 3
-      const wireType = tag & 7
-      if (number === 1 && wireType === keyWireType) {
-        k = readKey(r)
-      } else if (number === 2 && wireType === valueWireType) {
-        try {
-          value = readValue(r, value, depth)
-        } catch (e) {
-          rethrow(e, k ?? keyZero)
-        }
-        if (value === KEEP_VALUE) {
-          // An entry with an unknown number of a closed enum is kept whole.
-          keep = true
-          value = undefined
-        }
-      } else {
-        r.skip(tag)
+const mapKeyDefault = (type: D.ScalarValueType): string =>
+  type.scalar === "string" ? "" : type.scalar === "bool" ? "false" : "0"
+
+const readMap = (
+  context: DecodeContext,
+  r: Reader,
+  field: D.MapFieldDescriptor,
+  target: Message,
+  depth: number,
+  start: number
+): void => {
+  const child = r.delimited()
+  let key = mapKeyDefault(field.key)
+  let value: unknown
+  let unknownEnum = false
+  // Stage the entire entry before replacing any existing value at its key.
+  while (!child.isDone()) {
+    const tag = child.tag()
+    if (tag >>> 3 === 1 && (tag & 7) === wireTypeOf(field.key)) {
+      key = String(readScalar(child, field.key, "bigint"))
+    } else if (tag >>> 3 === 2 && (tag & 7) === wireTypeOf(field.type)) {
+      try {
+        value = readValue(context, child, field.type, 2, value, depth)
+        if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) unknownEnum = true
+      } catch (error) {
+        rethrow(error, key)
+      }
+    } else child.skip(tag, context.maxDepth - depth)
+  }
+  if (unknownEnum) {
+    retainOccurrence(context, target, start, r.offset)
+    return
+  }
+  if (value === undefined) {
+    if (field.type.kind === "message") {
+      try {
+        checkDepth(depth + 1, context.maxDepth)
+      } catch (error) {
+        rethrow(error, key)
       }
     }
-    r.leave()
-    if (keep) return KEEP
-    if (value === undefined) value = message === undefined ? fresh(valueZero) : compile(message).create()
-    InternalRecord.assignProperty(target[key], k ?? keyZero, value)
-    return STORED
+    value = field.type.kind === "message"
+      ? createMessage(context, layoutOf(field.type.message))
+      : valueDefault(field.type)
+  }
+  const record = target[field.name] as Message
+  assign(record, key, value)
+}
+
+// Complete only surviving values. Explicit absence stays absent, and required
+// fields never receive a default that could conceal their absence on the wire.
+const finishMessage = (context: DecodeContext, descriptor: D.MessageDescriptor, target: Message): void => {
+  const layout = layoutOf(descriptor)
+  for (const field of layout.finish) {
+    const key = field.oneof?.name ?? field.name
+    const stored = ownValue(target, key)
+    if (field.oneof !== undefined && stored?._tag !== field.name) continue
+    const value = field.oneof === undefined ? stored : stored.value
+    try {
+      if (value === undefined) {
+        if (field.kind === "singular" && field.presence === "required") {
+          fail(`Expected required field ${field.name} of ${descriptor.typeName}`)
+        }
+        continue
+      }
+      // Scalars are already validated and immutable. Only messages and byte
+      // arrays need finishing, regardless of the field's cardinality.
+      if (field.type.kind !== "message" && !(field.type.kind === "scalar" && field.type.scalar === "bytes")) continue
+      switch (field.kind) {
+        case "singular": {
+          const finished = finishValue(context, field.type, value)
+          if (field.oneof === undefined) assign(target, key, finished)
+          else stored.value = finished
+          break
+        }
+        case "list":
+          for (let i = 0; i < value.length; i++) {
+            try {
+              value[i] = finishValue(context, field.type, value[i])
+            } catch (error) {
+              rethrow(error, i)
+            }
+          }
+          break
+        case "map":
+          for (const entry of Object.keys(value)) {
+            try {
+              assign(value, entry, finishValue(context, field.type, value[entry]))
+            } catch (error) {
+              rethrow(error, entry)
+            }
+          }
+          break
+      }
+    } catch (error) {
+      rethrow(error, key)
+    }
+  }
+  const unknown = context.unknown?.get(target)
+  if (unknown !== undefined) {
+    target[unknownFields] = Bytes.concat(unknown)
+    context.unknown!.delete(target)
   }
 }
 
-const fresh = (zero: unknown): unknown => zero instanceof Uint8Array ? new Uint8Array(0) : zero
-
-// Map keys are held as strings, as in JSON: 64-bit integers in decimal, and
-// booleans as `"true"` and `"false"`.
-const mapKeyReader = (type: D.ScalarValueType): (r: Input) => string => {
-  if (type.scalar === "string") return scalarReader(type) as (r: Input) => string
-  const read = scalarReader({ ...type, jsType: "bigint" })
-  return (r) => String(read(r))
-}
-
-const mapKeyZero = (type: D.ScalarValueType): string => {
-  switch (type.scalar) {
-    case "string":
-      return ""
-    case "bool":
-      return "false"
-    default:
-      return "0"
-  }
+const finishValue = (context: DecodeContext, type: D.ValueType, value: any): unknown => {
+  if (type.kind === "message") finishMessage(context, type.message, value)
+  else if (type.kind === "scalar" && type.scalar === "bytes") return new Uint8Array(value)
+  return value
 }
 
 // -----------------------------------------------------------------------------
-// encode
+// encoding
 // -----------------------------------------------------------------------------
+
+interface EncodeContext {
+  readonly maxDepth: number
+  readonly writeUnknown: boolean
+}
 
 /** @internal */
 export const encode = (
@@ -770,44 +785,47 @@ export const encode = (
 ): Result.Result<Uint8Array<ArrayBuffer>, Failure> => {
   try {
     const w = ProtobufWriter.make()
-    writeFields(w, compile(descriptor), message, 0, options ?? NO_OPTIONS)
+    writeFields(
+      { maxDepth: depthLimit(options?.maxDepth), writeUnknown: options?.writeUnknownFields !== false },
+      w,
+      descriptor,
+      message,
+      0
+    )
     return Result.succeed(w.finish())
-  } catch (e) {
-    return Result.fail(toFailure(e))
+  } catch (error) {
+    return Result.fail(toFailure(error))
   }
 }
 
-const NO_OPTIONS: EncodeOptions = {}
-
 const writeFields = (
-  w: ProtobufWriter.ProtobufWriter,
-  compiled: Compiled,
-  message: any,
+  context: EncodeContext,
+  w: Writer,
+  descriptor: D.MessageDescriptor,
+  message: unknown,
   depth: number,
-  options: EncodeOptions
+  layout = layoutOf(descriptor)
 ): void => {
-  const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
-  if (depth > maxDepth) fail(`Expected messages nested at most ${maxDepth} deep`)
+  checkDepth(depth, context.maxDepth)
   if (typeof message !== "object" || message === null || Array.isArray(message)) {
-    expected(`an object for ${compiled.descriptor.typeName}`, message)
+    expected(`an object for ${descriptor.typeName}`, message)
   }
-  const oneofs = compiled.oneofs
-  for (let i = 0; i < oneofs.length; i++) {
-    const { cases, key } = oneofs[i]
-    const value = ownValue(message, key)
-    if (value !== undefined && (typeof value !== "object" || value === null || !cases.has(value._tag))) {
-      rethrow(new Failure(`Expected a case of oneof ${key}, got ${show(value?._tag ?? value)}`), key)
+  const target = message as Message
+  for (const [oneof, cases] of layout.oneofs) {
+    const value = ownValue(target, oneof.name)
+    if (value !== undefined && (typeof value !== "object" || value === null || !cases.has(ownValue(value, "_tag")))) {
+      rethrow(new Failure(`Expected a case of oneof ${oneof.name}, got ${show(value?._tag ?? value)}`), oneof.name)
     }
   }
-  const writers = compiled.writers
-  let i = 0
-  try {
-    for (; i < writers.length; i++) writers[i](w, message, depth, options)
-  } catch (e) {
-    rethrow(e, compiled.writerKeys[i])
+  for (const field of layout.ordered) {
+    try {
+      field.write(context, w, target, depth)
+    } catch (error) {
+      rethrow(error, field.key)
+    }
   }
-  if (options.writeUnknownFields !== false) {
-    const unknown = message[unknownFields]
+  if (context.writeUnknown) {
+    const unknown = target[unknownFields]
     if (unknown !== undefined) {
       if (!(unknown instanceof Uint8Array)) expected("a Uint8Array of unknown fields", unknown)
       w.raw(unknown)
@@ -815,182 +833,208 @@ const writeFields = (
   }
 }
 
-const fieldWriter = (field: D.FieldDescriptor): FieldWriter => {
+const prepareWrite = (field: D.FieldDescriptor): WriteField["write"] => {
+  if (field.kind === "singular" && field.oneof === undefined && field.type.kind === "scalar") {
+    const key = field.name
+    const type = field.type
+    const tag = field.number * 8 + wireTypeOf(type)
+    const write = scalarWriters[type.scalar]
+    const implicit = field.presence === "implicit"
+    const required = field.presence === "required"
+    return (_context, w, target) => {
+      const value = ownValue(target, key)
+      if (value === undefined) {
+        if (required) fail(`Expected a value for required field ${key}`)
+      } else if (!implicit || !isZero(type, value)) {
+        w.uint32(tag)
+        write(w, value)
+      }
+    }
+  }
+  const write = prepareValueWrite(field.type, field.kind === "map" ? 2 : field.number)
+  return (context, w, target, depth) => writeField(context, w, field, target, depth, write)
+}
+
+const writeField = (
+  context: EncodeContext,
+  w: Writer,
+  field: D.FieldDescriptor,
+  target: Message,
+  depth: number,
+  write: ValueWriter
+): void => {
+  const stored = ownValue(target, field.oneof?.name ?? field.name)
+  if (field.oneof !== undefined && stored?._tag !== field.name) return
+  const value = field.oneof === undefined ? stored : ownValue(stored, "value")
+  if (field.oneof === undefined && value === undefined) {
+    if (field.kind === "singular" && field.presence === "required") {
+      fail(`Expected a value for required field ${field.name}`)
+    }
+    return
+  }
   switch (field.kind) {
     case "singular":
-      return singularWriter(field)
-    case "list":
-      return listWriter(field)
+      if (field.presence !== "implicit" || !isZero(field.type, value)) {
+        write(context, w, value, depth)
+      }
+      break
+    case "list": {
+      if (!Array.isArray(value)) expected("an array", value)
+      if (value.length === 0) return
+      if (field.packed && packable(field.type)) {
+        writePacked(w, field.type, field.number, value)
+      } else {
+        for (let i = 0; i < value.length; i++) {
+          try {
+            write(context, w, value[i], depth)
+          } catch (error) {
+            rethrow(error, i)
+          }
+        }
+      }
+      break
+    }
     case "map":
-      return mapWriter(field)
+      if (typeof value !== "object" || value === null || Array.isArray(value)) expected("a record", value)
+      for (const key of Object.keys(value)) {
+        try {
+          w.tag(field.number, WireType.Len).fork()
+          writeMapKey(w, field.key, key)
+          write(context, w, value[key], depth)
+          w.join()
+        } catch (error) {
+          rethrow(error, key)
+        }
+      }
+      break
   }
 }
 
-// Writes a value of a type with its tag.
-type ValueWriter = (w: ProtobufWriter.ProtobufWriter, value: unknown, depth: number, options: EncodeOptions) => void
+type ValueWriter = (context: EncodeContext, w: Writer, value: unknown, depth: number) => void
 
-const valueWriter = (type: D.ValueType, number: number): ValueWriter => {
+const prepareValueWrite = (type: D.ValueType, number: number): ValueWriter => {
+  const tag = number * 8 + wireTypeOf(type)
   switch (type.kind) {
     case "scalar": {
-      const write = scalarWriter(type.scalar)
-      const wireType = wireTypeOf(type)
-      return (w, v) => write(w.tag(number, wireType as ProtobufWriter.WireType), v)
+      const write = scalarWriters[type.scalar]
+      return (_context, w, value) => {
+        w.uint32(tag)
+        write(w, value)
+      }
     }
     case "enum":
-      return (w, v) => enumWriter(w.tag(number, WireType.Varint), v)
+      return (_context, w, value) => {
+        w.uint32(tag)
+        writeEnum(w, type, value)
+      }
     case "message": {
-      let compiled: Compiled | undefined
+      const message = type.message
+      let layout: Layout | undefined
       if (type.delimited) {
-        return (w, v, depth, options) => {
-          compiled ??= compile(type.message)
-          w.tag(number, WireType.StartGroup)
-          writeFields(w, compiled, v, depth + 1, options)
-          w.tag(number, WireType.EndGroup)
+        const endTag = number * 8 + WireType.EndGroup
+        return (context, w, value, depth) => {
+          w.uint32(tag)
+          writeFields(context, w, message, value, depth + 1, layout ??= layoutOf(message))
+          w.uint32(endTag)
         }
       }
-      return (w, v, depth, options) => {
-        compiled ??= compile(type.message)
-        w.tag(number, WireType.Len).fork()
-        writeFields(w, compiled, v, depth + 1, options)
+      return (context, w, value, depth) => {
+        w.uint32(tag).fork()
+        writeFields(context, w, message, value, depth + 1, layout ??= layoutOf(message))
         w.join()
       }
     }
   }
 }
 
-const singularWriter = (field: D.SingularFieldDescriptor): FieldWriter => {
-  const write = valueWriter(field.type, field.number)
-  const oneof = field.oneof
-  if (oneof !== undefined) {
-    const key = oneof.localName
-    const tag = field.localName
-    return (w, message, depth, options) => {
-      const value = ownValue(message, key)
-      if (value !== undefined && value._tag === tag) write(w, value.value, depth, options)
-    }
-  }
-  const key = field.localName
-  switch (field.presence) {
-    case "required":
-      return (w, message, depth, options) => {
-        const value = ownValue(message, key)
-        if (value === undefined) fail(`Expected a value for required field ${field.name}`)
-        write(w, value, depth, options)
-      }
-    case "explicit":
-      return (w, message, depth, options) => {
-        const value = ownValue(message, key)
-        if (value !== undefined) write(w, value, depth, options)
-      }
-    case "implicit": {
-      // Messages always have explicit presence.
-      const zero = isZero(field.type as D.ScalarValueType | D.EnumValueType)
-      return (w, message, depth, options) => {
-        const value = ownValue(message, key)
-        if (value !== undefined && !zero(value)) write(w, value, depth, options)
-      }
-    }
-  }
+const scalarWriters: Record<D.ScalarType, (w: Writer, value: unknown) => unknown> = {
+  string: (w, v) => w.string(typeof v === "string" ? v : expected("a string", v)),
+  bytes: (w, v) => w.bytes(v instanceof Uint8Array ? v : expected("a Uint8Array", v)),
+  double: (w, v) => w.double(typeof v === "number" ? v : expected("a number for a double", v)),
+  float: (w, v) => w.float(float(v)),
+  int32: (w, v) => w.int32(int32("int32", v)),
+  uint32: (w, v) => w.uint32(uint32("uint32", v)),
+  sint32: (w, v) => w.sint32(int32("sint32", v)),
+  fixed32: (w, v) => w.fixed32(uint32("fixed32", v)),
+  sfixed32: (w, v) => w.sfixed32(int32("sfixed32", v)),
+  bool: (w, v) => w.bool(typeof v === "boolean" ? v : expected("a boolean", v)),
+  int64: (w, v) => w.int64(toInt64("int64", v)),
+  uint64: (w, v) => w.uint64(toInt64("uint64", v)),
+  sint64: (w, v) => w.sint64(toInt64("sint64", v)),
+  fixed64: (w, v) => w.fixed64(toInt64("fixed64", v)),
+  sfixed64: (w, v) => w.sfixed64(toInt64("sfixed64", v))
 }
 
-const listWriter = (field: D.ListFieldDescriptor): FieldWriter => {
-  const key = field.localName
-  const type = field.type
-  const writeList = field.packed && type.kind !== "message" ? packedWriter(type, field.number) : undefined
-  const write = valueWriter(type, field.number)
-  return (w, message, depth, options) => {
-    const list = ownValue(message, key)
-    if (list === undefined) return
-    if (!Array.isArray(list)) expected("an array", list)
-    if (list.length === 0) return
-    if (writeList !== undefined) return writeList(w, list)
-    let i = 0
-    try {
-      for (; i < list.length; i++) write(w, list[i], depth, options)
-    } catch (e) {
-      rethrow(e, i)
-    }
-  }
-}
-
-const packedWriter = (
+const writePacked = (
+  w: Writer,
   type: D.ScalarValueType | D.EnumValueType,
-  number: number
-): ((w: ProtobufWriter.ProtobufWriter, list: ReadonlyArray<unknown>) => void) | undefined => {
-  if (type.kind === "scalar" && (type.scalar === "string" || type.scalar === "bytes")) return undefined
-  const write = type.kind === "enum" ? enumWriter : scalarWriter(type.scalar)
-  const wireType = wireTypeOf(type)
-  const size = wireType === WireType.I64 ? 8 : wireType === WireType.I32 ? 4 : 0
-  const floats = type.kind === "scalar" && (type.scalar === "double" || type.scalar === "float")
-  return (w, list) => {
-    let i = 0
-    try {
-      w.tag(number, WireType.Len)
-      // The length of fixed-width elements is known up front.
-      if (size > 0) w.uint32(list.length * size)
-      else w.fork()
-      if (floats) {
-        // Floats are written together through one view, which is faster than
-        // a write per element.
-        const view = new DataView(new ArrayBuffer(list.length * size))
-        if (size === 8) {
-          for (; i < list.length; i++) {
-            const v = list[i]
-            view.setFloat64(i * 8, typeof v === "number" ? v : expected("a number for a double", v), true)
-          }
-        } else {
-          for (; i < list.length; i++) view.setFloat32(i * 4, float(list[i]), true)
-        }
-        w.raw(new Uint8Array(view.buffer))
-      } else {
-        for (; i < list.length; i++) write(w, list[i])
+  number: number,
+  list: ReadonlyArray<unknown>
+): void => {
+  w.tag(number, WireType.Len)
+  const wire = wireTypeOf(type)
+  const size = wire === WireType.I64 ? 8 : wire === WireType.I32 ? 4 : 0
+  if (size === 0) {
+    w.fork()
+    writePackedValues(w, type, list)
+    w.join()
+    return
+  }
+  const length = list.length * size
+  if (length > UINT32_MAX) fail("Expected a packed field length of at most 4294967295 bytes")
+  w.uint32(length)
+  if (type.kind !== "scalar" || (type.scalar !== "double" && type.scalar !== "float")) {
+    writePackedValues(w, type, list)
+    return
+  }
+  const view = new DataView(new ArrayBuffer(length))
+  let index = 0
+  try {
+    if (size === 8) {
+      for (; index < list.length; index++) {
+        const value = list[index]
+        view.setFloat64(index * 8, typeof value === "number" ? value : expected("a number for a double", value), true)
       }
-      if (size === 0) w.join()
-    } catch (e) {
-      rethrow(e, i)
+    } else {
+      for (; index < list.length; index++) view.setFloat32(index * 4, float(list[index]), true)
     }
+  } catch (error) {
+    rethrow(error, index)
+  }
+  w.raw(new Uint8Array(view.buffer))
+}
+
+const writePackedValues = (
+  w: Writer,
+  type: D.ScalarValueType | D.EnumValueType,
+  list: ReadonlyArray<unknown>
+): void => {
+  let index = 0
+  try {
+    if (type.kind === "enum") {
+      for (; index < list.length; index++) writeEnum(w, type, list[index])
+    } else {
+      const write = scalarWriters[type.scalar]
+      for (; index < list.length; index++) write(w, list[index])
+    }
+  } catch (error) {
+    rethrow(error, index)
   }
 }
 
-const mapWriter = (field: D.MapFieldDescriptor): FieldWriter => {
-  const key = field.localName
-  const writeKey = mapKeyWriter(field.key)
-  const writeValue = valueWriter(field.type, 2)
-  const number = field.number
-  return (w, message, depth, options) => {
-    const record = ownValue(message, key)
-    if (record === undefined) return
-    if (typeof record !== "object" || record === null || Array.isArray(record)) expected("a record", record)
-    for (const k of Object.keys(record)) {
-      try {
-        w.tag(number, WireType.Len).fork()
-        writeKey(w, k)
-        writeValue(w, record[k], depth, options)
-        w.join()
-      } catch (e) {
-        rethrow(e, k)
-      }
-    }
-  }
-}
-
-// Writes the key field of a map entry from its string.
-const mapKeyWriter = (type: D.ScalarValueType): (w: ProtobufWriter.ProtobufWriter, key: string) => void => {
-  const write = scalarWriter(type.scalar)
-  const wireType = wireTypeOf(type) as ProtobufWriter.WireType
+const writeMapKey = (w: Writer, type: D.ScalarValueType, key: string): void => {
+  w.tag(1, wireTypeOf(type) as ProtobufWriter.WireType)
   switch (type.scalar) {
     case "string":
-      return (w, k) => write(w.tag(1, wireType), k)
+      writeScalar(w, type.scalar, key)
+      break
     case "bool":
-      return (w, k) =>
-        write(w.tag(1, wireType), k === "true" ? true : k === "false" ? false : expected("a boolean key", k))
-    default: {
-      const big = is64Bit(type.scalar)
-      return (w, k) => {
-        if (!/^-?[0-9]+$/.test(k)) expected(`an integer key for ${a(type.scalar)}`, k)
-        write(w.tag(1, wireType), big ? k : Number(k))
-      }
-    }
+      writeScalar(w, type.scalar, key === "true" ? true : key === "false" ? false : expected("a boolean key", key))
+      break
+    default:
+      if (!/^-?[0-9]+$/.test(key)) expected(`an integer key for ${a(type.scalar)}`, key)
+      writeScalar(w, type.scalar, is64Bit(type.scalar) ? key : Number(key))
+      break
   }
 }
 
@@ -1003,8 +1047,9 @@ const mapKeyWriter = (type: D.ScalarValueType): (w: ProtobufWriter.ProtobufWrite
 const ITEM_START = 1 * 8 + WireType.StartGroup
 const ITEM_END = 1 * 8 + WireType.EndGroup
 
-// Splits the unknown fields of a message into the occurrences of an
-// extension, which decode into a holder, and the rest.
+// Splits unknown fields into occurrences of an extension and the rest.
+// MessageSet occurrences are bare message payloads; ordinary extensions
+// include their field tags so they can decode into a holder.
 const splitExtension = (
   message: any,
   extension: D.ExtensionDescriptor
@@ -1021,22 +1066,33 @@ const splitExtension = (
     const start = r.offset
     const tag = r.tag()
     if (messageSet && tag === ITEM_START) {
-      const payload = readItem(r, bytes, number)
+      const payload = readItem(r, number)
       if (payload === undefined) rest.push(bytes.subarray(start, r.offset))
-      // The payload is the message, which is read as an occurrence of a
-      // length-delimited field.
-      else own.push(ProtobufWriter.make().tag(number, WireType.Len).bytes(payload).finish())
+      else own.push(payload)
+      continue
+    }
+    // MessageSet also accepts ordinary length-delimited extension fields.
+    // Keep both forms as bare payloads: its ID may exceed the range of tags.
+    if (messageSet && tag >>> 3 === number && (tag & 7) === WireType.Len) {
+      own.push(r.bytesView())
       continue
     }
     r.skip(tag)
-    ;(!messageSet && tag >>> 3 === number ? own : rest).push(bytes.subarray(start, r.offset))
+    // A field with an incompatible wire type remains unknown when setting
+    // or clearing the extension, just as it does during message decoding.
+    const type = extension.field.type
+    const actual = tag & 7
+    const packed = extension.field.kind === "list" && actual === WireType.Len &&
+      (type.kind === "enum" || (type.kind === "scalar" && type.scalar !== "string" && type.scalar !== "bytes"))
+    const matches = !messageSet && tag >>> 3 === number && (actual === wireTypeOf(type) || packed)
+    ;(matches ? own : rest).push(bytes.subarray(start, r.offset))
   }
   return { own, rest }
 }
 
 // Reads the rest of a MessageSet item after its start tag, and returns its
 // message bytes when its type id is `typeId`.
-const readItem = (r: ProtobufReader.ProtobufReader, input: Uint8Array, typeId: number): Uint8Array | undefined => {
+const readItem = (r: ProtobufReader.ProtobufReader, typeId: number): Uint8Array | undefined => {
   let id: number | undefined
   let payload: Uint8Array | undefined
   while (true) {
@@ -1045,10 +1101,7 @@ const readItem = (r: ProtobufReader.ProtobufReader, input: Uint8Array, typeId: n
     if (tag === 2 * 8 + WireType.Varint) {
       id = r.uint32()
     } else if (tag === 3 * 8 + WireType.Len) {
-      r.enter()
-      const start = r.offset
-      r.leave()
-      payload = input.subarray(start, r.offset)
+      payload = r.bytesView()
     } else {
       r.skip(tag)
     }
@@ -1056,17 +1109,54 @@ const readItem = (r: ProtobufReader.ProtobufReader, input: Uint8Array, typeId: n
   return id === typeId ? payload ?? new Uint8Array(0) : undefined
 }
 
-// A message of one field, the extension, which its occurrences decode into.
-const holderOf = (extension: D.ExtensionDescriptor): Compiled => {
-  const cached = holders.get(extension)
-  if (cached !== undefined) return cached
-  const descriptor = { ...extension.extendee, fields: [extension.field], oneofs: [] }
-  const compiled = compile(descriptor)
-  holders.set(extension, compiled)
-  return compiled
+// A message of one field, an ordinary extension, which its occurrences decode into.
+const holders = new WeakMap<D.ExtensionDescriptor, D.MessageDescriptor>()
+const holderOf = (extension: D.ExtensionDescriptor): D.MessageDescriptor => {
+  let descriptor = holders.get(extension)
+  if (descriptor === undefined) {
+    descriptor = { ...extension.extendee, fields: [extension.field], oneofs: [] }
+    holders.set(extension, descriptor)
+  }
+  return descriptor
 }
 
-const holders = new WeakMap<D.ExtensionDescriptor, Compiled>()
+const readExtension = (extension: D.ExtensionDescriptor, occurrences: ReadonlyArray<Uint8Array>): Message =>
+  decodeMessage(holderOf(extension), Bytes.concat(occurrences))
+
+const messageSetDescriptor = (extension: D.ExtensionDescriptor): D.MessageDescriptor => {
+  const field = extension.field
+  if (field.kind !== "singular" || field.type.kind !== "message") {
+    return fail("Expected a singular message extension of a MessageSet")
+  }
+  return field.type.message
+}
+
+// Called with at least one payload. Each reader is bounded to its occurrence,
+// while merge state and retained unknown fields survive until final validation.
+const readMessageSet = (extension: D.ExtensionDescriptor, occurrences: ReadonlyArray<Uint8Array>): Message => {
+  const descriptor = messageSetDescriptor(extension)
+  let context: DecodeContext = {
+    input: occurrences[0],
+    maxDepth: DEFAULT_MAX_DEPTH,
+    keepUnknown: true,
+    needsFinish: false,
+    unknown: undefined
+  }
+  const target = createMessage(context, layoutOf(descriptor))
+  for (const input of occurrences) {
+    context = {
+      input,
+      maxDepth: DEFAULT_MAX_DEPTH,
+      keepUnknown: true,
+      needsFinish: context.needsFinish,
+      unknown: context.unknown
+    }
+    // The payload is nested one level inside the extended message.
+    readFields(context, ProtobufReader.make(input), descriptor, target, 1)
+  }
+  if (context.needsFinish || context.unknown !== undefined) finishMessage(context, descriptor, target)
+  return target
+}
 
 /** @internal */
 export const getExtension = (
@@ -1077,11 +1167,15 @@ export const getExtension = (
     const { own } = splitExtension(message, extension)
     const field = extension.field
     if (own.length === 0) return Result.succeed(field.kind === "list" ? [] : undefined)
-    const r = new Input(Bytes.concat(own), undefined)
-    const target = holderOf(extension).create()
-    readFields(r, holderOf(extension), target, undefined, 0)
-    if (r.pending !== undefined) checkRequired(r.pending)
-    return Result.succeed(ownValue(target, field.localName))
+    if (extension.extendee.messageSetWireFormat) {
+      try {
+        return Result.succeed(readMessageSet(extension, own))
+      } catch (error) {
+        rethrow(error, field.name)
+      }
+    }
+    const target = readExtension(extension, own)
+    return Result.succeed(ownValue(target, field.name))
   } catch (e) {
     return Result.fail(toFailure(e))
   }
@@ -1094,15 +1188,32 @@ export const setExtension = (
   value: unknown
 ): Result.Result<Record<PropertyKey, unknown>, Failure> => {
   try {
-    const { rest } = splitExtension(message, extension)
+    const { own, rest } = splitExtension(message, extension)
     const chunks = [...rest]
+    // Closed-enum numbers outside the descriptor are unknown data, even
+    // when they share the extension's field number or a packed occurrence.
+    const type = extension.field.type
+    if (own.length > 0 && type.kind === "enum" && !type.enum.open) {
+      const unknown = readExtension(extension, own)[unknownFields]
+      if (unknown !== undefined) chunks.push(unknown)
+    }
     if (value !== undefined) {
       const w = ProtobufWriter.make()
-      writeFields(w, holderOf(extension), { [extension.field.localName]: value }, 0, NO_OPTIONS)
-      const encoded = w.finish()
-      chunks.push(
-        extension.extendee.messageSetWireFormat ? messageSetItem(extension.field.number, encoded) : encoded
-      )
+      const context = { maxDepth: DEFAULT_MAX_DEPTH, writeUnknown: true }
+      if (extension.extendee.messageSetWireFormat) {
+        w.tag(1, WireType.StartGroup)
+          .tag(2, WireType.Varint).uint32(extension.field.number)
+          .tag(3, WireType.Len).fork()
+        try {
+          writeFields(context, w, messageSetDescriptor(extension), value, 1)
+        } catch (error) {
+          rethrow(error, extension.field.name)
+        }
+        w.join().tag(1, WireType.EndGroup)
+      } else {
+        writeFields(context, w, holderOf(extension), { [extension.field.name]: value }, 0)
+      }
+      chunks.push(w.finish())
     }
     const out: Record<PropertyKey, unknown> = { ...message }
     if (chunks.length === 0) delete out[unknownFields]
@@ -1111,18 +1222,4 @@ export const setExtension = (
   } catch (e) {
     return Result.fail(toFailure(e))
   }
-}
-
-// The item of a message extension of a MessageSet, from the bytes of its
-// field.
-const messageSetItem = (typeId: number, field: Uint8Array): Uint8Array<ArrayBuffer> => {
-  const r = ProtobufReader.make(field)
-  r.tag()
-  const payload = r.bytes()
-  return ProtobufWriter.make()
-    .tag(1, WireType.StartGroup)
-    .tag(2, WireType.Varint).uint32(typeId)
-    .tag(3, WireType.Len).bytes(payload)
-    .tag(1, WireType.EndGroup)
-    .finish()
 }

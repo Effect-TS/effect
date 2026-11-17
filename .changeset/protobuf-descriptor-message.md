@@ -2,4 +2,8 @@
 "effect": patch
 ---
 
-Add `ProtobufDescriptor` and `ProtobufMessage` to `effect/protobuf`. `ProtobufDescriptor` resolves the `FileDescriptorProto`s of `.proto` files (proto2, proto3, editions 2023 and 2024), from a `FileDescriptorSet` or as values, into descriptors of their messages, enums, extensions and services. It also exports `google/protobuf/descriptor.proto` itself, generated from protoc's descriptor of it: an interface and a `MessageDescriptor` per message, such as `FileDescriptorProto`, and its enums. `ProtobufMessage` encodes and decodes message values by their descriptors, without schemas, including unknown fields, groups, closed enums, maps, oneofs, extensions and MessageSet.
+Add `ProtobufDescriptor` and `ProtobufMessage` for protobuf codecs that preserve original names, validate completed messages, and retain unknown fields.
+
+Replace `reader.enter(); read(reader); reader.leave()` with `read(reader.delimited())`. The child reader is bounded to the payload, and the parent advances past it immediately.
+
+`ProtobufWriter.tag` now throws `RangeError` for invalid tags; supply an integer field number from 1 through 536870911 and a wire type from 0 through 5.

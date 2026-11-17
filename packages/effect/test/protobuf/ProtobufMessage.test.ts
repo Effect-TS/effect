@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Hex from "effect/encoding/Hex"
 import { ProtobufMessage } from "effect/protobuf"
+import * as ProtobufDescriptor from "effect/protobuf/ProtobufDescriptor"
 import * as Result from "effect/Result"
 import { message, registry } from "./descriptors.ts"
 
@@ -54,6 +55,17 @@ const shapeZeros = {
 const legacyZeros = { values: [], modes: [], mode_by_name: {} }
 
 describe("ProtobufMessage", () => {
+  it("encodes and decodes the largest valid field number", () => {
+    const descriptor = Result.getOrThrow(ProtobufDescriptor.make([{
+      name: "large.proto",
+      syntax: "proto3",
+      message_type: [{ name: "Large", field: [{ name: "value", number: 536870911, label: 1, type: 5 }] }]
+    }])).getMessage("Large")!
+    const encoded = bytes("f8ffffff0f01")
+    assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.encode(descriptor)({ value: 1 })), encoded)
+    assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.decode(descriptor)(encoded)), { value: 1 })
+  })
+
   // Each case encodes to its bytes, and decodes back to its value, with the
   // zero values of the other fields.
   describe("encodes and decodes", () => {
@@ -205,6 +217,70 @@ describe("ProtobufMessage", () => {
     })
   })
 
+  describe("validates the completed message", () => {
+    const zeros = { children: [], items: {} }
+    const cases: ReadonlyArray<readonly [string, string, object]> = [
+      ["replaced oneof", "0a001001", { kind: { _tag: "other_value", value: 1 } }],
+      ["replaced ancestor", "0a04080112001001", { kind: { _tag: "other_value", value: 1 } }],
+      ["merged oneof", "0a000a020801", { kind: { _tag: "child_value", value: { n: 1 } } }],
+      ["empty merged occurrence", "0a0208010a00", { kind: { _tag: "child_value", value: { n: 1 } } }],
+      ["merged singular message", "1a001a020801", { singular: { n: 1 } }],
+      ["replaced map entry", "2a050a016112002a070a016112020801", { items: { a: { n: 1 } } }],
+      ["replaced default map value", "2a030a01612a070a016112020801", { items: { a: { n: 1 } } }],
+      ["merged map value", "2a090a0161120012020801", { items: { a: { n: 1 } } }]
+    ]
+    for (const [name, hex, expected] of cases) {
+      it(name, () => {
+        const value = decode("legacy.RequiredContainer", hex)
+        assert.deepStrictEqual(value, { ...zeros, ...expected })
+        assert.deepStrictEqual(decode("legacy.RequiredContainer", encode("legacy.RequiredContainer", value)), value)
+      })
+    }
+
+    const invalid: ReadonlyArray<readonly [string, string, ReadonlyArray<PropertyKey>]> = [
+      ["active oneof", "0a00", ["kind", "n"]],
+      ["oneof switched back", "0a02080110010a00", ["kind", "n"]],
+      ["singular message", "1a00", ["singular", "n"]],
+      ["nested message", "1a0408011200", ["singular", "child", "n"]],
+      ["repeated element", "220022020801", ["children", 0, "n"]],
+      ["default map value", "2a030a0161", ["items", "a", "n"]],
+      ["explicit empty map value", "2a050a01611200", ["items", "a", "n"]],
+      ["replacement map value", "2a070a0161120208012a030a0161", ["items", "a", "n"]]
+    ]
+    for (const [name, hex, path] of invalid) {
+      it(`rejects ${name} with the missing field path`, () => {
+        const error = failure(ProtobufMessage.decode(message("legacy.RequiredContainer"))(bytes(hex)))
+        assert.deepStrictEqual(error.path, path)
+        assert.include(error.message, "Expected required field n of legacy.RequiredChild")
+      })
+    }
+  })
+
+  it("applies maxDepth to unknown groups inside known messages", () => {
+    const value = "12 04 0b0b0c0c"
+    assert.isTrue(Result.isFailure(ProtobufMessage.decode(message("test.Shape"), { maxDepth: 2 })(bytes(value))))
+    assert.deepStrictEqual(decode("test.Shape", value, { maxDepth: 3 }).origin, {
+      x: 0,
+      y: 0,
+      [unknownFields]: bytes("0b0b0c0c")
+    })
+  })
+
+  it("applies maxDepth to both explicit and default map message values", () => {
+    for (const hex of ["5a020801", "5a0408011200"]) {
+      const error = failure(ProtobufMessage.decode(message("test.Shape"), { maxDepth: 0 })(bytes(hex)))
+      assert.deepStrictEqual(error.path, ["flags", "true"])
+      assert.deepStrictEqual(decode("test.Shape", hex, { maxDepth: 1 }).flags, { true: { x: 0, y: 0 } })
+    }
+  })
+
+  it("rejects invalid nesting limits consistently", () => {
+    for (const maxDepth of [-1, 0.5, NaN, Infinity]) {
+      assert.isTrue(Result.isFailure(ProtobufMessage.decode(message("test.Point"), { maxDepth })(bytes(""))))
+      assert.isTrue(Result.isFailure(ProtobufMessage.encode(message("test.Point"), { maxDepth })({})))
+    }
+  })
+
   describe("decodes", () => {
     const cases: ReadonlyArray<readonly [string, string, string, object]> = [
       ["merged occurrences of a message", "test.Shape", "12020801 12021002", { ...shapeZeros, origin: { x: 1, y: 2 } }],
@@ -271,12 +347,91 @@ describe("ProtobufMessage", () => {
     assert.strictEqual(encode("test.Shape", value), "0a0161 1a00 f80701".replaceAll(" ", ""))
   })
 
+  it("owns decoded byte fields and retained unknown bytes", () => {
+    const input = bytes("62020102f80701")
+    const value = Result.getOrThrow(ProtobufMessage.decode(message("test.Scalars"))(input))
+    input.fill(0)
+    assert.deepStrictEqual(value.bytes, bytes("0102"))
+    assert.deepStrictEqual(value[unknownFields], bytes("f80701"))
+  })
+
+  it("owns bytes in repeated fields, maps and oneofs after finalization", () => {
+    const input = bytes("0a010112060a01611201021a0103")
+    const value = Result.getOrThrow(ProtobufMessage.decode(message("test.ByteCollections"))(input))
+    input.fill(0)
+    assert.deepStrictEqual(value, {
+      items: [bytes("01")],
+      values: { a: bytes("02") },
+      kind: { _tag: "selected", value: bytes("03") }
+    })
+  })
+
+  it("distinguishes omitted fields from explicit zero values when merging messages", () => {
+    assert.deepStrictEqual(decode("test.Shape", "120208011200").origin, { x: 1, y: 0 })
+    assert.deepStrictEqual(decode("test.Shape", "1202080112020800").origin, { x: 0, y: 0 })
+    assert.deepStrictEqual(decode("legacy.RequiredContainer", "0a000a020800").kind, {
+      _tag: "child_value",
+      value: { n: 0 }
+    })
+  })
+
+  it("keeps unknown spans with the message that owns them", () => {
+    const merged = decode("test.Shape", "120408011801120410022002")
+    assert.deepStrictEqual(merged.origin, { x: 1, y: 2, [unknownFields]: bytes("18012002") })
+    const replaced = decode("legacy.RequiredContainer", "0a040801180110017803")
+    assert.deepStrictEqual(replaced.kind, { _tag: "other_value", value: 1 })
+    assert.deepStrictEqual(replaced[unknownFields], bytes("7803"))
+  })
+
+  it("does not change a oneof case when a closed-enum occurrence is unknown", () => {
+    assert.deepStrictEqual(
+      failure(ProtobufMessage.decode(message("legacy.RequiredContainer"))(bytes("0a003007"))).path,
+      ["kind", "n"]
+    )
+    const value = decode("legacy.RequiredContainer", "0a0208013007")
+    assert.deepStrictEqual(value.kind, { _tag: "child_value", value: { n: 1 } })
+    assert.deepStrictEqual(value[unknownFields], bytes("3007"))
+    assert.deepStrictEqual(decode("legacy.RequiredContainer", "0a003001").kind, { _tag: "mode_value", value: 1 })
+  })
+
+  it("does not replace a map entry with an unknown closed-enum value", () => {
+    const value = decode("legacy.Legacy", "080142050a0161100142050a01611007")
+    assert.deepStrictEqual(value.mode_by_name, { a: 1 })
+    assert.deepStrictEqual(value[unknownFields], bytes("42050a01611007"))
+  })
+
+  it("retains large packed closed-enum fields without exceeding argument limits", () => {
+    const count = 150000
+    // id = 1, followed by 150000 packed occurrences of the unknown enum number 7.
+    const input = new Uint8Array(count + 6)
+    input.set([0x08, 0x01, 0x3a, 0xf0, 0x93, 0x09])
+    input.fill(7, 6)
+    const value = Result.getOrThrow(ProtobufMessage.decode(message("legacy.Legacy"))(input))
+    assert.deepStrictEqual(value.modes, [])
+    const expected = new Uint8Array(count * 2)
+    for (let i = 0; i < expected.length; i += 2) {
+      expected[i] = 0x38
+      expected[i + 1] = 7
+    }
+    assert.deepStrictEqual(value[unknownFields], expected)
+    const dropped = Result.getOrThrow(
+      ProtobufMessage.decode(message("legacy.Legacy"), { readUnknownFields: false })(input)
+    )
+    assert.isUndefined(dropped[unknownFields])
+  })
+
   it("drops unknown fields with readUnknownFields: false and writeUnknownFields: false", () => {
     assert.deepStrictEqual(decode("test.Point", "f80701", { readUnknownFields: false }), { x: 0, y: 0 })
     assert.strictEqual(encode("test.Point", { [unknownFields]: bytes("f80701") }, { writeUnknownFields: false }), "")
   })
 
   describe("fails to decode", () => {
+    it("rejects malformed bytes even if a later occurrence would replace the value", () => {
+      for (const hex of ["0a01081001", "2a040a0161122a070a016112020801"]) {
+        assert.isTrue(Result.isFailure(ProtobufMessage.decode(message("legacy.RequiredContainer"))(bytes(hex))))
+      }
+    })
+
     const cases: ReadonlyArray<readonly [string, string, string, string, ReadonlyArray<PropertyKey>]> = [
       ["a truncated varint", "test.Point", "08", "x: Expected a complete value at offset 1", ["x"]],
       ["invalid UTF-8", "test.Shape", "0a01ff", "name: Expected valid UTF-8 at offset 2", ["name"]],
@@ -299,12 +454,13 @@ describe("ProtobufMessage", () => {
         "a partial packed double",
         "test.Shape",
         "3a09 000000000000f03f 01",
-        "weights: Expected a complete value at offset 10",
+        "weights[1]: Expected a complete value at offset 10",
         [
-          "weights"
+          "weights",
+          1
         ]
       ],
-      ["a missing required field", "legacy.Legacy", "1200", "Expected required field id of legacy.Legacy", []],
+      ["a missing required field", "legacy.Legacy", "1200", "id: Expected required field id of legacy.Legacy", ["id"]],
       [
         "a stray end group tag",
         "test.Point",
@@ -333,6 +489,13 @@ describe("ProtobufMessage", () => {
   })
 
   describe("fails to encode", () => {
+    it("enforces closed enums for singular, packed and map values", () => {
+      for (const value of [{ id: 1, mode: 7 }, { id: 1, modes: [1, 7] }, { id: 1, mode_by_name: { a: 7 } }]) {
+        assert.isTrue(Result.isFailure(ProtobufMessage.encode(message("legacy.Legacy"))(value)))
+      }
+      const open = { ...shapeZeros, color: 7, colors: [7] }
+      assert.deepStrictEqual(decode("test.Shape", encode("test.Shape", open)), open)
+    })
     const cases: ReadonlyArray<readonly [string, string, unknown, string, ReadonlyArray<PropertyKey>]> = [
       ["a value of another type", "test.Shape", { name: 1 }, "name: Expected a string, got 1", ["name"]],
       [
@@ -397,6 +560,13 @@ describe("ProtobufMessage", () => {
     const labels = registry.getExtension("legacy.labels")!
     const member = registry.getExtension("legacy.SetMember.member")!
 
+    it("validates message extensions after all occurrences have merged", () => {
+      const extension = registry.getExtension("legacy.required_child")!
+      const read = (hex: string) => ProtobufMessage.getExtension({ [unknownFields]: bytes(hex) }, extension)
+      assert.deepStrictEqual(Result.getOrThrow(read("b20600b206020801")), { n: 1 })
+      assert.deepStrictEqual(failure(read("b20600")).path, ["required_child", "n"])
+    })
+
     it("sets, replaces and clears an extension in the unknown fields", () => {
       const set = Result.getOrThrow(ProtobufMessage.setExtension({ id: 1 }, priority, 3))
       assert.strictEqual(encode("legacy.Legacy", set), "0801a00603")
@@ -426,6 +596,123 @@ describe("ProtobufMessage", () => {
       const set = Result.getOrThrow(ProtobufMessage.setExtension({}, member, { text: "a" }))
       assert.deepStrictEqual(set[unknownFields], bytes("0b 10e807 1a030a0161 0c"))
       assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, member)), { text: "a" })
+    })
+
+    for (
+      const [number, typeId] of [
+        [536870912, "8080808002"],
+        [536870913, "8180808002"],
+        [2147483646, "feffffff07"]
+      ] as const
+    ) {
+      it(`reads, writes, replaces and clears MessageSet extension ${number}`, () => {
+        const descriptors = Result.getOrThrow(ProtobufDescriptor.make([{
+          name: "message-set.proto",
+          message_type: [
+            {
+              name: "Container",
+              options: { message_set_wire_format: true },
+              extension_range: [{ start: 4, end: 2147483647 }]
+            },
+            {
+              name: "Payload",
+              field: [
+                { name: "x", number: 1, type: 5, label: 2 },
+                { name: "y", number: 2, type: 5, label: 1 }
+              ]
+            }
+          ],
+          extension: [{ name: "payload", number, type: 11, type_name: ".Payload", label: 1, extendee: ".Container" }]
+        }]))
+        const extension = descriptors.getExtension("payload")!
+        const container = descriptors.getMessage("Container")!
+        const other = "0b 10e807 1a030a0161 0c"
+        const wire = bytes(`${other} 0b 10${typeId} 1a020807 0c`)
+        const decoded = Result.getOrThrow(ProtobufMessage.decode(container)(wire))
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(decoded, extension)), { x: 7 })
+        const set = Result.getOrThrow(
+          ProtobufMessage.setExtension({ [unknownFields]: bytes(other) }, extension, { x: 7 })
+        )
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.encode(container)(set)), wire)
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, extension)), { x: 7 })
+        const replaced = Result.getOrThrow(ProtobufMessage.setExtension(decoded, extension, { x: 8 }))
+        assert.deepStrictEqual(replaced[unknownFields], bytes(`${other} 0b 10${typeId} 1a020808 0c`))
+        const cleared = Result.getOrThrow(ProtobufMessage.setExtension(replaced, extension, undefined))
+        assert.deepStrictEqual(cleared[unknownFields], bytes(other))
+        assert.isUndefined(Result.getOrThrow(ProtobufMessage.getExtension(cleared, extension)))
+
+        // MessageSet payloads merge before required fields are checked.
+        const merged = { [unknownFields]: bytes(`0b 10${typeId} 1a021009 0c 0b 10${typeId} 1a020807 0c`) }
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(merged, extension)), { x: 7, y: 9 })
+        assert.deepStrictEqual(
+          failure(ProtobufMessage.getExtension({ [unknownFields]: bytes(`0b 10${typeId} 1a00 0c`) }, extension)).path,
+          ["payload", "x"]
+        )
+        assert.deepStrictEqual(failure(ProtobufMessage.setExtension({}, extension, { x: "bad" })).path, [
+          "payload",
+          "x"
+        ])
+      })
+    }
+
+    it("reads MessageSet extensions encoded as ordinary message fields", () => {
+      const set = { [unknownFields]: bytes("c23e030a0161") }
+      assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, member)), { text: "a" })
+      const cleared = Result.getOrThrow(ProtobufMessage.setExtension(set, member, undefined))
+      assert.isFalse(unknownFields in cleared)
+    })
+
+    it("rejects field values split across MessageSet payloads", () => {
+      // The payloads 0a02 and 6162 only form a valid string field when joined.
+      for (
+        const hex of [
+          "0b10e8071a020a020c0b10e8071a0261620c",
+          "c23e020a02c23e026162",
+          "0b10e8071a020a020cc23e026162"
+        ]
+      ) {
+        const result = ProtobufMessage.getExtension({ [unknownFields]: bytes(hex) }, member)
+        assert.deepStrictEqual(failure(result).path, ["member", "text"])
+      }
+    })
+
+    it("retains owned unknown fields from every merged MessageSet payload", () => {
+      const input = bytes("0b10e8071a0210010cc23e050a01611802")
+      const value = Result.getOrThrow(ProtobufMessage.getExtension({ [unknownFields]: input }, member))
+      input.fill(0)
+      assert.deepStrictEqual(value, { text: "a", [unknownFields]: bytes("10011802") })
+    })
+
+    it("preserves incompatible wire types when replacing extensions", () => {
+      const unknown = { [unknownFields]: bytes("a2060178") }
+      assert.isUndefined(Result.getOrThrow(ProtobufMessage.getExtension(unknown, priority)))
+      const set = Result.getOrThrow(ProtobufMessage.setExtension(unknown, priority, 3))
+      assert.deepStrictEqual(set[unknownFields], bytes("a2060178a00603"))
+      assert.strictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, priority)), 3)
+      const cleared = Result.getOrThrow(ProtobufMessage.setExtension(set, priority, undefined))
+      assert.deepStrictEqual(cleared[unknownFields], unknown[unknownFields])
+    })
+
+    it("preserves unknown closed-enum numbers when replacing extensions", () => {
+      const extension = registry.getExtension("legacy.mode_ext")!
+      const original = { [unknownFields]: bytes("b80607b80601") }
+      assert.strictEqual(Result.getOrThrow(ProtobufMessage.getExtension(original, extension)), 1)
+      const set = Result.getOrThrow(ProtobufMessage.setExtension(original, extension, 2))
+      assert.deepStrictEqual(set[unknownFields], bytes("b80607b80602"))
+      const cleared = Result.getOrThrow(ProtobufMessage.setExtension(set, extension, undefined))
+      assert.deepStrictEqual(cleared[unknownFields], bytes("b80607"))
+      assert.isUndefined(Result.getOrThrow(ProtobufMessage.getExtension(cleared, extension)))
+    })
+
+    it("preserves unknown numbers from packed closed-enum extensions", () => {
+      const extension = registry.getExtension("legacy.modes_ext")!
+      const original = { [unknownFields]: bytes("c20603010702") }
+      assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(original, extension)), [1, 2])
+      const set = Result.getOrThrow(ProtobufMessage.setExtension(original, extension, [2]))
+      assert.deepStrictEqual(set[unknownFields], bytes("c00607c2060102"))
+      const cleared = Result.getOrThrow(ProtobufMessage.setExtension(set, extension, undefined))
+      assert.deepStrictEqual(cleared[unknownFields], bytes("c00607"))
+      assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(cleared, extension)), [])
     })
 
     it("fails for a value of another type", () => {

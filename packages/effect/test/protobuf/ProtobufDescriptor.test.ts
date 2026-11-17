@@ -65,7 +65,7 @@ describe("ProtobufDescriptor", () => {
 
   it("keeps oneofs, but not the synthetic oneofs of proto3 optional fields", () => {
     const shape = message("test.Shape")
-    assert.deepStrictEqual(shape.oneofs.map((o) => [o.localName, o.fields.map((f) => f.localName)]), [
+    assert.deepStrictEqual(shape.oneofs.map((o) => [o.name, o.fields.map((f) => f.name)]), [
       ["kind", ["label", "center"]]
     ])
     assert.deepStrictEqual(message("test.Optional").oneofs, [])
@@ -74,10 +74,10 @@ describe("ProtobufDescriptor", () => {
 
   it("preserves field and oneof names independently of JSON names", () => {
     assert.deepStrictEqual(
-      message("test.Names").fields.map((f) => [f.localName, f.jsonName]),
+      message("test.Names").fields.map((f) => [f.name, f.jsonName]),
       [["constructor", "constructor"], ["foo_bar", "customName"]]
     )
-    assert.deepStrictEqual(message("legacy.OriginalNames").fields.map((f) => f.localName), [
+    assert.deepStrictEqual(message("legacy.OriginalNames").fields.map((f) => f.name), [
       "bar",
       "bar_",
       "constructor",
@@ -85,8 +85,8 @@ describe("ProtobufDescriptor", () => {
       "toString"
     ])
     const oneof = message("test.NamedOneof").oneofs[0]
-    assert.strictEqual(oneof.localName, "__proto__")
-    assert.deepStrictEqual(oneof.fields.map((f) => f.localName), ["child_value", "toString"])
+    assert.strictEqual(oneof.name, "__proto__")
+    assert.deepStrictEqual(oneof.fields.map((f) => f.name), ["child_value", "toString"])
   })
 
   it("resolves services, extensions and enums", () => {
@@ -110,7 +110,91 @@ describe("ProtobufDescriptor", () => {
     assert.deepStrictEqual(registry.getEnum("legacy.Mode")!.values.map((v) => [v.name, v.number]), [["A", 1], ["B", 2]])
   })
 
+  it("uses the larger extension-number range only for MessageSet", () => {
+    for (
+      const [messageSet, number, valid] of [
+        [false, 536870911, true],
+        [false, 536870912, false],
+        [true, 536870912, true],
+        [true, 2147483646, true],
+        [true, 2147483647, false]
+      ] as const
+    ) {
+      const result = ProtobufDescriptor.make([{
+        name: "extensions.proto",
+        syntax: "proto2",
+        message_type: [
+          {
+            name: "Container",
+            options: { message_set_wire_format: messageSet },
+            extension_range: [{ start: 4, end: messageSet ? 2147483647 : 536870912 }]
+          },
+          { name: "Payload", field: [field("value", 1, "int32")] }
+        ],
+        extension: [field("payload", number, ".Payload", { extendee: ".Container" })]
+      }])
+      if (valid) {
+        const resolved = Result.getOrThrow(result)
+        const extension = resolved.getExtension("payload")!
+        assert.strictEqual(extension.field.number, number)
+        assert.strictEqual(resolved.findExtension("Container", number), extension)
+      } else {
+        assert.isTrue(Result.isFailure(result))
+      }
+    }
+  })
+
   describe("fails to resolve", () => {
+    it("rejects field numbers that cannot be represented by a tag", () => {
+      for (const number of [0, -1, 1.5, 536870912, NaN, Infinity]) {
+        const result = ProtobufDescriptor.make([{
+          name: "bad.proto",
+          message_type: [{ name: "Bad", field: [field("x", number, "int32")] }]
+        }])
+        assert.isTrue(Result.isFailure(result))
+      }
+    })
+
+    it("rejects duplicate fields and invalid oneof membership", () => {
+      const cases: ReadonlyArray<ProtobufDescriptor.DescriptorProto> = [
+        { name: "Bad", field: [field("x", 1, "int32"), field("x", 2, "int32")] },
+        { name: "Bad", field: [field("x", 1, "int32"), field("y", 1, "int32")] },
+        { name: "Bad", field: [field("x", 1, "int32", { oneof_index: 0 })] },
+        { name: "Bad", oneof_decl: [{ name: "choice" }], field: [field("x", 1, "int32", { oneof_index: -1 })] },
+        {
+          name: "Bad",
+          oneof_decl: [{ name: "choice" }],
+          field: [field("x", 1, "int32", { oneof_index: 0, label: 3 })]
+        },
+        { name: "Bad", oneof_decl: [{ name: "choice" }], field: [field("choice", 1, "int32")] },
+        { name: "Bad", oneof_decl: [{ name: "choice" }, { name: "choice" }] }
+      ]
+      for (const message of cases) {
+        assert.isTrue(Result.isFailure(ProtobufDescriptor.make([{ name: "bad.proto", message_type: [message] }])))
+      }
+    })
+
+    it("rejects non-integral numeric and bytes map keys", () => {
+      for (const type of [T.float, T.double, T.bytes]) {
+        const result = ProtobufDescriptor.make([{
+          name: "bad.proto",
+          message_type: [{
+            name: "Bad",
+            field: [field("items", 1, ".Bad.Entry", { label: 3 })],
+            nested_type: [{
+              name: "Entry",
+              options: { map_entry: true },
+              field: [
+                { name: "key", number: 1, label: 1, type },
+                field("value", 2, "int32")
+              ]
+            }]
+          }]
+        }])
+        assert.isTrue(Result.isFailure(result))
+      }
+    })
+
     const point = { name: "Point", field: [field("x", 1, "int32")] }
     const cases: ReadonlyArray<readonly [string, ReadonlyArray<ProtobufDescriptor.FileDescriptorProto>, string]> = [
       [
@@ -169,9 +253,7 @@ describe("ProtobufDescriptor", () => {
       ])
       const request = resolved.getMessage("google.protobuf.compiler.CodeGeneratorRequest")!
       assert.deepStrictEqual(
-        request.fields.map((f) =>
-          f.kind === "list" || f.type.kind !== "message" ? f.localName : f.type.message.typeName
-        ),
+        request.fields.map((f) => f.kind === "list" || f.type.kind !== "message" ? f.name : f.type.message.typeName),
         ["file_to_generate", "parameter", "proto_file", "source_file_descriptors", "google.protobuf.compiler.Version"]
       )
     })

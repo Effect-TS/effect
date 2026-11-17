@@ -24,9 +24,9 @@ const nested = (name: string, hex: string, message: string): Array<[string, stri
     hex,
     (r: Reader) => {
       r.tag()
-      r.enter()
-      r.tag()
-      read(r)
+      const child = r.delimited()
+      child.tag()
+      read(child)
     },
     message
   ])
@@ -85,31 +85,75 @@ describe("ProtobufReader", () => {
     assert.deepStrictEqual(bytes, new Uint8Array([1, 2]))
   })
 
+  it("exposes borrowed bytes explicitly and respects nested limits", () => {
+    const input = new Uint8Array([3, 2, 1, 2, 7])
+    const r = ProtobufReader.make(input)
+    const child = r.delimited()
+    const view = child.bytesView()
+    assert.isTrue(child.isDone())
+    input[2] = 9
+    assert.deepStrictEqual(view, new Uint8Array([9, 2]))
+    view[1] = 8
+    assert.strictEqual(input[3], 8)
+    assert.strictEqual(r.uint32(), 7)
+  })
+
+  it("replaces malformed UTF-8 only when requested", () => {
+    const r = reader("02ff6110")
+    assert.strictEqual(r.string({ validateUtf8: false }), "�a")
+    assert.strictEqual(r.uint32(), 16)
+    assert.throws(() => reader("03ff61").string({ validateUtf8: false }), /complete value/)
+  })
+
+  it("skips deep groups with a caller-supplied bound", () => {
+    const r = reader("0b".repeat(4096) + "0c".repeat(4096) + "082a")
+    r.skip(r.tag(), 4096)
+    assert.strictEqual(r.tag(), 8)
+    assert.strictEqual(r.uint32(), 42)
+    assert.throws(() => {
+      const r = reader("0b0c")
+      r.skip(r.tag(), 0)
+    }, /groups nested at most 0/)
+    assert.throws(() => {
+      const r = reader("0b0b0c0c")
+      r.skip(r.tag(), 1)
+    }, /groups nested at most 1/)
+  })
+
   it("splits a tag into its field number and wire type", () => {
     const tag = reader("8201").tag()
     assert.strictEqual(ProtobufReader.fieldNumber(tag), 16)
     assert.strictEqual(ProtobufReader.wireType(tag), ProtobufReader.WireType.Len)
   })
 
-  it("reads nested messages up to their end, and leaves them early", () => {
+  it("bounds child readers independently of the parent", () => {
     // { 1: { 1: 150 }, 2: { 1: 150 }, 3: 7 }
     const r = reader("0a0308960112030896011807")
     r.tag()
-    r.enter()
-    assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 1)
-    assert.strictEqual(r.uint32(), 150)
-    assert.isTrue(r.isDone())
-    r.leave()
+    const first = r.delimited()
+    assert.strictEqual(first.offset, 2)
+    assert.strictEqual(r.offset, 5)
+    assert.strictEqual(ProtobufReader.fieldNumber(first.tag()), 1)
+    assert.strictEqual(first.uint32(), 150)
+    assert.isTrue(first.isDone())
+    assert.throws(() => first.uint32(), /complete value at offset 5/)
     r.tag()
-    r.enter()
-    r.leave()
+    const second = r.delimited()
     assert.strictEqual(ProtobufReader.fieldNumber(r.tag()), 3)
     assert.strictEqual(r.uint32(), 7)
     assert.isTrue(r.isDone())
+    // The child remains readable after the parent has advanced.
+    assert.strictEqual(second.tag(), 8)
+    assert.strictEqual(second.uint32(), 150)
+    assert.isTrue(second.isDone())
   })
 
-  it("throws for a leave without an enter", () => {
-    assert.throws(() => reader("").leave(), /leave without an enter/)
+  it("keeps absolute offsets across several child readers", () => {
+    const root = reader("03020196")
+    const child = root.delimited().delimited().delimited()
+    assert.strictEqual(child.offset, 3)
+    assert.throws(() => child.uint32(), /complete value at offset 4/)
+    assert.isTrue(root.isDone())
   })
 
   it("skips every wire type, including nested groups", () => {
@@ -152,9 +196,9 @@ describe("ProtobufReader", () => {
       "0a020a056162636465",
       (r) => {
         r.tag()
-        r.enter()
-        r.tag()
-        r.string()
+        const child = r.delimited()
+        child.tag()
+        child.string()
       },
       "Expected a complete value at offset 4"
     ],

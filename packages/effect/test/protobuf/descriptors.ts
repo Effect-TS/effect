@@ -63,6 +63,15 @@ export const map = (
 const [counts, CountsEntry] = map("test.Shape", "counts", "CountsEntry", 9, "string", "int32")
 const [byId, ByIdEntry] = map("test.Shape", "by_id", "ByIdEntry", 10, "int64", "string")
 const [flags, FlagsEntry] = map("test.Shape", "flags", "FlagsEntry", 11, "bool", ".test.Point")
+const [byteValues, ByteValuesEntry] = map("test.ByteCollections", "values", "ValuesEntry", 2, "string", "bytes")
+const [requiredItems, RequiredItemsEntry] = map(
+  "legacy.RequiredContainer",
+  "items",
+  "ItemsEntry",
+  5,
+  "string",
+  ".legacy.RequiredChild"
+)
 const [namedMap, NamedMapEntry] = map(
   "test.NamedCollections",
   "constructor",
@@ -148,6 +157,16 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
     },
     { name: "Tree", field: [repeated(field("children", 1, ".test.Tree"))] },
     {
+      name: "ByteCollections",
+      field: [
+        repeated(field("items", 1, "bytes")),
+        byteValues,
+        field("selected", 3, "bytes", { oneof_index: 0 })
+      ],
+      oneof_decl: [{ name: "kind" }],
+      nested_type: [ByteValuesEntry]
+    },
+    {
       name: "Names",
       field: [field("constructor", 1, "int32"), field("foo_bar", 2, "int32", { json_name: "customName" })]
     },
@@ -192,6 +211,23 @@ export const proto2: ProtobufDescriptor.FileDescriptorProto = {
     },
     { name: "RequiredName", field: [field("constructor", 1, "int32", { label: 2 })] },
     {
+      name: "RequiredChild",
+      field: [field("n", 1, "int32", { label: 2 }), field("child", 2, ".legacy.RequiredChild")]
+    },
+    {
+      name: "RequiredContainer",
+      oneof_decl: [{ name: "kind" }],
+      field: [
+        field("child_value", 1, ".legacy.RequiredChild", { oneof_index: 0 }),
+        field("other_value", 2, "int32", { oneof_index: 0 }),
+        field("singular", 3, ".legacy.RequiredChild"),
+        repeated(field("children", 4, ".legacy.RequiredChild")),
+        requiredItems,
+        field("mode_value", 6, ".legacy.Mode", { type: T.enum, oneof_index: 0 })
+      ],
+      nested_type: [RequiredItemsEntry]
+    },
+    {
       name: "Legacy",
       field: [
         field("id", 1, "int32", { label: 2 }),
@@ -216,7 +252,14 @@ export const proto2: ProtobufDescriptor.FileDescriptorProto = {
   enum_type: [{ name: "Mode", value: [{ name: "A", number: 1 }, { name: "B", number: 2 }] }],
   extension: [
     field("priority", 100, "int32", { extendee: ".legacy.Legacy" }),
-    repeated(field("labels", 101, "string", { extendee: ".legacy.Legacy" }))
+    repeated(field("labels", 101, "string", { extendee: ".legacy.Legacy" })),
+    field("required_child", 102, ".legacy.RequiredChild", { extendee: ".legacy.Legacy" }),
+    field("mode_ext", 103, ".legacy.Mode", { type: T.enum, extendee: ".legacy.Legacy" }),
+    repeated(field("modes_ext", 104, ".legacy.Mode", {
+      type: T.enum,
+      extendee: ".legacy.Legacy",
+      options: { packed: true }
+    }))
   ]
 }
 

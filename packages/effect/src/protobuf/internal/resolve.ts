@@ -394,12 +394,20 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   ): D.FieldDescriptor => {
     const name = proto.name ?? fail(`${at}: a field without a name`)
     const where = `${at}.${name}`
+    const number = proto.number ?? fail(`${where}: a field without a number`)
+    // MessageSet extension IDs are encoded as values, not as field tags.
+    const maxNumber = proto.extendee !== undefined && parent.messageSetWireFormat ? 2147483646 : 536870911
+    if (!Number.isInteger(number) || number < 1 || number > maxNumber) {
+      fail(`${where}: expected a field number from 1 through ${maxNumber}`)
+    }
+    if (proto.label !== undefined && proto.label !== 1 && proto.label !== 2 && proto.label !== 3) {
+      fail(`${where}: invalid field label ${proto.label}`)
+    }
     const base = {
       _tag: "FieldDescriptor" as const,
       name,
-      localName: name,
       jsonName: proto.json_name ?? camelCase(name),
-      number: proto.number ?? fail(`${where}: a field without a number`),
+      number,
       parent,
       oneof,
       proto
@@ -411,7 +419,12 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
           const key = entry.proto.field?.find((f) => f.number === 1) ?? fail(`${where}: a map entry without a key`)
           const value = entry.proto.field?.find((f) => f.number === 2) ?? fail(`${where}: a map entry without a value`)
           const keyType = valueType(key, fieldFeatures(entry.edition, entry.features, key), where)
-          if (keyType.kind !== "scalar") return fail(`${where}: a map key of a message or enum type`)
+          if (
+            keyType.kind !== "scalar" || keyType.scalar === "bytes" || keyType.scalar === "float" ||
+            keyType.scalar === "double"
+          ) {
+            return fail(`${where}: expected a string, boolean or integer map key`)
+          }
           const valueFeatures = fieldFeatures(entry.edition, entry.features, value)
           // Map values are never encoded as groups.
           return {
@@ -440,15 +453,28 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
 
   for (const { edition, features, message, proto } of [...pending, ...entries.values()]) {
     const at = message.typeName
+    const names = new Set<string>()
+    const numbers = new Set<number>()
     const oneofs = (proto.oneof_decl ?? []).map((decl, index): Mutable<D.OneofDescriptor> | undefined => {
       // A synthetic oneof holds only a proto3 `optional` field.
       const members = (proto.field ?? []).filter((f) => f.oneof_index === index)
       if (members.length > 0 && members.every((f) => f.proto3_optional === true)) return undefined
       const name = decl.name ?? fail(`${at}: a oneof without a name`)
-      return { _tag: "OneofDescriptor", name, localName: name, parent: message, fields: [], proto: decl }
+      if (names.has(name)) fail(`${at}: ${name} is defined twice`)
+      names.add(name)
+      return { _tag: "OneofDescriptor", name, parent: message, fields: [], proto: decl }
     })
     for (const oneof of oneofs) if (oneof !== undefined) message.oneofs.push(oneof)
     for (const f of proto.field ?? []) {
+      if (
+        f.oneof_index !== undefined &&
+        (!Number.isInteger(f.oneof_index) || f.oneof_index < 0 || f.oneof_index >= oneofs.length)
+      ) {
+        fail(`${at}.${f.name}: invalid oneof index ${f.oneof_index}`)
+      }
+      if (f.oneof_index !== undefined && f.label !== undefined && f.label !== 1) {
+        fail(`${at}.${f.name}: a oneof member must be optional`)
+      }
       const oneof = f.oneof_index === undefined ? undefined : oneofs[f.oneof_index]
       const fieldFeaturesOf = fieldFeatures(
         edition,
@@ -456,6 +482,10 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
         f
       )
       const out = field(message, oneof, f, fieldFeaturesOf, at)
+      if (names.has(out.name)) fail(`${at}: ${out.name} is defined twice`)
+      if (numbers.has(out.number)) fail(`${at}: field number ${out.number} is defined twice`)
+      names.add(out.name)
+      numbers.add(out.number)
       message.fields.push(out)
       oneof?.fields.push(out)
     }

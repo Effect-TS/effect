@@ -16,6 +16,7 @@
  *
  * - Values are not validated. As with `DataView`, numbers are truncated to
  *   integers, and integers outside the range of their type wrap around.
+ *   Tags are checked and invalid field numbers or wire types throw `RangeError`.
  * - Unpaired UTF-16 surrogates in strings are written as U+FFFD, as with
  *   `TextEncoder`.
  *
@@ -112,7 +113,8 @@ export class ProtobufWriter {
   private readonly forks: Array<number> = []
 
   /**
-   * Returns the written bytes, and resets the writer. Throws if a
+   * Returns an owned copy of the written bytes and resets the writer. Later
+   * writes cannot change the returned bytes. Throws if a
    * {@link ProtobufWriter.fork} is not joined.
    *
    * @since 4.1.5
@@ -156,11 +158,18 @@ export class ProtobufWriter {
   }
 
   /**
-   * Writes a tag: a field number and the wire type of its value.
+   * Writes a tag: an integer field number from 1 through 536870911 and a wire
+   * type from 0 through 5. Invalid arguments throw `RangeError` before writing.
    *
    * @since 4.1.5
    */
   tag(fieldNumber: number, wireType: WireType): this {
+    if (!Number.isInteger(fieldNumber) || fieldNumber < 1 || fieldNumber > 536870911) {
+      throw new RangeError("ProtobufWriter.tag fieldNumber must be an integer from 1 through 536870911")
+    }
+    if (!Number.isInteger(wireType) || wireType < 0 || wireType > 5) {
+      throw new RangeError("ProtobufWriter.tag wireType must be an integer from 0 through 5")
+    }
     return this.uint32(fieldNumber * 8 + wireType)
   }
 
