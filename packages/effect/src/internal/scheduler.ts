@@ -36,15 +36,13 @@ const AsyncResource: (new(type: string) => AsyncResource) | undefined = (() => {
 // there is no wait and the fiber resumes in the caller's context.
 const DefaultWait: (new(type: string) => Scheduler.Wait) | undefined = AsyncResource && class extends AsyncResource {
   resume(task: () => void) {
-    try {
-      this.runInAsyncScope(task)
-    } finally {
-      // Cleanup, not a fallback: the wait has ended even if the task threw,
-      // for example from an exit observer. Node calls destroy hooks later, so
-      // this cannot re-enter the fiber. Without it, async_hooks consumers
-      // would see the resource as live until it is collected.
-      this.emitDestroy()
-    }
+    // Each wait is resumed once, so the resource ends here, before the task
+    // runs: even if the task throws, async_hooks consumers do not see it as
+    // live until it is collected. Node queues destroy hooks and runs them
+    // after the current task, so they still follow the before and after
+    // hooks of this run, and cannot re-enter the fiber.
+    this.emitDestroy()
+    this.runInAsyncScope(task)
   }
 }
 
