@@ -101,7 +101,6 @@ import {
   TracerTimingEnabled,
   UnhandledLogLevel
 } from "./references.ts"
-import * as InternalScheduler from "./scheduler.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
@@ -500,6 +499,34 @@ const fiberVariance = {
 
 const fiberIdStore = { id: 0 }
 
+interface AsyncContext {
+  runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
+  emitDestroy(): void
+}
+
+const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
+  try {
+    return (globalThis as any).process?.getBuiltinModule?.("node:async_hooks")?.AsyncResource
+  } catch {
+    return undefined
+  }
+})()
+
+const captureAsyncContext = (): AsyncContext | undefined =>
+  AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
+
+type Parking = Pick<Scheduler.ParkingScheduler, "park" | "resume">
+
+const noParking: Parking = {
+  park() {},
+  resume(fiber, effect) {
+    fiber.run(effect)
+  }
+}
+
+const parking = (scheduler: Scheduler.Scheduler): Parking =>
+  "park" in scheduler ? scheduler as Scheduler.ParkingScheduler : noParking
+
 /** @internal */
 export const SupervisorKey = "effect/Supervisor"
 
@@ -527,7 +554,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
-    this._wait = undefined
+    this._asyncContext = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -551,8 +578,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
-  // Owned by internal/scheduler.ts
-  declare _wait: Scheduler.Wait | null | undefined
+  declare _asyncContext: AsyncContext | undefined
 
   // set in setContext
   declare context: Context.Context<never>
@@ -600,8 +626,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       ? causeAddInterrupts(this._interruptedCause, cause)
       : cause
     if (this.interruptible) {
-      // A fiber that is not running acts on the interrupt when it next runs,
-      // even if its scheduler resumes it with another effect
+      // A scheduler may already hold another effect for a parked fiber, so the
+      // fiber acts on the interrupt whichever effect it runs with
       this._deferredInterrupt = true
       if (!this._running) {
         this.evaluate(failCause(this._interruptedCause) as any)
@@ -612,21 +638,30 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    InternalScheduler.resume(this, effect)
+    parking(this.cache.scheduler).resume(this, effect as any)
   }
-  // Every effect a scheduler resumes the fiber with is a primitive
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
       return
-    }
-    if (this._yielded !== undefined) {
+    } else if (this._asyncContext !== undefined) {
+      const asyncContext = this._asyncContext
+      this._asyncContext = undefined
+      try {
+        return asyncContext.runInAsyncScope(this.run, this, effect)
+      } finally {
+        // Each captured context is resumed once, so release it for async_hooks
+        // consumers like vitest's detectAsyncLeaks.
+        asyncContext.emitDestroy()
+      }
+    } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
       yielded()
     }
     const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
-      InternalScheduler.park(this.cache.scheduler, this)
+      this._asyncContext = captureAsyncContext()
+      parking(this.cache.scheduler).park(this)
       return
     }
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
@@ -636,7 +671,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if (interruptChildren !== undefined) {
       // uninterruptible, so a pending interrupt cannot replace the exit during the wait
       this.interruptible = false
-      return this.run(flatMap(interruptChildren, () => exit))
+      return this.evaluate(flatMap(interruptChildren, () => exit) as any)
     }
 
     this._exit = exit
@@ -4624,7 +4659,7 @@ const makeCachedUnsafe = <A, E, R>(
       current = run
       // Join before evaluating, which may synchronously re-enter and interrupt other awaiters.
       const joined = join(fiber, run)
-      run.fiber.run(
+      run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
           run.done = true
           // A detached run must not publish its result or clear a replacement run.
@@ -5653,10 +5688,11 @@ export const forkUnsafe = <FA, FE, A, E, R>(
     child._parent = parentRuntime
   }
   if (immediate) {
-    child.run(effect as any)
+    child.evaluate(effect as any)
   } else {
     // Preserve the fork context rather than the dispatcher's context.
-    InternalScheduler.park(child.cache.scheduler, child)
+    child._asyncContext = captureAsyncContext()
+    parking(child.cache.scheduler).park(child)
     parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   return child
@@ -5806,7 +5842,7 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
     options?.scheduler ? Context.add(context, Scheduler.Scheduler, options.scheduler) : context,
     options?.uninterruptible !== true
   )
-  fiber.run(effect as any)
+  fiber.evaluate(effect as any)
   if (fiber._exit) return fiber
 
   if (options?.signal) {
