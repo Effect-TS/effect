@@ -2,10 +2,8 @@ import { assert } from "@effect/vitest"
 import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
 
 /**
- * Checks that a fork into a scope registers the fiber in the same step that
- * starts it. The forked work interrupts its forker while starting, so the fiber
- * must outlive the forker, and closing the scope must still interrupt it and
- * wait for its finalizer.
+ * Checks that interrupting the forker during startup preserves scope ownership
+ * and that scope closure waits for cleanup.
  *
  * `fork` must start `work` immediately and tie it to `scope`.
  */

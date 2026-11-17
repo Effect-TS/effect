@@ -114,7 +114,6 @@ describe("Effect", () => {
           const failure = Deferred.await(started).pipe(Effect.andThen(Effect.fail("failure")))
           const fiber = yield* Effect.forkChild(Effect.exit(run(worker, winner, failure)))
           yield* Deferred.await(started)
-          // Only the timeout case is waiting on the clock.
           yield* TestClock.adjust(10)
           yield* Deferred.await(cleaning)
           yield* Effect.yieldNow
@@ -3103,7 +3102,7 @@ describe("Effect", () => {
         }))
     }
 
-    // Each row forks from the region that tells its option apart from the others.
+    // Choose caller interruptibility to expose each option's effect.
     for (
       const [uninterruptible, region] of [
         [undefined, "uninterruptible"],

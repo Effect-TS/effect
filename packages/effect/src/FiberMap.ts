@@ -754,18 +754,17 @@ const constInterruptedFiber = (function() {
  * Set `startImmediately: false` to defer startup. By default, the effect starts
  * immediately.
  *
- * The forked fiber is not a child of the caller. It is owned by the map
- * and can keep running after the caller completes or is interrupted. Forking
- * and registration are interruption-safe: interrupting the caller cannot
- * leave the new fiber untracked. Closing the owning scope from another fiber
- * interrupts managed fibers and waits for their finalizers.
+ * The map owns the fiber, not the caller: it can outlive the caller's
+ * completion or interruption. Forking and registration are interruption-safe,
+ * so caller interruption cannot leave the fiber untracked. Closing the owning
+ * scope from another fiber interrupts managed fibers and awaits their finalizers.
  *
  * **Gotchas**
  *
  * Uninterruptible work can delay scope closure.
  *
- * Replacing a fiber requests interruption of the previous fiber without
- * waiting for its cleanup to finish before starting the replacement.
+ * Replacement requests interruption of the previous fiber without waiting
+ * for its cleanup.
  *
  * **Example** (Forking effects into a map)
  *

@@ -464,11 +464,10 @@ const constInterruptedFiber = (function() {
  *
  * **Details**
  *
- * The forked fiber is not a child of the caller. It is owned by the set
- * and can keep running after the caller completes or is interrupted. Forking
- * and registration are interruption-safe: interrupting the caller cannot
- * leave the new fiber untracked. Closing the owning scope from another fiber
- * interrupts managed fibers and waits for their finalizers.
+ * The set owns the fiber, not the caller: it can outlive the caller's
+ * completion or interruption. Forking and registration are interruption-safe,
+ * so caller interruption cannot leave the fiber untracked. Closing the owning
+ * scope from another fiber interrupts managed fibers and awaits their finalizers.
  *
  * **Gotchas**
  *

@@ -422,10 +422,9 @@ export declare namespace All {
  *
  * **Gotchas**
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Collecting tuple results in order)
  *
@@ -776,10 +775,9 @@ export const findFirstFilter: {
  *
  * **Gotchas**
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Mapping over an iterable with effects)
  *
@@ -4795,10 +4793,9 @@ export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
  * An uninterruptible source can delay completion; its eventual result is
  * discarded and the timeout failure is still returned.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Failing when work takes too long)
  *
@@ -4850,10 +4847,9 @@ export const timeout: {
  * An uninterruptible source can delay completion; its eventual result is
  * discarded and the timeout still produces `Option.none`.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Returning None on timeout)
  *
@@ -4893,10 +4889,9 @@ export const timeoutOption: {
  * An uninterruptible source can delay completion; its eventual result is
  * discarded and the timeout still selects `orElse`.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Falling back on timeout)
  *
@@ -5047,10 +5042,9 @@ export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[duration: Durati
  * A losing effect in an uninterruptible region delays completion until that
  * region finishes. Its result is discarded.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Racing many effects)
  *
@@ -5098,10 +5092,9 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  * A losing effect in an uninterruptible region delays completion until that
  * region finishes. Its result is discarded.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Taking the first settled result)
  *
@@ -5146,10 +5139,9 @@ export const raceAllFirst: <Eff extends Effect<any, any, any>>(
  * A losing effect in an uninterruptible region delays completion until that
  * region finishes. Its result is discarded.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Racing two effects)
  *
@@ -5214,10 +5206,9 @@ export const race: {
  * A losing effect in an uninterruptible region delays completion until that
  * region finishes. Its result is discarded.
  *
- * This waits for fiber cleanup, not necessarily for underlying external work
- * to stop. For example, a Promise may continue running after its fiber is
- * interrupted unless the external operation honors cancellation. Detached
- * fibers started with `forkDetach` are not awaited.
+ * Waiting for fiber cleanup does not ensure external work stops: a Promise
+ * can keep running unless the operation honors cancellation. Fibers started
+ * with `forkDetach` are not awaited.
  *
  * **Example** (Observing the winning fiber)
  *
@@ -9031,17 +9022,15 @@ export const requestUnsafe: <A extends Request.Any>(
  *
  * Fork options:
  *
- * - `startImmediately` defaults to `false`: startup is deferred, and the fork
- *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs synchronously until it first
- *   suspends, yields, or completes, before the forking fiber continues. A
- *   synchronously completed fiber is already done when the fork returns.
- * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
- *   when forked from an uninterruptible region. With `true`, it starts
- *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
- *   `Fiber.interrupt` waits for it to finish, and it keeps its own result.
- *   Explicit `Effect.interruptible` regions can still be interrupted.
- *   `"inherit"` copies the forking fiber's interruptibility at the fork.
+ * - `startImmediately` defaults to `false`: the fork returns before the new
+ *   fiber runs, without promising a scheduler turn. With `true`, the fiber
+ *   runs synchronously until it suspends, yields, or completes before the fork
+ *   returns.
+ * - `uninterruptible` defaults to `false`, even in an uninterruptible caller.
+ *   With `true`, the fiber starts uninterruptible: `Fiber.interrupt` waits for
+ *   completion without replacing its result. Explicit `Effect.interruptible`
+ *   regions can still be interrupted. `"inherit"` copies the caller's
+ *   interruptibility at the fork.
  *
  * **Example** (Forking a child fiber)
  *
@@ -9086,29 +9075,25 @@ export const forkChild: <
  *
  * **Details**
  *
- * The fiber is not a child of the forking fiber. Its lifetime is tied to the
- * scope: it can keep running after the forking fiber completes or is
- * interrupted. Closing the scope from another fiber interrupts it and waits
- * for it to finish, including its finalizers.
+ * The scope owns the fiber, not the forker: it can outlive the forker's
+ * completion or interruption. Closing the scope from another fiber interrupts
+ * it and waits for completion, including finalizers.
  *
- * Forking and scope registration are interruption-safe: interrupting the
- * forking fiber cannot leave the new fiber running outside the scope. If the
- * scope is already closed, the effect is not started and the returned fiber
- * is interrupted.
+ * Forking and registration are interruption-safe: interrupting the forker
+ * cannot leave the new fiber outside the scope. If the scope is already
+ * closed, the effect is not started and the returned fiber is interrupted.
  *
  * Fork options:
  *
- * - `startImmediately` defaults to `false`: startup is deferred, and the fork
- *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs synchronously until it first
- *   suspends, yields, or completes, before the forking fiber continues. A
- *   synchronously completed fiber is already done when the fork returns.
- * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
- *   when forked from an uninterruptible region. With `true`, it starts
- *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
- *   `Fiber.interrupt` waits for it to finish, and it keeps its own result.
- *   Explicit `Effect.interruptible` regions can still be interrupted.
- *   `"inherit"` copies the forking fiber's interruptibility at the fork.
+ * - `startImmediately` defaults to `false`: the fork returns before the new
+ *   fiber runs, without promising a scheduler turn. With `true`, the fiber
+ *   runs synchronously until it suspends, yields, or completes before the fork
+ *   returns.
+ * - `uninterruptible` defaults to `false`, even in an uninterruptible caller.
+ *   With `true`, the fiber starts uninterruptible: `Fiber.interrupt` waits for
+ *   completion without replacing its result. Explicit `Effect.interruptible`
+ *   regions can still be interrupted. `"inherit"` copies the caller's
+ *   interruptibility at the fork.
  *
  * **Gotchas**
  *
@@ -9161,29 +9146,25 @@ export const forkIn: {
  *
  * **Details**
  *
- * The fiber is not a child of the forking fiber. Its lifetime is tied to the
- * scope: it can keep running after the forking fiber completes or is
- * interrupted. Closing the scope from another fiber interrupts it and waits
- * for it to finish, including its finalizers.
+ * The scope owns the fiber, not the forker: it can outlive the forker's
+ * completion or interruption. Closing the scope from another fiber interrupts
+ * it and waits for completion, including finalizers.
  *
- * Forking and scope registration are interruption-safe: interrupting the
- * forking fiber cannot leave the new fiber running outside the scope. If the
- * scope is already closed, the effect is not started and the returned fiber
- * is interrupted.
+ * Forking and registration are interruption-safe: interrupting the forker
+ * cannot leave the new fiber outside the scope. If the scope is already
+ * closed, the effect is not started and the returned fiber is interrupted.
  *
  * Fork options:
  *
- * - `startImmediately` defaults to `false`: startup is deferred, and the fork
- *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs synchronously until it first
- *   suspends, yields, or completes, before the forking fiber continues. A
- *   synchronously completed fiber is already done when the fork returns.
- * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
- *   when forked from an uninterruptible region. With `true`, it starts
- *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
- *   `Fiber.interrupt` waits for it to finish, and it keeps its own result.
- *   Explicit `Effect.interruptible` regions can still be interrupted.
- *   `"inherit"` copies the forking fiber's interruptibility at the fork.
+ * - `startImmediately` defaults to `false`: the fork returns before the new
+ *   fiber runs, without promising a scheduler turn. With `true`, the fiber
+ *   runs synchronously until it suspends, yields, or completes before the fork
+ *   returns.
+ * - `uninterruptible` defaults to `false`, even in an uninterruptible caller.
+ *   With `true`, the fiber starts uninterruptible: `Fiber.interrupt` waits for
+ *   completion without replacing its result. Explicit `Effect.interruptible`
+ *   regions can still be interrupted. `"inherit"` copies the caller's
+ *   interruptibility at the fork.
  *
  * **Gotchas**
  *
@@ -9242,17 +9223,15 @@ export const forkScoped: <
  *
  * Fork options:
  *
- * - `startImmediately` defaults to `false`: startup is deferred, and the fork
- *   returns before the new fiber runs the effect. No particular scheduler turn
- *   is promised. With `true`, the fiber runs synchronously until it first
- *   suspends, yields, or completes, before the forking fiber continues. A
- *   synchronously completed fiber is already done when the fork returns.
- * - `uninterruptible` defaults to `false`: the new fiber is interruptible even
- *   when forked from an uninterruptible region. With `true`, it starts
- *   uninterruptible, like wrapping the effect in `Effect.uninterruptible`.
- *   `Fiber.interrupt` waits for it to finish, and it keeps its own result.
- *   Explicit `Effect.interruptible` regions can still be interrupted.
- *   `"inherit"` copies the forking fiber's interruptibility at the fork.
+ * - `startImmediately` defaults to `false`: the fork returns before the new
+ *   fiber runs, without promising a scheduler turn. With `true`, the fiber
+ *   runs synchronously until it suspends, yields, or completes before the fork
+ *   returns.
+ * - `uninterruptible` defaults to `false`, even in an uninterruptible caller.
+ *   With `true`, the fiber starts uninterruptible: `Fiber.interrupt` waits for
+ *   completion without replacing its result. Explicit `Effect.interruptible`
+ *   regions can still be interrupted. `"inherit"` copies the caller's
+ *   interruptibility at the fork.
  *
  * **Example** (Forking a detached fiber)
  *
