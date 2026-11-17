@@ -422,11 +422,7 @@ describe("HttpServer", () => {
       yield* Layer.mergeAll(
         Layer.succeed(Greeting)("app"),
         Built,
-        HttpRouter.add(
-          "GET",
-          "/",
-          Effect.service(Greeting).pipe(Effect.map(HttpServerResponse.text), Effect.provide(Built))
-        )
+        HttpRouter.add("GET", "/", Greeting.pipe(Effect.map(HttpServerResponse.text), Effect.provide(Built)))
       ).pipe(HttpRouter.serve, Layer.build)
 
       const response = yield* HttpClient.get("/")
