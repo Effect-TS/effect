@@ -6,7 +6,7 @@ declare const WebSocketPair: new() => Record<0 | 1, { readyState: number }>
 
 const als = new AsyncLocalStorage<string>()
 const scheduler = new CloudflareScheduler()
-const otherScheduler = new CloudflareScheduler()
+const otherScheduler = new Scheduler.MixedScheduler("sync")
 
 // Tracks the scheduler's pending timers, which never fire, by the owner that
 // set them, to check that each is cleared once its fiber resumes

@@ -1,5 +1,5 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 
@@ -239,6 +239,22 @@ describe("Scheduler", () => {
       assert.isUndefined(fiber.pollUnsafe())
       await land()
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
+    })
+
+    it("keeps the scheduler of a parked fiber when setContext replaces it", async () => {
+      const { land, scheduler } = makeScheduler()
+      let wake!: () => void
+      const fiber = Effect.runFork(
+        Effect.callback<void>((resume) => {
+          wake = () => resume(Effect.void)
+        }),
+        { scheduler }
+      )
+      fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
+      wake()
+      assert.isUndefined(fiber.pollUnsafe())
+      await land()
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
     })
 
     it("interrupts a fiber woken before the interrupt, once it runs", async () => {
