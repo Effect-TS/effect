@@ -5691,29 +5691,21 @@ describe("Effect", () => {
 
     describe("ParkingScheduler", () => {
       // Runs each parked fiber in the "owner" store when `land` runs, like a
-      // scheduler that hands fibers back to the request that owns them, and
-      // runs it once per wait. Its state is in instance fields, so wrappers
-      // must keep the receiver.
+      // scheduler that hands fibers back to the request that owns them. It
+      // throws if a wait is resumed twice. Its state is in instance fields, so
+      // wrappers must keep the receiver.
       const makeScheduler = () => {
         const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
-          // true once the wait is resumed, until the fiber runs
-          readonly waits = new Map<Fiber.Fiber<unknown, unknown>, boolean>()
           readonly pending: Array<() => void> = []
-          park(fiber: Fiber.Fiber<unknown, unknown>) {
-            this.waits.set(fiber, false)
-          }
-          resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>) {
-            const resumed = this.waits.get(fiber)
-            if (resumed === undefined) return fiber.run(effect)
-            if (resumed) return
-            this.waits.set(fiber, true)
-            this.pending.push(() => {
-              this.waits.delete(fiber)
-              storage.run("owner", () => fiber.run(effect))
-            })
-          }
-          release(fiber: Fiber.Fiber<unknown, unknown>) {
-            this.waits.delete(fiber)
+          park(): Scheduler.Wait {
+            let resumed = false
+            return {
+              resume: (task) => {
+                if (resumed) throw new Error("resumed twice")
+                resumed = true
+                this.pending.push(() => storage.run("owner", task))
+              }
+            }
           }
         }("sync")
         const land = async () => {
@@ -5743,13 +5735,20 @@ describe("Effect", () => {
       })
 
       it("acts on an interrupt requested before a woken fiber runs at its first interruptible step", async () => {
-        // Not at its next suspension: the continuation of the wait never runs
+        // Not at its next suspension: the continuation of the wait never runs.
+        // Replacing the fiber's scheduler in between changes neither where it
+        // runs nor how often, so the woken entry does not end the wait of its
+        // cleanup.
         const { land, scheduler } = makeScheduler()
         const seen: Array<string> = []
         let wake!: () => void
+        let finish!: () => void
         const fiber = Effect.runFork(
           Effect.callback<void>((resume) => {
             wake = () => resume(Effect.void)
+            return Effect.callback<void>((resume) => {
+              finish = () => resume(Effect.void)
+            }).pipe(Effect.andThen(Effect.sync(() => seen.push(`cleaned in ${current()}`))))
           }).pipe(
             Effect.andThen(Effect.sync(() => seen.push("continued"))),
             Effect.andThen(Effect.yieldNow),
@@ -5760,87 +5759,37 @@ describe("Effect", () => {
         await land()
         storage.run("waker", () => {
           wake()
+          fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
           fiber.interruptUnsafe()
         })
         await land()
         assert.deepStrictEqual(seen, [])
+        assert.isUndefined(fiber.pollUnsafe())
+        storage.run("waker", finish)
+        assert.deepStrictEqual(seen, ["cleaned in owner"])
         assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
       })
 
-      // The new scheduler did not park the fiber, so it runs it directly
-      describe("a parked fiber that setContext moves to a scheduler that parks differently", () => {
-        // Parks in the "parker" store, and is woken from the "waker" store
-        const parkWithCallback = (scheduler?: Scheduler.Scheduler) => {
+      it("resumes a parked fiber through its wait after setContext replaces its scheduler", async () => {
+        const { land, scheduler } = makeScheduler()
+        const parkAndMove = (from: Scheduler.Scheduler, to: Scheduler.Scheduler) => {
           let wake!: () => void
           const fiber = storage.run("parker", () =>
             Effect.runFork(
               Effect.callback<void>((resume) => {
                 wake = () => resume(Effect.void)
               }).pipe(Effect.andThen(Effect.sync(current))),
-              { scheduler }
+              { scheduler: from }
             ))
-          return { fiber, wake: () => storage.run("waker", wake) }
+          fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, to))
+          storage.run("waker", wake)
+          return fiber
         }
-        const moveTo = (fiber: Fiber.Fiber<unknown, unknown>, scheduler: Scheduler.Scheduler) =>
-          fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, scheduler))
-
-        it("is released by its ParkingScheduler and resumed by the default parking", async () => {
-          const { land, scheduler } = makeScheduler()
-          const { fiber, wake } = parkWithCallback(scheduler)
-          await land()
-          assert.isTrue(scheduler.waits.has(fiber))
-          moveTo(fiber, new Scheduler.MixedScheduler("sync"))
-          assert.isFalse(scheduler.waits.has(fiber))
-          wake()
-          assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("waker"))
-        })
-
-        itWithAsyncHooks("is released by the default parking, which does not resume it later", async () => {
-          const { scheduler } = makeScheduler()
-          // The wait's resource, held strongly so that it is not destroyed by
-          // garbage collection
-          const created = new Map<number, object>()
-          const destroyed: Array<number> = []
-          let tracking = false
-          const hook = createHook({
-            init(asyncId, type, _triggerAsyncId, resource) {
-              if (tracking && type === "effect/Fiber") created.set(asyncId, resource)
-            },
-            destroy(asyncId) {
-              if (created.has(asyncId)) destroyed.push(asyncId)
-            }
-          })
-          hook.enable()
-          try {
-            tracking = true
-            const { fiber, wake } = parkWithCallback()
-            tracking = false
-            assert.strictEqual(created.size, 1)
-            moveTo(fiber, scheduler)
-            // Node runs destroy callbacks asynchronously
-            await new Promise((resolve) => setTimeout(resolve, 10))
-            assert.deepStrictEqual(destroyed, [...created.keys()])
-            moveTo(fiber, new Scheduler.MixedScheduler("sync"))
-            wake()
-            assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("waker"))
-          } finally {
-            hook.disable()
-          }
-        })
-      })
-
-      it("keeps the wait of a parked fiber that setContext moves to a scheduler that parks the same way", () => {
-        let wake!: () => void
-        const fiber = storage.run("parker", () =>
-          Effect.runFork(
-            Effect.callback<void>((resume) => {
-              wake = () => resume(Effect.void)
-            }).pipe(Effect.andThen(Effect.sync(current))),
-            { scheduler: new Scheduler.MixedScheduler("sync") }
-          ))
-        fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
-        storage.run("waker", wake)
-        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("parker"))
+        const fromDefault = parkAndMove(new Scheduler.MixedScheduler("sync"), scheduler)
+        const toDefault = parkAndMove(scheduler, new Scheduler.MixedScheduler("sync"))
+        await land()
+        assert.deepStrictEqual(fromDefault.pollUnsafe(), Exit.succeed("parker"))
+        assert.deepStrictEqual(toDefault.pollUnsafe(), Exit.succeed("owner"))
       })
 
       it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
@@ -5921,6 +5870,15 @@ describe("Effect", () => {
         itWithAsyncHooks("delivers the interrupt", async () => {
           const { exit, live } = await parkTwice((fiber) => fiber.interruptUnsafe())
           assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+          assert.deepStrictEqual(live, [])
+        })
+
+        itWithAsyncHooks("keeps the wait when setContext replaces the scheduler", async () => {
+          const { exit, live } = await parkTwice((fiber, wake) => {
+            fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, makeScheduler().scheduler))
+            queueMicrotask(() => wake(42))
+          })
+          assert.deepStrictEqual(exit, Exit.succeed(42))
           assert.deepStrictEqual(live, [])
         })
       })
