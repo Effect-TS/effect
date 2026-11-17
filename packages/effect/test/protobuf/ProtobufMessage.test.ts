@@ -9,11 +9,14 @@ const unknownFields: typeof ProtobufMessage.unknownFields = ProtobufMessage.unkn
 
 const bytes = (hex: string): Uint8Array => Result.getOrThrow(Hex.decode(hex.replaceAll(" ", "")))
 
-const encode = (typeName: string, value: unknown, options?: ProtobufMessage.EncodeOptions): string =>
+const encode = (typeName: string, value: unknown, options?: Parameters<typeof ProtobufMessage.encode>[1]): string =>
   Hex.encode(Result.getOrThrow(ProtobufMessage.encode(message(typeName), options)(value as ProtobufMessage.Message)))
 
-const decode = (typeName: string, hex: string, options?: ProtobufMessage.DecodeOptions): ProtobufMessage.Message =>
-  Result.getOrThrow(ProtobufMessage.decode(message(typeName), options)(bytes(hex)))
+const decode = (
+  typeName: string,
+  hex: string,
+  options?: Parameters<typeof ProtobufMessage.decode>[1]
+): ProtobufMessage.Message => Result.getOrThrow(ProtobufMessage.decode(message(typeName), options)(bytes(hex)))
 
 const failure = <A>(result: Result.Result<A, ProtobufMessage.ProtobufMessageError>) => {
   if (Result.isSuccess(result)) throw new Error("expected a failure")
@@ -294,6 +297,11 @@ describe("ProtobufMessage", () => {
         kind: { _tag: "center", value: { x: 1, y: 2 } }
       }],
       ["a packed field written unpacked", "test.Shape", "3001 3002", { ...shapeZeros, ids: [1, 2] }],
+      ["an unpacked field written with mixed encodings", "legacy.Legacy", "0801 1801 1a020203 1804", {
+        ...legacyZeros,
+        id: 1,
+        values: [1, 2, 3, 4]
+      }],
       ["map entries without a value or key", "test.Shape", "4a03 0a0161 4a02 1001", {
         ...shapeZeros,
         counts: { a: 0, "": 1 }
@@ -400,6 +408,15 @@ describe("ProtobufMessage", () => {
     assert.deepStrictEqual(value[unknownFields], bytes("42050a01611007"))
   })
 
+  it("classifies closed-enum map entries by their final value", () => {
+    const known = decode("legacy.Legacy", "0801 4207 0a0161 1007 1001")
+    assert.deepStrictEqual(known.mode_by_name, { a: 1 })
+    assert.isFalse(unknownFields in known)
+    const unknown = decode("legacy.Legacy", "0801 4207 0a0161 1001 1007")
+    assert.deepStrictEqual(unknown.mode_by_name, {})
+    assert.deepStrictEqual(unknown[unknownFields], bytes("4207 0a0161 1001 1007"))
+  })
+
   it("retains large packed closed-enum fields without exceeding argument limits", () => {
     const count = 150000
     // id = 1, followed by 150000 packed occurrences of the unknown enum number 7.
@@ -481,6 +498,14 @@ describe("ProtobufMessage", () => {
     it("messages nested deeper than maxDepth", () => {
       const tree = { children: [{ children: [{ children: [] }] }] }
       const encoded = Result.getOrThrow(ProtobufMessage.encode(message("test.Tree"))(tree))
+      assert.deepStrictEqual(
+        Result.getOrThrow(ProtobufMessage.encode(message("test.Tree"), { maxDepth: 2 })(tree)),
+        encoded
+      )
+      assert.deepStrictEqual(failure(ProtobufMessage.encode(message("test.Tree"), { maxDepth: 1 })(tree)), {
+        message: "children[0].children[0]: Expected messages nested at most 1 deep",
+        path: ["children", 0, "children", 0]
+      })
       assert.deepStrictEqual(failure(ProtobufMessage.decode(message("test.Tree"), { maxDepth: 1 })(encoded)), {
         message: "children[0].children[0]: Expected messages nested at most 1 deep",
         path: ["children", 0, "children", 0]
@@ -660,6 +685,38 @@ describe("ProtobufMessage", () => {
       assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, member)), { text: "a" })
       const cleared = Result.getOrThrow(ProtobufMessage.setExtension(set, member, undefined))
       assert.isFalse(unknownFields in cleared)
+    })
+
+    it("uses the first type id and payload within each MessageSet item", () => {
+      for (
+        const hex of [
+          "0b 10e807 1a030a0161 1a030a0162 0c",
+          "0b 10e807 1a030a0161 10e907 0c",
+          "0b 10e807 10e907 1a030a0161 0c",
+          "0b 1a030a0161 1a030a0162 10e807 0c",
+          "0b 1a030a0161 10e807 10e907 0c"
+        ]
+      ) {
+        const set = { [unknownFields]: bytes(hex) }
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.getExtension(set, member)), { text: "a" })
+        assert.isFalse(unknownFields in Result.getOrThrow(ProtobufMessage.setExtension(set, member, undefined)))
+      }
+    })
+
+    it("ignores incomplete MessageSet items and rejects zero type ids", () => {
+      for (const hex of ["0b 10e807 0c", "0b 1a030a0161 0c"]) {
+        const set = { [unknownFields]: bytes(hex) }
+        assert.isUndefined(Result.getOrThrow(ProtobufMessage.getExtension(set, member)))
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.setExtension(set, member, undefined)), set)
+      }
+      for (const hex of ["0b 1000 1a030a0161 0c", "0b 10e807 1a030a0161 1000 0c"]) {
+        assert.isTrue(Result.isFailure(ProtobufMessage.getExtension({ [unknownFields]: bytes(hex) }, member)))
+      }
+    })
+
+    it("validates the first MessageSet payload even when a later payload is valid", () => {
+      const set = { [unknownFields]: bytes("0b 10e807 1a020a02 1a030a0161 0c") }
+      assert.deepStrictEqual(failure(ProtobufMessage.getExtension(set, member)).path, ["member", "text"])
     })
 
     it("rejects field values split across MessageSet payloads", () => {

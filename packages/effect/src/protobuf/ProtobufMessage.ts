@@ -113,47 +113,6 @@ const toError = (failure: Binary.Failure): ProtobufMessageError =>
   new ProtobufMessageError({ message: failure.message, path: failure.path })
 
 /**
- * Options for {@link decode}.
- *
- * **Details**
- *
- * - `readUnknownFields`: whether to keep the fields the descriptor does not
- *   declare, `true` by default.
- * - `maxDepth`: a non-negative integer limiting nested message values and
- *   unknown groups, 100 by default. The root message has depth zero. A map
- *   container does not add depth; its message values do. Unknown
- *   length-delimited bytes remain opaque.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export interface DecodeOptions {
-  readonly readUnknownFields?: boolean | undefined
-  readonly maxDepth?: number | undefined
-}
-
-/**
- * Options for {@link encode}.
- *
- * **Details**
- *
- * - `writeUnknownFields`: whether to write the unknown fields of values,
- *   `true` by default.
- * - `maxDepth`: a non-negative integer limiting nested message values, 100 by
- *   default. The root message has depth zero. A map container does not add
- *   depth; its message values do. Raw unknown fields are written unchanged.
- *
- * @stability experimental
- * @category models
- * @since 4.1.5
- */
-export interface EncodeOptions {
-  readonly writeUnknownFields?: boolean | undefined
-  readonly maxDepth?: number | undefined
-}
-
-/**
  * Decodes the binary encoding of a message.
  *
  * **Details**
@@ -167,6 +126,13 @@ export interface EncodeOptions {
  * includes the path through message fields, list indexes, and map keys.
  * Malformed bytes fail even when a later occurrence would replace their value.
  * A field with an incompatible wire type is treated as unknown.
+ *
+ * - `readUnknownFields`: whether to keep the fields the descriptor does not
+ *   declare, `true` by default.
+ * - `maxDepth`: a non-negative integer limiting nested message values and
+ *   unknown groups, 100 by default. The root message has depth zero. A map
+ *   container does not add depth; its message values do. Unknown
+ *   length-delimited bytes remain opaque.
  *
  * **Example** (Decoding a message)
  *
@@ -192,7 +158,10 @@ export interface EncodeOptions {
  */
 export const decode = (
   descriptor: ProtobufDescriptor.MessageDescriptor,
-  options?: DecodeOptions
+  options?: {
+    readonly readUnknownFields?: boolean | undefined
+    readonly maxDepth?: number | undefined
+  }
 ): (bytes: Uint8Array) => Result.Result<Message, ProtobufMessageError> =>
 (bytes) => Result.mapError(Binary.decode(descriptor, bytes, options), toError)
 
@@ -205,6 +174,12 @@ export const decode = (
  * Checks field types, numeric ranges, closed enum values, oneof cases, and
  * required fields while encoding. Invalid values return a failure with their
  * field path; no partial output is returned. Successful output owns its bytes.
+ *
+ * - `writeUnknownFields`: whether to write the unknown fields of values,
+ *   `true` by default.
+ * - `maxDepth`: a non-negative integer limiting nested message values, 100 by
+ *   default. The root message has depth zero. A map container does not add
+ *   depth; its message values do. Raw unknown fields are written unchanged.
  *
  * **Example** (Encoding a message)
  *
@@ -230,7 +205,10 @@ export const decode = (
  */
 export const encode = (
   descriptor: ProtobufDescriptor.MessageDescriptor,
-  options?: EncodeOptions
+  options?: {
+    readonly writeUnknownFields?: boolean | undefined
+    readonly maxDepth?: number | undefined
+  }
 ): (message: object) => Result.Result<Uint8Array<ArrayBuffer>, ProtobufMessageError> =>
 (message) => Result.mapError(Binary.encode(descriptor, message, options), toError)
 

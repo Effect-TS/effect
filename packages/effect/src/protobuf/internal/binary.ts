@@ -9,6 +9,7 @@ import * as Bytes from "../../Bytes.ts"
 import * as InternalRecord from "../../internal/record.ts"
 import * as Result from "../../Result.ts"
 import type * as D from "../ProtobufDescriptor.ts"
+import type * as ProtobufMessage from "../ProtobufMessage.ts"
 import * as ProtobufReader from "../ProtobufReader.ts"
 import * as ProtobufWriter from "../ProtobufWriter.ts"
 import { WireType } from "./wireType.ts"
@@ -16,16 +17,10 @@ import { WireType } from "./wireType.ts"
 const unknownFields: unique symbol = Symbol.for("effect/protobuf/ProtobufMessage/unknownFields")
 
 /** @internal */
-export interface DecodeOptions {
-  readonly readUnknownFields?: boolean | undefined
-  readonly maxDepth?: number | undefined
-}
+export type DecodeOptions = Parameters<typeof ProtobufMessage.decode>[1]
 
 /** @internal */
-export interface EncodeOptions {
-  readonly writeUnknownFields?: boolean | undefined
-  readonly maxDepth?: number | undefined
-}
+export type EncodeOptions = Parameters<typeof ProtobufMessage.encode>[1]
 
 interface Message {
   [name: string]: any
@@ -671,7 +666,6 @@ const readMap = (
   const child = r.delimited()
   let key = mapKeyDefault(field.key)
   let value: unknown
-  let unknownEnum = false
   // Stage the entire entry before replacing any existing value at its key.
   while (!child.isDone()) {
     const tag = child.tag()
@@ -680,13 +674,12 @@ const readMap = (
     } else if (tag >>> 3 === 2 && (tag & 7) === wireTypeOf(field.type)) {
       try {
         value = readValue(context, child, field.type, 2, value, depth)
-        if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) unknownEnum = true
       } catch (error) {
         rethrow(error, key)
       }
     } else child.skip(tag, context.maxDepth - depth)
   }
-  if (unknownEnum) {
+  if (field.type.kind === "enum" && value !== undefined && !acceptsEnum(field.type.enum, value as number)) {
     retainOccurrence(context, target, start, r.offset)
     return
   }
@@ -1091,7 +1084,8 @@ const splitExtension = (
 }
 
 // Reads the rest of a MessageSet item after its start tag, and returns its
-// message bytes when its type id is `typeId`.
+// message bytes when its type id is `typeId`. Only the first type id and
+// payload are used; incomplete items do not set an extension.
 const readItem = (r: ProtobufReader.ProtobufReader, typeId: number): Uint8Array | undefined => {
   let id: number | undefined
   let payload: Uint8Array | undefined
@@ -1099,14 +1093,17 @@ const readItem = (r: ProtobufReader.ProtobufReader, typeId: number): Uint8Array 
     const tag = r.tag()
     if (tag === ITEM_END) break
     if (tag === 2 * 8 + WireType.Varint) {
-      id = r.uint32()
+      const value = r.uint32()
+      if (value === 0) fail("Expected a nonzero MessageSet type id")
+      id ??= value
     } else if (tag === 3 * 8 + WireType.Len) {
-      payload = r.bytesView()
+      const value = r.bytesView()
+      payload ??= value
     } else {
       r.skip(tag)
     }
   }
-  return id === typeId ? payload ?? new Uint8Array(0) : undefined
+  return id === typeId ? payload : undefined
 }
 
 // A message of one field, an ordinary extension, which its occurrences decode into.
