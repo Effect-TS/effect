@@ -286,7 +286,7 @@ const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
 const hasZone = (input: string): boolean =>
   /(?:Z|GMT(?:[+-]\d{2}(?::?\d{2})?)?)\s*(?:\([^()]*\)\s*)?$/i.test(input) ||
   hasTimeOffset(input) ||
-  /\]$/.test(input) ||
+  input.endsWith("]") ||
   /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
   /\s(?:[+-]\d{2}(?::?\d{2})?|z|gmt|utc?|[ecmp][sd]t)\s*(?:\([^()]*\)\s*)?$/i.test(input)
 
