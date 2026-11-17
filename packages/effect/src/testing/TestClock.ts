@@ -513,6 +513,7 @@ class TrackingScheduler implements Scheduler.Scheduler {
   readonly executionMode: Scheduler.Scheduler["executionMode"]
   declare readonly park?: Scheduler.ParkingScheduler["park"]
   declare readonly resume?: Scheduler.ParkingScheduler["resume"]
+  declare readonly release?: Scheduler.ParkingScheduler["release"]
   constructor(clock: TestClockImpl, parent: Scheduler.Scheduler) {
     this.clock = clock
     this.parent = parent
@@ -522,6 +523,7 @@ class TrackingScheduler implements Scheduler.Scheduler {
     if (parking.park) {
       this.park = (fiber) => parking.park!(fiber)
       this.resume = (fiber, effect) => parking.resume!(fiber, effect)
+      this.release = (fiber) => parking.release!(fiber)
     }
   }
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
