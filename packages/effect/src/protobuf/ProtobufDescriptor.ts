@@ -19,7 +19,10 @@
  *
  * - Type references must be fully qualified, with a leading dot, as protoc and
  *   buf write them.
- * - proto2, proto3 and the editions 2023 and 2024 are supported.
+ * - proto2, proto3 and editions 2023, 2024 and 2026 are supported. Unknown
+ *   editions are rejected rather than interpreted with older defaults.
+ * - Descriptors are compiler output. Source-level naming, visibility and
+ *   definition-size rules are enforced by protoc, before runtime resolution.
  * - `descriptor.proto` itself is part of this module: `descriptorFile`,
  *   and per message an interface and a `MessageDescriptor` of the same name,
  *   such as `FileDescriptorProto`, generated from protoc's descriptor of it.
@@ -77,7 +80,7 @@ import type {
  * @category models
  * @since 4.1.5
  */
-export type EditionName = "proto2" | "proto3" | "2023" | "2024"
+export type EditionName = "proto2" | "proto3" | "2023" | "2024" | "2026"
 
 /**
  * The scalar types of protobuf fields.

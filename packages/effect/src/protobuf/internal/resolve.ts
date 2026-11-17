@@ -24,6 +24,7 @@ const EDITION_PROTO2 = 998
 const EDITION_PROTO3 = 999
 const EDITION_2023 = 1000
 const EDITION_2024 = 1001
+const EDITION_2026 = 1002
 
 // `FieldDescriptorProto.Label` and `.Type`.
 const LABEL_REPEATED = 3
@@ -74,6 +75,8 @@ const PROTO3: Features = {
   utf8Validation: true,
   delimited: false
 }
+// Editions 2023, 2024 and 2026 share these binary defaults. Naming, visibility
+// and definition-size features have source retention and are enforced by protoc.
 const EDITIONS: Features = {
   fieldPresence: "explicit",
   enumType: "open",
@@ -93,6 +96,7 @@ const editionOf = (file: D.FileDescriptorProto): { readonly number: number; read
     case "editions":
       if (file.edition === EDITION_2023) return { number: EDITION_2023, name: "2023" }
       if (file.edition === EDITION_2024) return { number: EDITION_2024, name: "2024" }
+      if (file.edition === EDITION_2026) return { number: EDITION_2026, name: "2026" }
       return fail(`${file.name}: edition ${file.edition} is not supported`)
     default:
       return fail(`${file.name}: syntax ${file.syntax} is not supported`)

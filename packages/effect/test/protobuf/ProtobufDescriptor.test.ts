@@ -222,8 +222,8 @@ describe("ProtobufDescriptor", () => {
       }], "A.f: expected a fully qualified type name, got Point"],
       [
         "an unsupported edition",
-        [{ name: "a.proto", syntax: "editions", edition: 1002 }],
-        "a.proto: edition 1002 is not supported"
+        [{ name: "a.proto", syntax: "editions", edition: ProtobufDescriptor.Edition.EDITION_MAX }],
+        "a.proto: edition 2147483647 is not supported"
       ],
       [
         "a type defined twice",

@@ -3,7 +3,7 @@ import * as Hex from "effect/encoding/Hex"
 import { ProtobufMessage } from "effect/protobuf"
 import * as ProtobufDescriptor from "effect/protobuf/ProtobufDescriptor"
 import * as Result from "effect/Result"
-import { message, registry } from "./descriptors.ts"
+import { editions, field, message, registry, T } from "./descriptors.ts"
 
 const unknownFields: typeof ProtobufMessage.unknownFields = ProtobufMessage.unknownFields
 
@@ -144,6 +144,94 @@ describe("ProtobufMessage", () => {
       it(name, () => {
         assert.strictEqual(encode(typeName, value), hex.replaceAll(" ", ""))
         assert.deepStrictEqual(decode(typeName, hex), { ...zeros, ...value })
+      })
+    }
+  })
+
+  describe("syntax and edition compatibility", () => {
+    const versions = [
+      ["proto2", "proto2", undefined],
+      ["proto3", "proto3", undefined],
+      ["2023", "editions", ProtobufDescriptor.Edition.EDITION_2023],
+      ["2024", "editions", ProtobufDescriptor.Edition.EDITION_2024],
+      ["2026", "editions", ProtobufDescriptor.Edition.EDITION_2026]
+    ] as const
+
+    for (const [version, syntax, edition] of versions) {
+      it(`uses ${version} binary defaults from a descriptor set`, () => {
+        const file: ProtobufDescriptor.FileDescriptorProto = {
+          name: "version.proto",
+          syntax,
+          ...(edition === undefined ? {} : { edition }),
+          message_type: [{
+            name: "Example",
+            field: [
+              field("id", 1, "int32"),
+              field("values", 2, "int32", { label: 3 }),
+              field("text", 3, "string"),
+              field("kind", 4, ".Kind", { type: T.enum }),
+              field("child", 5, ".Example")
+            ]
+          }],
+          enum_type: [{ name: "Kind", value: [{ name: "ZERO", number: 0 }] }]
+        }
+        const set = Result.getOrThrow(ProtobufMessage.encode(ProtobufDescriptor.FileDescriptorSet)({ file: [file] }))
+        const registry = Result.getOrThrow(ProtobufDescriptor.fromFileDescriptorSet(set))
+        assert.strictEqual(registry.getFile(file.name!)!.edition, version)
+        const descriptor = registry.getMessage("Example")!
+        const encode = ProtobufMessage.encode(descriptor)
+        const decode = ProtobufMessage.decode(descriptor)
+        assert.deepStrictEqual(
+          Result.getOrThrow(decode(bytes(""))),
+          version === "proto3"
+            ? { id: 0, values: [], text: "", kind: 0 }
+            : { values: [] }
+        )
+        assert.deepStrictEqual(Result.getOrThrow(encode({ id: 0 })), bytes(version === "proto3" ? "" : "0800"))
+        assert.deepStrictEqual(
+          Result.getOrThrow(encode({ values: [1, 2], child: {} })),
+          bytes(version === "proto2" ? "1001 1002 2a00" : "12020102 2a00")
+        )
+        const unknownEnum = Result.getOrThrow(decode(bytes("2007")))
+        if (version === "proto2") {
+          assert.isUndefined(unknownEnum.kind)
+          assert.deepStrictEqual(unknownEnum[unknownFields], bytes("2007"))
+        } else {
+          assert.strictEqual(unknownEnum.kind, 7)
+          assert.isFalse(unknownFields in unknownEnum)
+        }
+        const invalidUtf8 = decode(bytes("1a01ff"))
+        if (version === "proto2") assert.strictEqual(Result.getOrThrow(invalidUtf8).text, "\uFFFD")
+        else assert.isTrue(Result.isFailure(invalidUtf8))
+      })
+    }
+
+    for (const [version, , edition] of versions) {
+      if (edition === undefined) continue
+      it(`applies feature overrides in edition ${version}`, () => {
+        const registry = Result.getOrThrow(ProtobufDescriptor.make([{
+          ...editions,
+          edition,
+          options: { features: { repeated_field_encoding: 2, utf8_validation: 3 } },
+          message_type: editions.message_type!.map((message) => ({
+            ...message,
+            field: [
+              ...message.field!,
+              field("text", 6, "string"),
+              field("checked_text", 7, "string", { options: { features: { utf8_validation: 2 } } })
+            ]
+          }))
+        }]))
+        const descriptor = registry.getMessage("editions.E")!
+        const value = { a: 0, b: 0, c: [1, 2], d: { x: 1 }, e: 1 }
+        const wire = bytes("0800 1801 1802 23 0801 24 2801")
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.encode(descriptor)(value)), wire)
+        assert.deepStrictEqual(Result.getOrThrow(ProtobufMessage.decode(descriptor)(wire)), value)
+        const unknownEnum = Result.getOrThrow(ProtobufMessage.decode(descriptor)(bytes("2807")))
+        assert.isUndefined(unknownEnum.e)
+        assert.deepStrictEqual(unknownEnum[unknownFields], bytes("2807"))
+        assert.strictEqual(Result.getOrThrow(ProtobufMessage.decode(descriptor)(bytes("3201ff"))).text, "\uFFFD")
+        assert.isTrue(Result.isFailure(ProtobufMessage.decode(descriptor)(bytes("3a01ff"))))
       })
     }
   })
