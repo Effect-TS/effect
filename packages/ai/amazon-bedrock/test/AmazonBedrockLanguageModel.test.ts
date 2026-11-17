@@ -239,6 +239,48 @@ describe("AmazonBedrockLanguageModel", () => {
         ])
       }))
 
+    for (const empty of [false, true]) {
+      it.effect(`sends ${empty ? "empty" : "mapped"} tool model output on the next turn`, () =>
+        Effect.gen(function*() {
+          const result = { summary: "Sunny", temperature: 20 }
+          const weather = Tool.make("Weather", {
+            success: Schema.Struct({ summary: Schema.String, temperature: Schema.Number }),
+            toModelOutput: (value) => empty ? [] : [Prompt.textPart({ text: value.summary })]
+          })
+          const tools = Toolkit.make(weather)
+          const http = makeHttpClient((request) =>
+            Effect.succeed(jsonResponse(
+              request,
+              converseResponse([
+                { toolUse: { toolUseId: "tooluse_1", name: "Weather", input: {} } }
+              ], "tool_use")
+            ))
+          )
+
+          yield* Effect.gen(function*() {
+            const response = yield* LanguageModel.generateText({ prompt: "Weather?", toolkit: tools })
+            assert.deepStrictEqual(response.toolResults[0].result, result)
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.concat(Prompt.make("Weather?"), Prompt.fromResponseParts(response.content)),
+              toolkit: tools,
+              disableToolCallResolution: true
+            })
+          }).pipe(
+            Effect.provide(AmazonBedrockLanguageModel.model(model)),
+            Effect.provide(tools.toLayer({ Weather: () => Effect.succeed(result) })),
+            Effect.provide(http.layer)
+          )
+
+          const request = http.requests[1]
+          assertDefined(request)
+          const body = yield* getRequestBody(request)
+          assert.deepStrictEqual(body.messages[2].content, [{
+            toolResult: { toolUseId: "tooluse_1", content: [{ text: empty ? "" : "Sunny" }] }
+          }])
+        }))
+    }
+
     it.effect("round-trips reasoning blocks with their signature and redacted content", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) =>
