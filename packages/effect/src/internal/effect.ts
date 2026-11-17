@@ -817,7 +817,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
-    if (this.cache?.scheduler !== cache.scheduler) {
+    const scheduler = this.cache?.scheduler
+    if (scheduler !== cache.scheduler) {
+      // A parked fiber is resumed by the scheduler that parked it
+      if (scheduler !== undefined && !this._running && "park" in scheduler) {
+        return this.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
+      }
       this._dispatcher = undefined
     }
     this.cache = cache
