@@ -49,15 +49,20 @@ export interface Scheduler {
  *
  * **Details**
  *
- * A fiber parks when it stops running with more to do: it suspended, or it was
- * forked and its start is scheduled. `park` starts that wait, and the
- * scheduler keeps any state it needs for it, such as the context the fiber
- * parked in. The first thing that would make the fiber run again, the effect
- * its wait produced, its start, or an interrupt, ends the wait and is passed
- * to `resume`, once per call to `park`. `resume` runs the fiber with it by
+ * The fiber only calls its current scheduler; the scheduler owns everything
+ * about a wait. A fiber parks when it stops running with more to do: it
+ * suspended, or it was forked and its start is scheduled. `park` starts that
+ * wait, and the scheduler keeps the state it needs for it, such as the context
+ * the fiber parked in, keyed by fiber. Everything that would make the fiber run
+ * again, the effect its wait produced, its start, or an interrupt, is passed
+ * to `resume`. `resume` runs the fiber once per wait, with the first entry, by
  * calling `fiber.run(effect)`, either synchronously or later, in whatever
- * context it chooses. The scheduler that parked a fiber also resumes it, even
- * if the fiber's scheduler has changed since.
+ * context it chooses, and ignores later entries until the fiber runs.
+ *
+ * `resume` is also called for a fiber the scheduler did not park: one that has
+ * not started, one that has exited, or one whose scheduler `Fiber.setContext`
+ * replaced while it was parked. It runs such a fiber directly, which does
+ * nothing once the fiber has exited.
  *
  * An interrupt requested while the fiber is parked is recorded on the fiber
  * before it reaches `resume`, the same way as one requested while the fiber
@@ -70,7 +75,7 @@ export interface Scheduler {
  * a resource that is dropped.
  *
  * A scheduler is a `ParkingScheduler` when it has a `park` property; the
- * fiber checks this each time it parks. Fibers of any other scheduler
+ * fiber checks this each time it parks or is resumed. Fibers of any other scheduler
  * park the default way: where `node:async_hooks` is available, as in Node.js,
  * Bun and Deno, a fiber resumes inside an `AsyncResource` created where it
  * parked, so `AsyncLocalStorage` state is preserved. Elsewhere, such as in
@@ -80,9 +85,13 @@ export interface Scheduler {
  *
  * - If `fiber.run` is never called, the fiber never resumes and cannot be
  *   interrupted.
- * - The fiber does not hold the state of a wait, so `resume` must release it.
- *   A fiber that is never resumed stays parked, so key the state weakly, for
- *   example in a `WeakMap`, to let such a fiber be garbage collected.
+ * - The fiber does not hold the state of a wait, so the scheduler must release
+ *   it once the fiber runs. A fiber that is never woken stays parked, so key
+ *   the state weakly, for example in a `WeakMap`, to let such a fiber be
+ *   garbage collected.
+ * - When `Fiber.setContext` replaces the scheduler of a parked fiber, the new
+ *   scheduler resumes it, and the wait the old scheduler started is never
+ *   resumed. The old scheduler can release it when it next parks the fiber.
  * - A scheduler that wraps another one must define `park` and `resume` only
  *   when the wrapped scheduler does, and forward both, so that the wrapped
  *   scheduler's choice is kept.
@@ -100,8 +109,9 @@ export interface ParkingScheduler extends Scheduler {
    */
   park(fiber: Fiber.Fiber<unknown, unknown>): void
   /**
-   * Called once for each wait `park` started, with the entry that ends it.
-   * Runs the fiber with that entry.
+   * Called with each entry for a fiber whose scheduler is this one. Runs the
+   * fiber once per wait, with the first entry, or directly if this scheduler
+   * did not park it.
    *
    * @stability unstable
    * @since 4.2.0
