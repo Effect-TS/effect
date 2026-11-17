@@ -2,8 +2,17 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 import { Array, Deferred, Effect, Exit, Fiber, FiberSet, pipe, Ref, Scope } from "effect"
 import { TestClock } from "effect/testing"
+import { assertRegistersDuringStartup } from "./utils/forkRegistration.ts"
 
 describe("FiberSet", () => {
+  it.effect("run registers a fiber even when it interrupts its forker during startup", () =>
+    assertRegistersDuringStartup((work, scope) =>
+      FiberSet.make().pipe(
+        Scope.provide(scope),
+        Effect.flatMap((container) => FiberSet.run(container, work, { startImmediately: true }))
+      )
+    ))
+
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberSet.make()

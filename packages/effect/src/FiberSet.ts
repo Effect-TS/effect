@@ -462,6 +462,17 @@ const constInterruptedFiber = (function() {
  * when it completes. Set `startImmediately: false` to defer startup. By default,
  * the effect starts immediately.
  *
+ * **Details**
+ *
+ * The set owns the fiber, not the caller: it can outlive the caller's
+ * completion or interruption. Forking and registration are interruption-safe,
+ * so caller interruption cannot leave the fiber untracked. Closing the owning
+ * scope from another fiber interrupts managed fibers and awaits their finalizers.
+ *
+ * **Gotchas**
+ *
+ * Uninterruptible work can delay scope closure.
+ *
  * **Example** (Forking effects into a set)
  *
  * ```ts import.meta.vitest

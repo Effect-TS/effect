@@ -1,7 +1,26 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Fiber, Latch, References, Result, Scope } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, Scope } from "effect"
 
 describe("Fiber", () => {
+  for (const name of ["await", "join", "awaitAll"] as const) {
+    it.effect(`${name} cancellation does not interrupt an independently owned fiber`, () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<number>()
+        const observed = yield* Effect.forkChild(Deferred.await(release))
+        const wait = name === "await" ?
+          Fiber.await(observed)
+          : name === "join" ?
+          Fiber.join(observed)
+          : Fiber.awaitAll([observed])
+        const waiter = yield* Effect.forkChild(wait, { startImmediately: true })
+        yield* Fiber.interrupt(waiter)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiter)))
+        assert.isUndefined(observed.pollUnsafe())
+        yield* Deferred.succeed(release, 42)
+        assert.deepStrictEqual(yield* Fiber.await(observed), Exit.succeed(42))
+      }))
+  }
+
   it("is a fiber", async () => {
     const result = Effect.runFork(Effect.succeed(1))
     assert.isTrue(Fiber.isFiber(result))
