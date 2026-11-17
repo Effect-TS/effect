@@ -107,7 +107,10 @@ type Settle = (task: () => void) => void
  * @category models
  * @since 4.2.0
  */
-export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler<Settle> {
+export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+  // Weak, so a fiber that is never resumed can still be garbage collected
+  readonly #waits = new WeakMap<Fiber.Fiber<unknown, unknown>, Settle>()
+
   /**
    * Creates a scheduler for request-owned fiber resumption.
    *
@@ -124,24 +127,21 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
   }
 
   /**
-   * Starts a wait owned by the current request, and returns the function that
-   * ends it.
+   * Starts a wait owned by the current request.
    *
    * @stability unstable
    * @since 4.2.0
    */
-  park(_fiber: Fiber.Fiber<unknown, unknown>): Settle {
+  park(fiber: Fiber.Fiber<unknown, unknown>): void {
     const timer = setPendingTimer()
-    let settle!: Settle
     keepOwnerAlive(
       new Promise<() => void>((resolve) => {
-        settle = resolve
+        this.#waits.set(fiber, resolve)
       }).then((task) => {
         if (timer !== undefined) clearTimeout(timer)
         task()
       })
     )
-    return settle
   }
 
   /**
@@ -150,9 +150,10 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    * @stability unstable
    * @since 4.2.0
    */
-  resume(fiber: Scheduler.ParkedFiber, settle: Settle, effect: Effect<unknown, unknown>): void {
-    // Only the first call settles the promise, so the fiber runs once, with the
-    // first entry. An interrupt arriving later is already recorded on it.
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
+    // Removed before the fiber runs, as it may park again
+    const settle = this.#waits.get(fiber)!
+    this.#waits.delete(fiber)
     settle(() => fiber.run(effect))
   }
 }
