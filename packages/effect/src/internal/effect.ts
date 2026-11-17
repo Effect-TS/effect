@@ -828,8 +828,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
     const scheduler = this.cache?.scheduler
     if (scheduler !== cache.scheduler) {
-      // A parked fiber is resumed by the scheduler that parked it
-      if (scheduler !== undefined && !this._running && "park" in scheduler) {
+      // A ParkingScheduler may hold the effect the fiber runs with next, so it
+      // is kept unless the fiber is running or has exited
+      if (scheduler !== undefined && !this._running && !this._exit && "park" in scheduler) {
         return this.setContext(Context.add(context, Scheduler.Scheduler, scheduler))
       }
       this._dispatcher = undefined
