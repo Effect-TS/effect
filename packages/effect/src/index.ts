@@ -423,6 +423,12 @@ export * as ManagedRuntime from "./ManagedRuntime.ts"
 export * as Match from "./Match.ts"
 
 /**
+ * @stability experimental
+ * @since 4.2.0
+ */
+export * as MemoryFileSystem from "./MemoryFileSystem.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
