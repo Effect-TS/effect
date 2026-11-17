@@ -124,7 +124,7 @@ export type EntityState = {
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
   readonly keepAliveLatch: Latch.Latch
-  keepAliveEnabled: boolean
+  keepAliveRequestId: Snowflake.Snowflake | undefined
 }
 
 /**
@@ -625,7 +625,7 @@ export const make = Effect.fnUntraced(function*<
       activeRequests,
       lastActiveCheck: clock.currentTimeMillisUnsafe(),
       keepAliveLatch,
-      keepAliveEnabled: false
+      keepAliveRequestId: undefined
     }
 
     // During shutdown, signal that no more messages will be processed
@@ -790,10 +790,12 @@ export const make = Effect.fnUntraced(function*<
                   ))
                 )
 
-                if (server.keepAliveEnabled) return reply
-                server.keepAliveEnabled = true
+                // Redelivery must not acknowledge the request held until the latch opens.
+                if (server.keepAliveRequestId === message.envelope.requestId) return Effect.void
+                if (server.keepAliveRequestId !== undefined) return reply
+                server.keepAliveRequestId = message.envelope.requestId
                 return server.keepAliveLatch.whenOpen(Effect.suspend(() => {
-                  server.keepAliveEnabled = false
+                  server.keepAliveRequestId = undefined
                   return reply
                 })).pipe(
                   Effect.forkIn(server.scope, { startImmediately: true }),
