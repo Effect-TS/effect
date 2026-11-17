@@ -108,7 +108,8 @@ type Settle = (task: () => void) => void
  * @since 4.2.0
  */
 export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
-  // Weak, so a fiber that is never resumed can still be garbage collected
+  // The wait of each parked fiber, until it runs. Weak, so a fiber that is
+  // never woken can still be garbage collected.
   readonly #waits = new WeakMap<Fiber.Fiber<unknown, unknown>, Settle>()
 
   /**
@@ -134,14 +135,19 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    */
   park(fiber: Fiber.Fiber<unknown, unknown>): void {
     const timer = setPendingTimer()
+    let settle!: Settle
     keepOwnerAlive(
       new Promise<() => void>((resolve) => {
-        this.#waits.set(fiber, resolve)
+        settle = resolve
       }).then((task) => {
         if (timer !== undefined) clearTimeout(timer)
+        if (this.#waits.get(fiber) === settle) this.#waits.delete(fiber)
         task()
       })
     )
+    // A wait left by a scheduler replacement ends without running the fiber
+    this.#waits.get(fiber)?.(noop)
+    this.#waits.set(fiber, settle)
   }
 
   /**
@@ -151,9 +157,16 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    * @since 4.2.0
    */
   resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
-    // Removed before the fiber runs, as it may park again
-    const settle = this.#waits.get(fiber)!
-    this.#waits.delete(fiber)
+    const settle = this.#waits.get(fiber)
+    if (settle === undefined) {
+      // Not parked here: the fiber has not started, has exited, or was parked
+      // by the scheduler it had before setContext replaced it
+      fiber.run(effect)
+      return
+    }
+    // The wait stays until the fiber runs. Only the first call settles the
+    // promise, so the fiber runs once, with the first entry. An interrupt
+    // arriving later is already recorded on it.
     settle(() => fiber.run(effect))
   }
 }

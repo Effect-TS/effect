@@ -5691,19 +5691,26 @@ describe("Effect", () => {
 
     describe("ParkingScheduler", () => {
       // Runs each parked fiber in the "owner" store when `land` runs, like a
-      // scheduler that hands fibers back to the request that owns them. Its
-      // state is in instance fields, so wrappers must keep the receiver, and it
-      // throws if a wait is resumed more than once.
+      // scheduler that hands fibers back to the request that owns them, and
+      // runs it once per wait. Its state is in instance fields, so wrappers
+      // must keep the receiver.
       const makeScheduler = () => {
         const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
-          readonly parked = new Set<Fiber.Fiber<unknown, unknown>>()
+          // true once the wait is resumed, until the fiber runs
+          readonly waits = new Map<Fiber.Fiber<unknown, unknown>, boolean>()
           readonly pending: Array<() => void> = []
           park(fiber: Fiber.Fiber<unknown, unknown>) {
-            this.parked.add(fiber)
+            this.waits.set(fiber, false)
           }
           resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>) {
-            if (!this.parked.delete(fiber)) throw new Error("not parked")
-            this.pending.push(() => storage.run("owner", () => fiber.run(effect)))
+            const resumed = this.waits.get(fiber)
+            if (resumed === undefined) return fiber.run(effect)
+            if (resumed) return
+            this.waits.set(fiber, true)
+            this.pending.push(() => {
+              this.waits.delete(fiber)
+              storage.run("owner", () => fiber.run(effect))
+            })
           }
         }("sync")
         const land = async () => {
@@ -5757,7 +5764,8 @@ describe("Effect", () => {
         assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
       })
 
-      it("resumes a wait through the scheduler that parked it after the fiber's scheduler changes", async () => {
+      it("resumes a parked fiber through the scheduler that replaced the one it parked with", async () => {
+        // The new scheduler did not park the fiber, so it runs it directly
         const { land, scheduler } = makeScheduler()
         let wake!: () => void
         const fiber = Effect.runFork(
@@ -5769,8 +5777,7 @@ describe("Effect", () => {
         await land()
         fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
         storage.run("waker", wake)
-        await land()
-        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("owner"))
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("waker"))
       })
 
       it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
