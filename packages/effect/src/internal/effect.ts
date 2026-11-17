@@ -628,25 +628,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   evaluate(effect: Primitive): void {
     const scheduler = this.cache.scheduler
     if (Scheduler.isParkingScheduler(scheduler)) scheduler.resume(this, effect as any)
-    else this.runNow(effect)
+    else this.run(effect)
   }
-  run(effect: Effect.Effect<unknown, unknown>): void {
-    // Take the scheduler setContext gave the fiber while it was suspended
-    const cache = (this.context as any).cacheRoot._fiberCache
-    if (this.cache !== cache && !this._exit) {
-      this.cache = cache
-      this._dispatcher = undefined
-    }
-    this.runNow(effect as any)
-  }
-  runNow(effect: Primitive): void {
+  run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
       return
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
       try {
-        return asyncContext.runInAsyncScope(this.runNow, this, effect)
+        return asyncContext.runInAsyncScope(this.run, this, effect)
       } finally {
         // Each captured context is resumed once, so release it for async_hooks
         // consumers like vitest's detectAsyncLeaks.
@@ -657,7 +648,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._yielded = undefined
       yielded()
     }
-    const exit = this.runLoop(effect)
+    const exit = this.runLoop(effect as Primitive)
     if (exit === Yield) {
       this._asyncContext = captureAsyncContext()
       park(this)
@@ -698,6 +689,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
+    // Take the scheduler setContext gave the fiber while it was suspended, or
+    // while async_hooks entered it
+    const latest = (this.context as any).cacheRoot._fiberCache
+    if (this.cache !== latest) {
+      this.cache = latest
+      this._dispatcher = undefined
+    }
     const prevFiber = (globalThis as any)[currentFiberTypeId]
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
@@ -843,7 +841,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-// Out of line, so that `runNow` stays small enough for V8 to inline it into
+// Out of line, so that `run` stays small enough for V8 to inline it into
 // the callbacks that resume a fiber
 const park = (fiber: FiberImpl): void => {
   const scheduler = fiber.cache.scheduler
