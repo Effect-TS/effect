@@ -607,7 +607,8 @@ export {
  *
  * Compares structs field-by-field in the key order of the fields object and
  * stops at the first non-zero comparison result. Field order matters: earlier
- * fields take precedence. The result is `0` only if all fields are equal.
+ * fields take precedence. Symbol fields are compared after string fields.
+ * The result is `0` only if all fields are equal.
  *
  * **Example** (Ordering structs)
  *
@@ -637,7 +638,7 @@ export {
 export function Struct<const R extends { readonly [x: string]: Order<any> }>(
   fields: R
 ): Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> {
-  const keys = Object.keys(fields)
+  const keys = Reflect.ownKeys(fields) as Array<keyof R>
   return make((self, that) => {
     for (const key of keys) {
       const o = fields[key](self[key], that[key])

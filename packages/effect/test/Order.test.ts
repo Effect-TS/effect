@@ -10,6 +10,16 @@ describe("Order", () => {
     strictEqual(O({ a: "a", b: "c" }, { a: "a", b: "b" }), 1)
   })
 
+  it("Struct compares symbol fields after string fields", () => {
+    const rank = Symbol("rank")
+    const O = Order.Struct({ [rank]: Order.Number, name: Order.String })
+    const first = { name: "a", [rank]: 2 }
+    const second = { name: "a", [rank]: 1 }
+
+    strictEqual(O(first, second), 1)
+    strictEqual(O(first, { name: "b", [rank]: 1 }), -1)
+  })
+
   it("Tuple", () => {
     const O = Order.Tuple([Order.String, Order.String])
     strictEqual(O(["a", "b"], ["a", "c"]), -1)
