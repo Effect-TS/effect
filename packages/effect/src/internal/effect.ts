@@ -527,6 +527,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._running = false
     this._deferredInterrupt = false
     this._parent = undefined
+    this._wait = undefined
     this.cache.runtimeMetrics?.recordFiberStart(this.context)
     this.supervisor = this.cache.supervisor
     this.supervisor?.onStart(this, parent)
@@ -550,6 +551,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare _running: boolean
   declare _deferredInterrupt: boolean
   declare _parent: FiberImpl<any, any> | undefined
+  // Owned by internal/scheduler.ts
+  declare _wait: Scheduler.Wait | null | undefined
 
   // set in setContext
   declare context: Context.Context<never>
