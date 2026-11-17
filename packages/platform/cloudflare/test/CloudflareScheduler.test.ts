@@ -74,9 +74,7 @@ describe("CloudflareScheduler", () => {
     })
   })
 
-  // The wait the fiber parked in still resumes it, and its next wait, started
-  // by the new scheduler while it runs in the owner, is owned there too
-  it("keeps the owner of a fiber that setContext moves to another scheduler", async () => {
+  it("keeps the owner of a fiber that setContext moves to another CloudflareScheduler", async () => {
     assert.deepStrictEqual(await json("/park?id=move"), [])
     await sleep(100)
     assert.strictEqual(await json("/wake?id=move&move"), "woken")

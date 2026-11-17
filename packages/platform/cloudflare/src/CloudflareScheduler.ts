@@ -5,48 +5,25 @@
  * @since 4.2.0
  */
 import { waitUntil } from "cloudflare:workers"
+import type { Effect } from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
 const compatibilityFlags: Record<string, boolean | undefined> | undefined = (globalThis as any).Cloudflare
   ?.compatibilityFlags
 
+// Each parked fiber waits on a promise created in the request it parked in,
+// kept here by the function that settles it. workerd runs the reactions of a
+// promise in the request that created it, with the AsyncLocalStorage state
+// they were registered in, so settling it from any request runs the fiber in
+// its owner. workerd cannot tell which request is running, so a fiber woken by
+// its owner takes the same path, a microtask later.
+//
+// Every instance shares these, so a fiber keeps its owner if its scheduler is
+// replaced by another CloudflareScheduler.
+const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
+
 const noop = (): void => {}
-
-// The longest delay a timer accepts. It only marks pending work, so it is
-// cleared before it fires.
-const maxTimerMillis = 2_147_483_647
-
-const setPendingTimer = (): ReturnType<typeof setTimeout> | undefined => {
-  try {
-    return setTimeout(noop, maxTimerMillis)
-  } catch {
-    // Workers do not allow timers in global scope
-    return undefined
-  }
-}
-
-const keepOwnerAlive = (promise: Promise<void>): void => {
-  try {
-    waitUntil(promise)
-  } catch {
-    // Outside a request, for example in global scope, there is no owner to keep
-  }
-}
-
-// Each wait is a promise created in the request the fiber parks in, which owns
-// it. Resuming settles it, and the fiber runs in a reaction to it: workerd
-// runs promise reactions in the request that created the promise, with the
-// AsyncLocalStorage state they were registered in, so the fiber has the
-// owner's I/O objects, timers and store.
-//
-// The owner waits on that promise with waitUntil, so it keeps running after it
-// responds. workerd still cancels a request whose only pending work is a
-// promise another request settles, so a timer set in the owner marks the fiber
-// as pending work. The owner clears it when the promise settles.
-//
-// workerd has no way to ask which request is running, so a fiber woken by its
-// owner also resumes through the promise, a microtask later.
 
 /**
  * A synchronous scheduler that resumes each fiber in the Worker request that
@@ -97,6 +74,10 @@ const keepOwnerAlive = (promise: Promise<void>): void => {
  * compatibility flag, enabled by default from 2024-10-14; the constructor
  * throws without it.
  *
+ * A fiber keeps its owner only while its scheduler is a `CloudflareScheduler`.
+ * If `Fiber.setContext` gives a parked fiber another kind of scheduler, the
+ * fiber resumes in the request that wakes it.
+ *
  * Synchronous execution does not yield to the event loop, so CPU-heavy work
  * delays other requests.
  *
@@ -121,23 +102,42 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
   }
 
   /**
-   * Starts a wait owned by the current request.
+   * Makes the current request the owner of a parked fiber.
    *
    * @stability unstable
    * @since 4.2.0
    */
-  park(): Scheduler.Wait {
-    const timer = setPendingTimer()
-    let resume!: (task: () => void) => void
-    keepOwnerAlive(
-      new Promise<() => void>((resolve) => {
-        resume = resolve
-      }).then((task) => {
-        if (timer !== undefined) clearTimeout(timer)
-        task()
-      })
-    )
-    return { resume }
+  park(fiber: Scheduler.ParkedFiber): void {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const resumed = new Promise<() => void>((resolve) => {
+      waits.set(fiber, resolve)
+    }).then((run) => {
+      clearTimeout(timer)
+      waits.delete(fiber)
+      run()
+    })
+    try {
+      // workerd cancels a request whose only pending work is a promise that
+      // another request settles. A timer is pending work, so this one marks
+      // the fiber. It has the longest delay a timer accepts and never fires.
+      timer = setTimeout(noop, 2_147_483_647)
+      waitUntil(resumed)
+    } catch {
+      // Workers allow neither in global scope, where no request owns the fiber
+    }
+  }
+
+  /**
+   * Runs a parked fiber in the request that owns it.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  resume(fiber: Scheduler.ParkedFiber, effect: Effect<unknown, unknown>): void {
+    const settle = waits.get(fiber)
+    if (settle === undefined) return fiber.run(effect)
+    // A promise settles once, so only the first effect runs the fiber
+    settle(() => fiber.run(effect))
   }
 }
 
