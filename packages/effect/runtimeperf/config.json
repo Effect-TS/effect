@@ -97,6 +97,14 @@
               "path": "valid"
             },
             {
+              "name": "decode-message-set",
+              "export": "decodeMessageSet",
+              "scenario": "protobuf-decode-message-set",
+              "operation": "decode",
+              "size": 128,
+              "family": "extensions"
+            },
+            {
               "name": "decode-fresh-descriptor",
               "export": "decodeFreshDescriptor",
               "scenario": "protobuf-decode-fresh-descriptor",

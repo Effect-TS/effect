@@ -145,6 +145,47 @@ export const decodeMergedUnknown = () => {
   return { run: () => decode(bytes), validate: (result: unknown) => assertSuccess(result, expected) }
 }
 
+export const decodeMessageSet = () => {
+  const registry = Result.getOrThrow(ProtobufDescriptor.make([{
+    name: "message-set.proto",
+    syntax: "proto2",
+    message_type: [
+      {
+        name: "Container",
+        options: { message_set_wire_format: true },
+        extension_range: [{ start: 4, end: 2147483647 }]
+      },
+      { name: "Payload", field: [{ name: "value", number: 1, type: 5, label: 1 }] }
+    ],
+    extension: [{ name: "payload", number: 1000, type: 11, type_name: ".Payload", label: 1, extendee: ".Container" }]
+  }]))
+  const extension = registry.getExtension("payload")!
+  const count = 128
+  const unknown = new Uint8Array(Buffer.concat(
+    Array.from({ length: count }, (_, j) => Buffer.from([0xf8, 0x07, j]))
+  ))
+  const inputs = Array.from({ length: variants }, (_, i) => {
+    // Each item contains a value and unknown field 127. Decoding merges all
+    // payloads while retaining each payload's unknown bytes in wire order.
+    const items = Array.from(
+      { length: count },
+      (_, j) => Buffer.from([0x0b, 0x10, 0xe8, 0x07, 0x1a, 0x05, 0x08, (i + j) & 127, 0xf8, 0x07, j, 0x0c])
+    )
+    return {
+      message: { [ProtobufMessage.unknownFields]: new Uint8Array(Buffer.concat(items)) },
+      expected: {
+        value: (i + count - 1) & 127,
+        [ProtobufMessage.unknownFields]: unknown
+      }
+    }
+  })
+  let index = 0
+  return {
+    run: () => ProtobufMessage.getExtension(inputs[index++ & mask].message, extension),
+    validate: (result: unknown) => assertSuccess(result, inputs[(index - 1) & mask].expected)
+  }
+}
+
 export const decodeFreshDescriptor = () => {
   const bytes = new Uint8Array([8, 1])
   return {

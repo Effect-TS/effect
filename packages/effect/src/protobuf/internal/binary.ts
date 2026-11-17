@@ -357,7 +357,7 @@ const isZero = (type: D.ValueType, value: unknown): boolean => {
 // -----------------------------------------------------------------------------
 
 interface DecodeContext {
-  readonly input: Uint8Array
+  input: Uint8Array
   readonly maxDepth: number
   readonly keepUnknown: boolean
   needsFinish: boolean
@@ -1075,8 +1075,7 @@ const splitExtension = (
     // or clearing the extension, just as it does during message decoding.
     const type = extension.field.type
     const actual = tag & 7
-    const packed = extension.field.kind === "list" && actual === WireType.Len &&
-      (type.kind === "enum" || (type.kind === "scalar" && type.scalar !== "string" && type.scalar !== "bytes"))
+    const packed = extension.field.kind === "list" && actual === WireType.Len && packable(type)
     const matches = !messageSet && tag >>> 3 === number && (actual === wireTypeOf(type) || packed)
     ;(matches ? own : rest).push(bytes.subarray(start, r.offset))
   }
@@ -1132,7 +1131,7 @@ const messageSetDescriptor = (extension: D.ExtensionDescriptor): D.MessageDescri
 // while merge state and retained unknown fields survive until final validation.
 const readMessageSet = (extension: D.ExtensionDescriptor, occurrences: ReadonlyArray<Uint8Array>): Message => {
   const descriptor = messageSetDescriptor(extension)
-  let context: DecodeContext = {
+  const context: DecodeContext = {
     input: occurrences[0],
     maxDepth: DEFAULT_MAX_DEPTH,
     keepUnknown: true,
@@ -1141,13 +1140,7 @@ const readMessageSet = (extension: D.ExtensionDescriptor, occurrences: ReadonlyA
   }
   const target = createMessage(context, layoutOf(descriptor))
   for (const input of occurrences) {
-    context = {
-      input,
-      maxDepth: DEFAULT_MAX_DEPTH,
-      keepUnknown: true,
-      needsFinish: context.needsFinish,
-      unknown: context.unknown
-    }
+    context.input = input
     // The payload is nested one level inside the extended message.
     readFields(context, ProtobufReader.make(input), descriptor, target, 1)
   }

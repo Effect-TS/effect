@@ -101,13 +101,14 @@ part caches, and cached reads over UTC, named-zone and mixed instances.
 
 The `protobuf` suite measures `ProtobufMessage` encoding and decoding of small
 messages, nested messages, packed numeric arrays, and 64 KiB byte fields. It also
-covers merged unknown fields, descriptor construction through the first decode,
-malformed input, and the standalone writer through OTLP log serialization.
+covers merged unknown fields, MessageSet extensions, descriptor construction
+through the first decode, malformed input, and the standalone writer through OTLP
+log serialization.
 Steady-state fixtures prepare descriptors and inputs outside the timed operation
 and rotate through 16 inputs. Valid message and OTLP fixtures check their wire
-bytes against protobufjs; unknown-field and error fixtures use explicit expected
-results. This suite measures Effect's implementation, including when protobufjs
-is used to validate its output.
+bytes against protobufjs; unknown-field, MessageSet and error fixtures use explicit
+expected results. This suite measures Effect's implementation, including when
+protobufjs is used to validate its output.
 
 ```sh
 pnpm runtimeperf protobuf

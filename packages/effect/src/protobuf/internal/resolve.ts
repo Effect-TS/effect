@@ -20,8 +20,6 @@ const fail = (message: string): never => {
 // -----------------------------------------------------------------------------
 
 // The numbers of `google.protobuf.Edition`.
-const EDITION_PROTO2 = 998
-const EDITION_PROTO3 = 999
 const EDITION_2023 = 1000
 const EDITION_2024 = 1001
 const EDITION_2026 = 1002
@@ -85,18 +83,18 @@ const EDITIONS: Features = {
   delimited: false
 }
 
-const editionOf = (file: D.FileDescriptorProto): { readonly number: number; readonly name: D.EditionName } => {
+const editionOf = (file: D.FileDescriptorProto): D.EditionName => {
   switch (file.syntax) {
     case undefined:
     case "":
     case "proto2":
-      return { number: EDITION_PROTO2, name: "proto2" }
+      return "proto2"
     case "proto3":
-      return { number: EDITION_PROTO3, name: "proto3" }
+      return "proto3"
     case "editions":
-      if (file.edition === EDITION_2023) return { number: EDITION_2023, name: "2023" }
-      if (file.edition === EDITION_2024) return { number: EDITION_2024, name: "2024" }
-      if (file.edition === EDITION_2026) return { number: EDITION_2026, name: "2026" }
+      if (file.edition === EDITION_2023) return "2023"
+      if (file.edition === EDITION_2024) return "2024"
+      if (file.edition === EDITION_2026) return "2026"
       return fail(`${file.name}: edition ${file.edition} is not supported`)
     default:
       return fail(`${file.name}: syntax ${file.syntax} is not supported`)
@@ -128,9 +126,9 @@ const merge = (features: Features, set: D.FeatureSet | undefined): Features => {
 
 // The features of a field, from those of its parent. proto2 and proto3 spell
 // some features with their own syntax.
-const fieldFeatures = (edition: number, parent: Features, field: D.FieldDescriptorProto): Features => {
+const fieldFeatures = (edition: D.EditionName, parent: Features, field: D.FieldDescriptorProto): Features => {
   const features = merge(parent, field.options?.features)
-  if (edition !== EDITION_PROTO2 && edition !== EDITION_PROTO3) {
+  if (edition !== "proto2" && edition !== "proto3") {
     return field.type === TYPE_GROUP ? { ...features, delimited: true } : features
   }
   return {
@@ -170,9 +168,7 @@ type Mutable<A> = { -readonly [K in keyof A]: A[K] extends ReadonlyArray<infer E
 
 interface Pending {
   readonly message: Mutable<D.MessageDescriptor>
-  readonly proto: D.DescriptorProto
   readonly features: Features
-  readonly edition: number
 }
 
 /** @internal */
@@ -186,7 +182,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   const files = new Map<string, Mutable<D.FileDescriptor>>()
   const messages = new Map<string, Mutable<D.MessageDescriptor>>()
   const enums = new Map<string, D.EnumDescriptor>()
-  const services = new Map<string, D.ServiceDescriptor>()
+  const services = new Map<string, Mutable<D.ServiceDescriptor>>()
   const extensions = new Map<string, D.ExtensionDescriptor>()
   const extensionsByExtendee = new Map<string, Map<number, D.ExtensionDescriptor>>()
   const pending: Array<Pending> = []
@@ -195,12 +191,9 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       file: Mutable<D.FileDescriptor>,
       parent: Mutable<D.MessageDescriptor> | undefined,
       proto: D.FieldDescriptorProto,
-      features: Features,
-      edition: number,
-      scope: string
+      features: Features
     ]
   > = []
-  const pendingMethods: Array<readonly [D.ServiceDescriptor, Array<D.MethodDescriptor>]> = []
   // Map entry messages, by full name, which map fields read.
   const entries = new Map<string, Pending>()
 
@@ -250,8 +243,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     parent: Mutable<D.MessageDescriptor> | undefined,
     scope: string,
     proto: D.DescriptorProto,
-    parentFeatures: Features,
-    edition: number
+    parentFeatures: Features
   ): Mutable<D.MessageDescriptor> => {
     const name = proto.name ?? fail(`${scope}: a message without a name`)
     const typeName = scope === "" ? name : `${scope}.${name}`
@@ -272,16 +264,16 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       proto
     }
     messages.set(typeName, out)
-    const entry: Pending = { message: out, proto, features, edition }
+    const entry: Pending = { message: out, features }
     if (proto.options?.map_entry === true) entries.set(typeName, entry)
     else pending.push(entry)
     for (const nested of proto.nested_type ?? []) {
-      const message = addMessage(file, out, typeName, nested, features, edition)
+      const message = addMessage(file, out, typeName, nested, features)
       if (nested.options?.map_entry !== true) out.messages.push(message)
     }
     for (const nested of proto.enum_type ?? []) out.enums.push(addEnum(file, out, typeName, nested, features))
     for (const extension of proto.extension ?? []) {
-      pendingExtensions.push([file, out, extension, features, edition, typeName])
+      pendingExtensions.push([file, out, extension, features])
     }
     return out
   }
@@ -301,14 +293,14 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     visiting.delete(name)
     const edition = editionOf(proto)
     const features = merge(
-      edition.number === EDITION_PROTO2 ? PROTO2 : edition.number === EDITION_PROTO3 ? PROTO3 : EDITIONS,
+      edition === "proto2" ? PROTO2 : edition === "proto3" ? PROTO3 : EDITIONS,
       proto.options?.features
     )
     const file: Mutable<D.FileDescriptor> = {
       _tag: "FileDescriptor",
       name,
       package: proto.package ?? "",
-      edition: edition.name,
+      edition,
       dependencies,
       messages: [],
       enums: [],
@@ -319,29 +311,26 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     files.set(name, file)
     const scope = file.package
     for (const message of proto.message_type ?? []) {
-      file.messages.push(addMessage(file, undefined, scope, message, features, edition.number))
+      file.messages.push(addMessage(file, undefined, scope, message, features))
     }
     for (const e of proto.enum_type ?? []) file.enums.push(addEnum(file, undefined, scope, e, features))
     for (const extension of proto.extension ?? []) {
-      pendingExtensions.push([file, undefined, extension, features, edition.number, scope])
+      pendingExtensions.push([file, undefined, extension, features])
     }
     for (const service of proto.service ?? []) {
       const serviceName = service.name ?? fail(`${name}: a service without a name`)
       const typeName = scope === "" ? serviceName : `${scope}.${serviceName}`
       define(typeName)
-      const methods: Array<D.MethodDescriptor> = []
-      const out: D.ServiceDescriptor = {
+      const out: Mutable<D.ServiceDescriptor> = {
         _tag: "ServiceDescriptor",
         typeName,
         name: serviceName,
         file,
-        methods,
+        methods: [],
         proto: service
       }
       services.set(typeName, out)
       file.services.push(out)
-      // Methods refer to messages, which are resolved with the fields.
-      pendingMethods.push([out, methods])
     }
     return file
   }
@@ -403,16 +392,17 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       if (proto.type === TYPE_MESSAGE) {
         const entry = entries.get(typeRef(proto.type_name, where))
         if (entry !== undefined) {
-          const key = entry.proto.field?.find((f) => f.number === 1) ?? fail(`${where}: a map entry without a key`)
-          const value = entry.proto.field?.find((f) => f.number === 2) ?? fail(`${where}: a map entry without a value`)
-          const keyType = valueType(key, fieldFeatures(entry.edition, entry.features, key), where)
+          const { proto, file } = entry.message
+          const key = proto.field?.find((f) => f.number === 1) ?? fail(`${where}: a map entry without a key`)
+          const value = proto.field?.find((f) => f.number === 2) ?? fail(`${where}: a map entry without a value`)
+          const keyType = valueType(key, fieldFeatures(file.edition, entry.features, key), where)
           if (
             keyType.kind !== "scalar" || keyType.scalar === "bytes" || keyType.scalar === "float" ||
             keyType.scalar === "double"
           ) {
             return fail(`${where}: expected a string, boolean or integer map key`)
           }
-          const valueFeatures = fieldFeatures(entry.edition, entry.features, value)
+          const valueFeatures = fieldFeatures(file.edition, entry.features, value)
           // Map values are never encoded as groups.
           return {
             ...base,
@@ -438,7 +428,8 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     return { ...base, kind: "singular", type, presence }
   }
 
-  for (const { edition, features, message, proto } of [...pending, ...entries.values()]) {
+  for (const { features, message } of [...pending, ...entries.values()]) {
+    const { proto } = message
     const at = message.typeName
     const names = new Set<string>()
     const numbers = new Set<number>()
@@ -464,7 +455,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       }
       const oneof = f.oneof_index === undefined ? undefined : oneofs[f.oneof_index]
       const fieldFeaturesOf = fieldFeatures(
-        edition,
+        message.file.edition,
         oneof === undefined ? features : merge(features, oneof.proto.options?.features),
         f
       )
@@ -478,13 +469,14 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     }
   }
 
-  for (const [file, parent, proto, features, edition, scope] of pendingExtensions) {
+  for (const [file, parent, proto, features] of pendingExtensions) {
+    const scope = parent?.typeName ?? file.package
     const name = proto.name ?? fail(`${scope}: an extension without a name`)
     const typeName = scope === "" ? name : `${scope}.${name}`
     if (extensions.has(typeName)) fail(`${typeName} is defined twice`)
     const extendeeName = typeRef(proto.extendee, typeName)
     const extendee = messages.get(extendeeName) ?? fail(`${typeName}: message ${extendeeName} is not defined`)
-    const resolved = field(extendee, undefined, proto, fieldFeatures(edition, features, proto), scope)
+    const resolved = field(extendee, undefined, proto, fieldFeatures(file.edition, features, proto), scope)
     if (resolved.kind === "map") return fail(`${typeName}: an extension cannot be a map`)
     const out: D.ExtensionDescriptor = {
       _tag: "ExtensionDescriptor",
@@ -507,13 +499,14 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     byNumber.set(resolved.number, out)
   }
 
-  for (const [service, methods] of pendingMethods) {
+  // All message descriptors exist before resolving service methods.
+  for (const service of services.values()) {
     for (const method of service.proto.method ?? []) {
       const at = `${service.typeName}.${method.name}`
       const input = typeRef(method.input_type, at)
       const output = typeRef(method.output_type, at)
       const level = method.options?.idempotency_level
-      methods.push({
+      service.methods.push({
         _tag: "MethodDescriptor",
         name: method.name ?? fail(`${service.typeName}: a method without a name`),
         parent: service,
