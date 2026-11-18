@@ -267,9 +267,8 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
  * A string with no zone is read as UTC because `makeUnsafe` appends "Z" before
  * `new Date`, and "Z" is not appended when the string already carries a zone
  * such as a trailing `Z`, a numeric offset like `+05:30`, or `GMT`.
- * `Z` and `GMT` count only as a suffix, so a `Z` or `GMT` inside a comment is
- * not a zone. `GMT` may be followed immediately by `±HH`, `±HHMM`, or `±HH:MM`,
- * and that suffix may have trailing whitespace and one non-nested comment.
+ * A `Z` or `GMT` inside a trailing comment is not a zone. A GMT offset may
+ * appear before a trailing year, as in `Jan 15 12:00 GMT-0500 2024`.
  * A glued numeric offset counts only when a time precedes it (`T…` or `H:MM` /
  * `HH:MM`) and only digits, `:`, and `.` sit between that time and the offset,
  * so a date ending in `-DD` is not an offset.
@@ -284,7 +283,7 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
 const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
 
 const hasZone = (input: string): boolean =>
-  /(?:Z|GMT(?:[+-]\d{2}(?::?\d{2})?)?)\s*(?:\([^()]*\)\s*)?$/i.test(input) ||
+  /(?:Z|GMT(?:[+-]\d{2}(?::?\d{2})?)?(?:\s+\d{4})?)\s*(?:\([^()]*\)\s*)?$/i.test(input) ||
   hasTimeOffset(input) ||
   input.endsWith("]") ||
   /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
