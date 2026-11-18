@@ -2,6 +2,6 @@
 "effect": minor
 ---
 
-Add `failsWith` to `HttpClient.withRateLimiter`: omit it for `RateLimiterError`, or select `"HttpClientError"` to wrap limiter failures as transport errors.
+Add `failsWith` to `HttpClient.withRateLimiter` to report limiter failures as either raw limiter errors or HTTP transport errors.
 
-An explicit `WithRateLimiter.Options` annotation now includes both possible errors. Use `satisfies WithRateLimiter.Options` to retain the narrower error type for a literal choice.
+Omitting the option still returns raw limiter errors at runtime. Calls with an omitted, hidden, or union-valued mode now add both `RateLimiterError` and `HttpClientError` to the inferred error type. Specify `failsWith: "RateLimiterError"` to retain the previous narrow type, or `failsWith: "HttpClientError"` to add only the HTTP error.

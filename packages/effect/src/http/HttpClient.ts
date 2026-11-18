@@ -1184,7 +1184,7 @@ export declare namespace WithRateLimiter {
      */
     readonly limiter: RateLimiter.RateLimiter
     /**
-     * How to report limiter failures. Defaults to `"RateLimiterError"`.
+     * How to report limiter failures at runtime. Defaults to `"RateLimiterError"`.
      * `"HttpClientError"` wraps them in a `TransportError` reason that carries
      * the request and the original limiter error as its cause.
      */
@@ -1270,10 +1270,10 @@ export declare namespace WithRateLimiter {
  * When a response reports the remaining budget, requests wait for the
  * reported reset once that budget is exhausted.
  *
- * Omitting `failsWith` or specifying `"RateLimiterError"` adds only
- * `RateLimiterError` to the client's error type. Specify `"HttpClientError"`
- * to add only `HttpClientError` instead. Errors from the wrapped client
- * pass through unchanged in either mode.
+ * At runtime, omitting `failsWith` leaves limiter failures as `RateLimiterError`.
+ * To narrow the inferred error type, specify `"RateLimiterError"` or
+ * `"HttpClientError"` explicitly. Each literal adds only its corresponding
+ * error type. Errors from the wrapped client pass through unchanged.
  *
  * **Gotchas**
  *
@@ -1281,9 +1281,10 @@ export declare namespace WithRateLimiter {
  * Disabling response inspection does not disable retries; set `times` to `0`
  * to return or fail with the first `429`.
  *
- * An options value annotated as `WithRateLimiter.Options` allows either mode,
- * so its inferred client error includes both. Use `satisfies WithRateLimiter.Options`
- * to validate a literal without widening its mode. With `"HttpClientError"`,
+ * If the mode is omitted, hidden by an options type, or union-valued, the
+ * inferred type includes both errors: a type without `failsWith` can still
+ * describe an object that carries it at runtime. Use `satisfies WithRateLimiter.Options`
+ * to preserve an explicit literal mode. With `"HttpClientError"`,
  * an outer `retryTransient` can retry limiter failures, and
  * `circuitBreakerClassifier` counts them as transport failures.
  *
@@ -1296,7 +1297,7 @@ export const withRateLimiter: {
     options: WithRateLimiter.Options & { readonly failsWith: "HttpClientError" }
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError, R>
   (
-    options: WithRateLimiter.Options & { readonly failsWith?: "RateLimiterError" | undefined }
+    options: WithRateLimiter.Options & { readonly failsWith: "RateLimiterError" }
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | RateLimiter.RateLimiterError, R>
   (
     options: WithRateLimiter.Options
@@ -1307,7 +1308,7 @@ export const withRateLimiter: {
   ): HttpClient.With<E | Error.HttpClientError, R>
   <E, R>(
     self: HttpClient.With<E, R>,
-    options: WithRateLimiter.Options & { readonly failsWith?: "RateLimiterError" | undefined }
+    options: WithRateLimiter.Options & { readonly failsWith: "RateLimiterError" }
   ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
   <E, R>(
     self: HttpClient.With<E, R>,
