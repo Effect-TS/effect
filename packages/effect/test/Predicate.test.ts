@@ -112,9 +112,11 @@ describe("Struct", () => {
     assert.equal(calls, 1)
   })
 
-  it("checks symbol fields", () => {
+  it("checks enumerable symbol fields but ignores non-enumerable string fields", () => {
     const tag = Symbol("tag")
-    const p = Predicate.Struct({ a: isPositive, [tag]: isNegative })
+    const fields = { a: isPositive, [tag]: isNegative }
+    Object.defineProperty(fields, "hidden", { value: () => false })
+    const p = Predicate.Struct(fields)
 
     assert.equal(p({ a: 1, [tag]: -1 }), true)
     assert.equal(p({ a: 1, [tag]: 1 }), false)

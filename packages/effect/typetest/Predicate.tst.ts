@@ -213,6 +213,9 @@ describe("Predicate", () => {
   })
 
   it("Struct", () => {
+    const tag = Symbol("tag")
+    expect(Predicate.Struct({ name: Predicate.isString, [tag]: true })).type.toRaiseError()
+
     expect(
       Predicate.Struct({
         a: hole<Predicate.Refinement<string, "a">>(),
