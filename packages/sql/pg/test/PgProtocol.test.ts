@@ -395,6 +395,17 @@ describe("PgProtocol", () => {
       )
     })
 
+    it("keeps a leading U+FEFF, also through the strict re-decode", () => {
+      // `TextDecoder` drops a leading U+FEFF by default, and a replacement
+      // character is what sends a string to it.
+      for (const name of ["\ufeff", "\ufeffstatus", "\ufeff\ufffd", "\ufeffstatus\ufffd and some padding"]) {
+        assert.deepStrictEqual(
+          PgProtocol.makeParser().push(parameterStatus(name, name)),
+          [{ _tag: "ParameterStatus", name, value: name }]
+        )
+      }
+    })
+
     it("rejects a stray high byte at every position of the string fast path", () => {
       for (let length = 1; length <= 16; length++) {
         for (let at = 0; at < length; at++) {

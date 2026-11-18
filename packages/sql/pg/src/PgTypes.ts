@@ -66,7 +66,8 @@ const result = <A>(evaluate: () => A): Result.Result<A, CodecError> => {
 }
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder("utf-8", { fatal: true })
+// `ignoreBOM` keeps a leading U+FEFF, which is part of the value.
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 const writeInt16 = (bytes: Uint8Array, offset: number, value: number): void => {
   bytes[offset] = value >>> 8

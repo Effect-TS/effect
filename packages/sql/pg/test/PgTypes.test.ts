@@ -930,6 +930,14 @@ describe("PgTypes", () => {
       }
     })
 
+    it("keeps a leading U+FEFF, also through the strict re-decode", () => {
+      // `TextDecoder` drops a leading U+FEFF by default, and a replacement
+      // character is what sends a value to it.
+      for (const value of ["\ufeff", "\ufeffnote", "\ufeff\ufffd", "\ufeffnote\ufffd and some padding"]) {
+        assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+      }
+    })
+
     it("rejects a stray high byte at every position of the fast path", () => {
       // A lone lead byte is not valid UTF-8, so the fast path has to hand it to
       // the decoder rather than read it as a character of its own.

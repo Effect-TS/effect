@@ -393,7 +393,8 @@ export class EncodeError extends Data.TaggedError("PgProtocolEncodeError")<{
 }> {}
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder("utf-8", { fatal: true })
+// `ignoreBOM` keeps a leading U+FEFF, which is part of the string.
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 /**
  * Above this length `TextEncoder.encodeInto` beats a per-character loop, below
