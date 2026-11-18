@@ -254,6 +254,25 @@ describe("PgTypes", () => {
       }
     })
   })
+  describe("records", () => {
+    it("uses the text fallback unless the registry has a field codec", () => {
+      const wire = bytes("000000010000008e000000043c612f3e") // ROW('<a/>'::xml)
+      assert.deepStrictEqual(PgTypes.decode(wire, PgTypes.OID.record, 1), ["<a/>"])
+      const registry = PgTypesResult.makeRegistry()
+      registry.register<string>(142, {
+        encode: (value) => Result.succeed(new TextEncoder().encode(value)),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toUpperCase())
+      })
+      const decoded = PgTypesResult.decode(wire, PgTypes.OID.record, 1, registry)
+      assert.deepStrictEqual(success(decoded), ["<A/>"])
+    })
+
+    it("rejects malformed records and encoding", () => {
+      const truncated = bytes("000000010000001700000004000000") // int4 field missing its last byte
+      assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(truncated, PgTypes.OID.record, 1))
+      assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode([1], PgTypes.OID.record))
+    })
+  })
   it("returns codec failures as Result values", () => {
     for (
       const result of [
