@@ -66,8 +66,8 @@ describe("CloudflareScheduler", () => {
     })
   })
 
-  it("is async and runs queued work in a microtask", async () => {
-    assert.deepStrictEqual(await json("/yield"), { executionMode: "async", order: ["fiber", "timer"] })
+  it("is async and yields to the event loop", async () => {
+    assert.deepStrictEqual(await json("/yield"), { executionMode: "async", order: ["timer", "fiber"] })
   })
 
   // The owner's wake reaction runs after the interrupt has been handed over,
