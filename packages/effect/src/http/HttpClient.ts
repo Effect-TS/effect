@@ -1283,10 +1283,11 @@ export declare namespace WithRateLimiter {
  *
  * If the mode is omitted, hidden by an options type, or union-valued, the
  * inferred type includes both errors: a type without `failsWith` can still
- * describe an object that carries it at runtime. Use `satisfies WithRateLimiter.Options`
- * to preserve an explicit literal mode. With `"HttpClientError"`,
- * an outer `retryTransient` can retry limiter failures, and
- * `circuitBreakerClassifier` counts them as transport failures.
+ * describe an object that carries it at runtime. Use
+ * `satisfies WithRateLimiter.Options` to preserve an explicit literal mode.
+ *
+ * With `"HttpClientError"`, an outer `retryTransient` can retry limiter
+ * failures, and `circuitBreakerClassifier` counts them as transport failures.
  *
  * @stability unstable
  * @category rate limiting
@@ -1314,26 +1315,20 @@ export const withRateLimiter: {
     self: HttpClient.With<E, R>,
     options: WithRateLimiter.Options
   ): HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R>
-} = dual(
-  2,
-  <E, R>(self: HttpClient.With<E, R>, options: WithRateLimiter.Options) =>
-    options.failsWith === "HttpClientError"
-      ? rateLimited<E, R, Error.HttpClientError>(self, options, (effect, request) =>
-        Effect.mapError(
-          effect,
-          (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
-        ))
-      : rateLimited<E, R, RateLimiter.RateLimiterError>(self, options, identity)
-)
-
-function rateLimited<E, R, E2>(
+} = dual(2, <E, R>(
   self: HttpClient.With<E, R>,
-  options: WithRateLimiter.Options,
-  mapLimiterEffect: <A>(
+  options: WithRateLimiter.Options
+): HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R> => {
+  const mapLimiterEffect: <A>(
     effect: Effect.Effect<A, RateLimiter.RateLimiterError>,
     request: HttpClientRequest.HttpClientRequest
-  ) => Effect.Effect<A, E2>
-): HttpClient.With<E | E2, R> {
+  ) => Effect.Effect<A, Error.HttpClientError | RateLimiter.RateLimiterError> = options.failsWith === "HttpClientError"
+    ? (effect, request) =>
+      Effect.mapError(
+        effect,
+        (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
+      )
+    : identity
   const initialState: RateLimiterState = {
     initial: true,
     limit: options.limit,
@@ -1395,7 +1390,7 @@ function rateLimited<E, R, E2>(
 
   return transform(self, function loop(effect, request, retries = 0): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
-    E | E2,
+    E | Error.HttpClientError | RateLimiter.RateLimiterError,
     R
   > {
     const fiber = Fiber.getCurrent()!
@@ -1466,7 +1461,7 @@ function rateLimited<E, R, E2>(
       ({ delay }) => {
         const runAdaptive = (): Effect.Effect<
           HttpClientResponse.HttpClientResponse,
-          E | E2,
+          E | Error.HttpClientError | RateLimiter.RateLimiterError,
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
@@ -1516,7 +1511,7 @@ function rateLimited<E, R, E2>(
       }
     )
   })
-}
+})
 
 /**
  * Namespace containing configuration types for `withCircuitBreaker`.
