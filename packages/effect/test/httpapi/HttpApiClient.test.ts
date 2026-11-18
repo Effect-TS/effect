@@ -965,14 +965,17 @@ describe("HttpApiClient", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
         success: HttpApiSchema.WithHeaders(Success, { "x-count": Schema.Int }),
-        error: Schema.Struct({ tags: Tags }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400))
+        error: [
+          Schema.Struct({ tags: Tags }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400)),
+          Schema.Struct({ tags: Schema.Literal("b") }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400))
+        ]
       }))
     )
-    const decode = (status: number) =>
+    const decode = (status: number, body = "tags=a") =>
       HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })(
         HttpClientResponse.fromWeb(
           HttpClientRequest.get("http://test/form"),
-          new Response("tags=a", {
+          new Response(body, {
             status,
             headers: { "content-type": "application/x-www-form-urlencoded", "x-count": "1" }
           })
@@ -982,6 +985,11 @@ describe("HttpApiClient", () => {
     it.effect("recovers an array in a declared form error", () =>
       Effect.gen(function*() {
         assert.deepStrictEqual(yield* Effect.flip(decode(400)), { tags: ["a"] })
+      }))
+
+    it.effect("prefers a matching declared error to singleton recovery", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* Effect.flip(decode(400, "tags=b")), { tags: "b" })
       }))
 
     it.effect("preserves a scalar already accepted by oneOf", () =>
