@@ -116,22 +116,8 @@ describe("TranscriptionModel", () => {
       }).pipe(Effect.provide(fake.layer))
     })
 
-    it.effect("sliding drops the oldest audio and reports how much", () => {
-      const fake = makeFake(() => Effect.succeed([]))
-      return Effect.gen(function*() {
-        const output = yield* TranscriptionModel.transcribeLiveBuffered({
-          audio: Stream.make(new Uint8Array([1, 2]), new Uint8Array([3])),
-          format,
-          maxDuration: "2 seconds",
-          strategy: "sliding",
-          schedule: Schedule.recurs(1)
-        }).pipe(Stream.runCollect)
-        assert.deepStrictEqual(output, [{ _tag: "AudioDiscarded", duration: Duration.seconds(1) }])
-      }).pipe(Effect.provide(fake.layer))
-    })
-
     it.effect("sliding keeps a trailing partial frame when the buffer holds less than one frame", () => {
-      const fake = makeFake(() => Effect.succeed([]))
+      const fake = makeFake((session) => session === 0 ? Effect.fail(dropped) : Effect.succeed([]))
       return Effect.gen(function*() {
         const output = yield* TranscriptionModel.transcribeLiveBuffered({
           audio: Stream.make(new Uint8Array([1, 2, 3])),
@@ -141,6 +127,7 @@ describe("TranscriptionModel", () => {
           schedule: Schedule.recurs(1)
         }).pipe(Stream.runCollect)
         assert.deepStrictEqual(output, [{ _tag: "AudioDiscarded", duration: Duration.seconds(1) }])
+        assert.deepStrictEqual(fake.sessions[1], [3])
       }).pipe(Effect.provide(fake.layer))
     })
 
@@ -189,10 +176,10 @@ describe("TranscriptionModel", () => {
         TranscriptionModel.make({
           transcribe: () => Effect.succeed({ text: "hello" }),
           transcribeLive: (options) => {
-            sessions++
+            const failure = sessions++ === 0 ? dropped : AiError.make({ ...dropped, method: "retry" })
             return Stream.drain(options.audio).pipe(
               Stream.concat(Stream.make(update("a", "partial", false))),
-              Stream.concat(Stream.fromEffect(Effect.delay(Effect.fail(dropped), "1 second")))
+              Stream.concat(Stream.fromEffect(Effect.delay(Effect.fail(failure), "1 second")))
             )
           }
         })
@@ -210,23 +197,8 @@ describe("TranscriptionModel", () => {
         yield* TestClock.adjust("2 seconds")
         assert.strictEqual(sessions, 2)
         assert.isDefined(fiber.pollUnsafe())
-        assert.strictEqual(yield* Fiber.join(fiber), dropped)
+        assert.strictEqual((yield* Fiber.join(fiber)).method, "retry")
       }).pipe(Effect.provide(layer))
-    })
-
-    it.effect("fails with the last error once the schedule is exhausted", () => {
-      const fake = makeFake(() => Effect.fail(dropped))
-      return Effect.gen(function*() {
-        const error = yield* TranscriptionModel.transcribeLiveBuffered({
-          audio: Stream.make(new Uint8Array([1])),
-          format,
-          maxDuration: "1 minute",
-          strategy: "error",
-          schedule: Schedule.recurs(1)
-        }).pipe(Stream.runDrain, Effect.flip)
-        assert.strictEqual(error, dropped)
-        assert.strictEqual(fake.sessions.length, 2)
-      }).pipe(Effect.provide(fake.layer))
     })
   })
 })

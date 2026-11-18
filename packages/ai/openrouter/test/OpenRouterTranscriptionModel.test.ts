@@ -5,10 +5,13 @@ import { TranscriptionModel } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenRouterTranscriptionModel", () => {
-  it.effect("posts a recording as JSON and maps the response", () =>
+  it.effect.each([
+    { mediaType: "audio/mpeg", data: new Uint8Array([1, 2, 3]), extension: "mp3" },
+    { mediaType: "audio/webm;codecs=opus", data: "AQID", extension: "webm" }
+  ])("posts $mediaType as JSON and maps the response", ({ mediaType, data, extension }) =>
     Effect.gen(function*() {
       const { request, response } = yield* transcribe({
-        audio: { mediaType: "audio/mpeg", data: new Uint8Array([1, 2, 3]) },
+        audio: { mediaType, data },
         language: "en"
       }, { response_format: "verbose_json", diarize: true })
 
@@ -18,7 +21,7 @@ describe("OpenRouterTranscriptionModel", () => {
         response_format: "verbose_json",
         diarize: true,
         language: "en",
-        input_audio: { data: "AQID", format: "mp3" }
+        input_audio: { data: "AQID", format: extension }
       })
 
       assert.strictEqual(response.text, sttResponse.text)
@@ -44,14 +47,6 @@ describe("OpenRouterTranscriptionModel", () => {
         audio: { mediaType: "audio/wav", data: new URL("https://example.com/meeting.wav") }
       })
       assert.deepStrictEqual(request.body.input_audio, { url: "https://example.com/meeting.wav", format: "wav" })
-    }))
-
-  it.effect("ignores media type parameters when deriving the format", () =>
-    Effect.gen(function*() {
-      const { request } = yield* transcribe({
-        audio: { mediaType: "audio/webm;codecs=opus", data: "AQID" }
-      })
-      assert.deepStrictEqual(request.body.input_audio, { data: "AQID", format: "webm" })
     }))
 })
 

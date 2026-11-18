@@ -7,70 +7,61 @@ import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
 
 describe("OpenAiTranscriptionModel", () => {
-  it.effect("posts a recording as multipart form data and maps the response", () =>
-    Effect.gen(function*() {
-      let request: HttpClientRequest.HttpClientRequest | undefined
+  it.effect.each([
+    { mediaType: "audio/mpeg", data: new Uint8Array([1, 2, 3]), extension: "mp3" },
+    { mediaType: "audio/webm;codecs=opus", data: "AQID", extension: "webm" }
+  ])(
+    "posts $mediaType as multipart form data and maps the response",
+    ({ mediaType, data, extension }) =>
+      Effect.gen(function*() {
+        let request: HttpClientRequest.HttpClientRequest | undefined
 
-      const response = yield* TranscriptionModel.transcribe({
-        audio: { mediaType: "audio/mpeg", data: new Uint8Array([1, 2, 3]) },
-        language: "en"
-      }).pipe(
-        Effect.provide(OpenAiTranscriptionModel.layer({
-          model: "whisper-1",
-          config: { response_format: "verbose_json", timestamp_granularities: ["segment"] }
-        })),
-        Effect.provide(makeClient((_) => {
-          request = _
-          return Effect.succeed(jsonResponse(_, verboseJsonResponse))
-        }))
-      )
+        const response = yield* TranscriptionModel.transcribe({
+          audio: { mediaType, data },
+          language: "en"
+        }).pipe(
+          Effect.provide(OpenAiTranscriptionModel.layer({
+            model: "whisper-1",
+            config: { response_format: "verbose_json", timestamp_granularities: ["segment"] }
+          })),
+          Effect.provide(makeClient((_) => {
+            request = _
+            return Effect.succeed(jsonResponse(_, verboseJsonResponse))
+          }))
+        )
 
-      assert.isDefined(request)
-      if (request === undefined) return
-      assert.strictEqual(request.url, "https://api.openai.com/v1/audio/transcriptions")
-      const body = request.body
-      assert(body._tag === "FormData")
-      const file = body.formData.get("file")
-      assert(file instanceof File)
-      assert.strictEqual(file.name, "audio.mp3")
-      assert.deepStrictEqual(new Uint8Array(yield* Effect.promise(() => file.arrayBuffer())), new Uint8Array([1, 2, 3]))
-      body.formData.delete("file")
-      assert.deepStrictEqual(Array.from(body.formData), [
-        ["model", "whisper-1"],
-        ["response_format", "verbose_json"],
-        ["timestamp_granularities[]", "segment"],
-        ["language", "en"]
-      ])
+        assert.isDefined(request)
+        if (request === undefined) return
+        assert.strictEqual(request.url, "https://api.openai.com/v1/audio/transcriptions")
+        const body = request.body
+        assert(body._tag === "FormData")
+        const file = body.formData.get("file")
+        assert(file instanceof File)
+        assert.strictEqual(file.name, `audio.${extension}`)
+        assert.deepStrictEqual(
+          new Uint8Array(yield* Effect.promise(() => file.arrayBuffer())),
+          new Uint8Array([1, 2, 3])
+        )
+        body.formData.delete("file")
+        assert.deepStrictEqual(Array.from(body.formData), [
+          ["model", "whisper-1"],
+          ["response_format", "verbose_json"],
+          ["timestamp_granularities[]", "segment"],
+          ["language", "en"]
+        ])
 
-      assert.strictEqual(response.text, verboseJsonResponse.text)
-      assert.strictEqual(response.language, "english")
-      assert.deepStrictEqual(response.duration, Duration.seconds(verboseJsonResponse.duration))
-      assert.deepStrictEqual(response.segments, [{
-        text: verboseJsonResponse.segments[0].text,
-        start: Duration.zero,
-        end: Duration.seconds(verboseJsonResponse.segments[0].end)
-      }])
-      assert.deepStrictEqual(response.usage.audioDuration, Duration.seconds(9))
-      assert.deepStrictEqual(response.metadata.openai?.segments?.[0].no_speech_prob, 0.00985)
-    }))
-
-  it.effect("ignores media type parameters when naming the file", () =>
-    Effect.gen(function*() {
-      let request: HttpClientRequest.HttpClientRequest | undefined
-      yield* TranscriptionModel.transcribe({
-        audio: { mediaType: "audio/webm;codecs=opus", data: "AQID" }
-      }).pipe(
-        Effect.provide(OpenAiTranscriptionModel.layer({ model: "whisper-1" })),
-        Effect.provide(makeClient((_) => {
-          request = _
-          return Effect.succeed(jsonResponse(_, { text: "hello" }))
-        }))
-      )
-      assert(request?.body._tag === "FormData")
-      const file = request.body.formData.get("file")
-      assert(file instanceof File)
-      assert.strictEqual(file.name, "audio.webm")
-    }))
+        assert.strictEqual(response.text, verboseJsonResponse.text)
+        assert.strictEqual(response.language, "english")
+        assert.deepStrictEqual(response.duration, Duration.seconds(verboseJsonResponse.duration))
+        assert.deepStrictEqual(response.segments, [{
+          text: verboseJsonResponse.segments[0].text,
+          start: Duration.zero,
+          end: Duration.seconds(verboseJsonResponse.segments[0].end)
+        }])
+        assert.deepStrictEqual(response.usage.audioDuration, Duration.seconds(9))
+        assert.deepStrictEqual(response.metadata.openai?.segments?.[0].no_speech_prob, 0.00985)
+      })
+  )
 
   it.effect("fails for a recording given as a URL", () =>
     Effect.gen(function*() {
