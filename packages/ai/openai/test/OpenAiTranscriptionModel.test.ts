@@ -1,9 +1,10 @@
 import { OpenAiClient, OpenAiTranscriptionModel } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Redacted, Stream } from "effect"
+import { Duration, Effect, Fiber, Layer, Redacted, Stream } from "effect"
 import { TranscriptionModel } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 import * as Socket from "effect/socket/Socket"
+import { TestClock } from "effect/testing"
 
 describe("OpenAiTranscriptionModel", () => {
   it.effect("posts a recording as multipart form data and maps the response", () =>
@@ -175,6 +176,59 @@ describe("OpenAiTranscriptionModel", () => {
         assert.strictEqual(error.reason._tag, "InvalidUserInputError")
         assert.strictEqual(server.sockets.length, 0)
       }))
+
+    it.effect("waits for a turn announced after the clear is acknowledged", () =>
+      Effect.gen(function*() {
+        const server = makeServer(() => {})
+        const fiber = yield* Effect.forkChild(runLive(server))
+        yield* TestClock.adjust(0)
+        const socket = server.sockets[0]
+        socket.receive(cleared)
+        yield* TestClock.adjust(0)
+        socket.receive(committed)
+        yield* TestClock.adjust("10 seconds")
+        socket.receive(completed)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [
+          { _tag: "SegmentUpdate", id: "item_003", text: "Hello, how are you?", final: true }
+        ])
+      }))
+
+    it.effect("fails when the closing commit is rejected", () =>
+      Effect.gen(function*() {
+        const server = makeServer((frame, socket) => {
+          if (frame.type === "input_audio_buffer.commit") {
+            socket.receive({
+              type: "error",
+              event_id: "event_001",
+              error: {
+                type: "server_error",
+                code: null,
+                message: "The server had an error while processing your request.",
+                param: null,
+                event_id: frame.event_id
+              }
+            })
+          }
+          if (frame.type === "input_audio_buffer.clear") socket.receive(cleared)
+        })
+        const error = yield* Effect.flip(runLive(server))
+        assert.strictEqual(error.reason._tag, "InternalProviderError")
+      }))
+
+    it.effect("fails when the last transcript does not arrive in time", () =>
+      Effect.gen(function*() {
+        const server = makeServer(() => {})
+        const fiber = yield* Effect.forkChild(runLive(server, { realtime: { flushTimeout: "5 seconds" } }))
+        yield* TestClock.adjust(0)
+        const socket = server.sockets[0]
+        socket.receive(committed)
+        yield* TestClock.adjust(0)
+        socket.receive(cleared)
+        yield* TestClock.adjust("5 seconds")
+        const error = yield* Effect.flip(Fiber.join(fiber))
+        assert.isTrue(error.isRetryable)
+        assert.isTrue(socket.closed)
+      }))
   })
 })
 
@@ -202,12 +256,30 @@ const verboseJsonResponse = {
   usage: { type: "duration", seconds: 9 }
 }
 
+const committed = {
+  type: "input_audio_buffer.committed",
+  event_id: "event_005",
+  previous_item_id: null,
+  item_id: "item_003"
+}
+
+const cleared = { type: "input_audio_buffer.cleared", event_id: "event_009" }
+
+const completed = {
+  type: "conversation.item.input_audio_transcription.completed",
+  event_id: "event_010",
+  item_id: "item_003",
+  content_index: 0,
+  transcript: "Hello, how are you?",
+  usage: { type: "tokens", total_tokens: 22, input_tokens: 13, output_tokens: 9 }
+}
+
 const realtimeEvents: ReadonlyArray<object> = [
   { type: "session.created", event_id: "event_001", session: { type: "transcription", id: "sess_001" } },
   { type: "session.updated", event_id: "event_002", session: { type: "transcription", id: "sess_001" } },
   { type: "input_audio_buffer.speech_started", event_id: "event_003", audio_start_ms: 320, item_id: "item_003" },
   { type: "input_audio_buffer.speech_stopped", event_id: "event_004", audio_end_ms: 1840, item_id: "item_003" },
-  { type: "input_audio_buffer.committed", event_id: "event_005", previous_item_id: null, item_id: "item_003" },
+  committed,
   {
     type: "conversation.item.input_audio_transcription.delta",
     event_id: "event_006",
@@ -234,15 +306,8 @@ const realtimeEvents: ReadonlyArray<object> = [
       event_id: "effect_flush_commit"
     }
   },
-  { type: "input_audio_buffer.cleared", event_id: "event_009" },
-  {
-    type: "conversation.item.input_audio_transcription.completed",
-    event_id: "event_010",
-    item_id: "item_003",
-    content_index: 0,
-    transcript: "Hello, how are you?",
-    usage: { type: "tokens", total_tokens: 22, input_tokens: 13, output_tokens: 9 }
-  }
+  cleared,
+  completed
 ]
 
 // -----------------------------------------------------------------------------
@@ -301,6 +366,21 @@ class FakeWebSocket implements Socket.WebSocketLike {
     for (const listener of Array.from(this.listeners.get(type) ?? [])) listener(event)
   }
 }
+
+// A session whose audio ends with the turn still open.
+const runLive = (
+  server: ReturnType<typeof makeServer>,
+  config?: Omit<typeof OpenAiTranscriptionModel.Config.Service, "model">
+) =>
+  TranscriptionModel.transcribeLive({
+    audio: Stream.make(new Uint8Array([1, 2])),
+    format: { encoding: "pcm16", sampleRate: 24000, channels: 1 }
+  }).pipe(
+    Stream.runCollect,
+    Effect.provide(OpenAiTranscriptionModel.layerRealtime({ model: "gpt-4o-transcribe", config })),
+    Effect.provide(makeClient(() => Effect.die("unexpected request"))),
+    Effect.provideService(Socket.WebSocketConstructor, server.connect)
+  )
 
 const makeServer = (onSend: (frame: any, socket: FakeWebSocket) => void) => {
   const sockets: Array<FakeWebSocket> = []

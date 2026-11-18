@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Layer, Queue, Schedule, Stream } from "effect"
+import { Cause, Deferred, Duration, Effect, Fiber, Layer, Queue, Schedule, Stream } from "effect"
 import { AiError, TranscriptionModel } from "effect/ai"
+import { TestClock } from "effect/testing"
 
 const format: TranscriptionModel.AudioFormat = { encoding: "mulaw", sampleRate: 1, channels: 1 }
 
@@ -142,6 +143,29 @@ describe("TranscriptionModel", () => {
         assert.deepStrictEqual(output, [{ _tag: "AudioDiscarded", duration: Duration.seconds(1) }])
       }).pipe(Effect.provide(fake.layer))
     })
+
+    it.effect("waits for a provider that has stopped taking audio", () =>
+      Effect.gen(function*() {
+        const stalled = yield* Deferred.make<void>()
+        const fake = makeFake((_, chunk) =>
+          chunk[0] === 1 ? Effect.as(Deferred.await(stalled), []) : Effect.succeed([])
+        )
+        let pulled = 0
+        const fiber = yield* TranscriptionModel.transcribeLiveBuffered({
+          audio: Stream.fromEffectRepeat(Effect.sync(() => new Uint8Array([++pulled]))).pipe(Stream.take(100)),
+          format,
+          maxDuration: "2 seconds",
+          strategy: "sliding",
+          schedule: Schedule.recurs(1)
+        }).pipe(Stream.runDrain, Effect.provide(fake.layer), Effect.forkChild)
+
+        yield* TestClock.adjust(0)
+        assert.isBelow(pulled, 10)
+
+        yield* Deferred.succeed(stalled, undefined)
+        yield* Fiber.join(fiber)
+        assert.deepStrictEqual(fake.sessions, [Array.from({ length: 100 }, (_, i) => i + 1)])
+      }))
 
     it.effect("error fails when the buffer is full", () => {
       const fake = makeFake(() => Effect.succeed([]))

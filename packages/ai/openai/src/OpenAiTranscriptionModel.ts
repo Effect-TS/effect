@@ -12,6 +12,7 @@
 import * as AiError from "effect/ai/AiError"
 import * as AiModel from "effect/ai/Model"
 import * as TranscriptionModel from "effect/ai/TranscriptionModel"
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -54,6 +55,8 @@ type RealtimeInput = typeof OpenAiSchema.RealtimeTranscriptionSession.Encoded["a
  * The top-level fields configure requests to the transcriptions endpoint.
  * `prompt` also applies to live sessions. `realtime` holds the settings that
  * only live sessions have. Turn detection defaults to `server_vad`.
+ * `flushTimeout` is how long a live session may stay silent after the audio
+ * has ended while transcripts are still due, and defaults to 30 seconds.
  *
  * @stability unstable
  * @category services
@@ -68,6 +71,7 @@ export class Config extends Context.Service<
         readonly turn_detection?: RealtimeInput["turn_detection"] | undefined
         readonly noise_reduction?: RealtimeInput["noise_reduction"] | undefined
         readonly include?: typeof OpenAiSchema.RealtimeTranscriptionSession.Encoded["include"] | undefined
+        readonly flushTimeout?: Duration.Input | undefined
       } | undefined
     }
   >
@@ -171,12 +175,26 @@ export const make = Effect.fnUntraced(function*(options: {
  * Their `start` and `end` are the times at which turn detection heard speech
  * begin and stop.
  *
+ * When `audio` ends, the session commits the audio that turn detection has
+ * not committed yet. The stream completes once OpenAI has answered that
+ * commit and every turn it announced has a final transcript. If OpenAI
+ * rejects the commit, the stream fails with that error.
+ *
  * **Gotchas**
  *
  * - PCM16 audio must be 24 kHz mono. G.711 audio must be 8 kHz mono. Other
  *   formats fail with `AiError.InvalidUserInputError`.
  * - `gpt-live-transcribe` has no server-side turn detection and fails with
  *   `AiError.InvalidUserInputError`.
+ * - If the session sends nothing for `realtime.flushTimeout` after the audio
+ *   has ended while transcripts are still due, the stream fails with a
+ *   retryable `AiError`.
+ * - OpenAI does not say which commit a `committed` event answers. When the
+ *   audio ends during speech, the closing commit counts as answered once a
+ *   commit has been announced and the clear sent after it is acknowledged. A
+ *   turn that OpenAI announces only after that is not waited for.
+ * - OpenAI does not commit less than 100 ms of audio, so a shorter tail is not
+ *   transcribed.
  *
  * @see {@link layerRealtime} for the WebSocket constructors that work
  *
@@ -440,22 +458,46 @@ const makeTranscribeLive = (
       ...(config.realtime?.include === undefined ? undefined : { include: config.realtime.include })
     }
 
+    const flushTimeout = Duration.fromInputUnsafe(config.realtime?.flushTimeout ?? "30 seconds")
+    let commit = "unsent" as "unsent" | "sent" | "committed" | "empty"
+    let cleared = false
+    let lastMessage = 0
+
     // When the audio ends, commit what turn detection has not committed yet.
-    // The server answers client events in order, so the reply to the clear
-    // that follows means every commit of this session has been announced.
-    yield* send({ type: "session.update", session }).pipe(
-      Effect.andThen(
-        Stream.runForEach(audio, (chunk) => send({ type: "input_audio_buffer.append", audio: Base64.encode(chunk) }))
-      ),
-      Effect.andThen(send({ type: "input_audio_buffer.commit", event_id: commitEventId })),
-      Effect.andThen(send({ type: "input_audio_buffer.clear", event_id: clearEventId })),
+    // A `committed` event does not name the commit it answers, so a clear
+    // follows: client events are answered in order, and its reply means the
+    // commit has been answered too.
+    yield* Effect.gen(function*() {
+      yield* send({ type: "session.update", session })
+      yield* Stream.runForEach(
+        audio,
+        (chunk) => send({ type: "input_audio_buffer.append", audio: Base64.encode(chunk) })
+      )
+      commit = "sent"
+      yield* send({ type: "input_audio_buffer.commit", event_id: commitEventId })
+      yield* send({ type: "input_audio_buffer.clear", event_id: clearEventId })
+      lastMessage = yield* Clock.currentTimeMillis
+      while (true) {
+        const remaining = lastMessage + Duration.toMillis(flushTimeout) - (yield* Clock.currentTimeMillis)
+        if (remaining <= 0) {
+          return yield* dropped(
+            "The session sent nothing for " + Duration.format(flushTimeout) + " after the audio ended"
+          )
+        }
+        yield* Effect.sleep(remaining)
+      }
+    }).pipe(
       Effect.catchCause((cause) => Queue.failCause(output, cause)),
       Effect.forkScoped
     )
 
     const segments = new Map<string, { text: string; start?: Duration.Duration; end?: Duration.Duration }>()
+    // Turns that have started but are not committed, and committed turns
+    // without a final transcript.
+    const open = new Set<string>()
     const pending = new Set<string>()
-    let flushed = false
+    const settled = () =>
+      (commit === "empty" || (commit === "committed" && cleared)) && open.size === 0 && pending.size === 0
     const segment = (id: string) => {
       let state = segments.get(id)
       if (state === undefined) {
@@ -477,8 +519,9 @@ const makeTranscribeLive = (
     }
 
     const decoder = new TextDecoder()
-    while (!(flushed && pending.size === 0)) {
+    while (!settled()) {
       const messages = yield* Effect.mapError(pull, (error) => dropped(error.message))
+      lastMessage = yield* Clock.currentTimeMillis
       for (const message of messages) {
         let event: typeof OpenAiSchema.RealtimeTranscriptionServerEvent.Type
         try {
@@ -489,6 +532,7 @@ const makeTranscribeLive = (
         switch (event.type) {
           case "input_audio_buffer.speech_started": {
             segment(event.item_id).start = Duration.millis(event.audio_start_ms)
+            open.add(event.item_id)
             break
           }
           case "input_audio_buffer.speech_stopped": {
@@ -496,11 +540,17 @@ const makeTranscribeLive = (
             break
           }
           case "input_audio_buffer.committed": {
+            open.delete(event.item_id)
             pending.add(event.item_id)
+            if (commit === "sent") {
+              // The closing commit takes whatever turn was still open.
+              commit = "committed"
+              open.clear()
+            }
             break
           }
           case "input_audio_buffer.cleared": {
-            flushed = true
+            cleared = true
             break
           }
           case "conversation.item.input_audio_transcription.delta": {
@@ -520,12 +570,13 @@ const makeTranscribeLive = (
             return yield* realtimeError(event.error)
           }
           case "error": {
-            // Nothing was left to commit, or the server took no clear.
-            if (event.error.event_id === commitEventId) break
-            if (event.error.event_id === clearEventId) {
-              flushed = true
+            // Turn detection had already committed all the audio.
+            if (event.error.event_id === commitEventId && event.error.code === "input_audio_buffer_commit_empty") {
+              commit = "empty"
               break
             }
+            // The clear only marks the reply to a commit that took audio.
+            if (event.error.event_id === clearEventId && commit === "empty") break
             return yield* realtimeError(event.error)
           }
         }

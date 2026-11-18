@@ -445,6 +445,10 @@ export const transcribeLive = <E, R>(
  * session produces an update. When it is exhausted the stream fails with the
  * last error.
  *
+ * While a session is connected, `audio` is pulled only as fast as the provider
+ * takes it, so a provider that falls behind slows `audio` down and nothing
+ * queues up outside the buffer. During an outage `audio` is pulled freely.
+ *
  * Segment ids are issued here, so they stay unique across sessions, and
  * segment times stay relative to the start of `audio`. Segments that were not
  * final when a session failed receive a last update with empty text, because
@@ -461,6 +465,9 @@ export const transcribeLive = <E, R>(
  *   and text is not de-duplicated.
  * - Only final segments empty the buffer. Audio with no speech fills it too,
  *   so a pause longer than `maxDuration` overflows it.
+ * - `maxDuration` does not bound a source that cannot wait. Give a live
+ *   source its own bounded `Stream.buffer` if a slow provider must not hold
+ *   it up.
  *
  * **Example** (Reconnecting with a bounded buffer)
  *
@@ -534,7 +541,7 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
         }
       }
 
-      const push = (chunk: Uint8Array): Effect.Effect<void, AiError.AiError> => {
+      const push = (chunk: Uint8Array): Effect.Effect<unknown, AiError.AiError> => {
         const overflow = received + chunk.length - bufferStart - maxBytes
         if (overflow > 0 && options.strategy === "error") {
           return Effect.fail(AiError.make({
@@ -548,7 +555,6 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
         }
         buffer.push(chunk)
         received += chunk.length
-        if (session !== undefined) Queue.offerUnsafe(session, chunk)
         if (overflow > 0) {
           const start = bufferStart
           dropUntil(received - maxBytes + frameSize - 1)
@@ -556,7 +562,9 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
             Queue.offerUnsafe(output, { _tag: "AudioDiscarded", duration: toDuration(bufferStart - start) })
           }
         }
-        return Effect.void
+        // Waits for the provider to take the chunk, so audio it is slow to take
+        // is not held here outside the buffer.
+        return session === undefined ? Effect.void : Queue.offer(session, chunk)
       }
 
       yield* Stream.runForEach(options.audio, push).pipe(
@@ -572,17 +580,17 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
       )
 
       const runSession = Effect.gen(function*() {
-        const queue = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+        const queue = yield* Queue.bounded<Uint8Array, Cause.Done>(1)
+        const replay = buffer.slice()
         const offset = toDuration(bufferStart)
         const ids = new Map<string, string>()
         for (const id of orphans.splice(0)) {
           Queue.offerUnsafe(output, { _tag: "SegmentUpdate", id, text: "", final: true })
         }
-        Queue.offerAllUnsafe(queue, buffer)
         if (ended) Queue.endUnsafe(queue)
         session = queue
         yield* model.transcribeLive({
-          audio: Stream.fromQueue(queue),
+          audio: Stream.concat(Stream.fromArray(replay), Stream.fromQueue(queue)),
           format: options.format,
           language: options.language
         }).pipe(
@@ -611,7 +619,9 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
               session = undefined
               orphans.push(...ids.values())
             })
-          )
+          ),
+          // Releases a chunk the session never took. It is still in the buffer.
+          Effect.ensuring(Queue.shutdown(queue))
         )
       })
 
