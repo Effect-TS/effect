@@ -39,6 +39,20 @@ export interface Scheduler {
 }
 
 /**
+ * Runtime type identifier of a `ParkingScheduler`.
+ *
+ * **Details**
+ *
+ * A scheduler with this property is a `ParkingScheduler`. Set it to the same
+ * value, as a property of the scheduler, to implement one.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export const ParkingSchedulerTypeId = "~effect/Scheduler/ParkingScheduler"
+
+/**
  * A `Scheduler` that also decides where its fibers resume.
  *
  * **When to use**
@@ -53,8 +67,8 @@ export interface Scheduler {
  * forked and its start is scheduled. It calls `park` where it stops, and
  * passes every effect that would make it run again to `resume`: the result it
  * waited for, its start, or an interrupt. The scheduler keeps what it needs in
- * between. A fiber of a scheduler that does not have both as methods runs
- * where it is resumed, and neither is called.
+ * between. A fiber of a scheduler without `ParkingSchedulerTypeId` runs where
+ * it is resumed, and neither is called.
  *
  * **Gotchas**
  *
@@ -72,6 +86,13 @@ export interface Scheduler {
  * @since 4.2.0
  */
 export interface ParkingScheduler extends Scheduler {
+  /**
+   * Marks the scheduler as a `ParkingScheduler`.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  readonly [ParkingSchedulerTypeId]: typeof ParkingSchedulerTypeId
   /**
    * Called where a fiber parks.
    *
@@ -108,8 +129,8 @@ export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
 }
 
 /**
- * Checks whether a `Scheduler` is a `ParkingScheduler`: both `park` and
- * `resume` are functions.
+ * Checks whether a `Scheduler` is a `ParkingScheduler`, by its
+ * `ParkingSchedulerTypeId`.
  *
  * **When to use**
  *
@@ -120,8 +141,7 @@ export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
  * @since 4.2.0
  */
 export const isParkingScheduler = (scheduler: Scheduler): scheduler is ParkingScheduler =>
-  typeof (scheduler as Partial<ParkingScheduler>).park === "function" &&
-  typeof (scheduler as Partial<ParkingScheduler>).resume === "function"
+  ParkingSchedulerTypeId in scheduler
 
 /**
  * A dispatcher created by a `Scheduler` for enqueuing tasks and forcing queued
