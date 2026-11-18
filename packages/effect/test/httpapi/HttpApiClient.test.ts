@@ -1001,6 +1001,34 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  for (const slot of ["header", "scalar body"] as const) {
+    it.effect(`does not retry a failed form response ${slot} decoder`, () =>
+      Effect.gen(function*() {
+        let calls = 0
+        const rejectOnce = Schema.String.check(Schema.makeFilter<string>(() => ++calls > 1 || "first decode rejected"))
+        const body = Schema.Struct({
+          tags: slot === "header" ? Schema.Union([Schema.Array(Schema.String), Schema.String]) : rejectOnce
+        }).pipe(HttpApiSchema.asFormUrlEncoded())
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
+            success: slot === "header" ? HttpApiSchema.WithHeaders(body, { "x-test": rejectOnce }) : body
+          }))
+        )
+        const exit = yield* Effect.exit(
+          HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })(
+            HttpClientResponse.fromWeb(
+              HttpClientRequest.get("http://test/form"),
+              new Response("tags=a", {
+                headers: { "content-type": "application/x-www-form-urlencoded", "x-test": "ok" }
+              })
+            )
+          )
+        )
+        assert.deepStrictEqual([calls, exit._tag], [1, "Failure"])
+        assert.include(String(exit), "first decode rejected")
+      }))
+  }
+
   it.effect("decodes form-urlencoded responses", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
