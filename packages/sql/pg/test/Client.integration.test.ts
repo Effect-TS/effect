@@ -304,6 +304,16 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       }))
     }))
 
+  it.effect("reads anonymous records and record arrays", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const rows = yield* sql`
+        SELECT ROW(1, 'a', NULL::int4, ROW(true, 2.5::float8)) AS record,
+               ARRAY[ROW(1, 'a'), ROW(2, 'b')] AS records
+      `
+      assert.deepStrictEqual(rows, [{ record: [1, "a", null, [true, 2.5]], records: [[1, "a"], [2, "b"]] }])
+    }))
+
   it.effect("reads bytea as Uint8Array", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient

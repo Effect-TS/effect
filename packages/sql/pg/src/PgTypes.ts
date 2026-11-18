@@ -366,6 +366,7 @@ export const OID = {
   timetz: 1266,
   numeric: 1700,
   regclass: 2205,
+  record: 2249,
   uuid: 2950,
   jsonb: 3802,
   boolArray: 1000,
@@ -391,6 +392,7 @@ export const OID = {
   timetzArray: 1270,
   numericArray: 1231,
   regclassArray: 2210,
+  recordArray: 2287,
   uuidArray: 2951,
   jsonbArray: 3807
 } as const
@@ -419,6 +421,7 @@ const arrayToElement = new Map<number, number>([
   [OID.timetzArray, OID.timetz],
   [OID.numericArray, OID.numeric],
   [OID.regclassArray, OID.regclass],
+  [OID.recordArray, OID.record],
   [OID.uuidArray, OID.uuid],
   [OID.jsonbArray, OID.jsonb]
 ])
@@ -1438,6 +1441,18 @@ const makeArrayCodec = (elementOid: number, lookup: Lookup): UnsafeCodec<Readonl
     (sink, value) => writeArray(sink, value, elementOid, lookup)
   )
 
+/**
+ * Anonymous `record` values (`ROW(...)`, `(a, b)`) decode as an array of their
+ * fields. The binary form names each field's type, so fields use the same
+ * lookup as columns. PostgreSQL does not accept anonymous records as input,
+ * so there is nothing to encode.
+ */
+const makeRecordCodec = (lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
+  codecOf(
+    (bytes, offset, size) => decodeRecord(bytes, offset, size, lookup),
+    () => fail("Encoding an anonymous record is not supported; bind its fields as separate parameters")
+  )
+
 const builtins = new Map<number, UnsafeCodec<any>>(builtinScalars)
 
 /**
@@ -1462,6 +1477,11 @@ for (const [arrayOid, elementOid] of arrayToElement) {
   builtins.set(arrayOid, codec)
   codecs.set(arrayOid, codec)
 }
+// Like an array, a record decodes its contents through the lookup, so it is
+// built here and again for each registry.
+const recordCodec = makeRecordCodec(lookup)
+builtins.set(OID.record, recordCodec)
+codecs.set(OID.record, recordCodec)
 for (const [oid, codec] of codecs) table[oid] = codec
 
 interface RegistryState {
@@ -1508,6 +1528,7 @@ export const makeRegistry = (): Registry => {
   for (const [arrayOid, elementOid] of arrayToElement) {
     codecs.set(arrayOid, makeArrayCodec(elementOid, state.lookup))
   }
+  codecs.set(OID.record, makeRecordCodec(state.lookup))
   const registry: Registry = {
     register: (oid, codec, options) => registerInState(state, oid, codec, options)
   }
@@ -1701,6 +1722,40 @@ const decodeArray = (
     }
   }
   if (offset !== limit) return fail("Array value has trailing bytes")
+  return values
+}
+
+/**
+ * PostgreSQL record_send: an int32 field count, then for each field its type
+ * OID, an int32 length (-1 for NULL) and its bytes.
+ */
+const decodeRecord = (bytes: Uint8Array, start: number, size: number, lookup: Lookup): ReadonlyArray<unknown> => {
+  if (size < 4) return fail("Truncated record value")
+  const count = readInt32(bytes, start)
+  if (count < 0) return fail(`Invalid record field count: ${count}`)
+  const values: Array<unknown> = new Array(count)
+  const limit = start + size
+  let offset = start + 4
+  for (let i = 0; i < count; i++) {
+    if (offset + 8 > limit) return fail("Truncated record field")
+    const oid = readUint32(bytes, offset)
+    const fieldSize = readInt32(bytes, offset + 4)
+    offset += 8
+    if (fieldSize < -1) return fail(`Invalid record field length: ${fieldSize}`)
+    if (fieldSize === -1) {
+      values[i] = null
+      continue
+    }
+    if (offset + fieldSize > limit) return fail("Truncated record field")
+    const codec = lookup(oid)
+    values[i] = codec === undefined
+      ? decodeUnregistered(bytes, offset, fieldSize, oid, undefined, i)
+      : codec.read !== undefined
+      ? codec.read(bytes, offset, fieldSize)
+      : codec.decode(region(bytes, offset, fieldSize))
+    offset += fieldSize
+  }
+  if (offset !== limit) return fail("Record value has trailing bytes")
   return values
 }
 

@@ -254,6 +254,70 @@ describe("PgTypes", () => {
       }
     })
   })
+  describe("records", () => {
+    // Captured from PostgreSQL record_send and array_send.
+    it("decodes an anonymous record with NULL, nested record and array fields", () => {
+      // ROW(1, 'a'::text, NULL::int4, ROW(true, 2.5::float8), ARRAY[1, 2])
+      const wire = bytes(
+        "0000000500000017000000040000000100000019000000016100000017ffffffff" +
+          "000008c90000001d00000002000000100000000101000002bd000000084004000000000000" +
+          "000003ef00000024000000010000000000000017000000020000000100000004000000010000000400000002"
+      )
+      assert.deepStrictEqual(PgTypes.decode(wire, PgTypes.OID.record, 1), [1, "a", null, [true, 2.5], [1, 2]])
+      assert.deepStrictEqual(PgTypes.decode(bytes("00000000"), PgTypes.OID.record, 1), [])
+    })
+
+    it("decodes a record array", () => {
+      // ARRAY[ROW(1, 'a'::text), ROW(2, 'b'::text)]
+      const wire = bytes(
+        "0000000100000000000008c9000000020000000100000019000000020000001700000004000000010000001900000001" +
+          "610000001900000002000000170000000400000002000000190000000162"
+      )
+      assert.deepStrictEqual(PgTypes.decode(wire, PgTypes.OID.recordArray, 1), [[1, "a"], [2, "b"]])
+    })
+
+    it("reads unregistered fields as columns are read", () => {
+      // ROW('<a/>'::xml): text on the wire.
+      assert.deepStrictEqual(PgTypes.decode(bytes("000000010000008e000000043c612f3e"), PgTypes.OID.record, 1), ["<a/>"])
+      // ROW(point(0, 0)): binary, so it fails naming the field's OID.
+      const decoded = PgTypesResult.decode(
+        bytes("00000001000002580000001000000000000000000000000000000000"),
+        PgTypes.OID.record,
+        1
+      )
+      assert.isTrue(Result.isFailure(decoded))
+      if (Result.isFailure(decoded)) {
+        assert.include(decoded.failure.message, "type OID 600")
+        assert.include(decoded.failure.message, "NUL")
+      }
+    })
+
+    it("decodes fields with a registry's codecs", () => {
+      const registry = PgTypesResult.makeRegistry()
+      registry.register<string>(142, {
+        encode: (value) => Result.succeed(new TextEncoder().encode(value)),
+        decode: (value) => Result.succeed(new TextDecoder().decode(value).toUpperCase())
+      })
+      const decoded = PgTypesResult.decode(bytes("000000010000008e000000043c612f3e"), PgTypes.OID.record, 1, registry)
+      assert.deepStrictEqual(success(decoded), ["<A/>"])
+    })
+
+    it("rejects malformed records and encoding", () => {
+      for (
+        const wire of [
+          "000000",
+          "ffffffff",
+          "0000000100000017",
+          "000000010000001700000004000000",
+          "0000000100000017fffffffe",
+          "00000001000000170000000400000001ff"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(bytes(wire), PgTypes.OID.record, 1))
+      }
+      assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode([1], PgTypes.OID.record))
+    })
+  })
   it("returns codec failures as Result values", () => {
     for (
       const result of [
