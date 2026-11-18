@@ -2,4 +2,4 @@
 "@effect/ai-openai": patch
 ---
 
-Preserve OpenAI refusal explanations in streamed response metadata and prompts reconstructed from streamed responses.
+Fix `streamText` dropping OpenAI refusal explanations, which are now included in `text-end` metadata and prompts built from the stream.

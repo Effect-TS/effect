@@ -296,7 +296,7 @@ declare module "effect/ai/Prompt" {
        */
       readonly itemId?: string | null
       /**
-       * The refusal explanation preserved from the model response.
+       * The refusal explanation from the model.
        */
       readonly refusal?: string | null
       /**
@@ -388,7 +388,7 @@ declare module "effect/ai/Response" {
        */
       readonly itemId?: string | null
       /**
-       * The refusal explanation from the completed message, if present.
+       * The refusal explanation from the completed message.
        */
       readonly refusal?: string | null
       /**
@@ -2448,10 +2448,7 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               case "message": {
-                let refusal: string | undefined
-                for (const part of event.item.content) {
-                  if (part.type === "refusal") refusal = part.refusal
-                }
+                const refusal = event.item.content.find((part) => part.type === "refusal")?.refusal
                 const annotations = activeAnnotations.length > 0
                   ? { annotations: activeAnnotations.slice() }
                   : undefined
@@ -2460,9 +2457,9 @@ const makeStreamResponse = Effect.fnUntraced(
                   id: event.item.id,
                   metadata: {
                     openai: {
-                      ...makeItemIdMetadata(event.item.id),
                       ...annotations,
-                      ...(refusal !== undefined && { refusal })
+                      ...makeItemIdMetadata(event.item.id),
+                      ...(Predicate.isNotUndefined(refusal) ? { refusal } : undefined)
                     }
                   }
                 })

@@ -41,45 +41,6 @@ describe("OpenAiLanguageModel", () => {
       }).pipe(Effect.provide(makeTestLayer({ body: { model: "ft:gpt-4o-mini:custom" as any } }))))
   })
 
-  it.effect("preserves streamed refusal metadata in the completed prompt", () =>
-    Effect.gen(function*() {
-      const refusal = "I cannot provide that information."
-      const item: Generated.OutputMessage = {
-        id: "msg_refusal",
-        type: "message",
-        role: "assistant",
-        status: "completed",
-        content: [{ type: "refusal", refusal }]
-      }
-      const events = [
-        { type: "response.created", response: makeDefaultResponse({ status: "in_progress", output: [] }) },
-        { type: "response.output_item.added", output_index: 0, item: { ...item, status: "in_progress", content: [] } },
-        { type: "response.output_item.done", output_index: 0, item },
-        { type: "response.completed", response: makeDefaultResponse({ output: [item] }) }
-      ]
-      const body = events.map((event, sequence_number) => `data: ${JSON.stringify({ ...event, sequence_number })}\n\n`)
-        .join("")
-      const parts = yield* LanguageModel.streamText({ prompt: "Test refusal metadata" }).pipe(
-        Stream.runCollect,
-        Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-        Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-        Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "text/event-stream"))
-      )
-
-      const expectedOptions = { itemId: item.id, refusal }
-      deepStrictEqual(parts.find((part) => part.type === "text-end")?.metadata.openai, expectedOptions)
-      strictEqual(parts.some((part) => part.type === "text-delta"), false)
-      const prompt = Prompt.fromResponseParts(parts)
-      const message = prompt.content[0]
-      assert.isDefined(message)
-      if (message.role !== "assistant") return assert.fail("Expected assistant message")
-      const text = message.content[0]
-      if (text.type !== "text") return assert.fail("Expected text part")
-      strictEqual(text.text, "")
-      strictEqual(text.options.openai?.refusal, refusal)
-      strictEqual(text.options.openai?.itemId, item.id)
-    }))
-
   describe("web search sources", () => {
     it.effect.each(["generateText", "streamText"] as const)(
       "preserves URL and API sources with %s",
@@ -2264,6 +2225,31 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("preserves refusal metadata in the reconstructed prompt", () =>
+      Effect.gen(function*() {
+        const refusal = "I cannot provide that information."
+        const item = makeTextOutput("", { content: [{ type: "refusal", refusal }] })
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Do something bad" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([
+            { type: "response.output_item.added", sequence_number: 1, output_index: 0, item },
+            { type: "response.output_item.done", sequence_number: 2, output_index: 0, item }
+          ]))
+        )
+
+        deepStrictEqual(parts.find((part) => part.type === "text-end")?.metadata.openai, { itemId: item.id, refusal })
+        const message = Prompt.fromResponseParts(parts).content[0]
+        assert(message?.role === "assistant")
+        const text = message.content[0]
+        assert(text.type === "text")
+        deepStrictEqual(
+          [text.text, text.options.openai?.itemId, text.options.openai?.refusal],
+          ["", item.id, refusal]
+        )
+      }))
+
     it.effect("uses call_id for streamed shell calls and keeps the item ID in metadata", () =>
       Effect.gen(function*() {
         const item = {
