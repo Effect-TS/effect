@@ -384,6 +384,10 @@ declare module "effect/ai/Response" {
        */
       readonly itemId?: string | null
       /**
+       * The refusal explanation from the completed message, if present.
+       */
+      readonly refusal?: string | null
+      /**
        * The annotations collected for the completed streamed text part.
        */
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
@@ -2440,15 +2444,9 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               case "message": {
-                for (const contentPart of event.item.content) {
-                  if (contentPart.type === "refusal") {
-                    parts.push({
-                      type: "text-delta",
-                      id: event.item.id,
-                      delta: "",
-                      metadata: { openai: { refusal: contentPart.refusal } }
-                    })
-                  }
+                let refusal: string | undefined
+                for (const part of event.item.content) {
+                  if (part.type === "refusal") refusal = part.refusal
                 }
                 const annotations = activeAnnotations.length > 0
                   ? { annotations: activeAnnotations.slice() }
@@ -2456,7 +2454,13 @@ const makeStreamResponse = Effect.fnUntraced(
                 parts.push({
                   type: "text-end",
                   id: event.item.id,
-                  metadata: { openai: { ...annotations, ...makeItemIdMetadata(event.item.id) } }
+                  metadata: {
+                    openai: {
+                      ...makeItemIdMetadata(event.item.id),
+                      ...annotations,
+                      ...(refusal !== undefined && { refusal })
+                    }
+                  }
                 })
                 break
               }

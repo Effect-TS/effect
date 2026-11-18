@@ -66,8 +66,9 @@ describe("OpenAiLanguageModel", () => {
         Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "text/event-stream"))
       )
 
-      const deltas = parts.filter((part) => part.type === "text-delta")
-      deepStrictEqual(deltas.map((part) => part.metadata.openai), [{ refusal }])
+      const expectedOptions = { itemId: item.id, refusal }
+      deepStrictEqual(parts.find((part) => part.type === "text-end")?.metadata.openai, expectedOptions)
+      strictEqual(parts.some((part) => part.type === "text-delta"), false)
       const prompt = Prompt.fromResponseParts(parts)
       const message = prompt.content[0]
       assert.isDefined(message)
@@ -75,7 +76,6 @@ describe("OpenAiLanguageModel", () => {
       const text = message.content[0]
       if (text.type !== "text") return assert.fail("Expected text part")
       strictEqual(text.text, "")
-      const expectedOptions = { itemId: item.id, refusal }
       deepStrictEqual(text.options.openai, expectedOptions)
     }))
 
