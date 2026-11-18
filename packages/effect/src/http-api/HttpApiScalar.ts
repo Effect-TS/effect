@@ -149,6 +149,13 @@ type ScalarSource =
     readonly source: string
   }
 
+// Scalar's servers option overrides servers declared on individual operations too.
+const hasDeclaredServers = (spec: OpenApi.OpenAPISpec) =>
+  Boolean(spec.servers?.length) ||
+  Object.values(spec.paths).some((path) =>
+    "servers" in path || Object.values(path).some((op) => op && typeof op === "object" && "servers" in op)
+  )
+
 const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(options: {
   readonly api: HttpApi.HttpApi<Id, Groups>
   readonly source: ScalarSource
@@ -159,6 +166,10 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
     const { customFetch, ...scalar } = options.scalar ?? {}
     const scalarConfig = {
       _integration: "html",
+      // Give the bundled renderer OpenAPI's implicit root server without changing the document.
+      ...(options.source._tag === "Inline" && !hasDeclaredServers(spec)
+        ? { servers: [{ url: "/" }] }
+        : {}),
       ...scalar
     }
     const scalarScript = options.source._tag === "Cdn"
