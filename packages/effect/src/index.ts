@@ -82,6 +82,12 @@ export * as Brand from "./Brand.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.0
+ */
+export * as BytePath from "./BytePath.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.6
  */
 export * as Bytes from "./Bytes.ts"
@@ -415,6 +421,12 @@ export * as ManagedRuntime from "./ManagedRuntime.ts"
  * @since 4.0.0
  */
 export * as Match from "./Match.ts"
+
+/**
+ * @stability experimental
+ * @since 4.2.0
+ */
+export * as MemoryFileSystem from "./MemoryFileSystem.ts"
 
 /**
  * @stability stable
