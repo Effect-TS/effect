@@ -30,7 +30,6 @@ import {
 import {
   HttpApi,
   HttpApiBuilder,
-  HttpApiClient,
   HttpApiEndpoint,
   HttpApiError,
   HttpApiGroup,
@@ -691,53 +690,6 @@ it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
 
       assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a"] } }), { tags: ["a"] })
       assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
-    }))
-})
-
-it.layer(TestServices)("HttpApiBuilder form response arrays", (it) => {
-  const Form = Schema.Struct({ name: Schema.String, tags: Schema.Array(Schema.String) }).pipe(
-    HttpApiSchema.asFormUrlEncoded()
-  )
-  const value = { name: "Ada", tags: ["a"] }
-  const withHeaders = HttpApiSchema.withHeaders({ body: value, headers: { "x-count": 1 } })
-  const Api = HttpApi.make("Api").add(
-    HttpApiGroup.make("test")
-      .add(HttpApiEndpoint.get("plain", "/plain", {
-        payload: { tags: Schema.Array(Schema.String) },
-        success: Form
-      }))
-      .add(HttpApiEndpoint.get("headers", "/headers", {
-        success: HttpApiSchema.WithHeaders(Form, { "x-count": Schema.Int })
-      }))
-      .add(HttpApiEndpoint.get("error", "/error", { error: Form.pipe(HttpApiSchema.status(400)) }))
-  )
-  const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
-    handlers
-      .handle("plain", ({ payload }) => Effect.succeed({ name: "Ada", tags: payload.tags }))
-      .handle("headers", () => Effect.succeed(withHeaders))
-      .handle("error", () => Effect.fail(value)))
-
-  it.effect("round trips single and repeated response values through both client entry points", () =>
-    Effect.gen(function*() {
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      for (const tags of [["a"], ["a", "b"]]) {
-        assert.deepStrictEqual(yield* client.test.plain({ payload: { tags } }), { name: "Ada", tags })
-      }
-      const response = yield* client.test.plain({ payload: { tags: ["a"] }, responseMode: "response-only" })
-      const decode = HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "plain" })
-      assert.deepStrictEqual(yield* decode(response), value)
-    }))
-
-  it.effect("round trips response arrays with headers", () =>
-    Effect.gen(function*() {
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      assert.deepStrictEqual(yield* client.test.headers({}), withHeaders)
-    }))
-
-  it.effect("preserves declared form errors containing arrays", () =>
-    Effect.gen(function*() {
-      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
-      assert.deepStrictEqual(yield* Effect.flip(client.test.error({})), value)
     }))
 })
 

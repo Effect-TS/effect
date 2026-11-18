@@ -957,6 +957,42 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("singleton form response values", () => {
+    const Tags = Schema.Array(Schema.String)
+    const Success = Schema.Struct({ tags: Schema.Union([Tags, Schema.String], { mode: "oneOf" }) }).pipe(
+      HttpApiSchema.asFormUrlEncoded()
+    )
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
+        success: HttpApiSchema.WithHeaders(Success, { "x-count": Schema.Int }),
+        error: Schema.Struct({ tags: Tags }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400))
+      }))
+    )
+    const decode = (status: number) =>
+      HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })(
+        HttpClientResponse.fromWeb(
+          HttpClientRequest.get("http://test/form"),
+          new Response("tags=a", {
+            status,
+            headers: { "content-type": "application/x-www-form-urlencoded", "x-count": "1" }
+          })
+        )
+      )
+
+    it.effect("recovers an array in a declared form error", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* Effect.flip(decode(400)), { tags: ["a"] })
+      }))
+
+    it.effect("preserves a scalar already accepted by oneOf", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(
+          yield* decode(200),
+          HttpApiSchema.withHeaders({ body: { tags: "a" }, headers: { "x-count": 1 } })
+        )
+      }))
+  })
+
   it.effect("decodes form-urlencoded responses", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
