@@ -5,6 +5,7 @@ import { describe, expect, it } from "tstyche"
 
 declare const client: HttpClient.HttpClient
 declare const limiter: RateLimiter.RateLimiter
+declare const broadOptions: HttpClient.WithRateLimiter.Options
 declare const breaker: CircuitBreaker.CircuitBreaker
 declare const classified: Effect.Effect<CircuitBreaker.Outcome, never, "Classifier">
 declare const failingClient: HttpClient.HttpClient.With<"error">
@@ -151,6 +152,37 @@ describe("HttpClient", () => {
   })
 
   describe("withRateLimiter", () => {
+    it("narrows limiter failures only for explicit modes in either call form", () => {
+      const options = {
+        limiter,
+        key: "test",
+        limit: 1,
+        window: "1 minute"
+      } satisfies HttpClient.WithRateLimiter.Options
+      const raw = { ...options, failsWith: "RateLimiterError" } satisfies HttpClient.WithRateLimiter.Options
+      const wrapped = { ...options, failsWith: "HttpClientError" } satisfies HttpClient.WithRateLimiter.Options
+
+      const hidden: Omit<HttpClient.WithRateLimiter.Options, "failsWith"> = wrapped
+
+      type Raw = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError>
+      type Wrapped = HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
+      type Either = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError | HttpClientError.HttpClientError>
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(options))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, options)).type.toBe<Either>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(hidden))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, hidden)).type.toBe<Either>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(raw))).type.toBe<Raw>()
+      expect(HttpClient.withRateLimiter(failingClient, raw)).type.toBe<Raw>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(wrapped))).type.toBe<Wrapped>()
+      expect(HttpClient.withRateLimiter(failingClient, wrapped)).type.toBe<Wrapped>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(broadOptions))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, broadOptions)).type.toBe<Either>()
+    })
     it("should support data-last and data-first usage", () => {
       const options = {
         limiter,
