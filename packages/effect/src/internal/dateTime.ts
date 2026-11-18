@@ -281,24 +281,16 @@ const withoutComments = (input: string): string => {
   return result
 }
 
+// A minus joined to a date field is a separator; after a clock field it is an offset.
+const offsetSignRegExp = /\+|(?<![a-z\d])-|[ap]m-|\d:\D*\d+(?:\.\d+)?-/i
+
 const hasZone = (input: string): boolean => {
   const text = withoutComments(input).trimEnd()
-  if (text.endsWith("]") || hasTimeOffset(text) || /\s[+-]\d{2}(?::?\d{2})?$/.test(text)) return true
-  // Native parsing ignores a zone word before the first date number.
+  if (text.endsWith("]")) return true
   const firstNumber = text.search(/\d/)
-  return firstNumber !== -1 && /(?:^|[^a-z])(?:z|gmt|utc?|[ecmp][sd]t)(?![a-z])/i.test(text.slice(firstNumber))
-}
-
-// A colon distinguishes a clock from a date field; Date validates the clock itself.
-const hasTimeOffset = (input: string): boolean => {
-  for (
-    const match of input.matchAll(
-      /(?<![\d:.])([\d:.]+)[^\w+:.-]*(?:[ap]m[^\w+:.-]*)?[+-](?=\d)/gi
-    )
-  ) {
-    if (match[1].includes(":")) return true
-  }
-  return false
+  if (firstNumber === -1) return false
+  const date = text.slice(firstNumber)
+  return offsetSignRegExp.test(date) || /(?:^|[^a-z])(?:z|gmt|utc?|[ecmp][sd]t)(?![a-z])/i.test(date)
 }
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
