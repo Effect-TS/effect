@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `DateTime.make` reading some zoneless strings in the host time zone.
+Parse zoneless `DateTime` strings such as `2024-1-15` as UTC instead of local time.

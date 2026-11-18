@@ -262,10 +262,9 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
-// ECMA-262 date-only forms already parse as UTC, including signed six-digit years.
+// ECMA-262 date-only strings already parse as UTC.
 const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
 
-// Ignore parenthesized comments for zone detection, not for native parsing.
 const withoutComments = (input: string): string => {
   const first = input.indexOf("(")
   if (first === -1) return input
@@ -281,7 +280,7 @@ const withoutComments = (input: string): string => {
   return result
 }
 
-// A minus joined to a date field is a separator; after a clock field it is an offset.
+// Distinguish date hyphens (2024-1-15) from offset signs (12:00-0500).
 const offsetSignRegExp = /\+|(?<![a-z\d])-|[ap]m-|\d:\D*\d+(?:\.\d+)?-/i
 
 const hasZone = (input: string): boolean => {
