@@ -1516,6 +1516,8 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
   }) as any
 }
 
+type SymbolKeys<T> = T extends unknown ? Extract<keyof T, symbol> : never
+
 /**
  * Creates a predicate for objects by applying predicates to named properties.
  *
@@ -1548,8 +1550,8 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<R extends Record<string, Predicate.Any> & Record<Extract<keyof R, symbol>, Predicate.Any>>(
-  fields: R
+export function Struct<R extends Record<string, Predicate.Any>>(
+  fields: R & Partial<Record<SymbolKeys<R>, Predicate.Any>>
 ): [Extract<R[keyof R], Refinement.Any>] extends [never] ? Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }> :
   Refinement<
     { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.In<R[K]> : Predicate.In<R[K]> },
