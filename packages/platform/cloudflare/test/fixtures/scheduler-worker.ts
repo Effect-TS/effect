@@ -110,6 +110,15 @@ export default {
           }
           return Response.json("woken")
         })
+      case "/yield": {
+        // A timer set before the fiber yields fires after the fiber continues
+        // only when the scheduler queues work in a microtask
+        const order: Array<string> = []
+        setTimeout(() => order.push("timer"), 0)
+        Effect.runFork(Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => order.push("fiber")))), { scheduler })
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        return Response.json({ executionMode: scheduler.executionMode, order })
+      }
       case "/log": {
         const slot = slots.get(id)!
         return Response.json({
