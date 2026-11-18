@@ -746,6 +746,43 @@ describe("DateTime", () => {
       }
     })
 
+    it("treats strings without a zone as UTC regardless of the host time zone", { concurrent: false }, () => {
+      const previousTZ = process.env.TZ
+      try {
+        process.env.TZ = "America/New_York"
+        strictEqual(new Date("2024-01-15T00:00:00.000Z").getTimezoneOffset(), 300)
+        deepStrictEqual(
+          [
+            DateTime.makeUnsafe("2024-1-15").toJSON(),
+            DateTime.makeUnsafe("01-15-2024").toJSON(),
+            DateTime.makeUnsafe("January 15, 2024 (Z)").toJSON(),
+            Option.map(DateTime.makeZonedFromString("January 15, 2024 (Z)[UTC]"), DateTime.formatIso)
+          ],
+          [
+            "2024-01-15T00:00:00.000Z",
+            "2024-01-15T00:00:00.000Z",
+            "2024-01-15T00:00:00.000Z",
+            Option.some("2024-01-15T00:00:00.000Z")
+          ]
+        )
+      } finally {
+        if (previousTZ === undefined) {
+          delete process.env.TZ
+        } else {
+          process.env.TZ = previousTZ
+        }
+      }
+    })
+
+    it.each([
+      ["2024-01-15 10:00 -5", "2024-01-15T15:00:00.000Z"],
+      ["Jan 15 2024 UTC+5", "2024-01-14T19:00:00.000Z"],
+      ["Tue Jan 27 2026 17:14:06 GMT-0500 (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 05:14:06 PM -0500", "2026-01-27T22:14:06.000Z"]
+    ])("applies a trailing offset after a time: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
+    })
+
     it("does not append Z to strings ending with Z", () => {
       const dt = DateTime.makeUnsafe("2026-01-27T17:14:06.000Z")
       strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
