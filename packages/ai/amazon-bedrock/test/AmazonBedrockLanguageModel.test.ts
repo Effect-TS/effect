@@ -239,44 +239,54 @@ describe("AmazonBedrockLanguageModel", () => {
         ])
       }))
 
-    for (const empty of [false, true]) {
-      it.effect(`sends ${empty ? "empty" : "mapped"} tool model output on the next turn`, () =>
+    const modelOutputCases = [
+      { label: "as text", modelOutput: [Prompt.textPart({ text: "Sunny" })], text: "Sunny" },
+      { label: "as empty text when it is empty", modelOutput: [], text: "" }
+    ]
+
+    for (const { label, modelOutput, text } of modelOutputCases) {
+      it.effect(`sends tool result model output ${label}`, () =>
         Effect.gen(function*() {
-          const result = { summary: "Sunny", temperature: 20 }
-          const weather = Tool.make("Weather", {
-            success: Schema.Struct({ summary: Schema.String, temperature: Schema.Number }),
-            toModelOutput: (value) => empty ? [] : [Prompt.textPart({ text: value.summary })]
-          })
-          const tools = Toolkit.make(weather)
           const http = makeHttpClient((request) =>
-            Effect.succeed(jsonResponse(
-              request,
-              converseResponse([
-                { toolUse: { toolUseId: "tooluse_1", name: "Weather", input: {} } }
-              ], "tool_use")
-            ))
+            Effect.succeed(jsonResponse(request, converseResponse([{ text: "Done" }])))
           )
 
-          yield* Effect.gen(function*() {
-            const response = yield* LanguageModel.generateText({ prompt: "Weather?", toolkit: tools })
-            assert.deepStrictEqual(response.toolResults[0].result, result)
-
-            yield* LanguageModel.generateText({
-              prompt: Prompt.concat(Prompt.make("Weather?"), Prompt.fromResponseParts(response.content)),
-              toolkit: tools,
-              disableToolCallResolution: true
-            })
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              { role: "user", content: "Weather in SF?" },
+              {
+                role: "assistant",
+                content: [Prompt.toolCallPart({
+                  id: "tooluse_1",
+                  name: "Weather",
+                  params: { city: "SF" },
+                  providerExecuted: false
+                })]
+              },
+              {
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "tooluse_1",
+                  name: "Weather",
+                  result: { temperature: 20 },
+                  modelOutput,
+                  isFailure: false,
+                  providerExecuted: false
+                })]
+              }
+            ]),
+            toolkit,
+            disableToolCallResolution: true
           }).pipe(
             Effect.provide(AmazonBedrockLanguageModel.model(model)),
-            Effect.provide(tools.toLayer({ Weather: () => Effect.succeed(result) })),
             Effect.provide(http.layer)
           )
 
-          const request = http.requests[1]
+          const request = http.requests[0]
           assertDefined(request)
           const body = yield* getRequestBody(request)
           assert.deepStrictEqual(body.messages[2].content, [{
-            toolResult: { toolUseId: "tooluse_1", content: [{ text: empty ? "" : "Sunny" }] }
+            toolResult: { toolUseId: "tooluse_1", content: [{ text }] }
           }])
         }))
     }
