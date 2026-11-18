@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Hex from "effect/encoding/Hex"
 import { ProtobufMessage } from "effect/protobuf"
 import * as ProtobufDescriptor from "effect/protobuf/ProtobufDescriptor"
+import * as ProtobufDescriptorProto from "effect/protobuf/ProtobufDescriptorProto"
 import * as Result from "effect/Result"
 import { editions, field, message, registry, T } from "./descriptors.ts"
 
@@ -152,14 +153,14 @@ describe("ProtobufMessage", () => {
     const versions = [
       ["proto2", "proto2", undefined],
       ["proto3", "proto3", undefined],
-      ["2023", "editions", ProtobufDescriptor.Edition.EDITION_2023],
-      ["2024", "editions", ProtobufDescriptor.Edition.EDITION_2024],
-      ["2026", "editions", ProtobufDescriptor.Edition.EDITION_2026]
+      ["2023", "editions", ProtobufDescriptorProto.Edition.EDITION_2023],
+      ["2024", "editions", ProtobufDescriptorProto.Edition.EDITION_2024],
+      ["2026", "editions", ProtobufDescriptorProto.Edition.EDITION_2026]
     ] as const
 
     for (const [version, syntax, edition] of versions) {
       it(`uses ${version} binary defaults from a descriptor set`, () => {
-        const file: ProtobufDescriptor.FileDescriptorProto = {
+        const file: ProtobufDescriptorProto.FileDescriptorProto = {
           name: "version.proto",
           syntax,
           ...(edition === undefined ? {} : { edition }),
@@ -175,8 +176,10 @@ describe("ProtobufMessage", () => {
           }],
           enum_type: [{ name: "Kind", value: [{ name: "ZERO", number: 0 }] }]
         }
-        const set = Result.getOrThrow(ProtobufMessage.encode(ProtobufDescriptor.FileDescriptorSet)({ file: [file] }))
-        const registry = Result.getOrThrow(ProtobufDescriptor.fromFileDescriptorSet(set))
+        const set = Result.getOrThrow(
+          ProtobufMessage.encode(ProtobufDescriptorProto.FileDescriptorSet)({ file: [file] })
+        )
+        const registry = Result.getOrThrow(ProtobufDescriptorProto.fromFileDescriptorSet(set))
         assert.strictEqual(registry.getFile(file.name!)!.edition, version)
         const descriptor = registry.getMessage("Example")!
         const encode = ProtobufMessage.encode(descriptor)

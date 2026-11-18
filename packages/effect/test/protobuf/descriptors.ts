@@ -1,8 +1,8 @@
-import { ProtobufDescriptor } from "effect/protobuf"
+import { ProtobufDescriptor, type ProtobufDescriptorProto } from "effect/protobuf"
 import * as Result from "effect/Result"
 
-type FieldProto = ProtobufDescriptor.FieldDescriptorProto
-type MessageProto = ProtobufDescriptor.DescriptorProto
+type FieldProto = ProtobufDescriptorProto.FieldDescriptorProto
+type MessageProto = ProtobufDescriptorProto.DescriptorProto
 
 // `FieldDescriptorProto.Type`
 export const T = {
@@ -93,7 +93,7 @@ const [modeByName, ModeByNameEntry] = map(
 )
 
 // syntax = "proto3"; package test;
-export const proto3: ProtobufDescriptor.FileDescriptorProto = {
+export const proto3: ProtobufDescriptorProto.FileDescriptorProto = {
   name: "test.proto",
   package: "test",
   syntax: "proto3",
@@ -195,7 +195,7 @@ export const proto3: ProtobufDescriptor.FileDescriptorProto = {
 }
 
 // syntax = "proto2"; package legacy;
-export const proto2: ProtobufDescriptor.FileDescriptorProto = {
+export const proto2: ProtobufDescriptorProto.FileDescriptorProto = {
   name: "legacy.proto",
   package: "legacy",
   message_type: [
@@ -264,7 +264,7 @@ export const proto2: ProtobufDescriptor.FileDescriptorProto = {
 }
 
 // edition = "2023"; package editions;
-export const editions: ProtobufDescriptor.FileDescriptorProto = {
+export const editions: ProtobufDescriptorProto.FileDescriptorProto = {
   name: "editions.proto",
   package: "editions",
   syntax: "editions",

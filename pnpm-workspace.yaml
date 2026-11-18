@@ -18,6 +18,7 @@ enableGlobalVirtualStore: false
 fetchTimeout: 180000
 
 allowBuilds:
+  '@bufbuild/buf': false
   core-js: false
   cpu-features: false
   dprint: false
