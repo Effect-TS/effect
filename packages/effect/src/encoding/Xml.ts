@@ -645,6 +645,12 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
  * empty one. Names and characters are not checked; `encode` and
  * `encodeString` check them.
  *
+ * **Gotchas**
+ *
+ * A collected subtree does not carry `xmlns` declarations inherited from its
+ * ancestors. When writing it elsewhere, supply the same bindings on the subtree
+ * or in its new enclosing scope, including any inherited default namespace.
+ *
  * **Example** (Writing an element)
  *
  * ```ts import.meta.vitest
