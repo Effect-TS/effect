@@ -165,6 +165,27 @@ export const makeEffect = <Input, Pass, Fail, E, R>(
 ): FilterEffect<Input, Pass, Fail, E, R> => f as any
 
 /**
+ * Transforms the passing value produced by a `Filter`, leaving failures
+ * unchanged.
+ *
+ * @see {@link mapFail} to transform the failure value instead
+ * @stability stable
+ * @category mapping
+ * @since 4.2.0
+ */
+export const map: {
+  <Pass, Pass2>(f: (pass: Pass) => Pass2): <Input, Fail>(self: Filter<Input, Pass, Fail>) => Filter<Input, Pass2, Fail>
+  <Input, Pass, Fail, Pass2>(
+    self: Filter<Input, Pass, Fail>,
+    f: (pass: Pass) => Pass2
+  ): Filter<Input, Pass2, Fail>
+} = dual(2, <Input, Pass, Fail, Pass2>(
+  self: Filter<Input, Pass, Fail>,
+  f: (pass: Pass) => Pass2
+): Filter<Input, Pass2, Fail> =>
+(input) => Result.map(self(input), f))
+
+/**
  * Transforms the failure value produced by a `Filter`, leaving successful
  * results unchanged.
  *

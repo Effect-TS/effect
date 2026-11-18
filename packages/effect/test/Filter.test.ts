@@ -10,9 +10,12 @@ describe("Filter.map", () => {
   })
 
   it("preserves failures without calling the mapper data-last", () => {
-    const mapped = pipe(length, Filter.map(() => {
-      throw new Error("mapper called on a failure")
-    }))
+    const mapped = pipe(
+      length,
+      Filter.map(() => {
+        throw new Error("mapper called on a failure")
+      })
+    )
     assert.deepStrictEqual(mapped(""), Result.fail("empty"))
   })
 })
