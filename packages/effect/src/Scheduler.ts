@@ -271,10 +271,10 @@ class PriorityBuckets {
  * On Cloudflare Workers, request-owned scheduler timers can be discarded,
  * leaving shared fibers suspended, and async contexts cannot be resumed from
  * another request. Use `CloudflareScheduler` from `@effect/platform-cloudflare`
- * for the whole application; it runs in sync mode and resumes each fiber in
- * the request that owns it. Sync mode does not yield to the event loop:
- * CPU-heavy work delays other requests, and I/O-polling loops can exhaust the
- * CPU limit.
+ * for the whole application; it resumes each fiber in the request that owns
+ * it and runs queued work in microtasks. Microtasks do not yield to the event
+ * loop: CPU-heavy work delays other requests, and I/O-polling loops can
+ * exhaust the CPU limit.
  *
  * @stability stable
  * @category models
