@@ -12,7 +12,6 @@
 import * as AiError from "effect/ai/AiError"
 import * as AiModel from "effect/ai/Model"
 import * as TranscriptionModel from "effect/ai/TranscriptionModel"
-import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -55,8 +54,8 @@ type RealtimeInput = typeof OpenAiSchema.RealtimeTranscriptionSession.Encoded["a
  * The top-level fields configure requests to the transcriptions endpoint.
  * `prompt` also applies to live sessions. `realtime` holds the settings that
  * only live sessions have. Turn detection defaults to `server_vad`.
- * `flushTimeout` is how long a live session may stay silent after the audio
- * has ended while transcripts are still due, and defaults to 30 seconds.
+ * `flushTimeout` is how long a live session has to deliver the remaining
+ * transcripts once the audio has ended, and defaults to 30 seconds.
  *
  * @stability unstable
  * @category services
@@ -186,9 +185,10 @@ export const make = Effect.fnUntraced(function*(options: {
  *   formats fail with `AiError.InvalidUserInputError`.
  * - `gpt-live-transcribe` has no server-side turn detection and fails with
  *   `AiError.InvalidUserInputError`.
- * - If the session sends nothing for `realtime.flushTimeout` after the audio
- *   has ended while transcripts are still due, the stream fails with a
- *   retryable `AiError`.
+ * - If transcripts are still due `realtime.flushTimeout` after the audio
+ *   ended, the stream fails with a retryable `AiError`, even when the session
+ *   is still sending. Raise it when much audio is sent at once, as after a
+ *   `transcribeLiveBuffered` replay.
  * - OpenAI does not say which commit a `committed` event answers. When the
  *   audio ends during speech, the closing commit counts as answered once a
  *   commit has been announced and the clear sent after it is acknowledged. A
@@ -461,7 +461,6 @@ const makeTranscribeLive = (
     const flushTimeout = Duration.fromInputUnsafe(config.realtime?.flushTimeout ?? "30 seconds")
     let commit = "unsent" as "unsent" | "sent" | "committed" | "empty"
     let cleared = false
-    let lastMessage = 0
 
     // When the audio ends, commit what turn detection has not committed yet.
     // A `committed` event does not name the commit it answers, so a clear
@@ -474,18 +473,17 @@ const makeTranscribeLive = (
         (chunk) => send({ type: "input_audio_buffer.append", audio: Base64.encode(chunk) })
       )
       commit = "sent"
-      yield* send({ type: "input_audio_buffer.commit", event_id: commitEventId })
-      yield* send({ type: "input_audio_buffer.clear", event_id: clearEventId })
-      lastMessage = yield* Clock.currentTimeMillis
-      while (true) {
-        const remaining = lastMessage + Duration.toMillis(flushTimeout) - (yield* Clock.currentTimeMillis)
-        if (remaining <= 0) {
-          return yield* dropped(
-            "The session sent nothing for " + Duration.format(flushTimeout) + " after the audio ended"
-          )
-        }
-        yield* Effect.sleep(remaining)
-      }
+      return yield* send({ type: "input_audio_buffer.commit", event_id: commitEventId }).pipe(
+        Effect.andThen(send({ type: "input_audio_buffer.clear", event_id: clearEventId })),
+        Effect.andThen(Effect.never),
+        Effect.timeoutOrElse({
+          duration: flushTimeout,
+          orElse: () =>
+            Effect.fail(dropped(
+              "Transcripts were still due " + Duration.format(flushTimeout) + " after the audio ended"
+            ))
+        })
+      )
     }).pipe(
       Effect.catchCause((cause) => Queue.failCause(output, cause)),
       Effect.forkScoped
@@ -521,7 +519,6 @@ const makeTranscribeLive = (
     const decoder = new TextDecoder()
     while (!settled()) {
       const messages = yield* Effect.mapError(pull, (error) => dropped(error.message))
-      lastMessage = yield* Clock.currentTimeMillis
       for (const message of messages) {
         let event: typeof OpenAiSchema.RealtimeTranscriptionServerEvent.Type
         try {

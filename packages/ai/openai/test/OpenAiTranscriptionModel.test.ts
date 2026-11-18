@@ -215,7 +215,7 @@ describe("OpenAiTranscriptionModel", () => {
         assert.strictEqual(error.reason._tag, "InternalProviderError")
       }))
 
-    it.effect("fails when the last transcript does not arrive in time", () =>
+    it.effect("fails at the flush deadline while the session keeps sending without a final", () =>
       Effect.gen(function*() {
         const server = makeServer(() => {})
         const fiber = yield* Effect.forkChild(runLive(server, { realtime: { flushTimeout: "5 seconds" } }))
@@ -224,8 +224,22 @@ describe("OpenAiTranscriptionModel", () => {
         socket.receive(committed)
         yield* TestClock.adjust(0)
         socket.receive(cleared)
-        yield* TestClock.adjust("5 seconds")
+        for (let i = 0; i < 4; i++) {
+          yield* TestClock.adjust("1 second")
+          socket.receive({
+            type: "conversation.item.input_audio_transcription.delta",
+            event_id: "event_delta_" + i,
+            item_id: "item_003",
+            content_index: 0,
+            delta: " still"
+          })
+        }
+        assert.isUndefined(fiber.pollUnsafe())
+        assert.isFalse(socket.closed)
+
+        yield* TestClock.adjust("1 second")
         const error = yield* Effect.flip(Fiber.join(fiber))
+        assert.strictEqual(error.reason._tag, "NetworkError")
         assert.isTrue(error.isRetryable)
         assert.isTrue(socket.closed)
       }))
