@@ -10,8 +10,8 @@ import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
 /**
- * A synchronous scheduler that resumes each fiber in the Worker request that
- * owns it, and keeps that request running while the fiber waits.
+ * A scheduler that resumes each fiber in the Worker request that owns it, and
+ * keeps that request running while the fiber waits.
  *
  * **When to use**
  *
@@ -32,7 +32,10 @@ import * as Scheduler from "effect/Scheduler"
  * When another request wakes or interrupts it, the fiber resumes in its owner,
  * with the owner's `AsyncLocalStorage` state, I/O objects, and timers, and the
  * waking request continues without waiting for it. Every fiber resumes a
- * microtask after it is woken, including one woken by its own request.
+ * microtask after it is woken, including one woken by its own request, so the
+ * scheduler's `executionMode` is `"async"`. Other queued work, such as a
+ * fiber that yields, also runs in a microtask, which keeps it in the current
+ * request rather than behind a timer the request may discard.
  *
  * While a fiber waits, its owner registers the pending resumption with
  * `waitUntil` from `cloudflare:workers` and holds a timer, which counts as
@@ -63,8 +66,8 @@ import * as Scheduler from "effect/Scheduler"
  * unless that scheduler parks too, a later wait is not returned to the owner
  * and does not keep the owner running, so it may fail or never complete.
  *
- * Synchronous execution does not yield to the event loop, so CPU-heavy work
- * delays other requests.
+ * Microtasks do not yield to the event loop, so CPU-heavy work delays other
+ * requests.
  *
  * @stability unstable
  * @category models
@@ -86,7 +89,7 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    * @since 4.2.0
    */
   constructor() {
-    super("sync")
+    super("async", setMicrotask)
     if (compatibilityFlags?.handle_cross_request_promise_resolution === false) {
       throw new Error(
         "CloudflareScheduler requires the handle_cross_request_promise_resolution compatibility flag"
@@ -160,3 +163,13 @@ const compatibilityFlags: Record<string, boolean | undefined> | undefined = (glo
 const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
 
 const noop = (): void => {}
+
+const setMicrotask = (f: () => void) => {
+  let cancelled = false
+  queueMicrotask(() => {
+    if (!cancelled) f()
+  })
+  return (): void => {
+    cancelled = true
+  }
+}
