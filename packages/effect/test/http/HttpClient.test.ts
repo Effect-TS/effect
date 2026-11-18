@@ -1194,6 +1194,33 @@ Missing key
   })
 
   describe("withRateLimiter", () => {
+    it.effect("carries the request and the original store failure in a TransportError", () =>
+      Effect.gen(function*() {
+        const cause = new RateLimiter.RateLimiterError({
+          reason: new RateLimiter.RateLimitStoreError({ message: "store unavailable" })
+        })
+        const { store } = yield* RateLimiter.makeMemoryStore
+        const limiter = yield* RateLimiter.make.pipe(Effect.provideService(RateLimiter.RateLimiterStore, {
+          ...store,
+          tokenBucket: () => Effect.fail(cause)
+        }))
+        const { client } = yield* makeStatusClient(200)
+        const limited = client.pipe(HttpClient.withRateLimiter({
+          failsWith: "HttpClientError",
+          limiter,
+          key: "test",
+          algorithm: "token-bucket",
+          limit: 1,
+          window: "1 minute"
+        }))
+        const request = HttpClientRequest.get("http://test/")
+        const error = yield* Effect.flip(limited.execute(request))
+        assert.isTrue(HttpClientError.isHttpClientError(error))
+        assert.instanceOf(error.reason, HttpClientError.TransportError)
+        assert.strictEqual(error.reason.request, request)
+        assert.strictEqual(error.reason.cause, cause)
+      }))
+
     it.effect("delays requests above the configured limit", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
