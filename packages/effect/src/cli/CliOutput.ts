@@ -627,10 +627,8 @@ const stripAnsi = (text: string): string => {
   return text.replace(/\u001B\[[0-9;]*m/g, "")
 }
 
-/**
- * Segments text into grapheme clusters.
- * @internal
- */
+// Built on the first width measurement rather than at module evaluation, so
+// commands that never measure text do not pay for a native Intl.Segmenter.
 let graphemeSegmenter: Intl.Segmenter | undefined
 
 const zeroWidthCodePoints = /[\p{Mark}\p{Control}\p{Default_Ignorable_Code_Point}]/gu
