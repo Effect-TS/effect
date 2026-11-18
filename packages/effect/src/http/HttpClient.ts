@@ -1184,6 +1184,12 @@ export declare namespace WithRateLimiter {
      */
     readonly limiter: RateLimiter.RateLimiter
     /**
+     * How to report limiter failures at runtime. Defaults to `"RateLimiterError"`.
+     * `"HttpClientError"` wraps them in a `TransportError` reason that carries
+     * the request and the original limiter error as its cause.
+     */
+    readonly failsWith?: "HttpClientError" | "RateLimiterError" | undefined
+    /**
      * The initial rate limit window duration.
      */
     readonly window: Duration.Input
@@ -1264,28 +1270,65 @@ export declare namespace WithRateLimiter {
  * When a response reports the remaining budget, requests wait for the
  * reported reset once that budget is exhausted.
  *
+ * At runtime, omitting `failsWith` leaves limiter failures as `RateLimiterError`.
+ * To narrow the inferred error type, specify `"RateLimiterError"` or
+ * `"HttpClientError"` explicitly. Each literal adds only its corresponding
+ * error type. Errors from the wrapped client pass through unchanged.
+ *
  * **Gotchas**
  *
  * Automatic HTTP `429` retries are unlimited unless `times` is specified.
  * Disabling response inspection does not disable retries; set `times` to `0`
  * to return or fail with the first `429`.
  *
+ * If the mode is omitted, hidden by an options type, or union-valued, the
+ * inferred type includes both errors: a type without `failsWith` can still
+ * describe an object that carries it at runtime. Use
+ * `satisfies WithRateLimiter.Options` to preserve an explicit literal mode.
+ *
+ * With `"HttpClientError"`, an outer `retryTransient` can retry limiter
+ * failures, and `circuitBreakerClassifier` counts them as transport failures.
+ *
  * @stability unstable
  * @category rate limiting
  * @since 4.0.0
  */
 export const withRateLimiter: {
-  (options: WithRateLimiter.Options): <E, R>(
-    self: HttpClient.With<E, R>
-  ) => HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  (
+    options: WithRateLimiter.Options & { readonly failsWith: "HttpClientError" }
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError, R>
+  (
+    options: WithRateLimiter.Options & { readonly failsWith: "RateLimiterError" }
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  (
+    options: WithRateLimiter.Options
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
+    options: WithRateLimiter.Options & { readonly failsWith: "HttpClientError" }
+  ): HttpClient.With<E | Error.HttpClientError, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
+    options: WithRateLimiter.Options & { readonly failsWith: "RateLimiterError" }
+  ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
   <E, R>(
     self: HttpClient.With<E, R>,
     options: WithRateLimiter.Options
-  ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  ): HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R>
 } = dual(2, <E, R>(
   self: HttpClient.With<E, R>,
   options: WithRateLimiter.Options
-): HttpClient.With<E | RateLimiter.RateLimiterError, R> => {
+): HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R> => {
+  const mapLimiterEffect: <A>(
+    effect: Effect.Effect<A, RateLimiter.RateLimiterError>,
+    request: HttpClientRequest.HttpClientRequest
+  ) => Effect.Effect<A, Error.HttpClientError | RateLimiter.RateLimiterError> = options.failsWith === "HttpClientError"
+    ? (effect, request) =>
+      Effect.mapError(
+        effect,
+        (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
+      )
+    : identity
   const initialState: RateLimiterState = {
     initial: true,
     limit: options.limit,
@@ -1347,7 +1390,7 @@ export const withRateLimiter: {
 
   return transform(self, function loop(effect, request, retries = 0): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
-    E | RateLimiter.RateLimiterError,
+    E | Error.HttpClientError | RateLimiter.RateLimiterError,
     R
   > {
     const fiber = Fiber.getCurrent()!
@@ -1390,29 +1433,35 @@ export const withRateLimiter: {
         return Effect.succeed<Duration.Duration | undefined>(delay)
       }
       return Effect.as(
-        options.limiter.adaptiveFeedback({
-          key,
-          epoch: adaptive.epoch,
-          tokens,
-          status: response.status,
-          retryAfter: delay
-        }),
+        mapLimiterEffect(
+          options.limiter.adaptiveFeedback({
+            key,
+            epoch: adaptive.epoch,
+            tokens,
+            status: response.status,
+            retryAfter: delay
+          }),
+          request
+        ),
         delay
       )
     }
     return Effect.flatMap(
-      options.limiter.consume({
-        algorithm: options.algorithm,
-        onExceeded: "delay",
-        key,
-        limit: current.limit,
-        window: current.window,
-        tokens
-      }),
+      mapLimiterEffect(
+        options.limiter.consume({
+          algorithm: options.algorithm,
+          onExceeded: "delay",
+          key,
+          limit: current.limit,
+          window: current.window,
+          tokens
+        }),
+        request
+      ),
       ({ delay }) => {
         const runAdaptive = (): Effect.Effect<
           HttpClientResponse.HttpClientResponse,
-          E | RateLimiter.RateLimiterError,
+          E | Error.HttpClientError | RateLimiter.RateLimiterError,
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
@@ -1441,12 +1490,15 @@ export const withRateLimiter: {
             return runRequest(undefined)
           }
           return Effect.flatMap(
-            options.limiter.adaptiveConsume({
-              key,
-              tokens,
-              fallbackLimit: current.limit,
-              fallbackWindow: current.window
-            }),
+            mapLimiterEffect(
+              options.limiter.adaptiveConsume({
+                key,
+                tokens,
+                fallbackLimit: current.limit,
+                fallbackWindow: current.window
+              }),
+              request
+            ),
             (adaptive) => {
               if (!Duration.isZero(adaptive.delay) && adaptive.phase === "cooldown") {
                 return Effect.flatMap(Effect.sleep(adaptive.delay), runAdaptive)
