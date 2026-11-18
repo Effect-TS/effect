@@ -612,7 +612,7 @@ export {
  * The result is `0` only if all fields are equal.
  * Only own enumerable string and symbol properties of `fields` define
  * comparisons. Non-enumerable and inherited definitions are ignored. Selected
- * properties are read from the compared values regardless of enumerability.
+ * properties on the compared values may be non-enumerable or inherited.
  *
  * **Example** (Ordering structs)
  *

@@ -660,6 +660,7 @@ export const flatMap: {
  * the generated value. Members are generated in a randomized internal order so recursive members share the generation
  * budget fairly, while shrinking changes one member at a time.
  * Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * **Gotchas**
  *

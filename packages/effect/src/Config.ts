@@ -395,6 +395,7 @@ export const orElse: {
  * Accepts a tuple (preserves positions), an iterable, or a record of configs.
  * Returns a config whose parsed value mirrors the input shape.
  * Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * A combined config is absent when any child is absent and no child fails.
  * Validation and source errors propagate even when another child is absent.

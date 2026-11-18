@@ -723,6 +723,7 @@ export const matchWithWaiting: {
  * **Details**
  *
  * Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * If the first non-success result is a failure, its previous success is
  * rebuilt in the combined shape from each input's current or previous value.

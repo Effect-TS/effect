@@ -125,6 +125,10 @@ export class Asserts<S extends Schema.Constraint> {
       /**
        * Asserts that own enumerable string and symbol fields have equal AST structures.
        *
+       * **Details**
+       *
+       * Non-enumerable and inherited field definitions are ignored in both inputs.
+       *
        * @stability unstable
        */
       equals: (a: Schema.Struct.Fields, b: Schema.Struct.Fields) => {

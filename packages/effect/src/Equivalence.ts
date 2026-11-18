@@ -650,7 +650,7 @@ export {
  *
  * Uses only own enumerable string and symbol properties of `fields` to define
  * comparisons. Non-enumerable and inherited definitions are ignored. Selected
- * properties are read from the compared values regardless of enumerability;
+ * properties on the compared values may be non-enumerable or inherited;
  * other properties of those values are ignored. The result returns `true`
  * only if all selected properties are equivalent according to their equivalences.
  * The resulting equivalence satisfies reflexive, symmetric, and transitive

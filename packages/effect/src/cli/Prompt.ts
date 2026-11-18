@@ -782,6 +782,7 @@ export declare namespace All {
  *
  * Supports either a tuple / iterable of prompts or a record / struct of prompts
  * as an argument. Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * **Example** (Collecting prompt results)
  *

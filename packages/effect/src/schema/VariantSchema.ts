@@ -423,6 +423,12 @@ export declare namespace Union {
  * Creates a variant schema toolkit for a fixed set of variant names and a default
  * variant.
  *
+ * **Details**
+ *
+ * The returned `Struct`, `Class`, and `extract` helpers discover field definitions
+ * from own enumerable string and symbol properties, including in nested structs.
+ * Non-enumerable and inherited definitions are ignored. Variant names are strings.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0

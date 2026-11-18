@@ -3684,7 +3684,9 @@ const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
  * If two existing fields would produce the same encoded key, construction
  * fails.
  * Only own enumerable string and symbol properties of the schema's `fields`
- * define fields to rename.
+ * define fields to rename. Non-enumerable and inherited field definitions are
+ * ignored. For each selected field, an own entry in `mapping` is used even if
+ * that entry is non-enumerable; inherited mapping entries are ignored.
  *
  * **Example** (Renaming `name` to `full_name` in the encoded form)
  *
@@ -3744,8 +3746,10 @@ export function encodeKeys<
  * returns `Option`. On encoding the derived fields are stripped. This allows
  * computed or enriched fields to live in the decoded type without appearing in
  * the encoded form.
- * Field definitions use own enumerable string and symbol properties;
- * non-enumerable and inherited definitions are ignored.
+ * Existing and added field definitions use own enumerable string and symbol
+ * properties; non-enumerable and inherited definitions are ignored. Derivation
+ * functions are looked up by the selected field names and may be non-enumerable
+ * or inherited.
  *
  * **Example** (Adding a computed `fullName` field)
  *

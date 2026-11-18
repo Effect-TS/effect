@@ -220,7 +220,7 @@ export const make: <
  * record values are the layers built for those keys.
  * Preloading discovers own enumerable string and symbol keys. Non-enumerable
  * and inherited entries are ignored during preloading; explicitly requested
- * keys are still looked up directly.
+ * entries may be non-enumerable or inherited.
  *
  * **Example** (Creating a layer map from a record)
  *
@@ -370,8 +370,14 @@ export interface TagClass<
 }
 
 /**
- * Create a `LayerMap` service that provides a dynamic set of resources based on
+ * Creates a `LayerMap` service that provides a dynamic set of resources based on
  * a key.
+ *
+ * **Details**
+ *
+ * With the `layers` option, preloading uses own enumerable string and symbol
+ * keys from that record. Non-enumerable and inherited entries are ignored
+ * during preloading; explicitly requested entries may be non-enumerable or inherited.
  *
  * **Example** (Defining a layer map service)
  *

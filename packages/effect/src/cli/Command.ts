@@ -564,6 +564,8 @@ export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty
  * Use `withDescription` and related metadata combinators to add help text. The
  * overloads support simple commands, configured commands, and commands with
  * effectful handlers.
+ * Configuration objects, including nested objects, use own enumerable string
+ * and symbol fields. Non-enumerable and inherited fields are ignored.
  *
  * **Example** (Creating commands)
  *
@@ -1149,6 +1151,8 @@ export const withSubcommands: {
  * Shared flags are available to this command's handler and to descendant
  * handlers via `yield* parentCommand`. Shared flags are accepted both before
  * and after a selected subcommand name (npm-style).
+ * Configuration objects, including nested objects, use own enumerable string
+ * and symbol fields. Non-enumerable and inherited fields are ignored.
  *
  * @stability unstable
  * @category combinators

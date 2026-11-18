@@ -1531,7 +1531,7 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  * specified keys are checked, and extra keys are ignored.
  * Field predicates are discovered from own enumerable string and symbol
  * properties of `fields`. Non-enumerable and inherited definitions are ignored.
- * Selected properties are read from the input regardless of enumerability.
+ * Selected properties on the input may be non-enumerable or inherited.
  *
  * **Example** (Checking structs)
  *
