@@ -1453,13 +1453,18 @@ const makeRecordCodec = (lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
     () => fail("Encoding an anonymous record is not supported; bind its fields as separate parameters")
   )
 
-const builtins = new Map<number, UnsafeCodec<any>>(builtinScalars)
-
 /**
- * Built-ins with registered codecs layered over them, so `encode` and `decode`
- * resolve an OID with a single lookup.
+ * The built-ins for one registry. Arrays and records decode their contents
+ * through the lookup, so each registry builds its own.
  */
-const codecs = new Map<number, UnsafeCodec<any>>(builtins)
+const makeBuiltins = (lookup: Lookup): Map<number, UnsafeCodec<any>> => {
+  const codecs = new Map<number, UnsafeCodec<any>>(builtinScalars)
+  for (const [arrayOid, elementOid] of arrayToElement) {
+    codecs.set(arrayOid, makeArrayCodec(elementOid, lookup))
+  }
+  codecs.set(OID.record, makeRecordCodec(lookup))
+  return codecs
+}
 
 /**
  * Every built-in OID is below this, and PostgreSQL hands user-defined types
@@ -1472,16 +1477,14 @@ const table = new Array<UnsafeCodec<any> | undefined>(tableSize)
 
 const lookup = (oid: number): UnsafeCodec<any> | undefined => oid >= 0 && oid < tableSize ? table[oid] : codecs.get(oid)
 
-for (const [arrayOid, elementOid] of arrayToElement) {
-  const codec = makeArrayCodec(elementOid, lookup)
-  builtins.set(arrayOid, codec)
-  codecs.set(arrayOid, codec)
-}
-// Like an array, a record decodes its contents through the lookup, so it is
-// built here and again for each registry.
-const recordCodec = makeRecordCodec(lookup)
-builtins.set(OID.record, recordCodec)
-codecs.set(OID.record, recordCodec)
+const builtins = makeBuiltins(lookup)
+
+/**
+ * Built-ins with registered codecs layered over them, so `encode` and `decode`
+ * resolve an OID with a single lookup.
+ */
+const codecs = new Map<number, UnsafeCodec<any>>(builtins)
+
 for (const [oid, codec] of codecs) table[oid] = codec
 
 interface RegistryState {
@@ -1519,16 +1522,9 @@ const registerInState = <A>(
  * @since 4.0.0
  */
 export const makeRegistry = (): Registry => {
-  const codecs = new Map<number, UnsafeCodec<any>>(builtinScalars)
-  const state: RegistryState = {
-    codecs,
-    elementToArray: new Map(elementToArray),
-    lookup: (oid) => codecs.get(oid)
-  }
-  for (const [arrayOid, elementOid] of arrayToElement) {
-    codecs.set(arrayOid, makeArrayCodec(elementOid, state.lookup))
-  }
-  codecs.set(OID.record, makeRecordCodec(state.lookup))
+  const lookup: Lookup = (oid) => codecs.get(oid)
+  const codecs = makeBuiltins(lookup)
+  const state: RegistryState = { codecs, elementToArray: new Map(elementToArray), lookup }
   const registry: Registry = {
     register: (oid, codec, options) => registerInState(state, oid, codec, options)
   }
@@ -1749,7 +1745,7 @@ const decodeRecord = (bytes: Uint8Array, start: number, size: number, lookup: Lo
     if (offset + fieldSize > limit) return fail("Truncated record field")
     const codec = lookup(oid)
     values[i] = codec === undefined
-      ? decodeUnregistered(bytes, offset, fieldSize, oid, undefined, i)
+      ? decodeUnregistered(bytes, offset, fieldSize, oid, undefined, 0)
       : codec.read !== undefined
       ? codec.read(bytes, offset, fieldSize)
       : codec.decode(region(bytes, offset, fieldSize))

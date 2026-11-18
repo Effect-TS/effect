@@ -280,16 +280,11 @@ describe("PgTypes", () => {
       // ROW('<a/>'::xml): text on the wire.
       assert.deepStrictEqual(PgTypes.decode(bytes("000000010000008e000000043c612f3e"), PgTypes.OID.record, 1), ["<a/>"])
       // ROW(point(0, 0)): binary, so it fails naming the field's OID.
-      const decoded = PgTypesResult.decode(
-        bytes("00000001000002580000001000000000000000000000000000000000"),
-        PgTypes.OID.record,
-        1
+      const error = thrownCodecError(() =>
+        PgTypes.decode(bytes("00000001000002580000001000000000000000000000000000000000"), PgTypes.OID.record, 1)
       )
-      assert.isTrue(Result.isFailure(decoded))
-      if (Result.isFailure(decoded)) {
-        assert.include(decoded.failure.message, "type OID 600")
-        assert.include(decoded.failure.message, "NUL")
-      }
+      assert.include(error.message, "type OID 600")
+      assert.include(error.message, "NUL")
     })
 
     it("decodes fields with a registry's codecs", () => {
