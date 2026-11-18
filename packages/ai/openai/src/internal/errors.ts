@@ -39,6 +39,15 @@ const OpenAiCompatibleErrorBody = Schema.Struct({
 // =============================================================================
 
 /** @internal */
+export const errorTypeToStatus: Record<string, number> = {
+  invalid_request_error: 400,
+  invalid_api_key_error: 401,
+  insufficient_quota_error: 429,
+  rate_limit_error: 429,
+  service_unavailable_error: 503
+}
+
+/** @internal */
 export const mapSchemaError = dual<
   (method: string) => (error: Schema.SchemaError) => AiError.AiError,
   (error: Schema.SchemaError, method: string) => AiError.AiError
