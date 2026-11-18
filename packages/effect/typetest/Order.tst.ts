@@ -13,7 +13,13 @@ describe("Order", () => {
   })
 
   it("Struct", () => {
-    const O = Order.Struct({ a: Order.Number, b: Order.String })
-    expect(O).type.toBe<Order.Order<{ readonly a: number; readonly b: string }>>()
+    const key = Symbol()
+    const O = Order.Struct({ a: Order.Number, b: Order.String, [key]: Order.Boolean })
+    expect(O).type.toBe<Order.Order<{ readonly a: number; readonly b: string; readonly [key]: boolean }>>()
+
+    const fields = { a: Order.Number, b: Order.String, [key]: Order.Boolean }
+    expect(Order.Struct(fields)).type.toBe<typeof O>()
+
+    expect(Order.Struct).type.not.toBeCallableWith({ [key]: 42 })
   })
 })

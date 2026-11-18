@@ -639,9 +639,9 @@ export {
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<const R extends { readonly [x: string]: Order<any> }>(
+export function Struct<R extends Record<string | symbol, Order<any>>>(
   fields: R
-): Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> {
+): Order<{ readonly [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> {
   const keys = InternalRecord.ownEnumerableKeys(fields) as Array<keyof R>
   return make((self, that) => {
     for (const key of keys) {

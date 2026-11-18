@@ -709,7 +709,7 @@ export {
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<R extends Record<string, Equivalence<any>>>(
+export function Struct<R extends Record<string | symbol, Equivalence<any>>>(
   fields: R
 ): Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence<infer A>] ? A : never }> {
   const keys = InternalRecord.ownEnumerableKeys(fields) as Array<keyof R>
