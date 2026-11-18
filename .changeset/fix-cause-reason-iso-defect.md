@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix the `Die` variant of `Schema.CauseReasonIso` to expose `defect`, matching its runtime representation.
+The `Die` variant of `Schema.CauseReasonIso` now declares `defect` instead of `error`, matching the existing runtime shape.
