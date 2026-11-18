@@ -615,9 +615,9 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    const scheduler = this.cache.scheduler
-    if (Scheduler.isParkingScheduler(scheduler)) scheduler.resume(this, effect as any)
-    else this.run(effect)
+    if ((this.cache as FiberCache).schedulerIsParking) {
+      ;(this.cache.scheduler as Scheduler.ParkingScheduler).resume(this, effect as any)
+    } else this.run(effect)
   }
   run(effect: Primitive | Effect.Effect<unknown, unknown>): void {
     if (this._exit) {
@@ -802,13 +802,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
     const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
-    const scheduler = this.cache?.scheduler
-    if (scheduler !== cache.scheduler) {
+    const previous = this.cache as FiberCache | undefined
+    if (previous?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
       // A ParkingScheduler may hold the effect a suspended fiber runs with
       // next, so the fiber keeps it until it runs
-      if (scheduler && !this._running && !this._exit && Scheduler.isParkingScheduler(scheduler)) {
-        this.cache = { ...cache, scheduler }
+      if (previous?.schedulerIsParking && !this._running && !this._exit) {
+        this.cache = { ...cache, scheduler: previous.scheduler, schedulerIsParking: true } as FiberCache
         return
       }
     }
@@ -825,16 +825,23 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 // inline it into the callbacks that resume a fiber
 const park = (fiber: FiberImpl): void => {
   fiber._asyncContext = AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
-  const scheduler = fiber.cache.scheduler
-  if (Scheduler.isParkingScheduler(scheduler)) scheduler.park(fiber)
+  if ((fiber.cache as FiberCache).schedulerIsParking) (fiber.cache.scheduler as Scheduler.ParkingScheduler).park(fiber)
+}
+
+// Decided once per cache, so that a fiber does not check its scheduler each
+// time it parks or resumes
+interface FiberCache extends Fiber.Fiber.Cache {
+  readonly schedulerIsParking: boolean
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
-  return {
-    scheduler: Context.get(context, Scheduler.Scheduler),
+  const scheduler = Context.get(context, Scheduler.Scheduler)
+  const cache: FiberCache = {
+    scheduler,
+    schedulerIsParking: Scheduler.isParkingScheduler(scheduler),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
     tracerEnabled: Context.get(context, TracerEnabled),
@@ -846,6 +853,7 @@ const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cac
     maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
     preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
   }
+  return cache
 }
 
 const deferredInterruptCont: any = {

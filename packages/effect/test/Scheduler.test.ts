@@ -200,6 +200,7 @@ describe("Scheduler", () => {
       const pending: Array<() => void> = []
       let landing = false
       const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+        readonly [Scheduler.ParkingSchedulerTypeId] = Scheduler.ParkingSchedulerTypeId
         readonly resumed = new Map<Scheduler.ParkedFiber, boolean>()
         park(fiber: Scheduler.ParkedFiber): void {
           this.resumed.set(fiber, false)
@@ -242,24 +243,22 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed([true, true]))
     })
 
-    it("runs the fibers of a scheduler that does not have both methods", () => {
-      for (const method of ["park", "resume"]) {
-        // The other one is missing, or is not a method
-        for (const other of [{}, { park: true, resume: true }]) {
-          let calls = 0
-          const scheduler = Object.assign(new Scheduler.MixedScheduler("sync"), other, { [method]: () => calls++ })
-          let wake!: () => void
-          const wait = Effect.callback<void>((resume) => {
-            wake = () => resume(Effect.void)
-          })
-          for (const effect of [wait, wait.pipe(Effect.provide(TestClock.layer()))]) {
-            const fiber = Effect.runFork(effect, { scheduler })
-            wake()
-            assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void, method)
-          }
-          assert.strictEqual(calls, 0, method)
-        }
+    it("runs the fibers of a scheduler without ParkingSchedulerTypeId", () => {
+      let calls = 0
+      const scheduler = Object.assign(new Scheduler.MixedScheduler("sync"), {
+        park: () => calls++,
+        resume: () => calls++
+      })
+      let wake!: () => void
+      const wait = Effect.callback<void>((resume) => {
+        wake = () => resume(Effect.void)
+      })
+      for (const effect of [wait, wait.pipe(Effect.provide(TestClock.layer()))]) {
+        const fiber = Effect.runFork(effect, { scheduler })
+        wake()
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
       }
+      assert.strictEqual(calls, 0)
     })
 
     // Runs a fiber on a parking scheduler and gives it a MixedScheduler at the
