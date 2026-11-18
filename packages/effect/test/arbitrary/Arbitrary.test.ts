@@ -21,6 +21,7 @@ import * as DateTime from "effect/DateTime"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Scheduler from "effect/Scheduler"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 
 const makeSuspendChain = (count: number): Schema.Codec<unknown> => {
   let schema: Schema.Codec<unknown> = Schema.Null
@@ -3689,6 +3690,18 @@ describe("Arbitrary", () => {
         assert.deepStrictEqual(record, [{ text: "value", count: 1 }])
         assert.deepStrictEqual(emptyTuple, [[]])
         assert.deepStrictEqual(emptyRecord, [{}])
+      }))
+
+    it.effect("all generates enumerable symbol fields and ignores hidden or inherited Arbitraries", () =>
+      Effect.gen(function*() {
+        const key = Symbol("value")
+        const arbitrary = Arbitrary.all(withIgnoredProperties({
+          name: Arbitrary.Constant("value"),
+          [key]: Arbitrary.Constant(1)
+        }))
+        const [sample] = yield* Arbitrary.sampleEffect(arbitrary, { count: 1, seed: "all-symbol" })
+
+        assert.deepStrictEqual({ ...sample }, { name: "value", [key]: 1 })
       }))
 
     it.effect("shrinks all members independently and replays the product", () =>

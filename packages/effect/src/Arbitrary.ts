@@ -659,6 +659,8 @@ export const flatMap: {
  * Accepts a tuple or array, an iterable, or a record of Arbitraries. Tuple positions and record keys are preserved in
  * the generated value. Members are generated in a randomized internal order so recursive members share the generation
  * budget fairly, while shrinking changes one member at a time.
+ * Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * **Gotchas**
  *
@@ -670,14 +672,14 @@ export const flatMap: {
  * @category constructors
  * @since 4.0.0
  */
-export function all<const Input extends Iterable<Arbitrary<any>> | Record<string, Arbitrary<any>>>(
+export function all<const Input extends Iterable<Arbitrary<any>> | Record<PropertyKey, Arbitrary<any>>>(
   input: Input
 ): Arbitrary<
   [Input] extends [ReadonlyArray<Arbitrary<any>>] ? {
       -readonly [K in keyof Input]: [Input[K]] extends [Arbitrary<infer A>] ? A : never
     }
     : [Input] extends [Iterable<Arbitrary<infer A>>] ? Array<A>
-    : [Input] extends [Record<string, Arbitrary<any>>] ? {
+    : [Input] extends [Record<PropertyKey, Arbitrary<any>>] ? {
         -readonly [K in keyof Input]: [Input[K]] extends [Arbitrary<infer A>] ? A : never
       }
     : never

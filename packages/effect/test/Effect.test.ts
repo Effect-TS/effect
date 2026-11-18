@@ -36,6 +36,7 @@ import { AsyncLocalStorage, AsyncResource, createHook } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
 import { assertRegistersDuringStartup } from "./utils/forkRegistration.ts"
 import { collectGarbage } from "./utils/gc.ts"
+import { withIgnoredProperties } from "./utils/structFields.ts"
 
 class ATag extends Context.Service<ATag, "A">()("ATag") {}
 
@@ -1086,6 +1087,34 @@ describe("Effect", () => {
   })
 
   describe("all", () => {
+    it.effect("runs enumerable own symbol fields in every collection mode", () =>
+      Effect.gen(function*() {
+        const key = Symbol("key")
+        for (const concurrency of [1, 2]) {
+          const success = withIgnoredProperties({ a: Effect.succeed(1), [key]: Effect.succeed(2) })
+          assert.deepStrictEqual(yield* Effect.all(success, { concurrency }), { a: 1, [key]: 2 })
+
+          const failure = withIgnoredProperties({ a: Effect.succeed(1), [key]: Effect.fail("failure") })
+          assert.deepStrictEqual(yield* Effect.result(Effect.all(failure, { concurrency })), Result.fail("failure"))
+          assert.deepStrictEqual(yield* Effect.all(failure, { concurrency, mode: "result" }), {
+            a: Result.succeed(1),
+            [key]: Result.fail("failure")
+          })
+
+          for (const mode of ["default", "result"] as const) {
+            const visited: Array<PropertyKey> = []
+            yield* Effect.all(
+              withIgnoredProperties({
+                a: Effect.sync(() => visited.push("a")),
+                [key]: Effect.sync(() => visited.push(key))
+              }),
+              { concurrency, discard: true, mode }
+            )
+            assert.deepStrictEqual(visited, ["a", key])
+          }
+        }
+      }))
+
     it.effect("record preserves input key order with concurrency 2", () =>
       Effect.gen(function*() {
         const fiber = yield* Effect.all({

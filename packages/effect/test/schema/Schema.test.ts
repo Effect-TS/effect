@@ -47,6 +47,7 @@ import {
   assertTrue,
   throws
 } from "../utils/assert.ts"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 
 const verifyGeneration = true
 
@@ -655,6 +656,15 @@ Missing key
   })
 
   describe("Struct", () => {
+    it("discovers only enumerable own string and symbol field definitions", () => {
+      const key = Symbol("key")
+      const schema = Schema.Struct(withIgnoredProperties({ a: Schema.Number, [key]: Schema.String }))
+      const input = { a: 1, [key]: "value" }
+
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)(input), input)
+      assert.deepStrictEqual(Schema.encodeSync(schema)(input), input)
+    })
+
     it("allows duplicate property signatures in the low-level AST constructor", () => {
       const ast = new SchemaAST.Objects(
         [
@@ -1982,6 +1992,33 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     describe("Record checks", () => {
+      it("property counts include only enumerable own string and symbol keys", () => {
+        const key = Symbol("key")
+        const input = withIgnoredProperties({ a: 1, [key]: 2 })
+
+        assert.isTrue(Schema.is(Schema.ObjectKeyword.check(Schema.isMinProperties(2)))(input))
+        assert.isFalse(Schema.is(Schema.ObjectKeyword.check(Schema.isMinProperties(3)))(input))
+        assert.isTrue(Schema.is(Schema.ObjectKeyword.check(Schema.isMaxProperties(2)))(input))
+        assert.isFalse(Schema.is(Schema.ObjectKeyword.check(Schema.isMaxProperties(1)))(input))
+        assert.isTrue(Schema.is(Schema.ObjectKeyword.check(Schema.isBetweenProperties(2, 2)))(input))
+        assert.isFalse(Schema.is(Schema.ObjectKeyword.check(Schema.isBetweenProperties(3, 4)))(input))
+        assert.isTrue(
+          Schema.is(Schema.ObjectKeyword.check(Schema.isBetweenProperties(0, 0)))(withIgnoredProperties({}))
+        )
+      })
+
+      it("isPropertyNames validates only enumerable own string and symbol keys", () => {
+        const key = Symbol("key")
+        const schema = Schema.ObjectKeyword.check(
+          Schema.isPropertyNames(Schema.Union([Schema.Literal("a"), Schema.UniqueSymbol(key)]))
+        )
+
+        assert.isTrue(Schema.is(schema)(withIgnoredProperties({ a: 1, [key]: 2 })))
+        assert.isTrue(Schema.is(schema)(withIgnoredProperties({})))
+        assert.isFalse(Schema.is(schema)({ b: 1 }))
+        assert.isFalse(Schema.is(schema)({ [Symbol("other")]: 1 }))
+      })
+
       it("isMinProperties", async () => {
         const schema = Schema.Record(Schema.String, Schema.Finite).check(Schema.isMinProperties(1))
         const asserts = new TestSchema.Asserts(schema)
@@ -9085,6 +9122,15 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Struct.mapFields", () => {
+    it("discovers only enumerable own string and symbol field definitions", () => {
+      const key = Symbol("key")
+      const schema = Schema.Struct({ a: Schema.Number }).mapFields((fields) =>
+        withIgnoredProperties({ ...fields, [key]: Schema.String })
+      )
+
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ a: 1, [key]: "value" }), { a: 1, [key]: "value" })
+    })
+
     it("evolve", () => {
       const schema = Schema.Struct({
         a: Schema.String,
@@ -9431,14 +9477,15 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.succeed(new A({ a: 1, b: "b" }), { c: "1", b: "b" })
     })
 
-    it("supports symbol source keys", () => {
+    it("renames only enumerable own string and symbol field definitions", () => {
       const field = Symbol("field")
-      const schema = Schema.Struct({
+      const schema = Schema.Struct(withIgnoredProperties({
+        a: Schema.Number,
         [field]: Schema.String
-      }).pipe(Schema.encodeKeys({ [field]: "field" }))
+      })).pipe(Schema.encodeKeys({ a: "renamed", [field]: "field" }))
 
-      deepStrictEqual(Schema.decodeUnknownSync(schema)({ field: "a" }), { [field]: "a" })
-      deepStrictEqual(Schema.encodeSync(schema)({ [field]: "a" }), { field: "a" })
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ renamed: 1, field: "a" }), { a: 1, [field]: "a" })
+      assert.deepStrictEqual(Schema.encodeSync(schema)({ a: 1, [field]: "a" }), { renamed: 1, field: "a" })
     })
 
     it("supports symbol destination keys", () => {
@@ -9675,6 +9722,22 @@ pointed message
   })
 
   describe("extendTo", () => {
+    it("preserves existing symbols and derives only enumerable own fields", () => {
+      const existing = Symbol("existing")
+      const added = Symbol("added")
+      const schema = Schema.Struct(withIgnoredProperties({ a: Schema.Number, [existing]: Schema.String })).pipe(
+        Schema.extendTo(withIgnoredProperties({ b: Schema.Number, [added]: Schema.String }), {
+          b: (input) => Option.some(input.a + 1),
+          [added]: (input) => Option.some(input[existing] + "!")
+        })
+      )
+
+      const encoded = { a: 1, [existing]: "value" }
+      const decoded = { a: 1, b: 2, [existing]: "value", [added]: "value!" }
+      assert.deepStrictEqual(Schema.decodeUnknownSync(schema)(encoded), decoded)
+      assert.deepStrictEqual(Schema.encodeSync(schema)(decoded), encoded)
+    })
+
     it("Struct", async () => {
       const schema = Schema.Struct({
         a: Schema.String,

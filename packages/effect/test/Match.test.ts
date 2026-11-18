@@ -1,6 +1,7 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Match, pipe } from "effect"
 import { strictEqual } from "./utils/assert.ts"
+import { withIgnoredProperties } from "./utils/structFields.ts"
 
 describe("Match", () => {
   it("fn keeps the selector arguments", () => {
@@ -100,17 +101,22 @@ describe("Match", () => {
     strictEqual(discriminators({ kind: "A" }), "miss")
   })
 
-  it("checks symbol-keyed object pattern properties", () => {
+  it("discovers enumerable own pattern fields and reads non-enumerable input fields", () => {
     const key = Symbol("key")
     const match = pipe(
-      Match.type<{ readonly [key]: "expected" | "other" }>(),
-      Match.when({ [key]: "expected" }, () => "hit"),
+      Match.type<unknown>(),
+      Match.when(withIgnoredProperties({ a: 1, [key]: "expected" }), () => "hit"),
       Match.orElse(() => "miss")
     )
+    const input = Object.defineProperties({ a: 1, [key]: "expected" }, {
+      a: { enumerable: false },
+      [key]: { enumerable: false }
+    })
 
-    strictEqual(match({ [key]: "expected" }), "hit")
-    strictEqual(match({ [key]: "other" }), "miss")
-    strictEqual(match({} as any), "miss")
+    assert.strictEqual(match(input), "hit")
+    assert.strictEqual(match({ a: 1, [key]: "other" }), "miss")
+    assert.strictEqual(match({ a: 2, [key]: "expected" }), "miss")
+    assert.strictEqual(match({}), "miss")
   })
 
   it("array patterns match prefixes and reject shorter arrays", () => {

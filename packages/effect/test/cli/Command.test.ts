@@ -14,6 +14,7 @@ import {
 import { toImpl } from "effect/cli/internal/command"
 import { ChildProcessSpawner } from "effect/process"
 import { TestConsole } from "effect/testing"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
 import * as TestActions from "./services/TestActions.ts"
@@ -589,6 +590,28 @@ describe("Command", () => {
           command: "users create",
           details: { username, email: Option.some(email), role, notify: true }
         })
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("preserves enumerable symbol fields in nested and shared command configs", () =>
+      Effect.gen(function*() {
+        const nested = Symbol("nested")
+        const count = Symbol("count")
+        const shared = Symbol("shared")
+        const received: Array<unknown> = []
+        const command = Command.make(
+          "test",
+          withIgnoredProperties({
+            name: Flag.String("name"),
+            [nested]: withIgnoredProperties({ [count]: Flag.Int("count") })
+          })
+        ).pipe(
+          Command.withSharedFlags(withIgnoredProperties({ [shared]: Flag.String("format") })),
+          Command.withHandler((config) => Effect.sync(() => received.push(config)))
+        )
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--name", "value", "--count", "2", "--format", "json"])
+
+        assert.deepStrictEqual(received, [{ name: "value", [nested]: { [count]: 2 }, [shared]: "json" }])
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should work with effectful handlers", () =>

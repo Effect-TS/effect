@@ -9,6 +9,7 @@ import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
+import { withIgnoredProperties } from "./utils/structFields.ts"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -154,6 +155,19 @@ describe("Request", { concurrent: false }, () => {
     class SymbolRequest extends Request.Class<{ readonly [key]: string }, void> {}
 
     assert.strictEqual(new SymbolRequest({ [key]: "value" })[key], "value")
+  })
+
+  it("equality and hashing use only enumerable own string and symbol fields", () => {
+    const key = Symbol("key")
+    class Lookup extends Request.Class<{ readonly id: number; readonly [key]: number }, string> {}
+    const first = withIgnoredProperties(new Lookup({ id: 1, [key]: 2 }))
+    const same = new Lookup({ id: 1, [key]: 2 })
+    const different = new Lookup({ id: 1, [key]: 3 })
+
+    assert.isTrue(Equal.equals(first, same))
+    assert.strictEqual(Hash.hash(first), Hash.hash(same))
+    assert.isFalse(Equal.equals(first, different))
+    assert.notStrictEqual(Hash.hash(first), Hash.hash(different))
   })
 
   it("compares StructuralProto values when hashes collide", () => {

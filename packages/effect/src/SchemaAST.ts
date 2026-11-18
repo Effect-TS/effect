@@ -3044,10 +3044,10 @@ export const Objects: new(
           }
           // Only enumerable own properties can be excess. Declared fields are
           // parsed separately, regardless of their enumerability.
-          const inputKeys = Reflect.ownKeys(record)
+          const inputKeys = InternalRecord.ownEnumerableKeys(record)
           for (let i = 0; i < inputKeys.length; i++) {
             const key = inputKeys[i]
-            if (!coveredKeys.has(key) && Object.prototype.propertyIsEnumerable.call(record, key)) {
+            if (!coveredKeys.has(key)) {
               // key is unexpected
               const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
               const issue = new SchemaIssue.Pointer([key], unexpected)
@@ -3302,7 +3302,7 @@ export function struct<Fields extends Schema.Struct.Fields>(
   annotations?: Schema.Annotations.Annotations
 ): Objects {
   return new Objects(
-    Reflect.ownKeys(fields).map((key) => {
+    InternalRecord.ownEnumerableKeys(fields).map((key) => {
       return new PropertySignature(key, fields[key].ast)
     }),
     [],

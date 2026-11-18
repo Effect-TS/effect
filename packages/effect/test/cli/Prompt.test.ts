@@ -15,6 +15,7 @@ import {
 } from "effect"
 import { Prompt } from "effect/cli"
 import { afterEach, vi } from "vitest"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
 const FileSystemLayer = FileSystem.layerNoop({})
@@ -199,6 +200,17 @@ describe("Prompt.succeed", () => {
 })
 
 describe("Prompt.all", () => {
+  it.effect("collects enumerable symbol fields and ignores hidden or inherited prompts", () =>
+    Effect.gen(function*() {
+      const key = Symbol("value")
+      const result = yield* Prompt.all(withIgnoredProperties({
+        name: Prompt.succeed("value"),
+        [key]: Prompt.succeed(1)
+      }))
+
+      assert.deepStrictEqual(result, { name: "value", [key]: 1 })
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("supports an empty record", () =>
     Effect.gen(function*() {
       const result = yield* Prompt.all({})
