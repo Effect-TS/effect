@@ -631,7 +631,7 @@ const stripAnsi = (text: string): string => {
  * Segments text into grapheme clusters.
  * @internal
  */
-const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+let graphemeSegmenter: Intl.Segmenter | undefined
 
 const zeroWidthCodePoints = /[\p{Mark}\p{Control}\p{Default_Ignorable_Code_Point}]/gu
 const emojiPresentation = /\p{Emoji_Presentation}/u
@@ -689,6 +689,7 @@ const graphemeWidth = (grapheme: string): number => {
  * @since 4.0.3
  */
 export const displayWidth = (text: string): number => {
+  graphemeSegmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" })
   let length = 0
   for (const { segment } of graphemeSegmenter.segment(stripAnsi(text))) {
     length += graphemeWidth(segment)

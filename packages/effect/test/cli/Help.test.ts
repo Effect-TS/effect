@@ -49,7 +49,7 @@ const runSharedFlagsApp = Command.runWith(
 const withFormatter = (options: Parameters<typeof CliOutput.defaultFormatter>[0]) =>
   Effect.provide(Layer.merge(TestLayer, CliOutput.layer(CliOutput.defaultFormatter({ colors: false, ...options }))))
 
-describe("CliOutput.displayWidth", () => {
+describe("CliOutput.displayWidth", { concurrent: false }, () => {
   it("constructs the segmenter only on the first width calculation", async () => {
     vi.resetModules()
     const segmenter = vi.spyOn(Intl, "Segmenter")
