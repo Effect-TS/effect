@@ -1,6 +1,6 @@
 import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
 import * as esbuild from "esbuild"
-import { Miniflare } from "miniflare-v5"
+import { Miniflare } from "miniflare"
 import * as path from "node:path"
 
 const sleep = (millis: number) => new Promise((resolve) => setTimeout(resolve, millis))
@@ -22,17 +22,9 @@ const bundle = (stdin?: string) =>
 
 const makeMiniflare = (contents: string, compatibilityDate: string) =>
   new Miniflare({
-    workers: [{
-      config: {
-        name: "scheduler",
-        manifest: {
-          mainModule: "worker.mjs",
-          modules: { "worker.mjs": { type: "esm", contents } }
-        },
-        compatibilityDate,
-        compatibilityFlags: ["nodejs_compat"]
-      }
-    }]
+    modules: [{ type: "ESModule", path: "worker.mjs", contents }],
+    compatibilityDate,
+    compatibilityFlags: ["nodejs_compat"]
   })
 
 describe("CloudflareScheduler", () => {
