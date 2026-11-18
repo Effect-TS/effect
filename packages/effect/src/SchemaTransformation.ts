@@ -921,9 +921,9 @@ export function passthroughSubtype<T>(): Transformation<T, T> {
  * **Details**
  *
  * Decoding coerces the string to a number like `Number(s)`. Encoding coerces
- * the number to a string like `String(n)`. This does not validate that the
- * result is finite; combine with `Schema.Finite` or `Schema.Int` for stricter
- * checks.
+ * the number to a string like `String(n)`, except that negative zero is
+ * preserved as `"-0"`. This does not validate that the result is finite;
+ * combine with `Schema.Finite` or `Schema.Int` for stricter checks.
  *
  * **Example** (Converting a string to a number)
  *
@@ -945,7 +945,7 @@ export function passthroughSubtype<T>(): Transformation<T, T> {
  */
 export const numberFromString = new Transformation(
   SchemaGetter.Number(),
-  SchemaGetter.String()
+  SchemaGetter.transform((n: number) => Object.is(n, -0) ? "-0" : globalThis.String(n))
 )
 
 /**

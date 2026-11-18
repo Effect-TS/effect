@@ -128,8 +128,13 @@ describe("TestSchema", () => {
   it.effect("round trips accept equivalent struct objects regardless of prototype", () =>
     new TestSchema.Asserts(Schema.Struct({ a: Schema.String })).verifyRoundTripEffect({ runs: 100, seed: 1 }))
 
-  it.effect("NumberFromString round trips accept equivalent signed zeros", () =>
-    new TestSchema.Asserts(Schema.NumberFromString).verifyRoundTripEffect({ runs: 100, seed: 1 }))
+  it.effect("round trips accept a negative zero that decodes back to positive zero", () => {
+    const dropsSign = Schema.Literal(-0).pipe(Schema.decode({
+      encode: SchemaGetter.succeed(0),
+      decode: SchemaGetter.passthrough()
+    }))
+    return new TestSchema.Asserts(dropsSign).verifyRoundTripEffect({ runs: 1 })
+  })
 
   it("verifyRoundTrip reports a shrunk input and replay", async () => {
     const schema = Schema.Number.pipe(

@@ -2173,6 +2173,18 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Transformations", () => {
+    it("number string schemas preserve signed zeros", () => {
+      for (const schema of [Schema.NumberFromString, Schema.FiniteFromString]) {
+        const encode = Schema.encodeSync(schema)
+        const decode = Schema.decodeSync(schema)
+        for (const [value, text] of [[0, "0"], [-0, "-0"]] as const) {
+          const encoded = encode(value)
+          assert.strictEqual(encoded, text)
+          assert.isTrue(Object.is(decode(encoded), value))
+        }
+      }
+    })
+
     it("NumberFromString", async () => {
       const schema = Schema.NumberFromString
       const asserts = new TestSchema.Asserts(schema)
