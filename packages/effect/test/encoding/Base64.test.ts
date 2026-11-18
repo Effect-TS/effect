@@ -83,6 +83,11 @@ describeWithFallback("Base64", () => {
     assert.strictEqual(Base64.encode(new Uint8Array([72, 101, 108, 108, 111])), "SGVsbG8=")
   })
 
+  it("encodes unpaired surrogates as the UTF-8 replacement character", () => {
+    assert.strictEqual(Base64.encode("\uD800"), "77+9")
+    assert.strictEqual(Base64.encode("\uDC00"), "77+9")
+  })
+
   it("decodes bytes and UTF-8 strings", () => {
     assert.deepStrictEqual(
       Result.getOrThrow(Base64.decode("SGVs\r\nbG8=")),
