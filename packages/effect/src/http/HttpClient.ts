@@ -1282,10 +1282,58 @@ export const withRateLimiter: {
     self: HttpClient.With<E, R>,
     options: WithRateLimiter.Options
   ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
-} = dual(2, <E, R>(
+} = dual(
+  2,
+  <E, R>(self: HttpClient.With<E, R>, options: WithRateLimiter.Options) =>
+    rateLimited<E, R, RateLimiter.RateLimiterError>(self, options, identity)
+)
+
+/**
+ * Applies the same rate limits, header handling, and HTTP `429` retries as
+ * {@link withRateLimiter}, but reports limiter failures as an `HttpClientError`
+ * with a `TransportError` reason carrying the request and original limiter error.
+ * Errors from the wrapped client are not converted.
+ *
+ * **Gotchas**
+ *
+ * An outer `retryTransient` can retry limiter failures, and
+ * `circuitBreakerClassifier` counts them as transport failures.
+ *
+ * @see {@link withRateLimiter}
+ * @stability unstable
+ * @category rate limiting
+ * @since 4.1.5
+ */
+export const withRateLimiterTransportError: {
+  (options: WithRateLimiter.Options): <E, R>(
+    self: HttpClient.With<E, R>
+  ) => HttpClient.With<E | Error.HttpClientError, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
+    options: WithRateLimiter.Options
+  ): HttpClient.With<E | Error.HttpClientError, R>
+} = dual(
+  2,
+  <E, R>(self: HttpClient.With<E, R>, options: WithRateLimiter.Options) =>
+    rateLimited<E, R, Error.HttpClientError>(
+      self,
+      options,
+      (effect, request) =>
+        Effect.mapError(
+          effect,
+          (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
+        )
+    )
+)
+
+function rateLimited<E, R, E2>(
   self: HttpClient.With<E, R>,
-  options: WithRateLimiter.Options
-): HttpClient.With<E | RateLimiter.RateLimiterError, R> => {
+  options: WithRateLimiter.Options,
+  mapLimiterEffect: <A>(
+    effect: Effect.Effect<A, RateLimiter.RateLimiterError>,
+    request: HttpClientRequest.HttpClientRequest
+  ) => Effect.Effect<A, E2>
+): HttpClient.With<E | E2, R> {
   const initialState: RateLimiterState = {
     initial: true,
     limit: options.limit,
@@ -1347,7 +1395,7 @@ export const withRateLimiter: {
 
   return transform(self, function loop(effect, request, retries = 0): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
-    E | RateLimiter.RateLimiterError,
+    E | E2,
     R
   > {
     const fiber = Fiber.getCurrent()!
@@ -1390,29 +1438,35 @@ export const withRateLimiter: {
         return Effect.succeed<Duration.Duration | undefined>(delay)
       }
       return Effect.as(
-        options.limiter.adaptiveFeedback({
-          key,
-          epoch: adaptive.epoch,
-          tokens,
-          status: response.status,
-          retryAfter: delay
-        }),
+        mapLimiterEffect(
+          options.limiter.adaptiveFeedback({
+            key,
+            epoch: adaptive.epoch,
+            tokens,
+            status: response.status,
+            retryAfter: delay
+          }),
+          request
+        ),
         delay
       )
     }
     return Effect.flatMap(
-      options.limiter.consume({
-        algorithm: options.algorithm,
-        onExceeded: "delay",
-        key,
-        limit: current.limit,
-        window: current.window,
-        tokens
-      }),
+      mapLimiterEffect(
+        options.limiter.consume({
+          algorithm: options.algorithm,
+          onExceeded: "delay",
+          key,
+          limit: current.limit,
+          window: current.window,
+          tokens
+        }),
+        request
+      ),
       ({ delay }) => {
         const runAdaptive = (): Effect.Effect<
           HttpClientResponse.HttpClientResponse,
-          E | RateLimiter.RateLimiterError,
+          E | E2,
           R
         > => {
           const runRequest = (adaptive: RateLimiter.AdaptiveConsumeResult | undefined) => {
@@ -1441,12 +1495,15 @@ export const withRateLimiter: {
             return runRequest(undefined)
           }
           return Effect.flatMap(
-            options.limiter.adaptiveConsume({
-              key,
-              tokens,
-              fallbackLimit: current.limit,
-              fallbackWindow: current.window
-            }),
+            mapLimiterEffect(
+              options.limiter.adaptiveConsume({
+                key,
+                tokens,
+                fallbackLimit: current.limit,
+                fallbackWindow: current.window
+              }),
+              request
+            ),
             (adaptive) => {
               if (!Duration.isZero(adaptive.delay) && adaptive.phase === "cooldown") {
                 return Effect.flatMap(Effect.sleep(adaptive.delay), runAdaptive)
@@ -1459,7 +1516,7 @@ export const withRateLimiter: {
       }
     )
   })
-})
+}
 
 /**
  * Namespace containing configuration types for `withCircuitBreaker`.
