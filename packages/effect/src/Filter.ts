@@ -168,7 +168,24 @@ export const makeEffect = <Input, Pass, Fail, E, R>(
  * Transforms the passing value produced by a `Filter`, leaving failures
  * unchanged.
  *
+ * **Example** (Mapping defined record values)
+ *
+ * A generic refinement such as `Predicate.isNotUndefined` needs its input type
+ * specified. Otherwise the mapper receives `unknown`.
+ *
+ * ```ts import.meta.vitest
+ * import { Filter, pipe, Predicate, Record } from "effect"
+ *
+ * const doubleDefined = pipe(
+ *   Filter.fromPredicate(Predicate.isNotUndefined<number | undefined>),
+ *   Filter.map((n) => n * 2)
+ * )
+ *
+ * Record.filterMap({ a: 1, b: undefined }, doubleDefined) // => { a: 2 }
+ * ```
+ *
  * @see {@link mapFail} to transform the failure value instead
+ *
  * @stability stable
  * @category mapping
  * @since 4.2.0
