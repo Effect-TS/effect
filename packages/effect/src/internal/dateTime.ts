@@ -265,18 +265,28 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
 // ECMA-262 date-only forms already parse as UTC, including signed six-digit years.
 const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
 
+// Ignore parenthesized comments for zone detection, not for native parsing.
+const withoutComments = (input: string): string => {
+  const first = input.indexOf("(")
+  if (first === -1) return input
+  let result = input.slice(0, first) + " "
+  let depth = 1
+  for (let i = first + 1; i < input.length; i++) {
+    const c = input[i]
+    if (c === "(") {
+      if (depth++ === 0) result += " "
+    } else if (depth === 0) result += c
+    else if (c === ")") depth--
+  }
+  return result
+}
+
 const hasZone = (input: string): boolean => {
-  if (input.endsWith("]") || hasTimeOffset(input) || /\s[+-]\d{2}(?::?\d{2})?\s*(?:\([^()]*\)\s*)?$/.test(input)) {
-    return true
-  }
-  // Legacy dates allow zone names before the year. Ignore words inside comments.
-  let depth = 0
-  for (const [token] of input.matchAll(/[()]|[a-z]+/gi)) {
-    if (token === "(") depth++
-    else if (token === ")") depth = Math.max(0, depth - 1)
-    else if (depth === 0 && /^(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(token)) return true
-  }
-  return false
+  const text = withoutComments(input).trimEnd()
+  if (text.endsWith("]") || hasTimeOffset(text) || /\s[+-]\d{2}(?::?\d{2})?$/.test(text)) return true
+  // Native parsing ignores a zone word before the first date number.
+  const firstNumber = text.search(/\d/)
+  return firstNumber !== -1 && /(?:^|[^a-z])(?:z|gmt|utc?|[ecmp][sd]t)(?![a-z])/i.test(text.slice(firstNumber))
 }
 
 const hasTimeOffset = (input: string): boolean => {
