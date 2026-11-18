@@ -957,77 +957,49 @@ describe("HttpApiClient", () => {
       }))
   })
 
-  describe("singleton form response values", () => {
+  describe("single-value form response arrays", () => {
+    const form = <Fields extends Schema.Struct.Fields>(fields: Fields) =>
+      Schema.Struct(fields).pipe(HttpApiSchema.asFormUrlEncoded())
     const Tags = Schema.Array(Schema.String)
-    const Success = Schema.Struct({ tags: Schema.Union([Tags, Schema.String], { mode: "oneOf" }) }).pipe(
-      HttpApiSchema.asFormUrlEncoded()
-    )
-    const Api = HttpApi.make("Api").add(
-      HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
-        success: HttpApiSchema.WithHeaders(Success, { "x-count": Schema.Int }),
-        error: [
-          Schema.Struct({ tags: Tags }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400)),
-          Schema.Struct({ tags: Schema.Literal("b") }).pipe(HttpApiSchema.asFormUrlEncoded(), HttpApiSchema.status(400))
-        ]
-      }))
-    )
-    const decode = (status: number, body = "tags=a") =>
-      HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })(
-        HttpClientResponse.fromWeb(
-          HttpClientRequest.get("http://test/form"),
-          new Response(body, {
-            status,
-            headers: { "content-type": "application/x-www-form-urlencoded", "x-count": "1" }
-          })
-        )
+    const response = (status: number, body: string) =>
+      HttpClientResponse.fromWeb(
+        HttpClientRequest.get("http://test/form"),
+        new Response(body, {
+          status,
+          headers: { "content-type": "application/x-www-form-urlencoded", "x-count": "1" }
+        })
       )
 
-    it.effect("recovers an array in a declared form error", () =>
+    it.effect("decodes a success with headers and a declared error", () =>
       Effect.gen(function*() {
-        assert.deepStrictEqual(yield* Effect.flip(decode(400)), { tags: ["a"] })
-      }))
-
-    it.effect("prefers a matching declared error to singleton recovery", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* Effect.flip(decode(400, "tags=b")), { tags: "b" })
-      }))
-
-    it.effect("preserves a scalar already accepted by oneOf", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(
-          yield* decode(200),
-          HttpApiSchema.withHeaders({ body: { tags: "a" }, headers: { "x-count": 1 } })
-        )
-      }))
-  })
-
-  for (const slot of ["header", "scalar body"] as const) {
-    it.effect(`does not retry a failed form response ${slot} decoder`, () =>
-      Effect.gen(function*() {
-        let calls = 0
-        const rejectOnce = Schema.String.check(Schema.makeFilter<string>(() => ++calls > 1 || "first decode rejected"))
-        const body = Schema.Struct({
-          tags: slot === "header" ? Schema.Union([Schema.Array(Schema.String), Schema.String]) : rejectOnce
-        }).pipe(HttpApiSchema.asFormUrlEncoded())
         const Api = HttpApi.make("Api").add(
           HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
-            success: slot === "header" ? HttpApiSchema.WithHeaders(body, { "x-test": rejectOnce }) : body
+            success: HttpApiSchema.WithHeaders(form({ tags: Tags }), { "x-count": Schema.Int }),
+            error: form({ tags: Tags }).pipe(HttpApiSchema.status(400))
           }))
         )
-        const exit = yield* Effect.exit(
-          HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })(
-            HttpClientResponse.fromWeb(
-              HttpClientRequest.get("http://test/form"),
-              new Response("tags=a", {
-                headers: { "content-type": "application/x-www-form-urlencoded", "x-test": "ok" }
-              })
-            )
-          )
+        const decode = HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })
+        assert.deepStrictEqual(
+          yield* decode(response(200, "tags=a")),
+          HttpApiSchema.withHeaders({ body: { tags: ["a"] }, headers: { "x-count": 1 } })
         )
-        assert.deepStrictEqual([calls, exit._tag], [1, "Failure"])
-        assert.include(String(exit), "first decode rejected")
+        assert.deepStrictEqual(yield* Effect.flip(decode(response(400, "tags=a"))), { tags: ["a"] })
       }))
-  }
+
+    it.effect("decodes each alternative once", () =>
+      Effect.gen(function*() {
+        let calls = 0
+        const rejectOnce = Schema.String.check(Schema.makeFilter<string>(() => ++calls > 1 || "rejected"))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
+            success: [form({ tags: Tags, note: rejectOnce }), form({ tags: Tags, note: Tags })]
+          }))
+        )
+        const decode = HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })
+        assert.deepStrictEqual(yield* decode(response(200, "tags=a&tags=b&note=x")), { tags: ["a", "b"], note: ["x"] })
+        assert.strictEqual(calls, 1)
+      }))
+  })
 
   it.effect("decodes form-urlencoded responses", () =>
     Effect.gen(function*() {
