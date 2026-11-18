@@ -289,11 +289,9 @@ const hasZone = (input: string): boolean => {
   return firstNumber !== -1 && /(?:^|[^a-z])(?:z|gmt|utc?|[ecmp][sd]t)(?![a-z])/i.test(text.slice(firstNumber))
 }
 
-const hasTimeOffset = (input: string): boolean => {
-  // Start only at a run boundary so a failed suffix cannot rescan the same run for every time marker.
-  const match = /((?:^|[^\d:.])[\d:.]*)[+-]\d{2}(?::?\d{2})?$/.exec(input)
-  return match !== null && /(?:T\d|\d:\d)/i.test(match[1])
-}
+// Match the offset next to the clock, not a hyphen in a later calendar date.
+const hasTimeOffset = (input: string): boolean =>
+  /\d{1,2}:\d{1,2}(?::\d{1,2}(?:\.\d+)?)?\s*(?:[ap]m\s*)?[+-]\d{1,4}(?::\d{1,2})?(?![\d:])/i.test(input)
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
