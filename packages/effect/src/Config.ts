@@ -427,14 +427,14 @@ export const orElse: {
  * @category combinators
  * @since 2.0.0
  */
-export function all<const Arg extends Iterable<Config<any>> | Record<string, Config<any>>>(
+export function all<const Arg extends Iterable<Config<any>> | Record<PropertyKey, Config<any>>>(
   arg: Arg
 ): Config<
   [Arg] extends [ReadonlyArray<Config<any>>] ? {
       -readonly [K in keyof Arg]: [Arg[K]] extends [Config<infer A>] ? A : never
     }
     : [Arg] extends [Iterable<Config<infer A>>] ? Array<A>
-    : [Arg] extends [Record<string, Config<any>>] ? {
+    : [Arg] extends [Record<PropertyKey, Config<any>>] ? {
         -readonly [K in keyof Arg]: [Arg[K]] extends [Config<infer A>] ? A : never
       }
     : never

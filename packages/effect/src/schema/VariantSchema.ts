@@ -86,7 +86,7 @@ export declare namespace Struct {
    * @since 4.0.0
    */
   export type Fields = {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Schema.Top
       | Field<any>
       | Struct<any>
@@ -179,7 +179,7 @@ export declare namespace Field {
    * @since 4.0.0
    */
   export type Fields = {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Schema.Top
       | Field<any>
       | Struct<any>

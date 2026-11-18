@@ -337,7 +337,7 @@ export declare namespace All {
    * @since 2.0.0
    */
   export type ReturnObject<T, Discard extends boolean, Mode extends boolean = false> = [T] extends [
-    Record<string, EffectAny>
+    Record<PropertyKey, EffectAny>
   ] ? Effect<
       Discard extends true ? void
         : {
@@ -377,7 +377,7 @@ export declare namespace All {
    * @since 2.0.0
    */
   export type Return<
-    Arg extends Iterable<EffectAny> | Record<string, EffectAny>,
+    Arg extends Iterable<EffectAny> | Record<PropertyKey, EffectAny>,
     O extends {
       readonly concurrency?: Concurrency | undefined
       readonly discard?: boolean | undefined
@@ -385,7 +385,7 @@ export declare namespace All {
     }
   > = [Arg] extends [ReadonlyArray<EffectAny>] ? ReturnTuple<Arg, IsDiscard<O>, IsResult<O>>
     : [Arg] extends [Iterable<EffectAny>] ? ReturnIterable<Arg, IsDiscard<O>, IsResult<O>>
-    : [Arg] extends [Record<string, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, IsResult<O>>
+    : [Arg] extends [Record<PropertyKey, EffectAny>] ? ReturnObject<Arg, IsDiscard<O>, IsResult<O>>
     : never
 
   type ObjectValues<T> = T extends unknown ? T[keyof T] : never
@@ -521,7 +521,7 @@ export declare namespace All {
 export const all: <
   const Arg extends
     | Iterable<Effect<any, any, any>>
-    | Record<string, Effect<any, any, any>>,
+    | Record<PropertyKey, Effect<any, any, any>>,
   O extends {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: boolean | undefined

@@ -260,7 +260,7 @@ export declare namespace Command {
    * @since 4.0.0
    */
   export interface Config {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Param.Param<Param.ParamKind, any>
       | ReadonlyArray<Param.Param<Param.ParamKind, any> | Config>
       | Config
@@ -279,7 +279,7 @@ export declare namespace Command {
    * @since 4.0.0
    */
   export interface FlagConfig {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Param.Param<typeof Param.flagKind, any>
       | ReadonlyArray<Param.Param<typeof Param.flagKind, any> | FlagConfig>
       | FlagConfig

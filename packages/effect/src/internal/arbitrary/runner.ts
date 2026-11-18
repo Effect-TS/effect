@@ -336,7 +336,7 @@ export function array<A>(item: Arbitrary<A>, options?: ArrayOptions): Arbitrary<
 
 /** @internal */
 export function all(
-  input: Iterable<Arbitrary<any>> | Record<string, Arbitrary<any>>
+  input: Iterable<Arbitrary<any>> | Record<PropertyKey, Arbitrary<any>>
 ): Arbitrary<any> {
   const iterable = Symbol.iterator in input
   const keys = iterable ? undefined : InternalRecord.ownEnumerableKeys(input)

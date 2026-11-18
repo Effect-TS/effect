@@ -4772,7 +4772,7 @@ export const abortSignal: Effect.Effect<AbortSignal, never, Scope.Scope> = map(
 export const all = <
   const Arg extends
     | Iterable<Effect.Effect<any, any, any>>
-    | Record<string, Effect.Effect<any, any, any>>,
+    | Record<PropertyKey, Effect.Effect<any, any, any>>,
   O extends {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: boolean | undefined

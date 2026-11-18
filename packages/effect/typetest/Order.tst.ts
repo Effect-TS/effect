@@ -21,10 +21,13 @@ describe("Order", () => {
     expect(Order.Struct(fields)).type.toBe<typeof O>()
 
     expect(Order.Struct).type.not.toBeCallableWith({ [key]: 42 })
+    expect(Order.Struct).type.not.toBeCallableWith(42)
+    expect(Order.Struct).type.not.toBeCallableWith("value")
+    expect(Order.Struct).type.not.toBeCallableWith([Order.Number])
   })
 
-  it("Struct accepts interfaces with string index signatures", () => {
-    interface Fields {
+  it("Struct accepts string record aliases", () => {
+    type Fields = {
       [key: string]: Order.Order<number>
     }
     const fields: Fields = { age: Order.Number }

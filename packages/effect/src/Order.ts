@@ -639,7 +639,7 @@ export {
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<R extends { [K in keyof R]: Order<any> }>(
+export function Struct<R extends Record<PropertyKey, Order<any>>>(
   fields: R
 ): Order<{ readonly [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> {
   const keys = InternalRecord.ownEnumerableKeys(fields) as Array<keyof R>

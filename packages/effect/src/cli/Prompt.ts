@@ -751,7 +751,7 @@ export declare namespace All {
    * @category utility types
    * @since 4.0.0
    */
-  export type ReturnObject<T> = [T] extends [{ [K: string]: Any }] ? Prompt<
+  export type ReturnObject<T> = [T] extends [Record<PropertyKey, Any>] ? Prompt<
       {
         -readonly [K in keyof T]: [T[K]] extends [Prompt<infer _A>] ? _A : never
       }
@@ -767,10 +767,10 @@ export declare namespace All {
    * @since 4.0.0
    */
   export type Return<
-    Arg extends Iterable<Any> | Record<string, Any>
+    Arg extends Iterable<Any> | Record<PropertyKey, Any>
   > = [Arg] extends [ReadonlyArray<Any>] ? ReturnTuple<Arg>
     : [Arg] extends [Iterable<Any>] ? ReturnIterable<Arg>
-    : [Arg] extends [Record<string, Any>] ? ReturnObject<Arg>
+    : [Arg] extends [Record<PropertyKey, Any>] ? ReturnObject<Arg>
     : never
 }
 
@@ -819,7 +819,7 @@ export declare namespace All {
  * @since 4.0.0
  */
 export const all: <
-  const Arg extends Iterable<Prompt<any>> | Record<string, Prompt<any>>
+  const Arg extends Iterable<Prompt<any>> | Record<PropertyKey, Prompt<any>>
 >(arg: Arg) => All.Return<Arg> = function() {
   if (arguments.length === 1) {
     if (isPrompt(arguments[0])) {

@@ -114,7 +114,7 @@ export declare namespace ConfigInternal {
  * @internal
  */
 interface Config {
-  readonly [key: string]:
+  readonly [key: PropertyKey]:
     | Param.Param<Param.ParamKind, any>
     | ReadonlyArray<Param.Param<Param.ParamKind, any> | Config>
     | Config

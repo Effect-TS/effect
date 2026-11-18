@@ -247,10 +247,13 @@ describe("Predicate", () => {
     ).type.toBe<Predicate.Predicate<{ readonly odd: number; readonly [key]: number }>>()
 
     expect(Predicate.Struct).type.not.toBeCallableWith({ [key]: 42 })
+    expect(Predicate.Struct).type.not.toBeCallableWith(42)
+    expect(Predicate.Struct).type.not.toBeCallableWith("value")
+    expect(Predicate.Struct).type.not.toBeCallableWith([Predicate.isString])
   })
 
-  it("Struct accepts interfaces with string index signatures", () => {
-    interface Fields {
+  it("Struct accepts string record aliases", () => {
+    type Fields = {
       [key: string]: Predicate.Predicate<number>
     }
     const fields: Fields = { age: (value) => value > 0 }

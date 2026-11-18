@@ -671,14 +671,14 @@ export const flatMap: {
  * @category constructors
  * @since 4.0.0
  */
-export function all<const Input extends Iterable<Arbitrary<any>> | Record<string, Arbitrary<any>>>(
+export function all<const Input extends Iterable<Arbitrary<any>> | Record<PropertyKey, Arbitrary<any>>>(
   input: Input
 ): Arbitrary<
   [Input] extends [ReadonlyArray<Arbitrary<any>>] ? {
       -readonly [K in keyof Input]: [Input[K]] extends [Arbitrary<infer A>] ? A : never
     }
     : [Input] extends [Iterable<Arbitrary<infer A>>] ? Array<A>
-    : [Input] extends [Record<string, Arbitrary<any>>] ? {
+    : [Input] extends [Record<PropertyKey, Arbitrary<any>>] ? {
         -readonly [K in keyof Input]: [Input[K]] extends [Arbitrary<infer A>] ? A : never
       }
     : never

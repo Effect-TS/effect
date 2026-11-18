@@ -1552,7 +1552,7 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<R extends { [K in keyof R]: Predicate.Any }>(
+export function Struct<R extends Record<PropertyKey, Predicate.Any>>(
   fields: R
 ): [Extract<R[keyof R], Refinement.Any>] extends [never] ? Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }> :
   Refinement<

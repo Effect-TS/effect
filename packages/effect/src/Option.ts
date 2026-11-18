@@ -1677,14 +1677,14 @@ export const productMany: {
  * @since 2.0.0
  */
 // @ts-expect-error
-export const all: <const I extends Iterable<Option<any>> | Record<string, Option<any>>>(
+export const all: <const I extends Iterable<Option<any>> | Record<PropertyKey, Option<any>>>(
   input: I
 ) => [I] extends [ReadonlyArray<Option<any>>] ? Option<
     { -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }
   >
   : [I] extends [Iterable<Option<infer A>>] ? Option<Array<A>>
   : Option<{ -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }> = (
-    input: Iterable<Option<any>> | Record<string, Option<any>>
+    input: Iterable<Option<any>> | Record<PropertyKey, Option<any>>
   ): Option<any> => {
     if (Symbol.iterator in input) {
       const out: Array<Option<any>> = []

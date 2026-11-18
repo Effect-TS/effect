@@ -1426,7 +1426,7 @@ export const andThen: {
  * @since 2.0.0
  */
 // @ts-expect-error
-export const all: <const I extends Iterable<Result<any, any>> | Record<string, Result<any, any>>>(
+export const all: <const I extends Iterable<Result<any, any>> | Record<PropertyKey, Result<any, any>>>(
   input: I
 ) => [I] extends [ReadonlyArray<Result<any, any>>] ? Result<
     { -readonly [K in keyof I]: [I[K]] extends [Result<infer R, any>] ? R : never },
@@ -1437,11 +1437,11 @@ export const all: <const I extends Iterable<Result<any, any>> | Record<string, R
     { -readonly [K in keyof I]: [I[K]] extends [Result<infer R, any>] ? R : never },
     I[keyof I] extends never ? never : [I[keyof I]] extends [Result<any, infer L>] ? L : never
   > = (
-    input: Iterable<Result<any, any>> | Record<string, Result<any, any>>
+    input: Iterable<Result<any, any>> | Record<PropertyKey, Result<any, any>>
   ): Result<any, any> => {
     if (Symbol.iterator in input) {
       const out: Array<Result<any, any>> = []
-      for (const e of input) {
+      for (const e of input as Iterable<Result<any, any>>) {
         if (isFailure(e)) {
           return e
         }

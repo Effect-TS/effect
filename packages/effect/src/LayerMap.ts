@@ -268,7 +268,7 @@ export const make: <
  * @since 3.14.0
  */
 export const fromRecord = <
-  const Layers extends Record<string, Layer.Layer<any, any, any>>,
+  const Layers extends Record<PropertyKey, Layer.Layer<any, any, any>>,
   const Preload extends boolean = false
 >(
   layers: Layers,
@@ -432,7 +432,7 @@ export const Service = <Self>() =>
         | undefined
     }, Options>
     | NoExcessProperties<{
-      readonly layers: Record<string, Layer.Layer<any, any, any>>
+      readonly layers: Record<PropertyKey, Layer.Layer<any, any, any>>
       readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>> | undefined
       readonly idleTimeToLive?: IdleTimeToLiveInput<any> | undefined
       /**

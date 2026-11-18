@@ -22,10 +22,13 @@ describe("Equivalence", () => {
     expect(E).type.toBe<Equivalence.Equivalence<{ readonly a: number; readonly b: string; readonly [key]: boolean }>>()
 
     expect(Equivalence.Struct).type.not.toBeCallableWith({ [key]: 42 })
+    expect(Equivalence.Struct).type.not.toBeCallableWith(42)
+    expect(Equivalence.Struct).type.not.toBeCallableWith("value")
+    expect(Equivalence.Struct).type.not.toBeCallableWith([Equivalence.strictEqual<number>()])
   })
 
-  it("Struct accepts interfaces with string index signatures", () => {
-    interface Fields {
+  it("Struct accepts string record aliases", () => {
+    type Fields = {
       [key: string]: Equivalence.Equivalence<number>
     }
     const fields: Fields = { age: Equivalence.strictEqual<number>() }
