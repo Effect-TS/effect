@@ -296,6 +296,10 @@ declare module "effect/ai/Prompt" {
        */
       readonly itemId?: string | null
       /**
+       * The refusal explanation preserved from the model response.
+       */
+      readonly refusal?: string | null
+      /**
        * The status of item.
        */
       readonly status?: typeof OpenAiSchema.MessageStatus.Encoded | null

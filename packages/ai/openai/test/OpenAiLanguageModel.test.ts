@@ -76,7 +76,8 @@ describe("OpenAiLanguageModel", () => {
       const text = message.content[0]
       if (text.type !== "text") return assert.fail("Expected text part")
       strictEqual(text.text, "")
-      deepStrictEqual(text.options.openai, expectedOptions)
+      strictEqual(text.options.openai?.refusal, refusal)
+      strictEqual(text.options.openai?.itemId, item.id)
     }))
 
   describe("web search sources", () => {
