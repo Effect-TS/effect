@@ -34,8 +34,8 @@ import * as Scheduler from "effect/Scheduler"
  * waking request continues without waiting for it. Every fiber resumes a
  * microtask after it is woken, including one woken by its own request, so the
  * scheduler's `executionMode` is `"async"`. Other queued work, such as a
- * fiber that yields, also runs in a microtask, which keeps it in the current
- * request rather than behind a timer the request may discard.
+ * fiber that yields or a forked fiber's start, is dispatched like
+ * `MixedScheduler`'s, and the fiber parks until it runs.
  *
  * While a fiber waits, its owner registers the pending resumption with
  * `waitUntil` from `cloudflare:workers` and holds a timer, which counts as
@@ -66,9 +66,6 @@ import * as Scheduler from "effect/Scheduler"
  * unless that scheduler parks too, a later wait is not returned to the owner
  * and does not keep the owner running, so it may fail or never complete.
  *
- * Microtasks do not yield to the event loop, so CPU-heavy work delays other
- * requests.
- *
  * @stability unstable
  * @category models
  * @since 4.2.0
@@ -89,7 +86,7 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
    * @since 4.2.0
    */
   constructor() {
-    super("async", setMicrotask)
+    super("async")
     if (compatibilityFlags?.handle_cross_request_promise_resolution === false) {
       throw new Error(
         "CloudflareScheduler requires the handle_cross_request_promise_resolution compatibility flag"
@@ -163,13 +160,3 @@ const compatibilityFlags: Record<string, boolean | undefined> | undefined = (glo
 const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
 
 const noop = (): void => {}
-
-const setMicrotask = (f: () => void) => {
-  let cancelled = false
-  queueMicrotask(() => {
-    if (!cancelled) f()
-  })
-  return (): void => {
-    cancelled = true
-  }
-}

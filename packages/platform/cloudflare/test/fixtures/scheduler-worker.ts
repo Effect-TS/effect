@@ -111,8 +111,8 @@ export default {
           return Response.json("woken")
         })
       case "/yield": {
-        // A timer set before the fiber yields fires after the fiber continues
-        // only when the scheduler queues work in a microtask
+        // A fiber that yields continues after a timer set before it, because
+        // the scheduler yields to the event loop
         const order: Array<string> = []
         setTimeout(() => order.push("timer"), 0)
         Effect.runFork(Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => order.push("fiber")))), { scheduler })
