@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package acme.metrics.v1;
+
+// A time series: points of a metric with the same labels.
+message Series {
+  string name = 1;
+  map<string, string> labels = 2;
+  // Unix milliseconds of the points.
+  repeated int64 timestamps = 3;
+  repeated double values = 4;
+}
+
+message Batch {
+  repeated Series series = 1;
+}

@@ -1,7 +1,8 @@
 // Prepares resolved descriptors for shared wire operations. Decoding builds JavaScript
 // objects and merges subsequent occurrences into the existing value. Defaults
-// are installed only when a message is created. A final walk checks required
-// fields and owns borrowed bytes, but is skipped when neither is present.
+// are installed only when a message is created, and unknown fields when an
+// occurrence ends. A final walk checks required fields, but only when a
+// message with required fields was created.
 // Descriptor preparation selects field operations and wire tags once. Each
 // call owns its message state, independently of the wire reader.
 
@@ -205,12 +206,13 @@ const ownValue = (message: Message, key: string): any => Object.hasOwn(message, 
 const assign = InternalRecord.assignProperty
 
 interface Layout {
+  readonly descriptor: D.MessageDescriptor
   readonly byNumber: { readonly [number: number]: ReadField | undefined }
   readonly ordered: ReadonlyArray<WriteField>
   readonly oneofs: ReadonlyArray<readonly [D.OneofDescriptor, ReadonlySet<string>]>
-  readonly defaults: ReadonlyArray<readonly [string, () => unknown]>
+  readonly create: (context: DecodeContext) => Message
+  // Required fields, and message fields whose values can contain one.
   readonly finish: ReadonlyArray<D.FieldDescriptor>
-  readonly required: boolean
 }
 
 interface ReadField {
@@ -240,9 +242,6 @@ const layoutOf = (descriptor: D.MessageDescriptor): Layout => {
     const byNumber: { [number: number]: ReadField | undefined } = max <= 1024
       ? new Array(max + 1).fill(undefined)
       : Object.create(null)
-    const defaults: Array<readonly [string, () => unknown]> = []
-    const finish: Array<D.FieldDescriptor> = []
-    let required = false
     for (const field of descriptor.fields) {
       byNumber[field.number] = {
         key: field.oneof?.name ?? field.name,
@@ -250,49 +249,83 @@ const layoutOf = (descriptor: D.MessageDescriptor): Layout => {
         packed: field.kind === "list" && packable(field.type),
         read: prepareRead(field)
       }
-      if (
-        field.oneof === undefined &&
-        (field.kind !== "singular" || field.presence === "implicit" && field.type.kind !== "message")
-      ) {
-        const zero = field.kind === "list" ? emptyList : field.kind === "map" ?
-          emptyMessage
-          : field.type.kind === "scalar" && field.type.scalar === "bytes" ?
-          emptyBytes
-          : constantDefault(valueDefault(field.type))
-        defaults.push([field.name, zero])
-      }
-      if (field.kind === "singular" && field.presence === "required") required = true
-      if (
-        field.type.kind === "message" || field.type.kind === "scalar" && field.type.scalar === "bytes" ||
-        field.kind === "singular" && field.presence === "required"
-      ) finish.push(field)
     }
     layout = {
+      descriptor,
       byNumber,
       ordered: [...descriptor.fields].sort((a, b) => a.number - b.number).map((field) => ({
         key: field.oneof?.name ?? field.name,
         write: prepareWrite(field)
       })),
       oneofs: descriptor.oneofs.map((oneof) => [oneof, new Set(oneof.fields.map((field) => field.name))]),
-      defaults,
-      finish,
-      required
+      create: prepareCreate(descriptor),
+      finish: descriptor.fields.filter((field) =>
+        field.kind === "singular" && field.presence === "required" ||
+        field.type.kind === "message" && reachesRequired(field.type.message)
+      )
     }
     layouts.set(descriptor, layout)
   }
   return layout
 }
 
-const emptyList = (): Array<unknown> => []
-const emptyMessage = (): Message => ({})
-const emptyBytes = (): Uint8Array => new Uint8Array(0)
-const constantDefault = (value: unknown): () => unknown => () => value
+// Whether values of a message type can contain a required field. Only the
+// answer for the starting type is kept: types on a cycle are answered by the
+// frame that first visits them.
+const requiredReach = new WeakMap<D.MessageDescriptor, boolean>()
+const reachesRequired = (descriptor: D.MessageDescriptor): boolean => {
+  let reaches = requiredReach.get(descriptor)
+  if (reaches === undefined) {
+    const seen = new Set<D.MessageDescriptor>()
+    const visit = (message: D.MessageDescriptor): boolean => {
+      if (seen.has(message)) return false
+      seen.add(message)
+      return message.fields.some((field) =>
+        field.kind === "singular" && field.presence === "required" ||
+        field.type.kind === "message" && visit(field.type.message)
+      )
+    }
+    reaches = visit(descriptor)
+    requiredReach.set(descriptor, reaches)
+  }
+  return reaches
+}
 
-const createMessage = (context: DecodeContext, layout: Layout): Message => {
-  const target: Message = {}
-  for (const [key, zero] of layout.defaults) assign(target, key, zero())
-  if (layout.required) context.needsFinish = true
-  return target
+// How a default is installed: 0 the constant default, 1 a new list, 2 a new
+// record, 3 new bytes.
+const createKind = (field: D.FieldDescriptor): 0 | 1 | 2 | 3 => {
+  if (field.kind === "list") return 1
+  if (field.kind === "map") return 2
+  return field.type.kind === "scalar" && field.type.scalar === "bytes" ? 3 : 0
+}
+
+// Installs the defaults of a new message in field order. Stores in a loop
+// measured faster than copying a template object once several message types
+// share this code.
+const prepareCreate = (descriptor: D.MessageDescriptor): Layout["create"] => {
+  const keys: Array<string> = []
+  const values: Array<unknown> = []
+  const kinds: Array<0 | 1 | 2 | 3> = []
+  for (const field of descriptor.fields) {
+    if (
+      field.oneof !== undefined ||
+      (field.kind === "singular" && (field.presence !== "implicit" || field.type.kind === "message"))
+    ) continue
+    const kind = createKind(field)
+    keys.push(field.name)
+    values.push(kind === 0 ? valueDefault(field.type) : undefined)
+    kinds.push(kind)
+  }
+  const required = descriptor.fields.some((field) => field.kind === "singular" && field.presence === "required")
+  return (context) => {
+    const target: Message = {}
+    for (let i = 0; i < keys.length; i++) {
+      const kind = kinds[i]
+      assign(target, keys[i], kind === 0 ? values[i] : kind === 1 ? [] : kind === 2 ? {} : new Uint8Array(0))
+    }
+    if (required) context.needsFinish = true
+    return target
+  }
 }
 
 const enumNumbers = new WeakMap<D.EnumDescriptor, ReadonlySet<number>>()
@@ -322,8 +355,6 @@ const valueDefault = (type: D.ValueType): unknown => {
 
 const LAX_UTF8 = { validateUtf8: false } as const
 
-const readScalar = (r: Reader, type: D.ScalarValueType, jsType = type.jsType): unknown => scalarReader(type, jsType)(r)
-
 const writeScalar = (w: Writer, scalar: D.ScalarType, value: unknown): void => {
   scalarWriters[scalar](w, value)
 }
@@ -332,24 +363,6 @@ const writeEnum = (w: Writer, type: D.EnumValueType, value: unknown): void => {
   const number = int32("int32", value)
   if (!acceptsEnum(type.enum, number)) expected(`a value of ${type.enum.typeName}`, value)
   w.int32(number)
-}
-
-const isZero = (type: D.ValueType, value: unknown): boolean => {
-  if (type.kind === "message") return false
-  if (type.kind === "enum") return value === valueDefault(type)
-  switch (type.scalar) {
-    case "double":
-    case "float":
-      return value === 0 && 1 / value > 0
-    case "bool":
-      return value === false
-    case "string":
-      return value === ""
-    case "bytes":
-      return value instanceof Uint8Array && value.length === 0
-    default:
-      return is64Bit(type.scalar) ? value === 0 || value === BIGINT_ZERO || value === "0" : value === 0
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -361,20 +374,18 @@ interface DecodeContext {
   readonly maxDepth: number
   readonly keepUnknown: boolean
   needsFinish: boolean
-  // Weak keys let replaced messages and their spans become unreachable together.
-  unknown: WeakMap<Message, Array<Uint8Array>> | undefined
+  // The unknown fields of the occurrence being read, added to its message
+  // when the occurrence ends.
+  unknown: Array<Uint8Array> | undefined
 }
 
-const retain = (context: DecodeContext, message: Message, bytes: Uint8Array): void => {
-  if (!context.keepUnknown) return
-  context.unknown ??= new WeakMap()
-  const chunks = context.unknown.get(message)
-  if (chunks === undefined) context.unknown.set(message, [bytes])
-  else chunks.push(bytes)
+const retain = (context: DecodeContext, bytes: Uint8Array): void => {
+  if (context.unknown === undefined) context.unknown = [bytes]
+  else context.unknown.push(bytes)
 }
 
-const retainOccurrence = (context: DecodeContext, target: Message, start: number, end: number): void => {
-  if (context.keepUnknown) retain(context, target, context.input.subarray(start, end))
+const retainOccurrence = (context: DecodeContext, start: number, end: number): void => {
+  if (context.keepUnknown) retain(context, context.input.subarray(start, end))
 }
 
 const checkDepth = (depth: number, limit: number): void => {
@@ -389,8 +400,9 @@ const decodeMessage = (descriptor: D.MessageDescriptor, bytes: Uint8Array, optio
     needsFinish: false,
     unknown: undefined
   }
-  const target = readFields(context, ProtobufReader.make(bytes), descriptor, undefined, 0)
-  if (context.needsFinish || context.unknown !== undefined) finishMessage(context, descriptor, target)
+  const layout = layoutOf(descriptor)
+  const target = readFields(context, ProtobufReader.make(bytes), layout, undefined, 0)
+  if (context.needsFinish) finishMessage(layout, target)
   return target
 }
 
@@ -416,30 +428,31 @@ const toFailure = (error: unknown): Failure => {
 const readFields = (
   context: DecodeContext,
   r: Reader,
-  descriptor: D.MessageDescriptor,
+  layout: Layout,
   before: Message | undefined,
   depth: number,
   group?: number
 ): Message => {
   checkDepth(depth, context.maxDepth)
-  const layout = layoutOf(descriptor)
-  const target = before ?? createMessage(context, layout)
+  const target = before ?? layout.create(context)
   const fields = layout.byNumber
+  const outer = context.unknown
+  context.unknown = undefined
   while (true) {
-    if (group === undefined && r.isDone()) return target
+    if (group === undefined && r.isDone()) break
     const start = r.offset
     const tag = r.tag()
     const number = tag >>> 3
     const actual = tag & 7
     if (actual === WireType.EndGroup) {
-      if (number === group) return target
+      if (number === group) break
       fail(`Expected a start group tag before the end group tag of field ${number}`)
     }
     const entry = fields[number]
     const packed = actual === WireType.Len && entry?.packed === true
     if (entry === undefined || (actual !== entry.wire && !packed)) {
       r.skip(tag, context.maxDepth - depth)
-      retainOccurrence(context, target, start, r.offset)
+      retainOccurrence(context, start, r.offset)
       continue
     }
     try {
@@ -448,107 +461,114 @@ const readFields = (
       rethrow(error, entry.key)
     }
   }
+  const unknown = context.unknown
+  context.unknown = outer
+  if (unknown !== undefined) {
+    const earlier = target[unknownFields]
+    target[unknownFields] = Bytes.concat(earlier === undefined ? unknown : [earlier, ...unknown])
+  }
+  return target
+}
+
+// Reads a value of a field, given the value of an earlier occurrence to merge
+// a message into. The operation is selected when the descriptor is prepared.
+type ValueReader = (context: DecodeContext, r: Reader, before: unknown, depth: number) => unknown
+
+const prepareValueRead = (type: D.ValueType, number: number): ValueReader => {
+  switch (type.kind) {
+    case "scalar": {
+      const read = scalarReader(type)
+      return (_context, r) => read(r)
+    }
+    case "enum":
+      return (_context, r) => r.int32()
+    case "message": {
+      const message = type.message
+      let layout: Layout | undefined
+      if (type.delimited) {
+        return (context, r, before, depth) =>
+          readFields(context, r, layout ??= layoutOf(message), before as Message | undefined, depth + 1, number)
+      }
+      return (context, r, before, depth) =>
+        readFields(context, r.delimited(), layout ??= layoutOf(message), before as Message | undefined, depth + 1)
+    }
+  }
 }
 
 const prepareRead = (field: D.FieldDescriptor): ReadField["read"] => {
-  if (field.kind === "singular") {
-    if (field.oneof === undefined && field.type.kind === "scalar") {
-      const key = field.name
-      const read = scalarReader(field.type)
-      if (field.type.scalar === "bytes") {
-        return (context, r, target) => {
-          assign(target, key, read(r))
-          context.needsFinish = true
-        }
-      }
-      return (_context, r, target) => {
-        assign(target, key, read(r))
-      }
-    }
-    return (context, r, target, depth, start) => readSingular(context, r, field, target, depth, start)
-  }
-  if (field.kind === "list") {
-    if (packable(field.type)) {
-      const key = field.name
-      const readPacked = preparePackedRead(field.type, field.number)
-      return (context, r, target, depth, start, packed) => {
-        if (packed) readPacked(context, r, target, target[key])
-        else readList(context, r, field, target, depth, start)
-      }
-    }
-    return (context, r, target, depth, start) => readList(context, r, field, target, depth, start)
-  }
-  return (context, r, target, depth, start) => readMap(context, r, field, target, depth, start)
-}
-
-const readValue = (
-  context: DecodeContext,
-  r: Reader,
-  type: D.ValueType,
-  number: number,
-  before: unknown,
-  depth: number
-): unknown => {
-  switch (type.kind) {
-    case "scalar":
-      if (type.scalar === "bytes") context.needsFinish = true
-      return readScalar(r, type)
-    case "enum":
-      return r.int32()
-    case "message": {
-      return readFields(
-        context,
-        type.delimited ? r : r.delimited(),
-        type.message,
-        before as Message | undefined,
-        depth + 1,
-        type.delimited ? number : undefined
-      )
-    }
+  switch (field.kind) {
+    case "singular":
+      return prepareSingularRead(field)
+    case "list":
+      return prepareListRead(field)
+    case "map":
+      return prepareMapRead(field)
   }
 }
 
-const readSingular = (
-  context: DecodeContext,
-  r: Reader,
-  field: D.SingularFieldDescriptor,
-  target: Message,
-  depth: number,
-  start: number
-): void => {
-  const key = field.oneof?.name ?? field.name
-  let before: unknown
-  if (field.type.kind === "message") {
-    const current = ownValue(target, key)
-    before = field.oneof === undefined ? current : current?._tag === field.name ? current.value : undefined
+const prepareSingularRead = (field: D.SingularFieldDescriptor): ReadField["read"] => {
+  const read = prepareValueRead(field.type, field.number)
+  const type = field.type
+  const closed = type.kind === "enum" && !type.enum.open ? type.enum : undefined
+  if (field.oneof === undefined) {
+    const key = field.name
+    if (type.kind === "message") {
+      return (context, r, target, depth) => {
+        assign(target, key, read(context, r, ownValue(target, key), depth))
+      }
+    }
+    if (closed !== undefined) {
+      return (context, r, target, depth, start) => {
+        const value = read(context, r, undefined, depth) as number
+        if (acceptsEnum(closed, value)) assign(target, key, value)
+        else retainOccurrence(context, start, r.offset)
+      }
+    }
+    return (context, r, target, depth) => {
+      assign(target, key, read(context, r, undefined, depth))
+    }
   }
-  const value = readValue(context, r, field.type, field.number, before, depth)
-  // Classify the occurrence before changing the active oneof case.
-  if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) {
-    retainOccurrence(context, target, start, r.offset)
-    return
+  const key = field.oneof.name
+  const name = field.name
+  return (context, r, target, depth, start) => {
+    let before: unknown
+    if (type.kind === "message") {
+      const current = ownValue(target, key)
+      if (current?._tag === name) before = current.value
+    }
+    const value = read(context, r, before, depth)
+    // Classify the occurrence before changing the active oneof case.
+    if (closed !== undefined && !acceptsEnum(closed, value as number)) {
+      retainOccurrence(context, start, r.offset)
+      return
+    }
+    assign(target, key, { _tag: name, value })
   }
-  assign(target, key, field.oneof === undefined ? value : { _tag: field.name, value })
 }
 
-const readList = (
-  context: DecodeContext,
-  r: Reader,
-  field: D.ListFieldDescriptor,
-  target: Message,
-  depth: number,
-  start: number
-): void => {
-  // Creation installs an own container for every repeated field, including
-  // names such as __proto__ and constructor.
-  const list = target[field.name] as Array<unknown>
-  try {
-    const value = readValue(context, r, field.type, field.number, undefined, depth)
-    if (field.type.kind === "enum" && !acceptsEnum(field.type.enum, value as number)) {
-      retainOccurrence(context, target, start, r.offset)
-    } else list.push(value)
-  } catch (error) {
-    rethrow(error, list.length)
+// Creation installs an own container for every repeated field, including
+// names such as __proto__ and constructor.
+const prepareListRead = (field: D.ListFieldDescriptor): ReadField["read"] => {
+  const key = field.name
+  const type = field.type
+  const read = prepareValueRead(type, field.number)
+  const closed = type.kind === "enum" && !type.enum.open ? type.enum : undefined
+  const element: ReadField["read"] = (context, r, target, depth, start) => {
+    const list = target[key] as Array<unknown>
+    try {
+      const value = read(context, r, undefined, depth)
+      if (closed !== undefined && !acceptsEnum(closed, value as number)) {
+        retainOccurrence(context, start, r.offset)
+      } else list.push(value)
+    } catch (error) {
+      rethrow(error, list.length)
+    }
+  }
+  if (!packable(type)) return element
+  const readPacked = preparePackedRead(type, field.number)
+  return (context, r, target, depth, start, packed) => {
+    if (packed) readPacked(context, r, target[key])
+    else element(context, r, target, depth, start, packed)
   }
 }
 
@@ -587,7 +607,7 @@ const stringReaders: Partial<Record<D.ScalarType, (r: Reader) => string>> = {
 
 const readString = (r: Reader): string => r.string()
 const readStringLax = (r: Reader): string => r.string(LAX_UTF8)
-const readBytes = (r: Reader): Uint8Array => r.bytesView()
+const readBytes = (r: Reader): Uint8Array => r.bytes()
 const scalarReader = (type: D.ScalarValueType, jsType = type.jsType): (r: Reader) => unknown => {
   if (type.scalar === "string") return type.validateUtf8 ? readString : readStringLax
   if (type.scalar === "bytes") return readBytes
@@ -599,13 +619,13 @@ const scalarReader = (type: D.ScalarValueType, jsType = type.jsType): (r: Reader
     : base
 }
 
-type PackedReader = (context: DecodeContext, r: Reader, target: Message, list: Array<unknown>) => void
+type PackedReader = (context: DecodeContext, r: Reader, list: Array<unknown>) => void
 
 // Separate loops let scalar and floating-point arrays keep their own element
 // types in the hot path. The operation is selected during descriptor preparation.
 const preparePackedRead = (type: D.ScalarValueType | D.EnumValueType, number: number): PackedReader => {
   if (type.kind === "enum") {
-    return (context, r, target, list) => {
+    return (context, r, list) => {
       const child = r.delimited()
       let unknown: Writer | undefined
       try {
@@ -620,12 +640,12 @@ const preparePackedRead = (type: D.ScalarValueType | D.EnumValueType, number: nu
       } catch (error) {
         rethrow(error, list.length)
       }
-      if (unknown !== undefined) retain(context, target, unknown.finish())
+      if (unknown !== undefined) retain(context, unknown.finish())
     }
   }
   if (type.scalar === "double" || type.scalar === "float") {
     const size = type.scalar === "double" ? 8 : 4
-    return (_context, r, _target, list) => {
+    return (_context, r, list) => {
       const bytes = r.bytesView()
       if (bytes.length % size !== 0) {
         const complete = bytes.length - bytes.length % size
@@ -642,7 +662,7 @@ const preparePackedRead = (type: D.ScalarValueType | D.EnumValueType, number: nu
     }
   }
   const read = scalarReader(type)
-  return (_context, r, _target, list) => {
+  return (_context, r, list) => {
     const child = r.delimited()
     try {
       while (!child.isDone()) list.push(read(child))
@@ -655,54 +675,59 @@ const preparePackedRead = (type: D.ScalarValueType | D.EnumValueType, number: nu
 const mapKeyDefault = (type: D.ScalarValueType): string =>
   type.scalar === "string" ? "" : type.scalar === "bool" ? "false" : "0"
 
-const readMap = (
-  context: DecodeContext,
-  r: Reader,
-  field: D.MapFieldDescriptor,
-  target: Message,
-  depth: number,
-  start: number
-): void => {
-  const child = r.delimited()
-  let key = mapKeyDefault(field.key)
-  let value: unknown
-  // Stage the entire entry before replacing any existing value at its key.
-  while (!child.isDone()) {
-    const tag = child.tag()
-    if (tag >>> 3 === 1 && (tag & 7) === wireTypeOf(field.key)) {
-      key = String(readScalar(child, field.key, "bigint"))
-    } else if (tag >>> 3 === 2 && (tag & 7) === wireTypeOf(field.type)) {
-      try {
-        value = readValue(context, child, field.type, 2, value, depth)
-      } catch (error) {
-        rethrow(error, key)
-      }
-    } else child.skip(tag, context.maxDepth - depth)
-  }
-  if (field.type.kind === "enum" && value !== undefined && !acceptsEnum(field.type.enum, value as number)) {
-    retainOccurrence(context, target, start, r.offset)
-    return
-  }
-  if (value === undefined) {
-    if (field.type.kind === "message") {
-      try {
-        checkDepth(depth + 1, context.maxDepth)
-      } catch (error) {
-        rethrow(error, key)
+const prepareMapRead = (field: D.MapFieldDescriptor): ReadField["read"] => {
+  const name = field.name
+  const type = field.type
+  const keyTag = 1 * 8 + wireTypeOf(field.key)
+  const valueTag = 2 * 8 + wireTypeOf(type)
+  const readKey = scalarReader(field.key, "bigint")
+  const stringKey = field.key.scalar === "string"
+  const keyDefault = mapKeyDefault(field.key)
+  const read = prepareValueRead(type, 2)
+  const closed = type.kind === "enum" && !type.enum.open ? type.enum : undefined
+  const message = type.kind === "message" ? type.message : undefined
+  const missing = message === undefined ? valueDefault(type) : undefined
+  return (context, r, target, depth, start) => {
+    const child = r.delimited()
+    let key = keyDefault
+    let value: unknown
+    // Stage the entire entry before replacing any existing value at its key.
+    while (!child.isDone()) {
+      const tag = child.tag()
+      if (tag === keyTag) {
+        const read = readKey(child)
+        key = stringKey ? read as string : String(read)
+      } else if (tag === valueTag) {
+        try {
+          value = read(context, child, value, depth)
+        } catch (error) {
+          rethrow(error, key)
+        }
+      } else child.skip(tag, context.maxDepth - depth)
+    }
+    if (closed !== undefined && value !== undefined && !acceptsEnum(closed, value as number)) {
+      retainOccurrence(context, start, r.offset)
+      return
+    }
+    if (value === undefined) {
+      if (message === undefined) value = missing
+      else {
+        try {
+          checkDepth(depth + 1, context.maxDepth)
+        } catch (error) {
+          rethrow(error, key)
+        }
+        value = layoutOf(message).create(context)
       }
     }
-    value = field.type.kind === "message"
-      ? createMessage(context, layoutOf(field.type.message))
-      : valueDefault(field.type)
+    assign(target[name], key, value)
   }
-  const record = target[field.name] as Message
-  assign(record, key, value)
 }
 
-// Complete only surviving values. Explicit absence stays absent, and required
-// fields never receive a default that could conceal their absence on the wire.
-const finishMessage = (context: DecodeContext, descriptor: D.MessageDescriptor, target: Message): void => {
-  const layout = layoutOf(descriptor)
+// Checks required fields of the completed value. Explicit absence stays
+// absent, and required fields never receive a default that could conceal
+// their absence on the wire.
+const finishMessage = (layout: Layout, target: Message): void => {
   for (const field of layout.finish) {
     const key = field.oneof?.name ?? field.name
     const stored = ownValue(target, key)
@@ -711,24 +736,20 @@ const finishMessage = (context: DecodeContext, descriptor: D.MessageDescriptor, 
     try {
       if (value === undefined) {
         if (field.kind === "singular" && field.presence === "required") {
-          fail(`Expected required field ${field.name} of ${descriptor.typeName}`)
+          fail(`Expected required field ${field.name} of ${layout.descriptor.typeName}`)
         }
         continue
       }
-      // Scalars are already validated and immutable. Only messages and byte
-      // arrays need finishing, regardless of the field's cardinality.
-      if (field.type.kind !== "message" && !(field.type.kind === "scalar" && field.type.scalar === "bytes")) continue
+      if (field.type.kind !== "message" || !reachesRequired(field.type.message)) continue
+      const child = layoutOf(field.type.message)
       switch (field.kind) {
-        case "singular": {
-          const finished = finishValue(context, field.type, value)
-          if (field.oneof === undefined) assign(target, key, finished)
-          else stored.value = finished
+        case "singular":
+          finishMessage(child, value)
           break
-        }
         case "list":
           for (let i = 0; i < value.length; i++) {
             try {
-              value[i] = finishValue(context, field.type, value[i])
+              finishMessage(child, value[i])
             } catch (error) {
               rethrow(error, i)
             }
@@ -737,7 +758,7 @@ const finishMessage = (context: DecodeContext, descriptor: D.MessageDescriptor, 
         case "map":
           for (const entry of Object.keys(value)) {
             try {
-              assign(value, entry, finishValue(context, field.type, value[entry]))
+              finishMessage(child, value[entry])
             } catch (error) {
               rethrow(error, entry)
             }
@@ -748,17 +769,6 @@ const finishMessage = (context: DecodeContext, descriptor: D.MessageDescriptor, 
       rethrow(error, key)
     }
   }
-  const unknown = context.unknown?.get(target)
-  if (unknown !== undefined) {
-    target[unknownFields] = Bytes.concat(unknown)
-    context.unknown!.delete(target)
-  }
-}
-
-const finishValue = (context: DecodeContext, type: D.ValueType, value: any): unknown => {
-  if (type.kind === "message") finishMessage(context, type.message, value)
-  else if (type.kind === "scalar" && type.scalar === "bytes") return new Uint8Array(value)
-  return value
 }
 
 // -----------------------------------------------------------------------------
@@ -804,13 +814,17 @@ const writeFields = (
     expected(`an object for ${descriptor.typeName}`, message)
   }
   const target = message as Message
-  for (const [oneof, cases] of layout.oneofs) {
+  const oneofs = layout.oneofs
+  for (let i = 0; i < oneofs.length; i++) {
+    const [oneof, cases] = oneofs[i]
     const value = ownValue(target, oneof.name)
     if (value !== undefined && (typeof value !== "object" || value === null || !cases.has(ownValue(value, "_tag")))) {
       rethrow(new Failure(`Expected a case of oneof ${oneof.name}, got ${show(value?._tag ?? value)}`), oneof.name)
     }
   }
-  for (const field of layout.ordered) {
+  const fields = layout.ordered
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
     try {
       field.write(context, w, target, depth)
     } catch (error) {
@@ -826,57 +840,59 @@ const writeFields = (
   }
 }
 
+// Field writers select their operation, tag and zero test when the descriptor
+// is prepared.
 const prepareWrite = (field: D.FieldDescriptor): WriteField["write"] => {
-  if (field.kind === "singular" && field.oneof === undefined && field.type.kind === "scalar") {
-    const key = field.name
-    const type = field.type
-    const tag = field.number * 8 + wireTypeOf(type)
-    const write = scalarWriters[type.scalar]
-    const implicit = field.presence === "implicit"
-    const required = field.presence === "required"
-    return (_context, w, target) => {
-      const value = ownValue(target, key)
-      if (value === undefined) {
-        if (required) fail(`Expected a value for required field ${key}`)
-      } else if (!implicit || !isZero(type, value)) {
-        w.uint32(tag)
-        write(w, value)
-      }
+  if (field.oneof !== undefined) {
+    const key = field.oneof.name
+    const name = field.name
+    const write = prepareValueWrite(field.type, field.number)
+    // writeFields has checked that the oneof is a case object.
+    return (context, w, target, depth) => {
+      const stored = ownValue(target, key)
+      if (stored?._tag === name) write(context, w, ownValue(stored, "value"), depth)
     }
   }
-  const write = prepareValueWrite(field.type, field.kind === "map" ? 2 : field.number)
-  return (context, w, target, depth) => writeField(context, w, field, target, depth, write)
-}
-
-const writeField = (
-  context: EncodeContext,
-  w: Writer,
-  field: D.FieldDescriptor,
-  target: Message,
-  depth: number,
-  write: ValueWriter
-): void => {
-  const stored = ownValue(target, field.oneof?.name ?? field.name)
-  if (field.oneof !== undefined && stored?._tag !== field.name) return
-  const value = field.oneof === undefined ? stored : ownValue(stored, "value")
-  if (field.oneof === undefined && value === undefined) {
-    if (field.kind === "singular" && field.presence === "required") {
-      fail(`Expected a value for required field ${field.name}`)
-    }
-    return
-  }
+  const key = field.name
   switch (field.kind) {
-    case "singular":
-      if (field.presence !== "implicit" || !isZero(field.type, value)) {
-        write(context, w, value, depth)
+    case "singular": {
+      const required = field.presence === "required"
+      const zero = field.presence === "implicit" ? zeroTest(field.type) : undefined
+      if (field.type.kind === "scalar") {
+        const tag = field.number * 8 + wireTypeOf(field.type)
+        const write = scalarWriters[field.type.scalar]
+        return (_context, w, target) => {
+          const value = ownValue(target, key)
+          if (value === undefined) {
+            if (required) fail(`Expected a value for required field ${key}`)
+          } else if (zero === undefined || !zero(value)) {
+            w.uint32(tag)
+            write(w, value)
+          }
+        }
       }
-      break
+      const write = prepareValueWrite(field.type, field.number)
+      return (context, w, target, depth) => {
+        const value = ownValue(target, key)
+        if (value === undefined) {
+          if (required) fail(`Expected a value for required field ${key}`)
+        } else if (zero === undefined || !zero(value)) write(context, w, value, depth)
+      }
+    }
     case "list": {
-      if (!Array.isArray(value)) expected("an array", value)
-      if (value.length === 0) return
-      if (field.packed && packable(field.type)) {
-        writePacked(w, field.type, field.number, value)
-      } else {
+      const type = field.type
+      const number = field.number
+      const packed = field.packed && packable(type) ? preparePackedWrite(type, number) : undefined
+      const write = prepareValueWrite(type, number)
+      return (context, w, target, depth) => {
+        const value = ownValue(target, key)
+        if (value === undefined) return
+        if (!Array.isArray(value)) expected("an array", value)
+        if (value.length === 0) return
+        if (packed !== undefined) {
+          packed(w, value)
+          return
+        }
         for (let i = 0; i < value.length; i++) {
           try {
             write(context, w, value[i], depth)
@@ -885,21 +901,52 @@ const writeField = (
           }
         }
       }
-      break
     }
-    case "map":
-      if (typeof value !== "object" || value === null || Array.isArray(value)) expected("a record", value)
-      for (const key of Object.keys(value)) {
-        try {
-          w.tag(field.number, WireType.Len).fork()
-          writeMapKey(w, field.key, key)
-          write(context, w, value[key], depth)
-          w.join()
-        } catch (error) {
-          rethrow(error, key)
+    case "map": {
+      const tag = field.number * 8 + WireType.Len
+      const keyType = field.key
+      const write = prepareValueWrite(field.type, 2)
+      return (context, w, target, depth) => {
+        const value = ownValue(target, key)
+        if (value === undefined) return
+        if (typeof value !== "object" || value === null || Array.isArray(value)) expected("a record", value)
+        for (const entry of Object.keys(value)) {
+          try {
+            w.uint32(tag).fork()
+            writeMapKey(w, keyType, entry)
+            write(context, w, value[entry], depth)
+            w.join()
+          } catch (error) {
+            rethrow(error, entry)
+          }
         }
       }
-      break
+    }
+  }
+}
+
+// The test for the zero value of an implicit-presence field, which is not
+// written. Message fields have no implicit presence.
+const zeroTest = (type: D.ValueType): ((value: unknown) => boolean) | undefined => {
+  if (type.kind === "message") return undefined
+  if (type.kind === "enum") {
+    const zero = valueDefault(type)
+    return (value) => value === zero
+  }
+  switch (type.scalar) {
+    case "double":
+    case "float":
+      return (value) => value === 0 && 1 / value > 0
+    case "bool":
+      return (value) => value === false
+    case "string":
+      return (value) => value === ""
+    case "bytes":
+      return (value) => value instanceof Uint8Array && value.length === 0
+    default:
+      return is64Bit(type.scalar)
+        ? (value) => value === 0 || value === BIGINT_ZERO || value === "0"
+        : (value) => value === 0
   }
 }
 
@@ -958,60 +1005,63 @@ const scalarWriters: Record<D.ScalarType, (w: Writer, value: unknown) => unknown
   sfixed64: (w, v) => w.sfixed64(toInt64("sfixed64", v))
 }
 
-const writePacked = (
-  w: Writer,
-  type: D.ScalarValueType | D.EnumValueType,
-  number: number,
-  list: ReadonlyArray<unknown>
-): void => {
-  w.tag(number, WireType.Len)
+type PackedWriter = (w: Writer, list: ReadonlyArray<unknown>) => void
+
+// As for reading, the operation is selected during descriptor preparation.
+const preparePackedWrite = (type: D.ScalarValueType | D.EnumValueType, number: number): PackedWriter => {
+  const tag = number * 8 + WireType.Len
+  const write: (w: Writer, value: unknown) => unknown = type.kind === "enum"
+    ? (w, value) => writeEnum(w, type, value)
+    : scalarWriters[type.scalar]
+  const values = (w: Writer, list: ReadonlyArray<unknown>): void => {
+    let index = 0
+    try {
+      for (; index < list.length; index++) write(w, list[index])
+    } catch (error) {
+      rethrow(error, index)
+    }
+  }
   const wire = wireTypeOf(type)
   const size = wire === WireType.I64 ? 8 : wire === WireType.I32 ? 4 : 0
   if (size === 0) {
-    w.fork()
-    writePackedValues(w, type, list)
-    w.join()
-    return
+    return (w, list) => {
+      w.uint32(tag).fork()
+      values(w, list)
+      w.join()
+    }
   }
-  const length = list.length * size
-  if (length > UINT32_MAX) fail("Expected a packed field length of at most 4294967295 bytes")
-  w.uint32(length)
-  if (type.kind !== "scalar" || (type.scalar !== "double" && type.scalar !== "float")) {
-    writePackedValues(w, type, list)
-    return
+  const length = (w: Writer, list: ReadonlyArray<unknown>): number => {
+    const length = list.length * size
+    if (length > UINT32_MAX) fail("Expected a packed field length of at most 4294967295 bytes")
+    w.uint32(tag).uint32(length)
+    return length
   }
-  const view = new DataView(new ArrayBuffer(length))
-  let index = 0
-  try {
-    if (size === 8) {
-      for (; index < list.length; index++) {
-        const value = list[index]
-        view.setFloat64(index * 8, typeof value === "number" ? value : expected("a number for a double", value), true)
+  if (type.kind === "scalar" && (type.scalar === "double" || type.scalar === "float")) {
+    return (w, list) => {
+      const view = new DataView(new ArrayBuffer(length(w, list)))
+      let index = 0
+      try {
+        if (size === 8) {
+          for (; index < list.length; index++) {
+            const value = list[index]
+            view.setFloat64(
+              index * 8,
+              typeof value === "number" ? value : expected("a number for a double", value),
+              true
+            )
+          }
+        } else {
+          for (; index < list.length; index++) view.setFloat32(index * 4, float(list[index]), true)
+        }
+      } catch (error) {
+        rethrow(error, index)
       }
-    } else {
-      for (; index < list.length; index++) view.setFloat32(index * 4, float(list[index]), true)
+      w.raw(new Uint8Array(view.buffer))
     }
-  } catch (error) {
-    rethrow(error, index)
   }
-  w.raw(new Uint8Array(view.buffer))
-}
-
-const writePackedValues = (
-  w: Writer,
-  type: D.ScalarValueType | D.EnumValueType,
-  list: ReadonlyArray<unknown>
-): void => {
-  let index = 0
-  try {
-    if (type.kind === "enum") {
-      for (; index < list.length; index++) writeEnum(w, type, list[index])
-    } else {
-      const write = scalarWriters[type.scalar]
-      for (; index < list.length; index++) write(w, list[index])
-    }
-  } catch (error) {
-    rethrow(error, index)
+  return (w, list) => {
+    length(w, list)
+    values(w, list)
   }
 }
 
@@ -1128,7 +1178,7 @@ const messageSetDescriptor = (extension: D.ExtensionDescriptor): D.MessageDescri
 }
 
 // Called with at least one payload. Each reader is bounded to its occurrence,
-// while merge state and retained unknown fields survive until final validation.
+// while merge state survives until final validation.
 const readMessageSet = (extension: D.ExtensionDescriptor, occurrences: ReadonlyArray<Uint8Array>): Message => {
   const descriptor = messageSetDescriptor(extension)
   const context: DecodeContext = {
@@ -1138,13 +1188,14 @@ const readMessageSet = (extension: D.ExtensionDescriptor, occurrences: ReadonlyA
     needsFinish: false,
     unknown: undefined
   }
-  const target = createMessage(context, layoutOf(descriptor))
+  const layout = layoutOf(descriptor)
+  const target = layout.create(context)
   for (const input of occurrences) {
     context.input = input
     // The payload is nested one level inside the extended message.
-    readFields(context, ProtobufReader.make(input), descriptor, target, 1)
+    readFields(context, ProtobufReader.make(input), layout, target, 1)
   }
-  if (context.needsFinish || context.unknown !== undefined) finishMessage(context, descriptor, target)
+  if (context.needsFinish) finishMessage(layout, target)
   return target
 }
 

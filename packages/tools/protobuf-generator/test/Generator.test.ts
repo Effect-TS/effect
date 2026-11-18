@@ -11,7 +11,12 @@ import * as Legacy from "./generated/acme/legacy/v1/legacy.proto.ts"
 import * as Order from "./generated/acme/shop/v1/order.proto.ts"
 import { files, samples } from "./utils/generator.ts"
 
-const sampleFiles = ["acme/common/v1/money.proto", "acme/shop/v1/order.proto", "acme/legacy/v1/legacy.proto"]
+const sampleFiles = [
+  "acme/common/v1/money.proto",
+  "acme/shop/v1/order.proto",
+  "acme/legacy/v1/legacy.proto",
+  "acme/metrics/v1/series.proto"
+]
 
 describe("Generator", () => {
   it("generates a module per file", async ({ expect }) => {
