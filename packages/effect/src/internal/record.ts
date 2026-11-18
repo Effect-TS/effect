@@ -6,7 +6,13 @@
  * @internal
  */
 export function ownEnumerableKeys(self: object): Array<string | symbol> {
-  return Reflect.ownKeys(self).filter((key) => Object.prototype.propertyIsEnumerable.call(self, key))
+  const keys: Array<string | symbol> = Object.keys(self)
+  for (const key of Object.getOwnPropertySymbols(self)) {
+    if (Object.prototype.propertyIsEnumerable.call(self, key)) {
+      keys.push(key)
+    }
+  }
+  return keys
 }
 
 /** @internal */
