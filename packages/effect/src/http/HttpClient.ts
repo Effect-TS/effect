@@ -1184,6 +1184,12 @@ export declare namespace WithRateLimiter {
      */
     readonly limiter: RateLimiter.RateLimiter
     /**
+     * How to report limiter failures. Defaults to `"RateLimiterError"`.
+     * `"HttpClientError"` wraps them in a `TransportError` reason that carries
+     * the request and the original limiter error as its cause.
+     */
+    readonly failsWith?: "HttpClientError" | "RateLimiterError" | undefined
+    /**
      * The initial rate limit window duration.
      */
     readonly window: Duration.Input
@@ -1264,66 +1270,59 @@ export declare namespace WithRateLimiter {
  * When a response reports the remaining budget, requests wait for the
  * reported reset once that budget is exhausted.
  *
+ * Omitting `failsWith` or specifying `"RateLimiterError"` adds only
+ * `RateLimiterError` to the client's error type. Specify `"HttpClientError"`
+ * to add only `HttpClientError` instead. Errors from the wrapped client
+ * pass through unchanged in either mode.
+ *
  * **Gotchas**
  *
  * Automatic HTTP `429` retries are unlimited unless `times` is specified.
  * Disabling response inspection does not disable retries; set `times` to `0`
  * to return or fail with the first `429`.
  *
+ * An options value annotated as `WithRateLimiter.Options` allows either mode,
+ * so its inferred client error includes both. Use `satisfies WithRateLimiter.Options`
+ * to validate a literal without widening its mode. With `"HttpClientError"`,
+ * an outer `retryTransient` can retry limiter failures, and
+ * `circuitBreakerClassifier` counts them as transport failures.
+ *
  * @stability unstable
  * @category rate limiting
  * @since 4.0.0
  */
 export const withRateLimiter: {
-  (options: WithRateLimiter.Options): <E, R>(
-    self: HttpClient.With<E, R>
-  ) => HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  (
+    options: WithRateLimiter.Options & { readonly failsWith: "HttpClientError" }
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError, R>
+  (
+    options: WithRateLimiter.Options & { readonly failsWith?: "RateLimiterError" | undefined }
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  (
+    options: WithRateLimiter.Options
+  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R>
   <E, R>(
     self: HttpClient.With<E, R>,
-    options: WithRateLimiter.Options
-  ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
-} = dual(
-  2,
-  <E, R>(self: HttpClient.With<E, R>, options: WithRateLimiter.Options) =>
-    rateLimited<E, R, RateLimiter.RateLimiterError>(self, options, identity)
-)
-
-/**
- * Applies the same rate limits, header handling, and HTTP `429` retries as
- * {@link withRateLimiter}, but reports limiter failures as an `HttpClientError`
- * with a `TransportError` reason carrying the request and original limiter error.
- * Errors from the wrapped client are not converted.
- *
- * **Gotchas**
- *
- * An outer `retryTransient` can retry limiter failures, and
- * `circuitBreakerClassifier` counts them as transport failures.
- *
- * @see {@link withRateLimiter}
- * @stability unstable
- * @category rate limiting
- * @since 4.1.5
- */
-export const withRateLimiterTransportError: {
-  (options: WithRateLimiter.Options): <E, R>(
-    self: HttpClient.With<E, R>
-  ) => HttpClient.With<E | Error.HttpClientError, R>
-  <E, R>(
-    self: HttpClient.With<E, R>,
-    options: WithRateLimiter.Options
+    options: WithRateLimiter.Options & { readonly failsWith: "HttpClientError" }
   ): HttpClient.With<E | Error.HttpClientError, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
+    options: WithRateLimiter.Options & { readonly failsWith?: "RateLimiterError" | undefined }
+  ): HttpClient.With<E | RateLimiter.RateLimiterError, R>
+  <E, R>(
+    self: HttpClient.With<E, R>,
+    options: WithRateLimiter.Options
+  ): HttpClient.With<E | Error.HttpClientError | RateLimiter.RateLimiterError, R>
 } = dual(
   2,
   <E, R>(self: HttpClient.With<E, R>, options: WithRateLimiter.Options) =>
-    rateLimited<E, R, Error.HttpClientError>(
-      self,
-      options,
-      (effect, request) =>
+    options.failsWith === "HttpClientError"
+      ? rateLimited<E, R, Error.HttpClientError>(self, options, (effect, request) =>
         Effect.mapError(
           effect,
           (cause) => new Error.HttpClientError({ reason: new Error.TransportError({ request, cause }) })
-        )
-    )
+        ))
+      : rateLimited<E, R, RateLimiter.RateLimiterError>(self, options, identity)
 )
 
 function rateLimited<E, R, E2>(
