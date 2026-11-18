@@ -291,7 +291,11 @@ const hasZone = (input: string): boolean => {
 
 // A colon distinguishes a clock from a date field; Date validates the clock itself.
 const hasTimeOffset = (input: string): boolean => {
-  for (const match of input.matchAll(/(?<![\d:.])([\d:.]+)\s*(?:[ap]m\s*)?[+-]\d{1,4}(?::\d{1,2})?(?![\d:])/gi)) {
+  for (
+    const match of input.matchAll(
+      /(?<![\d:.])([\d:.]+)[^\w+:.-]*(?:[ap]m[^\w+:.-]*)?[+-]\d{1,4}(?::\d{1,2})?(?![\d:])/gi
+    )
+  ) {
     if (match[1].includes(":")) return true
   }
   return false
