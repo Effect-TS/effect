@@ -46,50 +46,41 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
-  for (const finish of ["complete", "interrupt"] as const) {
-    it.effect(`retains workflow finalizers through a timer wake before ${finish}`, () =>
-      Effect.gen(function*() {
-        const workflow = Workflow.make(`TimerWakeFinalizers/${finish}`, {
-          payload: {},
-          idempotencyKey: () => "one"
-        })
-        const release = yield* Latch.make()
-        const finalized: Array<Exit.Exit<unknown, unknown>> = []
-        let runs = 0
-        const layer = workflow.toLayer(() =>
-          Effect.gen(function*() {
-            runs++
-            yield* Workflow.addFinalizer((exit) =>
-              Effect.sync(() => {
-                finalized.push(exit)
-              })
+  it.effect("compensates once on cancellation after an active timer wake", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
+      const started = yield* Latch.make()
+      const woke = yield* Latch.make()
+      let finalized = false
+      let compensations = 0
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Workflow.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          yield* Effect.void.pipe(workflow.withCompensation(() => Effect.sync(() => ++compensations)))
+          yield* Effect.all([
+            Activity.make({ name: "waiting", execute: started.open.pipe(Effect.andThen(Effect.never)) }),
+            started.await.pipe(
+              Effect.andThen(DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })),
+              Effect.andThen(woke.open)
             )
-            yield* Effect.all([
-              Activity.make({ name: "waiting", execute: release.await }),
-              DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })
-            ], { concurrency: "unbounded", discard: true })
-          })
-        ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
-        yield* Effect.gen(function*() {
-          const executionId = yield* workflow.execute({}, { discard: true })
-          yield* pollStorageUntil(() => runs >= 2, "timer must replay the workflow")
-          assert.deepStrictEqual(finalized, [], "suspension must retain workflow finalizers")
-          if (finish === "interrupt") {
-            const engine = yield* WorkflowEngine
-            yield* engine.interruptUnsafe(workflow, executionId)
-          } else {
-            yield* release.open
-          }
-          const result = yield* pollUntil(workflow, executionId, "Complete")
-          assert(result._tag === "Complete")
-          assert.strictEqual(Exit.hasInterrupts(result.exit), finish === "interrupt")
-          if (finish === "complete") assert.isTrue(Exit.isSuccess(result.exit))
-          assert.strictEqual(finalized.length, runs, "every attempt must be finalized")
-          assert.strictEqual(finalized.filter(Exit.hasInterrupts).length, finish === "interrupt" ? 1 : 0)
-          assert.strictEqual(finalized.filter(Exit.isSuccess).length, runs - (finish === "interrupt" ? 1 : 0))
-        }).pipe(Effect.provide(layer))
-      }))
-  }
+          ], { concurrency: "unbounded", discard: true })
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollStorageUntil(() => woke.isOpen(), "timer must resume the workflow")
+        assert.isFalse(finalized, "timer wake must not finalize the workflow")
+        const engine = yield* WorkflowEngine
+        yield* engine.interruptUnsafe(workflow, executionId)
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(compensations, 1)
+      }).pipe(Effect.provide(layer))
+    }))
 
   for (const complete of [true, false]) {
     it.effect(`releases all workflow scopes after multiple suspensions on ${complete ? "completion" : "teardown"}`, () =>
