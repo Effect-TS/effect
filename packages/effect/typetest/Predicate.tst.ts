@@ -249,6 +249,15 @@ describe("Predicate", () => {
     expect(Predicate.Struct).type.not.toBeCallableWith({ [key]: 42 })
   })
 
+  it("Struct accepts interfaces with string index signatures", () => {
+    interface Fields {
+      [key: string]: Predicate.Predicate<number>
+    }
+    const fields: Fields = { age: (value) => value > 0 }
+
+    expect(Predicate.Struct).type.toBeCallableWith(fields)
+  })
+
   it("isUint8Array", () => {
     expect(unknowns.filter(Predicate.isUint8Array)).type.toBe<Array<Uint8Array>>()
   })

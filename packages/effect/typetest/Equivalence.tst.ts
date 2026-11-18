@@ -23,4 +23,13 @@ describe("Equivalence", () => {
 
     expect(Equivalence.Struct).type.not.toBeCallableWith({ [key]: 42 })
   })
+
+  it("Struct accepts interfaces with string index signatures", () => {
+    interface Fields {
+      [key: string]: Equivalence.Equivalence<number>
+    }
+    const fields: Fields = { age: Equivalence.strictEqual<number>() }
+
+    expect(Equivalence.Struct).type.toBeCallableWith(fields)
+  })
 })

@@ -22,4 +22,13 @@ describe("Order", () => {
 
     expect(Order.Struct).type.not.toBeCallableWith({ [key]: 42 })
   })
+
+  it("Struct accepts interfaces with string index signatures", () => {
+    interface Fields {
+      [key: string]: Order.Order<number>
+    }
+    const fields: Fields = { age: Order.Number }
+
+    expect(Order.Struct).type.toBeCallableWith(fields)
+  })
 })
