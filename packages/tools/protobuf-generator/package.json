@@ -73,7 +73,9 @@
   },
   "devDependencies": {
     "@bufbuild/buf": "1.75.0",
+    "@bufbuild/protobuf": "2.17.0",
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "tinybench": "^6.2.3"
   }
 }

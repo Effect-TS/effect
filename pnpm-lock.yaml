@@ -1055,12 +1055,18 @@ importers:
       '@bufbuild/buf':
         specifier: 1.75.0
         version: 1.75.0
+      '@bufbuild/protobuf':
+        specifier: 2.17.0
+        version: 2.17.0
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
+      tinybench:
+        specifier: ^6.2.3
+        version: 6.2.3
 
   packages/tools/utils:
     dependencies:
@@ -1804,6 +1810,9 @@ packages:
     resolution: {integrity: sha512-uMuBCULLDax9/3d5Lo9mea38vuPDv4mrRVE4XfSq3qPcD5UUxlg0RJ9hm84lYCzI3A3lIvLeChxrw9c1RUiD2w==}
     engines: {node: '>=12'}
     hasBin: true
+
+  '@bufbuild/protobuf@2.17.0':
+    resolution: {integrity: sha512-hcPkSz6D7MiTU/5VBBhK+kxaYDoOdQ6yJRFJ3kS8Nydp+VZXfg1vrpABKPNod8bXMufsVCmiUJVIKFzCzta4uw==}
 
   '@bundle-stats/cli-utils@4.23.1':
     resolution: {integrity: sha512-0zuEqOROgI8JRFHSs1Tf3cbAHwh23/P+WV3ac4VoDtAWU9xi1tA7s+cJma1ETAH1Nn7DawTDEZHcWTH+d3iOSg==}
@@ -8513,6 +8522,8 @@ snapshots:
       '@bufbuild/buf-linux-x64': 1.75.0
       '@bufbuild/buf-win32-arm64': 1.75.0
       '@bufbuild/buf-win32-x64': 1.75.0
+
+  '@bufbuild/protobuf@2.17.0': {}
 
   '@bundle-stats/cli-utils@4.23.1(core-js@3.47.0)':
     dependencies:

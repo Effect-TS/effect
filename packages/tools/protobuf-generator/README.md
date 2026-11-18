@@ -103,6 +103,20 @@ of their comments. To move to another protobuf release:
    the generated changes and run the protobuf tests, `pnpm check` and
    `pnpm lint`.
 
+## Benchmarks
+
+`node benchmark/codecs.ts` compares `ProtobufMessage.decode` and `encode` with
+[protobuf-es](https://github.com/bufbuild/protobuf-es), which also derives its
+codecs from descriptors, on the same bytes. Throughput relative to protobuf-es
+2.17.0 (Node.js 26, one run, all message types run before measuring):
+
+| Message                     | Decode | Encode |
+| :-------------------------- | -----: | -----: |
+| Money (3 fields)            |  1.68x |  1.61x |
+| Order (nested, maps, oneof) |  1.13x |  1.13x |
+| Batch (20×100 points)       |  1.07x |  1.24x |
+| FileDescriptorSet (86 KiB)  |  1.11x |  1.17x |
+
 ## Tests
 
 `pnpm fixtures` rebuilds `test/fixtures/protos.binpb` from the sample `.proto`
