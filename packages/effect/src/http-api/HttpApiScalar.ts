@@ -66,6 +66,8 @@ export type ScalarConfig = {
   }
   /** Browser JavaScript function expression used by Scalar for documents and test requests */
   customFetch?: string
+  /** Set disabled to true to hide Scalar's Ask AI controls. */
+  agent?: { disabled?: boolean }
   /** Whether to show the sidebar */
   showSidebar?: boolean
   /**
