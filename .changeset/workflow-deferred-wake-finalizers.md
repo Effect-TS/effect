@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Workflow.addFinalizer` running before completion when a durable timer or deferred wakes an active workflow.
+Fix `Workflow.addFinalizer` finalizers running before the workflow ends when a durable timer or deferred completes while another step is still running.

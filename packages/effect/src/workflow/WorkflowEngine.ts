@@ -832,7 +832,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           instance.suspended = false
           return Effect.withFiber((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
         }),
-        // Deferred wakeups interrupt the body, preserving result conversion.
+        // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
         (effect) => deferredState.trackRun(instance, effect),
         Workflow.intoResult,
         Effect.provideService(WorkflowInstance, instance),

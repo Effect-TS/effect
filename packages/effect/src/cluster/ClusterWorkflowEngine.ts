@@ -580,7 +580,7 @@ export const make = Effect.gen(function*() {
                       Effect.orDie
                     )
                   }),
-                  // Deferred wakeups interrupt the body, preserving result conversion.
+                  // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
                   (effect) => deferredState.trackRun(instance, effect),
                   Workflow.intoResult,
                   Effect.onExit((exit) =>

@@ -56,7 +56,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       let compensations = 0
       const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
-          const attempt = registered.push(registered.length + 1)
+          const attempt = registered.length + 1
+          registered.push(attempt)
           yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(attempt)))
           yield* Effect.void.pipe(workflow.withCompensation(() => Effect.sync(() => ++compensations)))
           yield* Effect.all([
