@@ -293,7 +293,7 @@ const hasZone = (input: string): boolean => {
 const hasTimeOffset = (input: string): boolean => {
   for (
     const match of input.matchAll(
-      /(?<![\d:.])([\d:.]+)[^\w+:.-]*(?:[ap]m[^\w+:.-]*)?[+-]\d{1,4}(?::\d{1,2})?(?![\d:])/gi
+      /(?<![\d:.])([\d:.]+)[^\w+:.-]*(?:[ap]m[^\w+:.-]*)?[+-](?=\d)/gi
     )
   ) {
     if (match[1].includes(":")) return true
