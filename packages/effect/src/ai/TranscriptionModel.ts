@@ -517,30 +517,34 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
 
       // The buffer holds the bytes of `audio` from `bufferStart` to `received`,
       // both offsets from the start of the stream.
-      let buffer: Array<Uint8Array> = []
+      const buffer: Array<Uint8Array> = []
       let bufferStart = 0
       let received = 0
       let ended = false
       let session: Queue.Queue<Uint8Array, Cause.Done> | undefined
       let nextId = 0
       let progressed = false
-      const orphans: Array<string> = []
+      // Provider segment ids of the current session that have no final update yet,
+      // mapped to the ids issued here.
+      const ids = new Map<string, string>()
 
       // Drops whole frames only, so a replay never starts inside a sample, and
       // never past the end of the buffer.
       const dropUntil = (offset: number) => {
         const end = Math.min(offset, received)
         const target = end - (end % frameSize)
+        let count = 0
         while (bufferStart < target) {
-          const head = buffer[0]
+          const head = buffer[count]
           if (bufferStart + head.length <= target) {
-            buffer.shift()
+            count++
             bufferStart += head.length
           } else {
-            buffer[0] = head.subarray(target - bufferStart)
+            buffer[count] = head.subarray(target - bufferStart)
             bufferStart = target
           }
         }
+        buffer.splice(0, count)
       }
 
       const push = (chunk: Uint8Array): Effect.Effect<unknown, AiError.AiError> => {
@@ -585,14 +589,16 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
         const queue = yield* Queue.bounded<Uint8Array, Cause.Done>(1)
         const replay = buffer.slice()
         const offset = toDuration(bufferStart)
-        const ids = new Map<string, string>()
-        for (const id of orphans.splice(0)) {
+        // Closes the segments the previous session left open.
+        for (const id of ids.values()) {
           Queue.offerUnsafe(output, { _tag: "SegmentUpdate", id, text: "", final: true })
         }
+        ids.clear()
         if (ended) Queue.endUnsafe(queue)
         session = queue
         yield* model.transcribeLive({
-          audio: Stream.concat(Stream.fromArray(replay), Stream.fromQueue(queue)),
+          // Emptied once read, so the session does not hold the replay for as long as it lives.
+          audio: Stream.concat(Stream.suspend(() => Stream.fromArray(replay.splice(0))), Stream.fromQueue(queue)),
           format: options.format,
           language: options.language
         }).pipe(
@@ -617,14 +623,11 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
               })
             })
           ),
-          Effect.onError(() =>
-            Effect.sync(() => {
-              session = undefined
-              orphans.push(...ids.values())
-            })
-          ),
-          // Releases a chunk the session never took. It is still in the buffer.
-          Effect.ensuring(Queue.shutdown(queue))
+          Effect.ensuring(Effect.sync(() => {
+            session = undefined
+            // Releases a chunk the session never took. It is still in the buffer.
+            Queue.shutdownUnsafe(queue)
+          }))
         )
       })
 

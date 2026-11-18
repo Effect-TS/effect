@@ -129,15 +129,13 @@ export const make = Effect.fnUntraced(function*(options: {
       const usage = response.usage
       return {
         text: response.text,
-        ...(response.language === undefined ? undefined : { language: response.language }),
-        ...(response.duration === undefined ? undefined : { duration: Duration.seconds(response.duration) }),
-        ...(response.segments === undefined ? undefined : {
-          segments: response.segments.map((segment) => ({
-            text: segment.text,
-            start: Duration.seconds(segment.start),
-            end: Duration.seconds(segment.end)
-          }))
-        }),
+        language: response.language,
+        duration: response.duration === undefined ? undefined : Duration.seconds(response.duration),
+        segments: response.segments?.map((segment) => ({
+          text: segment.text,
+          start: Duration.seconds(segment.start),
+          end: Duration.seconds(segment.end)
+        })),
         usage: {
           inputTokens: usage?.input_tokens,
           outputTokens: usage?.output_tokens,
@@ -153,7 +151,7 @@ export const make = Effect.fnUntraced(function*(options: {
             ...(response.segments === undefined ? undefined : {
               segments: response.segments.map(({ seek: _, temperature: __, tokens: ___, ...segment }) => segment)
             }),
-            ...(response.words === undefined ? undefined : { words: response.words.map((word) => ({ ...word })) })
+            ...(response.words === undefined ? undefined : { words: [...response.words] })
           }
         }
       }

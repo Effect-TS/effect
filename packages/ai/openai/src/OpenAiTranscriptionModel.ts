@@ -19,6 +19,7 @@ import * as Base64 from "effect/encoding/Base64"
 import { dual } from "effect/Function"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
@@ -52,7 +53,7 @@ type RealtimeInput = typeof OpenAiSchema.RealtimeTranscriptionSession.Encoded["a
  * **Details**
  *
  * The top-level fields configure requests to the transcriptions endpoint.
- * `prompt` also applies to live sessions. `realtime` holds the settings that
+ * `language` and `prompt` also apply to live sessions. `realtime` holds the settings that
  * only live sessions have. Turn detection defaults to `server_vad`.
  * `flushTimeout` is how long a live session has to deliver the remaining
  * transcripts once the audio has ended, and defaults to 30 seconds.
@@ -177,7 +178,8 @@ export const make = Effect.fnUntraced(function*(options: {
  * When `audio` ends, the session commits the audio that turn detection has
  * not committed yet. The stream completes once OpenAI has answered that
  * commit and every turn it announced has a final transcript. If OpenAI
- * rejects the commit, the stream fails with that error.
+ * rejects the commit for any reason other than having no audio left to
+ * commit, the stream fails with that error.
  *
  * **Gotchas**
  *
@@ -321,11 +323,10 @@ const makeTranscribe = (client: OpenAiClient["Service"], options: Options) =>
       file: new Blob([bytes.success as Uint8Array<ArrayBuffer>], { type: audio.mediaType }),
       fileName: audio.fileName ?? "audio." + (extensions[mediaType] ?? mediaType.slice(mediaType.indexOf("/") + 1))
     })
-    const language_ = response.language ?? response.languages?.[0]?.code
     const metadata: NonNullable<TranscriptionModel.TranscribeResponseMetadata["openai"]> = {
       ...(response.languages === undefined ? undefined : { languages: response.languages.map((_) => _.code) }),
-      ...(response.segments === undefined ? undefined : { segments: response.segments.map((_) => ({ ..._ })) }),
-      ...(response.words === undefined ? undefined : { words: response.words.map((_) => ({ ..._ })) }),
+      ...(response.segments === undefined ? undefined : { segments: [...response.segments] }),
+      ...(response.words === undefined ? undefined : { words: [...response.words] }),
       ...(response.logprobs === undefined ? undefined : {
         logprobs: response.logprobs.map(({ bytes, ...rest }) => ({
           ...rest,
@@ -335,15 +336,13 @@ const makeTranscribe = (client: OpenAiClient["Service"], options: Options) =>
     }
     return {
       text: response.text,
-      ...(language_ === undefined ? undefined : { language: language_ }),
-      ...(response.duration === undefined ? undefined : { duration: Duration.seconds(response.duration) }),
-      ...(response.segments === undefined ? undefined : {
-        segments: response.segments.map((segment) => ({
-          text: segment.text,
-          start: Duration.seconds(segment.start),
-          end: Duration.seconds(segment.end)
-        }))
-      }),
+      language: response.language ?? response.languages?.[0]?.code,
+      duration: response.duration === undefined ? undefined : Duration.seconds(response.duration),
+      segments: response.segments?.map((segment) => ({
+        text: segment.text,
+        start: Duration.seconds(segment.start),
+        end: Duration.seconds(segment.end)
+      })),
       usage: response.usage?.type === "tokens"
         ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
         : response.usage?.type === "duration"
@@ -357,7 +356,7 @@ const makeTranscribe = (client: OpenAiClient["Service"], options: Options) =>
 // Live
 // -----------------------------------------------------------------------------
 
-const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(OpenAiSchema.RealtimeTranscriptionServerEvent))
+const decodeEvent = Schema.decodeUnknownOption(Schema.fromJsonString(OpenAiSchema.RealtimeTranscriptionServerEvent))
 
 const realtimeError = (error: {
   readonly type?: string | null | undefined
@@ -368,7 +367,7 @@ const realtimeError = (error: {
     module: "OpenAiTranscriptionModel",
     method: "transcribeLive",
     reason: AiError.reasonFromHttpStatus({
-      status: Object.hasOwn(Errors.errorTypeToStatus, error.type ?? "") ? Errors.errorTypeToStatus[error.type!] : 500,
+      status: Errors.statusFromErrorType(error.type),
       description: error.message ?? error.code ?? "Realtime transcription failed",
       metadata: { openai: { errorCode: error.code ?? null, errorType: error.type ?? null, requestId: null } }
     })
@@ -439,6 +438,7 @@ const makeTranscribeLive = (
     const send = (event: object) =>
       Effect.mapError(writer.write(JSON.stringify(event)), (error) => dropped(error.message))
 
+    const sessionLanguage = language ?? config.language
     const session: typeof OpenAiSchema.RealtimeTranscriptionSession.Encoded = {
       type: "transcription",
       audio: {
@@ -446,7 +446,7 @@ const makeTranscribeLive = (
           format: inputFormat,
           transcription: {
             model: config.model,
-            ...(language ?? config.language) === undefined ? undefined : { language: language ?? config.language },
+            ...(sessionLanguage === undefined ? undefined : { language: sessionLanguage }),
             ...(config.prompt === undefined ? undefined : { prompt: config.prompt })
           },
           ...(config.realtime?.noise_reduction === undefined
@@ -520,12 +520,10 @@ const makeTranscribeLive = (
     while (!settled()) {
       const messages = yield* Effect.mapError(pull, (error) => dropped(error.message))
       for (const message of messages) {
-        let event: typeof OpenAiSchema.RealtimeTranscriptionServerEvent.Type
-        try {
-          event = decodeEvent(typeof message === "string" ? message : decoder.decode(message))
-        } catch {
-          continue
-        }
+        const event = Option.getOrUndefined(
+          decodeEvent(typeof message === "string" ? message : decoder.decode(message))
+        )
+        if (event === undefined) continue
         switch (event.type) {
           case "input_audio_buffer.speech_started": {
             segment(event.item_id).start = Duration.millis(event.audio_start_ms)

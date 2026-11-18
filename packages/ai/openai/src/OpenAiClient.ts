@@ -333,17 +333,18 @@ export const make = Effect.fnUntraced(
         )
       })
 
-    const postJson = <Response extends Schema.Decoder<unknown>>(
+    const postJson = <Response extends Schema.Decoder<unknown>, Payload = unknown>(
       path: string,
       schema: Response,
-      method: string
+      method: string,
+      body: (payload: Payload) => HttpBody.HttpBody = HttpBody.jsonUnsafe
     ) => {
       const decode = HttpClientResponse.schemaBodyJson(schema)
-      return (payload: unknown): Effect.Effect<Response["Type"], AiError.AiError> =>
+      return (payload: Payload): Effect.Effect<Response["Type"], AiError.AiError> =>
         resolveHttpClient.pipe(
           Effect.flatMap((client) =>
             client.execute(HttpClientRequest.post(path, {
-              body: HttpBody.jsonUnsafe(payload)
+              body: body(payload)
             })).pipe(
               Effect.flatMap(decode),
               Effect.catchTags({
@@ -368,26 +369,17 @@ export const make = Effect.fnUntraced(
       "createDecisions"
     )
 
-    const decodeTranscription = HttpClientResponse.schemaBodyJson(OpenAiSchema.CreateTranscriptionResponse)
-
-    const createTranscription: Service["createTranscription"] = ({ file, fileName, ...fields }) =>
-      resolveHttpClient.pipe(
-        Effect.flatMap((client) => {
-          const data = new FormData()
-          data.append("file", file, fileName)
-          appendFormFields(data, fields)
-          return client.execute(HttpClientRequest.post("/audio/transcriptions", {
-            body: HttpBody.formData(data)
-          })).pipe(
-            Effect.flatMap(decodeTranscription),
-            Effect.catchTags({
-              HttpClientError: (error) => Errors.mapHttpClientError(error, "createTranscription"),
-              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createTranscription"))
-            })
-          )
-        }),
-        withRedactedHeaders
-      )
+    const createTranscription: Service["createTranscription"] = postJson(
+      "/audio/transcriptions",
+      OpenAiSchema.CreateTranscriptionResponse,
+      "createTranscription",
+      ({ file, fileName, ...fields }) => {
+        const data = new FormData()
+        data.append("file", file, fileName)
+        appendFormFields(data, fields)
+        return HttpBody.formData(data)
+      }
+    )
 
     return OpenAiClient.of({
       client: httpClient,
@@ -675,9 +667,7 @@ const makeSocket = Effect.gen(function*() {
                 status: errorType === "previous_response_not_found"
                   ? 400
                   : isNaN(status)
-                  ? Object.hasOwn(Errors.errorTypeToStatus, errorType)
-                    ? Errors.errorTypeToStatus[errorType]
-                    : 500
+                  ? Errors.statusFromErrorType(errorType)
                   : status,
                 metadata: error as any,
                 http: {
