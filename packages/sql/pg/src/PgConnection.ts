@@ -1761,7 +1761,7 @@ const streamRows = (
   Stream.fromChannel(Channel.fromTransform(Effect.fnUntraced(function*(_, scope) {
     const pinned = yield* Scope.provide(pin, scope)
     yield* Scope.provide(
-      Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
+      Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1), { interruptible: true }),
       scope
     )
     if (pinned.released) return yield* pinReleasedError()
