@@ -9,19 +9,6 @@ import type { Effect } from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 
-const compatibilityFlags: Record<string, boolean | undefined> | undefined = (globalThis as any).Cloudflare
-  ?.compatibilityFlags
-
-// Each parked fiber waits on a promise created in the request it parked in,
-// kept here by the function that settles it. workerd runs the reactions of a
-// promise in the request that created it, with the AsyncLocalStorage state
-// they were registered in, so settling it from any request runs the fiber in
-// its owner. workerd cannot tell which request is running, so a fiber woken by
-// its owner takes the same path, a microtask later.
-const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
-
-const noop = (): void => {}
-
 /**
  * A synchronous scheduler that resumes each fiber in the Worker request that
  * owns it, and keeps that request running while the fiber waits.
@@ -84,6 +71,14 @@ const noop = (): void => {}
  * @since 4.2.0
  */
 export class CloudflareScheduler extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+  /**
+   * Marks the scheduler as a `ParkingScheduler`.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  readonly [Scheduler.ParkingSchedulerTypeId] = Scheduler.ParkingSchedulerTypeId
+
   /**
    * Creates a scheduler for request-owned fiber resumption.
    *
@@ -148,3 +143,20 @@ export class CloudflareScheduler extends Scheduler.MixedScheduler implements Sch
  * @since 4.2.0
  */
 export const layer: Layer.Layer<never> = Layer.sync(Scheduler.Scheduler, () => new CloudflareScheduler())
+
+// -----------------------------------------------------------------------------
+// Internal
+// -----------------------------------------------------------------------------
+
+const compatibilityFlags: Record<string, boolean | undefined> | undefined = (globalThis as any).Cloudflare
+  ?.compatibilityFlags
+
+// Each parked fiber waits on a promise created in the request it parked in,
+// kept here by the function that settles it. workerd runs the reactions of a
+// promise in the request that created it, with the AsyncLocalStorage state
+// they were registered in, so settling it from any request runs the fiber in
+// its owner. workerd cannot tell which request is running, so a fiber woken by
+// its owner takes the same path, a microtask later.
+const waits = new WeakMap<Scheduler.ParkedFiber, (run: () => void) => void>()
+
+const noop = (): void => {}
