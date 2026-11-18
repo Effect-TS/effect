@@ -150,6 +150,16 @@ describe("HttpClient", () => {
     })
   })
 
+  describe("withRateLimiterTransportError", () => {
+    it("returns a plain HttpClient with widened options in both call forms", () => {
+      const options: HttpClient.WithRateLimiter.Options = { limiter, key: "test", limit: 1, window: "1 minute" }
+      expect(client.pipe(HttpClient.withRateLimiterTransportError(options))).type.toBeAssignableTo<
+        HttpClient.HttpClient
+      >()
+      expect(HttpClient.withRateLimiterTransportError(client, options)).type.toBeAssignableTo<HttpClient.HttpClient>()
+    })
+  })
+
   describe("withRateLimiter", () => {
     it("should support data-last and data-first usage", () => {
       const options = {
