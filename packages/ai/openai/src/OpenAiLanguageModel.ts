@@ -296,7 +296,7 @@ declare module "effect/ai/Prompt" {
        */
       readonly itemId?: string | null
       /**
-       * The refusal explanation from the model.
+       * The model’s refusal explanation. Streamed explanations are separated by a blank line.
        */
       readonly refusal?: string | null
       /**
@@ -388,7 +388,7 @@ declare module "effect/ai/Response" {
        */
       readonly itemId?: string | null
       /**
-       * The refusal explanation from the completed message.
+       * Refusal explanations from the completed message, separated by a blank line.
        */
       readonly refusal?: string | null
       /**
@@ -2448,7 +2448,7 @@ const makeStreamResponse = Effect.fnUntraced(
               }
 
               case "message": {
-                const refusal = event.item.content.find((part) => part.type === "refusal")?.refusal
+                const refusals = event.item.content.filter((part) => part.type === "refusal")
                 const annotations = activeAnnotations.length > 0
                   ? { annotations: activeAnnotations.slice() }
                   : undefined
@@ -2459,7 +2459,9 @@ const makeStreamResponse = Effect.fnUntraced(
                     openai: {
                       ...annotations,
                       ...makeItemIdMetadata(event.item.id),
-                      ...(Predicate.isNotUndefined(refusal) ? { refusal } : undefined)
+                      ...(refusals.length > 0
+                        ? { refusal: refusals.map((part) => part.refusal).join("\n\n") }
+                        : undefined)
                     }
                   }
                 })
