@@ -673,28 +673,20 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
  */
 export const toEvents = (element: Element): Arr.NonEmptyReadonlyArray<Event> => {
   const out: Arr.NonEmptyArray<Event> = [{ _tag: "StartElement", name: element.name, attributes: element.attributes }]
-  // The open elements, and the index of the next child of each, so that deep
-  // trees do not overflow the call stack
-  const open: Array<Element> = [element]
-  const next: Array<number> = [0]
-  while (open.length > 0) {
-    const top = open.length - 1
-    const current = open[top]
-    const index = next[top]
-    if (index === current.children.length) {
-      out.push({ _tag: "EndElement", name: current.name })
-      open.pop()
-      next.pop()
+  const stack = [{ element, index: 0 }]
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1]
+    if (frame.index === frame.element.children.length) {
+      out.push({ _tag: "EndElement", name: frame.element.name })
+      stack.pop()
       continue
     }
-    next[top] = index + 1
-    const child = current.children[index]
+    const child = frame.element.children[frame.index++]
     if (typeof child === "string") {
       out.push({ _tag: "Text", text: child })
     } else {
       out.push({ _tag: "StartElement", name: child.name, attributes: child.attributes })
-      open.push(child)
-      next.push(0)
+      stack.push({ element: child, index: 0 })
     }
   }
   return out

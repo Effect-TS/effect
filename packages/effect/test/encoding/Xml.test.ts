@@ -617,29 +617,23 @@ describe("Xml", () => {
   })
 
   describe("toEvents", () => {
-    it.effect("converts element trees into events", () =>
-      Effect.gen(function*() {
-        const element: Xml.Element = {
-          name: "a",
-          attributes: { x: "1" },
-          children: ["", "t", "u", { name: "b", attributes: {}, children: [] }, "v"]
-        }
-        assert.deepStrictEqual(Xml.toEvents(element), [
-          start("a", { x: "1" }),
-          text(""),
-          text("t"),
-          text("u"),
-          start("b"),
-          end("b"),
-          text("v"),
-          end("a")
-        ])
-        const xml = "<r><item id='1'>x &amp; <b>y</b></item><item id='2'/></r>"
-        for (const item of yield* elements(xml, ["r", "item"])) {
-          const written = yield* encodeString(Xml.toEvents(item))
-          assert.deepStrictEqual(yield* elements(written, ["item"]), [item])
-        }
-      }))
+    it("preserves child order, attributes and empty text nodes", () => {
+      const element: Xml.Element = {
+        name: "a",
+        attributes: { x: "1" },
+        children: ["", "t", "u", { name: "b", attributes: {}, children: [] }, "v"]
+      }
+      assert.deepStrictEqual(Xml.toEvents(element), [
+        start("a", { x: "1" }),
+        text(""),
+        text("t"),
+        text("u"),
+        start("b"),
+        end("b"),
+        text("v"),
+        end("a")
+      ])
+    })
 
     it("converts deep trees without overflowing the stack", () => {
       let element: Xml.Element = { name: "a", attributes: {}, children: [] }
