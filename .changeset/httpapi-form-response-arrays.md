@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `HttpApiClient` failing to decode single-element arrays in form-urlencoded responses and declared errors. Existing matches retain precedence over singleton recovery.
+`HttpApiClient` recovers directly reported singleton array fields in form-urlencoded responses: at most one field per response by default, or several with `errors: "all"`.

@@ -1007,7 +1007,6 @@ function schemasToResponse(
     return (response) => Effect.flatMap(response.arrayBuffer, decode)
   }
 
-  // Only alternatives whose body failed may be retried; a header failure is final for that alternative.
   const codecs = schemas.map((schema) => toResponseCodec(schema, options, headersOptions, hasWithHeaders))
   const decode = Schema.decodeUnknownEffect(Schema.Union(codecs), options)
   return (response) =>
