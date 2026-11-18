@@ -262,37 +262,27 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
-/**
- * Detects whether a date string already contains timezone info.
- * A string with no zone is read as UTC because `makeUnsafe` appends "Z" before
- * `new Date`, and "Z" is not appended when the string already carries a zone
- * such as a trailing `Z`, a numeric offset like `+05:30`, or `GMT`.
- * A `Z` or `GMT` inside a trailing comment is not a zone. A GMT offset may
- * appear before a trailing year, as in `Jan 15 12:00 GMT-0500 2024`.
- * A glued numeric offset counts only when a time precedes it (`T…` or `H:MM` /
- * `HH:MM`) and only digits, `:`, and `.` sit between that time and the offset,
- * so a date ending in `-DD` is not an offset.
- * ECMA-262 date-only forms (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`, and a sign plus a
- * six-digit year) are UTC, while a date-time form with no offset is local.
- * `makeUnsafe` appends "Z" only for zoneless strings outside those date-only forms.
- * `Date.parse` accepts a trailing `z`, `gmt`, `ut`, `utc`, or US abbreviation
- * (`est`, `edt`, `cst`, `cdt`, `mst`, `mdt`, `pst`, `pdt`) in any case, and a
- * whitespace-separated zone may be followed by whitespace and one non-nested
- * comment, as in `17:14:06 -0500 (EST)`.
- */
+// ECMA-262 date-only forms already parse as UTC, including signed six-digit years.
 const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
 
-const hasZone = (input: string): boolean =>
-  /(?:Z|GMT(?:[+-]\d{2}(?::?\d{2})?)?(?:\s+\d{4})?)\s*(?:\([^()]*\)\s*)?$/i.test(input) ||
-  hasTimeOffset(input) ||
-  input.endsWith("]") ||
-  /(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(input) ||
-  /\s(?:[+-]\d{2}(?::?\d{2})?|z|gmt|utc?|[ecmp][sd]t)\s*(?:\([^()]*\)\s*)?$/i.test(input)
+const hasZone = (input: string): boolean => {
+  if (input.endsWith("]") || hasTimeOffset(input) || /\s[+-]\d{2}(?::?\d{2})?\s*(?:\([^()]*\)\s*)?$/.test(input)) {
+    return true
+  }
+  // Legacy dates allow zone names before the year. Ignore words inside comments.
+  let depth = 0
+  for (const [token] of input.matchAll(/[()]|[a-z]+/gi)) {
+    if (token === "(") depth++
+    else if (token === ")") depth = Math.max(0, depth - 1)
+    else if (depth === 0 && /^(?:z|gmt|utc?|[ecmp][sd]t)$/i.test(token)) return true
+  }
+  return false
+}
 
 const hasTimeOffset = (input: string): boolean => {
   // Start only at a run boundary so a failed suffix cannot rescan the same run for every time marker.
   const match = /((?:^|[^\d:.])[\d:.]*)[+-]\d{2}(?::?\d{2})?$/.exec(input)
-  return match !== null && /(?:T\d|\d{1,2}:\d{2})/.test(match[1])
+  return match !== null && /(?:T\d|\d:\d)/i.test(match[1])
 }
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
