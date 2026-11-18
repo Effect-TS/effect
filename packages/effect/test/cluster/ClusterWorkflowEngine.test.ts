@@ -838,7 +838,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       name: "a durable clock",
       saves: (envelope: Message.OutgoingRequest<any>) =>
         envelope.envelope.address.entityType === "Workflow/-/DurableClock",
-      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "1 second", inMemoryThreshold: 0 }), 42)
+      // Long enough to still be pending when the first save retry runs.
+      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "300 millis", inMemoryThreshold: 0 }), 42)
     },
     {
       name: "a durable race winner",

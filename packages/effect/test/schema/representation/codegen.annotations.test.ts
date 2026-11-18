@@ -426,12 +426,16 @@ describe("Codegen.Module.addSchemas annotations", () => {
     })
   })
 
-  it("capitalizes a lowercase reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { abc: NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "Abc")
+  it("sanitizes reference identifiers", () => {
+    const sanitize = (identifier: string) =>
+      declarationNames(makeModule({
+        representations: [StringRepresentation],
+        references: { [identifier]: NumberRepresentation }
+      }))[0]
+    assert.deepStrictEqual(
+      ["abc", "Abc", "1a", "a-b", "café", "🤖", ""].map(sanitize),
+      ["Abc", "Abc", "_1a", "A_b", "Caf_", "_", "_"]
+    )
   })
 
   it("preserves a lowercase identifier annotation", () => {
@@ -446,54 +450,6 @@ describe("Codegen.Module.addSchemas annotations", () => {
       },
       TestRoot0: { runtime: "Hello", Type: "Hello" }
     })
-  })
-
-  it("preserves an uppercase reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { Abc: NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "Abc")
-  })
-
-  it("prefixes a numeric reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { "1a": NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "_1a")
-  })
-
-  it("replaces punctuation in a reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { "a-b": NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "A_b")
-  })
-
-  it("replaces non-ASCII characters in a reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { café: NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "Caf_")
-  })
-
-  it("replaces an emoji reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { "🤖": NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "_")
-  })
-
-  it("uses an underscore for an empty reference identifier", () => {
-    const output = makeModule({
-      representations: [StringRepresentation],
-      references: { "": NumberRepresentation }
-    })
-    assert.strictEqual(declarationNames(output)[0], "_")
   })
 
   it("makes colliding sanitized reference identifiers unique", () => {
