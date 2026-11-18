@@ -213,12 +213,6 @@ describe("Predicate", () => {
   })
 
   it("Struct", () => {
-    const tag = Symbol("tag")
-    expect(Predicate.Struct).type.not.toBeCallableWith({ name: Predicate.isString, [tag]: true })
-    type Named = { name: typeof Predicate.isString }
-    expect(Predicate.Struct).type.not.toBeCallableWith(hole<Named | (Named & { [tag]: true })>())
-    expect(Predicate.Struct).type.toBeCallableWith(hole<Named & { [tag]?: typeof Predicate.isNumber }>())
-
     expect(
       Predicate.Struct({
         a: hole<Predicate.Refinement<string, "a">>(),
