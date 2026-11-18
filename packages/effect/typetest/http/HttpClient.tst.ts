@@ -152,7 +152,7 @@ describe("HttpClient", () => {
   })
 
   describe("withRateLimiter", () => {
-    it("adds only the error selected by failsWith in either call form", () => {
+    it("narrows limiter failures only for explicit modes in either call form", () => {
       const options = {
         limiter,
         key: "test",
@@ -162,12 +162,17 @@ describe("HttpClient", () => {
       const raw = { ...options, failsWith: "RateLimiterError" } satisfies HttpClient.WithRateLimiter.Options
       const wrapped = { ...options, failsWith: "HttpClientError" } satisfies HttpClient.WithRateLimiter.Options
 
+      const hidden: Omit<HttpClient.WithRateLimiter.Options, "failsWith"> = wrapped
+
       type Raw = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError>
       type Wrapped = HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
       type Either = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError | HttpClientError.HttpClientError>
 
-      expect(failingClient.pipe(HttpClient.withRateLimiter(options))).type.toBe<Raw>()
-      expect(HttpClient.withRateLimiter(failingClient, options)).type.toBe<Raw>()
+      expect(failingClient.pipe(HttpClient.withRateLimiter(options))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, options)).type.toBe<Either>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(hidden))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, hidden)).type.toBe<Either>()
 
       expect(failingClient.pipe(HttpClient.withRateLimiter(raw))).type.toBe<Raw>()
       expect(HttpClient.withRateLimiter(failingClient, raw)).type.toBe<Raw>()
