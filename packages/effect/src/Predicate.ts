@@ -1526,9 +1526,8 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  *
  * **Details**
  *
- * Returns a refinement if any field predicate is a refinement. Only the
- * specified keys are checked, and extra keys are ignored. Symbol keys are
- * checked after string keys.
+ * Returns a refinement if any field predicate is a refinement. Only own
+ * enumerable string and symbol keys of the field map are checked.
  *
  * **Example** (Checking structs)
  *
@@ -1549,7 +1548,7 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  * @category combinators
  * @since 4.0.0
  */
-export function Struct<R extends Record<string, Predicate.Any>>(
+export function Struct<R extends Record<string, Predicate.Any> & Record<Extract<keyof R, symbol>, Predicate.Any>>(
   fields: R
 ): [Extract<R[keyof R], Refinement.Any>] extends [never] ? Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }> :
   Refinement<
@@ -1557,7 +1556,9 @@ export function Struct<R extends Record<string, Predicate.Any>>(
     { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.Out<R[K]> : Predicate.In<R[K]> }
   >
 {
-  const keys = Reflect.ownKeys(fields) as Array<keyof R>
+  const keys = Reflect.ownKeys(fields).filter((key) =>
+    Object.prototype.propertyIsEnumerable.call(fields, key)
+  ) as Array<keyof R>
   return ((a: Record<PropertyKey, unknown>) => {
     for (const key of keys) {
       if (!fields[key](a[key] as never)) {
