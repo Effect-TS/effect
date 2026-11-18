@@ -19,6 +19,12 @@ export * as AmazonBedrockConfig from "./AmazonBedrockConfig.ts"
 
 /**
  * @stability unstable
+ * @since 4.2.0
+ */
+export * as AmazonBedrockEmbeddingModel from "./AmazonBedrockEmbeddingModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as AmazonBedrockLanguageModel from "./AmazonBedrockLanguageModel.ts"

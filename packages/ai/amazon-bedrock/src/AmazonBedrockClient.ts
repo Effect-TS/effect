@@ -1,9 +1,9 @@
 /**
  * The `AmazonBedrockClient` module defines the low-level Effect service used to
- * call the Amazon Bedrock Runtime Converse API. It wraps an `HttpClient` with
- * AWS Signature Version 4 signing or Bedrock API key authentication, request
- * defaults, response decoding, event stream decoding and error mapping to the
- * unified `AiError` type.
+ * call the Amazon Bedrock Runtime Converse and InvokeModel APIs. It wraps an
+ * `HttpClient` with AWS Signature Version 4 signing or Bedrock API key
+ * authentication, request defaults, response decoding, event stream decoding
+ * and error mapping to the unified `AiError` type.
  *
  * **Mental model**
  *
@@ -12,7 +12,7 @@
  * runs on. {@link make} turns {@link Options} into an
  * {@link AmazonBedrockClient} service, while {@link layer} and
  * {@link layerConfig} provide that service as a layer. The service exposes
- * helpers for the `converse` and `converse-stream` endpoints.
+ * helpers for the `converse`, `converse-stream` and `invoke` endpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -49,7 +49,8 @@ import * as SigV4 from "./internal/sigv4.ts"
 
 /**
  * Represents the Amazon Bedrock client service with methods for the Converse
- * API, including regular and streaming message creation.
+ * API, including regular and streaming message creation, and for the
+ * InvokeModel API.
  *
  * @stability unstable
  * @category services
@@ -80,6 +81,18 @@ export interface Service {
   readonly converseStream: (
     request: typeof ConverseRequest.Encoded
   ) => Stream.Stream<ConverseStreamEvent, AiError.AiError>
+
+  /**
+   * Calls the InvokeModel operation with a model-specific JSON body, decodes
+   * the response body with `schema`, and maps all errors to the unified
+   * `AiError` type. The response is returned for its headers.
+   */
+  readonly invokeModel: <S extends Schema.Decoder<unknown>>(
+    schema: S
+  ) => (request: { readonly modelId: string; readonly body: unknown }) => Effect.Effect<
+    readonly [body: S["Type"], response: HttpClientResponse.HttpClientResponse],
+    AiError.AiError
+  >
 }
 
 // =============================================================================
@@ -330,9 +343,10 @@ export const make = Effect.fnUntraced(
     )
 
     const execute = (
-      operation: "converse" | "converse-stream",
+      operation: "converse" | "converse-stream" | "invoke",
       method: string,
-      { modelId, ...body }: typeof ConverseRequest.Encoded
+      modelId: string,
+      body: unknown
     ) =>
       configClient.pipe(
         Effect.flatMap((client) =>
@@ -343,8 +357,8 @@ export const make = Effect.fnUntraced(
         withCredentials(method)
       )
 
-    const converse: Service["converse"] = (request) =>
-      execute("converse", "converse", request).pipe(
+    const converse: Service["converse"] = ({ modelId, ...body }) =>
+      execute("converse", "converse", modelId, body).pipe(
         Effect.flatMap(decodeResponse),
         Effect.catchTags({
           HttpClientError: (error) => Errors.mapHttpClientError(error, "converse"),
@@ -389,8 +403,8 @@ export const make = Effect.fnUntraced(
       }
     })
 
-    const converseStream: Service["converseStream"] = (request) =>
-      execute("converse-stream", "converseStream", request).pipe(
+    const converseStream: Service["converseStream"] = ({ modelId, ...body }) =>
+      execute("converse-stream", "converseStream", modelId, body).pipe(
         HttpClientResponse.stream,
         EventStream.decode,
         Stream.mapEffect(decodeFrame),
@@ -403,10 +417,24 @@ export const make = Effect.fnUntraced(
         Stream.updateService(Headers.CurrentRedactedNames, appendRedactedHeaders)
       )
 
+    const invokeModel: Service["invokeModel"] = (schema) => {
+      const decode = HttpClientResponse.schemaBodyJson(schema)
+      return ({ body, modelId }) =>
+        execute("invoke", "invokeModel", modelId, body).pipe(
+          Effect.flatMap((response) => Effect.map(decode(response), (body) => [body, response] as const)),
+          Effect.catchTags({
+            HttpClientError: (error) => Errors.mapHttpClientError(error, "invokeModel"),
+            SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "invokeModel"))
+          }),
+          withRedactedHeaders
+        )
+    }
+
     return AmazonBedrockClient.of({
       client,
       converse,
-      converseStream
+      converseStream,
+      invokeModel
     })
   },
   withRedactedHeaders
