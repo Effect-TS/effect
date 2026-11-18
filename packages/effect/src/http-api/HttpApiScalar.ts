@@ -156,8 +156,9 @@ const makeHandler = <Id extends string, Groups extends HttpApiGroup.Constraint>(
 }) => {
   const makeResponse = Function.memoize((api: HttpApi.HttpApi<Id, Groups>) => {
     const spec = OpenApi.fromApi(api)
-    // Materialize OpenAPI's implicit root server only in Scalar's copy of the document.
-    // A Scalar config-level servers override would take precedence over operation servers.
+    // The bundled Scalar has no page-origin fallback for documents without servers, so its copy
+    // gets OpenAPI's implicit root server. layerCdn is left alone because the caller picks its Scalar.
+    // Scalar's config-level servers option is not used because it overrides operation servers.
     const content = options.source._tag === "Inline" && !spec.servers?.length
       ? { ...spec, servers: [{ url: "/" }] }
       : spec
