@@ -10336,7 +10336,7 @@ export interface NumberFromString extends decodeTo<Number, String> {
  * numbers.
  *
  * Encoding:
- * A number is encoded as a `string`.
+ * A number is encoded as a `string`, preserving negative zero as `"-0"`.
  *
  * @stability stable
  * @category schemas
@@ -10365,7 +10365,7 @@ export interface FiniteFromString extends decodeTo<Finite, String> {
  *   `-Infinity` values.
  *
  * Encoding:
- * - A finite number is encoded as a `string`.
+ * - A finite number is encoded as a `string`, preserving negative zero as `"-0"`.
  *
  * @stability stable
  * @category schemas
