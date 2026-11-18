@@ -5,6 +5,7 @@ import { describe, expect, it } from "tstyche"
 
 declare const client: HttpClient.HttpClient
 declare const limiter: RateLimiter.RateLimiter
+declare const broadOptions: HttpClient.WithRateLimiter.Options
 declare const breaker: CircuitBreaker.CircuitBreaker
 declare const classified: Effect.Effect<CircuitBreaker.Outcome, never, "Classifier">
 declare const failingClient: HttpClient.HttpClient.With<"error">
@@ -150,17 +151,33 @@ describe("HttpClient", () => {
     })
   })
 
-  describe("withRateLimiterTransportError", () => {
-    it("returns a plain HttpClient with widened options in both call forms", () => {
-      const options: HttpClient.WithRateLimiter.Options = { limiter, key: "test", limit: 1, window: "1 minute" }
-      expect(client.pipe(HttpClient.withRateLimiterTransportError(options))).type.toBeAssignableTo<
-        HttpClient.HttpClient
-      >()
-      expect(HttpClient.withRateLimiterTransportError(client, options)).type.toBeAssignableTo<HttpClient.HttpClient>()
-    })
-  })
-
   describe("withRateLimiter", () => {
+    it("adds only the error selected by failsWith in either call form", () => {
+      const options = {
+        limiter,
+        key: "test",
+        limit: 1,
+        window: "1 minute"
+      } satisfies HttpClient.WithRateLimiter.Options
+      const raw = { ...options, failsWith: "RateLimiterError" } satisfies HttpClient.WithRateLimiter.Options
+      const wrapped = { ...options, failsWith: "HttpClientError" } satisfies HttpClient.WithRateLimiter.Options
+
+      type Raw = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError>
+      type Wrapped = HttpClient.HttpClient.With<"error" | HttpClientError.HttpClientError>
+      type Either = HttpClient.HttpClient.With<"error" | RateLimiter.RateLimiterError | HttpClientError.HttpClientError>
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(options))).type.toBe<Raw>()
+      expect(HttpClient.withRateLimiter(failingClient, options)).type.toBe<Raw>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(raw))).type.toBe<Raw>()
+      expect(HttpClient.withRateLimiter(failingClient, raw)).type.toBe<Raw>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(wrapped))).type.toBe<Wrapped>()
+      expect(HttpClient.withRateLimiter(failingClient, wrapped)).type.toBe<Wrapped>()
+
+      expect(failingClient.pipe(HttpClient.withRateLimiter(broadOptions))).type.toBe<Either>()
+      expect(HttpClient.withRateLimiter(failingClient, broadOptions)).type.toBe<Either>()
+    })
     it("should support data-last and data-first usage", () => {
       const options = {
         limiter,

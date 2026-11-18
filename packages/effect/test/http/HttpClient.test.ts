@@ -1172,7 +1172,7 @@ Missing key
       }))
   })
 
-  describe("withRateLimiterTransportError", () => {
+  describe("withRateLimiter", () => {
     it.effect("carries the request and the original store failure in a TransportError", () =>
       Effect.gen(function*() {
         const cause = new RateLimiter.RateLimiterError({
@@ -1184,7 +1184,8 @@ Missing key
           tokenBucket: () => Effect.fail(cause)
         }))
         const { client } = yield* makeStatusClient(200)
-        const limited = client.pipe(HttpClient.withRateLimiterTransportError({
+        const limited = client.pipe(HttpClient.withRateLimiter({
+          failsWith: "HttpClientError",
           limiter,
           key: "test",
           algorithm: "token-bucket",
@@ -1198,9 +1199,7 @@ Missing key
         assert.strictEqual(error.reason.request, request)
         assert.strictEqual(error.reason.cause, cause)
       }))
-  })
 
-  describe("withRateLimiter", () => {
     it.effect("delays requests above the configured limit", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
