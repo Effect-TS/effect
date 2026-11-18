@@ -442,8 +442,10 @@ export const transcribeLive = <E, R>(
  * segment arrives. When the session fails with a retryable `AiError`, a new one
  * opens after the next `schedule` delay and receives the buffer, followed by
  * the audio that arrived during the outage. The schedule starts over once a
- * session produces an update. When it is exhausted the stream fails with the
- * last error.
+ * session produces an update while `audio` is still open. Once `audio` has
+ * ended, every new session is sent the same audio, so updates no longer start
+ * the schedule over. When it is exhausted the stream fails with the last
+ * error.
  *
  * While a session is connected, `audio` is pulled only as fast as the provider
  * takes it, so a provider that falls behind slows `audio` down and nothing
@@ -596,7 +598,8 @@ export const transcribeLiveBuffered = <E, R, const Strategy extends "sliding" | 
         }).pipe(
           Stream.runForEach((update) =>
             Effect.sync(() => {
-              progressed = true
+              // After the audio has ended a replay brings the same updates again.
+              if (!ended) progressed = true
               let id = ids.get(update.id)
               if (id === undefined) {
                 id = String(nextId++)

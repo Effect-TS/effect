@@ -181,6 +181,39 @@ describe("TranscriptionModel", () => {
       }).pipe(Effect.provide(fake.layer))
     })
 
+    it.effect("does not restore the reconnect budget once the audio has ended", () => {
+      let sessions = 0
+      // Each session takes all the audio, reports a partial segment, then times out.
+      const layer = Layer.effect(
+        TranscriptionModel.TranscriptionModel,
+        TranscriptionModel.make({
+          transcribe: () => Effect.succeed({ text: "hello" }),
+          transcribeLive: (options) => {
+            sessions++
+            return Stream.drain(options.audio).pipe(
+              Stream.concat(Stream.make(update("a", "partial", false))),
+              Stream.concat(Stream.fromEffect(Effect.delay(Effect.fail(dropped), "1 second")))
+            )
+          }
+        })
+      )
+      return Effect.gen(function*() {
+        const fiber = yield* TranscriptionModel.transcribeLiveBuffered({
+          audio: Stream.make(new Uint8Array([1])),
+          format,
+          maxDuration: "1 minute",
+          strategy: "error",
+          schedule: Schedule.recurs(1)
+        }).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+
+        yield* TestClock.adjust(0)
+        yield* TestClock.adjust("2 seconds")
+        assert.strictEqual(sessions, 2)
+        assert.isDefined(fiber.pollUnsafe())
+        assert.strictEqual(yield* Fiber.join(fiber), dropped)
+      }).pipe(Effect.provide(layer))
+    })
+
     it.effect("fails with the last error once the schedule is exhausted", () => {
       const fake = makeFake(() => Effect.fail(dropped))
       return Effect.gen(function*() {
