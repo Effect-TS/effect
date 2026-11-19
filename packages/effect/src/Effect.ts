@@ -24,7 +24,7 @@
  *
  * Fork and run APIs start fibers in an interruptible region by default,
  * regardless of the caller's region. Concurrent `all` and `forEach` effects
- * inherit the caller's region; race and timeout contenders start interruptible.
+ * inherit the caller's region; any contender a race or timeout starts is interruptible at first.
  *
  * `Fiber.interrupt` waits for the fiber to finish, including its cleanup.
  *
@@ -3413,7 +3413,9 @@ export const unwrapReason: {
  * `Effect.interrupt` or from joining an interrupted fiber. If the fiber running
  * `catchCause` is itself interrupted, it skips handlers in interruptible
  * regions and runs its cleanup before exiting. A handler in an uninterruptible
- * region can still run and observe the interruption in the cause.
+ * region can handle an interruption delivered in an inner interruptible region.
+ * A pending request alone neither invokes that handler nor adds an interruption
+ * to an unrelated failure while the fiber remains uninterruptible.
  *
  * Defects are unexpected errors that typically shouldn't be recovered from, as
  * they often indicate serious issues. However, in some cases, such as
@@ -4835,8 +4837,8 @@ export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
  *
  * **Details**
  *
- * The source and the timer start interruptible, even when the timeout runs
- * in an uninterruptible region. The timer uses the `Clock` in the context.
+ * Any contender the timeout starts (source or timer) is initially interruptible,
+ * even in an uninterruptible surrounding region. The timer uses the context's `Clock`.
  *
  * The `timeout` function allows you to specify a time limit for an
  * effect's execution. If the effect does not complete within the given time, a
@@ -4893,8 +4895,8 @@ export const timeout: {
  *
  * **Details**
  *
- * The source and the timer start interruptible, even when the timeout runs
- * in an uninterruptible region. The timer uses the `Clock` in the context.
+ * Any contender the timeout starts (source or timer) is initially interruptible,
+ * even in an uninterruptible surrounding region. The timer uses the context's `Clock`.
  *
  * If the source effect succeeds before the timeout, the returned effect
  * succeeds with `Option.some(value)`. If the timeout wins, the source effect is
@@ -4947,8 +4949,8 @@ export const timeoutOption: {
  *
  * **Details**
  *
- * The source and the timer start interruptible, even when the timeout runs
- * in an uninterruptible region. The timer uses the `Clock` in the context.
+ * Any contender the timeout starts (source or timer) is initially interruptible,
+ * even in an uninterruptible surrounding region. The timer uses the context's `Clock`.
  *
  * **Gotchas**
  *
@@ -5101,8 +5103,8 @@ export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[duration: Durati
  *
  * **Details**
  *
- * Each contender starts interruptible, even when the race runs in an
- * uninterruptible region.
+ * Any contender the race starts is initially interruptible, even when the race
+ * runs in an uninterruptible region.
  *
  * Early failures do not finish the race; `raceAll` keeps waiting until one
  * effect succeeds or every effect has failed. When one effect succeeds, the
@@ -5155,8 +5157,8 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *
  * **Details**
  *
- * Each contender starts interruptible, even when the race runs in an
- * uninterruptible region.
+ * Any contender the race starts is initially interruptible, even when the race
+ * runs in an uninterruptible region.
  *
  * After the first effect completes, all remaining effects are interrupted. Use
  * `raceAll` when early failures should be ignored until a success occurs or
@@ -5206,8 +5208,8 @@ export const raceAllFirst: <Eff extends Effect<any, any, any>>(
  *
  * **Details**
  *
- * Each contender starts interruptible, even when the race runs in an
- * uninterruptible region.
+ * Any contender the race starts is initially interruptible, even when the race
+ * runs in an uninterruptible region.
  *
  * If one effect succeeds, the other is interrupted and `onWinner` can observe the
  * winning fiber. If both fail, the race fails.
@@ -5277,8 +5279,8 @@ export const race: {
  *
  * **Details**
  *
- * Each contender starts interruptible, even when the race runs in an
- * uninterruptible region.
+ * Any contender the race starts is initially interruptible, even when the race
+ * runs in an uninterruptible region.
  *
  * The losing effect is interrupted, and `onWinner` can observe the winning fiber.
  *
@@ -7016,10 +7018,10 @@ export const scopedWith: <A, E, R>(
  *
  * **Details**
  *
- * If acquisition succeeds, the release finalizer is added to the current scope
- * and is guaranteed to run when that scope closes. The finalizer receives the
- * `Exit` value used to close the scope. `Scope.close` runs it in the order
- * determined by the scope's finalizer strategy.
+ * After successful acquisition, an open scope registers the release finalizer.
+ * `Scope.close` runs it according to the scope's finalizer strategy and passes
+ * it the closing `Exit`. If the scope is already closed, release runs immediately
+ * with that `Exit`.
  *
  * By default, acquisition is protected by an uninterruptible region. Pass
  * `{ interruptible: true }` to allow the acquisition effect to be interrupted.
@@ -7226,9 +7228,9 @@ export const acquireUseRelease: <Resource, E, R, A, E2, R2, E3, R3>(
  *
  * **Details**
  *
- * The finalizer runs when the surrounding scope is closed and receives the
- * `Exit` value used to close the scope. `Scope.close` runs it in the order
- * determined by the scope's finalizer strategy.
+ * If the scope is open at registration, `Scope.close` runs the finalizer according
+ * to the scope's finalizer strategy and passes it the closing `Exit`. If the
+ * scope is already closed, the finalizer runs immediately with that `Exit`.
  *
  * **Example** (Registering scope finalizers)
  *
@@ -9533,8 +9535,8 @@ export const fiberId: Effect<number> = internal.fiberId
  *
  * **Details**
  *
- * `signal` interrupts the fiber, `scheduler` provides the scheduler service,
- * and `onFiberStart` receives the created fiber. The fiber starts interruptible
+ * `signal` can interrupt the fiber, and `scheduler` provides the scheduler
+ * service. The fiber starts interruptible
  * unless `uninterruptible: true` is set.
  *
  * @see {@link runFork} for starting a fiber with these options
