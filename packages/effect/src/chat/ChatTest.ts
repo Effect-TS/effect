@@ -874,6 +874,7 @@ const makeFake = (options: {
       }),
     failNext: (op, reason, failOptions) =>
       Effect.sync(() => {
+        if (failOptions?.times === 0) return
         const queue = faults.get(op) ?? []
         queue.push({ reason, remaining: failOptions?.times ?? 1, landed: failOptions?.landed ?? false })
         faults.set(op, queue)
