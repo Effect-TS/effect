@@ -15,7 +15,7 @@ import * as Layer from "effect/Layer"
 import * as Migrator from "effect/sql/Migrator"
 import type * as Client from "effect/sql/SqlClient"
 import type { SqlError } from "effect/sql/SqlError"
-import { ClientMethod } from "./ClickhouseClient.ts"
+import { ClientMethod } from "./internal/core.ts"
 
 /**
  * @since 4.0.0
