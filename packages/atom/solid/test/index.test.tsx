@@ -125,6 +125,30 @@ describe("atom-solid", () => {
       assert.deepStrictEqual(released, ["first", "second"])
     })
 
+    it("does not notify when the new atom holds an equal value", () => {
+      const registry = AtomRegistry.make()
+      const first = Atom.make(1)
+      const second = Atom.make(1)
+      const observed: Array<number> = []
+      let select!: (atom: Atom.Atom<number>) => void
+      const dispose = createRoot((dispose) => {
+        provideRegistry(registry, () => {
+          const [atom, setAtom] = createSignal<Atom.Atom<number>>(first)
+          select = (atom) => setAtom(() => atom)
+          watch(useAtomValue(atom), (value) => observed.push(value))
+          return null
+        })
+        return dispose
+      })
+      flush()
+      select(second)
+      flush()
+      registry.set(second, 2)
+      flush()
+      assert.deepStrictEqual(observed, [1, 2])
+      dispose()
+    })
+
     it("useAtomMount and useAtomSubscribe release on dispose", async () => {
       const registry = AtomRegistry.make()
       let released = false
