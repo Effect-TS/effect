@@ -144,6 +144,15 @@ describe("HttpServer", () => {
       const last = yield* Scope.make()
       const serve = http.serve(Effect.succeed(HttpServerResponse.empty({ status: 204 })))
       yield* serve.pipe(Scope.provide(first))
+      const rejectUpgrade = (event: string | symbol) => {
+        if (event === "upgrade") throw new Error("registration rejected")
+      }
+      server.on("newListener", rejectUpgrade)
+      const failed = yield* Effect.exit(Effect.scoped(serve))
+      server.off("newListener", rejectUpgrade)
+      assert.isTrue(Exit.isFailure(failed))
+      assert.strictEqual(server.listenerCount("request"), 1)
+      assert.strictEqual(server.listenerCount("checkContinue"), 1)
       yield* serve.pipe(Scope.provide(last))
       const url = `http://127.0.0.1:${tcpPort(server)}/`
       yield* Scope.close(first, Exit.void)

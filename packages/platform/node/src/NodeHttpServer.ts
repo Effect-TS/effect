@@ -332,11 +332,21 @@ export const make = Effect.fnUntraced(function*(
         pendingContinue.add(request)
         handler(request, response)
       }
+      const removeListeners = () => {
+        server.off("request", handler)
+        server.off("checkContinue", checkContinueHandler)
+        server.off("upgrade", trackedUpgrade)
+      }
+      try {
+        server.on("request", handler)
+        server.on("checkContinue", checkContinueHandler)
+        server.on("upgrade", trackedUpgrade)
+      } catch (cause) {
+        removeListeners()
+        throw cause
+      }
       activeServes++
       removeFallback?.()
-      server.on("request", handler)
-      server.on("checkContinue", checkContinueHandler)
-      server.on("upgrade", trackedUpgrade)
       yield* Scope.addFinalizerExit(serveScope, () => {
         upgradesClosed = true
         for (const socket of upgradedSockets) {
@@ -350,9 +360,7 @@ export const make = Effect.fnUntraced(function*(
             for (const socket of upgradedSockets) {
               socket.destroy()
             }
-            server.off("request", handler)
-            server.off("checkContinue", checkContinueHandler)
-            server.off("upgrade", trackedUpgrade)
+            removeListeners()
             if (--activeServes === 0) installFallback()
           })
         )
