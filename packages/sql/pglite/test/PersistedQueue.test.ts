@@ -14,7 +14,7 @@ describe("PersistedQueue SQL migrations", () => {
         const tableName = "persisted_queue_migration_test"
 
         yield* PersistedQueue.makeStoreSql({ tableName })
-        yield* PersistedQueue.makeStoreSql({ tableName })
+        const store = yield* PersistedQueue.makeStoreSql({ tableName })
 
         const migrations = yield* sql<{
           readonly migration_id: number
@@ -36,6 +36,11 @@ describe("PersistedQueue SQL migrations", () => {
           `idx_${tableName}_update`,
           `${tableName}_pkey`
         ])
+
+        yield* sql`SELECT setval(pg_get_serial_sequence(${tableName}, 'sequence'), 2147483647)`
+        yield* store.offer({ name: "test", id: "boundary", element: "value", isCustomId: true })
+        const rows = yield* sql<{ readonly sequence: string }>`SELECT sequence::text FROM ${sql(tableName)}`
+        assert.deepStrictEqual(rows, [{ sequence: "2147483648" }])
       }))
   })
 })
