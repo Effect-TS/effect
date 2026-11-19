@@ -229,13 +229,21 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
+  // Adding a request listener enables HTTP/2's compatibility API. Leave native stream responders alone.
+  const hasStreamResponder = server.listenerCount("stream") > 0
   const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
     if (server.listenerCount("request") === 1) {
       response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
       response.end("service unavailable")
     }
   }
-  server.on("request", unavailable)
+  const installFallback = () => {
+    if (scope.state._tag !== "Closed" && !hasStreamResponder) {
+      // Observe other request listeners before a once listener removes itself during dispatch.
+      server.prependListener("request", unavailable)
+    }
+  }
+  installFallback()
   yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable))))
 
   yield* Effect.callback<void, ServeError>((resume) => {
@@ -316,7 +324,7 @@ export const make = Effect.fnUntraced(function*(
             server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", trackedUpgrade)
             if (server.listenerCount("request") === 0) {
-              server.on("request", unavailable)
+              installFallback()
             }
           })
         )

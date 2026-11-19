@@ -76,6 +76,36 @@ describe("HttpServer", () => {
       assert.strictEqual(response.statusCode, 503)
     }))
 
+  it.effect("leaves a startup response to a supplied one-shot listener", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer().once("request", constVoid)
+      yield* NodeHttpServer.make(() => server, { port: 0 })
+      const request = new Http.IncomingMessage(new Net.Socket())
+      const response = new Http.ServerResponse(request)
+      server.emit("request", request, response)
+      assert.isFalse(response.headersSent)
+    }))
+
+  it.effect("leaves native HTTP/2 stream handling in place during startup", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer().on("stream", constVoid)
+      yield* NodeHttpServer.make(() => server, { port: 0 })
+      assert.deepStrictEqual(server.listeners("stream"), [constVoid])
+      assert.strictEqual(server.listenerCount("request"), 0)
+    }))
+
+  it.effect("does not restore a startup listener after the server scope closes", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const owner = yield* Scope.make()
+      const app = yield* Scope.make()
+      const http = yield* NodeHttpServer.make(() => server, { port: 0 }).pipe(Scope.provide(owner))
+      yield* http.serve(Effect.succeed(HttpServerResponse.empty())).pipe(Scope.provide(app))
+      yield* Scope.close(owner, Exit.void)
+      yield* Scope.close(app, Exit.void)
+      assert.strictEqual(server.listenerCount("request"), 0)
+    }))
+
   it.effect("layerTest binds to IPv4 loopback", () =>
     Effect.gen(function*() {
       const server = yield* HttpServer.HttpServer
