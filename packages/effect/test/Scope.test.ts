@@ -3,18 +3,30 @@ import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("Scope", () => {
-  it.effect("runs finalizers in reverse registration order by default", () =>
+  it.effect("runs finalizers one at a time in reverse registration order by default", () =>
     Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const resume = yield* Deferred.make<void>()
       const order: Array<string> = []
       const record = (name: string) =>
         Effect.sync(() => {
           order.push(name)
         })
-      yield* Effect.scoped(Effect.gen(function*() {
+      const closing = yield* Effect.scoped(Effect.gen(function*() {
         yield* Scope.addFinalizer(yield* Effect.scope, record("scope"))
         yield* Effect.addFinalizer(() => record("effect"))
-        yield* Effect.acquireRelease(Effect.void, () => record("release"))
-      }))
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(resume)
+            yield* record("release")
+          }))
+      })).pipe(Effect.forkChild)
+      yield* Deferred.await(started)
+      const whileBlocked = order.slice()
+      yield* Deferred.succeed(resume, undefined)
+      yield* Fiber.join(closing)
+      assert.deepStrictEqual(whileBlocked, [])
       assert.deepStrictEqual(order, ["release", "effect", "scope"])
     }))
 

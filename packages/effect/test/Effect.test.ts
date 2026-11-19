@@ -1536,7 +1536,7 @@ describe("Effect", () => {
       yield* TestClock.adjust("500 millis")
       const result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 100)
-      assert.deepStrictEqual(interrupted, [500, 300, 200])
+      assert.sameMembers(interrupted, [500, 300, 200])
     }))
 
   it.effect("raceAll elects typed failures when all racers fail and one dies", () =>

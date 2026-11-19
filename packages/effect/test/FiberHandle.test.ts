@@ -172,8 +172,12 @@ describe("FiberHandle", () => {
   it.effect("join ignores managed replacement interruptions and reports child errors without closing the handle", () =>
     Effect.gen(function*() {
       const handle = yield* FiberHandle.make()
-      FiberHandle.setUnsafe(handle, Effect.runFork(Effect.void))
-      FiberHandle.setUnsafe(handle, Effect.runFork(Effect.fail("fail")))
+      const worker = yield* makeWorker
+      FiberHandle.setUnsafe(handle, worker.fiber, { propagateInterruption: true })
+      const fail = yield* Deferred.make<void>()
+      yield* FiberHandle.run(handle, Deferred.await(fail).pipe(Effect.andThen(Effect.fail("fail"))))
+      assertTrue(Exit.hasInterrupts(yield* Fiber.await(worker.fiber)))
+      yield* Deferred.succeed(fail, undefined)
       const result = yield* Effect.flip(FiberHandle.join(handle))
       strictEqual(result, "fail")
       const next = yield* FiberHandle.run(handle, Effect.succeed("next"))
