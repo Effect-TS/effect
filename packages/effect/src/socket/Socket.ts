@@ -80,8 +80,9 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  *
  * The writer is detached from any single connection: acquiring it cannot
  * fail, and writes made while disconnected suspend until the next connection
- * is established. Releasing the writer scope half-closes the write side
- * where the transport supports it.
+ * is established. If the socket cannot reconnect, writes fail instead once
+ * reader acquisition fails or the reader scope closes. Releasing the writer
+ * scope half-closes the write side where the transport supports it.
  *
  * **Example** (Consuming with automatic reconnect)
  *
@@ -963,14 +964,24 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly highWaterMark?: number | undefined
+    /** Set to true for a single connection that cannot be reacquired. Defaults to false. */
+    readonly disableReconnects?: boolean | undefined
   } | undefined
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: WebSocketLike | undefined
+    let terminalError: SocketError | undefined
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
+    const disableReconnects = options?.disableReconnects === true
+    const terminate = disableReconnects
+      ? (error: SocketError) => {
+        terminalError ??= error
+        latch.openUnsafe()
+      }
+      : () => latch.closeUnsafe()
 
-    const reader: Socket["reader"] = Effect.gen(function*() {
+    const connect: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       const ws = yield* Scope.provide(acquire, scope)
       if ("binaryType" in ws) {
@@ -1114,11 +1125,13 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
               // the underlying stream may already be gone
             }
           }
-          latch.closeUnsafe()
           currentWS = undefined
+          terminate(error!)
         })
       )
 
+      // released during acquisition: skip the open wait
+      if (terminalError !== undefined) return yield* Effect.fail(terminalError)
       if (ws.readyState >= 2) {
         // @effect-diagnostics-next-line unnecessaryFailYieldableError:off
         return yield* Effect.fail(error ?? closeError(1006))
@@ -1156,6 +1169,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
+      if (terminalError !== undefined) return yield* Effect.fail(terminalError)
       if (error === undefined && bufferSize < highWaterMark!) resumeWebSocket()
       currentWS = ws
       latch.openUnsafe()
@@ -1174,9 +1188,17 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]
+    const reader: Socket["reader"] = disableReconnects
+      ? Effect.suspend(() =>
+        terminalError !== undefined
+          ? Effect.fail(terminalError)
+          : Effect.tapError(connect, (error) => Effect.sync(() => terminate(error)))
+      )
+      : connect
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const ws = currentWS
         if (ws === undefined) return latch.whenOpen(write(chunk))
         try {
@@ -1194,6 +1216,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       chunks: NonEmptyReadonlyArray<Uint8Array | string>
     ): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const ws = currentWS
         if (ws === undefined) return latch.whenOpen(writeAll(chunks))
         try {

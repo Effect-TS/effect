@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
+import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 
@@ -156,6 +157,22 @@ describe("Socket", () => {
   })
 
   describe("fromWebSocket", () => {
+    it.effect("fails writes on a terminal non-reconnectable socket", () =>
+      Effect.gen(function*() {
+        const ws = new TestWebSocket(Latch.makeUnsafe(false))
+        ws.readyState = 1
+        const scope = yield* Scope.make()
+        const socket = yield* Socket.fromWebSocket(Scope.close(scope, Exit.void).pipe(Effect.as(ws)), {
+          disableReconnects: true
+        })
+        const writer = yield* socket.writer
+
+        const write = yield* Effect.flip(writer.write("later")).pipe(Effect.forkChild({ startImmediately: true }))
+        const error = yield* Effect.flip(Scope.provide(socket.reader, scope))
+        assert.isTrue(Socket.isSocketError(error))
+        assert.strictEqual(yield* Fiber.join(write), error)
+      }))
+
     it.effect("removes the open listener when the socket closes while connecting", () =>
       Effect.gen(function*() {
         const openListenerAttached = Latch.makeUnsafe(false)
