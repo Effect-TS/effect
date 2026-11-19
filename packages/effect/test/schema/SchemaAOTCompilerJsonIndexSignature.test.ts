@@ -46,8 +46,8 @@ describe("SchemaAOTCompiler Json index signatures", { concurrent: false }, () =>
   it("emits is and decode fast paths for a struct-with-rest child", () => {
     const { source, directory } = generated()
     try {
-      assert.include(source, 'case "is":{')
-      assert.include(source, 'case "decode":{')
+      assert.include(source, "case \"is\":{")
+      assert.include(source, "case \"decode\":{")
       assert.include(source, "isJson")
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -55,9 +55,8 @@ describe("SchemaAOTCompiler Json index signatures", { concurrent: false }, () =>
   })
 
   it("matches the interpreter for valid and invalid documents", async () => {
-    // _is accepts parse options and is captured before/after install, so the
-    // interpreter guard and the compiled guard are compared under the same
-    // strict options. Public Schema.is intentionally takes no options.
+    // The guard is captured before and after install and compared on the same
+    // inputs. Detailed strict-option behavior is compared through decode below.
     const interpreterIs = SchemaParser._is(schema.ast)
     const interpreterDecode = SchemaParser.decodeUnknownResult(schema, strict)
     const { directory, install } = generated()
@@ -73,19 +72,43 @@ describe("SchemaAOTCompiler Json index signatures", { concurrent: false }, () =>
       }
       const symbol = Symbol("extra")
       const cases: ReadonlyArray<{ label: string; input: unknown }> = [
-        { label: "valid closed object", input: { name: "a", count: 1, meta: { lwt: 1 }, tags: ["x"], closed: { flag: true } } },
-        { label: "nested object and array", input: { name: "a", count: 0, meta: { lwt: 1, other: { nested: [1, 2] } }, tags: [], closed: { flag: false } } },
-        { label: "excess top-level key", input: { name: "a", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true }, extra: 1 } },
-        { label: "excess key in closed child", input: { name: "a", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true, extra: 1 } } },
-        { label: "non-JSON value in the index signature", input: { name: "a", count: 1, meta: { lwt: 1, fn: () => 1 }, tags: [], closed: { flag: true } } },
-        { label: "symbol key in the index signature", input: { name: "a", count: 1, meta: { lwt: 1, [symbol]: 1 }, tags: [], closed: { flag: true } } },
-        { label: "bad pattern check", input: { name: "", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true } } },
+        {
+          label: "valid closed object",
+          input: { name: "a", count: 1, meta: { lwt: 1 }, tags: ["x"], closed: { flag: true } }
+        },
+        {
+          label: "nested object and array",
+          input: { name: "a", count: 0, meta: { lwt: 1, other: { nested: [1, 2] } }, tags: [], closed: { flag: false } }
+        },
+        {
+          label: "excess top-level key",
+          input: { name: "a", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true }, extra: 1 }
+        },
+        {
+          label: "excess key in closed child",
+          input: { name: "a", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true, extra: 1 } }
+        },
+        {
+          label: "non-JSON value in the index signature",
+          input: { name: "a", count: 1, meta: { lwt: 1, fn: () => 1 }, tags: [], closed: { flag: true } }
+        },
+        {
+          label: "symbol key in the index signature",
+          input: { name: "a", count: 1, meta: { lwt: 1, [symbol]: 1 }, tags: [], closed: { flag: true } }
+        },
+        {
+          label: "bad pattern check",
+          input: { name: "", count: 1, meta: { lwt: 1 }, tags: [], closed: { flag: true } }
+        },
         { label: "bad required key", input: { name: "a", count: 1, tags: [], closed: { flag: true } } },
-        { label: "wrong nested type", input: { name: "a", count: 1, meta: { lwt: "1" }, tags: [], closed: { flag: true } } }
+        {
+          label: "wrong nested type",
+          input: { name: "a", count: 1, meta: { lwt: "1" }, tags: [], closed: { flag: true } }
+        }
       ]
       for (const { label, input } of cases) {
-        const expectedIs = interpreterIs(input, strict)
-        const actualIs = compiledIs(input, strict)
+        const expectedIs = interpreterIs(input)
+        const actualIs = compiledIs(input)
         assert.strictEqual(actualIs, expectedIs, `is mismatch for ${label}`)
 
         const expectedDecode = Result.isSuccess(interpreterDecode(input, strict))

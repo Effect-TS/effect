@@ -11,8 +11,8 @@ const schema = Schema.Struct({ bytes: Schema.Uint8Array, name: Schema.String })
 describe("SchemaAOTCompiler Uint8Array declarations", { concurrent: false }, () => {
   it("emits is and decode for an Uint8Array declaration child", () => {
     const source = SchemaAOTCompiler.compile([{ ast: schema.ast, operations: ["decode", "is"] }])
-    assert.include(source, 'case "is":{')
-    assert.include(source, 'case "decode":{')
+    assert.include(source, "case \"is\":{")
+    assert.include(source, "case \"decode\":{")
     assert.include(source, "isUint8Array")
   })
 

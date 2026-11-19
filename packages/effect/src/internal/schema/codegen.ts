@@ -48,9 +48,12 @@ const unsupportedFacts: Facts = {
 const supportedDeclaration = (ast: SchemaAST.AST): "isJson" | "isUint8Array" | undefined => {
   if (ast._tag !== "Declaration" || ast.checks !== undefined || ast.encoding !== undefined) return undefined
   switch ((ast.annotations?.representation as { id?: string } | undefined)?.id) {
-    case "effect/schema/Json": return "isJson"
-    case "effect/schema/Uint8Array": return "isUint8Array"
-    default: return undefined
+    case "effect/schema/Json":
+      return "isJson"
+    case "effect/schema/Uint8Array":
+      return "isUint8Array"
+    default:
+      return undefined
   }
 }
 
@@ -68,8 +71,10 @@ const addChild = (
   depth: number,
   budget: { remaining: number }
 ): boolean => {
-  if (child.encoding !== undefined || child._tag === "Suspend" ||
-    child._tag === "Declaration" && !isJsonDeclaration(child)) {
+  if (
+    child.encoding !== undefined || child._tag === "Suspend" ||
+    child._tag === "Declaration" && !isJsonDeclaration(child)
+  ) {
     facts.supported = false
     return false
   }
@@ -181,8 +186,10 @@ const getFacts = (
 
 /** @internal */
 const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => {
-  if (!local && ast.encoding !== undefined ||
-    (ast._tag === "Declaration" && !isJsonDeclaration(ast)) || ast._tag === "Suspend") {
+  if (
+    !local && ast.encoding !== undefined ||
+    (ast._tag === "Declaration" && !isJsonDeclaration(ast)) || ast._tag === "Suspend"
+  ) {
     return "unsupported"
   }
   if (isJsonDeclaration(ast)) return "is"
