@@ -23,8 +23,7 @@ describe("shared RPC stream tracing", () => {
         const released = yield* Queue.unbounded<void>()
         const requests = yield* Queue.unbounded<FromClient<typeof Watch>>()
         const { client, write } = yield* RpcClient.makeNoSerialization(group, {
-          supportsAck: true,
-          onFromClient: ({ message }) => Queue.offer(requests, message).pipe(Effect.asVoid)
+          onFromClient: ({ message }) => Queue.offer(requests, message)
         })
         const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: write }).pipe(
           Effect.provide(group.toLayer({

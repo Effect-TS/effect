@@ -37,6 +37,7 @@ const runCall = (tag: Rpcs["_tag"], options: {
     handlers.push(remoteParent)
     return Effect.void
   }
+  const observeStream = (...args: Parameters<typeof observe>) => Stream.fromEffect(observe(...args))
   return Effect.gen(function*() {
     const inbox = yield* Queue.unbounded<RpcMessage.FromClient<Rpcs>>()
     const client = yield* RpcClient.makeNoSerialization(group, {
@@ -75,9 +76,9 @@ const runCall = (tag: Rpcs["_tag"], options: {
       Unary: observe,
       Both: observe,
       None: observe,
-      Stream: (...args) => Stream.fromEffect(observe(...args)),
-      Client: (...args) => Stream.fromEffect(observe(...args)),
-      Server: (...args) => Stream.fromEffect(observe(...args)),
+      Stream: observeStream,
+      Client: observeStream,
+      Server: observeStream,
       Queue: Effect.fnUntraced(function*(...args) {
         yield* observe(...args)
         const queue = yield* Queue.unbounded<void, Cause.Done>()

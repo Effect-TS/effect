@@ -385,8 +385,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     if (opts?.onRequest) {
       effect = opts.onRequest(effect, request)
     }
-    const tracing = enableTracing && Context.get(rpc.annotations, Rpc.TracingEnabled)
-    if (tracing === "both" || tracing === "server") {
+    const tracing = Context.get(rpc.annotations, Rpc.TracingEnabled)
+    if (enableTracing && (tracing === "both" || tracing === "server")) {
       const parentSpan = Context.getOrUndefined(
         requestFiber.context,
         Tracer.ParentSpan
