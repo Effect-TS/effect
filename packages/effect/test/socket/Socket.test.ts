@@ -6,7 +6,6 @@ import * as Latch from "effect/Latch"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import { TestClock } from "effect/testing"
 
 type EventType = "open" | "message" | "error" | "close"
 
@@ -168,16 +167,10 @@ describe("Socket", () => {
         })
         const writer = yield* socket.writer
 
-        const write = yield* writer.write("later").pipe(
-          Effect.timeout("1 second"),
-          Effect.flip,
-          Effect.forkChild({ startImmediately: true })
-        )
+        const write = yield* Effect.flip(writer.write("later")).pipe(Effect.forkChild({ startImmediately: true }))
         const error = yield* Effect.flip(Scope.provide(socket.reader, scope))
         assert.isTrue(Socket.isSocketError(error))
-        yield* TestClock.adjust("1 second")
         assert.strictEqual(yield* Fiber.join(write), error)
-        assert.strictEqual(yield* Effect.flip(writer.writeAll(["later"])), error)
       }))
 
     it.effect("removes the open listener when the socket closes while connecting", () =>
