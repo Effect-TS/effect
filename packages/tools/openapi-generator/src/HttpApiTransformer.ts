@@ -10,6 +10,8 @@
  * @since 4.0.0
  */
 import * as Codegen from "effect/Codegen"
+import * as Data from "effect/Data"
+import * as Result from "effect/Result"
 import { namedImport, namespaceImport, printImports } from "./internal/module.ts"
 import type {
   ParsedOpenApi,
@@ -33,9 +35,36 @@ interface GroupRenderModel {
   readonly identifier: string
   readonly topLevel: boolean
   readonly metadata: ParsedOpenApiTag | undefined
-  readonly operations: ReadonlyArray<ParsedOperation>
+  readonly endpoints: ReadonlyMap<string, number>
   readonly constName: string
 }
+
+type OperationSource = Pick<ParsedOperation, "method" | "path" | "operationId">
+
+/**
+ * Two OpenAPI operations resolve to the same endpoint name in one HttpApi group.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class HttpApiEndpointNameCollision extends Data.TaggedError("HttpApiEndpointNameCollision")<{
+  readonly group: string
+  readonly endpoint: string
+  readonly first: OperationSource
+  readonly repeated: OperationSource
+}> {
+  override get message(): string {
+    return `${this.first.method.toUpperCase()} ${this.first.path} and ` +
+      `${this.repeated.method.toUpperCase()} ${this.repeated.path} both generate ` +
+      `the endpoint ${JSON.stringify(this.endpoint)} in HttpApi group ${JSON.stringify(this.group)}.`
+  }
+}
+
+const operationSource = ({ method, operationId, path }: ParsedOperation): OperationSource => ({
+  method,
+  operationId,
+  path
+})
 
 interface SecurityRenderModel {
   readonly securityDeclarations: ReadonlyArray<Codegen.Fragment>
@@ -89,7 +118,12 @@ export const toImplementation = (
   parsed: ParsedOpenApi
 ): string => {
   const module = new Codegen.Module()
-  return module.finalize([planImplementation(name, parsed, makeNameAllocator())(parsed)]).roots[0]
+  return Result.match(planImplementation(name, parsed, makeNameAllocator()), {
+    onFailure: (collision) => {
+      throw collision
+    },
+    onSuccess: (render) => module.finalize([render(parsed)]).roots[0]
+  })
 }
 
 /** @internal */
@@ -98,7 +132,7 @@ export const registerModule = (
   importName: string,
   name: string,
   parsed: ParsedOpenApi
-): (parsed: ParsedOpenApi) => Codegen.Fragment => {
+): Result.Result<(parsed: ParsedOpenApi) => Codegen.Fragment, HttpApiEndpointNameCollision> => {
   for (const input of moduleImports(importName, false)) module.addImport(input)
   const api = module.declare(name)
   return planImplementation(api.name, parsed, (name) => module.declare(name).name)
@@ -108,48 +142,43 @@ const planImplementation = (
   name: string,
   parsed: ParsedOpenApi,
   allocateName: (name: string) => string
-): (parsed: ParsedOpenApi) => Codegen.Fragment => {
+): Result.Result<(parsed: ParsedOpenApi) => Codegen.Fragment, HttpApiEndpointNameCollision> => {
   const security = buildSecurityRenderModel(parsed, allocateName)
-  const groups = groupOperations(parsed, allocateName)
-  const positions = new Map(parsed.operations.map((operation, index) => [operation, index]))
-  const metadataAnnotations = renderApiAnnotations(parsed)
+  return Result.map(groupOperations(parsed, allocateName), (groups) => {
+    const metadataAnnotations = renderApiAnnotations(parsed)
 
-  let apiValue = Codegen.code`export class ${name} extends ${HttpApi}.make(${JSON.stringify(name)})`
-  for (const annotation of metadataAnnotations) {
-    apiValue = Codegen.code`${apiValue}\n  .${annotation}`
-  }
-  if (groups.length > 0) {
-    apiValue = Codegen.code`${apiValue}\n  .add(${groups.map((group) => group.constName).join(", ")})`
-  }
-  apiValue = Codegen.code`${apiValue} {}`
+    let apiValue = Codegen.code`export class ${name} extends ${HttpApi}.make(${JSON.stringify(name)})`
+    for (const annotation of metadataAnnotations) {
+      apiValue = Codegen.code`${apiValue}\n  .${annotation}`
+    }
+    if (groups.length > 0) {
+      apiValue = Codegen.code`${apiValue}\n  .add(${groups.map((group) => group.constName).join(", ")})`
+    }
+    apiValue = Codegen.code`${apiValue} {}`
 
-  return (resolved) =>
-    Codegen.join([
-      ...security.securityDeclarations,
-      ...security.middlewareDeclarations,
-      ...groups.map((group) =>
-        renderGroup({
-          ...group,
-          operations: group.operations.map((operation) => resolved.operations[positions.get(operation)!])
-        }, security.endpointMiddlewares)
-      ),
-      apiValue
-    ], "\n\n")
+    return (resolved) =>
+      Codegen.join([
+        ...security.securityDeclarations,
+        ...security.middlewareDeclarations,
+        ...groups.map((group) => renderGroup(group, resolved.operations, security.endpointMiddlewares)),
+        apiValue
+      ], "\n\n")
+  })
 }
 
 const groupOperations = (
   parsed: ParsedOpenApi,
   allocateName: (name: string) => string
-): ReadonlyArray<GroupRenderModel> => {
+): Result.Result<ReadonlyArray<GroupRenderModel>, HttpApiEndpointNameCollision> => {
   const tagMetadata = new Map(parsed.tags.map((tag) => [tag.name, tag]))
   const byIdentifier = new Map<string, {
     readonly identifier: string
     topLevel: boolean
     readonly metadata: ParsedOpenApiTag | undefined
-    readonly operations: Array<ParsedOperation>
+    readonly positions: Array<number>
   }>()
 
-  for (const operation of parsed.operations) {
+  for (const [position, operation] of parsed.operations.entries()) {
     const identifier = operation.tags[0] ?? fallbackGroupIdentifier
     const topLevel = operation.tags.length === 0
     const existing = byIdentifier.get(identifier)
@@ -157,44 +186,73 @@ const groupOperations = (
       if (topLevel) {
         existing.topLevel = true
       }
-      existing.operations.push(operation)
+      existing.positions.push(position)
       continue
     }
     byIdentifier.set(identifier, {
       identifier,
       topLevel,
       metadata: tagMetadata.get(identifier),
-      operations: [operation]
+      positions: [position]
     })
   }
 
   const groups: Array<GroupRenderModel> = []
   for (const group of byIdentifier.values()) {
+    const endpoints = new Map<string, number>()
+    const groupPrefix = `${group.identifier}.`
+    for (const position of group.positions) {
+      const operation = parsed.operations[position]
+      const operationId = operation.operationId
+      let endpoint = operation.id
+      if (
+        !group.topLevel && typeof operationId === "string" && operationId.length > groupPrefix.length &&
+        operationId.startsWith(groupPrefix)
+      ) {
+        endpoint = operationId.slice(groupPrefix.length)
+      }
+      const first = endpoints.get(endpoint)
+      if (typeof first === "number") {
+        return Result.fail(
+          new HttpApiEndpointNameCollision({
+            group: group.identifier,
+            endpoint,
+            first: operationSource(parsed.operations[first]),
+            repeated: operationSource(operation)
+          })
+        )
+      }
+      endpoints.set(endpoint, position)
+    }
     const baseName = ensureIdentifier(group.identifier, "Group")
     groups.push({
-      ...group,
+      identifier: group.identifier,
+      topLevel: group.topLevel,
+      metadata: group.metadata,
+      endpoints,
       constName: allocateName(`${baseName}Group`)
     })
   }
-  return groups
+  return Result.succeed(groups)
 }
 
 const renderGroup = (
   group: GroupRenderModel,
+  operations: ReadonlyArray<ParsedOperation>,
   endpointMiddlewares: ReadonlyMap<string, ReadonlyArray<string>>
 ): Codegen.Fragment => {
   let source = Codegen.code`class ${group.constName} extends ${HttpApiGroup}.make(${JSON.stringify(group.identifier)}${
     group.topLevel ? ", { topLevel: true }" : ""
   })`
 
-  const allocateEndpointName = makeNameAllocator()
-  const endpointSources = group.operations.map((operation) =>
-    renderEndpoint(
+  const endpointSources = Array.from(group.endpoints, ([endpoint, position]) => {
+    const operation = operations[position]
+    return renderEndpoint(
       operation,
-      allocateEndpointName(operation.id),
+      endpoint,
       endpointMiddlewares.get(toOperationKey(operation)) ?? []
     )
-  )
+  })
   if (endpointSources.length > 0) {
     source = Codegen.code`${source}\n  .add(${Codegen.join(endpointSources, ", \n    ")})`
   }

@@ -1787,6 +1787,67 @@ export const TestClientError = <Tag extends string, E>(
 
   describe("httpapi", () => {
     const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
+
+    it.effect("round-trips group-local endpoint names and keeps the qualified OpenAPI ids", () =>
+      assertHttpApiIncludes(
+        OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("balance").add(
+              HttpApiEndpoint.get("read", "/balance", { query: { currency: Schema.String } })
+            ),
+            HttpApiGroup.make("orders").add(
+              HttpApiEndpoint.get("read", "/orders"),
+              HttpApiEndpoint.get("read_page2fa", "/orders/page")
+            )
+          )
+        ),
+        [
+          `HttpApiEndpoint.get("read", "/balance", { query: BalanceReadQuery`,
+          `HttpApiEndpoint.get("read", "/orders"`,
+          `HttpApiEndpoint.get("read_page2fa", "/orders/page"`,
+          `.annotate(OpenApi.Identifier, "balance.read")`,
+          `.annotate(OpenApi.Identifier, "orders.read")`
+        ]
+      ))
+
+    it.effect("excludes flat parameter schemas from grouped endpoints", () =>
+      assertHttpApiIncludes(
+        OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("balance").add(
+              HttpApiEndpoint.get("read", "/balance", { query: { currency: Schema.String } })
+            )
+          )
+        ),
+        [`query: BalanceReadQuery`],
+        [`export type BalanceReadParams`, `export const BalanceReadParams`]
+      ))
+
+    it.effect("refuses ambiguous endpoint names in the same group", () =>
+      Effect.gen(function*() {
+        const spec = OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("balance").add(
+              HttpApiEndpoint.get("read", "/balance/latest"),
+              HttpApiEndpoint.get("history", "/balance/history").annotate(OpenApi.Identifier, "read")
+            )
+          )
+        )
+        const result = yield* Effect.result(generateHttpApi(spec))
+        switch (result._tag) {
+          case "Failure":
+            assert.deepInclude(result.failure, {
+              _tag: "HttpApiEndpointNameCollision",
+              group: "balance",
+              endpoint: "read",
+              first: { method: "get", path: "/balance/latest", operationId: "balance.read" },
+              repeated: { method: "get", path: "/balance/history", operationId: "read" }
+            })
+            break
+          case "Success":
+            assert.fail("Expected two operations named balance.read to be refused")
+        }
+      }))
     const event = (name: string) =>
       Schema.Struct({ ...Sse.EventEncoded.fields, event: Schema.Literal(name) }).annotate({ identifier: name })
 

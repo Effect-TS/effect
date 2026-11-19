@@ -43,7 +43,12 @@ import * as Utils from "./Utils.ts"
  */
 export class OpenApiGenerator extends Context.Service<
   OpenApiGenerator,
-  { readonly generate: (spec: OpenAPISpec, options: OpenApiGenerateOptions) => Effect.Effect<string> }
+  {
+    readonly generate: (
+      spec: OpenAPISpec,
+      options: OpenApiGenerateOptions
+    ) => Effect.Effect<string, HttpApiTransformer.HttpApiEndpointNameCollision>
+  }
 >()("OpenApiGenerator") {}
 
 /**
@@ -266,15 +271,27 @@ export const make = Effect.gen(function*() {
           "encodeURIComponent"
         ]
       )
-      const registration = options.format === "httpapi"
-        ? HttpApiTransformer.registerModule(module, importName, options.name, parsed)
-        : HttpClientGenerator.registerModule(
-          module,
-          importName,
-          options.name,
-          parsed,
-          options.format === "httpclient-type-only"
-        )
+      let registration: (parsed: ParsedOperation.ParsedOpenApi) => Codegen.Fragment
+      switch (options.format) {
+        case "httpapi":
+          registration = yield* Effect.fromResult(HttpApiTransformer.registerModule(
+            module,
+            importName,
+            options.name,
+            parsed
+          ))
+          break
+        case "httpclient":
+        case "httpclient-type-only":
+          registration = HttpClientGenerator.registerModule(
+            module,
+            importName,
+            options.name,
+            parsed,
+            options.format === "httpclient-type-only"
+          )
+          break
+      }
       const schemas = JsonSchemaGenerator.compile(
         module,
         generator.schemas,
@@ -469,25 +486,6 @@ const parseOpenApi = (
         continue
       }
 
-      const validParameters = parameters.filter((parameter) =>
-        parameter.in !== "path" && !droppedCookies.has(parameter)
-      )
-
-      const combinedParameterSchema = buildParameterSchema(validParameters, (parameter, added) => {
-        if (parameter.in === "query") {
-          Utils.spreadElementsInto(added, op.urlParams)
-        } else if (parameter.in === "header") {
-          Utils.spreadElementsInto(added, op.headers)
-        } else if (parameter.in === "cookie") {
-          Utils.spreadElementsInto(added, op.cookies)
-        }
-      })
-
-      if (combinedParameterSchema !== undefined) {
-        op.params = addSchema(`${schemaId}Params`, combinedParameterSchema.schema, op)
-        op.paramsOptional = combinedParameterSchema.optional
-      }
-
       if (isHttpApi) {
         const pathParameterSchema = buildParameterSchema(op.parameters.path)
         if (pathParameterSchema !== undefined) {
@@ -505,8 +503,34 @@ const parseOpenApi = (
           op.headersSchema = addSchema(`${schemaId}Headers`, headerParameterSchema.schema, op)
           op.headersSchemaOptional = headerParameterSchema.optional
         }
-      } else if (pathSchema !== undefined) {
-        op.pathSchema = addSchema(`${schemaId}PathParams`, pathSchema, op)
+      } else {
+        const validParameters = parameters.filter((parameter) =>
+          parameter.in !== "path" && !droppedCookies.has(parameter)
+        )
+
+        const combinedParameterSchema = buildParameterSchema(validParameters, (parameter, added) => {
+          switch (parameter.in) {
+            case "header":
+              Utils.spreadElementsInto(added, op.headers)
+              break
+            case "query":
+              Utils.spreadElementsInto(added, op.urlParams)
+              break
+            case "cookie":
+              Utils.spreadElementsInto(added, op.cookies)
+              break
+            case "path":
+              break
+          }
+        })
+
+        if (combinedParameterSchema !== undefined) {
+          op.params = addSchema(`${schemaId}Params`, combinedParameterSchema.schema, op)
+          op.paramsOptional = combinedParameterSchema.optional
+        }
+        if (pathSchema !== undefined) {
+          op.pathSchema = addSchema(`${schemaId}PathParams`, pathSchema, op)
+        }
       }
 
       if (Predicate.isNotUndefined(requestBody) && Predicate.isObject(requestBody)) {
