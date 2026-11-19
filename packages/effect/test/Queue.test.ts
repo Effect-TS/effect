@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Deferred, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
+import { Cause, Effect, Exit, Fiber, Option, Queue, Stream } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Queue", () => {
@@ -34,154 +34,18 @@ describe("Queue", () => {
       }))
   })
 
-  describe("reentrant take", () => {
-    // Let a resumed producer fire the deadline inside the take that released it.
-    const makeDeadline = Effect.gen(function*() {
-      const deadline = yield* Deferred.make<void>()
-      const clock: Clock.Clock = { ...(yield* Clock.Clock), sleep: () => Deferred.await(deadline) }
-      return {
-        fire: Deferred.succeed(deadline, undefined),
-        timeout: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-          effect.pipe(Effect.timeout(10), Effect.provideService(Clock.Clock, clock))
-      }
-    })
-    const timedOut = Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
-
-    it.effect("a timed-out rendezvous preserves its item without accepting a later offer", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number>(0)
-        const { fire, timeout } = yield* makeDeadline
-        const first = yield* Effect.forkChild(Queue.offer(queue, 41).pipe(Effect.tap(() => fire)), {
-          startImmediately: true
-        })
-        // Park both timeout race children before the take resumes the waiting producer.
-        const timed = yield* Effect.yieldNow.pipe(
-          Effect.andThen(Queue.take(queue)),
-          timeout,
-          Effect.exit
-        )
-        assert.deepStrictEqual(timed, timedOut)
-        assert.isTrue(yield* Fiber.join(first))
-
-        const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
-        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(41))
-        assert.isUndefined(later.pollUnsafe(), "a new taker is needed for the later offer")
-        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(99))
-        assert.deepStrictEqual(later.pollUnsafe(), Exit.succeed(true))
-      }))
-
-    it.effect.each(["offer", "offerAll"] as const)(
-      "a zero-capacity %s cannot overtake a pending offer",
-      (method) =>
-        Effect.gen(function*() {
-          const queue = yield* Queue.bounded<number>(0)
-          const producer = yield* Effect.gen(function*() {
-            yield* Queue.offer(queue, 41)
-            const nested = yield* Effect.forkScoped(Queue.take(queue), { startImmediately: true })
-            const offer = method === "offer"
-              ? Effect.asVoid(Queue.offer(queue, 43))
-              : Effect.asVoid(Queue.offerAll(queue, [43]))
-            const later = yield* Effect.forkScoped(offer, { startImmediately: true })
-            return { later, nested }
-          }).pipe(Effect.forkChild({ startImmediately: true }))
-          const pending = yield* Effect.forkChild(Queue.offer(queue, 42), { startImmediately: true })
-
-          const first = yield* Queue.take(queue)
-          const { later, nested } = yield* Fiber.join(producer)
-          const second = yield* Fiber.join(nested)
-          assert.deepStrictEqual(pending.pollUnsafe(), Exit.succeed(true))
-          assert.isUndefined(later.pollUnsafe())
-          assert.deepStrictEqual([first, second, yield* Queue.take(queue)], [41, 42, 43])
-          yield* Fiber.join(later)
-        })
-    )
-
-    it.effect("repeated batch timeouts cannot admit more offers without delivering a batch", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number>(1)
-        yield* Queue.offer(queue, 0)
-        const batches = []
-        for (const value of [1, 2]) {
-          const { fire, timeout } = yield* makeDeadline
-          const offerer = yield* Queue.offer(queue, value).pipe(
-            Effect.tap(() => fire),
-            Effect.forkChild({
-              startImmediately: true
-            })
-          )
-          const result = yield* Effect.yieldNow.pipe(
-            Effect.andThen(Queue.takeAll(queue)),
-            timeout,
-            Effect.option
-          )
-          batches.push(result)
-          assert.isTrue(yield* Fiber.join(offerer))
-        }
-        assert.deepStrictEqual({ batches, remaining: yield* Queue.clear(queue) }, {
-          batches: [Option.none(), Option.some([0, 1])],
-          remaining: [2]
-        })
-      }))
-
-    it.effect("a producer's nested take cannot pass an item restored after timeout", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number>(1)
-        const { fire, timeout } = yield* makeDeadline
-        const outer = yield* Queue.take(queue).pipe(
-          timeout,
-          Effect.forkChild({ startImmediately: true })
-        )
-        yield* Queue.offer(queue, 41)
-        const producer = yield* Queue.offer(queue, 42).pipe(
-          Effect.andThen(Queue.take(queue).pipe(Effect.forkScoped({ startImmediately: true }))),
-          Effect.tap(() => fire),
-          Effect.forkChild({ startImmediately: true })
-        )
-        Queue.flushUnsafe(queue)
-        assert.deepStrictEqual(yield* Fiber.await(outer), timedOut)
-        const nested = yield* Fiber.join(producer)
-        const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
-        assert.strictEqual(yield* Fiber.join(nested), 41)
-        assert.isUndefined(later.pollUnsafe(), "42 still occupies the only slot")
-        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(42))
-        assert.deepStrictEqual(later.pollUnsafe(), Exit.succeed(true))
-        assert.deepStrictEqual(yield* Queue.clear(queue), [99])
-      }))
-
-    it.effect("cancelling the last offer on a closing queue cannot interrupt final delivery", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number, Cause.Done>(0)
-        const cancel = yield* Deferred.make<Fiber.Fiber<boolean>>()
-        const first = yield* Queue.offer(queue, 41).pipe(
-          Effect.tap(() => Deferred.await(cancel).pipe(Effect.flatMap(Fiber.interrupt))),
-          Effect.forkChild({ startImmediately: true })
-        )
-        const last = yield* Effect.forkChild(Queue.offer(queue, 42), { startImmediately: true })
-        yield* Deferred.succeed(cancel, last)
-        yield* Queue.end(queue)
-        const worker = yield* Effect.forkChild(Queue.take(queue))
-        const awaiter = yield* Queue.await(queue).pipe(
-          Effect.andThen(Fiber.interrupt(worker)),
-          Effect.forkChild({ startImmediately: true })
-        )
-        yield* Fiber.join(awaiter)
-        assert.isTrue(yield* Fiber.join(first))
-        assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
-      }))
-
-    it.effect("the final take delivers before a closing queue notifies its awaiters", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number, Cause.Done>(1)
-        const worker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
-        const awaiter = yield* Effect.forkChild(Queue.await(queue).pipe(Effect.andThen(Fiber.interrupt(worker))), {
-          startImmediately: true
-        })
-        yield* Queue.offer(queue, 41)
-        yield* Queue.end(queue)
-        yield* Fiber.join(awaiter)
-        assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
-      }))
-  })
+  it.effect("the final take delivers before a closing queue notifies its awaiters", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(1)
+      const worker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      const awaiter = yield* Effect.forkChild(Queue.await(queue).pipe(Effect.andThen(Fiber.interrupt(worker))), {
+        startImmediately: true
+      })
+      yield* Queue.offer(queue, 41)
+      yield* Queue.end(queue)
+      yield* Fiber.join(awaiter)
+      assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
+    }))
 
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
