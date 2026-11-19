@@ -18,15 +18,9 @@ const sparkOptions: Statement.CompilerOptions = {
   onRecordUpdate: () => ["", []],
   onCustom: () => ["", []]
 }
-const sparkCompiler = Statement.makeCompiler(sparkOptions)
 
 describe("Statement", () => {
   it("dispatches custom dialects and reports missing strict branches", () => {
-    const sql = Statement.make(Effect.die("unexpected query"), sparkCompiler, [], undefined)
-    assert.strictEqual(sql.onDialect({ spark: () => "custom" }), "custom")
-    assert.strictEqual(sql.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
-    assert.throws(() => sql.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "spark". Supported dialects: pg/)
-
     const inherited = Statement.make(
       Effect.die("unexpected query"),
       Statement.makeCompiler({ ...sparkOptions, dialect: "toString" }),
@@ -34,8 +28,12 @@ describe("Statement", () => {
       undefined
     )
     assert.strictEqual(inherited.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
-    assert.throws(() => inherited.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "toString"/)
+    assert.throws(
+      () => inherited.onDialect({ pg: () => 1 }),
+      /Unsupported SQL dialect "toString"\. Supported dialects: pg/
+    )
 
+    const sql = Statement.make(Effect.die("unexpected query"), Statement.makeCompiler(sparkOptions), [], undefined)
     class Branches {
       spark() {
         return this.label()
@@ -65,7 +63,6 @@ describe("Statement", () => {
         })
         const cause = yield* Layer.build(layer).pipe(
           Effect.provideService(SqlClient.SqlClient, sql),
-          Effect.scoped,
           Effect.sandbox,
           Effect.flip
         )
