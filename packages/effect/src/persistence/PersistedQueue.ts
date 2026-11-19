@@ -1637,7 +1637,7 @@ export const makeStoreSql: (
 
   yield* Effect.orDie(
     Migrator.make({})({
-      loader: sqlMigrations(tableName),
+      loader: sqlMigrations(tableName, sql),
       table: `${tableName}_migrations`
     })
   )
@@ -2193,7 +2193,7 @@ export const makeStoreSql: (
   })
 })
 
-const sqlMigrations = (tableName: string) =>
+const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
   Migrator.fromRecord({
     "0001_create_table": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -2418,6 +2418,19 @@ const sqlMigrations = (tableName: string) =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`
       })
+    }),
+    ...client.onDialectOrElse({
+      pg: () => ({
+        "0003_widen_sequence": Effect.gen(function*() {
+          const [relation] = client`${client(tableName)}`.compile()
+          const [row] = yield* client<{ readonly sequence: string }>`
+            SELECT pg_get_serial_sequence(${relation}, 'sequence') AS sequence
+          `
+          // PostgreSQL returns the schema-qualified, quoted sequence name.
+          yield* client`ALTER SEQUENCE ${client.literal(row.sequence)} AS bigint`
+        })
+      }),
+      orElse: () => ({})
     })
   })
 

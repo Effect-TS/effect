@@ -22,7 +22,8 @@ describe("PersistedQueue SQL migrations", () => {
         }>`SELECT migration_id, name FROM ${sql(`${tableName}_migrations`)} ORDER BY migration_id`
         assert.deepStrictEqual(migrations, [
           { migration_id: 1, name: "create_table" },
-          { migration_id: 2, name: "upgrade_schema" }
+          { migration_id: 2, name: "upgrade_schema" },
+          { migration_id: 3, name: "widen_sequence" }
         ])
 
         const indexes = yield* sql<{ readonly indexname: string }>`
