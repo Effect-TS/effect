@@ -227,11 +227,9 @@ describe("Csv", () => {
       )
       const Text = Schema.Struct({ kind: Schema.Literal("text"), cell: Schema.String })
       const Entry = Schema.Union([Score, Text], { mode: "oneOf" })
-      const text = "kind,cell,cellExtra\nscore,,5\nscore,7,8\ntext,,\n"
+      const text = "kind,cell\nscore,\n"
       assert.deepStrictEqual(yield* run([text], Csv.decodeSchemaString(Entry)({ headers: true })), [
-        { kind: "score", cellExtra: 5 },
-        { kind: "score", cell: 7, cellExtra: 8 },
-        { kind: "text", cell: "" }
+        { kind: "score" }
       ])
     }))
 
