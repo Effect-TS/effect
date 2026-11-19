@@ -100,6 +100,36 @@ describe("deferred self-completion", () => {
 })
 
 describe("WorkflowEngine", () => {
+  it.effect("layerMemory retains finalizers through an active timer wake", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
+      const started = yield* Latch.make()
+      const woke = yield* Latch.make()
+      let finalized = false
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Workflow.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          yield* Effect.all([
+            Activity.make({ name: "waiting", execute: started.open.pipe(Effect.andThen(Effect.never)) }),
+            started.await.pipe(
+              Effect.andThen(DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })),
+              Effect.andThen(woke.open)
+            )
+          ], { concurrency: "unbounded", discard: true })
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      yield* Effect.gen(function*() {
+        yield* workflow.execute({}, { discard: true })
+        for (let i = 0; i < 1000 && !woke.isOpen(); i++) yield* TestClock.adjust(1)
+        assert.isTrue(woke.isOpen(), "timer must resume the workflow")
+        assert.isFalse(finalized, "timer wake must not finalize the workflow")
+      }).pipe(Effect.provide(layer))
+    }))
+
   const IncrementWorkflow = Workflow.make("WorkflowEngine/IncrementWorkflow", {
     payload: { value: Schema.Number },
     success: Schema.Number,
