@@ -319,18 +319,18 @@ const takePermits = <A, E, R>(
 const TypeId = "~effect/Semaphore"
 
 const withPermitsImpl =
-  (limit: SemaphoreImpl, n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
+  (self: SemaphoreImpl, n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) =>
+  <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     internal.uninterruptibleMask((restore) =>
       takePermits(
-        limit,
+        self,
         n,
         (fiber) => {
           internal.onExitUnsafe(fiber, () => {
-            limit.releaseUnsafe(fiber, n)
+            self.releaseUnsafe(fiber, n)
             return undefined
           })
-          return restore(self)
+          return restore(effect)
         },
         restore,
         spanName,
@@ -534,16 +534,25 @@ export const withPermits: {
 }) as any
 
 /**
- * Runs an effect with permits, creating a child span only if acquisition queues.
- * The span ends on acquisition or interruption and never wraps the effect body.
- * Permits are released when the body exits. Pass the semaphore returned by
- * {@link make} or {@link makeUnsafe}, not a wrapper that forwards its public methods:
- * tracing observes the semaphore’s internal wait queue.
+ * Runs an effect with the given number of permits, tracing only the time spent
+ * waiting for them.
  *
  * **When to use**
  *
  * Use to distinguish time spent waiting for permits from time spent running the
  * effect: `effect.pipe(Semaphore.withPermitsTraced(limit, 1, "waitForPermit"))`.
+ *
+ * **Details**
+ *
+ * A child span named `spanName` is created only if acquisition has to queue. It
+ * ends when the permits are acquired or the wait is interrupted, and never
+ * wraps the effect. Acquired permits are released when the effect exits.
+ *
+ * **Gotchas**
+ *
+ * Pass the semaphore returned by {@link make} or {@link makeUnsafe}, not a
+ * wrapper that forwards its public methods: tracing observes the semaphore's
+ * internal wait queue.
  *
  * @see {@link withPermits} for acquiring permits without tracing the wait
  *
