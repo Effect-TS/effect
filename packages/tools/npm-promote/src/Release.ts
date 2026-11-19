@@ -76,7 +76,8 @@ export class Alerts extends Context.Service<Alerts, {
 export interface Release {
   readonly packages: ReadonlyArray<ReleasePackage>
   readonly bump: VersionBump
-  readonly packagesAtBump?: Effect.Effect<ReadonlyArray<ReleasePackage>, NpmPromoteError> | undefined
+  /** The public packages and versions at `bump`, before any later additions. */
+  readonly packagesAtBump: Effect.Effect<ReadonlyArray<ReleasePackage>, NpmPromoteError>
 }
 
 interface Options {
@@ -86,28 +87,29 @@ interface Options {
 
 const format = (pkg: ReleasePackage) => `${pkg.name}@${pkg.version}`
 
-/**
- * Opens or updates the tracking issue once the version bump is older than the
- * threshold. `diagnoses` only runs when the release is overdue.
- */
-const alertIfOverdue = Effect.fnUntraced(function*<R>(
-  release: Release,
-  effect: ReleasePackage,
-  options: Options,
-  diagnoses: Effect.Effect<ReadonlyArray<Diagnosis>, never, R>
-) {
+const isOverdue = Effect.fnUntraced(function*(release: Release, options: Options) {
   const ageHours = ((yield* Clock.currentTimeMillis) - release.bump.committedAt.getTime()) / 3_600_000
   if (ageHours < options.overdueAfterHours) {
     yield* Console.log(`The version bump landed ${ageHours.toFixed(1)} hours ago, so promotion is not overdue yet.`)
-    return
+    return false
   }
-  const findings = yield* diagnoses
-  if (findings.length === 0) return
+  return true
+})
+
+/**
+ * Opens or updates the tracking issue for an overdue release.
+ */
+const openAlert = Effect.fnUntraced(function*(
+  release: Release,
+  effect: ReleasePackage,
+  options: Options,
+  diagnoses: ReadonlyArray<Diagnosis>
+) {
   const overdue: OverdueRelease = {
     version: effect.version,
     bump: release.bump,
     overdueAfterHours: options.overdueAfterHours,
-    diagnoses: findings
+    diagnoses
   }
   if (options.dryRun === true) {
     const content = TrackingIssue.render(overdue)
@@ -116,6 +118,23 @@ const alertIfOverdue = Effect.fnUntraced(function*<R>(
   }
   yield* (yield* Alerts).open(overdue)
 })
+
+/**
+ * Fails with `failure` after opening or updating the tracking issue, if the
+ * version bump is older than the threshold. A failure to alert is only logged.
+ */
+const failAfterAlert = (
+  release: Release,
+  effect: ReleasePackage,
+  options: Options,
+  diagnosis: Diagnosis,
+  failure: NpmPromoteError
+) =>
+  isOverdue(release, options).pipe(
+    Effect.flatMap((overdue) => overdue ? openAlert(release, effect, options, [diagnosis]) : Effect.void),
+    Effect.catch((error) => Console.warn(`Could not open or update the tracking issue: ${error.message}`)),
+    Effect.andThen(Effect.fail(failure))
+  )
 
 const onPromoted = Effect.fnUntraced(function*(
   release: Release,
@@ -166,31 +185,43 @@ const onPromoted = Effect.fnUntraced(function*(
   return yield* deployed
 })
 
-const diagnoseNotVisible = Effect.fnUntraced(function*(release: Release, pending: ReadonlyArray<ReleasePackage>) {
-  if (!release.packagesAtBump) return yield* diagnosePending(pending)
-  const historical = yield* release.packagesAtBump.pipe(
-    Effect.catch((error) =>
-      Console.warn(`Could not verify the bump-time packages: ${error.message}`).pipe(Effect.as(undefined))
-    )
+/**
+ * Live `latest` of every package in the bumped release that has not reached
+ * its target. A failed or invalid read is reported as unchecked.
+ */
+const diagnoseUnpromoted = (packages: ReadonlyArray<ReleasePackage>) =>
+  Effect.forEach(packages, (pkg) =>
+    liveLatest(pkg.name).pipe(
+      Effect.flatMap((latest) =>
+        Effect.map(needsPromotion(pkg, latest), (needed): Array<Diagnosis> =>
+          needed ? [{ _tag: "Unpromoted", pkg, latest }] : [])
+      ),
+      Effect.catch((error) =>
+        Effect.succeed<Array<Diagnosis>>([{ _tag: "Unknown", pkg, reason: error.message }])
+      )
+    ), { concurrency: 8 }).pipe(Effect.map((diagnoses) => diagnoses.flat()))
+
+/**
+ * Diagnoses only the pending packages that were part of the bumped release.
+ * When every pending package was added after the bump, the alert names the
+ * released packages whose live `latest` is behind, and an empty result means
+ * the release was promoted. If the bump-time package list cannot be read, every
+ * pending package is diagnosed.
+ */
+const diagnoseNotVisible = (release: Release, pending: ReadonlyArray<ReleasePackage>) =>
+  release.packagesAtBump.pipe(
+    Effect.matchEffect({
+      onFailure: (error) =>
+        Console.warn(`Could not read the packages at the version bump: ${error.message}`).pipe(
+          Effect.andThen(diagnosePending(pending))
+        ),
+      onSuccess: (released) => {
+        const pendingNames = new Set(pending.map((pkg) => pkg.name))
+        const releasedPending = released.filter((pkg) => pendingNames.has(pkg.name))
+        return releasedPending.length > 0 ? diagnosePending(releasedPending) : diagnoseUnpromoted(released)
+      }
+    })
   )
-  if (historical === undefined) return yield* diagnosePending(pending)
-
-  const pendingNames = new Set(pending.map((pkg) => pkg.name))
-  const originalPending = historical.filter((pkg) => pendingNames.has(pkg.name))
-  if (originalPending.length > 0) return yield* diagnosePending(originalPending)
-
-  // Post-bump additions can stop promotion before any live tags have been read.
-  const findings = yield* Effect.forEach(historical, (pkg) =>
-    Effect.gen(function*() {
-      const latest = yield* liveLatest(pkg.name)
-      return (yield* needsPromotion(pkg, latest))
-        ? { _tag: "Unpromoted" as const, pkg, latest }
-        : undefined
-    }).pipe(Effect.catch((error) => Effect.succeed({ _tag: "Unknown" as const, pkg, reason: error.message }))), {
-    concurrency: 8
-  })
-  return findings.filter((finding) => finding !== undefined)
-})
 
 /**
  * One scheduled run: promotes the release, deploys the website for the bump
@@ -211,16 +242,12 @@ export const promoteRelease = Effect.fnUntraced(function*(
 
   const result = yield* promote(release.packages, { dryRun: options.dryRun }).pipe(
     Effect.catchTag("PromotionError", (error) =>
-      alertIfOverdue(
+      failAfterAlert(
         release,
         effect,
         options,
-        Effect.succeed([{ _tag: "PromotionFailed", pkg: error.pkg, reason: error.reason }])
-      ).pipe(
-        Effect.catch((alertError) =>
-          Console.warn(`Could not open or update the tracking issue: ${alertError.message}`)
-        ),
-        Effect.andThen(Effect.fail(new NpmPromoteError({ message: error.message, cause: error })))
+        { _tag: "PromotionFailed", pkg: error.pkg, reason: error.reason },
+        new NpmPromoteError({ message: error.message, cause: error })
       )),
     // A read outage alone is not evidence of an overdue promotion.
     Effect.catchTag("RegistryError", (error) => {
@@ -229,16 +256,12 @@ export const promoteRelease = Effect.fnUntraced(function*(
         return Effect.fail(original)
       }
       // Known-pending read failures are reported as unchecked, never as missing.
-      return alertIfOverdue(
+      return failAfterAlert(
         release,
         effect,
         options,
-        Effect.succeed([{ _tag: "Unknown", pkg: error.pkg, reason: error.message }])
-      ).pipe(
-        Effect.catch((alertError) =>
-          Console.warn(`Could not open or update the tracking issue: ${alertError.message}`)
-        ),
-        Effect.andThen(Effect.fail(original))
+        { _tag: "Unknown", pkg: error.pkg, reason: error.message },
+        original
       )
     })
   )
@@ -251,7 +274,17 @@ export const promoteRelease = Effect.fnUntraced(function*(
       result.pending.map((pkg) => `  ${format(pkg)}`).join("\n")
     }`
   )
-  yield* alertIfOverdue(release, effect, options, diagnoseNotVisible(release, result.pending))
+  if (!(yield* isOverdue(release, options))) {
+    return
+  }
+  const diagnoses = yield* diagnoseNotVisible(release, result.pending)
+  if (diagnoses.length === 0) {
+    yield* Console.log(
+      "Only packages added after the version bump are pending, and every released package has latest at its target, so no alert is needed."
+    )
+    return
+  }
+  yield* openAlert(release, effect, options, diagnoses)
 })
 
 /**

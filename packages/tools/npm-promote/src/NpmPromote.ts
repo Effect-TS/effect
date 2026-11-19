@@ -239,6 +239,8 @@ export const promote = Effect.fnUntraced(function*(
  * Why a target version is missing from the abbreviated metadata, according to
  * the version-specific registry document.
  *
+ * - `Unpromoted`: every pending package was added after the version bump,
+ *   and this released package's live `latest` is still below its target.
  * - `Published`: the version document exists, so the abbreviated metadata is
  *   lagging behind.
  * - `Missing`: the registry returned 404, so the publish most likely failed.

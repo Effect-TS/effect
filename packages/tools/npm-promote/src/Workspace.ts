@@ -59,9 +59,7 @@ export const packagesAtBump = (
   effectVersion: string
 ): Effect.Effect<ReadonlyArray<ReleasePackage>, NpmPromoteError, ChildProcessSpawner.ChildProcessSpawner> =>
   Effect.gen(function*() {
-    const sha =
-      (yield* Process.run("git", ["rev-parse", "--verify", "--end-of-options", `${revision}^{commit}`], { cwd })).trim()
-    const read = (path: string) => Process.run("git", ["cat-file", "blob", `${sha}:${path}`], { cwd })
+    const read = (path: string) => Process.run("git", ["cat-file", "blob", `${revision}:${path}`], { cwd })
     const source = yield* read("pnpm-workspace.yaml")
     const { packages: patterns } = yield* Effect.try(() =>
       Schema.decodeUnknownSync(WorkspaceConfig)(Yaml.parse(source))
@@ -70,10 +68,12 @@ export const packagesAtBump = (
     // misinterpret an exclusion or a more complex pnpm glob as a missing package.
     for (const pattern of patterns) {
       if (!pattern.split("/").every((part) => part === "*" || /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(part))) {
-        return yield* new NpmPromoteError({ message: `Unsupported workspace package pattern at ${sha}: ${pattern}` })
+        return yield* new NpmPromoteError({
+          message: `Unsupported workspace package pattern at ${revision}: ${pattern}`
+        })
       }
     }
-    const tree = yield* Process.run("git", ["ls-tree", "-rz", "--name-only", sha], { cwd })
+    const tree = yield* Process.run("git", ["ls-tree", "-rz", "--name-only", revision], { cwd })
     const paths = tree.split("\0").filter((path) =>
       path === "package.json" ||
       (path.endsWith("/package.json") && patterns.some((pattern) => posix.matchesGlob(posix.dirname(path), pattern)))
@@ -83,21 +83,19 @@ export const packagesAtBump = (
         Effect.flatMap(Schema.decodeUnknownEffect(Manifest))
       ), { concurrency: 8 })
 
-    const names = new Set<string>()
     const packages: Array<ReleasePackage> = []
     for (const pkg of manifests) {
       if (pkg.private === true) continue
-      if (!pkg.name || !pkg.version || !Semver.valid(pkg.version) || names.has(pkg.name)) {
+      if (!pkg.name || !pkg.version || !Semver.valid(pkg.version)) {
         return yield* new NpmPromoteError({
-          message: `Unverified public manifest at ${sha}: ${pkg.name ?? "(unnamed)"}`
+          message: `Unverified public manifest at ${revision}: ${pkg.name ?? "(unnamed)"}`
         })
       }
-      names.add(pkg.name)
       packages.push({ name: pkg.name, version: pkg.version })
     }
     if (!packages.some((pkg) => pkg.name === "effect" && pkg.version === effectVersion)) {
       return yield* new NpmPromoteError({
-        message: `Could not verify the workspace package set for effect@${effectVersion} at ${sha}`
+        message: `Could not verify the workspace package set for effect@${effectVersion} at ${revision}`
       })
     }
     return packages

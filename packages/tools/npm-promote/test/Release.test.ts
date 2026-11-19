@@ -10,12 +10,15 @@ import * as Option from "effect/Option"
 import { TestClock } from "effect/testing"
 import { type Published, registryClient } from "./utils.ts"
 
+const packages = [
+  { name: "effect", version: "4.0.4" },
+  { name: "@effect/sql-pg", version: "4.0.4" }
+]
+
 const release: Release = {
-  packages: [
-    { name: "effect", version: "4.0.4" },
-    { name: "@effect/sql-pg", version: "4.0.4" }
-  ],
-  bump: { sha: "a".repeat(40), committedAt: new Date(0) }
+  packages,
+  bump: { sha: "a".repeat(40), committedAt: new Date(0) },
+  packagesAtBump: Effect.succeed(packages)
 }
 
 const services = (options: {
