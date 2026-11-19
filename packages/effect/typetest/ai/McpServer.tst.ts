@@ -177,6 +177,19 @@ describe("McpServer", () => {
     })
   })
 
+  it("should type content mappers by tool name and decoded success", () => {
+    const toolkit = Toolkit.make(Tool.make("preview", { success: Schema.Uint8ArrayFromBase64 }))
+    McpServer.registerToolkit(toolkit, {
+      content: {
+        preview: (png) => {
+          expect(png).type.toBe<Uint8Array>()
+          return []
+        }
+      }
+    })
+    expect(McpServer.toolkit).type.not.toBeCallableWith(toolkit, { content: { unknown: () => [] } })
+  })
+
   it("should make declared toolkit dependencies request-level in both registration APIs", () => {
     const toolkit = Toolkit.make(Tool.make("http", { dependencies: [HttpClient.HttpClient] }))
     const registered = McpServer.registerToolkit(toolkit)

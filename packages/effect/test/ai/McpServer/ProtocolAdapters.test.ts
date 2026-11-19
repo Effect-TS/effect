@@ -95,6 +95,11 @@ const CapabilityGatedTool = Tool.make("capability-gated", {
 )
 
 const TestToolkit = Toolkit.make(
+  Tool.make("preview", {
+    parameters: Schema.Struct({ caption: Schema.String }),
+    success: Schema.Struct({ caption: Schema.String, png: Schema.Uint8ArrayFromBase64 }),
+    failure: Schema.String
+  }),
   SharedTool,
   JsonArrayTool,
   StructuredOnlyTool,
@@ -187,8 +192,23 @@ const makeFixture = Effect.fnUntraced(function*(
     structuredInvocations: 0,
     capabilityInvocations: 0
   }
-  const toolkitLayer = McpServer.toolkit(TestToolkit).pipe(
+  const toolkitLayer = McpServer.toolkit(TestToolkit, {
+    content: {
+      preview: ({ caption, png }) => {
+        if (caption === "broken") throw new Error("private renderer error")
+        return [
+          { type: "text", text: caption },
+          { type: "image", data: png, mimeType: "image/png" },
+          { type: "resource", resource: { uri: "test://preview", text: caption } }
+        ]
+      }
+    }
+  }).pipe(
     Layer.provideMerge(TestToolkit.toLayer(TestToolkit.of({
+      preview: ({ caption }) =>
+        caption === "missing"
+          ? Effect.fail("not found")
+          : Effect.succeed({ caption, png: Uint8Array.of(137, 80, 78, 71) }),
       shared: () =>
         Effect.sync(() => {
           state.sharedInvocations++
@@ -1635,6 +1655,49 @@ describe("McpServer protocol adapters", () => {
           required: ["value"],
           additionalProperties: true
         })
+      }
+    }))
+
+  it.effect("should return native content for a mapped toolkit tool across protocol revisions", () =>
+    Effect.gen(function*() {
+      const { post } = yield* makeFixture()
+      const modern = Effect.fnUntraced(function*(method: string, params: Record<string, unknown>) {
+        return yield* readJsonRpcResponse(
+          yield* post(modernRequest(1, method, params), {
+            ...modernHeaders(method),
+            "Mcp-Name": "preview"
+          })
+        )
+      })
+      for (const version of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"] as const) {
+        const request = version === "2026-07-28" ? modern : (yield* initialize(post, version)).request
+        const tools = listedTools(yield* request("tools/list", {}))
+        const preview = tools.find((tool) => tool.name === "preview")
+        assert.isDefined(preview)
+        assert.notProperty(preview, "outputSchema")
+        const result = resultOf(yield* request("tools/call", { name: "preview", arguments: { caption: "example" } }))
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "example" },
+          { type: "image", data: "iVBORw==", mimeType: "image/png" },
+          { type: "resource", resource: { uri: "test://preview", text: "example" } }
+        ])
+        assert.notProperty(result, "structuredContent")
+      }
+    }))
+
+  it.effect("should preserve declared failures and scrub content mapper defects", () =>
+    Effect.gen(function*() {
+      const { post } = yield* makeFixture()
+      const client = yield* initialize(post, "2025-11-25")
+      for (
+        const [caption, text] of [["missing", "\"not found\""], [
+          "broken",
+          "Tool execution failed due to an internal server error."
+        ]]
+      ) {
+        const result = resultOf(yield* client.request("tools/call", { name: "preview", arguments: { caption } }))
+        assert.isTrue(result.isError)
+        assert.deepStrictEqual(result.content, [{ type: "text", text }])
       }
     }))
 
