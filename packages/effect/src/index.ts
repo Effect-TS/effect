@@ -69,6 +69,12 @@ export * as BigDecimal from "./BigDecimal.ts"
 export * as BigInt from "./BigInt.ts"
 
 /**
+ * @stability unstable
+ * @since 4.2.0
+ */
+export * as BloomFilter from "./BloomFilter.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
