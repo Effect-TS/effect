@@ -27,6 +27,22 @@ const fetchText = (
   )
 
 describe("HttpRouter", () => {
+  for (const first of ["static", "wildcard"] as const) {
+    it.effect(`dispatches static and wildcard routes with ${first} registered first`, () =>
+      Effect.gen(function*() {
+        const exact = HttpRouter.route("GET", "/test", HttpServerResponse.text("static"))
+        const wildcard = HttpRouter.route("GET", "/test/*", HttpServerResponse.text("wildcard"))
+        const routes = HttpRouter.use(Effect.fn(function*(router) {
+          for (const route of first === "static" ? [exact, wildcard] : [wildcard, exact]) {
+            yield* router.addAll([route])
+          }
+        }))
+
+        assert.strictEqual(yield* fetchText(routes, "/test"), "static")
+        assert.strictEqual(yield* fetchText(routes, "/test/anything"), "wildcard")
+      }))
+  }
+
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(
       HttpRouter.route("GET", "/users", HttpServerResponse.text("ok")),
