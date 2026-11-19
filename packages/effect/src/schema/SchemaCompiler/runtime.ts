@@ -214,18 +214,34 @@ const check = (
     : Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
 }
 
+// The declared keys of an AST never change. Building this Set on every parse
+// allocated an array and a Set per document on the hottest validation path.
+const excessKeysCache = new WeakMap<SchemaAST.Objects, Set<PropertyKey>>()
+
+const declaredKeys = (ast: SchemaAST.Objects): Set<PropertyKey> => {
+  let keys = excessKeysCache.get(ast)
+  if (keys === undefined) {
+    keys = new Set(ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name))
+    excessKeysCache.set(ast, keys)
+  }
+  return keys
+}
+
 const hasExcessProperties = (
   ast: SchemaAST.Objects,
   input: Record<PropertyKey, unknown>,
   indexKeys?: ReadonlyArray<ReadonlyArray<PropertyKey>>
 ): boolean => {
-  const covered = new Set<PropertyKey>(
-    ast.propertySignatures.map((p) => typeof p.name === "number" ? String(p.name) : p.name)
-  )
-  if (indexKeys) {
-    for (const keys of indexKeys) {
-      for (const key of keys) covered.add(key)
-    }
+  if (indexKeys === undefined) {
+    const covered = declaredKeys(ast)
+    return Reflect.ownKeys(input).some((key) =>
+      !covered.has(key) && Object.prototype.propertyIsEnumerable.call(input, key)
+    )
+  }
+  // Copy so the per-AST cached Set is never mutated by input-derived keys.
+  const covered = new Set(declaredKeys(ast))
+  for (const keys of indexKeys) {
+    for (const key of keys) covered.add(key)
   }
   return InternalRecord.ownEnumerableKeys(input).some((key) => !covered.has(key))
 }
@@ -287,6 +303,8 @@ export const runtime = {
     typeof input === "string" && ast.matchPart(input, options) !== undefined,
   getCandidateIndex: SchemaAST.getCandidateIndex,
   getIndexSignatureKeys: SchemaAST.getIndexSignatureKeys,
+  isJson: SchemaAST.isJson,
+  isUint8Array: (u: unknown): u is Uint8Array => u instanceof Uint8Array,
   parameterFromPropertyKey: SchemaAST.parameterFromPropertyKey,
   getConstructorDescriptor: SchemaAST.getConstructorDescriptor,
   defaultParseOptions: SchemaAST.defaultParseOptions
