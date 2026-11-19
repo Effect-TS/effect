@@ -114,8 +114,8 @@ const unit = (code: number): number => {
       return 1 + K
     case 0x22:
     case 0x5c:
-    case 0x09:
       return 2
+    case 0x09: // A partially stripped tab in fenced code can leave three spaces.
     case 0x24:
       return 3
     case 0x3c:
