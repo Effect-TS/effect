@@ -249,7 +249,7 @@ const render = (prefix: string, text: string, fence: Fence | undefined): string 
 
 /**
  * Where to cut `text` so that `prefix`, the cut text and a closing fence
- * measure at most `room`: after the last block boundary that fits, else after
+ * measure at most `room`: prefer a fitting block boundary, else cut after
  * the last line, else after the last whitespace, else at the last character.
  * Never inside a grapheme cluster, and never at 0.
  */
@@ -275,13 +275,16 @@ const fitCut = (
   }
   const most = low
   const candidates: Array<number> = []
-  for (let i = lines.length - 1; i >= 0; i--) {
+  // Closing a fence removes the synthetic suffix. Look ahead two real closes
+  // beyond the estimate, farthest first, to bound the extra measurements.
+  for (let i = 0; i < lines.length && candidates.length < 2; i++) {
     const line = lines[i]
-    // Closing a fence removes the synthetic suffix, so even a close beyond
-    // `most` can fit. Ordinary paragraph boundaries keep the original bound.
-    if (line.boundary && (line.end <= most || (i === 0 ? fence : lines[i - 1].fence) !== undefined)) {
-      candidates.push(line.end)
+    if (line.end > most && line.boundary && (i === 0 ? fence : lines[i - 1].fence) !== undefined) {
+      candidates.unshift(line.end)
     }
+  }
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].boundary && lines[i].end <= most) candidates.push(lines[i].end)
   }
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].end <= most) candidates.push(lines[i].end)
