@@ -229,12 +229,16 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  const unavailable = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
-    // An HTTP/2 request is dispatched by Node's compatibility stream listener.
-    // Any other stream listener belongs to the supplied server, even if added after listen.
+  const claimedStreams = new WeakSet<Http2.Http2Stream>()
+  const trackStream = (stream: Http2.Http2Stream) => {
+    // Besides this observer and Node's compatibility listener, a native handler owns
+    // this emission, even if it removes itself before the compatibility request fires.
+    if (server.listenerCount("stream") > 2) claimedStreams.add(stream)
+  }
+  const unavailable = (request: Http.IncomingMessage | Http2.Http2ServerRequest, response: Http.ServerResponse) => {
     if (
       server.listenerCount("request") === 1 && !response.headersSent &&
-      !(request.httpVersionMajor === 2 && server.listenerCount("stream") > 1)
+      !("stream" in request && claimedStreams.has(request.stream))
     ) {
       response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
       response.end("service unavailable")
@@ -244,10 +248,15 @@ export const make = Effect.fnUntraced(function*(
     if (scope.state._tag !== "Closed") {
       // Observe other request listeners before a once listener removes itself during dispatch.
       server.prependListener("request", unavailable)
+      server.prependListener("stream", trackStream)
     }
   }
+  const removeFallback = () => {
+    server.off("request", unavailable)
+    server.off("stream", trackStream)
+  }
   installFallback()
-  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable))))
+  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(removeFallback)))
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
@@ -332,7 +341,7 @@ export const make = Effect.fnUntraced(function*(
           })
         )
       })
-      server.off("request", unavailable)
+      removeFallback()
       server.on("request", handler)
       server.on("checkContinue", checkContinueHandler)
       server.on("upgrade", trackedUpgrade)

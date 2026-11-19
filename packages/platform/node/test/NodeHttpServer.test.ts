@@ -91,7 +91,7 @@ describe("HttpServer", () => {
       const server = Http2.createServer()
       server.once("listening", () =>
         server.on("stream", (stream) => {
-        stream.end("native")
+          stream.end("native")
         }))
       yield* NodeHttpServer.make(() => server, { port: 0 })
       const response = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`)
@@ -108,21 +108,26 @@ describe("HttpServer", () => {
       assert.strictEqual(yield* response.text, "service unavailable")
     }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
 
-  it.live("answers after a one-shot HTTP/2 request listener finishes", () =>
-    Effect.gen(function*() {
-      const server = Http2.createServer().once("request", (_request, response) => {
-        response.writeHead(201)
-        response.end("created")
-      })
-      yield* NodeHttpServer.make(() => server, { host: "127.0.0.1", port: 0 })
-      const url = `http://127.0.0.1:${tcpPort(server)}/`
-      const first = yield* HttpClient.get(url)
-      assert.strictEqual(first.status, 201)
-      assert.strictEqual(yield* first.text, "created")
-      const next = yield* HttpClient.get(url)
-      assert.strictEqual(next.status, 503)
-      assert.strictEqual(yield* next.text, "service unavailable")
-    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
+  it.live.each(["request", "stream"] as const)(
+    "answers after a one-shot HTTP/2 %s listener finishes",
+    (event) =>
+      Effect.gen(function*() {
+        const server = Http2.createServer()
+        if (event === "request") {
+          server.once("request", (_request, response) => response.end("created"))
+        } else {
+          server.once("stream", (stream) => setImmediate(() => stream.end("created")))
+        }
+        yield* NodeHttpServer.make(() => server, { host: "127.0.0.1", port: 0 })
+        const url = `http://127.0.0.1:${tcpPort(server)}/`
+        const first = yield* HttpClient.get(url)
+        assert.strictEqual(first.status, 200)
+        assert.strictEqual(yield* first.text, "created")
+        const next = yield* HttpClient.get(url)
+        assert.strictEqual(next.status, 503)
+        assert.strictEqual(yield* next.text, "service unavailable")
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client()))
+  )
 
   it.effect("does not restore a startup listener after the server scope closes", () =>
     Effect.gen(function*() {
