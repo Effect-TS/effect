@@ -3246,6 +3246,12 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
   | Exclude<SchemaServices, RequestServices | McpRequestContext>
   | McpRequest.From<"Requires", Exclude<RequestServices, McpRequestContext>>
 
+type ToolkitOptions<Tools extends Record<string, Tool.Any>, Names extends keyof Tools> = {
+  readonly content?:
+    | { readonly [Name in Names]?: ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"]) | undefined }
+    | undefined
+} | undefined
+
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
@@ -3279,29 +3285,13 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  */
 export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
   toolkit: Toolkit.Toolkit<Tools>,
-  options?: {
-    readonly content?:
-      | {
-        readonly [Name in Names]?:
-          | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
-          | undefined
-      }
-      | undefined
-  } | undefined
+  options?: ToolkitOptions<Tools, Names>
 ) => Effect.Effect<void, never, ToolkitRequirements<Tools>> = Effect.fnUntraced(function*<
   Tools extends Record<string, Tool.Any>,
   Names extends keyof Tools
 >(
   toolkit: Toolkit.Toolkit<Tools>,
-  options?: {
-    readonly content?:
-      | {
-        readonly [Name in Names]?:
-          | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
-          | undefined
-      }
-      | undefined
-  } | undefined
+  options?: ToolkitOptions<Tools, Names>
 ) {
   const registry = yield* McpServer
   const built = yield* (toolkit as any as Effect.Effect<
@@ -3525,15 +3515,7 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  */
 export const toolkit = <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
   toolkit: Toolkit.Toolkit<Tools>,
-  options?: {
-    readonly content?:
-      | {
-        readonly [Name in Names]?:
-          | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
-          | undefined
-      }
-      | undefined
-  } | undefined
+  options?: ToolkitOptions<Tools, Names>
 ): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit, options))
 
 /**
