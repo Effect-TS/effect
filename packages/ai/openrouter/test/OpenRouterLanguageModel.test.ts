@@ -658,8 +658,7 @@ describe("OpenRouterLanguageModel", () => {
             const body = yield* getRequestBody(requests[0])
             const toolResult = body.messages.find((message: any) => message.role === "tool")
 
-            assert.isDefined(toolResult)
-            deepStrictEqual(toolResult.content, content)
+            deepStrictEqual(toolResult?.content, content)
           }).pipe(Effect.provide(makeTestLayer())))
       }
 
