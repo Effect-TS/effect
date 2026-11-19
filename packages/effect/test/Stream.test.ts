@@ -1654,50 +1654,33 @@ describe("Stream", () => {
       }))
 
     for (const name of ["groupBy", "groupByKey"] as const) {
-      const group = (
-        stream: Stream.Stream<number>,
-        options: { readonly bufferSize?: number | undefined; readonly idleTimeToLive: Duration.Input }
-      ) =>
-        name === "groupBy"
-          ? Stream.groupBy(stream, (value) => Effect.succeed(["same", value] as const), options)
-          : Stream.groupByKey(stream, () => "same", options)
+      const group = (idleTimeToLive: Duration.Input) => (input: Stream.Stream<number>) => {
+        const options = { bufferSize: 1, idleTimeToLive }
+        return name === "groupBy"
+          ? Stream.groupBy(input, (n) => Effect.succeed([0, n] as const), options)
+          : Stream.groupByKey(input, () => 0, options)
+      }
 
-      it.effect(name + " retains values with a zero idle TTL", () =>
+      it.effect(name + " delivers all values with zero idle TTL", () =>
         Effect.gen(function*() {
-          const result = yield* group(Stream.make(1, 2, 3), { idleTimeToLive: Duration.zero }).pipe(
-            Stream.mapEffect(([, stream]) => Stream.runCollect(stream), { concurrency: "unbounded" }),
+          const values = yield* Stream.make(1, 2, 3).pipe(
+            group(Duration.zero),
+            Stream.flatMap(([, stream]) => stream, { concurrency: "unbounded" }),
             Stream.runCollect
           )
-
-          assert.deepStrictEqual(result.flat(), [1, 2, 3])
+          assert.deepStrictEqual(values, [1, 2, 3])
         }))
 
-      it.effect(
-        name + " keeps the same group while an offer waits for capacity past the idle TTL",
-        () =>
-          Effect.gen(function*() {
-            const second = yield* Deferred.make<void>()
-            const resume = yield* Deferred.make<void>()
-            const input = Stream.make(1, 2, 3).pipe(
-              Stream.rechunk(1),
-              Stream.tap((value) => value === 2 ? Deferred.succeed(second, undefined) : Effect.void)
-            )
-            const collected = yield* group(input, { bufferSize: 1, idleTimeToLive: "1 second" }).pipe(
-              Stream.mapEffect(
-                ([, stream]) => Effect.andThen(Deferred.await(resume), Stream.runCollect(stream)),
-                { concurrency: "unbounded" }
-              ),
-              Stream.runCollect,
-              Effect.forkChild({ startImmediately: true })
-            )
-
-            yield* Deferred.await(second)
-            yield* TestClock.adjust("2 seconds")
-            yield* Deferred.succeed(resume, undefined)
-
-            assert.deepStrictEqual(yield* Fiber.join(collected), [[1, 2, 3]])
-          })
-      )
+      it.effect(name + " keeps a backpressured group past its idle TTL", () =>
+        Effect.gen(function*() {
+          const groups = yield* Stream.make(1, 2, 3).pipe(
+            Stream.rechunk(1),
+            group("1 second"),
+            Stream.mapEffect(([, stream]) => Effect.andThen(TestClock.adjust("2 seconds"), Stream.runCollect(stream))),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(groups, [[1, 2, 3]])
+        }))
     }
 
     it.effect("groupByKey - groups end when the upstream ends", () =>
