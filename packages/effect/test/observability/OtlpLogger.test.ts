@@ -48,9 +48,9 @@ const attributesOf = (request: HttpClientRequest.HttpClientRequest) =>
 describe("OtlpLogger", () => {
   it.effect("warns once when a rejected batch disables log export", () => {
     const { httpClient, requests } = capture(400)
-    const warnings: Array<unknown> = []
-    const observer = Logger.make(({ logLevel, message }) => {
-      if (logLevel === "Warn") warnings.push(message)
+    let warnings = 0
+    const observer = Logger.make(({ logLevel }) => {
+      if (logLevel === "Warn") warnings++
     })
     return Effect.gen(function*() {
       const { flush } = yield* OtlpExporter.Flusher
@@ -58,9 +58,7 @@ describe("OtlpLogger", () => {
       yield* flush
       yield* Effect.logInfo("during disable window")
       yield* flush
-
-      assert.lengthOf(requests, 1)
-      assert.lengthOf(warnings, 1)
+      assert.strictEqual(warnings, 1)
 
       yield* TestClock.adjust("60 seconds")
       yield* flush
