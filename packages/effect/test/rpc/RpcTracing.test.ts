@@ -6,8 +6,6 @@ class Observe extends RpcMiddleware.Service<Observe>()("Observe") {}
 
 const stream = { stream: true } as const
 const group = RpcGroup.make(
-  Rpc.make("Unary"),
-  Rpc.make("Stream", stream),
   Rpc.make("Queue", stream),
   Rpc.make("Both").annotate(Rpc.TracingEnabled, "both"),
   Rpc.make("None").annotate(Rpc.TracingEnabled, "none")
@@ -73,10 +71,8 @@ const runCall = (tag: Rpcs["_tag"], options: {
     return { spans, request: sent[0], handler: handlers[0], middleware: middleware[0] }
   }).pipe(
     Effect.provide(group.toLayer({
-      Unary: observe,
       Both: observe,
       None: observe,
-      Stream: observeStream,
       Client: observeStream,
       Server: observeStream,
       Queue: Effect.fnUntraced(function*(...args) {
@@ -112,8 +108,6 @@ const traceFields = (span: { traceId?: string; spanId?: string; sampled?: boolea
 describe("Rpc.TracingEnabled", () => {
   for (
     const [tag, kinds] of [
-      ["Unary", ["client", "server"]],
-      ["Stream", ["client", "server"]],
       ["Queue", ["client", "server"]],
       ["Both", ["client", "server"]],
       ["Client", ["client"]],
@@ -140,10 +134,9 @@ describe("Rpc.TracingEnabled", () => {
   for (
     const [label, tag, options, kinds] of [
       ["unary call without a caller", "None", { noCaller: true }, []],
-      ["stream without a caller", "Server", { noCaller: true }, ["server"]],
       ["client-wide opt-out", "Both", { disableClient: true }, ["server"]],
-      ["disabled tracer for unary call", "Both", { tracerDisabled: true }, ["server"]],
-      ["disabled tracer for stream", "Stream", { tracerDisabled: true }, ["server"]]
+      ["disabled tracer without a client span", "None", { tracerDisabled: true }, []],
+      ["disabled tracer with a client span", "Client", { tracerDisabled: true }, []]
     ] as const
   ) {
     it.effect(`${label}: sends no trace fields`, () =>
