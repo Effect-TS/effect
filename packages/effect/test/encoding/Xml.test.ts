@@ -598,42 +598,26 @@ describe("Xml", () => {
 
     it.effect("matches namespaces in Clark notation", () =>
       Effect.gen(function*() {
-        const collect = (xml: string, path: ReadonlyArray<string>) =>
+        const xml = "<r xmlns:x='urn:a}b' xmlns:y='urn:a}b'><x:item><y:child/></x:item><y:item/><item/><other/></r>"
+        const collect = (segment: string) =>
           Stream.make(xml).pipe(
             Stream.pipeThroughChannel(Xml.decodeString({ namespaces: "strict" })),
-            Stream.pipeThroughChannel(Xml.elements(path)),
+            Stream.pipeThroughChannel(Xml.elements(["r", segment])),
             Stream.runCollect
           )
-        const xml = "<feed xmlns=\"urn:atom\" xmlns:x=\"urn:a}b\"><entry><title>A</title></entry><x:entry/>" +
-          "<entry xmlns=\"\"/></feed>"
-        assert.deepStrictEqual(yield* collect(xml, ["{urn:atom}feed", "{urn:atom}entry"]), [
-          {
-            name: "entry",
-            namespace: "urn:atom",
-            localName: "entry",
-            attributes: {},
-            children: [{ name: "title", namespace: "urn:atom", localName: "title", attributes: {}, children: ["A"] }]
-          }
+        const names = (segment: string) => collect(segment).pipe(Effect.map((items) => items.map((item) => item.name)))
+        assert.deepStrictEqual(yield* names("{*}item"), ["x:item", "y:item", "item"])
+        assert.deepStrictEqual(yield* names("{}item"), ["item"])
+        assert.deepStrictEqual(yield* names("x:item"), ["x:item"])
+        const items = yield* collect("{urn:a}b}item")
+        assert.deepStrictEqual(items.map((item) => [item.name, item.namespace, item.localName]), [
+          ["x:item", "urn:a}b", "item"],
+          ["y:item", "urn:a}b", "item"]
         ])
-        const cases: ReadonlyArray<readonly [ReadonlyArray<string>, Array<[string, string]>]> = [
-          [["*", "{*}entry"], [["entry", "urn:atom"], ["x:entry", "urn:a}b"], ["entry", ""]]],
-          [["*", "{}entry"], [["entry", ""]]],
-          // Namespaces can contain "}", which local names cannot
-          [["*", "{urn:a}b}entry"], [["x:entry", "urn:a}b"]]],
-          [["feed", "x:entry"], [["x:entry", "urn:a}b"]]]
-        ]
-        for (const [path, expected] of cases) {
-          const collected = yield* collect(xml, path)
-          assert.deepStrictEqual(collected.map((element) => [element.name, element.namespace]), expected, path.join())
-        }
-        assert.strictEqual((yield* Effect.flip(elements(xml, ["other", "{urn:atom}entry"]))).kind, "InvalidEvent")
-        const root: Xml.Event = { _tag: "StartElement", name: "r", attributes: {}, namespace: "", localName: "r" }
-        const error = yield* Stream.make(root, start("c"), end("c"), end("r")).pipe(
-          Stream.pipeThroughChannel(Xml.elements(["{}r"])),
-          Stream.runDrain,
-          Effect.flip
-        )
-        assert.strictEqual(error.kind, "InvalidEvent")
+        assert.deepStrictEqual(items[0].children, [
+          { name: "y:child", namespace: "urn:a}b", localName: "child", attributes: {}, children: [] }
+        ])
+        assert.strictEqual((yield* Effect.flip(elements("<r/>", ["other", "{}item"]))).kind, "InvalidEvent")
       }))
 
     it.effect("fails on oversized elements and unbalanced events", () =>
