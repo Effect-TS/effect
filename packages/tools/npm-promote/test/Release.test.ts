@@ -66,9 +66,9 @@ describe("Release", () => {
           yield* TestClock.adjust("13 hours")
           yield* provide(promoteRelease({
             ...release,
-            addedPackageNames: scenario === "unknown history"
+            packagesAtBump: scenario === "unknown history"
               ? Effect.fail(new NpmPromoteError({ message: "Git history unavailable" }))
-              : Effect.succeed(new Set(["@effect/sql-pg"]))
+              : Effect.succeed([release.packages[0]])
           }, { overdueAfterHours: 12 }))
 
           assert.lengthOf(alerts, scenario === "promoted" ? 0 : 1)

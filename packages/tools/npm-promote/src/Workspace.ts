@@ -1,8 +1,10 @@
 import * as Effect from "effect/Effect"
+import * as Yaml from "effect/encoding/Yaml"
 import * as Option from "effect/Option"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schema from "effect/Schema"
-import { resolve } from "node:path"
+import { posix } from "node:path"
+import * as Semver from "semver"
 import type { ReleasePackage } from "./NpmPromote.ts"
 import { NpmPromoteError } from "./NpmPromoteError.ts"
 import * as Process from "./Process.ts"
@@ -42,45 +44,69 @@ export const releasePackages = (
     )
   )
 
-const ChangesetsConfig = Schema.fromJsonString(Schema.Struct({
-  fixed: Schema.Array(Schema.Array(Schema.String))
+const WorkspaceConfig = Schema.Struct({ packages: Schema.Array(Schema.String) })
+
+const Manifest = Schema.fromJsonString(Schema.Struct({
+  name: Schema.optional(Schema.String),
+  version: Schema.optional(Schema.String),
+  private: Schema.optional(Schema.Boolean)
 }))
 
-/** Finds new workspace packages that were outside the release being diagnosed. */
-export const addedPackageNames = (
+/** Reads the release's public workspace package set and its exact targets without checking out or running historical code. */
+export const packagesAtBump = (
   cwd: string,
-  packages: ReadonlyArray<WorkspacePackage>,
-  revision: string
-): Effect.Effect<ReadonlySet<string>, NpmPromoteError, ChildProcessSpawner.ChildProcessSpawner> =>
+  revision: string,
+  effectVersion: string
+): Effect.Effect<ReadonlyArray<ReleasePackage>, NpmPromoteError, ChildProcessSpawner.ChildProcessSpawner> =>
   Effect.gen(function*() {
-    const paths = yield* Process.run("git", [
-      "diff",
-      "--name-only",
-      "--diff-filter=A",
-      "--find-renames",
-      "-z",
-      revision,
-      "HEAD",
-      "--",
-      ":(glob)**/package.json"
-    ], { cwd })
-    if (paths === "") return new Set<string>()
+    const sha =
+      (yield* Process.run("git", ["rev-parse", "--verify", "--end-of-options", `${revision}^{commit}`], { cwd })).trim()
+    const read = (path: string) => Process.run("git", ["cat-file", "blob", `${sha}:${path}`], { cwd })
+    const source = yield* read("pnpm-workspace.yaml")
+    const { packages: patterns } = yield* Effect.try(() =>
+      Schema.decodeUnknownSync(WorkspaceConfig)(Yaml.parse(source))
+    )
+    // Support literal path components and single-component wildcards. Never silently
+    // misinterpret an exclusion or a more complex pnpm glob as a missing package.
+    for (const pattern of patterns) {
+      if (!pattern.split("/").every((part) => part === "*" || /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]*$/.test(part))) {
+        return yield* new NpmPromoteError({ message: `Unsupported workspace package pattern at ${sha}: ${pattern}` })
+      }
+    }
+    const tree = yield* Process.run("git", ["ls-tree", "-rz", "--name-only", sha], { cwd })
+    const paths = tree.split("\0").filter((path) =>
+      path === "package.json" ||
+      (path.endsWith("/package.json") && patterns.some((pattern) => posix.matchesGlob(posix.dirname(path), pattern)))
+    )
+    const manifests = yield* Effect.forEach(paths, (path) =>
+      read(path).pipe(
+        Effect.flatMap(Schema.decodeUnknownEffect(Manifest))
+      ), { concurrency: 8 })
 
-    const added = new Set(paths.split("\0").filter(Boolean).map((path) => resolve(cwd, path)))
-    const config = yield* Process.run("git", ["show", `${revision}:.changeset/config.json`], { cwd }).pipe(
-      Effect.flatMap(Schema.decodeUnknownEffect(ChangesetsConfig)),
-      Effect.mapError((cause) =>
-        new NpmPromoteError({ message: "Could not read the release's Changesets config", cause })
-      )
-    )
-    // Keep existing released names eligible even if Git did not detect a manifest move as a rename.
-    const existingNames = new Set(config.fixed.flat())
-    return new Set(
-      packages.filter((pkg) => added.has(resolve(pkg.directory, "package.json")) && !existingNames.has(pkg.name)).map((
-        pkg
-      ) => pkg.name)
-    )
-  })
+    const names = new Set<string>()
+    const packages: Array<ReleasePackage> = []
+    for (const pkg of manifests) {
+      if (pkg.private === true) continue
+      if (!pkg.name || !pkg.version || !Semver.valid(pkg.version) || names.has(pkg.name)) {
+        return yield* new NpmPromoteError({
+          message: `Unverified public manifest at ${sha}: ${pkg.name ?? "(unnamed)"}`
+        })
+      }
+      names.add(pkg.name)
+      packages.push({ name: pkg.name, version: pkg.version })
+    }
+    if (!packages.some((pkg) => pkg.name === "effect" && pkg.version === effectVersion)) {
+      return yield* new NpmPromoteError({
+        message: `Could not verify the workspace package set for effect@${effectVersion} at ${sha}`
+      })
+    }
+    return packages
+  }).pipe(Effect.mapError((cause) =>
+    Schema.is(NpmPromoteError)(cause) ? cause : new NpmPromoteError({
+      message: `Could not read package registrations or manifests at ${revision}`,
+      cause
+    })
+  ))
 
 export interface VersionBump {
   readonly sha: string

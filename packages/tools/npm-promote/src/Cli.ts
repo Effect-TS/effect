@@ -71,7 +71,7 @@ const run = Effect.fnUntraced(function*(options: {
   yield* promoteRelease({
     packages: workspace.map(({ name, version }): ReleasePackage => ({ name, version })),
     bump: bump.value,
-    addedPackageNames: Workspace.addedPackageNames(cwd, workspace, bump.value.sha).pipe(
+    packagesAtBump: Workspace.packagesAtBump(cwd, bump.value.sha, effect.version).pipe(
       Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, yield* ChildProcessSpawner.ChildProcessSpawner)
     )
   }, options).pipe(Effect.provide(services))

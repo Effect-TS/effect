@@ -76,7 +76,7 @@ export class Alerts extends Context.Service<Alerts, {
 export interface Release {
   readonly packages: ReadonlyArray<ReleasePackage>
   readonly bump: VersionBump
-  readonly addedPackageNames?: Effect.Effect<ReadonlySet<string>, NpmPromoteError> | undefined
+  readonly packagesAtBump?: Effect.Effect<ReadonlyArray<ReleasePackage>, NpmPromoteError> | undefined
 }
 
 interface Options {
@@ -166,6 +166,32 @@ const onPromoted = Effect.fnUntraced(function*(
   return yield* deployed
 })
 
+const diagnoseNotVisible = Effect.fnUntraced(function*(release: Release, pending: ReadonlyArray<ReleasePackage>) {
+  if (!release.packagesAtBump) return yield* diagnosePending(pending)
+  const historical = yield* release.packagesAtBump.pipe(
+    Effect.catch((error) =>
+      Console.warn(`Could not verify the bump-time packages: ${error.message}`).pipe(Effect.as(undefined))
+    )
+  )
+  if (historical === undefined) return yield* diagnosePending(pending)
+
+  const pendingNames = new Set(pending.map((pkg) => pkg.name))
+  const originalPending = historical.filter((pkg) => pendingNames.has(pkg.name))
+  if (originalPending.length > 0) return yield* diagnosePending(originalPending)
+
+  // Post-bump additions can stop promotion before any live tags have been read.
+  const findings = yield* Effect.forEach(historical, (pkg) =>
+    Effect.gen(function*() {
+      const latest = yield* liveLatest(pkg.name)
+      return (yield* needsPromotion(pkg, latest))
+        ? { _tag: "Unpromoted" as const, pkg, latest }
+        : undefined
+    }).pipe(Effect.catch((error) => Effect.succeed({ _tag: "Unknown" as const, pkg, reason: error.message }))), {
+    concurrency: 8
+  })
+  return findings.filter((finding) => finding !== undefined)
+})
+
 /**
  * One scheduled run: promotes the release, deploys the website for the bump
  * commit once `effect`'s `latest` is the target and no deployment is recorded,
@@ -225,24 +251,7 @@ export const promoteRelease = Effect.fnUntraced(function*(
       result.pending.map((pkg) => `  ${format(pkg)}`).join("\n")
     }`
   )
-  const pending = release.addedPackageNames?.pipe(
-    Effect.flatMap((names) => {
-      const historicalPending = result.pending.filter((pkg) => !names.has(pkg.name))
-      if (historicalPending.length > 0) return Effect.succeed(historicalPending)
-
-      // Missing metadata from a new package can prevent a real release's tags from being checked.
-      const historicalPackages = release.packages.filter((pkg) => !names.has(pkg.name))
-      return Effect.forEach(
-        historicalPackages,
-        (pkg) => liveLatest(pkg.name).pipe(Effect.flatMap((latest) => needsPromotion(pkg, latest))),
-        { concurrency: 8 }
-      ).pipe(Effect.map((unpromoted) => unpromoted.some(Boolean) ? result.pending : historicalPending))
-    }),
-    Effect.catch((error) =>
-      Console.warn(`Could not verify the overdue release: ${error.message}`).pipe(Effect.as(result.pending))
-    )
-  ) ?? Effect.succeed(result.pending)
-  yield* alertIfOverdue(release, effect, options, pending.pipe(Effect.flatMap(diagnosePending)))
+  yield* alertIfOverdue(release, effect, options, diagnoseNotVisible(release, result.pending))
 })
 
 /**
