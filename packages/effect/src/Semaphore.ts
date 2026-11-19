@@ -12,13 +12,16 @@
  * @since 4.0.0
  */
 import type * as Effect from "./Effect.ts"
+import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
+import { TracerTimingEnabled } from "./internal/references.ts"
 import type * as Option from "./Option.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Scope from "./Scope.ts"
+import type * as Tracer from "./Tracer.ts"
 
 /**
  * A counting semaphore that coordinates concurrent access with permits.
@@ -84,6 +87,17 @@ export interface Semaphore {
    * are released by other tasks.
    */
   withPermits(this: Semaphore, permits: number): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+
+  /**
+   * Runs an effect with permits and traces only the time spent queued for them.
+   * Immediate acquisition creates no span, and the body keeps its caller span.
+   */
+  withPermitsTraced(
+    this: Semaphore,
+    permits: number,
+    spanName: string,
+    options?: Tracer.SpanOptionsNoTrace | undefined
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 
   /**
    * Runs an effect with the given number of permits and releases the permits
@@ -266,7 +280,9 @@ const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
   onAcquire: () => Effect.Effect<A, E, R>,
-  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity,
+  spanName?: string,
+  options?: Tracer.SpanOptionsNoTrace
 ): Effect.Effect<A, E, R> =>
   core.withFiber((fiber) => {
     if (self.free >= n && firstAvailableWaiter(self) === undefined) {
@@ -275,6 +291,15 @@ const takePermits = <A, E, R>(
     }
     // A wake does not reserve permits: the waiter keeps its queue entry until
     // it acquires or is interrupted, and re-checks eligibility when it runs.
+    const span = spanName === undefined ? undefined : internal.makeSpanUnsafe(fiber, spanName, options)
+    const endWait = (exit: Exit.Exit<unknown, unknown>) => {
+      if (span && span.status._tag !== "Ended") {
+        span.end(
+          fiber.getRef(TracerTimingEnabled) ? fiber.getRef(internal.ClockRef).currentTimeNanosUnsafe() : BigInt("0"),
+          exit
+        )
+      }
+    }
     const waiter: Waiter = { permits: n, resume: undefined }
     const remove = () => {
       if (self.waiters.delete(waiter)) {
@@ -285,7 +310,16 @@ const takePermits = <A, E, R>(
     }
     self.waiters.add(waiter)
     if (n < self.waiterPermitsLowerBound) self.waiterPermitsLowerBound = n
-    internal.onExitUnsafe(fiber, remove)
+    internal.onExitUnsafe(
+      fiber,
+      span === undefined ? remove : (exit) => {
+        if (self.waiters.has(waiter)) {
+          remove()
+          endWait(exit)
+        }
+        return undefined
+      }
+    )
     const wait = restore(internal.callback<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
       if (firstAvailableWaiter(self) === waiter) {
@@ -296,6 +330,7 @@ const takePermits = <A, E, R>(
     }, { blockedOn: self }))
     const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
       if (firstAvailableWaiter(self) !== waiter) return loop
+      if (span) endWait(internal.exitVoid)
       self.taken += n
       remove()
       return onAcquire()
@@ -388,6 +423,14 @@ class SemaphoreImpl implements Semaphore {
   }
 
   withPermits(n: number) {
+    return this.withPermitsImpl(n)
+  }
+
+  withPermitsTraced(n: number, spanName: string, options?: Tracer.SpanOptionsNoTrace) {
+    return this.withPermitsImpl(n, spanName, options)
+  }
+
+  private withPermitsImpl(n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) {
     return <A, E, R>(self: Effect.Effect<A, E, R>) =>
       internal.uninterruptibleMask((restore) =>
         takePermits(
@@ -398,7 +441,9 @@ class SemaphoreImpl implements Semaphore {
               this.releaseUnsafe(internal.getCurrentFiber()!, n)
               return undefined
             }, true),
-          restore
+          restore,
+          spanName,
+          options
         )
       )
   }
@@ -511,6 +556,25 @@ export const withPermits: {
   const withPermits = self.withPermits(permits)
   return effect ? withPermits(effect) : withPermits
 }) as any
+
+/**
+ * Runs an effect with permits, creating a child span only if acquisition queues.
+ * The span ends on acquisition or interruption and never wraps the effect body.
+ * Permits are released when the body exits.
+ *
+ * @see {@link withPermits} for acquiring permits without tracing the wait
+ *
+ * @stability stable
+ * @category combinators
+ * @since 4.2.0
+ */
+export const withPermitsTraced = (
+  self: Semaphore,
+  permits: number,
+  spanName: string,
+  options?: Tracer.SpanOptionsNoTrace
+): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
+  self.withPermitsTraced(permits, spanName, options)
 
 /**
  * Runs an effect with a single permit and releases the permit when the effect
