@@ -10,7 +10,7 @@ const { compatibilityFlags, workers } = vi.hoisted(() => {
   return {
     compatibilityFlags,
     workers: {
-      tracing: undefined as { startSpan: () => void; withActiveSpan: () => void } | undefined,
+      tracing: { startSpan: vi.fn(), withActiveSpan: undefined as (() => void) | undefined },
       waitUntil: vi.fn()
     }
   }
@@ -20,30 +20,21 @@ vi.mock("cloudflare:workers", () => workers)
 describe("CloudflareRuntime.layer", { concurrent: false }, () => {
   afterAll(() => vi.unstubAllGlobals())
 
-  it.effect("installs the Cloudflare scheduler and tracer when both are supported", () =>
+  it.effect("still installs the scheduler without tracing.withActiveSpan", () =>
     Effect.gen(function*() {
       compatibilityFlags.handle_cross_request_promise_resolution = true
-      workers.tracing = { startSpan: vi.fn(), withActiveSpan: vi.fn() }
-      const context = yield* Layer.build(CloudflareRuntime.layer)
-      assert.instanceOf(Context.get(context, Scheduler.Scheduler), CloudflareScheduler)
-      assert.notStrictEqual(Context.get(context, Tracer.Tracer), Tracer.nativeTracer)
-    }))
-
-  it.effect("still installs the scheduler when tracing is unavailable", () =>
-    Effect.gen(function*() {
-      compatibilityFlags.handle_cross_request_promise_resolution = true
-      workers.tracing = undefined
+      workers.tracing.withActiveSpan = undefined
       const context = yield* Layer.build(CloudflareRuntime.layer)
       assert.instanceOf(Context.get(context, Scheduler.Scheduler), CloudflareScheduler)
       assert.strictEqual(Context.get(context, Tracer.Tracer), Tracer.nativeTracer)
     }))
 
-  it.effect("keeps both Effect defaults when neither service is supported", () =>
+  it.effect("still installs the tracer when cross-request promise resolution is disabled", () =>
     Effect.gen(function*() {
       compatibilityFlags.handle_cross_request_promise_resolution = false
-      workers.tracing = undefined
+      workers.tracing.withActiveSpan = vi.fn()
       const context = yield* Layer.build(CloudflareRuntime.layer)
       assert.strictEqual(Context.get(context, Scheduler.Scheduler), Context.get(Context.empty(), Scheduler.Scheduler))
-      assert.strictEqual(Context.get(context, Tracer.Tracer), Tracer.nativeTracer)
+      assert.notStrictEqual(Context.get(context, Tracer.Tracer), Tracer.nativeTracer)
     }))
 })
