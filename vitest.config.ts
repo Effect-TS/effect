@@ -153,8 +153,7 @@ export default defineConfig({
           conditions: ["browser"]
         },
         test: {
-          environment: "jsdom",
-          setupFiles: [path.join(import.meta.dirname, "packages/atom/solid/vitest.setup.ts")]
+          environment: "jsdom"
         }
       }),
       ...project("@effect/atom-vue", "packages/atom/vue", true, {

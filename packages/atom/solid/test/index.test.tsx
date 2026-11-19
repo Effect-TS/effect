@@ -1,16 +1,17 @@
 import {
-  RegistryContext,
   useAtom,
   useAtomInitialValues,
+  useAtomMount,
   useAtomRef,
   useAtomRefProp,
   useAtomRefPropValue,
-  useAtomResource,
+  useAtomSubscribe,
   useAtomValue
 } from "@effect/atom-solid"
 import { assert, describe, it } from "@effect/vitest"
-import { AsyncResult, Atom, AtomRef, AtomRegistry } from "effect/reactivity"
-import { type Accessor, createComponent, createEffect, createRoot, type Resource } from "solid-js"
+import { Atom, AtomRef, AtomRegistry } from "effect/reactivity"
+import { type Accessor, createRoot, createSignal, flush } from "solid-js"
+import { provideRegistry, watch } from "./utils/solid.ts"
 
 describe("atom-solid", () => {
   describe("useAtomValue", () => {
@@ -46,6 +47,7 @@ describe("atom-solid", () => {
       }, { registry })
       assert.strictEqual(observed, first)
       registry.set(useSecond, true)
+      flush()
       assert.strictEqual(observed, second)
       dispose()
     })
@@ -68,11 +70,11 @@ describe("atom-solid", () => {
       let observed: number | undefined
       const dispose = createRoot((dispose) => {
         const [value, setValue] = useAtom(() => atom)
-        createEffect(() => {
-          observed = value()
+        watch(value, (value) => {
+          observed = value
         })
-        createEffect(() => {
-          if (value() !== 0) {
+        watch(value, (value) => {
+          if (value !== 0) {
             return
           }
           setValue(1)
@@ -80,8 +82,123 @@ describe("atom-solid", () => {
         })
         return dispose
       })
+      flush()
       assert.strictEqual(observed, 2)
       dispose()
+    })
+  })
+
+  describe("lifecycle", () => {
+    it("releases the previous atom when the atom changes and the current atom on dispose", () => {
+      const { registry, runRemovals } = makeRegistry()
+      const released: Array<string> = []
+      const named = (name: string) =>
+        Atom.make((get) => {
+          get.addFinalizer(() => released.push(name))
+          return name
+        })
+      const first = named("first")
+      const second = named("second")
+      let observed: Array<string> = []
+      let select!: (atom: Atom.Atom<string>) => void
+      const dispose = createRoot((dispose) => {
+        provideRegistry(registry, () => {
+          const [atom, setAtom] = createSignal(first)
+          select = (atom) => setAtom(() => atom)
+          watch(useAtomValue(atom), (value) => observed.push(value))
+          return null
+        })
+        return dispose
+      })
+      flush()
+      assert.deepStrictEqual(observed, ["first"])
+
+      select(second)
+      flush()
+      runRemovals()
+      assert.deepStrictEqual(observed, ["first", "second"])
+      assert.deepStrictEqual(released, ["first"])
+
+      dispose()
+      runRemovals()
+      assert.deepStrictEqual(released, ["first", "second"])
+    })
+
+    it("does not notify when the new atom holds an equal value", () => {
+      const registry = AtomRegistry.make()
+      const first = Atom.make(1)
+      const second = Atom.make(1)
+      const observed: Array<number> = []
+      let select!: (atom: Atom.Atom<number>) => void
+      const dispose = createRoot((dispose) => {
+        provideRegistry(registry, () => {
+          const [atom, setAtom] = createSignal<Atom.Atom<number>>(first)
+          select = (atom) => setAtom(() => atom)
+          watch(useAtomValue(atom), (value) => observed.push(value))
+          return null
+        })
+        return dispose
+      })
+      flush()
+      select(second)
+      flush()
+      registry.set(second, 2)
+      flush()
+      assert.deepStrictEqual(observed, [1, 2])
+      dispose()
+    })
+
+    it("returns Promise values without awaiting them", async () => {
+      const promise = Promise.resolve(42)
+      const atom = Atom.make(() => promise)
+      const observed: Array<Promise<number>> = []
+      let value!: Accessor<Promise<number>>
+      const dispose = createRoot((dispose) => {
+        value = useAtomValue(() => atom)
+        // Effects await a Promise returned from their compute phase.
+        watch(() => [value()] as const, ([value]) => observed.push(value))
+        return dispose
+      })
+      flush()
+      await promise
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      flush()
+      assert.strictEqual(value(), promise)
+      assert.strictEqual(observed.length, 1)
+      assert.strictEqual(observed[0], promise)
+      dispose()
+    })
+
+    it("useAtomMount and useAtomSubscribe release on dispose", () => {
+      const { registry, runRemovals } = makeRegistry()
+      let released = false
+      const mounted = Atom.make((get) => {
+        get.addFinalizer(() => {
+          released = true
+        })
+        return 0
+      })
+      const counter = Atom.make(0)
+      const notified: Array<number> = []
+      const dispose = createRoot((dispose) => {
+        provideRegistry(registry, () => {
+          useAtomMount(() => mounted)
+          useAtomSubscribe(() => counter, (value) => notified.push(value))
+          return null
+        })
+        return dispose
+      })
+      flush()
+      registry.set(counter, 1)
+      runRemovals()
+      assert.isFalse(released)
+      assert.deepStrictEqual(notified, [1])
+
+      dispose()
+      registry.set(counter, 2)
+      runRemovals()
+      assert.isTrue(released)
+      assert.deepStrictEqual(notified, [1])
     })
   })
 
@@ -90,14 +207,11 @@ describe("atom-solid", () => {
       const registry = AtomRegistry.make()
       const atom = Atom.make(0)
       createRoot((dispose) => {
-        createComponent(RegistryContext.Provider, {
-          value: registry,
-          get children() {
-            useAtomInitialValues([[atom, 1]])
-            useAtomInitialValues([[atom, 2]])
-            assert.strictEqual(registry.get(atom), 1)
-            return null
-          }
+        provideRegistry(registry, () => {
+          useAtomInitialValues([[atom, 1]])
+          useAtomInitialValues([[atom, 2]])
+          assert.strictEqual(registry.get(atom), 1)
+          return null
         })
         return dispose
       })
@@ -115,6 +229,7 @@ describe("atom-solid", () => {
       })
       assert.strictEqual(observed, first)
       ref.set(second)
+      flush()
       assert.strictEqual(observed, second)
       dispose()
     })
@@ -128,6 +243,7 @@ describe("atom-solid", () => {
       })
       assert.strictEqual(observed, 0)
       ref.set({ count: 1, label: "a" })
+      flush()
       assert.strictEqual(observed, 1)
       dispose()
     })
@@ -140,114 +256,29 @@ describe("atom-solid", () => {
       })
       assert.strictEqual(observed, 0)
       ref.set({ count: 2, label: "a" })
+      flush()
       assert.strictEqual(observed, 2)
       dispose()
     })
   })
-
-  describe("useAtomResource", () => {
-    it("suspends on Initial result", () => {
-      const atom = Atom.make(AsyncResult.initial<number, Error>())
-      const { resource, dispose } = renderAtomResource(() => atom)
-      assert.strictEqual(resource.loading, true)
-      assert.strictEqual(resource(), undefined)
-      dispose()
-    })
-  })
-
-  //
-  //   it("suspends on waiting when suspendOnWaiting is true", () => {
-  //     const atom = Atom.make(AsyncResult.success(1, { waiting: true }))
-  //     const { resource, dispose } = renderAtomResource(atom, { suspendOnWaiting: true })
-  //     assert.strictEqual(resource.loading, true)
-  //     assert.strictEqual(resource(), undefined)
-  //     dispose()
-  //   })
-  //
-  //   it("returns success value by default", async () => {
-  //     const atom = Atom.make(AsyncResult.success(5, { waiting: true }))
-  //     const { resource, dispose } = renderAtomResource(atom)
-  //     await Promise.resolve()
-  //     await Promise.resolve()
-  //     assert.strictEqual(resource.loading, false)
-  //     assert.strictEqual(resource(), 5)
-  //     dispose()
-  //   })
-  //
-  //   it("surfaces failure via Cause.squash", async () => {
-  //     const error = new Error("boom")
-  //     const atom = Atom.make(AsyncResult.fail(error))
-  //     let resource: ReturnType<typeof useAtomResource>[0] | undefined
-  //     let caught: unknown
-  //     const dispose = createRoot((dispose) => {
-  //       catchError(() => {
-  //         ;[resource] = useAtomResource(atom)
-  //         createEffect(() => {
-  //           resource?.()
-  //         })
-  //       }, (err) => {
-  //         caught = err
-  //       })
-  //       return dispose
-  //     })
-  //     await Promise.resolve()
-  //     await Promise.resolve()
-  //     assert.ok(caught instanceof Error)
-  //     assert.strictEqual(caught.message, "boom")
-  //     assert.strictEqual(resource?.error, caught)
-  //     assert.strictEqual(resource?.loading, false)
-  //     dispose()
-  //   })
-  //
-  //   it("preserves success result when preserveResult is true", async () => {
-  //     const atom = Atom.make(Effect.succeed(7))
-  //     const { resource, dispose } = renderAtomResource(atom, { preserveResult: true })
-  //     await Promise.resolve()
-  //     await Promise.resolve()
-  //     const result = resource()!
-  //     assert.strictEqual(AsyncResult.isSuccess(result), true)
-  //     if (AsyncResult.isSuccess(result)) {
-  //       assert.strictEqual(result.value, 7)
-  //     }
-  //     assert.strictEqual(resource.error, undefined)
-  //     dispose()
-  //   })
-  //
-  //   it("preserves failure result when preserveResult is true", async () => {
-  //     const error = new Error("failure")
-  //     const atom = Atom.make(Effect.fail(error))
-  //     const { resource, dispose } = renderAtomResource(atom, { preserveResult: true })
-  //     await Promise.resolve()
-  //     await Promise.resolve()
-  //     const result = resource()!
-  //     assert.strictEqual(AsyncResult.isFailure(result), true)
-  //     if (AsyncResult.isFailure(result)) {
-  //       const squashed = Cause.squash(result.cause)
-  //       assert.ok(squashed instanceof Error)
-  //       assert.strictEqual(squashed.message, "failure")
-  //     }
-  //     assert.strictEqual(resource.error, undefined)
-  //     dispose()
-  //   })
-  // })
 })
 
+const render = (f: (dispose: () => void) => () => void) => {
+  const dispose = createRoot(f)
+  flush()
+  return dispose
+}
+
 const renderAtomRef = function<A>(ref: AtomRef.ReadonlyRef<A>, onValue: (_: A) => void) {
-  return createRoot((dispose) => {
-    const accessor = useAtomRef(() => ref)
-    createEffect(() => {
-      onValue(accessor())
-    })
+  return render((dispose) => {
+    watch(useAtomRef(() => ref), onValue)
     return dispose
   })
 }
 
 const renderAccessor = function<A>(makeAccessor: () => Accessor<A>, onValue: (_: A) => void) {
-  return createRoot((dispose) => {
-    const accessor = makeAccessor()
-    createEffect(() => {
-      onValue(accessor())
-    })
+  return render((dispose) => {
+    watch(makeAccessor(), onValue)
     return dispose
   })
 }
@@ -257,22 +288,15 @@ const renderAtomValue = function<A, B = A>(
   onValue: (_: B) => void,
   options?: { readonly registry?: AtomRegistry.AtomRegistry; readonly map?: (_: A) => B }
 ) {
-  return createRoot((dispose) => {
+  return render((dispose) => {
     const run = () => {
       const accessor = options?.map ? useAtomValue(() => atom, options.map) : useAtomValue(() => atom)
-      createEffect(() => {
-        onValue(accessor() as B)
-      })
+      watch(accessor as Accessor<B>, onValue)
       return null
     }
 
     if (options?.registry) {
-      createComponent(RegistryContext.Provider, {
-        value: options.registry,
-        get children() {
-          return run()
-        }
-      })
+      provideRegistry(options.registry, run)
     } else {
       run()
     }
@@ -281,21 +305,23 @@ const renderAtomValue = function<A, B = A>(
   })
 }
 
-const renderAtomResource = function<A, E>(
-  atom: () => Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-  options?: {
-    readonly suspendOnWaiting?: boolean | undefined
-  }
-) {
-  let resource:
-    | Resource<A>
-    | undefined
-  const dispose = createRoot((dispose) => {
-    ;[resource] = useAtomResource(atom, options)
-    createEffect(() => {
-      resource?.()
-    })
-    return dispose
+// The registry defers atom removal to its task queue, which defaults to
+// `setImmediate`. Waiting on a timer does not guarantee that queue has run, so
+// these tests queue the tasks themselves and run them on demand.
+const makeRegistry = () => {
+  const tasks: Array<() => void> = []
+  const registry = AtomRegistry.make({
+    scheduleTask(task) {
+      tasks.push(task)
+      return () => {
+        const index = tasks.indexOf(task)
+        if (index !== -1) tasks.splice(index, 1)
+      }
+    }
   })
-  return { resource: resource!, dispose }
+  const runRemovals = () => {
+    let task: (() => void) | undefined
+    while ((task = tasks.shift()) !== undefined) task()
+  }
+  return { registry, runRemovals }
 }
