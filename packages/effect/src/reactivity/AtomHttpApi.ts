@@ -271,14 +271,13 @@ export const Service =
           HttpClientError.HttpClientError | SchemaError
         >)
       }))
-      const staleTime = opts.staleTime
       if (opts.reactivityKeys) {
         atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
       }
       if (opts.responseMode === "decoded-only" && opts.serializationKey) {
         const endpoint = groups[opts.group].endpoints[opts.endpoint]
         atom = Atom.serializable(atom, {
-          skipInitialRun: staleTime !== undefined,
+          skipInitialRun: opts.staleTime !== undefined,
           key: `AtomHttpApi:${opts.group}:${opts.endpoint}:${opts.serializationKey}`,
           schema: AsyncResult.Schema({
             success: Schema.Union(HttpApiEndpoint.getSuccessSchemas(endpoint)),
@@ -291,7 +290,7 @@ export const Service =
           ? Atom.setIdleTTL(atom, opts.timeToLive)
           : Atom.keepAlive(atom)
       }
-      return staleTime !== undefined ? Atom.swr(atom, { staleTime }) : atom
+      return opts.staleTime !== undefined ? Atom.swr(atom, { staleTime: opts.staleTime }) : atom
     })
 
     self.query = ((

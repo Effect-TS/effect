@@ -1792,9 +1792,8 @@ export const transform: {
       readonly initialValueTarget?: Atom<B> | undefined
     }
   ): Atom<B> => {
-    const refresh: NonNullable<Atom<A>["refresh"]> = isSerializable(self) || !self.refresh
-      ? (refresh) => refresh(self)
-      : self.refresh
+    // Forward through the registry so a serializable source resolves to its shared node.
+    const refresh = (refresh: (atom: Atom<any>) => void) => refresh(self)
     const atom = removeTtl(
       isWritable(self)
         ? writable(
