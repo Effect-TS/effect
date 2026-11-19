@@ -63,10 +63,9 @@ const longestRun = (text: string, char: string): number => {
   return longest
 }
 
-/** One element's content: text, a named link, or a mention token. */
+/** One element's content: plain text, or a mention token. */
 type Piece =
   | { readonly _tag: "text"; readonly text: string; readonly markdown?: true }
-  | { readonly _tag: "link"; readonly label: string; readonly url: string }
   | { readonly _tag: "mention"; readonly token: string; readonly kind: Mention["kind"]; readonly id: string }
 
 const emojiText = (element: JsonObject): string => {
@@ -82,21 +81,17 @@ const emojiText = (element: JsonObject): string => {
   return Emoji.fromName(full) ?? Emoji.fromName(name) ?? `:${full}:`
 }
 
-/** Escapes unmatched parentheses without rewriting balanced link destinations. */
-const escapeLinkDestination = (url: string): string => {
+/** CommonMark accepts unescaped parentheses in a destination only when they nest in pairs. */
+const linkDestination = (url: string): string => {
   let depth = 0
   for (const char of url) {
-    if (char === "(") {
-      depth++
-    } else if (char === ")") {
-      depth--
-      if (depth < 0) break
-    }
+    if (char === "(") depth++
+    if (char === ")" && --depth < 0) break
   }
-  return depth === 0 ? url : url.replace(/[()]/g, "\\$&")
+  return depth === 0 ? url : url.replace(/[()\\]/g, "\\$&")
 }
 
-const pieceOf = (element: JsonObject): Piece => {
+const pieceOf = (element: JsonObject, inCode: boolean): Piece => {
   switch (element.type) {
     case "text":
       return { _tag: "text", text: stringOf(element, "text") ?? "" }
@@ -106,9 +101,11 @@ const pieceOf = (element: JsonObject): Piece => {
       // Slack stores a bare URL as a link whose text is the URL without its scheme.
       const bare = text === undefined || text === "" || text === url ||
         text === url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
-      return bare
-        ? { _tag: "text", text: url, markdown: true }
-        : { _tag: "link", label: escapeInline(text), url }
+      return {
+        _tag: "text",
+        text: bare ? url : `[${escapeInline(text)}](${inCode ? url : linkDestination(url)})`,
+        markdown: true
+      }
     }
     case "user": {
       const id = stringOf(element, "user_id")
@@ -140,18 +137,7 @@ const pieceOf = (element: JsonObject): Piece => {
   return { _tag: "text", text: stringOf(element, "text") ?? "" }
 }
 
-const formatLink = (label: string, url: string): string => `[${label}](${url})`
-
-const pieceText = (piece: Piece): string => {
-  switch (piece._tag) {
-    case "text":
-      return piece.text
-    case "link":
-      return formatLink(piece.label, piece.url)
-    case "mention":
-      return piece.token
-  }
-}
+const pieceText = (piece: Piece): string => piece._tag === "text" ? piece.text : piece.token
 
 const wordChar = /[\p{L}\p{N}]/u
 const asciiPunctuation = /[!-/:-@[-`{-~]/
@@ -215,7 +201,6 @@ const write = (writer: Writer, text: string): void => {
 /** Writes a piece outside code: a link as built, other text escaped, a mention as its token. */
 const writePiece = (writer: Writer, piece: Piece, text = pieceText(piece)): void => {
   if (piece._tag === "mention") return mention(writer, piece)
-  if (piece._tag === "link") return write(writer, formatLink(piece.label, escapeLinkDestination(piece.url)))
   if (piece.markdown === true) return write(writer, text)
   write(writer, literal(text, writer.out === "" || writer.out.endsWith("\n")))
 }
@@ -244,7 +229,10 @@ const newline = (writer: Writer): void => {
  * a literal.
  */
 const inline = (writer: Writer, elements: ReadonlyArray<unknown>): void => {
-  const items = elements.filter(isObject).map((element) => ({ piece: pieceOf(element), style: styleOf(element) }))
+  const items = elements.filter(isObject).map((element) => {
+    const style = styleOf(element)
+    return { piece: pieceOf(element, style.code), style }
+  })
   let i = 0
   while (i < items.length) {
     const style = items[i].style
@@ -319,7 +307,7 @@ const block = (writer: Writer, element: unknown): void => {
       return inline(writer, elementsOf(element))
     case "rich_text_preformatted": {
       // A fence holds no mention: every token is literal.
-      const content = elementsOf(element).filter(isObject).map((child) => pieceText(pieceOf(child))).join("")
+      const content = elementsOf(element).filter(isObject).map((child) => pieceText(pieceOf(child, true))).join("")
       const fence = "`".repeat(Math.max(3, longestRun(content, "`") + 1))
       write(writer, fence + "\n" + content + (content.endsWith("\n") ? "" : "\n") + fence)
       return
