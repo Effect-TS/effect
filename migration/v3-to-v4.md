@@ -5425,7 +5425,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `CliApp.CliApp.ConstructorArgs` -> `none`: Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed.
 
-- `CliApp.CliApp.Environment` -> `Command.Environment`: Use Command.Environment. It adds ChildProcessSpawner and Stdio to FileSystem, Path and Terminal; NodeServices.layer and BunServices.layer provide all five.
+- `CliApp.CliApp.Environment` -> `Command.Environment`: Adds ChildProcessSpawner and Stdio to FileSystem, Path and Terminal; NodeServices.layer and BunServices.layer provide all five.
 
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
@@ -6133,7 +6133,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
 
-- `EventLog.Registry` -> `effect/eventlog/EventLog#Registry`: Import Registry from the v4 EventLog module. add(handlers) became registerHandlerUnsafe({ event, handler }), handlers is a ReadonlyMap instead of an Effect of a record, and the static Registry.layer became EventLog.layerRegistry. The service also registers compactors, remotes and reactivity keys.
+- `EventLog.Registry` -> `effect/eventlog/EventLog#Registry`: Import Registry from the v4 EventLog module. add(handlers) became registerHandlerUnsafe({ event, handler }), handlers is a ReadonlyMap instead of an Effect of a record, and the static Registry.layer became EventLog.layerRegistry.
 
 - `EventLog.SchemaTypeId` -> `effect/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
 
@@ -9229,7 +9229,7 @@ Arbitrary.schema(schema)
 
 - `Brand.error` -> `Brand.make`: Return a string or Schema filter issue directly from a Brand.make validator.
 
-- `Brand.errors` -> `Brand.make`: Return an array of strings or Schema filter issues from a Brand.make validator to report several failures together; they are combined into one BrandError.
+- `Brand.errors` -> `Brand.make`: Return an array of strings or Schema filter issues from a Brand.make validator; they are combined into one BrandError.
 
 - `Brand.nominal` -> `Brand.nominal`: Still exported; the constructor's either method is now result.
 
@@ -10721,7 +10721,7 @@ Arbitrary.schema(schema)
 
 - `Equivalence.string` -> `Equivalence.String`: Capitalized instance name; case-sensitive strict equality is unchanged.
 
-- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares own enumerable symbol fields; non-enumerable field definitions are ignored, as in v3.
+- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares own enumerable symbol fields.
 
 - `Equivalence.symbol` -> `Equivalence.strictEqual<symbol>()`: There is no Symbol instance export; strictEqual preserves the v3 symbol comparison.
 
@@ -10833,7 +10833,7 @@ Arbitrary.schema(schema)
 
 - `FastCheck.CloneValue`: TODO: needs guidance
 
-- `FastCheck.Command` -> `FastCheck.Command`: Depend on fast-check and import it directly. The model-based testing Command interface is unchanged.
+- `FastCheck.Command` -> `FastCheck.Command`: Depend on fast-check and import it directly. The API is unchanged.
 
 - `FastCheck.CommandsContraints`: TODO: needs guidance
 
