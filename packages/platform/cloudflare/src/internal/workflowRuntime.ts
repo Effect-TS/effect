@@ -22,7 +22,6 @@ import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { decodeName, encodeName } from "./clusterName.ts"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
-import { runFork, runPromise } from "./runtime.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
@@ -41,7 +40,7 @@ const resumeGuardMillis = 60_000
 let voidExitCache: Promise<string> | undefined
 const voidExitText = (): Promise<
   string
-> => (voidExitCache ??= runPromise(encodeExit(Exit.void, Context.empty())))
+> => (voidExitCache ??= Effect.runPromise(encodeExit(Exit.void, Context.empty())))
 
 const mergeWake = (
   current: WorkflowStorage.WakeMode | undefined,
@@ -50,6 +49,8 @@ const mergeWake = (
 
 /** @internal */
 export interface WorkflowRuntimeOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   readonly name: string
   readonly sql: SqlStorage
   readonly alarm: EntityAlarm
@@ -79,6 +80,9 @@ interface Inflight {
 
 /** @internal */
 export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRuntime => {
+  const context = options.context ?? Context.empty()
+  const runPromise = Effect.runPromiseWith(context)
+  const runFork = Effect.runForkWith(context)
   const name = decodeName(options.name)
   if (name === undefined) {
     throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")

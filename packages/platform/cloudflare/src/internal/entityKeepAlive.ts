@@ -10,12 +10,12 @@
  *
  * @internal
  */
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
 import * as Schedule from "effect/Schedule"
-import { runFork } from "./runtime.ts"
 
 /** @internal */
 export interface EntityKeepAlive {
@@ -31,6 +31,8 @@ export interface EntityKeepAlive {
 
 /** @internal */
 export interface EntityKeepAliveOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   /** Starts the self `hold()` RPC; the promise settles when the hold ends. */
   readonly startHold: () => Promise<void>
   /** The persisted flag, read when the Durable Object starts. */
@@ -46,6 +48,8 @@ export interface EntityKeepAliveOptions {
 
 /** @internal */
 export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeepAlive => {
+  const context = options.context ?? Context.empty()
+  const runFork = Effect.runForkWith(context)
   const latch = Latch.makeUnsafe(true)
   let holders = 0
   let wanted = options.wanted

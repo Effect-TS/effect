@@ -10,11 +10,9 @@
  * @stability experimental
  * @since 4.1.3
  */
-import * as Workers from "cloudflare:workers"
 import { DurableObject } from "cloudflare:workers"
 import * as Context from "effect/Context"
-import * as Scheduler from "effect/Scheduler"
-import * as Tracer from "effect/Tracer"
+import * as Effect from "effect/Effect"
 import {
   type ClusterDurableQueueProgram,
   type ClusterEntityProgram,
@@ -31,23 +29,6 @@ import {
   makeClusterWorkflowProgram,
   type SingletonWakeResult
 } from "./CloudflareDurableObjectPrograms.ts"
-import { CloudflareScheduler } from "./CloudflareScheduler.ts"
-import * as CloudflareTracer from "./CloudflareTracer.ts"
-import { runPromise, setDefaults } from "./internal/runtime.ts"
-
-setDefaults(() => {
-  let context = Context.empty()
-  try {
-    context = Context.add(context, Scheduler.Scheduler, new CloudflareScheduler())
-  } catch {}
-  const tracing: any = (Workers as any).tracing
-  if (typeof tracing?.startSpan === "function" && typeof tracing.withActiveSpan === "function") {
-    try {
-      context = Context.add(context, Tracer.Tracer, CloudflareTracer.make())
-    } catch {}
-  }
-  return context
-})
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -185,13 +166,17 @@ const runInitializer = async (run: Initializer, env: unknown): Promise<unknown> 
 const blockOnInitialization = (
   ctx: DurableObjectState,
   env: unknown,
-  after?: (() => Promise<unknown>) | undefined
+  after: (run: Run) => Promise<unknown>
 ): void => {
   void ctx.blockConcurrencyWhile(async () => {
-    await waitForInitialization(env, durableObjectTakeoverMillis)
-    if (after !== undefined) await after()
+    const application = await waitForInitialization(env, durableObjectTakeoverMillis)
+    // The classes run their effects with the application context the
+    // initializer returned, so its scheduler, tracer and loggers apply.
+    await after(Effect.runPromiseWith(Context.isContext(application) ? application : Context.empty()))
   })
 }
+
+type Run = <A, E>(effect: Effect.Effect<A, E>) => Promise<A>
 
 /**
  * The shared entity class. One instance holds one entity address; the handlers
@@ -214,46 +199,48 @@ const blockOnInitialization = (
 export class ClusterEntity extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterEntityProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await runPromise(makeClusterEntityProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterEntityProgram(ctx))
     })
   }
 
   override alarm(): Promise<void> {
-    return runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   /** @internal Keeps this object non-hibernateable while entity resources have holders. */
   hold(): Promise<void> {
-    return runPromise(this.#program.hold())
+    return this.#run(this.#program.hold())
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
   invoke(envelopeText: string, discard: boolean, delivery?: EntityDeliveryOptions): Promise<EntityInvokeResult> {
-    return runPromise(this.#program.invoke(envelopeText, discard, delivery))
+    return this.#run(this.#program.invoke(envelopeText, discard, delivery))
   }
 
   /** @internal Acknowledges a streamed chunk. */
   acknowledge(requestId: string, replyId: string): Promise<ReadonlyArray<string>> {
-    return runPromise(this.#program.acknowledge(requestId, replyId))
+    return this.#run(this.#program.acknowledge(requestId, replyId))
   }
 
   /** @internal Interrupts a handler execution and completes its persisted ask, if any. */
   interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
-    return runPromise(this.#program.interrupt(storageRequestId, clientRequestId))
+    return this.#run(this.#program.interrupt(storageRequestId, clientRequestId))
   }
 
   /** @internal Clears stored replies so a reset request replays from scratch. */
   reset(requestId: string): Promise<void> {
-    return runPromise(this.#program.reset(requestId))
+    return this.#run(this.#program.reset(requestId))
   }
 
   /** @internal Completes an in-memory delayed ask owned by this entity object. */
   deliverReply(requestId: string, reply: string): Promise<boolean> {
-    return runPromise(this.#program.deliverReply(requestId, reply))
+    return this.#run(this.#program.deliverReply(requestId, reply))
   }
 
   override fetch: () => never = notExposed("ClusterEntity")
@@ -279,51 +266,53 @@ export class ClusterEntity extends DurableObject<unknown> {
 export class ClusterWorkflow extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterWorkflowProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await runPromise(makeClusterWorkflowProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterWorkflowProgram(ctx))
     })
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
   run(payload: string, options: ClusterWorkflowRunOptions): Promise<string> {
-    return runPromise(this.#program.run(payload, options))
+    return this.#run(this.#program.run(payload, options))
   }
 
   /** @internal */
   poll(): Promise<string | undefined> {
-    return runPromise(this.#program.poll())
+    return this.#run(this.#program.poll())
   }
 
   /** @internal */
   resume(mode?: ClusterWorkflowWakeMode): Promise<void> {
-    return runPromise(this.#program.resume(mode))
+    return this.#run(this.#program.resume(mode))
   }
 
   /** @internal */
   interrupt(): Promise<void> {
-    return runPromise(this.#program.interrupt())
+    return this.#run(this.#program.interrupt())
   }
 
   /** @internal */
   interruptUnsafe(): Promise<void> {
-    return runPromise(this.#program.interruptUnsafe())
+    return this.#run(this.#program.interruptUnsafe())
   }
 
   /** @internal Records a durable deferred exit and resumes the execution. */
   deferredDone(name: string, exit: string): Promise<void> {
-    return runPromise(this.#program.deferredDone(name, exit))
+    return this.#run(this.#program.deferredDone(name, exit))
   }
 
   /** @internal Persists a durable clock and arms the single alarm. */
   scheduleClock(name: string, deferredName: string, wakeUp: number): Promise<void> {
-    return runPromise(this.#program.scheduleClock(name, deferredName, wakeUp))
+    return this.#run(this.#program.scheduleClock(name, deferredName, wakeUp))
   }
 
   override alarm(): Promise<void> {
-    return runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterWorkflow")
@@ -348,11 +337,13 @@ export class ClusterWorkflow extends DurableObject<unknown> {
 export class ClusterDurableQueue extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterDurableQueueProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await runPromise(makeClusterDurableQueueProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterDurableQueueProgram(ctx))
     })
   }
 
@@ -363,22 +354,22 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     delayMillis?: number,
     deduplicate?: "untilExecuted" | "untilRemoved"
   ): Promise<void> {
-    return runPromise(this.#program.offer(id, element, delayMillis, deduplicate))
+    return this.#run(this.#program.offer(id, element, delayMillis, deduplicate))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
   take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<DurableQueueItem> {
-    return runPromise(this.#program.take(takerId, maxAttempts, leaseMillis))
+    return this.#run(this.#program.take(takerId, maxAttempts, leaseMillis))
   }
 
   /** @internal Cancels a waiting take, releasing an item already leased to it. */
   cancelTake(takerId: string): Promise<void> {
-    return runPromise(this.#program.cancelTake(takerId))
+    return this.#run(this.#program.cancelTake(takerId))
   }
 
   /** @internal Completes the item while the taker still owns its lease. */
   complete(id: string, takerId: string): Promise<void> {
-    return runPromise(this.#program.complete(id, takerId))
+    return this.#run(this.#program.complete(id, takerId))
   }
 
   /**
@@ -387,21 +378,21 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
    * for `retryDelayMillis`.
    */
   fail(id: string, lastFailure: string, takerId: string, terminal?: boolean, retryDelayMillis?: number): Promise<void> {
-    return runPromise(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
+    return this.#run(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
   }
 
   /** @internal Requeues the item and refunds the attempt its lease counted. */
   release(id: string, takerId: string): Promise<void> {
-    return runPromise(this.#program.release(id, takerId))
+    return this.#run(this.#program.release(id, takerId))
   }
 
   /** @internal Extends the lease of an item still being processed. */
   extend(id: string, leaseMillis: number, takerId: string): Promise<void> {
-    return runPromise(this.#program.extend(id, leaseMillis, takerId))
+    return this.#run(this.#program.extend(id, leaseMillis, takerId))
   }
 
   override alarm(): Promise<void> {
-    return runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterDurableQueue")
@@ -429,21 +420,23 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
 export class ClusterSingleton extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterSingletonProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await runPromise(makeClusterSingletonProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterSingletonProgram(ctx))
     })
   }
 
   /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
   wake(): Promise<SingletonWakeResult> {
-    return runPromise(this.#program.wake())
+    return this.#run(this.#program.wake())
   }
 
   override alarm(): Promise<void> {
-    return runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterSingleton")

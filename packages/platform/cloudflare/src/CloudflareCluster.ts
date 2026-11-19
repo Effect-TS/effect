@@ -43,6 +43,7 @@ import * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
 import * as CloudflareWorkflowEngine from "./CloudflareWorkflowEngine.ts"
 import { setWithEviction } from "./internal/boundedMap.ts"
 import * as Internal from "./internal/clusterName.ts"
+import * as Defaults from "./internal/defaults.ts"
 import {
   defaultKeepAliveHeartbeatMillis,
   registerEntity as registerEntityHandler,
@@ -50,7 +51,6 @@ import {
 } from "./internal/entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry } from "./internal/entityReply.ts"
 import { decodeInvokeResult, decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
-import * as Runtime from "./internal/runtime.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
 import { boundedRetry, callDurableObject } from "./internal/transport.ts"
 
@@ -621,11 +621,10 @@ export const layer = (
   options: LayerOptions
 ): Layer.Layer<Sharding | WorkflowEngine | PersistedQueueFactory> =>
   Layer.mergeAll(
-    Runtime.layer,
     Layer.effect(Sharding, make(options)),
     CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace }),
     CloudflarePersistedQueue.layer({ queueNamespace: options.queueNamespace })
-  )
+  ).pipe(Layer.provideMerge(Defaults.layer))
 
 /**
  * An `SqlClient` on the current entity Durable Object's own SQLite storage.

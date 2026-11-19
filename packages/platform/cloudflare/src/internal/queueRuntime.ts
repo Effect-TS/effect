@@ -14,6 +14,7 @@
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
@@ -30,10 +31,11 @@ import {
   releaseItem,
   releaseOwnedItem
 } from "./queueStorage.ts"
-import { runPromise } from "./runtime.ts"
 
 /** @internal */
 export interface QueueRuntimeOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   readonly sql: SqlStorage
   readonly alarm: EntityAlarm
   readonly now: () => number
@@ -71,6 +73,8 @@ interface Waiter {
 
 /** @internal */
 export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => {
+  const context = options.context ?? Context.empty()
+  const runPromise = Effect.runPromiseWith(context)
   const sql = options.sql
   ensureQueueStorage(sql)
 
