@@ -135,6 +135,24 @@ describe("HttpServer", () => {
       assert.strictEqual(next.status, 503)
     }).pipe(Effect.provide(layerHttp2Client())))
 
+  it.live("restores the fallback only after the last serve scope closes", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const emit = server.emit
+      const http = yield* NodeHttpServer.make(() => server, { port: 0, disablePreemptiveShutdown: true })
+      const first = yield* Scope.make()
+      const last = yield* Scope.make()
+      const serve = http.serve(Effect.succeed(HttpServerResponse.empty({ status: 204 })))
+      yield* serve.pipe(Scope.provide(first))
+      yield* serve.pipe(Scope.provide(last))
+      const url = `http://127.0.0.1:${tcpPort(server)}/`
+      yield* Scope.close(first, Exit.void)
+      assert.strictEqual(server.emit, emit)
+      assert.strictEqual((yield* HttpClient.get(url)).status, 204)
+      yield* Scope.close(last, Exit.void)
+      assert.strictEqual((yield* HttpClient.get(url)).status, 503)
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(FetchHttpClient.layer)))
+
   it.effect("does not restore a startup listener after the server scope closes", () =>
     Effect.gen(function*() {
       const server = Http.createServer()

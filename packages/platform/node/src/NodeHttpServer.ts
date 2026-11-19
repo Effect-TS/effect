@@ -233,6 +233,7 @@ export const make = Effect.fnUntraced(function*(
 
   // A request listener would enable HTTP/2 compatibility mode and change native CONNECT handling.
   const nativeStreams = new WeakSet<Http2.ServerHttp2Stream>()
+  let activeServes = 0
   let removeFallback: (() => void) | undefined
   const installFallback = () => {
     if (removeFallback || scope.state._tag === "Closed") return
@@ -331,6 +332,11 @@ export const make = Effect.fnUntraced(function*(
         pendingContinue.add(request)
         handler(request, response)
       }
+      activeServes++
+      removeFallback?.()
+      server.on("request", handler)
+      server.on("checkContinue", checkContinueHandler)
+      server.on("upgrade", trackedUpgrade)
       yield* Scope.addFinalizerExit(serveScope, () => {
         upgradesClosed = true
         for (const socket of upgradedSockets) {
@@ -347,14 +353,10 @@ export const make = Effect.fnUntraced(function*(
             server.off("request", handler)
             server.off("checkContinue", checkContinueHandler)
             server.off("upgrade", trackedUpgrade)
-            installFallback()
+            if (--activeServes === 0) installFallback()
           })
         )
       })
-      removeFallback?.()
-      server.on("request", handler)
-      server.on("checkContinue", checkContinueHandler)
-      server.on("upgrade", trackedUpgrade)
     })
   })
 })
