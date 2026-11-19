@@ -195,24 +195,6 @@ export interface Semaphore {
   readonly releaseAll: Effect.Effect<number>
 }
 
-const TraceWait: unique symbol = Symbol.for("effect/Semaphore/TraceWait")
-
-/**
- * A semaphore created by {@link make} or {@link makeUnsafe} that supports
- * tracing the time spent queued for permits with {@link withPermitsTraced}.
- *
- * @stability stable
- * @category models
- * @since 4.2.0
- */
-export interface Traceable extends Semaphore {
-  readonly [TraceWait]: (
-    permits: number,
-    spanName: string,
-    options?: Tracer.SpanOptionsNoTrace
-  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-}
-
 /**
  * Creates a `Semaphore` synchronously with the specified total
  * number of permits.
@@ -253,7 +235,7 @@ export interface Traceable extends Semaphore {
  * @category constructors
  * @since 4.0.0
  */
-export const makeUnsafe = (permits: number): Traceable => new SemaphoreImpl(permits)
+export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(permits)
 
 /**
  * Checks whether a value is a `Semaphore`.
@@ -356,7 +338,7 @@ const withPermitsImpl =
       )
     )
 
-class SemaphoreImpl implements Traceable {
+class SemaphoreImpl implements Semaphore {
   readonly [TypeId] = TypeId
   public waiters = new Set<Waiter>()
   // A lower bound on the permits of queued requests. Removals leave it stale
@@ -442,10 +424,6 @@ class SemaphoreImpl implements Traceable {
     return withPermitsImpl(this, n)
   }
 
-  [TraceWait](n: number, spanName: string, options?: Tracer.SpanOptionsNoTrace) {
-    return withPermitsImpl(this, n, spanName, options)
-  }
-
   readonly withPermit = this.withPermits(1)
 
   withPermitsIfAvailable(n: number) {
@@ -496,7 +474,7 @@ class SemaphoreImpl implements Traceable {
  * @category constructors
  * @since 4.0.0
  */
-export const make = (permits: number): Effect.Effect<Traceable> => internal.sync(() => new SemaphoreImpl(permits))
+export const make = (permits: number): Effect.Effect<Semaphore> => internal.sync(() => new SemaphoreImpl(permits))
 
 /**
  * Sets the total number of permits managed by the semaphore.
@@ -558,8 +536,9 @@ export const withPermits: {
 /**
  * Runs an effect with permits, creating a child span only if acquisition queues.
  * The span ends on acquisition or interruption and never wraps the effect body.
- * Permits are released when the body exits. Pass a semaphore from {@link make}
- * or {@link makeUnsafe}; the base {@link Semaphore} interface does not expose queue tracing.
+ * Permits are released when the body exits. Pass the semaphore returned by
+ * {@link make} or {@link makeUnsafe}, not a wrapper that forwards its public methods:
+ * tracing observes the semaphore’s internal wait queue.
  *
  * **When to use**
  *
@@ -573,11 +552,12 @@ export const withPermits: {
  * @since 4.2.0
  */
 export const withPermitsTraced = (
-  self: Traceable,
+  self: Semaphore,
   permits: number,
   spanName: string,
   options?: Tracer.SpanOptionsNoTrace
-): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> => self[TraceWait](permits, spanName, options)
+): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
+  withPermitsImpl(self as SemaphoreImpl, permits, spanName, options)
 
 /**
  * Runs an effect with a single permit and releases the permit when the effect
