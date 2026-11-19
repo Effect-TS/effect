@@ -2067,10 +2067,10 @@ class Utf8Input implements Machine<Uint8Array, Event> {
 
 interface MutableElement {
   readonly name: string
-  namespace?: string | undefined
-  localName?: string | undefined
   readonly attributes: Readonly<Record<string, string>>
   readonly children: Array<MutableElement | string>
+  readonly namespace?: string | undefined
+  readonly localName?: string | undefined
 }
 
 // A path segment: "*", a name as written, or a local name and a namespace,
@@ -2082,7 +2082,7 @@ const parseSegment = (segment: string): Segment => {
   // The last "}" ends the namespace: a namespace can contain "}", a local name cannot
   const close = segment.lastIndexOf("}")
   const localName = segment.slice(close + 1)
-  if (segment.startsWith("{") && close !== -1 && isName(localName) && !localName.includes(":")) {
+  if (segment.startsWith("{") && isName(localName) && !localName.includes(":")) {
     const namespace = segment.slice(1, close)
     return { namespace: namespace === "*" ? undefined : namespace, localName }
   }
@@ -2126,11 +2126,15 @@ class Collector implements Machine<Event, Element> {
           if (++this.matched < this.path.length) return
           this.size = 0
         }
-        const element: MutableElement = { name: event.name, attributes: event.attributes, children: [] }
-        if (event.localName !== undefined) {
-          element.namespace = event.namespace
-          element.localName = event.localName
-        }
+        const element: MutableElement = event.localName === undefined ?
+          { name: event.name, attributes: event.attributes, children: [] } :
+          {
+            name: event.name,
+            attributes: event.attributes,
+            children: [],
+            namespace: event.namespace,
+            localName: event.localName
+          }
         if (this.stack.length > 0) this.stack[this.stack.length - 1].children.push(element)
         this.stack.push(element)
         let size = event.name.length
