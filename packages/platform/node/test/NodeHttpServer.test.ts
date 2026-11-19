@@ -116,9 +116,11 @@ describe("HttpServer", () => {
         if (event === "request") {
           server.once("request", (_request, response) => response.end("created"))
         } else {
-          server.once("stream", (stream) => setImmediate(() => stream.end("created")))
+          server.once("listening", () =>
+            server.prependOnceListener("stream", (stream) => setImmediate(() => stream.end("created"))))
         }
-        yield* NodeHttpServer.make(() => server, { host: "127.0.0.1", port: 0 })
+        yield* NodeHttpServer.make(() =>
+          server, { host: "127.0.0.1", port: 0 })
         const url = `http://127.0.0.1:${tcpPort(server)}/`
         const first = yield* HttpClient.get(url)
         assert.strictEqual(first.status, 200)
@@ -129,15 +131,34 @@ describe("HttpServer", () => {
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client()))
   )
 
+  it.live("preserves native HTTP/2 CONNECT dispatch during startup", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer().on("stream", (stream) => stream.end("native"))
+      yield* NodeHttpServer.make(() => server, { port: 0 })
+      const session = yield* Effect.acquireRelease(
+        Effect.sync(() => Http2.connect(`http://127.0.0.1:${tcpPort(server)}`)),
+        (session) => Effect.sync(() => session.destroy())
+      )
+      const status = yield* Effect.callback<number, Error>((resume) => {
+        const stream = session.request({ ":method": "CONNECT", ":authority": "localhost" })
+        stream.on("error", (error) => resume(Effect.fail(error)))
+        stream.on("response", (headers) => resume(Effect.succeed(headers[":status"]!)))
+        stream.end()
+      }).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(status, 200)
+    }))
+
   it.effect("does not restore a startup listener after the server scope closes", () =>
     Effect.gen(function*() {
       const server = Http.createServer()
+      const emit = server.emit
       const owner = yield* Scope.make()
       const app = yield* Scope.make()
       const http = yield* NodeHttpServer.make(() => server, { port: 0 }).pipe(Scope.provide(owner))
       yield* http.serve(Effect.succeed(HttpServerResponse.empty())).pipe(Scope.provide(app))
       yield* Scope.close(owner, Exit.void)
       yield* Scope.close(app, Exit.void)
+      assert.strictEqual(server.emit, emit)
       assert.strictEqual(server.listenerCount("request"), 0)
     }))
 
