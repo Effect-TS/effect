@@ -754,18 +754,20 @@ export const make = (
   return self
 }
 
-// Allow inherited branch methods, but never dispatch to Object.prototype.
+// Allow inherited branch methods, but never dispatch to Object.prototype or
+// to the constructor a class prototype carries.
 const dialectBranch = (
   options: Record<string, (() => any) | undefined>,
   dialect: Dialect
 ): (() => any) | undefined => {
   for (
-    let proto: object | null = options;
+    let proto: Record<string, any> | null = options;
     proto !== null && proto !== Object.prototype;
     proto = Object.getPrototypeOf(proto)
   ) {
     if (Object.hasOwn(proto, dialect)) {
-      return options[dialect]
+      const branch = proto[dialect]
+      return proto !== options && dialect === "constructor" && branch?.prototype === proto ? undefined : branch
     }
   }
   return undefined

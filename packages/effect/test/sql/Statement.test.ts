@@ -43,6 +43,24 @@ describe("Statement", () => {
       }
     }
     assert.strictEqual(sql.onDialect(new Branches()), "receiver")
+
+    const ctor = Statement.make(
+      Effect.die("unexpected query"),
+      Statement.makeCompiler({ ...sparkOptions, dialect: "constructor" }),
+      [],
+      undefined
+    )
+    class Fallback {
+      pg() {
+        return 1
+      }
+      orElse() {
+        return "fallback"
+      }
+    }
+    assert.strictEqual(ctor.onDialectOrElse(new Fallback()), "fallback")
+    assert.throws(() => ctor.onDialect(new Fallback()), /Unsupported SQL dialect "constructor"/)
+    assert.strictEqual(ctor.onDialect({ constructor: () => "explicit" }), "explicit")
   })
 
   it.effect("rejects unsupported storage dialects before acquiring a connection", () =>
