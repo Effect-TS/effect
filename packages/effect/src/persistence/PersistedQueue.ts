@@ -2419,7 +2419,7 @@ const sqlMigrations = (tableName: string) =>
             WHERE state = 'pending'`
       })
     }),
-    // SERIAL creates an integer sequence, which 0002 did not widen
+    // Migration 0002 widened the column but not its SERIAL sequence.
     "0003_widen_sequence": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       yield* sql.onDialectOrElse({
@@ -2428,9 +2428,8 @@ const sqlMigrations = (tableName: string) =>
           const [row] = yield* sql<{ readonly sequence: string | null }>`
             SELECT pg_get_serial_sequence(${relation}, 'sequence') AS sequence
           `
-          // PostgreSQL returns the schema-qualified, quoted sequence name, or
-          // NULL when the column does not own a sequence.
           if (row.sequence !== null) {
+            // PostgreSQL already quotes and qualifies the sequence name.
             yield* sql`ALTER SEQUENCE ${sql.literal(row.sequence)} AS bigint`
           }
         }),

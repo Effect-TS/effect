@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix PostgreSQL `PersistedQueue` offers failing after the queue sequence reaches 2147483647.
+Allow PostgreSQL `PersistedQueue` offers to continue past the 32-bit sequence limit.
