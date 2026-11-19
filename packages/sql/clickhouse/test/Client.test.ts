@@ -1,13 +1,16 @@
 import * as Clickhouse from "@clickhouse/client"
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Stream } from "effect"
+import { Effect, Fiber, ManagedRuntime, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
+import { once } from "node:events"
+import { createServer } from "node:http"
+import type { AddressInfo } from "node:net"
 import { Readable } from "node:stream"
-import { vi } from "vitest"
+import { beforeEach, vi } from "vitest"
 
 let closeCalls = 0
 let connectImmediately = false
@@ -267,4 +270,56 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       })),
       Effect.provide(Reactivity.layer)
     ))
+})
+
+describe("ClickhouseClient startup validation", { concurrent: false }, () => {
+  let url: string
+  let available: boolean
+  let requests: Array<string>
+
+  beforeEach(async () => {
+    const driver = await vi.importActual<typeof Clickhouse>("@clickhouse/client")
+    vi.mocked(Clickhouse.createClient).mockImplementationOnce(driver.createClient)
+    available = false
+    requests = []
+    const server = createServer((req, res) => {
+      requests.push(req.url!.split("?")[0])
+      if (!available) {
+        res.writeHead(503).end("Service unavailable")
+      } else {
+        res.setHeader("Content-Type", "application/json")
+        res.end(JSON.stringify({ data: [{ one: 1 }], rows: 1 }))
+      }
+    }).listen(0, "127.0.0.1")
+    await once(server, "listening")
+    url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    return () => server[Symbol.asyncDispose]()
+  })
+
+  it("fails to build by default when ClickHouse is unavailable", async () => {
+    const runtime = ManagedRuntime.make(ClickhouseClient.layer({ url }))
+    try {
+      const error = await runtime.runPromise(Effect.void).catch((error) => error)
+      assert.strictEqual(error?.reason?._tag, "ConnectionError")
+      assert.deepStrictEqual(requests, ["/ping"])
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it("skips startup requests and recovers on the same runtime with validation disabled", async () => {
+    const runtime = ManagedRuntime.make(ClickhouseClient.layer({ url, validateConnection: false }))
+    const select = Effect.flatMap(ClickhouseClient.ClickhouseClient, (sql) => sql`SELECT 1 AS one`)
+    try {
+      await runtime.runPromise(Effect.void)
+      assert.deepStrictEqual(requests, [])
+      const error = await runtime.runPromise(Effect.flip(select))
+      assert.strictEqual(error._tag, "SqlError")
+      available = true
+      assert.deepStrictEqual(await runtime.runPromise(select), [{ one: 1 }])
+      assert.deepStrictEqual(requests, ["/", "/"])
+    } finally {
+      await runtime.dispose()
+    }
+  })
 })
