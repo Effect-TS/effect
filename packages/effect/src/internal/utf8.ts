@@ -1,6 +1,7 @@
 // UTF-8 decoding for binary codecs, with a fast path for short ASCII strings.
 
 const fatal = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+const lax = new TextDecoder("utf-8", { ignoreBOM: true })
 
 // Up to this length, ASCII is decoded by hand, which avoids the fixed cost of
 // `TextDecoder`.
@@ -25,6 +26,20 @@ export const decode = (buf: Uint8Array, start: number, end: number): string | un
   } catch {
     return undefined
   }
+}
+
+/**
+ * The string of the UTF-8 bytes from `start` to `end`, with replacement
+ * characters for invalid UTF-8. A byte order mark is kept.
+ *
+ * @internal
+ */
+export const decodeLax = (buf: Uint8Array, start: number, end: number): string => {
+  if (end - start <= INLINE_LIMIT) {
+    const ascii = decodeAscii(buf, start, end)
+    if (ascii !== undefined) return ascii
+  }
+  return lax.decode(buf.subarray(start, end))
 }
 
 // Sixteen and eight code unit blocks, checking their high bits together and

@@ -93,11 +93,11 @@ const UnserializableResultTool = Tool.make("UnserializableResultTool", {
   success: Schema.Unknown
 })
 
-const UntypedTool = Tool.make("UntypedTool")
+const UntypedTool = Tool.make("UntypedTool").annotate(Tool.Readonly, true)
 
 const StructuredResultTool = Tool.make("StructuredResultTool", {
   success: Schema.Struct({ answer: Schema.String })
-})
+}).annotate(Tool.Readonly, true).annotate(Tool.Destructive, true)
 
 const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
   success: Schema.Void.annotate({ description: "No output" })
@@ -1839,6 +1839,34 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("does not scan the registration context once per tool", () =>
+      Effect.gen(function*() {
+        const first = Tool.make("first")
+        const second = Tool.make("second")
+        const handlers = Toolkit.make(first, second).toLayer({ first: () => Effect.void, second: () => Effect.void })
+        const scans = Effect.fnUntraced(function*(...tools: Array<typeof first | typeof second>) {
+          let iterations = 0
+          class RegistrationMap extends Map<string, unknown> {
+            override [Symbol.iterator]() {
+              iterations++
+              return super[Symbol.iterator]()
+            }
+          }
+          const server = yield* McpServer.McpServer.make
+          const register = McpServer.registerToolkit(Toolkit.make(...tools))
+          yield* register.pipe(
+            Effect.updateContext((context: Context.Context<Effect.Services<typeof register>>) =>
+              Context.makeUnsafe(new RegistrationMap(context.mapUnsafe))
+            ),
+            Effect.provideService(McpServer.McpServer, server),
+            Effect.provide(handlers)
+          )
+          return iterations
+        })
+
+        assert.strictEqual(yield* scans(first, second), yield* scans(first))
+      }))
+
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {
         const IdentifiedTool = Tool.make("IdentifiedTool", {
@@ -2184,6 +2212,20 @@ describe("McpServer", () => {
           assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
         }))
     })
+
+    it.effect("lists read-only tools as non-destructive unless explicitly marked destructive", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+        const { tools } = yield* client.listTools({})
+        assert.deepInclude(tools.find((tool) => tool.name === "UntypedTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: false
+        })
+        assert.deepInclude(tools.find((tool) => tool.name === "StructuredResultTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: true
+        })
+      }))
 
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {

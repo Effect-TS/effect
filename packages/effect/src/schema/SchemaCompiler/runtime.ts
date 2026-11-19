@@ -8,6 +8,7 @@
  */
 import * as Effect from "../../Effect.ts"
 import { effectIsExit, resolveConcurrency } from "../../internal/effect.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import { lazyParser, type Resolve, resolve, setCompiler, withDecode } from "../../internal/schema/compilerRegistry.ts"
 import * as Interpreter from "../../internal/schema/interpreter.ts"
 import * as InternalParser from "../../internal/schema/parser.ts"
@@ -226,9 +227,7 @@ const hasExcessProperties = (
       for (const key of keys) covered.add(key)
     }
   }
-  return Reflect.ownKeys(input).some((key) =>
-    !covered.has(key) && Object.prototype.propertyIsEnumerable.call(input, key)
-  )
+  return InternalRecord.ownEnumerableKeys(input).some((key) => !covered.has(key))
 }
 
 const invalidType = (ast: SchemaAST.AST, input: unknown, options: SchemaAST.ParseOptions) =>

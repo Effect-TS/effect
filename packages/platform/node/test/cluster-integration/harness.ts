@@ -127,6 +127,11 @@ interface MessageRow {
   readonly reply_payload: string | Record<string, unknown> | null
 }
 
+interface SettingRow {
+  readonly name: string
+  readonly value: string
+}
+
 interface RunnerEntry extends ClusterRunner {
   readonly controller: ReturnType<typeof makeRunnerStorageController>
   readonly lockFault: ReturnType<typeof makeLockFaultController>
@@ -238,6 +243,7 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
   const refreshPaused = Latch.makeUnsafe()
   const syncPaused = Latch.makeUnsafe()
   let mode: "frozen" | "killed" | "running" = "running"
+  let heldShard: string | undefined
   let lastRunners: Array<readonly [RunnerModel.Runner, boolean]> = []
 
   const waitWhileFrozen = <A, E>(
@@ -264,6 +270,10 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
     ),
     refresh: (address, shardIds) => {
       const shards = Array.from(shardIds)
+      if (shards.length === 1 && shards[0].toString() === heldShard) {
+        heldShard = undefined
+        return Effect.never
+      }
       return waitWhileFrozen(refreshPaused, storage.refresh(address, shards), () => shards)
     },
     release: (address, shardId) => mode === "killed" ? Effect.void : storage.release(address, shardId),
@@ -277,6 +287,10 @@ const makeRunnerStorageController = (storage: RunnerStorage.RunnerStorage["Servi
       mode = "frozen"
       gate.closeUnsafe()
     }).pipe(Effect.andThen(Effect.all([refreshPaused.await, syncPaused.await], { discard: true }))),
+    holdShardLockCheck: (shardId: ShardId.ShardId) =>
+      Effect.sync(() => {
+        heldShard = shardId.toString()
+      }),
     kill: Effect.sync(() => {
       mode = "killed"
       gate.openUnsafe()
@@ -572,6 +586,24 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return sql`INSERT INTO ${messages} ${sql.insert({ ...row })}`.unprepared.pipe(Effect.asVoid)
   }
 
+  // The database settings that decide whether a commit waits for the disk.
+  const diskSyncSettings = Effect.fnUntraced(function*() {
+    const rows = yield* (options.backend === "pg"
+      ? sql<SettingRow>`SELECT name, setting AS value FROM pg_settings WHERE name = 'fsync'`
+      : sql<SettingRow>`
+        SELECT variable_name AS name, variable_value AS value
+        FROM performance_schema.global_variables
+        WHERE variable_name IN ('innodb_flush_log_at_trx_commit', 'sync_binlog')
+      `)
+    return Object.fromEntries(rows.map((row) => [row.name, row.value]))
+  })
+
+  // Hangs the runner's next refresh of only this shard, which is how a
+  // persisted reply confirms its lock. A periodic refresh matches too when
+  // the runner owns no other shard.
+  const holdShardLockCheck = (runner: ClusterRunner, shardId: ShardId.ShardId) =>
+    entryFor(runner).controller.holdShardLockCheck(shardId)
+
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
     const groups = config.availableShardGroups ?? ShardingConfig.defaults.availableShardGroups
@@ -702,10 +734,12 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     clientSharding,
     cutSocket,
     diagnostics,
+    diskSyncSettings,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
     faultLock,
     freeze,
     getClient,
+    holdShardLockCheck,
     insertMessage,
     kill,
     lockMode: options.lockMode ?? "advisory",

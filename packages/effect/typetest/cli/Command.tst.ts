@@ -4,6 +4,42 @@ import { Argument, Command, Flag, GlobalFlag } from "effect/cli"
 import { describe, expect, it } from "tstyche"
 
 describe("Command", () => {
+  it("make validates symbol fields in nested configurations and accepts object type aliases", () => {
+    const key = Symbol()
+    type Nested = {
+      [key]: Flag.Flag<string>
+    }
+    type Fields = {
+      nested: Nested
+      tuple: readonly [Flag.Flag<number>, Nested]
+    }
+    const nested: Nested = { [key]: Flag.String("name") }
+    const fields: Fields = { nested, tuple: [Flag.Int("count"), nested] }
+    expect(Command.make("example", fields)).type.toBe<
+      Command.Command<
+        "example",
+        { readonly nested: { readonly [key]: string }; readonly tuple: readonly [number, { readonly [key]: string }] }
+      >
+    >()
+    Command.make("example", fields, (input) => {
+      expect(input.nested[key]).type.toBe<string>()
+      expect(input.tuple[0]).type.toBe<number>()
+      return Effect.void
+    })
+    type IndexedFields = {
+      [key: string]: Flag.Flag<string>
+    }
+    const indexed: IndexedFields = { name: Flag.String("name") }
+    expect(Command.make).type.toBeCallableWith("example", indexed)
+    expect(Command.make).type.not.toBeCallableWith("example", { [key]: 42 })
+    expect(Command.make).type.not.toBeCallableWith("example", 42)
+    expect(Command.make).type.not.toBeCallableWith("example", "value")
+    expect(Command.make).type.not.toBeCallableWith("example", [Flag.String("name")])
+    expect(Command.make).type.not.toBeCallableWith("example", { nested: { [key]: 42 } })
+    expect(Command.make).type.not.toBeCallableWith("example", { nested: [{ [key]: 42 }] })
+    expect(Command.make).type.not.toBeCallableWith("example", { [key]: 42 }, () => Effect.void)
+  })
+
   describe("validate", () => {
     it("receives the parsed input and preserves the command type", () => {
       const command = Command.make("download", {
@@ -86,6 +122,34 @@ describe("Command", () => {
   })
 
   describe("withSharedFlags", () => {
+    it("validates symbol fields and nested flags in both call styles", () => {
+      const key = Symbol()
+      type Fields = {
+        [key]: Flag.Flag<string>
+      }
+      const fields: Fields = { [key]: Flag.String("name") }
+      const root = Command.make("root")
+      expect(Command.withSharedFlags(root, fields)).type.toBe<
+        Command.Command<"root", { readonly [key]: string }, { readonly [key]: string }>
+      >()
+      expect(root.pipe(Command.withSharedFlags({ nested: [fields] }))).type.toBe<
+        Command.Command<
+          "root",
+          { readonly nested: readonly [{ readonly [key]: string }] },
+          { readonly nested: readonly [{ readonly [key]: string }] }
+        >
+      >()
+      expect(Command.withSharedFlags).type.not.toBeCallableWith({ [key]: 42 })
+      expect(Command.withSharedFlags).type.not.toBeCallableWith(42)
+      expect(Command.withSharedFlags).type.not.toBeCallableWith("value")
+      expect(Command.withSharedFlags).type.not.toBeCallableWith([Flag.String("name")])
+      expect(Command.withSharedFlags).type.not.toBeCallableWith(root, { [key]: 42 })
+      expect(Command.withSharedFlags).type.not.toBeCallableWith({ [key]: Argument.String("file") })
+      expect(Command.withSharedFlags).type.not.toBeCallableWith(root, { [key]: Argument.String("file") })
+      expect(Command.withSharedFlags).type.not.toBeCallableWith({ nested: [{ [key]: Argument.String("file") }] })
+      expect(Command.withSharedFlags).type.not.toBeCallableWith(root, { nested: { [key]: Argument.String("file") } })
+    })
+
     it("adds shared flags to command input and parent context", () => {
       const root = Command.make("root", {
         workspace: Flag.String("workspace")

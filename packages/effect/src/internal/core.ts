@@ -81,11 +81,11 @@ export const PipeInspectableProto = {
 /** @internal */
 export const StructuralProto = {
   [Hash.symbol](this: any): number {
-    return Hash.structureKeys(this, Object.keys(this))
+    return Hash.structureKeys(this, InternalRecord.ownEnumerableKeys(this))
   },
   [Equal.symbol](this: any, that: any): boolean {
-    const selfKeys = Object.keys(this)
-    if (selfKeys.length !== Object.keys(that).length) return false
+    const selfKeys = InternalRecord.ownEnumerableKeys(this)
+    if (selfKeys.length !== InternalRecord.ownEnumerableKeys(that).length) return false
     for (const key of selfKeys) {
       if (!Object.prototype.propertyIsEnumerable.call(that, key) || !Equal.equals(this[key], that[key])) {
         return false

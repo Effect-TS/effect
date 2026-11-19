@@ -580,13 +580,15 @@ export const make = Effect.gen(function*() {
                       Effect.orDie
                     )
                   }),
+                  // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
+                  (effect) => deferredState.trackRun(instance, effect),
                   Workflow.intoResult,
                   Effect.onExit((exit) =>
                     Exit.isSuccess(exit) && exit.value._tag === "Suspended"
                       ? Effect.void
                       : closeRuns(pending, instance.abandoned)
                   ),
-                  (effect) => deferredState.trackRun(instance, effect),
+                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)
                 ) as any

@@ -20,6 +20,7 @@ import * as Effect from "../Effect.ts"
 import * as Effectable from "../Effectable.ts"
 import * as FileSystem from "../FileSystem.ts"
 import { dual, pipe } from "../Function.ts"
+import * as InternalRecord from "../internal/record.ts"
 import * as EffectNumber from "../Number.ts"
 import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
@@ -750,7 +751,7 @@ export declare namespace All {
    * @category utility types
    * @since 4.0.0
    */
-  export type ReturnObject<T> = [T] extends [{ [K: string]: Any }] ? Prompt<
+  export type ReturnObject<T> = [T] extends [Record<PropertyKey, Any>] ? Prompt<
       {
         -readonly [K in keyof T]: [T[K]] extends [Prompt<infer _A>] ? _A : never
       }
@@ -766,10 +767,10 @@ export declare namespace All {
    * @since 4.0.0
    */
   export type Return<
-    Arg extends Iterable<Any> | Record<string, Any>
+    Arg extends Iterable<Any> | Record<PropertyKey, Any>
   > = [Arg] extends [ReadonlyArray<Any>] ? ReturnTuple<Arg>
     : [Arg] extends [Iterable<Any>] ? ReturnIterable<Arg>
-    : [Arg] extends [Record<string, Any>] ? ReturnObject<Arg>
+    : [Arg] extends [Record<PropertyKey, Any>] ? ReturnObject<Arg>
     : never
 }
 
@@ -780,7 +781,8 @@ export declare namespace All {
  * **Details**
  *
  * Supports either a tuple / iterable of prompts or a record / struct of prompts
- * as an argument.
+ * as an argument. Record inputs use own enumerable string and symbol properties.
+ * Non-enumerable and inherited properties are ignored.
  *
  * **Example** (Collecting prompt results)
  *
@@ -818,7 +820,7 @@ export declare namespace All {
  * @since 4.0.0
  */
 export const all: <
-  const Arg extends Iterable<Prompt<any>> | Record<string, Prompt<any>>
+  const Arg extends Iterable<Prompt<any>> | Record<PropertyKey, Prompt<any>>
 >(arg: Arg) => All.Return<Arg> = function() {
   if (arguments.length === 1) {
     if (isPrompt(arguments[0])) {
@@ -826,7 +828,8 @@ export const all: <
     } else if (Predicate.isIterable(arguments[0])) {
       return allTupled(Arr.fromIterable(arguments[0] as Iterable<Prompt<any>>)) as any
     } else {
-      const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Prompt<any> }>)
+      const fields = arguments[0] as Readonly<Record<PropertyKey, Prompt<any>>>
+      const entries = InternalRecord.ownEnumerableKeys(fields).map((key) => [key, fields[key]] as const)
       if (entries.length === 0) {
         return succeed({}) as any
       }

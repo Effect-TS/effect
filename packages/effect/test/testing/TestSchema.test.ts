@@ -18,6 +18,7 @@ import {
 import * as SchemaTransformation from "effect/SchemaTransformation"
 import { TestClock, TestSchema } from "effect/testing"
 import { AssertionError } from "node:assert"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 
 describe("TestSchema", () => {
   describe("ast.fields.equals", () => {
@@ -65,20 +66,14 @@ describe("TestSchema", () => {
       assert.throws(() => equals(left, { ["__proto__"]: Schema.Literal("other"), constructor: Schema.Literal("ctor") }))
     })
 
-    it("uses the Struct own-key contract for non-enumerable fields", () => {
-      const key = Symbol("hidden")
-      const fields = (value: string): Schema.Struct.Fields =>
-        Object.defineProperties({}, {
-          hidden: { value: Schema.Literal(value) },
-          [key]: { value: Schema.Literal(value) }
-        })
-      const left = fields("value")
-      const right = fields("value")
-      assert.deepStrictEqual(Object.keys(left), [])
-      assert.deepStrictEqual(Schema.Struct(left).ast.propertySignatures.map((field) => field.name), ["hidden", key])
-      equals(left, right)
-      equals(left, { hidden: Schema.Literal("value"), [key]: Schema.Literal("value") })
-      assert.throws(() => equals(left, fields("other")))
+    it("ignores non-enumerable and inherited field definitions on both sides", () => {
+      const key = Symbol("field")
+      const fields = { a: Schema.String, [key]: Schema.Number }
+      const ignored = withIgnoredProperties({ ...fields })
+
+      equals(ignored, fields)
+      equals(fields, ignored)
+      equals(withIgnoredProperties({}), {})
     })
   })
 
@@ -133,8 +128,13 @@ describe("TestSchema", () => {
   it.effect("round trips accept equivalent struct objects regardless of prototype", () =>
     new TestSchema.Asserts(Schema.Struct({ a: Schema.String })).verifyRoundTripEffect({ runs: 100, seed: 1 }))
 
-  it.effect("NumberFromString round trips accept equivalent signed zeros", () =>
-    new TestSchema.Asserts(Schema.NumberFromString).verifyRoundTripEffect({ runs: 100, seed: 1 }))
+  it.effect("round trips accept a negative zero that decodes back to positive zero", () => {
+    const dropsSign = Schema.Literal(-0).pipe(Schema.decode({
+      encode: SchemaGetter.succeed(0),
+      decode: SchemaGetter.passthrough()
+    }))
+    return new TestSchema.Asserts(dropsSign).verifyRoundTripEffect({ runs: 1 })
+  })
 
   it("verifyRoundTrip reports a shrunk input and replay", async () => {
     const schema = Schema.Number.pipe(

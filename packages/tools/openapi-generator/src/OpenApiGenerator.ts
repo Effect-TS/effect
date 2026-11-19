@@ -13,7 +13,12 @@
 import * as Codegen from "effect/Codegen"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/http-api/OpenApi"
+import type {
+  OpenAPISecurityScheme,
+  OpenAPISpec,
+  OpenAPISpecOperation,
+  OpenAPISpecPathItem
+} from "effect/http-api/OpenApi"
 import type { HttpMethod } from "effect/http/HttpMethod"
 import * as JsonPointer from "effect/JsonPointer"
 import type * as JsonSchema from "effect/JsonSchema"
@@ -23,6 +28,7 @@ import * as Rec from "effect/Record"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as HttpClientGenerator from "./internal/httpClient.ts"
+import * as InternalJsonPointer from "./internal/jsonPointer.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
@@ -317,12 +323,11 @@ const parseOpenApi = (
     return generator.addSchema(candidate, schema)
   }
 
-  for (const [path, methods] of Object.entries(spec.paths)) {
-    const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
+  for (const [path, entry] of Object.entries(spec.paths)) {
+    if (!path.startsWith("/")) continue
+    const pathItem = resolvePathItem(spec, entry)
     for (const method of methodNames) {
-      const operation = method === "query"
-        ? pathItem.query ?? methods["x-oai-additionalOperations"]?.QUERY
-        : pathItem[method]
+      const operation = pathItem[method]
       if (Predicate.isUndefined(operation)) {
         continue
       }
@@ -333,7 +338,7 @@ const parseOpenApi = (
       const description = Utils.nonEmptyString(operation.description) ?? Utils.nonEmptyString(operation.summary)
 
       const parameters = resolveOperationParameters(
-        Array.isArray(methods.parameters) ? methods.parameters : undefined,
+        Array.isArray(pathItem.parameters) ? pathItem.parameters : undefined,
         Array.isArray(operation.parameters) ? operation.parameters : undefined,
         resolveRef
       )
@@ -862,6 +867,31 @@ const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter =
     typeof parameter.name === "string" &&
     (parameter.in === "path" || parameter.in === "query" || parameter.in === "header" || parameter.in === "cookie")
   )
+}
+
+type PathItem = OpenAPISpecPathItem & Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>>
+
+const normalizeQuery = (item: PathItem): PathItem => {
+  const query = item["x-oai-additionalOperations"]?.QUERY
+  return item.query == null && query !== undefined ? { ...item, query } : item
+}
+
+const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): PathItem => {
+  const item: PathItem = {}
+  const seen = new Set<string>()
+  let current: unknown = entry
+  while (Predicate.isObject(current)) {
+    // Fields closer to the route take precedence over inherited fields.
+    for (const [key, value] of Object.entries(normalizeQuery(current as PathItem))) {
+      if (!Object.hasOwn(item, key)) Rec.assignProperty(item, key, value)
+    }
+    const ref = current.$ref
+    if (typeof ref !== "string" || seen.has(ref)) break
+    seen.add(ref)
+    const tokens = JsonPointer.parseUriFragment(ref)
+    current = tokens?.length ? InternalJsonPointer.lookup(spec, tokens) : undefined
+  }
+  return item
 }
 
 const resolveOperationParameters = (

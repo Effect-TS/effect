@@ -46,6 +46,47 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  it.effect("compensates once on cancellation after an active timer wake", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
+      const started = yield* Latch.make()
+      let wokeAttempt = 0
+      const registered: Array<number> = []
+      const finalized: Array<number> = []
+      let compensations = 0
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          const attempt = registered.length + 1
+          registered.push(attempt)
+          yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(attempt)))
+          yield* Effect.void.pipe(workflow.withCompensation(() => Effect.sync(() => ++compensations)))
+          yield* Effect.all([
+            Activity.make({ name: "waiting", execute: started.open.pipe(Effect.andThen(Effect.never)) }),
+            started.await.pipe(
+              Effect.andThen(DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })),
+              Effect.tap(() =>
+                Effect.sync(() => {
+                  wokeAttempt = attempt
+                })
+              )
+            )
+          ], { concurrency: "unbounded", discard: true })
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollStorageUntil(() => wokeAttempt > 0, "timer must resume the workflow")
+        assert.isAbove(wokeAttempt, 1, "timer must wake a replay")
+        assert.isEmpty(finalized, "timer wake must not finalize the workflow")
+        const engine = yield* WorkflowEngine
+        yield* engine.interruptUnsafe(workflow, executionId)
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(compensations, 1)
+        assert.sameMembers(finalized, registered, "cancellation must finalize every registered attempt")
+      }).pipe(Effect.provide(layer))
+    }))
+
   for (const complete of [true, false]) {
     it.effect(`releases all workflow scopes after multiple suspensions on ${complete ? "completion" : "teardown"}`, () =>
       Effect.gen(function*() {
@@ -838,7 +879,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       name: "a durable clock",
       saves: (envelope: Message.OutgoingRequest<any>) =>
         envelope.envelope.address.entityType === "Workflow/-/DurableClock",
-      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "1 second", inMemoryThreshold: 0 }), 42)
+      // Long enough to still be pending when the first save retry runs.
+      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "300 millis", inMemoryThreshold: 0 }), 42)
     },
     {
       name: "a durable race winner",
