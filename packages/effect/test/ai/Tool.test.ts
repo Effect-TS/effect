@@ -14,7 +14,7 @@ import {
   SchemaGetter,
   Stream
 } from "effect"
-import { AiError, LanguageModel, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
 
@@ -496,6 +496,115 @@ describe("Tool", () => {
           })
         )
       }))
+
+    describe("Model Output", () => {
+      const Lookup = Tool.make("Lookup", {
+        success: Schema.Struct({ id: Schema.String }),
+        failure: Schema.String,
+        failureMode: "return",
+        toModelOutput: (result) => [Prompt.textPart({ text: `mapped ${result.id}` })]
+      })
+      const Plain = Tool.make("Plain", { success: Schema.Struct({ id: Schema.String }) })
+      const toolkit = Toolkit.make(Lookup, Plain)
+      const run = (handlers: Toolkit.WithHandler<typeof toolkit.tools>, name: "Lookup" | "Plain") =>
+        handlers.handle(name, {}).pipe(Effect.flatMap(Stream.runCollect))
+
+      it.effect("replaces toModelOutput on the final result", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+              return { id: "a" }
+            }),
+            Plain: () => Effect.succeed({ id: "b" })
+          })))
+          const results = yield* run(handlers, "Lookup")
+
+          strictEqual(results.length, 1)
+          deepStrictEqual(results[0]?.modelOutput, [Prompt.textPart({ text: "from handler" })])
+          deepStrictEqual(results[0]?.result, { id: "a" })
+          deepStrictEqual(results[0]?.encodedResult, { id: "a" })
+        }))
+
+      it.effect("applies to a tool without toModelOutput", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: () => Effect.succeed({ id: "a" }),
+            Plain: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+              return { id: "b" }
+            })
+          })))
+          const results = yield* run(handlers, "Plain")
+
+          deepStrictEqual(results[0]?.modelOutput, [Prompt.textPart({ text: "from handler" })])
+          deepStrictEqual(results[0]?.encodedResult, { id: "b" })
+        }))
+
+      it.effect("uses the last call", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.modelOutput([Prompt.textPart({ text: "first" })])
+              yield* ctx.modelOutput([Prompt.textPart({ text: "second" })])
+              return { id: "a" }
+            }),
+            Plain: () => Effect.succeed({ id: "b" })
+          })))
+          const results = yield* run(handlers, "Lookup")
+
+          deepStrictEqual(results[0]?.modelOutput, [Prompt.textPart({ text: "second" })])
+        }))
+
+      it.effect("is not applied to preliminary results", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+              yield* ctx.preliminary({ id: "partial" })
+              return { id: "a" }
+            }),
+            Plain: () => Effect.succeed({ id: "b" })
+          })))
+          const results = yield* run(handlers, "Lookup")
+
+          strictEqual(results.length, 2)
+          assertTrue(results[0]!.preliminary)
+          strictEqual(results[0]!.modelOutput, undefined)
+          deepStrictEqual(results[1]?.modelOutput, [Prompt.textPart({ text: "from handler" })])
+        }))
+
+      it.effect("is not applied when the handler fails", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: Effect.fnUntraced(function*(_, ctx) {
+              yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+              return yield* Effect.fail("nope")
+            }),
+            Plain: () => Effect.succeed({ id: "b" })
+          })))
+          const results = yield* run(handlers, "Lookup")
+
+          strictEqual(results.length, 1)
+          assertTrue(results[0]!.isFailure)
+          strictEqual(results[0]!.modelOutput, undefined)
+          strictEqual(results[0]!.encodedResult, "nope")
+        }))
+
+      it.effect("keeps toModelOutput when the handler does not set it", () =>
+        Effect.gen(function*() {
+          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
+            Lookup: () => Effect.succeed({ id: "a" }),
+            Plain: () => Effect.succeed({ id: "b" })
+          })))
+          const lookup = yield* run(handlers, "Lookup")
+          const plain = yield* run(handlers, "Plain")
+
+          deepStrictEqual(lookup[0]?.modelOutput, [Prompt.textPart({ text: "mapped a" })])
+          deepStrictEqual(lookup[0]?.encodedResult, { id: "a" })
+          strictEqual(plain[0]?.modelOutput, undefined)
+        }))
+    })
 
     describe("Preliminary Results", () => {
       it.effect("should interrupt the handler when the consumer stops early", () =>
