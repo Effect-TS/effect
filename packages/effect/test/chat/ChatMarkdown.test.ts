@@ -92,6 +92,14 @@ describe("ChatMarkdown", () => {
         for (const part of result.parts) assert.isAtMost(codePoints(part.markdown), 60)
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 60 } }))))
 
+    it.effect("keeps a closed code fence together when it fits", () =>
+      Effect.gen(function*() {
+        const { thread } = yield* setup
+        const block = "```\nx\n```\n"
+        const reply = yield* ChatMarkdown.post(thread, block + "rest", { maxParts: 2 })
+        assert.deepStrictEqual(reply.parts.map((part) => part.markdown), [block, "rest"])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 10 } }))))
+
     it.effect("replies with the first part only", () =>
       Effect.gen(function*() {
         const { test, thread } = yield* setup
