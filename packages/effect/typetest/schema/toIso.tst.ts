@@ -242,7 +242,7 @@ describe("toIso", () => {
           }
         } | {
           readonly _tag: "Die"
-          readonly error: {
+          readonly defect: {
             readonly a: Date
           }
         } | {
