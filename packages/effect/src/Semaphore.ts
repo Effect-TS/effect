@@ -279,7 +279,7 @@ const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
 const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
-  onAcquire: (endWait?: Effect.Effect<void>) => Effect.Effect<A, E, R>,
+  onAcquire: (endWait?: () => void) => Effect.Effect<A, E, R>,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity,
   spanName?: string,
   options?: Tracer.SpanOptionsNoTrace
@@ -332,7 +332,7 @@ const takePermits = <A, E, R>(
       if (firstAvailableWaiter(self) !== waiter) return loop
       self.taken += n
       remove()
-      return onAcquire(span && internal.sync(() => endWait(internal.exitVoid)))
+      return onAcquire(span && (() => endWait(internal.exitVoid)))
     })
     return loop
   })
@@ -435,11 +435,18 @@ class SemaphoreImpl implements Semaphore {
         takePermits(
           this,
           n,
-          (endWait) =>
-            internal.onExitPrimitive(endWait ? internal.flatMap(endWait, () => restore(self)) : restore(self), () => {
+          (endWait) => {
+            const release = () => {
               this.releaseUnsafe(internal.getCurrentFiber()!, n)
               return undefined
-            }, true),
+            }
+            if (endWait === undefined) return internal.onExitPrimitive(restore(self), release, true)
+            // Install the release guard before reading the clock or invoking the tracer.
+            // Both run in the claim step so scheduler delays cannot extend the wait.
+            internal.onExitUnsafe(internal.getCurrentFiber()!, release)
+            endWait()
+            return restore(self)
+          },
           restore,
           spanName,
           options
