@@ -229,18 +229,19 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  // Adding a request listener enables HTTP/2's compatibility API. Leave native stream responders alone.
-  // A supplied compatibility request listener has already installed one stream listener of its own.
-  const compatibilityStreams = server.listenerCount("request") > 0 ? 1 : 0
-  const hasStreamResponder = server.listenerCount("stream") > compatibilityStreams
-  const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
-    if (server.listenerCount("request") === 1) {
+  const unavailable = (request: Http.IncomingMessage, response: Http.ServerResponse) => {
+    // An HTTP/2 request is dispatched by Node's compatibility stream listener.
+    // Any other stream listener belongs to the supplied server, even if added after listen.
+    if (
+      server.listenerCount("request") === 1 && !response.headersSent &&
+      !(request.httpVersionMajor === 2 && server.listenerCount("stream") > 1)
+    ) {
       response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
       response.end("service unavailable")
     }
   }
   const installFallback = () => {
-    if (scope.state._tag !== "Closed" && !hasStreamResponder) {
+    if (scope.state._tag !== "Closed") {
       // Observe other request listeners before a once listener removes itself during dispatch.
       server.prependListener("request", unavailable)
     }

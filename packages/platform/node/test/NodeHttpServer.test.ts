@@ -86,13 +86,27 @@ describe("HttpServer", () => {
       assert.isFalse(response.headersSent)
     }))
 
-  it.effect("leaves native HTTP/2 stream handling in place during startup", () =>
+  it.live("leaves HTTP/2 streams to a responder installed at listening", () =>
     Effect.gen(function*() {
-      const server = Http2.createServer().on("stream", constVoid)
+      const server = Http2.createServer()
+      server.once("listening", () =>
+        server.on("stream", (stream) => {
+        stream.end("native")
+        }))
       yield* NodeHttpServer.make(() => server, { port: 0 })
-      assert.deepStrictEqual(server.listeners("stream"), [constVoid])
-      assert.strictEqual(server.listenerCount("request"), 0)
-    }))
+      const response = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`)
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(yield* response.text, "native")
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
+
+  it.live("answers when the supplied HTTP/2 request listener was removed before startup", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer().on("request", constVoid).off("request", constVoid)
+      yield* NodeHttpServer.make(() => server, { port: 0 })
+      const response = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`)
+      assert.strictEqual(response.status, 503)
+      assert.strictEqual(yield* response.text, "service unavailable")
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
 
   it.live("answers after a one-shot HTTP/2 request listener finishes", () =>
     Effect.gen(function*() {
