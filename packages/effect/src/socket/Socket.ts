@@ -1129,6 +1129,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         })
       )
 
+      if (closed !== undefined) return yield* Effect.fail(closed)
       if (ws.readyState >= 2) {
         // @effect-diagnostics-next-line unnecessaryFailYieldableError:off
         return yield* Effect.fail(error ?? closeError(1006))
@@ -1166,6 +1167,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
+      if (closed !== undefined) return yield* Effect.fail(closed)
       if (error === undefined && bufferSize < highWaterMark!) resumeWebSocket()
       currentWS = ws
       latch.openUnsafe()
@@ -1194,8 +1196,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
+        if (closed !== undefined) return Effect.fail(closed)
         const ws = currentWS
-        if (ws === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(write(chunk))
+        if (ws === undefined) return latch.whenOpen(write(chunk))
         try {
           if (isCloseEvent(chunk)) {
             ws.close(chunk.code, chunk.reason)
@@ -1211,8 +1214,9 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       chunks: NonEmptyReadonlyArray<Uint8Array | string>
     ): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
+        if (closed !== undefined) return Effect.fail(closed)
         const ws = currentWS
-        if (ws === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(writeAll(chunks))
+        if (ws === undefined) return latch.whenOpen(writeAll(chunks))
         try {
           for (let i = 0; i < chunks.length; i++) {
             ws.send(chunks[i] as string | Uint8Array<ArrayBuffer>)

@@ -163,11 +163,11 @@ export const fromDuplex = <RO>(
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
-    let closed: Socket.SocketError | undefined
+    let terminalError: Socket.SocketError | undefined
     const latch = Latch.makeUnsafe(false)
     const closeSocket = options?.reconnect === false
       ? (error: Socket.SocketError) => {
-        closed ??= error
+        terminalError ??= error
         latch.openUnsafe()
       }
       : () => latch.closeUnsafe()
@@ -304,6 +304,7 @@ export const fromDuplex = <RO>(
         })
       )
 
+      if (terminalError !== undefined) return yield* Effect.fail(terminalError)
       currentSocket = conn
       latch.openUnsafe()
 
@@ -344,6 +345,7 @@ export const fromDuplex = <RO>(
             )
           }
           return Effect.callback<void, Socket.SocketError>((resume) => {
+            if (terminalError !== undefined) return resume(Effect.fail(terminalError))
             const raw = conn
             detachReadListeners(raw)
 
@@ -432,8 +434,8 @@ export const fromDuplex = <RO>(
     ) as Socket.Socket["reader"]
     const reader: Socket.Socket["reader"] = options?.reconnect === false
       ? Effect.suspend(() =>
-        closed !== undefined
-          ? Effect.fail(closed)
+        terminalError !== undefined
+          ? Effect.fail(terminalError)
           : Effect.tapError(connect, (error) => Effect.sync(() => closeSocket(error)))
       )
       : connect
@@ -475,8 +477,9 @@ export const fromDuplex = <RO>(
       chunk: Uint8Array | string | Socket.CloseEvent
     ): Effect.Effect<void, Socket.SocketError> =>
       Effect.suspend(() => {
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const conn = currentSocket
-        if (conn === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(write(chunk))
+        if (conn === undefined) return latch.whenOpen(write(chunk))
         if (Socket.isCloseEvent(chunk)) {
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
           return Effect.void
@@ -496,8 +499,9 @@ export const fromDuplex = <RO>(
       chunks: Arr.NonEmptyReadonlyArray<Uint8Array | string>
     ): Effect.Effect<void, Socket.SocketError> =>
       Effect.suspend(() => {
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const conn = currentSocket
-        if (conn === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(writeAll(chunks))
+        if (conn === undefined) return latch.whenOpen(writeAll(chunks))
         let needsDrain = false
         try {
           if (chunks.length === 1) {

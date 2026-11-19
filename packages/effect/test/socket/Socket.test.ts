@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
+import * as Scope from "effect/Scope"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import { TestClock } from "effect/testing"
@@ -160,18 +161,23 @@ describe("Socket", () => {
     it.effect("fails writes on a terminal non-reconnectable socket", () =>
       Effect.gen(function*() {
         const ws = new TestWebSocket(Latch.makeUnsafe(false))
-        ws.readyState = 3
-        const socket = yield* Socket.fromWebSocket(Effect.succeed(ws), { reconnect: false })
+        ws.readyState = 1
+        const scope = yield* Scope.make()
+        const socket = yield* Socket.fromWebSocket(Scope.close(scope, Exit.void).pipe(Effect.as(ws)), {
+          reconnect: false
+        })
         const writer = yield* socket.writer
-        yield* Effect.scoped(Effect.flip(socket.reader))
 
         const write = yield* writer.write("later").pipe(
           Effect.timeout("1 second"),
           Effect.flip,
           Effect.forkChild({ startImmediately: true })
         )
+        const error = yield* Effect.flip(Scope.provide(socket.reader, scope))
+        assert.isTrue(Socket.isSocketError(error))
         yield* TestClock.adjust("1 second")
-        assert.isTrue(Socket.isSocketError(yield* Fiber.join(write)))
+        assert.strictEqual(yield* Fiber.join(write), error)
+        assert.strictEqual(yield* Effect.flip(writer.writeAll(["later"])), error)
       }))
 
     it.effect("removes the open listener when the socket closes while connecting", () =>
