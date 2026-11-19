@@ -279,16 +279,16 @@ class RouterImpl<A> implements Router.Router<A> {
     for (let i = 0; i < this.routes.length; i++) {
       const existRoute = this.routes[i]
       if (existRoute.method !== method || existRoute.pattern !== pattern) continue
-      // A fallback yields to the route declared for its path, in either order.
-      if (fallback) return
-      if (!existRoute.fallback) {
-        throw new Error(
-          `Method '${method}' already declared for route '${pattern}'`
-        )
+      // Different regex nodes can share a normalized pattern.
+      if (currentNode.routes?.includes(existRoute)) {
+        if (fallback) return
+        if (existRoute.fallback) {
+          this.routes[i] = route
+          currentNode.replaceRoute(route)
+          return
+        }
       }
-      this.routes[i] = route
-      currentNode.replaceRoute(route)
-      return
+      throw new Error(`Method '${method}' already declared for route '${pattern}'`)
     }
 
     this.routes.push(route)

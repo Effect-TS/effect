@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Exit, Layer, Option } from "effect"
 import type { FindMyWay } from "effect/http"
 import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
 
@@ -40,6 +40,19 @@ describe("HttpRouter", () => {
 
         assert.strictEqual(yield* fetchText(routes, "/test"), "static")
         assert.strictEqual(yield* fetchText(routes, "/test/anything"), "wildcard")
+      }))
+  }
+
+  for (const first of ["explicit", "wildcard"] as const) {
+    it.effect(`rejects colliding regex patterns with ${first} registered first`, () =>
+      Effect.gen(function*() {
+        const router = yield* HttpRouter.make
+        const explicit = HttpRouter.route("GET", "/files/:id(456)", HttpServerResponse.empty())
+        const wildcard = HttpRouter.route("GET", "/files/:id(123)/*", HttpServerResponse.empty())
+        const result = yield* Effect.exit(
+          router.addAll(first === "explicit" ? [explicit, wildcard] : [wildcard, explicit])
+        )
+        assert.deepStrictEqual(result, Exit.die(new Error("Method 'GET' already declared for route '/files/:()'")))
       }))
   }
 
