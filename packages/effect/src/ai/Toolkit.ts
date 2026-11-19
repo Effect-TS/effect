@@ -535,9 +535,10 @@ const Proto = {
             onFailure: (cause) => Queue.failCause(queue, cause),
             onSuccess: () => Queue.end(queue)
           }),
-          Effect.andThen(Queue.flush(queue)),
           Effect.forkChild({ startImmediately: true })
         )
+        // Drain the last offer only once stream cleanup can no longer interrupt the producer.
+        fiber.addObserver(() => Queue.flushUnsafe(queue))
 
         const normalizeError = (error: unknown) => {
           const normalizedError = Schema.isSchemaError(error)
