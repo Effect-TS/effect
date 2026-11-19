@@ -5158,9 +5158,9 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *
  * **Details**
  *
- * When the first effect completes, any still-running contenders are
- * interrupted. Use `raceAll` when early failures should be ignored until a
- * success occurs or all effects fail.
+ * The race requests interruption of any still-running losers. Use `raceAll`
+ * when early failures should be ignored until a success occurs or all effects
+ * fail.
  *
  * Any contender the race starts is initially interruptible, even when the race
  * runs in an uninterruptible region.
