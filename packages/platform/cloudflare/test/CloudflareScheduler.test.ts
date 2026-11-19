@@ -30,11 +30,16 @@ describe("CloudflareScheduler", () => {
     miniflare = new Miniflare({
       modules: [{ type: "ESModule", path: "worker.mjs", contents: await bundle() }],
       compatibilityDate: "2026-07-01",
+      durableObjects: { SINGLETON: { className: "ClusterSingleton", useSQLite: true } },
       compatibilityFlags: ["nodejs_compat"]
     })
   }, 30_000)
 
   afterAll(() => miniflare?.dispose())
+
+  it("runs a Durable Object method with the scheduler installed by its initializer", async () => {
+    assert.isTrue(await (await fetch("/singleton-scheduler")).json())
+  })
 
   it("resumes a fiber woken by another request in its owner, which stays open until then", async () => {
     await fetch("/park")

@@ -14,6 +14,7 @@
  * @internal
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
 import {
@@ -33,6 +34,8 @@ import {
 
 /** @internal */
 export interface QueueRuntimeOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   readonly sql: SqlStorage
   readonly alarm: EntityAlarm
   readonly now: () => number
@@ -70,6 +73,8 @@ interface Waiter {
 
 /** @internal */
 export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => {
+  const context = options.context ?? Context.empty()
+  const runPromise = Effect.runPromiseWith(context)
   const sql = options.sql
   ensureQueueStorage(sql)
 
@@ -98,7 +103,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
   })
 
   const mutateAndWake = (mutate: () => void): Promise<void> =>
-    Effect.runPromise(Effect.suspend(() => {
+    runPromise(Effect.suspend(() => {
       mutate()
       return wakeWaiters
     }))
@@ -124,7 +129,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
           existing.resolve = resolve
         }
       })
-      return Effect.runPromise(wakeWaiters).then(() => item)
+      return runPromise(wakeWaiters).then(() => item)
     },
 
     cancelTake: (takerId) => {
@@ -162,7 +167,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     extend: (id, leaseMillis, takerId) => Promise.resolve(extendLease(sql, id, options.now() + leaseMillis, takerId)),
 
     runAlarm: () =>
-      Effect.runPromise(
+      runPromise(
         Effect.gen(function*() {
           expireLeases(sql, options.now())
           yield* wakeWaiters
