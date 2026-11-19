@@ -124,9 +124,10 @@ export const make = <E, R>(options: {
    */
   readonly skipIfOlderThan?: Duration.Input | undefined
 }): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime>, Scope>> => {
+  const { cron } = options
   const fromPrevious = options.calculateNextRunFromPrevious === true
   const skipIfOlderThan = Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
-  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(options.cron, after))
+  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cron, after))
 
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
     Rpc.make("run", {
@@ -139,7 +140,7 @@ export const make = <E, R>(options: {
     .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
     .annotate(ClusterSchema.ClientTracingEnabled, false)
     .annotate(CronSchedule, {
-      cron: options.cron,
+      cron,
       calculateNextRunFromPrevious: fromPrevious,
       skipIfOlderThan
     })
