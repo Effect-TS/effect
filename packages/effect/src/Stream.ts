@@ -2922,7 +2922,47 @@ export const forever = <A, E, R>(self: Stream<A, E, R>): Stream<A, E, R> => from
  * @since 4.0.0
  */
 export const flattenIterable = <A, E, R>(self: Stream<Iterable<A>, E, R>): Stream<A, E, R> =>
-  flatMap(self, fromIterable)
+  fromChannel(Channel.transformPull(self.channel, (pull, scope) => {
+    let chunk: Arr.NonEmptyReadonlyArray<Iterable<A>> | undefined
+    let index = 0
+    let iterator: Iterator<A> | undefined
+    const pump: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E> = Effect.suspend(
+      function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E> {
+        while (true) {
+          if (iterator !== undefined) {
+            const buffer: Array<A> = []
+            while (buffer.length < DefaultChunkSize) {
+              const result = iterator.next()
+              if (result.done) {
+                iterator = undefined
+                break
+              }
+              buffer.push(result.value)
+            }
+            if (Arr.isArrayNonEmpty(buffer)) return Effect.succeed(buffer)
+          }
+          if (chunk === undefined) {
+            return Effect.flatMap(pull, (chunk_) => {
+              chunk = chunk_
+              index = 0
+              return loop()
+            })
+          }
+          const iterable = chunk[index++]
+          if (index === chunk.length) chunk = undefined
+          if (Array.isArray(iterable)) {
+            if (Arr.isArrayNonEmpty(iterable)) return Effect.succeed(iterable)
+          } else {
+            iterator = iterable[Symbol.iterator]()
+          }
+        }
+      }
+    )
+    return Effect.as(
+      Scope.addFinalizer(scope, Effect.sync(() => iterator?.return?.())),
+      pump
+    )
+  }))
 
 /**
  * Unwraps `Take` values, emitting elements from non-empty arrays and ending or
