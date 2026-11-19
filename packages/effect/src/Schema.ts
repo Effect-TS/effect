@@ -1460,6 +1460,39 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  * @since 3.10.0
  */
 export const is: typeof SchemaParser.is = SchemaParser.is
+
+/**
+ * Creates a boolean validator for the decoded side of a schema that honours
+ * parse options such as `onExcessProperty: "error"`.
+ *
+ * **When to use**
+ *
+ * Use to accept or reject boundary input that needs only a `boolean` and must
+ * honour parse options. This is the options-aware counterpart of `is`.
+ *
+ * **Details**
+ *
+ * Options are fixed when the validator is created and the returned function
+ * takes only the input. `is` is left unchanged as a single-argument type guard
+ * so existing `Array.prototype.filter` uses keep their narrowing.
+ *
+ * **Example** (Validating a boundary object)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Person = Schema.Struct({ name: Schema.String })
+ * const validate = Schema.validate(Person, { onExcessProperty: "error" })
+ * validate({ name: "Alice" }) // => true
+ * validate({ name: "Alice", extra: 1 }) // => false
+ * ```
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.5
+ */
+export const validate: typeof SchemaParser.validate = SchemaParser.validate
+
 /**
  * Creates an assertion function that throws an error if the input does not match
  * the schema.

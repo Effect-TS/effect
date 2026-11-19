@@ -144,11 +144,45 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
   return _is<S["Type"]>(schema.ast)
 }
 
-function makeIs<T>(ast: SchemaAST.AST): <I>(input: I) => input is I & T {
+/**
+ * Creates a boolean validator for the decoded side of a schema that honours
+ * parse options such as `onExcessProperty: "error"`.
+ *
+ * **When to use**
+ *
+ * Use to accept or reject boundary input when the contract requires parse
+ * options. This is the options-aware counterpart of the type guard returned by
+ * `is`; it avoids constructing issue details on success.
+ *
+ * **Details**
+ *
+ * Options are fixed when the validator is created; the returned function takes
+ * only the input. It returns `true` when decoding succeeds and `false` for
+ * schema mismatches. As with `is`, causes that are not schema issues throw.
+ *
+ * `is` is deliberately unchanged. Widening its guard with an optional options
+ * parameter conflicts with the index argument when the guard is passed to
+ * `Array.prototype.filter`, and removes type-predicate narrowing. Existing
+ * callers such as `keys.filter(isPublicJwk)` would break.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.5
+ */
+export function validate<S extends Schema.Constraint>(
+  schema: S,
+  options?: SchemaAST.ParseOptions
+): (input: unknown) => boolean {
+  const guard = _is<S["Type"]>(schema.ast)
+  const parseOptions = options ?? SchemaAST.defaultParseOptions
+  return (input: unknown) => guard(input, parseOptions)
+}
+
+function makeIs<T>(ast: SchemaAST.AST): <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T {
   if (!CompilerRegistry.compilerAdaptersEnabled) {
     const parser = asExit(run<T, never>(ast))
-    return <I>(input: I): input is I & T => {
-      const exit = parser(input, SchemaAST.defaultParseOptions)
+    return <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
+      const exit = parser(input, options ?? SchemaAST.defaultParseOptions)
       if (Exit.isSuccess(exit)) return true
       InternalSchemaCause.getSchemaIssueOrThrow(
         exit.cause,
@@ -160,9 +194,9 @@ function makeIs<T>(ast: SchemaAST.AST): <I>(input: I) => input is I & T {
   const entry = CompilerRegistry.resolve(ast)
   const guard = entry.is
   if (guard !== undefined) {
-    return <I>(input: I): input is I & T => {
+    return <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
       try {
-        return guard(input, SchemaAST.defaultParseOptions)
+        return guard(input, options ?? SchemaAST.defaultParseOptions)
       } catch (error) {
         InternalSchemaCause.getSchemaIssueOrThrow(
           Cause.die(error),
@@ -173,8 +207,10 @@ function makeIs<T>(ast: SchemaAST.AST): <I>(input: I) => input is I & T {
     }
   }
   const parser = entry.parser
-  return <I>(input: I): input is I & T => {
-    const exit = Effect.runSyncExit(parserResult<T, never>(parser(input, SchemaAST.defaultParseOptions), input))
+  return <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
+    const exit = Effect.runSyncExit(
+      parserResult<T, never>(parser(input, options ?? SchemaAST.defaultParseOptions), input)
+    )
     if (Exit.isSuccess(exit)) return true
     InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Type guard adapter can only return false for schema issues")
     return false
@@ -182,14 +218,17 @@ function makeIs<T>(ast: SchemaAST.AST): <I>(input: I) => input is I & T {
 }
 
 /** @internal */
-export function _is<T>(ast: SchemaAST.AST) {
+export function _is<T>(ast: SchemaAST.AST): <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T {
   const typeAST = SchemaAST.toType(ast)
-  let guard: <I>(input: I) => input is I & T = <I>(input: I): input is I & T => {
+  let guard: <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T = <I>(
+    input: I,
+    options?: SchemaAST.ParseOptions
+  ): input is I & T => {
     guard = makeIs<T>(typeAST)
-    return guard(input)
+    return guard(input, options)
   }
-  return <I>(input: I): input is I & T => {
-    return guard(input)
+  return <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
+    return guard(input, options)
   }
 }
 
