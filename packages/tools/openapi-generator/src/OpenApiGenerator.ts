@@ -323,6 +323,7 @@ const parseOpenApi = (
   }
 
   for (const [path, entry] of Object.entries(spec.paths)) {
+    if (!path.startsWith("/")) continue
     const pathItem = resolvePathItem(spec, entry)
     for (const method of methodNames) {
       const operation = pathItem[method]
@@ -888,10 +889,12 @@ const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): PathIte
     seen.add(ref)
     const tokens = JsonPointer.parseUriFragment(ref)
     current = tokens?.length
-      ? tokens.reduce<unknown>(
-        (target, token) => Predicate.isObject(target) && Object.hasOwn(target, token) ? target[token] : undefined,
-        spec
-      )
+      ? tokens.reduce<unknown>((target, token) => {
+        if (!Predicate.isObjectOrArray(target) || !Object.hasOwn(target, token)) return undefined
+        if (!Array.isArray(target)) return target[token]
+        const index = Number(token)
+        return /^(0|[1-9]\d*)$/.test(token) && index < target.length ? target[index] : undefined
+      }, spec)
       : undefined
   }
   return item
