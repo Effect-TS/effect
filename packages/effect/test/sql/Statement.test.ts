@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Option, References, Stream, Tracer } from "effect"
+import { Cause, Effect, Fiber, Layer, Option, References, Stream, Tracer } from "effect"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -7,7 +8,38 @@ import * as Statement from "effect/sql/Statement"
 import * as Str from "effect/String"
 import * as TestClock from "effect/testing/TestClock"
 
+const sparkCompiler = Statement.makeCompiler({
+  dialect: "spark",
+  placeholder: () => "?",
+  onIdentifier: Statement.defaultEscape("`"),
+  onRecordUpdate: () => ["", []],
+  onCustom: () => ["", []]
+})
+
 describe("Statement", () => {
+  it("dispatches custom dialects and reports missing strict branches", () => {
+    const sql = Statement.make(Effect.die("unexpected query"), sparkCompiler, [], undefined)
+    assert.strictEqual(sql.onDialect({ spark: () => "custom" }), "custom")
+    assert.strictEqual(sql.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
+    assert.throws(() => sql.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "spark". Supported dialects: pg/)
+  })
+
+  it.effect("rejects an unsupported key-value store dialect before acquiring a connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.make({
+        driver: "test",
+        compiler: sparkCompiler,
+        acquirer: Effect.die("unexpected query"),
+        spanAttributes: []
+      })
+      const cause = yield* Layer.build(KeyValueStore.layerSql()).pipe(
+        Effect.provideService(SqlClient.SqlClient, sql),
+        Effect.sandbox,
+        Effect.flip
+      )
+      assert.match(String(Cause.squash(cause)), /Unsupported SQL dialect "spark"/)
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it("transforms SQL result names without changing nested values", () => {
     const rows: Array<Record<string, unknown>> = [
       { user_id: 1, profile_data: { display_name: "Ada" }, tags: [{ tag_name: "admin" }] }

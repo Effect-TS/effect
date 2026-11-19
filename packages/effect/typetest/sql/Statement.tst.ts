@@ -9,6 +9,14 @@ declare const plainFragment: {
 }
 
 describe("Statement", () => {
+  it("accepts custom dialects and infers the results of supplied branches", () => {
+    expect<"spark">().type.toBeAssignableTo<Statement.CompilerOptions["dialect"]>()
+    const strict = sql.onDialect({ pg: () => 1, spark: () => "custom" })
+    const fallback = sql.onDialectOrElse({ spark: () => "custom", orElse: () => false })
+    expect(strict).type.toBe<number | string>()
+    expect(fallback).type.toBe<string | boolean>()
+  })
+
   it("insert requires non-empty rows or a single record", () => {
     expect(sql.insert).type.not.toBeCallableWith([])
     expect(sql.insert).type.toBeCallableWith([{ name: "Ada" }])
