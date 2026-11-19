@@ -337,34 +337,38 @@ export const make = Effect.fnUntraced(function*(
         server.off("checkContinue", checkContinueHandler)
         server.off("upgrade", trackedUpgrade)
       }
-      try {
-        server.on("request", handler)
-        server.on("checkContinue", checkContinueHandler)
-        server.on("upgrade", trackedUpgrade)
-      } catch (cause) {
-        removeListeners()
-        throw cause
-      }
-      activeServes++
-      removeFallback?.()
-      yield* Scope.addFinalizerExit(serveScope, () => {
-        upgradesClosed = true
-        for (const socket of upgradedSockets) {
-          const ws = upgradedWebSockets.get(socket)
-          if (ws) ws.close(1001)
-          else socket.end()
-        }
-        return Effect.ensuring(
-          preemptiveShutdown,
-          Effect.sync(() => {
-            for (const socket of upgradedSockets) {
-              socket.destroy()
-            }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          try {
+            server.on("request", handler)
+            server.on("checkContinue", checkContinueHandler)
+            server.on("upgrade", trackedUpgrade)
+          } catch (cause) {
             removeListeners()
-            if (--activeServes === 0) installFallback()
-          })
-        )
-      })
+            throw cause
+          }
+          activeServes++
+          removeFallback?.()
+        }),
+        () => {
+          upgradesClosed = true
+          for (const socket of upgradedSockets) {
+            const ws = upgradedWebSockets.get(socket)
+            if (ws) ws.close(1001)
+            else socket.end()
+          }
+          return Effect.ensuring(
+            preemptiveShutdown,
+            Effect.sync(() => {
+              for (const socket of upgradedSockets) {
+                socket.destroy()
+              }
+              removeListeners()
+              if (--activeServes === 0) installFallback()
+            })
+          )
+        }
+      )
     })
   })
 })

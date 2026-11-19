@@ -151,8 +151,22 @@ describe("HttpServer", () => {
       const failed = yield* Effect.exit(Effect.scoped(serve))
       server.off("newListener", rejectUpgrade)
       assert.isTrue(Exit.isFailure(failed))
+      const interruptedScope = yield* Scope.make()
+      const interruptUpgrade = (event: string | symbol) => {
+        if (event === "upgrade") Fiber.getCurrent()!.interruptUnsafe()
+      }
+      server.on("newListener", interruptUpgrade)
+      const interrupted = yield* serve.pipe(
+        Scope.provide(interruptedScope),
+        Effect.forkChild,
+        Effect.flatMap(Fiber.await)
+      )
+      server.off("newListener", interruptUpgrade)
+      assert.isTrue(Exit.hasInterrupts(interrupted))
+      yield* Scope.close(interruptedScope, Exit.void)
       assert.strictEqual(server.listenerCount("request"), 1)
       assert.strictEqual(server.listenerCount("checkContinue"), 1)
+      assert.strictEqual(server.listenerCount("upgrade"), 1)
       yield* serve.pipe(Scope.provide(last))
       const url = `http://127.0.0.1:${tcpPort(server)}/`
       yield* Scope.close(first, Exit.void)
