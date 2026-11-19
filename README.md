@@ -84,6 +84,11 @@ This monorepo contains the core `effect` package alongside integration packages 
 | [`@effect/ai-typesafe`](packages/ai/typesafe)                         | TypeSafe decision provider for the Effect AI modules     | [docs](https://effect.website/docs/v4/api/ai-typesafe)             |
 | [`@effect/ai-openai-compat`](packages/ai/openai-compat)               | OpenAI-compatible API provider for the Effect AI modules | [docs](https://effect.website/docs/v4/api/ai-openai-compat)        |
 | [`@effect/ai-openrouter`](packages/ai/openrouter)                     | OpenRouter provider for the Effect AI modules            | [docs](https://effect.website/docs/v4/api/ai-openrouter)           |
+| [`@effect/chat-slack`](packages/chat/slack)                           | Slack adapter for `effect/chat`                          | [docs](https://effect.website/docs/v4/api/chat-slack)              |
+| [`@effect/chat-whatsapp`](packages/chat/whatsapp)                     | WhatsApp Cloud API adapter for `effect/chat`             | [docs](https://effect.website/docs/v4/api/chat-whatsapp)           |
+| [`@effect/chat-discord`](packages/chat/discord)                       | Discord adapter for `effect/chat`                        | [docs](https://effect.website/docs/v4/api/chat-discord)            |
+| [`@effect/chat-telegram`](packages/chat/telegram)                     | Telegram Bot API adapter for `effect/chat`               | [docs](https://effect.website/docs/v4/api/chat-telegram)           |
+| [`@effect/chat-teams`](packages/chat/teams)                           | Microsoft Teams adapter for `effect/chat`                | [docs](https://effect.website/docs/v4/api/chat-teams)              |
 | [`@effect/atom-react`](packages/atom/react)                           | React bindings for Effect Atom                           | [docs](https://effect.website/docs/v4/api/atom-react)              |
 | [`@effect/atom-solid`](packages/atom/solid)                           | SolidJS bindings for Effect Atom                         | [docs](https://effect.website/docs/v4/api/atom-solid)              |
 | [`@effect/atom-vue`](packages/atom/vue)                               | Vue bindings for Effect Atom                             | [docs](https://effect.website/docs/v4/api/atom-vue)                |
