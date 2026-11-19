@@ -1,5 +1,6 @@
 import { escapeToken, parseUriFragment } from "../../JsonPointer.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as InternalAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
@@ -1343,135 +1344,60 @@ export function fromJsonSchemaMultiDocument(
   }
 
   /**
-   * JSON Schema `format` is an assertion in practice: Ajv and other validators
-   * reject values that do not match it. The importer used to keep it as an
-   * annotation only. These predicates cover the standard draft 2020-12
-   * formats. Unknown formats stay annotation-only because their meaning is
-   * application specific.
+   * JSON Schema `format` remains an annotation by default. Callers can opt in
+   * to assertion behavior with `formats: "apply"`. The supported formats below
+   * delegate to validators that already ship with Effect, so the generated and
+   * interpreted paths agree. Every other standard format stays annotation-only
+   * until it can be delegated to an exact validator.
    */
-  const formatPredicates: Readonly<Record<string, (value: string) => boolean>> = {
-    "date-time": (value) => dateTimeRegex.test(value) && isValidDateTime(value),
-    "date": (value) => dateRegex.test(value) && isValidDate(value),
-    "time": (value) => timeRegex.test(value) && isValidTime(value),
-    "duration": (value) => durationRegex.test(value),
-    "email": (value) => emailRegex.test(value),
-    "idn-email": (value) => emailRegex.test(value),
-    "hostname": (value) => hostnameRegex.test(value),
-    "idn-hostname": (value) => hostnameRegex.test(value),
-    "ipv4": (value) => ipv4Regex.test(value) && value.split(".").every((part) => Number(part) <= 255),
-    "ipv6": (value) => ipv6Regex.test(value),
-    "uri": (value) => isValidUri(value),
-    "uri-reference": (value) => isValidUriReference(value),
-    "iri": (value) => isValidUri(value),
-    "iri-reference": (value) => isValidUriReference(value),
-    "uuid": (value) => uuidRegex.test(value),
-    "uri-template": (value) => uriTemplateRegex.test(value),
-    "json-pointer": (value) => jsonPointerRegex.test(value),
-    "relative-json-pointer": (value) => relativeJsonPointerRegex.test(value),
-    "regex": (value) => {
-      try {
-        const regex = globalThis.RegExp(value)
-        return regex !== undefined
-      } catch {
-        return false
+  const enforceFormats = options?.formats === "apply"
+
+  function formatDecoderFilter(format: string, schema: any): InternalAST.Filter<string> {
+    return Schema.makeFilter<string>(
+      (value) => Result.isSuccess(Schema.decodeUnknownResult(schema, { errors: "first" })(value)) ? undefined : false,
+      {
+        expected: `a string matching the ${format} format`,
+        representation: {
+          id: "effect/schema/isFormat",
+          payload: { format }
+        },
+        toJsonSchema: () => ({ format })
       }
+    )
+  }
+
+  function isValidJsonPointer(value: string): boolean {
+    if (value === "") return true
+    if (!value.startsWith("/")) return false
+    for (const token of value.slice(1).split("/")) {
+      for (let i = 0; i < token.length; i++) {
+        if (token[i] === "~" && token[i + 1] !== "0" && token[i + 1] !== "1") return false
+      }
+      if (token.endsWith("~")) return false
     }
+    return true
   }
 
-  const dateTimeRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-  const timeRegex = /^\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/
-  const durationRegex = /^P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$/
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  const hostnameRegex =
-    /^(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-  const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-  const ipv6Regex =
-    /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,7}:$|^(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}$|^(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}$|^(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}$|^:(?::[0-9a-fA-F]{1,4}){1,7}$|^::$|^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-  const uriTemplateRegex = /^(?:[^{}]|\{[+#./;?&=,!@|]?[^{}]*\})*$/
-  const jsonPointerRegex = /^(?:\/(?:[^~/]|~[01])*)*$/
-  const relativeJsonPointerRegex = /^(?:0|[1-9]\d*)(?:#|(?:\/(?:[^~/]|~[01])*)*)$/
-
-  function isValidDate(value: string): boolean {
-    const [year, month, day] = value.split("-").map(Number)
-    const date = new globalThis.Date(year, month - 1, day)
-    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  }
-
-  function isValidTime(value: string): boolean {
-    const [hours, minutes, seconds] = value.slice(0, 8).split(":").map(Number)
-    return hours <= 23 && minutes <= 59 && seconds <= 60
-  }
-
-  function isValidDateTime(value: string): boolean {
-    return isValidDate(value.slice(0, 10)) && isValidTime(value.slice(11, 19))
-  }
-
-  function isValidUri(value: string): boolean {
-    try {
-      const url = new globalThis.URL(value)
-      return url.protocol.length > 0
-    } catch {
-      return false
-    }
-  }
-
-  function isValidUriReference(value: string): boolean {
-    try {
-      const url = new globalThis.URL(value, "http://localhost")
-      return url !== undefined
-    } catch {
-      return false
-    }
-  }
-
-  const formatCodeRegex: Readonly<Record<string, globalThis.RegExp>> = {
-    "date-time": dateTimeRegex,
-    "date": dateRegex,
-    "time": timeRegex,
-    "duration": durationRegex,
-    "email": emailRegex,
-    "idn-email": emailRegex,
-    "hostname": hostnameRegex,
-    "idn-hostname": hostnameRegex,
-    "ipv4": ipv4Regex,
-    "ipv6": ipv6Regex,
-    "uri": /^[A-Za-z][A-Za-z0-9+.-]*:/,
-    "uri-reference": /^[^\s]*$/,
-    "iri": /^[A-Za-z][A-Za-z0-9+.-]*:/,
-    "iri-reference": /^[^\s]*$/,
-    "uuid": uuidRegex,
-    "uri-template": uriTemplateRegex,
-    "json-pointer": jsonPointerRegex,
-    "relative-json-pointer": relativeJsonPointerRegex
-  }
-
-  function formatCode(format: string): string {
-    if (format === "regex") {
-      return `Schema.makeFilter((value) => { try { globalThis.RegExp(value); return true } catch { return false } })`
-    }
-    const regex = formatCodeRegex[format]
-    if (regex !== undefined) {
-      return `Schema.isPattern(new globalThis.RegExp(${globalThis.JSON.stringify(regex.source)}${
-        regex.flags === "" ? "" : `, ${globalThis.JSON.stringify(regex.flags)}`
-      }))`
-    }
-    return `Schema.makeFilter(() => true)`
+  const formatChecks: Readonly<Record<string, () => InternalAST.Filter<any>>> = {
+    "uuid": () => Schema.isGUID(),
+    "ipv4": () => formatDecoderFilter("ipv4", Schema.Ipv4AddressFromString),
+    "ipv6": () => formatDecoderFilter("ipv6", Schema.Ipv6AddressFromString),
+    "json-pointer": () =>
+      Schema.makeFilter<string>(isValidJsonPointer, {
+        expected: "a JSON Pointer",
+        representation: {
+          id: "effect/schema/isJsonPointer",
+          payload: null
+        },
+        toJsonSchema: () => ({ format: "json-pointer" })
+      })
   }
 
   function importFormatCheck(format: string): Check | undefined {
-    const predicate = formatPredicates[format]
-    if (predicate === undefined) return undefined
-    return makeFilter(Schema.makeFilter<string>((value) => predicate(value) ? undefined : false, {
-      expected: `a string matching the ${format} format`,
-      representation: {
-        id: "effect/schema/isFormat",
-        payload: { format }
-      },
-      toJsonSchema: () => ({ format }),
-      toCode: () => ({ runtime: formatCode(format) })
-    }))
+    if (!enforceFormats) return undefined
+    const make = formatChecks[format]
+    if (make === undefined) return undefined
+    return makeFilter(make())
   }
 
   function collectStringChecks(schema: JsonSchema.JsonSchema, path: Path): Array<Check> {

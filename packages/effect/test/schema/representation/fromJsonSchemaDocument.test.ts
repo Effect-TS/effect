@@ -1217,7 +1217,7 @@ describe("fromJsonSchemaDocument", () => {
       },
       {
         codes: makeCode(
-          `Schema.String.annotate({ "format": "email", "contentEncoding": "base64", "contentMediaType": "application/json", "contentSchema": { "type": "number" } }).check(Schema.isPattern(new globalThis.RegExp("^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$")).annotate({ "expected": "a string matching the email format" }))`,
+          `Schema.String.annotate({ "format": "email", "contentEncoding": "base64", "contentMediaType": "application/json", "contentSchema": { "type": "number" } })`,
           `string`
         )
       }

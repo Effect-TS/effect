@@ -2496,6 +2496,13 @@ export interface FromJsonSchemaOptions extends FromJsonSchemaExperimentalOptions
    */
   readonly patterns?: "error" | "ignore" | "apply" | undefined
   /**
+   * Controls whether supported JSON Schema `format` keywords are enforced.
+   * The default keeps them as annotations, matching draft 2020-12.
+   *
+   * @default "ignore"
+   */
+  readonly formats?: "ignore" | "apply" | undefined
+  /**
    * Selects additional JSON Schema keys to preserve as Effect schema annotations.
    *
    * **Details**
