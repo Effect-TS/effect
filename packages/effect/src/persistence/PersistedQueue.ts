@@ -1641,7 +1641,6 @@ export const makeStoreSql: (
     mssql: () => sql.literal("SYSDATETIME()"),
     mysql: () => sql.literal("NOW()"),
     pg: () => sql.literal("NOW()"),
-    // sqlite
     sqlite: () => sql.literal("CURRENT_TIMESTAMP")
   })
 
@@ -1734,7 +1733,6 @@ export const makeStoreSql: (
             @id = ${id}, @name = ${name}, @element = ${element}, @visible_at = @visible_at, @xact_abort = @xact_abort;
         `
     },
-    // sqlite
     sqlite: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
@@ -1948,7 +1946,6 @@ export const makeStoreSql: (
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
-        // sqlite
         sqlite: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             UPDATE ${tableNameSql}
@@ -2035,7 +2032,6 @@ export const makeStoreSql: (
         OUTPUT DELETED.sequence
         WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
       `.pipe(Effect.map((rows) => rows.length)),
-    // sqlite
     sqlite: () => (state: string, seconds: number) =>
       sql<{ readonly deleted: number }>`
         DELETE FROM ${tableNameSql}
@@ -2245,7 +2241,6 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
             created_at DATETIME2 NOT NULL,
             updated_at DATETIME2 NOT NULL
           )`,
-        // sqlite
         sqlite: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
             sequence INTEGER PRIMARY KEY AUTOINCREMENT,

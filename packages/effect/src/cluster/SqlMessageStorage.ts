@@ -31,7 +31,7 @@
 import * as Arr from "../Array.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
-import { constVoid, identity } from "../Function.ts"
+import { identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -42,6 +42,7 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
+import { runStorageMigrations } from "./internal/sqlMigrations.ts"
 import * as MachineId from "./MachineId.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
@@ -1134,7 +1135,6 @@ export const migrations = (options?: {
             )
           `,
         sqlite: () =>
-          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
               id INTEGER PRIMARY KEY,
@@ -1193,7 +1193,6 @@ export const migrations = (options?: {
             `
         }),
         sqlite: () =>
-          // sqlite
           Effect.all([
             sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
@@ -1252,7 +1251,6 @@ export const migrations = (options?: {
             )
           `,
         sqlite: () =>
-          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
               id INTEGER PRIMARY KEY,
@@ -1287,7 +1285,6 @@ export const migrations = (options?: {
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
         sqlite: () =>
-          // sqlite
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
@@ -1312,9 +1309,7 @@ export const migrations = (options?: {
           sql`
             ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type TYPE VARCHAR(150);
           `,
-        sqlite: () =>
-          // sqlite
-          Effect.void
+        sqlite: () => Effect.void
       })
     }),
     "0003_pg_messages_rowid_index": Effect.gen(function*() {
@@ -1384,19 +1379,7 @@ export const migrations = (options?: {
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  SqlClient.SqlClient.pipe(
-    Effect.flatMap((sql) => {
-      // `Migrator` also accepts ClickHouse, so reject dialects without storage
-      // SQL before it queries the database
-      sql.onDialect({ sqlite: constVoid, pg: constVoid, mysql: constVoid, mssql: constVoid })
-      return Migrator.make({})({
-        loader: migrations(options),
-        table: `${options?.prefix ?? "cluster"}_migrations`
-      })
-    }),
-    Effect.asVoid,
-    Effect.orDie
-  )
+  runStorageMigrations(migrations(options), `${options?.prefix ?? "cluster"}_migrations`)
 
 /**
  * Runs the SQL message storage migrations without providing storage.

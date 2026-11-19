@@ -22,7 +22,6 @@ import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
-import { constVoid } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -33,6 +32,7 @@ import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
+import { runStorageMigrations } from "./internal/sqlMigrations.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
 import * as ShardId from "./ShardId.ts"
 import * as ShardingConfig from "./ShardingConfig.ts"
@@ -283,7 +283,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         RETURNING machine_id
       `.values,
     sqlite: () => (address: string, runner: string, healthy: boolean) =>
-      // sqlite
       sql`
         INSERT INTO ${runnersTableSql} (address, runner, last_heartbeat, healthy)
         VALUES (${address}, ${runner}, ${sqlNow}, ${encodeBoolean(healthy)})
@@ -847,7 +846,6 @@ export const migrations = (options: {
             )
           `,
         sqlite: () =>
-          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
               machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -887,7 +885,6 @@ export const migrations = (options: {
             )
           `,
         sqlite: () =>
-          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${locksTableSql} (
               shard_id TEXT PRIMARY KEY,
@@ -903,20 +900,8 @@ export const migrations = (options: {
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  SqlClient.SqlClient.pipe(
-    Effect.flatMap((sql) => {
-      // `Migrator` also accepts ClickHouse, so reject dialects without storage
-      // SQL before it queries the database
-      sql.onDialect({ sqlite: constVoid, pg: constVoid, mysql: constVoid, mssql: constVoid })
-      return Migrator.make({})({
-        loader: migrations(options),
-        // Message and runner migration ids overlap, so keep separate histories.
-        table: `${options.prefix ?? "cluster"}_runner_migrations`
-      })
-    }),
-    Effect.asVoid,
-    Effect.orDie
-  )
+  // Message and runner migration ids overlap, so keep separate histories.
+  runStorageMigrations(migrations(options), `${options.prefix ?? "cluster"}_runner_migrations`)
 
 /**
  * Runs the SQL runner storage migrations without providing storage.

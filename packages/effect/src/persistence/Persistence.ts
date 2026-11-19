@@ -360,7 +360,6 @@ export const layerBackingSqlMultiTable: Layer.Layer<
               expires BIGINT
             )
           `,
-        // sqlite
         sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${table} (
@@ -405,7 +404,6 @@ export const layerBackingSqlMultiTable: Layer.Layer<
               `,
             { discard: true }
           ),
-        // sqlite
         sqlite: (): UpsertFn => (entries) =>
           sql`
             INSERT INTO ${table} ${sql.insert(entries)}
@@ -590,7 +588,6 @@ export const layerBackingSql: Layer.Layer<
           PRIMARY KEY (store_id, id)
         )
       `,
-    // sqlite
     sqlite: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${table} (
@@ -634,7 +631,6 @@ export const layerBackingSql: Layer.Layer<
         Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
       )
     }, (_) => Effect.orDie(_)),
-    // sqlite
     sqlite: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
         .pipe(Effect.orDie, Effect.asVoid)
@@ -744,7 +740,6 @@ export const layerBackingSql: Layer.Layer<
           `,
         { discard: true }
       ),
-    // sqlite
     sqlite: (): UpsertFn => (entries) =>
       sql`
         INSERT INTO ${table} ${sql.insert(entries)}

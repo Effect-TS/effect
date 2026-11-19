@@ -94,6 +94,8 @@ export const fragment = (
 /**
  * SQL dialect identifier used by statement compilers.
  *
+ * **Details**
+ *
  * The built-in drivers use `"sqlite"`, `"pg"`, `"mysql"`, `"mssql"` and
  * `"clickhouse"`. A driver outside this repository can use any other name.
  *
@@ -622,9 +624,13 @@ export interface Constructor {
   /**
    * Runs the branch for the client's dialect.
    *
+   * **Details**
+   *
    * Branches for dialects outside the built-in names can be passed as extra
    * keys. If the client's dialect has no branch, this throws an error that
    * names the dialect and the supported ones.
+   *
+   * **Gotchas**
    *
    * A lambda returned from a custom-name branch needs its parameters
    * annotated, because only the built-in branches are contextually typed.
@@ -648,6 +654,8 @@ export interface Constructor {
 
   /**
    * Runs the branch for the client's dialect, or `orElse` when it has none.
+   *
+   * **Details**
    *
    * Branches for dialects outside the built-in names can be passed as extra
    * keys.

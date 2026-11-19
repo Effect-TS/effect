@@ -642,7 +642,6 @@ export const layerSql = (
             value_type SMALLINT NOT NULL
           )
         `,
-        // sqlite
         sqlite: () =>
           sql`
           CREATE TABLE IF NOT EXISTS ${table} (
@@ -679,7 +678,6 @@ export const layerSql = (
           WHEN NOT MATCHED THEN INSERT (id, value, value_type)
           VALUES (source.id, source.value, source.value_type);
         `,
-        // sqlite
         sqlite: (): UpsertFn => (entry) =>
           sql`
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
