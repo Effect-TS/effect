@@ -1839,6 +1839,63 @@ describe("Stream", () => {
         )
         assert.deepStrictEqual(result, [1, 2, 3])
       }))
+
+    describe("flattenIterable", () => {
+      it.effect("emits ordered chunks before propagating an upstream failure", () =>
+        Effect.gen(function*() {
+          const first = [0]
+          const values = Array.range(1, 4097)
+          const chunks: Array<ReadonlyArray<number>> = []
+          const exit = yield* Stream.make<Array<Iterable<number>>>(first, [], new Set(values)).pipe(
+            Stream.rechunk(2),
+            Stream.concat(Stream.fail("boom")),
+            Stream.flattenIterable,
+            Stream.runForEachArray((chunk) => Effect.sync(() => chunks.push(chunk))),
+            Effect.exit
+          )
+          assert.strictEqual(chunks[0], first)
+          assert.deepStrictEqual(chunks, [first, values.slice(0, 4096), [4097]])
+          assert.deepStrictEqual(exit, Exit.fail("boom"))
+        }))
+
+      it.effect("stops pulling an infinite iterable early", () =>
+        Effect.gen(function*() {
+          let pulled = 0
+          let returned = 0
+          const naturals: Iterable<number> = {
+            [Symbol.iterator]: () => ({
+              next: () => ({ done: false, value: pulled++ }),
+              return: () => {
+                returned++
+                return { done: true, value: undefined }
+              }
+            })
+          }
+          const result = yield* Stream.make(naturals).pipe(
+            Stream.flattenIterable,
+            Stream.take(3),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(result, [0, 1, 2])
+          assert.isAtMost(pulled, Stream.DefaultChunkSize)
+          assert.strictEqual(returned, 1)
+        }))
+
+      it.effect("does not open the next iterator until requested", () =>
+        Effect.gen(function*() {
+          const unused = {
+            [Symbol.iterator]: () => {
+              throw new Error("unexpected iterator request")
+            }
+          }
+          const result = yield* Stream.make<Array<Iterable<number>>>(new Set([1]), unused).pipe(
+            Stream.flattenIterable,
+            Stream.take(1),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(result, [1])
+        }))
+    })
   })
 
   const testOuterFailure = Effect.fnUntraced(function*(
