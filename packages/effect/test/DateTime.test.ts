@@ -726,13 +726,14 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
     })
 
-    it("treats strings with lowercase letters in comments as UTC", { concurrent: false }, () => {
+    it.each([
+      ["Tue, 27 Jan 2026 17:14:06 (xyz)", "2026-01-27T17:14:06.000Z"],
+      ["2024-1-15", "2024-01-15T00:00:00.000Z"]
+    ])("reads zoneless %s as UTC", { concurrent: false }, (input, expected) => {
       const previousTZ = process.env.TZ
       try {
         process.env.TZ = "America/New_York"
         strictEqual(new Date("2026-01-27T17:14:06.000Z").getTimezoneOffset(), 300)
-        const input = "Tue, 27 Jan 2026 17:14:06 (xyz)"
-        const expected = "2026-01-27T17:14:06.000Z"
         deepStrictEqual(
           [DateTime.makeUnsafe(input).toJSON(), Option.map(DateTime.make(input), DateTime.formatIso)],
           [expected, Option.some(expected)]
@@ -754,6 +755,11 @@ describe("DateTime", () => {
     it("does not append Z to strings with explicit offset", () => {
       const dt = DateTime.makeUnsafe("2020-02-01T11:17:00+1100")
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
+    })
+
+    it("preserves a GMT offset before the year", () => {
+      const dt = DateTime.makeUnsafe("Jan 15 12:00 GMT-0500 2024")
+      strictEqual(dt.toJSON(), "2024-01-15T17:00:00.000Z")
     })
 
     it("does not append Z to strings containing GMT", () => {
