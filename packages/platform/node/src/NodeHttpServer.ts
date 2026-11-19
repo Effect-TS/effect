@@ -505,7 +505,7 @@ export const makeUpgradeHandler = <
       )
       const webSocketUpgrade = Socket.fromWebSocket(acquireWebSocket, {
         highWaterMark: options.highWaterMark,
-        reconnect: false
+        disableReconnects: true
       })
       const state: UpgradeState = {
         body,

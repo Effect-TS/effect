@@ -157,21 +157,21 @@ export const fromDuplex = <RO>(
      */
     readonly chunkSize?: number | undefined
     readonly tlsServer?: boolean | undefined
-    /** Set to false for a single connection that cannot be reacquired. Defaults to true. */
-    readonly reconnect?: boolean | undefined
+    /** Set to true for a single connection that cannot be reacquired. Defaults to false. */
+    readonly disableReconnects?: boolean | undefined
   }
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
     let terminalError: Socket.SocketError | undefined
     const latch = Latch.makeUnsafe(false)
-    const reconnect = options?.reconnect !== false
-    const terminate = reconnect
-      ? () => latch.closeUnsafe()
-      : (error: Socket.SocketError) => {
+    const disableReconnects = options?.disableReconnects === true
+    const terminate = disableReconnects
+      ? (error: Socket.SocketError) => {
         terminalError ??= error
         latch.openUnsafe()
       }
+      : () => latch.closeUnsafe()
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const requestedChunkSize = options?.chunkSize ?? 4096
@@ -433,13 +433,13 @@ export const fromDuplex = <RO>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
     ) as Socket.Socket["reader"]
-    const reader: Socket.Socket["reader"] = reconnect
-      ? connect
-      : Effect.suspend(() =>
+    const reader: Socket.Socket["reader"] = disableReconnects
+      ? Effect.suspend(() =>
         terminalError !== undefined
           ? Effect.fail(terminalError)
           : Effect.tapError(connect, (error) => Effect.sync(() => terminate(error)))
       )
+      : connect
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {

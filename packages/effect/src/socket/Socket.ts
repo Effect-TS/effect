@@ -964,8 +964,8 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly highWaterMark?: number | undefined
-    /** Set to false for a single connection that cannot be reacquired. Defaults to true. */
-    readonly reconnect?: boolean | undefined
+    /** Set to true for a single connection that cannot be reacquired. Defaults to false. */
+    readonly disableReconnects?: boolean | undefined
   } | undefined
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
@@ -973,13 +973,13 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     let terminalError: SocketError | undefined
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
-    const reconnect = options?.reconnect !== false
-    const terminate = reconnect
-      ? () => latch.closeUnsafe()
-      : (error: SocketError) => {
+    const disableReconnects = options?.disableReconnects === true
+    const terminate = disableReconnects
+      ? (error: SocketError) => {
         terminalError ??= error
         latch.openUnsafe()
       }
+      : () => latch.closeUnsafe()
 
     const connect: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -1188,13 +1188,13 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]
-    const reader: Socket["reader"] = reconnect
-      ? connect
-      : Effect.suspend(() =>
+    const reader: Socket["reader"] = disableReconnects
+      ? Effect.suspend(() =>
         terminalError !== undefined
           ? Effect.fail(terminalError)
           : Effect.tapError(connect, (error) => Effect.sync(() => terminate(error)))
       )
+      : connect
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {

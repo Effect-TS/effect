@@ -33,7 +33,7 @@ export const toSocket = (
           }
         })
     ),
-    { reconnect: false }
+    { disableReconnects: true }
   )
 
 const openError = (cause: unknown) =>

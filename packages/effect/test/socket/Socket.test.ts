@@ -163,7 +163,7 @@ describe("Socket", () => {
         ws.readyState = 1
         const scope = yield* Scope.make()
         const socket = yield* Socket.fromWebSocket(Scope.close(scope, Exit.void).pipe(Effect.as(ws)), {
-          reconnect: false
+          disableReconnects: true
         })
         const writer = yield* socket.writer
 
