@@ -145,13 +145,31 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
 }
 
 /**
- * A boolean validator that honours parse options. Kept separate from `is` so
- * the existing single-argument guard stays assignable to array callbacks and
- * keeps its type-predicate narrowing for callers.
+ * Creates a boolean validator for the decoded side of a schema that honours
+ * parse options such as `onExcessProperty: "error"`.
+ *
+ * **When to use**
+ *
+ * Use at accept/reject boundaries that only need yes or no, and whose contract
+ * requires parse options. It avoids constructing issue details on success and
+ * is the options-aware counterpart of the type guard returned by `is`.
+ *
+ * **Details**
+ *
+ * Options are fixed when the validator is created; the returned function takes
+ * only the input. It returns `true` when decoding succeeds and `false` for
+ * schema mismatches. As with `is`, causes that are not schema issues throw.
+ *
+ * **Backcompat**
+ *
+ * `is` is deliberately unchanged: widening its guard with an optional options
+ * parameter conflicts with the index argument when the guard is passed to
+ * `Array.prototype.filter`, and removes type-predicate narrowing. Existing
+ * callers such as `keys.filter(isPublicJwk)` would break.
  *
  * @stability stable
  * @category guards
- * @since 4.1.4
+ * @since 4.1.5
  */
 export function validate<S extends Schema.Constraint>(
   schema: S,
