@@ -94,6 +94,22 @@ describe("HttpServer", () => {
       assert.strictEqual(server.listenerCount("request"), 0)
     }))
 
+  it.live("answers after a one-shot HTTP/2 request listener finishes", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer().once("request", (_request, response) => {
+        response.writeHead(201)
+        response.end("created")
+      })
+      yield* NodeHttpServer.make(() => server, { host: "127.0.0.1", port: 0 })
+      const url = `http://127.0.0.1:${tcpPort(server)}/`
+      const first = yield* HttpClient.get(url)
+      assert.strictEqual(first.status, 201)
+      assert.strictEqual(yield* first.text, "created")
+      const next = yield* HttpClient.get(url)
+      assert.strictEqual(next.status, 503)
+      assert.strictEqual(yield* next.text, "service unavailable")
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
+
   it.effect("does not restore a startup listener after the server scope closes", () =>
     Effect.gen(function*() {
       const server = Http.createServer()

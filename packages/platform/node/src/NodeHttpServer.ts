@@ -230,7 +230,9 @@ export const make = Effect.fnUntraced(function*(
     })
 
   // Adding a request listener enables HTTP/2's compatibility API. Leave native stream responders alone.
-  const hasStreamResponder = server.listenerCount("stream") > 0
+  // A supplied compatibility request listener has already installed one stream listener of its own.
+  const compatibilityStreams = server.listenerCount("request") > 0 ? 1 : 0
+  const hasStreamResponder = server.listenerCount("stream") > compatibilityStreams
   const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
     if (server.listenerCount("request") === 1) {
       response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
