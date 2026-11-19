@@ -1637,7 +1637,7 @@ export const makeStoreSql: (
 
   yield* Effect.orDie(
     Migrator.make({})({
-      loader: sqlMigrations(tableName),
+      loader: sqlMigrations(tableName, sql),
       table: `${tableName}_migrations`
     })
   )
@@ -2193,7 +2193,7 @@ export const makeStoreSql: (
   })
 })
 
-const sqlMigrations = (tableName: string) =>
+const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
   Migrator.fromRecord({
     "0001_create_table": Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -2419,22 +2419,21 @@ const sqlMigrations = (tableName: string) =>
             WHERE state = 'pending'`
       })
     }),
-    // Migration 0002 widened the column but not its SERIAL sequence.
-    "0003_widen_sequence": Effect.gen(function*() {
-      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-      yield* sql.onDialectOrElse({
-        pg: Effect.fnUntraced(function*() {
-          const [relation] = sql`${sql(tableName)}`.compile()
-          const [row] = yield* sql<{ readonly sequence: string | null }>`
+    ...client.onDialectOrElse({
+      pg: () => ({
+        // Migration 0002 widened the column but not its SERIAL sequence.
+        "0003_widen_sequence": Effect.gen(function*() {
+          const [relation] = client`${client(tableName)}`.compile()
+          const [row] = yield* client<{ readonly sequence: string | null }>`
             SELECT pg_get_serial_sequence(${relation}, 'sequence') AS sequence
           `
           if (row.sequence !== null) {
             // PostgreSQL already quotes and qualifies the sequence name.
-            yield* sql`ALTER SEQUENCE ${sql.literal(row.sequence)} AS bigint`
+            yield* client`ALTER SEQUENCE ${client.literal(row.sequence)} AS bigint`
           }
-        }),
-        orElse: () => Effect.void
-      })
+        })
+      }),
+      orElse: () => ({})
     })
   })
 
