@@ -1467,13 +1467,16 @@ export const is: typeof SchemaParser.is = SchemaParser.is
  *
  * **When to use**
  *
- * Use at accept/reject boundaries that only need a `boolean` and must honour
- * parse options. It is the options-aware counterpart of `is`; options are fixed
- * when the validator is created and the returned function takes only the input.
- * `is` is left unchanged as a single-argument type guard so existing
- * `Array.prototype.filter` uses keep their narrowing.
+ * Use to accept or reject boundary input that needs only a `boolean` and must
+ * honour parse options. This is the options-aware counterpart of `is`.
  *
- * @example
+ * **Details**
+ *
+ * Options are fixed when the validator is created and the returned function
+ * takes only the input. `is` is left unchanged as a single-argument type guard
+ * so existing `Array.prototype.filter` uses keep their narrowing.
+ *
+ * **Example** (Validating a boundary object)
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"

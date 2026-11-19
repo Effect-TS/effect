@@ -150,9 +150,9 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
  *
  * **When to use**
  *
- * Use at accept/reject boundaries that only need yes or no, and whose contract
- * requires parse options. It avoids constructing issue details on success and
- * is the options-aware counterpart of the type guard returned by `is`.
+ * Use to accept or reject boundary input when the contract requires parse
+ * options. This is the options-aware counterpart of the type guard returned by
+ * `is`; it avoids constructing issue details on success.
  *
  * **Details**
  *
@@ -160,9 +160,7 @@ export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => inp
  * only the input. It returns `true` when decoding succeeds and `false` for
  * schema mismatches. As with `is`, causes that are not schema issues throw.
  *
- * **Backcompat**
- *
- * `is` is deliberately unchanged: widening its guard with an optional options
+ * `is` is deliberately unchanged. Widening its guard with an optional options
  * parameter conflicts with the index argument when the guard is passed to
  * `Array.prototype.filter`, and removes type-predicate narrowing. Existing
  * callers such as `keys.filter(isPublicJwk)` would break.
