@@ -1665,7 +1665,7 @@ describe("Stream", () => {
         Effect.gen(function*() {
           const values = yield* Stream.make(1, 2, 3).pipe(
             group(Duration.zero),
-            Stream.flatMap(([, stream]) => stream, { concurrency: "unbounded" }),
+            Stream.flatMap(([, stream]) => stream),
             Stream.runCollect
           )
           assert.deepStrictEqual(values, [1, 2, 3])
@@ -1673,8 +1673,7 @@ describe("Stream", () => {
 
       it.effect(name + " keeps a backpressured group past its idle TTL", () =>
         Effect.gen(function*() {
-          const groups = yield* Stream.make(1, 2, 3).pipe(
-            Stream.rechunk(1),
+          const groups = yield* Stream.range(1, 3, 1).pipe(
             group("1 second"),
             Stream.mapEffect(([, stream]) => Effect.andThen(TestClock.adjust("2 seconds"), Stream.runCollect(stream))),
             Stream.runCollect
