@@ -1,4 +1,4 @@
-import * as BloomFilter from "effect/BloomFilter"
+import { BloomFilter, MutableBloomFilter, MutableScalableBloomFilter, ScalableBloomFilter } from "effect"
 import { pipe } from "effect/Function"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -271,11 +271,11 @@ describe("BloomFilter", () => {
 
     it("rejects a variant mismatch", () => {
       const classic = BloomFilter.toBytes(BloomFilter.make<string>({ expectedItems: 10 }))
-      const scalable = BloomFilter.ScalableBloomFilter.toBytes(
-        BloomFilter.ScalableBloomFilter.make<string>({ expectedItems: 10 })
+      const scalable = ScalableBloomFilter.toBytes(
+        ScalableBloomFilter.make<string>({ expectedItems: 10 })
       )
 
-      expect(() => BloomFilter.ScalableBloomFilter.fromBytes(classic)).toThrow(
+      expect(() => ScalableBloomFilter.fromBytes(classic)).toThrow(
         /Invalid BloomFilter bytes/
       )
       expect(() => BloomFilter.fromBytes(scalable)).toThrow(/Invalid BloomFilter bytes/)
@@ -285,9 +285,9 @@ describe("BloomFilter", () => {
   describe("guards and inspection", () => {
     it("guards exact types", () => {
       const classic = BloomFilter.make<string>({ expectedItems: 10 })
-      const mutable = BloomFilter.MutableBloomFilter.make<string>({ expectedItems: 10 })
-      const scalable = BloomFilter.ScalableBloomFilter.make<string>({ expectedItems: 10 })
-      const mutableScalable = BloomFilter.MutableScalableBloomFilter.make<string>({
+      const mutable = MutableBloomFilter.make<string>({ expectedItems: 10 })
+      const scalable = ScalableBloomFilter.make<string>({ expectedItems: 10 })
+      const mutableScalable = MutableScalableBloomFilter.make<string>({
         expectedItems: 10
       })
 
@@ -296,17 +296,17 @@ describe("BloomFilter", () => {
       expect(BloomFilter.isBloomFilter(scalable)).toBe(false)
       expect(BloomFilter.isBloomFilter(mutableScalable)).toBe(false)
 
-      expect(BloomFilter.isMutableBloomFilter(mutable)).toBe(true)
-      expect(BloomFilter.isMutableBloomFilter(classic)).toBe(false)
+      expect(MutableBloomFilter.isMutableBloomFilter(mutable)).toBe(true)
+      expect(MutableBloomFilter.isMutableBloomFilter(classic)).toBe(false)
 
-      expect(BloomFilter.isScalableBloomFilter(scalable)).toBe(true)
-      expect(BloomFilter.isScalableBloomFilter(classic)).toBe(false)
+      expect(ScalableBloomFilter.isScalableBloomFilter(scalable)).toBe(true)
+      expect(ScalableBloomFilter.isScalableBloomFilter(classic)).toBe(false)
 
-      expect(BloomFilter.isMutableScalableBloomFilter(mutableScalable)).toBe(true)
-      expect(BloomFilter.isMutableScalableBloomFilter(scalable)).toBe(false)
+      expect(MutableScalableBloomFilter.isMutableScalableBloomFilter(mutableScalable)).toBe(true)
+      expect(MutableScalableBloomFilter.isMutableScalableBloomFilter(scalable)).toBe(false)
 
       expect(BloomFilter.isBloomFilter({})).toBe(false)
-      expect(BloomFilter.isMutableBloomFilter(null)).toBe(false)
+      expect(MutableBloomFilter.isMutableBloomFilter(null)).toBe(false)
     })
 
     it("inspects without dumping the bit words", () => {
@@ -343,11 +343,11 @@ describe("BloomFilter", () => {
           (inserted, queries) => {
             const options = { expectedItems: Math.max(1, inserted.length) }
             const immutable = BloomFilter.fromIterable(inserted, options)
-            const mutable = BloomFilter.MutableBloomFilter.fromIterable(inserted, options)
+            const mutable = MutableBloomFilter.fromIterable(inserted, options)
 
             for (const query of queries) {
               expect(BloomFilter.has(immutable, query)).toBe(
-                BloomFilter.MutableBloomFilter.has(mutable, query)
+                MutableBloomFilter.has(mutable, query)
               )
             }
           }
@@ -422,72 +422,72 @@ describe("BloomFilter", () => {
 
 describe("MutableBloomFilter", () => {
   it("creates an empty filter", () => {
-    const filter = BloomFilter.MutableBloomFilter.make<string>({ expectedItems: 100 })
+    const filter = MutableBloomFilter.make<string>({ expectedItems: 100 })
 
-    expect(BloomFilter.MutableBloomFilter.isEmpty(filter)).toBe(true)
-    expect(BloomFilter.MutableBloomFilter.saturation(filter)).toBe(0)
-    expect(BloomFilter.MutableBloomFilter.estimatedFalsePositiveRate(filter)).toBe(0)
+    expect(MutableBloomFilter.isEmpty(filter)).toBe(true)
+    expect(MutableBloomFilter.saturation(filter)).toBe(0)
+    expect(MutableBloomFilter.estimatedFalsePositiveRate(filter)).toBe(0)
   })
 
   it("add mutates and returns the same instance", () => {
-    const filter = BloomFilter.MutableBloomFilter.make<string>({ expectedItems: 10 })
-    const result = BloomFilter.MutableBloomFilter.add(filter, "alice")
+    const filter = MutableBloomFilter.make<string>({ expectedItems: 10 })
+    const result = MutableBloomFilter.add(filter, "alice")
 
     expect(result).toBe(filter)
-    expect(BloomFilter.MutableBloomFilter.has(filter, "alice")).toBe(true)
+    expect(MutableBloomFilter.has(filter, "alice")).toBe(true)
   })
 
   it("supports data-last add and addAll", () => {
     const filter = pipe(
-      BloomFilter.MutableBloomFilter.make<string>({ expectedItems: 10 }),
-      BloomFilter.MutableBloomFilter.add("alice"),
-      BloomFilter.MutableBloomFilter.addAll(["bob", "carol"])
+      MutableBloomFilter.make<string>({ expectedItems: 10 }),
+      MutableBloomFilter.add("alice"),
+      MutableBloomFilter.addAll(["bob", "carol"])
     )
 
     for (const value of ["alice", "bob", "carol"]) {
-      expect(BloomFilter.MutableBloomFilter.has(filter, value)).toBe(true)
+      expect(MutableBloomFilter.has(filter, value)).toBe(true)
     }
   })
 
   it("fromIterable adds every value", () => {
     const inserted = values(100)
-    const filter = BloomFilter.MutableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
+    const filter = MutableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
 
     for (const value of inserted) {
-      expect(BloomFilter.MutableBloomFilter.has(filter, value)).toBe(true)
+      expect(MutableBloomFilter.has(filter, value)).toBe(true)
     }
   })
 
   it("clear empties the filter in place", () => {
-    const filter = BloomFilter.MutableBloomFilter.fromIterable(values(10), { expectedItems: 10 })
-    const result = BloomFilter.MutableBloomFilter.clear(filter)
+    const filter = MutableBloomFilter.fromIterable(values(10), { expectedItems: 10 })
+    const result = MutableBloomFilter.clear(filter)
 
     expect(result).toBe(filter)
-    expect(BloomFilter.MutableBloomFilter.isEmpty(filter)).toBe(true)
-    expect(BloomFilter.MutableBloomFilter.has(filter, "value-0")).toBe(false)
+    expect(MutableBloomFilter.isEmpty(filter)).toBe(true)
+    expect(MutableBloomFilter.has(filter, "value-0")).toBe(false)
   })
 
   it("clone is independent", () => {
-    const original = BloomFilter.MutableBloomFilter.fromIterable(["alice"], { expectedItems: 10 })
-    const copy = BloomFilter.MutableBloomFilter.clone(original)
+    const original = MutableBloomFilter.fromIterable(["alice"], { expectedItems: 10 })
+    const copy = MutableBloomFilter.clone(original)
 
-    BloomFilter.MutableBloomFilter.add(copy, "bob")
-    BloomFilter.MutableBloomFilter.clear(original)
+    MutableBloomFilter.add(copy, "bob")
+    MutableBloomFilter.clear(original)
 
-    expect(BloomFilter.MutableBloomFilter.has(copy, "bob")).toBe(true)
-    expect(BloomFilter.MutableBloomFilter.has(original, "alice")).toBe(false)
+    expect(MutableBloomFilter.has(copy, "bob")).toBe(true)
+    expect(MutableBloomFilter.has(original, "alice")).toBe(false)
   })
 
   it("round-trips through bytes", () => {
     const inserted = values(50)
-    const filter = BloomFilter.MutableBloomFilter.fromIterable(inserted, { expectedItems: 50 })
-    const restored = BloomFilter.MutableBloomFilter.fromBytes<string>(
-      BloomFilter.MutableBloomFilter.toBytes(filter)
+    const filter = MutableBloomFilter.fromIterable(inserted, { expectedItems: 50 })
+    const restored = MutableBloomFilter.fromBytes<string>(
+      MutableBloomFilter.toBytes(filter)
     )
 
     expect(restored.expectedItems).toBe(filter.expectedItems)
     for (const value of inserted) {
-      expect(BloomFilter.MutableBloomFilter.has(restored, value)).toBe(true)
+      expect(MutableBloomFilter.has(restored, value)).toBe(true)
     }
   })
 })
@@ -495,7 +495,7 @@ describe("MutableBloomFilter", () => {
 describe("ScalableBloomFilter", () => {
   describe("make", () => {
     it("uses the textbook growth defaults", () => {
-      const filter = BloomFilter.ScalableBloomFilter.make<string>({ expectedItems: 100 })
+      const filter = ScalableBloomFilter.make<string>({ expectedItems: 100 })
 
       expect(filter.expectedItems).toBe(100)
       expect(filter.falsePositiveRate).toBe(0.01)
@@ -505,7 +505,7 @@ describe("ScalableBloomFilter", () => {
     })
 
     it("respects custom growth options", () => {
-      const filter = BloomFilter.ScalableBloomFilter.make<string>({
+      const filter = ScalableBloomFilter.make<string>({
         expectedItems: 100,
         falsePositiveRate: 0.001,
         growthFactor: 4,
@@ -520,7 +520,7 @@ describe("ScalableBloomFilter", () => {
     it("rejects invalid growth options", () => {
       for (const growthFactor of [1, 0, -1, Number.NaN, Infinity]) {
         expect(() =>
-          BloomFilter.ScalableBloomFilter.make({
+          ScalableBloomFilter.make({
             expectedItems: 100,
             growthFactor
           })
@@ -529,7 +529,7 @@ describe("ScalableBloomFilter", () => {
 
       for (const tighteningRatio of [0, 1, -0.1, 1.1, Number.NaN, Infinity]) {
         expect(() =>
-          BloomFilter.ScalableBloomFilter.make({
+          ScalableBloomFilter.make({
             expectedItems: 100,
             tighteningRatio
           })
@@ -543,79 +543,79 @@ describe("ScalableBloomFilter", () => {
         falsePositiveRate: 0.5,
         growthFactor: 1_000_000_000
       }
-      const full = BloomFilter.ScalableBloomFilter.fromIterable(values(10), options)
+      const full = ScalableBloomFilter.fromIterable(values(10), options)
 
-      expect(() => BloomFilter.ScalableBloomFilter.add(full, "overflow")).toThrow(RangeError)
+      expect(() => ScalableBloomFilter.add(full, "overflow")).toThrow(RangeError)
     })
   })
 
   describe("growth", () => {
     it("adds a slice when the active slice is full", () => {
       const inserted = values(250)
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
+      const filter = ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
 
       expect(filter.slices).toBe(2)
       for (const value of inserted) {
-        expect(BloomFilter.ScalableBloomFilter.has(filter, value)).toBe(true)
+        expect(ScalableBloomFilter.has(filter, value)).toBe(true)
       }
     })
 
     it("counts duplicates toward growth", () => {
       const duplicated = new Array<string>(250).fill("same")
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable(duplicated, { expectedItems: 100 })
+      const filter = ScalableBloomFilter.fromIterable(duplicated, { expectedItems: 100 })
 
       expect(filter.slices).toBe(2)
-      expect(BloomFilter.ScalableBloomFilter.has(filter, "same")).toBe(true)
+      expect(ScalableBloomFilter.has(filter, "same")).toBe(true)
     })
 
     it("checks membership across all slices", () => {
       const first = values(100, "first")
       const second = values(200, "second")
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable([...first, ...second], {
+      const filter = ScalableBloomFilter.fromIterable([...first, ...second], {
         expectedItems: 100
       })
 
       for (const value of [...first, ...second]) {
-        expect(BloomFilter.ScalableBloomFilter.has(filter, value)).toBe(true)
+        expect(ScalableBloomFilter.has(filter, value)).toBe(true)
       }
     })
 
     it("keeps old immutable versions valid", () => {
       const inserted = values(150)
-      const before = BloomFilter.ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
-      const after = BloomFilter.ScalableBloomFilter.add(before, "extra")
+      const before = ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
+      const after = ScalableBloomFilter.add(before, "extra")
 
-      expect(BloomFilter.ScalableBloomFilter.has(after, "extra")).toBe(true)
-      expect(BloomFilter.ScalableBloomFilter.has(before, "extra")).toBe(false)
+      expect(ScalableBloomFilter.has(after, "extra")).toBe(true)
+      expect(ScalableBloomFilter.has(before, "extra")).toBe(false)
       for (const value of inserted) {
-        expect(BloomFilter.ScalableBloomFilter.has(before, value)).toBe(true)
+        expect(ScalableBloomFilter.has(before, value)).toBe(true)
       }
     })
 
     it("supports data-last add and addAll", () => {
       const filter = pipe(
-        BloomFilter.ScalableBloomFilter.make<string>({ expectedItems: 10 }),
-        BloomFilter.ScalableBloomFilter.add("alice"),
-        BloomFilter.ScalableBloomFilter.addAll(["bob", "carol"])
+        ScalableBloomFilter.make<string>({ expectedItems: 10 }),
+        ScalableBloomFilter.add("alice"),
+        ScalableBloomFilter.addAll(["bob", "carol"])
       )
 
       for (const value of ["alice", "bob", "carol"]) {
-        expect(BloomFilter.ScalableBloomFilter.has(filter, value)).toBe(true)
+        expect(ScalableBloomFilter.has(filter, value)).toBe(true)
       }
     })
   })
 
   describe("metrics", () => {
     it("combines slice estimates within bounds", () => {
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable(values(250), {
+      const filter = ScalableBloomFilter.fromIterable(values(250), {
         expectedItems: 100,
         falsePositiveRate: 0.01
       })
 
-      expect(BloomFilter.ScalableBloomFilter.isEmpty(filter)).toBe(false)
-      expect(BloomFilter.ScalableBloomFilter.saturation(filter)).toBeGreaterThan(0)
-      expect(BloomFilter.ScalableBloomFilter.saturation(filter)).toBeLessThanOrEqual(1)
-      expect(BloomFilter.ScalableBloomFilter.estimatedFalsePositiveRate(filter)).toBeLessThanOrEqual(
+      expect(ScalableBloomFilter.isEmpty(filter)).toBe(false)
+      expect(ScalableBloomFilter.saturation(filter)).toBeGreaterThan(0)
+      expect(ScalableBloomFilter.saturation(filter)).toBeLessThanOrEqual(1)
+      expect(ScalableBloomFilter.estimatedFalsePositiveRate(filter)).toBeLessThanOrEqual(
         0.02
       )
     })
@@ -623,8 +623,8 @@ describe("ScalableBloomFilter", () => {
 
   describe("bytes", () => {
     it("writes the scalable header", () => {
-      const filter = BloomFilter.ScalableBloomFilter.make<string>({ expectedItems: 10 })
-      const bytes = BloomFilter.ScalableBloomFilter.toBytes(filter)
+      const filter = ScalableBloomFilter.make<string>({ expectedItems: 10 })
+      const bytes = ScalableBloomFilter.toBytes(filter)
 
       expect(Array.from(bytes.slice(0, 3))).toEqual([0x45, 0x42, 0x46])
       expect(bytes[3]).toBe(1)
@@ -635,14 +635,14 @@ describe("ScalableBloomFilter", () => {
 
     it("round-trips configuration and membership", () => {
       const inserted = values(250)
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable(inserted, {
+      const filter = ScalableBloomFilter.fromIterable(inserted, {
         expectedItems: 100,
         falsePositiveRate: 0.005,
         growthFactor: 3,
         tighteningRatio: 0.8
       })
-      const restored = BloomFilter.ScalableBloomFilter.fromBytes<string>(
-        BloomFilter.ScalableBloomFilter.toBytes(filter)
+      const restored = ScalableBloomFilter.fromBytes<string>(
+        ScalableBloomFilter.toBytes(filter)
       )
 
       expect(restored.expectedItems).toBe(filter.expectedItems)
@@ -652,22 +652,22 @@ describe("ScalableBloomFilter", () => {
       expect(restored.slices).toBe(filter.slices)
 
       for (const value of inserted) {
-        expect(BloomFilter.ScalableBloomFilter.has(restored, value)).toBe(true)
+        expect(ScalableBloomFilter.has(restored, value)).toBe(true)
       }
     })
 
     it("can keep growing after a round-trip", () => {
       const inserted = values(150)
-      const original = BloomFilter.ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
-      const restored = BloomFilter.ScalableBloomFilter.fromBytes<string>(
-        BloomFilter.ScalableBloomFilter.toBytes(original)
+      const original = ScalableBloomFilter.fromIterable(inserted, { expectedItems: 100 })
+      const restored = ScalableBloomFilter.fromBytes<string>(
+        ScalableBloomFilter.toBytes(original)
       )
-      const grown = BloomFilter.ScalableBloomFilter.addAll(restored, values(160, "extra"))
+      const grown = ScalableBloomFilter.addAll(restored, values(160, "extra"))
 
       expect(original.slices).toBe(2)
       expect(grown.slices).toBe(3)
       for (const value of [...inserted, ...values(160, "extra")]) {
-        expect(BloomFilter.ScalableBloomFilter.has(grown, value)).toBe(true)
+        expect(ScalableBloomFilter.has(grown, value)).toBe(true)
       }
     })
   })
@@ -676,12 +676,12 @@ describe("ScalableBloomFilter", () => {
     it("never reports a false negative", () => {
       fc.assert(
         fc.property(fc.array(fc.string(), { maxLength: 100 }), (inserted) => {
-          const filter = BloomFilter.ScalableBloomFilter.fromIterable(inserted, {
+          const filter = ScalableBloomFilter.fromIterable(inserted, {
             expectedItems: Math.max(1, Math.ceil(inserted.length / 4))
           })
 
           for (const value of inserted) {
-            expect(BloomFilter.ScalableBloomFilter.has(filter, value)).toBe(true)
+            expect(ScalableBloomFilter.has(filter, value)).toBe(true)
           }
         }),
         { numRuns: 100 }
@@ -694,16 +694,16 @@ describe("ScalableBloomFilter", () => {
           fc.array(fc.string(), { maxLength: 50 }),
           fc.array(fc.string(), { maxLength: 50 }),
           (inserted, queries) => {
-            const filter = BloomFilter.ScalableBloomFilter.fromIterable(inserted, {
+            const filter = ScalableBloomFilter.fromIterable(inserted, {
               expectedItems: Math.max(1, Math.ceil(inserted.length / 2))
             })
-            const restored = BloomFilter.ScalableBloomFilter.fromBytes<string>(
-              BloomFilter.ScalableBloomFilter.toBytes(filter)
+            const restored = ScalableBloomFilter.fromBytes<string>(
+              ScalableBloomFilter.toBytes(filter)
             )
 
             for (const query of queries) {
-              expect(BloomFilter.ScalableBloomFilter.has(restored, query)).toBe(
-                BloomFilter.ScalableBloomFilter.has(filter, query)
+              expect(ScalableBloomFilter.has(restored, query)).toBe(
+                ScalableBloomFilter.has(filter, query)
               )
             }
           }
@@ -717,7 +717,7 @@ describe("ScalableBloomFilter", () => {
     it("stays below twice the configured target", () => {
       const random = mulberry32(43)
       const inserted = values(2_000, "inserted")
-      const filter = BloomFilter.ScalableBloomFilter.fromIterable(inserted, {
+      const filter = ScalableBloomFilter.fromIterable(inserted, {
         expectedItems: 500,
         falsePositiveRate: 0.01
       })
@@ -726,7 +726,7 @@ describe("ScalableBloomFilter", () => {
       const queries = 10_000
       for (let i = 0; i < queries; i++) {
         const query = `absent-${i}-${random()}`
-        if (BloomFilter.ScalableBloomFilter.has(filter, query)) {
+        if (ScalableBloomFilter.has(filter, query)) {
           falsePositives++
         }
       }
@@ -738,81 +738,81 @@ describe("ScalableBloomFilter", () => {
 
 describe("MutableScalableBloomFilter", () => {
   it("creates an empty filter", () => {
-    const filter = BloomFilter.MutableScalableBloomFilter.make<string>({ expectedItems: 100 })
+    const filter = MutableScalableBloomFilter.make<string>({ expectedItems: 100 })
 
     expect(filter.slices).toBe(1)
-    expect(BloomFilter.MutableScalableBloomFilter.isEmpty(filter)).toBe(true)
-    expect(BloomFilter.MutableScalableBloomFilter.saturation(filter)).toBe(0)
-    expect(BloomFilter.MutableScalableBloomFilter.estimatedFalsePositiveRate(filter)).toBe(0)
+    expect(MutableScalableBloomFilter.isEmpty(filter)).toBe(true)
+    expect(MutableScalableBloomFilter.saturation(filter)).toBe(0)
+    expect(MutableScalableBloomFilter.estimatedFalsePositiveRate(filter)).toBe(0)
   })
 
   it("add and addAll mutate and return the same instance", () => {
-    const filter = BloomFilter.MutableScalableBloomFilter.make<string>({ expectedItems: 10 })
-    const added = BloomFilter.MutableScalableBloomFilter.add(filter, "alice")
-    const addedAll = BloomFilter.MutableScalableBloomFilter.addAll(added, ["bob", "carol"])
+    const filter = MutableScalableBloomFilter.make<string>({ expectedItems: 10 })
+    const added = MutableScalableBloomFilter.add(filter, "alice")
+    const addedAll = MutableScalableBloomFilter.addAll(added, ["bob", "carol"])
 
     expect(added).toBe(filter)
     expect(addedAll).toBe(filter)
     for (const value of ["alice", "bob", "carol"]) {
-      expect(BloomFilter.MutableScalableBloomFilter.has(filter, value)).toBe(true)
+      expect(MutableScalableBloomFilter.has(filter, value)).toBe(true)
     }
   })
 
   it("supports data-last add and addAll", () => {
     const filter = pipe(
-      BloomFilter.MutableScalableBloomFilter.make<string>({ expectedItems: 10 }),
-      BloomFilter.MutableScalableBloomFilter.add("alice"),
-      BloomFilter.MutableScalableBloomFilter.addAll(["bob", "carol"])
+      MutableScalableBloomFilter.make<string>({ expectedItems: 10 }),
+      MutableScalableBloomFilter.add("alice"),
+      MutableScalableBloomFilter.addAll(["bob", "carol"])
     )
 
     for (const value of ["alice", "bob", "carol"]) {
-      expect(BloomFilter.MutableScalableBloomFilter.has(filter, value)).toBe(true)
+      expect(MutableScalableBloomFilter.has(filter, value)).toBe(true)
     }
   })
 
   it("grows as values are added", () => {
     const inserted = values(250)
-    const filter = BloomFilter.MutableScalableBloomFilter.fromIterable(inserted, {
+    const filter = MutableScalableBloomFilter.fromIterable(inserted, {
       expectedItems: 100
     })
 
     expect(filter.slices).toBe(2)
     for (const value of inserted) {
-      expect(BloomFilter.MutableScalableBloomFilter.has(filter, value)).toBe(true)
+      expect(MutableScalableBloomFilter.has(filter, value)).toBe(true)
     }
   })
 
   it("clear resets to a single empty slice", () => {
-    const filter = BloomFilter.MutableScalableBloomFilter.fromIterable(values(250), {
+    const filter = MutableScalableBloomFilter.fromIterable(values(250), {
       expectedItems: 100
     })
-    const result = BloomFilter.MutableScalableBloomFilter.clear(filter)
+    const result = MutableScalableBloomFilter.clear(filter)
 
     expect(result).toBe(filter)
     expect(filter.slices).toBe(1)
-    expect(BloomFilter.MutableScalableBloomFilter.isEmpty(filter)).toBe(true)
+    expect(MutableScalableBloomFilter.isEmpty(filter)).toBe(true)
   })
 
   it("clone is independent", () => {
-    const original = BloomFilter.MutableScalableBloomFilter.fromIterable(["alice"], {
+    const original = MutableScalableBloomFilter.fromIterable(["alice"], {
       expectedItems: 10
     })
-    const copy = BloomFilter.MutableScalableBloomFilter.clone(original)
+    const copy = MutableScalableBloomFilter.clone(original)
 
-    BloomFilter.MutableScalableBloomFilter.add(copy, "bob")
-    BloomFilter.MutableScalableBloomFilter.clear(original)
+    MutableScalableBloomFilter.add(copy, "bob")
+    MutableScalableBloomFilter.clear(original)
 
-    expect(BloomFilter.MutableScalableBloomFilter.has(copy, "bob")).toBe(true)
-    expect(BloomFilter.MutableScalableBloomFilter.has(original, "alice")).toBe(false)
+    expect(MutableScalableBloomFilter.has(copy, "bob")).toBe(true)
+    expect(MutableScalableBloomFilter.has(original, "alice")).toBe(false)
   })
 
   it("round-trips through bytes and keeps growing", () => {
     const inserted = values(150)
-    const filter = BloomFilter.MutableScalableBloomFilter.fromIterable(inserted, {
+    const filter = MutableScalableBloomFilter.fromIterable(inserted, {
       expectedItems: 100
     })
-    const restored = BloomFilter.MutableScalableBloomFilter.fromBytes<string>(
-      BloomFilter.MutableScalableBloomFilter.toBytes(filter)
+    const restored = MutableScalableBloomFilter.fromBytes<string>(
+      MutableScalableBloomFilter.toBytes(filter)
     )
 
     expect(restored.expectedItems).toBe(filter.expectedItems)
@@ -820,12 +820,12 @@ describe("MutableScalableBloomFilter", () => {
     expect(restored.tighteningRatio).toBe(filter.tighteningRatio)
     expect(restored.slices).toBe(2)
 
-    const grown = BloomFilter.MutableScalableBloomFilter.addAll(restored, values(160, "extra"))
+    const grown = MutableScalableBloomFilter.addAll(restored, values(160, "extra"))
 
     expect(grown).toBe(restored)
     expect(grown.slices).toBe(3)
     for (const value of [...inserted, ...values(160, "extra")]) {
-      expect(BloomFilter.MutableScalableBloomFilter.has(grown, value)).toBe(true)
+      expect(MutableScalableBloomFilter.has(grown, value)).toBe(true)
     }
   })
 })

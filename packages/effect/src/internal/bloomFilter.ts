@@ -281,12 +281,12 @@ const scalableSaturation = (state: ScalableState): number => {
 }
 
 const scalableFalsePositiveRate = (state: ScalableState): number => {
-  let allMisses = 1
+  let logMisses = 0
   for (const slice of state.slices) {
     const saturation = slice.bits === 0 ? 0 : slice.setBits / slice.bits
-    allMisses *= 1 - Math.pow(saturation, slice.hashes)
+    logMisses += Math.log1p(-Math.pow(saturation, slice.hashes))
   }
-  return 1 - allMisses
+  return logMisses === 0 ? 0 : -Math.expm1(logMisses)
 }
 
 const BloomFilterProto = {

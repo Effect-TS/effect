@@ -423,6 +423,12 @@ export * as Match from "./Match.ts"
 export * as Metric from "./Metric.ts"
 
 /**
+ * @stability unstable
+ * @since 4.2.0
+ */
+export * as MutableBloomFilter from "./MutableBloomFilter.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
@@ -445,6 +451,12 @@ export * as MutableList from "./MutableList.ts"
  * @since 2.0.0
  */
 export * as MutableRef from "./MutableRef.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
+export * as MutableScalableBloomFilter from "./MutableScalableBloomFilter.ts"
 
 /**
  * @stability unstable
@@ -643,6 +655,12 @@ export * as Result from "./Result.ts"
  * @since 4.0.0
  */
 export * as Runtime from "./Runtime.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
+export * as ScalableBloomFilter from "./ScalableBloomFilter.ts"
 
 /**
  * @stability stable
