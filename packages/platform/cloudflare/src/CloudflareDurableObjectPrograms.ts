@@ -153,6 +153,7 @@ export type ClusterEntityProgram = {
  */
 export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
   const context = yield* Effect.context<never>()
+  const runPromise = Effect.runPromiseWith(context)
   const sql = state.storage.sql
   ensureEntityStorage(sql)
   const stored = loadEntityState(sql)
@@ -189,7 +190,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
     }),
     entityName,
     keepAlive,
-    waitUntil: (effect) => state.waitUntil(Effect.runPromiseWith(context)(effect)),
+    waitUntil: (effect) => state.waitUntil(runPromise(effect)),
     getNamespace: () =>
       exportedNamespace<{
         readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>

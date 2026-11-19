@@ -37,6 +37,13 @@ export const InterruptSignalName = "Workflow/InterruptSignal"
 
 const resumeGuardMillis = 60_000
 
+// The encoded void exit is a constant that needs no services, so one encode
+// serves every workflow object in the isolate.
+let voidExitCache: Promise<string> | undefined
+const voidExitText = (): Promise<
+  string
+> => (voidExitCache ??= Effect.runPromise(encodeExit(Exit.void, Context.empty())))
+
 const mergeWake = (
   current: WorkflowStorage.WakeMode | undefined,
   mode: WorkflowStorage.WakeMode
@@ -78,8 +85,6 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   const context = options.context ?? Context.empty()
   const runPromise = Effect.runPromiseWith(context)
   const runFork = Effect.runForkWith(context)
-  let voidExitCache: Promise<string> | undefined
-  const voidExitText = () => voidExitCache ??= runPromise(encodeExit(Exit.void, context))
   const name = decodeName(options.name)
   if (name === undefined) {
     throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
