@@ -231,46 +231,51 @@ export const make = Effect.fnUntraced(function*(
 
   // Registering a request listener would enable HTTP/2 compatibility mode, changing native
   // stream dispatch (including CONNECT). Instead answer only events the server did not handle.
-  const emit = server.emit
-  const originalEmit = Object.getOwnPropertyDescriptor(server, "emit")
-  const unavailableHeaders = { "cache-control": "no-store", "retry-after": "1" }
-  let nativeResponder = false
-  const emitWithFallback: typeof emit = function(this: Http.Server, event: string | symbol, ...args: Array<any>) {
-    if (event === "stream") {
-      // If compatibility dispatch emits a nested request, it accounts for one stream
-      // listener. Any other listener at dispatch entry owns this stream too.
-      const previous = nativeResponder
-      nativeResponder = this.listenerCount("stream") > 1
-      try {
-        if (!emit.call(this, event, ...args)) {
-          const stream: Http2.ServerHttp2Stream = args[0]
-          stream.respond({ ":status": 503, ...unavailableHeaders })
-          stream.end("service unavailable")
-        }
-      } finally {
-        nativeResponder = previous
-      }
-      return true
-    }
-    const handled = emit.call(this, event, ...args)
-    if (!handled && event === "request" && !nativeResponder) {
-      const response: Http.ServerResponse = args[1]
-      response.writeHead(503, unavailableHeaders)
-      response.end("service unavailable")
-      return true
-    }
-    return handled
-  }
+  let removeFallback = () => {}
   const installFallback = () => {
-    if (scope.state._tag !== "Closed" && server.emit === emit) server.emit = emitWithFallback
-  }
-  const removeFallback = () => {
-    if (server.emit !== emitWithFallback) return
-    if (originalEmit) Object.defineProperty(server, "emit", originalEmit)
-    else Reflect.deleteProperty(server, "emit")
+    if (scope.state._tag === "Closed") return
+    const emit = server.emit
+    const originalEmit = Object.getOwnPropertyDescriptor(server, "emit")
+    const unavailableHeaders = { "cache-control": "no-store", "retry-after": "1" }
+    let active = true
+    let nativeResponder = false
+    const emitWithFallback: typeof emit = function(this: Http.Server, event: string | symbol, ...args: Array<any>) {
+      if (!active || this !== server) return emit.call(this, event, ...args)
+      if (event === "stream" && args[0]?.session?.server === server && typeof args[0].respond === "function") {
+        // If compatibility dispatch emits a nested request, it accounts for one stream
+        // listener. Any other listener at dispatch entry owns this stream too.
+        const previous = nativeResponder
+        nativeResponder = this.listenerCount("stream") > 1
+        try {
+          if (!emit.call(this, event, ...args)) {
+            const stream: Http2.ServerHttp2Stream = args[0]
+            stream.respond({ ":status": 503, ...unavailableHeaders })
+            stream.end("service unavailable")
+          }
+        } finally {
+          nativeResponder = previous
+        }
+        return true
+      }
+      const handled = emit.call(this, event, ...args)
+      if (!handled && event === "request" && !nativeResponder) {
+        const response: Http.ServerResponse = args[1]
+        response.writeHead(503, unavailableHeaders)
+        response.end("service unavailable")
+        return true
+      }
+      return handled
+    }
+    server.emit = emitWithFallback
+    removeFallback = () => {
+      active = false
+      if (server.emit !== emitWithFallback) return
+      if (originalEmit) Object.defineProperty(server, "emit", originalEmit)
+      else Reflect.deleteProperty(server, "emit")
+    }
   }
   installFallback()
-  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(removeFallback)))
+  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => removeFallback())))
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {

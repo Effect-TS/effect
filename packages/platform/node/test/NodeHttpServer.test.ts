@@ -76,6 +76,25 @@ describe("HttpServer", () => {
       assert.strictEqual(response.statusCode, 503)
     }))
 
+  it.effect("preserves HTTP/1 stream events and disables a retained fallback at teardown", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      server.once("listening", () => {
+        const dispatch = server.emit.bind(server)
+        server.emit = (event: string | symbol, ...args: Array<unknown>) => dispatch(event, ...args)
+      })
+      const owner = yield* Scope.make()
+      yield* NodeHttpServer.make(() => server, { port: 0 }).pipe(Scope.provide(owner))
+      const instrumented = server.emit
+      assert.isFalse(server.emit("stream", {}))
+      yield* Scope.close(owner, Exit.void)
+      assert.strictEqual(server.emit, instrumented)
+      const request = new Http.IncomingMessage(new Net.Socket())
+      const response = new Http.ServerResponse(request)
+      assert.isFalse(server.emit("request", request, response))
+      assert.isFalse(response.headersSent)
+    }))
+
   it.effect("leaves a startup response to a supplied one-shot listener", () =>
     Effect.gen(function*() {
       const server = Http.createServer().once("request", constVoid)
