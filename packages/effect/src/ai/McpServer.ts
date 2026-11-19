@@ -3277,25 +3277,26 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  * @category handlers
  * @since 4.0.0
  */
-export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
+export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
   toolkit: Toolkit.Toolkit<Tools>,
   options?: {
     readonly content?:
       | {
-        readonly [Name in keyof NoInfer<Tools>]?:
+        readonly [Name in Names]?:
           | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
           | undefined
       }
       | undefined
   } | undefined
 ) => Effect.Effect<void, never, ToolkitRequirements<Tools>> = Effect.fnUntraced(function*<
-  Tools extends Record<string, Tool.Any>
+  Tools extends Record<string, Tool.Any>,
+  Names extends keyof Tools
 >(
   toolkit: Toolkit.Toolkit<Tools>,
   options?: {
     readonly content?:
       | {
-        readonly [Name in keyof NoInfer<Tools>]?:
+        readonly [Name in Names]?:
           | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
           | undefined
       }
@@ -3387,7 +3388,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       return internalToolError(cause)
     }
     const content = options?.content
-    const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as keyof Tools] : undefined
+    const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
     const outputSchema = mapper ? undefined : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       toolJsonSchema(tool.successSchema, false)
     ).pipe(Effect.orDie)
@@ -3522,12 +3523,12 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  * @category layers
  * @since 4.0.0
  */
-export const toolkit = <Tools extends Record<string, Tool.Any>>(
+export const toolkit = <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
   toolkit: Toolkit.Toolkit<Tools>,
   options?: {
     readonly content?:
       | {
-        readonly [Name in keyof NoInfer<Tools>]?:
+        readonly [Name in Names]?:
           | ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"])
           | undefined
       }

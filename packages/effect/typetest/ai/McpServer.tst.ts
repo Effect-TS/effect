@@ -178,7 +178,7 @@ describe("McpServer", () => {
   })
 
   it("should type content mappers by tool name and decoded success", () => {
-    const toolkit = Toolkit.make(Tool.make("preview", { success: Schema.Uint8ArrayFromBase64 }))
+    const toolkit = Toolkit.make(Tool.make("toString"), Tool.make("preview", { success: Schema.Uint8ArrayFromBase64 }))
     McpServer.registerToolkit(toolkit, {
       content: {
         preview: (png) => {
@@ -187,6 +187,8 @@ describe("McpServer", () => {
         }
       }
     })
+    McpServer.toolkit(toolkit, { content: { preview: (data) => [{ type: "image", data, mimeType: "image/png" }] } })
+    expect(McpServer.registerToolkit).type.not.toBeCallableWith(toolkit, { content: { unknown: () => [] } })
     expect(McpServer.toolkit).type.not.toBeCallableWith(toolkit, { content: { unknown: () => [] } })
   })
 
