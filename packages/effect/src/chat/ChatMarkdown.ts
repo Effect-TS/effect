@@ -261,6 +261,12 @@ const fitCut = (
   room: number
 ): number => {
   const lines = scanLines(text, fence, false)
+  // At a block boundary the fence is closed. Measure that exact message: a shorter
+  // prefix can cost more if it needs a synthetic fence or ends inside a surrogate pair.
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]
+    if (line.boundary && measure(prefix + text.slice(0, line.end)) <= room) return line.end
+  }
   const size = (cut: number) => {
     const markdown = prefix + text.slice(0, cut)
     return measure(markdown + closing(fenceAt(lines, fence, cut), markdown))
@@ -274,18 +280,7 @@ const fitCut = (
     else high = middle - 1
   }
   const most = low
-  // A real closing fence can fit beyond `most`: it needs no synthetic suffix.
-  // Bound the block candidates by the prefix alone; keep the rendered bound for fallback cuts.
-  high = text.length
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2)
-    if (measure(prefix + text.slice(0, middle)) <= room) low = middle
-    else high = middle - 1
-  }
   const candidates: Array<number> = []
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].boundary && lines[i].end <= low) candidates.push(lines[i].end)
-  }
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].end <= most) candidates.push(lines[i].end)
   }
