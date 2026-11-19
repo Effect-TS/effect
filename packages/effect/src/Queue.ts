@@ -740,7 +740,7 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
   if (self.state._tag !== "Open" || releasedCapacity.has(self)) {
     return false
   } else if (self.messages.length >= self.capacity) {
-    if (self.capacity <= 0 && self.state.takers.size > (self.strategy === "sliding" ? 0 : self.messages.length)) {
+    if (self.capacity <= 0 && rendezvousCapacity(self) > (self.strategy === "sliding" ? 0 : self.messages.length)) {
       MutableList.append(self.messages, message)
       if (self.strategy === "sliding") {
         MutableList.takeNVoid(self.messages, self.messages.length - self.state.takers.size)
@@ -856,13 +856,13 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
   ) {
     MutableList.appendAll(self.messages, messages)
     if (self.strategy === "sliding") {
-      const capacity = self.capacity <= 0 ? self.state.takers.size : self.capacity
+      const capacity = self.capacity <= 0 ? rendezvousCapacity(self) : self.capacity
       MutableList.takeNVoid(self.messages, self.messages.length - capacity)
     }
     scheduleReleaseTaker(self as Queue<A, E>)
     return []
   }
-  const free = (self.capacity <= 0 ? self.state.takers.size : self.capacity) - self.messages.length
+  const free = (self.capacity <= 0 ? rendezvousCapacity(self) : self.capacity) - self.messages.length
   if (free <= 0) {
     return Arr.fromIterable(messages)
   }
@@ -2131,6 +2131,11 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
       if (self.state._tag !== "Done") self.state.takers.delete(taker)
     })
   })
+
+// A parked taker is not a free rendezvous slot while the head is reserved
+// or an older offer is waiting to hand it a message.
+const rendezvousCapacity = <A, E>(self: Enqueue<A, E>): number =>
+  self.state._tag === "Open" && self.state.offers.size === 0 && !taking.has(self) ? self.state.takers.size : 0
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
   internalEffect.callback<boolean>((resume) =>

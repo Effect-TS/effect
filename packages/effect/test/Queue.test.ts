@@ -98,6 +98,42 @@ describe("Queue", () => {
         assert.deepStrictEqual(yield* Queue.clear(queue), [])
       }))
 
+    it.effect.each(["offer", "offerAll"] as const)(
+      "a zero-capacity %s cannot overtake a pending offer",
+      (method) =>
+        Effect.gen(function*() {
+          const queue = yield* Queue.bounded<number>(0)
+          const acknowledged: Array<number> = []
+          const producer = yield* Effect.gen(function*() {
+            yield* Queue.offer(queue, 41)
+            const nested = yield* Effect.forkScoped(Queue.take(queue), { startImmediately: true })
+            const offer = method === "offer"
+              ? Effect.asVoid(Queue.offer(queue, 43))
+              : Effect.asVoid(Queue.offerAll(queue, [43]))
+            const later = yield* offer.pipe(
+              Effect.tap(() => Effect.sync(() => acknowledged.push(43))),
+              Effect.forkScoped({ startImmediately: true })
+            )
+            return { later, nested }
+          }).pipe(Effect.forkChild({ startImmediately: true }))
+          const pending = yield* Queue.offer(queue, 42).pipe(
+            Effect.tap(() => Effect.sync(() => acknowledged.push(42))),
+            Effect.forkChild({ startImmediately: true })
+          )
+
+          const first = yield* Queue.take(queue)
+          const { later, nested } = yield* Fiber.join(producer)
+          const second = yield* Fiber.join(nested)
+          const third = yield* Queue.take(queue)
+          yield* Fiber.join(pending)
+          yield* Fiber.join(later)
+          assert.deepStrictEqual({ delivered: [first, second, third], acknowledged }, {
+            delivered: [41, 42, 43],
+            acknowledged: [42, 43]
+          })
+        })
+    )
+
     it.effect("repeated batch timeouts cannot admit more offers without delivering a batch", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(1)
