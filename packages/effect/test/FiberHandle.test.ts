@@ -57,18 +57,6 @@ describe("FiberHandle", () => {
       assert.deepStrictEqual(events, ["worker cleanup done", "resource released"])
     }))
 
-  it.effect("run starts an interruptible fiber from an uninterruptible region", () =>
-    Effect.gen(function*() {
-      const handle = yield* FiberHandle.make()
-      const release = yield* Deferred.make<void>()
-      const child = yield* Effect.uninterruptible(
-        FiberHandle.run(handle, Deferred.await(release), { startImmediately: true })
-      )
-      child.interruptUnsafe()
-      yield* Deferred.succeed(release, undefined)
-      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
-    }))
-
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberHandle.make()
@@ -172,11 +160,14 @@ describe("FiberHandle", () => {
   it.effect("join ignores managed replacement interruptions and reports child errors without closing the handle", () =>
     Effect.gen(function*() {
       const handle = yield* FiberHandle.make()
-      const worker = yield* makeWorker
-      FiberHandle.setUnsafe(handle, worker.fiber, { propagateInterruption: true })
+      const release = yield* Deferred.make<void>()
+      const worker = yield* Effect.uninterruptible(
+        FiberHandle.run(handle, Deferred.await(release), { propagateInterruption: true })
+      )
       const fail = yield* Deferred.make<void>()
       yield* FiberHandle.run(handle, Deferred.await(fail).pipe(Effect.andThen(Effect.fail("fail"))))
-      assertTrue(Exit.hasInterrupts(yield* Fiber.await(worker.fiber)))
+      yield* Deferred.succeed(release, undefined)
+      assertTrue(Exit.hasInterrupts(yield* Fiber.await(worker)))
       yield* Deferred.succeed(fail, undefined)
       const result = yield* Effect.flip(FiberHandle.join(handle))
       strictEqual(result, "fail")
