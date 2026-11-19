@@ -635,6 +635,7 @@ const prepareHeader = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
   )
   if (keys.length === 0) return ast
   const input = Schema.declare(Predicate.isObject, {
+    // A one-member union describes the row by its discriminants, as union errors do.
     expected: new SchemaAST.Union([ast]).getExpected(InternalAnnotations.getExpected),
     // Keep the original discriminants visible to the union parser.
     [InternalAnnotations.SENTINELS_ANNOTATION_KEY]: SchemaAST.collectSentinels(SchemaAST.toCandidate(ast))
@@ -780,8 +781,7 @@ export const decodeSchemaString =
     S["DecodingServices"]
   > => {
     const codec = toCodec(schema, options?.disableCodecs)
-    const ast = resolveSuspend(SchemaAST.toEncoded(codec.ast))
-    checkCells(ast, undefined)
+    checkCells(SchemaAST.toEncoded(codec.ast), undefined)
     const item = options?.headers === true && options.disableCodecs !== true ? headerCodec(codec) : codec
     const decode = Schema.decodeUnknownEffect(toArrayCodec(item), parseOptions)
     return Channel.mapEffect(decodeRecords<IE, Done>(options), (records) =>
