@@ -109,7 +109,7 @@ const initialize = CloudflareDurableObjects.setInitializer(async (env: Env) => {
 
 The example opts in to `CloudflareRuntime.layer`; `CloudflareCluster.layer` does not install a scheduler or tracer. Provide the runtime layer **under** the cluster layer with `Layer.provideMerge`. Merging them side by side puts both in the result, but handlers capture the stock services while the cluster layer is built. Return the resulting context from `setInitializer` so the four Durable Object classes use the same services as the Worker.
 
-`CloudflareRuntime.layer` installs `CloudflareScheduler` and `CloudflareTracer` independently where supported, leaving the Effect default in place for an unsupported service. To use a different tracer, replace `CloudflareRuntime.layer` with `Layer.merge(CloudflareScheduler.layer, MyTracerLayer)` rather than installing two tracers. The standalone scheduler layer requires the `handle_cross_request_promise_resolution` compatibility flag (enabled by default from 2024-10-14).
+`CloudflareRuntime.layer` installs `CloudflareScheduler` and `CloudflareTracer` independently where supported, leaving the Effect default in place for an unsupported service. To use a different tracer, replace `CloudflareRuntime.layer` with `Layer.merge(CloudflareScheduler.layer, MyTracerLayer)`.
 
 The initializer is the readiness contract shared by all four Durable Object
 classes. Each cold object waits for it through `blockConcurrencyWhile` before
@@ -126,11 +126,9 @@ seconds. A slow build can therefore run more than once in an isolate, and the
 initializer must tolerate that. The example above keeps the first runtime to
 finish and disposes any other.
 Worker request handlers should call the same `initialize(env)` function before
-using `application`. This avoids racing lazy `ManagedRuntime` initialization: the
-scheduler in the finished context cannot protect callers already waiting for the
-build. If requests instead call `runtime.runPromise` or `runtime.runFork` before
-the context is ready, pass `{ scheduler: new CloudflareScheduler.CloudflareScheduler() }`
-as the runner option (with `CloudflareScheduler` imported from `@effect/platform-cloudflare`).
+using `application`. A request that runs effects while the runtime is still
+building does not get the context's scheduler; the `CloudflareScheduler`
+documentation covers that case.
 
 Applications whose registrations are complete synchronously during module
 evaluation can keep the bare re-export pattern without an initializer. In that

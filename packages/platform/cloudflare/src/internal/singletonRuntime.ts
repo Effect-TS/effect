@@ -43,8 +43,7 @@ export interface SingletonRuntime {
 
 /** @internal */
 export const makeSingletonRuntime = (options: SingletonRuntimeOptions): SingletonRuntime => {
-  const context = options.context ?? Context.empty()
-  const runPromise = Effect.runPromiseWith(context)
+  const runPromise = Effect.runPromiseWith(options.context ?? Context.empty())
   ensureSingletonStorage(options.sql)
   let inFlight: Promise<void> | undefined
 

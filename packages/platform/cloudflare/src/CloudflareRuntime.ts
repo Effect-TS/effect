@@ -7,7 +7,6 @@
  */
 import { tracing } from "cloudflare:workers"
 import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scheduler from "effect/Scheduler"
 import * as Tracer from "effect/Tracer"
@@ -43,7 +42,7 @@ import * as CloudflareTracer from "./CloudflareTracer.ts"
  * @category layers
  * @since 4.2.0
  */
-export const layer: Layer.Layer<never> = Layer.effectContext(Effect.sync(() => {
+export const layer: Layer.Layer<never> = Layer.syncContext(() => {
   let context = Context.empty()
   try {
     context = Context.add(context, Scheduler.Scheduler, new CloudflareScheduler())
@@ -54,4 +53,4 @@ export const layer: Layer.Layer<never> = Layer.effectContext(Effect.sync(() => {
     } catch {}
   }
   return context
-}))
+})

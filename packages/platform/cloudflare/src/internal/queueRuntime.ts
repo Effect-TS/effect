@@ -73,8 +73,7 @@ interface Waiter {
 
 /** @internal */
 export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => {
-  const context = options.context ?? Context.empty()
-  const runPromise = Effect.runPromiseWith(context)
+  const runPromise = Effect.runPromiseWith(options.context ?? Context.empty())
   const sql = options.sql
   ensureQueueStorage(sql)
 

@@ -48,8 +48,7 @@ export interface EntityKeepAliveOptions {
 
 /** @internal */
 export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeepAlive => {
-  const context = options.context ?? Context.empty()
-  const runFork = Effect.runForkWith(context)
+  const runFork = Effect.runForkWith(options.context ?? Context.empty())
   const latch = Latch.makeUnsafe(true)
   let holders = 0
   let wanted = options.wanted
