@@ -1271,7 +1271,7 @@ export const ParseOptions = Context.Reference<SchemaAST.ParseOptions>("effect/rp
  *
  * @stability unstable
  * @category annotations
- * @since 4.2.0
+ * @since 4.1.5
  */
 export const TracingEnabled = Context.Reference<"client" | "server" | "both" | "none">(
   "effect/rpc/Rpc/TracingEnabled",
