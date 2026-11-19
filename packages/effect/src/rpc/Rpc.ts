@@ -17,12 +17,14 @@ import type { Deferred } from "../Deferred.ts"
 import type { Effect } from "../Effect.ts"
 import type { Exit as Exit_ } from "../Exit.ts"
 import type { Headers } from "../http/Headers.ts"
+import * as InternalVersionedSchema from "../internal/versionedSchema.ts"
 import * as Option from "../Option.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import type * as Queue from "../Queue.ts"
 import * as Schema from "../Schema.ts"
+import type * as VersionedSchema from "../schema/VersionedSchema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import type { Stream } from "../Stream.ts"
 import type * as Struct from "../Struct.ts"
@@ -387,13 +389,26 @@ export type ErrorSchema<R> = R extends Rpc<
 
 /**
  * Extracts the decoded error value type from an `Rpc`, including middleware
- * errors.
+ * errors and, when its schemas use a versioned schema, the errors of version
+ * negotiation.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type Error<R> = Schema.Schema.Type<ErrorSchema<R>>
+export type Error<R> = Schema.Schema.Type<ErrorSchema<R>> | VersionErrors<R>
+
+// The errors version negotiation adds to an RPC whose schemas, including its
+// middleware errors, use a versioned schema.
+type VersionErrors<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware,
+  infer _Requires
+> ? VersionedSchema.NegotiationErrors<_Payload | _Success | _Error | _Middleware["error"]>
+  : never
 
 /**
  * Extracts the error schema used in an RPC exit.
@@ -1212,7 +1227,16 @@ export const exitSchema = <R extends Any>(
     return exitSchemaCache.get(self) as any
   }
   const rpc = self as any as AnyWithProps
-  const failures = new Set<Schema.Top>([rpc.errorSchema])
+  const failures = new Set<Schema.Top>()
+  // Version negotiation can fail any RPC that uses a versioned schema. These
+  // go first: the first member that accepts an error encodes it, and a plain
+  // user error such as `{ message: string }` accepts them too.
+  const versioning = getVersioning(rpc)
+  if (versioning !== undefined) {
+    failures.add(versioning.errors.VersionUnsupported)
+    failures.add(versioning.errors.Unrepresentable)
+  }
+  failures.add(rpc.errorSchema)
   const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
   if (Option.isSome(streamSchemas)) {
     failures.add(streamSchemas.value.error)
@@ -1227,6 +1251,29 @@ export const exitSchema = <R extends Any>(
   )
   exitSchemaCache.set(self, schema as any)
   return schema as any
+}
+
+const versioningCache = new WeakMap<object, InternalVersionedSchema.Contract | null>()
+
+/**
+ * The versioned types an RPC uses, or `undefined` when it uses none and so
+ * doesn't negotiate versions.
+ *
+ * @internal
+ */
+export const getVersioning = (rpc: AnyWithProps): InternalVersionedSchema.Contract | undefined => {
+  let contract = versioningCache.get(rpc)
+  if (contract === undefined) {
+    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const response: Array<Schema.Top> = Option.isSome(streamSchemas)
+      ? [streamSchemas.value.success, streamSchemas.value.error]
+      : [rpc.successSchema]
+    response.push(rpc.errorSchema)
+    for (const middleware of rpc.middlewares) response.push(middleware.error)
+    contract = InternalVersionedSchema.contract([rpc.payloadSchema], response) ?? null
+    versioningCache.set(rpc, contract)
+  }
+  return contract ?? undefined
 }
 
 /**

@@ -33,6 +33,7 @@ import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, Runne
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
 import { TransactionNotifications } from "./internal/transactionNotifications.ts"
+import * as Versions from "./internal/versions.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import * as Reply from "./Reply.ts"
@@ -137,6 +138,13 @@ export class Runners extends Context.Service<Runners, {
   readonly onRunnerUnavailable: (address: RunnerAddress) => Effect.Effect<void>
 }>()("effect/cluster/Runners") {}
 
+// A request its versions can't represent fails with the typed version error;
+// anything else that can't be encoded is a defect.
+const malformedExit = (rpc: Rpc.Any, error: MalformedMessage): Exit.Exit<any, any> => {
+  const typed = Versions.typedError(rpc, error.cause)
+  return typed === undefined ? Exit.die(error) : Exit.fail(typed)
+}
+
 /**
  * Builds the `Runners` service from remote runner callbacks and adds local
  * message persistence, duplicate request handling, optional local serialization
@@ -227,9 +235,22 @@ export const make: (
     // received reply.
     //
     // Otherwise, we notify the remote entity and then reply from storage.
-    return Effect.flatMap(
-      Effect.catchTag(storage.saveRequest(message), "MalformedMessage", Effect.die),
-      MessageStorage.SaveResult.$match({
+    return Effect.matchEffect(storage.saveRequest(message), {
+      onFailure: (error) => {
+        if (error._tag !== "MalformedMessage") return Effect.fail(error)
+        // a request its versions can't represent, or whose stored reply this
+        // build can't read, is answered without being sent
+        const typed = Versions.typedError(message.rpc, error.cause)
+        if (typed === undefined) return Effect.die(error)
+        return message.respond(
+          new Reply.WithExit({
+            id: snowflakeGen.nextUnsafe(),
+            requestId: message.envelope.requestId,
+            exit: Exit.fail(typed) as any
+          })
+        )
+      },
+      onSuccess: MessageStorage.SaveResult.$match({
         Success: () => afterPersist(message, false),
         Duplicate: ({ lastReceivedReply, originalId }) => {
           // If the last received reply is an exit, we can just return it
@@ -257,7 +278,7 @@ export const make: (
           )
         }
       })
-    )
+    })
   }
 
   type StorageRequestEntry = {
@@ -372,11 +393,12 @@ export const make: (
     )
 
   // Stream replies stay on the storage loop, which delivers chunks in order
-  // and waits for their acks.
+  // and waits for their acks. Versioned replies also read the stored encoding:
+  // downgrading can change their values even when encoding succeeds.
   const canReplyLocally = (message: Message.OutgoingRequest<any>) => {
     const rpc = message.rpc as any as Rpc.AnyWithProps
     return storage !== MessageStorage.noop && Context.get(rpc.annotations, Persisted) &&
-      !RpcSchema.isStreamSchema(rpc.successSchema)
+      !RpcSchema.isStreamSchema(rpc.successSchema) && Rpc.getVersioning(rpc) === undefined
   }
 
   // A request can be processed as soon as it is saved, so its reply handler is
@@ -475,7 +497,7 @@ export const make: (
             new Reply.WithExit({
               id: snowflakeGen.nextUnsafe(),
               requestId: message.envelope.requestId,
-              exit: Exit.die(error)
+              exit: malformedExit(message.rpc, error)
             })
           )
         })
@@ -712,7 +734,7 @@ export const makeRpc: Effect.Effect<
           new Reply.WithExit({
             id: snowflakeGen.nextUnsafe(),
             requestId: message.envelope.requestId,
-            exit: Exit.die(error)
+            exit: malformedExit(message.rpc, error)
           })
         )
       const isStream = RpcSchema.isStreamSchema(rpc.successSchema)

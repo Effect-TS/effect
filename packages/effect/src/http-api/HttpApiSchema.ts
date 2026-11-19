@@ -435,7 +435,13 @@ export interface SseEventFromData<Data extends Schema.Constraint> extends
     Data["DecodingServices"],
     Data["EncodingServices"]
   >
-{}
+{
+  readonly fields: {
+    readonly id: Schema.optional<Schema.String>
+    readonly event: Schema.String
+    readonly data: Schema.fromJsonString<Data>
+  }
+}
 
 /**
  * Schema for a streaming `Uint8Array` body.
@@ -581,7 +587,8 @@ export const StreamSse: {
   readonly data?: Schema.Constraint | undefined
   readonly error?: Schema.Constraint | undefined
   readonly keepAlive?: Duration.Input | undefined
-}): StreamSse<Sse.EventCodec, Schema.Top, unknown> => {
+}): StreamSse<any, Schema.Top, unknown> => {
+  // with `data`, this is the struct `SseEventFromData` describes
   const events = options.events ?? (options.data === undefined ? undefined : Schema.Struct({
     ...Sse.EventEncoded.fields,
     data: Schema.fromJsonString(Schema.toCodecJson(options.data))

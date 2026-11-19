@@ -147,12 +147,14 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
             Effect.catchTag(
               "MalformedMessage",
               (error) =>
-                Effect.flatMap(serializeDefectReply(reply, error, codecFor), (reply) => {
-                  // the fallback defect reply is terminal, so end the stream
-                  Queue.offerUnsafe(queue, reply)
-                  Queue.endUnsafe(queue)
-                  return Effect.void
-                })
+                reply.reply._tag === "Chunk" ?
+                  Effect.fail(error) :
+                  Effect.flatMap(serializeDefectReply(reply, error, codecFor), (reply) => {
+                    // the fallback defect reply is terminal, so end the stream
+                    Queue.offerUnsafe(queue, reply)
+                    Queue.endUnsafe(queue)
+                    return Effect.void
+                  })
             )
           )
         }
