@@ -72,7 +72,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   const storesTableSql = sql(storesTable)
   const sessionAuthBindingsTableSql = sql(sessionAuthBindingsTable)
 
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
@@ -91,7 +91,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             singleton INT PRIMARY KEY,
             remote_id VARBINARY(16) NOT NULL
           )`,
-    orElse: () =>
+    sqlite: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
             singleton INTEGER PRIMARY KEY,
@@ -99,7 +99,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
           )`
   })
 
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${entriesTableSql} (
@@ -136,7 +136,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             PRIMARY KEY (store_id, sequence),
             UNIQUE (store_id, entry_id)
           )`,
-    orElse: () =>
+    sqlite: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${entriesTableSql} (
             store_id TEXT NOT NULL,
@@ -154,7 +154,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   // under its B-tree row limit, MySQL indexes prefixes, and MSSQL has no
   // bounded index yet.
   const eventKeyIndex = `${entriesTable}_event_key_idx`
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`
           CREATE INDEX IF NOT EXISTS ${sql(eventKeyIndex)}
@@ -177,14 +177,14 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       )
     },
     mssql: () => Effect.void,
-    orElse: () =>
+    sqlite: () =>
       sql`
           CREATE INDEX IF NOT EXISTS ${sql(eventKeyIndex)}
           ON ${entriesTableSql} (store_id, event, primary_key, entry_id)
         `
   })
 
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${storesTableSql} (
@@ -203,7 +203,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             store_id NVARCHAR(191) PRIMARY KEY,
             next_sequence BIGINT NOT NULL
           )`,
-    orElse: () =>
+    sqlite: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${storesTableSql} (
             store_id TEXT PRIMARY KEY,
@@ -211,7 +211,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
           )`
   })
 
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
@@ -230,7 +230,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             public_key NVARCHAR(191) PRIMARY KEY,
             signing_public_key VARBINARY(32) NOT NULL
           )`,
-    orElse: () =>
+    sqlite: () =>
       sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
             public_key TEXT PRIMARY KEY,
@@ -295,7 +295,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     )
 
   const ensureStore = (storeId: string) =>
-    sql.onDialectOrElse({
+    sql.onDialect({
       pg: () =>
         sql`
             INSERT INTO ${storesTableSql} (store_id, next_sequence)
@@ -317,7 +317,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
               INSERT (store_id, next_sequence)
               VALUES (source.store_id, source.next_sequence);
           `,
-      orElse: () =>
+      sqlite: () =>
         sql`
             INSERT INTO ${storesTableSql} (store_id, next_sequence)
             VALUES (${storeId}, 1)
@@ -326,7 +326,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     })
 
   const lockStore = (storeId: string) =>
-    sql.onDialectOrElse({
+    sql.onDialect({
       pg: () =>
         sql`
             SELECT next_sequence
@@ -347,7 +347,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
             FROM ${storesTableSql} WITH (UPDLOCK, HOLDLOCK)
             WHERE store_id = ${storeId}
           `,
-      orElse: () =>
+      sqlite: () =>
         sql`
             UPDATE ${storesTableSql}
             SET next_sequence = next_sequence

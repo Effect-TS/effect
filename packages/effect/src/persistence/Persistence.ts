@@ -334,7 +334,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
       const clock = yield* Clock.Clock
       const tableName = `effect_persistence_${storeId}`
       const table = sql(tableName)
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mysql: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${table} (
@@ -361,7 +361,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
             )
           `,
         // sqlite
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${table} (
               id TEXT PRIMARY KEY,
@@ -380,7 +380,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
         entries: Arr.NonEmptyReadonlyArray<{ id: string; value: string; expires: number | null }>
       ) => Effect.Effect<unknown, SqlError>
 
-      const upsert = sql.onDialectOrElse({
+      const upsert = sql.onDialect({
         pg: (): UpsertFn => (entries) =>
           sql`
             INSERT INTO ${table} ${sql.insert(entries)}
@@ -406,7 +406,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
             { discard: true }
           ),
         // sqlite
-        orElse: (): UpsertFn => (entries) =>
+        sqlite: (): UpsertFn => (entries) =>
           sql`
             INSERT INTO ${table} ${sql.insert(entries)}
             ON CONFLICT(id) DO UPDATE SET value=excluded.value, expires=excluded.expires
@@ -558,7 +558,7 @@ export const layerBackingSql: Layer.Layer<
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const table = sql("effect_persistence")
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     mysql: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${table} (
@@ -591,7 +591,7 @@ export const layerBackingSql: Layer.Layer<
         )
       `,
     // sqlite
-    orElse: () =>
+    sqlite: () =>
       sql`
         CREATE TABLE IF NOT EXISTS ${table} (
           store_id TEXT NOT NULL,
@@ -603,7 +603,7 @@ export const layerBackingSql: Layer.Layer<
       `
   }).pipe(Effect.orDie)
 
-  yield* sql.onDialectOrElse({
+  yield* sql.onDialect({
     pg: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
         .pipe(Effect.orDie, Effect.asVoid),
@@ -635,7 +635,7 @@ export const layerBackingSql: Layer.Layer<
       )
     }, (_) => Effect.orDie(_)),
     // sqlite
-    orElse: () =>
+    sqlite: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
         .pipe(Effect.orDie, Effect.asVoid)
   })
@@ -643,7 +643,7 @@ export const layerBackingSql: Layer.Layer<
   const cleanupBatchDelay = Duration.millis(10)
   const cleanupInterval = Duration.minutes(5)
 
-  const deleteExpiredBatch = sql.onDialectOrElse({
+  const deleteExpiredBatch = sql.onDialect({
     pg: () => (expiresAtOrBefore: number) =>
       sql<{ readonly count: number }>`
         WITH deleted_entries AS (
@@ -687,7 +687,7 @@ export const layerBackingSql: Layer.Layer<
           AND persistence.id = expired_entries.id
       `.pipe(Effect.map((deletedEntries) => deletedEntries.length)),
     // Some sqlite clients do not support interactive transactions, so use one bounded statement.
-    orElse: () => (expiresAtOrBefore: number) =>
+    sqlite: () => (expiresAtOrBefore: number) =>
       sql<{ readonly deleted: number }>`
         DELETE FROM ${table}
         WHERE rowid IN (
@@ -719,7 +719,7 @@ export const layerBackingSql: Layer.Layer<
     entries: Arr.NonEmptyReadonlyArray<{ store_id: string; id: string; value: string; expires: number | null }>
   ) => Effect.Effect<unknown, SqlError>
 
-  const upsert = sql.onDialectOrElse({
+  const upsert = sql.onDialect({
     pg: (): UpsertFn => (entries) =>
       sql`
         INSERT INTO ${table} ${sql.insert(entries)}
@@ -745,7 +745,7 @@ export const layerBackingSql: Layer.Layer<
         { discard: true }
       ),
     // sqlite
-    orElse: (): UpsertFn => (entries) =>
+    sqlite: (): UpsertFn => (entries) =>
       sql`
         INSERT INTO ${table} ${sql.insert(entries)}
         ON CONFLICT(store_id, id) DO UPDATE SET value=excluded.value, expires=excluded.expires

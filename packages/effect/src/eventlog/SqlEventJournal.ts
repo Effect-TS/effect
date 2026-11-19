@@ -75,20 +75,20 @@ export const make = (options?: {
     const quoted = (table: string) => sql`${sql(table)}`.compile(true)[0]
 
     const tableExists = (table: string) =>
-      sql.onDialectOrElse({
+      sql.onDialect({
         // Reading the catalog refreshes cached names after concurrent DDL.
         pg: () => sql`SELECT 1 AS found FROM pg_class WHERE oid = to_regclass(${quoted(table)})`,
         mysql: () =>
           sql`SELECT 1 AS found FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ${table}`,
         mssql: () => sql`SELECT 1 AS found WHERE OBJECT_ID(${table}, 'U') IS NOT NULL`,
-        orElse: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
+        sqlite: () => sql`SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ${table}`
       }).pipe(Effect.map((rows) => rows.length > 0))
 
     const createSchema = Effect.gen(function*() {
       const eventIndex = sql(`${entryTable}_event_idx`)
       const timestampIndex = sql(`${entryTable}_timestamp_idx`)
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${entryTableSql} (
@@ -116,7 +116,7 @@ export const make = (options?: {
               payload VARBINARY(MAX) NOT NULL,
               timestamp BIGINT NOT NULL
             )`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${entryTableSql} (
               id BLOB PRIMARY KEY,
@@ -128,7 +128,7 @@ export const make = (options?: {
       })
 
       // Insertion sequences let uploads include older entries imported later.
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${sequenceTableSql} (
@@ -147,7 +147,7 @@ export const make = (options?: {
               sequence BIGINT IDENTITY(1,1) PRIMARY KEY,
               entry_id UNIQUEIDENTIFIER NOT NULL UNIQUE
             )`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${sequenceTableSql} (
               sequence INTEGER PRIMARY KEY,
@@ -155,7 +155,7 @@ export const make = (options?: {
             )`
       })
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${checkpointsTableSql} (
@@ -174,7 +174,7 @@ export const make = (options?: {
               remote_id UNIQUEIDENTIFIER PRIMARY KEY,
               sequence BIGINT NOT NULL
             )`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${checkpointsTableSql} (
               remote_id BLOB PRIMARY KEY,
@@ -182,7 +182,7 @@ export const make = (options?: {
             )`
       })
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
@@ -201,7 +201,7 @@ export const make = (options?: {
               remote_id UNIQUEIDENTIFIER PRIMARY KEY,
               next_sequence INT NOT NULL
             )`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${remoteCursorsTableSql} (
               remote_id BLOB PRIMARY KEY,
@@ -210,7 +210,7 @@ export const make = (options?: {
       })
 
       // The remote each imported entry came from, so uploads skip it.
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${sourcesTableSql} (
@@ -229,7 +229,7 @@ export const make = (options?: {
               entry_id UNIQUEIDENTIFIER PRIMARY KEY,
               remote_id UNIQUEIDENTIFIER NOT NULL
             )`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             CREATE TABLE IF NOT EXISTS ${sourcesTableSql} (
               entry_id BLOB PRIMARY KEY,
@@ -237,7 +237,7 @@ export const make = (options?: {
             )`
       })
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         // MySQL indexes TEXT columns by prefix only.
         mysql: () =>
           Effect.andThen(
@@ -253,7 +253,7 @@ export const make = (options?: {
           ),
         // NVARCHAR(MAX) columns cannot be index keys.
         mssql: () => sql`CREATE INDEX ${timestampIndex} ON ${entryTableSql} (timestamp)`,
-        orElse: () =>
+        sqlite: () =>
           Effect.andThen(
             sql`CREATE INDEX IF NOT EXISTS ${eventIndex} ON ${entryTableSql} (event, primary_key, timestamp)`,
             sql`CREATE INDEX IF NOT EXISTS ${timestampIndex} ON ${entryTableSql} (timestamp)`

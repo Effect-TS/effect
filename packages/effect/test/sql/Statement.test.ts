@@ -8,13 +8,14 @@ import * as Statement from "effect/sql/Statement"
 import * as Str from "effect/String"
 import * as TestClock from "effect/testing/TestClock"
 
-const sparkCompiler = Statement.makeCompiler({
+const sparkOptions: Statement.CompilerOptions = {
   dialect: "spark",
   placeholder: () => "?",
   onIdentifier: Statement.defaultEscape("`"),
   onRecordUpdate: () => ["", []],
   onCustom: () => ["", []]
-})
+}
+const sparkCompiler = Statement.makeCompiler(sparkOptions)
 
 describe("Statement", () => {
   it("dispatches custom dialects and reports missing strict branches", () => {
@@ -22,6 +23,15 @@ describe("Statement", () => {
     assert.strictEqual(sql.onDialect({ spark: () => "custom" }), "custom")
     assert.strictEqual(sql.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
     assert.throws(() => sql.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "spark". Supported dialects: pg/)
+
+    const inherited = Statement.make(
+      Effect.die("unexpected query"),
+      Statement.makeCompiler({ ...sparkOptions, dialect: "toString" }),
+      [],
+      undefined
+    )
+    assert.strictEqual(inherited.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
+    assert.throws(() => inherited.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "toString"/)
   })
 
   it.effect("rejects an unsupported key-value store dialect before acquiring a connection", () =>

@@ -104,7 +104,7 @@ export const makeStorage = (options?: {
     const remoteIdTableSql = sql(remoteIdTable)
     const sessionAuthBindingsTableSql = sql(sessionAuthBindingsTable)
 
-    yield* sql.onDialectOrElse({
+    yield* sql.onDialect({
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
@@ -121,14 +121,14 @@ export const makeStorage = (options?: {
           CREATE TABLE ${remoteIdTableSql} (
             remote_id VARBINARY(16) PRIMARY KEY
           )`,
-      orElse: () =>
+      sqlite: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
             remote_id BLOB PRIMARY KEY
           )`
     })
 
-    yield* sql.onDialectOrElse({
+    yield* sql.onDialect({
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
@@ -148,7 +148,7 @@ export const makeStorage = (options?: {
             public_key NVARCHAR(191) PRIMARY KEY,
             signing_public_key VARBINARY(32) NOT NULL
           )`,
-      orElse: () =>
+      sqlite: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
             public_key TEXT PRIMARY KEY,
@@ -156,7 +156,7 @@ export const makeStorage = (options?: {
           )`
     })
 
-    const types = sql.onDialectOrElse({
+    const types = sql.onDialect({
       pg: () => ({ id: "TEXT", int: "INTEGER", bigint: "BIGINT", bytes: "BYTEA", entryId: "BYTEA", iv: "BYTEA" }),
       mysql: () => ({
         id: "VARCHAR(36)",
@@ -174,7 +174,7 @@ export const makeStorage = (options?: {
         entryId: "VARBINARY(16)",
         iv: "VARBINARY(12)"
       }),
-      orElse: () => ({ id: "TEXT", int: "INTEGER", bigint: "INTEGER", bytes: "BLOB", entryId: "BLOB", iv: "BLOB" })
+      sqlite: () => ({ id: "TEXT", int: "INTEGER", bigint: "INTEGER", bytes: "BLOB", entryId: "BLOB", iv: "BLOB" })
     })
     // Two instances can open the same table at once, and PostgreSQL and SQL
     // Server can fail the loser of a concurrent create, so creation retries.
@@ -298,7 +298,7 @@ export const makeStorage = (options?: {
       const { idsTableSql, tableSql } = tables
       const indexSql = sql(`${table}_last_sequence`)
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         pg: () =>
           sql`
               CREATE TABLE IF NOT EXISTS ${tableSql} (
@@ -349,7 +349,7 @@ export const makeStorage = (options?: {
                 sequence INT NOT NULL
               )`)
           ),
-        orElse: () =>
+        sqlite: () =>
           sql`
               CREATE TABLE IF NOT EXISTS ${tableSql} (
                 sequence INTEGER PRIMARY KEY,
@@ -444,7 +444,7 @@ export const makeStorage = (options?: {
       })
 
     const upsertBucket = (scope: string, hour: number, lastSequence: number) =>
-      sql.onDialectOrElse({
+      sql.onDialect({
         pg: () =>
           sql`
             INSERT INTO ${bucketsSql} (scope, bucket_hour, last_sequence) VALUES (${scope}, ${hour}, ${lastSequence})
@@ -464,7 +464,7 @@ export const makeStorage = (options?: {
             WHEN NOT MATCHED THEN
               INSERT (scope, bucket_hour, last_sequence)
               VALUES (source.scope, source.bucket_hour, source.last_sequence);`,
-        orElse: () =>
+        sqlite: () =>
           sql`
             INSERT INTO ${bucketsSql} (scope, bucket_hour, last_sequence) VALUES (${scope}, ${hour}, ${lastSequence})
             ON CONFLICT (scope, bucket_hour)

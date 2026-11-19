@@ -154,11 +154,11 @@ export const makeEncodedStorage: (options?: {
       ? Effect.succeed(primaryKey)
       : digest.digestHex(Digest.sha256, encoder.encode(primaryKey))
 
-  const messageIdEnforcesWidth = sql.onDialectOrElse({
+  const messageIdEnforcesWidth = sql.onDialect({
     mssql: () => true,
     mysql: () => true,
     pg: () => true,
-    orElse: () => false
+    sqlite: () => false
   })
   // sqlite's TEXT message_id column stored over-length plaintext keys before
   // digests were introduced; those legacy rows need a plaintext fallback read
@@ -384,7 +384,7 @@ export const makeEncodedStorage: (options?: {
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
-  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
+  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialect({
     pg: () =>
       insertUnlessExists((row) =>
         Effect.map(
@@ -418,7 +418,7 @@ export const makeEncodedStorage: (options?: {
         )
       ),
     // SQLite has a single writer, so no delete can run between read and insert
-    orElse: () => (row, message_id) =>
+    sqlite: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
         sql.withTransaction,
@@ -426,17 +426,17 @@ export const makeEncodedStorage: (options?: {
       )
   })
 
-  const tenMinutesAgo = sql.onDialectOrElse({
+  const tenMinutesAgo = sql.onDialect({
     mssql: () => sql.literal(`DATEADD(MINUTE, -10, GETDATE())`),
     mysql: () => sql.literal(`NOW() - INTERVAL 10 MINUTE`),
     pg: () => sql.literal(`NOW() - INTERVAL '10 minutes'`),
-    orElse: () => sql.literal(`DATETIME('now', '-10 minute')`)
+    sqlite: () => sql.literal(`DATETIME('now', '-10 minute')`)
   })
-  const sqlNowString = sql.onDialectOrElse({
+  const sqlNowString = sql.onDialect({
     pg: () => "NOW()",
     mysql: () => "NOW()",
     mssql: () => "GETDATE()",
-    orElse: () => "CURRENT_TIMESTAMP"
+    sqlite: () => "CURRENT_TIMESTAMP"
   })
   const sqlNow = sql.literal(sqlNowString)
 
@@ -1055,7 +1055,7 @@ export const migrations = (options?: {
 
       // mssql UNIQUE constraints treat NULLs as equal, so nullable keys use
       // filtered unique indexes instead
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${messagesTableSql}', N'U') IS NULL
@@ -1133,7 +1133,7 @@ export const migrations = (options?: {
               UNIQUE (message_id)
             )
           `,
-        orElse: () =>
+        sqlite: () =>
           // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
@@ -1163,7 +1163,7 @@ export const migrations = (options?: {
       // Add message indexes optimized for the specific query patterns
       const shardLookupIndex = `${messagesTable}_shard_idx`
       const requestIdLookupIndex = `${messagesTable}_request_id_idx`
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mssql: () =>
           sql`
             IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
@@ -1192,7 +1192,7 @@ export const migrations = (options?: {
               ON ${messagesTableSql} (request_id)
             `
         }),
-        orElse: () =>
+        sqlite: () =>
           // sqlite
           Effect.all([
             sql`
@@ -1206,7 +1206,7 @@ export const migrations = (options?: {
           ]).pipe(sql.withTransaction)
       })
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${repliesTableSql}', N'U') IS NULL
@@ -1251,7 +1251,7 @@ export const migrations = (options?: {
               UNIQUE (request_id, sequence)
             )
           `,
-        orElse: () =>
+        sqlite: () =>
           // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
@@ -1269,7 +1269,7 @@ export const migrations = (options?: {
 
       // Add reply indexes optimized for request_id lookups
       const replyLookupIndex = `${repliesTable}_request_lookup_idx`
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mssql: () =>
           sql`
             IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex} AND object_id = OBJECT_ID(${repliesTable}))
@@ -1286,7 +1286,7 @@ export const migrations = (options?: {
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
-        orElse: () =>
+        sqlite: () =>
           // sqlite
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
@@ -1299,7 +1299,7 @@ export const migrations = (options?: {
       const messagesTableSql = sql(messagesTable)
 
       // resize entity_type to 150 characters
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mssql: () =>
           sql`
             ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type VARCHAR(150) NOT NULL;
@@ -1312,7 +1312,7 @@ export const migrations = (options?: {
           sql`
             ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type TYPE VARCHAR(150);
           `,
-        orElse: () =>
+        sqlite: () =>
           // sqlite
           Effect.void
       })

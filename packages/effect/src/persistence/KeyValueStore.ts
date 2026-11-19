@@ -616,7 +616,7 @@ export const layerSql = (
       const tableName = options.table ?? "effect_key_value_store"
       const table = sql(tableName)
 
-      yield* sql.onDialectOrElse({
+      yield* sql.onDialect({
         mysql: () =>
           sql`
           CREATE TABLE IF NOT EXISTS ${table} (
@@ -643,7 +643,7 @@ export const layerSql = (
           )
         `,
         // sqlite
-        orElse: () =>
+        sqlite: () =>
           sql`
           CREATE TABLE IF NOT EXISTS ${table} (
             id TEXT PRIMARY KEY,
@@ -659,7 +659,7 @@ export const layerSql = (
         value_type: number
       }) => Effect.Effect<unknown, SqlError>
 
-      const upsert = sql.onDialectOrElse({
+      const upsert = sql.onDialect({
         pg: (): UpsertFn => (entry) =>
           sql`
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
@@ -680,7 +680,7 @@ export const layerSql = (
           VALUES (source.id, source.value, source.value_type);
         `,
         // sqlite
-        orElse: (): UpsertFn => (entry) =>
+        sqlite: (): UpsertFn => (entry) =>
           sql`
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
           ON CONFLICT(id) DO UPDATE SET value=excluded.value, value_type=excluded.value_type
@@ -690,9 +690,9 @@ export const layerSql = (
       // The first LIKE uses the primary key index. On mysql and mssql it follows
       // the column collation, which is usually case / accent-insensitive, so a
       // second binary LIKE keeps only exact prefix matches.
-      const deleteByPrefix = sql.onDialectOrElse({
+      const deleteByPrefix = sql.onDialect({
         // sqlite LIKE is case-insensitive, so compare the leading characters
-        orElse: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
+        sqlite: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
         pg: () => (prefix: string) => sql`DELETE FROM ${table} WHERE id LIKE ${escapeLike(prefix)} ESCAPE '!'`,
         mysql: () => (prefix: string) => {
           const pattern = escapeLike(prefix)

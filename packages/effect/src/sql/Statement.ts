@@ -92,13 +92,16 @@ export const fragment = (
 })
 
 /**
- * Supported SQL dialect identifiers used by statement compilers.
+ * SQL dialect identifier used by statement compilers.
+ *
+ * The built-in drivers use `"sqlite"`, `"pg"`, `"mysql"`, `"mssql"` and
+ * `"clickhouse"`. A driver outside this repository can use any other name.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse"
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse" | (string & {})
 
 /**
  * Executable SQL statement that is also a `Fragment` and `Effect`, with helpers
@@ -610,22 +613,57 @@ export interface Constructor {
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
-  readonly onDialect: <A, B, C, D, E>(options: {
-    readonly sqlite: () => A
-    readonly pg: () => B
-    readonly mysql: () => C
-    readonly mssql: () => D
-    readonly clickhouse: () => E
-  }) => A | B | C | D | E
+  /**
+   * Runs the branch for the client's dialect.
+   *
+   * Branches for dialects outside the built-in names can be passed as extra
+   * keys. If the client's dialect has no branch, this throws an error that
+   * names the dialect and the supported ones.
+   *
+   * A lambda returned from a custom-name branch needs its parameters
+   * annotated, because only the built-in branches are contextually typed.
+   */
+  readonly onDialect: <
+    A = never,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    X extends { readonly [dialect: string]: () => unknown } = {}
+  >(
+    options: {
+      readonly sqlite?: () => A
+      readonly pg?: () => B
+      readonly mysql?: () => C
+      readonly mssql?: () => D
+      readonly clickhouse?: () => E
+    } & X
+  ) => A | B | C | D | E | ReturnType<X[keyof X]>
 
-  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never, F = never>(options: {
-    readonly orElse: () => A
-    readonly sqlite?: () => B
-    readonly pg?: () => C
-    readonly mysql?: () => D
-    readonly mssql?: () => E
-    readonly clickhouse?: () => F
-  }) => A | B | C | D | E | F
+  /**
+   * Runs the branch for the client's dialect, or `orElse` when it has none.
+   *
+   * Branches for dialects outside the built-in names can be passed as extra
+   * keys.
+   */
+  readonly onDialectOrElse: <
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    X extends { readonly [dialect: string]: () => unknown } = {}
+  >(
+    options: {
+      readonly orElse: () => A
+      readonly sqlite?: () => B
+      readonly pg?: () => C
+      readonly mysql?: () => D
+      readonly mssql?: () => E
+      readonly clickhouse?: () => F
+    } & X
+  ) => A | B | C | D | E | F | ReturnType<X[keyof X]>
 }
 
 /**
@@ -695,17 +733,28 @@ export const make = (
       or,
       csv,
       join,
-      onDialect(options: Record<Dialect, any>) {
-        return options[compiler.dialect]()
+      onDialect(options: Record<string, () => any>) {
+        const branch = dialectBranch(options, compiler.dialect)
+        if (branch === undefined) {
+          throw new Error(
+            `Unsupported SQL dialect "${compiler.dialect}". Supported dialects: ${Object.keys(options).join(", ")}`
+          )
+        }
+        return branch()
       },
-      onDialectOrElse(options: any) {
-        return options[compiler.dialect] !== undefined ? options[compiler.dialect]() : options.orElse()
+      onDialectOrElse(options: Record<string, () => any>) {
+        return (dialectBranch(options, compiler.dialect) ?? options.orElse)()
       }
     }
   )
 
   return self
 }
+
+const dialectBranch = (
+  options: Record<string, (() => any) | undefined>,
+  dialect: Dialect
+): (() => any) | undefined => Object.hasOwn(options, dialect) ? options[dialect] : undefined
 
 /**
  * Builds a `Statement` from template strings and arguments, preserving

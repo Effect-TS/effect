@@ -135,7 +135,7 @@ export const make = <RD = never>({
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
 
-    const createMigrationsTable = transformWrites(sql.onDialectOrElse({
+    const createMigrationsTable = transformWrites(sql.onDialect({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
   CREATE TABLE ${sql(table)} (
@@ -164,7 +164,7 @@ ORDER BY migration_id`,
   created_at timestamp with time zone not null default now(),
   name text not null
 )`,
-      orElse: () =>
+      sqlite: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id integer PRIMARY KEY NOT NULL,
   created_at datetime NOT NULL DEFAULT current_timestamp,
