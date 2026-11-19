@@ -14,7 +14,7 @@ import * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
 import type * as AtomRef from "effect/reactivity/AtomRef"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
-import type { Accessor, ResourceOptions, ResourceReturn } from "solid-js"
+import type { Accessor } from "solid-js"
 import * as Solid from "solid-js"
 import { createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
 import { isSolid2 } from "./internal/solid.ts"
@@ -308,8 +308,11 @@ export const useAtomSubscribe = <A>(
  *
  * **Gotchas**
  *
- * Requires Solid 1 and throws on Solid 2, which removed `createResource`. On
- * Solid 2, read the `AsyncResult` with {@link useAtomValue}.
+ * Requires Solid 1. Solid 2 removed `createResource`, so on Solid 2 this hook
+ * throws and its return type is `never`. Read the `AsyncResult` with
+ * {@link useAtomValue} instead. Vite builds against Solid 2 report
+ * `IMPORT_IS_UNDEFINED` for `createResource`; the warning is expected and the
+ * unused code is removed from the bundle.
  *
  * @stability unstable
  * @category hooks
@@ -320,7 +323,7 @@ export const useAtomResource = <A, E>(
   options?: ResourceOptions<A> & {
     readonly suspendOnWaiting?: boolean | undefined
   }
-): ResourceReturn<A, void> => {
+): ResourceReturn<A> => {
   if (createResource === undefined) {
     throw new Error(
       "useAtomResource requires Solid 1 because Solid 2 removed createResource. Read the AsyncResult with useAtomValue instead."
@@ -342,6 +345,17 @@ const constUnresolvedPromise = new Promise<never>(() => {})
 // Read through the namespace so the module still links against Solid 2, where
 // `createResource` no longer exists.
 const createResource = (Solid as Partial<typeof Solid>).createResource
+
+// The published declarations must type-check against Solid 1 and 2, but
+// `ResourceOptions` and `ResourceReturn` only exist in Solid 1. Instantiating
+// the consumer's `createResource` (source, fetcher, options) overload yields
+// exactly `ResourceOptions<A>` and `ResourceReturn<A, void>` on Solid 1, and
+// `never` on Solid 2, where `useAtomResource` throws.
+declare const solidCreateResource: typeof Solid extends { readonly createResource: infer F } ? F
+  : <T, S, R>(source: unknown, fetcher: unknown, options?: never) => never
+type CreateResource<A> = typeof solidCreateResource<A, unknown, void>
+type ResourceOptions<A> = NonNullable<Parameters<CreateResource<A>>[2]>
+type ResourceReturn<A> = ReturnType<CreateResource<A>>
 
 /**
  * Subscribes to an atom ref and returns its value as a Solid accessor.

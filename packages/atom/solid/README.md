@@ -8,6 +8,13 @@
 npm install effect @effect/atom-solid
 ```
 
+## Solid versions
+
+Works with `solid-js` 1.9.14 or later and with Solid 2. One API differs on Solid 2:
+
+- `useAtomResource` requires Solid 1, because Solid 2 removed `createResource`. On Solid 2 it throws; read the `AsyncResult` with `useAtomValue` instead.
+- Vite builds against Solid 2 print an `IMPORT_IS_UNDEFINED` warning for `createResource`. The warning is expected, and the unused code is removed from the bundle.
+
 ## Links
 
 - [Website](https://effect.website): documentation, guides, and news.
