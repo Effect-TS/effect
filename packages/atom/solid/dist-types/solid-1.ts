@@ -22,6 +22,11 @@ export const context: Context<AtomRegistry.AtomRegistry> = RegistryContext.Regis
 
 // The Solid 1 resource types are unchanged.
 export const resource: ResourceReturn<number, void> = Hooks.useAtomResource(() => result, { initialValue: 0 })
+// `A` is inferred from `initialValue` when the atom does not fix it.
+export const inferred: ResourceReturn<number, void> = Hooks.useAtomResource(
+  () => Atom.make(AsyncResult.initial()),
+  { initialValue: 42 }
+)
 export const resourceReturn: Equals<
   ReturnType<typeof Hooks.useAtomResource<number, never>>,
   ResourceReturn<number, void>

@@ -95,7 +95,9 @@ function createSubscriptionAccessor<S, A>(
     box.set = setValue
     return value
   })
-  return () => current()().value
+  // Compare values so switching to a source with an equal value does not
+  // notify readers.
+  return createMemo(() => current()().value)
 }
 
 // `ownedWrite` lets Solid 2 accept registry notifications that arrive while a
@@ -347,15 +349,16 @@ const constUnresolvedPromise = new Promise<never>(() => {})
 const createResource = (Solid as Partial<typeof Solid>).createResource
 
 // The published declarations must type-check against Solid 1 and 2, but
-// `ResourceOptions` and `ResourceReturn` only exist in Solid 1. Instantiating
-// the consumer's `createResource` (source, fetcher, options) overload yields
-// exactly `ResourceOptions<A>` and `ResourceReturn<A, void>` on Solid 1, and
-// `never` on Solid 2, where `useAtomResource` throws.
+// `ResourceOptions` and `ResourceReturn` only exist in Solid 1, so they are
+// read off the consumer's `createResource` overloads. On Solid 1 they are
+// identical to `ResourceOptions<A>` and `ResourceReturn<A, void>`; on Solid 2,
+// where `useAtomResource` throws, they are `never`.
 declare const solidCreateResource: typeof Solid extends { readonly createResource: infer F } ? F
-  : <T, S, R>(source: unknown, fetcher: unknown, options?: never) => never
-type CreateResource<A> = typeof solidCreateResource<A, unknown, void>
-type ResourceOptions<A> = NonNullable<Parameters<CreateResource<A>>[2]>
-type ResourceReturn<A> = ReturnType<CreateResource<A>>
+  : <T, S, R, I = T>(source: unknown, fetcher: unknown, options?: never) => never
+// The `initialValue` overload, made optional. The plain overload wraps `A` in
+// `NoInfer`, which would stop `A` being inferred from `initialValue`.
+type ResourceOptions<A> = Partial<NonNullable<Parameters<typeof solidCreateResource<A, unknown, void, A>>[2]>>
+type ResourceReturn<A> = ReturnType<typeof solidCreateResource<A, unknown, void>>
 
 /**
  * Subscribes to an atom ref and returns its value as a Solid accessor.
