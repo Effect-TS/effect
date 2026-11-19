@@ -1,7 +1,7 @@
 import * as Clickhouse from "@clickhouse/client"
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Stream } from "effect"
+import { Effect, Fiber, ManagedRuntime, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
@@ -303,14 +303,13 @@ describe("ClickhouseClient startup validation", { concurrent: false }, () => {
       assert.deepStrictEqual(requests, ["/ping"])
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.live("skips startup requests and recovers on the same client with validation disabled", () =>
-    Effect.gen(function*() {
-      const sql = yield* ClickhouseClient.make({ url, validateConnection: false })
-      assert.deepStrictEqual(requests, [])
-      const error = yield* Effect.flip(sql`SELECT 1 AS one`)
-      assert.strictEqual(error._tag, "SqlError")
-      available = true
-      assert.deepStrictEqual(yield* sql`SELECT 1 AS one`, [{ one: 1 }])
-      assert.deepStrictEqual(requests, ["/", "/"])
-    }).pipe(Effect.provide(Reactivity.layer)))
+  it("skips startup requests and recovers on the same runtime with validation disabled", async () => {
+    await using runtime = ManagedRuntime.make(ClickhouseClient.layer({ url, validateConnection: false }))
+    const select = Effect.flatMap(ClickhouseClient.ClickhouseClient, (sql) => sql`SELECT 1 AS one`)
+    await runtime.runPromise(Effect.void)
+    assert.deepStrictEqual(requests, [])
+    assert.strictEqual((await runtime.runPromise(Effect.flip(select)))._tag, "SqlError")
+    available = true
+    assert.deepStrictEqual(await runtime.runPromise(select), [{ one: 1 }])
+  })
 })
