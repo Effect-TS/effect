@@ -153,16 +153,6 @@ export default defineConfig({
           conditions: ["browser"]
         },
         test: {
-          environment: "jsdom",
-          setupFiles: [path.join(import.meta.dirname, "packages/atom/solid/vitest.setup.ts")]
-        }
-      }),
-      ...project("@effect/atom-solid (solid 2)", "packages/atom/solid", true, {
-        resolve: {
-          alias: [{ find: /^solid-js$/, replacement: "solid-js-2" }],
-          conditions: ["browser"]
-        },
-        test: {
           environment: "jsdom"
         }
       }),

@@ -10,10 +10,24 @@ npm install effect @effect/atom-solid
 
 ## Solid versions
 
-Works with `solid-js` 1.9.14 or later and with Solid 2. One API differs on Solid 2:
+Requires Solid 2 (`solid-js` 2.0 or later). Solid 1 is no longer supported.
 
-- `useAtomResource` requires Solid 1, because Solid 2 removed `createResource`. On Solid 2 it throws; read the `AsyncResult` with `useAtomValue` instead.
-- Vite builds against Solid 2 print an `IMPORT_IS_UNDEFINED` warning for `createResource`. The warning is expected, and the unused code is removed from the bundle.
+### Migrating from Solid 1
+
+- `useAtomResource` was removed because Solid 2 has no `createResource`. Read the `AsyncResult` atom with `useAtomValue` and match on the result:
+
+  ```tsx
+  const user = useAtomValue(() => userAtom)
+
+  const name = () =>
+    AsyncResult.match(user(), {
+      onInitial: () => "Loading...",
+      onFailure: () => "Could not load user",
+      onSuccess: ({ value }) => value.name
+    })
+  ```
+
+- Solid 2 contexts have no `.Provider`. Replace `<RegistryContext.Provider value={registry}>` with `<RegistryContext value={registry}>`, or use `<RegistryProvider>`.
 
 ## Links
 

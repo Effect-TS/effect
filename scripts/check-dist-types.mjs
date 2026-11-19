@@ -67,21 +67,19 @@ try {
   Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
   execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
 
-  // @effect/atom-solid publishes one declaration surface for Solid 1 and 2.
+  // @effect/atom-solid declarations against the solid-js types consumers install.
   const solidDir = Path.join(root, "packages", "atom", "solid")
   const solidDist = Path.join(solidDir, "dist")
-  for (const [fixture, solid] of [["solid-1.ts", "solid-js"], ["solid-2.ts", "solid-js-2"]]) {
-    Fs.copyFileSync(Path.join(solidDir, "dist-types", fixture), Path.join(dir, "index.ts"))
-    config.compilerOptions.paths = {
-      ...Object.fromEntries(entrypoints),
-      [`${pkg.name}/*`]: [Path.join(dist, "*")],
-      "@effect/atom-solid": [Path.join(solidDist, "index.d.ts")],
-      "@effect/atom-solid/*": [Path.join(solidDist, "*")],
-      "solid-js": [Path.join(solidDir, "node_modules", solid, "types", "index.d.ts")]
-    }
-    Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
-    execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
+  Fs.copyFileSync(Path.join(solidDir, "dist-types", "index.ts"), Path.join(dir, "index.ts"))
+  config.compilerOptions.paths = {
+    ...Object.fromEntries(entrypoints),
+    [`${pkg.name}/*`]: [Path.join(dist, "*")],
+    "@effect/atom-solid": [Path.join(solidDist, "index.d.ts")],
+    "@effect/atom-solid/*": [Path.join(solidDist, "*")],
+    "solid-js": [Path.join(solidDir, "node_modules", "solid-js", "types", "index.d.ts")]
   }
+  Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
+  execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
 } catch (error) {
   process.exitCode = typeof error.status === "number" ? error.status : 1
 } finally {
