@@ -3,6 +3,26 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
+  it("runs a hydrated waiting seed even with skipInitialRun", () => {
+    const options = { key: "count", schema: AsyncResult.Schema({ success: Schema.Number }), skipInitialRun: true }
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      const seed = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(10, { waiting: true }))
+      server.mount(seed.pipe(Atom.serializable(options)))
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      const atom = Atom.make(Effect.succeed(20)).pipe(Atom.serializable(options))
+      client.mount(atom)
+      const result = client.get(atom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, 20)
+      assert.isFalse(result.waiting)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   it("runs a plain hydrated effect atom on mount and tracks factory dependencies", () => {
     const dependency = Atom.make(1)
     let runs = 0

@@ -1,10 +1,10 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vitest } from "@effect/vitest"
 import { Duration, Effect, Exit, Layer, type Redacted, Ref, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
 import type * as HttpClientError from "effect/http/HttpClientError"
-import { Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/reactivity"
+import { AsyncResult, Atom, AtomHttpApi, AtomRegistry, Hydration } from "effect/reactivity"
 
 const Api = HttpApi.make("api").add(
   HttpApiGroup.make("group").add(
@@ -33,6 +33,47 @@ const StreamApi = HttpApi.make("StreamApi").add(
 )
 
 describe("AtomHttpApi", () => {
+  it.effect("reuses fresh hydration and revalidates stale hydration once", () =>
+    Effect.gen(function*() {
+      let requests = 0
+      const Client = AtomHttpApi.Service()("FreshClient", {
+        baseUrl: "https://example.test",
+        api: HttpApi.make("FreshApi").add(
+          HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/value", { success: Schema.Number }))
+        ),
+        httpClient: Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((request) =>
+            Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
+          )
+        )
+      })
+      const atom = Client.query("group", "get", { serializationKey: "value", staleTime: 1_000 })
+      const clock = vitest.spyOn(Date, "now").mockReturnValue(10_000)
+      yield* Effect.addFinalizer(() => Effect.sync(() => clock.mockRestore()))
+      const server = AtomRegistry.make()
+      yield* Effect.addFinalizer(() => Effect.sync(() => server.dispose()))
+      yield* AtomRegistry.mount(server, atom)
+      assert.strictEqual(yield* AtomRegistry.getResult(server, atom), 1)
+      const state = Hydration.dehydrate(server)
+
+      for (const age of [500, 1_500]) {
+        clock.mockReturnValue(10_000 + age)
+        const client = AtomRegistry.make()
+        yield* Effect.addFinalizer(() => Effect.sync(() => client.dispose()))
+        Hydration.hydrate(client, state)
+        yield* AtomRegistry.mount(client, atom)
+        const seed = client.get(atom)
+        assert(AsyncResult.isSuccess(seed))
+        assert.strictEqual(seed.value, 1)
+        yield* Effect.yieldNow
+        const result = yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true })
+        const expected = age === 500 ? 1 : 2
+        assert.strictEqual(result, expected)
+        assert.strictEqual(requests, expected)
+      }
+    }), { concurrent: false })
+
   it.effect.each([
     { idA: "ApiA", groupA: "users", idB: "ApiB", groupB: "users" },
     { idA: "Api:users", groupA: "users", idB: "Api", groupB: "users:users" }

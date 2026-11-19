@@ -1014,6 +1014,11 @@ export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
   const keptParents = node.keptParents
   node.skipInitialRun = false
   node.keptParents = undefined
+  if (node._value.waiting) {
+    // No local request owns the seed; commit the replacement even if it completes synchronously.
+    node.preserveInitialValueOnBuild = false
+    return false
+  }
   return !lifetime.isFn && !Result.isInitial(node._value) &&
     (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))
 }

@@ -1711,7 +1711,7 @@ function makeLabel(name: string, error: Error | undefined): readonly [name: stri
  * refreshed or one of its dependencies changes. The factory and any wrappers
  * still build, so `get(...)` calls in the factory and `withReactivity` keys are
  * tracked; only the first effect or stream run is skipped. Dependencies read
- * inside the effect are tracked from its first real run. An `Initial` seed
+ * inside the effect are tracked from its first real run. An `Initial` or waiting seed
  * never skips the effect.
  *
  * @stability unstable
@@ -1956,7 +1956,9 @@ export const withRefresh: {
  * Skips revalidation if the source becomes fresh or the atom is disposed.
  * Manual refreshes still forward to the source. `revalidateOnMount` controls
  * initial stale refreshes; `revalidateOnFocus` controls focus refreshes
- * (`true` respects `staleTime`, `"always"` forces refresh).
+ * (`true` respects `staleTime`, `"always"` forces refresh). Apply `swr` after
+ * serialization and idle TTL so the source is retained and dehydrated, and
+ * the wrapper checks freshness when mounted again.
  *
  * @stability unstable
  * @category combinators

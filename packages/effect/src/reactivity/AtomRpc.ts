@@ -56,12 +56,17 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
 
   readonly mutation: <Tag extends Rpc.Tag<Rpcs>>(arg: Tag) => Mutation<Rpc.ExtractTag<Rpcs, Tag>>
 
+  /**
+   * Queries an RPC. For non-stream RPCs, `staleTime` reuses fresh results on mount
+   * and revalidates stale results in the background. Use `timeToLive` to retain results across mounts.
+   */
   readonly query: <Tag extends Rpc.Tag<Rpcs>>(
     tag: Tag,
     payload: Rpc.PayloadConstructor<Rpc.ExtractTag<Rpcs, Tag>>,
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
+      readonly staleTime?: Duration.Input | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
@@ -249,6 +254,7 @@ export const Service = <Self>() =>
       }
       if (!isStream && key.serializationKey) {
         atom = Atom.serializable(atom, {
+          skipInitialRun: key.staleTime !== undefined,
           key: `AtomRpc:${key.tag}:${key.serializationKey}`,
           schema: AsyncResult.Schema({
             success: rpc.successSchema,
@@ -261,7 +267,7 @@ export const Service = <Self>() =>
           ? Atom.setIdleTTL(atom, timeToLive)
           : Atom.keepAlive(atom)
       }
-      return atom
+      return !isStream && key.staleTime !== undefined ? Atom.swr(atom, { staleTime: key.staleTime }) : atom
     }
   )
 
@@ -271,6 +277,7 @@ export const Service = <Self>() =>
     options?: {
       readonly headers?: Headers.Input | undefined
       readonly reactivityKeys?: Reactivity.KeysInput | undefined
+      readonly staleTime?: Duration.Input | undefined
       readonly timeToLive?: Duration.Input | undefined
       readonly serializationKey?: string | undefined
     }
@@ -282,6 +289,7 @@ export const Service = <Self>() =>
         ? Headers.fromInput(options.headers)
         : undefined,
       reactivityKeys: options?.reactivityKeys,
+      staleTime: options?.staleTime !== undefined ? Duration.fromInputUnsafe(options.staleTime) : undefined,
       timeToLive: options?.timeToLive !== undefined
         ? Duration.fromInputUnsafe(options.timeToLive)
         : undefined,
@@ -298,6 +306,7 @@ interface QueryKey {
   payload: any
   headers: Headers.Headers | undefined
   reactivityKeys: Reactivity.KeysInput | undefined
+  staleTime: Duration.Duration | undefined
   timeToLive: Duration.Duration | undefined
   serializationKey: string | undefined
 }
