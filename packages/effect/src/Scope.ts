@@ -227,7 +227,8 @@ export declare namespace State {
 export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
 
 /**
- * Creates a scope with the given finalizer strategy, defaulting to `"sequential"`.
+ * Creates a scope with the given finalizer strategy, defaulting to
+ * `"sequential"`.
  *
  * **Example** (Creating a scope)
  *

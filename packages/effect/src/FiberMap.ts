@@ -430,7 +430,8 @@ export const setUnsafe: {
  *
  * This is the Effect-wrapped version of `setUnsafe`.
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Example** (Adding a fiber)
  *
@@ -759,17 +760,18 @@ const constInterruptedFiber = (function() {
  * When the fiber completes, it is removed from the map. If the key already has
  * a fiber, the previous fiber is interrupted unless `onlyIfMissing` is set.
  *
- * The new fiber starts interruptible even when the caller is uninterruptible;
- * `run` has no option to change this. By default, the fiber
- * runs synchronously until it suspends, yields, or completes before `run`
- * returns. Set `startImmediately: false` to defer startup as in `Effect.forkChild`.
+ * The new fiber starts interruptible, even when the caller is uninterruptible.
+ * By default, it runs synchronously until it suspends, yields, or completes
+ * before `run` returns. Set `startImmediately: false` to defer startup as in
+ * `Effect.forkChild`.
  *
  * The map owns the fiber, not the caller: it can outlive the caller's
  * completion or interruption. Forking and registration are interruption-safe,
  * so caller interruption cannot leave the fiber untracked. Closing the owning
  * scope from another fiber interrupts managed fibers and awaits their finalizers.
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Gotchas**
  *

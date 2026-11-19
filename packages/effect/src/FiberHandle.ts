@@ -5,8 +5,8 @@
  * interrupts the previous one unless the operation is configured with
  * `onlyIfMissing`, and closing the owning scope interrupts the current fiber.
  * This module includes constructors for handles and scoped runtimes, helpers
- * for setting, reading, clearing, and running fibers, and operations for waiting
- * for failure, scope closure, or an empty handle.
+ * for setting, reading, clearing, and running fibers, and operations for
+ * waiting for failure, scope closure, or an empty handle.
  *
  * When the current fiber succeeds or fails, it is removed from the handle.
  * The handle stays open and can accept another fiber.
@@ -385,7 +385,8 @@ export const setUnsafe: {
  * fiber already exists in the `FiberHandle`, it will be interrupted unless
  * `options.onlyIfMissing` is set.
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Example** (Setting a fiber safely)
  *
@@ -575,17 +576,18 @@ const constInterruptedFiber = (function() {
  * previous fiber unless `onlyIfMissing` is set. When the managed fiber
  * completes, it is removed from the handle.
  *
- * The new fiber starts interruptible even when the caller is uninterruptible;
- * `run` has no option to change this. By default, the fiber
- * runs synchronously until it suspends, yields, or completes before `run`
- * returns. Set `startImmediately: false` to defer startup as in `Effect.forkChild`.
+ * The new fiber starts interruptible, even when the caller is uninterruptible.
+ * By default, it runs synchronously until it suspends, yields, or completes
+ * before `run` returns. Set `startImmediately: false` to defer startup as in
+ * `Effect.forkChild`.
  *
  * The handle owns the fiber, not the caller: it can outlive the caller's
  * completion or interruption. Forking and registration are interruption-safe,
  * so caller interruption cannot leave the fiber untracked. Closing the owning
  * scope from another fiber interrupts managed fibers and awaits their finalizers.
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Gotchas**
  *
@@ -841,7 +843,8 @@ export const runtimePromise = <A, E>(self: FiberHandle<A, E>): <R = never>() => 
  * **Details**
  *
  * Fails with the first recorded fiber failure. A successful fiber is removed
- * without completing `join`; use {@link awaitEmpty} to wait for an empty handle.
+ * without completing `join`; use {@link awaitEmpty} to wait for an empty
+ * handle.
  *
  * By default, failures caused only by interruption are ignored. If the fiber
  * was registered with `propagateInterruption: true`, its interruption is

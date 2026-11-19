@@ -87,11 +87,9 @@ export interface Fiber<out A, out E = never> extends Pipeable {
   readonly currentDispatcher: SchedulerDispatcher
   readonly addObserver: (cb: (exit: Exit<A, E>) => void) => () => void
   /**
-   * Requests interruption without waiting for the fiber to finish. If the exit
-   * contains this `Interrupt` reason, read its optional annotations with
-   * `Cause.reasonAnnotations` or the cause's merged annotations with `Cause.annotations`.
-   *
-   * @see {@link interruptAs} for annotation key guarantees and an operation that waits for completion
+   * Requests interruption without waiting for the fiber to finish. Optional
+   * annotations are attached to the `Interrupt` reason as with
+   * {@link interruptAs}, which also waits for the fiber to finish.
    */
   readonly interruptUnsafe: (
     fiberId?: number | undefined,

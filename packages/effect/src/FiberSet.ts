@@ -366,7 +366,8 @@ export const addUnsafe: {
  *
  * **Details**
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Example** (Adding a fiber)
  *
@@ -472,17 +473,18 @@ const constInterruptedFiber = (function() {
  *
  * **Details**
  *
- * The new fiber starts interruptible even when the caller is uninterruptible;
- * `run` has no option to change this. By default, the fiber
- * runs synchronously until it suspends, yields, or completes before `run`
- * returns. Set `startImmediately: false` to defer startup as in `Effect.forkChild`.
+ * The new fiber starts interruptible, even when the caller is uninterruptible.
+ * By default, it runs synchronously until it suspends, yields, or completes
+ * before `run` returns. Set `startImmediately: false` to defer startup as in
+ * `Effect.forkChild`.
  *
  * The set owns the fiber, not the caller: it can outlive the caller's
  * completion or interruption. Forking and registration are interruption-safe,
  * so caller interruption cannot leave the fiber untracked. Closing the owning
  * scope from another fiber interrupts managed fibers and awaits their finalizers.
  *
- * Set `propagateInterruption: true` to report external interruptions to {@link join}.
+ * Set `propagateInterruption: true` to report external interruptions to
+ * {@link join}.
  *
  * **Gotchas**
  *
@@ -742,7 +744,8 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  *
  * By default, failures caused only by interruption are ignored. If the fiber
  * was registered with `propagateInterruption: true`, its interruption is
- * recorded unless the set itself interrupted it, as on scope closure or `clear`.
+ * recorded unless the set itself interrupted it, as on scope closure or
+ * `clear`.
  *
  * **Example** (Joining failing fibers)
  *
