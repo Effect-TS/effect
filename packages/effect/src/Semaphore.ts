@@ -279,7 +279,7 @@ const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
 const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
-  onAcquire: (endWait?: () => void) => Effect.Effect<A, E, R>,
+  onAcquire: (fiber: Fiber<unknown, unknown>) => Effect.Effect<A, E, R>,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity,
   spanName?: string,
   options?: Tracer.SpanOptionsNoTrace
@@ -287,39 +287,25 @@ const takePermits = <A, E, R>(
   core.withFiber((fiber) => {
     if (self.free >= n && firstAvailableWaiter(self) === undefined) {
       self.taken += n
-      return onAcquire()
+      return onAcquire(fiber)
     }
     // A wake does not reserve permits: the waiter keeps its queue entry until
     // it acquires or is interrupted, and re-checks eligibility when it runs.
     const span = spanName === undefined ? undefined : internal.makeSpanUnsafe(fiber, spanName, options)
-    const endWait = (exit: Exit.Exit<unknown, unknown>) => {
-      if (span && span.status._tag !== "Ended") {
-        span.end(
-          fiber.getRef(TracerTimingEnabled) ? fiber.getRef(internal.ClockRef).currentTimeNanosUnsafe() : BigInt("0"),
-          exit
-        )
-      }
-    }
     const waiter: Waiter = { permits: n, resume: undefined }
-    const remove = () => {
+    const remove = (exit: Exit.Exit<unknown, unknown>) => {
       if (self.waiters.delete(waiter)) {
         if (self.waiters.size === 0) self.waiterPermitsLowerBound = Infinity
         self.releaseUnsafe(fiber, 0)
+        if (span) {
+          internal.endSpanUnsafe(span, exit, fiber.getRef(internal.ClockRef), fiber.getRef(TracerTimingEnabled))
+        }
       }
       return undefined
     }
     self.waiters.add(waiter)
     if (n < self.waiterPermitsLowerBound) self.waiterPermitsLowerBound = n
-    internal.onExitUnsafe(
-      fiber,
-      span === undefined ? remove : (exit) => {
-        if (self.waiters.has(waiter)) {
-          remove()
-          endWait(exit)
-        }
-        return undefined
-      }
-    )
+    internal.onExitUnsafe(fiber, remove)
     const wait = restore(internal.callback<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
       if (firstAvailableWaiter(self) === waiter) {
@@ -328,12 +314,16 @@ const takePermits = <A, E, R>(
         waiter.resume = resume
       }
     }, { blockedOn: self }))
-    const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
+    // Claim the permits, let `onAcquire` guard them, then end the wait span,
+    // all in one step so a scheduler yield cannot extend the span.
+    const claim: Effect.Effect<A, E, R> = core.withFiber(() => {
       if (firstAvailableWaiter(self) !== waiter) return loop
       self.taken += n
-      remove()
-      return onAcquire(span && (() => endWait(internal.exitVoid)))
+      const acquired = onAcquire(fiber)
+      remove(internal.exitVoid)
+      return acquired
     })
+    const loop = internal.flatMap(wait, () => claim)
     return loop
   })
 
@@ -435,16 +425,11 @@ class SemaphoreImpl implements Semaphore {
         takePermits(
           this,
           n,
-          (endWait) => {
-            const release = () => {
-              this.releaseUnsafe(internal.getCurrentFiber()!, n)
+          (fiber) => {
+            internal.onExitUnsafe(fiber, () => {
+              this.releaseUnsafe(fiber, n)
               return undefined
-            }
-            if (endWait === undefined) return internal.onExitPrimitive(restore(self), release, true)
-            // Install the release guard before reading the clock or invoking the tracer.
-            // Both run in the claim step so scheduler delays cannot extend the wait.
-            internal.onExitUnsafe(internal.getCurrentFiber()!, release)
-            endWait()
+            })
             return restore(self)
           },
           restore,
