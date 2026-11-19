@@ -5436,6 +5436,25 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(encoder.encode("foobar"), "Zm9vYmFy")
   })
 
+  for (
+    const [name, schema] of [
+      ["StringFromBase64", Schema.StringFromBase64],
+      ["StringFromBase64Url", Schema.StringFromBase64Url],
+      ["StringFromHex", Schema.StringFromHex],
+      ["StringFromUriComponent", Schema.StringFromUriComponent]
+    ] as const
+  ) {
+    it(`${name} preserves well-formed strings and rejects unpaired surrogates`, async () => {
+      const asserts = new TestSchema.Asserts(schema)
+      for (const input of ["a\uD800b", "a\uDC00b"]) {
+        await asserts.encoding().fail(input, "Expected a well-formed Unicode string")
+        assert.isTrue(Schema.is(schema)(input))
+      }
+      const text = "😀\uFFFD"
+      assert.strictEqual(Schema.decodeSync(schema)(Schema.encodeSync(schema)(text)), text)
+    })
+  }
+
   it("StringFromBase64", async () => {
     const schema = Schema.StringFromBase64
     const asserts = new TestSchema.Asserts(schema)
@@ -5492,6 +5511,7 @@ Expected a value between -2147483648 and 2147483647`
     await decoding.succeed("hello%20world", "hello world")
     await decoding.succeed("hello", "hello")
     await decoding.fail("%ZZ", "Expected a valid URI component")
+    await decoding.succeed("\uD800", "\uD800")
 
     const encoding = asserts.encoding()
     await encoding.succeed("{\"a\":1}", "%7B%22a%22%3A1%7D")

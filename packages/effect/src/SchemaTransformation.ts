@@ -1722,8 +1722,8 @@ export const uint8ArrayFromBase64String: Transformation<Uint8Array<ArrayBufferLi
  *
  * **Details**
  *
- * Decoding parses the Base64 string into a UTF-8 string. Encoding writes the
- * string as a Base64 string.
+ * Encoding fails with `SchemaIssue.InvalidValue` if the text contains an
+ * unpaired UTF-16 surrogate.
  *
  * **Example** (Converting Base64 to a string)
  *
@@ -1758,8 +1758,8 @@ export const stringFromBase64String: Transformation<string, string> = new Transf
  *
  * **Details**
  *
- * Decoding parses the Base64 URL string into a UTF-8 string. Encoding writes
- * the string as a Base64 URL string.
+ * Encoding fails with `SchemaIssue.InvalidValue` if the text contains an
+ * unpaired UTF-16 surrogate.
  *
  * **Example** (Converting Base64Url to a string)
  *
@@ -1794,8 +1794,8 @@ export const stringFromBase64UrlString: Transformation<string, string> = new Tra
  *
  * **Details**
  *
- * Decoding parses the hex string into a UTF-8 string. Encoding writes the
- * string as a hex string.
+ * Encoding fails with `SchemaIssue.InvalidValue` if the text contains an
+ * unpaired UTF-16 surrogate.
  *
  * **Example** (Converting hex to a string)
  *
@@ -1833,7 +1833,8 @@ export const stringFromHexString: Transformation<string, string> = new Transform
  * **Details**
  *
  * Decoding calls `decodeURIComponent` and fails if the input contains malformed
- * percent-encoding sequences. Encoding calls `encodeURIComponent`.
+ * percent-encoding sequences. Encoding fails with `SchemaIssue.InvalidValue` if
+ * the text contains an unpaired UTF-16 surrogate.
  *
  * **Example** (Defining a URI component schema)
  *

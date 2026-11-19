@@ -18,6 +18,7 @@ import { EncodingError } from "./EncodingError.ts"
  * **Details**
  *
  * String inputs are encoded as UTF-8 bytes before Base64Url encoding.
+ * Each unpaired UTF-16 surrogate is replaced with U+FFFD (�).
  * `Uint8Array` inputs are encoded directly. The output removes `=` padding
  * and replaces `+` with `-` and `/` with `_`.
  *
