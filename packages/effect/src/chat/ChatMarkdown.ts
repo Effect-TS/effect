@@ -275,12 +275,13 @@ const fitCut = (
   }
   const most = low
   const candidates: Array<number> = []
-  // A partial fence can cost more than the completed block. Try the next real
-  // boundary if it closes a fence, without measuring every subsequent prefix.
-  const next = lines.findIndex((line) => line.end > most && line.boundary)
-  if (next >= 0 && (next === 0 ? fence : lines[next - 1].fence) !== undefined) candidates.push(lines[next].end)
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (lines[i].boundary && lines[i].end <= most) candidates.push(lines[i].end)
+    const line = lines[i]
+    // Closing a fence removes the synthetic suffix, so even a close beyond
+    // `most` can fit. Ordinary paragraph boundaries keep the original bound.
+    if (line.boundary && (line.end <= most || (i === 0 ? fence : lines[i - 1].fence) !== undefined)) {
+      candidates.push(line.end)
+    }
   }
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].end <= most) candidates.push(lines[i].end)
