@@ -998,7 +998,7 @@ function schemasToResponse(
   )
   if (
     !hasWithHeaders &&
-    !schemas.some((schema) => HttpApiSchema.getResponseEncodingSchema(schema)._tag === "FormUrlEncoded")
+    !schemas.some((schema) => HttpApiSchema.getResponseEncoding(schema.ast)._tag === "FormUrlEncoded")
   ) {
     const decode = Schema.decodeUnknownEffect(
       Schema.Union(schemas.map((s) => fromArrayBuffer(s).pipe(Schema.decodeTo(s)))),
@@ -1007,7 +1007,14 @@ function schemasToResponse(
     return (response) => Effect.flatMap(response.arrayBuffer, decode)
   }
 
-  const codecs = schemas.map((schema) => toResponseCodec(schema, options, headersOptions, hasWithHeaders))
+  const codecs = schemas.map((schema) =>
+    toResponseCodec(
+      schema,
+      hasWithHeaders ? HttpApiSchema.isWithHeaders(schema) ? schema : Schema.toType(schema) : Schema.Unknown,
+      options,
+      headersOptions
+    )
+  )
   const decode = Schema.decodeUnknownEffect(Schema.Union(codecs), options)
   return (response) =>
     Effect.flatMap(response.arrayBuffer, (body) => {
@@ -1030,9 +1037,9 @@ const ResponsePair = Schema.Struct({
 // they are not applied from the outer decode.
 function toResponseCodec(
   schema: Schema.Constraint,
+  target: Schema.Top,
   options: SchemaAST.ParseOptions | undefined,
-  headersOptions: SchemaAST.ParseOptions | undefined,
-  hasWithHeaders: boolean
+  headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.Top {
   const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
   const parts: {
@@ -1049,26 +1056,20 @@ function toResponseCodec(
   const parse = Schema.decodeUnknownEffect(fromArrayBuffer(parts.body), options)
   const form = HttpApiSchema.getResponseEncoding(parts.body.ast)._tag === "FormUrlEncoded"
   const codec: Schema.Top = ResponsePair.pipe(Schema.decodeTo(
-    hasWithHeaders ? HttpApiSchema.isWithHeaders(schema) ? schema : Schema.toType(schema) : Schema.Unknown,
+    target,
     SchemaTransformation.transformEffect<unknown, typeof ResponsePair.Type, unknown, never>({
       decode: (pair) => {
         const retry = pair.recoveries.get(codec)
-        const body = retry === undefined ?
-          Effect.flatMap(parse(pair.body), (input) => {
-            const decoded = decodeBody(input)
-            return form ?
-              Effect.mapError(decoded, (error) => {
-                const normalized = recoverFormFields(error.issue, input)
-                if (normalized) pair.recoveries.set(codec, normalized)
-                return error
-              }) :
-              decoded
-          }) :
-          decodeBody(retry)
-        return body.pipe(
-          Effect.flatMap((body) =>
-            Effect.map(decodeHeaders(pair.headers), (headers) => parts.toValue({ body, headers }))
-          ),
+        const body = retry !== undefined ? decodeBody(retry) : Effect.flatMap(parse(pair.body), (input) =>
+          form
+            ? Effect.tapError(decodeBody(input), (error) =>
+              Effect.sync(() => {
+                const fields = recoverFormFields(error.issue, input)
+                if (fields) pair.recoveries.set(codec, fields)
+              }))
+            : decodeBody(input))
+        return Effect.all({ body, headers: decodeHeaders(pair.headers) }).pipe(
+          Effect.map(parts.toValue),
           Effect.mapError((error) => error.issue)
         )
       },
@@ -1089,7 +1090,7 @@ function recoverFormFields(issue: SchemaIssue.Issue, input: unknown) {
       !SchemaAST.isArrays(child.issue.ast)
     ) return
     const key = child.path[0]
-    if (typeof key !== "string" || !Object.hasOwn(input, key) || typeof input[key] !== "string") return
+    if (typeof key !== "string" || !Predicate.isString(input[key])) return
     fields[key] = [input[key]]
   }
   return fields
