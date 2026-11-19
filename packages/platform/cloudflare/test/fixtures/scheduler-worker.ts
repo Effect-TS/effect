@@ -10,7 +10,8 @@ let usedInitializerScheduler = false
 const schedulerProbe = Logger.layer([
   Effect.map(Scheduler.Scheduler, (expected) =>
     Logger.make(({ fiber }) => {
-      usedInitializerScheduler = expected instanceof CloudflareScheduler && fiber.cache.scheduler === expected
+      usedInitializerScheduler = expected instanceof CloudflareScheduler &&
+        fiber.getRef(Scheduler.Scheduler) === expected
     }))
 ]).pipe(Layer.provideMerge(CloudflareRuntime.layer))
 const runtime = ManagedRuntime.make(schedulerProbe)
