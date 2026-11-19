@@ -250,7 +250,7 @@ export const Service = <Self>() =>
           self.use((client) => client(tag, payload, { headers } as any)) as any
         )
       const staleTime = isStream ? undefined : key.staleTime
-      if (staleTime === undefined && reactivityKeys) {
+      if (reactivityKeys) {
         atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
       }
       if (!isStream && key.serializationKey) {
@@ -262,10 +262,6 @@ export const Service = <Self>() =>
             error: makeErrorSchema(rpc)
           }) as any
         })
-      }
-      // Refresh must reach the serializable source before the first read consumes hydration.
-      if (staleTime !== undefined && reactivityKeys) {
-        atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
       }
       if (timeToLive) {
         atom = Duration.isFinite(timeToLive)

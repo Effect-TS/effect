@@ -32,22 +32,23 @@ const StreamApi = HttpApi.make("StreamApi").add(
   )
 )
 
+const makeCountingClient = (next: () => number) =>
+  AtomHttpApi.Service()("FreshClient", {
+    baseUrl: "https://example.test",
+    api: HttpApi.make("FreshApi").add(
+      HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/value", { success: Schema.Number }))
+    ),
+    httpClient: Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make((request) => Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(next()))))
+    )
+  })
+
 describe("AtomHttpApi", () => {
   it.effect("reuses fresh hydration and revalidates stale hydration once", () =>
     Effect.gen(function*() {
       let requests = 0
-      const Client = AtomHttpApi.Service()("FreshClient", {
-        baseUrl: "https://example.test",
-        api: HttpApi.make("FreshApi").add(
-          HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/value", { success: Schema.Number }))
-        ),
-        httpClient: Layer.succeed(
-          HttpClient.HttpClient,
-          HttpClient.make((request) =>
-            Effect.sync(() => HttpClientResponse.fromWeb(request, Response.json(++requests)))
-          )
-        )
-      })
+      const Client = makeCountingClient(() => ++requests)
       const atom = Client.query("group", "get", {
         serializationKey: "value",
         staleTime: 1_000,
@@ -84,6 +85,33 @@ describe("AtomHttpApi", () => {
       yield* AtomRegistry.mount(refreshed, atom)
       assert.strictEqual(yield* AtomRegistry.getResult(refreshed, atom, { suspendOnWaiting: true }), 3)
     }), { concurrent: false })
+
+  it.effect.each([false, true])(
+    "refreshes a shared key for both readers (legacy first: %s)",
+    (legacyFirst) =>
+      Effect.gen(function*() {
+        let requests = 0
+        const Client = makeCountingClient(() => ++requests)
+        const options = { serializationKey: "value", reactivityKeys: ["value"] }
+        const legacy = Client.query("group", "get", options)
+        const stale = Client.query("group", "get", { ...options, staleTime: 0 })
+        const registry = AtomRegistry.make()
+        yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+        const [first, second] = legacyFirst ? [legacy, stale] : [stale, legacy]
+        yield* AtomRegistry.mount(registry, first)
+        yield* AtomRegistry.getResult(registry, first, { suspendOnWaiting: true })
+        yield* AtomRegistry.mount(registry, second)
+        yield* Effect.yieldNow
+        const read = (atom: typeof stale) => AtomRegistry.getResult(registry, atom, { suspendOnWaiting: true })
+        const before = yield* read(stale)
+        if (legacyFirst) assert.strictEqual(before, 2)
+        registry.refresh(stale)
+        assert.strictEqual(yield* read(legacy), before + 1)
+        registry.refresh(legacy)
+        assert.strictEqual(yield* read(stale), before + 2)
+        assert.strictEqual(requests, before + 2)
+      })
+  )
 
   it.effect.each([
     { idA: "ApiA", groupA: "users", idB: "ApiB", groupB: "users" },

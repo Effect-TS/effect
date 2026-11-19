@@ -429,6 +429,8 @@ class RegistryImpl implements AtomRegistry {
   }
 
   refresh = <A>(atom: Atom.Atom<A>): void => {
+    // Readers of a serialization key share the first node, including its refresh target.
+    if (SerializableTypeId in atom) atom = this.ensureNode(atom).atom
     if (atom.refresh !== undefined) {
       atom.refresh(this.refresh)
     } else {

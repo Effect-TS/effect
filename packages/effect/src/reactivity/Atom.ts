@@ -268,6 +268,9 @@ const RuntimeProto = {
     return readable((get) => {
       const previous = get.self<AsyncResult.AsyncResult<any, any>>()
       const runtimeResult = get(this)
+      if (runtimeResult._tag === "Initial" && runtimeResult.waiting) {
+        return AsyncResult.waitingFrom(previous)
+      }
       if (runtimeResult._tag !== "Success") {
         return AsyncResult.replacePrevious(runtimeResult, previous)
       }
@@ -1789,6 +1792,9 @@ export const transform: {
       readonly initialValueTarget?: Atom<B> | undefined
     }
   ): Atom<B> => {
+    const refresh: NonNullable<Atom<A>["refresh"]> = isSerializable(self) || !self.refresh
+      ? (refresh) => refresh(self)
+      : self.refresh
     const atom = removeTtl(
       isWritable(self)
         ? writable(
@@ -1796,15 +1802,11 @@ export const transform: {
           function(ctx, value) {
             ctx.set(self, value)
           },
-          self.refresh ?? function(refresh) {
-            refresh(self)
-          }
+          refresh
         )
         : readable(
           (get) => f(get, self),
-          self.refresh ?? function(refresh) {
-            refresh(self)
-          }
+          refresh
         )
     )
     if (options?.initialValueTarget) {

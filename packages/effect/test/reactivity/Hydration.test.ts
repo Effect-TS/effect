@@ -24,6 +24,33 @@ describe("Hydration", () => {
     }
   })
 
+  it("keeps hydrated success while a pre-mount refresh waits for the runtime", async () => {
+    const { promise, resolve } = Promise.withResolvers<void>()
+    const runtime = Atom.runtime(Layer.effectDiscard(Effect.promise(() => promise)))
+    const options = { key: "count", schema: AsyncResult.Schema({ success: Schema.Number }), skipInitialRun: true }
+    const atom = runtime.atom(Effect.succeed(20)).pipe(Atom.serializable(options))
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      const seed = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.success(10))
+      server.mount(seed.pipe(Atom.serializable(options)))
+      Hydration.hydrate(client, Hydration.dehydrate(server))
+      client.refresh(atom)
+      client.mount(atom)
+
+      const pending = client.get(atom)
+      assert(AsyncResult.isSuccess(pending))
+      assert.strictEqual(pending.value, 10)
+      assert.isTrue(pending.waiting)
+
+      resolve()
+      assert.strictEqual(await Effect.runPromise(AtomRegistry.getResult(client, atom, { suspendOnWaiting: true })), 20)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   it("publishes runtime acquisition failure over a waiting seed", () => {
     const runtime = Atom.runtime(Layer.effectDiscard(Effect.fail("offline")))
     const atom = runtime.atom(Effect.succeed(20))

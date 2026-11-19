@@ -272,7 +272,7 @@ export const Service =
         >)
       }))
       const staleTime = opts.staleTime
-      if (staleTime === undefined && opts.reactivityKeys) {
+      if (opts.reactivityKeys) {
         atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
       }
       if (opts.responseMode === "decoded-only" && opts.serializationKey) {
@@ -285,10 +285,6 @@ export const Service =
             error: Schema.Union(HttpApiEndpoint.getErrorSchemas(endpoint))
           }) as any
         })
-      }
-      // Refresh must reach the serializable source before the first read consumes hydration.
-      if (staleTime !== undefined && opts.reactivityKeys) {
-        atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
       }
       if (opts.timeToLive) {
         atom = Duration.isFinite(opts.timeToLive)
