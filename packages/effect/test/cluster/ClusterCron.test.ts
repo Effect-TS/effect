@@ -83,7 +83,7 @@ describe("ClusterCron", { concurrent: false }, () => {
       const chained = schedules.get("ClusterCron/chained")
       assert.strictEqual(chained?.calculateNextRunFromPrevious, true)
       assert.deepStrictEqual(chained?.skipIfOlderThan, Duration.hours(1))
-    }).pipe(Effect.scoped))
+    }))
 
   it.effect("recovers from a transient failure to schedule the initial run", () => {
     let failed = false
