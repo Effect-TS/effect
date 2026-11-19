@@ -2,8 +2,10 @@
 "effect": minor
 ---
 
-Let SQL drivers outside this repository use their own dialect name. `Statement.Dialect` now accepts any string, and `onDialect` and `onDialectOrElse` accept branches for custom names. `onDialect` branches are now optional, and it throws an error naming the dialect when the client's dialect has no branch.
+Use custom SQL dialect names with `Statement.Dialect`, `onDialect` and `onDialectOrElse`. Branches are optional in `onDialect`; a missing match throws. Use `onDialectOrElse` for a fallback.
 
-The persistence, event log, cluster storage and `Migrator` modules now fail with that error on dialects they have no SQL for, instead of running SQLite SQL. This includes ClickHouse in all of them except `Migrator`. Code that switches exhaustively over `compiler.dialect` needs a default case.
+### Breaking changes
 
-Every property of an object passed to `onDialect` or `onDialectOrElse` must now be a branch callback (or `orElse`). If you passed an object that also holds other fields, such as a `label`, pass a separate object with only the callbacks. A named interface or class instance passed with explicit type arguments, such as `sql.onDialectOrElse<number, never, number>(branches)`, no longer compiles. Remove the type arguments and let them be inferred, or pass `{ ...branches }`.
+- Add a default case to exhaustive switches over `compiler.dialect`: dialect names can now be any string.
+- Persistence, event log, cluster storage and `Migrator` reject unsupported dialects instead of running SQLite SQL. Of these, only `Migrator` supports ClickHouse.
+- Pass branch callbacks separately from non-callback fields. For branch maps typed as interfaces or class instances, omit explicit type arguments and let TypeScript infer them.

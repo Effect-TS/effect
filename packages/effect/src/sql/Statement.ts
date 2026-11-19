@@ -526,8 +526,7 @@ export type Helper =
   | Identifier
   | Custom
 
-// A mapped constraint instead of an index signature, so that interfaces and
-// class instances are accepted as branch maps.
+// A mapped constraint accepts interfaces and classes without an index signature.
 type DialectBranches<X> = { readonly [K in keyof X]: (() => unknown) | undefined }
 
 type DialectBranchResult<F> = F extends () => infer R ? R : never
@@ -622,18 +621,13 @@ export interface Constructor {
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
   /**
-   * Runs the branch for the client's dialect.
-   *
-   * **Details**
-   *
-   * Branches for dialects outside the built-in names can be passed as extra
-   * keys. If the client's dialect has no branch, this throws an error that
-   * names the dialect and the supported ones.
+   * Runs the branch named for the client's dialect, including custom names.
+   * If no branch matches, the error names the dialect and lists the supplied branches.
    *
    * **Gotchas**
    *
-   * A lambda returned from a custom-name branch needs its parameters
-   * annotated, because only the built-in branches are contextually typed.
+   * Annotate the parameters of functions returned by custom branches;
+   * only built-in branches provide contextual types.
    */
   readonly onDialect: <
     A = never,
@@ -653,12 +647,7 @@ export interface Constructor {
   ) => A | B | C | D | E | DialectBranchResult<X[keyof X]>
 
   /**
-   * Runs the branch for the client's dialect, or `orElse` when it has none.
-   *
-   * **Details**
-   *
-   * Branches for dialects outside the built-in names can be passed as extra
-   * keys.
+   * Runs the matching built-in or custom dialect branch, or `orElse` if none matches.
    */
   readonly onDialectOrElse: <
     A,
@@ -765,8 +754,7 @@ export const make = (
   return self
 }
 
-// Branches can be inherited, for example class methods, but a dialect named
-// after an `Object.prototype` member such as "toString" must not select it.
+// Allow inherited branch methods, but never dispatch to Object.prototype.
 const dialectBranch = (
   options: Record<string, (() => any) | undefined>,
   dialect: Dialect

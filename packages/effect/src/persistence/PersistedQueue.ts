@@ -1644,8 +1644,7 @@ export const makeStoreSql: (
     sqlite: () => sql.literal("CURRENT_TIMESTAMP")
   })
 
-  // `Migrator` also accepts ClickHouse, so it runs after `sqlNow` has rejected
-  // dialects this store has no SQL for
+  // Check the queue dialect in sqlNow before Migrator can query ClickHouse.
   yield* Effect.orDie(
     Migrator.make({})({
       loader: sqlMigrations(tableName, sql),

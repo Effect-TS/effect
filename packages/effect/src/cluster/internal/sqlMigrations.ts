@@ -4,8 +4,7 @@ import * as Migrator from "../../sql/Migrator.ts"
 import * as SqlClient from "../../sql/SqlClient.ts"
 
 /**
- * Runs SQL storage migrations, failing first on dialects without storage SQL,
- * because `Migrator` also accepts ClickHouse and would query the database.
+ * Check storage support before running `Migrator`, which also accepts ClickHouse.
  *
  * @internal
  */
