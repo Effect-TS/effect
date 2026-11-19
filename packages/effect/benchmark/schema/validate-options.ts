@@ -13,7 +13,7 @@ import { Bench } from "tinybench"
 const schema = Schema.Struct({
   name: Schema.String.check(Schema.isBetweenLength(1, 64)),
   count: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
-  tag: Schema.Literal("a", "b")
+  tag: Schema.Literals(["a", "b"])
 })
 const valid = { name: "ok", count: 1, tag: "a" as const }
 const invalid = { name: "", count: -1, tag: "x" as const }

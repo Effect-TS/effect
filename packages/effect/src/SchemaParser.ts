@@ -210,7 +210,9 @@ function makeIs<T>(ast: SchemaAST.AST): <I>(input: I, options?: SchemaAST.ParseO
   }
   const parser = entry.parser
   return <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
-    const exit = Effect.runSyncExit(parserResult<T, never>(parser(input, options ?? SchemaAST.defaultParseOptions), input))
+    const exit = Effect.runSyncExit(
+      parserResult<T, never>(parser(input, options ?? SchemaAST.defaultParseOptions), input)
+    )
     if (Exit.isSuccess(exit)) return true
     InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Type guard adapter can only return false for schema issues")
     return false
@@ -220,7 +222,10 @@ function makeIs<T>(ast: SchemaAST.AST): <I>(input: I, options?: SchemaAST.ParseO
 /** @internal */
 export function _is<T>(ast: SchemaAST.AST): <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T {
   const typeAST = SchemaAST.toType(ast)
-  let guard: <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T = <I>(input: I, options?: SchemaAST.ParseOptions): input is I & T => {
+  let guard: <I>(input: I, options?: SchemaAST.ParseOptions) => input is I & T = <I>(
+    input: I,
+    options?: SchemaAST.ParseOptions
+  ): input is I & T => {
     guard = makeIs<T>(typeAST)
     return guard(input, options)
   }
