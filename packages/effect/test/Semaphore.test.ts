@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore } from "effect"
+import { Duration, Effect, Exit, Fiber, Option, PartitionedSemaphore, Scope, Semaphore, Tracer } from "effect"
 import * as Scheduler from "effect/Scheduler"
 import { TestClock } from "effect/testing"
 
@@ -394,6 +394,58 @@ describe("Semaphore", () => {
       const result = yield* sem.withPermitsIfAvailable(1)(Effect.void)
       assert.isTrue(Option.isSome(result))
     }))
+
+  describe("withPermitsTraced", () => {
+    const recordSpans = (spans: Array<Tracer.Span>) =>
+      Effect.withTracer(Tracer.make({
+        span: (options) => {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      }))
+
+    it.effect("traces only the queued wait, leaving the body in the caller span", () => {
+      const spans: Array<Tracer.Span> = []
+      return Effect.gen(function*() {
+        const caller = yield* Effect.currentSpan
+        const sem = yield* Semaphore.make(1)
+        const traced = Semaphore.withPermitsTraced(sem, 1, "wait")
+        yield* traced(Effect.void)
+        assert.lengthOf(spans, 0)
+
+        yield* sem.take(1)
+        const waiter = yield* Effect.forkChild(
+          traced(Effect.gen(function*() {
+            assert.strictEqual(spans[0]!.status._tag, "Ended")
+            assert.strictEqual(yield* Effect.currentSpan, caller)
+          })),
+          { startImmediately: true }
+        )
+        assert.deepStrictEqual(spans.map((span) => span.name), ["wait"])
+        assert.strictEqual(Option.getOrThrow(spans[0]!.parent), caller)
+        assert.strictEqual(spans[0]!.status._tag, "Started")
+        yield* sem.release(1)
+        yield* Fiber.join(waiter)
+      }).pipe(recordSpans(spans), Effect.withSpan("caller"))
+    })
+
+    it.effect("ends an interrupted wait without leaking permits", () => {
+      const spans: Array<Tracer.Span> = []
+      return Effect.gen(function*() {
+        const sem = yield* Semaphore.make(1)
+        yield* sem.take(1)
+        const waiter = yield* Effect.forkChild(
+          Effect.void.pipe(Semaphore.withPermitsTraced(sem, 1, "wait")),
+          { startImmediately: true }
+        )
+        yield* Fiber.interrupt(waiter)
+        const status = spans[0]!.status
+        assert.isTrue(status._tag === "Ended" && Exit.hasInterrupts(status.exit))
+        assert.strictEqual(yield* sem.release(1), 1)
+      }).pipe(recordSpans(spans))
+    })
+  })
 
   it.effect("withPermits interruption does not leak permits", () =>
     Effect.gen(function*() {
