@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schema from "effect/Schema"
+import { resolve } from "node:path"
 import type { ReleasePackage } from "./NpmPromote.ts"
 import { NpmPromoteError } from "./NpmPromoteError.ts"
 import * as Process from "./Process.ts"
@@ -40,6 +41,46 @@ export const releasePackages = (
       )
     )
   )
+
+const ChangesetsConfig = Schema.fromJsonString(Schema.Struct({
+  fixed: Schema.Array(Schema.Array(Schema.String))
+}))
+
+/** Finds new workspace packages that were outside the release being diagnosed. */
+export const addedPackageNames = (
+  cwd: string,
+  packages: ReadonlyArray<WorkspacePackage>,
+  revision: string
+): Effect.Effect<ReadonlySet<string>, NpmPromoteError, ChildProcessSpawner.ChildProcessSpawner> =>
+  Effect.gen(function*() {
+    const paths = yield* Process.run("git", [
+      "diff",
+      "--name-only",
+      "--diff-filter=A",
+      "--find-renames",
+      "-z",
+      revision,
+      "HEAD",
+      "--",
+      ":(glob)**/package.json"
+    ], { cwd })
+    if (paths === "") return new Set<string>()
+
+    const added = new Set(paths.split("\0").filter(Boolean).map((path) => resolve(cwd, path)))
+    const config = yield* Process.run("git", ["show", `${revision}:.changeset/config.json`], { cwd }).pipe(
+      Effect.flatMap(Schema.decodeUnknownEffect(ChangesetsConfig)),
+      Effect.mapError((cause) =>
+        new NpmPromoteError({ message: "Could not read the release's Changesets config", cause })
+      )
+    )
+    // Keep existing released names eligible even if Git did not detect a manifest move as a rename.
+    const existingNames = new Set(config.fixed.flat())
+    return new Set(
+      packages.filter((pkg) => added.has(resolve(pkg.directory, "package.json")) && !existingNames.has(pkg.name)).map((
+        pkg
+      ) => pkg.name)
+    )
+  })
 
 export interface VersionBump {
   readonly sha: string

@@ -43,6 +43,61 @@ const services = (options: {
   )
 
 describe("Release", () => {
+  const addedPackage = { name: "@effect/new-package", version: "4.0.4" }
+  const addedPackageNames = Effect.succeed(new Set([addedPackage.name]))
+  for (
+    const [description, missingExisting, historicalLatest, addedNames, expected] of [
+      ["does not alert when only a newly added package is missing", false, "4.0.4", addedPackageNames, []],
+      ["only alerts for packages present at the version bump", true, "4.0.3", addedPackageNames, ["@effect/sql-pg"]],
+      [
+        "still alerts if a historical package has not been promoted",
+        false,
+        "4.0.3",
+        addedPackageNames,
+        [addedPackage.name]
+      ],
+      ["still alerts if a historical tag cannot be verified", false, undefined, addedPackageNames, [addedPackage.name]],
+      [
+        "keeps pending diagnoses when Git history cannot be read",
+        true,
+        "4.0.3",
+        Effect.fail(new NpmPromoteError({ message: "Git history unavailable" })),
+        ["@effect/sql-pg", addedPackage.name]
+      ]
+    ] as const
+  ) {
+    it.effect(description, () =>
+      Effect.gen(function*() {
+        const alerts: Array<OverdueRelease> = []
+        const unexpected = () => Effect.die("a pending release must not write tags or deploy")
+        const provide = services({
+          registry: {
+            "effect": { latest: "4.0.4", versions: ["4.0.4"] },
+            "@effect/sql-pg": {
+              latest: historicalLatest ?? "4.0.4",
+              versions: missingExisting ? ["4.0.3"] : ["4.0.3", "4.0.4"],
+              ...(historicalLatest === undefined ? { liveTagsStatus: 403 } : {})
+            }
+          },
+          addDistTag: unexpected,
+          website: Website.of({ isDeployed: unexpected, deploy: unexpected }),
+          alerts
+        })
+        yield* TestClock.adjust("13 hours")
+
+        yield* provide(promoteRelease({
+          ...release,
+          packages: [...release.packages, addedPackage],
+          addedPackageNames: addedNames
+        }, { overdueAfterHours: 12 }))
+
+        assert.deepStrictEqual(
+          alerts.flatMap((alert) => alert.diagnoses.map((diagnosis) => [diagnosis._tag, diagnosis.pkg.name])),
+          expected.map((name) => ["Missing", name])
+        )
+      }))
+  }
+
   for (const endpoint of ["metadata", "live tags"] as const) {
     it.effect(
       `does not alert for an overdue ${endpoint} read failure without evidence of pending promotion`,

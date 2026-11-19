@@ -10,6 +10,7 @@ import {
   diagnosePending,
   type Diagnosis,
   liveLatest,
+  needsPromotion,
   type NpmCli,
   promote,
   type PromoteResult,
@@ -75,6 +76,7 @@ export class Alerts extends Context.Service<Alerts, {
 export interface Release {
   readonly packages: ReadonlyArray<ReleasePackage>
   readonly bump: VersionBump
+  readonly addedPackageNames?: Effect.Effect<ReadonlySet<string>, NpmPromoteError> | undefined
 }
 
 interface Options {
@@ -99,11 +101,13 @@ const alertIfOverdue = Effect.fnUntraced(function*<R>(
     yield* Console.log(`The version bump landed ${ageHours.toFixed(1)} hours ago, so promotion is not overdue yet.`)
     return
   }
+  const findings = yield* diagnoses
+  if (findings.length === 0) return
   const overdue: OverdueRelease = {
     version: effect.version,
     bump: release.bump,
     overdueAfterHours: options.overdueAfterHours,
-    diagnoses: yield* diagnoses
+    diagnoses: findings
   }
   if (options.dryRun === true) {
     const content = TrackingIssue.render(overdue)
@@ -221,7 +225,24 @@ export const promoteRelease = Effect.fnUntraced(function*(
       result.pending.map((pkg) => `  ${format(pkg)}`).join("\n")
     }`
   )
-  yield* alertIfOverdue(release, effect, options, diagnosePending(result.pending))
+  const pending = release.addedPackageNames?.pipe(
+    Effect.flatMap((names) => {
+      const historicalPending = result.pending.filter((pkg) => !names.has(pkg.name))
+      if (historicalPending.length > 0) return Effect.succeed(historicalPending)
+
+      // Missing metadata from a new package can prevent a real release's tags from being checked.
+      const historicalPackages = release.packages.filter((pkg) => !names.has(pkg.name))
+      return Effect.forEach(
+        historicalPackages,
+        (pkg) => liveLatest(pkg.name).pipe(Effect.flatMap((latest) => needsPromotion(pkg, latest))),
+        { concurrency: 8 }
+      ).pipe(Effect.map((unpromoted) => unpromoted.some(Boolean) ? result.pending : historicalPending))
+    }),
+    Effect.catch((error) =>
+      Console.warn(`Could not verify the overdue release: ${error.message}`).pipe(Effect.as(result.pending))
+    )
+  ) ?? Effect.succeed(result.pending)
+  yield* alertIfOverdue(release, effect, options, pending.pipe(Effect.flatMap(diagnosePending)))
 })
 
 /**

@@ -22,6 +22,19 @@ export const registryClient = (registry: Record<string, Published>): HttpClient.
     Effect.sync(() => {
       const url = new URL(request.url)
       const distTags = /^\/-\/package\/(.+)\/dist-tags$/.exec(url.pathname)
+      if (distTags === null && request.headers.accept === "application/json") {
+        const versionPath = /^\/(.+)\/([^/]+)$/.exec(url.pathname)
+        if (versionPath !== null) {
+          const name = decodeURIComponent(versionPath[1])
+          const version = decodeURIComponent(versionPath[2])
+          return HttpClientResponse.fromWeb(
+            request,
+            registry[name]?.versions.includes(version) === true
+              ? Response.json({ name, version })
+              : new Response(null, { status: 404 })
+          )
+        }
+      }
       const name = decodeURIComponent(distTags === null ? url.pathname.slice(1) : distTags[1])
       const published = registry[name]
       if (distTags === null && request.headers.accept !== "application/vnd.npm.install-v1+json") {

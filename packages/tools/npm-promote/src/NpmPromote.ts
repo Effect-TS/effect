@@ -152,7 +152,10 @@ const promotionOrder = (packages: ReadonlyArray<ReleasePackage>): ReadonlyArray<
  * `latest` needs to move when it is missing or lower than the target. A
  * `latest` that is not valid semver is an error rather than a guess.
  */
-const needsPromotion = (pkg: ReleasePackage, latest: string | undefined): Effect.Effect<boolean, NpmPromoteError> => {
+export const needsPromotion = (
+  pkg: ReleasePackage,
+  latest: string | undefined
+): Effect.Effect<boolean, NpmPromoteError> => {
   if (latest === undefined) {
     return Effect.succeed(true)
   }
