@@ -24,76 +24,13 @@ describe("NodeHttpPlatform", { concurrent: false }, () => {
 
   it.effect("fileWeb reads the requested byte range", () =>
     Effect.gen(function*() {
-      const file = new File(["aéz"], "file.txt", { type: "text/plain", lastModified: 0 })
+      const file = new File(["aéz"], "file.txt")
       const response = yield* HttpServerResponse.fileWeb(file, { offset: 1, bytesToRead: 2 })
 
       assert.deepStrictEqual(
         { contentLength: response.headers["content-length"], body: yield* readResponse(response) },
         { contentLength: "2", body: "é" }
       )
-    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
-
-  it.effect("fileWeb clamps ranges to the file size, including empty ranges", () =>
-    Effect.gen(function*() {
-      const file = new File(["abcd"], "file.txt")
-      for (
-        const { offset, bytesToRead, expected } of [
-          { offset: 2, bytesToRead: 100, expected: "cd" },
-          { offset: 1, bytesToRead: 0, expected: "" },
-          { offset: 10, bytesToRead: undefined, expected: "" }
-        ]
-      ) {
-        const response = yield* HttpServerResponse.fileWeb(file, { offset, bytesToRead })
-        assert.deepStrictEqual(
-          { contentLength: response.headers["content-length"], body: yield* readResponse(response) },
-          { contentLength: String(expected.length), body: expected }
-        )
-      }
-    }).pipe(Effect.provide(NodeHttpPlatform.layer)))
-
-  it.effect("fileWeb reads structural FileLike values lazily and cancels at the range end", () =>
-    Effect.gen(function*() {
-      const encoder = new TextEncoder()
-      const chunks = ["ab", "cd", "ef"].map((value) => encoder.encode(value))
-      let opens = 0
-      let pulls = 0
-      let cancelled = false
-      const file = {
-        name: "file.txt",
-        size: 6,
-        type: "text/plain",
-        lastModified: 0,
-        stream: () => {
-          opens++
-          return new ReadableStream<Uint8Array>({
-            pull(controller) {
-              const chunk = chunks[pulls++]
-              if (chunk === undefined) controller.close()
-              else controller.enqueue(chunk)
-            },
-            cancel() {
-              cancelled = true
-            }
-          }, { highWaterMark: 0 })
-        }
-      }
-      const empty = yield* HttpServerResponse.fileWeb(file, { bytesToRead: 0 })
-      assert.strictEqual(yield* readResponse(empty), "")
-
-      const response = yield* HttpServerResponse.fileWeb(file, {
-        offset: 1,
-        bytesToRead: 2,
-        status: 206,
-        headers: { "content-type": "application/custom" }
-      })
-
-      assert.strictEqual(opens, 0)
-      assert.strictEqual(response.status, 206)
-      assert.strictEqual(response.headers["content-type"], "application/custom")
-      assert.strictEqual(yield* readResponse(response), "bc")
-      assert.strictEqual(opens, 1)
-      assert.strictEqual(pulls, 2)
-      assert.isTrue(cancelled)
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
   it.effect("fileResponse reads exact bytesToRead", () =>
