@@ -1868,25 +1868,24 @@ describe("Stream", () => {
       it.effect("stops pulling an infinite iterable early", () =>
         Effect.gen(function*() {
           let pulled = 0
-          let closed = false
-          function* naturals() {
-            try {
-              for (let i = 0;; i++) {
-                pulled++
-                yield i
+          let returned = 0
+          const naturals: Iterable<number> = {
+            [Symbol.iterator]: () => ({
+              next: () => ({ done: false, value: pulled++ }),
+              return: () => {
+                returned++
+                return { done: true, value: undefined }
               }
-            } finally {
-              closed = true
-            }
+            })
           }
-          const result = yield* Stream.make(naturals()).pipe(
+          const result = yield* Stream.make(naturals).pipe(
             Stream.flattenIterable,
             Stream.take(3),
             Stream.runCollect
           )
           assert.deepStrictEqual(result, [0, 1, 2])
           assert.isAtMost(pulled, Stream.DefaultChunkSize)
-          assert.isTrue(closed)
+          assert.strictEqual(returned, 1)
         }))
 
       it.effect("does not pull the next iterable before it is needed", () =>
