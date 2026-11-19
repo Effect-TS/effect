@@ -778,7 +778,7 @@ export const make = <E, R>(
         pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
       }
 
-      pipeline.push(`sseRequest`)
+      pipeline.push(`sseRequest<${operation.httpClientResponses.sseSchema}>`)
 
       return (
         `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
@@ -1062,16 +1062,16 @@ export const make = <E, R>(
 
   // Type-only mode helpers (no schema decoding)
   const sseRequestSourceTs = () =>
-    `const sseRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
+    `const sseRequest = <A>(request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
       render(imports.Stream)
-    }.Stream<unknown, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
+    }.Stream<A, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
       ${render(imports.Effect)}.map((response) => response.stream),
       ${render(imports.Stream)}.unwrap,
       ${render(imports.Stream)}.decodeText(),
       ${render(imports.Stream)}.splitLines,
       ${render(imports.Stream)}.filter((line) => line.startsWith("data: ")),
-      ${render(imports.Stream)}.map((line) => JSON.parse(line.slice(6)))
+      ${render(imports.Stream)}.map((line) => JSON.parse(line.slice(6)) as A)
     )`
 
   const binaryRequestSourceTs = () =>

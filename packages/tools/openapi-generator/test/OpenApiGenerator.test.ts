@@ -1766,7 +1766,7 @@ export const TestClientError = <Tag extends string, E>(
       }
     }
 
-    for (const format of ["httpapi", "httpclient"] as const) {
+    for (const format of ["httpapi", "httpclient", "httpclient-type-only"] as const) {
       itGeneratedClientsCompile(
         `preserves SSE reference sibling constraints (${format})`,
         constrainedSseSpec,
@@ -1781,9 +1781,6 @@ const unrelated: Events200Sse = { event: "unrelated", data: "payload" }
         }
       )
     }
-
-    it.effect("preserves SSE reference sibling constraints (httpclient-type-only)", () =>
-      assertTypeOnlyIncludes(constrainedSseSpec, ["\"event\": \"first\"", "\"event\": \"second\""]))
 
     const openApi30SseSpec = { ...constrainedSseSpec, openapi: "3.0.3" } as unknown as OpenAPISpec
     for (
