@@ -875,26 +875,24 @@ const normalizeQuery = (item: PathItem): PathItem => {
 }
 
 const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): PathItem => {
-  if (!entry.$ref) return normalizeQuery(entry)
+  const item: PathItem = {}
   const seen = new Set<string>()
-  const item = { ...normalizeQuery(entry) }
-  let ref = entry.$ref
-  while (!seen.has(ref)) {
-    seen.add(ref)
-    const tokens = JsonPointer.parseUriFragment(ref)
-    if (!tokens?.length) break
-    let target: unknown = spec
-    for (const token of tokens) {
-      if (!Predicate.isObject(target) || !Object.hasOwn(target, token)) return item
-      target = target[token]
-    }
-    if (!Predicate.isObject(target)) break
+  let current: unknown = entry
+  while (Predicate.isObject(current)) {
     // Fields closer to the route take precedence over inherited fields.
-    for (const [key, value] of Object.entries(normalizeQuery(target))) {
+    for (const [key, value] of Object.entries(normalizeQuery(current as PathItem))) {
       if (!Object.hasOwn(item, key)) Rec.assignProperty(item, key, value)
     }
-    if (typeof target.$ref !== "string") break
-    ref = target.$ref
+    const ref = current.$ref
+    if (typeof ref !== "string" || seen.has(ref)) break
+    seen.add(ref)
+    const tokens = JsonPointer.parseUriFragment(ref)
+    current = tokens?.length
+      ? tokens.reduce<unknown>(
+        (target, token) => Predicate.isObject(target) && Object.hasOwn(target, token) ? target[token] : undefined,
+        spec
+      )
+      : undefined
   }
   return item
 }
