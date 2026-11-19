@@ -77,48 +77,55 @@ const makeImpl = <V>(root: Node<V> | undefined, emptyEntry: Entry<V> | undefined
   return trie
 }
 
+// Find the node for the final UTF-16 code unit of a non-empty key.
 const findNode = <V>(node: Node<V> | undefined, key: string): Node<V> | undefined => {
   let index = 0
   while (node !== undefined) {
-    const char = key[index]
-    if (char > node.key) {
-      node = node.right
-    } else if (char < node.key) {
+    const c = key[index]
+    if (c < node.key) {
       node = node.left
+    } else if (c > node.key) {
+      node = node.right
     } else if (++index === key.length) {
       return node
     } else {
       node = node.mid
     }
   }
+  return undefined
 }
 
 class TrieIterator<in out V, out T> implements IterableIterator<T> {
   stack: Array<[Node<V>, string, boolean]> = []
-  emptyEntry: Entry<V> | undefined
+  firstEntry: Entry<V> | undefined
   readonly f: TraversalMap<string, V, T>
-  constructor(trie: TrieImpl<V>, f: TraversalMap<string, V, T>, prefix = "") {
-    this.f = f
-    if (prefix === "") {
-      this.emptyEntry = trie._empty
-      if (trie._root !== undefined) {
-        this.stack.push([trie._root, "", false])
-      }
-      return
-    }
+  readonly prefix: string
 
-    const node = findNode(trie._root, prefix)
-    if (node === undefined) return
-    // Only the middle subtree shares the terminal character of the prefix.
-    if (node.mid !== undefined) this.stack.push([node.mid, prefix, false])
-    this.stack.push([node, prefix.slice(0, -1), true])
+  constructor(
+    trie: TrieImpl<V>,
+    f: TraversalMap<string, V, T>,
+    prefix = ""
+  ) {
+    this.f = f
+    this.prefix = prefix
+    let root = trie._root
+    if (prefix === "") {
+      this.firstEntry = trie._empty
+    } else {
+      const match = findNode(root, prefix)
+      this.firstEntry = match?.value
+      root = match?.mid
+    }
+    if (root !== undefined) {
+      this.stack.push([root, prefix, false])
+    }
   }
 
   next(): IteratorResult<T> {
-    const emptyEntry = this.emptyEntry
-    if (emptyEntry !== undefined) {
-      this.emptyEntry = undefined
-      return { done: false, value: this.f("", emptyEntry.value) }
+    const first = this.firstEntry
+    if (first !== undefined) {
+      this.firstEntry = undefined
+      return { done: false, value: this.f(this.prefix, first.value) }
     }
     while (this.stack.length > 0) {
       const [node, keyString, isAdded] = this.stack.pop()!
@@ -416,12 +423,9 @@ export const get = dual<
 >(
   2,
   <V>(self: TR.Trie<V>, key: string) => {
-    if (key.length === 0) {
-      const emptyEntry = (self as TrieImpl<V>)._empty
-      return emptyEntry === undefined ? Option.none() : Option.some(emptyEntry.value)
-    }
-    const value = findNode((self as TrieImpl<V>)._root, key)?.value
-    return value === undefined ? Option.none() : Option.some(value.value)
+    const trie = self as TrieImpl<V>
+    const entry = key === "" ? trie._empty : findNode(trie._root, key)?.value
+    return entry === undefined ? Option.none() : Option.some(entry.value)
   }
 )
 
