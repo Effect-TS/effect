@@ -39,16 +39,20 @@ describe("Queue", () => {
     const makeDeadline = Effect.gen(function*() {
       const deadline = yield* Deferred.make<void>()
       const clock: Clock.Clock = { ...(yield* Clock.Clock), sleep: () => Deferred.await(deadline) }
-      return { clock, fire: Deferred.succeed(deadline, undefined) }
+      return {
+        fire: Deferred.succeed(deadline, undefined),
+        timeout: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          effect.pipe(Effect.timeout(10), Effect.provideService(Clock.Clock, clock))
+      }
     })
+    const timedOut = Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
 
     it.effect("a timed-out take preserves FIFO order and backpressure on a capacity-one queue", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(1)
-        const { clock, fire } = yield* makeDeadline
+        const { fire, timeout } = yield* makeDeadline
         const timed = yield* Queue.take(queue).pipe(
-          Effect.timeout(10),
-          Effect.provideService(Clock.Clock, clock),
+          timeout,
           Effect.forkChild({ startImmediately: true })
         )
         yield* Queue.offer(queue, 41)
@@ -57,10 +61,7 @@ describe("Queue", () => {
         })
         assert.isUndefined(second.pollUnsafe())
         Queue.flushUnsafe(queue)
-        assert.deepStrictEqual(
-          yield* Fiber.await(timed),
-          Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
-        )
+        assert.deepStrictEqual(yield* Fiber.await(timed), timedOut)
         assert.isTrue(yield* Fiber.join(second))
 
         const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
@@ -75,18 +76,17 @@ describe("Queue", () => {
     it.effect("a timed-out rendezvous preserves its item without accepting a later offer", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(0)
-        const { clock, fire } = yield* makeDeadline
+        const { fire, timeout } = yield* makeDeadline
         const first = yield* Effect.forkChild(Queue.offer(queue, 41).pipe(Effect.tap(() => fire)), {
           startImmediately: true
         })
         // Park both timeout race children before the take resumes the waiting producer.
         const timed = yield* Effect.yieldNow.pipe(
           Effect.andThen(Queue.take(queue)),
-          Effect.timeout(10),
-          Effect.provideService(Clock.Clock, clock),
+          timeout,
           Effect.exit
         )
-        assert.deepStrictEqual(timed, Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'")))
+        assert.deepStrictEqual(timed, timedOut)
         assert.isTrue(yield* Fiber.join(first))
 
         const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
@@ -140,7 +140,7 @@ describe("Queue", () => {
         yield* Queue.offer(queue, 0)
         const batches = []
         for (const value of [1, 2, 3, 4]) {
-          const { clock, fire } = yield* makeDeadline
+          const { fire, timeout } = yield* makeDeadline
           const offerer = yield* Queue.offer(queue, value).pipe(
             Effect.tap(() => fire),
             Effect.forkChild({
@@ -149,8 +149,7 @@ describe("Queue", () => {
           )
           const result = yield* Effect.yieldNow.pipe(
             Effect.andThen(Queue.takeAll(queue)),
-            Effect.timeout(10),
-            Effect.provideService(Clock.Clock, clock),
+            timeout,
             Effect.option
           )
           batches.push(result)
@@ -165,10 +164,9 @@ describe("Queue", () => {
     it.effect("a producer's nested take cannot pass an item restored after timeout", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(1)
-        const { clock, fire } = yield* makeDeadline
+        const { fire, timeout } = yield* makeDeadline
         const outer = yield* Queue.take(queue).pipe(
-          Effect.timeout(10),
-          Effect.provideService(Clock.Clock, clock),
+          timeout,
           Effect.forkChild({ startImmediately: true })
         )
         yield* Queue.offer(queue, 41)
@@ -178,10 +176,7 @@ describe("Queue", () => {
           Effect.forkChild({ startImmediately: true })
         )
         Queue.flushUnsafe(queue)
-        assert.deepStrictEqual(
-          yield* Fiber.await(outer),
-          Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
-        )
+        assert.deepStrictEqual(yield* Fiber.await(outer), timedOut)
         const nested = yield* Fiber.join(producer)
         assert.deepStrictEqual([yield* Fiber.join(nested), yield* Queue.take(queue)], [41, 42])
       }))

@@ -490,6 +490,8 @@ export const make = <A, E = never>(
     self.strategy = options?.strategy ?? "suspend"
     self.messages = MutableList.make()
     self.scheduleRunning = false
+    self.taking = false
+    self.capacityReleased = false
     self.state = {
       _tag: "Open",
       takers: new Set(),
@@ -737,7 +739,7 @@ export const offer: {
  * @since 4.0.0
  */
 export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): boolean => {
-  if (self.state._tag !== "Open" || releasedCapacity.has(self)) {
+  if (self.state._tag !== "Open" || reentrancy(self).capacityReleased) {
     return false
   } else if (self.messages.length >= self.capacity) {
     if (self.capacity <= 0 && rendezvousCapacity(self) > (self.strategy === "sliding" ? 0 : self.messages.length)) {
@@ -848,7 +850,7 @@ export const offerAll: {
  * @since 4.0.0
  */
 export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Array<A> => {
-  if (self.state._tag !== "Open" || releasedCapacity.has(self)) {
+  if (self.state._tag !== "Open" || reentrancy(self).capacityReleased) {
     return Arr.fromIterable(messages)
   } else if (
     self.capacity === Number.POSITIVE_INFINITY ||
@@ -992,10 +994,7 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
   }
   const exit = core.exitFailCause(cause)
   const fail = internalEffect.exitZipRight(exit, exitFailDone) as Failure<never, E>
-  if (
-    self.state.offers.size === 0 &&
-    self.messages.length === 0 && !taking.has(self)
-  ) {
+  if (isDrained(self, self.state.offers)) {
     finalize(self, fail)
     return true
   }
@@ -1265,8 +1264,10 @@ export const clear = <A, E>(self: Dequeue<A, E>): Effect<Array<A>, Pull.ExcludeD
     if (self.state._tag === "Done") {
       return Pull.catchDone(self.state.exit, () => internalEffect.succeed([]))
     }
-    if (taking.has(self) || (self.messages.length === 0 && self.state.offers.size === 0)) return core.exitSucceed([])
-    return takeBatch(self, Infinity, fiber)
+    if (reentrancy(self).taking || (self.messages.length === 0 && self.state.offers.size === 0)) {
+      return core.exitSucceed([])
+    }
+    return dequeue(self, self.state.offers, fiber, Infinity, removeMany, MutableList.prependAll)
   })
 
 /**
@@ -1579,11 +1580,11 @@ export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
     if (self.state._tag === "Done") {
       return self.state.exit
     }
-    if (!taking.has(self) && self.messages.length > 0 && self.messages.head) {
+    if (canPeek(self) && self.messages.head) {
       return internalEffect.succeed(self.messages.head.array[self.messages.head.offset])
     }
     // Pending offers on a rendezvous queue are not visible to peek.
-    return internalEffect.andThen(awaitTake(self, () => !taking.has(self) && self.messages.length > 0), peek(self))
+    return internalEffect.andThen(awaitTake(self, () => canPeek(self)), peek(self))
   })
 
 /**
@@ -1638,20 +1639,13 @@ const takeWith = <A, E>(self: Dequeue<A, E>, fiber?: internalEffect.FiberImpl): 
   if (self.state._tag === "Done") {
     return self.state.exit
   }
-  if (taking.has(self) || (self.messages.length === 0 && !(self.capacity <= 0 && self.state.offers.size > 0))) {
+  if (
+    reentrancy(self).taking ||
+    (self.messages.length === 0 && !(self.capacity <= 0 && self.state.offers.size > 0))
+  ) {
     return undefined
   }
-  const reserved = fiber !== undefined && self.state.offers.size > 0
-  const overfull = self.messages.length > self.capacity
-  if (reserved) taking.add(self)
-  try {
-    const message = self.messages.length > 0 ? MutableList.take(self.messages)! : takeOfferUnsafe(self.state.offers)
-    finishTake(self, fiber, overfull)
-    if (shouldRestore(self, fiber)) MutableList.prepend(self.messages, message)
-    return core.exitSucceed(message)
-  } finally {
-    if (reserved) endReservation(self)
-  }
+  return dequeue(self, self.state.offers, fiber, 1, removeOne, MutableList.prepend)
 }
 
 /**
@@ -2045,24 +2039,66 @@ const takeBetweenUnsafe = <A, E>(
   } else if (!canTake(self, min)) {
     return undefined
   }
-  return takeBatch(self, max, fiber)
+  return dequeue(self, self.state.offers, fiber, max, removeMany, MutableList.prependAll)
 }
 
-const takeBatch = <A, E>(self: Dequeue<A, E>, max: number, fiber: internalEffect.FiberImpl) => {
-  const state = self.state
-  if (state._tag === "Done") return state.exit
-  const reserved = state.offers.size > 0
+const removeOne = <A>(messages: MutableList.MutableList<A>, offers: Set<Queue.OfferEntry<A>>): A =>
+  messages.length > 0 ? MutableList.take(messages) as A : takeOfferUnsafe(offers)
+
+const removeMany = <A>(messages: MutableList.MutableList<A>, offers: Set<Queue.OfferEntry<A>>, max: number): Array<A> =>
+  messages.length > 0 ? MutableList.takeN(messages, max) : [takeOfferUnsafe(offers)]
+
+// Reentrancy state, kept off the exported interfaces.
+interface Reentrancy {
+  // A producer is running inside a take that has not delivered yet. No other
+  // consumer can pass the uncommitted head, nor can graceful completion
+  // discard it.
+  taking: boolean
+  // A take freed capacity that pending producers have not been given yet.
+  capacityReleased: boolean
+}
+const reentrancy = (self: Enqueue<any, any> | Dequeue<any, any>): Reentrancy => self as any
+
+// Removes messages for a take, then admits the producers waiting for their
+// capacity.
+const dequeue = <A, E, B>(
+  self: Dequeue<A, E>,
+  offers: Set<Queue.OfferEntry<A>>,
+  fiber: internalEffect.FiberImpl | undefined,
+  max: number,
+  remove: (messages: MutableList.MutableList<A>, offers: Set<Queue.OfferEntry<A>>, max: number) => B,
+  restore: (messages: MutableList.MutableList<A>, removed: B) => void
+): Exit<B, E> => {
+  // Without a fiber the caller already holds the result, and without pending
+  // offers no producer runs, so there is nothing to protect.
+  if (fiber === undefined || offers.size === 0) {
+    const removed = remove(self.messages, offers, max)
+    releaseCapacity(self, fiber !== undefined)
+    return core.exitSucceed(removed)
+  }
   const overfull = self.messages.length > self.capacity
-  if (reserved) taking.add(self)
+  reentrancy(self).taking = true
   try {
-    const messages = self.messages.length === 0
-      ? [takeOfferUnsafe(state.offers)]
-      : MutableList.takeN(self.messages, max)
-    finishTake(self, fiber, overfull)
-    if (shouldRestore(self, fiber)) MutableList.prependAll(self.messages, messages)
-    return core.exitSucceed(messages)
+    const removed = remove(self.messages, offers, max)
+    if (overfull && self.messages.length < self.capacity) {
+      // Don't spend the same capacity twice. When draining a previous
+      // rollback's overfill, admit pending producers only after this take has
+      // delivered. A subsequent synchronous take can perform the scheduled
+      // refill itself.
+      reentrancy(self).capacityReleased = true
+      self.dispatcher.scheduleTask(() => flushReleasedCapacity(self), 0)
+    } else if (!fiber._deferredInterrupt) {
+      // A zero-capacity handoff can interrupt the take while removing.
+      releaseCapacity(self, true)
+    }
+    // Admitted producers resume synchronously, and one of them can interrupt
+    // the fiber that is taking. The interrupt replaces the result of the
+    // current step, so the messages go back to the front of the queue.
+    if (fiber._deferredInterrupt && self.state._tag !== "Done") restore(self.messages, removed)
+    return core.exitSucceed(removed)
   } finally {
-    if (reserved) endReservation(self)
+    reentrancy(self).taking = false
+    scheduleReleaseTaker(self as Queue<A, E>)
   }
 }
 
@@ -2075,48 +2111,27 @@ const suspendTake: <A, E>(f: (fiber: internalEffect.FiberImpl) => Effect<A, E>) 
   }
 })
 
-// Releasing capacity resumes producers synchronously, and one of them can
-// interrupt the fiber that is taking. The interrupt replaces the result of the
-// current step, so the messages go back to the front of the queue.
-const shouldRestore = <A, E>(self: Dequeue<A, E>, fiber?: internalEffect.FiberImpl): boolean =>
-  fiber?._deferredInterrupt === true && self.state._tag !== "Done"
-
-// While a producer runs inside an interruptible dequeue, no other consumer can
-// pass the uncommitted head, nor can graceful completion discard it.
-const taking = new WeakSet<object>()
-const endReservation = <A, E>(self: Dequeue<A, E>) => {
-  taking.delete(self)
-  scheduleReleaseTaker(self as Queue<A, E>)
-}
-
-// Don't spend the same capacity twice. When draining a previous rollback's
-// overfill, admit pending producers only after this take has delivered. A
-// subsequent synchronous take can perform the scheduled refill itself.
-const releasedCapacity = new WeakSet<object>()
+// Admits the producers a take left waiting. They resume synchronously, so a
+// caller running in a fiber must check for an interrupt afterwards.
 const flushReleasedCapacity = <A, E>(self: Dequeue<A, E>) => {
-  if (releasedCapacity.delete(self)) {
-    releaseCapacity(self)
-    scheduleReleaseTaker(self as Queue<A, E>)
-  }
-}
-const finishTake = <A, E>(self: Dequeue<A, E>, fiber: internalEffect.FiberImpl | undefined, overfull: boolean) => {
-  if (
-    fiber && overfull && self.messages.length < self.capacity && self.state._tag !== "Done" &&
-    self.state.offers.size > 0
-  ) {
-    releasedCapacity.add(self)
-    self.dispatcher.scheduleTask(() => flushReleasedCapacity(self), 0)
-  } else {
-    releaseCapacity(self, fiber)
-  }
+  if (!reentrancy(self).capacityReleased) return
+  reentrancy(self).capacityReleased = false
+  releaseCapacity(self)
+  scheduleReleaseTaker(self as Queue<A, E>)
 }
 
 // Whether a take of at least `min` messages can complete without waiting.
 // A closing queue receives no more messages, so any remainder satisfies `min`.
 const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
-  !taking.has(self) &&
+  !reentrancy(self).taking &&
   (self.messages.length >= (self.state._tag === "Closing" ? 1 : Math.min(min, self.capacity || 1)) ||
     (self.capacity <= 0 && self.state._tag !== "Done" && self.state.offers.size > 0))
+
+const canPeek = <A, E>(self: Dequeue<A, E>): boolean => !reentrancy(self).taking && self.messages.length > 0
+
+// Whether nothing is left to deliver, including a head that a take still holds.
+const isDrained = <A, E>(self: Enqueue<A, E>, offers: Set<Queue.OfferEntry<A>>): boolean =>
+  offers.size === 0 && self.messages.length === 0 && !reentrancy(self).taking
 
 // The readiness check and the taker registration run in one step, so no
 // message can arrive between them. Wake-ups resume with void and the caller
@@ -2135,7 +2150,7 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
 // A parked taker is not a free rendezvous slot while the head is reserved
 // or an older offer is waiting to hand it a message.
 const rendezvousCapacity = <A, E>(self: Enqueue<A, E>): number =>
-  self.state._tag === "Open" && self.state.offers.size === 0 && !taking.has(self) ? self.state.takers.size : 0
+  self.state._tag === "Open" && self.state.offers.size === 0 && !reentrancy(self).taking ? self.state.takers.size : 0
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
   internalEffect.callback<boolean>((resume) =>
@@ -2149,7 +2164,7 @@ const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {
   return internalEffect.sync(() => {
     if (self.state._tag === "Done") return
     offers.delete(entry)
-    if (self.state._tag === "Closing" && offers.size === 0 && self.messages.length === 0 && !taking.has(self)) {
+    if (self.state._tag === "Closing" && isDrained(self, offers)) {
       finalize(self, self.state.exit)
     }
   })
@@ -2176,9 +2191,7 @@ const takeOfferUnsafe = <A>(offers: Set<Queue.OfferEntry<A>>): A => {
   return message
 }
 
-const releaseCapacity = <A, E>(self: Dequeue<A, E>, fiber?: internalEffect.FiberImpl): boolean => {
-  // A zero-capacity handoff may have interrupted the take inside takeOfferUnsafe.
-  if (fiber?._deferredInterrupt) return false
+const releaseCapacity = <A, E>(self: Dequeue<A, E>, deferDone = false): boolean => {
   if (self.state._tag === "Done") {
     return Pull.isDoneCause(self.state.exit.cause)
   } else if (self.state.offers.size === 0) {
@@ -2186,7 +2199,7 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>, fiber?: internalEffect.Fiber
       self.state._tag === "Closing" &&
       self.messages.length === 0
     ) {
-      finalize(self, self.state.exit, fiber !== undefined)
+      finalize(self, self.state.exit, deferDone)
       return Pull.isDoneCause(self.state.exit.cause)
     }
     return false
