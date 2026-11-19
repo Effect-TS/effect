@@ -1658,33 +1658,6 @@ describe("McpServer protocol adapters", () => {
       }
     }))
 
-  it.effect("should return native content for a mapped toolkit tool across protocol revisions", () =>
-    Effect.gen(function*() {
-      const { post } = yield* makeFixture()
-      const modern = Effect.fnUntraced(function*(method: string, params: Record<string, unknown>) {
-        return yield* readJsonRpcResponse(
-          yield* post(modernRequest(1, method, params), {
-            ...modernHeaders(method),
-            "Mcp-Name": "preview"
-          })
-        )
-      })
-      for (const version of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"] as const) {
-        const request = version === "2026-07-28" ? modern : (yield* initialize(post, version)).request
-        const tools = listedTools(yield* request("tools/list", {}))
-        const preview = tools.find((tool) => tool.name === "preview")
-        assert.isDefined(preview)
-        assert.notProperty(preview, "outputSchema")
-        const result = resultOf(yield* request("tools/call", { name: "preview", arguments: { caption: "example" } }))
-        assert.deepStrictEqual(result.content, [
-          { type: "text", text: "example" },
-          { type: "image", data: "iVBORw==", mimeType: "image/png" },
-          { type: "resource", resource: { uri: "test://preview", text: "example" } }
-        ])
-        assert.notProperty(result, "structuredContent")
-      }
-    }))
-
   it.effect("should preserve declared failures and scrub content mapper defects", () =>
     Effect.gen(function*() {
       const { post } = yield* makeFixture()
@@ -1701,19 +1674,31 @@ describe("McpServer protocol adapters", () => {
       }
     }))
 
-  it.effect("should project non-object JSON Toolkit outputs only for the July protocol", () =>
+  it.effect("should project ordinary toolkit outputs per revision and preserve mapped content blocks", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
+
+      const previewParams = { name: "preview", arguments: { caption: "example" } }
+      const assertPreview = (message: JsonRpcResponse) => {
+        const result = resultOf(message)
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "example" },
+          { type: "image", data: "iVBORw==", mimeType: "image/png" },
+          { type: "resource", resource: { uri: "test://preview", text: "example" } }
+        ])
+        assert.notProperty(result, "structuredContent")
+      }
 
       for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
         const client = yield* initialize(fixture.post, protocolVersion)
         const tools = listedTools(yield* client.request("tools/list"))
-        for (const name of ["shared", "json-array", "union-result"]) {
+        for (const name of ["shared", "json-array", "union-result", "preview"]) {
           const tool = tools.find((tool) => tool.name === name)
           assert.isDefined(tool)
           assert.notProperty(tool, "outputSchema")
         }
 
+        assertPreview(yield* client.request("tools/call", previewParams))
         for (const name of ["shared", "json-array"]) {
           const result = resultOf(yield* client.request("tools/call", { name }))
           assert.notProperty(result, "structuredContent")
@@ -1738,6 +1723,9 @@ describe("McpServer protocol adapters", () => {
           Effect.flatMap(decodeJsonRpcResponse)
         )
       )
+      const preview = listResult.find((tool) => tool.name === "preview")
+      assert.isDefined(preview)
+      assert.notProperty(preview, "outputSchema")
       assert.deepStrictEqual(listResult.find((tool) => tool.name === "shared")?.outputSchema, { type: "string" })
       assert.deepStrictEqual(listResult.find((tool) => tool.name === "json-array")?.outputSchema, {
         type: "array",
@@ -1773,6 +1761,14 @@ describe("McpServer protocol adapters", () => {
         ]
       })
 
+      assertPreview(
+        yield* readJsonRpcResponse(
+          yield* fixture.post(
+            modernRequest(45, "tools/call", previewParams),
+            { ...modernHeaders("tools/call"), "Mcp-Name": "preview" }
+          )
+        )
+      )
       const callResponse = yield* fixture.post(
         modernRequest(43, "tools/call", { name: "shared", arguments: {} }),
         { ...modernHeaders("tools/call"), "Mcp-Name": "shared" }
