@@ -2114,6 +2114,7 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
       self.state._tag === "Closing" &&
       self.messages.length === 0
     ) {
+      // A waiter can interrupt the fiber taking the last item. Let the take deliver it first.
       finalize(self, self.state.exit, true)
       return Pull.isDoneCause(self.state.exit.cause)
     }
@@ -2175,7 +2176,6 @@ const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never
     }
     openState.awaiters.clear()
   }
-  // A waiter can interrupt the fiber taking the last item. Let the take deliver it first.
   if (deferNotify) self.dispatcher.scheduleTask(notify, 0)
   else notify()
 }
