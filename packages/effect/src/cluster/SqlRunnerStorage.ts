@@ -22,6 +22,7 @@ import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { constVoid } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -902,11 +903,20 @@ export const migrations = (options: {
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  Migrator.make({})({
-    loader: migrations(options),
-    // Message and runner migration ids overlap, so keep separate histories.
-    table: `${options.prefix ?? "cluster"}_runner_migrations`
-  }).pipe(Effect.asVoid, Effect.orDie)
+  SqlClient.SqlClient.pipe(
+    Effect.flatMap((sql) => {
+      // `Migrator` also accepts ClickHouse, so reject dialects without storage
+      // SQL before it queries the database
+      sql.onDialect({ sqlite: constVoid, pg: constVoid, mysql: constVoid, mssql: constVoid })
+      return Migrator.make({})({
+        loader: migrations(options),
+        // Message and runner migration ids overlap, so keep separate histories.
+        table: `${options.prefix ?? "cluster"}_runner_migrations`
+      })
+    }),
+    Effect.asVoid,
+    Effect.orDie
+  )
 
 /**
  * Runs the SQL runner storage migrations without providing storage.

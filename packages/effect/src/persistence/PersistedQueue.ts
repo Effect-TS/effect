@@ -1635,13 +1635,6 @@ export const makeStoreSql: (
   )
   const ackRetrySchedule = makeAckRetrySchedule(lockExpiration)
 
-  yield* Effect.orDie(
-    Migrator.make({})({
-      loader: sqlMigrations(tableName, sql),
-      table: `${tableName}_migrations`
-    })
-  )
-
   const sqlNow = sql.onDialect({
     // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
     // written visible_at values from the poll query
@@ -1651,6 +1644,15 @@ export const makeStoreSql: (
     // sqlite
     sqlite: () => sql.literal("CURRENT_TIMESTAMP")
   })
+
+  // `Migrator` also accepts ClickHouse, so it runs after `sqlNow` has rejected
+  // dialects this store has no SQL for
+  yield* Effect.orDie(
+    Migrator.make({})({
+      loader: sqlMigrations(tableName, sql),
+      table: `${tableName}_migrations`
+    })
+  )
 
   // `seconds` is a whole number, possibly negative
   const secondsOffset = (seconds: number) => {

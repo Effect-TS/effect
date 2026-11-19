@@ -31,7 +31,7 @@
 import * as Arr from "../Array.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
-import { identity } from "../Function.ts"
+import { constVoid, identity } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -1384,10 +1384,19 @@ export const migrations = (options?: {
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  Migrator.make({})({
-    loader: migrations(options),
-    table: `${options?.prefix ?? "cluster"}_migrations`
-  }).pipe(Effect.asVoid, Effect.orDie)
+  SqlClient.SqlClient.pipe(
+    Effect.flatMap((sql) => {
+      // `Migrator` also accepts ClickHouse, so reject dialects without storage
+      // SQL before it queries the database
+      sql.onDialect({ sqlite: constVoid, pg: constVoid, mysql: constVoid, mssql: constVoid })
+      return Migrator.make({})({
+        loader: migrations(options),
+        table: `${options?.prefix ?? "cluster"}_migrations`
+      })
+    }),
+    Effect.asVoid,
+    Effect.orDie
+  )
 
 /**
  * Runs the SQL message storage migrations without providing storage.

@@ -1,6 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Fiber, Layer, Option, References, Stream, Tracer } from "effect"
+import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
+import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
+import * as PersistedQueue from "effect/persistence/PersistedQueue"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
@@ -32,22 +35,42 @@ describe("Statement", () => {
     )
     assert.strictEqual(inherited.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
     assert.throws(() => inherited.onDialect({ pg: () => 1 }), /Unsupported SQL dialect "toString"/)
+
+    class Branches {
+      spark() {
+        return this.label()
+      }
+      label() {
+        return "receiver"
+      }
+    }
+    assert.strictEqual(sql.onDialect(new Branches()), "receiver")
   })
 
-  it.effect("rejects an unsupported key-value store dialect before acquiring a connection", () =>
+  it.effect("rejects unsupported storage dialects before acquiring a connection", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.make({
-        driver: "test",
-        compiler: sparkCompiler,
-        acquirer: Effect.die("unexpected query"),
-        spanAttributes: []
-      })
-      const cause = yield* Layer.build(KeyValueStore.layerSql()).pipe(
-        Effect.provideService(SqlClient.SqlClient, sql),
-        Effect.sandbox,
-        Effect.flip
-      )
-      assert.match(String(Cause.squash(cause)), /Unsupported SQL dialect "spark"/)
+      const cases = [
+        ["spark", KeyValueStore.layerSql()],
+        // These run `Migrator`, which accepts ClickHouse
+        ["clickhouse", PersistedQueue.layerStoreSql()],
+        ["clickhouse", SqlMessageStorage.layerMigrations({})],
+        ["clickhouse", SqlRunnerStorage.layerMigrations({})]
+      ] as const
+      for (const [dialect, layer] of cases) {
+        const sql = yield* SqlClient.make({
+          driver: "test",
+          compiler: Statement.makeCompiler({ ...sparkOptions, dialect }),
+          acquirer: Effect.die("unexpected query"),
+          spanAttributes: []
+        })
+        const cause = yield* Layer.build(layer).pipe(
+          Effect.provideService(SqlClient.SqlClient, sql),
+          Effect.scoped,
+          Effect.sandbox,
+          Effect.flip
+        )
+        assert.match(String(Cause.squash(cause)), new RegExp(`Unsupported SQL dialect "${dialect}"`))
+      }
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it("transforms SQL result names without changing nested values", () => {

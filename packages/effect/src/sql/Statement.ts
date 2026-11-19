@@ -524,6 +524,12 @@ export type Helper =
   | Identifier
   | Custom
 
+// A mapped constraint instead of an index signature, so that interfaces and
+// class instances are accepted as branch maps.
+type DialectBranches<X> = { readonly [K in keyof X]: (() => unknown) | undefined }
+
+type DialectBranchResult<F> = F extends () => infer R ? R : never
+
 /**
  * SQL tagged-template constructor and helper API for building parameterized
  * statements, escaped identifiers, fragments, record helpers, and
@@ -629,7 +635,7 @@ export interface Constructor {
     C = never,
     D = never,
     E = never,
-    X extends { readonly [dialect: string]: () => unknown } = {}
+    X extends DialectBranches<X> = { readonly [dialect: string]: (() => A | B | C | D | E) | undefined }
   >(
     options: {
       readonly sqlite?: () => A
@@ -638,7 +644,7 @@ export interface Constructor {
       readonly mssql?: () => D
       readonly clickhouse?: () => E
     } & X
-  ) => A | B | C | D | E | ReturnType<X[keyof X]>
+  ) => A | B | C | D | E | DialectBranchResult<X[keyof X]>
 
   /**
    * Runs the branch for the client's dialect, or `orElse` when it has none.
@@ -653,7 +659,7 @@ export interface Constructor {
     D = never,
     E = never,
     F = never,
-    X extends { readonly [dialect: string]: () => unknown } = {}
+    X extends DialectBranches<X> = { readonly [dialect: string]: (() => A | B | C | D | E | F) | undefined }
   >(
     options: {
       readonly orElse: () => A
@@ -663,7 +669,7 @@ export interface Constructor {
       readonly mssql?: () => E
       readonly clickhouse?: () => F
     } & X
-  ) => A | B | C | D | E | F | ReturnType<X[keyof X]>
+  ) => A | B | C | D | E | F | DialectBranchResult<X[keyof X]>
 }
 
 /**
@@ -740,10 +746,10 @@ export const make = (
             `Unsupported SQL dialect "${compiler.dialect}". Supported dialects: ${Object.keys(options).join(", ")}`
           )
         }
-        return branch()
+        return branch.call(options)
       },
       onDialectOrElse(options: Record<string, () => any>) {
-        return (dialectBranch(options, compiler.dialect) ?? options.orElse)()
+        return (dialectBranch(options, compiler.dialect) ?? options.orElse).call(options)
       }
     }
   )
@@ -751,10 +757,23 @@ export const make = (
   return self
 }
 
+// Branches can be inherited, for example class methods, but a dialect named
+// after an `Object.prototype` member such as "toString" must not select it.
 const dialectBranch = (
   options: Record<string, (() => any) | undefined>,
   dialect: Dialect
-): (() => any) | undefined => Object.hasOwn(options, dialect) ? options[dialect] : undefined
+): (() => any) | undefined => {
+  for (
+    let proto: object | null = options;
+    proto !== null && proto !== Object.prototype;
+    proto = Object.getPrototypeOf(proto)
+  ) {
+    if (Object.hasOwn(proto, dialect)) {
+      return options[dialect]
+    }
+  }
+  return undefined
+}
 
 /**
  * Builds a `Statement` from template strings and arguments, preserving

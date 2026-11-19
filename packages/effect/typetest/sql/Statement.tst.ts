@@ -17,6 +17,39 @@ describe("Statement", () => {
     expect(fallback).type.toBe<string | boolean>()
   })
 
+  it("accepts named branch maps and rejects custom branches hidden by explicit generics", () => {
+    interface AllBranches {
+      readonly sqlite: () => number
+      readonly pg: () => number
+      readonly mysql: () => number
+      readonly mssql: () => number
+      readonly clickhouse: () => number
+    }
+    interface PgOrElse {
+      readonly orElse: () => string
+      readonly pg?: () => number
+    }
+    const allBranches = {} as AllBranches
+    const pgOrElse = {} as PgOrElse
+    const strict = sql.onDialect(allBranches)
+    const fallback = sql.onDialectOrElse(pgOrElse)
+    expect(strict).type.toBe<number>()
+    expect(fallback).type.toBe<string | number>()
+
+    const custom = { orElse: () => 1, spark: () => "custom" }
+    const inferred = sql.onDialectOrElse(custom)
+    expect(inferred).type.toBe<number | string>()
+    expect(sql.onDialectOrElse<number>).type.not.toBeCallableWith(custom)
+    expect(sql.onDialectOrElse<number>).type.toBeCallableWith({ orElse: () => 1 })
+    expect(sql.onDialect<1, 2, 3, 4, 5>).type.toBeCallableWith({
+      sqlite: () => 1 as const,
+      pg: () => 2 as const,
+      mysql: () => 3 as const,
+      mssql: () => 4 as const,
+      clickhouse: () => 5 as const
+    })
+  })
+
   it("insert requires non-empty rows or a single record", () => {
     expect(sql.insert).type.not.toBeCallableWith([])
     expect(sql.insert).type.toBeCallableWith([{ name: "Ada" }])
