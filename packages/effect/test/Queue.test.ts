@@ -98,6 +98,84 @@ describe("Queue", () => {
         assert.deepStrictEqual(yield* Queue.clear(queue), [])
       }))
 
+    it.effect("repeated batch timeouts cannot admit more offers without delivering a batch", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(1)
+        yield* Queue.offer(queue, 0)
+        const batches = []
+        for (const value of [1, 2, 3, 4]) {
+          const { clock, fire } = yield* makeDeadline
+          const offerer = yield* Queue.offer(queue, value).pipe(
+            Effect.tap(() => fire),
+            Effect.forkChild({
+              startImmediately: true
+            })
+          )
+          const result = yield* Effect.yieldNow.pipe(
+            Effect.andThen(Queue.takeAll(queue)),
+            Effect.timeout(10),
+            Effect.provideService(Clock.Clock, clock),
+            Effect.option
+          )
+          batches.push(result)
+          assert.isTrue(yield* Fiber.join(offerer))
+        }
+        assert.deepStrictEqual({ batches, remaining: yield* Queue.clear(queue) }, {
+          batches: [Option.none(), Option.some([0, 1]), Option.none(), Option.some([2, 3])],
+          remaining: [4]
+        })
+      }))
+
+    it.effect("a producer's nested take cannot pass an item restored after timeout", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number>(1)
+        const { clock, fire } = yield* makeDeadline
+        const outer = yield* Queue.take(queue).pipe(
+          Effect.timeout(10),
+          Effect.provideService(Clock.Clock, clock),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Queue.offer(queue, 41)
+        const producer = yield* Queue.offer(queue, 42).pipe(
+          Effect.andThen(Queue.take(queue).pipe(Effect.forkScoped({ startImmediately: true }))),
+          Effect.tap(() => fire),
+          Effect.forkChild({ startImmediately: true })
+        )
+        Queue.flushUnsafe(queue)
+        assert.deepStrictEqual(
+          yield* Fiber.await(outer),
+          Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
+        )
+        const nested = yield* Fiber.join(producer)
+        assert.deepStrictEqual([yield* Fiber.join(nested), yield* Queue.take(queue)], [41, 42])
+      }))
+
+    it.effect("cancelling the last offer on a closing queue cannot interrupt final delivery", () =>
+      Effect.gen(function*() {
+        const queue = yield* Queue.bounded<number, Cause.Done>(0)
+        const cancel = yield* Deferred.make<Fiber.Fiber<boolean>>()
+        const first = yield* Queue.offer(queue, 41).pipe(
+          Effect.tap(() => Deferred.await(cancel).pipe(Effect.flatMap(Fiber.interrupt))),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const last = yield* Effect.forkChild(Queue.offer(queue, 42), { startImmediately: true })
+        yield* Deferred.succeed(cancel, last)
+        yield* Queue.end(queue)
+        const start = yield* Deferred.make<void>()
+        const worker = yield* Deferred.await(start).pipe(
+          Effect.andThen(Queue.take(queue)),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const awaiter = yield* Queue.await(queue).pipe(
+          Effect.andThen(Fiber.interrupt(worker)),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Deferred.succeed(start, undefined)
+        yield* Fiber.join(awaiter)
+        assert.isTrue(yield* Fiber.join(first))
+        assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
+      }))
+
     it.effect("the final take delivers before a closing queue notifies its awaiters", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number, Cause.Done>(1)
