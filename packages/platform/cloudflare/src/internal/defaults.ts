@@ -24,7 +24,8 @@ const load = () =>
 
 /**
  * Provides `CloudflareScheduler` and `CloudflareTracer` where the runtime
- * supports them, unless the layer is built with one already provided.
+ * supports them, unless the layer is built with a parking scheduler or a
+ * tracer already provided.
  *
  * @internal
  */
@@ -34,7 +35,9 @@ export const layer: Layer.Layer<never> = Layer.effectContext(Effect.gen(function
   const modules = yield* Effect.promise(load)
   if (modules === undefined) return context
   const [Workers, CloudflareScheduler, CloudflareTracer] = modules
-  if (Context.getOrUndefinedUnsafe(ambient, Scheduler.Scheduler.key) === undefined) {
+  // A scheduler is always present here: `ManagedRuntime` builds its layer with
+  // the caller's scheduler. Only one that already parks fibers is kept.
+  if (!Scheduler.isParkingScheduler(Context.get(ambient, Scheduler.Scheduler))) {
     try {
       context = Context.add(context, Scheduler.Scheduler, new CloudflareScheduler.CloudflareScheduler())
     } catch {}
