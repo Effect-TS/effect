@@ -393,7 +393,7 @@ export class EncodeError extends Data.TaggedError("PgProtocolEncodeError")<{
 }> {}
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder("utf-8", { fatal: true })
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 /**
  * Above this length `TextEncoder.encodeInto` beats a per-character loop, below
