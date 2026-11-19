@@ -242,7 +242,7 @@ export const make: (
       if (disabledUntil !== undefined) return Effect.void
       disabledUntil = clock.currentTimeMillisUnsafe() + 60_000
       buffer = []
-      return Effect.logDebug("Disabling exporter for 60 seconds", cause)
+      return Effect.logWarning("Disabling exporter for 60 seconds", cause)
     }),
     Effect.annotateLogs({
       package: "@effect/opentelemetry",
