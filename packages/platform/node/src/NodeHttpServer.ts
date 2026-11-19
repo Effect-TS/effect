@@ -231,11 +231,7 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  // Registering a request listener would enable HTTP/2 compatibility mode, changing native
-  // stream dispatch (including CONNECT). Instead, outside `serve`, answer only the events no
-  // listener handled.
-  // Compatibility dispatch re-emits a stream as a nested `request`. A stream that had another
-  // listener when it was dispatched belongs to that listener, including its nested request.
+  // A request listener would enable HTTP/2 compatibility mode and change native CONNECT handling.
   const nativeStreams = new WeakSet<Http2.ServerHttp2Stream>()
   let removeFallback: (() => void) | undefined
   const installFallback = () => {
@@ -247,6 +243,7 @@ export const make = Effect.fnUntraced(function*(
       if (!active || this !== server) return emit.call(this, event, ...args)
       if (event === "stream" && args[0]?.session?.server === server && typeof args[0].respond === "function") {
         const stream: Http2.ServerHttp2Stream = args[0]
+        // Compatibility dispatch emits a nested request. Leave it to any native stream responder.
         if (this.listenerCount("stream") > 1) nativeStreams.add(stream)
         if (!emit.call(this, event, ...args)) {
           stream.respond({ ":status": 503, ...unavailableHeaders })
