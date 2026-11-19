@@ -106,6 +106,8 @@ const compression = NodeHttpCompression.make({
   }
 })
 
+const clampBytes = (value: number, max: number) => Math.min(max, Math.max(0, Math.trunc(value) || 0))
+
 /**
  * Creates the Node `HttpPlatform`, serving file responses from Node readable
  * streams and adding MIME type and content-length headers when needed.
@@ -135,9 +137,8 @@ export const make = Platform.make({
     })
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const offset = Math.min(file.size, Math.max(0, Math.trunc(options?.offset ?? 0) || 0))
-    const available = file.size - offset
-    const length = Math.min(available, Math.max(0, Math.trunc(options?.bytesToRead ?? available) || 0))
+    const offset = clampBytes(options?.offset ?? 0, file.size)
+    const length = clampBytes(options?.bytesToRead ?? Infinity, file.size - offset)
     return ServerResponse.raw(
       lazyReadable(() => {
         if (length === 0) return Readable.from([])
