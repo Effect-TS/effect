@@ -95,9 +95,14 @@ function createSubscriptionAccessor<S, A>(
     box.set = setValue
     return value
   })
-  // Compare values so switching to a source with an equal value does not
-  // notify readers.
-  return createMemo(() => current()().value)
+  // Keep the previous box when the value is unchanged, so switching to a source
+  // with an equal value does not notify readers. The memo returns the box, not
+  // the value, because Solid 2 awaits a Promise returned from a memo.
+  const boxed = createMemo((prev: { readonly value: A } | undefined) => {
+    const next = current()()
+    return prev !== undefined && prev.value === next.value ? prev : next
+  })
+  return () => boxed().value
 }
 
 // `ownedWrite` lets Solid 2 accept registry notifications that arrive while a
