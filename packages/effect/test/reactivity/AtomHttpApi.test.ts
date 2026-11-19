@@ -48,7 +48,11 @@ describe("AtomHttpApi", () => {
           )
         )
       })
-      const atom = Client.query("group", "get", { serializationKey: "value", staleTime: 1_000 })
+      const atom = Client.query("group", "get", {
+        serializationKey: "value",
+        staleTime: 1_000,
+        reactivityKeys: ["value"]
+      })
       const clock = vitest.spyOn(Date, "now").mockReturnValue(10_000)
       yield* Effect.addFinalizer(() => Effect.sync(() => clock.mockRestore()))
       const server = AtomRegistry.make()
@@ -72,6 +76,13 @@ describe("AtomHttpApi", () => {
         assert.strictEqual(result, expected)
         assert.strictEqual(requests, expected)
       }
+      const refreshed = AtomRegistry.make()
+      yield* Effect.addFinalizer(() => Effect.sync(() => refreshed.dispose()))
+      clock.mockReturnValue(10_500)
+      Hydration.hydrate(refreshed, state)
+      refreshed.refresh(atom)
+      yield* AtomRegistry.mount(refreshed, atom)
+      assert.strictEqual(yield* AtomRegistry.getResult(refreshed, atom, { suspendOnWaiting: true }), 3)
     }), { concurrent: false })
 
   it.effect.each([

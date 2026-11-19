@@ -515,6 +515,7 @@ class RegistryImpl implements AtomRegistry {
 
   invalidateAtom = <A>(atom: Atom.Atom<A>): void => {
     const node = this.ensureNode(atom)
+    if (node.skipInitialRun) node.preserveInitialValueOnBuild = false
     node.skipInitialRun = false
     node.invalidate()
   }
@@ -759,6 +760,14 @@ class NodeImpl<A> {
       }
     }
     if (this.lifetime === lifetime && (this.state & NodeFlags.waitingForValue) !== 0) {
+      if (
+        this.skipInitialRun && Result.isAsyncResult(this._value) && this._value.waiting &&
+        Result.isAsyncResult(value) && Result.isFailure(value)
+      ) {
+        // Runtime acquisition can fail before the effect consumes its seed.
+        this.preserveInitialValueOnBuild = false
+        this.skipInitialRun = false
+      }
       if (this.preserveInitialValueOnBuild) {
         this.preserveInitialValueOnBuild = false
         if (this.skipInitialRun) {

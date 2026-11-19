@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Schema } from "effect"
+import { Cause, Effect, Layer, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
-  it("runs a hydrated waiting seed even with skipInitialRun", () => {
+  it.each([false, true])("runs a hydrated waiting seed with skipInitialRun (refresh before mount: %s)", (refresh) => {
     const options = { key: "count", schema: AsyncResult.Schema({ success: Schema.Number }), skipInitialRun: true }
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
@@ -12,6 +12,7 @@ describe("Hydration", () => {
       server.mount(seed.pipe(Atom.serializable(options)))
       Hydration.hydrate(client, Hydration.dehydrate(server))
       const atom = Atom.make(Effect.succeed(20)).pipe(Atom.serializable(options))
+      if (refresh) client.refresh(atom)
       client.mount(atom)
       const result = client.get(atom)
       assert(AsyncResult.isSuccess(result))
@@ -20,6 +21,23 @@ describe("Hydration", () => {
     } finally {
       server.dispose()
       client.dispose()
+    }
+  })
+
+  it("publishes runtime acquisition failure over a waiting seed", () => {
+    const runtime = Atom.runtime(Layer.effectDiscard(Effect.fail("offline")))
+    const atom = runtime.atom(Effect.succeed(20))
+    const registry = AtomRegistry.make({
+      initialValues: [Atom.initialValue(atom, AsyncResult.success(10, { waiting: true }), { skipInitialRun: true })]
+    })
+    try {
+      registry.mount(atom)
+      const result = registry.get(atom)
+      assert(AsyncResult.isFailure(result))
+      assert.deepStrictEqual(result.cause, Cause.fail("offline"))
+      assert.isFalse(result.waiting)
+    } finally {
+      registry.dispose()
     }
   })
 

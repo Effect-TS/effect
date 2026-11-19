@@ -249,12 +249,13 @@ export const Service = <Self>() =>
         : self.runtime.atom(
           self.use((client) => client(tag, payload, { headers } as any)) as any
         )
-      if (reactivityKeys) {
+      const staleTime = isStream ? undefined : key.staleTime
+      if (staleTime === undefined && reactivityKeys) {
         atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
       }
       if (!isStream && key.serializationKey) {
         atom = Atom.serializable(atom, {
-          skipInitialRun: key.staleTime !== undefined,
+          skipInitialRun: staleTime !== undefined,
           key: `AtomRpc:${key.tag}:${key.serializationKey}`,
           schema: AsyncResult.Schema({
             success: rpc.successSchema,
@@ -262,12 +263,16 @@ export const Service = <Self>() =>
           }) as any
         })
       }
+      // Refresh must reach the serializable source before the first read consumes hydration.
+      if (staleTime !== undefined && reactivityKeys) {
+        atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
+      }
       if (timeToLive) {
         atom = Duration.isFinite(timeToLive)
           ? Atom.setIdleTTL(atom, timeToLive)
           : Atom.keepAlive(atom)
       }
-      return !isStream && key.staleTime !== undefined ? Atom.swr(atom, { staleTime: key.staleTime }) : atom
+      return staleTime !== undefined ? Atom.swr(atom, { staleTime }) : atom
     }
   )
 

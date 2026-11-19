@@ -271,13 +271,14 @@ export const Service =
           HttpClientError.HttpClientError | SchemaError
         >)
       }))
-      if (opts.reactivityKeys) {
+      const staleTime = opts.staleTime
+      if (staleTime === undefined && opts.reactivityKeys) {
         atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
       }
       if (opts.responseMode === "decoded-only" && opts.serializationKey) {
         const endpoint = groups[opts.group].endpoints[opts.endpoint]
         atom = Atom.serializable(atom, {
-          skipInitialRun: opts.staleTime !== undefined,
+          skipInitialRun: staleTime !== undefined,
           key: `AtomHttpApi:${opts.group}:${opts.endpoint}:${opts.serializationKey}`,
           schema: AsyncResult.Schema({
             success: Schema.Union(HttpApiEndpoint.getSuccessSchemas(endpoint)),
@@ -285,12 +286,16 @@ export const Service =
           }) as any
         })
       }
+      // Refresh must reach the serializable source before the first read consumes hydration.
+      if (staleTime !== undefined && opts.reactivityKeys) {
+        atom = self.runtime.factory.withReactivity(opts.reactivityKeys)(atom)
+      }
       if (opts.timeToLive) {
         atom = Duration.isFinite(opts.timeToLive)
           ? Atom.setIdleTTL(atom, opts.timeToLive)
           : Atom.keepAlive(atom)
       }
-      return opts.staleTime !== undefined ? Atom.swr(atom, { staleTime: opts.staleTime }) : atom
+      return staleTime !== undefined ? Atom.swr(atom, { staleTime }) : atom
     })
 
     self.query = ((
