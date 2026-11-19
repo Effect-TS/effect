@@ -625,7 +625,10 @@ const toolResultContent = (result: unknown): Array<typeof ToolResultContentBlock
   if (Predicate.isUndefined(result)) {
     return [{ text: "" }]
   }
-  return [{ json: result }]
+  if (Predicate.isObject(result)) {
+    return [{ json: result }]
+  }
+  return [{ text: JSON.stringify(result) }]
 }
 
 const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
