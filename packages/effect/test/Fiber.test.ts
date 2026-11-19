@@ -215,6 +215,7 @@ describe("Fiber", () => {
 
   it.effect("delivers a pending interrupt when interruptibleMask restores interruptibility", () =>
     Effect.gen(function*() {
+      class Note extends Context.Service<Note, string>()("InterruptNote") {}
       const masked = yield* Latch.make()
       const resume = yield* Latch.make()
       const events: Array<string> = []
@@ -234,7 +235,7 @@ describe("Fiber", () => {
       events.push("masked")
 
       yield* Effect.sync(() => {
-        child.interruptUnsafe(123)
+        child.interruptUnsafe(123, Context.make(Note, "cancelled"))
         events.push("interrupted")
       })
       assert.isUndefined(child.pollUnsafe())
@@ -253,6 +254,7 @@ describe("Fiber", () => {
         assert.fail("expected interrupted fiber to exit with failure")
       }
       assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+      assert.strictEqual(Context.getUnsafe(Cause.annotations(exit.cause), Note), "cancelled")
       assert.deepStrictEqual(events, ["masked", "interrupted", "resumed", "interruptibleMask"])
     }))
 

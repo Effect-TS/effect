@@ -58,6 +58,30 @@ describe("FiberMap", () => {
       assert.deepStrictEqual(events, ["worker cleanup done", "resource released"])
     }))
 
+  it.effect("run starts an interruptible fiber from an uninterruptible region", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      const release = yield* Deferred.make<void>()
+      const child = yield* Effect.uninterruptible(
+        FiberMap.run(map, "key", Deferred.await(release), { startImmediately: true })
+      )
+      child.interruptUnsafe()
+      yield* Deferred.succeed(release, undefined)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+    }))
+
+  it.effect("a child failure leaves siblings running and accepts new work", () =>
+    Effect.gen(function*() {
+      const map = yield* FiberMap.make<string>()
+      const release = yield* Deferred.make<void>()
+      const sibling = yield* FiberMap.run(map, "sibling", Deferred.await(release))
+      yield* FiberMap.run(map, "failed", Effect.fail("failed"))
+      strictEqual(yield* Effect.flip(FiberMap.join(map)), "failed")
+      const next = yield* FiberMap.run(map, "next", Deferred.succeed(release, undefined))
+      yield* Fiber.join(next)
+      yield* Fiber.join(sibling)
+    }))
+
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberMap.make<string>()

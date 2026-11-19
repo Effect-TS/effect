@@ -1,8 +1,23 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("Scope", () => {
+  it.effect("runs finalizers in reverse registration order by default", () =>
+    Effect.gen(function*() {
+      const order: Array<string> = []
+      const record = (name: string) =>
+        Effect.sync(() => {
+          order.push(name)
+        })
+      yield* Effect.scoped(Effect.gen(function*() {
+        yield* Scope.addFinalizer(yield* Effect.scope, record("scope"))
+        yield* Effect.addFinalizer(() => record("effect"))
+        yield* Effect.acquireRelease(Effect.void, () => record("release"))
+      }))
+      assert.deepStrictEqual(order, ["release", "effect", "scope"])
+    }))
+
   describe("parallel finalization", () => {
     it.effect("executes finalizers in parallel", () =>
       Effect.gen(function*() {

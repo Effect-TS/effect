@@ -13,6 +13,30 @@ describe("FiberSet", () => {
       )
     ))
 
+  it.effect("run starts an interruptible fiber from an uninterruptible region", () =>
+    Effect.gen(function*() {
+      const set = yield* FiberSet.make()
+      const release = yield* Deferred.make<void>()
+      const child = yield* Effect.uninterruptible(
+        FiberSet.run(set, Deferred.await(release), { startImmediately: true })
+      )
+      child.interruptUnsafe()
+      yield* Deferred.succeed(release, undefined)
+      assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(child)))
+    }))
+
+  it.effect("a child failure leaves siblings running and accepts new work", () =>
+    Effect.gen(function*() {
+      const set = yield* FiberSet.make()
+      const release = yield* Deferred.make<void>()
+      const sibling = yield* FiberSet.run(set, Deferred.await(release))
+      yield* FiberSet.run(set, Effect.fail("failed"))
+      strictEqual(yield* Effect.flip(FiberSet.join(set)), "failed")
+      const next = yield* FiberSet.run(set, Deferred.succeed(release, undefined))
+      yield* Fiber.join(next)
+      yield* Fiber.join(sibling)
+    }))
+
   it.effect("run defers startup", () =>
     Effect.gen(function*() {
       const container = yield* FiberSet.make()
