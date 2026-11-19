@@ -55,6 +55,23 @@ describe("the bot's own messages read back", () => {
       }
     }))
 
+  it.effect("preserve a trailing parenthesis in a named link destination", () =>
+    Effect.gen(function*() {
+      const message = yield* read({
+        user: botUserId,
+        ts: "1794600000.000103",
+        text: "draft",
+        blocks: [{
+          type: "rich_text",
+          elements: [{
+            type: "rich_text_section",
+            elements: [{ type: "link", text: "draft", url: "https://example.test/drafts/closing)" }]
+          }]
+        }]
+      })
+      assert.strictEqual(message.text, "[draft](https://example.test/drafts/closing\\))")
+    }))
+
   it.effect("someone else's message keeps Slack's text", () =>
     Effect.gen(function*() {
       const { message } = synthetic.cases.find(({ name }) => name.startsWith("Markdown characters"))!

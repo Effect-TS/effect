@@ -81,7 +81,17 @@ const emojiText = (element: JsonObject): string => {
   return Emoji.fromName(full) ?? Emoji.fromName(name) ?? `:${full}:`
 }
 
-const pieceOf = (element: JsonObject): Piece => {
+/** CommonMark accepts unescaped parentheses in a destination only when they nest in pairs. */
+const linkDestination = (url: string): string => {
+  let depth = 0
+  for (const char of url) {
+    if (char === "(") depth++
+    if (char === ")" && --depth < 0) break
+  }
+  return depth === 0 ? url : url.replace(/[()\\]/g, "\\$&")
+}
+
+const pieceOf = (element: JsonObject, inCode: boolean): Piece => {
   switch (element.type) {
     case "text":
       return { _tag: "text", text: stringOf(element, "text") ?? "" }
@@ -91,7 +101,11 @@ const pieceOf = (element: JsonObject): Piece => {
       // Slack stores a bare URL as a link whose text is the URL without its scheme.
       const bare = text === undefined || text === "" || text === url ||
         text === url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
-      return { _tag: "text", text: bare ? url : `[${escapeInline(text)}](${url})`, markdown: true }
+      return {
+        _tag: "text",
+        text: bare ? url : `[${escapeInline(text)}](${inCode ? url : linkDestination(url)})`,
+        markdown: true
+      }
     }
     case "user": {
       const id = stringOf(element, "user_id")
@@ -215,7 +229,10 @@ const newline = (writer: Writer): void => {
  * a literal.
  */
 const inline = (writer: Writer, elements: ReadonlyArray<unknown>): void => {
-  const items = elements.filter(isObject).map((element) => ({ piece: pieceOf(element), style: styleOf(element) }))
+  const items = elements.filter(isObject).map((element) => {
+    const style = styleOf(element)
+    return { piece: pieceOf(element, style.code), style }
+  })
   let i = 0
   while (i < items.length) {
     const style = items[i].style
@@ -290,7 +307,7 @@ const block = (writer: Writer, element: unknown): void => {
       return inline(writer, elementsOf(element))
     case "rich_text_preformatted": {
       // A fence holds no mention: every token is literal.
-      const content = elementsOf(element).filter(isObject).map((child) => pieceText(pieceOf(child))).join("")
+      const content = elementsOf(element).filter(isObject).map((child) => pieceText(pieceOf(child, true))).join("")
       const fence = "`".repeat(Math.max(3, longestRun(content, "`") + 1))
       write(writer, fence + "\n" + content + (content.endsWith("\n") ? "" : "\n") + fence)
       return
