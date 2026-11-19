@@ -513,8 +513,10 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  * - Events that end inside an element, or end an element that was never
  *   started, fail with an `InvalidEvent` `XmlError`.
  * - A path with a name in Clark notation needs events decoded with
- *   `namespaces: "strict"`; a start tag without `localName` fails with an
- *   `InvalidEvent` `XmlError`.
+ *   `namespaces: "strict"`. Any start tag without `localName` fails with an
+ *   `InvalidEvent` `XmlError`, even outside a matched subtree.
+ * - Clark notation requires an unprefixed local name. A wildcard in that
+ *   position, such as `{uri}*`, is not supported.
  * - A path that is empty or contains an invalid name throws when the channel is
  *   created.
  *
@@ -560,7 +562,7 @@ export const elements = <IE = never, Done = unknown>(
   if (path.length === 0) {
     throw new Error("Xml: elements path must not be empty")
   }
-  const segments = path.map(parseSegment)
+  const segments = Array.from(path, parseSegment)
   const maxElementSize = checkLimit("maxElementSize", options?.maxElementSize, defaultMaxElementSize)
   return makeChannel<Event, Element, IE, Done>(() => new Collector(segments, maxElementSize))
 }
