@@ -1878,6 +1878,59 @@ describe("HttpServer", () => {
       expect(plain.extensions).not.toContain("permessage-deflate")
     }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
 
+  it.effect("a websocket highWaterMark pauses the peer instead of closing it", () =>
+    Effect.gen(function*() {
+      const frames = Array.from({ length: 100 }, (_, i) => String(i % 10))
+      // 100 bytes stay below the 64 KiB default, so only the configured mark pauses
+      const paused = yield* Deferred.make<void>()
+      const checked = yield* Deferred.make<void, unknown>()
+      const pause = NodeWS.WebSocket.prototype.pause
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          NodeWS.WebSocket.prototype.pause = function(this: NodeWS.WebSocket) {
+            Deferred.doneUnsafe(paused, Effect.void)
+            return pause.call(this)
+          }
+        }),
+        () => Effect.sync(() => NodeWS.WebSocket.prototype.pause = pause)
+      )
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Deferred.complete(
+            checked,
+            Effect.gen(function*() {
+              const { pull } = yield* socket.reader
+              yield* Deferred.await(paused)
+              const received: Array<string | Uint8Array> = []
+              while (received.length < frames.length) received.push(...(yield* pull))
+              assert.deepStrictEqual(received.map((frame) => Buffer.Buffer.from(frame).toString()), frames)
+            })
+          )
+          return HttpServerResponse.empty()
+        })
+      ).pipe(HttpRouter.serve, Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const ws = yield* Effect.acquireRelease(
+        Effect.callback<NodeWS.WebSocket, Error>((resume) => {
+          const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+          ws.on("open", () => resume(Effect.succeed(ws)))
+          ws.on("error", (error) => resume(Effect.fail(error)))
+        }),
+        (ws) => Effect.sync(() => ws.close())
+      )
+      for (const frame of frames) ws.send(frame)
+      yield* Deferred.await(checked)
+      assert.strictEqual(ws.readyState, NodeWS.WebSocket.OPEN)
+    }).pipe(
+      Effect.timeout("5 seconds"),
+      Effect.provide(NodeHttpServer.layer(Http.createServer, { port: 0, websocket: { highWaterMark: 1 } }))
+    ), 10000)
+
   for (
     const [name, exit, code] of [
       ["success", "success", 1000],

@@ -76,19 +76,37 @@ export type ServeOptions<R extends string> =
   & { readonly routes?: Bun.Serve.Routes<WebSocketContext, R> }
 
 /**
- * WebSocket tuning options forwarded to `Bun.serve`'s `websocket` handler.
+ * WebSocket tuning options for the Bun HTTP server and its `Bun.serve` handler.
  *
  * **Details**
  *
  * The lifecycle handlers (`open`, `message`, `close`, ...) are managed by the
- * server and cannot be overridden; everything else — such as
- * `perMessageDeflate` compression, payload limits, and idle timeouts — passes
+ * server and cannot be overridden. Bun options — such as
+ * `perMessageDeflate` compression, payload limits, and idle timeouts — pass
  * through, e.g.
  * `BunHttpServer.layer({ port: 3000, websocket: { perMessageDeflate: true } })`.
  *
  * The `compressionThreshold` option controls the minimum message size in bytes
  * that is compressed when per-message deflate is negotiated. It defaults to
  * 1024, matching the default threshold of Node's `ws` server.
+ *
+ * The `highWaterMark` option bounds the bytes of inbound messages waiting for
+ * a reader pull, including messages received before reader startup. Every
+ * message counts as at least one byte. A message that takes the queue above
+ * the limit is still queued, then the connection is closed with code 1008 and
+ * reason "Inbound message buffer limit exceeded" and later messages are
+ * discarded. Queued messages remain readable in order, followed by a
+ * `SocketError` wrapping a `SocketReadError`.
+ *
+ * **Gotchas**
+ *
+ * Inbound buffering is unbounded by default. Bun cannot pause a server
+ * WebSocket, so the limit disconnects the peer instead of slowing it down.
+ * Directly exposed servers should set `highWaterMark` together with
+ * `maxPayloadLength` (Bun's default is 16 MiB per message): the queue holds at
+ * most `highWaterMark` bytes plus one message. Even an idle reader can receive
+ * a burst before its fiber runs, so size the limit above the largest expected
+ * burst, not just steady-state load.
  *
  * @stability unstable
  * @category options
@@ -107,6 +125,13 @@ export type WebSocketOptions =
      * @default 1024
      */
     readonly compressionThreshold?: number | undefined
+    /**
+     * The number of inbound bytes that may wait for a reader pull. A message
+     * that takes the queue above it closes the socket with code 1008.
+     *
+     * @default unbounded
+     */
+    readonly highWaterMark?: number | undefined
   }
 
 /**
@@ -162,7 +187,11 @@ export const make = Effect.fnUntraced(
       }
       listenOptions = { ...options, hostname }
     }
-    const { compressionThreshold = MIN_COMPRESSIBLE_SIZE, ...websocket } = options.websocket ?? {}
+    const {
+      compressionThreshold = MIN_COMPRESSIBLE_SIZE,
+      highWaterMark,
+      ...websocket
+    } = options.websocket ?? {}
     const handlerStack: Array<(request: Request, server: BunServer<WebSocketContext>) => Response | Promise<Response>> =
       [
         function(_request, _server) {
@@ -186,15 +215,32 @@ export const make = Effect.fnUntraced(
           Deferred.doneUnsafe(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
-          ws.data.run(message)
+          const data = ws.data
+          if (data.closeError !== undefined) return
+          data.buffer.push(message)
+          if (highWaterMark !== undefined) {
+            data.bufferedBytes += (typeof message === "string" ? Buffer.byteLength(message) : message.byteLength) || 1
+          }
+          data.onMessage()
+          if (highWaterMark !== undefined && data.bufferedBytes > highWaterMark) {
+            const error = new Socket.SocketError({
+              reason: new Socket.SocketReadError({
+                cause: new globalThis.Error(`Socket highWaterMark of ${highWaterMark} bytes exceeded`)
+              })
+            })
+            // set before closing, so the close handler keeps this error
+            data.closeError = error
+            data.onClose(error)
+            ws.close(1008, "Inbound message buffer limit exceeded")
+          }
         },
         close(ws, code, closeReason) {
           code = typeof code === "number" ? code : 1001
           const error = new Socket.SocketError({
             reason: new Socket.SocketCloseError({ code, closeReason })
           })
-          ws.data.closeError = error
-          ws.data.onClose(error)
+          ws.data.closeError ??= error
+          ws.data.onClose(ws.data.closeError)
         }
       }
     })
@@ -457,14 +503,11 @@ export const layerConfig = <R extends string>(
 
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
-  readonly buffer: Array<Uint8Array | string>
+  buffer: Array<Uint8Array | string>
+  bufferedBytes: number
   closeError: Socket.SocketError | undefined
-  run: (_: Uint8Array | string) => void
+  onMessage: () => void
   onClose: (error: Socket.SocketError) => void
-}
-
-function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
-  this.buffer.push(_)
 }
 
 const formDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
@@ -675,8 +718,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         data: {
           deferred,
           buffer: [],
+          bufferedBytes: 0,
           closeError: undefined,
-          run: wsDefaultRun,
+          onMessage: constVoid,
           onClose: constVoid
         }
       })
@@ -736,25 +780,24 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             effect: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array | string>, Socket.SocketError>
           ) => void
 
-          let buffer: Array<Uint8Array | string> = ws.data.buffer.splice(0)
           let error: Socket.SocketError | undefined = closeError
           let waiter: ReadResume | undefined
           let flushScheduled = false
 
           function takeBuffer(): Arr.NonEmptyReadonlyArray<Uint8Array | string> {
-            const chunk = buffer
-            buffer = []
+            const chunk = ws.data.buffer
+            ws.data.buffer = []
+            ws.data.bufferedBytes = 0
             return chunk as unknown as Arr.NonEmptyReadonlyArray<Uint8Array | string>
           }
           function deliver() {
             flushScheduled = false
-            if (waiter === undefined || buffer.length === 0) return
+            if (waiter === undefined || ws.data.buffer.length === 0) return
             const resumeRead = waiter
             waiter = undefined
             resumeRead(Effect.succeed(takeBuffer()))
           }
-          function push(data: Uint8Array | string) {
-            buffer.push(data)
+          function scheduleDeliver() {
             if (waiter !== undefined && !flushScheduled) {
               flushScheduled = true
               dispatcher.scheduleTask(deliver, 0)
@@ -765,11 +808,11 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
             if (waiter !== undefined) {
               const resumeRead = waiter
               waiter = undefined
-              resumeRead(buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
+              resumeRead(ws.data.buffer.length > 0 ? Effect.succeed(takeBuffer()) : Effect.fail(error))
             }
           }
 
-          ws.data.run = push
+          ws.data.onMessage = scheduleDeliver
           ws.data.onClose = fail
           yield* Scope.addFinalizerExit(
             scope,
@@ -781,7 +824,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
                     reason: new Socket.SocketCloseError({ code: 1006 })
                   })
                 )
-                ws.data.run = wsDefaultRun
+                // a later reader does not see messages this one left unread
+                takeBuffer()
+                ws.data.onMessage = constVoid
                 ws.data.onClose = constVoid
                 ws.close(closeCode(exit))
                 return Effect.void
@@ -793,7 +838,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
               Arr.NonEmptyReadonlyArray<Uint8Array | string>,
               Socket.SocketError
             >((resumeRead) => {
-              if (buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
+              if (ws.data.buffer.length > 0) return resumeRead(Effect.succeed(takeBuffer()))
               if (error !== undefined) return resumeRead(Effect.fail(error))
               waiter = resumeRead
               return Effect.sync(() => {
