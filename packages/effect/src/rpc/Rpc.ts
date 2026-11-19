@@ -228,7 +228,7 @@ export interface Handler<Tag extends string> {
     /**
      * The span sent by the client, or `undefined` when no span was propagated.
      */
-    readonly remoteParent: Tracer.ExternalSpan | undefined
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers
     readonly rpc: Any
   }) => Effect<{} | Deferred<any, any>, any> | Stream<any, any>
@@ -674,7 +674,7 @@ export type ToHandlerFn<Current extends Any, R = any> = (
     /**
      * The span sent by the client, or `undefined` when no span was propagated.
      */
-    readonly remoteParent: Tracer.ExternalSpan | undefined
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers
     readonly rpc: Current
   }

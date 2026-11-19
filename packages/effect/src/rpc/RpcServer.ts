@@ -294,7 +294,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       rpc,
       client: client.serverClient,
       requestId: request.id,
-      remoteParent: enableSpanPropagation && request.traceId && request.spanId
+      remoteParentSpan: enableSpanPropagation && request.traceId && request.spanId
         ? Tracer.externalSpan({ traceId: request.traceId, spanId: request.spanId, sampled: request.sampled })
         : undefined,
       headers: request.headers,
@@ -395,7 +395,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         captureStackTrace: false,
         kind: "server",
         attributes: RpcTracing.spanAttributes(request.tag, options.spanAttributes),
-        parent: metadata.remoteParent,
+        parent: metadata.remoteParentSpan,
         links: enableSpanPropagation && parentSpan
           ? [
             {
@@ -612,7 +612,7 @@ const applyMiddleware = <A, E, R>(
     readonly rpc: Rpc.AnyWithProps
     readonly client: Rpc.ServerClient
     readonly requestId: RequestId
-    readonly remoteParent: Tracer.ExternalSpan | undefined
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers.Headers
     readonly payload: unknown
   }

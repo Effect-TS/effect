@@ -58,7 +58,7 @@ export interface RpcMiddleware<Provides, E, Requires> {
       /**
        * The span sent by the client, or `undefined` when no span was propagated.
        */
-      readonly remoteParent: Tracer.ExternalSpan | undefined
+      readonly remoteParentSpan: Tracer.ExternalSpan | undefined
       readonly rpc: Rpc.AnyWithProps
       readonly payload: unknown
       readonly headers: Headers
@@ -124,7 +124,7 @@ export interface Any {
       /**
        * The span sent by the client, or `undefined` when no span was propagated.
        */
-      readonly remoteParent: Tracer.ExternalSpan | undefined
+      readonly remoteParentSpan: Tracer.ExternalSpan | undefined
       readonly rpc: Rpc.AnyWithProps
       readonly payload: unknown
       readonly headers: Headers

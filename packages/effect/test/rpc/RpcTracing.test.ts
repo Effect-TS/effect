@@ -31,8 +31,8 @@ const runCall = (tag: Rpcs["_tag"], options: {
   const sent: Array<RpcMessage.Request<Rpcs>> = []
   const handlers: Array<Tracer.ExternalSpan | undefined> = []
   const middleware: Array<Tracer.ExternalSpan | undefined> = []
-  const observe = (_: unknown, { remoteParent }: { remoteParent: Tracer.ExternalSpan | undefined }) => {
-    handlers.push(remoteParent)
+  const observe = (_: unknown, { remoteParentSpan }: { remoteParentSpan: Tracer.ExternalSpan | undefined }) => {
+    handlers.push(remoteParentSpan)
     return Effect.void
   }
   const observeStream = (...args: Parameters<typeof observe>) => Stream.fromEffect(observe(...args))
@@ -82,8 +82,8 @@ const runCall = (tag: Rpcs["_tag"], options: {
         return queue
       })
     })),
-    Effect.provideService(Observe, (effect, { remoteParent }) => {
-      middleware.push(remoteParent)
+    Effect.provideService(Observe, (effect, { remoteParentSpan }) => {
+      middleware.push(remoteParentSpan)
       return effect
     }),
     Effect.provideService(
@@ -149,7 +149,7 @@ describe("Rpc.TracingEnabled", () => {
       }))
   }
 
-  it.effect("server-wide opt-out suppresses the server span but preserves remoteParent", () =>
+  it.effect("server-wide opt-out suppresses the server span but preserves remoteParentSpan", () =>
     Effect.gen(function*() {
       const { handler, middleware, spans } = yield* runCall("Both", { disableServer: true })
       assert.deepStrictEqual(spans.map((span) => span.kind), ["client"])

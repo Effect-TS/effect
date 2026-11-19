@@ -144,7 +144,7 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
         /**
          * The span sent by the client, or `undefined` when no span was propagated.
          */
-        readonly remoteParent: Tracer.ExternalSpan | undefined
+        readonly remoteParentSpan: Tracer.ExternalSpan | undefined
         readonly headers: Headers
       }
     ) => Rpc.ResultFrom<Extract<R, { readonly _tag: Tag }>, never>,

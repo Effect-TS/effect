@@ -27,11 +27,11 @@ describe("shared RPC stream tracing", () => {
         })
         const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: write }).pipe(
           Effect.provide(group.toLayer({
-            Watch: (_, { remoteParent }) => {
+            Watch: (_, { remoteParentSpan }) => {
               const subscribe = Effect.gen(function*() {
                 yield* Effect.addFinalizer(() => Queue.offer(released, undefined))
                 const sub = yield* PubSub.subscribe(feed).pipe(
-                  Effect.withSpan("Watch.subscribe", { parent: remoteParent })
+                  Effect.withSpan("Watch.subscribe", { parent: remoteParentSpan })
                 )
                 yield* Queue.offer(acquired, sub)
                 return Stream.fromSubscription(sub)
