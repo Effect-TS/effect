@@ -15,7 +15,9 @@ import * as Atom from "effect/reactivity/Atom"
 import type * as AtomRef from "effect/reactivity/AtomRef"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import type { Accessor, ResourceOptions, ResourceReturn } from "solid-js"
-import { createComputed, createEffect, createMemo, createResource, createSignal, onCleanup, useContext } from "solid-js"
+import * as Solid from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
+import { isSolid2 } from "./internal/solid.ts"
 import { RegistryContext } from "./RegistryContext.ts"
 
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
@@ -70,17 +72,38 @@ export const useAtomValue: {
 }
 
 function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): Accessor<A> {
-  const [value, setValue] = createSignal<A>(null as any)
-  createComputed(() => {
-    onCleanup(registry.subscribe(atom(), (next) => setValue(() => next), constImmediate))
-  })
-  return value
+  return createSubscriptionAccessor(
+    atom,
+    (atom, f) => registry.subscribe(atom, f),
+    (atom) => registry.get(atom)
+  )
 }
 
-const constImmediate = { immediate: true }
+// Solid 2 removed `createComputed`; an eager memo runs the subscription with
+// the same owner lifecycle in both major versions. Values are boxed because
+// Solid 2 treats a function passed to `createSignal` as a derived signal.
+function createSubscriptionAccessor<S, A>(
+  source: () => S,
+  subscribe: (source: S, f: (value: A) => void) => () => void,
+  get: (source: S) => A
+): Accessor<A> {
+  const current = createMemo(() => {
+    const s = source()
+    const box = { set: undefined as ((value: { readonly value: A }) => void) | undefined }
+    onCleanup(subscribe(s, (value) => box.set!({ value })))
+    const [value, setValue] = createSignal({ value: get(s) }, constSignalOptions)
+    box.set = setValue
+    return value
+  })
+  return () => current()().value
+}
+
+// `ownedWrite` lets Solid 2 accept registry notifications that arrive while a
+// computation is running; Solid 1 ignores it.
+const constSignalOptions = { equals: false, ownedWrite: true } as const
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): void {
-  createComputed(() => {
+  createMemo(() => {
     onCleanup(registry.mount(atom()))
   })
 }
@@ -99,7 +122,7 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
     ) :
   ((value: W | ((value: R) => W)) => void)
 {
-  const memo = createMemo(atom)
+  const memo = createCurrentAtom(atom)
   if (options?.mode === "promise" || options?.mode === "promiseExit") {
     return ((value: W) => {
       registry.set(memo(), value)
@@ -114,6 +137,13 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
   return ((value: W | ((value: R) => W)) => {
     registry.set(memo(), typeof value === "function" ? (value as any)(registry.get(memo())) : value)
   }) as any
+}
+
+// Callbacks read the current atom without subscribing their caller, so Solid 2
+// does not warn when they run inside an effect.
+function createCurrentAtom<A>(atom: () => A): () => A {
+  const current = createMemo(atom)
+  return () => untrack(current)
 }
 
 const flattenExit = <A, E>(exit: Exit.Exit<A, E>): A => {
@@ -194,7 +224,7 @@ export const useAtomSet = <
 export const useAtomRefresh = <A>(atom: () => Atom.Atom<A>): () => void => {
   const registry = useContext(RegistryContext)
   mountAtom(registry, atom)
-  const memo = createMemo(atom)
+  const memo = createCurrentAtom(atom)
   return () => registry.refresh(memo())
 }
 
@@ -262,6 +292,12 @@ export const useAtomSubscribe = <A>(
   options?: { readonly immediate?: boolean }
 ): void => {
   const registry = useContext(RegistryContext)
+  if (isSolid2) {
+    // Solid 2 effects split tracking (compute) from side effects (apply); the
+    // apply phase returns its cleanup.
+    ;(createEffect as any)(atom, (atom: Atom.Atom<A>) => registry.subscribe(atom, f, options))
+    return
+  }
   createEffect(() => {
     onCleanup(registry.subscribe(atom(), f, options))
   })
@@ -269,6 +305,11 @@ export const useAtomSubscribe = <A>(
 
 /**
  * Converts an `AsyncResult` atom into a Solid resource.
+ *
+ * **Gotchas**
+ *
+ * Requires Solid 1 and throws on Solid 2, which removed `createResource`. On
+ * Solid 2, read the `AsyncResult` with {@link useAtomValue}.
  *
  * @stability unstable
  * @category hooks
@@ -280,6 +321,11 @@ export const useAtomResource = <A, E>(
     readonly suspendOnWaiting?: boolean | undefined
   }
 ): ResourceReturn<A, void> => {
+  if (createResource === undefined) {
+    throw new Error(
+      "useAtomResource requires Solid 1 because Solid 2 removed createResource. Read the AsyncResult with useAtomValue instead."
+    )
+  }
   const result = useAtomValue(atom)
   return createResource(result, (result) => {
     if (AsyncResult.isInitial(result) || (options?.suspendOnWaiting && result.waiting)) {
@@ -292,6 +338,10 @@ export const useAtomResource = <A, E>(
 }
 
 const constUnresolvedPromise = new Promise<never>(() => {})
+
+// Read through the namespace so the module still links against Solid 2, where
+// `createResource` no longer exists.
+const createResource = (Solid as Partial<typeof Solid>).createResource
 
 /**
  * Subscribes to an atom ref and returns its value as a Solid accessor.
@@ -315,15 +365,8 @@ const constUnresolvedPromise = new Promise<never>(() => {})
  * @category hooks
  * @since 4.0.0
  */
-export const useAtomRef = <A>(ref: () => AtomRef.ReadonlyRef<A>): Accessor<A> => {
-  const [value, setValue] = createSignal(null as A)
-  createComputed(() => {
-    const r = ref()
-    setValue(() => r.value)
-    onCleanup(r.subscribe((next) => setValue(() => next)))
-  })
-  return value
-}
+export const useAtomRef = <A>(ref: () => AtomRef.ReadonlyRef<A>): Accessor<A> =>
+  createSubscriptionAccessor(ref, (ref, f) => ref.subscribe(f), (ref) => ref.value)
 
 /**
  * Returns a Solid accessor for a property ref derived from an atom ref.

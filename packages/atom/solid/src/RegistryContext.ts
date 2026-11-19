@@ -11,6 +11,7 @@ import type * as Atom from "effect/reactivity/Atom"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import type { JSX } from "solid-js"
 import { createComponent, createContext, onCleanup } from "solid-js"
+import { isSolid2 } from "./internal/solid.ts"
 
 /**
  * Provides a Solid context that carries the `AtomRegistry` used by atom hooks in the
@@ -74,7 +75,8 @@ export const RegistryProvider = (options: {
     defaultIdleTTL: options.defaultIdleTTL
   })
   onCleanup(() => registry.dispose())
-  return createComponent(RegistryContext.Provider, {
+  // Solid 2 contexts are their own provider component.
+  return createComponent(isSolid2 ? RegistryContext as any : RegistryContext.Provider, {
     value: registry,
     get children() {
       return options.children
