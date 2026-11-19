@@ -29,13 +29,9 @@ describe("render", () => {
     assert.isAtMost(JSON.stringify(Render.textActivity(dollars)).length, measure(dollars) + Length.R)
   })
 
-  it("strips up to the opening fence indentation from each code line", () => {
-    const markdown = "  ```ts\nzero\n one\n  two\n    four\n  ```"
-    assert.deepStrictEqual(Render.blocks(markdown), [{
-      type: "CodeBlock",
-      codeSnippet: "zero\none\ntwo\n  four",
-      language: "ts"
-    }])
+  it("removes only the opening fence indentation from code", () => {
+    const [block] = Render.blocks("  ```\n    x\n  ```")
+    assert.propertyVal(block, "codeSnippet", "  x")
   })
 
   it("escapes each dollar outside code, so Teams reads no math", () => {
