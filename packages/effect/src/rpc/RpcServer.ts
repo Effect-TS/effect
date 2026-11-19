@@ -1354,7 +1354,7 @@ export const makeProtocolWithHttpEffect: (
             return offer(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
           }
         },
-      end: Queue.end(queue)
+      end: Effect.andThen(Queue.end(queue), Queue.flush(queue))
     }
 
     // Ends an unfinished response, failing it with `cause` when given, and interrupts its requests.

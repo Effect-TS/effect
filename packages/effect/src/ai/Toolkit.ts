@@ -535,7 +535,8 @@ const Proto = {
             onFailure: (cause) => Queue.failCause(queue, cause),
             onSuccess: () => Queue.end(queue)
           }),
-          Effect.forkChild
+          Effect.andThen(Queue.flush(queue)),
+          Effect.forkChild({ startImmediately: true })
         )
 
         const normalizeError = (error: unknown) => {
