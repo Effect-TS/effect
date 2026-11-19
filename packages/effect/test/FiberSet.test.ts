@@ -79,14 +79,16 @@ describe("FiberSet", () => {
       strictEqual(yield* Ref.get(ref), 10)
     }))
 
-  it.effect("runs fibers concurrently and awaitEmpty waits for completion", () =>
+  it.effect("join reports the first failure without interrupting siblings or closing the set", () =>
     Effect.gen(function*() {
       const set = yield* FiberSet.make()
-      FiberSet.addUnsafe(set, Effect.runFork(Effect.void))
-      FiberSet.addUnsafe(set, Effect.runFork(Effect.void))
-      FiberSet.addUnsafe(set, Effect.runFork(Effect.fail("fail")))
-      const result = yield* pipe(FiberSet.join(set), Effect.flip)
-      strictEqual(result, "fail")
+      const release = yield* Deferred.make<void>()
+      const sibling = yield* FiberSet.run(set, Deferred.await(release))
+      yield* FiberSet.run(set, Effect.fail("fail"))
+      strictEqual(yield* Effect.flip(FiberSet.join(set)), "fail")
+      const next = yield* FiberSet.run(set, Deferred.succeed(release, undefined))
+      yield* Fiber.join(next)
+      yield* Fiber.join(sibling)
     }))
 
   it.effect("size", () =>
@@ -114,11 +116,13 @@ describe("FiberSet", () => {
   it.effect("propagateInterruption true fails join on external interruption", () =>
     Effect.gen(function*() {
       const set = yield* FiberSet.make()
-      const fiber = yield* FiberSet.run(set, Effect.never, {
-        propagateInterruption: true
-      })
-      yield* Effect.yieldNow
-      yield* Fiber.interrupt(fiber)
+      const release = yield* Deferred.make<void>()
+      const fiber = yield* Effect.uninterruptible(
+        FiberSet.run(set, Deferred.await(release), { propagateInterruption: true })
+      )
+      fiber.interruptUnsafe()
+      yield* Deferred.succeed(release, undefined)
+      assertTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
       assertTrue(Exit.hasInterrupts(
         yield* FiberSet.join(set).pipe(
           Effect.exit

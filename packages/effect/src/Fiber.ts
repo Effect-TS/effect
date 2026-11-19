@@ -86,6 +86,11 @@ export interface Fiber<out A, out E = never> extends Pipeable {
   readonly cache: Fiber.Cache
   readonly currentDispatcher: SchedulerDispatcher
   readonly addObserver: (cb: (exit: Exit<A, E>) => void) => () => void
+  /**
+   * Requests interruption without waiting for the fiber to finish. Optional
+   * annotations are attached to the `Interrupt` reason as with
+   * {@link interruptAs}, which also waits for the fiber to finish.
+   */
   readonly interruptUnsafe: (
     fiberId?: number | undefined,
     annotations?: Context.Context<never> | undefined
@@ -419,11 +424,19 @@ export const interrupt: <A, E>(self: Fiber<A, E>) => Effect<void> = effect.fiber
  * **Details**
  *
  * The returned Effect completes only after the interrupted fiber has completed.
+ * Any supplied annotations are attached to the `Interrupt` reason for this
+ * request. Read them with `Cause.reasonAnnotations`, or use `Cause.annotations`
+ * to read the merged annotations from all reasons in the cause.
  *
  * **Gotchas**
  *
- * The supplied ID affects the recorded interruptor. It does not make
- * interruption synchronous or force uninterruptible regions to stop early.
+ * - The supplied ID identifies the interruptor; it does not force an
+ *   uninterruptible region to stop early. If the fiber finishes in that region
+ *   without receiving the interruption, or has already exited, its exit does
+ *   not contain this request's annotations.
+ * - The runtime preserves caller-supplied keys except for `Cause.StackTrace`
+ *   and `Cause.InterruptorStackTrace`. If you supply either runtime-owned key,
+ *   which value you get is unspecified.
  *
  * **Example** (Interrupting a fiber as another fiber)
  *

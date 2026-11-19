@@ -577,6 +577,7 @@ describe("Queue", () => {
       assert.deepStrictEqual(items, [1, 2, 3, 4, 5, 6, 7, 8, 9])
       assert.strictEqual(yield* Queue.await(queue), void 0)
       assert.strictEqual(yield* Queue.offer(queue, 10), false)
+      assert.deepStrictEqual(yield* Queue.offerAll(queue, [10, 11]), [10, 11])
     }))
 
   it.effect("end with take", () =>
