@@ -12,13 +12,16 @@
  * @since 4.0.0
  */
 import type * as Effect from "./Effect.ts"
+import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
+import { TracerTimingEnabled } from "./internal/references.ts"
 import type * as Option from "./Option.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Scope from "./Scope.ts"
+import type * as Tracer from "./Tracer.ts"
 
 /**
  * A counting semaphore that coordinates concurrent access with permits.
@@ -265,21 +268,27 @@ const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
 const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
-  onAcquire: () => Effect.Effect<A, E, R>,
-  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity
+  onAcquire: (fiber: Fiber<unknown, unknown>) => Effect.Effect<A, E, R>,
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity,
+  spanName?: string,
+  options?: Tracer.SpanOptionsNoTrace
 ): Effect.Effect<A, E, R> =>
   core.withFiber((fiber) => {
     if (self.free >= n && firstAvailableWaiter(self) === undefined) {
       self.taken += n
-      return onAcquire()
+      return onAcquire(fiber)
     }
     // A wake does not reserve permits: the waiter keeps its queue entry until
     // it acquires or is interrupted, and re-checks eligibility when it runs.
+    const span = spanName === undefined ? undefined : internal.makeSpanUnsafe(fiber, spanName, options)
     const waiter: Waiter = { permits: n, resume: undefined }
-    const remove = () => {
+    const remove = (exit: Exit.Exit<unknown, unknown>) => {
       if (self.waiters.delete(waiter)) {
         if (self.waiters.size === 0) self.waiterPermitsLowerBound = Infinity
         self.releaseUnsafe(fiber, 0)
+        if (span) {
+          internal.endSpanUnsafe(span, exit, fiber.getRef(internal.ClockRef), fiber.getRef(TracerTimingEnabled))
+        }
       }
       return undefined
     }
@@ -294,16 +303,40 @@ const takePermits = <A, E, R>(
         waiter.resume = resume
       }
     }, { blockedOn: self }))
-    const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
+    // Claim the permits, let `onAcquire` guard them, then end the wait span,
+    // all in one step so a scheduler yield cannot extend the span.
+    const claim: Effect.Effect<A, E, R> = core.withFiber(() => {
       if (firstAvailableWaiter(self) !== waiter) return loop
       self.taken += n
-      remove()
-      return onAcquire()
+      const acquired = onAcquire(fiber)
+      remove(internal.exitVoid)
+      return acquired
     })
+    const loop = internal.flatMap(wait, () => claim)
     return loop
   })
 
 const TypeId = "~effect/Semaphore"
+
+const withPermitsImpl =
+  (self: SemaphoreImpl, n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) =>
+  <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    internal.uninterruptibleMask((restore) =>
+      takePermits(
+        self,
+        n,
+        (fiber) => {
+          internal.onExitUnsafe(fiber, () => {
+            self.releaseUnsafe(fiber, n)
+            return undefined
+          })
+          return restore(effect)
+        },
+        restore,
+        spanName,
+        options
+      )
+    )
 
 class SemaphoreImpl implements Semaphore {
   readonly [TypeId] = TypeId
@@ -388,19 +421,7 @@ class SemaphoreImpl implements Semaphore {
   }
 
   withPermits(n: number) {
-    return <A, E, R>(self: Effect.Effect<A, E, R>) =>
-      internal.uninterruptibleMask((restore) =>
-        takePermits(
-          this,
-          n,
-          () =>
-            internal.onExitPrimitive(restore(self), () => {
-              this.releaseUnsafe(internal.getCurrentFiber()!, n)
-              return undefined
-            }, true),
-          restore
-        )
-      )
+    return withPermitsImpl(this, n)
   }
 
   readonly withPermit = this.withPermits(1)
@@ -511,6 +532,41 @@ export const withPermits: {
   const withPermits = self.withPermits(permits)
   return effect ? withPermits(effect) : withPermits
 }) as any
+
+/**
+ * Runs an effect with the given number of permits, tracing only the time spent
+ * waiting for them.
+ *
+ * **When to use**
+ *
+ * Use to distinguish time spent waiting for permits from time spent running the
+ * effect: `effect.pipe(Semaphore.withPermitsTraced(limit, 1, "waitForPermit"))`.
+ *
+ * **Details**
+ *
+ * A child span named `spanName` is created only if acquisition has to queue. It
+ * ends when the permits are acquired or the wait is interrupted, and never
+ * wraps the effect. Acquired permits are released when the effect exits.
+ *
+ * **Gotchas**
+ *
+ * Pass the semaphore returned by {@link make} or {@link makeUnsafe}, not a
+ * wrapper that forwards its public methods: tracing observes the semaphore's
+ * internal wait queue.
+ *
+ * @see {@link withPermits} for acquiring permits without tracing the wait
+ *
+ * @stability stable
+ * @category combinators
+ * @since 4.2.0
+ */
+export const withPermitsTraced = (
+  self: Semaphore,
+  permits: number,
+  spanName: string,
+  options?: Tracer.SpanOptionsNoTrace
+): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
+  withPermitsImpl(self as SemaphoreImpl, permits, spanName, options)
 
 /**
  * Runs an effect with a single permit and releases the permit when the effect
