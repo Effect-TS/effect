@@ -11,7 +11,7 @@
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import * as Effect from "effect/Effect"
-import { identity, pipe } from "effect/Function"
+import { pipe } from "effect/Function"
 import * as EtagImpl from "effect/http/Etag"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
@@ -20,9 +20,9 @@ import * as ServerResponse from "effect/http/HttpServerResponse"
 import * as Mime from "effect/http/Mime"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Stream from "effect/Stream"
 import * as Fs from "node:fs"
 import { pipeline, Readable } from "node:stream"
+import { type ReadableStream, TransformStream } from "node:stream/web"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeStream from "./NodeStream.ts"
 
@@ -135,49 +135,46 @@ export const make = Platform.make({
     })
   },
   fileWebResponse(file, status, statusText, headers, options) {
-    const offset = Math.min(Math.max(Math.trunc(options?.offset || 0), 0), file.size)
+    const offset = Math.min(file.size, Math.max(0, Math.trunc(options?.offset ?? 0) || 0))
     const available = file.size - offset
-    const contentLength = options?.bytesToRead === undefined
-      ? available
-      : Math.min(Math.max(Math.trunc(options.bytesToRead || 0), 0), available)
-    const responseOptions = {
-      headers: Headers.merge(
-        headers,
-        Headers.fromRecordUnsafe({
-          "content-type": headers["content-type"] ??
-            (file.type === ""
-              ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
-              : file.type),
-          "content-length": contentLength.toString()
-        })
-      ),
-      status,
-      statusText
-    }
-    if (options?.offset === undefined && options?.bytesToRead === undefined) {
-      return ServerResponse.raw(lazyReadable(() => Readable.fromWeb(file.stream() as any)), responseOptions)
-    }
+    const length = Math.min(available, Math.max(0, Math.trunc(options?.bytesToRead ?? available) || 0))
+    return ServerResponse.raw(
+      lazyReadable(() => {
+        if (length === 0) return Readable.from([])
+        const source = file.stream() as ReadableStream<Uint8Array>
+        if (length === file.size) return Readable.fromWeb(source)
 
-    const end = offset + contentLength
-    const stream = contentLength === 0
-      ? Stream.empty
-      : Stream.fromReadableStream({
-        evaluate: () => file.stream() as ReadableStream<Uint8Array>,
-        onError: identity
-      }).pipe(
-        Stream.mapAccum(
-          () => 0,
-          (position, bytes) => {
-            const next = position + bytes.length
-            if (next <= offset) return [next, []]
-            const chunk = bytes.subarray(Math.max(0, offset - position), end - position)
-            return [next, [{ chunk, done: next >= end }]]
-          }
+        let skip = offset
+        let remaining = length
+        return Readable.fromWeb(source.pipeThrough(
+          new TransformStream<Uint8Array, Uint8Array>({
+            transform(chunk, controller) {
+              const start = Math.min(skip, chunk.length)
+              skip -= start
+              const count = Math.min(remaining, chunk.length - start)
+              if (count === 0) return
+              controller.enqueue(chunk.subarray(start, start + count))
+              remaining -= count
+              if (remaining === 0) controller.terminate()
+            }
+          })
+        ))
+      }),
+      {
+        headers: Headers.merge(
+          headers,
+          Headers.fromRecordUnsafe({
+            "content-type": headers["content-type"] ??
+              (file.type === ""
+                ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
+                : file.type),
+            "content-length": length.toString()
+          })
         ),
-        Stream.takeUntil((value) => value.done),
-        Stream.map((value) => value.chunk)
-      )
-    return ServerResponse.stream(stream, { ...responseOptions, contentLength })
+        status,
+        statusText
+      }
+    )
   }
 })
 
