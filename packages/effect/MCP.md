@@ -258,8 +258,9 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
 `message` is sent as that message instead.
 
-A tool annotated `Tool.Readonly` is listed with `destructiveHint: false` unless it also sets
-`Tool.Destructive`.
+In `tools/list`, an explicit `Tool.Destructive` value takes precedence. Otherwise,
+`destructiveHint` is `false` when `Tool.Readonly` is `true`, and `true` when `Tool.Readonly`
+is `false` or unset.
 
 ## Request-level dependencies
 
