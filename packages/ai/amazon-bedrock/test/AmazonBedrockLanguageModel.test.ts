@@ -172,7 +172,7 @@ describe("AmazonBedrockLanguageModel", () => {
 
         yield* LanguageModel.generateText({
           prompt: Prompt.make([
-            { role: "user", content: "Weather in SF and LA?" },
+            { role: "user", content: "Weather in SF, LA, NY and DC?" },
             {
               role: "assistant",
               content: [
@@ -186,6 +186,18 @@ describe("AmazonBedrockLanguageModel", () => {
                   id: "tooluse_2",
                   name: "Weather",
                   params: { city: "LA" },
+                  providerExecuted: false
+                }),
+                Prompt.toolCallPart({
+                  id: "tooluse_3",
+                  name: "Weather",
+                  params: { city: "NY" },
+                  providerExecuted: false
+                }),
+                Prompt.toolCallPart({
+                  id: "tooluse_4",
+                  name: "Weather",
+                  params: { city: "DC" },
                   providerExecuted: false
                 })
               ]
@@ -206,6 +218,20 @@ describe("AmazonBedrockLanguageModel", () => {
                   result: "service unavailable",
                   isFailure: true,
                   providerExecuted: false
+                }),
+                Prompt.toolResultPart({
+                  id: "tooluse_3",
+                  name: "Weather",
+                  result: [],
+                  isFailure: false,
+                  providerExecuted: false
+                }),
+                Prompt.toolResultPart({
+                  id: "tooluse_4",
+                  name: "Weather",
+                  result: null,
+                  isFailure: false,
+                  providerExecuted: false
                 })
               ]
             }
@@ -221,19 +247,23 @@ describe("AmazonBedrockLanguageModel", () => {
         assertDefined(request)
         const body = yield* getRequestBody(request)
         assert.deepStrictEqual(body.messages, [
-          { role: "user", content: [{ text: "Weather in SF and LA?" }] },
+          { role: "user", content: [{ text: "Weather in SF, LA, NY and DC?" }] },
           {
             role: "assistant",
             content: [
               { toolUse: { toolUseId: "tooluse_1", name: "Weather", input: { city: "SF" } } },
-              { toolUse: { toolUseId: "tooluse_2", name: "Weather", input: { city: "LA" } } }
+              { toolUse: { toolUseId: "tooluse_2", name: "Weather", input: { city: "LA" } } },
+              { toolUse: { toolUseId: "tooluse_3", name: "Weather", input: { city: "NY" } } },
+              { toolUse: { toolUseId: "tooluse_4", name: "Weather", input: { city: "DC" } } }
             ]
           },
           {
             role: "user",
             content: [
               { toolResult: { toolUseId: "tooluse_1", content: [{ json: { temperature: 20 } }] } },
-              { toolResult: { toolUseId: "tooluse_2", content: [{ text: "service unavailable" }], status: "error" } }
+              { toolResult: { toolUseId: "tooluse_2", content: [{ text: "service unavailable" }], status: "error" } },
+              { toolResult: { toolUseId: "tooluse_3", content: [{ text: "[]" }] } },
+              { toolResult: { toolUseId: "tooluse_4", content: [{ text: "null" }] } }
             ]
           }
         ])
