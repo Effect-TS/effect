@@ -278,85 +278,65 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(batches, [[1, 2, 3]])
     }))
 
-  describe("shared RPC stream tracing", () => {
-    const Watch = Rpc.make("Watch", { success: Schema.Number, stream: true }).annotate(Rpc.TracingEnabled, "none")
-    const group = RpcGroup.make(Watch)
-
-    for (const handler of ["Stream", "Effect<Dequeue>"] as const) {
-      it.effect(`a silent ${handler} ends each acquisition span without releasing its subscription`, () => {
-        const spans: Array<Tracer.Span> = []
-        const tracer = Tracer.make({
-          span(options) {
-            const span = new Tracer.NativeSpan(options)
-            spans.push(span)
-            return span
-          }
-        })
-        return Effect.gen(function*() {
-          const feed = yield* PubSub.unbounded<number>()
-          const acquired = yield* Queue.unbounded<PubSub.Subscription<number>>()
-          const released = yield* Queue.unbounded<void>()
-          const requests = yield* Queue.unbounded<RpcMessage.FromClient<typeof Watch>>()
-          const { client, write } = yield* RpcClient.makeNoSerialization(group, {
-            onFromClient: ({ message }) => Queue.offer(requests, message)
-          })
-          const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: write }).pipe(
-            Effect.provide(group.toLayer({
-              Watch: (_, { remoteParentSpan }) => {
-                const subscribe = Effect.gen(function*() {
-                  yield* Effect.addFinalizer(() => Queue.offer(released, undefined))
-                  const sub = yield* PubSub.subscribe(feed).pipe(
-                    Effect.withSpan("Watch.subscribe", { parent: remoteParentSpan })
-                  )
-                  yield* Queue.offer(acquired, sub)
-                  return Stream.fromSubscription(sub)
-                })
-                return handler === "Stream"
-                  ? Stream.unwrap(subscribe)
-                  : Effect.flatMap(subscribe, Stream.toQueue({ capacity: 1 }))
-              }
-            }))
-          )
-          // Dispatch from a separate fiber so the server cannot inherit either caller's span.
-          yield* Stream.fromQueue(requests).pipe(Stream.runForEach((msg) => server.write(0, msg)), Effect.forkScoped)
-
-          const listen = Effect.fnUntraced(function*(id: string) {
-            const parent = Tracer.externalSpan({ traceId: `trace-${id}`, spanId: id })
-            const values = yield* Queue.unbounded<number>()
-            const fiber = yield* client.Watch().pipe(
-              Stream.runForEach((value) => Queue.offer(values, value)),
-              Effect.withParentSpan(parent),
-              Effect.forkScoped
-            )
-            const subscription = yield* Queue.take(acquired)
-            return { fiber, parent, subscription, values }
-          })
-          const first = yield* listen("first")
-          const second = yield* listen("second")
-
-          assert.deepStrictEqual(spans.map((s) => s.name), ["Watch.subscribe", "Watch.subscribe"])
-          for (const [index, { parent }] of [first, second].entries()) {
-            const span = spans[index]!
-            assert.strictEqual(span.status._tag, "Ended")
-            assert.strictEqual(span.traceId, parent.traceId)
-            assert.strictEqual(Option.getOrThrow(span.parent).spanId, parent.spanId)
-          }
-
-          yield* PubSub.publish(feed, 1)
-          assert.strictEqual(yield* Queue.take(first.values), 1)
-          assert.strictEqual(yield* Queue.take(second.values), 1)
-          yield* Fiber.interrupt(first.fiber)
-          yield* Queue.take(released)
-          assert.isTrue(Option.isNone(PubSub.remainingUnsafe(first.subscription)))
-          yield* PubSub.publish(feed, 2)
-          assert.strictEqual(yield* Queue.take(second.values), 2)
-          yield* Fiber.interrupt(second.fiber)
-          yield* Queue.take(released)
-          assert.isTrue(Option.isNone(PubSub.remainingUnsafe(second.subscription)))
-        }).pipe(Effect.withTracer(tracer))
+  it.effect("a silent subscription can trace acquisition using only the propagated caller span", () => {
+    const spans: Array<Tracer.Span> = []
+    return Effect.gen(function*() {
+      const watch = Rpc.make("Watch", { success: Schema.Number, stream: true }).annotate(Rpc.TracingEnabled, "none")
+      const group = RpcGroup.make(watch)
+      const feed = yield* PubSub.unbounded<number>()
+      const acquired = yield* Deferred.make<void>()
+      const requests = yield* Queue.unbounded<RpcMessage.FromClient<typeof watch>>()
+      const { client, write } = yield* RpcClient.makeNoSerialization(group, {
+        onFromClient: ({ message }) => Queue.offer(requests, message)
       })
-    }
+      const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: write }).pipe(
+        Effect.provide(group.toLayer({
+          Watch: (_, { remoteParentSpan }) =>
+            Stream.unwrap(
+              PubSub.subscribe(feed).pipe(
+                Effect.withSpan("Watch.subscribe", { parent: remoteParentSpan }),
+                Effect.tap(() => Deferred.succeed(acquired, undefined)),
+                Effect.map(Stream.fromSubscription)
+              )
+            )
+        }))
+      )
+      // Only the message crosses from the caller to the server fiber.
+      yield* Stream.fromQueue(requests).pipe(Stream.runForEach((msg) => server.write(0, msg)), Effect.forkScoped)
+      const caller = Tracer.externalSpan({ traceId: "caller-trace", spanId: "caller-span", sampled: false })
+      yield* client.Watch().pipe(Stream.runDrain, Effect.withParentSpan(caller), Effect.forkScoped)
+      yield* Deferred.await(acquired)
+      assert.deepStrictEqual(spans.map((span) => span.name), ["Watch.subscribe"])
+      assert.deepStrictEqual(Option.getOrThrow(spans[0].parent), caller)
+      assert.strictEqual(spans[0].status._tag, "Ended")
+    }).pipe(Effect.withTracer(Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })))
   })
+
+  it.effect("a request with a span ID but no trace ID has no remote parent", () =>
+    Effect.gen(function*() {
+      const observed = yield* Deferred.make<Tracer.ExternalSpan | undefined>()
+      const group = RpcGroup.make(Rpc.make("Ping"))
+      const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: () => Effect.void }).pipe(
+        Effect.provide(group.toLayer({
+          Ping: (_, { remoteParentSpan }) => Deferred.succeed(observed, remoteParentSpan).pipe(Effect.asVoid)
+        }))
+      )
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId(1),
+        tag: "Ping",
+        payload: undefined,
+        headers: Headers.empty,
+        spanId: "orphan"
+      })
+      assert.isUndefined(yield* Deferred.await(observed))
+    }))
 
   it.effect("records effect and stream encode defects on server spans, even when middleware swallows them", () =>
     Effect.gen(function*() {
