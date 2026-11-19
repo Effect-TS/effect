@@ -2227,6 +2227,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                     ? handler.handler(payload, {
                       rpc,
                       requestId: RpcMessage.RequestId(request.id),
+                      remoteParent: undefined,
                       client: new Rpc.ServerClient(clientId),
                       headers
                     }) as any as Effect.Effect<void>

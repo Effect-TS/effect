@@ -40,7 +40,7 @@ import * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import type * as Struct from "../Struct.ts"
-import type { Span } from "../Tracer.ts"
+import * as Tracer from "../Tracer.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import * as Worker from "../workers/Worker.ts"
 import type { WorkerError } from "../workers/WorkerError.ts"
@@ -303,9 +303,18 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     }
   }, Effect.uninterruptible)
 
+  const traceFields = (fiber: Fiber.Fiber<unknown, unknown>, clientSpan: Tracer.Span | undefined) => {
+    if (disableTracing || !fiber.cache.tracerEnabled || fiber.getRef(Tracer.DisablePropagation)) return undefined
+    const span = clientSpan ?? fiber.cache.span
+    if (!span || Context.get(span.annotations, Tracer.DisablePropagation)) return undefined
+    return { traceId: span.traceId, spanId: span.spanId, sampled: span.sampled }
+  }
+
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
     const middleware = getRpcClientMiddleware(rpc)
+    const tracing = Context.get(rpc.annotations, Rpc.TracingEnabled)
+    const createSpan = !disableTracing && (tracing === "both" || tracing === "client")
     return (payload: any, opts?: {
       readonly asQueue?: boolean | undefined
       readonly streamBufferSize?: number | undefined
@@ -316,7 +325,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       const headers = opts?.headers ? Headers.fromInput(opts.headers) : Headers.empty
       const context = opts?.context ?? Context.empty()
       if (!isStream) {
-        const onRequest = (span: Span | undefined) =>
+        const onRequest = (span: Tracer.Span | undefined) =>
           onEffectRequest(
             rpc,
             middleware,
@@ -326,7 +335,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             context,
             opts?.discard ?? false
           )
-        return disableTracing ? onRequest(undefined) : Effect.useSpan(
+        if (!createSpan) return onRequest(undefined)
+        return Effect.useSpan(
           RpcTracing.spanName(spanPrefix, rpc._tag),
           { kind: "client", attributes: RpcTracing.spanAttributes(rpc._tag, options.spanAttributes) },
           onRequest
@@ -334,6 +344,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
       const queue = onStreamRequest(
         rpc,
+        createSpan,
         middleware,
         rpc.payloadSchema.make(payload),
         headers,
@@ -351,7 +362,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       send: (request: Request<Rpcs>) => Effect.Effect<any, E>,
       request: Request<Rpcs>
     ) => Effect.Effect<any, E>,
-    span: Span | undefined,
+    span: Tracer.Span | undefined,
     payload: any,
     headers: Headers.Headers,
     context: Context.Context<never>,
@@ -369,13 +380,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           id,
           tag: rpc._tag as Rpc.Tag<Rpcs>,
           payload,
-          ...(span ?
-            {
-              traceId: span.traceId,
-              spanId: span.spanId,
-              sampled: span.sampled
-            } :
-            {}),
+          ...traceFields(parentFiber, span),
           headers: Headers.merge(parentFiber.getRef(CurrentHeaders), headers),
           ...(discard ? { discard: true as const } : {})
         }
@@ -431,6 +436,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 
   const onStreamRequest = Effect.fnUntraced(function*(
     rpc: Rpc.AnyWithProps,
+    createSpan: boolean,
     middleware: (
       send: (request: Request<Rpcs>) => Effect.Effect<any, E>,
       request: Request<Rpcs>
@@ -444,7 +450,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       return yield* Effect.interrupt
     }
 
-    const span = disableTracing ? undefined : yield* Effect.makeSpanScoped(
+    const span = !createSpan ? undefined : yield* Effect.makeSpanScoped(
       RpcTracing.spanName(spanPrefix, rpc._tag),
       { kind: "client", attributes: RpcTracing.spanAttributes(rpc._tag, options.spanAttributes) }
     )
@@ -484,13 +490,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         id,
         tag: rpc._tag as Rpc.Tag<Rpcs>,
         payload,
-        ...(span ?
-          {
-            traceId: span.traceId,
-            spanId: span.spanId,
-            sampled: span.sampled
-          } :
-          {}),
+        ...traceFields(fiber, span),
         headers: Headers.merge(fiber.getRef(CurrentHeaders), headers)
       }
     ).pipe(
