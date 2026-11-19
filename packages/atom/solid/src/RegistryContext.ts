@@ -9,7 +9,7 @@
  */
 import type * as Atom from "effect/reactivity/Atom"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
-import type { JSX } from "solid-js"
+import type { FlowProps } from "solid-js"
 import { createComponent, createContext, onCleanup } from "solid-js"
 import { isSolid2 } from "./internal/solid.ts"
 
@@ -62,12 +62,12 @@ export const RegistryContext = createContext<AtomRegistry.AtomRegistry>(AtomRegi
  * @since 4.0.0
  */
 export const RegistryProvider = (options: {
-  readonly children?: JSX.Element | undefined
+  readonly children?: FlowProps["children"] | undefined
   readonly initialValues?: Iterable<readonly [Atom.Atom<any>, any, Atom.InitialValueOptions?]> | undefined
   readonly scheduleTask?: ((f: () => void) => () => void) | undefined
   readonly timeoutResolution?: number | undefined
   readonly defaultIdleTTL?: number | undefined
-}) => {
+}): ReturnType<typeof createComponent> => {
   const registry = AtomRegistry.make({
     scheduleTask: options.scheduleTask,
     initialValues: options.initialValues,
