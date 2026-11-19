@@ -9,12 +9,14 @@ import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
+import * as Prompt from "effect/ai/Prompt"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Base64 from "effect/encoding/Base64"
 import * as ErrorReporter from "effect/ErrorReporter"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -2580,6 +2582,171 @@ describe("McpServer", () => {
           assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
         }
       }))
+
+    describe("model output", () => {
+      const imageBytes = new Uint8Array([137, 80, 78, 71])
+      const audioBytes = new Uint8Array([82, 73, 70, 70])
+      const ModelOutputToolkit = Toolkit.make(
+        Tool.make("Screenshot", {
+          success: Schema.Struct({ caption: Schema.String }),
+          toModelOutput: ({ caption }) => [
+            Prompt.textPart({ text: caption }),
+            Prompt.filePart({ mediaType: "image/png", data: imageBytes })
+          ]
+        }),
+        Tool.make("Recording", {
+          success: Schema.Struct({ seconds: Schema.Number }),
+          toModelOutput: () => [
+            Prompt.filePart({ mediaType: "audio/wav", data: Base64.encode(audioBytes) }),
+            Prompt.filePart({ mediaType: "image/png", data: `data:image/png;base64,${Base64.encode(imageBytes)}` }),
+            Prompt.filePart({
+              mediaType: "audio/wav",
+              data: new URL(`data:audio/wav;base64,${Base64.encode(audioBytes)}`)
+            })
+          ]
+        }),
+        Tool.make("Report", {
+          success: Schema.Struct({ pages: Schema.Number }),
+          toModelOutput: () => [
+            Prompt.filePart({ mediaType: "application/pdf", fileName: "report.pdf", data: new Uint8Array([1]) }),
+            Prompt.filePart({ mediaType: "text/csv", data: "YSxi" })
+          ]
+        }),
+        Tool.make("RemoteImage", {
+          success: Schema.Struct({ ok: Schema.Boolean }),
+          toModelOutput: () => [
+            Prompt.filePart({ mediaType: "image/png", data: new URL("https://example.com/images/cat.png") }),
+            Prompt.filePart({
+              mediaType: "application/pdf",
+              fileName: "Spec",
+              data: new URL("https://example.com/spec.pdf")
+            })
+          ]
+        }),
+        Tool.make("Silent", {
+          success: Schema.Struct({ ok: Schema.Boolean }),
+          toModelOutput: () => []
+        }),
+        Tool.make("Plain", {
+          success: Schema.Struct({ answer: Schema.String })
+        }),
+        Tool.make("Broken", {
+          success: Schema.Struct({ caption: Schema.String }),
+          failure: Schema.Struct({ reason: Schema.String }),
+          toModelOutput: ({ caption }) => [Prompt.textPart({ text: caption })]
+        })
+      )
+      const modelOutputHandlers = ModelOutputToolkit.toLayer({
+        Screenshot: () => Effect.succeed({ caption: "A cat" }),
+        Recording: () => Effect.succeed({ seconds: 2 }),
+        Report: () => Effect.succeed({ pages: 3 }),
+        RemoteImage: () => Effect.succeed({ ok: true }),
+        Silent: () => Effect.succeed({ ok: true }),
+        Plain: () => Effect.succeed({ answer: "result" }),
+        Broken: () => Effect.fail({ reason: "busy" })
+      })
+      const modelOutputRegistrations = McpServer.toolkit(ModelOutputToolkit).pipe(
+        Layer.provideMerge(modelOutputHandlers)
+      )
+      const makeModelOutputClient = McpTest.makeClient(modelOutputRegistrations, {
+        protocols: [McpProtocol.v2025_06_18]
+      })
+
+      it.effect("sends text and image model output as content with base64 data on the wire", () =>
+        Effect.gen(function*() {
+          const harness = yield* makeHttpHarness(
+            modelOutputRegistrations.pipe(Layer.provideMerge(makeServerLayer({ name: "ModelOutput" })))
+          )
+          const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_06_18)
+          const response = yield* readMcpHttpResponse(
+            yield* harness.post({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: { name: "Screenshot", arguments: {} }
+            }, headers)
+          )
+
+          assert.deepStrictEqual((response as { readonly result: unknown }).result, {
+            isError: false,
+            structuredContent: { caption: "A cat" },
+            content: [
+              { type: "text", text: "A cat" },
+              { type: "image", mimeType: "image/png", data: Base64.encode(imageBytes) }
+            ]
+          })
+        }))
+
+      it.effect("decodes base64 and data URL audio and images to bytes", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "Recording" })
+
+          assert.deepStrictEqual(result.structuredContent, { seconds: 2 })
+          assert.deepStrictEqual(result.content, [
+            { type: "audio", mimeType: "audio/wav", data: audioBytes },
+            { type: "image", mimeType: "image/png", data: imageBytes },
+            { type: "audio", mimeType: "audio/wav", data: audioBytes }
+          ])
+        }))
+
+      it.effect("replaces unsupported file parts with a placeholder", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "Report" })
+
+          assert.deepStrictEqual(result.structuredContent, { pages: 3 })
+          assert.deepStrictEqual(result.content, [
+            { type: "text", text: "[application/pdf report.pdf omitted]" },
+            { type: "text", text: "[text/csv omitted]" }
+          ])
+        }))
+
+      it.effect("links remote file URLs as resource links", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "RemoteImage" })
+
+          assert.deepStrictEqual(result.content, [
+            {
+              type: "resource_link",
+              uri: "https://example.com/images/cat.png",
+              name: "cat.png",
+              mimeType: "image/png"
+            },
+            { type: "resource_link", uri: "https://example.com/spec.pdf", name: "Spec", mimeType: "application/pdf" }
+          ])
+        }))
+
+      it.effect("sends empty model output as empty content", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "Silent" })
+
+          assert.isFalse(result.isError)
+          assert.deepStrictEqual(result.structuredContent, { ok: true })
+          assert.deepStrictEqual(result.content, [])
+        }))
+
+      it.effect("keeps the JSON text block for tools without model output", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "Plain" })
+
+          assert.deepStrictEqual(result.structuredContent, { answer: "result" })
+          assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify({ answer: "result" }) }])
+        }))
+
+      it.effect("keeps failures as encoded JSON text", () =>
+        Effect.gen(function*() {
+          const client = yield* makeModelOutputClient
+          const result = yield* client.callTool({ name: "Broken" })
+
+          assert.isTrue(result.isError)
+          assert.isUndefined(result.structuredContent)
+          assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify({ reason: "busy" }) }])
+        }))
+    })
   })
 
   for (

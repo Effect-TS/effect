@@ -20,6 +20,7 @@ import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -95,6 +96,7 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
+import * as AiPrompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -3221,6 +3223,48 @@ const toolErrorResult = (message: string): CallToolResult =>
 const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
+const modelOutputContent = (parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>): CallToolResult["content"] =>
+  parts.map(modelOutputBlock)
+
+const modelOutputBlock = (part: AiPrompt.ToolModelOutputPart): McpSchema.ContentBlock => {
+  if (part.type === "text") return { type: "text", text: part.text }
+  const omitted: McpSchema.ContentBlock = {
+    type: "text",
+    text: AiPrompt.toolModelOutputToText([part])
+  }
+  const { data, mediaType } = part
+  if (data instanceof URL && (data.protocol === "http:" || data.protocol === "https:")) {
+    return {
+      type: "resource_link",
+      uri: data.href,
+      name: part.fileName ?? (/([^/]+)\/*$/.exec(data.pathname)?.[1] ?? data.href),
+      mimeType: mediaType
+    }
+  }
+  const type = mediaType.startsWith("image/") ? "image" : mediaType.startsWith("audio/") ? "audio" : undefined
+  if (type === undefined) return omitted
+  const bytes = fileBytes(data)
+  return bytes === undefined ? omitted : { type, data: bytes, mimeType: mediaType }
+}
+
+// File part data is raw bytes, a base64 string, or a `data:` URL (as a string or a `URL`).
+const fileBytes = (data: Uint8Array | string | URL): Uint8Array | undefined => {
+  if (data instanceof Uint8Array) return data
+  const text = data instanceof URL ? data.href : data
+  if (!text.startsWith("data:")) {
+    return data instanceof URL ? undefined : Result.getOrUndefined(Base64.decode(text))
+  }
+  const comma = text.indexOf(",")
+  if (comma === -1) return undefined
+  const payload = text.slice(comma + 1)
+  if (text.slice(0, comma).endsWith(";base64")) return Result.getOrUndefined(Base64.decode(payload))
+  try {
+    return new TextEncoder().encode(decodeURIComponent(payload))
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * The requirements of a toolkit registration.
  *
@@ -3331,12 +3375,18 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), failureResult)
-    const successResult = (structuredContent: unknown) =>
-      new CallToolResult({
+    // Model output replaces the JSON text block; `structuredContent` keeps the encoded result.
+    const successResult = (result: Tool.HandlerResult<Tools[keyof Tools]>) => {
+      // An absent result, such as `Schema.Void`, has no structured form.
+      const structuredContent = result.result === undefined ? undefined : result.encodedResult
+      return new CallToolResult({
         isError: false,
         structuredContent,
-        content: toolResultContent(structuredContent)
+        content: result.modelOutput === undefined
+          ? toolResultContent(structuredContent)
+          : modelOutputContent(result.modelOutput)
       })
+    }
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -3399,12 +3449,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           > => {
             // The Toolkit encodes successes and "return"-mode failures with their JSON codec.
             if (!result.isFailure) {
-              // An absent result, such as `Schema.Void`, has no structured form.
-              return Effect.succeed(
-                result.result === undefined
-                  ? new CallToolResult({ isError: false, content: [] })
-                  : successResult(result.encodedResult)
-              )
+              return Effect.succeed(successResult(result))
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
             return result.failureOrigin === "handler"
