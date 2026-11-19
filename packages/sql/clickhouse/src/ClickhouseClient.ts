@@ -3,8 +3,8 @@
  *
  * This module provides both the ClickHouse-specific {@link ClickhouseClient}
  * service and the generic {@link Client.SqlClient} service. `make` creates a
- * scoped client, checks the connection with `ping()` by default, maps ClickHouse errors
- * to `SqlError`, and aborts in-flight queries when interrupted. The
+ * scoped client that pings ClickHouse by default, maps failures to `SqlError`,
+ * and aborts in-flight queries when interrupted. The
  * ClickHouse-specific service adds typed parameters, command execution, insert
  * queries, query id and settings helpers, a statement compiler, and direct or
  * config-backed layers.
@@ -180,8 +180,8 @@ export const ClickhouseClient = Context.Service<ClickhouseClient, ClickhouseClie
  */
 export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfigOptions {
   /**
-   * Whether to ping ClickHouse when building the client. Defaults to true.
-   * Set to false to build without a request and handle failures per statement.
+   * Ping ClickHouse at startup (default: `true`). Set to `false` to build the
+   * client without a request and handle connection failures per statement.
    */
   readonly validateConnection?: boolean | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
@@ -190,9 +190,9 @@ export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfi
 }
 
 /**
- * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()` by default,
- * closes the underlying client when the scope ends, maps ClickHouse failures
- * to `SqlError`, and aborts plus kills in-flight queries when interrupted.
+ * Creates a `ClickhouseClient` that pings ClickHouse by default and closes
+ * when its scope ends. It maps failures to `SqlError` and aborts and kills
+ * in-flight queries on interruption.
  *
  * @stability unstable
  * @category constructors
