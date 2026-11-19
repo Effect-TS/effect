@@ -90,8 +90,8 @@ describe("atom-solid", () => {
   })
 
   describe("lifecycle", () => {
-    it("releases the previous atom when the atom changes and the current atom on dispose", async () => {
-      const registry = AtomRegistry.make()
+    it("releases the previous atom when the atom changes and the current atom on dispose", () => {
+      const { registry, runRemovals } = makeRegistry()
       const released: Array<string> = []
       const named = (name: string) =>
         Atom.make((get) => {
@@ -116,12 +116,12 @@ describe("atom-solid", () => {
 
       select(second)
       flush()
-      await removals()
+      runRemovals()
       assert.deepStrictEqual(observed, ["first", "second"])
       assert.deepStrictEqual(released, ["first"])
 
       dispose()
-      await removals()
+      runRemovals()
       assert.deepStrictEqual(released, ["first", "second"])
     })
 
@@ -162,7 +162,7 @@ describe("atom-solid", () => {
       })
       flush()
       await promise
-      await removals()
+      await new Promise((resolve) => setTimeout(resolve, 0))
       flush()
       assert.strictEqual(value(), promise)
       assert.strictEqual(observed.length, 1)
@@ -170,8 +170,8 @@ describe("atom-solid", () => {
       dispose()
     })
 
-    it("useAtomMount and useAtomSubscribe release on dispose", async () => {
-      const registry = AtomRegistry.make()
+    it("useAtomMount and useAtomSubscribe release on dispose", () => {
+      const { registry, runRemovals } = makeRegistry()
       let released = false
       const mounted = Atom.make((get) => {
         get.addFinalizer(() => {
@@ -191,13 +191,13 @@ describe("atom-solid", () => {
       })
       flush()
       registry.set(counter, 1)
-      await removals()
+      runRemovals()
       assert.isFalse(released)
       assert.deepStrictEqual(notified, [1])
 
       dispose()
       registry.set(counter, 2)
-      await removals()
+      runRemovals()
       assert.isTrue(released)
       assert.deepStrictEqual(notified, [1])
     })
@@ -414,5 +414,23 @@ const renderAtomResource = function<A, E>(
   return { resource: resource!, dispose }
 }
 
-// Atom removal is scheduled on the registry's task queue.
-const removals = () => new Promise((resolve) => setTimeout(resolve, 0))
+// The registry defers atom removal to its task queue, which defaults to
+// `setImmediate`. Waiting on a timer does not guarantee that queue has run, so
+// these tests queue the tasks themselves and run them on demand.
+const makeRegistry = () => {
+  const tasks: Array<() => void> = []
+  const registry = AtomRegistry.make({
+    scheduleTask(task) {
+      tasks.push(task)
+      return () => {
+        const index = tasks.indexOf(task)
+        if (index !== -1) tasks.splice(index, 1)
+      }
+    }
+  })
+  const runRemovals = () => {
+    let task: (() => void) | undefined
+    while ((task = tasks.shift()) !== undefined) task()
+  }
+  return { registry, runRemovals }
+}
