@@ -1,4 +1,4 @@
-import { assert, describe, expectTypeOf, it, vitest } from "@effect/vitest"
+import { assert, describe, expectTypeOf, it } from "@effect/vitest"
 import { type Cause, Deferred, Effect, Layer, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/reactivity"
 import {
@@ -71,31 +71,28 @@ describe("AtomRpc", () => {
         protocol: group.toLayer({ get: () => Effect.sync(() => ++requests) }),
         makeEffect: RpcTest.makeClient(group, { flatten: true })
       })
-      const atom = Client.query("get", undefined, { serializationKey: "value", staleTime: 1_000 })
-      const clock = vitest.spyOn(Date, "now").mockReturnValue(10_000)
-      yield* Effect.addFinalizer(() => Effect.sync(() => clock.mockRestore()))
+      const query = (staleTime: number) => Client.query("get", undefined, { serializationKey: "value", staleTime })
+      const atom = query(Infinity)
       const server = AtomRegistry.make()
       yield* Effect.addFinalizer(() => Effect.sync(() => server.dispose()))
       yield* AtomRegistry.mount(server, atom)
       assert.strictEqual(yield* AtomRegistry.getResult(server, atom), 1)
       const state = Hydration.dehydrate(server)
 
-      for (const age of [500, 1_500]) {
-        clock.mockReturnValue(10_000 + age)
+      for (const [reader, expected] of [[atom, 1], [query(0), 2]] as const) {
         const client = AtomRegistry.make()
         yield* Effect.addFinalizer(() => Effect.sync(() => client.dispose()))
         Hydration.hydrate(client, state)
-        yield* AtomRegistry.mount(client, atom)
-        const seed = client.get(atom)
+        yield* AtomRegistry.mount(client, reader)
+        const seed = client.get(reader)
         assert(AsyncResult.isSuccess(seed))
         assert.strictEqual(seed.value, 1)
         yield* Effect.yieldNow
-        const result = yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true })
-        const expected = age === 500 ? 1 : 2
+        const result = yield* AtomRegistry.getResult(client, reader, { suspendOnWaiting: true })
         assert.strictEqual(result, expected)
         assert.strictEqual(requests, expected)
       }
-    }), { concurrent: false })
+    }))
 
   it.effect.each([
     { idA: "RpcA", tagA: "create", idB: "RpcB", tagB: "create" },

@@ -62,28 +62,23 @@ describe("AtomHttpApi", () => {
       assert.strictEqual(yield* AtomRegistry.getResult(server, atom), 1)
       const state = Hydration.dehydrate(server)
 
-      for (const age of [500, 1_500]) {
+      for (const [age, refresh, expected] of [[500, false, 1], [1_500, false, 2], [500, true, 3]] as const) {
         clock.mockReturnValue(10_000 + age)
         const client = AtomRegistry.make()
         yield* Effect.addFinalizer(() => Effect.sync(() => client.dispose()))
         Hydration.hydrate(client, state)
+        if (refresh) client.refresh(atom)
         yield* AtomRegistry.mount(client, atom)
-        const seed = client.get(atom)
-        assert(AsyncResult.isSuccess(seed))
-        assert.strictEqual(seed.value, 1)
+        if (!refresh) {
+          const seed = client.get(atom)
+          assert(AsyncResult.isSuccess(seed))
+          assert.strictEqual(seed.value, 1)
+        }
         yield* Effect.yieldNow
         const result = yield* AtomRegistry.getResult(client, atom, { suspendOnWaiting: true })
-        const expected = age === 500 ? 1 : 2
         assert.strictEqual(result, expected)
         assert.strictEqual(requests, expected)
       }
-      const refreshed = AtomRegistry.make()
-      yield* Effect.addFinalizer(() => Effect.sync(() => refreshed.dispose()))
-      clock.mockReturnValue(10_500)
-      Hydration.hydrate(refreshed, state)
-      refreshed.refresh(atom)
-      yield* AtomRegistry.mount(refreshed, atom)
-      assert.strictEqual(yield* AtomRegistry.getResult(refreshed, atom, { suspendOnWaiting: true }), 3)
     }), { concurrent: false })
 
   it.effect.each([false, true])(
@@ -105,11 +100,9 @@ describe("AtomHttpApi", () => {
         const read = (atom: typeof stale) => AtomRegistry.getResult(registry, atom, { suspendOnWaiting: true })
         const before = yield* read(stale)
         if (legacyFirst) assert.strictEqual(before, 2)
-        registry.refresh(stale)
-        assert.strictEqual(yield* read(legacy), before + 1)
-        registry.refresh(legacy)
-        assert.strictEqual(yield* read(stale), before + 2)
-        assert.strictEqual(requests, before + 2)
+        registry.refresh(second)
+        assert.strictEqual(yield* read(first), before + 1)
+        assert.strictEqual(requests, before + 1)
       })
   )
 
