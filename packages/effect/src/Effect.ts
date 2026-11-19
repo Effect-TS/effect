@@ -5107,8 +5107,8 @@ export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[duration: Durati
  * runs in an uninterruptible region.
  *
  * Early failures do not finish the race; `raceAll` keeps waiting until one
- * effect succeeds or every effect has failed. When one effect succeeds, the
- * remaining effects are interrupted. If every effect fails, the returned effect
+ * effect succeeds or every effect has failed. If one succeeds, any still-running
+ * contenders are interrupted. If every effect fails, the returned effect
  * fails with a cause containing the collected failure reasons.
  *
  * The returned effect completes only after the interrupted participants have
@@ -5160,7 +5160,7 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  * Any contender the race starts is initially interruptible, even when the race
  * runs in an uninterruptible region.
  *
- * After the first effect completes, all remaining effects are interrupted. Use
+ * Any still-running contenders are interrupted. Use
  * `raceAll` when early failures should be ignored until a success occurs or
  * all effects fail.
  *
@@ -5211,8 +5211,8 @@ export const raceAllFirst: <Eff extends Effect<any, any, any>>(
  * Any contender the race starts is initially interruptible, even when the race
  * runs in an uninterruptible region.
  *
- * If one effect succeeds, the other is interrupted and `onWinner` can observe the
- * winning fiber. If both fail, the race fails.
+ * If one effect succeeds, `onWinner` can observe the winning fiber. The other
+ * effect is interrupted if it is still running. If both fail, the race fails.
  *
  * The returned effect completes only after the interrupted participants have
  * finished, including their finalizers.
@@ -5274,15 +5274,15 @@ export const race: {
  *
  * **When to use**
  *
- * Use when any completion, including failure, should decide the race and
- * interrupt the losing effect.
+ * Use when any completion, including failure, should decide the race.
  *
  * **Details**
  *
  * Any contender the race starts is initially interruptible, even when the race
  * runs in an uninterruptible region.
  *
- * The losing effect is interrupted, and `onWinner` can observe the winning fiber.
+ * The losing effect is interrupted if it is still running. `onWinner` can
+ * observe the winning fiber.
  *
  * The returned effect completes only after the interrupted participants have
  * finished, including their finalizers.
