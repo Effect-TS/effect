@@ -442,9 +442,7 @@ describe("Semaphore", () => {
         yield* Fiber.interrupt(waiter)
         const status = spans[0]!.status
         assert.isTrue(status._tag === "Ended" && Exit.hasInterrupts(status.exit))
-        assert.isFalse(yield* sem.takeIfAvailable(1))
-        yield* sem.release(1)
-        assert.isTrue(yield* sem.takeIfAvailable(1))
+        assert.strictEqual(yield* sem.release(1), 1)
       }).pipe(recordSpans(spans))
     })
   })
