@@ -410,7 +410,7 @@ describe("Semaphore", () => {
       return Effect.gen(function*() {
         const caller = yield* Effect.currentSpan
         const sem = yield* Semaphore.make(1)
-        const traced = sem.withPermitsTraced(1, "wait")
+        const traced = Semaphore.withPermitsTraced(sem, 1, "wait")
         yield* traced(Effect.void)
         assert.lengthOf(spans, 0)
 

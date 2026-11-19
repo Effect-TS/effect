@@ -89,17 +89,6 @@ export interface Semaphore {
   withPermits(this: Semaphore, permits: number): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 
   /**
-   * Runs an effect with permits and traces only the time spent queued for them.
-   * Immediate acquisition creates no span, and the body keeps its caller span.
-   */
-  withPermitsTraced(
-    this: Semaphore,
-    permits: number,
-    spanName: string,
-    options?: Tracer.SpanOptionsNoTrace | undefined
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-
-  /**
    * Runs an effect with the given number of permits and releases the permits
    * when the effect completes.
    *
@@ -329,6 +318,26 @@ const takePermits = <A, E, R>(
 
 const TypeId = "~effect/Semaphore"
 
+const withPermitsImpl =
+  (limit: SemaphoreImpl, n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>) =>
+    internal.uninterruptibleMask((restore) =>
+      takePermits(
+        limit,
+        n,
+        (fiber) => {
+          internal.onExitUnsafe(fiber, () => {
+            limit.releaseUnsafe(fiber, n)
+            return undefined
+          })
+          return restore(self)
+        },
+        restore,
+        spanName,
+        options
+      )
+    )
+
 class SemaphoreImpl implements Semaphore {
   readonly [TypeId] = TypeId
   public waiters = new Set<Waiter>()
@@ -412,31 +421,7 @@ class SemaphoreImpl implements Semaphore {
   }
 
   withPermits(n: number) {
-    return this.withPermitsImpl(n)
-  }
-
-  withPermitsTraced(n: number, spanName: string, options?: Tracer.SpanOptionsNoTrace) {
-    return this.withPermitsImpl(n, spanName, options)
-  }
-
-  private withPermitsImpl(n: number, spanName?: string, options?: Tracer.SpanOptionsNoTrace) {
-    return <A, E, R>(self: Effect.Effect<A, E, R>) =>
-      internal.uninterruptibleMask((restore) =>
-        takePermits(
-          this,
-          n,
-          (fiber) => {
-            internal.onExitUnsafe(fiber, () => {
-              this.releaseUnsafe(fiber, n)
-              return undefined
-            })
-            return restore(self)
-          },
-          restore,
-          spanName,
-          options
-        )
-      )
+    return withPermitsImpl(this, n)
   }
 
   readonly withPermit = this.withPermits(1)
@@ -553,6 +538,11 @@ export const withPermits: {
  * The span ends on acquisition or interruption and never wraps the effect body.
  * Permits are released when the body exits.
  *
+ * **When to use**
+ *
+ * Use to distinguish time spent waiting for permits from time spent running the
+ * effect: `effect.pipe(Semaphore.withPermitsTraced(limit, 1, "waitForPermit"))`.
+ *
  * @see {@link withPermits} for acquiring permits without tracing the wait
  *
  * @stability stable
@@ -565,7 +555,7 @@ export const withPermitsTraced = (
   spanName: string,
   options?: Tracer.SpanOptionsNoTrace
 ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>
-  self.withPermitsTraced(permits, spanName, options)
+  withPermitsImpl(self as SemaphoreImpl, permits, spanName, options)
 
 /**
  * Runs an effect with a single permit and releases the permit when the effect
