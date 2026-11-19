@@ -29,6 +29,11 @@ describe("render", () => {
     assert.isAtMost(JSON.stringify(Render.textActivity(dollars)).length, measure(dollars) + Length.R)
   })
 
+  it("removes only the opening fence indentation from code", () => {
+    const [block] = Render.blocks("  ```\n    x\n  ```")
+    assert.propertyVal(block, "codeSnippet", "  x")
+  })
+
   it("escapes each dollar outside code, so Teams reads no math", () => {
     const markdown = "$x$ \\$y \\\\$z `$c$`\n```\n$$\n```\n$"
     const sent = "\\$x\\$ \\$y \\\\\\$z `$c$`\n```\n$$\n```\n\\$"

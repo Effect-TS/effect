@@ -142,17 +142,26 @@ export const cardActivity = (
 }
 
 interface Fence {
+  readonly indent: number
   readonly marker: string
   readonly language: string
 }
 
 const fenceOpen = (line: string): Fence | undefined => {
-  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
+  const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line)
   if (match === null) return undefined
-  const [, marker, info] = match
+  const [, spaces, marker, info] = match
   if (marker[0] === "`" && info.includes("`")) return undefined
   const word = info.trim().split(/\s+/)[0]
-  return { marker, language: word === "" ? "PlainText" : word }
+  return { indent: spaces.length, marker, language: word === "" ? "PlainText" : word }
+}
+
+const stripFenceIndent = (line: string, indent: number): string => {
+  let i = 0
+  while (i < indent && line[i] === " ") i++
+  // An opening fence is at most three columns in, so a tab crossed here ends at column four.
+  if (i < indent && line[i] === "\t") return " ".repeat(4 - indent) + line.slice(i + 1)
+  return line.slice(i)
 }
 
 const fenceCloses = (fence: Fence, line: string): boolean => {
@@ -286,7 +295,7 @@ export const blocks = (markdown: string): Array<unknown> => {
       flush()
       const code: Array<string> = []
       i++
-      while (i < lines.length && !fenceCloses(fence, lines[i])) code.push(lines[i++])
+      while (i < lines.length && !fenceCloses(fence, lines[i])) code.push(stripFenceIndent(lines[i++], fence.indent))
       i++
       body.push(codeBlock(code.join("\n"), fence.language))
       continue
