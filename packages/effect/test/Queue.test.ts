@@ -34,6 +34,19 @@ describe("Queue", () => {
       }))
   })
 
+  it.effect("the final take delivers before a closing queue notifies its awaiters", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number, Cause.Done>(1)
+      const worker = yield* Effect.forkChild(Queue.take(queue), { startImmediately: true })
+      const awaiter = yield* Effect.forkChild(Queue.await(queue).pipe(Effect.andThen(Fiber.interrupt(worker))), {
+        startImmediately: true
+      })
+      yield* Queue.offer(queue, 41)
+      yield* Queue.end(queue)
+      yield* Fiber.join(awaiter)
+      assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
+    }))
+
   it.effect("isEnqueue type guard", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(10)

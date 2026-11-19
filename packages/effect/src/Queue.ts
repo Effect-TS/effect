@@ -2131,7 +2131,8 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
       self.state._tag === "Closing" &&
       self.messages.length === 0
     ) {
-      finalize(self, self.state.exit)
+      // A waiter can interrupt the fiber taking the last item. Let the take deliver it first.
+      finalize(self, self.state.exit, true)
       return Pull.isDoneCause(self.state.exit.cause)
     }
     return false
@@ -2175,18 +2176,23 @@ const takeAllUnsafe = <A, E>(self: Dequeue<A, E>) => {
   return []
 }
 
-const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never, E>) => {
+const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never, E>, deferNotify = false) => {
   if (self.state._tag === "Done") {
     return
   }
   const openState = self.state
   self.state = { _tag: "Done", exit }
-  for (const taker of openState.takers) {
-    taker.resume(exit)
+  if (openState.takers.size === 0 && openState.awaiters.size === 0) return
+  const notify = () => {
+    for (const taker of openState.takers) {
+      taker.resume(exit)
+    }
+    openState.takers.clear()
+    for (const awaiter of openState.awaiters) {
+      awaiter(exit)
+    }
+    openState.awaiters.clear()
   }
-  openState.takers.clear()
-  for (const awaiter of openState.awaiters) {
-    awaiter(exit)
-  }
-  openState.awaiters.clear()
+  if (deferNotify) self.dispatcher.scheduleTask(notify, 0)
+  else notify()
 }
