@@ -21,8 +21,8 @@ import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import { constUndefined } from "../Function.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as Schedule from "../Schedule.ts"
@@ -68,7 +68,7 @@ export const CronSchedule = Context.Reference<
   }
   | undefined
 >("effect/cluster/ClusterCron/CronSchedule", {
-  defaultValue: () => undefined
+  defaultValue: constUndefined
 })
 
 /**
@@ -124,14 +124,9 @@ export const make = <E, R>(options: {
    */
   readonly skipIfOlderThan?: Duration.Input | undefined
 }): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime>, Scope>> => {
-  const { cron } = options
   const fromPrevious = options.calculateNextRunFromPrevious === true
-  const skipIfOlderThan = Option.fromUndefinedOr(options.skipIfOlderThan).pipe(
-    Option.map(Duration.fromInputUnsafe),
-    Option.getOrElse(() => Duration.days(1))
-  )
-
-  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cron, after))
+  const skipIfOlderThan = Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
+  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(options.cron, after))
 
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
     Rpc.make("run", {
@@ -144,7 +139,7 @@ export const make = <E, R>(options: {
     .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
     .annotate(ClusterSchema.ClientTracingEnabled, false)
     .annotate(CronSchedule, {
-      cron,
+      cron: options.cron,
       calculateNextRunFromPrevious: fromPrevious,
       skipIfOlderThan
     })
