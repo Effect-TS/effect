@@ -504,7 +504,7 @@ export const makeUpgradeHandler = <
               (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
             )
         ),
-        { highWaterMark: options.highWaterMark }
+        { highWaterMark: options.highWaterMark, reconnect: false }
       )
       const state: UpgradeState = {
         body,

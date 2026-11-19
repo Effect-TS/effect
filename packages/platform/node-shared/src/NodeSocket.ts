@@ -157,11 +157,20 @@ export const fromDuplex = <RO>(
      */
     readonly chunkSize?: number | undefined
     readonly tlsServer?: boolean | undefined
+    /** Set to false for a single connection that cannot be reacquired. Defaults to true. */
+    readonly reconnect?: boolean | undefined
   }
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
+    let closed: Socket.SocketError | undefined
     const latch = Latch.makeUnsafe(false)
+    const closeSocket = options?.reconnect === false
+      ? (error: Socket.SocketError) => {
+        closed ??= error
+        latch.openUnsafe()
+      }
+      : () => latch.closeUnsafe()
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const requestedChunkSize = options?.chunkSize ?? 4096
@@ -171,7 +180,7 @@ export const fromDuplex = <RO>(
       : 4096
     const secureEvent = isServer ? "secure" : "secureConnect"
 
-    const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+    const connect: Socket.Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
       let conn = yield* Scope.provide(open, scope).pipe(
         options?.openTimeout !== undefined ?
@@ -289,9 +298,9 @@ export const fromDuplex = <RO>(
             })
           )
           detachReadListeners(conn)
-          latch.closeUnsafe()
           currentSocket = undefined
           upgradeAvailable = false
+          closeSocket(error!)
         })
       )
 
@@ -421,6 +430,13 @@ export const fromDuplex = <RO>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
     ) as Socket.Socket["reader"]
+    const reader: Socket.Socket["reader"] = options?.reconnect === false
+      ? Effect.suspend(() =>
+        closed !== undefined
+          ? Effect.fail(closed)
+          : Effect.tapError(connect, (error) => Effect.sync(() => closeSocket(error)))
+      )
+      : connect
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {
@@ -460,7 +476,7 @@ export const fromDuplex = <RO>(
     ): Effect.Effect<void, Socket.SocketError> =>
       Effect.suspend(() => {
         const conn = currentSocket
-        if (conn === undefined) return latch.whenOpen(write(chunk))
+        if (conn === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(write(chunk))
         if (Socket.isCloseEvent(chunk)) {
           conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
           return Effect.void
@@ -481,7 +497,7 @@ export const fromDuplex = <RO>(
     ): Effect.Effect<void, Socket.SocketError> =>
       Effect.suspend(() => {
         const conn = currentSocket
-        if (conn === undefined) return latch.whenOpen(writeAll(chunks))
+        if (conn === undefined) return closed !== undefined ? Effect.fail(closed) : latch.whenOpen(writeAll(chunks))
         let needsDrain = false
         try {
           if (chunks.length === 1) {

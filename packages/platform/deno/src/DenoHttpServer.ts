@@ -580,7 +580,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             Effect.succeed(ws),
             () => Effect.sync(() => upgrade.socket.close(1000))
           ),
-          { highWaterMark }
+          { highWaterMark, reconnect: false }
         )
       }
     )
