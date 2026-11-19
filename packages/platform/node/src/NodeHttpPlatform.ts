@@ -11,7 +11,7 @@
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as EtagImpl from "effect/http/Etag"
 import * as Headers from "effect/http/Headers"
 import * as HttpBody from "effect/http/HttpBody"
@@ -20,6 +20,7 @@ import * as ServerResponse from "effect/http/HttpServerResponse"
 import * as Mime from "effect/http/Mime"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Stream from "effect/Stream"
 import * as Fs from "node:fs"
 import { pipeline, Readable } from "node:stream"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
@@ -133,24 +134,50 @@ export const make = Platform.make({
       statusText
     })
   },
-  fileWebResponse(file, status, statusText, headers, _options) {
-    return ServerResponse.raw(
-      lazyReadable(() => Readable.fromWeb(file.stream() as any)),
-      {
-        headers: Headers.merge(
-          headers,
-          Headers.fromRecordUnsafe({
-            "content-type": headers["content-type"] ??
-              (file.type === ""
-                ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
-                : file.type),
-            "content-length": file.size.toString()
-          })
+  fileWebResponse(file, status, statusText, headers, options) {
+    const offset = Math.min(Math.max(Math.trunc(options?.offset || 0), 0), file.size)
+    const available = file.size - offset
+    const contentLength = options?.bytesToRead === undefined
+      ? available
+      : Math.min(Math.max(Math.trunc(options.bytesToRead || 0), 0), available)
+    const responseOptions = {
+      headers: Headers.merge(
+        headers,
+        Headers.fromRecordUnsafe({
+          "content-type": headers["content-type"] ??
+            (file.type === ""
+              ? Option.getOrElse(Mime.getType(file.name), () => "application/octet-stream")
+              : file.type),
+          "content-length": contentLength.toString()
+        })
+      ),
+      status,
+      statusText
+    }
+    if (options?.offset === undefined && options?.bytesToRead === undefined) {
+      return ServerResponse.raw(lazyReadable(() => Readable.fromWeb(file.stream() as any)), responseOptions)
+    }
+
+    const end = offset + contentLength
+    const stream = contentLength === 0
+      ? Stream.empty
+      : Stream.fromReadableStream({
+        evaluate: () => file.stream() as ReadableStream<Uint8Array>,
+        onError: identity
+      }).pipe(
+        Stream.mapAccum(
+          () => 0,
+          (position, bytes) => {
+            const next = position + bytes.length
+            if (next <= offset) return [next, []]
+            const chunk = bytes.subarray(Math.max(0, offset - position), end - position)
+            return [next, [{ chunk, done: next >= end }]]
+          }
         ),
-        status,
-        statusText
-      }
-    )
+        Stream.takeUntil((value) => value.done),
+        Stream.map((value) => value.chunk)
+      )
+    return ServerResponse.stream(stream, { ...responseOptions, contentLength })
   }
 })
 
