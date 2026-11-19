@@ -766,7 +766,8 @@ const dialectBranch = (
     proto = Object.getPrototypeOf(proto)
   ) {
     if (Object.hasOwn(proto, dialect)) {
-      const branch = proto[dialect]
+      // read through the branch map, so inherited getters see the instance
+      const branch = Reflect.get(proto, dialect, options)
       return proto !== options && dialect === "constructor" && branch?.prototype === proto ? undefined : branch
     }
   }

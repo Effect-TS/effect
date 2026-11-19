@@ -43,6 +43,17 @@ describe("Statement", () => {
       }
     }
     assert.strictEqual(sql.onDialect(new Branches()), "receiver")
+    class GetterBranches {
+      #branch = () => "getter"
+      get spark() {
+        return this.#branch
+      }
+      orElse() {
+        return "fallback"
+      }
+    }
+    assert.strictEqual(sql.onDialect(new GetterBranches()), "getter")
+    assert.strictEqual(sql.onDialectOrElse(new GetterBranches()), "getter")
 
     const ctor = Statement.make(
       Effect.die("unexpected query"),
