@@ -1839,6 +1839,34 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("does not scan the registration context once per tool", () =>
+      Effect.gen(function*() {
+        const first = Tool.make("first")
+        const second = Tool.make("second")
+        const handlers = Toolkit.make(first, second).toLayer({ first: () => Effect.void, second: () => Effect.void })
+        const scans = Effect.fnUntraced(function*(...tools: Array<typeof first | typeof second>) {
+          let iterations = 0
+          class RegistrationMap extends Map<string, unknown> {
+            override [Symbol.iterator]() {
+              iterations++
+              return super[Symbol.iterator]()
+            }
+          }
+          const server = yield* McpServer.McpServer.make
+          const register = McpServer.registerToolkit(Toolkit.make(...tools))
+          yield* register.pipe(
+            Effect.updateContext((context: Context.Context<Effect.Services<typeof register>>) =>
+              Context.makeUnsafe(new RegistrationMap(context.mapUnsafe))
+            ),
+            Effect.provideService(McpServer.McpServer, server),
+            Effect.provide(handlers)
+          )
+          return iterations
+        })
+
+        assert.strictEqual(yield* scans(first, second), yield* scans(first))
+      }))
+
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {
         const IdentifiedTool = Tool.make("IdentifiedTool", {

@@ -196,14 +196,27 @@ const requestServiceKeys = new Set<string>([
   Tracer.ParentSpan.key
 ])
 
-const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
-  const services = new Map<string, any>()
-  for (const [key, value] of context.mapUnsafe) {
-    if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
-      services.set(key, value)
+// A registration's services without request services, and its middleware.
+// Contexts are immutable, so this is derived once per context: every tool of a
+// toolkit registers from one context that holds all of the toolkit's handlers.
+const preparedContexts = new WeakMap<Context.Context<never>, {
+  readonly services: Context.Context<never>
+  readonly localMiddleware: ReadonlyArray<AnyMiddlewareFn>
+}>()
+
+const prepareContext = (context: Context.Context<never>) => {
+  let prepared = preparedContexts.get(context)
+  if (prepared === undefined) {
+    const services = new Map<string, any>()
+    for (const [key, value] of context.mapUnsafe) {
+      if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
+        services.set(key, value)
+      }
     }
+    prepared = { services: Context.makeUnsafe(services), localMiddleware: getMiddleware(context) }
+    preparedContexts.set(context, prepared)
   }
-  return Context.makeUnsafe(services)
+  return prepared
 }
 
 const provideInvocationContext = <A, E, R>(
@@ -914,8 +927,9 @@ const makeInvoke = (
   context: Context.Context<never> | undefined,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
 ) => {
-  const services = context === undefined ? Context.empty() : omitRequestServices(context)
-  const localMiddleware = context === undefined ? [] : getMiddleware(context)
+  const { localMiddleware, services } = context === undefined
+    ? { services: Context.empty(), localMiddleware: [] }
+    : prepareContext(context)
   const invoke = <A, E, M extends CallMethod>(
     handler: Effect.Effect<A, E, any>,
     invocation: McpCore.McpInvocation,
@@ -3304,7 +3318,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     for (const tool of Object.values(toolkit.tools)) {
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
-        services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
+        services.set(tool.id, { ...handler, context: prepareContext(handler.context).services })
       }
     }
     return Context.makeUnsafe(services)
