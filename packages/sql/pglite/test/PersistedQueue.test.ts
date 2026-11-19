@@ -11,7 +11,7 @@ describe("PersistedQueue SQL migrations", () => {
     it.effect("runs fresh-install migrations once", () =>
       Effect.gen(function*() {
         const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-        const tableName = "persisted_queue_migration_test"
+        const tableName = "PersistedQueue_migration_test"
 
         yield* PersistedQueue.makeStoreSql({ tableName })
         const store = yield* PersistedQueue.makeStoreSql({ tableName })
@@ -32,13 +32,13 @@ describe("PersistedQueue SQL migrations", () => {
           ORDER BY indexname
         `
         assert.deepStrictEqual(indexes.map((row) => row.indexname), [
+          `${tableName}_pkey`,
           `idx_${tableName}_id`,
           `idx_${tableName}_take`,
-          `idx_${tableName}_update`,
-          `${tableName}_pkey`
+          `idx_${tableName}_update`
         ])
 
-        yield* sql`SELECT setval(pg_get_serial_sequence(${tableName}, 'sequence'), 2147483647)`
+        yield* sql`SELECT setval(pg_get_serial_sequence(${`"${tableName}"`}, 'sequence'), 2147483647)`
         yield* store.offer({ name: "test", id: "boundary", element: "value", isCustomId: true })
         const rows = yield* sql<{ readonly sequence: string }>`SELECT sequence::text FROM ${sql(tableName)}`
         assert.deepStrictEqual(rows, [{ sequence: "2147483648" }])
