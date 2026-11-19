@@ -21,7 +21,7 @@ describe("Scope", () => {
             yield* Deferred.await(resume)
             yield* record("release")
           }))
-      })).pipe(Effect.forkChild)
+      })).pipe(Effect.forkChild({ startImmediately: true }))
       yield* Deferred.await(started)
       const whileBlocked = order.slice()
       yield* Deferred.succeed(resume, undefined)
