@@ -3659,10 +3659,9 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
             }
           }
           const inline = { ...regressionSpec, paths: { [route]: item } }
-          const ref: OpenAPISpecPathItem & { $ref: string } = { $ref: "#/components/pathItems/Alias" }
           const referenced = {
             ...inline,
-            paths: { [route]: ref },
+            paths: { [route]: { $ref: "#/components/pathItems/Alias" } },
             components: {
               ...inline.components,
               pathItems: { Alias: { $ref: "#/components/pathItems/User" }, User: item }

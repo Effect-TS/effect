@@ -13,7 +13,12 @@
 import * as Codegen from "effect/Codegen"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecOperation } from "effect/http-api/OpenApi"
+import type {
+  OpenAPISecurityScheme,
+  OpenAPISpec,
+  OpenAPISpecOperation,
+  OpenAPISpecPathItem
+} from "effect/http-api/OpenApi"
 import type { HttpMethod } from "effect/http/HttpMethod"
 import * as JsonPointer from "effect/JsonPointer"
 import type * as JsonSchema from "effect/JsonSchema"
@@ -317,7 +322,8 @@ const parseOpenApi = (
     return generator.addSchema(candidate, schema)
   }
 
-  for (const [path, methods] of Object.entries(spec.paths)) {
+  for (const [path, entry] of Object.entries(spec.paths)) {
+    const methods = resolvePathItem(spec, entry)
     const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
     for (const method of methodNames) {
       const operation = method === "query"
@@ -862,6 +868,31 @@ const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter =
     typeof parameter.name === "string" &&
     (parameter.in === "path" || parameter.in === "query" || parameter.in === "header" || parameter.in === "cookie")
   )
+}
+
+const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): OpenAPISpecPathItem => {
+  if (!entry.$ref) return entry
+  const seen = new Set<string>()
+  const item = { ...entry }
+  let ref = entry.$ref
+  while (!seen.has(ref)) {
+    seen.add(ref)
+    const tokens = JsonPointer.parseUriFragment(ref)
+    if (!tokens?.length) break
+    let target: unknown = spec
+    for (const token of tokens) {
+      if (!Predicate.isObject(target) || !Object.hasOwn(target, token)) return item
+      target = target[token]
+    }
+    if (!Predicate.isObject(target)) break
+    // Fields closer to the route take precedence over inherited fields.
+    for (const [key, value] of Object.entries(target)) {
+      if (!Object.hasOwn(item, key)) Rec.assignProperty(item, key, value)
+    }
+    if (typeof target.$ref !== "string") break
+    ref = target.$ref
+  }
+  return item
 }
 
 const resolveOperationParameters = (
