@@ -124,8 +124,14 @@ export const make = <E, R>(options: {
    */
   readonly skipIfOlderThan?: Duration.Input | undefined
 }): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime>, Scope>> => {
+  const { cron } = options
   const fromPrevious = options.calculateNextRunFromPrevious === true
-  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(options.cron, after))
+  const skipIfOlderThan = Option.fromUndefinedOr(options.skipIfOlderThan).pipe(
+    Option.map(Duration.fromInputUnsafe),
+    Option.getOrElse(() => Duration.days(1))
+  )
+
+  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cron, after))
 
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
     Rpc.make("run", {
@@ -138,9 +144,9 @@ export const make = <E, R>(options: {
     .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
     .annotate(ClusterSchema.ClientTracingEnabled, false)
     .annotate(CronSchedule, {
-      cron: options.cron,
+      cron,
       calculateNextRunFromPrevious: fromPrevious,
-      skipIfOlderThan: Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
+      skipIfOlderThan
     })
 
   // with `calculateNextRunFromPrevious`, every run shares the executor address
@@ -165,11 +171,6 @@ export const make = <E, R>(options: {
         (now) => send(nextRun(now)).pipe(withRetry("Failed to schedule initial run, retrying"))
       ),
     { shardGroup: options.shardGroup }
-  )
-
-  const skipIfOlderThan = Option.fromUndefinedOr(options.skipIfOlderThan).pipe(
-    Option.map(Duration.fromInputUnsafe),
-    Option.getOrElse(() => Duration.days(1))
   )
 
   const execute = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
