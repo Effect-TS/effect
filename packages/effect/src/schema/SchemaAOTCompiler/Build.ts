@@ -130,7 +130,10 @@ const importPath = (
       })
     }
     const normalized = path.sep === "/" ? relative : relative.split(path.sep).join("/")
-    return normalized.startsWith(".") ? normalized : `./${normalized}`
+    const encoded = encodeURI(normalized).replace(/[?#]/g, encodeURIComponent)
+    const suffix = url.href.search(/[?#]/)
+    const reference = encoded.startsWith("../") ? encoded : `./${encoded}`
+    return reference + (suffix < 0 ? "" : url.href.slice(suffix))
   })
 
 const root = (
