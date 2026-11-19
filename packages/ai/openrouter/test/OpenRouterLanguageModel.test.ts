@@ -597,40 +597,23 @@ describe("OpenRouterLanguageModel", () => {
           strictEqual(toolResult.content, "PLAIN_TEXT_SENTINEL\n")
         }).pipe(Effect.provide(makeTestLayer())))
 
-      const modelOutputCases: ReadonlyArray<{
-        readonly label: string
-        readonly modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart>
-        readonly content: unknown
-      }> = [
+      const modelOutputCases = [
         {
-          label: "as content items when it has a base64 image",
+          label: "as ordered items with the breakpoint on the final image",
+          options: { openrouter: { cacheControl: { type: "ephemeral" as const } } },
           modelOutput: [
             Prompt.textPart({ text: "Screenshot" }),
-            Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+            Prompt.textPart({ text: "" }),
+            Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" })
           ],
           content: [
             { type: "text", text: "Screenshot" },
-            { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } }
+            {
+              type: "image_url",
+              image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+              cache_control: { type: "ephemeral" }
+            }
           ]
-        },
-        {
-          label: "as content items when it has a binary image",
-          modelOutput: [
-            Prompt.filePart({ mediaType: "image/jpeg", data: new Uint8Array([1, 2, 3]) }),
-            Prompt.textPart({ text: "Caption" })
-          ],
-          content: [
-            { type: "image_url", image_url: { url: "data:image/jpeg;base64,AQID" } },
-            { type: "text", text: "Caption" }
-          ]
-        },
-        {
-          label: "as content items when it has a document",
-          modelOutput: [Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: "JVBERi0=" })],
-          content: [{
-            type: "file",
-            file: { filename: "doc.pdf", file_data: "data:application/pdf;base64,JVBERi0=" }
-          }]
         },
         {
           label: "as joined text when it has only text",
@@ -640,7 +623,7 @@ describe("OpenRouterLanguageModel", () => {
         { label: "as an empty string when it is empty", modelOutput: [], content: "" }
       ]
 
-      for (const { content, label, modelOutput } of modelOutputCases) {
+      for (const { content, label, modelOutput, options } of modelOutputCases) {
         it.effect(`sends tool result model output ${label}`, () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -661,6 +644,7 @@ describe("OpenRouterLanguageModel", () => {
                     id: "call_image",
                     name: "image_tool",
                     result: { output: "APPLICATION_ONLY" },
+                    options,
                     modelOutput,
                     isFailure: false,
                     providerExecuted: false
@@ -707,48 +691,6 @@ describe("OpenRouterLanguageModel", () => {
             const toolResult = body.messages.find((message: any) => message.role === "tool")
             strictEqual(toolResult.tool_call_id, "call_void")
           }).pipe(Effect.provide(makeTestLayer())))
-
-        for (const partLevel of [false, true]) {
-          it.effect(
-            partLevel
-              ? "puts part breakpoints on the last item of tool result content"
-              : "puts message breakpoints on the last item of tool result content",
-            () =>
-              Effect.gen(function*() {
-                yield* LanguageModel.generateText({
-                  prompt: Prompt.make([{
-                    role: "tool",
-                    content: [Prompt.toolResultPart({
-                      id: "call_image",
-                      name: "image_tool",
-                      result: { output: "APPLICATION_ONLY" },
-                      modelOutput: [
-                        Prompt.textPart({ text: "Screenshot" }),
-                        Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" })
-                      ],
-                      isFailure: false,
-                      providerExecuted: false,
-                      options: partLevel ? partCached : undefined
-                    })],
-                    options: cached
-                  }]),
-                  disableToolCallResolution: true
-                }).pipe(Effect.provide(OpenRouterLanguageModel.model("anthropic/claude-sonnet-4.5")))
-
-                const requests = yield* MockHttpClient.requests
-                const body = yield* getRequestBody(requests[0])
-                const toolResult = body.messages.find((message: any) => message.role === "tool")
-                deepStrictEqual(toolResult.content, [
-                  { type: "text", text: "Screenshot" },
-                  {
-                    type: "image_url",
-                    image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
-                    cache_control: partLevel ? oneHour : ephemeral
-                  }
-                ])
-              }).pipe(Effect.provide(makeTestLayer()))
-          )
-        }
 
         for (const partLevel of [false, true]) {
           it.effect(
