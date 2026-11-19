@@ -24,7 +24,7 @@ import * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import * as FindMyWay from "./FindMyWay.ts"
-import { getClosingParenthensePosition, getMaxParamLengthExceeded } from "./FindMyWay/internal/router.ts"
+import { getClosingParenthensePosition, getMaxParamLengthExceeded, onFallback } from "./FindMyWay/internal/router.ts"
 import * as HttpEffect from "./HttpEffect.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type * as HttpMethod from "./HttpMethod.ts"
@@ -161,19 +161,13 @@ export const make = Effect.gen(function*() {
             : undefined
         }
         if (route.method === "*") {
-          if (route.path.endsWith("/*")) {
-            router.all(route.path, handler)
-            router.all(route.path.slice(0, -2) as any, handler)
-          } else {
-            router.all(route.path, handler)
-          }
+          router.all(route.path, handler)
         } else {
-          if (route.path.endsWith("/*")) {
-            router.on(route.method, route.path, handler)
-            router.on(route.method, route.path.slice(0, -2) as any, handler)
-          } else {
-            router.on(route.method, route.path, handler)
-          }
+          router.on(route.method, route.path, handler)
+        }
+        // A wildcard route also serves its bare prefix, unless that path has its own route.
+        if (route.path.endsWith("/*")) {
+          onFallback(router, route.method, (route.path.slice(0, -2) || "/") as PathInput, handler)
         }
       }
       return Effect.void
