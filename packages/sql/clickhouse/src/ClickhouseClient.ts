@@ -3,7 +3,7 @@
  *
  * This module provides both the ClickHouse-specific {@link ClickhouseClient}
  * service and the generic {@link Client.SqlClient} service. `make` creates a
- * scoped client, checks the connection with `ping()`, maps ClickHouse errors
+ * scoped client, checks the connection with `ping()` by default, maps ClickHouse errors
  * to `SqlError`, and aborts in-flight queries when interrupted. The
  * ClickHouse-specific service adds typed parameters, command execution, insert
  * queries, query id and settings helpers, a statement compiler, and direct or
@@ -179,13 +179,18 @@ export const ClickhouseClient = Context.Service<ClickhouseClient, ClickhouseClie
  * @since 4.0.0
  */
 export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfigOptions {
+  /**
+   * Whether to ping ClickHouse when building the client. Defaults to true.
+   * Set to false to build without a request and handle failures per statement.
+   */
+  readonly validateConnection?: boolean | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
 
 /**
- * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()`,
+ * Creates a scoped `ClickhouseClient`, verifies connectivity with `ping()` by default,
  * closes the underlying client when the scope ends, maps ClickHouse failures
  * to `SqlError`, and aborts plus kills in-flight queries when interrupted.
  *
@@ -207,31 +212,33 @@ export const make = (
       (client) => Effect.promise(() => client.close())
     )
 
-    yield* Effect.tryPromise({
-      try: async () => {
-        const result = await client.ping()
-        if (!result.success) {
-          throw result.error
-        }
-        return result
-      },
-      catch: (cause) =>
-        new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
-    }).pipe(
-      Effect.timeoutOrElse({
-        duration: Duration.seconds(5),
-        orElse: () =>
-          Effect.fail(
-            new SqlError({
-              reason: new ConnectionError({
-                message: "ClickhouseClient: Connection timeout",
-                cause: new Error("connection timeout"),
-                operation: "connect"
+    if (options.validateConnection !== false) {
+      yield* Effect.tryPromise({
+        try: async () => {
+          const result = await client.ping()
+          if (!result.success) {
+            throw result.error
+          }
+          return result
+        },
+        catch: (cause) =>
+          new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: Duration.seconds(5),
+          orElse: () =>
+            Effect.fail(
+              new SqlError({
+                reason: new ConnectionError({
+                  message: "ClickhouseClient: Connection timeout",
+                  cause: new Error("connection timeout"),
+                  operation: "connect"
+                })
               })
-            })
-          )
-      })
-    )
+            )
+        })
+      )
+    }
 
     class ConnectionImpl implements Connection {
       private conn: Clickhouse.ClickHouseClient
