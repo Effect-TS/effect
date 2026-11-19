@@ -6230,16 +6230,23 @@ export const linkSpans: {
 })
 
 /** @internal */
+export const endSpanUnsafe = <A, E>(
+  span: Tracer.Span,
+  exit: Exit.Exit<A, E>,
+  clock: Clock.Clock,
+  timingEnabled: boolean
+): void => {
+  if (span.status._tag === "Ended") return
+  span.end(timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0, exit)
+}
+
+/** @internal */
 export const endSpan = <A, E>(
   span: Tracer.Span,
   exit: Exit.Exit<A, E>,
   clock: Clock.Clock,
   timingEnabled: boolean
-) =>
-  sync(() => {
-    if (span.status._tag === "Ended") return
-    span.end(timingEnabled ? clock.currentTimeNanosUnsafe() : bigint0, exit)
-  })
+) => sync(() => endSpanUnsafe(span, exit, clock, timingEnabled))
 
 /** @internal */
 export const useSpan: {
