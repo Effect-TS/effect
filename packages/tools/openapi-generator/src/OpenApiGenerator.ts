@@ -28,6 +28,7 @@ import * as Rec from "effect/Record"
 import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as HttpClientGenerator from "./internal/httpClient.ts"
+import * as InternalJsonPointer from "./internal/jsonPointer.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
@@ -888,14 +889,7 @@ const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): PathIte
     if (typeof ref !== "string" || seen.has(ref)) break
     seen.add(ref)
     const tokens = JsonPointer.parseUriFragment(ref)
-    current = tokens?.length
-      ? tokens.reduce<unknown>((target, token) => {
-        if (!Predicate.isObjectOrArray(target) || !Object.hasOwn(target, token)) return undefined
-        if (!Array.isArray(target)) return target[token]
-        const index = Number(token)
-        return /^(0|[1-9]\d*)$/.test(token) && index < target.length ? target[index] : undefined
-      }, spec)
-      : undefined
+    current = tokens?.length ? InternalJsonPointer.lookup(spec, tokens) : undefined
   }
   return item
 }
