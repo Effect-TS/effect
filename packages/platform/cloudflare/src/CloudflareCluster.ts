@@ -50,6 +50,7 @@ import {
 } from "./internal/entityRegistry.ts"
 import { CurrentEntityName, CurrentReplyRegistry } from "./internal/entityReply.ts"
 import { decodeInvokeResult, decodeReplyFor, encodeRequest } from "./internal/entityWire.ts"
+import * as Runtime from "./internal/runtime.ts"
 import { registerSingleton as registerSingletonHandler, unregisterSingleton } from "./internal/singletonRegistry.ts"
 import { boundedRetry, callDurableObject } from "./internal/transport.ts"
 
@@ -620,6 +621,7 @@ export const layer = (
   options: LayerOptions
 ): Layer.Layer<Sharding | WorkflowEngine | PersistedQueueFactory> =>
   Layer.mergeAll(
+    Runtime.layer,
     Layer.effect(Sharding, make(options)),
     CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace }),
     CloudflarePersistedQueue.layer({ queueNamespace: options.queueNamespace })

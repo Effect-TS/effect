@@ -33,6 +33,7 @@ import {
 } from "./internal/entityStorage.ts"
 import { makeQueueRuntime } from "./internal/queueRuntime.ts"
 import { earliestLeaseExpiry } from "./internal/queueStorage.ts"
+import { runPromise } from "./internal/runtime.ts"
 import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
 import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
 import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
@@ -187,7 +188,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
     }),
     entityName,
     keepAlive,
-    waitUntil: (effect) => state.waitUntil(Effect.runPromise(effect)),
+    waitUntil: (effect) => state.waitUntil(runPromise(effect)),
     getNamespace: () =>
       exportedNamespace<{
         readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>

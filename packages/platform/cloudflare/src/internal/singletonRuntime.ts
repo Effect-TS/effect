@@ -12,6 +12,7 @@
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import * as Effect from "effect/Effect"
 import { armAlarm } from "./entityStorage.ts"
+import { runPromise } from "./runtime.ts"
 import {
   beginSingletonWake,
   completeSingletonWake,
@@ -54,7 +55,7 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
         )
       )
     )
-    const operation = Effect.runPromise(arm ? Effect.andThen(armWatchdog(), run) : run)
+    const operation = runPromise(arm ? Effect.andThen(armWatchdog(), run) : run)
     inFlight = operation
     void operation.then(
       () => {
@@ -81,7 +82,7 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
     // that fires during a run must arm the next watchdog before returning.
     runAlarm: () => {
       if (loadSingletonState(options.sql).wakeAt === undefined) return Promise.resolve()
-      if (inFlight !== undefined) return Effect.runPromise(armWatchdog())
+      if (inFlight !== undefined) return runPromise(armWatchdog())
       return runPending(false)
     }
   }

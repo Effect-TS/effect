@@ -30,6 +30,7 @@ import {
   releaseItem,
   releaseOwnedItem
 } from "./queueStorage.ts"
+import { runPromise } from "./runtime.ts"
 
 /** @internal */
 export interface QueueRuntimeOptions {
@@ -98,7 +99,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
   })
 
   const mutateAndWake = (mutate: () => void): Promise<void> =>
-    Effect.runPromise(Effect.suspend(() => {
+    runPromise(Effect.suspend(() => {
       mutate()
       return wakeWaiters
     }))
@@ -124,7 +125,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
           existing.resolve = resolve
         }
       })
-      return Effect.runPromise(wakeWaiters).then(() => item)
+      return runPromise(wakeWaiters).then(() => item)
     },
 
     cancelTake: (takerId) => {
@@ -162,7 +163,7 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     extend: (id, leaseMillis, takerId) => Promise.resolve(extendLease(sql, id, options.now() + leaseMillis, takerId)),
 
     runAlarm: () =>
-      Effect.runPromise(
+      runPromise(
         Effect.gen(function*() {
           expireLeases(sql, options.now())
           yield* wakeWaiters

@@ -15,6 +15,7 @@ import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as Latch from "effect/Latch"
 import * as Schedule from "effect/Schedule"
+import { runFork } from "./runtime.ts"
 
 /** @internal */
 export interface EntityKeepAlive {
@@ -66,7 +67,7 @@ export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeep
   const restore = () => {
     if (!wanted || hold !== undefined) return
     latch.closeUnsafe()
-    const fiber = Effect.runFork(runHold)
+    const fiber = runFork(runHold)
     hold = fiber
     fiber.addObserver(() => {
       if (hold === fiber) hold = undefined
@@ -85,7 +86,7 @@ export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeep
     wanted = next
     // Mailbox writes wait for an open user transaction, so writing inline
     // would deadlock `Entity.keepAlive` called inside `withTransaction`.
-    Effect.runFork(
+    runFork(
       Effect.suspend(() => options.persist(next)).pipe(
         Effect.andThen(Effect.sync(() => {
           if (!next && !wanted) release()

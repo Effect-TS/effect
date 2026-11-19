@@ -10,8 +10,11 @@
  * @stability experimental
  * @since 4.1.3
  */
+import * as Workers from "cloudflare:workers"
 import { DurableObject } from "cloudflare:workers"
-import * as Effect from "effect/Effect"
+import * as Context from "effect/Context"
+import * as Scheduler from "effect/Scheduler"
+import * as Tracer from "effect/Tracer"
 import {
   type ClusterDurableQueueProgram,
   type ClusterEntityProgram,
@@ -28,6 +31,23 @@ import {
   makeClusterWorkflowProgram,
   type SingletonWakeResult
 } from "./CloudflareDurableObjectPrograms.ts"
+import { CloudflareScheduler } from "./CloudflareScheduler.ts"
+import * as CloudflareTracer from "./CloudflareTracer.ts"
+import { runPromise, setDefaults } from "./internal/runtime.ts"
+
+setDefaults(() => {
+  let context = Context.empty()
+  try {
+    context = Context.add(context, Scheduler.Scheduler, new CloudflareScheduler())
+  } catch {}
+  const tracing: any = (Workers as any).tracing
+  if (typeof tracing?.startSpan === "function" && typeof tracing.withActiveSpan === "function") {
+    try {
+      context = Context.add(context, Tracer.Tracer, CloudflareTracer.make())
+    } catch {}
+  }
+  return context
+})
 
 const notExposed = (className: string) => () => {
   throw new Error(
@@ -198,42 +218,42 @@ export class ClusterEntity extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterEntityProgram(ctx))
+      this.#program = await runPromise(makeClusterEntityProgram(ctx))
     })
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return runPromise(this.#program.alarm())
   }
 
   /** @internal Keeps this object non-hibernateable while entity resources have holders. */
   hold(): Promise<void> {
-    return Effect.runPromise(this.#program.hold())
+    return runPromise(this.#program.hold())
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
   invoke(envelopeText: string, discard: boolean, delivery?: EntityDeliveryOptions): Promise<EntityInvokeResult> {
-    return Effect.runPromise(this.#program.invoke(envelopeText, discard, delivery))
+    return runPromise(this.#program.invoke(envelopeText, discard, delivery))
   }
 
   /** @internal Acknowledges a streamed chunk. */
   acknowledge(requestId: string, replyId: string): Promise<ReadonlyArray<string>> {
-    return Effect.runPromise(this.#program.acknowledge(requestId, replyId))
+    return runPromise(this.#program.acknowledge(requestId, replyId))
   }
 
   /** @internal Interrupts a handler execution and completes its persisted ask, if any. */
   interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
-    return Effect.runPromise(this.#program.interrupt(storageRequestId, clientRequestId))
+    return runPromise(this.#program.interrupt(storageRequestId, clientRequestId))
   }
 
   /** @internal Clears stored replies so a reset request replays from scratch. */
   reset(requestId: string): Promise<void> {
-    return Effect.runPromise(this.#program.reset(requestId))
+    return runPromise(this.#program.reset(requestId))
   }
 
   /** @internal Completes an in-memory delayed ask owned by this entity object. */
   deliverReply(requestId: string, reply: string): Promise<boolean> {
-    return Effect.runPromise(this.#program.deliverReply(requestId, reply))
+    return runPromise(this.#program.deliverReply(requestId, reply))
   }
 
   override fetch: () => never = notExposed("ClusterEntity")
@@ -263,47 +283,47 @@ export class ClusterWorkflow extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterWorkflowProgram(ctx))
+      this.#program = await runPromise(makeClusterWorkflowProgram(ctx))
     })
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
   run(payload: string, options: ClusterWorkflowRunOptions): Promise<string> {
-    return Effect.runPromise(this.#program.run(payload, options))
+    return runPromise(this.#program.run(payload, options))
   }
 
   /** @internal */
   poll(): Promise<string | undefined> {
-    return Effect.runPromise(this.#program.poll())
+    return runPromise(this.#program.poll())
   }
 
   /** @internal */
   resume(mode?: ClusterWorkflowWakeMode): Promise<void> {
-    return Effect.runPromise(this.#program.resume(mode))
+    return runPromise(this.#program.resume(mode))
   }
 
   /** @internal */
   interrupt(): Promise<void> {
-    return Effect.runPromise(this.#program.interrupt())
+    return runPromise(this.#program.interrupt())
   }
 
   /** @internal */
   interruptUnsafe(): Promise<void> {
-    return Effect.runPromise(this.#program.interruptUnsafe())
+    return runPromise(this.#program.interruptUnsafe())
   }
 
   /** @internal Records a durable deferred exit and resumes the execution. */
   deferredDone(name: string, exit: string): Promise<void> {
-    return Effect.runPromise(this.#program.deferredDone(name, exit))
+    return runPromise(this.#program.deferredDone(name, exit))
   }
 
   /** @internal Persists a durable clock and arms the single alarm. */
   scheduleClock(name: string, deferredName: string, wakeUp: number): Promise<void> {
-    return Effect.runPromise(this.#program.scheduleClock(name, deferredName, wakeUp))
+    return runPromise(this.#program.scheduleClock(name, deferredName, wakeUp))
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return runPromise(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterWorkflow")
@@ -332,7 +352,7 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterDurableQueueProgram(ctx))
+      this.#program = await runPromise(makeClusterDurableQueueProgram(ctx))
     })
   }
 
@@ -343,22 +363,22 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     delayMillis?: number,
     deduplicate?: "untilExecuted" | "untilRemoved"
   ): Promise<void> {
-    return Effect.runPromise(this.#program.offer(id, element, delayMillis, deduplicate))
+    return runPromise(this.#program.offer(id, element, delayMillis, deduplicate))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
   take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<DurableQueueItem> {
-    return Effect.runPromise(this.#program.take(takerId, maxAttempts, leaseMillis))
+    return runPromise(this.#program.take(takerId, maxAttempts, leaseMillis))
   }
 
   /** @internal Cancels a waiting take, releasing an item already leased to it. */
   cancelTake(takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.cancelTake(takerId))
+    return runPromise(this.#program.cancelTake(takerId))
   }
 
   /** @internal Completes the item while the taker still owns its lease. */
   complete(id: string, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.complete(id, takerId))
+    return runPromise(this.#program.complete(id, takerId))
   }
 
   /**
@@ -367,21 +387,21 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
    * for `retryDelayMillis`.
    */
   fail(id: string, lastFailure: string, takerId: string, terminal?: boolean, retryDelayMillis?: number): Promise<void> {
-    return Effect.runPromise(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
+    return runPromise(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
   }
 
   /** @internal Requeues the item and refunds the attempt its lease counted. */
   release(id: string, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.release(id, takerId))
+    return runPromise(this.#program.release(id, takerId))
   }
 
   /** @internal Extends the lease of an item still being processed. */
   extend(id: string, leaseMillis: number, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.extend(id, leaseMillis, takerId))
+    return runPromise(this.#program.extend(id, leaseMillis, takerId))
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return runPromise(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterDurableQueue")
@@ -413,17 +433,17 @@ export class ClusterSingleton extends DurableObject<unknown> {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
     blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterSingletonProgram(ctx))
+      this.#program = await runPromise(makeClusterSingletonProgram(ctx))
     })
   }
 
   /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
   wake(): Promise<SingletonWakeResult> {
-    return Effect.runPromise(this.#program.wake())
+    return runPromise(this.#program.wake())
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return runPromise(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterSingleton")
