@@ -53,6 +53,25 @@ export class CurrentScheduledTime extends Context.Service<
 >()("effect/cluster/ClusterCron/CurrentScheduledTime") {}
 
 /**
+ * The schedule of a cron job, as an annotation on its entity, so a host can read a job's schedule
+ * from its registration without running it.
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.1.5
+ */
+export const CronSchedule = Context.Reference<
+  | {
+    readonly cron: Cron.Cron
+    readonly calculateNextRunFromPrevious: boolean
+    readonly skipIfOlderThan: Duration.Duration
+  }
+  | undefined
+>("effect/cluster/ClusterCron/CronSchedule", {
+  defaultValue: () => undefined
+})
+
+/**
  * Creates a layer that runs a cron job through the cluster sharding system.
  *
  * **Details**
@@ -118,6 +137,11 @@ export const make = <E, R>(options: {
   ])
     .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
     .annotate(ClusterSchema.ClientTracingEnabled, false)
+    .annotate(CronSchedule, {
+      cron: options.cron,
+      calculateNextRunFromPrevious: fromPrevious,
+      skipIfOlderThan: Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
+    })
 
   // with `calculateNextRunFromPrevious`, every run shares the executor address
   const send = (dateTime: DateTime.Utc) =>
