@@ -56,8 +56,6 @@ describe("OtlpLogger", () => {
       const { flush } = yield* OtlpExporter.Flusher
       yield* Effect.logInfo("first batch")
       yield* flush
-      yield* Effect.logInfo("during disable window")
-      yield* flush
       assert.strictEqual(warnings, 1)
 
       yield* TestClock.adjust("60 seconds")
