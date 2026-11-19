@@ -17,15 +17,13 @@ import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
-import { identity } from "../Function.ts"
+import { identity, memoize } from "../Function.ts"
 import * as InternalAnnotations from "../internal/schema/annotations.ts"
-import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import type * as Record from "../Record.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
-import * as SchemaGetter from "../SchemaGetter.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 
@@ -604,7 +602,6 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
 // are memoized to avoid recompiling parsers for every channel.
 const stringTreeCodecs = new WeakMap<Schema.Constraint, Schema.Constraint>()
 const arrayCodecs = new WeakMap<Schema.Constraint, Schema.Constraint>()
-const headerUnionArrayCodecs = new WeakMap<Schema.Constraint, Schema.Constraint>()
 
 // The schema used for CSV cells. `toCodecStringTree` keeps the decoded type and
 // services and only changes the encoded side, which is treated as unknown here.
@@ -618,64 +615,48 @@ const toCodec = <S extends Schema.Constraint>(schema: S, disableCodecs: boolean 
   return codec as S
 }
 
-const optionalCell = Schema.optionalKey(Schema.String).ast
-const omitEmptyCell = SchemaTransformation.makeTransformation({
-  decode: SchemaGetter.transformOptional((input) => Option.filter(input, (value) => value !== "")),
-  encode: SchemaGetter.passthrough()
-})
+const toArrayCodec = <S extends Schema.Constraint>(codec: S): Schema.NonEmptyArray<S> => {
+  let array = arrayCodecs.get(codec)
+  if (array === undefined) {
+    array = Schema.NonEmptyArray(codec)
+    arrayCodecs.set(codec, array)
+  }
+  return array as Schema.NonEmptyArray<S>
+}
 
-const prepareIndexedHeaderMember = (ast: SchemaAST.Objects, optionalKeys: ReadonlyArray<string>) => {
-  const inputRecord = Schema.declare(Predicate.isObject, {
+// Normalize each member's input before either its properties or its index signatures run.
+const prepareHeader = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+  if (SchemaAST.isUnion(ast) || SchemaAST.isSuspend(ast)) return ast.recur(prepareHeader)
+  if (!SchemaAST.isObjects(ast)) return ast
+  const keys = ast.propertySignatures.flatMap(({ name, type }) =>
+    typeof name === "string" && SchemaAST.isOptional(SchemaAST.toEncoded(type)) ? [name] : []
+  )
+  if (keys.length === 0) return ast
+  const input = Schema.declare(Predicate.isObject, {
     expected: new SchemaAST.Union([ast]).getExpected(InternalAnnotations.getExpected),
+    // Keep the original discriminants visible to the union parser.
     [InternalAnnotations.SENTINELS_ANNOTATION_KEY]: SchemaAST.collectSentinels(SchemaAST.toCandidate(ast))
   })
   return SchemaAST.decodeTo(
-    inputRecord.ast,
+    input.ast,
     ast,
     SchemaTransformation.transform({
-      decode: (input) => {
-        let row: typeof input | undefined
-        for (const key of optionalKeys) {
-          if (input[key] === "") {
-            row ??= { ...input }
-            delete row[key]
+      decode: (row) => {
+        let copy: typeof row | undefined
+        for (const key of keys) {
+          if (row[key] === "") {
+            copy ??= { ...row }
+            delete copy[key]
           }
         }
-        return row ?? input
+        return copy ?? row
       },
       encode: identity
     })
   )
-}
-
-// A header can be optional in one union member and required in another.
-const prepareHeaderUnion = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  if (SchemaAST.isUnion(ast) || SchemaAST.isSuspend(ast)) return ast.recur(prepareHeaderUnion)
-  if (!SchemaAST.isObjects(ast)) return ast
-  if (ast.indexSignatures.length > 0) {
-    // An index signature can validate the original cell independently of the field parser.
-    const optionalKeys = ast.propertySignatures.flatMap(({ name, type }) =>
-      typeof name === "string" && SchemaAST.isOptional(SchemaAST.toEncoded(type)) ? [name] : []
-    )
-    return optionalKeys.length > 0 ? prepareIndexedHeaderMember(ast, optionalKeys) : ast
-  }
-  return ast.recur((field) =>
-    SchemaAST.isOptional(SchemaAST.toEncoded(field))
-      ? SchemaAST.decodeTo(optionalCell, field, omitEmptyCell)
-      : field
-  )
 })
 
-const toArrayCodec = <S extends Schema.Constraint>(codec: S, headerUnion = false): Schema.NonEmptyArray<S> => {
-  const cache = headerUnion ? headerUnionArrayCodecs : arrayCodecs
-  let array = cache.get(codec)
-  if (array === undefined) {
-    const item = headerUnion ? Schema.make<S>(prepareHeaderUnion(codec.ast)) : codec
-    array = Schema.NonEmptyArray(item)
-    cache.set(codec, array)
-  }
-  return array as Schema.NonEmptyArray<S>
-}
+const headerCodec = memoize(<S extends Schema.Constraint>(codec: S) => Schema.make<S>(prepareHeader(codec.ast)))
 
 const isStringLeaf = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
@@ -812,8 +793,10 @@ export const decodeSchemaString =
       }
       return value
     }
-    const headerUnion = options?.disableCodecs !== true && options?.headers === true && SchemaAST.isUnion(ast)
-    const decode = Schema.decodeUnknownEffect(toArrayCodec(codec, headerUnion), parseOptions)
+    const item = options?.headers === true && options.disableCodecs !== true && SchemaAST.isUnion(ast)
+      ? headerCodec(codec)
+      : codec
+    const decode = Schema.decodeUnknownEffect(toArrayCodec(item), parseOptions)
     return Channel.mapEffect(decodeRecords<IE, Done>(options), (records) =>
       Effect.mapError(
         decode(Arr.map(records, input)),
