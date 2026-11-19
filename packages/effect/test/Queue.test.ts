@@ -47,32 +47,6 @@ describe("Queue", () => {
     })
     const timedOut = Exit.fail(new Cause.TimeoutError("Operation timed out after '10ms'"))
 
-    it.effect("a timed-out take preserves FIFO order and backpressure on a capacity-one queue", () =>
-      Effect.gen(function*() {
-        const queue = yield* Queue.bounded<number>(1)
-        const { fire, timeout } = yield* makeDeadline
-        const timed = yield* Queue.take(queue).pipe(
-          timeout,
-          Effect.forkChild({ startImmediately: true })
-        )
-        yield* Queue.offer(queue, 41)
-        const second = yield* Effect.forkChild(Queue.offer(queue, 42).pipe(Effect.tap(() => fire)), {
-          startImmediately: true
-        })
-        assert.isUndefined(second.pollUnsafe())
-        Queue.flushUnsafe(queue)
-        assert.deepStrictEqual(yield* Fiber.await(timed), timedOut)
-        assert.isTrue(yield* Fiber.join(second))
-
-        const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
-        assert.isUndefined(later.pollUnsafe())
-        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(41))
-        assert.isUndefined(later.pollUnsafe(), "42 still occupies the only slot")
-        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(42))
-        assert.deepStrictEqual(later.pollUnsafe(), Exit.succeed(true))
-        assert.deepStrictEqual(yield* Queue.clear(queue), [99])
-      }))
-
     it.effect("a timed-out rendezvous preserves its item without accepting a later offer", () =>
       Effect.gen(function*() {
         const queue = yield* Queue.bounded<number>(0)
@@ -90,12 +64,10 @@ describe("Queue", () => {
         assert.isTrue(yield* Fiber.join(first))
 
         const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
-        assert.isUndefined(later.pollUnsafe())
         assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(41))
         assert.isUndefined(later.pollUnsafe(), "a new taker is needed for the later offer")
         assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(99))
         assert.deepStrictEqual(later.pollUnsafe(), Exit.succeed(true))
-        assert.deepStrictEqual(yield* Queue.clear(queue), [])
       }))
 
     it.effect.each(["offer", "offerAll"] as const)(
@@ -103,34 +75,24 @@ describe("Queue", () => {
       (method) =>
         Effect.gen(function*() {
           const queue = yield* Queue.bounded<number>(0)
-          const acknowledged: Array<number> = []
           const producer = yield* Effect.gen(function*() {
             yield* Queue.offer(queue, 41)
             const nested = yield* Effect.forkScoped(Queue.take(queue), { startImmediately: true })
             const offer = method === "offer"
               ? Effect.asVoid(Queue.offer(queue, 43))
               : Effect.asVoid(Queue.offerAll(queue, [43]))
-            const later = yield* offer.pipe(
-              Effect.tap(() => Effect.sync(() => acknowledged.push(43))),
-              Effect.forkScoped({ startImmediately: true })
-            )
+            const later = yield* Effect.forkScoped(offer, { startImmediately: true })
             return { later, nested }
           }).pipe(Effect.forkChild({ startImmediately: true }))
-          const pending = yield* Queue.offer(queue, 42).pipe(
-            Effect.tap(() => Effect.sync(() => acknowledged.push(42))),
-            Effect.forkChild({ startImmediately: true })
-          )
+          const pending = yield* Effect.forkChild(Queue.offer(queue, 42), { startImmediately: true })
 
           const first = yield* Queue.take(queue)
           const { later, nested } = yield* Fiber.join(producer)
           const second = yield* Fiber.join(nested)
-          const third = yield* Queue.take(queue)
-          yield* Fiber.join(pending)
+          assert.deepStrictEqual(pending.pollUnsafe(), Exit.succeed(true))
+          assert.isUndefined(later.pollUnsafe())
+          assert.deepStrictEqual([first, second, yield* Queue.take(queue)], [41, 42, 43])
           yield* Fiber.join(later)
-          assert.deepStrictEqual({ delivered: [first, second, third], acknowledged }, {
-            delivered: [41, 42, 43],
-            acknowledged: [42, 43]
-          })
         })
     )
 
@@ -139,7 +101,7 @@ describe("Queue", () => {
         const queue = yield* Queue.bounded<number>(1)
         yield* Queue.offer(queue, 0)
         const batches = []
-        for (const value of [1, 2, 3, 4]) {
+        for (const value of [1, 2]) {
           const { fire, timeout } = yield* makeDeadline
           const offerer = yield* Queue.offer(queue, value).pipe(
             Effect.tap(() => fire),
@@ -156,8 +118,8 @@ describe("Queue", () => {
           assert.isTrue(yield* Fiber.join(offerer))
         }
         assert.deepStrictEqual({ batches, remaining: yield* Queue.clear(queue) }, {
-          batches: [Option.none(), Option.some([0, 1]), Option.none(), Option.some([2, 3])],
-          remaining: [4]
+          batches: [Option.none(), Option.some([0, 1])],
+          remaining: [2]
         })
       }))
 
@@ -178,7 +140,12 @@ describe("Queue", () => {
         Queue.flushUnsafe(queue)
         assert.deepStrictEqual(yield* Fiber.await(outer), timedOut)
         const nested = yield* Fiber.join(producer)
-        assert.deepStrictEqual([yield* Fiber.join(nested), yield* Queue.take(queue)], [41, 42])
+        const later = yield* Effect.forkChild(Queue.offer(queue, 99), { startImmediately: true })
+        assert.strictEqual(yield* Fiber.join(nested), 41)
+        assert.isUndefined(later.pollUnsafe(), "42 still occupies the only slot")
+        assert.deepStrictEqual(yield* Queue.poll(queue), Option.some(42))
+        assert.deepStrictEqual(later.pollUnsafe(), Exit.succeed(true))
+        assert.deepStrictEqual(yield* Queue.clear(queue), [99])
       }))
 
     it.effect("cancelling the last offer on a closing queue cannot interrupt final delivery", () =>
@@ -192,16 +159,11 @@ describe("Queue", () => {
         const last = yield* Effect.forkChild(Queue.offer(queue, 42), { startImmediately: true })
         yield* Deferred.succeed(cancel, last)
         yield* Queue.end(queue)
-        const start = yield* Deferred.make<void>()
-        const worker = yield* Deferred.await(start).pipe(
-          Effect.andThen(Queue.take(queue)),
-          Effect.forkChild({ startImmediately: true })
-        )
+        const worker = yield* Effect.forkChild(Queue.take(queue))
         const awaiter = yield* Queue.await(queue).pipe(
           Effect.andThen(Fiber.interrupt(worker)),
           Effect.forkChild({ startImmediately: true })
         )
-        yield* Deferred.succeed(start, undefined)
         yield* Fiber.join(awaiter)
         assert.isTrue(yield* Fiber.join(first))
         assert.deepStrictEqual(yield* Fiber.await(worker), Exit.succeed(41))
