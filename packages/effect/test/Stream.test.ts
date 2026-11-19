@@ -1841,28 +1841,21 @@ describe("Stream", () => {
       }))
 
     describe("flattenIterable", () => {
-      it.effect("flattens arrays, sets and generators in order", () =>
+      it.effect("emits ordered chunks before propagating an upstream failure", () =>
         Effect.gen(function*() {
-          function* gen(n: number) {
-            for (let i = 0; i < n; i++) yield i
-          }
-          const result = yield* Stream.make<Array<Iterable<number>>>([1, 2], [], new Set([3]), gen(0), gen(2)).pipe(
+          const first = [0]
+          const values = Array.range(1, 4097)
+          const chunks: Array<ReadonlyArray<number>> = []
+          const exit = yield* Stream.make<Array<Iterable<number>>>(first, [], new Set(values)).pipe(
             Stream.rechunk(2),
+            Stream.concat(Stream.fail("boom")),
             Stream.flattenIterable,
-            Stream.runCollect
+            Stream.runForEachArray((chunk) => Effect.sync(() => chunks.push(chunk))),
+            Effect.exit
           )
-          assert.deepStrictEqual(result, [1, 2, 3, 0, 1])
-        }))
-
-      it.effect("pulls large iterables in bounded chunks", () =>
-        Effect.gen(function*() {
-          const sizes = yield* Stream.make(Array.range(1, 10_000)[Symbol.iterator]()).pipe(
-            Stream.flattenIterable,
-            Stream.chunks,
-            Stream.map((chunk) => chunk.length),
-            Stream.runCollect
-          )
-          assert.deepStrictEqual(sizes, [4096, 4096, 1808])
+          assert.strictEqual(chunks[0], first)
+          assert.deepStrictEqual(chunks, [first, values.slice(0, 4096), [4097]])
+          assert.deepStrictEqual(exit, Exit.fail("boom"))
         }))
 
       it.effect("stops pulling an infinite iterable early", () =>
@@ -1888,31 +1881,19 @@ describe("Stream", () => {
           assert.strictEqual(returned, 1)
         }))
 
-      it.effect("does not pull the next iterable before it is needed", () =>
+      it.effect("does not open the next iterator until requested", () =>
         Effect.gen(function*() {
-          const started: Array<number> = []
-          function* gen(n: number) {
-            started.push(n)
-            yield n
+          const unused = {
+            [Symbol.iterator]: () => {
+              throw new Error("unexpected iterator request")
+            }
           }
-          const result = yield* Stream.make(gen(1), gen(2), gen(3)).pipe(
+          const result = yield* Stream.make<Array<Iterable<number>>>(new Set([1]), unused).pipe(
             Stream.flattenIterable,
             Stream.take(1),
             Stream.runCollect
           )
           assert.deepStrictEqual(result, [1])
-          assert.deepStrictEqual(started, [1])
-        }))
-
-      it.effect("propagates upstream failures after earlier elements", () =>
-        Effect.gen(function*() {
-          const exit = yield* Stream.make([1, 2]).pipe(
-            Stream.concat(Stream.fail("boom")),
-            Stream.flattenIterable,
-            Stream.runCollect,
-            Effect.exit
-          )
-          assert.deepStrictEqual(exit, Exit.fail("boom"))
         }))
     })
   })
