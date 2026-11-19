@@ -1,7 +1,7 @@
 import * as Clickhouse from "@clickhouse/client"
 import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, ManagedRuntime, Stream } from "effect"
+import { Effect, Fiber, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
@@ -296,30 +296,21 @@ describe("ClickhouseClient startup validation", { concurrent: false }, () => {
     return () => server[Symbol.asyncDispose]()
   })
 
-  it("fails to build by default when ClickHouse is unavailable", async () => {
-    const runtime = ManagedRuntime.make(ClickhouseClient.layer({ url }))
-    try {
-      const error = await runtime.runPromise(Effect.void).catch((error) => error)
-      assert.strictEqual(error?.reason?._tag, "ConnectionError")
+  it.live("fails to build by default when ClickHouse is unavailable", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(ClickhouseClient.make({ url }))
+      assert.strictEqual(error.reason._tag, "ConnectionError")
       assert.deepStrictEqual(requests, ["/ping"])
-    } finally {
-      await runtime.dispose()
-    }
-  })
+    }).pipe(Effect.provide(Reactivity.layer)))
 
-  it("skips startup requests and recovers on the same runtime with validation disabled", async () => {
-    const runtime = ManagedRuntime.make(ClickhouseClient.layer({ url, validateConnection: false }))
-    const select = Effect.flatMap(ClickhouseClient.ClickhouseClient, (sql) => sql`SELECT 1 AS one`)
-    try {
-      await runtime.runPromise(Effect.void)
+  it.live("skips startup requests and recovers on the same client with validation disabled", () =>
+    Effect.gen(function*() {
+      const sql = yield* ClickhouseClient.make({ url, validateConnection: false })
       assert.deepStrictEqual(requests, [])
-      const error = await runtime.runPromise(Effect.flip(select))
+      const error = yield* Effect.flip(sql`SELECT 1 AS one`)
       assert.strictEqual(error._tag, "SqlError")
       available = true
-      assert.deepStrictEqual(await runtime.runPromise(select), [{ one: 1 }])
+      assert.deepStrictEqual(yield* sql`SELECT 1 AS one`, [{ one: 1 }])
       assert.deepStrictEqual(requests, ["/", "/"])
-    } finally {
-      await runtime.dispose()
-    }
-  })
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
