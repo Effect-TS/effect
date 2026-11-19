@@ -3606,6 +3606,25 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         spec: makeQuerySpec({ "x-oai-additionalOperations": { QUERY: queryOperation } })
       },
       {
+        name: "route extension ahead of a referenced native operation",
+        spec: {
+          ...makeQuerySpec({
+            $ref: "#/components/pathItems/Alias",
+            "x-oai-additionalOperations": { QUERY: queryOperation }
+          }),
+          components: {
+            schemas: {},
+            securitySchemes: {},
+            pathItems: {
+              Alias: {
+                query: { ...queryOperation, operationId: "legacySearch" },
+                $ref: "#/components/pathItems/Missing"
+              }
+            }
+          }
+        }
+      },
+      {
         name: "native OpenAPI 3.2 field",
         spec: {
           ...makeQuerySpec({

@@ -323,12 +323,9 @@ const parseOpenApi = (
   }
 
   for (const [path, entry] of Object.entries(spec.paths)) {
-    const methods = resolvePathItem(spec, entry)
-    const pathItem: Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>> = methods
+    const pathItem = resolvePathItem(spec, entry)
     for (const method of methodNames) {
-      const operation = method === "query"
-        ? pathItem.query ?? methods["x-oai-additionalOperations"]?.QUERY
-        : pathItem[method]
+      const operation = pathItem[method]
       if (Predicate.isUndefined(operation)) {
         continue
       }
@@ -339,7 +336,7 @@ const parseOpenApi = (
       const description = Utils.nonEmptyString(operation.description) ?? Utils.nonEmptyString(operation.summary)
 
       const parameters = resolveOperationParameters(
-        Array.isArray(methods.parameters) ? methods.parameters : undefined,
+        Array.isArray(pathItem.parameters) ? pathItem.parameters : undefined,
         Array.isArray(operation.parameters) ? operation.parameters : undefined,
         resolveRef
       )
@@ -870,10 +867,17 @@ const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter =
   )
 }
 
-const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): OpenAPISpecPathItem => {
-  if (!entry.$ref) return entry
+type PathItem = OpenAPISpecPathItem & Partial<Record<Lowercase<HttpMethod>, OpenAPISpecOperation>>
+
+const normalizeQuery = (item: PathItem): PathItem => {
+  const query = item["x-oai-additionalOperations"]?.QUERY
+  return item.query == null && query !== undefined ? { ...item, query } : item
+}
+
+const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): PathItem => {
+  if (!entry.$ref) return normalizeQuery(entry)
   const seen = new Set<string>()
-  const item = { ...entry }
+  const item = { ...normalizeQuery(entry) }
   let ref = entry.$ref
   while (!seen.has(ref)) {
     seen.add(ref)
@@ -886,7 +890,7 @@ const resolvePathItem = (spec: OpenAPISpec, entry: OpenAPISpecPathItem): OpenAPI
     }
     if (!Predicate.isObject(target)) break
     // Fields closer to the route take precedence over inherited fields.
-    for (const [key, value] of Object.entries(target)) {
+    for (const [key, value] of Object.entries(normalizeQuery(target))) {
       if (!Object.hasOwn(item, key)) Rec.assignProperty(item, key, value)
     }
     if (typeof target.$ref !== "string") break
