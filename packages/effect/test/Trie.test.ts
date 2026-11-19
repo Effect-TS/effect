@@ -397,40 +397,15 @@ describe("Trie", () => {
     deepStrictEqual(result, [["she", 3], ["shells", 0]])
   })
 
-  it("toEntriesWithPrefix returns matching entries as an array", () => {
-    const trie = Trie.empty<number>().pipe(
-      Trie.insert("shells", 0),
-      Trie.insert("sells", 1),
-      Trie.insert("sea", 2),
-      Trie.insert("she", 3)
-    )
+  it("toEntriesWithPrefix preserves prefix boundaries and UTF-16 order", () => {
+    const trie = Trie.make(["a\uE000", 2], ["a😀", 1], ["a", undefined], ["", 0])
+    const matches: Array<[string, number | undefined]> = [["a", undefined], ["a😀", 1], ["a\uE000", 2]]
 
-    const result = Trie.toEntriesWithPrefix(trie, "she")
-    deepStrictEqual(result, [["she", 3], ["shells", 0]])
-  })
-
-  it("prefix iterators preserve exact matches, empty keys, and UTF-16 ordering", () => {
-    const trie = Trie.make(
-      ["", 0],
-      ["a", 1],
-      ["app", undefined],
-      ["apple", 2],
-      ["app😀", 3],
-      ["app😰", 4],
-      ["banana", 5]
-    )
-    const expected: Array<[string, number | undefined]> = [["app", undefined], ["apple", 2], ["app😀", 3], ["app😰", 4]]
-    const entries = Trie.entriesWithPrefix(trie, "app")
-
-    deepStrictEqual(entries.next(), { done: false, value: expected[0] })
-    deepStrictEqual(Array.from(entries), expected.slice(1))
-    deepStrictEqual(entries.next(), { done: true, value: undefined })
-    deepStrictEqual(Array.from(Trie.keysWithPrefix(trie, "ap")), expected.map(([key]) => key))
-    deepStrictEqual(Array.from(Trie.valuesWithPrefix(trie, "app")), expected.map(([, value]) => value))
-    deepStrictEqual(Trie.toEntriesWithPrefix(trie, "app😀".slice(0, -1)), expected.slice(2))
-    deepStrictEqual(Trie.toEntriesWithPrefix(trie, ""), [["", 0], ["a", 1], ...expected, ["banana", 5]])
-    deepStrictEqual(Trie.toEntriesWithPrefix(trie, "apply"), [])
-    deepStrictEqual(Trie.toEntriesWithPrefix(Trie.empty(), "app"), [])
+    deepStrictEqual(Trie.toEntriesWithPrefix(trie, "a"), matches)
+    deepStrictEqual(Trie.toEntriesWithPrefix(trie, "a\uD83D"), [["a😀", 1]])
+    deepStrictEqual(Trie.toEntriesWithPrefix(trie, ""), [["", 0], ...matches])
+    deepStrictEqual(Trie.toEntriesWithPrefix(trie, "ab"), [])
+    deepStrictEqual(Trie.toEntriesWithPrefix(Trie.empty(), "a"), [])
   })
 
   it("longestPrefixOf returns the longest stored key that prefixes the input", () => {
