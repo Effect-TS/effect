@@ -196,15 +196,9 @@ const requestServiceKeys = new Set<string>([
   Tracer.ParentSpan.key
 ])
 
-const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> =>
-  prepareContext(context as Context.Context<never>).services as Context.Context<Services>
-
-// What a registration takes from the context it was made in: its services
-// without request services, and its middleware. A context is immutable, so
-// this is derived once per context and shared by every registration made in
-// it. Every tool of a toolkit shares one context that holds all of the
-// toolkit's handlers, so deriving it per tool would copy it once per tool,
-// which grows with the square of the toolkit's size.
+// A registration's services without request services, and its middleware.
+// Contexts are immutable, so this is derived once per context: every tool of a
+// toolkit registers from one context that holds all of the toolkit's handlers.
 const preparedContexts = new WeakMap<Context.Context<never>, {
   readonly services: Context.Context<never>
   readonly localMiddleware: ReadonlyArray<AnyMiddlewareFn>
@@ -3324,7 +3318,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     for (const tool of Object.values(toolkit.tools)) {
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
-        services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
+        services.set(tool.id, { ...handler, context: prepareContext(handler.context).services })
       }
     }
     return Context.makeUnsafe(services)
