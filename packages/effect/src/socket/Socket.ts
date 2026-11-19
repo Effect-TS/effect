@@ -81,8 +81,8 @@ export const Socket: Context.Service<Socket, Socket> = Context.Service<Socket>("
  * The writer is detached from any single connection: acquiring it cannot
  * fail, and writes made while disconnected suspend until the next connection
  * is established. If the socket cannot reconnect, writes fail instead once
- * reader acquisition fails or the reader scope closes. Releasing the writer scope half-closes the write side
- * where the transport supports it.
+ * reader acquisition fails or the reader scope closes. Releasing the writer
+ * scope half-closes the write side where the transport supports it.
  *
  * **Example** (Consuming with automatic reconnect)
  *
@@ -970,15 +970,16 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: WebSocketLike | undefined
-    let closed: SocketError | undefined
+    let terminalError: SocketError | undefined
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
-    const close = options?.reconnect === false
-      ? (error: SocketError) => {
-        closed ??= error
+    const reconnect = options?.reconnect !== false
+    const terminate = reconnect
+      ? () => latch.closeUnsafe()
+      : (error: SocketError) => {
+        terminalError ??= error
         latch.openUnsafe()
       }
-      : () => latch.closeUnsafe()
 
     const connect: Socket["reader"] = Effect.gen(function*() {
       const scope = yield* Effect.scope
@@ -1125,11 +1126,12 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
             }
           }
           currentWS = undefined
-          close(error!)
+          terminate(error!)
         })
       )
 
-      if (closed !== undefined) return yield* Effect.fail(closed)
+      // released during acquisition: skip the open wait
+      if (terminalError !== undefined) return yield* Effect.fail(terminalError)
       if (ws.readyState >= 2) {
         // @effect-diagnostics-next-line unnecessaryFailYieldableError:off
         return yield* Effect.fail(error ?? closeError(1006))
@@ -1167,7 +1169,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
         open = true
       }
 
-      if (closed !== undefined) return yield* Effect.fail(closed)
+      if (terminalError !== undefined) return yield* Effect.fail(terminalError)
       if (error === undefined && bufferSize < highWaterMark!) resumeWebSocket()
       currentWS = ws
       latch.openUnsafe()
@@ -1186,17 +1188,17 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(acquireContext, input))
     ) as Socket["reader"]
-    const reader: Socket["reader"] = options?.reconnect === false
-      ? Effect.suspend(() =>
-        closed !== undefined
-          ? Effect.fail(closed)
-          : Effect.tapError(connect, (error) => Effect.sync(() => close(error)))
+    const reader: Socket["reader"] = reconnect
+      ? connect
+      : Effect.suspend(() =>
+        terminalError !== undefined
+          ? Effect.fail(terminalError)
+          : Effect.tapError(connect, (error) => Effect.sync(() => terminate(error)))
       )
-      : connect
 
     const write = (chunk: Uint8Array | string | CloseEvent): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
-        if (closed !== undefined) return Effect.fail(closed)
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const ws = currentWS
         if (ws === undefined) return latch.whenOpen(write(chunk))
         try {
@@ -1214,7 +1216,7 @@ export const fromWebSocket = <RO, WS extends WebSocketLike>(
       chunks: NonEmptyReadonlyArray<Uint8Array | string>
     ): Effect.Effect<void, SocketError> =>
       Effect.suspend(() => {
-        if (closed !== undefined) return Effect.fail(closed)
+        if (terminalError !== undefined) return Effect.fail(terminalError)
         const ws = currentWS
         if (ws === undefined) return latch.whenOpen(writeAll(chunks))
         try {

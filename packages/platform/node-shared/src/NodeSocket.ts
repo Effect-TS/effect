@@ -165,12 +165,13 @@ export const fromDuplex = <RO>(
     let currentSocket: Duplex | undefined
     let terminalError: Socket.SocketError | undefined
     const latch = Latch.makeUnsafe(false)
-    const closeSocket = options?.reconnect === false
-      ? (error: Socket.SocketError) => {
+    const reconnect = options?.reconnect !== false
+    const terminate = reconnect
+      ? () => latch.closeUnsafe()
+      : (error: Socket.SocketError) => {
         terminalError ??= error
         latch.openUnsafe()
       }
-      : () => latch.closeUnsafe()
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const requestedChunkSize = options?.chunkSize ?? 4096
@@ -300,7 +301,7 @@ export const fromDuplex = <RO>(
           detachReadListeners(conn)
           currentSocket = undefined
           upgradeAvailable = false
-          closeSocket(error!)
+          terminate(error!)
         })
       )
 
@@ -432,13 +433,13 @@ export const fromDuplex = <RO>(
     }).pipe(
       Effect.updateContext((input: Context.Context<Scope.Scope>) => Context.merge(openServices, input))
     ) as Socket.Socket["reader"]
-    const reader: Socket.Socket["reader"] = options?.reconnect === false
-      ? Effect.suspend(() =>
+    const reader: Socket.Socket["reader"] = reconnect
+      ? connect
+      : Effect.suspend(() =>
         terminalError !== undefined
           ? Effect.fail(terminalError)
-          : Effect.tapError(connect, (error) => Effect.sync(() => closeSocket(error)))
+          : Effect.tapError(connect, (error) => Effect.sync(() => terminate(error)))
       )
-      : connect
 
     const awaitDrain = (conn: Duplex) =>
       Effect.callback<void, Socket.SocketError>((resume) => {

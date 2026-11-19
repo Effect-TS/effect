@@ -476,36 +476,37 @@ export const makeUpgradeHandler = <
         }
         return nodeResponse_
       }
-      const webSocketUpgrade = Socket.fromWebSocket(
-        Effect.flatMap(
-          lazyWss,
-          (wss) =>
-            Effect.acquireRelease(
-              Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
-                // A refused handshake never invokes the callback, so fail on close instead.
-                const onClose = () =>
-                  resume(Effect.fail(
-                    new Socket.SocketError({
-                      reason: new Socket.SocketOpenError({
-                        kind: "Unknown",
-                        cause: new Error("The socket closed before the upgrade")
-                      })
+      const acquireWebSocket = Effect.flatMap(
+        lazyWss,
+        (wss) =>
+          Effect.acquireRelease(
+            Effect.callback<NodeWS.WebSocket, Socket.SocketError>((resume) => {
+              // A refused handshake never invokes the callback, so fail on close instead.
+              const onClose = () =>
+                resume(Effect.fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: "Unknown",
+                      cause: new Error("The socket closed before the upgrade")
                     })
-                  ))
-                if (socket.destroyed) return onClose()
-                socket.once("close", onClose)
-                wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
-                  socket.off("close", onClose)
-                  state.response = upgradedResponse
-                  upgradedWebSockets.set(socket, ws)
-                  resume(Effect.succeed(ws))
-                })
-              }),
-              (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
-            )
-        ),
-        { highWaterMark: options.highWaterMark, reconnect: false }
+                  })
+                ))
+              if (socket.destroyed) return onClose()
+              socket.once("close", onClose)
+              wss.handleUpgrade(nodeRequest, socket, head, (ws) => {
+                socket.off("close", onClose)
+                state.response = upgradedResponse
+                upgradedWebSockets.set(socket, ws)
+                resume(Effect.succeed(ws))
+              })
+            }),
+            (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
+          )
       )
+      const webSocketUpgrade = Socket.fromWebSocket(acquireWebSocket, {
+        highWaterMark: options.highWaterMark,
+        reconnect: false
+      })
       const state: UpgradeState = {
         body,
         response: undefined,
