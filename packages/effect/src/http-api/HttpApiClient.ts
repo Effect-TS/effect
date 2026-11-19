@@ -1068,8 +1068,10 @@ function toResponseCodec(
                 if (fields) pair.recoveries.set(codec, fields)
               }))
             : decodeBody(input))
-        return Effect.all({ body, headers: decodeHeaders(pair.headers) }).pipe(
-          Effect.map(parts.toValue),
+        return body.pipe(
+          Effect.flatMap((body) =>
+            Effect.map(decodeHeaders(pair.headers), (headers) => parts.toValue({ body, headers }))
+          ),
           Effect.mapError((error) => error.issue)
         )
       },
@@ -1090,7 +1092,7 @@ function recoverFormFields(issue: SchemaIssue.Issue, input: unknown) {
       !SchemaAST.isArrays(child.issue.ast)
     ) return
     const key = child.path[0]
-    if (typeof key !== "string" || !Predicate.isString(input[key])) return
+    if (typeof key !== "string" || !Object.hasOwn(input, key) || !Predicate.isString(input[key])) return
     fields[key] = [input[key]]
   }
   return fields
