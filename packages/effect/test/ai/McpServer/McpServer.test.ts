@@ -93,11 +93,11 @@ const UnserializableResultTool = Tool.make("UnserializableResultTool", {
   success: Schema.Unknown
 })
 
-const UntypedTool = Tool.make("UntypedTool")
+const UntypedTool = Tool.make("UntypedTool").annotate(Tool.Readonly, true)
 
 const StructuredResultTool = Tool.make("StructuredResultTool", {
   success: Schema.Struct({ answer: Schema.String })
-})
+}).annotate(Tool.Readonly, true).annotate(Tool.Destructive, true)
 
 const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
   success: Schema.Void.annotate({ description: "No output" })
@@ -2212,6 +2212,20 @@ describe("McpServer", () => {
           assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
         }))
     })
+
+    it.effect("lists read-only tools as non-destructive unless explicitly marked destructive", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+        const { tools } = yield* client.listTools({})
+        assert.deepInclude(tools.find((tool) => tool.name === "UntypedTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: false
+        })
+        assert.deepInclude(tools.find((tool) => tool.name === "StructuredResultTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: true
+        })
+      }))
 
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
