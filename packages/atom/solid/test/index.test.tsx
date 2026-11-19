@@ -149,6 +149,27 @@ describe("atom-solid", () => {
       dispose()
     })
 
+    it("returns Promise values without awaiting them", async () => {
+      const promise = Promise.resolve(42)
+      const atom = Atom.make(() => promise)
+      const observed: Array<Promise<number>> = []
+      let value!: Accessor<Promise<number>>
+      const dispose = createRoot((dispose) => {
+        value = useAtomValue(() => atom)
+        // Solid 2 effects await a Promise returned from their compute phase.
+        watch(() => [value()] as const, ([value]) => observed.push(value))
+        return dispose
+      })
+      flush()
+      await promise
+      await removals()
+      flush()
+      assert.strictEqual(value(), promise)
+      assert.strictEqual(observed.length, 1)
+      assert.strictEqual(observed[0], promise)
+      dispose()
+    })
+
     it("useAtomMount and useAtomSubscribe release on dispose", async () => {
       const registry = AtomRegistry.make()
       let released = false
