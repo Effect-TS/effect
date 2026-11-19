@@ -778,69 +778,7 @@ const prepareMessages = Effect.fnUntraced(
               }
 
               case "file": {
-                if (part.mediaType.startsWith("image/")) {
-                  const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
-
-                  content.push({
-                    type: "image_url",
-                    image_url: { url: getFileUrl(part.data, mediaType) },
-                    ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
-                  })
-
-                  break
-                }
-
-                if (part.mediaType.startsWith("audio/")) {
-                  const format = audioFormats[part.mediaType.toLowerCase()]
-
-                  if (Predicate.isUndefined(format)) {
-                    return yield* AiError.make({
-                      module: "OpenRouterLanguageModel",
-                      method: "prepareMessages",
-                      reason: new AiError.InvalidUserInputError({
-                        description: `Detected unsupported media type for audio file: '${part.mediaType}' ` +
-                          `- OpenRouter supports ${supportedAudioFormats} audio`
-                      })
-                    })
-                  }
-
-                  if (part.data instanceof URL) {
-                    return yield* AiError.make({
-                      module: "OpenRouterLanguageModel",
-                      method: "prepareMessages",
-                      reason: new AiError.InvalidUserInputError({
-                        description: "Detected URL data for audio file - OpenRouter requires " +
-                          "audio to be provided as base64-encoded data"
-                      })
-                    })
-                  }
-
-                  content.push({
-                    type: "input_audio",
-                    input_audio: {
-                      data: part.data instanceof Uint8Array
-                        ? Base64.encode(part.data)
-                        : getBase64FromDataUrl(part.data),
-                      format
-                    },
-                    ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
-                  })
-
-                  break
-                }
-
-                const options = part.options.openrouter
-                const fileName = options?.fileName ?? part.fileName ?? ""
-
-                content.push({
-                  type: "file",
-                  file: {
-                    filename: fileName,
-                    file_data: getFileUrl(part.data, part.mediaType)
-                  },
-                  ...(Predicate.isNotNull(partCacheControl) ? { cache_control: partCacheControl } : undefined)
-                } as any)
-
+                content.push(yield* prepareFilePart(part, partCacheControl))
                 break
               }
             }
@@ -941,12 +879,38 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
+            const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
+
+            if (Predicate.isNotUndefined(part.modelOutput) && part.modelOutput.some((item) => item.type === "file")) {
+              const content: Array<typeof Generated.ChatContentItems.Encoded> = []
+              for (const item of part.modelOutput) {
+                const itemCacheControl = getCacheControl(item)
+                if (item.type === "file") {
+                  content.push(yield* prepareFilePart(item, itemCacheControl))
+                } else if (item.text.length > 0) {
+                  content.push({
+                    type: "text",
+                    text: item.text,
+                    ...(Predicate.isNotNull(itemCacheControl) ? { cache_control: itemCacheControl } : undefined)
+                  })
+                }
+              }
+
+              // A file part always yields an item, so `content` is non-empty here.
+              const lastIndex = content.length - 1
+              if (Predicate.isNotNull(cache_control) && !("cache_control" in content[lastIndex])) {
+                content[lastIndex] = { ...content[lastIndex], cache_control } as any
+              }
+
+              messages.push({ role: "tool", tool_call_id: part.id, content })
+              continue
+            }
+
             const text = Predicate.isNotUndefined(part.modelOutput)
               ? Prompt.toolModelOutputToText(part.modelOutput)
               : typeof part.result === "string"
               ? part.result
               : JSON.stringify(part.result)
-            const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
 
             messages.push({
               role: "tool",
@@ -963,6 +927,76 @@ const prepareMessages = Effect.fnUntraced(
     }
 
     return messages
+  }
+)
+
+/**
+ * Converts a file part into the content item OpenRouter expects for its media
+ * type. Shared by user messages and tool results.
+ */
+const prepareFilePart = Effect.fnUntraced(
+  function*(
+    part: Prompt.FilePart,
+    cacheControl: typeof Generated.ChatContentCacheControl.Encoded | null
+  ): Effect.fn.Return<typeof Generated.ChatContentItems.Encoded, AiError.AiError> {
+    if (part.mediaType.startsWith("image/")) {
+      const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
+
+      return {
+        type: "image_url",
+        image_url: { url: getFileUrl(part.data, mediaType) },
+        ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
+      }
+    }
+
+    if (part.mediaType.startsWith("audio/")) {
+      const format = audioFormats[part.mediaType.toLowerCase()]
+
+      if (Predicate.isUndefined(format)) {
+        return yield* AiError.make({
+          module: "OpenRouterLanguageModel",
+          method: "prepareMessages",
+          reason: new AiError.InvalidUserInputError({
+            description: `Detected unsupported media type for audio file: '${part.mediaType}' ` +
+              `- OpenRouter supports ${supportedAudioFormats} audio`
+          })
+        })
+      }
+
+      if (part.data instanceof URL) {
+        return yield* AiError.make({
+          module: "OpenRouterLanguageModel",
+          method: "prepareMessages",
+          reason: new AiError.InvalidUserInputError({
+            description: "Detected URL data for audio file - OpenRouter requires " +
+              "audio to be provided as base64-encoded data"
+          })
+        })
+      }
+
+      return {
+        type: "input_audio",
+        input_audio: {
+          data: part.data instanceof Uint8Array
+            ? Base64.encode(part.data)
+            : getBase64FromDataUrl(part.data),
+          format
+        },
+        ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
+      }
+    }
+
+    const options = part.options.openrouter
+    const fileName = options?.fileName ?? part.fileName ?? ""
+
+    return {
+      type: "file",
+      file: {
+        filename: fileName,
+        file_data: getFileUrl(part.data, part.mediaType)
+      },
+      ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
+    } as any
   }
 )
 
