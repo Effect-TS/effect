@@ -10,6 +10,7 @@
  * @internal
  */
 import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { armAlarm } from "./entityStorage.ts"
 import {
@@ -26,6 +27,8 @@ const watchdogMillis = 60_000
 
 /** @internal */
 export interface SingletonRuntimeOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   readonly sql: SqlStorage
   readonly alarm: Pick<DurableObjectStorage, "deleteAlarm" | "getAlarm" | "setAlarm">
   readonly now: () => number
@@ -40,6 +43,8 @@ export interface SingletonRuntime {
 
 /** @internal */
 export const makeSingletonRuntime = (options: SingletonRuntimeOptions): SingletonRuntime => {
+  const context = options.context ?? Context.empty()
+  const runPromise = Effect.runPromiseWith(context)
   ensureSingletonStorage(options.sql)
   let inFlight: Promise<void> | undefined
 
@@ -54,7 +59,7 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
         )
       )
     )
-    const operation = Effect.runPromise(arm ? Effect.andThen(armWatchdog(), run) : run)
+    const operation = runPromise(arm ? Effect.andThen(armWatchdog(), run) : run)
     inFlight = operation
     void operation.then(
       () => {
@@ -81,7 +86,7 @@ export const makeSingletonRuntime = (options: SingletonRuntimeOptions): Singleto
     // that fires during a run must arm the next watchdog before returning.
     runAlarm: () => {
       if (loadSingletonState(options.sql).wakeAt === undefined) return Promise.resolve()
-      if (inFlight !== undefined) return Effect.runPromise(armWatchdog())
+      if (inFlight !== undefined) return runPromise(armWatchdog())
       return runPending(false)
     }
   }

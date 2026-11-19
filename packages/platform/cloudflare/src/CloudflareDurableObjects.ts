@@ -11,6 +11,7 @@
  * @since 4.1.3
  */
 import { DurableObject } from "cloudflare:workers"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import {
   type ClusterDurableQueueProgram,
@@ -52,13 +53,13 @@ const notExposed = (className: string) => () => {
  * @category models
  * @since 4.1.3
  */
-export type Initializer<Env = unknown, A = unknown> = (env: Env) => PromiseLike<A>
+export type Initializer<Env = unknown, R = never> = (env: Env) => PromiseLike<Context.Context<R>>
 
 interface InitializationAttempt {
   readonly startedAt: number
   exit: {
     readonly _tag: "Success"
-    readonly value: unknown
+    readonly value: Context.Context<never>
   } | {
     readonly _tag: "Failure"
     readonly error: unknown
@@ -94,24 +95,25 @@ let initialization: InitializationAttempt | undefined
  * in an isolate. A Durable Object waiter starts a build only while it has
  * waited less than 15 seconds, so any replacement keeps at least 15 seconds of
  * the 30 second `blockConcurrencyWhile` limit. The returned function joins the
- * same readiness state from Worker handlers.
+ * same readiness state from Worker handlers. Return the application context
+ * (for example, `runtime.context()`); the objects run their effects with its services.
  *
  * @stability experimental
  * @category initialization
  * @since 4.1.3
  */
-export const setInitializer = <Env, A>(handler: Initializer<Env, A>): (env: Env) => Promise<A> => {
+export const setInitializer = <Env, R>(handler: Initializer<Env, R>): (env: Env) => Promise<Context.Context<R>> => {
   if (initializer !== undefined) {
     throw new Error("@effect/platform-cloudflare: the Durable Object initializer is already set")
   }
   initializer = handler as Initializer
   // Worker handlers are not bounded by `blockConcurrencyWhile`, so they may
   // take over a stale build however long they have waited.
-  return (env) => waitForInitialization(env, Infinity) as Promise<A>
+  return (env) => waitForInitialization(env, Infinity) as Promise<Context.Context<R>>
 }
 
-const waitForInitialization = async (env: unknown, takeoverMillis: number): Promise<unknown> => {
-  if (initializer === undefined) return
+const waitForInitialization = async (env: unknown, takeoverMillis: number): Promise<Context.Context<never>> => {
+  if (initializer === undefined) return Context.empty()
   const waitStartedAt = Date.now()
   const isFresh = (): boolean => Date.now() - waitStartedAt < takeoverMillis
   const canTakeOver = (attempt: InitializationAttempt): boolean => isStale(attempt) && isFresh()
@@ -145,7 +147,7 @@ const waitForInitialization = async (env: unknown, takeoverMillis: number): Prom
 const isStale = (attempt: InitializationAttempt): boolean =>
   attempt.exit === undefined && Date.now() - attempt.startedAt >= staleInitializationMillis
 
-const runInitializer = async (run: Initializer, env: unknown): Promise<unknown> => {
+const runInitializer = async (run: Initializer, env: unknown): Promise<Context.Context<never>> => {
   const attempt: InitializationAttempt = { startedAt: Date.now(), exit: undefined }
   initialization = attempt
   try {
@@ -165,13 +167,17 @@ const runInitializer = async (run: Initializer, env: unknown): Promise<unknown> 
 const blockOnInitialization = (
   ctx: DurableObjectState,
   env: unknown,
-  after?: (() => Promise<unknown>) | undefined
+  after: (run: Run) => Promise<unknown>
 ): void => {
   void ctx.blockConcurrencyWhile(async () => {
-    await waitForInitialization(env, durableObjectTakeoverMillis)
-    if (after !== undefined) await after()
+    const application = await waitForInitialization(env, durableObjectTakeoverMillis)
+    // The classes run their effects with the application context the
+    // initializer returned, so its scheduler, tracer and loggers apply.
+    await after(Effect.runPromiseWith(application))
   })
 }
+
+type Run = <A, E>(effect: Effect.Effect<A, E>) => Promise<A>
 
 /**
  * The shared entity class. One instance holds one entity address; the handlers
@@ -194,46 +200,48 @@ const blockOnInitialization = (
 export class ClusterEntity extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterEntityProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterEntityProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterEntityProgram(ctx))
     })
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   /** @internal Keeps this object non-hibernateable while entity resources have holders. */
   hold(): Promise<void> {
-    return Effect.runPromise(this.#program.hold())
+    return this.#run(this.#program.hold())
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareCluster.layer`. */
   invoke(envelopeText: string, discard: boolean, delivery?: EntityDeliveryOptions): Promise<EntityInvokeResult> {
-    return Effect.runPromise(this.#program.invoke(envelopeText, discard, delivery))
+    return this.#run(this.#program.invoke(envelopeText, discard, delivery))
   }
 
   /** @internal Acknowledges a streamed chunk. */
   acknowledge(requestId: string, replyId: string): Promise<ReadonlyArray<string>> {
-    return Effect.runPromise(this.#program.acknowledge(requestId, replyId))
+    return this.#run(this.#program.acknowledge(requestId, replyId))
   }
 
   /** @internal Interrupts a handler execution and completes its persisted ask, if any. */
   interrupt(storageRequestId: string, clientRequestId = storageRequestId): Promise<void> {
-    return Effect.runPromise(this.#program.interrupt(storageRequestId, clientRequestId))
+    return this.#run(this.#program.interrupt(storageRequestId, clientRequestId))
   }
 
   /** @internal Clears stored replies so a reset request replays from scratch. */
   reset(requestId: string): Promise<void> {
-    return Effect.runPromise(this.#program.reset(requestId))
+    return this.#run(this.#program.reset(requestId))
   }
 
   /** @internal Completes an in-memory delayed ask owned by this entity object. */
   deliverReply(requestId: string, reply: string): Promise<boolean> {
-    return Effect.runPromise(this.#program.deliverReply(requestId, reply))
+    return this.#run(this.#program.deliverReply(requestId, reply))
   }
 
   override fetch: () => never = notExposed("ClusterEntity")
@@ -259,51 +267,53 @@ export class ClusterEntity extends DurableObject<unknown> {
 export class ClusterWorkflow extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterWorkflowProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterWorkflowProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterWorkflowProgram(ctx))
     })
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflareWorkflowEngine`. */
   run(payload: string, options: ClusterWorkflowRunOptions): Promise<string> {
-    return Effect.runPromise(this.#program.run(payload, options))
+    return this.#run(this.#program.run(payload, options))
   }
 
   /** @internal */
   poll(): Promise<string | undefined> {
-    return Effect.runPromise(this.#program.poll())
+    return this.#run(this.#program.poll())
   }
 
   /** @internal */
   resume(mode?: ClusterWorkflowWakeMode): Promise<void> {
-    return Effect.runPromise(this.#program.resume(mode))
+    return this.#run(this.#program.resume(mode))
   }
 
   /** @internal */
   interrupt(): Promise<void> {
-    return Effect.runPromise(this.#program.interrupt())
+    return this.#run(this.#program.interrupt())
   }
 
   /** @internal */
   interruptUnsafe(): Promise<void> {
-    return Effect.runPromise(this.#program.interruptUnsafe())
+    return this.#run(this.#program.interruptUnsafe())
   }
 
   /** @internal Records a durable deferred exit and resumes the execution. */
   deferredDone(name: string, exit: string): Promise<void> {
-    return Effect.runPromise(this.#program.deferredDone(name, exit))
+    return this.#run(this.#program.deferredDone(name, exit))
   }
 
   /** @internal Persists a durable clock and arms the single alarm. */
   scheduleClock(name: string, deferredName: string, wakeUp: number): Promise<void> {
-    return Effect.runPromise(this.#program.scheduleClock(name, deferredName, wakeUp))
+    return this.#run(this.#program.scheduleClock(name, deferredName, wakeUp))
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterWorkflow")
@@ -328,11 +338,13 @@ export class ClusterWorkflow extends DurableObject<unknown> {
 export class ClusterDurableQueue extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterDurableQueueProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterDurableQueueProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterDurableQueueProgram(ctx))
     })
   }
 
@@ -343,22 +355,22 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
     delayMillis?: number,
     deduplicate?: "untilExecuted" | "untilRemoved"
   ): Promise<void> {
-    return Effect.runPromise(this.#program.offer(id, element, delayMillis, deduplicate))
+    return this.#run(this.#program.offer(id, element, delayMillis, deduplicate))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
   take(takerId: string, maxAttempts: number, leaseMillis: number): Promise<DurableQueueItem> {
-    return Effect.runPromise(this.#program.take(takerId, maxAttempts, leaseMillis))
+    return this.#run(this.#program.take(takerId, maxAttempts, leaseMillis))
   }
 
   /** @internal Cancels a waiting take, releasing an item already leased to it. */
   cancelTake(takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.cancelTake(takerId))
+    return this.#run(this.#program.cancelTake(takerId))
   }
 
   /** @internal Completes the item while the taker still owns its lease. */
   complete(id: string, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.complete(id, takerId))
+    return this.#run(this.#program.complete(id, takerId))
   }
 
   /**
@@ -367,21 +379,21 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
    * for `retryDelayMillis`.
    */
   fail(id: string, lastFailure: string, takerId: string, terminal?: boolean, retryDelayMillis?: number): Promise<void> {
-    return Effect.runPromise(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
+    return this.#run(this.#program.fail(id, lastFailure, takerId, terminal, retryDelayMillis))
   }
 
   /** @internal Requeues the item and refunds the attempt its lease counted. */
   release(id: string, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.release(id, takerId))
+    return this.#run(this.#program.release(id, takerId))
   }
 
   /** @internal Extends the lease of an item still being processed. */
   extend(id: string, leaseMillis: number, takerId: string): Promise<void> {
-    return Effect.runPromise(this.#program.extend(id, leaseMillis, takerId))
+    return this.#run(this.#program.extend(id, leaseMillis, takerId))
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterDurableQueue")
@@ -409,21 +421,23 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
 export class ClusterSingleton extends DurableObject<unknown> {
   // blockConcurrencyWhile completes this assignment before any RPC or alarm.
   #program!: ClusterSingletonProgram
+  #run!: Run
 
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env)
-    blockOnInitialization(ctx, env, async () => {
-      this.#program = await Effect.runPromise(makeClusterSingletonProgram(ctx))
+    blockOnInitialization(ctx, env, async (run) => {
+      this.#run = run
+      this.#program = await run(makeClusterSingletonProgram(ctx))
     })
   }
 
   /** @internal Runs one Cron Trigger fire, coalescing a concurrent duplicate. */
   wake(): Promise<SingletonWakeResult> {
-    return Effect.runPromise(this.#program.wake())
+    return this.#run(this.#program.wake())
   }
 
   override alarm(): Promise<void> {
-    return Effect.runPromise(this.#program.alarm())
+    return this.#run(this.#program.alarm())
   }
 
   override fetch: () => never = notExposed("ClusterSingleton")

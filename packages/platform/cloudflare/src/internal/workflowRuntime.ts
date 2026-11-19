@@ -37,11 +37,6 @@ export const InterruptSignalName = "Workflow/InterruptSignal"
 
 const resumeGuardMillis = 60_000
 
-let voidExitCache: Promise<string> | undefined
-const voidExitText = (): Promise<
-  string
-> => (voidExitCache ??= Effect.runPromise(encodeExit(Exit.void, Context.empty())))
-
 const mergeWake = (
   current: WorkflowStorage.WakeMode | undefined,
   mode: WorkflowStorage.WakeMode
@@ -49,6 +44,8 @@ const mergeWake = (
 
 /** @internal */
 export interface WorkflowRuntimeOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   readonly name: string
   readonly sql: SqlStorage
   readonly alarm: EntityAlarm
@@ -78,6 +75,11 @@ interface Inflight {
 
 /** @internal */
 export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRuntime => {
+  const context = options.context ?? Context.empty()
+  const runPromise = Effect.runPromiseWith(context)
+  const runFork = Effect.runForkWith(context)
+  let voidExitCache: Promise<string> | undefined
+  const voidExitText = () => voidExitCache ??= runPromise(encodeExit(Exit.void, context))
   const name = decodeName(options.name)
   if (name === undefined) {
     throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
@@ -172,7 +174,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   // child's own defect from a transport failure, and a parent replaying a
   // discarded child finds the result instead of restarting it.
   const failAttempt = (cause: Cause.Cause<unknown>): Promise<string> =>
-    Effect.runPromise(Effect.gen(function*() {
+    runPromise(Effect.gen(function*() {
       yield* Effect.logError("Workflow execution failed", cause)
       const text = yield* encodeDefectResult(Cause.squash(cause))
       const parent = WorkflowStorage.loadExecution(sql)?.parent
@@ -180,7 +182,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
       inflight = undefined
       resumeRequested = undefined
-      if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+      if (parent !== undefined) options.waitUntil(runPromise(deliverParentWake))
       return text
     }))
 
@@ -219,7 +221,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       readonly result: Workflow.Result<unknown, unknown>
       readonly text: string
     }): Promise<string> =>
-      Effect.runPromise(
+      runPromise(
         Effect.gen(function*() {
           const parent = WorkflowStorage.loadExecution(sql)?.parent
           if (result._tag === "Complete" && parent !== undefined) {
@@ -233,7 +235,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
             WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
             inflight = undefined
             resumeRequested = undefined
-            if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+            if (parent !== undefined) options.waitUntil(runPromise(deliverParentWake))
             return text
           }
           const replay = resumeRequested !== undefined && !isUnwakeable(text, resumeRequested)
@@ -257,12 +259,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       if (attempt.result._tag !== "Complete") return persist(attempt)
       // Close retained scopes before saving, so a durable completion never
       // has unrun finalizers. A dying finalizer fails the attempt instead.
-      return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
+      return runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
         Exit.isSuccess(closed) ? persist(attempt) : failAttempt(closed.cause)
       )
     }
-    const fiber = Effect.runFork(execute)
-    const promise = Effect.runPromise(Fiber.await(fiber)).then((exit) => {
+    const fiber = runFork(execute)
+    const promise = runPromise(Fiber.await(fiber)).then((exit) => {
       if (Exit.isSuccess(exit)) return finish(exit.value)
       if (Cause.hasInterruptsOnly(exit.cause) && (instance.interrupted || instance.suspended)) {
         // A hard interrupt (or a completion preempting the fiber after it
@@ -271,12 +273,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         const result: Workflow.Result<unknown, unknown> = instance.interrupted
           ? new Workflow.Complete({ exit: exit as Exit.Exit<unknown, unknown> })
           : new Workflow.Suspended({})
-        return Effect.runPromise(encodeResult(workflow, result, registration.context))
+        return runPromise(encodeResult(workflow, result, registration.context))
           .then((text) => finish({ result, text }))
       }
       // A defect ends every retained attempt; a replay starts in fresh scopes.
       // Stay in flight while closing so cleanup precedes any replay.
-      return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
+      return runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
         failAttempt(Exit.isSuccess(closed) ? exit.cause : Cause.combine(exit.cause, closed.cause))
       )
     })
@@ -302,7 +304,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     // caller awaits it.
     WorkflowStorage.setResumePending(sql, mergeWake(row.resumePending, "automatic"))
     const attempt = startAttempt(row)
-    const armed = Effect.runPromise(armResumeGuard)
+    const armed = runPromise(armResumeGuard)
     if (opts.discard) {
       detach(attempt)
       return armed.then(() => "")
@@ -321,7 +323,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     if (!requestWake(mode)) return Promise.resolve()
     // Persist and guard the resume before acknowledging it, so an abort after
     // the RPC returns is still recovered.
-    return Effect.runPromise(armResumeGuard).then(startPending)
+    return runPromise(armResumeGuard).then(startPending)
   }
 
   const completeDeferred = (
@@ -335,7 +337,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     // the execution. The in-flight request is set synchronously so a settling
     // attempt cannot clear the pending resume without a restart.
     if (!requestWake(mode)) return Promise.resolve()
-    return Effect.runPromise(
+    return runPromise(
       armResumeGuard.pipe(Effect.andThen(deferredState.deferredDone(executionId, deferredName)))
     ).then(() => resume(mode))
   }
@@ -358,7 +360,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       )
       return armResumeGuard.pipe(
         Effect.andThen(Effect.forkDetach(wake)),
-        Effect.flatMap((fiber) => Effect.sync(() => detach(Effect.runPromise(Fiber.await(fiber)))))
+        Effect.flatMap((fiber) => Effect.sync(() => detach(runPromise(Fiber.await(fiber)))))
       )
     })
 
@@ -374,14 +376,14 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     if (current === undefined) return signalled
     current.instance.interrupted = true
     return signalled
-      .then(() => Effect.runPromise(Fiber.interrupt(current.fiber)))
+      .then(() => runPromise(Fiber.interrupt(current.fiber)))
       .then(() => undefined)
   }
 
   const scheduleClock = (clockName: string, deferredName: string, wakeUp: number): Promise<void> => {
     WorkflowStorage.saveClock(sql, clockName, deferredName, wakeUp)
     const earliest = WorkflowStorage.earliestClockWakeUp(sql)
-    return earliest === undefined ? Promise.resolve() : Effect.runPromise(armAlarm(options.alarm, earliest))
+    return earliest === undefined ? Promise.resolve() : runPromise(armAlarm(options.alarm, earliest))
   }
 
   const runAlarm = (): Promise<void> =>
@@ -391,7 +393,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         return WorkflowStorage.saveDeferred(sql, clock.deferredName, voidExit)
       })
       if (completed.length > 0) requestWake("automatic")
-      return Effect.runPromise(Effect.forEach(
+      return runPromise(Effect.forEach(
         completed,
         (clock) => deferredState.deferredDone(executionId, clock.deferredName),
         { discard: true }
@@ -414,7 +416,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           return options.alarm.setAlarm(Math.min(...targets))
         })
       })
-    }).then(() => Effect.runPromise(deliverParentWake)).then(() => undefined)
+    }).then(() => runPromise(deliverParentWake)).then(() => undefined)
 
   const runtime: WorkflowRuntime = {
     executionId,
