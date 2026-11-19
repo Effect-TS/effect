@@ -61,6 +61,10 @@ describe("OtlpLogger", () => {
 
       assert.lengthOf(requests, 1)
       assert.lengthOf(warnings, 1)
+
+      yield* TestClock.adjust("60 seconds")
+      yield* flush
+      assert.lengthOf(requests, 1)
     }).pipe(
       Effect.provide(Logger.layer([observer], { mergeWithExisting: true })),
       Effect.provide(makeTestLayer(httpClient))
