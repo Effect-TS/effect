@@ -150,6 +150,18 @@ describe("HttpServer", () => {
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client()))
   )
 
+  it.live("leaves a native HTTP/2 stream to its responder under compatibility dispatch", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer().on("request", constVoid).off("request", constVoid)
+        .once("stream", (stream) => setImmediate(() => stream.end("native")))
+      yield* NodeHttpServer.make(() => server, { port: 0 })
+      const url = `http://127.0.0.1:${tcpPort(server)}/`
+      const first = yield* HttpClient.get(url)
+      assert.strictEqual(yield* first.text, "native")
+      const next = yield* HttpClient.get(url)
+      assert.strictEqual(next.status, 503)
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
+
   it.live("preserves native HTTP/2 CONNECT dispatch during startup", () =>
     Effect.gen(function*() {
       const server = Http2.createServer().on("stream", (stream) => stream.end("native"))
