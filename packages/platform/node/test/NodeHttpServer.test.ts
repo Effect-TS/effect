@@ -64,6 +64,18 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
+  it.effect("responds with 503 before serving starts", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      yield* Layer.build(NodeHttpServer.layer(() => server, { host: "127.0.0.1", port: 0 }))
+
+      const request = new Http.IncomingMessage(new Net.Socket())
+      const response = new Http.ServerResponse(request)
+      server.emit("request", request, response)
+      yield* Effect.promise(() => expect.poll(() => response.writableEnded).toBe(true))
+      assert.strictEqual(response.statusCode, 503)
+    }))
+
   it.effect("layerTest binds to IPv4 loopback", () =>
     Effect.gen(function*() {
       const server = yield* HttpServer.HttpServer
