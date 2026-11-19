@@ -1460,6 +1460,18 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  * @since 3.10.0
  */
 export const is: typeof SchemaParser.is = SchemaParser.is
+
+/**
+ * Creates a boolean validator that honours parse options such as
+ * `onExcessProperty: "error"`. Unlike `is`, the returned function accepts only
+ * the input; options are fixed when the validator is created.
+ *
+ * @stability stable
+ * @category guards
+ * @since 4.1.4
+ */
+export const validate: typeof SchemaParser.validate = SchemaParser.validate
+
 /**
  * Creates an assertion function that throws an error if the input does not match
  * the schema.
