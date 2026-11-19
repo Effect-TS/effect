@@ -3640,6 +3640,43 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    for (const format of ["httpclient", "httpclient-type-only", "httpapi"] as const) {
+      it.effect(`generates chained local Path Items like inline routes in ${format}`, () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const route = "/users/{id}"
+          const item: OpenAPISpecPathItem = {
+            parameters: [
+              { name: "id", in: "path", required: true, schema: { type: "string" } },
+              { name: "filter", in: "query", required: false, schema: { type: "string" } }
+            ],
+            get: {
+              operationId: "getUser",
+              parameters: [],
+              responses: { 200: { description: "OK" } },
+              tags: ["Users"],
+              security: []
+            }
+          }
+          const inline = { ...regressionSpec, paths: { [route]: item } }
+          const ref: OpenAPISpecPathItem & { $ref: string } = { $ref: "#/components/pathItems/Alias" }
+          const referenced = {
+            ...inline,
+            paths: { [route]: ref },
+            components: {
+              ...inline.components,
+              pathItems: { Alias: { $ref: "#/components/pathItems/User" }, User: item }
+            }
+          }
+          const options = { name: "TestClient", format }
+          assert.strictEqual(yield* generator.generate(referenced, options), yield* generator.generate(inline, options))
+        }).pipe(Effect.provide(
+          format === "httpclient-type-only"
+            ? OpenApiGenerator.layerTransformerTs
+            : OpenApiGenerator.layerTransformerSchema
+        )))
+    }
+
     const collisionNames = [
       "Data",
       "Effect",
