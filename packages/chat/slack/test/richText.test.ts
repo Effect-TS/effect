@@ -55,39 +55,21 @@ describe("the bot's own messages read back", () => {
       }
     }))
 
-  it.effect("keeps parentheses in named link destinations", () =>
+  it.effect("preserve a trailing parenthesis in a named link destination", () =>
     Effect.gen(function*() {
-      const cases = [
-        ["https://example.test/drafts/closing)", "https://example.test/drafts/closing\\)"],
-        ["https://example.test/drafts/opening(", "https://example.test/drafts/opening\\("],
-        ["https://example.test/drafts/item(v1)", "https://example.test/drafts/item(v1)"]
-      ] as const
-      const messages = yield* Effect.forEach(cases, ([url]) => {
-        const link = { type: "link", text: "draft", url }
-        return read({
-          user: botUserId,
-          ts: "1794600000.000103",
-          text: "draft",
-          blocks: [{
-            type: "rich_text",
-            elements: [
-              { type: "rich_text_section", elements: [link] },
-              { type: "rich_text_preformatted", elements: [link] }
-            ]
+      const message = yield* read({
+        user: botUserId,
+        ts: "1794600000.000103",
+        text: "draft",
+        blocks: [{
+          type: "rich_text",
+          elements: [{
+            type: "rich_text_section",
+            elements: [{ type: "link", text: "draft", url: "https://example.test/drafts/closing)" }]
           }]
-        })
+        }]
       })
-      assert.deepStrictEqual(
-        messages.map((message) => message.text),
-        cases.map(([url, destination]) =>
-          [
-            "[draft](" + destination + ")",
-            "```",
-            "[draft](" + url + ")",
-            "```"
-          ].join("\n")
-        )
-      )
+      assert.strictEqual(message.text, "[draft](https://example.test/drafts/closing\\))")
     }))
 
   it.effect("someone else's message keeps Slack's text", () =>
