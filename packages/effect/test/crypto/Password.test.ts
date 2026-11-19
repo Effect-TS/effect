@@ -38,6 +38,7 @@ describe("Password", () => {
         const malformed of [
           argon2 + "=",
           argon2.replace("t=2", "t=02"),
+          argon2.replace("t=2", "t=9007199254740993"),
           argon2.replace("v=19", "v=16"),
           argon2.replace("argon2id", "argon2i"),
           argon2.slice(0, argon2.lastIndexOf("$"))

@@ -91,7 +91,8 @@ const decodeB64 = (input: string): Uint8Array | undefined => {
  * Accepts `$argon2id$v=19$m=<memory>,t=<passes>,p=<parallelism>$<salt>$<hash>`
  * and `$pbkdf2-<sha1|sha256|sha384|sha512>$i=<iterations>[,l=<length>]$<salt>$<hash>`,
  * where `l`, when present, must equal the hash length. Salt and hash are
- * Base64 without padding, and numbers are decimal without leading zeros.
+ * Base64 without padding, and numbers are safe integers in decimal without
+ * leading zeros.
  * Anything else, including other Argon2 versions and variants, bcrypt, and
  * scrypt, fails with an `InvalidArgument` reason. Costs are range-checked
  * when deriving, not here.
@@ -120,17 +121,17 @@ export const decode = (phc: string): Effect.Effect<PasswordHash, CryptoError.Cry
     const salt = decodeB64(match[match.length - 2])
     const hash = decodeB64(match[match.length - 1])
     if (salt === undefined || hash === undefined) return invalid("salt and hash must be unpadded Base64")
+    const costs = (argon2id === null ? match.slice(2, 4) : match.slice(1, 4)).map((n) =>
+      n === undefined ? undefined : Number(n)
+    )
+    if (!costs.every((n) => n === undefined || Number.isSafeInteger(n))) return invalid("costs must be safe integers")
     if (argon2id !== null) {
-      const [memory, passes, parallelism] = argon2id.slice(1, 4).map(Number)
+      const [memory, passes, parallelism] = costs as Array<number>
       return Effect.succeed({ algorithm: Kdf.argon2id({ memory, passes, parallelism }), salt, hash })
     }
-    const [, digest, iterations, length] = match
-    if (length !== undefined && Number(length) !== hash.length) return invalid("l must equal the hash length")
-    return Effect.succeed({
-      algorithm: Kdf.pbkdf2({ hash: digests[digest], iterations: Number(iterations) }),
-      salt,
-      hash
-    })
+    const [iterations, length] = costs
+    if (length !== undefined && length !== hash.length) return invalid("l must equal the hash length")
+    return Effect.succeed({ algorithm: Kdf.pbkdf2({ hash: digests[match[1]], iterations: iterations! }), salt, hash })
   })
 
 /**
