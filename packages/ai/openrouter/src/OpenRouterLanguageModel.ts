@@ -758,30 +758,7 @@ const prepareMessages = Effect.fnUntraced(
           for (let index = 0; index < message.content.length; index++) {
             const part = message.content[index]
             const isLastTextPart = part.type === "text" && index === lastTextPartIndex
-            const partCacheControl = getCacheControl(part)
-
-            switch (part.type) {
-              case "text": {
-                const cache_control = Predicate.isNotNull(partCacheControl)
-                  ? partCacheControl
-                  : isLastTextPart
-                  ? messageCacheControl
-                  : null
-
-                content.push({
-                  type: "text",
-                  text: part.text,
-                  ...(Predicate.isNotNull(cache_control) ? { cache_control } : undefined)
-                })
-
-                break
-              }
-
-              case "file": {
-                content.push(yield* prepareFilePart(part, partCacheControl))
-                break
-              }
-            }
+            content.push(yield* prepareContentItem(part, isLastTextPart ? messageCacheControl : null))
           }
 
           messages.push({ role: "user", content })
@@ -879,45 +856,11 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let i = 0; i < results.length; i++) {
             const part = results[i]
-            const cache_control = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
-
-            if (Predicate.isNotUndefined(part.modelOutput) && part.modelOutput.some((item) => item.type === "file")) {
-              const content: Array<typeof Generated.ChatContentItems.Encoded> = []
-              for (const item of part.modelOutput) {
-                const itemCacheControl = getCacheControl(item)
-                if (item.type === "file") {
-                  content.push(yield* prepareFilePart(item, itemCacheControl))
-                } else if (item.text.length > 0) {
-                  content.push({
-                    type: "text",
-                    text: item.text,
-                    ...(Predicate.isNotNull(itemCacheControl) ? { cache_control: itemCacheControl } : undefined)
-                  })
-                }
-              }
-
-              // A file part always yields an item, so `content` is non-empty here.
-              const lastIndex = content.length - 1
-              if (Predicate.isNotNull(cache_control) && !("cache_control" in content[lastIndex])) {
-                content[lastIndex] = { ...content[lastIndex], cache_control } as any
-              }
-
-              messages.push({ role: "tool", tool_call_id: part.id, content })
-              continue
-            }
-
-            const text = Predicate.isNotUndefined(part.modelOutput)
-              ? Prompt.toolModelOutputToText(part.modelOutput)
-              : typeof part.result === "string"
-              ? part.result
-              : JSON.stringify(part.result)
-
+            const cache = getCacheControl(part) ?? (i === results.length - 1 ? messageCacheControl : null)
             messages.push({
               role: "tool",
               tool_call_id: part.id,
-              content: Predicate.isNotNull(cache_control) && typeof text === "string" && text.length > 0
-                ? [{ type: "text", text, cache_control }]
-                : text
+              content: yield* prepareToolContent(part, cache)
             })
           }
 
@@ -930,75 +873,96 @@ const prepareMessages = Effect.fnUntraced(
   }
 )
 
-/**
- * Converts a file part into the content item OpenRouter expects for its media
- * type. Shared by user messages and tool results.
- */
-const prepareFilePart = Effect.fnUntraced(
-  function*(
-    part: Prompt.FilePart,
-    cacheControl: typeof Generated.ChatContentCacheControl.Encoded | null
-  ): Effect.fn.Return<typeof Generated.ChatContentItems.Encoded, AiError.AiError> {
-    if (part.mediaType.startsWith("image/")) {
-      const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
-
-      return {
-        type: "image_url",
-        image_url: { url: getFileUrl(part.data, mediaType) },
-        ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
-      }
-    }
-
-    if (part.mediaType.startsWith("audio/")) {
-      const format = audioFormats[part.mediaType.toLowerCase()]
-
-      if (Predicate.isUndefined(format)) {
-        return yield* AiError.make({
-          module: "OpenRouterLanguageModel",
-          method: "prepareMessages",
-          reason: new AiError.InvalidUserInputError({
-            description: `Detected unsupported media type for audio file: '${part.mediaType}' ` +
-              `- OpenRouter supports ${supportedAudioFormats} audio`
-          })
-        })
-      }
-
-      if (part.data instanceof URL) {
-        return yield* AiError.make({
-          module: "OpenRouterLanguageModel",
-          method: "prepareMessages",
-          reason: new AiError.InvalidUserInputError({
-            description: "Detected URL data for audio file - OpenRouter requires " +
-              "audio to be provided as base64-encoded data"
-          })
-        })
-      }
-
-      return {
-        type: "input_audio",
-        input_audio: {
-          data: part.data instanceof Uint8Array
-            ? Base64.encode(part.data)
-            : getBase64FromDataUrl(part.data),
-          format
-        },
-        ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
-      }
-    }
-
-    const options = part.options.openrouter
-    const fileName = options?.fileName ?? part.fileName ?? ""
+const prepareContentItem = Effect.fnUntraced(function*(
+  part: Prompt.TextPart | Prompt.FilePart,
+  fallback: typeof Generated.ChatContentCacheControl.Encoded | null
+): Effect.fn.Return<typeof Generated.ChatContentItems.Encoded, AiError.AiError> {
+  const cache_control = getCacheControl(part) ?? fallback
+  const cache = cache_control === null ? undefined : { cache_control }
+  if (part.type === "text") {
+    return { type: "text", text: part.text, ...cache }
+  }
+  if (part.mediaType.startsWith("image/")) {
+    const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
 
     return {
-      type: "file",
-      file: {
-        filename: fileName,
-        file_data: getFileUrl(part.data, part.mediaType)
-      },
-      ...(Predicate.isNotNull(cacheControl) ? { cache_control: cacheControl } : undefined)
-    } as any
+      type: "image_url",
+      image_url: { url: getFileUrl(part.data, mediaType) },
+      ...cache
+    }
   }
-)
+
+  if (part.mediaType.startsWith("audio/")) {
+    const format = audioFormats[part.mediaType.toLowerCase()]
+
+    if (Predicate.isUndefined(format)) {
+      return yield* AiError.make({
+        module: "OpenRouterLanguageModel",
+        method: "prepareMessages",
+        reason: new AiError.InvalidUserInputError({
+          description: `Detected unsupported media type for audio file: '${part.mediaType}' ` +
+            `- OpenRouter supports ${supportedAudioFormats} audio`
+        })
+      })
+    }
+
+    if (part.data instanceof URL) {
+      return yield* AiError.make({
+        module: "OpenRouterLanguageModel",
+        method: "prepareMessages",
+        reason: new AiError.InvalidUserInputError({
+          description: "Detected URL data for audio file - OpenRouter requires " +
+            "audio to be provided as base64-encoded data"
+        })
+      })
+    }
+
+    return {
+      type: "input_audio",
+      input_audio: {
+        data: part.data instanceof Uint8Array
+          ? Base64.encode(part.data)
+          : getBase64FromDataUrl(part.data),
+        format
+      },
+      ...cache
+    }
+  }
+
+  const options = part.options.openrouter
+  const fileName = options?.fileName ?? part.fileName ?? ""
+
+  return {
+    type: "file",
+    file: {
+      filename: fileName,
+      file_data: getFileUrl(part.data, part.mediaType)
+    },
+    ...cache
+  }
+})
+
+const prepareToolContent = Effect.fnUntraced(function*(
+  part: Prompt.ToolResultPart,
+  cache_control: typeof Generated.ChatContentCacheControl.Encoded | null
+): Effect.fn.Return<typeof Generated.ChatToolMessage.Encoded["content"], AiError.AiError> {
+  const output = part.modelOutput
+  if (output?.some((item) => item.type === "file")) {
+    const items = output.filter((item) => item.type !== "text" || item.text.length > 0)
+    return yield* Effect.forEach(
+      items,
+      (item, i) => prepareContentItem(item, i === items.length - 1 ? cache_control : null)
+    )
+  }
+  const text = output !== undefined ?
+    Prompt.toolModelOutputToText(output)
+    : typeof part.result === "string"
+    ? part.result
+    : JSON.stringify(part.result)
+  return cache_control !== null && typeof text === "string" && text.length > 0
+    ? [{ type: "text", text, cache_control }]
+    : text
+})
 
 // =============================================================================
 // HTTP Details
