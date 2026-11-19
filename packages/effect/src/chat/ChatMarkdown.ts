@@ -182,6 +182,8 @@ interface Line {
   readonly end: number
   /** The fence open after the line. */
   readonly fence: Fence | undefined
+  /** The line closes a fence. */
+  readonly closed: boolean
   /** A part can end after this line: it is outside a fence, and blank or closing a fence. */
   readonly boundary: boolean
 }
@@ -219,7 +221,12 @@ const scanLines = (text: string, fence: Fence | undefined, complete: boolean): A
     const line = text.slice(start, newline === -1 ? text.length : newline).replace(/\r$/, "")
     const step = fenceAfter(fence, line)
     fence = step.fence
-    lines.push({ end, fence, boundary: fence === undefined && (step.closed || line.trim() === "") })
+    lines.push({
+      end,
+      fence,
+      closed: step.closed,
+      boundary: fence === undefined && (step.closed || line.trim() === "")
+    })
     start = end
   }
   return lines
@@ -274,15 +281,10 @@ const fitCut = (
     else high = middle - 1
   }
   const most = low
-  const candidates: Array<number> = []
   // Closing a fence removes the synthetic suffix. Look ahead two real closes
   // beyond the estimate, farthest first, to bound the extra measurements.
-  for (let i = 0; i < lines.length && candidates.length < 2; i++) {
-    const line = lines[i]
-    if (line.end > most && line.boundary && (i === 0 ? fence : lines[i - 1].fence) !== undefined) {
-      candidates.unshift(line.end)
-    }
-  }
+  const closes = lines.filter((line) => line.closed && line.end > most).slice(0, 2)
+  const candidates = closes.map((line) => line.end).reverse()
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].boundary && lines[i].end <= most) candidates.push(lines[i].end)
   }
