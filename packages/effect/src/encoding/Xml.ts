@@ -665,6 +665,10 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
  * empty one. Names and characters are not checked; `encode` and
  * `encodeString` check them.
  *
+ * An element with a `localName`, such as one collected from events decoded
+ * with `namespaces: "strict"`, keeps its `namespace` and `localName` on its
+ * start and end events, so paths in Clark notation still match them.
+ *
  * **Gotchas**
  *
  * A collected subtree does not carry `xmlns` declarations inherited from its
@@ -698,12 +702,12 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
  * @since 4.1.5
  */
 export const toEvents = (element: Element): Arr.NonEmptyReadonlyArray<Event> => {
-  const out: Arr.NonEmptyArray<Event> = [{ _tag: "StartElement", name: element.name, attributes: element.attributes }]
+  const out: Arr.NonEmptyArray<Event> = [startEvent(element)]
   const stack = [{ element, index: 0 }]
   while (stack.length > 0) {
     const frame = stack[stack.length - 1]
     if (frame.index === frame.element.children.length) {
-      out.push({ _tag: "EndElement", name: frame.element.name })
+      out.push(endEvent(frame.element))
       stack.pop()
       continue
     }
@@ -711,12 +715,28 @@ export const toEvents = (element: Element): Arr.NonEmptyReadonlyArray<Event> => 
     if (typeof child === "string") {
       out.push({ _tag: "Text", text: child })
     } else {
-      out.push({ _tag: "StartElement", name: child.name, attributes: child.attributes })
+      out.push(startEvent(child))
       stack.push({ element: child, index: 0 })
     }
   }
   return out
 }
+
+const startEvent = (element: Element): StartElement =>
+  element.localName === undefined ?
+    { _tag: "StartElement", name: element.name, attributes: element.attributes } :
+    {
+      _tag: "StartElement",
+      name: element.name,
+      attributes: element.attributes,
+      namespace: element.namespace,
+      localName: element.localName
+    }
+
+const endEvent = (element: Element): EndElement =>
+  element.localName === undefined ?
+    { _tag: "EndElement", name: element.name } :
+    { _tag: "EndElement", name: element.name, namespace: element.namespace, localName: element.localName }
 
 const defaultMaxTokenSize = 10 * 1024 * 1024
 const defaultMaxDepth = 1024

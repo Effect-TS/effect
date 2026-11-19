@@ -662,6 +662,27 @@ describe("Xml", () => {
       ])
     })
 
+    it.effect("keeps the namespaces of strictly decoded trees", () =>
+      Effect.gen(function*() {
+        const [tree] = yield* Stream.make("<p:r xmlns:p='urn:p'><c/></p:r>").pipe(
+          Stream.pipeThroughChannel(Xml.decodeString({ namespaces: "strict" })),
+          Stream.pipeThroughChannel(Xml.elements(["{urn:p}r"])),
+          Stream.runCollect
+        )
+        const events = Xml.toEvents(tree)
+        assert.deepStrictEqual(events, [
+          { _tag: "StartElement", name: "p:r", attributes: { "xmlns:p": "urn:p" }, namespace: "urn:p", localName: "r" },
+          { _tag: "StartElement", name: "c", attributes: {}, namespace: "", localName: "c" },
+          { _tag: "EndElement", name: "c", namespace: "", localName: "c" },
+          { _tag: "EndElement", name: "p:r", namespace: "urn:p", localName: "r" }
+        ])
+        const collected = yield* Stream.fromIterable(events).pipe(
+          Stream.pipeThroughChannel(Xml.elements(["{urn:p}r", "{}c"])),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(collected, [{ name: "c", namespace: "", localName: "c", attributes: {}, children: [] }])
+      }))
+
     it("converts deep trees without overflowing the stack", () => {
       let element: Xml.Element = { name: "a", attributes: {}, children: [] }
       for (let i = 0; i < 100_000; i++) element = { name: "a", attributes: {}, children: [element] }
