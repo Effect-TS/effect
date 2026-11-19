@@ -21,7 +21,7 @@ import * as AiError from "effect/ai/AiError"
 import { toCodecAnthropic } from "effect/ai/AnthropicStructuredOutput"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import * as AiModel from "effect/ai/Model"
-import type * as Prompt from "effect/ai/Prompt"
+import * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import { addGenAIAnnotations } from "effect/ai/Telemetry"
 import * as Tool from "effect/ai/Tool"
@@ -711,7 +711,11 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                   content.push({
                     toolResult: {
                       toolUseId: part.id,
-                      content: toolResultContent(part.result),
+                      content: toolResultContent(
+                        Predicate.isNotUndefined(part.modelOutput)
+                          ? Prompt.toolModelOutputToText(part.modelOutput)
+                          : part.result
+                      ),
                       ...(part.isFailure ? { status: "error" } : {})
                     }
                   })

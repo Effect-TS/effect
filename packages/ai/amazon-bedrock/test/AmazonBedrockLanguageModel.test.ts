@@ -239,6 +239,58 @@ describe("AmazonBedrockLanguageModel", () => {
         ])
       }))
 
+    const modelOutputCases = [
+      { label: "as text", modelOutput: [Prompt.textPart({ text: "Sunny" })], text: "Sunny" },
+      { label: "as empty text when it is empty", modelOutput: [], text: "" }
+    ]
+
+    for (const { label, modelOutput, text } of modelOutputCases) {
+      it.effect(`sends tool result model output ${label}`, () =>
+        Effect.gen(function*() {
+          const http = makeHttpClient((request) =>
+            Effect.succeed(jsonResponse(request, converseResponse([{ text: "Done" }])))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              { role: "user", content: "Weather in SF?" },
+              {
+                role: "assistant",
+                content: [Prompt.toolCallPart({
+                  id: "tooluse_1",
+                  name: "Weather",
+                  params: { city: "SF" },
+                  providerExecuted: false
+                })]
+              },
+              {
+                role: "tool",
+                content: [Prompt.toolResultPart({
+                  id: "tooluse_1",
+                  name: "Weather",
+                  result: { temperature: 20 },
+                  modelOutput,
+                  isFailure: false,
+                  providerExecuted: false
+                })]
+              }
+            ]),
+            toolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Effect.provide(AmazonBedrockLanguageModel.model(model)),
+            Effect.provide(http.layer)
+          )
+
+          const request = http.requests[0]
+          assertDefined(request)
+          const body = yield* getRequestBody(request)
+          assert.deepStrictEqual(body.messages[2].content, [{
+            toolResult: { toolUseId: "tooluse_1", content: [{ text }] }
+          }])
+        }))
+    }
+
     it.effect("round-trips reasoning blocks with their signature and redacted content", () =>
       Effect.gen(function*() {
         const http = makeHttpClient((request) =>
