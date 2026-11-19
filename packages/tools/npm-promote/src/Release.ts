@@ -1,9 +1,11 @@
+import * as Arr from "effect/Array"
 import * as Clock from "effect/Clock"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type * as Redacted from "effect/Redacted"
 import type { GitHubRepository } from "./GitHub.ts"
 import {
@@ -130,8 +132,8 @@ const failAfterAlert = (
   diagnosis: Diagnosis,
   failure: NpmPromoteError
 ) =>
-  isOverdue(release, options).pipe(
-    Effect.flatMap((overdue) => overdue ? openAlert(release, effect, options, [diagnosis]) : Effect.void),
+  openAlert(release, effect, options, [diagnosis]).pipe(
+    Effect.when(isOverdue(release, options)),
     Effect.catch((error) => Console.warn(`Could not open or update the tracking issue: ${error.message}`)),
     Effect.andThen(Effect.fail(failure))
   )
@@ -193,13 +195,13 @@ const diagnoseUnpromoted = (packages: ReadonlyArray<ReleasePackage>) =>
   Effect.forEach(packages, (pkg) =>
     liveLatest(pkg.name).pipe(
       Effect.flatMap((latest) =>
-        Effect.map(needsPromotion(pkg, latest), (needed): Array<Diagnosis> =>
-          needed ? [{ _tag: "Unpromoted", pkg, latest }] : [])
+        Effect.map(needsPromotion(pkg, latest), (needed) =>
+          needed
+            ? Option.some<Diagnosis>({ _tag: "Unpromoted", pkg, reason: `latest is ${latest ?? "not set"}` })
+            : Option.none())
       ),
-      Effect.catch((error) =>
-        Effect.succeed<Array<Diagnosis>>([{ _tag: "Unknown", pkg, reason: error.message }])
-      )
-    ), { concurrency: 8 }).pipe(Effect.map((diagnoses) => diagnoses.flat()))
+      Effect.catch((error) => Effect.succeed(Option.some<Diagnosis>({ _tag: "Unknown", pkg, reason: error.message })))
+    ), { concurrency: 8 }).pipe(Effect.map(Arr.getSomes))
 
 /**
  * Diagnoses only the pending packages that were part of the bumped release.

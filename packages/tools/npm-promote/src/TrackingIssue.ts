@@ -69,10 +69,8 @@ export interface OverdueRelease {
 export const render = (overdue: OverdueRelease): { readonly title: string; readonly body: string } => {
   const list = (tag: Diagnosis["_tag"]) =>
     overdue.diagnoses.filter((diagnosis) => diagnosis._tag === tag).map((diagnosis) =>
-      diagnosis._tag === "Unknown" || diagnosis._tag === "PromotionFailed"
+      "reason" in diagnosis
         ? `- \`${diagnosis.pkg.name}@${diagnosis.pkg.version}\`: ${diagnosis.reason}`
-        : diagnosis._tag === "Unpromoted"
-        ? `- \`${diagnosis.pkg.name}@${diagnosis.pkg.version}\`: latest is ${diagnosis.latest ?? "not set"}`
         : `- \`${diagnosis.pkg.name}@${diagnosis.pkg.version}\``
     )
   const sections = [

@@ -3,7 +3,6 @@ import * as Yaml from "effect/encoding/Yaml"
 import * as Option from "effect/Option"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schema from "effect/Schema"
-import { posix } from "node:path"
 import * as Semver from "semver"
 import type { ReleasePackage } from "./NpmPromote.ts"
 import { NpmPromoteError } from "./NpmPromoteError.ts"
@@ -74,10 +73,17 @@ export const packagesAtBump = (
       }
     }
     const tree = yield* Process.run("git", ["ls-tree", "-rz", "--name-only", revision], { cwd })
-    const paths = tree.split("\0").filter((path) =>
-      path === "package.json" ||
-      (path.endsWith("/package.json") && patterns.some((pattern) => posix.matchesGlob(posix.dirname(path), pattern)))
-    )
+    // A `*` component matches one directory name that does not start with a dot.
+    const matches = (directory: ReadonlyArray<string>, pattern: string) => {
+      const parts = pattern.split("/")
+      return parts.length === directory.length &&
+        parts.every((part, i) => part === "*" ? !directory[i].startsWith(".") : part === directory[i])
+    }
+    const paths = tree.split("\0").filter((path) => {
+      const directory = path.split("/").slice(0, -1)
+      return path === "package.json" ||
+        (path.endsWith("/package.json") && patterns.some((pattern) => matches(directory, pattern)))
+    })
     const manifests = yield* Effect.forEach(paths, (path) =>
       read(path).pipe(
         Effect.flatMap(Schema.decodeUnknownEffect(Manifest))
