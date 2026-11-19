@@ -279,7 +279,7 @@ const firstAvailableWaiter = (self: SemaphoreImpl): Waiter | undefined => {
 const takePermits = <A, E, R>(
   self: SemaphoreImpl,
   n: number,
-  onAcquire: () => Effect.Effect<A, E, R>,
+  onAcquire: (endWait?: Effect.Effect<void>) => Effect.Effect<A, E, R>,
   restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX> = identity,
   spanName?: string,
   options?: Tracer.SpanOptionsNoTrace
@@ -330,10 +330,9 @@ const takePermits = <A, E, R>(
     }, { blockedOn: self }))
     const loop: Effect.Effect<A, E, R> = internal.flatMap(wait, () => {
       if (firstAvailableWaiter(self) !== waiter) return loop
-      if (span) endWait(internal.exitVoid)
       self.taken += n
       remove()
-      return onAcquire()
+      return onAcquire(span && internal.sync(() => endWait(internal.exitVoid)))
     })
     return loop
   })
@@ -436,8 +435,8 @@ class SemaphoreImpl implements Semaphore {
         takePermits(
           this,
           n,
-          () =>
-            internal.onExitPrimitive(restore(self), () => {
+          (endWait) =>
+            internal.onExitPrimitive(endWait ? internal.flatMap(endWait, () => restore(self)) : restore(self), () => {
               this.releaseUnsafe(internal.getCurrentFiber()!, n)
               return undefined
             }, true),
