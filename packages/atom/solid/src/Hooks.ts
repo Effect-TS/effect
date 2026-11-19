@@ -1,8 +1,8 @@
 /**
  * Solid hooks for using Effect Atoms from components and computations. The
  * hooks read and write atoms through the current `RegistryContext`, mount atoms
- * for cleanup, subscribe callbacks, seed initial values, expose `AsyncResult`
- * atoms as Solid resources, and read values from `AtomRef` references.
+ * for cleanup, subscribe callbacks, seed initial values, and read values from
+ * `AtomRef` references.
  *
  * @stability unstable
  * @since 4.0.0
@@ -10,14 +10,12 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as AsyncResult from "effect/reactivity/AsyncResult"
+import type * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
 import type * as AtomRef from "effect/reactivity/AtomRef"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import type { Accessor } from "solid-js"
-import * as Solid from "solid-js"
 import { createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
-import { isSolid2 } from "./internal/solid.ts"
 import { RegistryContext } from "./RegistryContext.ts"
 
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
@@ -79,9 +77,9 @@ function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry, atom: () => 
   )
 }
 
-// Solid 2 removed `createComputed`; an eager memo runs the subscription with
-// the same owner lifecycle in both major versions. Values are boxed because
-// Solid 2 treats a function passed to `createSignal` as a derived signal.
+// A memo owns the subscription, so it is released when the source changes or
+// the owner is disposed. Values are boxed because Solid treats a function
+// passed to `createSignal` as a derived signal.
 function createSubscriptionAccessor<S, A>(
   source: () => S,
   subscribe: (source: S, f: (value: A) => void) => () => void,
@@ -97,7 +95,7 @@ function createSubscriptionAccessor<S, A>(
   })
   // Keep the previous box when the value is unchanged, so switching to a source
   // with an equal value does not notify readers. The memo returns the box, not
-  // the value, because Solid 2 awaits a Promise returned from a memo.
+  // the value, because Solid awaits a Promise returned from a memo.
   const boxed = createMemo((prev: { readonly value: A } | undefined) => {
     const next = current()()
     return prev !== undefined && prev.value === next.value ? prev : next
@@ -105,8 +103,8 @@ function createSubscriptionAccessor<S, A>(
   return () => boxed().value
 }
 
-// `ownedWrite` lets Solid 2 accept registry notifications that arrive while a
-// computation is running; Solid 1 ignores it.
+// `ownedWrite` lets Solid accept registry notifications that arrive while a
+// computation is running.
 const constSignalOptions = { equals: false, ownedWrite: true } as const
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): void {
@@ -146,7 +144,7 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
   }) as any
 }
 
-// Callbacks read the current atom without subscribing their caller, so Solid 2
+// Callbacks read the current atom without subscribing their caller, so Solid
 // does not warn when they run inside an effect.
 function createCurrentAtom<A>(atom: () => A): () => A {
   const current = createMemo(atom)
@@ -299,71 +297,9 @@ export const useAtomSubscribe = <A>(
   options?: { readonly immediate?: boolean }
 ): void => {
   const registry = useContext(RegistryContext)
-  if (isSolid2) {
-    // Solid 2 effects split tracking (compute) from side effects (apply); the
-    // apply phase returns its cleanup.
-    ;(createEffect as any)(atom, (atom: Atom.Atom<A>) => registry.subscribe(atom, f, options))
-    return
-  }
-  createEffect(() => {
-    onCleanup(registry.subscribe(atom(), f, options))
-  })
+  // The effect function returns the unsubscribe function as its cleanup.
+  createEffect(atom, (atom) => registry.subscribe(atom, f, options))
 }
-
-/**
- * Converts an `AsyncResult` atom into a Solid resource.
- *
- * **Gotchas**
- *
- * Requires Solid 1. Solid 2 removed `createResource`, so on Solid 2 this hook
- * throws and its return type is `never`. Read the `AsyncResult` with
- * {@link useAtomValue} instead. Vite builds against Solid 2 report
- * `IMPORT_IS_UNDEFINED` for `createResource`; the warning is expected and the
- * unused code is removed from the bundle.
- *
- * @stability unstable
- * @category hooks
- * @since 4.0.0
- */
-export const useAtomResource = <A, E>(
-  atom: () => Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-  options?: ResourceOptions<A> & {
-    readonly suspendOnWaiting?: boolean | undefined
-  }
-): ResourceReturn<A> => {
-  if (createResource === undefined) {
-    throw new Error(
-      "useAtomResource requires Solid 1 because Solid 2 removed createResource. Read the AsyncResult with useAtomValue instead."
-    )
-  }
-  const result = useAtomValue(atom)
-  return createResource(result, (result) => {
-    if (AsyncResult.isInitial(result) || (options?.suspendOnWaiting && result.waiting)) {
-      return constUnresolvedPromise
-    } else if (AsyncResult.isSuccess(result)) {
-      return Promise.resolve(result.value)
-    }
-    return Promise.reject(Cause.squash(result.cause))
-  })
-}
-
-const constUnresolvedPromise = new Promise<never>(() => {})
-
-// Read through the namespace so the module still links against Solid 2, where
-// `createResource` no longer exists.
-const createResource = (Solid as Partial<typeof Solid>).createResource
-
-// The published declarations must type-check against Solid 1 and 2, but
-// `ResourceOptions` and `ResourceReturn` only exist in Solid 1, so they are
-// read off the consumer's `createResource` overloads. On Solid 1 they are
-// identical to `ResourceOptions<A>` and `ResourceReturn<A, void>`; on Solid 2,
-// where `useAtomResource` throws, they are `never`.
-declare const solidCreateResource: typeof Solid extends { readonly createResource: infer F } ? F
-  : <T, S, R, I = T>(source: unknown, fetcher: unknown, options?: never) => never
-// The `initialValue` overload, made optional. The plain overload wraps `A` in
-// `NoInfer`, which would stop `A` being inferred from `initialValue`.
-type ResourceOptions<A> = Partial<NonNullable<Parameters<typeof solidCreateResource<A, unknown, void, A>>[2]>>
-type ResourceReturn<A> = ReturnType<typeof solidCreateResource<A, unknown, void>>
 
 /**
  * Subscribes to an atom ref and returns its value as a Solid accessor.

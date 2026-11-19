@@ -1,5 +1,5 @@
 // Type-checked by scripts/check-dist-types.mjs against the built declarations
-// with `solid-js` 2.x and `skipLibCheck: false`.
+// with `skipLibCheck: false`.
 import * as Hooks from "@effect/atom-solid/Hooks"
 import * as RegistryContext from "@effect/atom-solid/RegistryContext"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
@@ -20,10 +20,7 @@ Hooks.useAtomSubscribe(() => count, (n: number) => n)
 export const ref: Accessor<string> = Hooks.useAtomRef(() => AtomRef.make("a"))
 export const context: Context<AtomRegistry.AtomRegistry> = RegistryContext.RegistryContext
 
-// Solid 2 removed `createResource`, so `useAtomResource` throws and is typed
-// to return `never`. Read the `AsyncResult` with `useAtomValue` instead.
 export const asyncResult: Accessor<AsyncResult.AsyncResult<number>> = Hooks.useAtomValue(() => result)
-export const resourceReturn: Equals<ReturnType<typeof Hooks.useAtomResource<number, never>>, never> = true
 
 declare const children: Element
 export const element: Element = RegistryContext.RegistryProvider({ children })
