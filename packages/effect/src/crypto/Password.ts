@@ -59,18 +59,18 @@ export interface PasswordHash {
   readonly hash: Uint8Array
 }
 
-const number = "(0|[1-9][0-9]*)"
-const b64 = "([A-Za-z0-9+/]+)"
-const argon2idPattern = new RegExp(`^\\$argon2id\\$v=19\\$m=${number},t=${number},p=${number}\\$${b64}\\$${b64}$`)
-const pbkdf2Pattern = new RegExp(
-  `^\\$pbkdf2-(sha1|sha256|sha384|sha512)\\$i=${number}(?:,l=${number})?\\$${b64}\\$${b64}$`
-)
 const digests: Record<string, Digest.Algorithm> = {
   sha1: Digest.sha1,
   sha256: Digest.sha256,
   sha384: Digest.sha384,
   sha512: Digest.sha512
 }
+const number = "(0|[1-9][0-9]*)"
+const b64 = "([A-Za-z0-9+/]+)"
+const argon2idPattern = new RegExp(`^\\$argon2id\\$v=19\\$m=${number},t=${number},p=${number}\\$${b64}\\$${b64}$`)
+const pbkdf2Pattern = new RegExp(
+  `^\\$pbkdf2-(${Object.keys(digests).join("|")})\\$i=${number}(?:,l=${number})?\\$${b64}\\$${b64}$`
+)
 
 const invalid = (description: string) =>
   internal.fail("Password", "decode", new CryptoError.InvalidArgument({ description }))
@@ -78,8 +78,7 @@ const invalid = (description: string) =>
 // PHC B64 is standard Base64 without padding. Re-encoding rejects
 // non-canonical trailing bits.
 const decodeB64 = (input: string): Uint8Array | undefined => {
-  if (input.length % 4 === 1) return undefined
-  const bytes = Base64.decode(input.padEnd(Math.ceil(input.length / 4) * 4, "="))
+  const bytes = Base64.decodeLenient(input)
   return Result.isSuccess(bytes) && Base64.encodeUnpadded(bytes.success) === input ? bytes.success : undefined
 }
 
@@ -146,12 +145,15 @@ export const decode = (phc: string): Effect.Effect<PasswordHash, CryptoError.Cry
  * @since 4.1.5
  */
 export const encode = (hash: PasswordHash): string => {
-  const { algorithm } = hash
-  const params = algorithm._tag === "Argon2id"
-    ? `argon2id$v=19$m=${algorithm.memory},t=${algorithm.passes},p=${algorithm.parallelism}`
-    : `pbkdf2-${algorithm.hash.name.toLowerCase().replace("-", "")}$i=${algorithm.iterations},l=${hash.hash.length}`
-  return `$${params}$${Base64.encodeUnpadded(hash.salt)}$${Base64.encodeUnpadded(hash.hash)}`
+  const length = hash.algorithm._tag === "Pbkdf2" ? `,l=${hash.hash.length}` : ""
+  return `$${params(hash.algorithm)}${length}$${Base64.encodeUnpadded(hash.salt)}$${Base64.encodeUnpadded(hash.hash)}`
 }
+
+// The identifier and costs, which are what `needsRehash` compares.
+const params = (algorithm: Algorithm): string =>
+  algorithm._tag === "Argon2id"
+    ? `argon2id$v=19$m=${algorithm.memory},t=${algorithm.passes},p=${algorithm.parallelism}`
+    : `pbkdf2-${Digest.nameSuffix(algorithm.hash).toLowerCase()}$i=${algorithm.iterations}`
 
 /**
  * Service that hashes and verifies passwords as PHC strings.
@@ -211,11 +213,6 @@ const encoder = new TextEncoder()
 const toBytes = (password: string | Redacted.Redacted): Uint8Array =>
   encoder.encode(Redacted.isRedacted(password) ? Redacted.value(password) : password)
 
-const sameAlgorithm = (a: Algorithm, b: Algorithm): boolean =>
-  a._tag === "Argon2id"
-    ? b._tag === "Argon2id" && a.memory === b.memory && a.passes === b.passes && a.parallelism === b.parallelism
-    : b._tag === "Pbkdf2" && a.hash.name === b.hash.name && a.iterations === b.iterations
-
 /**
  * Layer that provides {@link Password}, hashing new passwords with
  * `algorithm`.
@@ -253,7 +250,8 @@ export const layer = (options: {
           Effect.map(
             decode(stored),
             ({ algorithm, hash, salt }) =>
-              !sameAlgorithm(algorithm, options.algorithm) || salt.length !== saltLength || hash.length !== hashLength
+              params(algorithm) !== params(options.algorithm) || salt.length !== saltLength ||
+              hash.length !== hashLength
           )
       })
     })
