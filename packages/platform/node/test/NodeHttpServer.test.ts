@@ -64,17 +64,14 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 
 describe("HttpServer", () => {
-  it.effect("responds with 503 before serving starts", () =>
+  it.live("answers a POST before serving starts", () =>
     Effect.gen(function*() {
-      const server = Http.createServer()
+      const server = Http.createServer().once("request", (_request, response) => response.end("ready"))
       yield* Layer.build(NodeHttpServer.layer(() => server, { host: "127.0.0.1", port: 0 }))
-
-      const request = new Http.IncomingMessage(new Net.Socket())
-      const response = new Http.ServerResponse(request)
-      server.emit("request", request, response)
-      yield* Effect.promise(() => expect.poll(() => response.writableEnded).toBe(true))
-      assert.strictEqual(response.statusCode, 503)
-    }))
+      const url = `http://127.0.0.1:${tcpPort(server)}/`
+      assert.strictEqual(yield* (yield* HttpClient.post(url)).text, "ready")
+      assert.strictEqual((yield* HttpClient.post(url)).status, 503)
+    }).pipe(Effect.timeout("2 seconds"), Effect.provide(FetchHttpClient.layer)))
 
   it.effect("preserves HTTP/1 stream events and disables a retained fallback at teardown", () =>
     Effect.gen(function*() {
@@ -95,76 +92,33 @@ describe("HttpServer", () => {
       assert.isFalse(response.headersSent)
     }))
 
-  it.effect("leaves a startup response to a supplied one-shot listener", () =>
-    Effect.gen(function*() {
-      const server = Http.createServer().once("request", constVoid)
-      yield* NodeHttpServer.make(() => server, { port: 0 })
-      const request = new Http.IncomingMessage(new Net.Socket())
-      const response = new Http.ServerResponse(request)
-      server.emit("request", request, response)
-      assert.isFalse(response.headersSent)
-    }))
-
-  it.live("leaves HTTP/2 streams to a responder installed at listening", () =>
-    Effect.gen(function*() {
-      const server = Http2.createServer()
-      server.once("listening", () =>
-        server.on("stream", (stream) => {
-          stream.end("native")
-        }))
-      yield* NodeHttpServer.make(() => server, { port: 0 })
-      const response = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`)
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(yield* response.text, "native")
-    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
-
-  it.live("answers when the supplied HTTP/2 request listener was removed before startup", () =>
-    Effect.gen(function*() {
-      const server = Http2.createServer().on("request", constVoid).off("request", constVoid)
-      yield* NodeHttpServer.make(() => server, { port: 0 })
-      const response = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`)
-      assert.strictEqual(response.status, 503)
-      assert.strictEqual(yield* response.text, "service unavailable")
-    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
-
   it.live.each(["request", "stream"] as const)(
-    "answers after a one-shot HTTP/2 %s listener finishes",
+    "preserves a supplied HTTP/2 %s responder during startup",
     (event) =>
       Effect.gen(function*() {
         const server = Http2.createServer()
         if (event === "request") {
-          server.once("request", (_request, response) => response.end("created"))
+          server.once("request", (_request, response) => response.end("supplied"))
         } else {
-          server.once("listening", () =>
-            server.prependOnceListener("stream", (stream) => setImmediate(() => stream.end("created"))))
+          server.on("request", constVoid).off("request", constVoid)
+          server.once(
+            "listening",
+            () => server.prependOnceListener("stream", (stream) => setImmediate(() => stream.end("supplied")))
+          )
         }
-        yield* NodeHttpServer.make(() =>
-          server, { host: "127.0.0.1", port: 0 })
+        yield* NodeHttpServer.make(() => server, { port: 0 })
         const url = `http://127.0.0.1:${tcpPort(server)}/`
         const first = yield* HttpClient.get(url)
-        assert.strictEqual(first.status, 200)
-        assert.strictEqual(yield* first.text, "created")
+        assert.strictEqual(yield* first.text, "supplied")
         const next = yield* HttpClient.get(url)
         assert.strictEqual(next.status, 503)
         assert.strictEqual(yield* next.text, "service unavailable")
       }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client()))
   )
 
-  it.live("leaves a native HTTP/2 stream to its responder under compatibility dispatch", () =>
-    Effect.gen(function*() {
-      const server = Http2.createServer().on("request", constVoid).off("request", constVoid)
-        .once("stream", (stream) => setImmediate(() => stream.end("native")))
-      yield* NodeHttpServer.make(() => server, { port: 0 })
-      const url = `http://127.0.0.1:${tcpPort(server)}/`
-      const first = yield* HttpClient.get(url)
-      assert.strictEqual(yield* first.text, "native")
-      const next = yield* HttpClient.get(url)
-      assert.strictEqual(next.status, 503)
-    }).pipe(Effect.timeout("2 seconds"), Effect.provide(layerHttp2Client())))
-
   it.live("preserves native HTTP/2 CONNECT dispatch during startup", () =>
     Effect.gen(function*() {
-      const server = Http2.createServer().on("stream", (stream) => stream.end("native"))
+      const server = Http2.createServer().once("stream", (stream) => stream.end("native"))
       yield* NodeHttpServer.make(() => server, { port: 0 })
       const session = yield* Effect.acquireRelease(
         Effect.sync(() => Http2.connect(`http://127.0.0.1:${tcpPort(server)}`)),
@@ -177,7 +131,9 @@ describe("HttpServer", () => {
         stream.end()
       }).pipe(Effect.timeout("2 seconds"))
       assert.strictEqual(status, 200)
-    }))
+      const next = yield* HttpClient.get(`http://127.0.0.1:${tcpPort(server)}/`).pipe(Effect.timeout("2 seconds"))
+      assert.strictEqual(next.status, 503)
+    }).pipe(Effect.provide(layerHttp2Client())))
 
   it.effect("does not restore a startup listener after the server scope closes", () =>
     Effect.gen(function*() {
