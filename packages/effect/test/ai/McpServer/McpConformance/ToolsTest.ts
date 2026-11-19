@@ -60,9 +60,6 @@ const stringResultContent = (protocol: McpProtocol.ProtocolAdapter, text: string
   text: protocol.protocolVersion === "2026-07-28" ? JSON.stringify(text) : text
 }]
 
-// Tests that count invocations must not observe calls made by concurrent siblings.
-const withIsolatedObservations = (layer: McpConformanceLayer) => Effect.provide(layer, { local: true })
-
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Tools", () => {
@@ -177,6 +174,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.deepStrictEqual(result.content, stringResultContent(protocol, "called"))
           }))
 
+        // Uses a private layer so tool calls from concurrent sibling tests stay out of the count.
         it.effect("MUST reject an unknown tool name with a protocol error", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
@@ -196,7 +194,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
             assert.strictEqual((yield* test.observations).toolInvocations, before)
-          }).pipe(withIsolatedObservations(layer)))
+          }).pipe(Effect.provide(layer, { local: true })))
 
         it.effect("SCHEMA returns text content", () =>
           Effect.gen(function*() {
@@ -419,7 +417,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.include(text, "Expected string")
             assert.notMatch(text, /AiError|ToolParameterValidationError|Toolkit|TestTool\.handle/)
             assert.strictEqual((yield* test.observations).toolInvocations, before)
-          }).pipe(withIsolatedObservations(layer)))
+          }))
       })
     })
   })
@@ -506,7 +504,7 @@ export const statelessModernSuite = (
 
           assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
           assert.strictEqual((yield* test.observations).toolInvocations, before)
-        }).pipe(withIsolatedObservations(layer)))
+        }))
 
       it.effect("should reject a tool call when a required parameter header is missing", () =>
         Effect.gen(function*() {
@@ -528,7 +526,7 @@ export const statelessModernSuite = (
           assert.strictEqual(error.id, "missing-parameter-header")
           assert.strictEqual(error.error.code, McpSchema.HEADER_MISMATCH_ERROR_CODE)
           assert.strictEqual((yield* test.observations).toolInvocations, before)
-        }).pipe(withIsolatedObservations(layer)))
+        }))
 
       // Header extraction uses the exact JSON property path; absent parameters do not require headers.
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#server-behavior-for-custom-headers
@@ -685,7 +683,7 @@ export const statelessModernSuite = (
               yield* test.decodeResult(response)
             }
           }
-        }).pipe(withIsolatedObservations(layer)))
+        }))
     })
 
     describe("Tools > Modern listing", () => {
@@ -731,7 +729,7 @@ export const statefulLegacySuite = (protocol: McpProtocol.ProtocolAdapter, layer
 
           assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           assert.strictEqual((yield* test.observations).toolInvocations, before)
-        }).pipe(withIsolatedObservations(layer)))
+        }))
     })
 
     // https://modelcontextprotocol.io/specification/2025-11-25/server/tools
