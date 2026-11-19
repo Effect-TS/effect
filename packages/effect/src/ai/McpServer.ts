@@ -3395,6 +3395,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
               `parameters.\n\n${error.message}`
         ))
     )
+    const readOnlyHint = Context.get(tool.annotations, Tool.Readonly)
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),
@@ -3405,13 +3406,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           Option.map((title) => ({ title })),
           Option.getOrUndefined
         )),
-        readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-        // A read-only tool is not destructive unless it says so: the default
-        // of `Tool.Destructive` describes tools that write.
-        destructiveHint: Context.get(tool.annotations, Tool.Readonly) &&
-            !tool.annotations.mapUnsafe.has(Tool.Destructive.key)
-          ? false
-          : Context.get(tool.annotations, Tool.Destructive),
+        readOnlyHint,
+        destructiveHint: Context.getOrUndefined(tool.annotations, Tool.Destructive) ?? !readOnlyHint,
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
