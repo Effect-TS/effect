@@ -424,11 +424,9 @@ export const make = Effect.fnUntraced(function*<
                     return Effect.fail(new EntityNotAssignedToRunner({ address }))
                   }
                 )
-                // Leave the request for the shard's owner: release the claim
-                // so its next poll sees it, and let local callers re-route.
-                // The server tracks this fiber under the request id until it
-                // exits and drops a redelivery that arrives sooner, so the
-                // claim is released afterwards.
+                // Leave the request for the shard's owner and let local callers re-route.
+                // Release the claim after this fiber exits, since RpcServer drops any
+                // redelivery arriving while the request id is still tracked.
                 const abandonFenced = Effect.withFiber((fiber) => {
                   const requestId = request.message.envelope.requestId
                   removeActiveRequest(Snowflake.Snowflake(response.requestId))

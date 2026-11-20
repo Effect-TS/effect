@@ -127,8 +127,7 @@ export const make = Effect.gen(function*() {
     return entity!
   }
 
-  // A registration belongs to the caller waiting on it, and lasts as long as
-  // that caller. `result` is what the handler last produced for it.
+  // Scoped to the waiting caller; `result` holds the handler's last outcome.
   const activities = new Map<string, ActivityRegistration>()
   const deferredState = WorkflowEngine.makeDeferredState()
   // Rebuilds share an activation; overlapping activations have separate results.
