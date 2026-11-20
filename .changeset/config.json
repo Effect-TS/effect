@@ -53,6 +53,7 @@
       "@effect/sql-sqlite-node",
       "@effect/sql-sqlite-react-native",
       "@effect/sql-sqlite-wasm",
+      "@effect/sql-trino",
       "@effect/vitest"
     ]
   ],

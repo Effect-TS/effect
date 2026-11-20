@@ -259,7 +259,8 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
           pg: () => "B",
           mysql: () => "C",
           mssql: () => "D",
-          clickhouse: () => "E"
+          clickhouse: () => "E",
+          trino: () => "F"
         }),
         "B"
       )

@@ -98,7 +98,7 @@ export const fragment = (
  * @category models
  * @since 4.0.0
  */
-export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse"
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse" | "trino"
 
 /**
  * Executable SQL statement that is also a `Fragment` and `Effect`, with helpers
@@ -610,22 +610,24 @@ export interface Constructor {
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
-  readonly onDialect: <A, B, C, D, E>(options: {
+  readonly onDialect: <A, B, C, D, E, F>(options: {
     readonly sqlite: () => A
     readonly pg: () => B
     readonly mysql: () => C
     readonly mssql: () => D
     readonly clickhouse: () => E
-  }) => A | B | C | D | E
+    readonly trino: () => F
+  }) => A | B | C | D | E | F
 
-  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never, F = never>(options: {
+  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never, F = never, G = never>(options: {
     readonly orElse: () => A
     readonly sqlite?: () => B
     readonly pg?: () => C
     readonly mysql?: () => D
     readonly mssql?: () => E
     readonly clickhouse?: () => F
-  }) => A | B | C | D | E | F
+    readonly trino?: () => G
+  }) => A | B | C | D | E | F | G
 }
 
 /**
