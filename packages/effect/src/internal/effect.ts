@@ -1767,7 +1767,6 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
       let done = false
       let i = 0
       for (const effect of all) {
-        if (done) break
         const index = i++
         // Register the fiber before it runs, so a race it settles during its
         // first step interrupts it.
@@ -1786,6 +1785,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
         // Constructing the fiber runs the runtime metrics hook, which can settle the race.
         if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
         else fiber.evaluate(effect as any)
+        if (done) break
       }
     })
   })
