@@ -48,16 +48,12 @@ export const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
  * @internal
  */
 export const requireDialect = (
-  sql: Pick<Statement.Constructor, "onDialectOrElse">,
+  sql: Statement.Constructor,
   entryPoint: string,
   dialects: ReadonlyArray<Statement.Dialect> = ["sqlite", "pg", "mysql", "mssql"]
-): Effect.Effect<void> => {
-  const branches: Record<string, () => Effect.Effect<void>> = {}
-  for (const dialect of dialects) {
-    branches[dialect] = () => Effect.void
-  }
-  return sql.onDialectOrElse({
-    ...branches,
+): Effect.Effect<void> =>
+  sql.onDialectOrElse({
+    ...Object.fromEntries<() => Effect.Effect<void>>(dialects.map((dialect) => [dialect, () => Effect.void])),
     orElse: () =>
       Effect.die(
         new Error(
@@ -65,4 +61,3 @@ export const requireDialect = (
         )
       )
   })
-}

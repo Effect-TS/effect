@@ -1386,17 +1386,14 @@ export const migrations = (options?: {
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  // Migrator also accepts ClickHouse, which this storage has no SQL for
-  SqlClient.SqlClient.use((sql) => requireDialect(sql, "SqlMessageStorage")).pipe(
-    Effect.andThen(
-      Migrator.make({})({
-        loader: migrations(options),
-        table: `${options?.prefix ?? "cluster"}_migrations`
-      })
-    ),
-    Effect.asVoid,
-    Effect.orDie
-  )
+  Effect.gen(function*() {
+    // Migrator also accepts ClickHouse, which this storage has no SQL for
+    yield* requireDialect(yield* SqlClient.SqlClient, "SqlMessageStorage")
+    yield* Migrator.make({})({
+      loader: migrations(options),
+      table: `${options?.prefix ?? "cluster"}_migrations`
+    })
+  }).pipe(Effect.orDie)
 
 /**
  * Runs the SQL message storage migrations without providing storage.

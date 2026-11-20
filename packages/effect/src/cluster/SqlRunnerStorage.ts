@@ -904,18 +904,15 @@ export const migrations = (options: {
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  // Migrator also accepts ClickHouse, which this storage has no SQL for
-  SqlClient.SqlClient.use((sql) => requireDialect(sql, "SqlRunnerStorage")).pipe(
-    Effect.andThen(
-      Migrator.make({})({
-        loader: migrations(options),
-        // Message and runner migration ids overlap, so keep separate histories.
-        table: `${options.prefix ?? "cluster"}_runner_migrations`
-      })
-    ),
-    Effect.asVoid,
-    Effect.orDie
-  )
+  Effect.gen(function*() {
+    // Migrator also accepts ClickHouse, which this storage has no SQL for
+    yield* requireDialect(yield* SqlClient.SqlClient, "SqlRunnerStorage")
+    yield* Migrator.make({})({
+      loader: migrations(options),
+      // Message and runner migration ids overlap, so keep separate histories.
+      table: `${options.prefix ?? "cluster"}_runner_migrations`
+    })
+  }).pipe(Effect.orDie)
 
 /**
  * Runs the SQL runner storage migrations without providing storage.
