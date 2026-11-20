@@ -531,6 +531,7 @@ const Proto = {
           readonly result: any
           readonly isFailure: boolean
           readonly preliminary: boolean
+          readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
         }, Cause.Done>(capacity === "unbounded" ? undefined : { capacity })
         let modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
         const context: HandlerContext<any> = {
@@ -548,7 +549,14 @@ const Proto = {
         }
 
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
-          Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
+          Effect.flatMap((result) =>
+            Queue.offer(queue, {
+              result,
+              isFailure: false,
+              preliminary: false,
+              ...(modelOutput !== undefined ? { modelOutput } : undefined)
+            })
+          ),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
           Effect.matchCauseEffect({
             onFailure: (cause) => Queue.failCause(queue, cause),
@@ -604,7 +612,8 @@ const Proto = {
             if (output.isFailure || output.preliminary) {
               return { ...output, encodedResult }
             }
-            const parts = modelOutput ?? tool.toModelOutput?.(output.result)
+            const parts = ("modelOutput" in output ? output.modelOutput : undefined) ??
+              tool.toModelOutput?.(output.result)
             return parts === undefined
               ? { ...output, encodedResult }
               : { ...output, encodedResult, modelOutput: parts }
