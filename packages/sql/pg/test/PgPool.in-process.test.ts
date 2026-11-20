@@ -1,6 +1,6 @@
 import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Effect, Fiber, Latch, Option, Queue, Redacted, References, Tracer } from "effect"
+import { Cause, Clock, Effect, Fiber, Latch, Option, Queue, Redacted, References, Schedule, Tracer } from "effect"
 import type * as Duration from "effect/Duration"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
@@ -114,6 +114,30 @@ describe("PgPool failed startup", () => {
       })),
     10_000
   )
+
+  it.effect("connectRetrySchedule retries connect failures until one is not retryable", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let attempts = 0
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        connectRetrySchedule: Schedule.recurs(5),
+        stream: () => {
+          // The first connect drops the socket, the second fails authentication.
+          const attempt = ++attempts
+          const socket = new Duplex({ read() {}, write() {} })
+          queueMicrotask(() =>
+            attempt === 1
+              ? socket.destroy()
+              : socket.push(backendMessage("E", Buffer.from("SFATAL\0C28P01\0Mpassword authentication failed\0\0")))
+          )
+          return socket
+        }
+      })
+      const error = yield* Effect.flip(pool.get)
+      assert.strictEqual(error.reason._tag, "AuthenticationError")
+      assert.strictEqual(attempts, 2)
+    })))
 })
 
 describe("PgPool acquireTimeout", () => {

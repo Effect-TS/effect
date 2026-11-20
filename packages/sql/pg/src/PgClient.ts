@@ -14,6 +14,7 @@ import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Redacted from "effect/Redacted"
+import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Borrower, Connection } from "effect/sql/SqlConnection"
@@ -258,6 +259,14 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
+  /**
+   * Retries a checkout that fails to open a connection. See
+   * `PgPool.Config.connectRetrySchedule`. `make` rejects configuration errors
+   * such as a malformed URL before any checkout, but an unreachable server is
+   * retried for as long as the schedule allows, so bound the schedule or set
+   * `acquireTimeout`.
+   */
+  readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /** Bounds how long acquiring a pooled connection takes. See `PgPool.Config.acquireTimeout`. */
   readonly acquireTimeout?: Duration.Input | undefined
 }
