@@ -2,6 +2,6 @@
 "effect": minor
 ---
 
-Add `HandlerContext.modelOutput`, which lets a tool handler set the content sent to the model for its final result in place of the tool's `toModelOutput` mapping.
+Add `Toolkit.HandlerContext.modelOutput` so tool handlers can set the model-facing output for their final result.
 
-Manually constructed `Toolkit.HandlerContext` values, such as those passed to handlers in tests, must include `modelOutput` (use `() => Effect.void` to discard the output).
+Manually constructed `Toolkit.HandlerContext` values must now include `modelOutput` (e.g. `() => Effect.void`).
