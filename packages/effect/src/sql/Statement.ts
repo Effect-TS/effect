@@ -718,9 +718,8 @@ export const make = (
       join,
       onDialectOrElse(options: Record<string, (() => any) | undefined>) {
         // own keys only, so a dialect named "toString" falls back
-        return Object.hasOwn(options, compiler.dialect) && options[compiler.dialect] !== undefined
-          ? options[compiler.dialect]!()
-          : options.orElse!()
+        const branch = Object.hasOwn(options, compiler.dialect) ? options[compiler.dialect] : undefined
+        return branch !== undefined ? branch.call(options) : options.orElse!()
       }
     }
   )
