@@ -38,6 +38,27 @@ const unsupportedFacts: Facts = {
   height: 0
 }
 
+/**
+ * The JSON Schema importer represents `additionalProperties: true` with an
+ * index signature whose value is the `effect/schema/Json` declaration. It has
+ * no checks or encoding and its decoder returns the input unchanged, so the
+ * compiler can emit a direct `isJson` guard for it instead of falling back to
+ * the interpreter for the whole enclosing struct.
+ */
+const supportedDeclaration = (ast: SchemaAST.AST): "isJson" | "isUint8Array" | undefined => {
+  if (ast._tag !== "Declaration" || ast.checks !== undefined || ast.encoding !== undefined) return undefined
+  switch ((ast.annotations?.representation as { id?: string } | undefined)?.id) {
+    case "effect/schema/Json":
+      return "isJson"
+    case "effect/schema/Uint8Array":
+      return "isUint8Array"
+    default:
+      return undefined
+  }
+}
+
+const isJsonDeclaration = (ast: SchemaAST.AST): boolean => supportedDeclaration(ast) !== undefined
+
 const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast._tag !== "Union" && ast._tag !== "Declaration" && ast._tag !== "Suspend" &&
   (ast._tag !== "Objects" || ast.indexSignatures.length === 0) &&
@@ -50,9 +71,21 @@ const addChild = (
   depth: number,
   budget: { remaining: number }
 ): boolean => {
-  if (child.encoding !== undefined || child._tag === "Declaration" || child._tag === "Suspend") {
+  if (
+    child.encoding !== undefined || child._tag === "Suspend" ||
+    child._tag === "Declaration" && !isJsonDeclaration(child)
+  ) {
     facts.supported = false
     return false
+  }
+  if (isJsonDeclaration(child)) {
+    // A JSON value is a leaf for generation purposes; its validity is checked
+    // by the emitted `isJson` call.
+    if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+    facts.nodes++
+    if (facts.height === 0) facts.height = 1
+    facts.makeSafe = false
+    return true
   }
   switch (child._tag) {
     case "TemplateLiteral":
@@ -153,9 +186,13 @@ const getFacts = (
 
 /** @internal */
 const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => {
-  if (!local && ast.encoding !== undefined || ast._tag === "Declaration" || ast._tag === "Suspend") {
+  if (
+    !local && ast.encoding !== undefined ||
+    (ast._tag === "Declaration" && !isJsonDeclaration(ast)) || ast._tag === "Suspend"
+  ) {
     return "unsupported"
   }
+  if (isJsonDeclaration(ast)) return "is"
   const facts = getFacts(ast, depth)
   if (facts === undefined || !facts.supported) return "unsupported"
   return facts.outputFree ? "is" : "decode"
@@ -647,6 +684,14 @@ const emitBase = (
       }
       return output
     }
+    case "Declaration": {
+      const helper = supportedDeclaration(ast)
+      if (helper === undefined) {
+        throw new Error(`Unsupported Schema AST: ${ast._tag}`)
+      }
+      statements.push(`if(!${runtimeReference(helper)}(${input}))return ${invalid}`)
+      return input
+    }
     default:
       throw new Error(`Unsupported Schema AST: ${ast._tag}`)
   }
@@ -687,6 +732,7 @@ const emitOperation = (ast: SchemaAST.AST, operation: Operation, path = "ast"): 
     T: "matchesTemplateLiteral",
     U: "getCandidateIndex",
     G: "getIndexSignatureKeys",
+    J: "isJson",
     D: "defaultParseOptions",
     E: "hasExcessProperties"
   } as const
