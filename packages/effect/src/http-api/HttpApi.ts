@@ -486,8 +486,9 @@ export class ErrorParseOptions extends Context.Service<
 >()("effect/http-api/HttpApi/ErrorParseOptions") {}
 
 /**
- * Declares query parameters and headers whose values are only sometimes secret,
- * so they are redacted in spans without being modelled as `Redacted`.
+ * Declares query parameters, headers and path params whose values are only
+ * sometimes secret, so they are redacted in spans without being modelled as
+ * `Redacted`.
  *
  * **Details**
  *
@@ -499,6 +500,11 @@ export class ErrorParseOptions extends Context.Service<
  * `Headers.CurrentRedactedNames`. Names from the API, its groups and its
  * endpoints are combined. Values sent and decoded are unchanged.
  *
+ * `params` are path param names, matched exactly. On the server they become
+ * the route's `redactedParams`, so the server span and the
+ * `HttpMiddleware.logger` entry record the path with those values replaced by
+ * `REDACTED`. See `HttpRouter.route` for the requests this does not cover.
+ *
  * **Gotchas**
  *
  * - `addHttpApi` copies the added API's annotations onto its groups like any
@@ -506,6 +512,10 @@ export class ErrorParseOptions extends Context.Service<
  *   the names on the group to keep both.
  * - Only URL and header attributes use these names. `user_agent.original` and
  *   the messages of span errors are recorded as is.
+ * - `params` apply to server spans and `HttpMiddleware.logger` entries.
+ *   Client spans record the path as sent.
+ * - `HttpApiBuilder.endpoint` returns a handler without a route, so set
+ *   `redactedParams` on the route it is mounted with.
  *
  * **Example** (Redacting Docker build arguments)
  *
@@ -529,6 +539,7 @@ export class ErrorParseOptions extends Context.Service<
 export class RedactedNames extends Context.Service<RedactedNames, {
   readonly query?: ReadonlyArray<string | RegExp> | undefined
   readonly headers?: ReadonlyArray<string | RegExp> | undefined
+  readonly params?: ReadonlyArray<string> | undefined
 }>()("effect/http-api/HttpApi/RedactedNames") {}
 
 /**
@@ -590,3 +601,15 @@ export const getEndpointRedactedNames = (
   }
   return query.length === 0 && headers.length === 0 ? undefined : { query, headers }
 }
+
+/**
+ * @internal
+ */
+export const getEndpointRedactedParams = (
+  api: Pick<Top, "annotations">,
+  group: HttpApiGroup.Top,
+  endpoint: HttpApiEndpoint.Top
+): ReadonlyArray<string> =>
+  [api.annotations, group.annotations, endpoint.annotations].flatMap((annotations) =>
+    Context.getOrUndefined(annotations, RedactedNames)?.params ?? []
+  )

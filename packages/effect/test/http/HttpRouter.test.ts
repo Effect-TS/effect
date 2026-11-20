@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Option } from "effect"
+import { Context, Effect, Exit, Layer, Logger, Option, References, Tracer } from "effect"
 import type { FindMyWay } from "effect/http"
-import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse, UrlParams } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -55,6 +55,81 @@ describe("HttpRouter", () => {
         assert.deepStrictEqual(result, Exit.die(new Error("Method 'GET' already declared for route '/files/:()'")))
       }))
   }
+
+  it.effect("records redacted params in server spans and logs", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const urls: Array<unknown> = []
+      const logger = Logger.make((options) => {
+        urls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
+      })
+      const inner = yield* HttpRouter.toHttpEffect(
+        HttpRouter.add("GET", "/:id/:secret", echoUrl, { redactedParams: ["secret"] })
+      )
+      const app = Layer.mergeAll(
+        HttpRouter.add("GET", "/hooks/:id/:secret", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] }),
+        // Nested regex capture shifts param indices, so all params are redacted.
+        HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/named/:id(?<digits>\\d+)", echoUrl, { redactedParams: ["id"] }),
+        HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
+        HttpRouter.add("GET", "*", echoUrl, { redactedParams: ["*"] }),
+        HttpRouter.use((router) =>
+          router.prefixed("/vault").add("*", "*", Effect.orDie(inner), { redactedParams: ["*"] })
+        ),
+        HttpRouter.use((router) => router.prefixed("/mounted").add("*", "*", Effect.orDie(inner)))
+      )
+      const context = Context.make(Tracer.Tracer, tracer).pipe(
+        Context.add(Logger.CurrentLoggers, new Set([logger])),
+        Context.add(UrlParams.CurrentRedactedNames, ["key"])
+      )
+      const bodies = yield* Effect.acquireUseRelease(
+        Effect.sync(() => HttpRouter.toWebHandler(app)),
+        ({ handler }) =>
+          Effect.promise(async () => {
+            const out: Array<string> = []
+            for (
+              const path of [
+                "/hooks/123/s3cret?key=q",
+                "/assets/tok/site.css",
+                "/codes/a1-7",
+                "/named/12",
+                "/opt",
+                "/other/s3cret",
+                "/vault/1/s3cret",
+                "/mounted/1/s3cret"
+              ]
+            ) {
+              const response = await handler(new Request(`http://localhost${path}`), context)
+              out.push(await response.text())
+            }
+            return out
+          }),
+        ({ dispose }) => Effect.promise(dispose)
+      )
+
+      const expectedPaths = [
+        "/hooks/123/REDACTED",
+        "/assets/REDACTED",
+        "/codes/REDACTED-REDACTED",
+        "/named/REDACTED",
+        "/opt",
+        "/REDACTED",
+        "/vault/REDACTED",
+        "/mounted/1/REDACTED"
+      ]
+      assert.strictEqual(bodies[0], "/hooks/123/s3cret?key=q")
+      assert.deepStrictEqual(urls, expectedPaths)
+      assert.deepStrictEqual(spans.map((span) => span.attributes.get("url.path")), expectedPaths)
+      assert.strictEqual(spans[0].attributes.get("url.full"), "http://localhost/hooks/123/REDACTED?key=REDACTED")
+    }))
 
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(

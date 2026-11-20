@@ -24,6 +24,7 @@ import {
   HttpMiddleware,
   HttpPlatform,
   HttpRouter,
+  type HttpServerError,
   HttpServerRequest,
   HttpServerResponse
 } from "effect/http"
@@ -2087,14 +2088,17 @@ it.layer(TestServices)("HttpApiBuilder middleware error responses", (it) => {
 })
 
 describe("HttpApiBuilder RedactedNames", () => {
-  it("redacts declared query and header names in server spans", async () => {
+  it("redacts declared path param, query and header names in server spans", async () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("images").add(
-        HttpApiEndpoint.post("build", "/build", {
+        HttpApiEndpoint.post("build", "/build/:token", {
+          params: { token: Schema.String },
           query: { remote: Schema.String, t: Schema.String },
           headers: { "x-registry-config": Schema.String },
-          success: Schema.String
+          success: Schema.String,
+          error: Schema.String.pipe(HttpApiSchema.status(500))
         }).annotate(HttpApi.RedactedNames, {
+          params: ["token"],
           query: ["remote"],
           headers: ["x-registry-config"]
         })
@@ -2105,11 +2109,18 @@ describe("HttpApiBuilder RedactedNames", () => {
       Api,
       "images",
       (handlers) =>
-        handlers.handle("build", ({ headers, query }) =>
-          Effect.sync(() => {
-            received = { remote: query.remote, t: query.t, config: headers["x-registry-config"] }
-            return "ok"
-          }))
+        handlers.handle("build", ({ headers, params, query }) =>
+          query.t === "fail"
+            ? Effect.fail("boom")
+            : Effect.sync(() => {
+              received = {
+                token: params.token,
+                remote: query.remote,
+                t: query.t,
+                config: headers["x-registry-config"]
+              }
+              return "ok"
+            }))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2128,9 +2139,11 @@ describe("HttpApiBuilder RedactedNames", () => {
     try {
       for (
         const url of [
-          "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
+          "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
           // Fails query decoding, as `t` is missing: names apply before decoding.
-          "/build?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git"
+          "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git",
+          // 500 response: synthesized span error keeps path and query redacted.
+          "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=fail"
         ]
       ) {
         const response = await handler(
@@ -2146,16 +2159,25 @@ describe("HttpApiBuilder RedactedNames", () => {
       await dispose()
     }
 
-    assert.deepStrictEqual(statuses, [200, 400])
-    const [success, invalid] = spans
-    assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build?remote=REDACTED&t=app")
+    assert.deepStrictEqual(statuses, [200, 400, 500])
+    const [success, invalid, failed] = spans
+    assert.strictEqual(success.attributes.get("url.full"), "http://localhost/build/REDACTED?remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(success.attributes.get("http.request.header.x-registry-config"), "<redacted>")
     assert.strictEqual(success.attributes.get("http.request.header.x-page"), "1")
     // The handler sees the values unchanged.
-    assert.deepStrictEqual(received, { remote: "https://user:pass@host/repo.git", t: "app", config: "cfg-s3cret" })
-    assert.strictEqual(invalid.attributes.get("url.full"), "http://localhost/build?remote=REDACTED")
+    assert.deepStrictEqual(received, {
+      token: "tok",
+      remote: "https://user:pass@host/repo.git",
+      t: "app",
+      config: "cfg-s3cret"
+    })
+    assert.strictEqual(invalid.attributes.get("url.full"), "http://localhost/build/REDACTED?remote=REDACTED")
     assert.strictEqual(invalid.attributes.get("http.request.header.x-registry-config"), "<redacted>")
+    assert.strictEqual(failed.attributes.get("url.full"), "http://localhost/build/REDACTED?remote=REDACTED&t=fail")
+    assert(failed.status._tag === "Ended" && failed.status.exit._tag === "Failure")
+    const error = Cause.squash(failed.status.exit.cause) as HttpServerError.HttpServerError
+    assert.strictEqual(error.request.url, "/build/REDACTED?remote=REDACTED&t=fail")
   })
 })
 
