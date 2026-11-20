@@ -67,11 +67,12 @@ export interface Config extends PgConnection.Config {
   /**
    * Retries a checkout that fails to open a connection while
    * `error.isRetryable`, such as a socket error, `connectTimeout`, or
-   * SQLSTATE class `08`. Authentication failures are not retried and
-   * statements are never replayed. `acquireTimeout` bounds the retries and
-   * their delays, and interrupting the caller cancels them. A configuration
-   * error such as a malformed URL is a retryable `ConnectionError` here too,
-   * so bound the schedule or set `acquireTimeout`.
+   * SQLSTATE class `08`. Authentication failures are not retried. Statements
+   * and transaction bodies are never replayed. `acquireTimeout` bounds the
+   * retries and their delays, and interrupting the caller cancels them. A
+   * configuration error such as a malformed URL is a retryable
+   * `ConnectionError` here too, so bound the schedule or set
+   * `acquireTimeout`.
    */
   readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /**
