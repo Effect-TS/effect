@@ -608,8 +608,7 @@ export const make = Effect.gen(function*() {
                   // without waiting; a later registration can reset this reply.
                   return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
                 }
-                // Reuse a completed nontransactional result if the previous
-                // reply failed to save and was redelivered to this runner.
+                // Reuse a completed result if its reply was redelivered to this runner.
                 if (entry.result) {
                   return Effect.succeed(entry.result).pipe(Rpc.wrap({ fork: true }))
                 }
@@ -635,8 +634,7 @@ export const make = Effect.gen(function*() {
                   }),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, payload.attempt),
-                  // Keep the registration until the caller scope closes because
-                  // the reply may not be saved yet when the body returns.
+                  // Keep the entry until the caller closes; the reply may not be saved yet.
                   Effect.map((result) => {
                     if (activities.get(activityId) === entry) {
                       if (result._tag === "Suspended") {
