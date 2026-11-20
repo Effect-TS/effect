@@ -1729,18 +1729,17 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
       }
 
       for (let i = 0; i < len; i++) {
-        // Register the fiber before evaluating so a synchronous settlement can interrupt it.
-        const fiber = new FiberImpl(parent.context, true)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
           onExit(exit, fiber, i)
         })
-        if (done) {
-          fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
-          break
-        }
-        fiber.evaluate(effects[i] as any)
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effects[i] as any)
         if (done) break
       }
     })
@@ -1770,8 +1769,9 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
       for (const effect of all) {
         if (done) break
         const index = i++
-        // Register the fiber before evaluating so a synchronous settlement can interrupt it.
-        const fiber = new FiberImpl(parent.context, true)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
@@ -1783,11 +1783,9 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
             options?.onWinner?.({ fiber, index, parentFiber: parent })
           }
         })
-        if (done) {
-          fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
-          break
-        }
-        fiber.evaluate(effect as any)
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effect as any)
       }
     })
   })
