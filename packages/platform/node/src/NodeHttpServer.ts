@@ -372,9 +372,7 @@ export const makeHandler = <
       // The HTTP/2 compatibility API mirrors the members the adapter uses.
       const nodeRequest = request as Http.IncomingMessage
       const nodeResponse = response as Http.ServerResponse
-      if (typeof nodeRequest.on === "function") {
-        nodeRequest.on("error", constVoid)
-      }
+      nodeRequest.on("error", constVoid)
       if (nodeRequest.httpVersionMajor === 1) {
         // Prepended so it runs before Node's own `finish` listener drains or destroys.
         nodeResponse.prependListener("finish", () => teardownBody(nodeRequest, nodeResponse))
@@ -454,9 +452,7 @@ export const makeUpgradeHandler = <
       socket: Duplex,
       head: Buffer
     ) {
-      if (typeof nodeRequest.on === "function") {
-        nodeRequest.on("error", constVoid)
-      }
+      nodeRequest.on("error", constVoid)
       const protocol = nodeRequest.headers.upgrade
       const isWebSocket = protocol === undefined || protocol.toLowerCase() === "websocket"
       let body: Readable | undefined

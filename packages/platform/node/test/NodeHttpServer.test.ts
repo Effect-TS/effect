@@ -1093,7 +1093,12 @@ describe("HttpServer", () => {
       }) as Http.ServerResponse["end"]
 
       handler(
-        { method: "HEAD", url: "/", headers: {}, socket: {} } as Http.IncomingMessage,
+        Object.assign(new EventEmitter(), {
+          method: "HEAD",
+          url: "/",
+          headers: {},
+          socket: {}
+        }) as unknown as Http.IncomingMessage,
         nodeResponse
       )
       yield* completed.await
@@ -1200,12 +1205,12 @@ describe("HttpServer", () => {
         completed.openUnsafe()
         return nodeResponse
       }) as Http.ServerResponse["end"]
-      const nodeRequest = {
+      const nodeRequest = Object.assign(new EventEmitter(), {
         method: "GET",
         url: "/",
         headers: {},
         socket: { remoteAddress: "127.0.0.1" }
-      } as unknown as Http.IncomingMessage
+      }) as unknown as Http.IncomingMessage
 
       handler(nodeRequest, nodeResponse)
       yield* completed.await
@@ -1243,7 +1248,12 @@ describe("HttpServer", () => {
       }) as Http.ServerResponse["end"]
 
       handler(
-        { method: "GET", url: "/", headers: {}, socket: {} } as Http.IncomingMessage,
+        Object.assign(new EventEmitter(), {
+          method: "GET",
+          url: "/",
+          headers: {},
+          socket: {}
+        }) as unknown as Http.IncomingMessage,
         nodeResponse
       )
       yield* completed.await
@@ -1281,7 +1291,12 @@ describe("HttpServer", () => {
       }) as Http.ServerResponse["end"]
 
       handler(
-        { method: "GET", url: "/", headers: {}, socket: {} } as Http.IncomingMessage,
+        Object.assign(new EventEmitter(), {
+          method: "GET",
+          url: "/",
+          headers: {},
+          socket: {}
+        }) as unknown as Http.IncomingMessage,
         nodeResponse
       )
       yield* writeObserved.await
