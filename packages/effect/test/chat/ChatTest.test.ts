@@ -81,6 +81,15 @@ const runRule = (rule: string, options?: Parameters<typeof ChatTest.layer>[0]) =
   Effect.flatMap(suite, (rules) => rules[rule]).pipe(Effect.provide(ChatTest.layer(options)))
 
 describe("ChatTest", () => {
+  it.effect("allows a post when the fault count is zero", () =>
+    Effect.gen(function*() {
+      const test = yield* ChatTest.ChatTest
+      const chat = yield* Chat.Chat
+      const thread = yield* test.makeThread()
+      yield* test.failNext("post", new ChatError.Forbidden({ detail: "zero-count fault" }), { times: 0 })
+      yield* chat.post(thread, { markdown: "hello" })
+    }).pipe(Effect.provide(ChatTest.layer())))
+
   describe("conformance with every capability", () => {
     for (const rule of ruleNames) {
       it.live(rule, () => runRule(rule))
