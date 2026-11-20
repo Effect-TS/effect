@@ -14,7 +14,7 @@ import {
   SchemaGetter,
   Stream
 } from "effect"
-import { AiError, LanguageModel, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
 import { TestClock } from "effect/testing"
 import * as TestUtils from "./utils.ts"
 
@@ -496,6 +496,77 @@ describe("Tool", () => {
           })
         )
       }))
+
+    describe("Model Output", () => {
+      const Lookup = Tool.make("Lookup", {
+        parameters: Schema.Struct({ mode: Schema.Literals(["override", "fail", "default"]) }),
+        success: Schema.Struct({ id: Schema.FiniteFromString }),
+        failure: Schema.String,
+        failureMode: "return",
+        toModelOutput: (result) => [Prompt.textPart({ text: `mapped ${result.id}` })]
+      })
+      const Plain = Tool.make("Plain", {
+        parameters: Schema.Struct({ override: Schema.Boolean }),
+        success: Schema.Struct({ id: Schema.String })
+      })
+      const toolkit = Toolkit.make(Lookup, Plain)
+      const makeHandlers = toolkit.pipe(Effect.provide(toolkit.toLayer({
+        Lookup: Effect.fnUntraced(function*({ mode }, ctx) {
+          if (mode === "override") {
+            yield* ctx.modelOutput([Prompt.textPart({ text: "first" })])
+            yield* ctx.preliminary({ id: 0 })
+            yield* ctx.modelOutput([Prompt.textPart({ text: "second" })])
+          } else if (mode === "fail") {
+            yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+            return yield* Effect.fail("nope")
+          }
+          return { id: 1 }
+        }),
+        Plain: Effect.fnUntraced(function*({ override }, ctx) {
+          if (override) {
+            yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
+          }
+          return { id: "b" }
+        })
+      })))
+
+      it.effect("overrides final modelOutput with the last call without affecting encoding or preliminary results", () =>
+        Effect.gen(function*() {
+          const handlers = yield* makeHandlers
+
+          const lookup = yield* handlers.handle("Lookup", { mode: "override" }).pipe(Effect.flatMap(Stream.runCollect))
+          strictEqual(lookup.length, 2)
+          assertTrue(lookup[0]!.preliminary)
+          strictEqual(lookup[0]!.modelOutput, undefined)
+          deepStrictEqual(lookup[1]?.modelOutput, [Prompt.textPart({ text: "second" })])
+          deepStrictEqual(lookup[1]?.result, { id: 1 })
+          deepStrictEqual(lookup[1]?.encodedResult, { id: "1" })
+
+          const plain = yield* handlers.handle("Plain", { override: true }).pipe(Effect.flatMap(Stream.runCollect))
+          strictEqual(plain.length, 1)
+          deepStrictEqual(plain[0]?.modelOutput, [Prompt.textPart({ text: "from handler" })])
+          deepStrictEqual(plain[0]?.result, { id: "b" })
+          deepStrictEqual(plain[0]?.encodedResult, { id: "b" })
+        }))
+
+      it.effect("ignores modelOutput on failure and falls back per call when unset", () =>
+        Effect.gen(function*() {
+          const handlers = yield* makeHandlers
+
+          const failed = yield* handlers.handle("Lookup", { mode: "fail" }).pipe(Effect.flatMap(Stream.runCollect))
+          strictEqual(failed.length, 1)
+          assertTrue(failed[0]!.isFailure)
+          strictEqual(failed[0]!.modelOutput, undefined)
+          strictEqual(failed[0]!.encodedResult, "nope")
+
+          const lookup = yield* handlers.handle("Lookup", { mode: "default" }).pipe(Effect.flatMap(Stream.runCollect))
+          deepStrictEqual(lookup[0]?.modelOutput, [Prompt.textPart({ text: "mapped 1" })])
+          deepStrictEqual(lookup[0]?.encodedResult, { id: "1" })
+
+          const plain = yield* handlers.handle("Plain", { override: false }).pipe(Effect.flatMap(Stream.runCollect))
+          strictEqual(plain[0]?.modelOutput, undefined)
+        }))
+    })
 
     describe("Preliminary Results", () => {
       it.effect("should interrupt the handler when the consumer stops early", () =>
