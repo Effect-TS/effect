@@ -102,7 +102,7 @@ export interface Iso<in out S, in out A> extends Lens<S, A>, Prism<S, A> {}
  * @since 4.0.0
  */
 export function makeIso<S, A>(get: (s: S) => A, set: (a: A) => S): Iso<S, A> {
-  return make(primitiveNode("Iso", get, set))
+  return make(primitiveNode("Iso", get, set, [opaqueSegment]))
 }
 
 /**
@@ -181,7 +181,7 @@ export interface Lens<in out S, in out A> extends Optional<S, A> {
  * @since 4.0.0
  */
 export function makeLens<S, A>(get: (s: S) => A, replace: (a: A, s: S) => S): Lens<S, A> {
-  return make(primitiveNode("Lens", get, replace))
+  return make(primitiveNode("Lens", get, replace, [opaqueSegment]))
 }
 
 /**
@@ -275,7 +275,7 @@ export function makePrism<S, A>(
   getResult: (s: S) => Result.Result<A, SchemaIssue.Issue>,
   set: (a: A) => S
 ): Prism<S, A> {
-  return make(primitiveNode("Prism", getResult, set))
+  return make(primitiveNode("Prism", getResult, set, [opaqueSegment]))
 }
 
 /**
@@ -329,14 +329,33 @@ type Operation = {
 
 type PrimitiveStep = Operation & {
   readonly _tag: "PrimitiveNode"
+  /** The path segments this step adds, `[]` when it keeps the location. */
+  readonly segments: ReadonlyArray<Segment>
 }
 
-type Step = PrimitiveStep | PathNode | CheckNode<any>
+type Step = PrimitiveStep | PathNode | CheckNode<any> | EachNode
 
 type Node = ReadonlyArray<Step>
 
-function primitiveNode(kind: Kind, get: (s: any) => any, set: (a: any, s?: any) => any): Node {
-  return [{ _tag: "PrimitiveNode", kind, get, set }]
+const opaqueSegment: Segment = { _tag: "Opaque" }
+
+type KeySegment = Extract<Segment, { readonly _tag: "Key" }>
+
+function keySegment(key: PropertyKey): KeySegment {
+  return { _tag: "Key", key }
+}
+
+function tagSegment(tag: SchemaAST.LiteralValue): Segment {
+  return { _tag: "Tag", tag }
+}
+
+function primitiveNode(
+  kind: Kind,
+  get: (s: any) => any,
+  set: (a: any, s?: any) => any,
+  segments: ReadonlyArray<Segment>
+): Node {
+  return [{ _tag: "PrimitiveNode", kind, get, set, segments }]
 }
 
 const identityOperation: Operation = {
@@ -348,16 +367,16 @@ const identityOperation: Operation = {
 class PathNode {
   readonly _tag = "PathNode"
   readonly kind = "Lens"
-  readonly path: ReadonlyArray<PropertyKey>
+  readonly segments: ReadonlyArray<KeySegment>
   readonly get: (s: any) => any
   readonly set: (a: any, s?: any) => any
 
-  constructor(path: ReadonlyArray<PropertyKey>) {
-    this.path = path
+  constructor(segments: ReadonlyArray<KeySegment>) {
+    this.segments = segments
     this.get = (s) => {
       let out = s
-      for (let i = 0; i < path.length; i++) {
-        out = out[path[i]]
+      for (let i = 0; i < segments.length; i++) {
+        out = out[segments[i].key]
       }
       return out
     }
@@ -365,12 +384,12 @@ class PathNode {
       const out = cloneShallow(s)
       let current = out
       let i = 0
-      for (; i < path.length - 1; i++) {
-        const key = path[i]
+      for (; i < segments.length - 1; i++) {
+        const key = segments[i].key
         InternalRecord.assignProperty(current, key, cloneShallow(current[key]))
         current = current[key]
       }
-      InternalRecord.assignProperty(current, path[i], a)
+      InternalRecord.assignProperty(current, segments[i].key, a)
       return out
     }
   }
@@ -382,10 +401,49 @@ class CheckNode<T> {
   readonly checks: readonly [SchemaAST.Check<T>, ...Array<SchemaAST.Check<T>>]
   readonly get: (s: T) => Result.Result<T, SchemaIssue.Issue>
   readonly set = identity
+  readonly segments: ReadonlyArray<Segment> = []
 
   constructor(checks: readonly [SchemaAST.Check<T>, ...Array<SchemaAST.Check<T>>]) {
     this.checks = checks
     this.get = (s) => SchemaAST.runChecks(checks, s)
+  }
+}
+
+class EachNode {
+  readonly _tag = "EachNode"
+  readonly kind = "Optional"
+  readonly inner: OptionalImpl<any, any>
+  readonly get: (as: ReadonlyArray<any>) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
+  readonly set: (bs: ReadonlyArray<any>, as?: any) => Result.Result<ReadonlyArray<any>, SchemaIssue.Issue>
+
+  constructor(inner: Optional<any, any>) {
+    this.inner = inner as OptionalImpl<any, any>
+    this.get = (as) => Result.succeed(readEach(this.inner, as))
+    this.set = (bs, as) => {
+      const idxs: Array<number> = []
+      for (let i = 0; i < as.length; i++) {
+        if (Result.isSuccess(inner.getResult(as[i]))) idxs.push(i)
+      }
+
+      if (bs.length !== idxs.length) {
+        return Result.fail(
+          new SchemaIssue.InvalidValue({
+            message: `each: replacement length mismatch: ${bs.length} !== ${idxs.length}`
+          })
+        )
+      }
+
+      const out = as.slice()
+      for (let k = 0; k < idxs.length; k++) {
+        const i = idxs[k]
+        const r = inner.replaceResult(bs[k], as[i])
+        if (Result.isFailure(r)) {
+          return Result.fail(new SchemaIssue.Pointer([i], r.failure))
+        }
+        out[i] = r.success
+      }
+      return Result.succeed(out)
+    }
   }
 }
 
@@ -397,7 +455,7 @@ function compose(a: Node, b: Node): Node {
     const node = b[i]
     const last = nodes[nodes.length - 1]
     if (last._tag === "PathNode" && node._tag === "PathNode") {
-      nodes[nodes.length - 1] = new PathNode([...last.path, ...node.path])
+      nodes[nodes.length - 1] = new PathNode([...last.segments, ...node.segments])
     } else if (last._tag === "CheckNode" && node._tag === "CheckNode") {
       nodes[nodes.length - 1] = new CheckNode<any>([...last.checks, ...node.checks])
     } else {
@@ -932,7 +990,7 @@ export function makeOptional<S, A>(
   getResult: (s: S) => Result.Result<A, SchemaIssue.Issue>,
   set: (a: A, s: S) => Result.Result<S, SchemaIssue.Issue>
 ): Optional<S, A> {
-  return make(primitiveNode("Optional", getResult, set))
+  return make(primitiveNode("Optional", getResult, set, [opaqueSegment]))
 }
 
 /**
@@ -1001,7 +1059,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
     return make(compose(this.node, that.node))
   }
   key(key: PropertyKey): any {
-    return make(compose(this.node, [new PathNode([key])]))
+    return make(compose(this.node, [new PathNode([keySegment(key)])]))
   }
   optionalKey(key: PropertyKey): any {
     return make(
@@ -1025,7 +1083,8 @@ class OptionalImpl<S, A> implements Optional<S, A> {
               InternalRecord.assignProperty(copy, key, a)
             }
             return copy
-          }
+          },
+          [keySegment(key)]
         )
       )
     )
@@ -1036,7 +1095,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
   refine<B extends A>(refinement: (a: A) => a is B, annotations?: Schema.Annotations.Filter): any {
     return make(compose(this.node, [new CheckNode([SchemaAST.makeFilterByGuard(refinement, annotations)])]))
   }
-  tag(tag: string): any {
+  tag(tag: SchemaAST.LiteralValue): any {
     const err = Result.fail(new SchemaIssue.InvalidValue({ expected: `${JSON.stringify(tag)} tag` }))
     return make(
       compose(
@@ -1044,7 +1103,8 @@ class OptionalImpl<S, A> implements Optional<S, A> {
         primitiveNode(
           "Prism",
           (s) => s._tag === tag ? Result.succeed(s) : err,
-          identity
+          identity,
+          [tagSegment(tag)]
         )
       )
     )
@@ -1067,64 +1127,27 @@ class OptionalImpl<S, A> implements Optional<S, A> {
             } else {
               return err
             }
-          }
+          },
+          [keySegment(key)]
         )
       )
     )
   }
   pick(keys: any) {
-    return this.compose(makeLens(Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p })))
+    return make(
+      compose(this.node, primitiveNode("Lens", Struct.pick(keys), (p, a) => ({ ...Struct.omit(a, keys), ...p }), []))
+    )
   }
   omit(keys: any) {
-    return this.compose(makeLens(Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o })))
+    return make(
+      compose(this.node, primitiveNode("Lens", Struct.omit(keys), (o, a) => ({ ...Struct.pick(a, keys), ...o }), []))
+    )
   }
   notUndefined(): any {
     return this.refine(Predicate.isNotUndefined, { expected: "a value other than `undefined`" })
   }
   forEach<S, A, B>(this: Traversal<S, A>, f: (iso: Iso<A, A>) => Optional<A, B>): Traversal<S, B> {
-    const inner = f(id<A>())
-    return makeOptional<S, ReadonlyArray<B>>(
-      // GET: collect focused Bs
-      (s) =>
-        Result.map(this.getResult(s), (as) => {
-          const bs: Array<B> = []
-          for (let i = 0; i < as.length; i++) {
-            const r = inner.getResult(as[i])
-            if (Result.isSuccess(r)) bs.push(r.success)
-          }
-          return bs
-        }),
-      // SET: bs must match the number of focusable elements
-      (bs, s) =>
-        Result.flatMap(this.getResult(s), (as) => {
-          // 1) collect focusable indices
-          const idxs: Array<number> = []
-          for (let i = 0; i < as.length; i++) {
-            if (Result.isSuccess(inner.getResult(as[i]))) idxs.push(i)
-          }
-
-          // 2) arity check
-          if (bs.length !== idxs.length) {
-            return Result.fail(
-              new SchemaIssue.InvalidValue({
-                message: `each: replacement length mismatch: ${bs.length} !== ${idxs.length}`
-              })
-            )
-          }
-
-          // 3) update those indices
-          const out: Array<A> = as.slice()
-          for (let k = 0; k < idxs.length; k++) {
-            const i = idxs[k]
-            const r = inner.replaceResult(bs[k], as[i])
-            if (Result.isFailure(r)) {
-              return Result.fail(new SchemaIssue.Pointer([i], r.failure))
-            }
-            out[i] = r.success
-          }
-          return this.replaceResult(out, s)
-        })
-    )
+    return make(compose((this as any).node, [new EachNode(f(id<A>()))]))
   }
   modifyAll<S, A>(this: Traversal<S, A>, f: (a: A) => A): (s: S) => S {
     return (s) =>
@@ -1212,21 +1235,76 @@ function cloneShallow<T>(pojo: T): T {
 }
 
 function compileGet(nodes: Node, kind: Kind): (s: any) => any {
-  return (s) => {
-    for (let i = 0; i < nodes.length; i++) {
-      const op = nodes[i]
-      const result = op.get(s)
-      if (hasFailingGet(op.kind)) {
-        if (Result.isFailure(result)) {
-          return result
-        }
-        s = result.success
-      } else {
-        s = result
+  return (s) => readNode(nodes, kind, s)
+}
+
+function readNode(
+  nodes: Node,
+  kind: Kind,
+  s: any,
+  location: Location
+): Result.Result<Diagnostics<any>, DiagnosticsFailure>
+function readNode(nodes: Node, kind: Kind, s: any): any
+function readNode(nodes: Node, kind: Kind, s: any, location?: Location): any {
+  // Ordinary reads do not allocate diagnostic paths or element locations.
+  const path = location?.path.slice()
+  let elements = location?.elements
+  for (let i = 0; i < nodes.length; i++) {
+    const step = nodes[i]
+    if (path !== undefined && step._tag === "EachNode") {
+      const diagnostics = readEach(step.inner, s, { path, elements })
+      s = diagnostics.value
+      elements = diagnostics.elements
+      continue
+    }
+    const result = step.get(s)
+    if (hasFailingGet(step.kind)) {
+      if (Result.isFailure(result)) {
+        return path === undefined
+          ? result
+          : Result.fail({ path, elements, input: s, issue: result.failure })
+      }
+      s = result.success
+    } else {
+      s = result
+    }
+    if (path !== undefined && step._tag !== "EachNode") {
+      for (let j = 0; j < step.segments.length; j++) {
+        path.push(elements === undefined ? step.segments[j] : opaqueSegment)
+        elements = undefined
       }
     }
-    return hasFailingGet(kind) ? Result.succeed(s) : s
   }
+  return path === undefined
+    ? hasFailingGet(kind) ? Result.succeed(s) : s
+    : Result.succeed({ value: s, path, elements })
+}
+
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>, location: Location): Diagnostics<any>
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>): Array<any>
+function readEach(inner: OptionalImpl<any, any>, as: ReadonlyArray<any>, location?: Location): any {
+  const values: Array<any> = []
+  const locations: Array<Location> | undefined = location === undefined ? undefined : []
+  for (let i = 0; i < as.length; i++) {
+    const result: Result.Result<any, SchemaIssue.Issue | DiagnosticsFailure> = location === undefined
+      ? inner.getResult(as[i])
+      : readNode(
+        inner.node,
+        "Optional",
+        as[i],
+        location.elements?.[i] ?? { path: [...location.path, keySegment(i)], elements: undefined }
+      )
+    if (Result.isSuccess(result)) {
+      if (locations === undefined) {
+        values.push(result.success)
+      } else {
+        const diagnostics: Diagnostics<any> = result.success
+        values.push(diagnostics.value)
+        locations.push({ path: diagnostics.path, elements: diagnostics.elements })
+      }
+    }
+  }
+  return location === undefined ? values : { value: values, path: location.path, elements: locations }
 }
 
 function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
@@ -1238,10 +1316,12 @@ function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
       return a
     }
   }
+  const len = nodes.length
+  // EachNode.set finds its own matches; a terminal read only collects unused values.
+  const readLen = nodes[len - 1]._tag === "EachNode" ? len - 1 : len
   return (a, s) => {
-    const len = nodes.length
     const sources = new Array(len)
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < readLen; i++) {
       sources[i] = s
       const op = nodes[i]
       if (hasFailingGet(op.kind)) {
@@ -1253,6 +1333,9 @@ function compileSet(nodes: Node, kind: Kind): (a: any, s: any) => any {
       } else {
         s = op.get(s)
       }
+    }
+    if (readLen < len) {
+      sources[readLen] = s
     }
     for (let i = len - 1; i >= 0; i--) {
       const op = nodes[i]
@@ -1338,6 +1421,156 @@ export const getResult: {
   <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<A, SchemaIssue.Issue>,
   <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<A, SchemaIssue.Issue>
 >(2, (self, optic) => optic.getResult(self))
+
+/**
+ * One step on the path an optic takes into a value.
+ *
+ * **Details**
+ *
+ * - `Key`: a property or index, from `key`, `optionalKey`, `at`, the element
+ *   index of a traversal, and the field read by {@link some}, {@link success}
+ *   and {@link failure}. Traversal element indices are numbers.
+ * - `Tag`: narrowing to a tagged variant, from `tag`, {@link some},
+ *   {@link none}, {@link success} and {@link failure}. It doesn't move the
+ *   location.
+ * - `Opaque`: a step built from user functions (`makeIso`, `makeLens`,
+ *   `makePrism`, `makeOptional`) or {@link entries}, whose path is unknown.
+ *   Any step into the array collected by a traversal is also `Opaque`, since
+ *   that array has no location in the source.
+ *
+ * Checks, refinements, `pick` and `omit` keep the location and add no segment.
+ *
+ * @see {@link getWithDiagnostics} — returns the path to a focus
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.2.0
+ */
+export type Segment =
+  | { readonly _tag: "Key"; readonly key: PropertyKey }
+  | { readonly _tag: "Tag"; readonly tag: SchemaAST.LiteralValue }
+  | { readonly _tag: "Opaque" }
+
+/**
+ * The source location of an optic's value, including the locations of elements
+ * collected by traversals.
+ *
+ * **Details**
+ *
+ * - `path`: the segments from the root to the focus. For a traversal, this is
+ *   the path to the traversed collection.
+ * - `elements`: for a traversal, each collected element's location in output
+ *   order; otherwise `undefined`. Nested traversals retain their own elements.
+ *   An empty traversal has an empty array of element locations.
+ * - When translating a path inside a collected value, use the corresponding
+ *   element's location before continuing through the remaining path.
+ *
+ * @see {@link getWithDiagnostics} — the function that returns it
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.2.0
+ */
+export interface Location {
+  readonly path: ReadonlyArray<Segment>
+  readonly elements: ReadonlyArray<Location> | undefined
+}
+
+/**
+ * A focused value together with its source location and traversal element
+ * locations.
+ *
+ * **Details**
+ *
+ * `value` is the same value returned by `getResult`. The inherited location
+ * describes how paths inside that value map to the original input.
+ *
+ * @see {@link getWithDiagnostics} — the function that returns it
+ * @see {@link Location} for the recursive location structure
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.2.0
+ */
+export interface Diagnostics<A> extends Location {
+  readonly value: A
+}
+
+/**
+ * Why an optic could not focus, and where.
+ *
+ * **Details**
+ *
+ * - `path`: the segments from the root to the input of the step that failed.
+ * - `input`: the value that step received.
+ * - `issue`: the step's issue, relative to `input`. It is the same issue
+ *   `getResult` fails with.
+ * - `elements`: the source locations of elements in a collected `input`, so
+ *   paths inside `issue` can be translated through any preceding traversals.
+ *
+ * @see {@link getWithDiagnostics} — the function that returns it
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.2.0
+ */
+export interface DiagnosticsFailure extends Location {
+  readonly input: unknown
+  readonly issue: SchemaIssue.Issue
+}
+
+/**
+ * Reads the focused value from an `Optional`, together with the path from the
+ * root to it.
+ *
+ * **When to use**
+ *
+ * Use when reporting on a focus, for example in an assertion that should name
+ * the exact location of a mismatch.
+ *
+ * **Details**
+ *
+ * - Succeeds with the same value as `getResult`, and fails with the same
+ *   issue, plus its location and the input of the failing step.
+ * - Traversal locations retain source indices at every nesting level, including
+ *   when a later step fails. Elements the traversal skips are not reported.
+ * - Supports both data-first and data-last forms.
+ *
+ * **Example** (Locating a failed focus)
+ *
+ * ```ts import.meta.vitest
+ * import { Optic, Option, Result } from "effect"
+ *
+ * type Shape =
+ *   | { readonly _tag: "Circle"; readonly radius: number }
+ *   | { readonly _tag: "Rect"; readonly width: number }
+ * type S = { readonly shapes: { readonly [id: string]: Shape } }
+ *
+ * const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
+ *
+ * const failure = Result.getFailure(Optic.getWithDiagnostics({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius))
+ *
+ * // `tag("Circle")` failed on the value at ["shapes"]["a"]
+ * Option.map(failure, (f) => f.path) // => Option.some([{ _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" }])
+ * Option.map(failure, (f) => f.input) // => Option.some({ _tag: "Rect", width: 1 })
+ * ```
+ *
+ * @see {@link getResult} for the focus without its path
+ *
+ * @stability experimental
+ * @category getters
+ * @since 4.2.0
+ */
+export const getWithDiagnostics: {
+  <S, A>(optic: Optional<S, A>): (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>): Result.Result<Diagnostics<A>, DiagnosticsFailure>
+} = dual<
+  <S, A>(optic: Optional<S, A>) => (self: NoInfer<S>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>,
+  <S, A>(self: NoInfer<S>, optic: Optional<S, A>) => Result.Result<Diagnostics<A>, DiagnosticsFailure>
+>(
+  2,
+  (self, optic) => readNode((optic as OptionalImpl<any, any>).node, "Optional", self, { path: [], elements: undefined })
+)
 
 /**
  * Builds a source value from a focused value using a `Prism`.
@@ -1636,7 +1869,7 @@ export function id<S>(): Iso<S, S> {
  * @since 4.0.0
  */
 export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [string, A]>> {
-  return make(primitiveNode("Iso", Object.entries, Object.fromEntries))
+  return make(primitiveNode("Iso", Object.entries, Object.fromEntries, [opaqueSegment]))
 }
 
 /**
@@ -1675,10 +1908,12 @@ export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [str
  */
 export function some<A>(): Prism<Option.Option<A>, A> {
   const run = runRefinement(Option.isSome, { expected: "a Some value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.value),
-    Option.some
-  )
+    Option.some,
+    [tagSegment("Some"), keySegment("value")]
+  ))
 }
 
 /**
@@ -1715,10 +1950,12 @@ export function some<A>(): Prism<Option.Option<A>, A> {
  */
 export function none<A>(): Prism<Option.Option<A>, undefined> {
   const run = runRefinement(Option.isNone, { expected: "a None value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), () => undefined),
-    () => Option.none()
-  )
+    () => Option.none(),
+    [tagSegment("None")]
+  ))
 }
 
 /**
@@ -1755,10 +1992,12 @@ export function none<A>(): Prism<Option.Option<A>, undefined> {
  */
 export function success<A, E>(): Prism<Result.Result<A, E>, A> {
   const run = runRefinement(Result.isSuccess, { expected: "a Result.Success value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.success),
-    Result.succeed
-  )
+    Result.succeed,
+    [tagSegment("Success"), keySegment("success")]
+  ))
 }
 
 /**
@@ -1795,10 +2034,12 @@ export function success<A, E>(): Prism<Result.Result<A, E>, A> {
  */
 export function failure<A, E>(): Prism<Result.Result<A, E>, E> {
   const run = runRefinement(Result.isFailure, { expected: "a Result.Failure value" })
-  return makePrism(
+  return make(primitiveNode(
+    "Prism",
     (s) => Result.map(run(s), (s) => s.failure),
-    Result.fail
-  )
+    Result.fail,
+    [tagSegment("Failure"), keySegment("failure")]
+  ))
 }
 
 function runRefinement<T extends E, E>(
