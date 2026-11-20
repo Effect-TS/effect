@@ -65,9 +65,15 @@ export interface Config extends PgConnection.Config {
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
   /**
-   * Optional schedule for failures opening a connection on checkout. The caller's
-   * `acquireTimeout` still bounds the whole checkout, including retry delays.
-   * Statements and transaction bodies are never replayed by this schedule.
+   * Optional schedule for retrying retryable errors (`error.isRetryable`,
+   * such as socket errors, `connectTimeout`, and SQLSTATE class `08`) while
+   * opening a connection on checkout. Authentication failures are not
+   * retried. The caller's `acquireTimeout` bounds the entire checkout,
+   * including retry delays, and interrupting the caller cancels pending
+   * retries. Statements and transaction bodies are never replayed.
+   * Configuration errors (such as a malformed URL or missing username) also
+   * surface as `ConnectionError`, so bound the schedule or set
+   * `acquireTimeout`.
    */
   readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /**
@@ -319,20 +325,21 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       )
 
   const connectRetry = options.connectRetrySchedule
-  const handedOut = Effect.flatMap(
-    connectRetry === undefined ? checkout : Effect.retry(checkout, connectRetry),
-    handOut
-  )
+  const acquired = connectRetry === undefined
+    ? checkout
+    : Effect.retry(checkout, { schedule: connectRetry, while: (error) => error.isRetryable })
+  const handedOut = Effect.flatMap(acquired, handOut)
   const get = withAcquireTimeout(handedOut)
 
   // `pin` reserves the pool item itself. On a multiplexed pool it also waits
   // for shared statements to drain, so the acquire timeout covers it too.
   const reserve = withAcquireTimeout(Effect.flatMap(handedOut, (connection) => connection.pin))
 
-  // `Pool.use` cannot pre-check a session or bound its wait. Use it only when
-  // no TTL or acquire timeout applies and no connection awaits retirement.
-  // Checking inside its callback can deadlock a size-one pool while acquiring
-  // a replacement.
+  // `Pool.use` cannot pre-check a session, retry checkout without wrapping
+  // `f`, or bound its wait. Use it only when no connect retry schedule, TTL,
+  // or acquire timeout applies and no connection awaits retirement. Checking
+  // inside its callback can deadlock a size-one pool while acquiring a
+  // replacement.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>

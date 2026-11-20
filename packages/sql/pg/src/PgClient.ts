@@ -216,9 +216,15 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
   /**
-   * Optional schedule for failures opening a connection on checkout. The caller's
-   * `acquireTimeout` still bounds the whole checkout, including retry delays.
-   * Statements and transaction bodies are never replayed by this schedule.
+   * Optional schedule for retrying retryable errors (`error.isRetryable`,
+   * such as socket errors, `connectTimeout`, and SQLSTATE class `08`) while
+   * opening a connection on checkout. Authentication failures are not
+   * retried. The caller's `acquireTimeout` bounds the entire checkout,
+   * including retry delays, and interrupting the caller cancels pending
+   * retries. Statements and transaction bodies are never replayed.
+   * Configuration errors (such as a malformed URL or missing username) also
+   * surface as `ConnectionError`, so bound the schedule or set
+   * `acquireTimeout`.
    */
   readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /** Bounds how long acquiring a pooled connection takes. See `PgPool.Config.acquireTimeout`. */

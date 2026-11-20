@@ -2,4 +2,4 @@
 "@effect/sql-pg": minor
 ---
 
-Allow PostgreSQL clients to opt into a retry schedule for failures opening a pooled connection before a statement is sent.
+Add an optional `connectRetrySchedule` option to `PgClient` and `PgPool` to retry retryable connection errors during pool checkout before any statement is sent.
