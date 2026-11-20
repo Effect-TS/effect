@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Sse from "effect/encoding/Sse"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/http-api"
 import type { OpenAPISpec } from "effect/http-api/OpenApi"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
@@ -70,6 +71,43 @@ const paths = [
 ] as const
 
 describe("HttpClient generation", () => {
+  it.effect.each(["httpclient", "httpclient-type-only"] as const)(
+    "types and sends the multipart alternative in %s",
+    (format) =>
+      Effect.gen(function*() {
+        const spec = OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("forms", { topLevel: true }).add(
+              HttpApiEndpoint.post("submit", "/submit", {
+                payload: [
+                  Schema.Struct({ note: Schema.String }).pipe(HttpApiSchema.asMultipart()),
+                  Schema.Struct({ code: Schema.String }).pipe(HttpApiSchema.asFormUrlEncoded())
+                ]
+              })
+            )
+          )
+        )
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const source = yield* generator.generate(spec, { name: "TestClient", format })
+        const payloadType = format === "httpclient" ? "typeof SubmitRequestFormData.Encoded" : "SubmitRequestFormData"
+        assert.include(source, `readonly payload: ${payloadType}`)
+
+        const make = yield* Effect.promise(() =>
+          loadClient<{ submit: (options: { payload: { note: string } }) => Effect.Effect<unknown> }>(source)
+        )
+        const client = make(
+          HttpClient.make((request) => {
+            assert(request.body._tag === "FormData")
+            assert.strictEqual(request.body.formData.get("note"), "hello")
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 204 })))
+          }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+        )
+        yield* client.submit({ payload: { note: "hello" } })
+      }).pipe(Effect.provide(
+        format === "httpclient" ? OpenApiGenerator.layerTransformerSchema : OpenApiGenerator.layerTransformerTs
+      ))
+  )
+
   it.effect("returns only the body when a nullable response config is undefined", () =>
     Effect.gen(function*() {
       const spec: OpenAPISpec = {
