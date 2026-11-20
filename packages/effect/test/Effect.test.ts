@@ -18,6 +18,7 @@ import {
   Layer,
   Logger,
   type LogLevel,
+  Metric,
   Option,
   Pool,
   Queue,
@@ -1626,20 +1627,56 @@ describe("Effect", () => {
   for (const [name, race] of [["race", Effect.race], ["raceFirst", Effect.raceFirst]] as const) {
     it.effect(`${name} interrupts a loser that settles the race while starting`, () =>
       Effect.gen(function*() {
-        let interrupted = false
-        const deferred = yield* Deferred.make<void>()
-        yield* race(
+        let afterSettleRan = false
+        let loserExit: Exit.Exit<number> | undefined
+        const deferred = yield* Deferred.make<string>()
+        const result = yield* race(
           Deferred.await(deferred),
-          Deferred.succeed(deferred, void 0).pipe(
-            Effect.andThen(Effect.never),
-            Effect.onInterrupt(() =>
+          Deferred.succeed(deferred, "winner").pipe(
+            Effect.andThen(Effect.sync(() => {
+              afterSettleRan = true
+              return 41
+            })),
+            Effect.onExit((exit) =>
               Effect.sync(() => {
-                interrupted = true
+                loserExit = exit
               })
             )
           )
         )
-        assert.isTrue(interrupted)
+        assert.strictEqual(result, "winner")
+        assert.isFalse(afterSettleRan)
+        assert.isTrue(loserExit !== undefined && Exit.isFailure(loserExit) && Cause.hasInterruptsOnly(loserExit.cause))
+      }))
+
+    it.effect(`${name} does not evaluate a loser when the race settles during fiber construction`, () =>
+      Effect.gen(function*() {
+        const stop = yield* Deferred.make<string>()
+        let starts = 0
+        let ends = 0
+        let ran = false
+        const metrics: Metric.FiberRuntimeMetricsService = {
+          recordFiberStart: () => {
+            starts++
+            if (starts === 2) {
+              Deferred.doneUnsafe(stop, Effect.succeed("stop"))
+            }
+          },
+          recordFiberEnd: () => {
+            ends++
+          }
+        }
+        const result = yield* race(
+          Deferred.await(stop),
+          Effect.sync(() => {
+            ran = true
+            return "loser"
+          })
+        ).pipe(Effect.provideService(Metric.FiberRuntimeMetrics, metrics))
+        assert.strictEqual(result, "stop")
+        assert.isFalse(ran)
+        assert.strictEqual(starts, 2)
+        assert.strictEqual(ends, 2)
       }))
 
     it.effect(`${name} interrupts the loser when interrupted while starting`, () =>

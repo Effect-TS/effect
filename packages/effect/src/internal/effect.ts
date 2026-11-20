@@ -1703,7 +1703,6 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
 > =>
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
-    // Read fibers on exit to include losers forked after the race settles.
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
     return callback((resume) => {
       const effects = Arr.fromIterable(all)
@@ -1730,12 +1729,17 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
       }
 
       for (let i = 0; i < len; i++) {
-        const fiber = forkUnsafe(parent, effects[i], true, true, false)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
           onExit(exit, fiber, i)
         })
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effects[i] as any)
         if (done) break
       }
     })
@@ -1765,7 +1769,9 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
       for (const effect of all) {
         if (done) break
         const index = i++
-        const fiber = forkUnsafe(parent, effect, true, true, false)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
@@ -1777,6 +1783,10 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
             options?.onWinner?.({ fiber, index, parentFiber: parent })
           }
         })
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effect as any)
+        if (done) break
       }
     })
   })
