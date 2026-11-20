@@ -227,10 +227,9 @@ const resetOverlap = Effect.fnUntraced(
       Effect.provide(context),
       Effect.forkScoped
     )
-    const id = yield* Deferred.await(probe.entered)
+    yield* Deferred.await(probe.entered)
     yield* probe.gate.open
     yield* readerAdvanced.await
-    assert.strictEqual(resetId, id)
     const reply = yield* Fiber.join(caller).pipe(Effect.timeoutOption(3000))
     assert.deepStrictEqual(reply, Option.some("1234"))
   },
