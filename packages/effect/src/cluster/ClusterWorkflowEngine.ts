@@ -594,7 +594,7 @@ export const make = Effect.gen(function*() {
 
               activity(request: Entity.Request<any>) {
                 const payload = request.payload as { name: string; attempt: number }
-                const activityId = `${executionId}/${payload.name}`
+                const activityId = `${executionId}/${activityPrimaryKey(payload.name, payload.attempt)}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   awaitedDeferreds: currentRun?.activityAwaits
                 })
@@ -764,7 +764,7 @@ export const make = Effect.gen(function*() {
         const services = yield* Effect.context<WorkflowEngine.WorkflowInstance>()
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
-        const activityId = `${instance.executionId}/${activity.name}`
+        const activityId = `${instance.executionId}/${activityPrimaryKey(activity.name, attempt)}`
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {

@@ -91,6 +91,33 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     )
   }
 
+  it.effect("runs concurrent attempts of an activity separately", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("ConcurrentActivityAttempts", {
+        payload: {},
+        idempotencyKey: () => "one",
+        success: Schema.Array(Schema.Int)
+      })
+      const activity = Activity.make({
+        name: "attempt",
+        success: Schema.Int,
+        execute: Effect.gen(function*() {
+          return yield* Activity.CurrentAttempt
+        })
+      })
+      const layer = workflow.toLayer(() =>
+        Effect.all([1, 2].map((attempt) => Effect.provideService(activity, Activity.CurrentAttempt, attempt)), {
+          concurrency: "unbounded"
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+      yield* Effect.gen(function*() {
+        const caller = yield* workflow.execute({}).pipe(Effect.forkScoped)
+        yield* advanceUntil(() => caller.pollUnsafe() !== undefined, "the caller must receive both results")
+        assert.deepStrictEqual(yield* Fiber.join(caller), [1, 2])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("compensates once on cancellation after an active timer wake", () =>
     Effect.gen(function*() {
       const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
