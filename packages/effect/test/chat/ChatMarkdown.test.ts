@@ -80,6 +80,14 @@ describe("ChatMarkdown", () => {
         assert.deepStrictEqual(yield* texts(test, thread), result.parts.map((part) => part.markdown))
       }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 100 } }))))
 
+    it.effect("keeps a fenced block that exactly fits in one message", () =>
+      Effect.gen(function*() {
+        const { test, thread } = yield* setup
+        const block = "```\nx\n```\n"
+        yield* ChatMarkdown.post(thread, block + "rest", { maxParts: 2 })
+        assert.deepStrictEqual(yield* texts(test, thread), [block, "rest"])
+      }).pipe(Effect.provide(ChatTest.layer({ limits: { messageLength: 10 } }))))
+
     it.effect("closes a code fence and reopens it in the next part", () =>
       Effect.gen(function*() {
         const { thread } = yield* setup
