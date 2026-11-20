@@ -593,6 +593,57 @@ describe("VirtualFileSystem handles", () => {
       }
     }).pipe(withClock))
 
+  it.effect("preserves clock callbacks and publication when read access time is unchanged", () =>
+    Effect.gen(function*() {
+      const clock = yield* Clock.Clock
+      const defect = new Error("clock defect")
+      let onSample = () => {}
+      const supplied: Clock.Clock = {
+        ...clock,
+        currentTimeNanosUnsafe: () => {
+          onSample()
+          return clock.currentTimeNanosUnsafe()
+        }
+      }
+      const owner = yield* VFS.make({ accessTime: "relatime", limits: { synchronous: true } }).pipe(
+        Effect.provideService(Clock.Clock, supplied)
+      )
+      const caller = yield* owner.authorize({ credentials })
+      const sync = yield* caller.acquireSync
+      Result.getOrThrow(sync.writeFile("/file", bytes(1, 2)))
+      const before = Result.getOrThrow(sync.stat("/file"))
+      yield* TestClock.adjust("1 second")
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/file")), bytes(1, 2))
+      const first = Result.getOrThrow(sync.stat("/file"))
+      assert.isTrue(first.metadata.atime > before.metadata.atime)
+      assert.isTrue(VFS.equalsObjectRevision(first.revision, before.revision))
+
+      yield* TestClock.adjust("1 second")
+      let samples = 0
+      onSample = () => {
+        samples++
+        const nested = sync.stat("/file")
+        assert.isTrue(Result.isFailure(nested) && nested.failure._tag === "ReentrantOperation")
+      }
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/file")), bytes(1, 2))
+      assert.strictEqual(samples, 1)
+      assert.deepStrictEqual(Result.getOrThrow(sync.stat("/file")).metadata, first.metadata)
+
+      onSample = () => {
+        throw defect
+      }
+      let thrown: unknown
+      try {
+        sync.readFile("/file")
+      } catch (error) {
+        thrown = error
+      }
+      assert.strictEqual(thrown, defect)
+      onSample = () => {}
+      assert.deepStrictEqual(Result.getOrThrow(sync.stat("/file")).metadata, first.metadata)
+      assert.strictEqual((yield* owner.usage).reservedTransientBytes, 0n)
+    }).pipe(withClock))
+
   it.effect("should rethrow the original Clock defect without publication when synchronous writes fail before commit", () =>
     Effect.gen(function*() {
       const clock = yield* Clock.Clock

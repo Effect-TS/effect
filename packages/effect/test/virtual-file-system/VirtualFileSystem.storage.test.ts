@@ -109,3 +109,30 @@ for (const last of ["caller", "handle", "concurrent"] as const) {
       assert.deepStrictEqual(offers, [true, false])
     }))
 }
+
+it.effect("offers whole-file reads only when they change stored access time", () =>
+  Effect.gen(function*() {
+    const owner = yield* VFS.make({ accessTime: "relatime" }).pipe(
+      Effect.provideService(Clock.Clock, yield* Clock.Clock)
+    )
+    const caller = yield* owner.authorize({ credentials: { uid: 0, gid: 0 } })
+    const data = new Uint8Array([1, 2])
+    yield* caller.writeFile("/file", data)
+    const before = (yield* caller.stat("/file")).metadata
+    const offers: Array<bigint> = []
+    yield* installStorage(owner, (nodes, changed) =>
+      Effect.sync(() => {
+        for (const id of changed) offers.push(nodes.get(id)!.atime)
+      }), () => false)
+
+    yield* TestClock.adjust("1 second")
+    assert.deepStrictEqual(yield* caller.readFile("/file"), data)
+    const first = (yield* caller.stat("/file")).metadata
+    assert.isTrue(first.atime > before.atime)
+    assert.deepStrictEqual(offers, [first.atime])
+
+    yield* TestClock.adjust("1 second")
+    assert.deepStrictEqual(yield* caller.readFile("/file"), data)
+    assert.deepStrictEqual((yield* caller.stat("/file")).metadata, first)
+    assert.deepStrictEqual(offers, [first.atime])
+  }))

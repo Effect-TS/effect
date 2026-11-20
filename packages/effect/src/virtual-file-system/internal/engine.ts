@@ -829,7 +829,14 @@ export class Transaction {
   }
 
   touchResult(id: bigint, fields: ReadonlyArray<"atime" | "mtime" | "ctime">) {
-    return Result.map(this.editResult(id), () => {
+    // Leave relatime reads without a metadata draft when the current access time is already newer.
+    const defer = this.operation === "readFile" && this.engine.offer === undefined &&
+      this.engine.accessTime === "relatime" && fields.length === 1 && fields[0] === "atime"
+    const node = defer ? this.getResult(id) : this.editResult(id)
+    return Result.map(node, (current) => {
+      if (defer && (current.atime <= current.mtime || current.atime <= current.ctime) && !this.changes.has(id)) {
+        this.changes.set(id, { ...current })
+      }
       let requested = this.timeRequests.get(id)
       if (requested === undefined) {
         requested = new Set()
@@ -1739,6 +1746,13 @@ export class Transaction {
       if (this.timeRequests.size > 0) {
         const now = engine.now()
         for (const [id, fields] of this.timeRequests) {
+          if (
+            this.operation === "readFile" && engine.offer === undefined && engine.accessTime === "relatime" &&
+            !this.changes.has(id) && fields.size === 1 && fields.has("atime")
+          ) {
+            const pending = yield* this.getResult(id)
+            if (pending.atime === now || now - pending.atime < BigInt("86400000000000")) continue
+          }
           const node = yield* this.editResult(id)
           let changed = false
           for (const field of fields) {
