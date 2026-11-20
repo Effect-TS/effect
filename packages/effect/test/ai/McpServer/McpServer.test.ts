@@ -2625,36 +2625,33 @@ describe("McpServer", () => {
       }))
 
     const modelOutputImage = new Uint8Array([1, 2, 3])
-    const modelOutputAudio = new Uint8Array([4, 5, 6])
     const modelOutputUrl = new URL("https://example.com/report.png")
-    const makeModelOutputToolkitLayer = () => {
-      const toolkit = Toolkit.make(
-        Tool.make("ModelOutputTool", {
-          success: Schema.Struct({ ok: Schema.Boolean }),
-          toModelOutput: () => [
-            Prompt.textPart({ text: "Captured" }),
-            Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
-            Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
-            Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
-            Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
-          ]
-        }),
-        Tool.make("QuotedModelOutputTool", {
-          success: Schema.String,
-          toModelOutput: (value) => [Prompt.textPart({ text: JSON.stringify(value) })]
-        })
-      )
-      return Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
-        Layer.provide(toolkit.toLayer({
-          ModelOutputTool: () => Effect.succeed({ ok: true }),
-          QuotedModelOutputTool: () => Effect.succeed("hello")
-        }))
-      )
-    }
+    const modelOutputToolkit = Toolkit.make(
+      Tool.make("ModelOutputTool", {
+        success: Schema.Struct({ ok: Schema.Boolean }),
+        toModelOutput: () => [
+          Prompt.textPart({ text: "Captured" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
+          Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
+          Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
+        ]
+      }),
+      Tool.make("QuotedModelOutputTool", {
+        success: Schema.String,
+        toModelOutput: (value) => [Prompt.textPart({ text: JSON.stringify(value) })]
+      })
+    )
+    const modelOutputLayer = Layer.effectDiscard(McpServer.registerToolkit(modelOutputToolkit)).pipe(
+      Layer.provide(modelOutputToolkit.toLayer({
+        ModelOutputTool: () => Effect.succeed({ ok: true }),
+        QuotedModelOutputTool: () => Effect.succeed("hello")
+      }))
+    )
 
     it.effect("uses toModelOutput parts as tool result content while preserving structuredContent", () =>
       Effect.gen(function*() {
-        const client = yield* McpTest.makeClient(makeModelOutputToolkitLayer(), {
+        const client = yield* McpTest.makeClient(modelOutputLayer, {
           protocols: [McpProtocol.v2025_06_18]
         })
 
@@ -2665,7 +2662,7 @@ describe("McpServer", () => {
         assert.deepStrictEqual(result.content, [
           { type: "text", text: "Captured" },
           { type: "image", data: modelOutputImage, mimeType: "image/png" },
-          { type: "audio", data: modelOutputAudio, mimeType: "audio/wav" },
+          { type: "audio", data: new Uint8Array([4, 5, 6]), mimeType: "audio/wav" },
           {
             type: "resource_link",
             uri: modelOutputUrl.href,
@@ -2676,12 +2673,12 @@ describe("McpServer", () => {
         ])
 
         const quoted = yield* client.callTool({ name: "QuotedModelOutputTool", arguments: {} })
-        assert.deepStrictEqual(quoted.content, [{ type: "text", text: JSON.stringify("hello") }])
+        assert.deepStrictEqual(quoted.content, [{ type: "text", text: "\"hello\"" }])
       }))
 
     it.effect("downgrades unsupported toModelOutput blocks to text on 2024-11-05", () =>
       Effect.gen(function*() {
-        const client = yield* McpTest.makeClient(makeModelOutputToolkitLayer(), {
+        const client = yield* McpTest.makeClient(modelOutputLayer, {
           protocols: [McpProtocol.v2024_11_05]
         })
 
