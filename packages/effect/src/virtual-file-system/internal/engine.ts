@@ -926,6 +926,7 @@ export class Transaction {
   }
 
   containedResult(id: bigint, root: bigint) {
+    if (id === root) return Result.map(this.visitResult(), () => true)
     return Result.gen(this, function*() {
       const seen = new Set<bigint>()
       while (true) {
