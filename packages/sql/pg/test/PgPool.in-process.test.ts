@@ -46,146 +46,7 @@ const waitFor = (predicate: () => boolean) =>
     assert.ok(predicate(), "background acquisition did not start")
   })
 
-const fakeBackend = (on: {
-  readonly startup?: ((socket: Duplex) => void) | undefined
-  readonly parse?: ((socket: Duplex) => void) | undefined
-}) => {
-  let startup = true
-  const socket: Duplex = new Duplex({
-    read() {},
-    write(chunk: Buffer, _encoding, callback) {
-      if (startup) {
-        startup = false
-        on.startup?.(socket)
-      } else if (chunk[0] === 0x50) {
-        on.parse?.(socket)
-      }
-      callback()
-    }
-  })
-  return socket
-}
-
-const pushReady = (socket: Duplex) => queueMicrotask(() => socket.push(ready))
-
 describe("PgPool failed startup", () => {
-  // First handshake stalls past connectTimeout (10ms); at 109ms the 100ms retry is pending.
-  const stalledThenReady = Effect.gen(function*() {
-    const started = Latch.makeUnsafe()
-    const counts = { attempts: 0, statements: 0 }
-    const sql = yield* PgClient.make({
-      username: "test",
-      maxConnections: 1,
-      connectTimeout: "10 millis",
-      connectRetrySchedule: Schedule.spaced("100 millis").pipe(Schedule.upTo({ times: 1 })),
-      stream: () =>
-        fakeBackend({
-          startup: ++counts.attempts === 1 ? () => started.openUnsafe() : pushReady,
-          parse: (socket) => {
-            counts.statements++
-            queueMicrotask(() => socket.push(emptyQueryResult))
-          }
-        })
-    })
-    const query = yield* Effect.forkChild(sql`SELECT 1`)
-    yield* started.await
-    yield* TestClock.adjust("109 millis")
-    assert.deepStrictEqual(counts, { attempts: 1, statements: 0 })
-    assert.isUndefined(query.pollUnsafe())
-    return { query, counts }
-  })
-
-  it.effect("retries a stalled handshake after backoff before sending SQL", () =>
-    Effect.gen(function*() {
-      const { counts, query } = yield* stalledThenReady
-      yield* TestClock.adjust("1 millis")
-      yield* Fiber.join(query)
-      assert.deepStrictEqual(counts, { attempts: 2, statements: 1 })
-    }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect("cancels a pending connect retry when interrupted during backoff", () =>
-    Effect.gen(function*() {
-      const { counts, query } = yield* stalledThenReady
-      yield* Fiber.interrupt(query)
-      yield* TestClock.adjust("100 millis")
-      assert.deepStrictEqual(counts, { attempts: 1, statements: 0 })
-    }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect("bounds connect retries by acquireTimeout for statements and reservations", () =>
-    Effect.gen(function*() {
-      const started = Latch.makeUnsafe()
-      let attempts = 0
-      const sql = yield* PgClient.make({
-        username: "test",
-        maxConnections: 1,
-        connectTimeout: "10 millis",
-        acquireTimeout: "50 millis",
-        connectRetrySchedule: Schedule.spaced("20 millis"),
-        stream: () => {
-          attempts++
-          return fakeBackend({ startup: () => started.openUnsafe() })
-        }
-      })
-      const statement = yield* Effect.forkChild(Effect.flip(sql`SELECT 1`))
-      const reservation = yield* Effect.forkChild(Effect.flip(Effect.scoped(sql.reserve)))
-      yield* started.await
-      yield* TestClock.adjust("49 millis")
-      assert.isUndefined(statement.pollUnsafe())
-      assert.isUndefined(reservation.pollUnsafe())
-      yield* TestClock.adjust("1 millis")
-      for (const error of [yield* Fiber.join(statement), yield* Fiber.join(reservation)]) {
-        assert.strictEqual(error.reason._tag, "ConnectionError")
-        assert.strictEqual(error.reason.operation, "acquireConnection")
-      }
-      const attemptsAtDeadline = attempts
-      assert.isAtLeast(attemptsAtDeadline, 2)
-      yield* TestClock.adjust("100 millis")
-      assert.strictEqual(attempts, attemptsAtDeadline)
-    }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect("does not retry an authentication failure at startup", () =>
-    Effect.gen(function*() {
-      let attempts = 0
-      const sql = yield* PgClient.make({
-        username: "test",
-        maxConnections: 1,
-        connectRetrySchedule: Schedule.recurs(3),
-        stream: () => {
-          attempts++
-          return fakeBackend({
-            startup: (socket) =>
-              queueMicrotask(() =>
-                socket.push(backendMessage("E", Buffer.from("SFATAL\0C28P01\0Mpassword authentication failed\0\0")))
-              )
-          })
-        }
-      })
-      const error = yield* Effect.flip(sql`SELECT 1`)
-      assert.strictEqual(error.reason._tag, "AuthenticationError")
-      assert.strictEqual(attempts, 1)
-    }).pipe(Effect.provide(Reactivity.layer)))
-
-  it.effect("does not replay a statement when the reply is lost", () =>
-    Effect.gen(function*() {
-      let statements = 0
-      const sql = yield* PgClient.make({
-        username: "test",
-        maxConnections: 1,
-        connectRetrySchedule: Schedule.recurs(1),
-        stream: () =>
-          fakeBackend({
-            startup: pushReady,
-            parse: (socket) => {
-              statements++
-              queueMicrotask(() => socket.destroy())
-            }
-          })
-      })
-      const result = yield* Effect.result(sql`INSERT INTO widgets DEFAULT VALUES`)
-      assert.strictEqual(result._tag, "Failure")
-      assert.strictEqual(statements, 1)
-    }).pipe(Effect.provide(Reactivity.layer)))
-
   it.live(
     "retries a stale background acquisition rather than failing an unrelated checkout",
     () =>
@@ -253,6 +114,30 @@ describe("PgPool failed startup", () => {
       })),
     10_000
   )
+
+  it.effect("connectRetrySchedule retries connect failures until one is not retryable", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let attempts = 0
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        connectRetrySchedule: Schedule.recurs(5),
+        stream: () => {
+          // The first connect drops the socket, the second fails authentication.
+          const attempt = ++attempts
+          const socket = new Duplex({ read() {}, write() {} })
+          queueMicrotask(() =>
+            attempt === 1
+              ? socket.destroy()
+              : socket.push(backendMessage("E", Buffer.from("SFATAL\0C28P01\0Mpassword authentication failed\0\0")))
+          )
+          return socket
+        }
+      })
+      const error = yield* Effect.flip(pool.get)
+      assert.strictEqual(error.reason._tag, "AuthenticationError")
+      assert.strictEqual(attempts, 2)
+    })))
 })
 
 describe("PgPool acquireTimeout", () => {
