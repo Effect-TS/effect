@@ -132,14 +132,14 @@ export interface HandlerContext<Tool extends Tool.Any> {
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
   /**
-   * Sets the content sent to the model for this call's final result, in place
-   * of the tool's `toModelOutput` mapping and the encoded result.
+   * Set the model-facing output parts for this tool call's final result.
    *
    * **Details**
    *
-   * Applies only to a successful final result, and the last call wins. It is
-   * ignored for preliminary results and failures. The typed `result` and its
-   * `encodedResult` are unchanged.
+   * Replaces the tool's `toModelOutput` mapping and default encoded result for
+   * the final successful result of this call, with the last call winning. It is
+   * ignored for preliminary results and failures, and leaves `result` and
+   * `encodedResult` unchanged.
    *
    * @since 4.1.5
    */
@@ -554,7 +554,7 @@ const Proto = {
               result,
               isFailure: false,
               preliminary: false,
-              ...(modelOutput === undefined ? undefined : { modelOutput })
+              ...(modelOutput !== undefined ? { modelOutput } : undefined)
             })
           ),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
@@ -609,13 +609,14 @@ const Proto = {
             ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            // Only a successful final result carries `modelOutput` set through the handler context.
-            if (
-              output.isFailure || output.preliminary || "modelOutput" in output || tool.toModelOutput === undefined
-            ) {
+            if (output.isFailure || output.preliminary) {
               return { ...output, encodedResult }
             }
-            return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
+            const resolvedModelOutput = ("modelOutput" in output ? output.modelOutput : undefined) ??
+              tool.toModelOutput?.(output.result)
+            return resolvedModelOutput === undefined
+              ? { ...output, encodedResult }
+              : { ...output, encodedResult, modelOutput: resolvedModelOutput }
           })),
           Stream.ensuring(Effect.flatMap(
             Effect.andThen(Fiber.interrupt(fiber), Fiber.await(fiber)),
