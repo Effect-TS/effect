@@ -130,6 +130,7 @@ export const make = Effect.gen(function*() {
   const activities = new Map<string, {
     readonly activity: Activity.Any
     readonly context: Context.Context<any>
+    completed?: { readonly requestId: Snowflake.Snowflake; readonly result: Workflow.Complete<any, any> }
   }>()
   const interruptedActivities = new Set<string>()
   const deferredState = WorkflowEngine.makeDeferredState()
@@ -595,8 +596,8 @@ export const make = Effect.gen(function*() {
               },
 
               activity(request: Entity.Request<any>) {
-                const payload = request.payload as { name: string; attempt: number }
-                const activityId = `${executionId}/${payload.name}`
+                const payload = request.payload as { name: string; attempt: number; withTransaction?: boolean }
+                const activityId = `${executionId}/${activityPrimaryKey(payload.name, payload.attempt)}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   awaitedDeferreds: currentRun?.activityAwaits
                 })
@@ -606,6 +607,9 @@ export const make = Effect.gen(function*() {
                   // Replay may never register a losing race activity. Answer it
                   // without waiting; a later registration can reset this reply.
                   return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
+                }
+                if (entry.completed?.requestId === request.requestId) {
+                  return Effect.succeed(entry.completed.result).pipe(Rpc.wrap({ fork: true }))
                 }
                 const context = entry.context.pipe(
                   Context.add(WorkflowEngine.WorkflowInstance, instance),
@@ -629,9 +633,18 @@ export const make = Effect.gen(function*() {
                   }),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, payload.attempt),
-                  Effect.ensuring(Effect.sync(() => {
-                    activities.delete(activityId)
-                  })),
+                  Effect.onExit((exit) =>
+                    Effect.sync(() => {
+                      if (activities.get(activityId) !== entry) return
+                      if (exit._tag === "Failure" || exit.value._tag === "Suspended") {
+                        activities.delete(activityId)
+                      } else if (!payload.withTransaction) {
+                        // Redelivery may follow a rejected reply write. Keep the result until its
+                        // caller receives it. A rolled-back transactional activity must run again.
+                        entry.completed = { requestId: request.requestId, result: exit.value }
+                      }
+                    })
+                  ),
                   Rpc.wrap({ fork: true, uninterruptible: true })
                 )
               },
@@ -764,7 +777,7 @@ export const make = Effect.gen(function*() {
         const services = yield* Effect.context<WorkflowEngine.WorkflowInstance>()
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
-        const activityId = `${instance.executionId}/${activity.name}`
+        const activityId = `${instance.executionId}/${activityPrimaryKey(activity.name, attempt)}`
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {
@@ -781,9 +794,15 @@ export const make = Effect.gen(function*() {
           }
         }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)
+        const entry = { activity, context: services }
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            if (activities.get(activityId) === entry) activities.delete(activityId)
+          })
+        )
         while (true) {
           if (!activities.has(activityId)) {
-            activities.set(activityId, { activity, context: services })
+            activities.set(activityId, entry)
           }
           const result = yield* retryPersistence(
             client.activity({
@@ -803,7 +822,6 @@ export const make = Effect.gen(function*() {
             })
             continue
           }
-          activities.delete(activityId)
           return result
         }
       },

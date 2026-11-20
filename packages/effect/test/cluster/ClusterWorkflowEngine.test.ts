@@ -46,6 +46,57 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const transactional of [false, true]) {
+    const disposition = transactional ? "reruns a rolled-back activity" : "reuses a completed activity result"
+    it.effect(`${disposition} when a reply is redelivered on the same runner`, () =>
+      Effect.gen(function*() {
+        let calls = 0
+        let lostConfirmation = false
+        const storage = Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(RunnerStorage.makeMemory, (storage) => ({
+            ...storage,
+            refresh: (address, shards) => {
+              if (calls > 0 && !lostConfirmation && Array.from(shards).length === 1) {
+                lostConfirmation = true
+                return Effect.fail(new ClusterError.PersistenceError({ cause: "inconclusive lock refresh" }))
+              }
+              return storage.refresh(address, shards)
+            }
+          }))
+        )
+        const workflow = Workflow.make("ActivityReplyRedelivery", {
+          payload: {},
+          idempotencyKey: () => "one",
+          success: Schema.Int
+        })
+        const layer = workflow.toLayer(() =>
+          Activity.make({
+            name: "allocate",
+            success: Schema.Int,
+            execute: Effect.sync(() => ++calls)
+          }).annotate(ClusterSchema.WithTransaction, transactional)
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+          shardingLayer: Sharding.layer.pipe(Layer.provide(storage)),
+          config: { entityMessagePollInterval: 10, entityReplyPollInterval: 10 }
+        })))
+
+        yield* Effect.gen(function*() {
+          const caller = yield* workflow.execute({}).pipe(Effect.forkScoped)
+          yield* advanceUntil(
+            () => caller.pollUnsafe() !== undefined,
+            "the waiting caller must receive its result",
+            10,
+            50
+          )
+          const expectedCalls = transactional ? 2 : 1
+          assert.strictEqual(yield* Fiber.join(caller), expectedCalls)
+          assert.strictEqual(calls, expectedCalls)
+          assert.isTrue(lostConfirmation)
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+
   it.effect("compensates once on cancellation after an active timer wake", () =>
     Effect.gen(function*() {
       const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
