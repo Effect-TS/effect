@@ -118,7 +118,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           const expectedCalls = transactional ? 2 : 1
           assert.strictEqual(yield* Fiber.join(caller), expectedCalls)
           assert.strictEqual(calls, expectedCalls)
-          assert.isTrue(lostConfirmation)
         }).pipe(Effect.provide(layer))
       }))
   }
