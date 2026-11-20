@@ -523,13 +523,16 @@ const parseOpenApi = (
         }
 
         if (Predicate.isNotUndefined(content["application/x-www-form-urlencoded"]?.schema)) {
-          op.payload = addSchema(
+          const schemaName = addSchema(
             `${schemaId}RequestFormUrlEncoded`,
             content["application/x-www-form-urlencoded"].schema,
             op
           )
-          op.payloadFormUrlEncoded = true
-          requestSchemaNames.set("application/x-www-form-urlencoded", op.payload)
+          requestSchemaNames.set("application/x-www-form-urlencoded", schemaName)
+          if (!op.payloadFormData) {
+            op.payload = schemaName
+            op.payloadFormUrlEncoded = true
+          }
         }
 
         if (isHttpApi) {
