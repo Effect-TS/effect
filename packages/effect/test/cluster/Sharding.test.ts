@@ -2892,6 +2892,80 @@ describe.concurrent("Sharding defect recovery", () => {
       assert.deepStrictEqual(interruptDefault.pollUnsafe(), Exit.void)
       assert.strictEqual(stopped, 2)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("releases a fenced synthetic interrupt exit while its writer stays alive", () =>
+    Effect.gen(function*() {
+      const run = Rpc.make("run").annotate(ClusterSchema.Persisted, true)
+      const entity = Entity.make("FencedSyntheticInterrupt", [run])
+      const sharding = yield* Sharding.Sharding
+      let owned = true
+      let failSaves = true
+      let runs = 0
+      const resets: Array<Snowflake.Snowflake> = []
+      const manager = yield* EntityManager.make(
+        entity,
+        Effect.succeed(entity.of({
+          run: () =>
+            Effect.sync(() => {
+              runs++
+            })
+        })),
+        {
+          sharding: { ...sharding, hasShardId: () => true },
+          storage: {
+            ...MessageStorage.noop,
+            resetRequests: (ids) =>
+              Effect.sync(() => {
+                resets.push(...ids)
+              }),
+            repliesForUnfiltered: () => Effect.succeed([])
+          },
+          runnerAddress: RunnerAddress.make("localhost", 1234),
+          residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+          abandonUndelivered: () => Effect.void,
+          isShardOwned: () => Effect.succeed(owned),
+          maxIdleTime: Infinity
+        }
+      )
+      const shardId = ShardId.make("default", 1)
+      const address = EntityAddress.make({
+        shardId,
+        entityType: EntityType.make(entity.type),
+        entityId: EntityId.make("1")
+      })
+      const requestId = yield* sharding.getSnowflake
+      const makeRequest = () =>
+        new Message.IncomingRequestLocal<typeof run>({
+          envelope: Envelope.makeRequest<typeof run>({
+            requestId,
+            address,
+            tag: "run",
+            payload: undefined,
+            headers: Headers.empty
+          }),
+          lastSentReply: Option.none(),
+          annotations: run.annotations,
+          respond: () =>
+            failSaves ? Effect.fail(new ClusterError.PersistenceError({ cause: "save failed" })) : Effect.void
+        })
+
+      yield* manager.sendLocal(makeRequest())
+      for (let i = 0; i < 20; i++) yield* TestClock.adjust(1000)
+
+      owned = false
+      const interruptId = yield* sharding.getSnowflake
+      const writer = yield* manager.sendLocal(
+        new Message.IncomingEnvelope({ envelope: new Envelope.Interrupt({ id: interruptId, address, requestId }) })
+      ).pipe(Effect.andThen(Effect.never), Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(100)
+      assert.deepStrictEqual(resets, [requestId])
+      owned = true
+      failSaves = false
+      yield* manager.sendLocal(makeRequest())
+      yield* TestClock.adjust(100)
+      assert.strictEqual(runs, 2)
+      yield* Fiber.interrupt(writer)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
 })
 
 const ActiveTeardownCaller = Entity.make("ActiveTeardownCaller", [

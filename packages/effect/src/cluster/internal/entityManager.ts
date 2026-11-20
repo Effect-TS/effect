@@ -355,6 +355,8 @@ export const make = Effect.fnUntraced(function*<
           Effect.retry(defectRetryPolicy)
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
+        const inlineWrites = new Map<Fiber.Fiber<any, any>, Snowflake.Snowflake>()
+
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
           spanPrefix: entity.type,
           spanAttributes: {
@@ -426,9 +428,15 @@ export const make = Effect.fnUntraced(function*<
                 )
                 // Leave the request for the shard's owner: release the claim
                 // so its next poll sees it, and let local callers re-route.
-                // Remove on fiber exit so a poll cannot reclaim before RpcServer deregisters it.
+                // Registered handlers stay active until fiber exit so a redelivery
+                // cannot be admitted before RpcServer deregisters the old fiber.
                 const abandonFenced = Effect.withFiber((fiber) => {
-                  fiber.addObserver(() => removeActiveRequest(Snowflake.Snowflake(response.requestId)))
+                  const requestId = Snowflake.Snowflake(response.requestId)
+                  if (inlineWrites.get(fiber) === requestId) {
+                    removeActiveRequest(requestId)
+                  } else {
+                    fiber.addObserver(() => removeActiveRequest(requestId))
+                  }
                   return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
                     Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
                     Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))
@@ -531,6 +539,27 @@ export const make = Effect.fnUntraced(function*<
           Effect.setContext(Context.merge(handlerContext, handlers))
         )
 
+        const write: typeof server.write = (clientId, message, writeOptions) => {
+          const id = message._tag === "Request"
+            ? message.id
+            : message._tag === "Interrupt"
+            ? message.requestId
+            : undefined
+          if (id === undefined) return server.write(clientId, message, writeOptions)
+          const requestId = Snowflake.Snowflake(id)
+          return Effect.withFiber((fiber) => {
+            const prev = inlineWrites.get(fiber)
+            inlineWrites.set(fiber, requestId)
+            return Effect.ensuring(
+              server.write(clientId, message, writeOptions),
+              Effect.sync(() => {
+                if (prev === undefined) inlineWrites.delete(fiber)
+                else inlineWrites.set(fiber, prev)
+              })
+            )
+          })
+        }
+
         // Replay if the stored reply cannot be read.
         const hasStoredExit = (requestId: Snowflake.Snowflake): Effect.Effect<boolean> =>
           options.storage.repliesForUnfiltered([requestId]).pipe(
@@ -541,7 +570,7 @@ export const make = Effect.fnUntraced(function*<
         // Do not inherit the failed handler's transaction context.
         const restartFrom = (cause: Cause.Cause<unknown>): Effect.Effect<void> => {
           if (!isActive()) return endLatch.open
-          const rebuild = writeRef.rebuildUnsafe({ from: server.write, prepare: replay })
+          const rebuild = writeRef.rebuildUnsafe({ from: write, prepare: replay })
           if (!rebuild) return Effect.void
           return Effect.forkIn(Effect.setContext(restart(cause, rebuild), handlerContext), managerScope)
         }
@@ -553,7 +582,7 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        return server.write
+        return write
       }),
       address
     )
