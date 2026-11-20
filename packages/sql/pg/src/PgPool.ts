@@ -12,6 +12,7 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import { TracerTimingEnabled } from "effect/References"
+import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { SpanPropagationEnabled } from "effect/sql/Statement"
@@ -63,6 +64,12 @@ export interface Config extends PgConnection.Config {
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
+  /**
+   * Optional schedule for failures opening a connection on checkout. The caller's
+   * `acquireTimeout` still bounds the whole checkout, including retry delays.
+   * Statements and transaction bodies are never replayed by this schedule.
+   */
+  readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /**
    * How long a checkout may take to acquire a connection before failing with
    * a `ConnectionError`. Acquisition includes waiting for a free connection
@@ -311,7 +318,11 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
             )))
       )
 
-  const handedOut = Effect.flatMap(checkout, handOut)
+  const connectRetry = options.connectRetrySchedule
+  const handedOut = Effect.flatMap(
+    connectRetry === undefined ? checkout : Effect.retry(checkout, connectRetry),
+    handOut
+  )
   const get = withAcquireTimeout(handedOut)
 
   // `pin` reserves the pool item itself. On a multiplexed pool it also waits
@@ -326,7 +337,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>
     Effect.suspend(() =>
-      connectionTTL === undefined && acquireTimeout === undefined && deadConnections.size === 0
+      connectRetry === undefined && connectionTTL === undefined && acquireTimeout === undefined &&
+        deadConnections.size === 0
         ? Pool.use(
           pool,
           (connection) =>

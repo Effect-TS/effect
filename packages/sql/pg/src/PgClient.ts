@@ -14,6 +14,7 @@ import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Redacted from "effect/Redacted"
+import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Borrower, Connection } from "effect/sql/SqlConnection"
@@ -214,6 +215,12 @@ export interface PgPoolConfig<R = never> extends PgClientConfig<R> {
   readonly maxConnections?: number | undefined
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
+  /**
+   * Optional schedule for failures opening a connection on checkout. The caller's
+   * `acquireTimeout` still bounds the whole checkout, including retry delays.
+   * Statements and transaction bodies are never replayed by this schedule.
+   */
+  readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /** Bounds how long acquiring a pooled connection takes. See `PgPool.Config.acquireTimeout`. */
   readonly acquireTimeout?: Duration.Input | undefined
 }
