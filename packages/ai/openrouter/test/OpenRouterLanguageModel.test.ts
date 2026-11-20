@@ -599,17 +599,31 @@ describe("OpenRouterLanguageModel", () => {
 
       const modelOutputCases = [
         {
-          label: "as text with file placeholders",
+          label: "as ordered items with the breakpoint on the final image",
+          options: { openrouter: { cacheControl: { type: "ephemeral" as const } } },
           modelOutput: [
             Prompt.textPart({ text: "Screenshot" }),
-            Prompt.filePart({ mediaType: "image/png", fileName: "screenshot.png", data: "iVBORw0KGgo=" })
+            Prompt.textPart({ text: "" }),
+            Prompt.filePart({ mediaType: "image/png", data: "iVBORw0KGgo=" })
           ],
-          content: "Screenshot\n[image/png screenshot.png omitted]"
+          content: [
+            { type: "text", text: "Screenshot" },
+            {
+              type: "image_url",
+              image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+              cache_control: { type: "ephemeral" }
+            }
+          ]
+        },
+        {
+          label: "as joined text when it has only text",
+          modelOutput: [Prompt.textPart({ text: "First" }), Prompt.textPart({ text: "Second" })],
+          content: "First\nSecond"
         },
         { label: "as an empty string when it is empty", modelOutput: [], content: "" }
       ]
 
-      for (const { content, label, modelOutput } of modelOutputCases) {
+      for (const { content, label, modelOutput, options } of modelOutputCases) {
         it.effect(`sends tool result model output ${label}`, () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -630,6 +644,7 @@ describe("OpenRouterLanguageModel", () => {
                     id: "call_image",
                     name: "image_tool",
                     result: { output: "APPLICATION_ONLY" },
+                    options,
                     modelOutput,
                     isFailure: false,
                     providerExecuted: false
@@ -643,8 +658,7 @@ describe("OpenRouterLanguageModel", () => {
             const body = yield* getRequestBody(requests[0])
             const toolResult = body.messages.find((message: any) => message.role === "tool")
 
-            assert.isDefined(toolResult)
-            strictEqual(toolResult.content, content)
+            deepStrictEqual(toolResult?.content, content)
           }).pipe(Effect.provide(makeTestLayer())))
       }
 

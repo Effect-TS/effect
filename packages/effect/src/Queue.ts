@@ -4,7 +4,9 @@
  * A `Queue<A, E>` accepts values, hands each value to one consumer in offer
  * order, and can complete, fail, interrupt, or shut down. Queues can be bounded
  * or unbounded, and bounded queues can suspend, drop, or slide values when
- * producers are faster than consumers.
+ * producers are faster than consumers. Offers wait only when an open queue
+ * uses the `"suspend"` strategy and cannot accept the offered messages
+ * immediately.
  *
  * @stability stable
  * @since 3.8.0
@@ -647,13 +649,21 @@ export const dropping = <A, E = never>(capacity: number): Effect<Queue<A, E>> =>
 export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
 
 /**
- * Adds a message to the queue. Returns `false` if the queue is done.
+ * Offers one message to the queue. Returns `false` without waiting if the queue
+ * is closing or done.
  *
  * **Details**
  *
- * For bounded queues, this operation may suspend if the queue is at capacity,
- * depending on the backpressure strategy. For dropping/sliding queues, it may
- * return false or succeed immediately by dropping/sliding existing messages.
+ * On an open queue, the result depends on the strategy:
+ *
+ * - A suspending queue waits only if it cannot accept the message immediately.
+ *   Even a zero-capacity queue can hand a message to a waiting taker.
+ * - A dropping queue returns `false` if the message does not fit, or `true` if
+ *   it fits.
+ * - A sliding queue returns `true` without waiting, discarding messages as
+ *   needed.
+ * - An unbounded queue always accepts the message and returns `true` without
+ *   waiting.
  *
  * **Example** (Offering a value)
  *
@@ -772,9 +782,16 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
  *
  * **Details**
  *
- * For bounded queues, this operation may suspend if the queue doesn't have
- * enough capacity. The operation returns an array of messages that couldn't
- * be added (empty array means all messages were successfully added).
+ * A closing or done queue returns every input message without waiting. On an
+ * open queue, the result depends on the strategy:
+ *
+ * - A suspending queue accepts what fits and waits only if it cannot accept
+ *   the rest immediately. If the queue completes before accepting the entire
+ *   batch, the result is the unaccepted suffix in input order.
+ * - A dropping queue returns the messages that did not fit without waiting.
+ * - A sliding queue returns `[]` without waiting, even if it discards messages.
+ * - An unbounded queue accepts the whole batch and returns `[]` without
+ *   waiting.
  *
  * **Example** (Offering multiple values)
  *
@@ -2114,7 +2131,8 @@ const releaseCapacity = <A, E>(self: Dequeue<A, E>): boolean => {
       self.state._tag === "Closing" &&
       self.messages.length === 0
     ) {
-      finalize(self, self.state.exit)
+      // A waiter can interrupt the fiber taking the last item. Let the take deliver it first.
+      finalize(self, self.state.exit, true)
       return Pull.isDoneCause(self.state.exit.cause)
     }
     return false
@@ -2158,18 +2176,23 @@ const takeAllUnsafe = <A, E>(self: Dequeue<A, E>) => {
   return []
 }
 
-const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never, E>) => {
+const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never, E>, deferNotify = false) => {
   if (self.state._tag === "Done") {
     return
   }
   const openState = self.state
   self.state = { _tag: "Done", exit }
-  for (const taker of openState.takers) {
-    taker.resume(exit)
+  if (openState.takers.size === 0 && openState.awaiters.size === 0) return
+  const notify = () => {
+    for (const taker of openState.takers) {
+      taker.resume(exit)
+    }
+    openState.takers.clear()
+    for (const awaiter of openState.awaiters) {
+      awaiter(exit)
+    }
+    openState.awaiters.clear()
   }
-  openState.takers.clear()
-  for (const awaiter of openState.awaiters) {
-    awaiter(exit)
-  }
-  openState.awaiters.clear()
+  if (deferNotify) self.dispatcher.scheduleTask(notify, 0)
+  else notify()
 }

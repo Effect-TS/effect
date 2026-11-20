@@ -1766,7 +1766,7 @@ export const TestClientError = <Tag extends string, E>(
       }
     }
 
-    for (const format of ["httpapi", "httpclient"] as const) {
+    for (const format of ["httpapi", "httpclient", "httpclient-type-only"] as const) {
       itGeneratedClientsCompile(
         `preserves SSE reference sibling constraints (${format})`,
         constrainedSseSpec,
@@ -1781,9 +1781,6 @@ const unrelated: Events200Sse = { event: "unrelated", data: "payload" }
         }
       )
     }
-
-    it.effect("preserves SSE reference sibling constraints (httpclient-type-only)", () =>
-      assertTypeOnlyIncludes(constrainedSseSpec, ["\"event\": \"first\"", "\"event\": \"second\""]))
 
     const openApi30SseSpec = { ...constrainedSseSpec, openapi: "3.0.3" } as unknown as OpenAPISpec
     for (
@@ -3603,6 +3600,16 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
       }
     })
 
+    it.effect("keeps the route's QUERY when a referenced native QUERY has a missing target", () => {
+      const spec = makeQuerySpec({
+        $ref: "#/components/pathItems/Alias",
+        "x-oai-additionalOperations": { QUERY: queryOperation }
+      })
+      const alias = { $ref: "#/components/pathItems/Missing", query: { ...queryOperation, operationId: "aliasSearch" } }
+      spec.components.pathItems = { Alias: alias }
+      return assertHttpApiIncludes(spec, [`HttpApiEndpoint.query("search", "/search"`])
+    })
+
     it.effect.each([
       {
         name: "OpenAPI 3.1 extension",
@@ -3643,6 +3650,87 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    const petsSpec = {
+      ...regressionSpec,
+      tags: [{ name: "Pets" }],
+      paths: {
+        "/pets": {
+          get: {
+            operationId: "listPets",
+            parameters: [],
+            responses: { 200: { description: "OK" } },
+            tags: ["Pets"],
+            security: []
+          }
+        }
+      }
+    } satisfies OpenAPISpec
+
+    for (const format of ["httpclient", "httpclient-type-only", "httpapi"] as const) {
+      const layer = format === "httpclient-type-only"
+        ? OpenApiGenerator.layerTransformerTs
+        : OpenApiGenerator.layerTransformerSchema
+
+      it.effect(`generates chained local Path Items like inline routes in ${format}`, () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const route = "/users/{id}"
+          const item: OpenAPISpecPathItem = {
+            parameters: [
+              { name: "id", in: "path", required: true, schema: { type: "string" } },
+              { name: "filter", in: "query", required: false, schema: { type: "string" } }
+            ],
+            get: {
+              operationId: "getUser",
+              parameters: [],
+              responses: { 200: { description: "OK" } },
+              tags: ["Users"],
+              security: []
+            }
+          }
+          const inline = { ...regressionSpec, paths: { [route]: item } }
+          const referenced = {
+            ...inline,
+            paths: { [route]: { $ref: "#/components/pathItems/Alias" } },
+            components: {
+              ...inline.components,
+              pathItems: { Alias: { $ref: "#/components/pathItems/User" }, User: item }
+            }
+          }
+          const options = { name: "TestClient", format }
+          assert.strictEqual(yield* generator.generate(referenced, options), yield* generator.generate(inline, options))
+        }).pipe(Effect.provide(layer)))
+
+      it.effect(`ignores references in paths extensions in ${format}`, () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const withExtension = {
+            ...petsSpec,
+            paths: { ...petsSpec.paths, "x-default-route": { $ref: "#/paths/~1pets" } }
+          }
+          const options = { name: "TestClient", format }
+          const expected = yield* generator.generate(petsSpec, options)
+          assert.include(expected, "\"/pets\"")
+          assert.strictEqual(yield* generator.generate(withExtension, options), expected)
+        }).pipe(Effect.provide(layer)))
+
+      it.effect(`resolves Path Items through array indices in ${format}`, () =>
+        Effect.gen(function*() {
+          const generator = yield* OpenApiGenerator.OpenApiGenerator
+          const referenced = {
+            ...petsSpec,
+            "x-catalog": [petsSpec.paths["/pets"]],
+            paths: {
+              "/pets": { $ref: "#/x-catalog/0" },
+              "/invalid-index": { $ref: "#/x-catalog/00" }
+            }
+          }
+          const options = { name: "TestClient", format }
+          const expected = yield* generator.generate(petsSpec, options)
+          assert.strictEqual(yield* generator.generate(referenced, options), expected)
+        }).pipe(Effect.provide(layer)))
+    }
+
     const collisionNames = [
       "Data",
       "Effect",

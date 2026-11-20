@@ -66,7 +66,7 @@ const result = <A>(evaluate: () => A): Result.Result<A, CodecError> => {
 }
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder("utf-8", { fatal: true })
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 const writeInt16 = (bytes: Uint8Array, offset: number, value: number): void => {
   bytes[offset] = value >>> 8

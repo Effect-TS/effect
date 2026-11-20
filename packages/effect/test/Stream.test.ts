@@ -1653,6 +1653,35 @@ describe("Stream", () => {
         assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
       }))
 
+    for (const name of ["groupBy", "groupByKey"] as const) {
+      const group = (idleTimeToLive: Duration.Input) => (input: Stream.Stream<number>) => {
+        const options = { bufferSize: 1, idleTimeToLive }
+        return name === "groupBy"
+          ? Stream.groupBy(input, (n) => Effect.succeed([0, n] as const), options)
+          : Stream.groupByKey(input, () => 0, options)
+      }
+
+      it.effect(name + " delivers all values with zero idle TTL", () =>
+        Effect.gen(function*() {
+          const values = yield* Stream.make(1, 2, 3).pipe(
+            group(Duration.zero),
+            Stream.flatMap(([, stream]) => stream),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(values, [1, 2, 3])
+        }))
+
+      it.effect(name + " keeps a backpressured group past its idle TTL", () =>
+        Effect.gen(function*() {
+          const groups = yield* Stream.range(1, 3, 1).pipe(
+            group("1 second"),
+            Stream.mapEffect(([, stream]) => Effect.andThen(TestClock.adjust("2 seconds"), Stream.runCollect(stream))),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(groups, [[1, 2, 3]])
+        }))
+    }
+
     it.effect("groupByKey - groups end when the upstream ends", () =>
       Effect.gen(function*() {
         const result = yield* Stream.make(1, 2, 3, 4, 5).pipe(

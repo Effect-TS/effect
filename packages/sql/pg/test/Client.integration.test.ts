@@ -521,6 +521,28 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       assert.isTrue(Option.isNone(rows))
     }).pipe(TestClock.withLive))
 
+  it.effect("times out a queued stream before the transaction connection is released", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql.withTransaction(Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const holder = yield* sql`SELECT 1`.stream.pipe(
+          Stream.runForEach(() => Effect.andThen(Deferred.succeed(started, undefined), Deferred.await(release))),
+          Effect.forkChild
+        )
+        yield* Deferred.await(started)
+        const queued = yield* sql`SELECT 2`.stream.pipe(Stream.runDrain, Effect.timeoutOption(10), Effect.forkChild)
+        yield* TestClock.adjust(10)
+        const completedWhileQueued = queued.pollUnsafe() !== undefined
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(holder)
+        assert.isTrue(Option.isNone(yield* Fiber.join(queued)))
+        assert.isTrue(completedWhileQueued, "stream timeout waited for the connection")
+        assert.deepStrictEqual(yield* sql`SELECT 3 AS value`, [{ value: 3 }])
+      }))
+    }))
+
   it.effect("serializes transactions on its single connection", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient

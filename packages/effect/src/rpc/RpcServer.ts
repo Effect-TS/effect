@@ -294,6 +294,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       rpc,
       client: client.serverClient,
       requestId: request.id,
+      remoteParentSpan: enableSpanPropagation && request.traceId && request.spanId
+        ? Tracer.externalSpan({ traceId: request.traceId, spanId: request.spanId, sampled: request.sampled })
+        : undefined,
       headers: request.headers,
       payload: request.payload
     }
@@ -382,7 +385,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     if (opts?.onRequest) {
       effect = opts.onRequest(effect, request)
     }
-    if (enableTracing) {
+    const tracing = Context.get(rpc.annotations, Rpc.TracingEnabled)
+    if (enableTracing && (tracing === "both" || tracing === "server")) {
       const parentSpan = Context.getOrUndefined(
         requestFiber.context,
         Tracer.ParentSpan
@@ -391,13 +395,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         captureStackTrace: false,
         kind: "server",
         attributes: RpcTracing.spanAttributes(request.tag, options.spanAttributes),
-        parent: enableSpanPropagation && request.spanId
-          ? Tracer.externalSpan({
-            traceId: request.traceId!,
-            spanId: request.spanId,
-            sampled: request.sampled!
-          })
-          : undefined,
+        parent: metadata.remoteParentSpan,
         links: enableSpanPropagation && parentSpan
           ? [
             {
@@ -614,6 +612,7 @@ const applyMiddleware = <A, E, R>(
     readonly rpc: Rpc.AnyWithProps
     readonly client: Rpc.ServerClient
     readonly requestId: RequestId
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers.Headers
     readonly payload: unknown
   }
@@ -1354,7 +1353,7 @@ export const makeProtocolWithHttpEffect: (
             return offer(parser.encode(ResponseDefectEncoded(encodeDefectUnsafe(cause)))!)
           }
         },
-      end: Queue.end(queue)
+      end: Effect.andThen(Queue.end(queue), Queue.flush(queue))
     }
 
     // Ends an unfinished response, failing it with `cause` when given, and interrupts its requests.

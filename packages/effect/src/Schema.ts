@@ -10482,6 +10482,7 @@ export interface StringFromBase64 extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a base64-encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10512,6 +10513,7 @@ export interface StringFromBase64Url extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a base64 (URL) encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10542,6 +10544,7 @@ export interface StringFromHex extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a hex string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10573,6 +10576,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a URI component encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * **Example** (Decoding URI component strings)
  *
@@ -11316,7 +11320,7 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
   readonly error: E["Iso"]
 } | {
   readonly _tag: "Die"
-  readonly error: D["Iso"]
+  readonly defect: D["Iso"]
 } | {
   readonly _tag: "Interrupt"
   readonly fiberId: number | undefined

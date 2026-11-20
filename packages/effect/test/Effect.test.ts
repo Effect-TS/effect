@@ -1520,7 +1520,7 @@ describe("Effect", () => {
       }))
   })
 
-  it.effect("raceAll", () =>
+  it.effect("raceAll interrupts losers under an uninterruptible parent", () =>
     Effect.gen(function*() {
       const interrupted: Array<number> = []
       const fiber = yield* Effect.raceAll([500, 300, 200, 0, 100].map((ms) =>
@@ -1532,11 +1532,11 @@ describe("Effect", () => {
             })
           )
         )
-      )).pipe(Effect.forkChild)
+      )).pipe(Effect.uninterruptible, Effect.forkChild)
       yield* TestClock.adjust("500 millis")
       const result = yield* Fiber.join(fiber)
       assert.strictEqual(result, 100)
-      assert.deepStrictEqual(interrupted, [500, 300, 200])
+      assert.sameMembers(interrupted, [500, 300, 200])
     }))
 
   it.effect("raceAll elects typed failures when all racers fail and one dies", () =>
@@ -1584,7 +1584,7 @@ describe("Effect", () => {
       assert.deepStrictEqual(interrupted, ["slow"])
     }))
 
-  it.effect("raceFirst interrupts the loser when the other side succeeds", () =>
+  it.effect("raceFirst interrupts the loser under an uninterruptible parent", () =>
     Effect.gen(function*() {
       const interrupted: Array<string> = []
       const onInterrupt = (label: string) =>
@@ -1596,7 +1596,7 @@ describe("Effect", () => {
       const fiber = yield* Effect.raceFirst(
         Effect.succeed("fast").pipe(Effect.delay(100), onInterrupt("fast")),
         Effect.succeed("slow").pipe(Effect.delay(500), onInterrupt("slow"))
-      ).pipe(Effect.forkChild)
+      ).pipe(Effect.uninterruptible, Effect.forkChild)
       yield* TestClock.adjust("500 millis")
       const result = yield* Fiber.join(fiber)
       assert.strictEqual(result, "fast")
@@ -2541,7 +2541,9 @@ describe("Effect", () => {
         yield* Effect.yieldNow
         yield* Fiber.interruptAs(fiber, 123, Context.make(Value, NaN))
         const exit = yield* Fiber.await(fiber)
-        assert.isTrue(Exit.isFailure(exit) && exit.cause.reasons.length === 1)
+        if (!Exit.isFailure(exit)) assert.fail("expected interruption")
+        assert.lengthOf(exit.cause.reasons, 1)
+        assert.isNaN(Context.getUnsafe(Cause.reasonAnnotations(exit.cause.reasons[0]), Value))
       }))
 
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
@@ -4511,6 +4513,13 @@ describe("Effect", () => {
   })
 
   describe("catchCause", () => {
+    it.effect("recovers from Effect.interrupt with the current fiber as interruptor", () =>
+      Effect.gen(function*() {
+        const id = yield* Effect.fiberId
+        const cause = yield* Effect.catchCause(Effect.interrupt, Effect.succeed)
+        assert.deepStrictEqual(Cause.interruptors(cause), new Set([id]))
+      }))
+
     it("repeated throwing handlers do not overflow the stack and run finalizers", () => {
       let program: Effect.Effect<unknown> = Effect.die("initial")
       for (let i = 0; i < 20_000; i++) {

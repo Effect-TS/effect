@@ -1760,10 +1760,7 @@ const streamRows = (
 ): Stream.Stream<Row, SqlError> =>
   Stream.fromChannel(Channel.fromTransform(Effect.fnUntraced(function*(_, scope) {
     const pinned = yield* Scope.provide(pin, scope)
-    yield* Scope.provide(
-      Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
-      scope
-    )
+    yield* Scope.provide(conn.wire.takeScoped(1), scope)
     if (pinned.released) return yield* pinReleasedError()
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the

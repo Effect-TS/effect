@@ -40,7 +40,17 @@ interface Route<A = unknown> {
   readonly pattern: string
   readonly handler: A
   readonly params: ReadonlyArray<string>
+  readonly fallback: boolean
 }
+
+/**
+ * Registers `handler` at `path` unless a route is already declared there. A
+ * route declared there later replaces it.
+ *
+ * @internal
+ */
+export const onFallback = <A>(router: Router.Router<A>, method: string, path: Router.PathInput, handler: A): void =>
+  (router as RouterImpl<A>).on(method === "*" ? httpMethods : method, path, handler, true)
 
 /**
  * @internal
@@ -83,7 +93,8 @@ class RouterImpl<A> implements Router.Router<A> {
   on(
     method: string | Iterable<string>,
     path: Router.PathInput,
-    handler: A
+    handler: A,
+    fallback = false
   ): void {
     const optionalParamMatch = path.match(OPTIONAL_PARAM_REGEXP)
     if (optionalParamMatch && optionalParamMatch.index !== undefined) {
@@ -101,8 +112,8 @@ class RouterImpl<A> implements Router.Router<A> {
         "$2"
       ) || "/") as Router.PathInput
 
-      this.on(method, pathFull, handler)
-      this.on(method, pathOptional, handler)
+      this.on(method, pathFull, handler, fallback)
+      this.on(method, pathOptional, handler, fallback)
       return
     }
 
@@ -116,7 +127,7 @@ class RouterImpl<A> implements Router.Router<A> {
 
     const methods = typeof method === "string" ? [method] : method
     for (const method of methods) {
-      this._on(method, path, handler)
+      this._on(method, path, handler, fallback)
     }
   }
 
@@ -124,7 +135,7 @@ class RouterImpl<A> implements Router.Router<A> {
     this.on(httpMethods, path, handler)
   }
 
-  private _on(method: string, path: Router.PathInput, handler: A): void {
+  private _on(method: string, path: Router.PathInput, handler: A, fallback: boolean): void {
     if (this.trees[method] === undefined) {
       this.trees[method] = new StaticNode("/")
     }
@@ -264,15 +275,22 @@ class RouterImpl<A> implements Router.Router<A> {
       pattern = "/*"
     }
 
-    for (const existRoute of this.routes) {
-      if (existRoute.method === method && existRoute.pattern === pattern) {
-        throw new Error(
-          `Method '${method}' already declared for route '${pattern}'`
-        )
+    const route = { method, path, pattern, params, handler, fallback }
+    for (let i = 0; i < this.routes.length; i++) {
+      const existRoute = this.routes[i]
+      if (existRoute.method !== method || existRoute.pattern !== pattern) continue
+      // Different regex nodes can share a normalized pattern.
+      if (currentNode.routes?.includes(existRoute)) {
+        if (fallback) return
+        if (existRoute.fallback) {
+          this.routes[i] = route
+          currentNode.replaceRoute(route)
+          return
+        }
       }
+      throw new Error(`Method '${method}' already declared for route '${pattern}'`)
     }
 
-    const route = { method, path, pattern, params, handler }
     this.routes.push(route)
     currentNode.addRoute(route)
 
@@ -535,9 +553,9 @@ class RouterImpl<A> implements Router.Router<A> {
 // ----------------------------------------------------------------------------
 
 interface Handler {
-  readonly params: ReadonlyArray<string>
-  readonly handler: unknown
-  readonly createParams: (
+  params: ReadonlyArray<string>
+  handler: unknown
+  createParams: (
     paramsArray: ReadonlyArray<string>
   ) => Record<string, string>
 }
@@ -558,6 +576,14 @@ class HandlerStorage {
     }
     this.handlers.push(handler)
     this.unconstrainedHandler = this.handlers[0]
+  }
+
+  // The lookup caches hold this handler by reference, so update it in place.
+  replace(route: Route) {
+    const handler = this.unconstrainedHandler!
+    handler.params = route.params
+    handler.handler = route.handler
+    handler.createParams = makeCreateParams(route.params)
   }
 }
 
@@ -590,6 +616,11 @@ abstract class NodeBase {
     }
     this.isLeafNode = true
     this.handlerStorage.add(route)
+  }
+
+  replaceRoute(route: Route) {
+    this.routes = [route]
+    this.handlerStorage!.replace(route)
   }
 
   abstract getNextNode(

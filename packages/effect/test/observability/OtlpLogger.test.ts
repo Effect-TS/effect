@@ -1,18 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, Effect, Layer, Tracer } from "effect"
+import { Cause, Clock, Effect, Layer, Logger, Tracer } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import type { HttpClientError, HttpClientRequest } from "effect/http"
 import { OtlpExporter, OtlpLogger, OtlpSerialization } from "effect/observability"
 import { TestClock } from "effect/testing"
 import * as Version from "effect/Version"
 
-const capture = () => {
+const capture = (status = 200) => {
   const requests: Array<HttpClientRequest.HttpClientRequest> = []
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
       const request = yield* requestEffect
       requests.push(request)
-      return HttpClientResponse.fromWeb(request, new Response())
+      return HttpClientResponse.fromWeb(request, new Response(null, { status }))
     }),
     Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
   )
@@ -46,6 +46,27 @@ const attributesOf = (request: HttpClientRequest.HttpClientRequest) =>
   )
 
 describe("OtlpLogger", () => {
+  it.effect("warns once when a rejected batch disables log export", () => {
+    const { httpClient, requests } = capture(400)
+    let warnings = 0
+    const observer = Logger.make(({ logLevel }) => {
+      if (logLevel === "Warn") warnings++
+    })
+    return Effect.gen(function*() {
+      const { flush } = yield* OtlpExporter.Flusher
+      yield* Effect.logInfo("first batch")
+      yield* flush
+      assert.strictEqual(warnings, 1)
+
+      yield* TestClock.adjust("60 seconds")
+      yield* flush
+      assert.lengthOf(requests, 1)
+    }).pipe(
+      Effect.provide(Logger.layer([observer], { mergeWithExisting: true })),
+      Effect.provide(makeTestLayer(httpClient))
+    )
+  })
+
   it.effect("keeps event time separate from observed time", () => {
     const { httpClient, requests } = capture()
     return Effect.scoped(Effect.gen(function*() {

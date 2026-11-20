@@ -134,10 +134,17 @@ export interface Options extends Net.ListenOptions {
    * `permessage-deflate` compression or tune payload limits, e.g.
    * `websocket: { perMessageDeflate: true }`.
    *
+   * **Details**
+   *
+   * `highWaterMark` is not forwarded. It sets how many inbound bytes may wait
+   * for a reader pull before the connection is paused (64 KiB by default).
+   *
    * @stability unstable
    */
   readonly websocket?:
-    | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
+    | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path"> & {
+      readonly highWaterMark?: number | undefined
+    }
     | undefined
 }
 
@@ -222,7 +229,16 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  yield* Scope.addFinalizer(scope, shutdown)
+  // Return 503 instead of dropping requests while no other `request` listener is attached.
+  const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
+    if (server.listenerCount("request") > 1) return
+    response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
+    response.end("service unavailable")
+  }
+  yield* Effect.acquireRelease(
+    Effect.sync(() => server.on("request", unavailable)),
+    () => Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable)))
+  )
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
@@ -243,8 +259,9 @@ export const make = Effect.fnUntraced(function*(
     )
   const boundAddress = yield* effectAddress
 
+  const { highWaterMark, ...wsOptions } = options.websocket ?? {}
   const wss = yield* Effect.acquireRelease(
-    Effect.sync(() => new NodeWS.WebSocketServer({ ...options.websocket, noServer: true })),
+    Effect.sync(() => new NodeWS.WebSocketServer({ ...wsOptions, noServer: true })),
     (wss) =>
       Effect.callback<void>((resume) => {
         wss.close(() => resume(Effect.void))
@@ -265,7 +282,8 @@ export const make = Effect.fnUntraced(function*(
       }) as Effect.Effect<(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void>)
       const upgradeHandler = yield* makeUpgradeHandler(wss, httpApp, {
         middleware: middleware as any,
-        scope
+        scope,
+        highWaterMark
       })
       // Upgraded connections need a close signal before `server.close` can drain them.
       let upgradesClosed = false
@@ -412,6 +430,13 @@ export const makeUpgradeHandler = <
   options: {
     readonly scope: Scope.Scope
     readonly middleware?: Middleware.HttpMiddleware.Applied<App, E, R> | undefined
+    /**
+     * Inbound WebSocket bytes that may wait for a reader pull before the
+     * connection is paused.
+     *
+     * @default 65536
+     */
+    readonly highWaterMark?: number | undefined
   }
 ): Effect.Effect<
   (nodeRequest: Http.IncomingMessage, socket: Duplex, head: Buffer) => void,
@@ -460,7 +485,7 @@ export const makeUpgradeHandler = <
         }
         return nodeResponse_
       }
-      const webSocketUpgrade = Socket.fromWebSocket(Effect.flatMap(
+      const acquireWebSocket = Effect.flatMap(
         lazyWss,
         (wss) =>
           Effect.acquireRelease(
@@ -486,7 +511,11 @@ export const makeUpgradeHandler = <
             }),
             (ws, exit) => Effect.sync(() => ws.close(closeCode(exit)))
           )
-      ))
+      )
+      const webSocketUpgrade = Socket.fromWebSocket(acquireWebSocket, {
+        highWaterMark: options.highWaterMark,
+        disableReconnects: true
+      })
       const state: UpgradeState = {
         body,
         response: undefined,

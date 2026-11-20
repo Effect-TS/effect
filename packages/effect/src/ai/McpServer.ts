@@ -20,7 +20,6 @@ import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Base64 from "../encoding/Base64.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -96,7 +95,6 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
-import * as AiPrompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -198,14 +196,27 @@ const requestServiceKeys = new Set<string>([
   Tracer.ParentSpan.key
 ])
 
-const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
-  const services = new Map<string, any>()
-  for (const [key, value] of context.mapUnsafe) {
-    if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
-      services.set(key, value)
+// A registration's services without request services, and its middleware.
+// Contexts are immutable, so this is derived once per context: every tool of a
+// toolkit registers from one context that holds all of the toolkit's handlers.
+const preparedContexts = new WeakMap<Context.Context<never>, {
+  readonly services: Context.Context<never>
+  readonly localMiddleware: ReadonlyArray<AnyMiddlewareFn>
+}>()
+
+const prepareContext = (context: Context.Context<never>) => {
+  let prepared = preparedContexts.get(context)
+  if (prepared === undefined) {
+    const services = new Map<string, any>()
+    for (const [key, value] of context.mapUnsafe) {
+      if (!requestServiceKeys.has(key) && !key.startsWith(middlewareKeyPrefix)) {
+        services.set(key, value)
+      }
     }
+    prepared = { services: Context.makeUnsafe(services), localMiddleware: getMiddleware(context) }
+    preparedContexts.set(context, prepared)
   }
-  return Context.makeUnsafe(services)
+  return prepared
 }
 
 const provideInvocationContext = <A, E, R>(
@@ -916,8 +927,9 @@ const makeInvoke = (
   context: Context.Context<never> | undefined,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
 ) => {
-  const services = context === undefined ? Context.empty() : omitRequestServices(context)
-  const localMiddleware = context === undefined ? [] : getMiddleware(context)
+  const { localMiddleware, services } = context === undefined
+    ? { services: Context.empty(), localMiddleware: [] }
+    : prepareContext(context)
   const invoke = <A, E, M extends CallMethod>(
     handler: Effect.Effect<A, E, any>,
     invocation: McpCore.McpInvocation,
@@ -2215,6 +2227,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
                     ? handler.handler(payload, {
                       rpc,
                       requestId: RpcMessage.RequestId(request.id),
+                      remoteParentSpan: undefined,
                       client: new Rpc.ServerClient(clientId),
                       headers
                     }) as any as Effect.Effect<void>
@@ -3223,48 +3236,6 @@ const toolErrorResult = (message: string): CallToolResult =>
 const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
-const modelOutputContent = (parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>): CallToolResult["content"] =>
-  parts.map(modelOutputBlock)
-
-const modelOutputBlock = (part: AiPrompt.ToolModelOutputPart): McpSchema.ContentBlock => {
-  if (part.type === "text") return { type: "text", text: part.text }
-  const omitted: McpSchema.ContentBlock = {
-    type: "text",
-    text: AiPrompt.toolModelOutputToText([part])
-  }
-  const { data, mediaType } = part
-  if (data instanceof URL && (data.protocol === "http:" || data.protocol === "https:")) {
-    return {
-      type: "resource_link",
-      uri: data.href,
-      name: part.fileName ?? (/([^/]+)\/*$/.exec(data.pathname)?.[1] ?? data.href),
-      mimeType: mediaType
-    }
-  }
-  const type = mediaType.startsWith("image/") ? "image" : mediaType.startsWith("audio/") ? "audio" : undefined
-  if (type === undefined) return omitted
-  const bytes = fileBytes(data)
-  return bytes === undefined ? omitted : { type, data: bytes, mimeType: mediaType }
-}
-
-// File part data is raw bytes, a base64 string, or a `data:` URL (as a string or a `URL`).
-const fileBytes = (data: Uint8Array | string | URL): Uint8Array | undefined => {
-  if (data instanceof Uint8Array) return data
-  const text = data instanceof URL ? data.href : data
-  if (!text.startsWith("data:")) {
-    return data instanceof URL ? undefined : Result.getOrUndefined(Base64.decode(text))
-  }
-  const comma = text.indexOf(",")
-  if (comma === -1) return undefined
-  const payload = text.slice(comma + 1)
-  if (text.slice(0, comma).endsWith(";base64")) return Result.getOrUndefined(Base64.decode(payload))
-  try {
-    return new TextEncoder().encode(decodeURIComponent(payload))
-  } catch {
-    return undefined
-  }
-}
-
 /**
  * The requirements of a toolkit registration.
  *
@@ -3290,6 +3261,12 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
   | Exclude<SchemaServices, RequestServices | McpRequestContext>
   | McpRequest.From<"Requires", Exclude<RequestServices, McpRequestContext>>
 
+type ToolkitOptions<Tools extends Record<string, Tool.Any>, Names extends keyof Tools> = {
+  readonly content?:
+    | { readonly [Name in Names]?: ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"]) | undefined }
+    | undefined
+} | undefined
+
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
@@ -3298,18 +3275,38 @@ type RegistrationRequirements<SchemaServices, RequestServices> =
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  *
+ * A tool's `content` mapper converts its decoded success value to native MCP
+ * blocks. Mapped tools omit `outputSchema` and successful calls omit
+ * `structuredContent`. Failures bypass the mapper. Use only block types
+ * supported by the negotiated protocol revision.
+ *
+ * **Example** (Registering an image tool)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { McpServer, Tool, Toolkit } from "effect/ai"
+ *
+ * const images = Toolkit.make(Tool.make("preview", { success: Schema.Uint8ArrayFromBase64 }))
+ * const registration = McpServer.registerToolkit(images, {
+ *   content: { preview: (data) => [{ type: "image", data, mimeType: "image/png" }] }
+ * })
+ * ```
+ *
  * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category handlers
  * @since 4.0.0
  */
-export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.Toolkit<Tools>
+export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: ToolkitOptions<Tools, Names>
 ) => Effect.Effect<void, never, ToolkitRequirements<Tools>> = Effect.fnUntraced(function*<
-  Tools extends Record<string, Tool.Any>
+  Tools extends Record<string, Tool.Any>,
+  Names extends keyof Tools
 >(
-  toolkit: Toolkit.Toolkit<Tools>
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: ToolkitOptions<Tools, Names>
 ) {
   const registry = yield* McpServer
   const built = yield* (toolkit as any as Effect.Effect<
@@ -3322,7 +3319,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     for (const tool of Object.values(toolkit.tools)) {
       const handler = services.get(tool.id) as Tool.Handler<string> | undefined
       if (handler !== undefined) {
-        services.set(tool.id, { ...handler, context: omitRequestServices(handler.context) })
+        services.set(tool.id, { ...handler, context: prepareContext(handler.context).services })
       }
     }
     return Context.makeUnsafe(services)
@@ -3375,18 +3372,12 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       error instanceof Error && error.message !== ""
         ? Effect.succeed(toolErrorResult(error.message))
         : Effect.map(encodeFailure(error), failureResult)
-    // Model output replaces the JSON text block; `structuredContent` keeps the encoded result.
-    const successResult = (result: Tool.HandlerResult<Tools[keyof Tools]>) => {
-      // An absent result, such as `Schema.Void`, has no structured form.
-      const structuredContent = result.result === undefined ? undefined : result.encodedResult
-      return new CallToolResult({
+    const successResult = (structuredContent: unknown) =>
+      new CallToolResult({
         isError: false,
         structuredContent,
-        content: result.modelOutput === undefined
-          ? toolResultContent(structuredContent)
-          : modelOutputContent(result.modelOutput)
+        content: toolResultContent(structuredContent)
       })
-    }
     const handleCause = (cause: Cause.Cause<unknown>) => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
@@ -3401,7 +3392,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       }
       return internalToolError(cause)
     }
-    const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
+    const content = options?.content
+    const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
+    const outputSchema = mapper ? undefined : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
       toolJsonSchema(tool.successSchema, false)
     ).pipe(Effect.orDie)
     const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
@@ -3417,6 +3410,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               `parameters.\n\n${error.message}`
         ))
     )
+    const readOnlyHint = Context.get(tool.annotations, Tool.Readonly)
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),
@@ -3427,8 +3421,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Option.map((title) => ({ title })),
           Option.getOrUndefined
         )),
-        readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-        destructiveHint: Context.get(tool.annotations, Tool.Destructive),
+        readOnlyHint,
+        destructiveHint: Context.getOrUndefined(tool.annotations, Tool.Destructive) ?? !readOnlyHint,
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
@@ -3449,7 +3443,20 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           > => {
             // The Toolkit encodes successes and "return"-mode failures with their JSON codec.
             if (!result.isFailure) {
-              return Effect.succeed(successResult(result))
+              if (mapper) {
+                return Effect.sync(() =>
+                  new CallToolResult({
+                    isError: false,
+                    content: mapper(result.result as Tool.Success<Tools[keyof Tools]>)
+                  })
+                )
+              }
+              // An absent result, such as `Schema.Void`, has no structured form.
+              return Effect.succeed(
+                result.result === undefined
+                  ? new CallToolResult({ isError: false, content: [] })
+                  : successResult(result.encodedResult)
+              )
             }
             // Declared failures return their encoded payload; anything else is classified by origin.
             return result.failureOrigin === "handler"
@@ -3499,15 +3506,33 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  * The layer requires `McpServer`. Pass it to a transport through the
  * `registrations` option, or provide the transport layer to it.
  *
+ * A tool's `content` mapper converts its decoded success value to native MCP
+ * blocks. Mapped tools omit `outputSchema` and successful calls omit
+ * `structuredContent`. Failures bypass the mapper. Use only block types
+ * supported by the negotiated protocol revision.
+ *
+ * **Example** (Providing an image tool as a layer)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { McpServer, Tool, Toolkit } from "effect/ai"
+ *
+ * const images = Toolkit.make(Tool.make("preview", { success: Schema.Uint8ArrayFromBase64 }))
+ * const registration = McpServer.toolkit(images, {
+ *   content: { preview: (data) => [{ type: "image", data, mimeType: "image/png" }] }
+ * })
+ * ```
+ *
  * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const toolkit = <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.Toolkit<Tools>
-): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit))
+export const toolkit = <Tools extends Record<string, Tool.Any>, Names extends keyof Tools = keyof Tools>(
+  toolkit: Toolkit.Toolkit<Tools>,
+  options?: ToolkitOptions<Tools, Names>
+): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit, options))
 
 /**
  * Utility type that validates a completion-handler record against the allowed

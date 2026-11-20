@@ -949,6 +949,11 @@ describe("PgTypes", () => {
       }
     })
 
+    it("keeps a leading U+FEFF when the string contains U+FFFD", () => {
+      const value = "\ufeffnote\ufffd"
+      assert.strictEqual(PgTypes.decode(PgTypes.encode(value, PgTypes.OID.text), PgTypes.OID.text, 1), value)
+    })
+
     it("rejects a stray high byte at every position of the fast path", () => {
       // A lone lead byte is not valid UTF-8, so the fast path has to hand it to
       // the decoder rather than read it as a character of its own.

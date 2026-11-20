@@ -26,6 +26,7 @@ import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import type { Stream } from "../Stream.ts"
 import type * as Struct from "../Struct.ts"
+import type * as Tracer from "../Tracer.ts"
 import type { NoInfer } from "../Types.ts"
 import type { RequestId } from "./RpcMessage.ts"
 import type * as RpcMiddleware from "./RpcMiddleware.ts"
@@ -224,6 +225,10 @@ export interface Handler<Tag extends string> {
   readonly handler: (request: any, options: {
     readonly client: ServerClient
     readonly requestId: RequestId
+    /**
+     * The span sent by the client, or `undefined` when no span was propagated.
+     */
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers
     readonly rpc: Any
   }) => Effect<{} | Deferred<any, any>, any> | Stream<any, any>
@@ -666,6 +671,10 @@ export type ToHandlerFn<Current extends Any, R = any> = (
   options: {
     readonly client: ServerClient
     readonly requestId: RequestId
+    /**
+     * The span sent by the client, or `undefined` when no span was propagated.
+     */
+    readonly remoteParentSpan: Tracer.ExternalSpan | undefined
     readonly headers: Headers
     readonly rpc: Current
   }
@@ -1248,6 +1257,28 @@ export const exitSchema = <R extends Any>(
 export const ParseOptions = Context.Reference<SchemaAST.ParseOptions>("effect/rpc/Rpc/ParseOptions", {
   defaultValue: () => SchemaAST.defaultParseOptions
 })
+
+/**
+ * Annotation that selects which sides create automatic spans for an RPC:
+ * `"client"`, `"server"`, `"both"` (the default), or `"none"`.
+ *
+ * **Details**
+ *
+ * When the annotation disables the client span, the client can still propagate
+ * its caller's span. A client's or server's `disableTracing: true` option
+ * overrides this annotation on that side; a globally disabled client does not
+ * propagate a span.
+ *
+ * @stability unstable
+ * @category annotations
+ * @since 4.1.5
+ */
+export const TracingEnabled = Context.Reference<"client" | "server" | "both" | "none">(
+  "effect/rpc/Rpc/TracingEnabled",
+  {
+    defaultValue: () => "both"
+  }
+)
 
 const WrapperTypeId = "~effect/rpc/Rpc/Wrapper"
 

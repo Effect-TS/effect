@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `3d13d1e84a933bfd4b90952ad9a221728326e923` (`3d13d1e84a933bfd4b90952ad9a221728326e923`)
+Head: `ca9de3c912ddb035a52b0f3f24e36ac453e417ae` (`ca9de3c912ddb035a52b0f3f24e36ac453e417ae`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5425,6 +5425,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `CliApp.CliApp.ConstructorArgs` -> `none`: Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed.
 
+- `CliApp.CliApp.Environment` -> `Command.Environment`: Adds ChildProcessSpawner and Stdio to FileSystem, Path and Terminal; NodeServices.layer and BunServices.layer provide all five.
+
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
 - `CliApp.run` -> `Command.run`: The CliApp wrapper was removed. Attach the execute function with Command.withHandler, then run the Command with its version; v4 reads arguments through the CLI environment instead of accepting args and execute at this call.
@@ -6130,6 +6132,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId. Remote decode or handler failures leave the entire batch uncommitted and retry it after backoff instead of logging and committing past the failure. Replay handlers must tolerate repeated execution. Conflicts are stored entries with strictly greater ids, in id order; compacted replacements use their source entry as the conflict anchor.
 
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
+
+- `EventLog.Registry` -> `effect/eventlog/EventLog#Registry`: Import Registry from the v4 EventLog module. add(handlers) became registerHandlerUnsafe({ event, handler }), handlers is a ReadonlyMap instead of an Effect of a record, and the static Registry.layer became EventLog.layerRegistry.
 
 - `EventLog.SchemaTypeId` -> `effect/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
 
@@ -7026,6 +7030,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpApiError.HttpApiDecodeError` -> `effect/http-api/HttpApiError#HttpApiSchemaError`: Validation now stores kind and a SchemaError cause and is a defect unless transformed by schema-error middleware.
 
 - `HttpApiError.Issue` -> `effect/SchemaIssue#Issue`: Structured failures now live at HttpApiSchemaError.cause.issue; format them explicitly when a flat external list is needed.
+
+- `HttpApiError.NotFound` -> `effect/http-api/HttpApiError#NotFoundNoContent`: Use NotFoundNoContent to preserve the empty 404 wire schema; NotFound now has a JSON-tagged body.
 
 - `HttpApiError.TypeId` -> `effect/http-api/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
 
@@ -9223,6 +9229,8 @@ Arbitrary.schema(schema)
 
 - `Brand.error` -> `Brand.make`: Return a string or Schema filter issue directly from a Brand.make validator.
 
+- `Brand.errors` -> `Brand.make`: Return an array of strings or Schema filter issues from a Brand.make validator; they are combined into one BrandError.
+
 - `Brand.nominal` -> `Brand.nominal`: Still exported; the constructor's either method is now result.
 
 - `Brand.refined` -> `Brand.make`: Use Brand.make for custom validation or Brand.check for Schema checks.
@@ -10713,7 +10721,7 @@ Arbitrary.schema(schema)
 
 - `Equivalence.string` -> `Equivalence.String`: Capitalized instance name; case-sensitive strict equality is unchanged.
 
-- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares configured symbol and non-enumerable keys via Reflect.ownKeys.
+- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares own enumerable symbol fields.
 
 - `Equivalence.symbol` -> `Equivalence.strictEqual<symbol>()`: There is no Symbol instance export; strictEqual preserves the v3 symbol comparison.
 
@@ -10825,7 +10833,7 @@ Arbitrary.schema(schema)
 
 - `FastCheck.CloneValue`: TODO: needs guidance
 
-- `FastCheck.Command`: TODO: needs guidance
+- `FastCheck.Command` -> `FastCheck.Command`: Depend on fast-check and import it directly. The API is unchanged.
 
 - `FastCheck.CommandsContraints`: TODO: needs guidance
 
@@ -13242,7 +13250,7 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Order.string` -> `Order.String`: Capitalized instance name; case-sensitive JavaScript lexicographic ordering is unchanged.
 
-- `Order.struct` -> `Order.Struct`: Capitalized constructor name; field-order tie-breaking is unchanged.
+- `Order.struct` -> `Order.Struct`: Capitalized constructor name; field-order tie-breaking is unchanged. V4 also compares own enumerable symbol fields, after string fields.
 
 - `Order.tuple` -> `Order.Tuple([orderA, orderB, ...])`: Capitalized constructor now takes one comparator array instead of rest arguments and evaluates every configured position.
 
@@ -13518,7 +13526,7 @@ Schema.decodeSync(Schema.toType(schema))
 
 - `Predicate.some` -> `Predicate.some`: Retained with the same OR semantics, short-circuiting, and false result for an empty collection.
 
-- `Predicate.struct` -> `Predicate.Struct`: Capitalized constructor name; field checks and refinement-aware typing are retained.
+- `Predicate.struct` -> `Predicate.Struct`: Capitalized constructor name; field checks and refinement-aware typing are retained. V4 also checks own enumerable symbol fields.
 
 - `Predicate.tuple` -> `Predicate.Tuple([p1, p2, ...])`: Capitalized constructor now takes one predicate array instead of rest arguments and checks missing positions as undefined.
 

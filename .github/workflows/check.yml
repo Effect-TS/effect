@@ -164,7 +164,8 @@ jobs:
             node: ""
             deno: ""
             bun: ""
-            command: pnpm test --max-concurrency=10
+            # The full suite exceeds Node's default ~2 GiB heap on this runner.
+            command: NODE_OPTIONS=--max-old-space-size=4096 pnpm test --max-concurrency=10
           # Node 25 and older handle upgrade request bodies differently.
           - runtime: Node 24 (platform-node)
             node: 24

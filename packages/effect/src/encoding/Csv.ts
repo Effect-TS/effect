@@ -17,12 +17,15 @@ import * as Cause from "../Cause.ts"
 import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
+import { identity, memoize } from "../Function.ts"
+import * as InternalAnnotations from "../internal/schema/annotations.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import type * as Record from "../Record.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaTransformation from "../SchemaTransformation.ts"
 
 const CsvErrorTypeId = "~effect/encoding/Csv/CsvError"
 
@@ -621,6 +624,46 @@ const toArrayCodec = <S extends Schema.Constraint>(codec: S): Schema.NonEmptyArr
   return array as Schema.NonEmptyArray<S>
 }
 
+// CSV cannot tell an empty cell from a missing one, so empty cells of optional
+// properties are decoded as missing keys. Each union member gets its own copy of
+// the row, before either its properties or its index signatures run.
+const prepareHeader = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+  if (SchemaAST.isUnion(ast) || SchemaAST.isSuspend(ast)) return ast.recur(prepareHeader)
+  if (!SchemaAST.isObjects(ast)) return ast
+  const keys = ast.propertySignatures.flatMap(({ name, type }) =>
+    typeof name === "string" && SchemaAST.isOptional(SchemaAST.toEncoded(type)) ? [name] : []
+  )
+  if (keys.length === 0) return ast
+  const input = Schema.declare(Predicate.isObject, {
+    // A one-member union describes the row by its discriminants, as union errors do.
+    expected: new SchemaAST.Union([ast]).getExpected(InternalAnnotations.getExpected),
+    // Keep the original discriminants visible to the union parser.
+    [InternalAnnotations.SENTINELS_ANNOTATION_KEY]: SchemaAST.collectSentinels(SchemaAST.toCandidate(ast))
+  })
+  return SchemaAST.decodeTo(
+    input.ast,
+    ast,
+    SchemaTransformation.transform({
+      decode: (row) => {
+        let copy: typeof row | undefined
+        for (const key of keys) {
+          if (row[key] === "") {
+            copy ??= { ...row }
+            delete copy[key]
+          }
+        }
+        return copy ?? row
+      },
+      encode: identity
+    })
+  )
+})
+
+const headerCodec = memoize(<S extends Schema.Constraint>(codec: S): S => {
+  const ast = prepareHeader(codec.ast)
+  return ast === codec.ast ? codec : Schema.make<S>(ast)
+})
+
 const isStringLeaf = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "String":
@@ -738,28 +781,12 @@ export const decodeSchemaString =
     S["DecodingServices"]
   > => {
     const codec = toCodec(schema, options?.disableCodecs)
-    const ast = resolveSuspend(SchemaAST.toEncoded(codec.ast))
-    checkCells(ast, undefined)
-    // CSV cannot tell an empty cell from a missing one, so empty cells of
-    // optional properties are decoded as missing keys.
-    const optional = options?.disableCodecs !== true && options?.headers === true && SchemaAST.isObjects(ast)
-      ? ast.propertySignatures.flatMap((ps) =>
-        typeof ps.name === "string" && SchemaAST.isOptional(ps.type) ? [ps.name] : []
-      )
-      : []
-    const input = (record: Decoded) => {
-      if (optional.length === 0) return record.value
-      // Header records are created per row, so they can be updated in place.
-      const value = record.value as globalThis.Record<string, string>
-      for (const key of optional) {
-        if (value[key] === "") delete value[key]
-      }
-      return value
-    }
-    const decode = Schema.decodeUnknownEffect(toArrayCodec(codec), parseOptions)
+    checkCells(SchemaAST.toEncoded(codec.ast), undefined)
+    const item = options?.headers === true && options.disableCodecs !== true ? headerCodec(codec) : codec
+    const decode = Schema.decodeUnknownEffect(toArrayCodec(item), parseOptions)
     return Channel.mapEffect(decodeRecords<IE, Done>(options), (records) =>
       Effect.mapError(
-        decode(Arr.map(records, input)),
+        decode(Arr.map(records, (record) => record.value)),
         (error) => rebaseIssue(error, (index) => records[index].record)
       ))
   }
