@@ -43,7 +43,7 @@ import * as compressionInternal from "./internal/compression.ts"
 import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as RedactedPath from "./internal/redactedPath.ts"
-import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
+import { appendPreResponseHandlerUnsafe, CurrentRequestState, type RequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
 import * as internalUrlParams from "./internal/urlParams.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -274,12 +274,11 @@ const responseSpanExit = (
   fiber: Fiber.Fiber<unknown, unknown>,
   request: HttpServerRequest,
   response: HttpServerResponse,
-  context: Context.Context<never>
+  state: RequestState | undefined
 ): Exit.Exit<HttpServerResponse, HttpServerError> => {
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
   }
-  const state = Context.getOrUndefined(context, CurrentRequestState)
   // The message is path-only, but exporters can still read `error.request.url`
   // after the request-scoped redacted names are gone.
   let url = UrlParams.redactUrl(
@@ -332,11 +331,11 @@ export const tracer: <E, R>(
     internalEffect.onExitUnsafe<HttpServerResponse, unknown>(fiber, (exit) => {
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
+      const state = Context.getOrUndefined(prevServices, CurrentRequestState)
       if (Exit.isSuccess(exit) && (!span.sampled || fiber.getRef(Tracer) === nativeTracer)) {
-        span.end(endTime, responseSpanExit(fiber, request, exit.value, prevServices))
+        span.end(endTime, responseSpanExit(fiber, request, exit.value, state))
         return undefined
       }
-      const state = Context.getOrUndefined(prevServices, CurrentRequestState)
       const redactedHeaderNames = withStateNames(fiber.getRef(Headers.CurrentRedactedNames), state?.redactedHeaderNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       // Complete the span before the request fiber exits so shutdown can flush it.
@@ -348,10 +347,10 @@ export const tracer: <E, R>(
         // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
         spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
           ? Exit.failCause(cause.value)
-          : responseSpanExit(fiber, request, response, prevServices)
+          : responseSpanExit(fiber, request, response, state)
       } else {
         response = exit.value
-        spanExit = responseSpanExit(fiber, request, response, prevServices)
+        spanExit = responseSpanExit(fiber, request, response, state)
       }
       if (span.sampled) {
         span.attribute("http.request.method", request.method)

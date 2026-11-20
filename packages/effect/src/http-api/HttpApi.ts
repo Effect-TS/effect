@@ -575,7 +575,6 @@ export const getSlotParseOptions = (annotations: Context.Context<never>): SlotPa
 export interface EndpointRedactedNames {
   readonly query: ReadonlyArray<string | RegExp>
   readonly headers: ReadonlyArray<string | RegExp>
-  readonly params: ReadonlyArray<string>
 }
 
 /**
@@ -591,7 +590,6 @@ export const getEndpointRedactedNames = (
 ): EndpointRedactedNames | undefined => {
   const query: Array<string | RegExp> = []
   const headers: Array<string | RegExp> = []
-  const params: Array<string> = []
   for (const annotations of [api.annotations, group.annotations, endpoint.annotations]) {
     const options = Context.getOrUndefined(annotations, RedactedNames)
     if (options === undefined) continue
@@ -600,7 +598,20 @@ export const getEndpointRedactedNames = (
       if (typeof name === "string") query.push(new RegExp(`^${RegExp_.escape(name)}\\[`, "i"))
     }
     if (options.headers !== undefined) headers.push(...options.headers)
-    if (options.params !== undefined) params.push(...options.params)
   }
-  return query.length === 0 && headers.length === 0 && params.length === 0 ? undefined : { query, headers, params }
+  return query.length === 0 && headers.length === 0 ? undefined : { query, headers }
 }
+
+/**
+ * Combines the `RedactedNames` path params of an API, group and endpoint.
+ *
+ * @internal
+ */
+export const getEndpointRedactedParams = (
+  api: Pick<Top, "annotations">,
+  group: HttpApiGroup.Top,
+  endpoint: HttpApiEndpoint.Top
+): ReadonlyArray<string> =>
+  [api.annotations, group.annotations, endpoint.annotations].flatMap((annotations) =>
+    Context.getOrUndefined(annotations, RedactedNames)?.params ?? []
+  )

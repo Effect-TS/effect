@@ -135,6 +135,7 @@ export const make = Effect.gen(function*() {
   const router = FindMyWay.make<{
     readonly route: Route<any, never>
     readonly prefixSegments: number | undefined
+    readonly redactedPath: RedactedPath.Template | undefined
   }>(config)
   const middleware = new Set<middleware.Fn>()
 
@@ -163,6 +164,9 @@ export const make = Effect.gen(function*() {
           route: route as Route<any, never>,
           prefixSegments: Option.isSome(route.prefix)
             ? countSegments(route.prefix.value, ignoreDuplicateSlashes)
+            : undefined,
+          redactedPath: route.redactedParams !== undefined && route.redactedParams.length > 0
+            ? RedactedPath.compile(route.path, route.redactedParams)
             : undefined
         }
         if (route.method === "*") {
@@ -230,7 +234,7 @@ export const make = Effect.gen(function*() {
             })
           )
         }
-        const { route, prefixSegments } = result.handler
+        const { route, prefixSegments, redactedPath } = result.handler
         if (prefixSegments !== undefined) {
           context = Context.add(
             context,
@@ -244,12 +248,12 @@ export const make = Effect.gen(function*() {
           params: result.params
         })
 
-        if (route.redactedParams !== undefined && route.redactedParams.length > 0) {
+        if (redactedPath !== undefined) {
           const state = Context.getOrUndefined(context, CurrentRequestState)
           if (state !== undefined) {
             state.redactedPath = RedactedPath.combine(
               state.redactedPath,
-              RedactedPath.render(route.path, result.params, route.redactedParams),
+              RedactedPath.render(redactedPath, result.params),
               request
             )
           }

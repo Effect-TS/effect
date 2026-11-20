@@ -2,49 +2,48 @@ import { getClosingParenthensePosition } from "../FindMyWay/internal/router.ts"
 import type { HttpServerRequest } from "../HttpServerRequest.ts"
 import { stripSearchAndHash, toPath } from "./urlParams.ts"
 
-const STATIC = 0
-const PARAM = 1
-const REDACTED = 2
+const STATIC = "s"
+const PARAM = "p"
+const REDACTED = "r"
 
 /**
- * A matched path with the kind of each character of `text`: route pattern
- * text, a param value, or a redacted param value.
+ * A matched path with the kind of each character of `text` in `kinds`: route
+ * pattern text, a param value, or a redacted param value.
  *
  * @internal
  */
 export interface RedactedPath {
   readonly text: string
-  readonly kinds: ReadonlyArray<number>
+  readonly kinds: string
 }
 
 /**
- * Renders a matched path from the route pattern, following the pattern grammar
- * of `FindMyWay`, and marks the values of the listed params as redacted.
+ * A route pattern split into static text and params.
  *
  * @internal
  */
-export const render = (
-  path: string,
-  params: Readonly<Record<string, string | undefined>>,
-  redactedParams: ReadonlyArray<string>
-): RedactedPath => {
-  let text = ""
-  let kinds: Array<number> = []
+export type Template = ReadonlyArray<string | { readonly name: string; readonly redacted: boolean }>
+
+/**
+ * Splits a route pattern into a template, following the pattern grammar of
+ * `FindMyWay`.
+ *
+ * @internal
+ */
+export const compile = (path: string, redactedParams: ReadonlyArray<string>): Template => {
+  const parts: Array<string | { name: string; redacted: boolean }> = []
   // FindMyWay assigns every regex capture to the params in order, so a nested
   // capture shifts values onto the wrong names. Then every value is redacted.
   let ambiguous = false
-  const push = (value: string, kind: number) => {
-    text += value
-    for (let i = 0; i < value.length; i++) kinds.push(kind)
-  }
+  let text = ""
   for (let i = 0; i < path.length; i++) {
     const char = path[i]
     if (char === ":" && path[i + 1] === ":") {
-      push(":", STATIC)
+      text += ":"
       i++
       continue
     } else if (char !== ":" && char !== "*") {
-      push(char, STATIC)
+      text += char
       continue
     }
     let end = i + 1
@@ -55,7 +54,38 @@ export const render = (
       ) end++
     }
     const name = char === "*" ? "*" : path.slice(i + 1, end)
-    const value = params[name]
+    if (text !== "") parts.push(text)
+    text = ""
+    parts.push({ name, redacted: redactedParams.includes(name) })
+    if (char === "*") continue
+    if (path[end] === "(") {
+      const close = getClosingParenthensePosition(path, end)
+      // FindMyWay has already compiled the constraint, so it is a valid regex.
+      ambiguous ||= new RegExp(path.slice(end + 1, close) + "|").exec("")!.length > 1
+      i = close
+    } else {
+      i = path[end] === "?" ? end : end - 1
+    }
+  }
+  if (text !== "") parts.push(text)
+  return ambiguous ? parts.map((part) => typeof part === "string" ? part : { name: part.name, redacted: true }) : parts
+}
+
+/**
+ * Renders the path matched by a template.
+ *
+ * @internal
+ */
+export const render = (template: Template, params: Readonly<Record<string, string | undefined>>): RedactedPath => {
+  let text = ""
+  let kinds = ""
+  for (const part of template) {
+    if (typeof part === "string") {
+      text += part
+      kinds += STATIC.repeat(part.length)
+      continue
+    }
+    const value = params[part.name]
     if (value === undefined) {
       // An absent optional param or wildcard is last, and drops its segment.
       const slash = Math.max(text.lastIndexOf("/"), 0)
@@ -63,35 +93,11 @@ export const render = (
       kinds = kinds.slice(0, slash)
       break
     }
-    push(
-      char === "*" ? value.split("/").map(encodeSegment).join("/") : encodeSegment(value),
-      redactedParams.includes(name) ? REDACTED : PARAM
-    )
-    if (char === "*") continue
-    if (path[end] === "(") {
-      const close = getClosingParenthensePosition(path, end)
-      ambiguous ||= hasCapture(path.slice(end + 1, close))
-      i = close
-    } else {
-      i = path[end] === "?" ? end : end - 1
-    }
+    const encoded = part.name === "*" ? value.split("/").map(encodeSegment).join("/") : encodeSegment(value)
+    text += encoded
+    kinds += (part.redacted ? REDACTED : PARAM).repeat(encoded.length)
   }
-  if (ambiguous) kinds = kinds.map((kind) => kind === PARAM ? REDACTED : kind)
-  return text.startsWith("/") ? { text, kinds } : { text: "/" + text, kinds: [STATIC, ...kinds] }
-}
-
-// Scans for a capturing group, skipping escapes and character classes. Any
-// group other than `(?:`, `(?=`, `(?!`, `(?<=` and `(?<!` counts as one.
-const hasCapture = (regex: string): boolean => {
-  let inClass = false
-  for (let i = 0; i < regex.length; i++) {
-    const char = regex[i]
-    if (char === "\\") i++
-    else if (inClass) inClass = char !== "]"
-    else if (char === "[") inClass = true
-    else if (char === "(" && !/^\?(?:[:=!]|<[=!])/.test(regex.slice(i + 1, i + 4))) return true
-  }
-  return false
+  return text.startsWith("/") ? { text, kinds } : { text: "/" + text, kinds: STATIC + kinds }
 }
 
 const encodeSegment = (segment: string): string => {
@@ -119,19 +125,16 @@ export const combine = (
     const original = toPath(request.originalUrl)
     if (local === original || !original.endsWith(local)) return next
     const prefix = original.slice(0, original.length - local.length)
-    return { text: prefix + next.text, kinds: new Array<number>(prefix.length).fill(PARAM).concat(next.kinds) }
+    return { text: prefix + next.text, kinds: PARAM.repeat(prefix.length) + next.kinds }
   }
-  const kinds = previous.kinds.slice()
-  const offset = previous.text.length - next.text.length
-  if (offset >= 0 && previous.text.endsWith(next.text)) {
-    for (let i = 0; i < next.kinds.length; i++) {
-      if (next.kinds[i] === REDACTED) kinds[offset + i] = REDACTED
-    }
-  } else {
+  if (!previous.text.endsWith(next.text)) {
     // The paths cannot be aligned, so redact every param value.
-    for (let i = 0; i < kinds.length; i++) {
-      if (kinds[i] === PARAM) kinds[i] = REDACTED
-    }
+    return { text: previous.text, kinds: previous.kinds.replaceAll(PARAM, REDACTED) }
+  }
+  const offset = previous.text.length - next.text.length
+  let kinds = previous.kinds.slice(0, offset)
+  for (let i = 0; i < next.kinds.length; i++) {
+    kinds += next.kinds[i] === REDACTED ? REDACTED : previous.kinds[offset + i]
   }
   return { text: previous.text, kinds }
 }
@@ -143,9 +146,10 @@ export const combine = (
  */
 export const format = (path: RedactedPath): string => {
   let out = ""
-  for (let i = 0; i < path.text.length; i++) {
-    if (path.kinds[i] !== REDACTED) out += path.text[i]
-    else if (path.kinds[i - 1] !== REDACTED) out += "REDACTED"
+  let last = 0
+  for (const run of path.kinds.matchAll(/r+/g)) {
+    out += path.text.slice(last, run.index) + "REDACTED"
+    last = run.index + run[0].length
   }
-  return out
+  return out + path.text.slice(last)
 }
