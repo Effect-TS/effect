@@ -41,9 +41,8 @@ export const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
   )
 
 /**
- * Dies with an error naming `entryPoint` unless the client's dialect is one of
- * `dialects`. The default is the dialects that the persistence, event log and
- * cluster modules have SQL for.
+ * Dies unless the client's dialect is in `dialects` (defaults to the four SQL
+ * storage dialects).
  *
  * @internal
  */
