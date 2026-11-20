@@ -19,6 +19,7 @@ import * as Digest from "../crypto/Digest.ts"
 import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PubSub from "../PubSub.ts"
@@ -91,6 +92,7 @@ export const makeStorage = (options?: {
   Effect.gen(function*() {
     const digest = yield* Digest.Digest
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+    yield* requireDialect(sql, "SqlEventLogServerEncrypted.makeStorage")
     const config = yield* EventLogServerEncrypted.makeCompactionConfig(options?.compaction)
     const graceMillis = Duration.toMillis(config.grace)
     const lagMillis = Duration.toMillis(config.lag)

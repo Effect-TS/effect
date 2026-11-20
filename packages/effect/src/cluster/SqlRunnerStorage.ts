@@ -22,6 +22,7 @@ import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -65,6 +66,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const availableShardGroups = Array.from(shardGroups.available)
   const lockOperationInterval = effectiveInterval(config)
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "SqlRunnerStorage")
   // PGlite runs every statement on one session, so advisory locks are shared by
   // every user of the client and a reserved connection would block all other
   // statements. Use table leases on the shared client instead.
@@ -902,11 +904,15 @@ export const migrations = (options: {
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  Migrator.make({})({
-    loader: migrations(options),
-    // Message and runner migration ids overlap, so keep separate histories.
-    table: `${options.prefix ?? "cluster"}_runner_migrations`
-  }).pipe(Effect.asVoid, Effect.orDie)
+  Effect.gen(function*() {
+    // Migrator also accepts ClickHouse, which this storage has no SQL for
+    yield* requireDialect(yield* SqlClient.SqlClient, "SqlRunnerStorage")
+    yield* Migrator.make({})({
+      loader: migrations(options),
+      // Message and runner migration ids overlap, so keep separate histories.
+      table: `${options.prefix ?? "cluster"}_runner_migrations`
+    })
+  }).pipe(Effect.orDie)
 
 /**
  * Runs the SQL runner storage migrations without providing storage.

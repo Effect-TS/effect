@@ -17,6 +17,7 @@ import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as FileSystem from "../FileSystem.ts"
 import { dual, identity, type LazyArg } from "../Function.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
@@ -613,6 +614,7 @@ export const layerSql = (
   Layer.effect(KeyValueStore)(
     Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      yield* requireDialect(sql, "KeyValueStore.layerSql")
       const tableName = options.table ?? "effect_key_value_store"
       const table = sql(tableName)
 

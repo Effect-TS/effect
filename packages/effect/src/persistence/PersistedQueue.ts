@@ -22,6 +22,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { flow } from "../Function.ts"
 import { sqlCleanupBatchSize } from "../internal/persistence.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableRef from "../MutableRef.ts"
@@ -1619,6 +1620,7 @@ export const makeStoreSql: (
   SqlClient.SqlClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "PersistedQueue.makeStoreSql")
   const tableName = options?.tableName ?? "effect_queue"
   const tableNameSql = sql(tableName)
   const pollInterval = Duration.max(

@@ -7,6 +7,7 @@
 import * as Arr from "../Array.ts"
 import * as Clock from "../Clock.ts"
 import * as Effect from "../Effect.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
@@ -55,6 +56,7 @@ export const make = (options?: {
 > =>
   Effect.gen(function*() {
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+    yield* requireDialect(sql, "SqlEventJournal.make")
 
     const entryTable = options?.entryTable ?? "effect_event_journal"
     const remotesTable = options?.remotesTable ?? "effect_event_remotes"

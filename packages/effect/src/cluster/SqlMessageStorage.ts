@@ -32,6 +32,7 @@ import * as Arr from "../Array.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
 import { identity } from "../Function.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -125,6 +126,7 @@ export const makeEncodedStorage: (options?: {
   }
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "SqlMessageStorage")
   const digest = yield* Digest.Digest
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
@@ -1384,10 +1386,14 @@ export const migrations = (options?: {
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  Migrator.make({})({
-    loader: migrations(options),
-    table: `${options?.prefix ?? "cluster"}_migrations`
-  }).pipe(Effect.asVoid, Effect.orDie)
+  Effect.gen(function*() {
+    // Migrator also accepts ClickHouse, which this storage has no SQL for
+    yield* requireDialect(yield* SqlClient.SqlClient, "SqlMessageStorage")
+    yield* Migrator.make({})({
+      loader: migrations(options),
+      table: `${options?.prefix ?? "cluster"}_migrations`
+    })
+  }).pipe(Effect.orDie)
 
 /**
  * Runs the SQL message storage migrations without providing storage.

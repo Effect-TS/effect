@@ -251,11 +251,12 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.lengthOf(params, 3)
     }))
 
-  it.effect("onDialect", () =>
+  it.effect("onDialectOrElse", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
       assert.strictEqual(
-        sql.onDialect({
+        sql.onDialectOrElse({
+          orElse: () => "F",
           sqlite: () => "A",
           pg: () => "B",
           mysql: () => "C",

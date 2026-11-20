@@ -92,13 +92,18 @@ export const fragment = (
 })
 
 /**
- * Supported SQL dialect identifiers used by statement compilers.
+ * SQL dialect identifier used by statement compilers.
+ *
+ * **Details**
+ *
+ * The built-in drivers use `"sqlite"`, `"pg"`, `"mysql"`, `"mssql"` and
+ * `"clickhouse"`. A driver outside this repository can use any other name.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse"
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql" | "clickhouse" | (string & {})
 
 /**
  * Executable SQL statement that is also a `Fragment` and `Effect`, with helpers
@@ -521,6 +526,14 @@ export type Helper =
   | Identifier
   | Custom
 
+// A mapped constraint accepts interfaces without an index signature.
+type DialectBranches<X> = { readonly [K in keyof X]: (() => unknown) | undefined }
+
+// Distributes over X, so each member of a union branch map contributes its keys.
+type DialectBranchResult<X> = X extends unknown ? BranchResult<X[keyof X]> : never
+
+type BranchResult<F> = F extends () => infer R ? R : never
+
 /**
  * SQL tagged-template constructor and helper API for building parameterized
  * statements, escaped identifiers, fragments, record helpers, and
@@ -610,22 +623,33 @@ export interface Constructor {
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
-  readonly onDialect: <A, B, C, D, E>(options: {
-    readonly sqlite: () => A
-    readonly pg: () => B
-    readonly mysql: () => C
-    readonly mssql: () => D
-    readonly clickhouse: () => E
-  }) => A | B | C | D | E
-
-  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never, F = never>(options: {
-    readonly orElse: () => A
-    readonly sqlite?: () => B
-    readonly pg?: () => C
-    readonly mysql?: () => D
-    readonly mssql?: () => E
-    readonly clickhouse?: () => F
-  }) => A | B | C | D | E | F
+  /**
+   * Runs the matching built-in or custom dialect branch, or `orElse` if none matches.
+   *
+   * **Gotchas**
+   *
+   * Only own properties of `options` are branches, so methods inherited from a
+   * class are ignored. Annotate the parameters of functions returned by custom
+   * branches; only built-in branches provide contextual types.
+   */
+  readonly onDialectOrElse: <
+    A,
+    B = never,
+    C = never,
+    D = never,
+    E = never,
+    F = never,
+    X extends DialectBranches<X> = { readonly [dialect: string]: (() => A | B | C | D | E | F) | undefined }
+  >(
+    options: {
+      readonly orElse: () => A
+      readonly sqlite?: () => B
+      readonly pg?: () => C
+      readonly mysql?: () => D
+      readonly mssql?: () => E
+      readonly clickhouse?: () => F
+    } & X
+  ) => A | B | C | D | E | F | DialectBranchResult<X>
 }
 
 /**
@@ -695,11 +719,10 @@ export const make = (
       or,
       csv,
       join,
-      onDialect(options: Record<Dialect, any>) {
-        return options[compiler.dialect]()
-      },
-      onDialectOrElse(options: any) {
-        return options[compiler.dialect] !== undefined ? options[compiler.dialect]() : options.orElse()
+      onDialectOrElse(options: Record<string, (() => any) | undefined>) {
+        // own keys only, so a dialect named "toString" falls back
+        const branch = Object.hasOwn(options, compiler.dialect) ? options[compiler.dialect] : undefined
+        return branch !== undefined ? branch.call(options) : options.orElse!()
       }
     }
   )

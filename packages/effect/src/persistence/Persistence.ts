@@ -17,6 +17,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
 import { escapeRedisGlob, sqlCleanupBatchSize, storeNamespace } from "../internal/persistence.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Schedule from "../Schedule.ts"
@@ -329,6 +330,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
   SqlClient.SqlClient
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "Persistence.layerBackingSqlMultiTable")
   return BackingPersistence.of({
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
@@ -557,6 +559,7 @@ export const layerBackingSql: Layer.Layer<
   SqlClient.SqlClient
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "Persistence.layerBackingSql")
   const table = sql("effect_persistence")
   yield* sql.onDialectOrElse({
     mysql: () =>

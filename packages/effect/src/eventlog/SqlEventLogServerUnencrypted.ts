@@ -12,6 +12,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Effect from "../Effect.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as PubSub from "../PubSub.ts"
 import * as RcMap from "../RcMap.ts"
@@ -60,6 +61,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   SqlClient.SqlClient | Scope.Scope
 > {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "SqlEventLogServerUnencrypted.makeStorage")
 
   const entriesTable = options?.entryTablePrefix ?? "effect_events"
   const remoteIdTable = options?.remoteIdTable ?? "effect_remote_id"

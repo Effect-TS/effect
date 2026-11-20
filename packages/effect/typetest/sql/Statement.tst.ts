@@ -9,6 +9,32 @@ declare const plainFragment: {
 }
 
 describe("Statement", () => {
+  it("accepts custom dialects and infers the results of supplied branches", () => {
+    expect<"spark">().type.toBeAssignableTo<Statement.CompilerOptions["dialect"]>()
+    const fallback = sql.onDialectOrElse({ spark: () => "custom", orElse: () => false })
+    expect(fallback).type.toBe<string | boolean>()
+
+    const union = {} as
+      | { spark: () => number; orElse: () => string }
+      | { trino: () => boolean; orElse: () => string }
+    const unionResult = sql.onDialectOrElse(union)
+    expect(unionResult).type.toBe<string | number | boolean>()
+  })
+
+  it("accepts named branch maps and rejects custom branches hidden by explicit generics", () => {
+    interface PgOrElse {
+      readonly orElse: () => string
+      readonly pg?: () => number
+    }
+    const pgOrElse = {} as PgOrElse
+    const fallback = sql.onDialectOrElse(pgOrElse)
+    expect(fallback).type.toBe<string | number>()
+
+    const custom = { orElse: () => 1, spark: () => "custom" }
+    expect(sql.onDialectOrElse<number>).type.not.toBeCallableWith(custom)
+    expect(sql.onDialectOrElse<number>).type.toBeCallableWith({ orElse: () => 1 })
+  })
+
   it("insert requires non-empty rows or a single record", () => {
     expect(sql.insert).type.not.toBeCallableWith([])
     expect(sql.insert).type.toBeCallableWith([{ name: "Ada" }])
