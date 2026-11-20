@@ -380,12 +380,22 @@ export const realPath = (tx: E.Transaction, input: M.Path): Result.Result<BytePa
     return Result.getOrThrow(BytePath.fromBytes(bytes))
   })
 
-/** @internal */
-export const readFileObserved = (
+function readWholeFileResult(
   tx: E.Transaction,
-  target: M.Target
-): Result.Result<M.ObservedRead<Uint8Array>, M.OperationError> =>
-  Result.gen(function*() {
+  target: M.Target,
+  observed: true
+): Result.Result<M.ObservedRead<Uint8Array>, M.OperationError>
+function readWholeFileResult(
+  tx: E.Transaction,
+  target: M.Target,
+  observed: false
+): Result.Result<Uint8Array, M.OperationError>
+function readWholeFileResult(
+  tx: E.Transaction,
+  target: M.Target,
+  observed: boolean
+): Result.Result<Uint8Array | M.ObservedRead<Uint8Array>, M.OperationError> {
+  return Result.gen(function*() {
     const { object: node } = yield* tx.targetResult(target)
     if (node.kind !== "file") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -402,12 +412,19 @@ export const readFileObserved = (
     const value = node.data.slice()
     const accessTimeBeforeRead = node.atime
     yield* tx.touchResult(node.id, ["atime"])
-    return { value, object: tx.observation(yield* tx.getResult(node.id)), accessTimeBeforeRead }
+    return observed ? { value, object: tx.observation(yield* tx.getResult(node.id)), accessTimeBeforeRead } : value
   })
+}
+
+/** @internal */
+export const readFileObserved = (
+  tx: E.Transaction,
+  target: M.Target
+): Result.Result<M.ObservedRead<Uint8Array>, M.OperationError> => readWholeFileResult(tx, target, true)
 
 /** @internal */
 export const readFile = (tx: E.Transaction, target: M.Target): Result.Result<Uint8Array, M.OperationError> =>
-  Result.map(readFileObserved(tx, target), (read) => read.value)
+  readWholeFileResult(tx, target, false)
 
 /** @internal */
 export const readLinkObserved = (

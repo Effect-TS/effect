@@ -593,6 +593,37 @@ describe("VirtualFileSystem handles", () => {
       }
     }).pipe(withClock))
 
+  it.effect("returns detached bytes from plain and observed synchronous reads and keeps read metadata", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make({ limits: { synchronous: true } })
+      const caller = yield* owner.authorize({ credentials })
+      const sync = yield* caller.acquireSync
+      const content = bytes(1, 2)
+      Result.getOrThrow(sync.writeFile("/plain", content))
+      Result.getOrThrow(sync.writeFile("/observed", content))
+      const beforePlain = Result.getOrThrow(sync.stat("/plain"))
+      const beforeObserved = Result.getOrThrow(sync.stat("/observed"))
+      yield* TestClock.adjust("1 second")
+
+      const plain = Result.getOrThrow(sync.readFile("/plain"))
+      const observed = Result.getOrThrow(sync.readFileObserved("/observed"))
+      assert.deepStrictEqual(plain, content)
+      assert.deepStrictEqual(observed.value, content)
+      assert.strictEqual(observed.accessTimeBeforeRead, beforeObserved.metadata.atime)
+      const afterPlain = Result.getOrThrow(sync.stat("/plain"))
+      const afterObserved = Result.getOrThrow(sync.stat("/observed"))
+      assert.isTrue(afterPlain.metadata.atime > beforePlain.metadata.atime)
+      assert.strictEqual(afterPlain.metadata.atime, afterObserved.metadata.atime)
+      assert.deepStrictEqual(observed.object.metadata, afterObserved.metadata)
+      assert.isTrue(VFS.equalsObjectRevision(afterPlain.revision, beforePlain.revision))
+      assert.isTrue(VFS.equalsObjectRevision(observed.object.revision, beforeObserved.revision))
+
+      plain[0] = 9
+      observed.value[0] = 9
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/plain")), content)
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/observed")), content)
+    }).pipe(withClock))
+
   it.effect("preserves clock callbacks and publication when read access time is unchanged", () =>
     Effect.gen(function*() {
       const clock = yield* Clock.Clock
