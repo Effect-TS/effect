@@ -430,16 +430,16 @@ export const make = Effect.fnUntraced(function*<
                 // exits and drops a redelivery that arrives sooner, so the
                 // claim is released afterwards.
                 const abandonFenced = Effect.withFiber((fiber) => {
+                  const requestId = request.message.envelope.requestId
                   removeActiveRequest(Snowflake.Snowflake(response.requestId))
                   return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
-                    Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
-                    Effect.andThen(Effect.forkIn(
-                      Effect.andThen(
-                        Fiber.await(fiber),
-                        Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId]))
-                      ),
-                      managerScope
-                    ))
+                    Effect.andThen(options.storage.unregisterReplyHandler(requestId)),
+                    Effect.andThen(
+                      Fiber.await(fiber).pipe(
+                        Effect.andThen(Effect.ignore(options.storage.resetRequests([requestId]))),
+                        Effect.forkIn(managerScope)
+                      )
+                    )
                   )
                 })
                 const complete = Effect.sync(() => {

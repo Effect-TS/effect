@@ -101,9 +101,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const activity = Activity.make({
         name: "attempt",
         success: Schema.Int,
-        execute: Effect.gen(function*() {
-          return yield* Activity.CurrentAttempt
-        })
+        execute: Effect.service(Activity.CurrentAttempt)
       })
       const layer = workflow.toLayer(() =>
         Effect.all([1, 2].map((attempt) => Effect.provideService(activity, Activity.CurrentAttempt, attempt)), {

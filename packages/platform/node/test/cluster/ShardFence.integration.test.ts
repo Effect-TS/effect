@@ -182,18 +182,16 @@ const resetOverlap = Effect.fnUntraced(
     let denyOnce = true
     const ownership = Layer.effect(
       RunnerStorage.RunnerStorage,
-      RunnerStorage.RunnerStorage.use((storage) =>
-        Effect.succeed({
-          ...storage,
-          refresh: (address, shards) => {
-            if (denyOnce && Deferred.isDoneUnsafe(probe.returned) && Array.from(shards).length === 1) {
-              denyOnce = false
-              return Effect.fail(new ClusterError.PersistenceError({ cause: "inconclusive lock refresh" }))
-            }
-            return storage.refresh(address, shards)
+      RunnerStorage.RunnerStorage.useSync((storage) => ({
+        ...storage,
+        refresh: (address, shards) => {
+          if (denyOnce && Deferred.isDoneUnsafe(probe.returned) && Array.from(shards).length === 1) {
+            denyOnce = false
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "inconclusive lock refresh" }))
           }
-        })
-      )
+          return storage.refresh(address, shards)
+        }
+      }))
     ).pipe(Layer.provide(SqlRunnerStorage.layer))
 
     const readerAdvanced = yield* Latch.make()
@@ -201,24 +199,22 @@ const resetOverlap = Effect.fnUntraced(
     let reclaimed = false
     const journal = Layer.effect(
       MessageStorage.MessageStorage,
-      MessageStorage.MessageStorage.use((storage) =>
-        Effect.succeed({
-          ...storage,
-          resetRequests: (ids) =>
-            storage.resetRequests(ids).pipe(Effect.andThen(() => {
-              if (denyOnce || resetId !== undefined || ids.length !== 1) return Effect.void
-              resetId = ids[0]
-              return readerAdvanced.await
-            })),
-          unprocessedMessages: (shards, options) =>
-            storage.unprocessedMessages(shards, options).pipe(Effect.tap((messages) => {
-              // A later read begins after the reader tried to deliver the previously claimed message.
-              if (reclaimed) return readerAdvanced.open
-              reclaimed = resetId !== undefined && messages.some((message) => message.envelope.requestId === resetId)
-              return Effect.void
-            }))
-        })
-      )
+      MessageStorage.MessageStorage.useSync((storage) => ({
+        ...storage,
+        resetRequests: (ids) =>
+          storage.resetRequests(ids).pipe(Effect.andThen(() => {
+            if (denyOnce || resetId !== undefined || ids.length !== 1) return Effect.void
+            resetId = ids[0]
+            return readerAdvanced.await
+          })),
+        unprocessedMessages: (shards, options) =>
+          storage.unprocessedMessages(shards, options).pipe(Effect.tap((messages) => {
+            // A later read begins after the reader tried to deliver the previously claimed message.
+            if (reclaimed) return readerAdvanced.open
+            reclaimed = resetId !== undefined && messages.some((message) => message.envelope.requestId === resetId)
+            return Effect.void
+          }))
+      }))
     ).pipe(Layer.provide(SqlMessageStorage.layer))
 
     const context = yield* Layer.build(RunnerLayer(probe, {}, ownership, journal))

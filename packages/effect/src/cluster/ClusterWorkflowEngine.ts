@@ -593,8 +593,8 @@ export const make = Effect.gen(function*() {
               },
 
               activity(request: Entity.Request<any>) {
-                const payload = request.payload as { name: string; attempt: number }
-                const activityId = `${executionId}/${activityPrimaryKey(payload.name, payload.attempt)}`
+                const payload = request.payload as { name: string; attempt: number; withTransaction: boolean }
+                const activityId = activityRegistrationKey(executionId, payload.name, payload.attempt)
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   awaitedDeferreds: currentRun?.activityAwaits
                 })
@@ -606,7 +606,7 @@ export const make = Effect.gen(function*() {
                 }
                 // The request is redelivered when its reply could not be saved.
                 // A transaction rolled the activity back, so it runs again.
-                if (entry.result && !Context.get(entry.activity.annotations, ClusterSchema.WithTransaction)) {
+                if (entry.result && !payload.withTransaction) {
                   return Effect.succeed(entry.result).pipe(Rpc.wrap({ fork: true }))
                 }
                 const context = entry.context.pipe(
@@ -764,7 +764,7 @@ export const make = Effect.gen(function*() {
         const services = yield* Effect.context<WorkflowEngine.WorkflowInstance>()
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
-        const activityId = `${instance.executionId}/${activityPrimaryKey(activity.name, attempt)}`
+        const activityId = activityRegistrationKey(instance.executionId, activity.name, attempt)
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {
@@ -1072,6 +1072,9 @@ interface ActivityRegistration {
 }
 
 const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
+
+const activityRegistrationKey = (executionId: string, activity: string, attempt: number) =>
+  `${executionId}/${activityPrimaryKey(activity, attempt)}`
 
 class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run`)({
   name: Schema.String,
