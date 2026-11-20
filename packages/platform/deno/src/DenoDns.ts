@@ -93,7 +93,7 @@ const queries: {
     })),
   CNAME: async (name, options) =>
     NodeDns.recordsFromResolver(name, "CNAME", await Deno.resolveDns(name, "CNAME", options), (target) => ({
-      target: NodeDns.domainNameFromResolverUnsafe(target)
+      target: NodeDns.nameTextFromResolver(target, 8)
     })),
   MX: async (name, options) =>
     NodeDns.recordsFromResolver(name, "MX", await Deno.resolveDns(name, "MX", options), (mx) => ({
@@ -152,7 +152,7 @@ const queries: {
 export const make = Effect.fnUntraced(function*(options?: Options) {
   const input = options?.nameServer
   const server = input === undefined ? undefined : yield* Effect.fromResult(Dns.nameServerFromInput(input))
-  if (server !== undefined && NetAddress.isInetAddressV6(server) && server.scopeId !== 0) {
+  if (server !== undefined && NetAddress.isScoped(server)) {
     return yield* new NetAddress.NetAddressError({
       input: input!,
       message: "IPv6 name servers with a scope ID are not supported"
