@@ -5645,7 +5645,13 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    let resumed = false
+    parentRuntime.currentDispatcher.scheduleTask(() => {
+      if (!resumed) child.evaluate(effect as any)
+    }, 0)
+    child._yielded = () => {
+      resumed = true
+    }
   }
   return child
 }

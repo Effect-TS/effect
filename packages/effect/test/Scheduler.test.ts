@@ -1,8 +1,83 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit } from "effect"
+import { Effect, Exit, Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Scheduler", () => {
+  describe("queued first slices", () => {
+    const makeScheduler = () => {
+      const tasks: Array<() => void> = []
+      let root: Fiber.Fiber<unknown, unknown> | undefined
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "sync",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield(fiber) {
+          root ??= fiber
+          return fiber !== root && fiber.currentOpCount === 1
+        }
+      }
+      return {
+        scheduler,
+        flush() {
+          while (tasks.length > 0) tasks.shift()!()
+        }
+      }
+    }
+
+    for (
+      const [name, effect] of [
+        ["successful", Effect.void],
+        ["failed", Effect.fail("failure")],
+        ["suspended", Effect.never]
+      ] as const
+    ) {
+      it(`interrupts a ${name} child before its queued first slice`, () => {
+        const { flush, scheduler } = makeScheduler()
+        let started = false
+        const main = Effect.runFork(
+          Effect.gen(function*() {
+            const child = yield* Effect.forkChild(
+              Effect.sync(() => {
+                started = true
+              }).pipe(Effect.andThen(effect))
+            )
+            yield* Fiber.interrupt(child)
+            return yield* Fiber.await(child)
+          }),
+          { scheduler }
+        )
+
+        flush()
+
+        assert.isFalse(started)
+        const exit = main.pollUnsafe()
+        if (exit?._tag !== "Success") return assert.fail("expected the interrupter to complete")
+        assert.isTrue(Exit.hasInterrupts(exit.value))
+      })
+    }
+
+    it("runs an uninterrupted queued first slice once", () => {
+      const { flush, scheduler } = makeScheduler()
+      let started = 0
+      const main = Effect.runFork(
+        Effect.gen(function*() {
+          const child = yield* Effect.forkChild(Effect.sync(() => ++started))
+          return yield* Fiber.join(child)
+        }),
+        { scheduler }
+      )
+
+      flush()
+
+      assert.strictEqual(started, 1)
+      assert.deepStrictEqual(main.pollUnsafe(), Exit.succeed(1))
+    })
+  })
+
   it("runSyncExit does not create a dispatcher for synchronous effects", () => {
     const makeDispatcher = vi.spyOn(Scheduler.MixedScheduler.prototype, "makeDispatcher")
     const exit = Effect.runSyncExit(Effect.sync(() => 1))
