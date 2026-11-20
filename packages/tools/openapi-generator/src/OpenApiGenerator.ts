@@ -336,7 +336,8 @@ const parseOpenApi = (
         ? Utils.camelize(operation.operationId)
         : `${method.toUpperCase()}${path}`
 
-      const description = Utils.nonEmptyString(operation.description) ?? Utils.nonEmptyString(operation.summary)
+      const summary = Utils.nonEmptyString(operation.summary)
+      const description = Utils.nonEmptyString(operation.description)
 
       const parameters = resolveOperationParameters(
         Array.isArray(pathItem.parameters) ? pathItem.parameters : undefined,
@@ -348,7 +349,9 @@ const parseOpenApi = (
       const op = ParsedOperation.makeDeepMutable({
         id,
         method,
-        description,
+        description: summary && description && summary !== description
+          ? `${summary}\n\n${description}`
+          : summary ?? description,
         pathIds,
         pathTemplate
       })
@@ -365,8 +368,8 @@ const parseOpenApi = (
         })
       }
       op.metadata = {
-        summary: Utils.nonEmptyString(operation.summary),
-        description: Utils.nonEmptyString(operation.description),
+        summary,
+        description,
         deprecated: operation.deprecated === true,
         externalDocs: operation.externalDocs
       }

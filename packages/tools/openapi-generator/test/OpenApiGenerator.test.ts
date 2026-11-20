@@ -3779,6 +3779,22 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
       }
     } satisfies OpenAPISpec
 
+    it.effect.each([
+      {
+        summary: "List pets",
+        description: "Returns pets available for adoption.",
+        text: "List pets\n* \n* Returns pets available for adoption."
+      },
+      { summary: "List pets", description: " List pets ", text: "List pets" },
+      { summary: "List pets", text: "List pets" },
+      { description: "Returns available pets.", text: "Returns available pets." }
+    ])("documents client methods with summary '$summary' and description '$description'", ({ text, ...metadata }) => {
+      const get = { ...petsSpec.paths["/pets"].get, ...metadata }
+      const spec = { ...petsSpec, paths: { "/pets": { get } } }
+      const expected = [`/**\n* ${text}\n*/\nreadonly "listPets"`]
+      return Effect.all([assertRuntimeIncludes(spec, expected), assertTypeOnlyIncludes(spec, expected)])
+    })
+
     for (const format of ["httpclient", "httpclient-type-only", "httpapi"] as const) {
       const layer = format === "httpclient-type-only"
         ? OpenApiGenerator.layerTransformerTs
