@@ -152,6 +152,8 @@ export type ClusterEntityProgram = {
  * @since 4.1.3
  */
 export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const context = yield* Effect.context<never>()
+  const runPromise = Effect.runPromiseWith(context)
   const sql = state.storage.sql
   ensureEntityStorage(sql)
   const stored = loadEntityState(sql)
@@ -165,6 +167,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
   // Written only when it changes, so a repeat activation costs no write.
   if (entityName !== stored.name) rememberEntityName(sql, entityName)
   const keepAlive = makeEntityKeepAlive({
+    context,
     startHold: () => {
       const namespace = exportedNamespace<{ readonly hold: () => Promise<void> }>(state, "ClusterEntity")
       if (namespace === undefined) {
@@ -187,7 +190,7 @@ export const makeClusterEntityProgram = Effect.fnUntraced(function*(state: Durab
     }),
     entityName,
     keepAlive,
-    waitUntil: (effect) => state.waitUntil(Effect.runPromise(effect)),
+    waitUntil: (effect) => state.waitUntil(runPromise(effect)),
     getNamespace: () =>
       exportedNamespace<{
         readonly deliverReply: (requestId: string, reply: string) => Promise<boolean>
@@ -281,6 +284,7 @@ export type ClusterWorkflowProgram = {
  * @since 4.1.3
  */
 export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const context = yield* Effect.context<never>()
   const clock = yield* Clock.Clock
   const sql = state.storage.sql
   ensureWorkflowStorage(sql)
@@ -303,6 +307,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
       throw new Error("ClusterWorkflow requires a canonical workflow Durable Object name")
     }
     runtime = makeWorkflowRuntime({
+      context,
       name,
       sql,
       alarm: state.storage,
@@ -399,11 +404,13 @@ export type ClusterDurableQueueProgram = {
  * @since 4.1.3
  */
 export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const context = yield* Effect.context<never>()
   const clock = yield* Clock.Clock
   if (state.id.name !== undefined && decodeName(state.id.name) === undefined) {
     return yield* Effect.die(new Error("ClusterDurableQueue requires a canonical queue Durable Object name"))
   }
   const runtime = makeQueueRuntime({
+    context,
     sql: state.storage.sql,
     alarm: state.storage,
     now: () => clock.currentTimeMillisUnsafe()
@@ -479,6 +486,7 @@ const wakeSuccess: SingletonWakeResult = { _tag: "Success" }
  * @since 4.1.3
  */
 export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: DurableObjectProgramState) {
+  const context = yield* Effect.context<never>()
   const clock = yield* Clock.Clock
   const sql = state.storage.sql
   ensureSingletonStorage(sql)
@@ -513,6 +521,7 @@ export const makeClusterSingletonProgram = Effect.fnUntraced(function*(state: Du
       Effect.orDie
     )
     runtime = makeSingletonRuntime({
+      context,
       sql,
       alarm: state.storage,
       now: () => clock.currentTimeMillisUnsafe(),
