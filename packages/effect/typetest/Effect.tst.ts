@@ -452,6 +452,39 @@ describe("Effect.catchReasons", () => {
     )
     expect(result).type.toBe<Effect.Effect<string, OtherError | SimpleError>>()
   })
+
+  it("removes the parent error when handlers are exhaustive", () => {
+    const result = pipe(
+      mixedEffect,
+      Effect.catchReasons("AiError", {
+        RateLimitError: () => Effect.succeed(1),
+        QuotaExceededError: () => Effect.succeed(2),
+        UnknownAiModelError: () => Effect.succeed(3)
+      })
+    )
+    expect(result).type.toBe<Effect.Effect<string | number, OtherError>>()
+  })
+
+  it("removes the parent error when handlers are exhaustive in data-first usage", () => {
+    const result = Effect.catchReasons(mixedEffect, "AiError", {
+      RateLimitError: () => Effect.succeed(1),
+      QuotaExceededError: () => Effect.succeed(2),
+      UnknownAiModelError: () => Effect.succeed(3)
+    })
+    expect(result).type.toBe<Effect.Effect<string | number, OtherError>>()
+  })
+
+  it("behaves like unwrapReason with empty cases and a failing orElse", () => {
+    const result = pipe(
+      mixedEffect,
+      Effect.catchReasons("AiError", {}, (reason) => reason)
+    )
+    expect(result).type.toBe<
+      Effect.Effect<string, RateLimitError | QuotaExceededError | UnknownAiModelError | OtherError>
+    >()
+    const unwrapped = pipe(mixedEffect, Effect.unwrapReason("AiError"))
+    expect(result).type.toBe<typeof unwrapped>()
+  })
 })
 
 describe("Effect.catchTag", () => {

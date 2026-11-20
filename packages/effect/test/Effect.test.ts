@@ -5187,6 +5187,10 @@ describe("Effect", () => {
       readonly reason: RateLimitError | QuotaExceededError
     }> {}
 
+    class OtherError extends Data.TaggedError("OtherError")<{
+      readonly message: string
+    }> {}
+
     it.effect("catches with object handlers", () =>
       Effect.gen(function*() {
         const result = yield* Effect.fail(
@@ -5254,6 +5258,41 @@ describe("Effect", () => {
           result,
           Exit.failCause(Cause.combine(Cause.die(error), Cause.die("finalizer failure")))
         )
+      }))
+
+    it.effect("exhaustive handlers remove the parent error", () =>
+      Effect.gen(function*() {
+        const program = (reason: RateLimitError | QuotaExceededError) =>
+          (Effect.fail(new AiError({ reason })) as Effect.Effect<never, AiError | OtherError>).pipe(
+            Effect.catchReasons("AiError", {
+              RateLimitError: (r) => Effect.succeed(`rate: ${r.retryAfter}`),
+              QuotaExceededError: (r) => Effect.succeed(`quota: ${r.limit}`)
+            })
+          )
+        const rate: Effect.Effect<string, OtherError> = program(new RateLimitError({ retryAfter: 60 }))
+        const quota: Effect.Effect<string, OtherError> = program(new QuotaExceededError({ limit: 100 }))
+        assert.strictEqual(yield* rate, "rate: 60")
+        assert.strictEqual(yield* quota, "quota: 100")
+      }))
+
+    it.effect("empty handlers with a failing orElse behave like unwrapReason", () =>
+      Effect.gen(function*() {
+        const reasons = [new RateLimitError({ retryAfter: 60 }), new QuotaExceededError({ limit: 100 })]
+        for (const reason of reasons) {
+          const program = Effect.fail(new AiError({ reason })) as Effect.Effect<never, AiError | OtherError>
+          const caught: Effect.Effect<never, RateLimitError | QuotaExceededError | OtherError> = program.pipe(
+            Effect.catchReasons("AiError", {}, (reason) => reason)
+          )
+          const exit = yield* Effect.exit(caught)
+          assertExitFailure(exit, Cause.fail(reason))
+          assert.deepStrictEqual(exit, yield* Effect.exit(Effect.unwrapReason(program, "AiError")))
+        }
+        const error = new OtherError({ message: "test" })
+        const exit = yield* (Effect.fail(error) as Effect.Effect<never, AiError | OtherError>).pipe(
+          Effect.catchReasons("AiError", {}, (reason) => reason),
+          Effect.exit
+        )
+        assertExitFailure(exit, Cause.fail(error))
       }))
   })
 
