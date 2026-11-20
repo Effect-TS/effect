@@ -78,7 +78,9 @@ describe("HttpRouter", () => {
         HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] }),
         // Nested regex capture shifts param indices, so all params are redacted.
         HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/named/:id(?<digits>\\d+)", echoUrl, { redactedParams: ["id"] }),
         HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
+        HttpRouter.add("GET", "*", echoUrl, { redactedParams: ["*"] }),
         HttpRouter.use((router) =>
           router.prefixed("/vault").add("*", "*", Effect.orDie(inner), { redactedParams: ["*"] })
         ),
@@ -98,7 +100,9 @@ describe("HttpRouter", () => {
                 "/hooks/123/s3cret?key=q",
                 "/assets/tok/site.css",
                 "/codes/a1-7",
+                "/named/12",
                 "/opt",
+                "/other/s3cret",
                 "/vault/1/s3cret",
                 "/mounted/1/s3cret"
               ]
@@ -115,7 +119,9 @@ describe("HttpRouter", () => {
         "/hooks/123/REDACTED",
         "/assets/REDACTED",
         "/codes/REDACTED-REDACTED",
+        "/named/REDACTED",
         "/opt",
+        "/REDACTED",
         "/vault/REDACTED",
         "/mounted/1/REDACTED"
       ]

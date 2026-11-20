@@ -512,8 +512,8 @@ export class ErrorParseOptions extends Context.Service<
  *   the names on the group to keep both.
  * - Only URL and header attributes use these names. `user_agent.original` and
  *   the messages of span errors are recorded as is.
- * - `params` apply to server spans only. Client spans record the path as
- *   sent.
+ * - `params` apply to server spans and `HttpMiddleware.logger` entries.
+ *   Client spans record the path as sent.
  * - `HttpApiBuilder.endpoint` returns a handler without a route, so set
  *   `redactedParams` on the route it is mounted with.
  *

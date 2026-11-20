@@ -22,7 +22,8 @@ export type Template = ReadonlyArray<string | { readonly name: string; readonly 
 /** @internal */
 export const compile = (path: string, redactedParams: ReadonlyArray<string>): Template => {
   const parts: Array<string | { name: string; redacted: boolean }> = []
-  // Nested regex captures shift FindMyWay's param indices, so fall back to redacting all params.
+  // FindMyWay assigns regex captures to params in order, so a constraint
+  // without exactly one capture shifts values onto the wrong names.
   let ambiguous = false
   let text = ""
   for (let i = 0; i < path.length; i++) {
@@ -49,8 +50,7 @@ export const compile = (path: string, redactedParams: ReadonlyArray<string>): Te
     if (char === "*") continue
     if (path[end] === "(") {
       const close = getClosingParenthensePosition(path, end)
-      // Constraint was already compiled by FindMyWay, so the regex is valid.
-      ambiguous ||= new RegExp(path.slice(end + 1, close) + "|").exec("")!.length > 1
+      ambiguous ||= countCaptures(path.slice(end, close + 1)) !== 1
       i = close
     } else {
       i = path[end] === "?" ? end : end - 1
@@ -58,6 +58,14 @@ export const compile = (path: string, redactedParams: ReadonlyArray<string>): Te
   }
   if (text !== "") parts.push(text)
   return ambiguous ? parts.map((part) => typeof part === "string" ? part : { name: part.name, redacted: true }) : parts
+}
+
+const countCaptures = (regex: string): number => {
+  try {
+    return new RegExp(regex + "|").exec("")!.length - 1
+  } catch {
+    return -1
+  }
 }
 
 /** @internal */
@@ -82,7 +90,8 @@ export const render = (template: Template, params: Readonly<Record<string, strin
     text += encoded
     kinds += (part.redacted ? REDACTED : PARAM).repeat(encoded.length)
   }
-  return text.startsWith("/") ? { text, kinds } : { text: "/" + text, kinds: STATIC + kinds }
+  // A bare wildcard captures the leading slash, which stays visible.
+  return text.startsWith("/") ? { text, kinds: STATIC + kinds.slice(1) } : { text: "/" + text, kinds: STATIC + kinds }
 }
 
 const encodeSegment = (segment: string): string => {

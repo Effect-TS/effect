@@ -800,8 +800,9 @@ const makeRoute = <E, R>(options: {
  *   `HttpMiddleware.withLoggerDisabled` for those.
  * - Error messages and the `request` of errors raised by the handler keep the
  *   path as sent.
- * - A regex constraint with its own capture groups shifts matched values onto
- *   the following params, so every param of that route is redacted instead.
+ * - A regex constraint with nested capture groups, or one written as a
+ *   non-capturing group such as `(?:a|b)`, shifts matched values between
+ *   params, so every param of that route is redacted instead.
  *
  * **Example** (Redacting a token in the path)
  *
