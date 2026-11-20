@@ -65,15 +65,13 @@ export interface Config extends PgConnection.Config {
   readonly minConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
   /**
-   * Optional schedule for retrying retryable errors (`error.isRetryable`,
-   * such as socket errors, `connectTimeout`, and SQLSTATE class `08`) while
-   * opening a connection on checkout. Authentication failures are not
-   * retried. The caller's `acquireTimeout` bounds the entire checkout,
-   * including retry delays, and interrupting the caller cancels pending
-   * retries. Statements and transaction bodies are never replayed.
-   * Configuration errors (such as a malformed URL or missing username) also
-   * surface as `ConnectionError`, so bound the schedule or set
-   * `acquireTimeout`.
+   * Retries a checkout that fails to open a connection while
+   * `error.isRetryable`, such as a socket error, `connectTimeout`, or
+   * SQLSTATE class `08`. Authentication failures are not retried and
+   * statements are never replayed. `acquireTimeout` bounds the retries and
+   * their delays, and interrupting the caller cancels them. A configuration
+   * error such as a malformed URL is a retryable `ConnectionError` here too,
+   * so bound the schedule or set `acquireTimeout`.
    */
   readonly connectRetrySchedule?: Schedule.Schedule<unknown, SqlError> | undefined
   /**
@@ -325,10 +323,12 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       )
 
   const connectRetry = options.connectRetrySchedule
-  const acquired = connectRetry === undefined
-    ? checkout
-    : Effect.retry(checkout, { schedule: connectRetry, while: (error) => error.isRetryable })
-  const handedOut = Effect.flatMap(acquired, handOut)
+  const handedOut = Effect.flatMap(
+    connectRetry === undefined
+      ? checkout
+      : Effect.retry(checkout, { schedule: connectRetry, while: (error) => error.isRetryable }),
+    handOut
+  )
   const get = withAcquireTimeout(handedOut)
 
   // `pin` reserves the pool item itself. On a multiplexed pool it also waits
@@ -336,16 +336,15 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   const reserve = withAcquireTimeout(Effect.flatMap(handedOut, (connection) => connection.pin))
 
   // `Pool.use` cannot pre-check a session, retry checkout without wrapping
-  // `f`, or bound its wait. Use it only when no connect retry schedule, TTL,
-  // or acquire timeout applies and no connection awaits retirement. Checking
-  // inside its callback can deadlock a size-one pool while acquiring a
-  // replacement.
+  // `f`, or bound its wait. Use it only when none of those are configured and
+  // no connection awaits retirement. Checking inside its callback can deadlock
+  // a size-one pool while acquiring a replacement.
+  const poolUseAllowed = connectRetry === undefined && connectionTTL === undefined && acquireTimeout === undefined
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>
     Effect.suspend(() =>
-      connectRetry === undefined && connectionTTL === undefined && acquireTimeout === undefined &&
-        deadConnections.size === 0
+      poolUseAllowed && deadConnections.size === 0
         ? Pool.use(
           pool,
           (connection) =>

@@ -46,60 +46,73 @@ const waitFor = (predicate: () => boolean) =>
     assert.ok(predicate(), "background acquisition did not start")
   })
 
+// A fake server that hands its startup message to `startup` and each Parse
+// message to `parse`, and ignores everything else.
+const fakeBackend = (on: {
+  readonly startup?: ((socket: Duplex) => void) | undefined
+  readonly parse?: ((socket: Duplex) => void) | undefined
+}) => {
+  let startup = true
+  const socket: Duplex = new Duplex({
+    read() {},
+    write(chunk: Buffer, _encoding, callback) {
+      if (startup) {
+        startup = false
+        on.startup?.(socket)
+      } else if (chunk[0] === 0x50) {
+        on.parse?.(socket)
+      }
+      callback()
+    }
+  })
+  return socket
+}
+
+const pushReady = (socket: Duplex) => queueMicrotask(() => socket.push(ready))
+
 describe("PgPool failed startup", () => {
-  for (const cancel of [false, true]) {
-    it.effect(
-      cancel
-        ? "cancels a pending connect retry when interrupted during backoff"
-        : "retries a stalled handshake after backoff before sending SQL",
-      () =>
-        Effect.gen(function*() {
-          const started = Latch.makeUnsafe()
-          let attempts = 0
-          let statements = 0
-          const sql = yield* PgClient.make({
-            username: "test",
-            maxConnections: 1,
-            connectTimeout: "10 millis",
-            connectRetrySchedule: Schedule.spaced("100 millis").pipe(Schedule.upTo({ times: 1 })),
-            stream: () => {
-              const first = ++attempts === 1
-              let startup = true
-              const socket = new Duplex({
-                read() {},
-                write(chunk: Buffer, _encoding, callback) {
-                  if (startup) {
-                    startup = false
-                    if (first) started.openUnsafe()
-                    else queueMicrotask(() => socket.push(ready))
-                  } else if (chunk[0] === 0x50) {
-                    statements++
-                    queueMicrotask(() => socket.push(emptyQueryResult))
-                  }
-                  callback()
-                }
-              })
-              return socket
-            }
-          })
-          const query = yield* Effect.forkChild(sql`SELECT 1`)
-          yield* started.await
-          yield* TestClock.adjust("109 millis")
-          assert.strictEqual(attempts, 1)
-          assert.strictEqual(statements, 0)
-          assert.isUndefined(query.pollUnsafe())
-          if (cancel) {
-            yield* Fiber.interrupt(query)
-            yield* TestClock.adjust("100 millis")
-          } else {
-            yield* TestClock.adjust("1 millis")
-            yield* Fiber.join(query)
+  // The first handshake stalls past `connectTimeout`; the retry after 100ms
+  // succeeds. At 109ms the first attempt has failed and the retry is pending.
+  const stalledThenReady = Effect.gen(function*() {
+    const started = Latch.makeUnsafe()
+    const counts = { attempts: 0, statements: 0 }
+    const sql = yield* PgClient.make({
+      username: "test",
+      maxConnections: 1,
+      connectTimeout: "10 millis",
+      connectRetrySchedule: Schedule.spaced("100 millis").pipe(Schedule.upTo({ times: 1 })),
+      stream: () =>
+        fakeBackend({
+          startup: ++counts.attempts === 1 ? () => started.openUnsafe() : pushReady,
+          parse: (socket) => {
+            counts.statements++
+            queueMicrotask(() => socket.push(emptyQueryResult))
           }
-          assert.strictEqual(attempts, cancel ? 1 : 2)
-          assert.strictEqual(statements, cancel ? 0 : 1)
-        }).pipe(Effect.provide(Reactivity.layer))
-    )
-  }
+        })
+    })
+    const query = yield* Effect.forkChild(sql`SELECT 1`)
+    yield* started.await
+    yield* TestClock.adjust("109 millis")
+    assert.deepStrictEqual(counts, { attempts: 1, statements: 0 })
+    assert.isUndefined(query.pollUnsafe())
+    return { query, counts }
+  })
+
+  it.effect("retries a stalled handshake after backoff before sending SQL", () =>
+    Effect.gen(function*() {
+      const { counts, query } = yield* stalledThenReady
+      yield* TestClock.adjust("1 millis")
+      yield* Fiber.join(query)
+      assert.deepStrictEqual(counts, { attempts: 2, statements: 1 })
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("cancels a pending connect retry when interrupted during backoff", () =>
+    Effect.gen(function*() {
+      const { counts, query } = yield* stalledThenReady
+      yield* Fiber.interrupt(query)
+      yield* TestClock.adjust("100 millis")
+      assert.deepStrictEqual(counts, { attempts: 1, statements: 0 })
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect("bounds connect retries by acquireTimeout for statements and reservations", () =>
     Effect.gen(function*() {
@@ -113,18 +126,7 @@ describe("PgPool failed startup", () => {
         connectRetrySchedule: Schedule.spaced("20 millis"),
         stream: () => {
           attempts++
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(_chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                started.openUnsafe()
-              }
-              callback()
-            }
-          })
-          return socket
+          return fakeBackend({ startup: () => started.openUnsafe() })
         }
       })
       const statement = yield* Effect.forkChild(Effect.flip(sql`SELECT 1`))
@@ -153,20 +155,12 @@ describe("PgPool failed startup", () => {
         connectRetrySchedule: Schedule.recurs(3),
         stream: () => {
           attempts++
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(_chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                queueMicrotask(() =>
-                  socket.push(backendMessage("E", Buffer.from("SFATAL\0C28P01\0Mpassword authentication failed\0\0")))
-                )
-              }
-              callback()
-            }
+          return fakeBackend({
+            startup: (socket) =>
+              queueMicrotask(() =>
+                socket.push(backendMessage("E", Buffer.from("SFATAL\0C28P01\0Mpassword authentication failed\0\0")))
+              )
           })
-          return socket
         }
       })
       const error = yield* Effect.flip(sql`SELECT 1`)
@@ -181,23 +175,14 @@ describe("PgPool failed startup", () => {
         username: "test",
         maxConnections: 1,
         connectRetrySchedule: Schedule.recurs(1),
-        stream: () => {
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                queueMicrotask(() => socket.push(ready))
-              } else if (chunk[0] === 0x50) {
-                statements++
-                queueMicrotask(() => socket.destroy())
-              }
-              callback()
+        stream: () =>
+          fakeBackend({
+            startup: pushReady,
+            parse: (socket) => {
+              statements++
+              queueMicrotask(() => socket.destroy())
             }
           })
-          return socket
-        }
       })
       const result = yield* Effect.result(sql`INSERT INTO widgets DEFAULT VALUES`)
       assert.strictEqual(result._tag, "Failure")
