@@ -22,17 +22,23 @@ const invokeResult = <A>(
     | (() => Result.Result<ReadonlyArray<M.Target | M.DirectorySelector>, M.OperationError>),
   snapshot: (work: R.Work) => Result.Result<(tx: E.Transaction) => Result.Result<A, M.OperationError>, M.OperationError>
 ) =>
-  caller.runtime.syncResult(caller.resource, operation, (work) =>
-    Result.gen(function*() {
-      const supplied = typeof targets === "function" ? yield* targets() : targets
-      let bytes = zero
-      for (const target of supplied) bytes += yield* E.addressBytesResult(target, operation, caller.runtime.limits)
-      yield* work.reserveResult(bytes)
-      const body = yield* snapshot(work)
-      const tx = new E.Transaction(caller, work)
-      const value = yield* body(tx)
-      return yield* tx.transitionResult(value)
-    }))
+  caller.runtime.syncResult(caller.resource, operation, (work) => {
+    const supplied = typeof targets === "function" ? targets() : Result.succeed(targets)
+    if (Result.isFailure(supplied)) return Result.fail(supplied.failure)
+    let bytes = zero
+    for (const target of supplied.success) {
+      const size = E.addressBytesResult(target, operation, caller.runtime.limits)
+      if (Result.isFailure(size)) return Result.fail(size.failure)
+      bytes += size.success
+    }
+    const reserved = work.reserveResult(bytes)
+    if (Result.isFailure(reserved)) return Result.fail(reserved.failure)
+    const body = snapshot(work)
+    if (Result.isFailure(body)) return Result.fail(body.failure)
+    const tx = new E.Transaction(caller, work)
+    const value = body.success(tx)
+    return Result.isFailure(value) ? Result.fail(value.failure) : tx.transitionResult(value.success)
+  })
 
 const simple = <Target extends M.Target, Value>(
   caller: E.Caller,
