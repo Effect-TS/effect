@@ -229,7 +229,7 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  // Answers requests that arrive while no application is being served.
+  // Return 503 instead of dropping requests while no other `request` listener is attached.
   const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
     if (server.listenerCount("request") > 1) return
     response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
