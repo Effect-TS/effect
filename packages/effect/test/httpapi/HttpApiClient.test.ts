@@ -957,6 +957,38 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  it.effect("decodes single-value form response arrays with headers and declared errors", () =>
+    Effect.gen(function*() {
+      const Form = Schema.Struct({
+        tags: Schema.Array(Schema.String),
+        note: Schema.Array(Schema.String)
+      }).pipe(HttpApiSchema.asFormUrlEncoded())
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(HttpApiEndpoint.get("form", "/form", {
+          success: HttpApiSchema.WithHeaders(Form, { "x-count": Schema.Int }),
+          error: Form.pipe(HttpApiSchema.status(400))
+        }))
+      )
+      const decode = HttpApiClient.decodeResponse(Api, { group: "test", endpoint: "form" })
+      const response = (status: number) =>
+        HttpClientResponse.fromWeb(
+          HttpClientRequest.get("http://test/form"),
+          new Response("tags=a&note=x", {
+            status,
+            headers: { "content-type": "application/x-www-form-urlencoded", "x-count": "1" }
+          })
+        )
+
+      assert.deepStrictEqual(
+        yield* decode(response(200)),
+        HttpApiSchema.withHeaders({ body: { tags: ["a"], note: ["x"] }, headers: { "x-count": 1 } })
+      )
+      assert.deepStrictEqual(
+        yield* Effect.flip(decode(response(400))),
+        { tags: ["a"], note: ["x"] }
+      )
+    }))
+
   it.effect("decodes form-urlencoded responses", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

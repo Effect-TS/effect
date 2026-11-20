@@ -1028,7 +1028,7 @@ function toCodecArrayBufferWithHeaders(
     : HttpApiSchema.isWithHeaders(schema)
     ? { body: schema.schema, headers: schema.headers, toValue: HttpApiSchema.withHeaders }
     : { body: schema, headers: Schema.Unknown, toValue: (pair) => pair.body }
-  const decodeBody = Schema.decodeUnknownEffect(fromArrayBuffer(parts.body).pipe(Schema.decodeTo(parts.body)), options)
+  const decodeBody = Schema.decodeUnknownEffect(toBodyCodec(parts.body), options)
   const decodeHeaders = Schema.decodeUnknownEffect(parts.headers, headersOptions)
   return ResponsePair.pipe(Schema.decodeTo(
     HttpApiSchema.isWithHeaders(schema) ? schema : Schema.toType(schema),
@@ -1418,11 +1418,15 @@ const UnknownFromArrayBuffer = StringFromArrayBuffer.pipe(Schema.decodeTo(
 ))
 
 function toCodecArrayBuffer(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]): Schema.Top {
-  return Schema.Union(schemas.map(onSchema))
+  return Schema.Union(schemas.map(toBodyCodec))
+}
 
-  function onSchema(schema: Schema.Constraint) {
-    return fromArrayBuffer(schema).pipe(Schema.decodeTo(schema))
-  }
+function toBodyCodec(schema: Schema.Constraint): Schema.Top {
+  return fromArrayBuffer(schema).pipe(Schema.decodeTo(
+    HttpApiSchema.getResponseEncoding(schema.ast)._tag === "FormUrlEncoded"
+      ? Schema.toCodecArrayFromSingle(schema)
+      : schema
+  ))
 }
 
 function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
