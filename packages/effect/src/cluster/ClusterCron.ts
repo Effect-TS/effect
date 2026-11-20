@@ -21,7 +21,6 @@ import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import { constUndefined } from "../Function.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -53,23 +52,23 @@ export class CurrentScheduledTime extends Context.Service<
 >()("effect/cluster/ClusterCron/CurrentScheduledTime") {}
 
 /**
- * The schedule of a cron job, as an annotation on its entity, so a host can read a job's schedule
- * from its registration without running it.
+ * Service tag and entity annotation for the effective schedule of a cron job.
+ *
+ * **When to use**
+ *
+ * Use to read a job's effective schedule inside the `execute` effect of `make`,
+ * or read it from `entity.protocol.annotations` with `Context.getOption` when
+ * inspecting registered cron entities.
  *
  * @stability unstable
- * @category annotations
+ * @category services
  * @since 4.1.5
  */
-export const CronSchedule = Context.Reference<
-  | {
-    readonly cron: Cron.Cron
-    readonly calculateNextRunFromPrevious: boolean
-    readonly skipIfOlderThan: Duration.Duration
-  }
-  | undefined
->("effect/cluster/ClusterCron/CronSchedule", {
-  defaultValue: constUndefined
-})
+export class CronSchedule extends Context.Service<CronSchedule, {
+  readonly cron: Cron.Cron
+  readonly calculateNextRunFromPrevious: boolean
+  readonly skipIfOlderThan: Duration.Duration
+}>()("effect/cluster/ClusterCron/CronSchedule") {}
 
 /**
  * Creates a layer that runs a cron job through the cluster sharding system.
@@ -123,10 +122,16 @@ export const make = <E, R>(options: {
    * Defaults to "1 day".
    */
   readonly skipIfOlderThan?: Duration.Input | undefined
-}): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime>, Scope>> => {
+}): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime | CronSchedule>, Scope>> => {
   const { cron } = options
   const fromPrevious = options.calculateNextRunFromPrevious === true
   const skipIfOlderThan = Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
+  const cronSchedule = {
+    cron,
+    calculateNextRunFromPrevious: fromPrevious,
+    skipIfOlderThan
+  }
+  const scheduleContext = Context.make(CronSchedule, cronSchedule)
   const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cron, after))
 
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
@@ -139,11 +144,7 @@ export const make = <E, R>(options: {
   ])
     .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
     .annotate(ClusterSchema.ClientTracingEnabled, false)
-    .annotate(CronSchedule, {
-      cron,
-      calculateNextRunFromPrevious: fromPrevious,
-      skipIfOlderThan
-    })
+    .annotate(CronSchedule, cronSchedule)
 
   // with `calculateNextRunFromPrevious`, every run shares the executor address
   const send = (dateTime: DateTime.Utc) =>
@@ -174,7 +175,10 @@ export const make = <E, R>(options: {
     if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, skipIfOlderThan))) {
       return
     }
-    return yield* Effect.provideService(options.execute, CurrentScheduledTime, dateTime)
+    return yield* Effect.provideContext(
+      options.execute,
+      Context.add(scheduleContext, CurrentScheduledTime, dateTime)
+    )
   }, Effect.orDie)
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {

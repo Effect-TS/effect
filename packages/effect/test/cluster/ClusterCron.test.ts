@@ -53,13 +53,13 @@ describe("ClusterCron", { concurrent: false }, () => {
   it.effect("annotates its entity with its schedule", () =>
     Effect.gen(function*() {
       const cron = Cron.parseUnsafe("0 9 * * 1-5", "Europe/London")
-      const schedules = new Map<string, Context.Service.Shape<typeof ClusterCron.CronSchedule>>()
+      const schedules = new Map<string, Context.Service.Shape<typeof ClusterCron.CronSchedule> | undefined>()
       const recording = Layer.succeed(
         Sharding.Sharding,
         {
           registerEntity: (entity: Entity.Any) =>
             Effect.sync(() => {
-              schedules.set(entity.type, Context.get(entity.protocol.annotations, ClusterCron.CronSchedule))
+              schedules.set(entity.type, Context.getOrUndefined(entity.protocol.annotations, ClusterCron.CronSchedule))
             }),
           registerSingleton: () => Effect.void
         } as unknown as Sharding.Sharding["Service"]
@@ -264,11 +264,13 @@ describe("ClusterCron", { concurrent: false }, () => {
     Effect.gen(function*() {
       const everySecond = Cron.parseUnsafe("* * * * * *", "UTC")
       const scheduled: Array<string> = []
+      let observedSchedule: Context.Service.Shape<typeof ClusterCron.CronSchedule> | undefined
       const cron = ClusterCron.make({
         name: "test",
         cron: everySecond,
         calculateNextRunFromPrevious: true,
         execute: Effect.gen(function*() {
+          observedSchedule = yield* ClusterCron.CronSchedule
           scheduled.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
         })
       })
@@ -299,5 +301,8 @@ describe("ClusterCron", { concurrent: false }, () => {
       // redeploy while the chain has a healthy pending run
       yield* deploy(cron, 2500)
       assertEachInstantOnce(DateTime.formatIso(legacy))
+      assert.strictEqual(observedSchedule?.cron, everySecond)
+      assert.strictEqual(observedSchedule?.calculateNextRunFromPrevious, true)
+      assert.deepStrictEqual(observedSchedule?.skipIfOlderThan, Duration.days(1))
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 })
