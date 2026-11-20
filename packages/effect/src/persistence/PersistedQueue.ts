@@ -22,6 +22,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import { flow } from "../Function.ts"
 import { sqlCleanupBatchSize } from "../internal/persistence.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableRef from "../MutableRef.ts"
@@ -1619,6 +1620,7 @@ export const makeStoreSql: (
   SqlClient.SqlClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "PersistedQueue.makeStoreSql")
   const tableName = options?.tableName ?? "effect_queue"
   const tableNameSql = sql(tableName)
   const pollInterval = Duration.max(
@@ -1635,16 +1637,6 @@ export const makeStoreSql: (
   )
   const ackRetrySchedule = makeAckRetrySchedule(lockExpiration)
 
-  const sqlNow = sql.onDialect({
-    // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
-    // written visible_at values from the poll query
-    mssql: () => sql.literal("SYSDATETIME()"),
-    mysql: () => sql.literal("NOW()"),
-    pg: () => sql.literal("NOW()"),
-    sqlite: () => sql.literal("CURRENT_TIMESTAMP")
-  })
-
-  // Check the queue dialect in sqlNow before Migrator can query ClickHouse.
   yield* Effect.orDie(
     Migrator.make({})({
       loader: sqlMigrations(tableName, sql),
@@ -1652,14 +1644,24 @@ export const makeStoreSql: (
     })
   )
 
+  const sqlNow = sql.onDialectOrElse({
+    // GETDATE() rounds to 1/300s and can land in the future, hiding freshly
+    // written visible_at values from the poll query
+    mssql: () => sql.literal("SYSDATETIME()"),
+    mysql: () => sql.literal("NOW()"),
+    pg: () => sql.literal("NOW()"),
+    // sqlite
+    orElse: () => sql.literal("CURRENT_TIMESTAMP")
+  })
+
   // `seconds` is a whole number, possibly negative
   const secondsOffset = (seconds: number) => {
     const s = sql.literal(seconds.toString())
-    return sql.onDialect({
+    return sql.onDialectOrElse({
       pg: () => sql`${sqlNow} + INTERVAL '${s} seconds'`,
       mysql: () => sql`DATE_ADD(${sqlNow}, INTERVAL ${s} SECOND)`,
       mssql: () => sql`DATEADD(SECOND, ${s}, ${sqlNow})`,
-      sqlite: () => sql`datetime(${sqlNow}, '${s} seconds')`
+      orElse: () => sql`datetime(${sqlNow}, '${s} seconds')`
     })
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
@@ -1673,16 +1675,16 @@ export const makeStoreSql: (
   // fraction, so it gets an extra second to cover it.
   const visibleAfter = (delay: Duration.Duration) => {
     const seconds = Math.max(Math.ceil(Duration.toSeconds(delay)), 0)
-    return sql.onDialect({
+    return sql.onDialectOrElse({
       pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
       mysql: () => secondsOffset(seconds + 1),
       mssql: () => secondsOffset(seconds),
-      sqlite: () => sqliteOffset(seconds)
+      orElse: () => sqliteOffset(seconds)
     })
   }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
-  const offer = sql.onDialect({
+  const offer = sql.onDialectOrElse({
     pg: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
@@ -1732,7 +1734,8 @@ export const makeStoreSql: (
             @id = ${id}, @name = ${name}, @element = ${element}, @visible_at = @visible_at, @xact_abort = @xact_abort;
         `
     },
-    sqlite: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
+    // sqlite
+    orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
@@ -1875,7 +1878,7 @@ export const makeStoreSql: (
         Effect.interruptible
       )
 
-      const poll = sql.onDialect({
+      const poll = sql.onDialectOrElse({
         pg: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             WITH cte AS (
@@ -1945,7 +1948,8 @@ export const makeStoreSql: (
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
-        sqlite: () => (size: number, lockSql: Fragment) =>
+        // sqlite
+        orElse: () => (size: number, lockSql: Fragment) =>
           sql<Element>`
             UPDATE ${tableNameSql}
             SET acquired_at = ${sqlNow}, acquired_by = ${lockSql}, attempts = attempts + 1
@@ -1996,7 +2000,7 @@ export const makeStoreSql: (
     idleTimeToLive: Duration.seconds(30)
   })
 
-  const cleanupBatch = sql.onDialect({
+  const cleanupBatch = sql.onDialectOrElse({
     pg: () => (state: string, seconds: number) =>
       sql<{ readonly count: number }>`
         WITH deleted_entries AS (
@@ -2031,7 +2035,8 @@ export const makeStoreSql: (
         OUTPUT DELETED.sequence
         WHERE state = ${state} AND updated_at <= ${secondsAgo(seconds)}
       `.pipe(Effect.map((rows) => rows.length)),
-    sqlite: () => (state: string, seconds: number) =>
+    // sqlite
+    orElse: () => (state: string, seconds: number) =>
       sql<{ readonly deleted: number }>`
         DELETE FROM ${tableNameSql}
         WHERE sequence IN (
@@ -2196,7 +2201,7 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
       const tableNameSql = sql(tableName)
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mysql: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
             sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -2240,7 +2245,8 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
             created_at DATETIME2 NOT NULL,
             updated_at DATETIME2 NOT NULL
           )`,
-        sqlite: () =>
+        // sqlite
+        orElse: () =>
           sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
             sequence INTEGER PRIMARY KEY AUTOINCREMENT,
             id TEXT NOT NULL,
@@ -2302,7 +2308,7 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
       const tableNameSql = sql(tableName)
       const takeIndex = sql(`idx_${tableName}_take`)
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         pg: Effect.fnUntraced(function*() {
           yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
           yield* sql`ALTER TABLE ${tableNameSql}
@@ -2369,7 +2375,7 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
         }),
         // sqlite rebuilds the table because altering or dropping constrained
         // columns is not portable across supported SQLite versions.
-        sqlite: Effect.fnUntraced(function*() {
+        orElse: Effect.fnUntraced(function*() {
           const upgradedTableName = `${tableName}_upgrade`
           const upgradedTable = sql(upgradedTableName)
           yield* sql`DROP INDEX IF EXISTS ${takeIndex}`
@@ -2402,7 +2408,7 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
       })
 
       // partial index where supported, so pollers never scan completed rows
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`,
@@ -2410,7 +2416,7 @@ const sqlMigrations = (tableName: string, client: SqlClient.SqlClient) =>
         pg: () =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`,
-        sqlite: () =>
+        orElse: () =>
           sql`CREATE INDEX ${takeIndex} ON ${tableNameSql} (queue_name, visible_at)
             WHERE state = 'pending'`
       })

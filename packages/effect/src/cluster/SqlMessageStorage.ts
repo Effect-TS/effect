@@ -32,6 +32,7 @@ import * as Arr from "../Array.ts"
 import * as Digest from "../crypto/Digest.ts"
 import * as Effect from "../Effect.ts"
 import { identity } from "../Function.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -42,7 +43,6 @@ import type { Fragment } from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as EntityAddress from "./EntityAddress.ts"
 import type * as Envelope from "./Envelope.ts"
-import { runStorageMigrations } from "./internal/sqlMigrations.ts"
 import * as MachineId from "./MachineId.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
@@ -126,6 +126,7 @@ export const makeEncodedStorage: (options?: {
   }
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "SqlMessageStorage")
   const digest = yield* Digest.Digest
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
@@ -155,11 +156,11 @@ export const makeEncodedStorage: (options?: {
       ? Effect.succeed(primaryKey)
       : digest.digestHex(Digest.sha256, encoder.encode(primaryKey))
 
-  const messageIdEnforcesWidth = sql.onDialect({
+  const messageIdEnforcesWidth = sql.onDialectOrElse({
     mssql: () => true,
     mysql: () => true,
     pg: () => true,
-    sqlite: () => false
+    orElse: () => false
   })
   // sqlite's TEXT message_id column stored over-length plaintext keys before
   // digests were introduced; those legacy rows need a plaintext fallback read
@@ -385,7 +386,7 @@ export const makeEncodedStorage: (options?: {
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
-  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialect({
+  ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
     pg: () =>
       insertUnlessExists((row) =>
         Effect.map(
@@ -419,7 +420,7 @@ export const makeEncodedStorage: (options?: {
         )
       ),
     // SQLite has a single writer, so no delete can run between read and insert
-    sqlite: () => (row, message_id) =>
+    orElse: () => (row, message_id) =>
       selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
         sql.withTransaction,
@@ -427,17 +428,17 @@ export const makeEncodedStorage: (options?: {
       )
   })
 
-  const tenMinutesAgo = sql.onDialect({
+  const tenMinutesAgo = sql.onDialectOrElse({
     mssql: () => sql.literal(`DATEADD(MINUTE, -10, GETDATE())`),
     mysql: () => sql.literal(`NOW() - INTERVAL 10 MINUTE`),
     pg: () => sql.literal(`NOW() - INTERVAL '10 minutes'`),
-    sqlite: () => sql.literal(`DATETIME('now', '-10 minute')`)
+    orElse: () => sql.literal(`DATETIME('now', '-10 minute')`)
   })
-  const sqlNowString = sql.onDialect({
+  const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
     mysql: () => "NOW()",
     mssql: () => "GETDATE()",
-    sqlite: () => "CURRENT_TIMESTAMP"
+    orElse: () => "CURRENT_TIMESTAMP"
   })
   const sqlNow = sql.literal(sqlNowString)
 
@@ -1056,7 +1057,7 @@ export const migrations = (options?: {
 
       // mssql UNIQUE constraints treat NULLs as equal, so nullable keys use
       // filtered unique indexes instead
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${messagesTableSql}', N'U') IS NULL
@@ -1134,7 +1135,8 @@ export const migrations = (options?: {
               UNIQUE (message_id)
             )
           `,
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
               id INTEGER PRIMARY KEY,
@@ -1163,7 +1165,7 @@ export const migrations = (options?: {
       // Add message indexes optimized for the specific query patterns
       const shardLookupIndex = `${messagesTable}_shard_idx`
       const requestIdLookupIndex = `${messagesTable}_request_id_idx`
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex} AND object_id = OBJECT_ID(${messagesTable}))
@@ -1192,7 +1194,8 @@ export const migrations = (options?: {
               ON ${messagesTableSql} (request_id)
             `
         }),
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           Effect.all([
             sql`
               CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
@@ -1205,7 +1208,7 @@ export const migrations = (options?: {
           ]).pipe(sql.withTransaction)
       })
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${repliesTableSql}', N'U') IS NULL
@@ -1250,7 +1253,8 @@ export const migrations = (options?: {
               UNIQUE (request_id, sequence)
             )
           `,
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
               id INTEGER PRIMARY KEY,
@@ -1267,7 +1271,7 @@ export const migrations = (options?: {
 
       // Add reply indexes optimized for request_id lookups
       const replyLookupIndex = `${repliesTable}_request_lookup_idx`
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex} AND object_id = OBJECT_ID(${repliesTable}))
@@ -1284,7 +1288,8 @@ export const migrations = (options?: {
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
           `,
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           sql`
             CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
             ON ${repliesTableSql} (request_id, kind, acked);
@@ -1296,7 +1301,7 @@ export const migrations = (options?: {
       const messagesTableSql = sql(messagesTable)
 
       // resize entity_type to 150 characters
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type VARCHAR(150) NOT NULL;
@@ -1309,7 +1314,9 @@ export const migrations = (options?: {
           sql`
             ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type TYPE VARCHAR(150);
           `,
-        sqlite: () => Effect.void
+        orElse: () =>
+          // sqlite
+          Effect.void
       })
     }),
     "0003_pg_messages_rowid_index": Effect.gen(function*() {
@@ -1379,7 +1386,17 @@ export const migrations = (options?: {
 const runMessageMigrations = (options?: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  runStorageMigrations(migrations(options), `${options?.prefix ?? "cluster"}_migrations`)
+  // Migrator also accepts ClickHouse, which this storage has no SQL for
+  SqlClient.SqlClient.use((sql) => requireDialect(sql, "SqlMessageStorage")).pipe(
+    Effect.andThen(
+      Migrator.make({})({
+        loader: migrations(options),
+        table: `${options?.prefix ?? "cluster"}_migrations`
+      })
+    ),
+    Effect.asVoid,
+    Effect.orDie
+  )
 
 /**
  * Runs the SQL message storage migrations without providing storage.

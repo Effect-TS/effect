@@ -526,7 +526,7 @@ export type Helper =
   | Identifier
   | Custom
 
-// A mapped constraint accepts interfaces and classes without an index signature.
+// A mapped constraint accepts interfaces without an index signature.
 type DialectBranches<X> = { readonly [K in keyof X]: (() => unknown) | undefined }
 
 type DialectBranchResult<F> = F extends () => infer R ? R : never
@@ -621,33 +621,13 @@ export interface Constructor {
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
   /**
-   * Runs the branch named for the client's dialect, including custom names.
-   * If no branch matches, the error names the dialect and lists the supplied branches.
+   * Runs the matching built-in or custom dialect branch, or `orElse` if none matches.
    *
    * **Gotchas**
    *
-   * Annotate the parameters of functions returned by custom branches;
-   * only built-in branches provide contextual types.
-   */
-  readonly onDialect: <
-    A = never,
-    B = never,
-    C = never,
-    D = never,
-    E = never,
-    X extends DialectBranches<X> = { readonly [dialect: string]: (() => A | B | C | D | E) | undefined }
-  >(
-    options: {
-      readonly sqlite?: () => A
-      readonly pg?: () => B
-      readonly mysql?: () => C
-      readonly mssql?: () => D
-      readonly clickhouse?: () => E
-    } & X
-  ) => A | B | C | D | E | DialectBranchResult<X[keyof X]>
-
-  /**
-   * Runs the matching built-in or custom dialect branch, or `orElse` if none matches.
+   * Only own properties of `options` are branches, so methods inherited from a
+   * class are ignored. Annotate the parameters of functions returned by custom
+   * branches; only built-in branches provide contextual types.
    */
   readonly onDialectOrElse: <
     A,
@@ -736,42 +716,16 @@ export const make = (
       or,
       csv,
       join,
-      onDialect(options: Record<string, () => any>) {
-        const branch = dialectBranch(options, compiler.dialect)
-        if (branch === undefined) {
-          throw new Error(
-            `Unsupported SQL dialect "${compiler.dialect}". Supported dialects: ${Object.keys(options).join(", ")}`
-          )
-        }
-        return branch.call(options)
-      },
-      onDialectOrElse(options: Record<string, () => any>) {
-        return (dialectBranch(options, compiler.dialect) ?? options.orElse).call(options)
+      onDialectOrElse(options: Record<string, (() => any) | undefined>) {
+        // own keys only, so a dialect named "toString" falls back
+        return Object.hasOwn(options, compiler.dialect) && options[compiler.dialect] !== undefined
+          ? options[compiler.dialect]!()
+          : options.orElse!()
       }
     }
   )
 
   return self
-}
-
-// Allow inherited branch methods, but never dispatch to Object.prototype or
-// to the constructor a class prototype carries.
-const dialectBranch = (
-  options: Record<string, (() => any) | undefined>,
-  dialect: Dialect
-): (() => any) | undefined => {
-  for (
-    let proto: Record<string, any> | null = options;
-    proto !== null && proto !== Object.prototype;
-    proto = Object.getPrototypeOf(proto)
-  ) {
-    if (Object.hasOwn(proto, dialect)) {
-      // read through the branch map, so inherited getters see the instance
-      const branch = Reflect.get(proto, dialect, options)
-      return proto !== options && dialect === "constructor" && branch?.prototype === proto ? undefined : branch
-    }
-  }
-  return undefined
 }
 
 /**

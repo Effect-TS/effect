@@ -17,6 +17,7 @@ import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as FileSystem from "../FileSystem.ts"
 import { dual, identity, type LazyArg } from "../Function.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
@@ -613,10 +614,11 @@ export const layerSql = (
   Layer.effect(KeyValueStore)(
     Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      yield* requireDialect(sql, "KeyValueStore.layerSql")
       const tableName = options.table ?? "effect_key_value_store"
       const table = sql(tableName)
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mysql: () =>
           sql`
           CREATE TABLE IF NOT EXISTS ${table} (
@@ -642,7 +644,8 @@ export const layerSql = (
             value_type SMALLINT NOT NULL
           )
         `,
-        sqlite: () =>
+        // sqlite
+        orElse: () =>
           sql`
           CREATE TABLE IF NOT EXISTS ${table} (
             id TEXT PRIMARY KEY,
@@ -658,7 +661,7 @@ export const layerSql = (
         value_type: number
       }) => Effect.Effect<unknown, SqlError>
 
-      const upsert = sql.onDialect({
+      const upsert = sql.onDialectOrElse({
         pg: (): UpsertFn => (entry) =>
           sql`
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
@@ -678,7 +681,8 @@ export const layerSql = (
           WHEN NOT MATCHED THEN INSERT (id, value, value_type)
           VALUES (source.id, source.value, source.value_type);
         `,
-        sqlite: (): UpsertFn => (entry) =>
+        // sqlite
+        orElse: (): UpsertFn => (entry) =>
           sql`
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
           ON CONFLICT(id) DO UPDATE SET value=excluded.value, value_type=excluded.value_type
@@ -688,9 +692,9 @@ export const layerSql = (
       // The first LIKE uses the primary key index. On mysql and mssql it follows
       // the column collation, which is usually case / accent-insensitive, so a
       // second binary LIKE keeps only exact prefix matches.
-      const deleteByPrefix = sql.onDialect({
+      const deleteByPrefix = sql.onDialectOrElse({
         // sqlite LIKE is case-insensitive, so compare the leading characters
-        sqlite: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
+        orElse: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
         pg: () => (prefix: string) => sql`DELETE FROM ${table} WHERE id LIKE ${escapeLike(prefix)} ESCAPE '!'`,
         mysql: () => (prefix: string) => {
           const pattern = escapeLike(prefix)

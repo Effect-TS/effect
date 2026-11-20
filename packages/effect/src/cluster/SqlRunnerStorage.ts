@@ -22,6 +22,7 @@ import * as Cause from "../Cause.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
@@ -32,7 +33,6 @@ import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import { effectiveInterval } from "./internal/shardLock.ts"
-import { runStorageMigrations } from "./internal/sqlMigrations.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
 import * as ShardId from "./ShardId.ts"
 import * as ShardingConfig from "./ShardingConfig.ts"
@@ -66,6 +66,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const availableShardGroups = Array.from(shardGroups.available)
   const lockOperationInterval = effectiveInterval(config)
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  yield* requireDialect(sql, "SqlRunnerStorage")
   // PGlite runs every statement on one session, so advisory locks are shared by
   // every user of the client and a reserved connection would block all other
   // statements. Use table leases on the shared client instead.
@@ -218,11 +219,11 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const locksTable = table("locks")
   const locksTableSql = sql(locksTable)
 
-  const sqlNowString = sql.onDialect({
+  const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
     mysql: () => "NOW()",
     mssql: () => "GETDATE()",
-    sqlite: () => "CURRENT_TIMESTAMP"
+    orElse: () => "CURRENT_TIMESTAMP"
   })
   const sqlNow = sql.literal(sqlNowString)
 
@@ -231,11 +232,11 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const pgLockOrder = sql.literal(`ORDER BY shard_id COLLATE "C"`)
 
   const expiresSeconds = sql.literal(shardLockExpirationSeconds.toString())
-  const lockExpiresAt = sql.onDialect({
+  const lockExpiresAt = sql.onDialectOrElse({
     pg: () => sql`${sqlNow} - INTERVAL '${expiresSeconds} seconds'`,
     mysql: () => sql`DATE_SUB(${sqlNow}, INTERVAL ${expiresSeconds} SECOND)`,
     mssql: () => sql`DATEADD(SECOND, -${expiresSeconds}, ${sqlNow})`,
-    sqlite: () => sql`datetime(${sqlNow}, '-${expiresSeconds} seconds')`
+    orElse: () => sql`datetime(${sqlNow}, '-${expiresSeconds} seconds')`
   })
 
   const encodeBoolean = sql.onDialectOrElse({
@@ -245,7 +246,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   })
 
   // Upsert runner and return machine_id
-  const insertRunner = sql.onDialect({
+  const insertRunner = sql.onDialectOrElse({
     mssql: () => (address: string, runner: string, healthy: boolean) =>
       sql`
         MERGE ${runnersTableSql} AS target
@@ -282,7 +283,8 @@ const makeStorage = Effect.fnUntraced(function*(options: {
             healthy = EXCLUDED.healthy
         RETURNING machine_id
       `.values,
-    sqlite: () => (address: string, runner: string, healthy: boolean) =>
+    orElse: () => (address: string, runner: string, healthy: boolean) =>
+      // sqlite
       sql`
         INSERT INTO ${runnersTableSql} (address, runner, last_heartbeat, healthy)
         VALUES (${address}, ${runner}, ${sqlNow}, ${encodeBoolean(healthy)})
@@ -350,7 +352,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     return [held, notHeld] as const
   })
 
-  const acquireLock = sql.onDialect({
+  const acquireLock = sql.onDialectOrElse({
     pg: () => {
       if (disableAdvisoryLocks) {
         return (address: string, shardIds: ReadonlyArray<string>) => {
@@ -440,7 +442,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       )
     },
 
-    sqlite: () => (address: string, shardIds: ReadonlyArray<string>) => {
+    orElse: () => (address: string, shardIds: ReadonlyArray<string>) => {
       const values = shardIds.map((shardId) => sql`(${stringLiteral(shardId)}, ${stringLiteral(address)}, ${sqlNow})`)
       return sql`
         WITH source(shard_id, address, acquired_at) AS (VALUES ${sql.csv(values)})
@@ -525,7 +527,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   // An advisory lock refresh only confirms the locks the current lock session
   // holds. A replaced session has lost its predecessor's locks, possibly to
   // another runner in between, so reacquiring them here would hide the loss.
-  const refreshShards = sql.onDialect({
+  const refreshShards = sql.onDialectOrElse({
     pg: () => {
       if (!disableAdvisoryLocks) {
         return (_address: string, shardIds: ReadonlyArray<string>) =>
@@ -572,7 +574,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         OUTPUT inserted.shard_id
         WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string))),
-    sqlite: () => (address: string, shardIds: ReadonlyArray<string>) =>
+    orElse: () => (address: string, shardIds: ReadonlyArray<string>) =>
       sql`
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
@@ -810,7 +812,7 @@ export const migrations = (options: {
       const runnersTableSql = sql(runnersTable)
       const locksTableSql = sql(locksTable)
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${runnersTableSql}', N'U') IS NULL
@@ -845,7 +847,8 @@ export const migrations = (options: {
               UNIQUE(address)
             )
           `,
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${runnersTableSql} (
               machine_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -858,7 +861,7 @@ export const migrations = (options: {
           `
       })
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
             IF OBJECT_ID(N'${locksTableSql}', N'U') IS NULL
@@ -884,7 +887,8 @@ export const migrations = (options: {
               acquired_at TIMESTAMP NOT NULL
             )
           `,
-        sqlite: () =>
+        orElse: () =>
+          // sqlite
           sql`
             CREATE TABLE IF NOT EXISTS ${locksTableSql} (
               shard_id TEXT PRIMARY KEY,
@@ -900,8 +904,18 @@ export const migrations = (options: {
 const runRunnerMigrations = (options: {
   readonly prefix?: string | undefined
 }): Effect.Effect<void, never, SqlClient.SqlClient> =>
-  // Message and runner migration ids overlap, so keep separate histories.
-  runStorageMigrations(migrations(options), `${options.prefix ?? "cluster"}_runner_migrations`)
+  // Migrator also accepts ClickHouse, which this storage has no SQL for
+  SqlClient.SqlClient.use((sql) => requireDialect(sql, "SqlRunnerStorage")).pipe(
+    Effect.andThen(
+      Migrator.make({})({
+        loader: migrations(options),
+        // Message and runner migration ids overlap, so keep separate histories.
+        table: `${options.prefix ?? "cluster"}_runner_migrations`
+      })
+    ),
+    Effect.asVoid,
+    Effect.orDie
+  )
 
 /**
  * Runs the SQL runner storage migrations without providing storage.

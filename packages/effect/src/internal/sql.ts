@@ -1,6 +1,8 @@
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
 import type * as Fiber from "../Fiber.ts"
+import type * as Statement from "../sql/Statement.ts"
 import type * as Tracer from "../Tracer.ts"
 import { TracerTimingEnabled } from "./references.ts"
 
@@ -37,3 +39,30 @@ export const recordConnectionWait = (span: Tracer.Span, clock: Clock): void =>
     "db.client.connection.wait_time_ms",
     Number(clock.currentTimeNanosUnsafe() - span.status.startTime) / 1e6
   )
+
+/**
+ * Dies with an error naming `entryPoint` unless the client's dialect is one of
+ * `dialects`. The default is the dialects that the persistence, event log and
+ * cluster modules have SQL for.
+ *
+ * @internal
+ */
+export const requireDialect = (
+  sql: Pick<Statement.Constructor, "onDialectOrElse">,
+  entryPoint: string,
+  dialects: ReadonlyArray<Statement.Dialect> = ["sqlite", "pg", "mysql", "mssql"]
+): Effect.Effect<void> => {
+  const branches: Record<string, () => Effect.Effect<void>> = {}
+  for (const dialect of dialects) {
+    branches[dialect] = () => Effect.void
+  }
+  return sql.onDialectOrElse({
+    ...branches,
+    orElse: () =>
+      Effect.die(
+        new Error(
+          `${entryPoint} supports only the ${dialects.slice(0, -1).join(", ")} and ${dialects.at(-1)} SQL dialects`
+        )
+      )
+  })
+}

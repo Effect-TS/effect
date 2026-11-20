@@ -13,6 +13,7 @@ import * as Arr from "../Array.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import { identity, pipe } from "../Function.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as Client from "./SqlClient.ts"
@@ -134,8 +135,9 @@ export const make = <RD = never>({
 > =>
   Effect.gen(function*() {
     const sql = yield* Client.SqlClient
+    yield* requireDialect(sql, "Migrator.make", ["sqlite", "pg", "mysql", "mssql", "clickhouse"])
 
-    const createMigrationsTable = transformWrites(sql.onDialect({
+    const createMigrationsTable = transformWrites(sql.onDialectOrElse({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
   CREATE TABLE ${sql(table)} (
@@ -164,7 +166,7 @@ ORDER BY migration_id`,
   created_at timestamp with time zone not null default now(),
   name text not null
 )`,
-      sqlite: () =>
+      orElse: () =>
         sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
   migration_id integer PRIMARY KEY NOT NULL,
   created_at datetime NOT NULL DEFAULT current_timestamp,

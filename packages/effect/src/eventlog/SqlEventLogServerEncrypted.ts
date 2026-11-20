@@ -19,6 +19,7 @@ import * as Digest from "../crypto/Digest.ts"
 import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import { requireDialect } from "../internal/sql.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PubSub from "../PubSub.ts"
@@ -91,6 +92,7 @@ export const makeStorage = (options?: {
   Effect.gen(function*() {
     const digest = yield* Digest.Digest
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+    yield* requireDialect(sql, "SqlEventLogServerEncrypted.makeStorage")
     const config = yield* EventLogServerEncrypted.makeCompactionConfig(options?.compaction)
     const graceMillis = Duration.toMillis(config.grace)
     const lagMillis = Duration.toMillis(config.lag)
@@ -104,7 +106,7 @@ export const makeStorage = (options?: {
     const remoteIdTableSql = sql(remoteIdTable)
     const sessionAuthBindingsTableSql = sql(sessionAuthBindingsTable)
 
-    yield* sql.onDialect({
+    yield* sql.onDialectOrElse({
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
@@ -121,14 +123,14 @@ export const makeStorage = (options?: {
           CREATE TABLE ${remoteIdTableSql} (
             remote_id VARBINARY(16) PRIMARY KEY
           )`,
-      sqlite: () =>
+      orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${remoteIdTableSql} (
             remote_id BLOB PRIMARY KEY
           )`
     })
 
-    yield* sql.onDialect({
+    yield* sql.onDialectOrElse({
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
@@ -148,7 +150,7 @@ export const makeStorage = (options?: {
             public_key NVARCHAR(191) PRIMARY KEY,
             signing_public_key VARBINARY(32) NOT NULL
           )`,
-      sqlite: () =>
+      orElse: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${sessionAuthBindingsTableSql} (
             public_key TEXT PRIMARY KEY,
@@ -156,7 +158,7 @@ export const makeStorage = (options?: {
           )`
     })
 
-    const types = sql.onDialect({
+    const types = sql.onDialectOrElse({
       pg: () => ({ id: "TEXT", int: "INTEGER", bigint: "BIGINT", bytes: "BYTEA", entryId: "BYTEA", iv: "BYTEA" }),
       mysql: () => ({
         id: "VARCHAR(36)",
@@ -174,7 +176,7 @@ export const makeStorage = (options?: {
         entryId: "VARBINARY(16)",
         iv: "VARBINARY(12)"
       }),
-      sqlite: () => ({ id: "TEXT", int: "INTEGER", bigint: "INTEGER", bytes: "BLOB", entryId: "BLOB", iv: "BLOB" })
+      orElse: () => ({ id: "TEXT", int: "INTEGER", bigint: "INTEGER", bytes: "BLOB", entryId: "BLOB", iv: "BLOB" })
     })
     // Two instances can open the same table at once, and PostgreSQL and SQL
     // Server can fail the loser of a concurrent create, so creation retries.
@@ -298,7 +300,7 @@ export const makeStorage = (options?: {
       const { idsTableSql, tableSql } = tables
       const indexSql = sql(`${table}_last_sequence`)
 
-      yield* sql.onDialect({
+      yield* sql.onDialectOrElse({
         pg: () =>
           sql`
               CREATE TABLE IF NOT EXISTS ${tableSql} (
@@ -349,7 +351,7 @@ export const makeStorage = (options?: {
                 sequence INT NOT NULL
               )`)
           ),
-        sqlite: () =>
+        orElse: () =>
           sql`
               CREATE TABLE IF NOT EXISTS ${tableSql} (
                 sequence INTEGER PRIMARY KEY,
@@ -444,7 +446,7 @@ export const makeStorage = (options?: {
       })
 
     const upsertBucket = (scope: string, hour: number, lastSequence: number) =>
-      sql.onDialect({
+      sql.onDialectOrElse({
         pg: () =>
           sql`
             INSERT INTO ${bucketsSql} (scope, bucket_hour, last_sequence) VALUES (${scope}, ${hour}, ${lastSequence})
@@ -464,7 +466,7 @@ export const makeStorage = (options?: {
             WHEN NOT MATCHED THEN
               INSERT (scope, bucket_hour, last_sequence)
               VALUES (source.scope, source.bucket_hour, source.last_sequence);`,
-        sqlite: () =>
+        orElse: () =>
           sql`
             INSERT INTO ${bucketsSql} (scope, bucket_hour, last_sequence) VALUES (${scope}, ${hour}, ${lastSequence})
             ON CONFLICT (scope, bucket_hour)
