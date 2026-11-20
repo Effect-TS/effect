@@ -996,48 +996,25 @@ function schemasToResponse(
   const hasWithHeaders = schemas.some((schema) =>
     HttpApiSchema.isWithHeaders(schema) || HttpApiSchema.getWithHeadersAnnotation(schema.ast) !== undefined
   )
-  if (
-    !hasWithHeaders &&
-    !schemas.some((schema) => HttpApiSchema.getResponseEncoding(schema.ast)._tag === "FormUrlEncoded")
-  ) {
-    const decode = Schema.decodeUnknownEffect(
-      Schema.Union(schemas.map((s) => fromArrayBuffer(s).pipe(Schema.decodeTo(s)))),
-      options
-    )
-    return (response) => Effect.flatMap(response.arrayBuffer, decode)
-  }
-
-  const codecs = schemas.map((schema) =>
-    toResponseCodec(
-      schema,
-      hasWithHeaders ? HttpApiSchema.isWithHeaders(schema) ? schema : Schema.toType(schema) : Schema.Unknown,
-      options,
-      headersOptions
-    )
-  )
-  const decode = Schema.decodeUnknownEffect(Schema.Union(codecs), options)
+  const codec = hasWithHeaders
+    ? Schema.Union(schemas.map((schema) => toCodecArrayBufferWithHeaders(schema, options, headersOptions)))
+    : toCodecArrayBuffer(schemas)
+  const decode = Schema.decodeUnknownEffect(codec, options)
   return (response) =>
-    Effect.flatMap(response.arrayBuffer, (body) => {
-      const recoveries = new Map<Schema.Top, Record<string, unknown>>()
-      const input = { body, headers: response.headers, recoveries }
-      return Effect.catch(decode(input), (error) =>
-        recoveries.size === 0
-          ? Effect.fail(error)
-          : Schema.decodeUnknownEffect(Schema.Union([...recoveries.keys()]), options)(input))
-    })
+    Effect.flatMap(
+      response.arrayBuffer,
+      hasWithHeaders
+        ? (body) => decode({ body, headers: response.headers })
+        : decode
+    )
 }
 
-const ResponsePair = Schema.Struct({
-  body: Schema.Unknown,
-  headers: Schema.Unknown,
-  recoveries: Schema.instanceOf(Map<Schema.Top, Record<string, unknown>>)
-})
+const ResponsePair = Schema.Struct({ body: Schema.Unknown, headers: Schema.Unknown })
 
 // Decodes the body with `options` and the headers with `headersOptions`, so
 // they are not applied from the outer decode.
-function toResponseCodec(
+function toCodecArrayBufferWithHeaders(
   schema: Schema.Constraint,
-  target: Schema.Top,
   options: SchemaAST.ParseOptions | undefined,
   headersOptions: SchemaAST.ParseOptions | undefined
 ): Schema.Top {
@@ -1051,51 +1028,20 @@ function toResponseCodec(
     : HttpApiSchema.isWithHeaders(schema)
     ? { body: schema.schema, headers: schema.headers, toValue: HttpApiSchema.withHeaders }
     : { body: schema, headers: Schema.Unknown, toValue: (pair) => pair.body }
+  const decodeBody = Schema.decodeUnknownEffect(toBodyCodec(parts.body), options)
   const decodeHeaders = Schema.decodeUnknownEffect(parts.headers, headersOptions)
-  const decodeBody = Schema.decodeUnknownEffect(parts.body, options)
-  const parse = Schema.decodeUnknownEffect(fromArrayBuffer(parts.body), options)
-  const form = HttpApiSchema.getResponseEncoding(parts.body.ast)._tag === "FormUrlEncoded"
-  const codec: Schema.Top = ResponsePair.pipe(Schema.decodeTo(
-    target,
+  return ResponsePair.pipe(Schema.decodeTo(
+    HttpApiSchema.isWithHeaders(schema) ? schema : Schema.toType(schema),
     SchemaTransformation.transformEffect<unknown, typeof ResponsePair.Type, unknown, never>({
-      decode: (pair) => {
-        const retry = pair.recoveries.get(codec)
-        const body = retry !== undefined ? decodeBody(retry) : Effect.flatMap(parse(pair.body), (input) =>
-          form
-            ? Effect.tapError(decodeBody(input), (error) =>
-              Effect.sync(() => {
-                const fields = recoverFormFields(error.issue, input)
-                if (fields) pair.recoveries.set(codec, fields)
-              }))
-            : decodeBody(input))
-        return body.pipe(
-          Effect.flatMap((body) =>
-            Effect.map(decodeHeaders(pair.headers), (headers) => parts.toValue({ body, headers }))
-          ),
+      decode: (pair) =>
+        Effect.all({ body: decodeBody(pair.body), headers: decodeHeaders(pair.headers) }).pipe(
+          Effect.map(parts.toValue),
           Effect.mapError((error) => error.issue)
-        )
-      },
+        ),
       encode: (input, options) =>
         Effect.fail(new SchemaIssue.Forbidden({ message: "Decode only schema" }, input, options))
     })
   ))
-  return codec
-}
-
-// Only direct field type errors identify a wire value we can safely wrap.
-function recoverFormFields(issue: SchemaIssue.Issue, input: unknown) {
-  if (issue._tag !== "Composite" || !Predicate.isObject(input)) return
-  const fields: Record<string, unknown> = { ...input }
-  for (const child of issue.issues) {
-    if (
-      child._tag !== "Pointer" || child.path.length !== 1 || child.issue._tag !== "InvalidType" ||
-      !SchemaAST.isArrays(child.issue.ast)
-    ) return
-    const key = child.path[0]
-    if (typeof key !== "string" || !Object.hasOwn(input, key) || !Predicate.isString(input[key])) return
-    fields[key] = [input[key]]
-  }
-  return fields
 }
 
 const makeEndpointDecoder = (options: {
@@ -1470,6 +1416,18 @@ const UnknownFromArrayBuffer = StringFromArrayBuffer.pipe(Schema.decodeTo(
     Schema.UnknownFromJsonString
   ])
 ))
+
+function toCodecArrayBuffer(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]): Schema.Top {
+  return Schema.Union(schemas.map(toBodyCodec))
+}
+
+function toBodyCodec(schema: Schema.Constraint): Schema.Top {
+  return fromArrayBuffer(schema).pipe(Schema.decodeTo(
+    HttpApiSchema.getResponseEncoding(schema.ast)._tag === "FormUrlEncoded"
+      ? Schema.toCodecArrayFromSingle(schema)
+      : schema
+  ))
+}
 
 function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
   const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
