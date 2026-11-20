@@ -1767,6 +1767,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
       let done = false
       let i = 0
       for (const effect of all) {
+        if (done) break
         const index = i++
         // Register the fiber before it runs, so a race it settles during its
         // first step interrupts it.
