@@ -226,7 +226,7 @@ export const logger: <E, R>(
         if (state?.loggerDisabled) {
           return exit
         }
-        // Read on exit, as the router records the redacted path when it matches.
+        // Read on exit because the router records `redactedPath` on match.
         const path = state?.redactedPath !== undefined
           ? RedactedPath.format(state.redactedPath)
           : internalUrlParams.stripSearchAndHash(request.url)

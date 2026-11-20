@@ -76,7 +76,7 @@ describe("HttpRouter", () => {
       const app = Layer.mergeAll(
         HttpRouter.add("GET", "/hooks/:id/:secret", echoUrl, { redactedParams: ["secret"] }),
         HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] }),
-        // A nested regex capture shifts values across params, so every param is redacted.
+        // Nested regex capture shifts param indices, so all params are redacted.
         HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
         HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
         HttpRouter.use((router) =>
@@ -119,7 +119,6 @@ describe("HttpRouter", () => {
         "/vault/REDACTED",
         "/mounted/1/REDACTED"
       ]
-      // The handler still receives the raw URL unchanged.
       assert.strictEqual(bodies[0], "/hooks/123/s3cret?key=q")
       assert.deepStrictEqual(urls, expectedPaths)
       assert.deepStrictEqual(spans.map((span) => span.attributes.get("url.path")), expectedPaths)

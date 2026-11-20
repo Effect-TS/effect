@@ -2142,7 +2142,7 @@ describe("HttpApiBuilder RedactedNames", () => {
           "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
           // Fails query decoding, as `t` is missing: names apply before decoding.
           "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git",
-          // Fails with 500: the synthesized span error keeps both path and query redacted.
+          // 500 response: synthesized span error keeps path and query redacted.
           "/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=fail"
         ]
       ) {

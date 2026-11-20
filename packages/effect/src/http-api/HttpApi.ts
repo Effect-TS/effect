@@ -603,8 +603,6 @@ export const getEndpointRedactedNames = (
 }
 
 /**
- * Combines the `RedactedNames` path params of an API, group and endpoint.
- *
  * @internal
  */
 export const getEndpointRedactedParams = (
