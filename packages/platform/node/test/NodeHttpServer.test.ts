@@ -1142,6 +1142,42 @@ describe("HttpServer", () => {
       assert.strictEqual(res.status, 200)
     }))
 
+  it.live("keeps an error listener on the request after a streamed body is aborted", () =>
+    Effect.gen(function*() {
+      const server = Http.createServer()
+      const reading = yield* Latch.make()
+      const done = yield* Deferred.make<Http.IncomingMessage | Http2.Http2ServerRequest>()
+      yield* HttpRouter.add(
+        "POST",
+        "/",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const incoming = NodeHttpServerRequest.toIncomingMessage(request)
+          return yield* request.stream.pipe(
+            Stream.tap(() => reading.open),
+            Stream.runDrain,
+            Effect.as(HttpServerResponse.empty()),
+            Effect.onExit(() => Deferred.succeed(done, incoming))
+          )
+        })
+      ).pipe(
+        HttpRouter.serve,
+        Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+        Layer.build
+      )
+      const socket = Net.connect({ port: tcpPort(server), host: "127.0.0.1" }, () => {
+        socket.write("POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 1024\r\n\r\nhello")
+      })
+      socket.on("error", constVoid)
+      yield* Effect.addFinalizer(() => Effect.sync(() => socket.destroy()))
+      yield* reading.await
+      socket.destroy()
+      const incoming = yield* Deferred.await(done).pipe(Effect.timeout("2 seconds"))
+      assert.doesNotThrow(() => {
+        incoming.emit("error", new Error("aborted"))
+      })
+    }))
+
   it.effect("returns none when a late remoteAddress read finds no socket", () =>
     Effect.gen(function*() {
       const scope = yield* Effect.scope
