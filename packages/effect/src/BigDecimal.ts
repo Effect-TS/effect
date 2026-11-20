@@ -1380,7 +1380,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
   if (dot !== -1) {
     const lead = base.slice(0, dot)
     const trail = base.slice(dot + 1)
-    if (!/^\d*$/.test(trail)) {
+    if (!/^\d+$/.test(trail)) {
       return Option.none()
     }
     digits = `${lead}${trail}`
