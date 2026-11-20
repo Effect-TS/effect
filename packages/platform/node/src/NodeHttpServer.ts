@@ -235,8 +235,10 @@ export const make = Effect.fnUntraced(function*(
     response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
     response.end("service unavailable")
   }
-  server.on("request", unavailable)
-  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable))))
+  yield* Effect.acquireRelease(
+    Effect.sync(() => server.on("request", unavailable)),
+    () => Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable)))
+  )
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
