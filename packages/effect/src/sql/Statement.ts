@@ -529,7 +529,10 @@ export type Helper =
 // A mapped constraint accepts interfaces without an index signature.
 type DialectBranches<X> = { readonly [K in keyof X]: (() => unknown) | undefined }
 
-type DialectBranchResult<F> = F extends () => infer R ? R : never
+// Distributes over X, so each member of a union branch map contributes its keys.
+type DialectBranchResult<X> = X extends unknown ? BranchResult<X[keyof X]> : never
+
+type BranchResult<F> = F extends () => infer R ? R : never
 
 /**
  * SQL tagged-template constructor and helper API for building parameterized
@@ -646,7 +649,7 @@ export interface Constructor {
       readonly mssql?: () => E
       readonly clickhouse?: () => F
     } & X
-  ) => A | B | C | D | E | F | DialectBranchResult<X[keyof X]>
+  ) => A | B | C | D | E | F | DialectBranchResult<X>
 }
 
 /**

@@ -13,6 +13,12 @@ describe("Statement", () => {
     expect<"spark">().type.toBeAssignableTo<Statement.CompilerOptions["dialect"]>()
     const fallback = sql.onDialectOrElse({ spark: () => "custom", orElse: () => false })
     expect(fallback).type.toBe<string | boolean>()
+
+    const union = {} as
+      | { spark: () => number; orElse: () => string }
+      | { trino: () => boolean; orElse: () => string }
+    const unionResult = sql.onDialectOrElse(union)
+    expect(unionResult).type.toBe<string | number | boolean>()
   })
 
   it("accepts named branch maps and rejects custom branches hidden by explicit generics", () => {
