@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Return HTTP 503 for unhandled requests during `NodeHttpServer` startup.
+Return HTTP 503 for requests received while `NodeHttpServer` is not serving.

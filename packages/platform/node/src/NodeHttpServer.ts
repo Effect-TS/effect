@@ -148,8 +148,6 @@ export interface Options extends Net.ListenOptions {
     | undefined
 }
 
-const unavailableHeaders = { "cache-control": "no-store", "retry-after": "1" }
-
 /**
  * Creates a scoped `HttpServer` from a Node `http.Server` or `node:http2`
  * server, starts listening with the supplied options, registers request and
@@ -231,45 +229,15 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  // A request listener would enable HTTP/2 compatibility mode and change native CONNECT handling.
-  const nativeStreams = new WeakSet<Http2.ServerHttp2Stream>()
-  let activeServes = 0
-  let removeFallback: (() => void) | undefined
-  const installFallback = () => {
-    if (removeFallback || scope.state._tag === "Closed") return
-    const emit = server.emit
-    const ownEmit = Object.getOwnPropertyDescriptor(server, "emit")
-    let active = true
-    const emitWithFallback: typeof emit = function(this: Http.Server, event: string | symbol, ...args: Array<any>) {
-      if (!active || this !== server) return emit.call(this, event, ...args)
-      if (event === "stream" && args[0]?.session?.server === server && typeof args[0].respond === "function") {
-        const stream: Http2.ServerHttp2Stream = args[0]
-        // Compatibility dispatch emits a nested request. Leave it to any native stream responder.
-        if (this.listenerCount("stream") > 1) nativeStreams.add(stream)
-        if (!emit.call(this, event, ...args)) {
-          stream.respond({ ":status": 503, ...unavailableHeaders })
-          stream.end("service unavailable")
-        }
-        return true
-      }
-      const handled = emit.call(this, event, ...args)
-      if (handled || event !== "request" || nativeStreams.has(args[0].stream)) return handled
-      const response: Http.ServerResponse = args[1]
-      response.writeHead(503, unavailableHeaders)
-      response.end("service unavailable")
-      return true
-    }
-    server.emit = emitWithFallback
-    removeFallback = () => {
-      removeFallback = undefined
-      active = false
-      if (server.emit !== emitWithFallback) return
-      if (ownEmit) Object.defineProperty(server, "emit", ownEmit)
-      else Reflect.deleteProperty(server, "emit")
-    }
+  yield* Scope.addFinalizer(scope, shutdown)
+
+  // Answers requests that arrive while no application is being served.
+  const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
+    if (server.listenerCount("request") > 1) return
+    response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
+    response.end("service unavailable")
   }
-  installFallback()
-  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => removeFallback?.())))
+  server.on("request", unavailable)
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
@@ -332,43 +300,28 @@ export const make = Effect.fnUntraced(function*(
         pendingContinue.add(request)
         handler(request, response)
       }
-      const removeListeners = () => {
-        server.off("request", handler)
-        server.off("checkContinue", checkContinueHandler)
-        server.off("upgrade", trackedUpgrade)
-      }
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          try {
-            server.on("request", handler)
-            server.on("checkContinue", checkContinueHandler)
-            server.on("upgrade", trackedUpgrade)
-          } catch (cause) {
-            removeListeners()
-            throw cause
-          }
-          activeServes++
-          removeFallback?.()
-        }),
-        () => {
-          upgradesClosed = true
-          for (const socket of upgradedSockets) {
-            const ws = upgradedWebSockets.get(socket)
-            if (ws) ws.close(1001)
-            else socket.end()
-          }
-          return Effect.ensuring(
-            preemptiveShutdown,
-            Effect.sync(() => {
-              for (const socket of upgradedSockets) {
-                socket.destroy()
-              }
-              removeListeners()
-              if (--activeServes === 0) installFallback()
-            })
-          )
+      yield* Scope.addFinalizerExit(serveScope, () => {
+        upgradesClosed = true
+        for (const socket of upgradedSockets) {
+          const ws = upgradedWebSockets.get(socket)
+          if (ws) ws.close(1001)
+          else socket.end()
         }
-      )
+        return Effect.ensuring(
+          preemptiveShutdown,
+          Effect.sync(() => {
+            for (const socket of upgradedSockets) {
+              socket.destroy()
+            }
+            server.off("request", handler)
+            server.off("checkContinue", checkContinueHandler)
+            server.off("upgrade", trackedUpgrade)
+          })
+        )
+      })
+      server.on("request", handler)
+      server.on("checkContinue", checkContinueHandler)
+      server.on("upgrade", trackedUpgrade)
     })
   })
 })
