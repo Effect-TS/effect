@@ -229,8 +229,6 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  yield* Scope.addFinalizer(scope, shutdown)
-
   // Answers requests that arrive while no application is being served.
   const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
     if (server.listenerCount("request") > 1) return
@@ -238,6 +236,7 @@ export const make = Effect.fnUntraced(function*(
     response.end("service unavailable")
   }
   server.on("request", unavailable)
+  yield* Scope.addFinalizer(scope, Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable))))
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
