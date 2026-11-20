@@ -1716,6 +1716,32 @@ describe("Effect", () => {
       }))
   }
 
+  for (const [name, raceAll] of [["raceAll", Effect.raceAll], ["raceAllFirst", Effect.raceAllFirst]] as const) {
+    it.effect(`${name} interrupts a loser that synchronously settles the race during its first step`, () =>
+      Effect.gen(function*() {
+        const stop = yield* Deferred.make<string>()
+        let afterSettleRan = false
+        let loserExit: Exit.Exit<number> | undefined
+        const result = yield* raceAll([
+          Deferred.await(stop),
+          Deferred.succeed(stop, "stop").pipe(
+            Effect.andThen(Effect.sync(() => {
+              afterSettleRan = true
+              return 41
+            })),
+            Effect.onExit((exit) =>
+              Effect.sync(() => {
+                loserExit = exit
+              })
+            )
+          )
+        ])
+        assert.strictEqual(result, "stop")
+        assert.isFalse(afterSettleRan)
+        assert.isTrue(loserExit !== undefined && Exit.isFailure(loserExit) && Cause.hasInterruptsOnly(loserExit.cause))
+      }))
+  }
+
   describe("schedule", () => {
     it.effect("schedule and scheduleFrom preserve source Done failures", () =>
       Effect.gen(function*() {
