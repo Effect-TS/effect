@@ -49,6 +49,12 @@ export * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.5
+ */
+export * as OpenRouterTranscriptionModel from "./OpenRouterTranscriptionModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.1.3
  */
 export * as OpenRouterWorkloadIdentity from "./OpenRouterWorkloadIdentity.ts"
