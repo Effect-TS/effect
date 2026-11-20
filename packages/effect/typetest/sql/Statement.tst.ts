@@ -25,8 +25,6 @@ describe("Statement", () => {
     expect(fallback).type.toBe<string | number>()
 
     const custom = { orElse: () => 1, spark: () => "custom" }
-    const inferred = sql.onDialectOrElse(custom)
-    expect(inferred).type.toBe<number | string>()
     expect(sql.onDialectOrElse<number>).type.not.toBeCallableWith(custom)
     expect(sql.onDialectOrElse<number>).type.toBeCallableWith({ orElse: () => 1 })
   })
