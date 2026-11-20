@@ -1670,9 +1670,22 @@ export class Transaction {
   // Atomic publication
   // ---------------------------------------------------------------------------
 
-  transitionResult<A>(value: A, acquiringFile = false) {
+  transitionResult<A>(
+    value: A,
+    acquiringFile = false
+  ): Result.Result<
+    R.ResultTransition<A> & { readonly publish: () => Result.Result<void, M.OperationError> },
+    M.OperationError
+  > {
+    const engine = this.engine
+    if (
+      !acquiringFile && this.changes.size === 0 && this.timeRequests.size === 0 && this.products.length === 0 &&
+      this.pendingRead === undefined && this.pendingPosition === undefined && this.pendingCaller === undefined &&
+      this.mutations === undefined && this.nextObject === engine.nextObject && this.nextBinding === engine.nextBinding
+    ) {
+      return Result.succeed({ value, publish: () => Result.succeed(undefined) })
+    }
     return Result.gen(this, function*() {
-      const engine = this.engine
       let capacityUnchanged = true
       for (const [id, node] of this.changes) {
         const before = engine.nodes.get(id)
