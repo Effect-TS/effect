@@ -329,6 +329,54 @@ describe("MessageStorage", () => {
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
 
+    it.effect("an interrupted reply handler does not stop a later handler for the same request", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const latch = yield* Latch.make()
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+
+        const first = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(first)
+
+        const second = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () => latch.open
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* storage.saveReply(yield* makeReply(request))
+        yield* latch.await
+        const exit = yield* Fiber.await(second)
+        assert(Exit.isSuccess(exit))
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("interrupting one reply handler keeps the other handlers for the request", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const latch = yield* Latch.make()
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+
+        const kept = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () => latch.open
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        const interrupted = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(interrupted)
+
+        yield* storage.saveReply(yield* makeReply(request))
+        yield* latch.await
+        const exit = yield* Fiber.await(kept)
+        assert(Exit.isSuccess(exit))
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unregisterShardReplyHandlers fails parked waiters during rebalance", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage

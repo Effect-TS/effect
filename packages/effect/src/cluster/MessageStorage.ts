@@ -660,8 +660,14 @@ export const make = (
           shardSet.add(entry)
           return Effect.sync(() => {
             const index = handlers.indexOf(entry)
-            handlers.splice(index, 1)
+            if (index !== -1) handlers.splice(index, 1)
             shardSet.delete(entry)
+            // An interrupted waiter gets no reply, so nothing else removes its
+            // request id. Drop the entry once its last waiter leaves, unless a
+            // newer registration already replaced it.
+            if (handlers.length === 0 && replyHandlers.get(requestId) === handlers) {
+              replyHandlers.delete(requestId)
+            }
           })
         })
       },
