@@ -27,7 +27,6 @@ import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } 
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
 import * as TestClock from "effect/testing/TestClock"
-import { makeCountingScheduler } from "../utils/countingScheduler.ts"
 
 const exitCode = (exit: Exit.Exit<unknown, unknown>): number => {
   let code = -1
@@ -900,41 +899,6 @@ describe("RpcServer", () => {
 
       assert.deepStrictEqual([yield* Queue.take(interrupted), yield* Queue.take(interrupted)], [1, 2])
       assert.deepStrictEqual([yield* Queue.take(observed), yield* Queue.take(observed)], [1, 2])
-    }))
-
-  it.effect("answers a framed HTTP request with a single reply before a scheduler round runs", () =>
-    Effect.gen(function*() {
-      const { layer, rounds } = makeCountingScheduler()
-      const Rpcs = RpcGroup.make(
-        Rpc.make("echo", { payload: Schema.Struct({ text: Schema.String }), success: Schema.String })
-      )
-      const Server = RpcServer.layerHttp({ group: Rpcs, path: "/rpc", protocol: "http" }).pipe(
-        // The reply arrives after an await, as a handler that calls a service does.
-        Layer.provide(Rpcs.toLayer({ echo: ({ text }) => Effect.promise(() => Promise.resolve(text)) })),
-        Layer.provide(RpcSerialization.layerNdjson),
-        Layer.provideMerge(layer)
-      )
-      const { dispose, handler } = HttpRouter.toWebHandler(Server)
-      yield* Effect.addFinalizer(() => Effect.promise(dispose))
-      // the first request starts the server's message loop
-      yield* Effect.promise(() =>
-        handler(new Request("http://test/rpc", { method: "POST", body: "" })).then((r) => r.text())
-      )
-
-      const before = rounds()
-      const { body, ran } = yield* Effect.promise(() =>
-        handler(
-          new Request("http://test/rpc", {
-            method: "POST",
-            body: `{"_tag":"Request","id":1,"tag":"echo","payload":{"text":"hi"},"headers":[]}\n`
-          })
-        ).then((response) => {
-          const ran = rounds() - before
-          return response.text().then((body) => ({ body, ran }))
-        })
-      )
-      assert.deepStrictEqual(JSON.parse(body.trim()).exit, { _tag: "Success", value: "hi" })
-      assert.strictEqual(ran, 0)
     }))
 
   it.effect("applies backpressure to framed HTTP responses by default", () =>

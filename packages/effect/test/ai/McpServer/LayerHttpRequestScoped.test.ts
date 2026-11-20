@@ -10,8 +10,8 @@ import * as Effect from "effect/Effect"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as Scheduler from "effect/Scheduler"
 import * as Schema from "effect/Schema"
-import { makeCountingScheduler } from "../../utils/countingScheduler.ts"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import { layer as makeMcpConformanceLayer } from "./McpConformance/McpConformance.ts"
@@ -102,28 +102,32 @@ const reportProgress = (server: McpServer.McpServer["Service"]) =>
 describe("McpServer.layerHttpRequestScoped", () => {
   it.live("answers an asynchronous tools/call before a scheduler round runs", () =>
     Effect.gen(function*() {
-      const { layer, rounds } = makeCountingScheduler()
-      const tools = Toolkit.make(
-        Tool.make("Echo", { parameters: Schema.Struct({ text: Schema.String }), success: Schema.String })
-      )
+      let rounds = 0
+      const scheduler = new Scheduler.MixedScheduler("async", (task) => {
+        const handle = setImmediate(() => {
+          rounds++
+          task()
+        })
+        return () => clearImmediate(handle)
+      })
+      const tools = Toolkit.make(Tool.make("Echo", { success: Schema.String }))
       const harness = yield* makeHttpHarness(
         McpServer.toolkit(tools).pipe(
-          Layer.provide(tools.toLayer({ Echo: ({ text }) => Effect.promise(() => Promise.resolve(text)) })),
+          Layer.provide(tools.toLayer({ Echo: () => Effect.promise(() => Promise.resolve("hi")) })),
           Layer.provideMerge(makeServerLayer({ name: "Echo", protocols: [protocol], mode: "request" })),
-          Layer.provideMerge(layer)
+          Layer.provideMerge(Layer.succeed(Scheduler.Scheduler)(scheduler))
         )
       )
       const call = (id: number) => {
-        const { body, headers } = callTool("Echo", id, { text: "hi" })
+        const { body, headers } = callTool("Echo", id)
         return harness.post(body, headers)
       }
       // Build the server before measuring the request.
       yield* readMcpHttpResponse(yield* call(0))
-      const before = rounds()
+      const before = rounds
       const response = yield* call(1)
-      const ran = rounds() - before
+      assert.strictEqual(rounds, before)
       assert.nestedPropertyVal(yield* readMcpHttpResponse(response), "result.content[0].text", JSON.stringify("hi"))
-      assert.strictEqual(ran, 0)
     }))
 
   it.live("should expose tools registered after the first POST in later lists and discovery", () =>

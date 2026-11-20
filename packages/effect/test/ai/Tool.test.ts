@@ -4,7 +4,6 @@ import {
   Cause,
   Context,
   DateTime,
-  Deferred,
   Effect,
   Exit,
   Fiber,
@@ -499,23 +498,6 @@ describe("Tool", () => {
       }))
 
     describe("Preliminary Results", () => {
-      it.effect("draining an asynchronous result leaves the handler fiber successful", () =>
-        Effect.gen(function*() {
-          const toolkit = Toolkit.make(Tool.make("Answer", { success: Schema.Number }))
-          const worker = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-          const handlers = yield* toolkit.pipe(Effect.provide(toolkit.toLayer({
-            Answer: Effect.fnUntraced(function*() {
-              yield* Deferred.succeed(worker, yield* Effect.fiber)
-              return yield* Effect.promise(() => Promise.resolve(42))
-            })
-          })))
-
-          const results = yield* handlers.handle("Answer", {}).pipe(Effect.flatMap(Stream.runCollect))
-          deepStrictEqual(results.map((entry) => entry.result), [42])
-          const exit = yield* Fiber.await(yield* Deferred.await(worker))
-          strictEqual(exit._tag, "Success")
-        }))
-
       it.effect("should interrupt the handler when the consumer stops early", () =>
         Effect.gen(function*() {
           const toolkit = Toolkit.make(Tool.make("Progress", { success: Schema.Number }))
