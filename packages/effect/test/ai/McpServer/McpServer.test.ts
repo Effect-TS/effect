@@ -2628,18 +2628,27 @@ describe("McpServer", () => {
     const modelOutputAudio = new Uint8Array([4, 5, 6])
     const modelOutputUrl = new URL("https://example.com/report.png")
     const makeModelOutputToolkitLayer = () => {
-      const toolkit = Toolkit.make(Tool.make("ModelOutputTool", {
-        success: Schema.Struct({ ok: Schema.Boolean }),
-        toModelOutput: () => [
-          Prompt.textPart({ text: "Captured" }),
-          Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
-          Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
-          Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
-          Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
-        ]
-      }))
+      const toolkit = Toolkit.make(
+        Tool.make("ModelOutputTool", {
+          success: Schema.Struct({ ok: Schema.Boolean }),
+          toModelOutput: () => [
+            Prompt.textPart({ text: "Captured" }),
+            Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
+            Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
+            Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
+            Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
+          ]
+        }),
+        Tool.make("QuotedModelOutputTool", {
+          success: Schema.String,
+          toModelOutput: (value) => [Prompt.textPart({ text: JSON.stringify(value) })]
+        })
+      )
       return Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
-        Layer.provide(toolkit.toLayer({ ModelOutputTool: () => Effect.succeed({ ok: true }) }))
+        Layer.provide(toolkit.toLayer({
+          ModelOutputTool: () => Effect.succeed({ ok: true }),
+          QuotedModelOutputTool: () => Effect.succeed("hello")
+        }))
       )
     }
 
@@ -2665,6 +2674,9 @@ describe("McpServer", () => {
           },
           { type: "text", text: "[application/pdf doc.pdf omitted]" }
         ])
+
+        const quoted = yield* client.callTool({ name: "QuotedModelOutputTool", arguments: {} })
+        assert.deepStrictEqual(quoted.content, [{ type: "text", text: JSON.stringify("hello") }])
       }))
 
     it.effect("downgrades unsupported toModelOutput blocks to text on 2024-11-05", () =>

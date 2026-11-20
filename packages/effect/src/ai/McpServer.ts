@@ -3490,15 +3490,21 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
                 const parts = result.modelOutput
                 return Effect.map(
                   Effect.serviceOption(McpRequestContext),
-                  (requestContext) =>
-                    new CallToolResult({
+                  (requestContext) => {
+                    const protocolVersion = Option.isSome(requestContext)
+                      ? requestContext.value.protocolVersion
+                      : undefined
+                    // Pre-2026 adapters drop string structuredContent and unquote a matching single-text mirror.
+                    const omitStructuredContent = result.result === undefined ||
+                      (typeof result.encodedResult === "string" &&
+                        protocolVersion !== undefined &&
+                        protocolVersion < "2026-07-28")
+                    return new CallToolResult({
                       isError: false,
-                      ...(result.result === undefined ? {} : { structuredContent: result.encodedResult }),
-                      content: modelOutputContent(
-                        parts,
-                        Option.isSome(requestContext) ? requestContext.value.protocolVersion : undefined
-                      )
+                      ...(omitStructuredContent ? {} : { structuredContent: result.encodedResult }),
+                      content: modelOutputContent(parts, protocolVersion)
                     })
+                  }
                 )
               }
               // An absent result, such as `Schema.Void`, has no structured form.
