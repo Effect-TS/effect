@@ -500,7 +500,7 @@ describe("Tool", () => {
     describe("Model Output", () => {
       const Lookup = Tool.make("Lookup", {
         parameters: Schema.Struct({ mode: Schema.Literals(["override", "fail", "default"]) }),
-        success: Schema.Struct({ id: Schema.String }),
+        success: Schema.Struct({ id: Schema.FiniteFromString }),
         failure: Schema.String,
         failureMode: "return",
         toModelOutput: (result) => [Prompt.textPart({ text: `mapped ${result.id}` })]
@@ -514,13 +514,13 @@ describe("Tool", () => {
         Lookup: Effect.fnUntraced(function*({ mode }, ctx) {
           if (mode === "override") {
             yield* ctx.modelOutput([Prompt.textPart({ text: "first" })])
-            yield* ctx.preliminary({ id: "partial" })
+            yield* ctx.preliminary({ id: 0 })
             yield* ctx.modelOutput([Prompt.textPart({ text: "second" })])
           } else if (mode === "fail") {
             yield* ctx.modelOutput([Prompt.textPart({ text: "from handler" })])
             return yield* Effect.fail("nope")
           }
-          return { id: "a" }
+          return { id: 1 }
         }),
         Plain: Effect.fnUntraced(function*({ override }, ctx) {
           if (override) {
@@ -539,8 +539,8 @@ describe("Tool", () => {
           assertTrue(lookup[0]!.preliminary)
           strictEqual(lookup[0]!.modelOutput, undefined)
           deepStrictEqual(lookup[1]?.modelOutput, [Prompt.textPart({ text: "second" })])
-          deepStrictEqual(lookup[1]?.result, { id: "a" })
-          deepStrictEqual(lookup[1]?.encodedResult, { id: "a" })
+          deepStrictEqual(lookup[1]?.result, { id: 1 })
+          deepStrictEqual(lookup[1]?.encodedResult, { id: "1" })
 
           const plain = yield* handlers.handle("Plain", { override: true }).pipe(Effect.flatMap(Stream.runCollect))
           strictEqual(plain.length, 1)
@@ -560,8 +560,8 @@ describe("Tool", () => {
           strictEqual(failed[0]!.encodedResult, "nope")
 
           const lookup = yield* handlers.handle("Lookup", { mode: "default" }).pipe(Effect.flatMap(Stream.runCollect))
-          deepStrictEqual(lookup[0]?.modelOutput, [Prompt.textPart({ text: "mapped a" })])
-          deepStrictEqual(lookup[0]?.encodedResult, { id: "a" })
+          deepStrictEqual(lookup[0]?.modelOutput, [Prompt.textPart({ text: "mapped 1" })])
+          deepStrictEqual(lookup[0]?.encodedResult, { id: "1" })
 
           const plain = yield* handlers.handle("Plain", { override: false }).pipe(Effect.flatMap(Stream.runCollect))
           strictEqual(plain[0]?.modelOutput, undefined)
