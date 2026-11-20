@@ -229,7 +229,16 @@ export const make = Effect.fnUntraced(function*(
       orElse: () => Effect.void
     })
 
-  yield* Scope.addFinalizer(scope, shutdown)
+  // Return 503 instead of dropping requests while no other `request` listener is attached.
+  const unavailable = (_request: Http.IncomingMessage, response: Http.ServerResponse) => {
+    if (server.listenerCount("request") > 1) return
+    response.writeHead(503, { "cache-control": "no-store", "retry-after": "1" })
+    response.end("service unavailable")
+  }
+  yield* Effect.acquireRelease(
+    Effect.sync(() => server.on("request", unavailable)),
+    () => Effect.ensuring(shutdown, Effect.sync(() => server.off("request", unavailable)))
+  )
 
   yield* Effect.callback<void, ServeError>((resume) => {
     function onError(cause: Error) {
