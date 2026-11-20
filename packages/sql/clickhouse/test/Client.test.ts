@@ -76,7 +76,8 @@ describe("ClickhouseClient", { concurrent: false }, () => {
     const sql = Statement.make(Effect.void as any, ClickhouseClient.makeCompiler(), [], undefined)
 
     assert.strictEqual(
-      sql.onDialect({
+      sql.onDialectOrElse({
+        orElse: () => "other",
         sqlite: () => "sqlite",
         pg: () => "pg",
         mysql: () => "mysql",

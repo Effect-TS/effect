@@ -1,10 +1,17 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Fiber, Layer, Option, References, Stream, Tracer } from "effect"
+import { Cause, Effect, Fiber, Layer, Option, References, type Scope, Stream, Tracer } from "effect"
+import * as ShardingConfig from "effect/cluster/ShardingConfig"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
+import * as Digest from "effect/crypto/Digest"
+import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
+import * as SqlEventLogServerEncrypted from "effect/eventlog/SqlEventLogServerEncrypted"
+import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as PersistedQueue from "effect/persistence/PersistedQueue"
+import * as Persistence from "effect/persistence/Persistence"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as Migrator from "effect/sql/Migrator"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
@@ -20,7 +27,11 @@ const sparkOptions: Statement.CompilerOptions = {
 }
 
 describe("Statement", () => {
-  it("dispatches custom dialects and reports missing strict branches", () => {
+  it("dispatches custom dialects with onDialectOrElse", () => {
+    const sql = Statement.make(Effect.die("unexpected query"), Statement.makeCompiler(sparkOptions), [], undefined)
+    assert.strictEqual(sql.onDialectOrElse({ spark: () => "custom", orElse: () => "fallback" }), "custom")
+    assert.strictEqual(sql.onDialectOrElse({ pg: () => "pg", orElse: () => "fallback" }), "fallback")
+
     const inherited = Statement.make(
       Effect.die("unexpected query"),
       Statement.makeCompiler({ ...sparkOptions, dialect: "toString" }),
@@ -28,76 +39,54 @@ describe("Statement", () => {
       undefined
     )
     assert.strictEqual(inherited.onDialectOrElse({ orElse: () => "fallback" }), "fallback")
-    assert.throws(
-      () => inherited.onDialect({ pg: () => 1 }),
-      /Unsupported SQL dialect "toString"\. Supported dialects: pg/
-    )
-
-    const sql = Statement.make(Effect.die("unexpected query"), Statement.makeCompiler(sparkOptions), [], undefined)
-    class Branches {
-      spark() {
-        return this.label()
-      }
-      label() {
-        return "receiver"
-      }
-    }
-    assert.strictEqual(sql.onDialect(new Branches()), "receiver")
-    class GetterBranches {
-      #branch = () => "getter"
-      get spark() {
-        return this.#branch
-      }
-      orElse() {
-        return "fallback"
-      }
-    }
-    assert.strictEqual(sql.onDialect(new GetterBranches()), "getter")
-    assert.strictEqual(sql.onDialectOrElse(new GetterBranches()), "getter")
-
-    const ctor = Statement.make(
-      Effect.die("unexpected query"),
-      Statement.makeCompiler({ ...sparkOptions, dialect: "constructor" }),
-      [],
-      undefined
-    )
-    class Fallback {
-      pg() {
-        return 1
-      }
-      orElse() {
-        return "fallback"
-      }
-    }
-    assert.strictEqual(ctor.onDialectOrElse(new Fallback()), "fallback")
-    assert.throws(() => ctor.onDialect(new Fallback()), /Unsupported SQL dialect "constructor"/)
-    assert.strictEqual(ctor.onDialect({ constructor: () => "explicit" }), "explicit")
   })
 
   it.effect("rejects unsupported storage dialects before acquiring a connection", () =>
     Effect.gen(function*() {
-      const cases = [
-        ["spark", KeyValueStore.layerSql()],
-        // These run `Migrator`, which accepts ClickHouse
-        ["clickhouse", PersistedQueue.layerStoreSql()],
-        ["clickhouse", SqlMessageStorage.layerMigrations({})],
-        ["clickhouse", SqlRunnerStorage.layerMigrations({})]
-      ] as const
-      for (const [dialect, layer] of cases) {
+      const fourDialects = /supports only the sqlite, pg, mysql and mssql SQL dialects/
+      const cases: ReadonlyArray<
+        readonly [
+          Statement.Dialect,
+          Effect.Effect<
+            unknown,
+            unknown,
+            SqlClient.SqlClient | Digest.Digest | ShardingConfig.ShardingConfig | Scope.Scope
+          >,
+          RegExp
+        ]
+      > = [
+        ["spark", Layer.build(KeyValueStore.layerSql()), fourDialects],
+        ["clickhouse", Layer.build(Persistence.layerBackingSql), fourDialects],
+        ["clickhouse", Layer.build(Persistence.layerBackingSqlMultiTable), fourDialects],
+        ["clickhouse", Layer.build(PersistedQueue.layerStoreSql()), fourDialects],
+        ["clickhouse", SqlEventJournal.make(), fourDialects],
+        ["clickhouse", SqlEventLogServerEncrypted.makeStorage(), fourDialects],
+        ["clickhouse", SqlEventLogServerUnencrypted.makeStorage(), fourDialects],
+        ["clickhouse", Layer.build(SqlMessageStorage.layerMigrations({})), fourDialects],
+        ["clickhouse", SqlMessageStorage.makeEncodedStorage(), fourDialects],
+        ["clickhouse", Layer.build(SqlRunnerStorage.layerMigrations({})), fourDialects],
+        ["clickhouse", Layer.build(SqlRunnerStorage.layerStorage({})), fourDialects],
+        [
+          "spark",
+          Migrator.make({})({ loader: Effect.succeed([]) }),
+          /supports only the sqlite, pg, mysql, mssql and clickhouse SQL dialects/
+        ]
+      ]
+      for (const [dialect, effect, expected] of cases) {
         const sql = yield* SqlClient.make({
           driver: "test",
           compiler: Statement.makeCompiler({ ...sparkOptions, dialect }),
           acquirer: Effect.die("unexpected query"),
           spanAttributes: []
         })
-        const cause = yield* Layer.build(layer).pipe(
+        const cause = yield* effect.pipe(
           Effect.provideService(SqlClient.SqlClient, sql),
           Effect.sandbox,
           Effect.flip
         )
-        assert.match(String(Cause.squash(cause)), new RegExp(`Unsupported SQL dialect "${dialect}"`))
+        assert.match(String(Cause.squash(cause)), expected)
       }
-    }).pipe(Effect.provide(Reactivity.layer)))
+    }).pipe(Effect.provide(Layer.mergeAll(Reactivity.layer, Digest.layerWebCrypto, ShardingConfig.layerDefaults))))
 
   it("transforms SQL result names without changing nested values", () => {
     const rows: Array<Record<string, unknown>> = [
