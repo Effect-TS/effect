@@ -319,7 +319,10 @@ const renderResponseSet = (
     }
 
     if (response.isEmpty) {
-      rendered.push(Codegen.code`${HttpApiSchema}.Empty(${status})`)
+      const annotation = response.description === undefined
+        ? ""
+        : `.annotate({ description: ${JSON.stringify(response.description)} })`
+      rendered.push(Codegen.code`${HttpApiSchema}.Empty(${status})${annotation}`)
       continue
     }
 
