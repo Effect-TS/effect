@@ -127,12 +127,9 @@ export const make = Effect.gen(function*() {
     return entity!
   }
 
-  const activities = new Map<string, {
-    readonly activity: Activity.Any
-    readonly context: Context.Context<any>
-    completed?: { readonly requestId: Snowflake.Snowflake; readonly result: Workflow.Complete<any, any> }
-  }>()
-  const interruptedActivities = new Set<string>()
+  // A registration belongs to the caller waiting on it, and lasts as long as
+  // that caller. `result` is what the handler last produced for it.
+  const activities = new Map<string, ActivityRegistration>()
   const deferredState = WorkflowEngine.makeDeferredState()
   // Rebuilds share an activation; overlapping activations have separate results.
   // Weak keys do not retain scopes, but contexts captured by clients, activities,
@@ -596,20 +593,21 @@ export const make = Effect.gen(function*() {
               },
 
               activity(request: Entity.Request<any>) {
-                const payload = request.payload as { name: string; attempt: number; withTransaction?: boolean }
-                const activityId = `${executionId}/${activityPrimaryKey(payload.name, payload.attempt)}`
+                const payload = request.payload as { name: string; attempt: number }
+                const activityId = `${executionId}/${payload.name}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   awaitedDeferreds: currentRun?.activityAwaits
                 })
-                interruptedActivities.delete(activityId)
                 const entry = activities.get(activityId)
                 if (!entry) {
                   // Replay may never register a losing race activity. Answer it
                   // without waiting; a later registration can reset this reply.
                   return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
                 }
-                if (entry.completed?.requestId === request.requestId) {
-                  return Effect.succeed(entry.completed.result).pipe(Rpc.wrap({ fork: true }))
+                // The request is redelivered when its reply could not be saved.
+                // A transaction rolled the activity back, so it runs again.
+                if (entry.result && !Context.get(entry.activity.annotations, ClusterSchema.WithTransaction)) {
+                  return Effect.succeed(entry.result).pipe(Rpc.wrap({ fork: true }))
                 }
                 const context = entry.context.pipe(
                   Context.add(WorkflowEngine.WorkflowInstance, instance),
@@ -619,32 +617,21 @@ export const make = Effect.gen(function*() {
                 return entry.activity.executeEncoded.pipe(
                   Effect.provideContext(context),
                   Workflow.intoResult,
+                  Effect.tap((result) =>
+                    Effect.sync(() => {
+                      entry.result = result
+                    })
+                  ),
                   Effect.catchCause((cause) => {
                     // we only want to store interrupts as suspends when the
                     // client requested it
                     const suspend = cause.reasons.some((f) =>
                       f._tag === "Interrupt" && f.annotations.has(ClientAbort.key)
                     )
-                    if (suspend) {
-                      interruptedActivities.add(activityId)
-                      return Effect.succeed(new Workflow.Suspended({}))
-                    }
-                    return Effect.failCause(cause)
+                    return suspend ? Effect.succeed(new Workflow.Suspended({})) : Effect.failCause(cause)
                   }),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, payload.attempt),
-                  Effect.onExit((exit) =>
-                    Effect.sync(() => {
-                      if (activities.get(activityId) !== entry) return
-                      if (exit._tag === "Failure" || exit.value._tag === "Suspended") {
-                        activities.delete(activityId)
-                      } else if (!payload.withTransaction) {
-                        // Redelivery may follow a rejected reply write. Keep the result until its
-                        // caller receives it. A rolled-back transactional activity must run again.
-                        entry.completed = { requestId: request.requestId, result: exit.value }
-                      }
-                    })
-                  ),
                   Rpc.wrap({ fork: true, uninterruptible: true })
                 )
               },
@@ -777,7 +764,7 @@ export const make = Effect.gen(function*() {
         const services = yield* Effect.context<WorkflowEngine.WorkflowInstance>()
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
-        const activityId = `${instance.executionId}/${activityPrimaryKey(activity.name, attempt)}`
+        const activityId = `${instance.executionId}/${activity.name}`
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (!instance.interrupted && (yield* interruptPending(instance))) {
@@ -794,16 +781,18 @@ export const make = Effect.gen(function*() {
           }
         }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)
-        const entry = { activity, context: services }
-        yield* Effect.addFinalizer(() =>
+        const entry = yield* Effect.acquireRelease(
           Effect.sync(() => {
-            if (activities.get(activityId) === entry) activities.delete(activityId)
-          })
+            const entry: ActivityRegistration = { activity, context: services }
+            activities.set(activityId, entry)
+            return entry
+          }),
+          (entry) =>
+            Effect.sync(() => {
+              if (activities.get(activityId) === entry) activities.delete(activityId)
+            })
         )
         while (true) {
-          if (!activities.has(activityId)) {
-            activities.set(activityId, entry)
-          }
           const result = yield* retryPersistence(
             client.activity({
               name: activity.name,
@@ -813,7 +802,9 @@ export const make = Effect.gen(function*() {
           )
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.
-          if (result._tag === "Suspended" && (activities.has(activityId) || interruptedActivities.has(activityId))) {
+          if (
+            result._tag === "Suspended" && activities.get(activityId) === entry && entry.result?._tag !== "Suspended"
+          ) {
             yield* resetActivityAttempt({
               workflow: instance.workflow,
               executionId: instance.executionId,
@@ -1073,6 +1064,12 @@ const makePartialWorkflowEntity = (workflowName: string) =>
     ResumeRpc,
     ActivityRpc
   ])
+
+interface ActivityRegistration {
+  readonly activity: Activity.Any
+  readonly context: Context.Context<any>
+  result?: Workflow.Result<any, any> | undefined
+}
 
 const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
 

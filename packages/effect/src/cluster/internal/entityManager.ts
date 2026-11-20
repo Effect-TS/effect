@@ -426,16 +426,20 @@ export const make = Effect.fnUntraced(function*<
                 )
                 // Leave the request for the shard's owner: release the claim
                 // so its next poll sees it, and let local callers re-route.
+                // The server tracks this fiber under the request id until it
+                // exits and drops a redelivery that arrives sooner, so the
+                // claim is released afterwards.
                 const abandonFenced = Effect.withFiber((fiber) => {
-                  const requestId = request.message.envelope.requestId
-                  // A reset can be claimed while this reply writer is still registered in RpcServer.
-                  // Keep the request resident until the writer exits so an early claim is released.
-                  fiber.addObserver(() => {
-                    if (activeRequests.get(requestId) === request) removeActiveRequest(requestId)
-                  })
+                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
                   return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
                     Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
-                    Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))
+                    Effect.andThen(Effect.forkIn(
+                      Effect.andThen(
+                        Fiber.await(fiber),
+                        Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId]))
+                      ),
+                      managerScope
+                    ))
                   )
                 })
                 const complete = Effect.sync(() => {

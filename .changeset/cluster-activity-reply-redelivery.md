@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve completed workflow activity results when the same runner receives the request again after a transient shard-ownership check fails before its reply is saved. Keep a fenced request registered until its reply fiber exits so a concurrent storage poll can redeliver the request.
+Deliver a workflow activity's result to its waiting caller when the activity's reply could not be saved after a transient shard-ownership check failure and the request is redelivered.
