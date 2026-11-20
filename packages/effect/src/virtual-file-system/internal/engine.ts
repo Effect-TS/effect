@@ -1864,24 +1864,24 @@ export const addressBytesResult = (
   operation: string,
   limits: M.Limits
 ): Result.Result<bigint, M.InvalidInput | M.LimitExceeded> =>
-  Result.gen(function*() {
-    if (isString(target) || BytePath.isBytePath(target)) {
-      const n = yield* pathLengthResult(target, operation)
-      if (n === 0) return yield* Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
-      if (BigInt(n) > limits.pathBytes) {
-        return yield* Result.fail(new M.LimitExceeded({ operation, domain: "path", stage: "admission" }))
+  (isString(target) || BytePath.isBytePath(target))
+    ? Result.flatMap(pathLengthResult(target, operation), (n): Result.Result<bigint, M.InvalidInput | M.LimitExceeded> => {
+      if (n === 0) return Result.fail(new M.InvalidInput({ operation, field: "path", reason: "malformed" }))
+      const bytes = BigInt(n)
+      return bytes > limits.pathBytes
+        ? Result.fail(new M.LimitExceeded({ operation, domain: "path", stage: "admission" }))
+        : Result.succeed(bytes)
+    })
+    : Result.gen(function*() {
+      if (M.isToken(target) || isDirectoryHandle(target)) return BigInt("0")
+      const entry = target
+      if (!isOptions(entry) || entry.directory === undefined || entry.name === undefined) {
+        return yield* Result.fail(new M.InvalidInput({ operation, field: "target", reason: "malformed" }))
       }
-      return BigInt(n)
-    }
-    if (M.isToken(target) || isDirectoryHandle(target)) return BigInt("0")
-    const entry = target
-    if (!isOptions(entry) || entry.directory === undefined || entry.name === undefined) {
-      return yield* Result.fail(new M.InvalidInput({ operation, field: "target", reason: "malformed" }))
-    }
-    const directory = yield* addressBytesResult(entry.directory, operation, limits)
-    const name = yield* pathLengthResult(entry.name, operation)
-    return directory + BigInt(name)
-  })
+      const directory = yield* addressBytesResult(entry.directory, operation, limits)
+      const name = yield* pathLengthResult(entry.name, operation)
+      return directory + BigInt(name)
+    })
 
 // Entry snapshots retain the public address shape, not arbitrary structural
 // extras or prototype members supplied by a narrower caller type.
