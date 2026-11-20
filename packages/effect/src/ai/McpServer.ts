@@ -3240,29 +3240,30 @@ const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
 
 const modelOutputContent = (
   parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>,
-  protocolVersion: string | undefined
+  protocolVersion: string
 ): CallToolResult["content"] =>
   parts.map((part) => {
     if (part.type === "text") {
       return { type: "text", text: part.text }
     }
-    if (!(part.data instanceof Uint8Array)) {
-      const str = String(part.data)
-      if (/^https?:\/\//i.test(str)) {
-        return protocolVersion === undefined || protocolVersion >= "2025-06-18"
-          ? { type: "resource_link", uri: str, name: part.fileName ?? str, mimeType: part.mediaType }
-          : { type: "text", text: str }
-      }
+    const { data, mediaType } = part
+    if (!(data instanceof Uint8Array) && /^https?:\/\//i.test(String(data))) {
+      const uri = String(data)
+      return protocolVersion >= "2025-06-18"
+        ? { type: "resource_link", uri, name: part.fileName ?? uri, mimeType: mediaType }
+        : { type: "text", text: uri }
     }
-    const isImage = part.mediaType.startsWith("image/")
-    const isAudio = part.mediaType.startsWith("audio/") &&
-      (protocolVersion === undefined || protocolVersion >= "2025-03-26")
-    if (isImage || isAudio) {
-      const data = part.data instanceof Uint8Array
-        ? Result.succeed(part.data)
-        : Base64.decode(String(part.data).replace(/^data:[^,]*;base64,/i, ""))
-      if (Result.isSuccess(data)) {
-        return { type: isImage ? "image" : "audio", data: data.success, mimeType: part.mediaType }
+    const type = mediaType.startsWith("image/")
+      ? "image"
+      : mediaType.startsWith("audio/") && protocolVersion >= "2025-03-26"
+      ? "audio"
+      : undefined
+    if (type !== undefined) {
+      const bytes = data instanceof Uint8Array
+        ? data
+        : Result.getOrUndefined(Base64.decode(String(data).replace(/^data:[^,]*;base64,/i, "")))
+      if (bytes !== undefined) {
+        return { type, data: bytes, mimeType: mediaType }
       }
     }
     return { type: "text", text: AiPrompt.toolModelOutputToText([part]) }
@@ -3474,7 +3475,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           Effect.flatMap((result): Effect.Effect<
             CallToolResult,
             unknown,
-            Tool.HandlerServices<Tools[keyof Tools]>
+            Tool.HandlerServices<Tools[keyof Tools]> | McpRequestContext
           > => {
             // The Toolkit encodes successes and "return"-mode failures with their JSON codec.
             if (!result.isFailure) {
@@ -3488,23 +3489,16 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
               }
               if (result.modelOutput !== undefined) {
                 const parts = result.modelOutput
-                return Effect.map(
-                  Effect.serviceOption(McpRequestContext),
-                  (requestContext) => {
-                    const protocolVersion = Option.isSome(requestContext)
-                      ? requestContext.value.protocolVersion
-                      : undefined
-                    // Pre-2026 adapters drop string structuredContent and unquote a matching single-text mirror.
-                    const omitStructuredContent = result.result === undefined ||
-                      (typeof result.encodedResult === "string" &&
-                        protocolVersion !== undefined &&
-                        protocolVersion < "2026-07-28")
-                    return new CallToolResult({
-                      isError: false,
-                      ...(omitStructuredContent ? {} : { structuredContent: result.encodedResult }),
-                      content: modelOutputContent(parts, protocolVersion)
-                    })
-                  }
+                return McpRequestContext.useSync(({ protocolVersion }) =>
+                  new CallToolResult({
+                    isError: false,
+                    // Revisions that drop string structuredContent would also unquote a matching text block.
+                    structuredContent: result.result === undefined ||
+                        (typeof result.encodedResult === "string" && protocolVersion < "2026-07-28")
+                      ? undefined
+                      : result.encodedResult,
+                    content: modelOutputContent(parts, protocolVersion)
+                  })
                 )
               }
               // An absent result, such as `Schema.Void`, has no structured form.
