@@ -426,8 +426,11 @@ export const make = Effect.fnUntraced(function*<
                 )
                 // Leave the request for the shard's owner: release the claim
                 // so its next poll sees it, and let local callers re-route.
-                const abandonFenced = Effect.suspend(() => {
-                  removeActiveRequest(Snowflake.Snowflake(response.requestId))
+                // Keep the entry active until this reply fiber exits: the reset
+                // can be claimed by a poll before RpcServer deregisters the
+                // old fiber.
+                const abandonFenced = Effect.withFiber((fiber) => {
+                  fiber.addObserver(() => removeActiveRequest(Snowflake.Snowflake(response.requestId)))
                   return Effect.logDebug("Abandoning a request whose shard this runner no longer owns").pipe(
                     Effect.andThen(options.storage.unregisterReplyHandler(request.message.envelope.requestId)),
                     Effect.andThen(Effect.ignore(options.storage.resetRequests([request.message.envelope.requestId])))

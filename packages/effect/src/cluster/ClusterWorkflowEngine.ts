@@ -130,6 +130,7 @@ export const make = Effect.gen(function*() {
   const activities = new Map<string, {
     readonly activity: Activity.Any
     readonly context: Context.Context<any>
+    result?: Workflow.Result<any, any> | undefined
   }>()
   const interruptedActivities = new Set<string>()
   const deferredState = WorkflowEngine.makeDeferredState()
@@ -595,7 +596,7 @@ export const make = Effect.gen(function*() {
               },
 
               activity(request: Entity.Request<any>) {
-                const payload = request.payload as { name: string; attempt: number }
+                const payload = request.payload as { name: string; attempt: number; withTransaction?: boolean }
                 const activityId = `${executionId}/${payload.name}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   awaitedDeferreds: currentRun?.activityAwaits
@@ -606,6 +607,11 @@ export const make = Effect.gen(function*() {
                   // Replay may never register a losing race activity. Answer it
                   // without waiting; a later registration can reset this reply.
                   return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
+                }
+                // Reuse a completed nontransactional result if the previous
+                // reply failed to save and was redelivered to this runner.
+                if (entry.result) {
+                  return Effect.succeed(entry.result).pipe(Rpc.wrap({ fork: true }))
                 }
                 const context = entry.context.pipe(
                   Context.add(WorkflowEngine.WorkflowInstance, instance),
@@ -629,9 +635,18 @@ export const make = Effect.gen(function*() {
                   }),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, payload.attempt),
-                  Effect.ensuring(Effect.sync(() => {
-                    activities.delete(activityId)
-                  })),
+                  // Keep the registration until the caller scope closes because
+                  // the reply may not be saved yet when the body returns.
+                  Effect.map((result) => {
+                    if (activities.get(activityId) === entry) {
+                      if (result._tag === "Suspended") {
+                        activities.delete(activityId)
+                      } else if (!payload.withTransaction) {
+                        entry.result = result
+                      }
+                    }
+                    return result
+                  }),
                   Rpc.wrap({ fork: true, uninterruptible: true })
                 )
               },
@@ -781,9 +796,15 @@ export const make = Effect.gen(function*() {
           }
         }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)
+        const entry = { activity, context: services }
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            if (activities.get(activityId) === entry) activities.delete(activityId)
+          })
+        )
         while (true) {
           if (!activities.has(activityId)) {
-            activities.set(activityId, { activity, context: services })
+            activities.set(activityId, entry)
           }
           const result = yield* retryPersistence(
             client.activity({
@@ -803,7 +824,6 @@ export const make = Effect.gen(function*() {
             })
             continue
           }
-          activities.delete(activityId)
           return result
         }
       },
