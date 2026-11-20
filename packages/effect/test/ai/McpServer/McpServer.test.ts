@@ -9,6 +9,7 @@ import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
+import * as Prompt from "effect/ai/Prompt"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
@@ -2621,6 +2622,68 @@ describe("McpServer", () => {
           assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
         }
+      }))
+
+    const modelOutputImage = new Uint8Array([1, 2, 3])
+    const modelOutputAudio = new Uint8Array([4, 5, 6])
+    const modelOutputUrl = new URL("https://example.com/report.png")
+    const makeModelOutputToolkitLayer = () => {
+      const toolkit = Toolkit.make(Tool.make("ModelOutputTool", {
+        success: Schema.Struct({ ok: Schema.Boolean }),
+        toModelOutput: () => [
+          Prompt.textPart({ text: "Captured" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
+          Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
+          Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
+        ]
+      }))
+      return Layer.effectDiscard(McpServer.registerToolkit(toolkit)).pipe(
+        Layer.provide(toolkit.toLayer({ ModelOutputTool: () => Effect.succeed({ ok: true }) }))
+      )
+    }
+
+    it.effect("uses toModelOutput parts as tool result content while preserving structuredContent", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(makeModelOutputToolkitLayer(), {
+          protocols: [McpProtocol.v2025_06_18]
+        })
+
+        const result = yield* client.callTool({ name: "ModelOutputTool", arguments: {} })
+
+        assert.isFalse(result.isError)
+        assert.deepStrictEqual(result.structuredContent, { ok: true })
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "Captured" },
+          { type: "image", data: modelOutputImage, mimeType: "image/png" },
+          { type: "audio", data: modelOutputAudio, mimeType: "audio/wav" },
+          {
+            type: "resource_link",
+            uri: modelOutputUrl.href,
+            name: modelOutputUrl.href,
+            mimeType: "image/png"
+          },
+          { type: "text", text: "[application/pdf doc.pdf omitted]" }
+        ])
+      }))
+
+    it.effect("downgrades unsupported toModelOutput blocks to text on 2024-11-05", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(makeModelOutputToolkitLayer(), {
+          protocols: [McpProtocol.v2024_11_05]
+        })
+
+        const result = yield* client.callTool({ name: "ModelOutputTool", arguments: {} })
+
+        assert.isFalse(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "Captured" },
+          { type: "image", data: modelOutputImage, mimeType: "image/png" },
+          { type: "text", text: "[audio/wav clip.wav omitted]" },
+          { type: "text", text: modelOutputUrl.href },
+          { type: "text", text: "[application/pdf doc.pdf omitted]" }
+        ])
       }))
   })
 
