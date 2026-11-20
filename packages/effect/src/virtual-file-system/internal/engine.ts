@@ -1311,11 +1311,15 @@ export class Transaction {
     followFinal = true,
     state: ResolutionState = { follows: 0 }
   ) {
+    if (isString(target) || BytePath.isBytePath(target)) {
+      const path = pathValueResult(target, this.operation)
+
+      return Result.isFailure(path)
+        ? Result.fail(path.failure)
+        : this.resolveResult(path.success, followFinal, undefined, state.follows, [], state)
+    }
+
     return Result.gen(this, function*() {
-      if (isString(target) || BytePath.isBytePath(target)) {
-        const path = yield* pathValueResult(target, this.operation)
-        return yield* this.resolveResult(path, followFinal, undefined, state.follows, [], state)
-      }
       if (M.isToken(target)) return yield* this.referenceRouteResult(target)
       const address = target
       if (!isOptions(address)) {
