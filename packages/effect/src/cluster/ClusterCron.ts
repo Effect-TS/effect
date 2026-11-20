@@ -123,16 +123,14 @@ export const make = <E, R>(options: {
    */
   readonly skipIfOlderThan?: Duration.Input | undefined
 }): Layer.Layer<never, never, Sharding | Exclude<Exclude<R, CurrentScheduledTime | CronSchedule>, Scope>> => {
-  const { cron } = options
   const fromPrevious = options.calculateNextRunFromPrevious === true
-  const skipIfOlderThan = Duration.fromInputUnsafe(options.skipIfOlderThan ?? Duration.days(1))
   const cronSchedule = {
-    cron,
+    cron: options.cron,
     calculateNextRunFromPrevious: fromPrevious,
-    skipIfOlderThan
+    skipIfOlderThan: Duration.fromInputUnsafe(options.skipIfOlderThan ?? "1 day")
   }
   const scheduleContext = Context.make(CronSchedule, cronSchedule)
-  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cron, after))
+  const nextRun = (after: DateTime.Utc) => DateTime.fromDateUnsafe(Cron.next(cronSchedule.cron, after))
 
   const CronEntity = Entity.make(`ClusterCron/${options.name}`, [
     Rpc.make("run", {
@@ -172,7 +170,7 @@ export const make = <E, R>(options: {
 
   const execute = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
     const now = yield* DateTime.now
-    if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, skipIfOlderThan))) {
+    if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
       return
     }
     return yield* Effect.provideContext(
