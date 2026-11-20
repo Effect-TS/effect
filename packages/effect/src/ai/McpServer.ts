@@ -20,6 +20,7 @@ import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -95,6 +96,7 @@ import type {
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
+import * as AiPrompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 import * as Toolkit from "./Toolkit.ts"
 
@@ -3236,6 +3238,36 @@ const toolErrorResult = (message: string): CallToolResult =>
 const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
+const modelOutputContent = (
+  parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>,
+  protocolVersion: string | undefined
+): CallToolResult["content"] =>
+  parts.map((part) => {
+    if (part.type === "text") {
+      return { type: "text", text: part.text }
+    }
+    if (!(part.data instanceof Uint8Array)) {
+      const str = String(part.data)
+      if (/^https?:\/\//i.test(str)) {
+        return protocolVersion === undefined || protocolVersion >= "2025-06-18"
+          ? { type: "resource_link", uri: str, name: part.fileName ?? str, mimeType: part.mediaType }
+          : { type: "text", text: str }
+      }
+    }
+    const isImage = part.mediaType.startsWith("image/")
+    const isAudio = part.mediaType.startsWith("audio/") &&
+      (protocolVersion === undefined || protocolVersion >= "2025-03-26")
+    if (isImage || isAudio) {
+      const data = part.data instanceof Uint8Array
+        ? Result.succeed(part.data)
+        : Base64.decode(String(part.data).replace(/^data:[^,]*;base64,/i, ""))
+      if (Result.isSuccess(data)) {
+        return { type: isImage ? "image" : "audio", data: data.success, mimeType: part.mediaType }
+      }
+    }
+    return { type: "text", text: AiPrompt.toolModelOutputToText([part]) }
+  })
+
 /**
  * The requirements of a toolkit registration.
  *
@@ -3275,10 +3307,13 @@ type ToolkitOptions<Tools extends Record<string, Tool.Any>, Names extends keyof 
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  *
- * A tool's `content` mapper converts its decoded success value to native MCP
+ * A tool's `toModelOutput` supplies the `content` of successful calls while
+ * `structuredContent` keeps the encoded result; parts an older protocol
+ * revision cannot carry are sent as text. A `content` mapper takes precedence
+ * over `toModelOutput`, converting the decoded success value to native MCP
  * blocks. Mapped tools omit `outputSchema` and successful calls omit
- * `structuredContent`. Failures bypass the mapper. Use only block types
- * supported by the negotiated protocol revision.
+ * `structuredContent`. Failures bypass both. Use only block types supported by
+ * the negotiated protocol revision in a `content` mapper.
  *
  * **Example** (Registering an image tool)
  *
@@ -3451,6 +3486,21 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
                   })
                 )
               }
+              if (result.modelOutput !== undefined) {
+                const parts = result.modelOutput
+                return Effect.map(
+                  Effect.serviceOption(McpRequestContext),
+                  (requestContext) =>
+                    new CallToolResult({
+                      isError: false,
+                      ...(result.result === undefined ? {} : { structuredContent: result.encodedResult }),
+                      content: modelOutputContent(
+                        parts,
+                        Option.isSome(requestContext) ? requestContext.value.protocolVersion : undefined
+                      )
+                    })
+                )
+              }
               // An absent result, such as `Schema.Void`, has no structured form.
               return Effect.succeed(
                 result.result === undefined
@@ -3506,10 +3556,13 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  * The layer requires `McpServer`. Pass it to a transport through the
  * `registrations` option, or provide the transport layer to it.
  *
- * A tool's `content` mapper converts its decoded success value to native MCP
+ * A tool's `toModelOutput` supplies the `content` of successful calls while
+ * `structuredContent` keeps the encoded result; parts an older protocol
+ * revision cannot carry are sent as text. A `content` mapper takes precedence
+ * over `toModelOutput`, converting the decoded success value to native MCP
  * blocks. Mapped tools omit `outputSchema` and successful calls omit
- * `structuredContent`. Failures bypass the mapper. Use only block types
- * supported by the negotiated protocol revision.
+ * `structuredContent`. Failures bypass both. Use only block types supported by
+ * the negotiated protocol revision in a `content` mapper.
  *
  * **Example** (Providing an image tool as a layer)
  *
