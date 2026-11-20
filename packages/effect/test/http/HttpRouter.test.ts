@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Layer, Option } from "effect"
+import { Context, Effect, Exit, Layer, Logger, Option, References, Tracer } from "effect"
 import type { FindMyWay } from "effect/http"
-import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpRouter, HttpServerError, HttpServerRequest, HttpServerResponse, UrlParams } from "effect/http"
 
 const echoUrl = (request: HttpServerRequest.HttpServerRequest) => Effect.succeed(HttpServerResponse.text(request.url))
 
@@ -55,6 +55,51 @@ describe("HttpRouter", () => {
         assert.deepStrictEqual(result, Exit.die(new Error("Method 'GET' already declared for route '/files/:()'")))
       }))
   }
+
+  it("records redacted params in the server span and log", async () => {
+    const spans: Array<Tracer.NativeSpan> = []
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })
+    const urls: Array<unknown> = []
+    const logger = Logger.make((options) => {
+      urls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
+    })
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      Layer.mergeAll(
+        HttpRouter.add("GET", "/hooks/:id/:secret", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] })
+      )
+    )
+    const context = Context.make(Tracer.Tracer, tracer).pipe(
+      Context.add(Logger.CurrentLoggers, new Set([logger])),
+      Context.add(UrlParams.CurrentRedactedNames, ["key"])
+    )
+    const bodies: Array<string> = []
+    try {
+      for (const path of ["/hooks/123/s3cret?key=q", "/assets/tok/site.css"]) {
+        const response = await handler(new Request(`http://localhost${path}`), context)
+        bodies.push(await response.text())
+      }
+    } finally {
+      await dispose()
+    }
+
+    // The handler sees the URL unchanged.
+    assert.deepStrictEqual(bodies, ["/hooks/123/s3cret?key=q", "/assets/tok/site.css"])
+    assert.deepStrictEqual(urls, ["/hooks/123/REDACTED", "/assets/REDACTED"])
+    assert.deepStrictEqual(
+      spans.map((span) => [span.attributes.get("url.path"), span.attributes.get("url.full")]),
+      [
+        ["/hooks/123/REDACTED", "http://localhost/hooks/123/REDACTED?key=REDACTED"],
+        ["/assets/REDACTED", "http://localhost/assets/REDACTED"]
+      ]
+    )
+  })
 
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(

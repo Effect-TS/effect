@@ -486,8 +486,9 @@ export class ErrorParseOptions extends Context.Service<
 >()("effect/http-api/HttpApi/ErrorParseOptions") {}
 
 /**
- * Declares query parameters and headers whose values are only sometimes secret,
- * so they are redacted in spans without being modelled as `Redacted`.
+ * Declares query parameters, headers and path params whose values are only
+ * sometimes secret, so they are redacted in spans without being modelled as
+ * `Redacted`.
  *
  * **Details**
  *
@@ -499,6 +500,11 @@ export class ErrorParseOptions extends Context.Service<
  * `Headers.CurrentRedactedNames`. Names from the API, its groups and its
  * endpoints are combined. Values sent and decoded are unchanged.
  *
+ * `params` are path param names, matched exactly. On the server they become
+ * the route's `redactedParams`, so the server span and the
+ * `HttpMiddleware.logger` entry record the path with those values replaced by
+ * `REDACTED`. See `HttpRouter.route` for the requests this does not cover.
+ *
  * **Gotchas**
  *
  * - `addHttpApi` copies the added API's annotations onto its groups like any
@@ -506,6 +512,10 @@ export class ErrorParseOptions extends Context.Service<
  *   the names on the group to keep both.
  * - Only URL and header attributes use these names. `user_agent.original` and
  *   the messages of span errors are recorded as is.
+ * - `params` apply to server spans only. Client spans record the path as
+ *   sent.
+ * - `HttpApiBuilder.endpoint` returns a handler without a route, so set
+ *   `redactedParams` on the route it is mounted with.
  *
  * **Example** (Redacting Docker build arguments)
  *
@@ -529,6 +539,7 @@ export class ErrorParseOptions extends Context.Service<
 export class RedactedNames extends Context.Service<RedactedNames, {
   readonly query?: ReadonlyArray<string | RegExp> | undefined
   readonly headers?: ReadonlyArray<string | RegExp> | undefined
+  readonly params?: ReadonlyArray<string> | undefined
 }>()("effect/http-api/HttpApi/RedactedNames") {}
 
 /**
@@ -564,6 +575,7 @@ export const getSlotParseOptions = (annotations: Context.Context<never>): SlotPa
 export interface EndpointRedactedNames {
   readonly query: ReadonlyArray<string | RegExp>
   readonly headers: ReadonlyArray<string | RegExp>
+  readonly params: ReadonlyArray<string>
 }
 
 /**
@@ -579,6 +591,7 @@ export const getEndpointRedactedNames = (
 ): EndpointRedactedNames | undefined => {
   const query: Array<string | RegExp> = []
   const headers: Array<string | RegExp> = []
+  const params: Array<string> = []
   for (const annotations of [api.annotations, group.annotations, endpoint.annotations]) {
     const options = Context.getOrUndefined(annotations, RedactedNames)
     if (options === undefined) continue
@@ -587,6 +600,7 @@ export const getEndpointRedactedNames = (
       if (typeof name === "string") query.push(new RegExp(`^${RegExp_.escape(name)}\\[`, "i"))
     }
     if (options.headers !== undefined) headers.push(...options.headers)
+    if (options.params !== undefined) params.push(...options.params)
   }
-  return query.length === 0 && headers.length === 0 ? undefined : { query, headers }
+  return query.length === 0 && headers.length === 0 && params.length === 0 ? undefined : { query, headers, params }
 }

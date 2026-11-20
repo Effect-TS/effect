@@ -1059,7 +1059,9 @@ function handlerToHttpEffect(
     }),
     Effect.provideContext(context)
   )
-  if (redactedNames === undefined) return effect
+  if (redactedNames === undefined || (redactedNames.query.length === 0 && redactedNames.headers.length === 0)) {
+    return effect
+  }
   // Added before middleware and decoding run, so their failures are redacted too.
   return Effect.withFiber((fiber) => {
     addRedactedNamesUnsafe(fiber.context, redactedNames.query, redactedNames.headers)
@@ -1081,7 +1083,10 @@ export function handlerToRoute(
     endpoint.method,
     HttpApiPath.toRouterPath(endpoint.path, endpoint.params) as HttpRouter.PathInput,
     handlerToHttpEffect(api, group, endpoint, context, handler.handler, handler.isRaw),
-    { uninterruptible: handler.uninterruptible }
+    {
+      uninterruptible: handler.uninterruptible,
+      redactedParams: HttpApi.getEndpointRedactedNames(api, group, endpoint)?.params
+    }
   )
 }
 

@@ -2157,6 +2157,45 @@ describe("HttpApiBuilder RedactedNames", () => {
     assert.strictEqual(invalid.attributes.get("url.full"), "http://localhost/build?remote=REDACTED")
     assert.strictEqual(invalid.attributes.get("http.request.header.x-registry-config"), "<redacted>")
   })
+
+  it("redacts declared path params in server spans", async () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("assets").add(
+        HttpApiEndpoint.get("asset", "/assets/:token/file", {
+          params: { token: Schema.String },
+          success: Schema.String
+        }).annotate(HttpApi.RedactedNames, { params: ["token"] })
+      )
+    )
+    const GroupLayer = HttpApiBuilder.group(
+      Api,
+      "assets",
+      (handlers) => handlers.handle("asset", ({ params }) => Effect.succeed(params.token))
+    )
+    const spans: Array<Tracer.NativeSpan> = []
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
+      { disableLogger: true }
+    )
+    try {
+      const response = await handler(
+        new Request("http://localhost/assets/tok/file"),
+        Context.make(Tracer.Tracer, tracer)
+      )
+      assert.strictEqual(await response.json(), "tok")
+    } finally {
+      await dispose()
+    }
+
+    assert.strictEqual(spans[0].attributes.get("url.path"), "/assets/REDACTED/file")
+  })
 })
 
 describe("HttpApiBuilder streaming payloads", () => {

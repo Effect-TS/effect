@@ -12,6 +12,8 @@ export class RequestState {
   loggerDisabled = false
   redactedUrlParamNames: ReadonlyArray<string | RegExp> = []
   redactedHeaderNames: ReadonlyArray<string | RegExp> = []
+  /** The matched path with redacted route params, recorded instead of the URL path. */
+  redactedPath: string | undefined = undefined
 }
 
 /**

@@ -33,6 +33,7 @@ import * as HttpServer from "./HttpServer.ts"
 import * as HttpServerError from "./HttpServerError.ts"
 import * as HttpServerRequest from "./HttpServerRequest.ts"
 import * as HttpServerResponse from "./HttpServerResponse.ts"
+import { CurrentRequestState } from "./internal/requestState.ts"
 
 const TypeId = "~effect/http/HttpRouter"
 
@@ -61,7 +62,10 @@ export interface HttpRouter {
       | HttpServerResponse.HttpServerResponse
       | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
       | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
-    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    options?: {
+      readonly uninterruptible?: boolean | undefined
+      readonly redactedParams?: ReadonlyArray<string> | undefined
+    } | undefined
   ) => Effect.Effect<
     void,
     never,
@@ -192,6 +196,7 @@ export const make = Effect.gen(function*() {
                 ? handler
                 : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler),
               uninterruptible: options?.uninterruptible ?? false,
+              redactedParams: options?.redactedParams,
               prefix
             })
           ])
@@ -238,6 +243,12 @@ export const make = Effect.gen(function*() {
           params: result.params
         })
 
+        if (route.redactedParams !== undefined && route.redactedParams.length > 0) {
+          const state = Context.getOrUndefined(context, CurrentRequestState)
+          if (state !== undefined) {
+            state.redactedPath = renderRedactedPath(route.path, result.params, route.redactedParams)
+          }
+        }
         if (fiber.getRef(Tracer.Tracer) !== Tracer.nativeTracer) {
           const span = Context.getOrUndefined(context, Tracer.ParentSpan)
           if (span !== undefined && span._tag === "Span" && span.sampled) {
@@ -304,6 +315,55 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
     }
   }
   return count
+}
+
+// Renders a matched path from the route pattern, replacing the listed params
+// with `REDACTED`. Follows the pattern grammar of `FindMyWay`.
+function renderRedactedPath(
+  path: string,
+  params: Readonly<Record<string, string | undefined>>,
+  redactedParams: ReadonlyArray<string>
+): string {
+  let out = ""
+  const append = (name: string, wildcard: boolean) => {
+    const value = params[name]
+    if (value === undefined) {
+      // An absent optional param or wildcard drops its leading slash.
+      if (out.endsWith("/")) out = out.slice(0, -1)
+    } else if (redactedParams.includes(name)) {
+      out += "REDACTED"
+    } else {
+      out += wildcard ? value.split("/").map(encodePathSegment).join("/") : encodePathSegment(value)
+    }
+  }
+  for (let i = 0; i < path.length; i++) {
+    const char = path[i]
+    if (char === "*") {
+      append("*", true)
+    } else if (char !== ":") {
+      out += char
+    } else if (path[i + 1] === ":") {
+      out += ":"
+      i++
+    } else {
+      let end = i + 1
+      while (
+        end < path.length && !"(-./".includes(path[end]) &&
+        !(path[end] === "?" && (end === path.length - 1 || path[end + 1] === "/"))
+      ) end++
+      append(path.slice(i + 1, end), false)
+      i = path[end] === "(" ? getClosingParenthensePosition(path, end) : path[end] === "?" ? end : end - 1
+    }
+  }
+  return out.startsWith("/") ? out : "/" + out
+}
+
+function encodePathSegment(segment: string): string {
+  try {
+    return encodeURIComponent(segment)
+  } catch {
+    return segment
+  }
 }
 
 /**
@@ -562,6 +622,11 @@ export const use = <A, E, R>(
 /**
  * Create a layer that adds a single route to the HTTP router.
  *
+ * **Details**
+ *
+ * The options are the same as for `route`, including `redactedParams` for
+ * path params to redact in server spans and logs.
+ *
  * **Example** (Adding a GET route)
  *
  * ```ts import.meta.vitest
@@ -589,6 +654,7 @@ export const add = <E = never, R = never>(
     | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
   options?: {
     readonly uninterruptible?: boolean | undefined
+    readonly redactedParams?: ReadonlyArray<string> | undefined
   }
 ): Layer.Layer<never, never, HttpRouter | Request.From<"Requires", Exclude<R, Provided>> | Request.From<"Error", E>> =>
   use((router) => router.add(method, path, handler, options))
@@ -706,6 +772,7 @@ export interface Route<E = never, R = never> {
   readonly path: PathInput
   readonly handler: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
   readonly uninterruptible: boolean
+  readonly redactedParams?: ReadonlyArray<string> | undefined
   readonly prefix: Option.Option<string>
 }
 
@@ -741,6 +808,7 @@ const makeRoute = <E, R>(options: {
   readonly path: PathInput
   readonly handler: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
   readonly uninterruptible?: boolean | undefined
+  readonly redactedParams?: ReadonlyArray<string> | undefined
   readonly prefix?: Option.Option<string> | string | undefined
 }): Route<E, Exclude<R, Provided>> => (({
   ...options,
@@ -758,6 +826,34 @@ const makeRoute = <E, R>(options: {
  * function from the current request to a response effect. Set `uninterruptible` to
  * prevent the route handler from being made interruptible while it runs.
  *
+ * Set `redactedParams` to the names of path params whose values are secret,
+ * using `"*"` for the wildcard. When the route matches, `HttpMiddleware.tracer`
+ * and `HttpMiddleware.logger` record the path with those values replaced by
+ * `REDACTED`, so `/hooks/:id/:secret` records `/hooks/123/REDACTED`. Query
+ * redaction is unchanged, and the handler sees the request URL as sent.
+ *
+ * **Gotchas**
+ *
+ * - Requests that never match the route are recorded as sent, including 404s,
+ *   wrong-method requests and responses from global middleware such as CORS
+ *   preflights. Use `HttpMiddleware.TracerDisabledWhen` or
+ *   `HttpMiddleware.withLoggerDisabled` for those.
+ * - Error messages and the `request` of errors raised by the handler keep the
+ *   path as sent.
+ *
+ * **Example** (Redacting a token in the path)
+ *
+ * ```ts
+ * import { HttpRouter, HttpServerResponse } from "effect/http"
+ *
+ * const Asset = HttpRouter.route(
+ *   "GET",
+ *   "/assets/:token/*",
+ *   HttpServerResponse.text("ok"),
+ *   { redactedParams: ["token"] }
+ * )
+ * ```
+ *
  * @stability unstable
  * @category routes
  * @since 4.0.0
@@ -771,6 +867,7 @@ export const route = <E = never, R = never>(
     | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
   options?: {
     readonly uninterruptible?: boolean | undefined
+    readonly redactedParams?: ReadonlyArray<string> | undefined
   }
 ): Route<E, Exclude<R, Provided>> =>
   makeRoute({
