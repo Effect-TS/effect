@@ -272,7 +272,7 @@ describe("ClickhouseClient", { concurrent: false }, () => {
     ))
 })
 
-describe("ClickhouseClient startup validation", { concurrent: false }, () => {
+describe("ClickhouseClient initial ping", { concurrent: false }, () => {
   let url: string
   let available: boolean
   let requests: Array<string>
@@ -303,8 +303,8 @@ describe("ClickhouseClient startup validation", { concurrent: false }, () => {
       assert.deepStrictEqual(requests, ["/ping"])
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it("skips startup requests and recovers on the same runtime with validation disabled", async () => {
-    await using runtime = ManagedRuntime.make(ClickhouseClient.layer({ url, validateConnection: false }))
+  it("skips startup requests and recovers on the same runtime when disableInitialPing is true", async () => {
+    await using runtime = ManagedRuntime.make(ClickhouseClient.layer({ url, disableInitialPing: true }))
     const select = Effect.flatMap(ClickhouseClient.ClickhouseClient, (sql) => sql`SELECT 1 AS one`)
     await runtime.runPromise(Effect.void)
     assert.deepStrictEqual(requests, [])

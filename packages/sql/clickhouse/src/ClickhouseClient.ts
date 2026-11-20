@@ -180,10 +180,11 @@ export const ClickhouseClient = Context.Service<ClickhouseClient, ClickhouseClie
  */
 export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfigOptions {
   /**
-   * Ping ClickHouse at startup (default: `true`). Set to `false` to build the
-   * client without a request and handle connection failures per statement.
+   * Skip the startup ping (default: `false`). Set to `true` to build the
+   * client without contacting ClickHouse and handle connection failures per
+   * statement.
    */
-  readonly validateConnection?: boolean | undefined
+  readonly disableInitialPing?: boolean | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
@@ -212,7 +213,7 @@ export const make = (
       (client) => Effect.promise(() => client.close())
     )
 
-    if (options.validateConnection !== false) {
+    if (!options.disableInitialPing) {
       yield* Effect.tryPromise({
         try: async () => {
           const result = await client.ping()
