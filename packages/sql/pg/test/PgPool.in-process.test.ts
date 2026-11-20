@@ -46,8 +46,6 @@ const waitFor = (predicate: () => boolean) =>
     assert.ok(predicate(), "background acquisition did not start")
   })
 
-// A fake server that hands its startup message to `startup` and each Parse
-// message to `parse`, and ignores everything else.
 const fakeBackend = (on: {
   readonly startup?: ((socket: Duplex) => void) | undefined
   readonly parse?: ((socket: Duplex) => void) | undefined
@@ -71,8 +69,7 @@ const fakeBackend = (on: {
 const pushReady = (socket: Duplex) => queueMicrotask(() => socket.push(ready))
 
 describe("PgPool failed startup", () => {
-  // The first handshake stalls past `connectTimeout`; the retry after 100ms
-  // succeeds. At 109ms the first attempt has failed and the retry is pending.
+  // First handshake stalls past connectTimeout (10ms); at 109ms the 100ms retry is pending.
   const stalledThenReady = Effect.gen(function*() {
     const started = Latch.makeUnsafe()
     const counts = { attempts: 0, statements: 0 }
