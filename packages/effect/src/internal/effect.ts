@@ -1736,6 +1736,10 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
           fibers.delete(fiber)
           onExit(exit, fiber, i)
         })
+        if (done) {
+          fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+          break
+        }
         fiber.evaluate(effects[i] as any)
         if (done) break
       }
@@ -1779,6 +1783,10 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
             options?.onWinner?.({ fiber, index, parentFiber: parent })
           }
         })
+        if (done) {
+          fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+          break
+        }
         fiber.evaluate(effect as any)
       }
     })

@@ -18,6 +18,7 @@ import {
   Layer,
   Logger,
   type LogLevel,
+  Metric,
   Option,
   Pool,
   Queue,
@@ -1739,6 +1740,36 @@ describe("Effect", () => {
         assert.strictEqual(result, "stop")
         assert.isFalse(afterSettleRan)
         assert.isTrue(loserExit !== undefined && Exit.isFailure(loserExit) && Cause.hasInterruptsOnly(loserExit.cause))
+      }))
+
+    it.effect(`${name} does not evaluate a loser when the race settles during fiber construction`, () =>
+      Effect.gen(function*() {
+        const stop = yield* Deferred.make<string>()
+        let starts = 0
+        let ends = 0
+        let ran = false
+        const metrics: Metric.FiberRuntimeMetricsService = {
+          recordFiberStart: () => {
+            starts++
+            if (starts === 2) {
+              Deferred.doneUnsafe(stop, Effect.succeed("stop"))
+            }
+          },
+          recordFiberEnd: () => {
+            ends++
+          }
+        }
+        const result = yield* raceAll([
+          Deferred.await(stop),
+          Effect.sync(() => {
+            ran = true
+            return "loser"
+          })
+        ]).pipe(Effect.provideService(Metric.FiberRuntimeMetrics, metrics))
+        assert.strictEqual(result, "stop")
+        assert.isFalse(ran)
+        assert.strictEqual(starts, 2)
+        assert.strictEqual(ends, 2)
       }))
   }
 
