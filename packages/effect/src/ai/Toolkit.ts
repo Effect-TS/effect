@@ -141,7 +141,7 @@ export interface HandlerContext<Tool extends Tool.Any> {
    * ignored for preliminary results and failures, and leaves `result` and
    * `encodedResult` unchanged.
    *
-   * @since 4.1.5
+   * @since 4.2.0
    */
   readonly modelOutput: (parts: ReadonlyArray<Prompt.ToolModelOutputPart>) => Effect.Effect<void>
 }
