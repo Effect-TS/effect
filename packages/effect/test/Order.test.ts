@@ -69,6 +69,19 @@ describe("Order", () => {
     strictEqual(Order.clamp(Order.Number)({ minimum: 1, maximum: 10 })(2), 2)
   })
 
+  it("clamp returns the value itself when it is equal to a bound", () => {
+    const O = Order.mapInput(Order.Number, (a: { readonly n: number }) => a.n)
+    const minimum = { n: 1 }
+    const maximum = { n: 10 }
+    const clamp = Order.clamp(O)({ minimum, maximum })
+    const atMinimum = { n: 1 }
+    const atMaximum = { n: 10 }
+    strictEqual(clamp(atMinimum), atMinimum)
+    strictEqual(clamp(atMaximum), atMaximum)
+    strictEqual(clamp({ n: 0 }), minimum)
+    strictEqual(clamp({ n: 11 }), maximum)
+  })
+
   it("isBetween checks inclusive bounds", () => {
     const between = Order.isBetween(Order.Number)({ minimum: 1, maximum: 10 })
     assertTrue(between(2))

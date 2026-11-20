@@ -620,6 +620,17 @@ describe("DateTime", () => {
       }))
   })
 
+  describe("clamp", () => {
+    it("returns the original DateTime when it is equal to a bound", () => {
+      const minimum = DateTime.makeUnsafe("2024-01-01T00:00:00Z")
+      const maximum = DateTime.makeUnsafe("2024-12-31T00:00:00Z")
+      const atMinimum = DateTime.makeZonedUnsafe("2024-01-01T00:00:00Z", { timeZone: "Asia/Tokyo" })
+      const atMaximum = DateTime.makeZonedUnsafe("2024-12-31T00:00:00Z", { timeZone: "Asia/Tokyo" })
+      strictEqual(DateTime.clamp(atMinimum, { minimum, maximum }), atMinimum)
+      strictEqual(DateTime.clamp(atMaximum, { minimum, maximum }), atMaximum)
+    })
+  })
+
   describe("toDate", () => {
     it("stores zoned wall-clock time in UTC fields", () => {
       const zoned = DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", {
