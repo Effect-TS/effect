@@ -13,6 +13,35 @@ const withClock = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   )
 
 describe("VirtualFileSystem handles", () => {
+  it.effect("preserves owned bytes across large synchronous writes and partial overwrites", () =>
+    Effect.gen(function*() {
+      const owner = yield* VFS.make({ limits: { synchronous: true } })
+      const caller = yield* owner.authorize({ credentials })
+      const sync = yield* caller.acquireSync
+      const file = Result.getOrThrow(sync.open("/file", { access: "readwrite", create: "ifmissing" }))
+      const size = 1024 * 1024
+      const source = new Uint8Array(2 * size + 4).fill(1)
+      const input = source.subarray(2, -2)
+      Object.defineProperty(input, "slice", {
+        value: () => {
+          throw new Error("unexpected user-defined slice")
+        }
+      })
+
+      Result.getOrThrow(file.write(input, { position: 0n }))
+      source.fill(0)
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/file")), new Uint8Array(2 * size).fill(1))
+
+      Result.getOrThrow(file.write(new Uint8Array(size).fill(2), { position: 0n }))
+      Result.getOrThrow(file.write(bytes(3, 4), { position: BigInt(64 * 1024 - 1) }))
+
+      const expected = new Uint8Array(2 * size).fill(1).fill(2, 0, size)
+      expected.set(bytes(3, 4), 64 * 1024 - 1)
+      assert.strictEqual(Result.getOrThrow(file.position()), 0n)
+      assert.deepStrictEqual(Result.getOrThrow(sync.readFile("/file")), expected)
+      Result.getOrThrow(file.close())
+    }))
+
   for (const close of ["effect", "sync"] as const) {
     it.effect(`removes the scope finalizer after explicit ${close} close`, () =>
       Effect.gen(function*() {

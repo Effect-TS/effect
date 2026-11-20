@@ -279,6 +279,21 @@ export const snapshotInput = (work: R.Work, input: Uint8Array) =>
   })
 
 /** @internal */
+export const snapshotHandleInput = (work: R.Work, input: Uint8Array, allowPages: boolean) =>
+  Result.gen(function*() {
+    const length = yield* inputLength(input, work.operation, work.ticket.runtime.limits)
+    yield* work.reserveResult(BigInt(length))
+    if (allowPages && length >= E.pagedFileThreshold) {
+      const buffer = Reflect.get(Uint8Array.prototype, "buffer", input)
+      const offset = Reflect.get(Uint8Array.prototype, "byteOffset", input)
+      return E.PagedFileData.from(new Uint8Array(buffer, offset, length))
+    }
+    const copy = new Uint8Array(length)
+    Uint8Array.prototype.set.call(copy, input)
+    return copy
+  })
+
+/** @internal */
 export const snapshotAttributes = (
   input: M.Attributes,
   operation: string

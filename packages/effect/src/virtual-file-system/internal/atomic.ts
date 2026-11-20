@@ -617,9 +617,12 @@ export const writeFile = (
     yield* reserveFile(tx, BigInt(length))
     if (placement === "replace" || data.length > 0) tx.recordUpdate(node.id)
     if (data.length === 0 && (placement !== "replace" || node.data.length === 0)) return
-    const next = new Uint8Array(length)
-    if (placement !== "replace") next.set(node.data)
-    next.set(data, placement === "append" ? node.data.length : 0)
+    const paged = placement === "replace" && data.length >= E.pagedFileThreshold && tx.engine.offer === undefined
+    const next = paged ? E.PagedFileData.from(data) : new Uint8Array(length)
+    if (next instanceof Uint8Array) {
+      if (placement !== "replace") E.copyFileData(next, node.data)
+      next.set(data, placement === "append" ? node.data.length : 0)
+    }
     const edited = yield* tx.editResult(node.id)
     if (edited.kind !== "file") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -649,7 +652,7 @@ export const truncate = (
     tx.recordUpdate(node.id)
     if (requested === BigInt(node.data.length) && (node.mode & E.SET_ID_BITS) === 0) return
     const data = new Uint8Array(size)
-    data.set(node.data.subarray(0, data.length))
+    E.copyFileData(data, node.data)
     const edited = yield* tx.editResult(node.id)
     if (edited.kind !== "file") {
       return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -741,7 +744,7 @@ export const attributesFor = (
     const edited = yield* tx.editResult(node.id)
     if (size !== undefined && edited.kind === "file" && size !== edited.data.length) {
       const data = new Uint8Array(size)
-      data.set(edited.data.subarray(0, data.length))
+      E.copyFileData(data, edited.data)
       edited.data = data
       changed = true
       yield* tx.touchResult(node.id, ["mtime"])

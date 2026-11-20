@@ -187,7 +187,8 @@ const prepareWrite = (
   state: E.FileState,
   work: R.Work,
   source: Uint8Array,
-  options?: M.WriteOptions
+  options?: M.WriteOptions,
+  synchronous = false
 ) =>
   Result.gen(function*() {
     const fixedOptions = yield* writeOptions(options, work.operation)
@@ -196,7 +197,12 @@ const prepareWrite = (
         new M.InvalidInput({ operation: work.operation, field: "position", reason: "malformed" })
       )
     }
-    const input = yield* P.snapshotInput(work, source)
+    const input = yield* P.snapshotHandleInput(
+      work,
+      source,
+      synchronous && !state.append && (fixedOptions.position ?? state.position) === zero &&
+        E.resolveEngine(state.caller).offer === undefined
+    )
     const length = input.length
     return (tx: E.Transaction) =>
       Result.gen(function*() {
@@ -212,9 +218,27 @@ const prepareWrite = (
         const start = state.append ? BigInt(file.data.length) : fixedOptions.position ?? state.position
         const end = start + BigInt(length)
         const total = end > BigInt(file.data.length) ? end : BigInt(file.data.length)
-        const output = new Uint8Array(yield* A.reserveFile(tx, total))
-        output.set(file.data)
-        output.set(input, Number(start))
+        const size = yield* A.reserveFile(tx, total)
+        const paged = tx.engine.offer === undefined && (
+          file.data instanceof E.PagedFileData ||
+          start === BigInt(file.data.length) && length >= 64 * 1024 &&
+            (file.data.length > 0 || length >= E.pagedFileThreshold)
+        )
+        let output: E.FileNode["data"]
+        if (input instanceof E.PagedFileData && start === zero && total === end) {
+          output = input
+        } else {
+          const bytes = input instanceof E.PagedFileData ? input.slice() : input
+          if (paged) {
+            output = file.data.length === 0
+              ? E.PagedFileData.from(bytes)
+              : E.PagedFileData.from(file.data).write(Number(start), bytes)
+          } else {
+            output = new Uint8Array(size)
+            E.copyFileData(output, file.data)
+            output.set(bytes, Number(start))
+          }
+        }
         const edited = yield* tx.editResult(file.id)
         if (edited.kind !== "file") {
           return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -252,7 +276,7 @@ const prepareTruncate = (
         tx.recordUpdate(file.id)
         if (file.data.length !== size || (file.mode & E.SET_ID_BITS) !== 0) {
           const output = new Uint8Array(size)
-          output.set(file.data.subarray(0, size))
+          E.copyFileData(output, file.data)
           const edited = yield* tx.editResult(file.id)
           if (edited.kind !== "file") {
             return yield* Result.fail(new M.InvalidResource({ operation: tx.operation, reason: "wrongKind" }))
@@ -456,7 +480,8 @@ const syncFileHandle = (state: E.FileState) => {
       ),
     readAlloc: (count, options) =>
       R.readOnlyResult(runSync(state, "handle.readAlloc", (work) => prepareRead(state, work, count, options))),
-    write: (source, options) => runSync(state, "handle.write", (work) => prepareWrite(state, work, source, options)),
+    write: (source, options) =>
+      runSync(state, "handle.write", (work) => prepareWrite(state, work, source, options, true)),
     seek: (seek) => runSync(state, "handle.seek", (work) => prepareSeek(state, work, seek)),
     position: () =>
       R.readOnlyResult(runSync(state, "handle.position", () => Result.succeed(() => Result.succeed(state.position)))),
