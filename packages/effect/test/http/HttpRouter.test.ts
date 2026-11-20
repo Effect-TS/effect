@@ -101,6 +101,41 @@ describe("HttpRouter", () => {
     )
   })
 
+  it.effect("keeps params redacted across regex captures, optional segments and mounted routers", () =>
+    Effect.gen(function*() {
+      const inner = yield* HttpRouter.toHttpEffect(
+        HttpRouter.add("GET", "/:id/:secret", echoUrl, { redactedParams: ["secret"] })
+      )
+      const urls: Array<unknown> = []
+      const logger = Logger.make((options) => {
+        urls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
+      })
+      const app = Layer.mergeAll(
+        // The nested capture shifts part of `secret` onto `id`.
+        HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
+        HttpRouter.use((router) =>
+          router.prefixed("/vault").add("*", "*", Effect.orDie(inner), { redactedParams: ["*"] })
+        ),
+        HttpRouter.use((router) => router.prefixed("/hooks").add("*", "*", Effect.orDie(inner)))
+      )
+      yield* Effect.acquireUseRelease(
+        Effect.sync(() => HttpRouter.toWebHandler(app)),
+        ({ handler }) =>
+          Effect.promise(async () => {
+            for (const path of ["/codes/a1-7", "/opt", "/vault/1/s3cret", "/hooks/1/s3cret"]) {
+              await handler(
+                new Request(`http://localhost${path}`),
+                Context.make(Logger.CurrentLoggers, new Set([logger]))
+              )
+            }
+          }),
+        ({ dispose }) => Effect.promise(dispose)
+      )
+
+      assert.deepStrictEqual(urls, ["/codes/REDACTED-REDACTED", "/opt", "/vault/REDACTED", "/hooks/1/REDACTED"])
+    }))
+
   it("normalizes the prefix stored by prefixRoute", () => {
     const route = HttpRouter.prefixRoute(
       HttpRouter.route("GET", "/users", HttpServerResponse.text("ok")),

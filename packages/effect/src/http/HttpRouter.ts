@@ -33,6 +33,7 @@ import * as HttpServer from "./HttpServer.ts"
 import * as HttpServerError from "./HttpServerError.ts"
 import * as HttpServerRequest from "./HttpServerRequest.ts"
 import * as HttpServerResponse from "./HttpServerResponse.ts"
+import * as RedactedPath from "./internal/redactedPath.ts"
 import { CurrentRequestState } from "./internal/requestState.ts"
 
 const TypeId = "~effect/http/HttpRouter"
@@ -246,7 +247,11 @@ export const make = Effect.gen(function*() {
         if (route.redactedParams !== undefined && route.redactedParams.length > 0) {
           const state = Context.getOrUndefined(context, CurrentRequestState)
           if (state !== undefined) {
-            state.redactedPath = renderRedactedPath(route.path, result.params, route.redactedParams)
+            state.redactedPath = RedactedPath.combine(
+              state.redactedPath,
+              RedactedPath.render(route.path, result.params, route.redactedParams),
+              request
+            )
           }
         }
         if (fiber.getRef(Tracer.Tracer) !== Tracer.nativeTracer) {
@@ -315,55 +320,6 @@ function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
     }
   }
   return count
-}
-
-// Renders a matched path from the route pattern, replacing the listed params
-// with `REDACTED`. Follows the pattern grammar of `FindMyWay`.
-function renderRedactedPath(
-  path: string,
-  params: Readonly<Record<string, string | undefined>>,
-  redactedParams: ReadonlyArray<string>
-): string {
-  let out = ""
-  const append = (name: string, wildcard: boolean) => {
-    const value = params[name]
-    if (value === undefined) {
-      // An absent optional param or wildcard drops its leading slash.
-      if (out.endsWith("/")) out = out.slice(0, -1)
-    } else if (redactedParams.includes(name)) {
-      out += "REDACTED"
-    } else {
-      out += wildcard ? value.split("/").map(encodePathSegment).join("/") : encodePathSegment(value)
-    }
-  }
-  for (let i = 0; i < path.length; i++) {
-    const char = path[i]
-    if (char === "*") {
-      append("*", true)
-    } else if (char !== ":") {
-      out += char
-    } else if (path[i + 1] === ":") {
-      out += ":"
-      i++
-    } else {
-      let end = i + 1
-      while (
-        end < path.length && !"(-./".includes(path[end]) &&
-        !(path[end] === "?" && (end === path.length - 1 || path[end + 1] === "/"))
-      ) end++
-      append(path.slice(i + 1, end), false)
-      i = path[end] === "(" ? getClosingParenthensePosition(path, end) : path[end] === "?" ? end : end - 1
-    }
-  }
-  return out.startsWith("/") ? out : "/" + out
-}
-
-function encodePathSegment(segment: string): string {
-  try {
-    return encodeURIComponent(segment)
-  } catch {
-    return segment
-  }
 }
 
 /**
@@ -840,6 +796,8 @@ const makeRoute = <E, R>(options: {
  *   `HttpMiddleware.withLoggerDisabled` for those.
  * - Error messages and the `request` of errors raised by the handler keep the
  *   path as sent.
+ * - A regex constraint with its own capture groups shifts matched values onto
+ *   the following params, so every param of that route is redacted instead.
  *
  * **Example** (Redacting a token in the path)
  *

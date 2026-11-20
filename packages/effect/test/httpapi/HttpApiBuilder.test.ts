@@ -24,6 +24,7 @@ import {
   HttpMiddleware,
   HttpPlatform,
   HttpRouter,
+  type HttpServerError,
   HttpServerRequest,
   HttpServerResponse
 } from "effect/http"
@@ -2163,14 +2164,16 @@ describe("HttpApiBuilder RedactedNames", () => {
       HttpApiGroup.make("assets").add(
         HttpApiEndpoint.get("asset", "/assets/:token/file", {
           params: { token: Schema.String },
-          success: Schema.String
-        }).annotate(HttpApi.RedactedNames, { params: ["token"] })
+          query: { key: Schema.String },
+          success: Schema.String,
+          error: Schema.String.pipe(HttpApiSchema.status(500))
+        }).annotate(HttpApi.RedactedNames, { params: ["token"], query: ["key"] })
       )
     )
     const GroupLayer = HttpApiBuilder.group(
       Api,
       "assets",
-      (handlers) => handlers.handle("asset", ({ params }) => Effect.succeed(params.token))
+      (handlers) => handlers.handle("asset", () => Effect.fail("boom"))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2186,15 +2189,20 @@ describe("HttpApiBuilder RedactedNames", () => {
     )
     try {
       const response = await handler(
-        new Request("http://localhost/assets/tok/file"),
+        new Request("http://localhost/assets/tok/file?key=s3cret"),
         Context.make(Tracer.Tracer, tracer)
       )
-      assert.strictEqual(await response.json(), "tok")
+      assert.strictEqual(response.status, 500)
     } finally {
       await dispose()
     }
 
-    assert.strictEqual(spans[0].attributes.get("url.path"), "/assets/REDACTED/file")
+    const [span] = spans
+    assert.strictEqual(span.attributes.get("url.full"), "http://localhost/assets/REDACTED/file?key=REDACTED")
+    // The 5xx error recorded on the span keeps the URL redacted too.
+    assert(span.status._tag === "Ended" && span.status.exit._tag === "Failure")
+    const error = Cause.squash(span.status.exit.cause) as HttpServerError.HttpServerError
+    assert.strictEqual(error.request.url, "/assets/REDACTED/file?key=REDACTED")
   })
 })
 

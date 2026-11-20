@@ -1,6 +1,7 @@
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import type { PreResponseHandler } from "../HttpEffect.ts"
+import type { RedactedPath } from "./redactedPath.ts"
 
 /**
  * Mutable state owned by the root that handles a single server request.
@@ -13,7 +14,7 @@ export class RequestState {
   redactedUrlParamNames: ReadonlyArray<string | RegExp> = []
   redactedHeaderNames: ReadonlyArray<string | RegExp> = []
   /** The matched path with redacted route params, recorded instead of the URL path. */
-  redactedPath: string | undefined = undefined
+  redactedPath: RedactedPath | undefined = undefined
 }
 
 /**

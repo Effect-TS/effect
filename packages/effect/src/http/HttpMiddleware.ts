@@ -42,6 +42,7 @@ import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
 import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import * as RedactedPath from "./internal/redactedPath.ts"
 import { appendPreResponseHandlerUnsafe, CurrentRequestState } from "./internal/requestState.ts"
 import * as tracing from "./internal/tracing.ts"
 import * as internalUrlParams from "./internal/urlParams.ts"
@@ -226,7 +227,9 @@ export const logger: <E, R>(
           return exit
         }
         // Read on exit, as the router records the redacted path when it matches.
-        const path = state?.redactedPath ?? internalUrlParams.stripSearchAndHash(request.url)
+        const path = state?.redactedPath !== undefined
+          ? RedactedPath.format(state.redactedPath)
+          : internalUrlParams.stripSearchAndHash(request.url)
         if (exit._tag === "Failure") {
           const [response, cause] = causeResponseStripped(exit.cause)
           const message = Option.isSome(cause) &&
@@ -276,12 +279,15 @@ const responseSpanExit = (
   if (!(response.status >= 500 && response.status < 600)) {
     return Exit.succeed(response)
   }
-  const redactedPath = Context.getOrUndefined(context, CurrentRequestState)?.redactedPath
+  const state = Context.getOrUndefined(context, CurrentRequestState)
   // The message is path-only, but exporters can still read `error.request.url`
   // after the request-scoped redacted names are gone.
-  let url = UrlParams.redactUrl(request.url, fiber.getRef(UrlParams.CurrentRedactedNames))
-  if (redactedPath !== undefined) {
-    url = redactedPath + url.slice(internalUrlParams.stripSearchAndHash(url).length)
+  let url = UrlParams.redactUrl(
+    request.url,
+    withStateNames(fiber.getRef(UrlParams.CurrentRedactedNames), state?.redactedUrlParamNames)
+  )
+  if (state?.redactedPath !== undefined) {
+    url = RedactedPath.format(state.redactedPath) + url.slice(internalUrlParams.stripSearchAndHash(url).length)
   }
   if (url !== request.url) {
     request = request.modify({ url })
@@ -331,7 +337,6 @@ export const tracer: <E, R>(
         return undefined
       }
       const state = Context.getOrUndefined(prevServices, CurrentRequestState)
-      const redactedPath = state?.redactedPath
       const redactedHeaderNames = withStateNames(fiber.getRef(Headers.CurrentRedactedNames), state?.redactedHeaderNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
       // Complete the span before the request fiber exits so shutdown can flush it.
@@ -352,7 +357,7 @@ export const tracer: <E, R>(
         span.attribute("http.request.method", request.method)
         const url = Request.toURL(request)
         if (Option.isSome(url)) {
-          if (redactedPath !== undefined) url.value.pathname = redactedPath
+          if (state?.redactedPath !== undefined) url.value.pathname = RedactedPath.format(state.redactedPath)
           tracing.addUrlAttributes(
             span,
             url.value,
