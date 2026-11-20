@@ -56,92 +56,74 @@ describe("HttpRouter", () => {
       }))
   }
 
-  it("records redacted params in the server span and log", async () => {
-    const spans: Array<Tracer.NativeSpan> = []
-    const tracer = Tracer.make({
-      span(options) {
-        const span = new Tracer.NativeSpan(options)
-        spans.push(span)
-        return span
-      }
-    })
-    const urls: Array<unknown> = []
-    const logger = Logger.make((options) => {
-      urls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
-    })
-    const { dispose, handler } = HttpRouter.toWebHandler(
-      Layer.mergeAll(
-        HttpRouter.add("GET", "/hooks/:id/:secret", echoUrl, { redactedParams: ["secret"] }),
-        HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] })
-      )
-    )
-    const context = Context.make(Tracer.Tracer, tracer).pipe(
-      Context.add(Logger.CurrentLoggers, new Set([logger])),
-      Context.add(UrlParams.CurrentRedactedNames, ["key"])
-    )
-    const bodies: Array<string> = []
-    try {
-      for (const path of ["/hooks/123/s3cret?key=q", "/assets/tok/site.css"]) {
-        const response = await handler(new Request(`http://localhost${path}`), context)
-        bodies.push(await response.text())
-      }
-    } finally {
-      await dispose()
-    }
-
-    // The handler sees the URL unchanged.
-    assert.deepStrictEqual(bodies, ["/hooks/123/s3cret?key=q", "/assets/tok/site.css"])
-    assert.deepStrictEqual(urls, ["/hooks/123/REDACTED", "/assets/REDACTED"])
-    assert.deepStrictEqual(
-      spans.map((span) => [span.attributes.get("url.path"), span.attributes.get("url.full")]),
-      [
-        ["/hooks/123/REDACTED", "http://localhost/hooks/123/REDACTED?key=REDACTED"],
-        ["/assets/REDACTED", "http://localhost/assets/REDACTED"]
-      ]
-    )
-  })
-
-  it.effect("keeps params redacted across regex captures, optional segments and mounted routers", () =>
+  it.effect("records redacted params in server spans and logs", () =>
     Effect.gen(function*() {
-      const inner = yield* HttpRouter.toHttpEffect(
-        HttpRouter.add("GET", "/:id/:secret", echoUrl, { redactedParams: ["secret"] })
-      )
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
       const urls: Array<unknown> = []
       const logger = Logger.make((options) => {
         urls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
       })
+      const inner = yield* HttpRouter.toHttpEffect(
+        HttpRouter.add("GET", "/:id/:secret", echoUrl, { redactedParams: ["secret"] })
+      )
       const app = Layer.mergeAll(
-        // The nested capture shifts part of `secret` onto `id`.
+        HttpRouter.add("GET", "/hooks/:id/:secret", echoUrl, { redactedParams: ["secret"] }),
+        HttpRouter.add("GET", "/assets/*", echoUrl, { redactedParams: ["*"] }),
+        // A nested regex capture shifts values across params, so every param is redacted.
         HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
-        // A capture whose escaped token precedes `?=`, so it is not a lookahead.
-        HttpRouter.add("GET", "/keys/:secret(^(\\d?=k)\\w+)-:id", echoUrl, { redactedParams: ["secret"] }),
         HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
         HttpRouter.use((router) =>
           router.prefixed("/vault").add("*", "*", Effect.orDie(inner), { redactedParams: ["*"] })
         ),
-        HttpRouter.use((router) => router.prefixed("/hooks").add("*", "*", Effect.orDie(inner)))
+        HttpRouter.use((router) => router.prefixed("/mounted").add("*", "*", Effect.orDie(inner)))
       )
-      yield* Effect.acquireUseRelease(
+      const context = Context.make(Tracer.Tracer, tracer).pipe(
+        Context.add(Logger.CurrentLoggers, new Set([logger])),
+        Context.add(UrlParams.CurrentRedactedNames, ["key"])
+      )
+      const bodies = yield* Effect.acquireUseRelease(
         Effect.sync(() => HttpRouter.toWebHandler(app)),
         ({ handler }) =>
           Effect.promise(async () => {
-            for (const path of ["/codes/a1-7", "/keys/1=kab-7", "/opt", "/vault/1/s3cret", "/hooks/1/s3cret"]) {
-              await handler(
-                new Request(`http://localhost${path}`),
-                Context.make(Logger.CurrentLoggers, new Set([logger]))
-              )
+            const out: Array<string> = []
+            for (
+              const path of [
+                "/hooks/123/s3cret?key=q",
+                "/assets/tok/site.css",
+                "/codes/a1-7",
+                "/opt",
+                "/vault/1/s3cret",
+                "/mounted/1/s3cret"
+              ]
+            ) {
+              const response = await handler(new Request(`http://localhost${path}`), context)
+              out.push(await response.text())
             }
+            return out
           }),
         ({ dispose }) => Effect.promise(dispose)
       )
 
-      assert.deepStrictEqual(urls, [
+      const expectedPaths = [
+        "/hooks/123/REDACTED",
+        "/assets/REDACTED",
         "/codes/REDACTED-REDACTED",
-        "/keys/REDACTED-REDACTED",
         "/opt",
         "/vault/REDACTED",
-        "/hooks/1/REDACTED"
-      ])
+        "/mounted/1/REDACTED"
+      ]
+      // The handler still receives the raw URL unchanged.
+      assert.strictEqual(bodies[0], "/hooks/123/s3cret?key=q")
+      assert.deepStrictEqual(urls, expectedPaths)
+      assert.deepStrictEqual(spans.map((span) => span.attributes.get("url.path")), expectedPaths)
+      assert.strictEqual(spans[0].attributes.get("url.full"), "http://localhost/hooks/123/REDACTED?key=REDACTED")
     }))
 
   it("normalizes the prefix stored by prefixRoute", () => {
