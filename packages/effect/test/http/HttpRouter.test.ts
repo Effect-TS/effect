@@ -113,6 +113,8 @@ describe("HttpRouter", () => {
       const app = Layer.mergeAll(
         // The nested capture shifts part of `secret` onto `id`.
         HttpRouter.add("GET", "/codes/:secret(^(a|b)\\d+)-:id", echoUrl, { redactedParams: ["secret"] }),
+        // A capture whose escaped token precedes `?=`, so it is not a lookahead.
+        HttpRouter.add("GET", "/keys/:secret(^(\\d?=k)\\w+)-:id", echoUrl, { redactedParams: ["secret"] }),
         HttpRouter.add("GET", "/opt/:p1-:p2?", echoUrl, { redactedParams: ["p2"] }),
         HttpRouter.use((router) =>
           router.prefixed("/vault").add("*", "*", Effect.orDie(inner), { redactedParams: ["*"] })
@@ -123,7 +125,7 @@ describe("HttpRouter", () => {
         Effect.sync(() => HttpRouter.toWebHandler(app)),
         ({ handler }) =>
           Effect.promise(async () => {
-            for (const path of ["/codes/a1-7", "/opt", "/vault/1/s3cret", "/hooks/1/s3cret"]) {
+            for (const path of ["/codes/a1-7", "/keys/1=kab-7", "/opt", "/vault/1/s3cret", "/hooks/1/s3cret"]) {
               await handler(
                 new Request(`http://localhost${path}`),
                 Context.make(Logger.CurrentLoggers, new Set([logger]))
@@ -133,7 +135,13 @@ describe("HttpRouter", () => {
         ({ dispose }) => Effect.promise(dispose)
       )
 
-      assert.deepStrictEqual(urls, ["/codes/REDACTED-REDACTED", "/opt", "/vault/REDACTED", "/hooks/1/REDACTED"])
+      assert.deepStrictEqual(urls, [
+        "/codes/REDACTED-REDACTED",
+        "/keys/REDACTED-REDACTED",
+        "/opt",
+        "/vault/REDACTED",
+        "/hooks/1/REDACTED"
+      ])
     }))
 
   it("normalizes the prefix stored by prefixRoute", () => {

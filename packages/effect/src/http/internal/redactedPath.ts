@@ -80,8 +80,19 @@ export const render = (
   return text.startsWith("/") ? { text, kinds } : { text: "/" + text, kinds: [STATIC, ...kinds] }
 }
 
-// Over-matches character classes such as `[(]`, which only redacts more.
-const hasCapture = (regex: string): boolean => /\((?!\?(?:[:=!]|<[=!]))/.test(regex.replace(/\\./g, ""))
+// Scans for a capturing group, skipping escapes and character classes. Any
+// group other than `(?:`, `(?=`, `(?!`, `(?<=` and `(?<!` counts as one.
+const hasCapture = (regex: string): boolean => {
+  let inClass = false
+  for (let i = 0; i < regex.length; i++) {
+    const char = regex[i]
+    if (char === "\\") i++
+    else if (inClass) inClass = char !== "]"
+    else if (char === "[") inClass = true
+    else if (char === "(" && !/^\?(?:[:=!]|<[=!])/.test(regex.slice(i + 1, i + 4))) return true
+  }
+  return false
+}
 
 const encodeSegment = (segment: string): string => {
   try {
@@ -108,7 +119,7 @@ export const combine = (
     const original = toPath(request.originalUrl)
     if (local === original || !original.endsWith(local)) return next
     const prefix = original.slice(0, original.length - local.length)
-    return { text: prefix + next.text, kinds: [...prefix].map(() => PARAM).concat(next.kinds) }
+    return { text: prefix + next.text, kinds: new Array<number>(prefix.length).fill(PARAM).concat(next.kinds) }
   }
   const kinds = previous.kinds.slice()
   const offset = previous.text.length - next.text.length
