@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array, ByteSize, Cause, Option, Result } from "effect"
+import { Array, ByteSize, Cause, IgnoreFile, Option, PathFilter, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import * as Glob from "effect/Glob"
@@ -16,6 +16,9 @@ export interface TestLayerOptions {
 }
 
 const posix = (path: string) => path.replaceAll("\\", "/")
+
+const makeFilter = ([format, source]: readonly ["gitignore" | "dockerignore", string]) =>
+  format === "gitignore" ? IgnoreFile.gitignore(source) : Result.getOrThrow(IgnoreFile.dockerignore(source))
 
 const runWith = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
   Effect.runPromise(Effect.provide(self, layer))
@@ -1018,7 +1021,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(Effect.scoped)
     ))
 
-  it("glob honors exclude patterns", () =>
+  it("glob drops paths a `!` pattern excludes", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
@@ -1028,7 +1031,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* fs.writeFileString(`${root}/src/index.test.ts`, "")
         yield* fs.writeFileString(`${root}/src/readme.md`, "")
 
-        const matches = yield* fs.glob("**/*.ts", { root, exclude: ["**/*.test.ts"] })
+        const matches = yield* fs.glob(["**/*.ts", "!**/*.test.ts"], { root })
 
         assert.strictEqual(matches.length, 1)
         assert.isTrue(posix(matches[0]).endsWith("src/index.ts"))
@@ -1086,6 +1089,7 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
     readonly pattern: string
     readonly exclude?: ReadonlyArray<string>
     readonly dot?: boolean
+    readonly filter?: readonly ["gitignore" | "dockerignore", string]
     readonly expected: ReadonlyArray<string>
   }>([
     {
@@ -1107,34 +1111,194 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
       dot: true,
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
     },
-    { pattern: "*", exclude: ["**/src/", "**/README.md/"], expected: ["README.md", "a", "b", "node_modules"] }
-  ])("glob $pattern (exclude: $exclude, dot: $dot)", ({ dot, exclude, expected, pattern }) =>
+    { pattern: "*", exclude: ["**/src/", "**/README.md/"], expected: ["README.md", "a", "b", "node_modules"] },
+    // the root is never a result; use `exists` to check it
+    { pattern: ".", expected: [] },
+    // `filter` expectations: BuildKit's walk (tonistiigi/fsutil@ca65610) and `git check-ignore --no-index`
+    {
+      pattern: "**/*.ts",
+      dot: true,
+      filter: ["dockerignore", "node_modules\n.hidden\n!node_modules/pkg/index.ts\n"],
+      expected: ["a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts", "src/sub/deep.ts"]
+    },
+    {
+      pattern: "**/*.ts",
+      dot: true,
+      filter: ["dockerignore", "node_modules\nsrc\n!**/index.ts\n"],
+      expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts"]
+    },
+    {
+      pattern: "**/*.ts",
+      dot: true,
+      filter: ["dockerignore", "src\n!src/index.ts\nsrc\n"],
+      expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts"]
+    },
+    {
+      pattern: "**/*.ts",
+      dot: true,
+      filter: ["gitignore", "node_modules\n!node_modules/pkg/index.ts\n"],
+      expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
+    },
+    {
+      pattern: "**/*.ts",
+      exclude: ["node_modules"],
+      filter: ["gitignore", "a\n!.hidden/secret.ts\n!node_modules/pkg/index.ts\n"],
+      expected: ["b/y.ts", "src/index.ts", "src/sub/deep.ts"]
+    },
+    { pattern: "*", dot: true, filter: ["gitignore", "/*/\n!/src/\n"], expected: [".env", "README.md", "src"] },
+    // the later exclusion outranks the inclusion
+    {
+      pattern: "*",
+      exclude: ["**/src/", "**/README.md/"],
+      filter: ["gitignore", "!src\n"],
+      expected: ["README.md", "a", "b", "node_modules"]
+    },
+    // the exception is not a plain prefix of `node_modules/pkg`, so it must be
+    // read. fsutil strips both trailing globs here and drops the file.
+    {
+      pattern: "node_modules/**",
+      dot: true,
+      filter: ["dockerignore", "node_modules\n!node_modules/*/**\n"],
+      expected: ["node_modules/pkg/index.ts"]
+    }
+  ])(
+    "glob $pattern (exclude: $exclude, dot: $dot, filter: $filter)",
+    ({ dot, exclude, expected, filter, pattern }) =>
+      runPromise(
+        Effect.gen(function*() {
+          const fs = yield* Fs.FileSystem
+          const root = yield* globFixture
+          // `exclude` patterns become `PathFilter.exclude` rules after the parsed ones
+          const parsed = filter && makeFilter(filter)
+          const excluded = exclude && PathFilter.make(exclude.map((pattern) => PathFilter.exclude(pattern)))
+          const combined = parsed && excluded ? PathFilter.concat(parsed, excluded) : parsed ?? excluded
+          const selection = dot === undefined ? pattern : PathFilter.select(pattern, { dot })
+          const input = combined ? PathFilter.restrict(selection, combined) : selection
+          expect(yield* fs.glob(input, { root })).toEqual(expected)
+        }).pipe(Effect.scoped)
+      )
+  )
+
+  it("glob applies dot per rule and lists every path for an empty filter", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
         const root = yield* globFixture
-        expect(yield* fs.glob(pattern, { root, exclude, dot })).toEqual(expected)
-      }).pipe(Effect.scoped)
-    ))
-
-  it("glob returns absolute paths for an absolute pattern", () =>
-    runPromise(
-      Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
-        const root = (yield* globFixture).replaceAll("\\", "/")
-        expect(yield* fs.glob(`${Glob.escape(root)}/src/**/*.ts`)).toEqual([
-          `${root}/src/index.ts`,
-          `${root}/src/sub/deep.ts`
+        // rules match dot names unless told otherwise; strings do not
+        expect(yield* fs.glob(PathFilter.select([PathFilter.include("**/*.ts")]), { root })).toEqual([
+          ".hidden/secret.ts",
+          "a/x.ts",
+          "b/y.ts",
+          "node_modules/pkg/index.ts",
+          "src/index.ts",
+          "src/sub/deep.ts"
+        ])
+        expect(yield* fs.glob(PathFilter.empty, { root })).toEqual([
+          ".env",
+          ".hidden",
+          ".hidden/secret.ts",
+          "README.md",
+          "a",
+          "a/x.ts",
+          "b",
+          "b/y.ts",
+          "node_modules",
+          "node_modules/pkg",
+          "node_modules/pkg/index.ts",
+          "src",
+          "src/index.ts",
+          "src/sub",
+          "src/sub/deep.js",
+          "src/sub/deep.ts"
         ])
       }).pipe(Effect.scoped)
     ))
 
-  it("glob resolves .. segments against root", () =>
+  it("glob restricts a selection without the restriction adding paths", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
         const root = yield* globFixture
-        expect(yield* fs.glob("../a/*.ts", { root: `${root}/src` })).toEqual(["../a/x.ts"])
+        // the selection does not bypass the `node_modules` barrier
+        expect(yield* fs.glob(PathFilter.restrict("**/*.ts", IgnoreFile.gitignore("node_modules\n")), { root }))
+          .toEqual(["a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"])
+        // a probed literal still has its ancestors evaluated
+        expect(yield* fs.glob(PathFilter.restrict("src/*.ts", [PathFilter.exclude("src")]), { root })).toEqual([])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob converts an iterable input once per call", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* globFixture
+        // running the effect again does not consume a one-shot iterable again
+        const walk = fs.glob(
+          (function*() {
+            yield "src/index.ts"
+          })(),
+          { root }
+        )
+        expect(yield* walk).toEqual(["src/index.ts"])
+        expect(yield* walk).toEqual(["src/index.ts"])
+        // a later call sees a changed iterable
+        const patterns = new Set(["src/index.ts"])
+        expect(yield* fs.glob(patterns, { root })).toEqual(["src/index.ts"])
+        patterns.delete("src/index.ts")
+        patterns.add("a/x.ts")
+        expect(yield* fs.glob(patterns, { root })).toEqual(["a/x.ts"])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob returns absolute paths for an absolute pattern, whatever the root", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = posix(yield* globFixture)
+        const pattern = `${Glob.escape(root)}/src/**`
+        const expected = [
+          `${root}/src`,
+          `${root}/src/index.ts`,
+          `${root}/src/sub`,
+          `${root}/src/sub/deep.js`,
+          `${root}/src/sub/deep.ts`
+        ]
+        expect(yield* fs.glob(pattern)).toEqual(expected)
+        expect(yield* fs.glob(pattern, { root: `${root}/a` })).toEqual(expected)
+        // the part after the literal prefix keeps its positive, relative meaning
+        yield* fs.makeDirectory(`${root}/!src`)
+        yield* fs.writeFileString(`${root}/!src/wanted.ts`, "")
+        expect(yield* fs.glob(`${Glob.escape(root)}/!src/*.ts`)).toEqual([`${root}/!src/wanted.ts`])
+        // Windows cannot create a directory named `C:`
+        if (globalThis.process?.platform !== "win32") {
+          yield* fs.makeDirectory(`${root}/C:`)
+          yield* fs.writeFileString(`${root}/C:/file.ts`, "")
+          expect(yield* fs.glob(`${Glob.escape(root)}/C:/*`)).toEqual([`${root}/C:/file.ts`])
+        }
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob returns paths relative to an absolute root, without the root itself", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = posix(yield* globFixture)
+        expect(yield* fs.glob("**/*.ts", { root: `${root}/src` })).toEqual(["index.ts", "sub/deep.ts"])
+        expect(yield* fs.glob("**", { root: `${root}/src` })).toEqual([
+          "index.ts",
+          "sub",
+          "sub/deep.js",
+          "sub/deep.ts"
+        ])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob resolves .. segments in root", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* globFixture
+        expect(yield* fs.glob("*.ts", { root: `${root}/src/../a` })).toEqual(["x.ts"])
       }).pipe(Effect.scoped)
     ))
 
@@ -1165,11 +1329,111 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
         const root = yield* fs.makeTempDirectoryScoped()
         yield* fs.makeDirectory(`${root}/target`)
         yield* fs.writeFileString(`${root}/target/file.ts`, "")
+        yield* fs.writeFileString(`${root}/target/other.ts`, "")
         yield* fs.symlink(`${root}/target`, `${root}/link`)
         // a link back to the root would loop if `**` followed it
         yield* fs.symlink(root, `${root}/target/loop`)
-        expect(yield* fs.glob("**", { root })).toEqual(["link", "target", "target/file.ts", "target/loop"])
-        expect(yield* fs.glob("link/*.ts", { root })).toEqual(["link/file.ts"])
+        expect(yield* fs.glob("**", { root })).toEqual([
+          "link",
+          "target",
+          "target/file.ts",
+          "target/loop",
+          "target/other.ts"
+        ])
+        expect(yield* fs.glob("link/*.ts", { root })).toEqual(["link/file.ts", "link/other.ts"])
+        // each rule follows the link only through its own explicit segments
+        expect(yield* fs.glob(["link/file.ts", "**/*.ts"], { root })).toEqual([
+          "link/file.ts",
+          "target/file.ts",
+          "target/other.ts"
+        ])
+        // the link itself is not a directory
+        expect(yield* fs.glob("link/", { root })).toEqual([])
+        // a restriction can supply `link` as a probed name, but `**` still does not follow it
+        expect(yield* fs.glob(PathFilter.restrict(["link/file.ts", "**/*.ts"], "link/*"), { root })).toEqual([
+          "link/file.ts"
+        ])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob filter evaluates directory rules against the entry's own type", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped()
+        yield* fs.makeDirectory(`${root}/target`)
+        yield* fs.writeFileString(`${root}/target/file.ts`, "")
+        yield* fs.symlink(`${root}/target`, `${root}/link`)
+        const filter = IgnoreFile.gitignore("link/\ntarget/\n")
+        expect(yield* fs.glob(PathFilter.restrict("**", filter), { root })).toEqual(["link"])
+        const pattern = PathFilter.make([PathFilter.exclude("link/")])
+        expect(yield* fs.glob(PathFilter.restrict("**", pattern), { root })).toEqual([
+          "link",
+          "target",
+          "target/file.ts"
+        ])
+        // literal segments are probed with `stat`, which follows the link
+        expect(yield* fs.glob(PathFilter.restrict("link", filter), { root })).toEqual(["link"])
+        expect(yield* fs.glob(PathFilter.restrict("link/file.ts", filter), { root })).toEqual(["link/file.ts"])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob dies on a UNC path, a .. segment or an escaped separator", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = posix(yield* globFixture)
+        yield* fs.makeDirectory(`${root}/a/b`)
+        yield* fs.writeFileString(`${root}/a/b/file.ts`, "")
+        for (
+          const pattern of [
+            "//server/share",
+            "../a/*.ts",
+            "src/../a/*.ts",
+            "src\\/index.ts",
+            // an escaped separator in an absolute pattern's literal prefix
+            `${Glob.escape(root)}/a\\/b/file.ts`,
+            // compiling discards a branch with `.` after `**`, which must not hide it
+            "{**/src\\/index.ts/.,README.md}"
+          ]
+        ) {
+          const exit = yield* Effect.exit(fs.glob(pattern, { root }))
+          assert.strictEqual(exit._tag, "Failure", pattern)
+          if (exit._tag === "Failure") {
+            assert.isTrue(Cause.hasDies(exit.cause), pattern)
+          }
+        }
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob filter reaches inclusions below inherited exclusions, with or without hints", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* globFixture
+        // every top-level entry is excluded; only node_modules can hold the inclusion
+        for (const hint of [false, true]) {
+          const filter = PathFilter.make([
+            PathFilter.exclude({
+              match: (path: string) => !path.includes("/"),
+              matchesBelow: hint ? (directory) => directory === "" : undefined
+            }, { subtree: "inherit" }),
+            PathFilter.include({
+              match: (path: string) => path === "node_modules/pkg/index.ts",
+              matchesBelow: hint
+                ? (directory) => directory === "" || "node_modules/pkg/index.ts".startsWith(`${directory}/`)
+                : undefined
+            })
+          ])
+          expect(yield* fs.glob(PathFilter.restrict("**/*.ts", filter), { root })).toEqual([
+            "node_modules/pkg/index.ts"
+          ])
+        }
+        const scoped = PathFilter.make([
+          PathFilter.exclude("*", { subtree: "inherit" }),
+          PathFilter.include("index.ts", { scope: "node_modules/pkg" })
+        ])
+        expect(yield* fs.glob(PathFilter.restrict("**/*.ts", scoped), { root })).toEqual(["node_modules/pkg/index.ts"])
       }).pipe(Effect.scoped)
     ))
 }

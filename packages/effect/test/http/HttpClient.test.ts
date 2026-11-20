@@ -1173,6 +1173,33 @@ Missing key
   })
 
   describe("withRateLimiter", () => {
+    it.effect("carries the request and the original store failure in a TransportError", () =>
+      Effect.gen(function*() {
+        const cause = new RateLimiter.RateLimiterError({
+          reason: new RateLimiter.RateLimitStoreError({ message: "store unavailable" })
+        })
+        const { store } = yield* RateLimiter.makeMemoryStore
+        const limiter = yield* RateLimiter.make.pipe(Effect.provideService(RateLimiter.RateLimiterStore, {
+          ...store,
+          tokenBucket: () => Effect.fail(cause)
+        }))
+        const { client } = yield* makeStatusClient(200)
+        const limited = client.pipe(HttpClient.withRateLimiter({
+          failsWith: "HttpClientError",
+          limiter,
+          key: "test",
+          algorithm: "token-bucket",
+          limit: 1,
+          window: "1 minute"
+        }))
+        const request = HttpClientRequest.get("http://test/")
+        const error = yield* Effect.flip(limited.execute(request))
+        assert.isTrue(HttpClientError.isHttpClientError(error))
+        assert.instanceOf(error.reason, HttpClientError.TransportError)
+        assert.strictEqual(error.reason.request, request)
+        assert.strictEqual(error.reason.cause, cause)
+      }))
+
     it.effect("delays requests above the configured limit", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
@@ -2639,6 +2666,28 @@ Missing key
       const signal = yield* Deferred.await(started)
       yield* Fiber.interrupt(fiber)
       assert.isTrue(signal.aborted)
+    }))
+
+  it.effect("withCookiesRef stores same-name cookies set for different paths in one response", () =>
+    Effect.gen(function*() {
+      const jar = yield* Ref.make<ReadonlyArray<Cookies.Cookie>>([])
+      const seen: Array<string | undefined> = []
+      const client = HttpClient.withCookiesRef(
+        HttpClient.make((request) => {
+          seen.push(request.headers.cookie)
+          const headers = new Headers()
+          headers.append("set-cookie", "token=root; Path=/")
+          headers.append("set-cookie", "token=api; Path=/api")
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { headers })))
+        }),
+        jar
+      )
+
+      yield* client.get("https://example.com/login")
+      yield* client.get("https://example.com/api/users")
+      yield* client.get("https://example.com/")
+
+      assert.deepStrictEqual(seen, [undefined, "token=api; token=root", "token=root"])
     }))
 
   it("reads cookies when Headers has no getSetCookie", () => {

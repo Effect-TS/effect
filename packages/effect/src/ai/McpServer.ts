@@ -2649,6 +2649,21 @@ const layerWithRuntime = (options: {
  * live in one layer graph as long as each is provided its own `Stdio`. They
  * still share the memoized `McpServer` registry.
  *
+ * `onStdinEnd` controls shutdown when the client closes stdin. With
+ * `"drain"`, the default, active requests run to completion and their
+ * responses are written before the server exits. With `"interrupt"`, queued
+ * output is flushed and stdout closes, then the server stops and interrupts
+ * active requests, including tool handlers. Shutdown waits for their
+ * finalizers without sending further responses or remote cancellation
+ * notifications. Cleanup belongs in handler finalizers or the layer scope;
+ * stopping the server does not report a client disconnect.
+ *
+ * **Gotchas**
+ *
+ * With the default `"drain"`, a tool handler that never completes keeps the
+ * process alive after the client closes stdin. Use `onStdinEnd: "interrupt"`
+ * to stop the server when the client goes away.
+ *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport
  *
@@ -2672,6 +2687,7 @@ export const layerStdio = <
   readonly extensions?: ServerExtensions | undefined
   readonly cacheHints?: CacheHints | undefined
   readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+  readonly onStdinEnd?: "drain" | "interrupt" | undefined
 }): Layer.Layer<
   McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
   Cause.IllegalArgumentError | RE,
@@ -2681,11 +2697,7 @@ export const layerStdio = <
 > =>
   layerWithRuntime(options, "stdio").pipe(
     Layer.provide(McpRuntime.layer(options.protocols)),
-    // Build a fresh protocol layer per call. `RpcServer.layerProtocolStdio` is
-    // a module-level constant, and layers are memoized by reference, so two
-    // `layerStdio` servers in one layer graph would otherwise share a single
-    // protocol bound to whichever `Stdio` was built first.
-    Layer.provide(Layer.effect(RpcServer.Protocol, RpcServer.makeProtocolStdio)),
+    Layer.provide(RpcServer.layerProtocolStdio({ onStdinEnd: options.onStdinEnd })),
     Layer.provide(Layer.succeed(
       RpcSerialization.RpcSerialization,
       mcpStdioSerialization(options.protocols)
@@ -3275,6 +3287,10 @@ type ToolkitOptions<Tools extends Record<string, Tool.Any>, Names extends keyof 
  * The MCP middleware in the current context, provided with
  * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
  *
+ * A handler that fails with a declared `McpSchema.InputRequired` asks the
+ * client for input with an `input_required` result. Protocols without client
+ * input reject it, as they do for `addTool`.
+ *
  * A tool's `content` mapper converts its decoded success value to native MCP
  * blocks. Mapped tools omit `outputSchema` and successful calls omit
  * `structuredContent`. Failures bypass the mapper. Use only block types
@@ -3378,7 +3394,13 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         structuredContent,
         content: toolResultContent(structuredContent)
       })
-    const handleCause = (cause: Cause.Cause<unknown>) => {
+    const handleCause = (
+      cause: Cause.Cause<unknown>
+    ): Effect.Effect<
+      CallToolResult | McpSchema.InputRequired,
+      InvalidParams,
+      Tool.HandlerServices<Tools[keyof Tools]>
+    > => {
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure)) {
         const error = failure.success.error
@@ -3387,7 +3409,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           return Effect.fail(new InvalidParams({ message: error.reason.message }))
         }
         if (origin === "handler" && isDeclaredFailure(error)) {
-          return Effect.catchCause(declaredFailureResult(error), internalToolError)
+          return isInputRequired(error)
+            ? Effect.succeed(error)
+            : Effect.catchCause(declaredFailureResult(error), internalToolError)
         }
       }
       return internalToolError(cause)
@@ -3437,7 +3461,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
           Stream.runLast,
           Effect.flatMap(Effect.fromOption),
           Effect.flatMap((result): Effect.Effect<
-            CallToolResult,
+            CallToolResult | McpSchema.InputRequired,
             unknown,
             Tool.HandlerServices<Tools[keyof Tools]>
           > => {
@@ -3458,16 +3482,20 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
                   : successResult(result.encodedResult)
               )
             }
-            // Declared failures return their encoded payload; anything else is classified by origin.
-            return result.failureOrigin === "handler"
-              ? Effect.succeed(failureResult(result.encodedResult))
-              : Effect.failCause(Cause.annotate(
+            // Declared failures return their encoded payload, or request client input;
+            // anything else is classified by origin.
+            if (result.failureOrigin !== "handler") {
+              return Effect.failCause(Cause.annotate(
                 Cause.fail(result.result),
                 Context.make(Toolkit.FailureOrigin, result.failureOrigin ?? "result")
               ))
+            }
+            return isDeclaredFailure(result.result) && isInputRequired(result.result)
+              ? Effect.succeed(result.result)
+              : Effect.succeed(failureResult(result.encodedResult))
           }),
           Effect.catchCause(handleCause)
-        ) as Effect.Effect<CallToolResult, InvalidParams, never>
+        ) as Effect.Effect<CallToolResult | McpSchema.InputRequired, InvalidParams, never>
       },
       services
     })
@@ -3481,6 +3509,8 @@ const isParameterValidationError = (
   error: unknown
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+const isInputRequired = (u: unknown): u is McpSchema.InputRequired => Predicate.isTagged(u, "InputRequired")
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
 // than as a definition; a recursive root keeps its definition and the top-level
@@ -3505,6 +3535,10 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  *
  * The layer requires `McpServer`. Pass it to a transport through the
  * `registrations` option, or provide the transport layer to it.
+ *
+ * A handler that fails with a declared `McpSchema.InputRequired` asks the
+ * client for input with an `input_required` result. Protocols without client
+ * input reject it, as they do for `addTool`.
  *
  * A tool's `content` mapper converts its decoded success value to native MCP
  * blocks. Mapped tools omit `outputSchema` and successful calls omit

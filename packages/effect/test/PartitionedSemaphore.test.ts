@@ -1,7 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler } from "effect"
+import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler, Semaphore } from "effect"
 
 describe("PartitionedSemaphore", () => {
+  it("isPartitionedSemaphore accepts a PartitionedSemaphore and rejects a Semaphore", () => {
+    assert.isTrue(PartitionedSemaphore.isPartitionedSemaphore(PartitionedSemaphore.makeUnsafe({ permits: 1 })))
+    assert.isTrue(PartitionedSemaphore.isPartitionedSemaphore(PartitionedSemaphore.makeUnsafe({ permits: Infinity })))
+    assert.isFalse(PartitionedSemaphore.isPartitionedSemaphore(Semaphore.makeUnsafe(1)))
+  })
+
   it.effect("multi-permit waiters in different partitions do not deadlock", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })

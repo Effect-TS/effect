@@ -73,8 +73,13 @@ export interface PgClient extends Client.Base {
   /**
    * Returns a snapshot of connection pool occupancy. A client from `makeClient`
    * has one session that stays leased for its lifetime, so it always reports
-   * `{ idle: 0, used: 1, pending: 0, min: 1, max: 1 }` whatever statements run
-   * on it.
+   * `{ idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 }` regardless
+   * of statement activity.
+   *
+   * **Gotchas**
+   *
+   * Zero occupancy does not guarantee that sockets have closed: connection
+   * finalizers initiate socket shutdown without awaiting its completion.
    */
   readonly poolStats: Effect.Effect<Pool.Stats>
 }
@@ -263,7 +268,7 @@ export const makeClient = <R = never>(
       listenAcquirer: options.acquireForStream ? PgConnection.make(options) : connection.pin,
       config: options,
       // The one session is leased for the client's lifetime.
-      poolStats: Effect.succeed({ idle: 0, used: 1, pending: 0, min: 1, max: 1 })
+      poolStats: Effect.succeed({ idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 })
     }))
 
 /**
@@ -403,6 +408,12 @@ class ConnectionImpl implements Connection {
     return transformRows
       ? Effect.map(operation, transformRows)
       : operation
+  }
+  executeBatch(statements: ReadonlyArray<readonly [sql: string, params: ReadonlyArray<unknown>]>) {
+    return Effect.map(
+      this.connection.batch(statements.map(([sql, params]) => ({ sql, params }))),
+      (results) => results.map((result) => result.rows)
+    )
   }
   executeStream(
     sql: string,
