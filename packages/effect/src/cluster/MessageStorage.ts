@@ -660,7 +660,9 @@ export const make = (
           shardSet.add(entry)
           return Effect.sync(() => {
             const index = handlers.indexOf(entry)
-            handlers.splice(index, 1)
+            if (index !== -1) {
+              handlers.splice(index, 1)
+            }
             shardSet.delete(entry)
             if (handlers.length === 0 && replyHandlers.get(requestId) === handlers) {
               replyHandlers.delete(requestId)
