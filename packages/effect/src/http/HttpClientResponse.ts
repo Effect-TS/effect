@@ -27,7 +27,6 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as internalUrlParams from "./internal/urlParams.ts"
 import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
-import * as LinkHeader from "./LinkHeader.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 /**
@@ -334,7 +333,7 @@ export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClie
  *
  * Links with an `anchor` parameter are dropped, because they describe a
  * resource other than this response (RFC 8288 section 3.2). Parse the raw header
- * with `LinkHeader.parse` to read them.
+ * with `Headers.parseLink` to read them.
  *
  * @see {@link link} to look up a single link by relation type
  *
@@ -342,12 +341,12 @@ export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClie
  * @category accessors
  * @since 4.1.6
  */
-export const links = (self: HttpClientResponse): Array<LinkHeader.Link> => {
+export const links = (self: HttpClientResponse): Array<Headers.Link> => {
   const header = self.headers.link
   if (header === undefined) return []
   const base = self.url || undefined
-  const out: Array<LinkHeader.Link> = []
-  for (const link of LinkHeader.parse(header)) {
+  const out: Array<Headers.Link> = []
+  for (const link of Headers.parseLink(header)) {
     if (Object.hasOwn(link.params, "anchor")) continue
     const url = resolveUrl(link.target, base)
     if (url !== undefined) out.push({ ...link, target: url.href })

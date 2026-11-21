@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add RFC 8288 `LinkHeader` support, `HttpClientResponse.links` and `link` accessors, and header-appending helpers (`Headers.append`, `HttpClientRequest.appendHeader`, `HttpServerResponse.appendHeader`).
+Add RFC 8288 `Link` header support: `Headers.parseLink`, `Headers.formatLink`, `Schema.LinkHeaderFromString`, `HttpClientResponse.links` and `link`, plus `Headers.append`, `HttpClientRequest.appendHeader` and `HttpServerResponse.appendHeader` for adding to a header without replacing it.

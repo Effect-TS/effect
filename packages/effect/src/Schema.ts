@@ -16672,6 +16672,57 @@ export const RetryAfterFromString: RetryAfterFromString = String.annotate({
 )
 
 /**
+ * Type-level representation of {@link LinkHeaderFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.6
+ */
+export interface LinkHeaderFromString extends
+  decodeTo<
+    $Array<
+      Struct<{
+        readonly target: String
+        readonly rel: $Array<String>
+        readonly params: $Record<String, String>
+      }>
+    >,
+    String
+  >
+{
+  readonly "Rebuild": LinkHeaderFromString
+}
+
+/**
+ * Schema for `Link` header values (RFC 8288), decoded with
+ * `Headers.parseLink` and encoded with `Headers.formatLink`.
+ *
+ * **When to use**
+ *
+ * Use with `HttpClientResponse.schemaHeaders` or HTTP API header schemas
+ * that carry a `Link` header.
+ *
+ * **Details**
+ *
+ * Decoding never fails on a string, because `Headers.parseLink` is lenient.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.6
+ */
+export const LinkHeaderFromString: LinkHeaderFromString = String.annotate({
+  expected: "a Link header value"
+}).pipe(
+  decodeTo(
+    ArraySchema(Struct({ target: String, rel: ArraySchema(String), params: Record(String, String) })),
+    SchemaTransformation.transform<ReadonlyArray<Headers_.Link>, string>({
+      decode: Headers_.parseLink,
+      encode: Headers_.formatLink
+    })
+  )
+)
+
+/**
  * Type-level representation of {@link UrlParams}.
  *
  * @stability unstable

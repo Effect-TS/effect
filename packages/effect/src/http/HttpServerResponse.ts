@@ -584,11 +584,11 @@ export const setHeader: {
  * **Example** (Adding canonical and alternate links)
  *
  * ```ts
- * import { HttpServerResponse, LinkHeader } from "effect/http"
+ * import { Headers, HttpServerResponse } from "effect/http"
  *
  * const withLinks = HttpServerResponse.appendHeader(
  *   "Link",
- *   LinkHeader.format([
+ *   Headers.formatLink([
  *     { target: "https://example.com/en", rel: ["canonical"] },
  *     { target: "https://example.com/de", rel: ["alternate"], params: { hreflang: "de" } }
  *   ])
