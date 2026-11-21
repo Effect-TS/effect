@@ -4516,6 +4516,41 @@ export const withBlob: UploadRequestFormData = { file: new Blob([]) }
       }
     )
 
+    it.effect("keeps open multipart objects with binary fields open when they are composed", () =>
+      Effect.gen(function*() {
+        const upload = { type: "object", properties: { file: { type: "string", format: "binary" } } } as const
+        const caption = { caption: { type: "string" } } as const
+        const aliasMember = multipartSpec(
+          { allOf: [{ $ref: "#/components/schemas/Alias" }, { properties: caption }] },
+          {
+            Alias: { $ref: "#/components/schemas/Upload" },
+            Upload: upload
+          }
+        )
+        const referenceSiblings = multipartSpec({ $ref: "#/components/schemas/Upload", properties: caption }, {
+          Upload: upload
+        })
+        const referenceSiblings30 = { ...referenceSiblings, openapi: "3.0.3" } as unknown as OpenAPISpec
+        for (const spec of [aliasMember, referenceSiblings, referenceSiblings30]) {
+          yield* assertHttpApiIncludes(spec, [`"caption": Schema.optionalKey(Schema.String)`])
+        }
+        for (const spec of [aliasMember, referenceSiblings]) {
+          yield* assertRuntimeIncludes(spec, [`"caption": Schema.optionalKey(Schema.String)`])
+        }
+      }))
+
+    it.effect("ignores composition keywords in example values when preparing multipart schemas", () =>
+      assertRuntimeIncludes(
+        sharedMultipartSpec({ type: "object", properties: { name: { type: "string" } } }, {
+          Thing: {
+            type: "object",
+            properties: { name: { type: "string" } },
+            example: { allOf: [{ $ref: "#/components/schemas/Address/properties/street" }] }
+          }
+        }, { schema: { $ref: "#/components/schemas/Thing" } }),
+        ["export type Thing ="]
+      ))
+
     itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",
       multipartSpec({ $ref: "#/components/schemas/Node" }, {

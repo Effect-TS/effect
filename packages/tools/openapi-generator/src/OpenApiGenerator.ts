@@ -1055,21 +1055,22 @@ const makeMultipartSchemas = (
   // Composed schemas stay open, because closing one would reject the fields of the others.
   const compositionMembers = new WeakSet<object>()
 
-  const collectCompositionMembers = (value: unknown): void => {
-    if (Array.isArray(value)) {
-      for (const item of value) collectCompositionMembers(item)
-      return
+  const markCompositionMember = (schema: unknown): void => {
+    while (Predicate.isObject(schema) && !compositionMembers.has(schema)) {
+      compositionMembers.add(schema)
+      schema = isComponentRef(schema.$ref) ? resolveRef(schema.$ref) : undefined
     }
-    if (!Predicate.isObject(value)) return
+  }
+
+  // A reference with schema siblings is composed with them, so its target is a member too.
+  const markCompositionMembers = (schema: Record<string, unknown>): void => {
     for (const key of compositionKeywords) {
-      const members = value[key]
-      if (!Array.isArray(members)) continue
-      for (const member of members) {
-        const schema = Predicate.isObject(member) && isComponentRef(member.$ref) ? resolveRef(member.$ref) : member
-        if (Predicate.isObject(schema)) compositionMembers.add(schema)
-      }
+      const members = schema[key]
+      if (Array.isArray(members)) members.forEach(markCompositionMember)
     }
-    for (const item of Object.values(value)) collectCompositionMembers(item)
+    if (isComponentRef(schema.$ref) && referenceSiblingKeywords.some((key) => schema[key] !== undefined)) {
+      markCompositionMember(resolveRef(schema.$ref))
+    }
   }
 
   const hasBinary = (value: unknown, seen: Set<string>): boolean => {
@@ -1137,7 +1138,10 @@ const makeMultipartSchemas = (
     ) {
       return inlineComponent(value, value.$ref)
     }
-    const out = Rec.map(value, visit)
+    const out = Rec.map(
+      value,
+      (item, key) => subschemaMaps.has(key) && Predicate.isObject(item) ? Rec.map(item, visit) : visit(item)
+    )
     if (isComponentRef(value.$ref) && isBinaryComponent(value.$ref)) {
       out.$ref = toDefinitionRef(copyComponent(value.$ref))
     }
@@ -1156,7 +1160,7 @@ const makeMultipartSchemas = (
   }
   const finish = (schemas: Readonly<Record<string, JsonSchema.JsonSchema>>): void => {
     shared = collectComponentRefs(Object.values(schemas).filter((schema) => !pending.has(schema)), resolveRef)
-    collectCompositionMembers([definitions, ...pending.values()])
+    collectComponentRefs([...pending.values()], resolveRef, markCompositionMembers)
     for (const [placeholder, schema] of pending) {
       Object.assign(placeholder, visit(schema))
     }
@@ -1172,7 +1176,8 @@ const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~"
 // `examples` is treated as data.
 const collectComponentRefs = (
   schemas: ReadonlyArray<JsonSchema.JsonSchema>,
-  resolveRef: (ref: string) => unknown
+  resolveRef: (ref: string) => unknown,
+  onSchema?: (schema: Record<string, unknown>) => void
 ): ReadonlySet<string> => {
   const seen = new Set<string>()
   const visit = (schema: unknown): void => {
@@ -1181,6 +1186,7 @@ const collectComponentRefs = (
       return
     }
     if (!Predicate.isObject(schema)) return
+    onSchema?.(schema)
     if (isComponentRef(schema.$ref) && !seen.has(schema.$ref)) {
       seen.add(schema.$ref)
       visit(resolveRef(schema.$ref))
@@ -1218,7 +1224,11 @@ const subschemaKeywords = [
 
 const subschemaMapKeywords = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"] as const
 
+const subschemaMaps: ReadonlySet<string> = new Set(subschemaMapKeywords)
+
 const compositionKeywords = ["allOf", "anyOf", "oneOf"] as const
+
+const referenceSiblingKeywords = [...subschemaKeywords, ...subschemaMapKeywords, "required"] as const
 
 const componentRefPrefix = "#/components/schemas/"
 
