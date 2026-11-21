@@ -1321,4 +1321,58 @@ describe("WorkflowEngine", () => {
         assert(Exit.hasInterrupts(result.value.exit))
       }).pipe(Effect.provide(layer))
     }))
+
+  it.effect("layerMemory resumes a waiting parent when a child's compensation defects", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/CompensationDefectParent/Gate")
+      const Parent = Workflow.make("WorkflowEngine/CompensationDefectParent", {
+        payload: {},
+        error: Schema.String,
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/CompensationDefectChild", {
+        payload: {},
+        error: Schema.String,
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(() => Child.execute({}))
+      const ChildLayer = Child.toLayer(() =>
+        Effect.gen(function*() {
+          yield* DurableDeferred.await(gate)
+          yield* Workflow.addFinalizer(() => Effect.die("compensation failed"))
+          return yield* Effect.fail("refused")
+        })
+      )
+
+      yield* Effect.gen(function*() {
+        const parentId = yield* Parent.execute({}, { discard: true })
+        const childId = yield* Child.executionId({})
+        let parent = yield* Parent.poll(parentId)
+        for (let i = 0; i < 1000 && !(Option.isSome(parent) && parent.value._tag === "Suspended"); i++) {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
+        }
+        assert(Option.isSome(parent) && parent.value._tag === "Suspended", "parent must suspend first")
+
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId })
+        yield* DurableDeferred.succeed(gate, { token, value: void 0 })
+
+        for (let i = 0; i < 1000 && !(Option.isSome(parent) && parent.value._tag === "Complete"); i++) {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
+        }
+        assert(Option.isSome(parent) && parent.value._tag === "Complete", "parent must complete")
+        assert(Exit.isFailure(parent.value.exit))
+        assert.deepStrictEqual(
+          parent.value.exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error),
+          ["refused"]
+        )
+        assert.deepStrictEqual(
+          parent.value.exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect),
+          ["compensation failed"]
+        )
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
 })
