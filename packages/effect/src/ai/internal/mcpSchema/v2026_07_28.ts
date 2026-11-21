@@ -659,8 +659,27 @@ export const CallToolResult = Schema.StructWithRest(
 /**
  * @internal
  */
+export const Task = Schema.Struct({
+  taskId: Schema.String,
+  status: Schema.Literals(["working", "input_required", "completed", "failed", "cancelled"]),
+  statusMessage: optional(Schema.String),
+  createdAt: Schema.String,
+  lastUpdatedAt: Schema.String,
+  ttlMs: Schema.NullOr(Schema.Int),
+  pollIntervalMs: optional(Schema.Int)
+})
+/**
+ * @internal
+ */
+export const CreateTaskResult = Schema.StructWithRest(
+  Schema.Struct({ ...ResultMeta, ...Task.fields, resultType: Schema.Literal("task") }),
+  [Schema.JsonObject]
+)
+/**
+ * @internal
+ */
 export class CallTool extends Rpc.make("tools/call", {
-  success: Schema.Union([CallToolResult, InputRequiredResult]),
+  success: Schema.Union([CallToolResult, InputRequiredResult, CreateTaskResult]),
   error: McpError,
   payload: {
     ...InputResponseRequestParams,
@@ -711,6 +730,7 @@ export class Complete extends Rpc.make("completion/complete", {
  * @internal
  */
 export const SubscriptionFilter = Schema.Struct({
+  taskIds: optional(Schema.Array(Schema.String)),
   toolsListChanged: optional(Schema.Boolean),
   promptsListChanged: optional(Schema.Boolean),
   resourcesListChanged: optional(Schema.Boolean),
