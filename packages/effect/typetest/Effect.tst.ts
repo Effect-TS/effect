@@ -454,36 +454,55 @@ describe("Effect.catchReasons", () => {
   })
 
   it("removes the parent error when handlers are exhaustive", () => {
-    const result = pipe(
-      mixedEffect,
-      Effect.catchReasons("AiError", {
-        RateLimitError: () => Effect.succeed(1),
-        QuotaExceededError: () => Effect.succeed(2),
-        UnknownAiModelError: () => Effect.succeed(3)
-      })
-    )
-    expect(result).type.toBe<Effect.Effect<string | number, OtherError>>()
-  })
-
-  it("removes the parent error when handlers are exhaustive in data-first usage", () => {
-    const result = Effect.catchReasons(mixedEffect, "AiError", {
+    const cases = {
       RateLimitError: () => Effect.succeed(1),
       QuotaExceededError: () => Effect.succeed(2),
-      UnknownAiModelError: () => Effect.succeed(3)
-    })
-    expect(result).type.toBe<Effect.Effect<string | number, OtherError>>()
+      UnknownAiModelError: () => Effect.fail(new SimpleError({ code: 1 }))
+    }
+    const dataLast = pipe(mixedEffect, Effect.catchReasons("AiError", cases))
+    const dataFirst = Effect.catchReasons(mixedEffect, "AiError", cases)
+    expect(dataLast).type.toBe<Effect.Effect<string | number, OtherError | SimpleError>>()
+    expect(dataFirst).type.toBe<Effect.Effect<string | number, OtherError | SimpleError>>()
+  })
+
+  it("keeps the parent error for partial handlers, optional handlers, or an undefined fallback", () => {
+    const partial = {
+      RateLimitError: () => Effect.succeed(1)
+    }
+    const optionalCases: {
+      readonly RateLimitError: () => Effect.Effect<number>
+      readonly QuotaExceededError: () => Effect.Effect<number>
+      readonly UnknownAiModelError?: () => Effect.Effect<number>
+    } = {
+      RateLimitError: () => Effect.succeed(1),
+      QuotaExceededError: () => Effect.succeed(2)
+    }
+    expect(Effect.catchReasons(mixedEffect, "AiError", partial)).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(pipe(mixedEffect, Effect.catchReasons("AiError", optionalCases))).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(Effect.catchReasons(mixedEffect, "AiError", optionalCases)).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(pipe(mixedEffect, Effect.catchReasons("AiError", partial, undefined))).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(Effect.catchReasons(mixedEffect, "AiError", partial, undefined)).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
   })
 
   it("behaves like unwrapReason with empty cases and a failing orElse", () => {
-    const result = pipe(
-      mixedEffect,
-      Effect.catchReasons("AiError", {}, (reason) => reason)
-    )
-    expect(result).type.toBe<
+    const unwrapped = pipe(mixedEffect, Effect.unwrapReason("AiError"))
+    const dataLast = pipe(mixedEffect, Effect.catchReasons("AiError", {}, (reason) => reason))
+    const dataFirst = Effect.catchReasons(mixedEffect, "AiError", {}, (reason) => reason)
+    expect(dataLast).type.toBe<
       Effect.Effect<string, RateLimitError | QuotaExceededError | UnknownAiModelError | OtherError>
     >()
-    const unwrapped = pipe(mixedEffect, Effect.unwrapReason("AiError"))
-    expect(result).type.toBe<typeof unwrapped>()
+    expect(dataLast).type.toBe<typeof unwrapped>()
+    expect(dataFirst).type.toBe<typeof unwrapped>()
   })
 })
 
