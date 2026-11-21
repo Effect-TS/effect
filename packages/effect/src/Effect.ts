@@ -89,6 +89,7 @@ import type {
   OmitReason,
   ReasonOf,
   ReasonTags,
+  RequiredKeys,
   Simplify,
   Tags,
   unassigned
@@ -3251,8 +3252,8 @@ export const catchReasons: {
     cases: Cases,
     orElse?:
       | ((
-        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>,
-        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>
       ) => Ret)
       | undefined
   ): <A, R>(
@@ -3260,22 +3261,23 @@ export const catchReasons: {
   ) => Effect<
     | A
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<infer A, any, any> ? A : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Success<R> : never
     }[keyof Cases]
-    | (Ret extends Effect<infer A, any, any> ? A : never),
+    | Success<Ret>,
     | ExcludeTag<E, K>
-    | (Ret extends Effect<any, infer E, any> ? E : never)
-    | ([Ret] extends [never] ?
-      [ExcludeReason<ExtractTag<E, K>, Extract<keyof Cases, string>>] extends [never] ? never : ExtractTag<E, K>
+    | Error<Ret>
+    | ([Ret] extends [never] ? [ReasonTags<ExtractTag<E, K>>] extends [never] ? ExtractTag<E, K>
+      : [ExcludeReason<ExtractTag<E, K>, Extract<RequiredKeys<Cases>, string>>] extends [never] ? never
+      : ExtractTag<E, K>
       : never)
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<any, infer E, any> ? E : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
     }[keyof Cases],
     | R
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<any, any, infer R> ? R : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Services<R> : never
     }[keyof Cases]
-    | (Ret extends Effect<any, any, infer R> ? R : never)
+    | Services<Ret>
   >
   <
     A,
@@ -3295,29 +3297,30 @@ export const catchReasons: {
     cases: Cases,
     orElse?:
       | ((
-        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>,
-        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>
       ) => Ret)
       | undefined
   ): Effect<
     | A
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<infer A, any, any> ? A : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Success<R> : never
     }[keyof Cases]
-    | (Ret extends Effect<infer A, any, any> ? A : never),
+    | Success<Ret>,
     | ExcludeTag<E, K>
-    | (Ret extends Effect<any, infer E, any> ? E : never)
-    | ([Ret] extends [never] ?
-      [ExcludeReason<ExtractTag<E, K>, Extract<keyof Cases, string>>] extends [never] ? never : ExtractTag<E, K>
+    | Error<Ret>
+    | ([Ret] extends [never] ? [ReasonTags<ExtractTag<E, K>>] extends [never] ? ExtractTag<E, K>
+      : [ExcludeReason<ExtractTag<E, K>, Extract<RequiredKeys<Cases>, string>>] extends [never] ? never
+      : ExtractTag<E, K>
       : never)
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<any, infer E, any> ? E : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
     }[keyof Cases],
     | R
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect<any, any, infer R> ? R : never
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Services<R> : never
     }[keyof Cases]
-    | (Ret extends Effect<any, any, infer R> ? R : never)
+    | Services<Ret>
   >
 } = internal.catchReasons
 

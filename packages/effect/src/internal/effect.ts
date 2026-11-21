@@ -41,6 +41,7 @@ import type {
   OmitReason,
   ReasonOf,
   ReasonTags,
+  RequiredKeys,
   Simplify,
   Tags,
   unassigned
@@ -3335,31 +3336,39 @@ export const catchReasons: {
     cases: Cases,
     orElse?:
       | ((
-        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>,
-        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>
       ) => Ret)
       | undefined
-  ): <A, R>(
-    self: Effect.Effect<A, E, R>
-  ) => Effect.Effect<
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
     | A
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<infer A, any, any> ? A : never
-    }[keyof Cases]
-    | (Ret extends Effect.Effect<infer A, any, any> ? A : never),
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Success<R>
+        : never
+    }[
+      keyof Cases
+    ]
+    | Effect.Success<Ret>,
     | ExcludeTag<E, K>
-    | (Ret extends Effect.Effect<any, infer E, any> ? E : never)
-    | ([Ret] extends [never] ?
-      [ExcludeReason<ExtractTag<E, K>, Extract<keyof Cases, string>>] extends [never] ? never : ExtractTag<E, K>
+    | Effect.Error<Ret>
+    | ([Ret] extends [never] ? [ReasonTags<ExtractTag<E, K>>] extends [never] ? ExtractTag<E, K>
+      : [ExcludeReason<ExtractTag<E, K>, Extract<RequiredKeys<Cases>, string>>] extends [never] ? never
+      : ExtractTag<E, K>
       : never)
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
-    }[keyof Cases],
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Error<R>
+        : never
+    }[
+      keyof Cases
+    ],
     | R
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
-    }[keyof Cases]
-    | (Ret extends Effect.Effect<any, any, infer R> ? R : never)
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Services<R>
+        : never
+    }[
+      keyof Cases
+    ]
+    | Effect.Services<Ret>
   >
   <
     A,
@@ -3379,29 +3388,39 @@ export const catchReasons: {
     cases: Cases,
     orElse?:
       | ((
-        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>,
-        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<keyof Cases, string>>
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, Extract<RequiredKeys<Cases>, string>>
       ) => Ret)
       | undefined
   ): Effect.Effect<
     | A
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<infer A, any, any> ? A : never
-    }[keyof Cases]
-    | (Ret extends Effect.Effect<infer A, any, any> ? A : never),
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Success<R>
+        : never
+    }[
+      keyof Cases
+    ]
+    | Effect.Success<Ret>,
     | ExcludeTag<E, K>
-    | (Ret extends Effect.Effect<any, infer E, any> ? E : never)
-    | ([Ret] extends [never] ?
-      [ExcludeReason<ExtractTag<E, K>, Extract<keyof Cases, string>>] extends [never] ? never : ExtractTag<E, K>
+    | Effect.Error<Ret>
+    | ([Ret] extends [never] ? [ReasonTags<ExtractTag<E, K>>] extends [never] ? ExtractTag<E, K>
+      : [ExcludeReason<ExtractTag<E, K>, Extract<RequiredKeys<Cases>, string>>] extends [never] ? never
+      : ExtractTag<E, K>
       : never)
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
-    }[keyof Cases],
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Error<R>
+        : never
+    }[
+      keyof Cases
+    ],
     | R
     | {
-      [RK in keyof Cases]: Cases[RK] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
-    }[keyof Cases]
-    | (Ret extends Effect.Effect<any, any, infer R> ? R : never)
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Effect.Services<R>
+        : never
+    }[
+      keyof Cases
+    ]
+    | Effect.Services<Ret>
   >
 } = dual((args) => isEffect(args[0]), (self, errorTag, cases, orElse) => {
   let keys: Array<string>
