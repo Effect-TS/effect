@@ -776,24 +776,17 @@ export const intoResult = <A, E, R>(
         if (result._tag !== "Complete") {
           return Effect.succeed(result)
         }
-        const close = Scope.close(instance.scope, result.exit)
+        const close = Effect.as(Scope.close(instance.scope, result.exit), result)
         return captureDefects
-          ? Effect.matchCauseEffect(close, {
-            onSuccess: () => Effect.succeed(result),
-            onFailure: (closeCause) =>
-              Cause.hasDies(closeCause)
-                ? Effect.succeed(
-                  new Complete({
-                    exit: Exit.failCause(
-                      Exit.isFailure(result.exit)
-                        ? Cause.combine(result.exit.cause, closeCause)
-                        : closeCause
-                    )
-                  })
+          ? Effect.catchCauseIf(close, Cause.hasDies, (closeCause) =>
+            Effect.succeed(
+              new Complete({
+                exit: Exit.failCause(
+                  Exit.isFailure(result.exit) ? Cause.combine(result.exit.cause, closeCause) : closeCause
                 )
-                : Effect.failCause(closeCause)
-          })
-          : Effect.as(close, result)
+              })
+            ))
+          : close
       }),
       Effect.uninterruptible
     )
