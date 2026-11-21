@@ -201,8 +201,8 @@ describe("HttpClient", () => {
       request,
       new Response(null, {
         headers: {
-          link: '<https://other.example/>; rel="next"; anchor="#frag", ' +
-            '</items?page=2>; title="Page 2, continued; details"; rel="next last"'
+          link: "<https://other.example/>; rel=\"next\"; anchor=\"#frag\", " +
+            "</items?page=2>; title=\"Page 2, continued; details\"; rel=\"next last\""
         }
       })
     )
@@ -211,7 +211,9 @@ describe("HttpClient", () => {
       Option.map(HttpClientResponse.link(response, "next"), (url) => url.href),
       Option.some("https://example.com/items?page=2")
     )
-    assert.isTrue(Option.isNone(HttpClientResponse.link(HttpClientResponse.fromWeb(request, new Response(null)), "next")))
+    assert.isTrue(
+      Option.isNone(HttpClientResponse.link(HttpClientResponse.fromWeb(request, new Response(null)), "next"))
+    )
   })
 
   it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(

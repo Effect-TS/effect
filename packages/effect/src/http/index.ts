@@ -151,6 +151,12 @@ export * as HttpTraceContext from "./HttpTraceContext.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.6
+ */
+export * as LinkHeader from "./LinkHeader.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Mime from "./Mime.ts"

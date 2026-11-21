@@ -259,6 +259,45 @@ export const set: {
 })
 
 /**
+ * Returns a new `Headers` collection with the value added to the given header.
+ *
+ * **When to use**
+ *
+ * Use when several parts of an application each add to a list-valued header,
+ * such as `Link`, `Vary` or `Cache-Control`, without replacing values set
+ * elsewhere.
+ *
+ * **Details**
+ *
+ * The header name is normalized to lowercase. An existing value is joined with
+ * the new one by `", "`, and an empty value leaves the headers unchanged.
+ *
+ * **Gotchas**
+ *
+ * Do not append `Set-Cookie` this way: a comma-joined `Set-Cookie` value is
+ * not valid. Use the cookie APIs instead.
+ *
+ * @see {@link set} to replace a header value
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.1.6
+ */
+export const append: {
+  (key: string, value: string): (self: Headers) => Headers
+  (self: Headers, key: string, value: string): Headers
+} = dual<
+  (key: string, value: string) => (self: Headers) => Headers,
+  (self: Headers, key: string, value: string) => Headers
+>(3, (self, key, value) => {
+  if (value === "") return self
+  const name = key.toLowerCase()
+  const out = make(self)
+  out[name] = Object.hasOwn(self, name) ? `${self[name]}, ${value}` : value
+  return out
+})
+
+/**
  * Returns a new `Headers` collection with all provided headers set.
  *
  * **Details**

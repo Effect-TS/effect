@@ -210,13 +210,13 @@ describe("HttpServerResponse", () => {
 
   it("appendHeader keeps an existing Link header", () => {
     const response = HttpServerResponse.empty().pipe(
-      HttpServerResponse.appendHeader("Link", '<https://example.com/en>; rel="canonical"'),
-      HttpServerResponse.appendHeader("Link", '<https://example.com/de>; rel="alternate"; hreflang="de"')
+      HttpServerResponse.appendHeader("Link", "<https://example.com/en>; rel=\"canonical\""),
+      HttpServerResponse.appendHeader("Link", "<https://example.com/de>; rel=\"alternate\"; hreflang=\"de\"")
     )
 
     assert.strictEqual(
       response.headers.link,
-      '<https://example.com/en>; rel="canonical", <https://example.com/de>; rel="alternate"; hreflang="de"'
+      "<https://example.com/en>; rel=\"canonical\", <https://example.com/de>; rel=\"alternate\"; hreflang=\"de\""
     )
   })
 
