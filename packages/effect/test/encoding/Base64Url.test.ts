@@ -131,7 +131,7 @@ describeWithFallback("Base64Url", () => {
       assertFailure(long, long, "Invalid input")
     }
   })
-})
+}, { bufferFallback: true })
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
   const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [

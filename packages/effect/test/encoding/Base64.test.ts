@@ -116,18 +116,13 @@ describeWithFallback("Base64", () => {
   it("round trips every byte value", () => {
     const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
     const encoded = Base64.encode(bytes)
-    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
-    // MIME-style 76-character lines
-    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
-  })
-
-  it("decodes long input into an unpooled Uint8Array", () => {
-    const bytes = Uint8Array.from({ length: 96 }, (_, i) => i)
-    const decoded = Result.getOrThrow(Base64.decode(Base64.encode(bytes)))
+    const decoded = Result.getOrThrow(Base64.decode(encoded))
     assert.deepStrictEqual(decoded, bytes)
     assert.strictEqual(Object.getPrototypeOf(decoded), Uint8Array.prototype)
     assert.strictEqual(decoded.byteOffset, 0)
     assert.strictEqual(decoded.buffer.byteLength, decoded.length)
+    // MIME-style 76-character lines
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
   })
 
   it("ignores non-zero trailing bits", () => {
@@ -188,7 +183,7 @@ describeWithFallback("Base64", () => {
       assertFailure(long, long, `Invalid character ${char}`)
     }
   })
-})
+}, { bufferFallback: true })
 
 describe("Base64 Buffer fallback", { concurrent: false }, () => {
   it("uses Buffer.from from 32 bytes on encode and 128 characters on decode when native methods are unavailable", () => {

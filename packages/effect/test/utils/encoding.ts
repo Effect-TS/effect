@@ -28,12 +28,18 @@ const describeWithout = (name: string, props: ReadonlyArray<Property>, suite: ()
   })
 }
 
-// Registers `suite` three times: as is, without the native `Uint8Array`
-// methods (to cover the `Buffer` fallback), and without `Buffer` as well (to
-// cover the JS loops). The copies run sequentially, since the removals are
+// Registers `suite` as is and without the native `Uint8Array` methods. When
+// `bufferFallback` is set, also registers a third copy without `Buffer` so the
+// JS loops stay covered. The copies run sequentially, since the removals are
 // global and the tests run concurrently.
-export const describeWithFallback = (name: string, suite: () => void): void => {
+export const describeWithFallback = (
+  name: string,
+  suite: () => void,
+  options?: { readonly bufferFallback?: boolean }
+): void => {
   describe(name, { concurrent: false }, suite)
   describeWithout(`${name} without native methods`, natives, suite)
-  describeWithout(`${name} without native methods or Buffer`, nativesAndBuffer, suite)
+  if (options?.bufferFallback) {
+    describeWithout(`${name} without native methods or Buffer`, nativesAndBuffer, suite)
+  }
 }
