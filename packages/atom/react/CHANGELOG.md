@@ -1,5 +1,12 @@
 # @effect/atom-react
 
+## 4.1.6
+
+### Patch Changes
+
+- Updated dependencies [[`9318e5b`](https://github.com/Effect-TS/effect/commit/9318e5bafb144ddff65a0bff0148ec4f7ba77b5c), [`594fa71`](https://github.com/Effect-TS/effect/commit/594fa71da417bf94fa6c9be2d3d36c808197e9fe)]:
+  - effect@4.1.6
+
 ## 4.1.5
 
 ### Patch Changes

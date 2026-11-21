@@ -1,5 +1,53 @@
 # @effect/openapi-generator
 
+## 4.1.6
+
+### Patch Changes
+
+- [#10799](https://github.com/Effect-TS/effect/pull/10799) [`66ab992`](https://github.com/Effect-TS/effect/commit/66ab9920271ee7fec3be3f4e3b4438d9222578b1) Thanks @gcanti! - Generated client method comments now show the OpenAPI operation summary above the description, with identical text appearing only once.
+
+- [#10797](https://github.com/Effect-TS/effect/pull/10797) [`f90a026`](https://github.com/Effect-TS/effect/commit/f90a026c0b8acfc062c40b553025d226eba670a2) Thanks @gcanti! - A response with no body can still have a description in the API documentation. For example, an OpenAPI file can describe a `404` as "Order not found". The generator used to copy the status code into the `HttpApi` and drop that text.
+  
+  ```ts
+  // Before
+  HttpApiSchema.Empty(404)
+  
+  // After
+  HttpApiSchema.Empty(404).annotate({ description: "Order not found" })
+  ```
+  
+  Exporting the generated `HttpApi` back to OpenAPI now produces the original "Order not found" description.
+  
+  ### A shared `404` with its own description
+  
+  In this OpenAPI 3.1 example, `$ref` points to a shared response whose description is "Resource not found". The line below it gives this particular `404` a more specific description.
+  
+  ```yaml
+  responses:
+    "404":
+      $ref: "#/components/responses/NotFound"
+      description: Order not found
+  ```
+  
+  The generator writes `HttpApiSchema.Empty(404).annotate({ description: "Order not found" })`. If you omit the `description` line, it uses "Resource not found" from the shared response.
+  
+  ### An explicit `500` and a fallback
+  
+  ```yaml
+  responses:
+    "200":
+      description: OK
+    "500":
+      description: Server error
+    default:
+      description: Other errors
+  ```
+  
+  For this input, the generated endpoint has one error response, `HttpApiSchema.Empty(500).annotate({ description: "Server error" })`. The generator skips `default` and emits a warning because it would assign "Other errors" to the same status. If you remove the explicit `500` from this example, the generator uses `default` to produce a `500` described as "Other errors".
+- Updated dependencies [[`9318e5b`](https://github.com/Effect-TS/effect/commit/9318e5bafb144ddff65a0bff0148ec4f7ba77b5c), [`594fa71`](https://github.com/Effect-TS/effect/commit/594fa71da417bf94fa6c9be2d3d36c808197e9fe)]:
+  - effect@4.1.6
+  - @effect/platform-node@4.1.6
+
 ## 4.1.5
 
 ### Patch Changes
