@@ -528,18 +528,34 @@ describe("Effect.catchReasons", () => {
   })
 
   it("supports explicit generic type arguments", () => {
-    const dataFirst = Effect.catchReasons<string, AiError, never, "AiError", {}, number, never, never>(
+    const dataFirstFailing = Effect.catchReasons<string, AiError, never, "AiError", {}, never, SimpleError, never>(
       aiEffect,
       "AiError",
       {},
-      () => Effect.succeed(1)
+      () => Effect.fail(new SimpleError({ code: 1 }))
     )
-    const dataLast = pipe(
+    const dataFirstUndefined = Effect.catchReasons<string, AiError, never, "AiError", {}, number, never, never>(
       aiEffect,
-      Effect.catchReasons<"AiError", AiError, {}, number, never, never>("AiError", {}, () => Effect.succeed(1))
+      "AiError",
+      {},
+      undefined
     )
-    expect(dataFirst).type.toBe<Effect.Effect<string | number>>()
-    expect(dataLast).type.toBe<Effect.Effect<string | number>>()
+    const dataLastFailing = pipe(
+      aiEffect,
+      Effect.catchReasons<"AiError", AiError, {}, never, SimpleError, never>(
+        "AiError",
+        {},
+        () => Effect.fail(new SimpleError({ code: 1 }))
+      )
+    )
+    const dataLastUndefined = pipe(
+      aiEffect,
+      Effect.catchReasons<"AiError", AiError, {}, number, never, never>("AiError", {}, undefined)
+    )
+    expect(dataFirstFailing).type.toBe<Effect.Effect<string, SimpleError>>()
+    expect(dataFirstUndefined).type.toBe<Effect.Effect<string | number, AiError>>()
+    expect(dataLastFailing).type.toBe<Effect.Effect<string, SimpleError>>()
+    expect(dataLastUndefined).type.toBe<Effect.Effect<string | number, AiError>>()
   })
 
   it("behaves like unwrapReason with empty cases and a failing orElse", () => {
