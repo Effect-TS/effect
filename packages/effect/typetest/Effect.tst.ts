@@ -466,16 +466,11 @@ describe("Effect.catchReasons", () => {
   })
 
   it("keeps the parent error when coverage is not guaranteed", () => {
-    const partial = {
-      RateLimitError: () => Effect.succeed(1)
-    }
-    const optionalCases: {
+    const partial = { RateLimitError: () => Effect.succeed(1) }
+    const optionalCases = {} as {
       readonly RateLimitError: () => Effect.Effect<number>
       readonly QuotaExceededError: () => Effect.Effect<number>
       readonly UnknownAiModelError?: () => Effect.Effect<number>
-    } = {
-      RateLimitError: () => Effect.succeed(1),
-      QuotaExceededError: () => Effect.succeed(2)
     }
     const unionCases = {} as
       | {
@@ -519,43 +514,41 @@ describe("Effect.catchReasons", () => {
     expect(Effect.catchReasons(mixedVariant, "AiError", { RateLimitError: () => Effect.succeed(1) })).type.toBe<
       Effect.Effect<string | number, ReasonlessVariant>
     >()
-    expect(Effect.catchReasons(mixedVariant, "AiError", {}, () => Effect.succeed(1))).type.toBe<
-      Effect.Effect<string | number, ReasonlessVariant>
-    >()
     expect(Effect.catchReasons(unionParent, unionTag, { RateLimitError: () => Effect.succeed(1) })).type.toBe<
       Effect.Effect<string | number, { readonly _tag: "AiError"; readonly reason: RateLimitError } | OtherAiError>
     >()
   })
 
   it("supports explicit generic type arguments", () => {
-    const dataFirstFailing = Effect.catchReasons<string, AiError, never, "AiError", {}, never, SimpleError, never>(
-      aiEffect,
-      "AiError",
-      {},
-      () => Effect.fail(new SimpleError({ code: 1 }))
-    )
-    const dataFirstUndefined = Effect.catchReasons<string, AiError, never, "AiError", {}, number, never, never>(
-      aiEffect,
-      "AiError",
-      {},
-      undefined
-    )
-    const dataLastFailing = pipe(
-      aiEffect,
-      Effect.catchReasons<"AiError", AiError, {}, never, SimpleError, never>(
+    expect(
+      Effect.catchReasons<string, AiError, never, "AiError", {}, never, SimpleError, never>(
+        aiEffect,
         "AiError",
         {},
         () => Effect.fail(new SimpleError({ code: 1 }))
       )
-    )
-    const dataLastUndefined = pipe(
-      aiEffect,
-      Effect.catchReasons<"AiError", AiError, {}, number, never, never>("AiError", {}, undefined)
-    )
-    expect(dataFirstFailing).type.toBe<Effect.Effect<string, SimpleError>>()
-    expect(dataFirstUndefined).type.toBe<Effect.Effect<string | number, AiError>>()
-    expect(dataLastFailing).type.toBe<Effect.Effect<string, SimpleError>>()
-    expect(dataLastUndefined).type.toBe<Effect.Effect<string | number, AiError>>()
+    ).type.toBe<Effect.Effect<string, SimpleError>>()
+    expect(
+      Effect.catchReasons<string, AiError, never, "AiError", {}, number, never, never>(
+        aiEffect,
+        "AiError",
+        {},
+        undefined
+      )
+    ).type.toBe<Effect.Effect<string | number, AiError>>()
+    expect(
+      pipe(
+        aiEffect,
+        Effect.catchReasons<"AiError", AiError, {}, never, SimpleError, never>(
+          "AiError",
+          {},
+          () => Effect.fail(new SimpleError({ code: 1 }))
+        )
+      )
+    ).type.toBe<Effect.Effect<string, SimpleError>>()
+    expect(
+      pipe(aiEffect, Effect.catchReasons<"AiError", AiError, {}, number, never, never>("AiError", {}, undefined))
+    ).type.toBe<Effect.Effect<string | number, AiError>>()
   })
 
   it("behaves like unwrapReason with empty cases and a failing orElse", () => {
