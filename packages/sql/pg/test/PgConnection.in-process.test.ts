@@ -90,6 +90,28 @@ const emptyQueryResult = Buffer.concat([
   readyForQuery
 ])
 
+const textRowResult = (name: string, value: Buffer): Buffer =>
+  Buffer.concat([
+    backendMessage("1", Buffer.alloc(0)),
+    backendMessage("2", Buffer.alloc(0)),
+    backendMessage(
+      "T",
+      Buffer.concat([
+        int16(1),
+        Buffer.from(`${name}\0`),
+        int32(0),
+        int16(0),
+        int32(25),
+        int16(-1),
+        int32(-1),
+        int16(1)
+      ])
+    ),
+    backendMessage("D", Buffer.concat([int16(1), int32(value.length), value])),
+    backendMessage("C", Buffer.from("SELECT 1\0")),
+    readyForQuery
+  ])
+
 const frontendTags = (message: Buffer): ReadonlyArray<string> => {
   const tags: Array<string> = []
   let offset = 0
@@ -349,29 +371,7 @@ describe("PgConnection in-process server", () => {
   it.effect("accepts backend messages over the default limit when configured", () =>
     Effect.gen(function*() {
       const fieldSize = 16 * 1024 * 1024
-      const field = Buffer.alloc(fieldSize, 0x78)
-      const rowDescription = backendMessage(
-        "T",
-        Buffer.concat([
-          int16(1),
-          Buffer.from("big\0"),
-          int32(0),
-          int16(0),
-          int32(25),
-          int16(-1),
-          int32(-1),
-          int16(1)
-        ])
-      )
-      const dataRow = backendMessage("D", Buffer.concat([int16(1), int32(field.length), field]))
-      const result = Buffer.concat([
-        backendMessage("1", Buffer.alloc(0)),
-        backendMessage("2", Buffer.alloc(0)),
-        rowDescription,
-        dataRow,
-        backendMessage("C", Buffer.from("SELECT 1\0")),
-        readyForQuery
-      ])
+      const result = textRowResult("big", Buffer.alloc(fieldSize, 0x78))
       let writes = 0
       const socket: Duplex = new Duplex({
         read() {},
@@ -505,30 +505,7 @@ describe("PgConnection in-process server", () => {
   it.effect("bounds pipelineInFlight while multiplexed queries keep the pipeline nonempty", () =>
     Effect.gen(function*() {
       const total = 300
-      const rowDescription = backendMessage(
-        "T",
-        Buffer.concat([
-          int16(1),
-          Buffer.from("id\0"),
-          int32(0),
-          int16(0),
-          int32(25),
-          int16(-1),
-          int32(-1),
-          int16(1)
-        ])
-      )
-      const queryResult = (id: number): Buffer => {
-        const value = Buffer.from(String(id))
-        return Buffer.concat([
-          backendMessage("1", Buffer.alloc(0)),
-          backendMessage("2", Buffer.alloc(0)),
-          rowDescription,
-          backendMessage("D", Buffer.concat([int16(1), int32(value.length), value])),
-          backendMessage("C", Buffer.from("SELECT 1\0")),
-          readyForQuery
-        ])
-      }
+      const queryResult = (id: number): Buffer => textRowResult("id", Buffer.from(String(id)))
 
       let writes = 0
       let received = 0
@@ -540,7 +517,7 @@ describe("PgConnection in-process server", () => {
           if (writes === 1) {
             queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
           } else {
-            received += frontendTags(Buffer.from(chunk)).filter((tag) => tag === "S").length
+            received += frontendTags(chunk).filter((tag) => tag === "S").length
             const toReply = received - replied - 1
             if (toReply > 0) {
               const replies = Array.from({ length: toReply }, () => queryResult(replied++))
