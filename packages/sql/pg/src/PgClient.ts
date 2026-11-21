@@ -163,8 +163,8 @@ export interface PgClientConfig<R = never> {
    * With `multiplex` enabled, PgBouncer before 1.26.0 with
    * `max_prepared_statements > 0` can misorder or drop responses to pipelined
    * `Close` messages, failing connections with
-   * `Unexpected ParseComplete during close`. Set `prepare: false` with
-   * `multiplex` or upgrade PgBouncer to 1.26.0 or newer.
+   * `Unexpected ParseComplete during close`. Set `prepare: false` or upgrade
+   * PgBouncer.
    */
   readonly prepare?: boolean | undefined
   /** How many statements a connection keeps prepared. Defaults to `100`. */
