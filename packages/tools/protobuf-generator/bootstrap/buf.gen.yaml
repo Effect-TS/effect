@@ -1,0 +1,10 @@
+# Regenerates the definitions of effect/protobuf's ProtobufDescriptorProto and
+# ProtobufPluginProto, which this plugin is built on, as plain plugin output.
+# Run with `pnpm bootstrap`.
+version: v2
+plugins:
+  - local: ["node", "src/bin.ts"]
+    out: ../../effect/src/protobuf/internal/generated
+    strategy: all
+    opt:
+      - import_extension=ts

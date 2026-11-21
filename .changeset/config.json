@@ -34,6 +34,7 @@
       "@effect/doctest",
       "@effect/graphql-generator",
       "@effect/openapi-generator",
+      "@effect/protobuf-generator",
       "@effect/opentelemetry",
       "@effect/platform-browser",
       "@effect/platform-bun",

@@ -23,9 +23,8 @@
  *   editions are rejected rather than interpreted with older defaults.
  * - Descriptors are compiler output. Source-level naming, visibility and
  *   definition-size rules are enforced by protoc, before runtime resolution.
- * - `descriptor.proto` itself is part of this module: `descriptorFile`,
- *   and per message an interface and a `MessageDescriptor` of the same name,
- *   such as `FileDescriptorProto`, generated from protoc's descriptor of it.
+ * - `descriptor.proto` itself, the `FileDescriptorProto`s that this module
+ *   resolves, is described by `ProtobufDescriptorProto`.
  *
  * **Example** (Finding a message)
  *
@@ -53,16 +52,13 @@
  */
 import * as Data from "../Data.ts"
 import * as Result from "../Result.ts"
-import * as Binary from "./internal/binary.ts"
 import * as Resolve from "./internal/resolve.ts"
-import { FileDescriptorSet as FileDescriptorSetMessage } from "./ProtobufDescriptorProto.ts"
 import type {
   DescriptorProto,
   EnumDescriptorProto,
   EnumValueDescriptorProto,
   FieldDescriptorProto,
   FileDescriptorProto,
-  FileDescriptorSet,
   MethodDescriptorProto,
   OneofDescriptorProto,
   ServiceDescriptorProto
@@ -437,7 +433,8 @@ export class ProtobufDescriptorError extends Data.TaggedError("ProtobufDescripto
 
 /**
  * Resolves `FileDescriptorProto`s into a {@link Registry}. Files may come in
- * any order, but every dependency must be among them.
+ * any order, but every dependency must be among them or among the
+ * `dependencies` option.
  *
  * **Details**
  *
@@ -445,6 +442,13 @@ export class ProtobufDescriptorError extends Data.TaggedError("ProtobufDescripto
  * including field-number bounds, duplicate names and numbers, oneof membership,
  * and map key types. Invalid layouts return a {@link ProtobufDescriptorError}.
  * This does not replace protoc's validation of `.proto` source files.
+ *
+ * `dependencies` are files resolved before, such as
+ * `ProtobufDescriptorProto.descriptorFile` or the
+ * files of modules that `protoc-gen-effect` generated. They are linked, not
+ * resolved again: types of `files` that refer to them refer to their
+ * descriptors. The registry's `files` lists the resolved files first, then
+ * the dependencies and the files they import.
  *
  * **Example** (Resolving a file)
  *
@@ -473,31 +477,14 @@ export class ProtobufDescriptorError extends Data.TaggedError("ProtobufDescripto
  * @category constructors
  * @since 4.1.5
  */
-export const make = (files: Iterable<FileDescriptorProto>): Result.Result<Registry, ProtobufDescriptorError> => {
+export const make = (
+  files: Iterable<FileDescriptorProto>,
+  options?: { readonly dependencies?: Iterable<FileDescriptor> | undefined }
+): Result.Result<Registry, ProtobufDescriptorError> => {
   try {
-    return Result.succeed(Resolve.resolve(files))
+    return Result.succeed(Resolve.resolve(files, options?.dependencies))
   } catch (e) {
     if (e instanceof Resolve.ResolveError) return Result.fail(new ProtobufDescriptorError({ message: e.message }))
     throw e
   }
 }
-
-/**
- * Decodes a `FileDescriptorSet`, as `protoc --descriptor_set_out` and
- * `buf build` write it, and resolves its files into a {@link Registry}.
- *
- * @stability experimental
- * @category constructors
- * @since 4.1.5
- */
-export const fromFileDescriptorSet = (bytes: Uint8Array): Result.Result<Registry, ProtobufDescriptorError> => {
-  const set = Binary.decode(FileDescriptorSetMessage, bytes, undefined)
-  if (Result.isFailure(set)) return Result.fail(new ProtobufDescriptorError({ message: set.failure.message }))
-  return make((set.success as FileDescriptorSet).file ?? [])
-}
-
-// -----------------------------------------------------------------------------
-// descriptor.proto
-// -----------------------------------------------------------------------------
-
-export * from "./ProtobufDescriptorProto.ts"

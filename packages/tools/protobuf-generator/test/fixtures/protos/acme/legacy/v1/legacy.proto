@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package acme.legacy.v1;
+
+// A record of a proto2 service.
+message Record {
+  required string key = 1;
+  optional Kind kind = 2 [default = KIND_FILE];
+  repeated int32 sizes = 3 [packed = true];
+  optional sint64 offset = 4;
+  optional fixed64 checksum = 5 [jstype = JS_NUMBER];
+
+  extensions 100 to 199;
+}
+
+// A message whose name is a global of generated code.
+message Uint8Array {
+  optional string name = 1;
+}
+
+enum Kind {
+  KIND_FILE = 1;
+  KIND_DIRECTORY = 2;
+}
+
+extend Record {
+  optional string owner = 100;
+}

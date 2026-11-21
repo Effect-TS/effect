@@ -432,6 +432,18 @@ export class Module {
   }
 
   /**
+   * Whether a name is reserved: a keyword, `globalThis`, or a name passed to the constructor.
+   *
+   * **When to use**
+   *
+   * Use to escape names that must be the same in every generated module, such as exports that other modules
+   * import, before declaring them with `exact`.
+   */
+  isReserved(name: string): boolean {
+    return this.#reserved.has(name)
+  }
+
+  /**
    * Creates a nested declaration scope in a module.
    */
   scope(parent: Scope = this.#root): Scope {

@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { ProtobufDescriptor, ProtobufMessage } from "effect/protobuf"
+import { ProtobufDescriptor, ProtobufDescriptorProto, ProtobufMessage, ProtobufPluginProto } from "effect/protobuf"
 import * as Result from "effect/Result"
-import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { field, message, registry, T } from "./descriptors.ts"
@@ -157,7 +156,7 @@ describe("ProtobufDescriptor", () => {
     })
 
     it("rejects duplicate fields and invalid oneof membership", () => {
-      const cases: ReadonlyArray<ProtobufDescriptor.DescriptorProto> = [
+      const cases: ReadonlyArray<ProtobufDescriptorProto.DescriptorProto> = [
         { name: "Bad", field: [field("x", 1, "int32"), field("x", 2, "int32")] },
         { name: "Bad", field: [field("x", 1, "int32"), field("y", 1, "int32")] },
         { name: "Bad", field: [field("x", 1, "int32", { oneof_index: 0 })] },
@@ -197,40 +196,41 @@ describe("ProtobufDescriptor", () => {
     })
 
     const point = { name: "Point", field: [field("x", 1, "int32")] }
-    const cases: ReadonlyArray<readonly [string, ReadonlyArray<ProtobufDescriptor.FileDescriptorProto>, string]> = [
+    const cases: ReadonlyArray<readonly [string, ReadonlyArray<ProtobufDescriptorProto.FileDescriptorProto>, string]> =
       [
-        "a missing dependency",
-        [{ name: "a.proto", dependency: ["b.proto"] }],
-        "a.proto imports b.proto, which is missing"
-      ],
-      [
-        "an import cycle",
-        [{ name: "a.proto", dependency: ["b.proto"] }, { name: "b.proto", dependency: ["a.proto"] }],
-        "a.proto is part of an import cycle"
-      ],
-      [
-        "an undefined type",
-        [{ name: "a.proto", message_type: [{ name: "A", field: [field("f", 1, ".x.Missing")] }] }],
-        "A.f: message x.Missing is not defined"
-      ],
-      ["a relative type name", [{
-        name: "a.proto",
-        message_type: [
-          { name: "A", field: [{ name: "f", number: 1, label: 1, type: T.message, type_name: "Point" }] },
-          point
+        [
+          "a missing dependency",
+          [{ name: "a.proto", dependency: ["b.proto"] }],
+          "a.proto imports b.proto, which is missing"
+        ],
+        [
+          "an import cycle",
+          [{ name: "a.proto", dependency: ["b.proto"] }, { name: "b.proto", dependency: ["a.proto"] }],
+          "a.proto is part of an import cycle"
+        ],
+        [
+          "an undefined type",
+          [{ name: "a.proto", message_type: [{ name: "A", field: [field("f", 1, ".x.Missing")] }] }],
+          "A.f: message x.Missing is not defined"
+        ],
+        ["a relative type name", [{
+          name: "a.proto",
+          message_type: [
+            { name: "A", field: [{ name: "f", number: 1, label: 1, type: T.message, type_name: "Point" }] },
+            point
+          ]
+        }], "A.f: expected a fully qualified type name, got Point"],
+        [
+          "an unsupported edition",
+          [{ name: "a.proto", syntax: "editions", edition: ProtobufDescriptorProto.Edition.EDITION_MAX }],
+          "a.proto: edition 2147483647 is not supported"
+        ],
+        [
+          "a type defined twice",
+          [{ name: "a.proto", message_type: [point] }, { name: "b.proto", message_type: [point] }],
+          "Point is defined twice"
         ]
-      }], "A.f: expected a fully qualified type name, got Point"],
-      [
-        "an unsupported edition",
-        [{ name: "a.proto", syntax: "editions", edition: ProtobufDescriptor.Edition.EDITION_MAX }],
-        "a.proto: edition 2147483647 is not supported"
-      ],
-      [
-        "a type defined twice",
-        [{ name: "a.proto", message_type: [point] }, { name: "b.proto", message_type: [point] }],
-        "Point is defined twice"
       ]
-    ]
     for (const [name, files, message_] of cases) {
       it(name, () => {
         const result = ProtobufDescriptor.make(files)
@@ -244,17 +244,10 @@ describe("ProtobufDescriptor", () => {
     // `protoc --descriptor_set_out --include_source_info` of protoc 36.2, for
     // google/protobuf/descriptor.proto and google/protobuf/compiler/plugin.proto.
     const bytes = readFileSync(fileURLToPath(new URL("../fixtures/protobuf/descriptor-set.binpb", import.meta.url)))
-    const { FileDescriptorProto, FileDescriptorSet } = ProtobufDescriptor
-
-    it("has reproducible built-in definitions", () => {
-      execFileSync(process.execPath, [
-        fileURLToPath(new URL("../../scripts/protobuf/generate.mjs", import.meta.url)),
-        "--check"
-      ], { stdio: "pipe" })
-    })
+    const { FileDescriptorProto, FileDescriptorSet } = ProtobufDescriptorProto
 
     it("resolves the files of a descriptor set", () => {
-      const resolved = Result.getOrThrow(ProtobufDescriptor.fromFileDescriptorSet(bytes))
+      const resolved = Result.getOrThrow(ProtobufDescriptorProto.fromFileDescriptorSet(bytes))
       assert.deepStrictEqual(resolved.files.map((f) => [f.name, f.edition]), [
         ["google/protobuf/descriptor.proto", "proto2"],
         ["google/protobuf/compiler/plugin.proto", "proto2"]
@@ -283,16 +276,77 @@ describe("ProtobufDescriptor", () => {
       const set = Result.getOrThrow(ProtobufMessage.decode(FileDescriptorSet)(bytes))
       const { source_code_info: _, ...protoc } = (set.file as any)[0]
       assert.deepStrictEqual(
-        Result.getOrThrow(encode(ProtobufDescriptor.descriptorFile.proto)),
+        Result.getOrThrow(encode(ProtobufDescriptorProto.descriptorFile.proto)),
         Result.getOrThrow(encode(protoc))
       )
     })
 
     it("fails for malformed bytes", () => {
-      const result = ProtobufDescriptor.fromFileDescriptorSet(new Uint8Array([0x0a, 0x05]))
+      const result = ProtobufDescriptorProto.fromFileDescriptorSet(new Uint8Array([0x0a, 0x05]))
       assert.isTrue(Result.isFailure(result))
       if (Result.isFailure(result)) {
         assert.strictEqual(result.failure.message, "file[0]: Expected a complete value at offset 2")
+      }
+    })
+
+    it("has plugin.proto as protoc describes it", () => {
+      const encode = ProtobufMessage.encode(FileDescriptorProto)
+      const set = Result.getOrThrow(ProtobufMessage.decode(FileDescriptorSet)(bytes))
+      const { source_code_info: _, ...protoc } = (set.file as any)[1]
+      assert.deepStrictEqual(
+        Result.getOrThrow(encode(ProtobufPluginProto.pluginFile.proto)),
+        Result.getOrThrow(encode(protoc))
+      )
+      assert.strictEqual(ProtobufPluginProto.pluginFile.dependencies[0], ProtobufDescriptorProto.descriptorFile)
+    })
+  })
+
+  describe("dependencies", () => {
+    const options: ProtobufDescriptorProto.FileDescriptorProto = {
+      name: "options.proto",
+      package: "acme",
+      dependency: ["google/protobuf/descriptor.proto"],
+      extension: [{
+        name: "secret",
+        number: 50000,
+        label: 1,
+        type: 8,
+        extendee: ".google.protobuf.FieldOptions"
+      }],
+      message_type: [{
+        name: "Wrapper",
+        field: [{ name: "file", number: 1, label: 1, type: 11, type_name: ".google.protobuf.FileDescriptorProto" }]
+      }]
+    }
+
+    it("links files resolved before instead of resolving them again", () => {
+      const registry = Result.getOrThrow(
+        ProtobufDescriptor.make([options], { dependencies: [ProtobufDescriptorProto.descriptorFile] })
+      )
+      assert.deepStrictEqual(registry.files.map((file) => file.name), [
+        "options.proto",
+        "google/protobuf/descriptor.proto"
+      ])
+      const [file, descriptor] = registry.files
+      assert.strictEqual(descriptor, ProtobufDescriptorProto.descriptorFile)
+      assert.deepStrictEqual(file.dependencies, [ProtobufDescriptorProto.descriptorFile])
+      const wrapped = file.messages[0].fields[0]
+      assert.strictEqual(
+        wrapped.type.kind === "message" && wrapped.type.message,
+        ProtobufDescriptorProto.FileDescriptorProto
+      )
+      assert.strictEqual(file.extensions[0].extendee, ProtobufDescriptorProto.FieldOptions)
+      assert.strictEqual(registry.getMessage("google.protobuf.FieldOptions"), ProtobufDescriptorProto.FieldOptions)
+      assert.strictEqual(registry.findExtension("google.protobuf.FieldOptions", 50000), file.extensions[0])
+    })
+
+    it("fails for a file that is also a dependency", () => {
+      const result = ProtobufDescriptor.make([options, ProtobufDescriptorProto.descriptorFile.proto], {
+        dependencies: [ProtobufDescriptorProto.descriptorFile]
+      })
+      assert.isTrue(Result.isFailure(result))
+      if (Result.isFailure(result)) {
+        assert.strictEqual(result.failure.message, "google/protobuf/descriptor.proto: the file is given twice")
       }
     })
   })

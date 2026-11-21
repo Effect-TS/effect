@@ -27,6 +27,12 @@ export * as ProtobufMessage from "./ProtobufMessage.ts"
  * @stability experimental
  * @since 4.1.5
  */
+export * as ProtobufPluginProto from "./ProtobufPluginProto.ts"
+
+/**
+ * @stability experimental
+ * @since 4.1.5
+ */
 export * as ProtobufReader from "./ProtobufReader.ts"
 
 /**
