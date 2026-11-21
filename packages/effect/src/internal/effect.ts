@@ -5645,7 +5645,15 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    // Cancel the deferred start if an interrupt runs first.
+    let resumed = false
+    child.yieldWith(() => {
+      resumed = true
+    })
+    parentRuntime.currentDispatcher.scheduleTask(() => {
+      if (resumed) return
+      child.evaluate(effect as any)
+    }, 0)
   }
   return child
 }
