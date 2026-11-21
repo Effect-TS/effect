@@ -465,7 +465,7 @@ describe("Effect.catchReasons", () => {
     expect(dataFirst).type.toBe<Effect.Effect<string | number, OtherError | SimpleError>>()
   })
 
-  it("keeps the parent error for partial handlers, optional handlers, or an undefined fallback", () => {
+  it("keeps the parent error when coverage is not guaranteed", () => {
     const partial = {
       RateLimitError: () => Effect.succeed(1)
     }
@@ -477,20 +477,44 @@ describe("Effect.catchReasons", () => {
       RateLimitError: () => Effect.succeed(1),
       QuotaExceededError: () => Effect.succeed(2)
     }
+    const unionCases = {} as
+      | {
+        readonly RateLimitError: () => Effect.Effect<number>
+        readonly QuotaExceededError?: () => Effect.Effect<number>
+        readonly UnknownAiModelError?: () => Effect.Effect<number>
+      }
+      | {
+        readonly RateLimitError?: () => Effect.Effect<number>
+        readonly QuotaExceededError: () => Effect.Effect<number>
+        readonly UnknownAiModelError: () => Effect.Effect<number>
+      }
+    const maybeOrElse = undefined as (() => Effect.Effect<number>) | undefined
+    type ReasonlessVariant = { readonly _tag: "AiError"; readonly message: string }
+    const mixedVariant = {} as Effect.Effect<
+      string,
+      { readonly _tag: "AiError"; readonly reason: RateLimitError } | ReasonlessVariant
+    >
+
     expect(Effect.catchReasons(mixedEffect, "AiError", partial)).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
     >()
     expect(pipe(mixedEffect, Effect.catchReasons("AiError", optionalCases))).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
     >()
-    expect(Effect.catchReasons(mixedEffect, "AiError", optionalCases)).type.toBe<
+    expect(Effect.catchReasons(mixedEffect, "AiError", unionCases)).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
     >()
     expect(pipe(mixedEffect, Effect.catchReasons("AiError", partial, undefined))).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
     >()
-    expect(Effect.catchReasons(mixedEffect, "AiError", partial, undefined)).type.toBe<
+    expect(Effect.catchReasons(mixedEffect, "AiError", partial, maybeOrElse)).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(Effect.catchReasons(mixedVariant, "AiError", { RateLimitError: () => Effect.succeed(1) })).type.toBe<
+      Effect.Effect<string | number, { readonly _tag: "AiError"; readonly reason: RateLimitError } | ReasonlessVariant>
+    >()
+    expect(Effect.catchReasons(mixedVariant, "AiError", {}, () => Effect.succeed(1))).type.toBe<
+      Effect.Effect<string | number, ReasonlessVariant>
     >()
   })
 
@@ -498,9 +522,6 @@ describe("Effect.catchReasons", () => {
     const unwrapped = pipe(mixedEffect, Effect.unwrapReason("AiError"))
     const dataLast = pipe(mixedEffect, Effect.catchReasons("AiError", {}, (reason) => reason))
     const dataFirst = Effect.catchReasons(mixedEffect, "AiError", {}, (reason) => reason)
-    expect(dataLast).type.toBe<
-      Effect.Effect<string, RateLimitError | QuotaExceededError | UnknownAiModelError | OtherError>
-    >()
     expect(dataLast).type.toBe<typeof unwrapped>()
     expect(dataFirst).type.toBe<typeof unwrapped>()
   })
