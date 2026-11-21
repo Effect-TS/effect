@@ -147,8 +147,7 @@ export const parse = (value: string): Array<Link> => {
       }
     }
 
-    // Read rel before the merge, so rel* cannot set the relation types, and
-    // delete it after, so a decoded rel* does not end up in params.
+    // Read rel before merging extended params so rel* cannot set rel, then delete it so rel* stays out of params.
     const rel = plain.get("rel")
     for (const [name, decoded] of extended) {
       if (decoded !== undefined) plain.set(name, decoded)
@@ -165,8 +164,7 @@ export const parse = (value: string): Array<Link> => {
 
 const quotableValue = /^[\t\x20-\x7e]*$/
 
-// Percent-encodes everything outside visible ASCII, plus `"` and `\`, so a
-// relation type cannot end the quoted `rel` value or split into two types.
+// Percent-encode chars outside visible ASCII plus `"` and `\` so a relation type cannot break the quoted rel.
 const formatRelationType = (type: string): string =>
   Str.toWellFormed(type).replace(/[^\x21\x23-\x5b\x5d-\x7e]/gu, encodeURIComponent)
 

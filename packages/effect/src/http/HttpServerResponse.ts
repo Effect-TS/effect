@@ -608,8 +608,7 @@ export const appendHeader: {
   3,
   (self: HttpServerResponse, key: string, value: string): HttpServerResponse => {
     const headers = Headers.append(self.headers, key, value)
-    // makeResponse completes the headers it is given in place, so it must
-    // never receive the map shared with `self`
+    // makeResponse mutates the headers map in place, so never pass self.headers
     return headers === self.headers ? self : makeResponse(self, headers)
   }
 )
