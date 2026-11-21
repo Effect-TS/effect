@@ -173,7 +173,14 @@ const encodeBytes = (bytes: Uint8Array, pad: boolean): string => {
     readonly toBase64?: (this: Uint8Array, options: NativeEncodeOptions) => string
   }).toBase64
   // The size guard also keeps detached buffers (length 0) away from native `toBase64`, which throws on them.
-  if (length >= 32 && typeof toBase64 === "function") return toBase64.call(bytes, pad ? paddedOptions : unpaddedOptions)
+  if (length >= 32) {
+    if (typeof toBase64 === "function") return toBase64.call(bytes, pad ? paddedOptions : unpaddedOptions)
+    const encoded = base64.encodeBuffer(bytes, "base64url")
+    if (encoded !== undefined) {
+      const rest = length % 3
+      return pad && rest !== 0 ? encoded + (rest === 1 ? "==" : "=") : encoded
+    }
+  }
   // Below ~128 bytes, appending to a string beats filling a byte array and decoding it once.
   return length < 128 ? encodeShort(bytes, pad) : encodeLong(bytes, pad)
 }
