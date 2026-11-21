@@ -3,7 +3,7 @@ import type { DurableObjectProgramState } from "@effect/platform-cloudflare/Clou
 import { makeClusterSingletonProgram } from "@effect/platform-cloudflare/CloudflareDurableObjectPrograms"
 import { inertClusterHandle, makeClusterHandle } from "@effect/platform-cloudflare/internal/alchemyCluster"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Cron, Effect, Exit, Fiber } from "effect"
+import { Context, Cron, Effect, Exit, Fiber, Layer } from "effect"
 import { ClusterCron, Singleton } from "effect/cluster"
 import { Sharding } from "effect/cluster/Sharding"
 import { TestClock } from "effect/testing"
@@ -214,6 +214,57 @@ describe("AlchemyCloudflareCluster", () => {
       )
     })
   }
+
+  it.effect("restricts the namespace bindings to the jurisdiction", () =>
+    Effect.gen(function*() {
+      const jurisdictions: Array<string> = []
+      const restricted = { getByName: () => undefined }
+      const namespace = {
+        getByName: () => undefined,
+        jurisdiction: (jurisdiction: string) => {
+          jurisdictions.push(jurisdiction)
+          return restricted
+        }
+      }
+      const cluster = yield* makeClusterHandle({
+        entities: [],
+        layer: Layer.empty,
+        jurisdiction: "eu",
+        env: {
+          ClusterEntity: namespace,
+          ClusterWorkflow: namespace,
+          ClusterDurableQueue: namespace,
+          ClusterSingleton: namespace
+        }
+      })
+      assert.deepStrictEqual(jurisdictions, ["eu", "eu", "eu", "eu"])
+      assert.strictEqual(cluster.entityNamespace, restricted as any)
+      assert.strictEqual(cluster.workflowNamespace, restricted as any)
+      assert.strictEqual(cluster.queueNamespace, restricted as any)
+      assert.strictEqual(cluster.singletonNamespace, restricted as any)
+    }))
+
+  it.effect("keeps the unrestricted bindings where workerd has no jurisdictions", () =>
+    Effect.gen(function*() {
+      const namespace = {
+        getByName: () => undefined,
+        jurisdiction: () => {
+          throw new Error("Jurisdiction restrictions are not implemented in workerd.")
+        }
+      }
+      const cluster = yield* makeClusterHandle({
+        entities: [],
+        layer: Layer.empty,
+        jurisdiction: "eu",
+        env: {
+          ClusterEntity: namespace,
+          ClusterWorkflow: namespace,
+          ClusterDurableQueue: namespace,
+          ClusterSingleton: namespace
+        }
+      })
+      assert.strictEqual(cluster.entityNamespace, namespace as any)
+    }))
 
   it.effect("the plan-time handle is inert", () =>
     Effect.gen(function*() {

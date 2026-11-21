@@ -289,6 +289,21 @@ are internal transport: they trust the same-Worker namespace bindings and must
 not be exposed on a public route. HTTP or RPC authentication and authorization
 are user code on the Worker.
 
+## Data location
+
+To keep every cluster object inside a
+[jurisdiction](https://developers.cloudflare.com/durable-objects/reference/data-location/),
+pass jurisdiction subnamespaces to `CloudflareCluster.layer`
+(`entityNamespace: env.CLUSTER_ENTITY.jurisdiction("eu")`, and the same for the
+other three), or `jurisdiction: "eu"` to the Alchemy `make`. An object reaches
+its peers (a parent workflow, a reply target, itself for keep-alive) through
+`ctx.exports` in its own `ctx.id.jurisdiction`. Restricting a namespace that
+already holds objects does not move them: the same name addresses a different
+object inside a jurisdiction. Local `workerd` does not implement jurisdictions
+and throws on `jurisdiction()`: pass unrestricted namespaces to
+`CloudflareCluster.layer` in local development. The Alchemy `make` option does
+this itself under `alchemy dev`.
+
 ## Long waits and delivery
 
 - A long ask pins the caller. A delayed ask made directly by a Worker also

@@ -46,28 +46,38 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  * **Details**
  *
  * A `DurableObjectState` from `cloudflare:workers` satisfies this shape
- * directly, so pass it as is. The program only reads the object name, opens
- * SQLite storage, resolves same-Worker class exports, and extends the current
- * event with `waitUntil`.
+ * directly, so pass it as is. The program only reads the object name and
+ * jurisdiction, opens SQLite storage, resolves same-Worker class exports, and
+ * extends the current event with `waitUntil`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
 export interface DurableObjectProgramState {
-  readonly id: { readonly name?: string | undefined }
+  readonly id: { readonly name?: string | undefined; readonly jurisdiction?: string | undefined }
   readonly storage: DurableObjectStorage
   readonly exports: object
   readonly waitUntil: (promise: Promise<unknown>) => void
 }
 
+interface ExportedNamespace<Stub> {
+  readonly getByName: (name: string) => Stub
+  readonly jurisdiction: (jurisdiction: string) => ExportedNamespace<Stub>
+}
+
+// `ctx.exports` bindings are never restricted to a jurisdiction. An object
+// created through a jurisdiction subnamespace must reach its peers (its parent
+// workflow, a reply target, itself) in that same jurisdiction: the same name
+// addresses a different object outside it.
 const exportedNamespace = <Stub>(
   state: DurableObjectProgramState,
   className: string
-): { readonly getByName: (name: string) => Stub } | undefined =>
-  (state.exports as Record<string, unknown>)[className] as
-    | { readonly getByName: (name: string) => Stub }
-    | undefined
+): { readonly getByName: (name: string) => Stub } | undefined => {
+  const namespace = (state.exports as Record<string, unknown>)[className] as ExportedNamespace<Stub> | undefined
+  const jurisdiction = state.id.jurisdiction
+  return namespace === undefined || jurisdiction === undefined ? namespace : namespace.jurisdiction(jurisdiction)
+}
 
 /**
  * Delivery options accepted by the cluster entity transport program.
