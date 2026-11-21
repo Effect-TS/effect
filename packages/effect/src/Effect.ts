@@ -3191,14 +3191,15 @@ export const catchReason: {
 } = internal.catchReason
 
 type RequiredCaseKeys<Cases> = {
-  [RK in keyof Cases & string]: string extends RK ? never
+  [RK in keyof Cases & string]: {} extends Record<RK, 1> ? never
     : [Cases] extends [Record<RK, (...args: Array<any>) => any>] ? RK
     : never
 }[keyof Cases & string]
 
-type CaseReturn<Cases> = ReturnType<Extract<Cases[keyof Cases], (...args: Array<any>) => any>>
+type CaseReturn<Cases> = Cases extends unknown ? ReturnType<Extract<Cases[keyof Cases], (...args: Array<any>) => any>>
+  : never
 
-type UnhandledParent<E, K extends string, Handled extends string> = string extends K ? ExtractTag<E, K>
+type UnhandledParent<E, K extends string, Handled extends string> = {} extends Record<K, 1> ? ExtractTag<E, K>
   : IsUnion<K> extends true ? ExtractTag<E, K>
   : ExtractTag<E, K> extends infer P
     ? P extends { readonly reason: { readonly _tag: string } } ? [ExcludeReason<P, Handled>] extends [never] ? never : P

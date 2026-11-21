@@ -495,6 +495,12 @@ describe("Effect.catchReasons", () => {
       { readonly _tag: "AiError"; readonly reason: RateLimitError } | OtherAiError
     >
     const unionTag = "AiError" as "AiError" | "OtherAiError"
+    const patternCases: Record<`${string}Error`, () => Effect.Effect<number>> = {}
+    type PatternParent = { readonly _tag: `Err${string}`; readonly reason: RateLimitError }
+    const patternParent = {} as Effect.Effect<string, PatternParent>
+    const disjointCases = {} as
+      | { readonly RateLimitError: () => Effect.Effect<never, SimpleError> }
+      | { readonly QuotaExceededError: () => Effect.Effect<number> }
 
     expect(Effect.catchReasons(mixedEffect, "AiError", partial)).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
@@ -516,6 +522,17 @@ describe("Effect.catchReasons", () => {
     >()
     expect(Effect.catchReasons(unionParent, unionTag, { RateLimitError: () => Effect.succeed(1) })).type.toBe<
       Effect.Effect<string | number, { readonly _tag: "AiError"; readonly reason: RateLimitError } | OtherAiError>
+    >()
+    expect(Effect.catchReasons(mixedEffect, "AiError", patternCases)).type.toBe<
+      Effect.Effect<string | number, AiError | OtherError>
+    >()
+    expect(
+      Effect.catchReasons(patternParent, "Err1" as PatternParent["_tag"], { RateLimitError: () => Effect.succeed(1) })
+    ).type.toBe<
+      Effect.Effect<string | number, PatternParent>
+    >()
+    expect(Effect.catchReasons(aiEffect, "AiError", disjointCases)).type.toBe<
+      Effect.Effect<string | number, AiError | SimpleError>
     >()
   })
 
