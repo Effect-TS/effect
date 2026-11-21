@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, vi } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 import type * as EncodingError from "effect/encoding/EncodingError"
@@ -121,9 +121,27 @@ describeWithFallback("Base64", () => {
     assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
   })
 
+  it("decodes long input into an unpooled Uint8Array", () => {
+    const bytes = Uint8Array.from({ length: 96 }, (_, i) => i)
+    const decoded = Result.getOrThrow(Base64.decode(Base64.encode(bytes)))
+    assert.deepStrictEqual(decoded, bytes)
+    assert.strictEqual(Object.getPrototypeOf(decoded), Uint8Array.prototype)
+    assert.strictEqual(decoded.byteOffset, 0)
+    assert.strictEqual(decoded.buffer.byteLength, decoded.length)
+  })
+
   it("ignores non-zero trailing bits", () => {
     assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zh==")), new Uint8Array([102]))
     assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
+    const prefix = "AAAA".repeat(32)
+    assert.deepStrictEqual(
+      Result.getOrThrow(Base64.decode(`${prefix}Zh==`)),
+      new Uint8Array([...new Uint8Array(96), 102])
+    )
+    assert.deepStrictEqual(
+      Result.getOrThrow(Base64.decode(`${prefix}Zm9=`)),
+      new Uint8Array([...new Uint8Array(96), 102, 111])
+    )
   })
 
   it("decodes either alphabet, with or without padding", () => {
@@ -163,11 +181,51 @@ describeWithFallback("Base64", () => {
     assertFailure("Zg=v", "Zg=v", misplacedPadding)
     assertFailure("=Zg=", "=Zg=", misplacedPadding)
     assertFailure("====", "====", misplacedPadding)
-    for (const char of ["-", "_", "!", "{", "\u00e9", " ", "\t", "\f"]) {
+    for (const char of ["-", "_", "!", "{", "\u00e9", "\u0141", " ", "\t", "\f"]) {
       assertFailure(`Zm9${char}`, `Zm9${char}`, `Invalid character ${char}`)
       // Long enough for size-gated decoders
       const long = `${"Zm9v".repeat(64)}Zm9${char}`
       assertFailure(long, long, `Invalid character ${char}`)
+    }
+  })
+})
+
+describe("Base64 Buffer fallback", { concurrent: false }, () => {
+  it("uses Buffer.from from 32 bytes on encode and 128 characters on decode when native methods are unavailable", () => {
+    const natives = [
+      [Uint8Array, "fromBase64"],
+      [Uint8Array.prototype, "toBase64"]
+    ] as const
+    const descriptors = natives.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
+    for (const [target, key] of natives) Reflect.deleteProperty(target, key)
+    const spy = vi.spyOn(Buffer, "from")
+    try {
+      const bytes = Uint8Array.from({ length: 96 }, (_, i) => (i * 151) & 0xff)
+      const shortBytes = bytes.subarray(0, 31)
+      const longBytes = bytes.subarray(0, 32)
+      assert.strictEqual(Base64.encode(shortBytes), btoa(String.fromCharCode(...shortBytes)))
+      assert.strictEqual(spy.mock.calls.length, 0)
+
+      assert.strictEqual(Base64.encode(longBytes), btoa(String.fromCharCode(...longBytes)))
+      assert.isAbove(spy.mock.calls.length, 0)
+
+      spy.mockClear()
+      const shortDecodeBytes = bytes.subarray(0, 93)
+      const shortEncoded = btoa(String.fromCharCode(...shortDecodeBytes))
+      assert.strictEqual(shortEncoded.length, 124)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(shortEncoded)), shortDecodeBytes)
+      assert.strictEqual(spy.mock.calls.length, 0)
+
+      const longEncoded = btoa(String.fromCharCode(...bytes))
+      assert.strictEqual(longEncoded.length, 128)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(longEncoded)), bytes)
+      assert.isAbove(spy.mock.calls.length, 0)
+    } finally {
+      spy.mockRestore()
+      natives.forEach(([target, key], i) => {
+        const descriptor = descriptors[i]
+        if (descriptor !== undefined) Reflect.defineProperty(target, key, descriptor)
+      })
     }
   })
 })

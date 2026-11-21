@@ -1,29 +1,39 @@
 import { afterAll, beforeAll, describe } from "@effect/vitest"
 
+type Property = readonly [target: object, key: PropertyKey]
+
 // The native `Uint8Array` Base64 and hex methods the encoding modules may use.
-const natives = [
+const natives: ReadonlyArray<Property> = [
   [Uint8Array, "fromBase64"],
   [Uint8Array, "fromHex"],
   [Uint8Array.prototype, "toBase64"],
   [Uint8Array.prototype, "toHex"]
-] as const
+]
 
-// Registers `suite` twice: once as is, and once with the native methods
-// removed, so the fallbacks are covered on runtimes that ship them. The copies
-// run sequentially, since the removal is global and the tests run concurrently.
-export const describeWithFallback = (name: string, suite: () => void): void => {
-  describe(name, { concurrent: false }, suite)
-  describe(`${name} without native methods`, { concurrent: false }, () => {
-    const descriptors = natives.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
+const nativesAndBuffer: ReadonlyArray<Property> = [...natives, [globalThis, "Buffer"]]
+
+const describeWithout = (name: string, props: ReadonlyArray<Property>, suite: () => void): void => {
+  describe(name, { concurrent: false }, () => {
+    const descriptors = props.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
     beforeAll(() => {
-      for (const [target, key] of natives) Reflect.deleteProperty(target, key)
+      for (const [target, key] of props) Reflect.deleteProperty(target, key)
     })
     afterAll(() => {
-      natives.forEach(([target, key], i) => {
+      props.forEach(([target, key], i) => {
         const descriptor = descriptors[i]
         if (descriptor !== undefined) Reflect.defineProperty(target, key, descriptor)
       })
     })
     suite()
   })
+}
+
+// Registers `suite` three times: as is, without the native `Uint8Array`
+// methods (to cover the `Buffer` fallback), and without `Buffer` as well (to
+// cover the JS loops). The copies run sequentially, since the removals are
+// global and the tests run concurrently.
+export const describeWithFallback = (name: string, suite: () => void): void => {
+  describe(name, { concurrent: false }, suite)
+  describeWithout(`${name} without native methods`, natives, suite)
+  describeWithout(`${name} without native methods or Buffer`, nativesAndBuffer, suite)
 }
