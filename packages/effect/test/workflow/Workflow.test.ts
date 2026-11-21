@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Scheduler } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Scheduler, Schema } from "effect"
 import { Activity, Workflow } from "effect/workflow"
 import { WorkflowInstance } from "effect/workflow/WorkflowEngine"
 
@@ -64,6 +64,69 @@ describe("Workflow.intoResult", () => {
       order.push("interrupt")
       yield* Fiber.interrupt(running)
       assert.deepStrictEqual(order, ["interrupt", "handler-finalizer", "workflow-finalizer"])
+    }))
+
+  it.effect("captures compensation defects in Complete results by default", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("CompensationDefectCaptured", {
+        payload: {},
+        error: Schema.String,
+        idempotencyKey: () => "one"
+      })
+
+      const failed = yield* Effect.gen(function*() {
+        yield* Workflow.addFinalizer(() => Effect.die("compensation failed"))
+        return yield* Effect.fail("refused")
+      }).pipe(
+        Workflow.intoResult,
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(workflow, "failed"))
+      )
+      assert(failed._tag === "Complete")
+      assert(Exit.isFailure(failed.exit))
+      assert.deepStrictEqual(
+        failed.exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error),
+        ["refused"]
+      )
+      assert.deepStrictEqual(
+        failed.exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect),
+        ["compensation failed"]
+      )
+
+      const succeeded = yield* Effect.gen(function*() {
+        yield* Workflow.addFinalizer(() => Effect.die("compensation failed"))
+      }).pipe(
+        Workflow.intoResult,
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(workflow, "succeeded"))
+      )
+      assert(succeeded._tag === "Complete")
+      assert(Exit.isFailure(succeeded.exit))
+      assert.deepStrictEqual(
+        succeeded.exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect),
+        ["compensation failed"]
+      )
+    }))
+
+  it.effect("lets compensation defects escape when CaptureDefects is disabled", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("CompensationDefectEscapes", {
+        payload: {},
+        error: Schema.String,
+        idempotencyKey: () => "one"
+      }).annotate(Workflow.CaptureDefects, false)
+
+      const exit = yield* Effect.gen(function*() {
+        yield* Workflow.addFinalizer(() => Effect.die("compensation failed"))
+        return yield* Effect.fail("refused")
+      }).pipe(
+        Workflow.intoResult,
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(workflow, "one")),
+        Effect.exit
+      )
+      assert(Exit.isFailure(exit))
+      assert.deepStrictEqual(
+        exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect),
+        ["compensation failed"]
+      )
     }))
 })
 
