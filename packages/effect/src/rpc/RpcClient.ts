@@ -994,34 +994,31 @@ const makeProtocolHttpUnbatched = (client: HttpClient.HttpClient) =>
     }
   }))
 
-const batchSpanOptions = (requests: ReadonlyArray<RequestEncoded>): Tracer.SpanOptions | undefined => {
+// Wraps a batched exchange in a root span linked to the span of each caller.
+const withBatchSpan = <A, E, R>(effect: Effect.Effect<A, E, R>, requests: ReadonlyArray<RequestEncoded>) => {
   const links: Array<Tracer.SpanLink> = []
   const seen = new Set<string>()
   let sampled = false
-  for (let i = 0; i < requests.length; i++) {
-    const request = requests[i]
-    if (request.traceId === undefined || request.spanId === undefined || seen.has(request.spanId)) {
-      continue
-    }
+  for (const request of requests) {
+    if (request.traceId === undefined || request.spanId === undefined || seen.has(request.spanId)) continue
     seen.add(request.spanId)
-    const span = Tracer.externalSpan({
-      traceId: request.traceId,
-      spanId: request.spanId,
-      sampled: request.sampled
-    })
-    if (span.sampled) {
-      sampled = true
-    }
+    const span = Tracer.externalSpan({ traceId: request.traceId, spanId: request.spanId, sampled: request.sampled })
+    sampled ||= span.sampled
     links.push({ span, attributes: {} })
   }
-  if (links.length === 0) return undefined
-  return {
+  if (links.length === 0) return effect
+  return Effect.withSpan(effect, "RpcClient.batch", {
     root: true,
     sampled,
     links,
     attributes: { batchSize: requests.length },
     captureStackTrace: false
-  }
+  }).pipe(
+    // The batch fiber inherits the tracing settings of the caller that opened
+    // it, which must not disable tracing for the other callers.
+    Effect.provideService(Tracer.DisablePropagation, false),
+    Effect.withTracerEnabled(true)
+  )
 }
 
 const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.HttpClient, options: {
@@ -1061,14 +1058,7 @@ const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.H
       Effect.raceFirst(Effect.sleep(window), batch.full.await).pipe(
         Effect.andThen(Effect.suspend(() => {
           closeBatch(clientId, batch)
-          const effect = exchange.send(clientId, batch.requests)
-          const spanOptions = batchSpanOptions(batch.requests)
-          return spanOptions === undefined
-            ? effect
-            : Effect.withSpan(effect, "RpcClient.batch", spanOptions).pipe(
-              Effect.provideService(Tracer.DisablePropagation, false),
-              Effect.withTracerEnabled(true)
-            )
+          return withBatchSpan(exchange.send(clientId, batch.requests), batch.requests)
         })),
         Effect.onExit((exit) => {
           closeBatch(clientId, batch)
