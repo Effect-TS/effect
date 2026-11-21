@@ -607,7 +607,7 @@ export const appendHeader: {
 } = dual(
   3,
   (self: HttpServerResponse, key: string, value: string): HttpServerResponse =>
-    makeResponse(self, Headers.append(self.headers, key, value))
+    value === "" ? self : makeResponse(self, Headers.append(self.headers, key, value))
 )
 
 /**

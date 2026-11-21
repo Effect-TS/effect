@@ -366,7 +366,7 @@ export const appendHeader: {
   (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, key: string, value: string): HttpClientRequest
 } = dual(3, (self: HttpClientRequest, key: string, value: string): HttpClientRequest =>
-  makeWith(
+  value === "" ? self : makeWith(
     self.method,
     self.url,
     self.urlParams,

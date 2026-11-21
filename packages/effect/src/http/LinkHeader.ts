@@ -78,9 +78,11 @@ const isWhitespace = (char: string | undefined): boolean => char === " " || char
  * that is not a link-value, it stops and returns the links read so far.
  *
  * - Parameter names and relation types are lowercased.
- * - For every parameter, including `rel`, the first occurrence wins.
+ * - For every parameter, including `rel` and extended parameters such as
+ *   `title*`, the first occurrence wins.
  * - An extended parameter such as `title*` is decoded as RFC 8187 and stored
- *   under `title`, replacing the plain form. Undecodable values are ignored.
+ *   under `title`, replacing the plain form. An undecodable value is ignored,
+ *   leaving the plain form. `rel*` never sets the relation types.
  *
  * **Gotchas**
  *
@@ -109,14 +111,16 @@ export const parse = (value: string): Array<Link> => {
     i = end + 1
 
     const plain = new Map<string, string>()
-    const extended = new Map<string, string>()
+    const extended = new Map<string, string | undefined>()
     while (true) {
       skipWhitespace()
       if (value[i] !== ";") break
       i++
+      skipWhitespace()
       const nameStart = i
-      while (i < length && value[i] !== "=" && value[i] !== ";" && value[i] !== ",") i++
-      const name = value.slice(nameStart, i).trim().toLowerCase()
+      while (i < length && value[i] !== "=" && value[i] !== ";" && value[i] !== "," && !isWhitespace(value[i])) i++
+      const name = value.slice(nameStart, i).toLowerCase()
+      skipWhitespace()
       let paramValue = ""
       if (value[i] === "=") {
         i++
@@ -138,15 +142,16 @@ export const parse = (value: string): Array<Link> => {
       }
       if (name.length > 1 && name.endsWith("*")) {
         const baseName = name.slice(0, -1)
-        const decoded = decodeExtValue(paramValue)
-        if (decoded !== undefined && !extended.has(baseName)) extended.set(baseName, decoded)
+        if (!extended.has(baseName)) extended.set(baseName, decodeExtValue(paramValue))
       } else if (name !== "" && !plain.has(name)) {
         plain.set(name, paramValue)
       }
     }
 
-    for (const [name, decoded] of extended) plain.set(name, decoded)
     const rel = plain.get("rel")
+    for (const [name, decoded] of extended) {
+      if (decoded !== undefined) plain.set(name, decoded)
+    }
     plain.delete("rel")
     links.push({
       target,
@@ -158,6 +163,11 @@ export const parse = (value: string): Array<Link> => {
 }
 
 const quotableValue = /^[\t\x20-\x7e]*$/
+
+// Percent-encodes everything outside visible ASCII, plus `"` and `\`, so a
+// relation type cannot end the quoted `rel` value or split into two types.
+const formatRelationType = (type: string): string =>
+  Str.toWellFormed(type).replace(/[^\x21\x23-\x5b\x5d-\x7e]/gu, encodeURIComponent)
 
 const formatParam = (name: string, value: string): string => {
   if (value === "") return name
@@ -183,6 +193,8 @@ const formatParam = (name: string, value: string): string => {
  * - Any other value, such as non-ASCII text or line breaks, is written as an
  *   RFC 8187 extended parameter, for example `title*=UTF-8''Gr%C3%BC%C3%9Fe`.
  * - A `rel` key in `params` is ignored; use the `rel` field.
+ * - In relation types, `"`, `\\`, whitespace, control characters and
+ *   non-ASCII characters are percent-encoded, as in a URI.
  *
  * An empty iterable gives `""`. Parsing the result gives back the same links.
  *
@@ -207,7 +219,7 @@ export const format = (
   const out: Array<string> = []
   for (const link of links) {
     let value = `<${link.target}>`
-    if (link.rel.length > 0) value += `; rel="${link.rel.join(" ")}"`
+    if (link.rel.length > 0) value += `; rel="${link.rel.map(formatRelationType).join(" ")}"`
     if (link.params !== undefined) {
       for (const [name, paramValue] of Object.entries(link.params)) {
         if (name.toLowerCase() !== "rel") value += `; ${formatParam(name, paramValue)}`
