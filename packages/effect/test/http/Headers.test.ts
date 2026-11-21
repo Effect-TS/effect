@@ -47,6 +47,14 @@ describe("Headers", () => {
     deepStrictEqual({ ...headers }, { accept: "text/html, application/json" })
   })
 
+  it("append creates, joins and ignores an empty value", () => {
+    const created = Headers.append(Headers.empty, "Vary", "Accept")
+    const joined = Headers.append(created, "vary", "Origin")
+    deepStrictEqual({ ...created }, { vary: "Accept" })
+    deepStrictEqual({ ...joined }, { vary: "Accept, Origin" })
+    deepStrictEqual({ ...Headers.append(joined, "Vary", "") }, { vary: "Accept, Origin" })
+  })
+
   it("remove", () => {
     const headers = Headers.fromInput({ foo: "bar", baz: "qux", hello: "world" })
     const result = Headers.remove(headers, "baz")
