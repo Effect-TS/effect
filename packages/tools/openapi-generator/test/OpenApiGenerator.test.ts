@@ -4516,9 +4516,10 @@ export const withBlob: UploadRequestFormData = { file: new Blob([]) }
       }
     )
 
-    it.effect("keeps open multipart objects with binary fields open when they are composed", () =>
+    it.effect("keeps open multipart objects open unless they are plain objects with binary fields", () =>
       Effect.gen(function*() {
-        const upload = { type: "object", properties: { file: { type: "string", format: "binary" } } } as const
+        const file = { type: "string", format: "binary" } as const
+        const upload = { type: "object", properties: { file } } as const
         const caption = { caption: { type: "string" } } as const
         const aliasMember = multipartSpec(
           { allOf: [{ $ref: "#/components/schemas/Alias" }, { properties: caption }] },
@@ -4536,6 +4537,28 @@ export const withBlob: UploadRequestFormData = { file: new Blob([]) }
         }
         for (const spec of [aliasMember, referenceSiblings]) {
           yield* assertRuntimeIncludes(spec, [`"caption": Schema.optionalKey(Schema.String)`])
+        }
+        const siblingFile = multipartSpec({ $ref: "#/components/schemas/Meta", properties: { file } }, {
+          Meta: { type: "object", properties: { id: { type: "string" } }, required: ["id"] }
+        })
+        const siblingFile30 = { ...siblingFile, openapi: "3.0.3" } as unknown as OpenAPISpec
+        const requiredOutside = multipartSpec({ type: "object", properties: { file }, required: ["name"] })
+        const nestedInfo = multipartSpec({
+          allOf: [
+            { type: "object", properties: { info: { type: "object", properties: { file } } } },
+            {
+              type: "object",
+              properties: { info: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } }
+            }
+          ]
+        })
+        const exampleOnly = multipartSpec({ type: "object", properties: { name: { type: "string", example: file } } })
+        const open = ["export const UploadRequestFormData = Schema.StructWithRest("]
+        for (const spec of [siblingFile, siblingFile30, requiredOutside, nestedInfo, exampleOnly]) {
+          yield* assertHttpApiIncludes(spec, open, ["Schema.Never"])
+        }
+        for (const spec of [siblingFile, requiredOutside, nestedInfo, exampleOnly]) {
+          yield* assertRuntimeIncludes(spec, open, ["Schema.Never"])
         }
       }))
 
