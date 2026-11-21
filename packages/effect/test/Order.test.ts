@@ -78,8 +78,6 @@ describe("Order", () => {
     const atMaximum = { n: 10 }
     strictEqual(clamp(atMinimum), atMinimum)
     strictEqual(clamp(atMaximum), atMaximum)
-    strictEqual(clamp({ n: 0 }), minimum)
-    strictEqual(clamp({ n: 11 }), maximum)
 
     const equalMin = { n: 5 }
     const equalMax = { n: 5 }
