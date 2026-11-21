@@ -296,7 +296,7 @@ export const append: {
   if (value === "") return self
   const name = key.toLowerCase()
   const out = make(self)
-  out[name] = Object.hasOwn(self, name) ? `${self[name]}, ${value}` : value
+  out[name] = name in out ? `${out[name]}, ${value}` : value
   return out
 })
 
@@ -833,16 +833,18 @@ export const RetryAfterEquivalence: Equ.Equivalence<RetryAfter> = (self, that) =
 // -----------------------------------------------------------------------------
 
 /**
- * A single link from a `Link` header (RFC 8288).
+ * A single link from a `Link` header.
  *
  * **Details**
  *
- * - `target` is the URI reference exactly as written, without resolving it.
- * - `rel` holds the lowercased relation types; it is empty when the link has
- *   no `rel` parameter.
- * - `params` holds every other parameter by lowercased name, such as
- *   `anchor`, `title`, `type` or `hreflang`. A parameter written without a
- *   value, such as `nopush`, maps to `""`.
+ * - `target` is the URI reference between `<` and `>`.
+ * - `rel` holds the relation types; it is empty when the link has no `rel`
+ *   parameter.
+ * - `params` holds every other parameter by name, such as `anchor`, `title`,
+ *   `type` or `hreflang`. A parameter without a value, such as `nopush`, maps
+ *   to `""`.
+ *
+ * @see {@link parseLink} for how parsed links are normalized
  *
  * @stability unstable
  * @category models
@@ -857,7 +859,7 @@ export interface Link {
 const isLinkWhitespace = (char: string | undefined): boolean => char === " " || char === "\t"
 
 /**
- * Parses a `Link` header value (RFC 8288) into its links.
+ * Parses a `Link` header value into its links.
  *
  * **Details**
  *
@@ -874,8 +876,9 @@ const isLinkWhitespace = (char: string | undefined): boolean => char === " " || 
  *
  * **Gotchas**
  *
- * Targets are not resolved. Relative targets and the `anchor` parameter need
- * the URL of the request, which `HttpClientResponse.links` applies.
+ * Targets are returned as written, and `anchor` is kept as an ordinary
+ * parameter. `HttpClientResponse.links` resolves targets against the response
+ * URL and skips links that have an `anchor` parameter.
  *
  * **Example** (Reading a pagination link)
  *
@@ -892,48 +895,48 @@ const isLinkWhitespace = (char: string | undefined): boolean => char === " " || 
  * @category header values
  * @since 4.1.6
  */
-export const parseLink = (value: string): Array<Link> => {
+export const parseLink = (input: string): Array<Link> => {
   const links: Array<Link> = []
-  const length = value.length
+  const length = input.length
   let i = 0
   const skipWhitespace = () => {
-    while (isLinkWhitespace(value[i])) i++
+    while (isLinkWhitespace(input[i])) i++
   }
   while (true) {
-    while (isLinkWhitespace(value[i]) || value[i] === ",") i++
-    if (value[i] !== "<") break
-    const end = value.indexOf(">", i + 1)
+    while (isLinkWhitespace(input[i]) || input[i] === ",") i++
+    if (input[i] !== "<") break
+    const end = input.indexOf(">", i + 1)
     if (end === -1) break
-    const target = value.slice(i + 1, end)
+    const target = input.slice(i + 1, end)
     i = end + 1
 
     const plain = new Map<string, string>()
     const extended = new Map<string, string | undefined>()
     while (true) {
       skipWhitespace()
-      if (value[i] !== ";") break
+      if (input[i] !== ";") break
       i++
       skipWhitespace()
       const nameStart = i
-      while (i < length && value[i] !== "=" && value[i] !== ";" && value[i] !== "," && !isLinkWhitespace(value[i])) i++
-      const name = value.slice(nameStart, i).toLowerCase()
+      while (i < length && input[i] !== "=" && input[i] !== ";" && input[i] !== "," && !isLinkWhitespace(input[i])) i++
+      const name = input.slice(nameStart, i).toLowerCase()
       skipWhitespace()
       let paramValue = ""
-      if (value[i] === "=") {
+      if (input[i] === "=") {
         i++
         skipWhitespace()
-        if (value[i] === "\"") {
+        if (input[i] === "\"") {
           i++
-          while (i < length && value[i] !== "\"") {
-            if (value[i] === "\\") i++
-            paramValue += value.charAt(i)
+          while (i < length && input[i] !== "\"") {
+            if (input[i] === "\\") i++
+            paramValue += input.charAt(i)
             i++
           }
           i++
         } else {
           const valueStart = i
-          while (i < length && value[i] !== ";" && value[i] !== ",") i++
-          paramValue = value.slice(valueStart, i).trim()
+          while (i < length && input[i] !== ";" && input[i] !== ",") i++
+          paramValue = input.slice(valueStart, i).trim()
         }
       }
       if (name.length > 1 && name.endsWith("*")) {
@@ -959,7 +962,7 @@ export const parseLink = (value: string): Array<Link> => {
   return links
 }
 
-const quotableLinkValue = /^[\t\x20-\x7e]*$/
+const quotableParamValue = /^[\t\x20-\x7e]*$/
 
 // Percent-encode chars outside visible ASCII plus `"` and `\` so a relation type cannot break the quoted rel.
 const formatRelationType = (type: string): string =>
@@ -967,7 +970,7 @@ const formatRelationType = (type: string): string =>
 
 const formatLinkParam = (name: string, value: string): string => {
   if (value === "") return name
-  if (quotableLinkValue.test(value)) return `${name}="${value.replace(/["\\]/g, "\\$&")}"`
+  if (quotableParamValue.test(value)) return `${name}="${value.replace(/["\\]/g, "\\$&")}"`
   const encoded = encodeURIComponent(Str.toWellFormed(value)).replace(
     /['()*]/g,
     (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
@@ -976,7 +979,13 @@ const formatLinkParam = (name: string, value: string): string => {
 }
 
 /**
- * Formats links as a `Link` header value (RFC 8288).
+ * Formats links as a `Link` header value.
+ *
+ * **When to use**
+ *
+ * Use with `HttpServerResponse.appendHeader` or
+ * `HttpClientRequest.appendHeader` to add links without replacing a `Link`
+ * header set elsewhere.
  *
  * **Details**
  *

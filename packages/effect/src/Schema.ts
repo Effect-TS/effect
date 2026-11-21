@@ -16706,6 +16706,15 @@ export interface LinkHeaderFromString extends
  *
  * Decoding never fails on a string, because `Headers.parseLink` is lenient.
  *
+ * **Example** (Decoding a Link header)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const links = Schema.decodeSync(Schema.LinkHeaderFromString)('</items?page=2>; rel="next"')
+ * // => [{ target: "/items?page=2", rel: ["next"], params: {} }]
+ * ```
+ *
  * @stability unstable
  * @category schemas
  * @since 4.1.6
