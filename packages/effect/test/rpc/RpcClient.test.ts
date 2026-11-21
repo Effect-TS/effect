@@ -163,10 +163,10 @@ const makeBatchingClient = Effect.fnUntraced(function*(
     ))
   )
   const handler = HttpEffect.toWebHandler(httpEffect)
-  let httpRequests = 0
+  const requests: Array<HttpClientRequest.HttpClientRequest> = []
   const httpClient = HttpClient.make((request) =>
     Effect.gen(function*() {
-      httpRequests++
+      requests.push(request)
       yield* beforeRequest
       const webRequest = yield* Effect.orDie(HttpClientRequest.toWeb(request))
       const response = yield* Effect.promise(() => handler(webRequest))
@@ -181,7 +181,7 @@ const makeBatchingClient = Effect.fnUntraced(function*(
       )
     )
   )
-  return { client, httpRequests: () => httpRequests }
+  return { client, httpRequests: () => requests.length, requests }
 })
 
 const assertEmptyResponseFailsRequest = Effect.fnUntraced(function*(
@@ -1112,6 +1112,66 @@ describe("RpcClient", () => {
         // every HTTP request that started was interrupted by the shutdown
         assert.strictEqual(interrupted.length, httpRequests())
       }))
+
+    it.effect("links a batched HTTP request to every caller RPC span in a root batch span", () => {
+      const spans: Array<Tracer.NativeSpan> = []
+      return Effect.gen(function*() {
+        const { client, requests } = yield* makeBatchingClient(RpcSerialization.layerJson, { window: "5 millis" })
+
+        const results = yield* Effect.all(
+          [
+            client.Echo({ value: "first" }).pipe(Effect.withSpan("caller-1", { root: true })),
+            client.Echo({ value: "second" }).pipe(Effect.withSpan("caller-2", { root: true })),
+            client.Echo({ value: "third" }).pipe(Effect.withSpan("caller-3", { root: true }))
+          ],
+          { concurrency: "unbounded" }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust("5 millis")
+
+        assert.deepStrictEqual(yield* Fiber.join(results), ["first", "second", "third"])
+        assert.strictEqual(requests.length, 1)
+
+        const rpcSpans = spans.filter((span) => span.name === "Echo" && span.kind === "client")
+        assert.strictEqual(rpcSpans.length, 3)
+
+        const batchSpan = spans.find((span) => span.name === "RpcClient.batch")
+        assert.isDefined(batchSpan)
+        assert.isTrue(Option.isNone(batchSpan.parent))
+        assert.strictEqual(batchSpan.attributes.get("batchSize"), 3)
+        assert.isFalse(rpcSpans.some((span) => span.traceId === batchSpan.traceId))
+
+        const toSpanKey = (span: Tracer.AnySpan) => ({
+          traceId: span.traceId,
+          spanId: span.spanId,
+          sampled: span.sampled
+        })
+        const bySpanId = (a: { readonly spanId: string }, b: { readonly spanId: string }) =>
+          a.spanId.localeCompare(b.spanId)
+        assert.deepStrictEqual(
+          batchSpan.links.map((link) => toSpanKey(link.span)).sort(bySpanId),
+          rpcSpans.map(toSpanKey).sort(bySpanId)
+        )
+
+        const httpSpan = spans.find((span) =>
+          span.kind === "client" && span.attributes.get("http.request.method") === "POST"
+        )
+        assert.isDefined(httpSpan)
+        assert.strictEqual(Option.getOrUndefined(httpSpan.parent)?.spanId, batchSpan.spanId)
+        assert.strictEqual(httpSpan.traceId, batchSpan.traceId)
+        assert.strictEqual(requests[0].headers.traceparent, `00-${batchSpan.traceId}-${httpSpan.spanId}-01`)
+      }).pipe(
+        Effect.provideService(
+          Tracer.Tracer,
+          Tracer.make({
+            span(options) {
+              const span = new Tracer.NativeSpan(options)
+              spans.push(span)
+              return span
+            }
+          })
+        )
+      )
+    })
   })
 
   for (const failedMessage of ["Request", "Ack"] as const) {
