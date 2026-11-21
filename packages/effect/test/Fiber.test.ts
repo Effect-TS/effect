@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, Scope } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, type Scheduler, Scope } from "effect"
 
 describe("Fiber", () => {
   for (const name of ["await", "join", "awaitAll"] as const) {
@@ -288,4 +288,45 @@ describe("Fiber", () => {
       assert.isTrue(Exit.hasInterrupts(exit))
       assert.deepStrictEqual(events, ["acquired", "finalizer-start", "finalizer-end", "awaited"])
     }))
+
+  it("does not lose interruption on a deferred fiber when interrupt evaluation yields", () => {
+    const queue: Array<() => void> = []
+    let root: Fiber.Fiber<unknown, unknown> | undefined
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "sync",
+      shouldYield: (fiber) => {
+        root ??= fiber
+        return fiber !== root && fiber.currentOpCount === 1
+      },
+      makeDispatcher: () => ({
+        scheduleTask: (task) => {
+          queue.push(task)
+        },
+        flush: () => {}
+      })
+    }
+
+    let childRan = false
+    let child: Fiber.Fiber<never> | undefined
+    const main = Effect.runFork(
+      Effect.gen(function*() {
+        child = yield* Effect.forkChild(
+          Effect.suspend(() => {
+            childRan = true
+            return Effect.never
+          })
+        )
+        yield* Fiber.interrupt(child)
+      }),
+      { scheduler }
+    )
+
+    while (queue.length > 0) queue.shift()!()
+
+    assert.isFalse(childRan)
+    const childExit = child?.pollUnsafe()
+    assert.isDefined(childExit)
+    assert.isTrue(Exit.hasInterrupts(childExit!))
+    assert.deepStrictEqual(main.pollUnsafe(), Exit.void)
+  })
 })
