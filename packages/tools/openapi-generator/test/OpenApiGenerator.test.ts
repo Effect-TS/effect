@@ -4503,6 +4503,20 @@ export const withString: UploadRequestFormData = { file: "upload.txt" }
     )
 
     itGeneratedClientsCompile(
+      "types multipart binary fields of open objects as File | Blob for generated clients",
+      multipartSpec({
+        type: "object",
+        properties: { file: { type: "string", format: "binary" }, caption: { type: "string" } },
+        required: ["file"]
+      }),
+      {
+        usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt"), caption: "hi" }
+export const withBlob: UploadRequestFormData = { file: new Blob([]) }
+`
+      }
+    )
+
+    itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",
       multipartSpec({ $ref: "#/components/schemas/Node" }, {
         Node: {

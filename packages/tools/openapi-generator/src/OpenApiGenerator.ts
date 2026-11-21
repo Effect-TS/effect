@@ -1052,6 +1052,25 @@ const makeMultipartSchemas = (
   const inlining = new Set<string>()
   // Components reachable from a schema that is not a multipart body, filled in by `finish`.
   let shared: ReadonlySet<string> = new Set()
+  // Composed schemas stay open, because closing one would reject the fields of the others.
+  const compositionMembers = new WeakSet<object>()
+
+  const collectCompositionMembers = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) collectCompositionMembers(item)
+      return
+    }
+    if (!Predicate.isObject(value)) return
+    for (const key of compositionKeywords) {
+      const members = value[key]
+      if (!Array.isArray(members)) continue
+      for (const member of members) {
+        const schema = Predicate.isObject(member) && isComponentRef(member.$ref) ? resolveRef(member.$ref) : member
+        if (Predicate.isObject(schema)) compositionMembers.add(schema)
+      }
+    }
+    for (const item of Object.values(value)) collectCompositionMembers(item)
+  }
 
   const hasBinary = (value: unknown, seen: Set<string>): boolean => {
     if (Array.isArray(value)) return value.some((item) => hasBinary(item, seen))
@@ -1101,6 +1120,14 @@ const makeMultipartSchemas = (
     return isBinaryFile(resolveRef(value.$ref), seen)
   }
 
+  // Effect index signatures also check declared properties, so an open object would require its files to be JSON.
+  const isOpenFileObject = (value: Record<string, unknown>): boolean =>
+    (value.additionalProperties === undefined || value.additionalProperties === true) &&
+    value.$ref === undefined &&
+    compositionKeywords.every((key) => value[key] === undefined) &&
+    !compositionMembers.has(value) &&
+    hasBinary(value.properties, new Set())
+
   const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(visit)
     if (!Predicate.isObject(value)) return value
@@ -1115,6 +1142,7 @@ const makeMultipartSchemas = (
       out.$ref = toDefinitionRef(copyComponent(value.$ref))
     }
     if (filesRef !== undefined && isMultipartBinaryFiles(out, singleFileRef)) return { $ref: filesRef }
+    if (isOpenFileObject(value)) out.additionalProperties = false
     return out
   }
 
@@ -1128,6 +1156,7 @@ const makeMultipartSchemas = (
   }
   const finish = (schemas: Readonly<Record<string, JsonSchema.JsonSchema>>): void => {
     shared = collectComponentRefs(Object.values(schemas).filter((schema) => !pending.has(schema)), resolveRef)
+    collectCompositionMembers([definitions, ...pending.values()])
     for (const [placeholder, schema] of pending) {
       Object.assign(placeholder, visit(schema))
     }
@@ -1188,6 +1217,8 @@ const subschemaKeywords = [
 ] as const
 
 const subschemaMapKeywords = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"] as const
+
+const compositionKeywords = ["allOf", "anyOf", "oneOf"] as const
 
 const componentRefPrefix = "#/components/schemas/"
 
