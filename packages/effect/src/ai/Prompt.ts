@@ -2198,7 +2198,8 @@ const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOp
  * reasoning streams into assistant parts, preserving provider metadata as
  * prompt options, placing tool calls and approval requests in an assistant
  * message, and placing non-preliminary tool results in a tool message using
- * their encoded results.
+ * their encoded results. Results for tool calls from an earlier message, such
+ * as resolved approvals, go in a tool message before the assistant message.
  *
  * **Example** (Creating prompts from response parts)
  *
@@ -2242,6 +2243,13 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantParts: Array<AssistantMessagePart | undefined> = []
   const toolParts: Array<ToolMessagePart> = []
+  const earlierToolParts: Array<ToolMessagePart> = []
+  const toolCallIds = new Set<string>()
+  for (const part of parts) {
+    if (part.type === "tool-call") {
+      toolCallIds.add(part.id)
+    }
+  }
 
   const activeTextDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
   const activeReasoningDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
@@ -2333,7 +2341,11 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {
-          const target = part.providerExecuted === true ? assistantParts : toolParts
+          const target = part.providerExecuted === true
+            ? assistantParts
+            : toolCallIds.has(part.id)
+            ? toolParts
+            : earlierToolParts
           target.push(makePart("tool-result", {
             id: part.id,
             name: part.name,
@@ -2368,11 +2380,15 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantContent = assistantParts.filter((part) => part !== undefined)
 
-  if (assistantContent.length === 0 && toolParts.length === 0) {
+  if (assistantContent.length === 0 && toolParts.length === 0 && earlierToolParts.length === 0) {
     return empty
   }
 
   const messages: Array<Message> = []
+
+  if (earlierToolParts.length > 0) {
+    messages.push(makeMessage("tool", { content: earlierToolParts }))
+  }
 
   if (assistantContent.length > 0) {
     messages.push(makeMessage("assistant", { content: assistantContent }))
