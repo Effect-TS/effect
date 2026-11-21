@@ -157,6 +157,14 @@ export interface PgClientConfig<R = never> {
    * Caches prepared statements by name. Enabled by default. Disable it for
    * poolers that cannot preserve named statements between queries, such as
    * PgBouncer in transaction mode with `max_prepared_statements = 0`.
+   *
+   * **Gotchas**
+   *
+   * With `multiplex` enabled, PgBouncer before 1.26.0 with
+   * `max_prepared_statements > 0` can misorder or drop responses to pipelined
+   * `Close` messages, failing connections with
+   * `Unexpected ParseComplete during close`. Set `prepare: false` or upgrade
+   * PgBouncer.
    */
   readonly prepare?: boolean | undefined
   /** How many statements a connection keeps prepared. Defaults to `100`. */

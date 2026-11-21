@@ -77,6 +77,10 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * `preparedStatementCacheSize`. Disable them for poolers that drop named
  * statements, such as PgBouncer with `max_prepared_statements = 0`, or for
  * workloads that generate unique SQL. Streams always use unnamed statements.
+ * With `multiplex`, PgBouncer before 1.26.0 with `max_prepared_statements > 0`
+ * can misorder or drop responses to pipelined `Close` messages and fail
+ * connections with `Unexpected ParseComplete during close`; set
+ * `prepare: false` or upgrade PgBouncer.
  *
  * With `multiplex` enabled, unpinned queries from multiple fibers are
  * pipelined. Transactions, streams, and listeners remain exclusive. An
