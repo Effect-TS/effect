@@ -329,12 +329,17 @@ describe("MessageStorage", () => {
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
 
-    it.effect("interrupting one reply handler keeps the other handlers for the request", () =>
+    it.effect("interrupting reply handlers preserves remaining and later waiters", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
         const latch = yield* Latch.make()
         const request = yield* makeRequest()
         yield* storage.saveRequest(request)
+
+        const first = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(first)
 
         const kept = yield* storage.registerReplyHandler(
           new Message.OutgoingRequest({
