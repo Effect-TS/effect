@@ -2,8 +2,11 @@ import * as NodeStdio from "@effect/platform-node-shared/NodeStdio"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Stdio from "effect/Stdio"
+import { spawn } from "node:child_process"
+import { join } from "node:path"
 
 const streams = [process.stdin, process.stdout, process.stderr] as const
+const fixture = join(__dirname, "fixtures", "node-stdio.ts")
 
 const setIsTTY = (stdin: boolean, stdout: boolean, stderr: boolean | undefined) =>
   Effect.sync(() => {
@@ -50,4 +53,49 @@ describe("NodeStdio", () => {
         assert.isFalse(yield* stdio.stderrIsTerminal)
       }).pipe(Effect.provide(NodeStdio.layer))
     ))
+
+  it.effect(
+    "exits when stdin consumers stop while the pipe stays open and supports later reads",
+    () =>
+      Effect.gen(function*() {
+        const stdout = yield* Effect.callback<string>((resume) => {
+          const child = spawn(process.execPath, [fixture], {
+            stdio: ["pipe", "pipe", "pipe"]
+          })
+          let out = ""
+          let err = ""
+          let sentSecond = false
+          child.stdout.setEncoding("utf8")
+          child.stderr.setEncoding("utf8")
+          child.stdout.on("data", (data) => {
+            out += data
+            if (!sentSecond && out.includes("CHUNK a\n")) {
+              sentSecond = true
+              child.stdin.write("b")
+            }
+          })
+          child.stderr.on("data", (data) => {
+            err += data
+          })
+          child.on("error", (error) => resume(Effect.die(error)))
+          child.on("exit", (code, signal) => {
+            resume(
+              code === 0 && signal === null
+                ? Effect.succeed(out)
+                : Effect.die(
+                  new Error(`exit code=${code} signal=${signal} stdout=${JSON.stringify(out)} stderr=${err}`)
+                )
+            )
+          })
+          child.stdin.write("a")
+          return Effect.sync(() => {
+            child.kill()
+          })
+        })
+
+        assert.include(stdout, "CHUNK a\n")
+        assert.include(stdout, "CHUNK b\n")
+      }),
+    { timeout: 15_000 }
+  )
 })

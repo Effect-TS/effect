@@ -4,7 +4,8 @@
  * `NodeStdio` provides {@link Stdio.Stdio} from the current Node process. The
  * exported {@link layer} reads command-line arguments from `process.argv`,
  * consumes input from `process.stdin`, and writes normal and error output to
- * `process.stdout` and `process.stderr`. Standard input remains open, and
+ * `process.stdout` and `process.stderr`. Standard input remains open and is
+ * paused when the last consumer stops so the process can exit naturally;
  * standard output and error output are not ended unless requested.
  *
  * @stability unstable
@@ -14,13 +15,32 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { systemError } from "effect/PlatformError"
 import * as Stdio from "effect/Stdio"
+import * as Stream from "effect/Stream"
 import { fromWritable } from "./NodeSink.ts"
 import { fromReadable } from "./NodeStream.ts"
+
+// Node only stops reading stdin on `pause`, and `pause` is a no-op until the
+// tick after the last `readable` listener is removed.
+const pauseStdin = Effect.sync(() => {
+  process.nextTick(() => {
+    if (process.stdin.readableFlowing === null) {
+      process.stdin.pause()
+    }
+  })
+})
 
 /**
  * Provides `Stdio` from `process.argv`, `process.stdin`, `process.stdout`,
  * and `process.stderr`; stdin remains open and stdout/stderr are not ended by
  * default.
+ *
+ * **Gotchas**
+ *
+ * When the last `Stdio.stdin` consumer finishes or is interrupted,
+ * `process.stdin` is paused so the Node process can exit without waiting for
+ * stdin EOF. Later `Stdio.stdin` consumers resume reading automatically, but
+ * raw `process.stdin.on("data", ...)` listeners attached afterwards must call
+ * `process.stdin.resume()`.
  *
  * @stability unstable
  * @category layers
@@ -57,16 +77,21 @@ export const layer: Layer.Layer<Stdio.Stdio> = Layer.succeed(
           }),
         endOnDone: options?.endOnDone ?? false
       }),
-    stdin: fromReadable({
-      evaluate: () => process.stdin,
-      onError: (cause) =>
-        systemError({
-          module: "Stdio",
-          method: "stdin",
-          _tag: "Unknown",
-          cause
-        }),
-      closeOnDone: false
-    })
+    stdin: Stream.unwrap(
+      Effect.as(
+        Effect.addFinalizer(() => pauseStdin),
+        fromReadable({
+          evaluate: () => process.stdin,
+          onError: (cause) =>
+            systemError({
+              module: "Stdio",
+              method: "stdin",
+              _tag: "Unknown",
+              cause
+            }),
+          closeOnDone: false
+        })
+      )
+    )
   })
 )
