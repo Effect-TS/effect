@@ -650,8 +650,9 @@ class PgConnectionImpl implements PgConnection {
     // be in place before the parser reads on.
     this.session.parser.readField = this.pipelineInFlight[this.pipelineHead]?.machine.readField
     if (!entry.abandoned) Deferred.doneUnsafe(entry.deferred, result)
-    if (this.pipelineHead === this.pipelineInFlight.length) {
-      this.pipelineInFlight.length = 0
+    // Compact once half consumed so a continuously busy pipeline stays bounded.
+    if (this.pipelineHead * 2 >= this.pipelineInFlight.length) {
+      this.pipelineInFlight.splice(0, this.pipelineHead)
       this.pipelineHead = 0
     }
   }
