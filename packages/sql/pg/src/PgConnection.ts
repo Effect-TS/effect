@@ -653,6 +653,9 @@ class PgConnectionImpl implements PgConnection {
     if (this.pipelineHead === this.pipelineInFlight.length) {
       this.pipelineInFlight.length = 0
       this.pipelineHead = 0
+    } else if (this.pipelineHead >= maxPipelineDepth) {
+      this.pipelineInFlight.splice(0, this.pipelineHead)
+      this.pipelineHead = 0
     }
   }
 
