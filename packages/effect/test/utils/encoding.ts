@@ -28,13 +28,10 @@ const describeWithout = (name: string, props: ReadonlyArray<Property>, suite: ()
   })
 }
 
-// Registers `suite` once, without the native `Uint8Array` methods.
 export const describeWithoutNatives = (name: string, suite: () => void): void => describeWithout(name, natives, suite)
 
-// Registers `suite` as is and without the native `Uint8Array` methods. When
-// `bufferFallback` is set, also registers a third copy without `Buffer` so the
-// JS loops stay covered. The copies run sequentially, since the removals are
-// global and the tests run concurrently.
+// Runs `suite` sequentially with and without native `Uint8Array` methods (and
+// without `Buffer` when `bufferFallback` is set) because removals are global.
 export const describeWithFallback = (
   name: string,
   suite: () => void,

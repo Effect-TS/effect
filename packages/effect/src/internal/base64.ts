@@ -34,9 +34,8 @@ export const decodeNative = (
     const encoding = options?.alphabet ?? "base64"
     const bytes = new Uint8Array(decodedLength)
     const buffer = Buffer.from(bytes.buffer)
-    // `Buffer` skips invalid characters, accepts both alphabets and reads
-    // only the low byte of each character, so only input that encodes back to
-    // itself is accepted. "base64url" encodes without padding.
+    // `Buffer` is permissive (skips invalid chars, mixes alphabets, truncates
+    // code units), so accept only input that round-trips identically.
     const canonical = options !== undefined && str.endsWith("=") ? str.slice(0, str.indexOf("=")) : str
     return buffer.write(str, encoding) === decodedLength && buffer.toString(encoding) === canonical ? bytes : null
   }
@@ -57,9 +56,8 @@ interface BufferConstructorLike {
   from(buffer: ArrayBufferLike, byteOffset?: number, length?: number): BufferLike
 }
 
-// A polyfilled `Buffer` (browser bundles, React Native) is several times
-// slower than the JS paths, so only runtimes that report a Node.js version are
-// trusted to have a native one. Read at call time, without importing `node:buffer`.
+// Gate on `process.versions.node` to avoid slow browser/RN `Buffer` polyfills;
+// read at call time without importing `node:buffer`.
 const getBuffer = (): BufferConstructorLike | undefined => {
   const global = globalThis as {
     readonly Buffer?: BufferConstructorLike
@@ -71,11 +69,7 @@ const getBuffer = (): BufferConstructorLike | undefined => {
 }
 
 /**
- * Encodes `bytes` with `Buffer`, for runtimes that have it but lack native
- * `Uint8Array.prototype.toBase64`, such as Node.js 24 and earlier.
- *
- * "base64" pads the output and "base64url" does not. Returns `undefined` when
- * `Buffer` is unavailable.
+ * Encodes `bytes` with `Buffer` ("base64" padded, "base64url" unpadded), or returns `undefined` if unavailable.
  *
  * @internal
  */

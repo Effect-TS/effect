@@ -239,7 +239,6 @@ const nativeDecodeOptions: base64.NativeDecodeOptions = { alphabet: "base64url" 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 const alphabetCodes = encoder.encode(alphabet)
 const paddingCode = "=".charCodeAt(0)
-// The padding for each input length modulo 3.
 const padding = ["", "==", "="]
 const codes = new Uint8Array(128)
 for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
