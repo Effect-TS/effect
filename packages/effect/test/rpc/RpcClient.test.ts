@@ -154,7 +154,6 @@ const EchoGroup = RpcGroup.make(
   }).annotate(Rpc.TracingEnabled, "none")
 )
 
-// Runs an effect with a tracer that records every span it creates.
 const withCapturedSpans = <A, E, R>(f: (spans: Array<Tracer.NativeSpan>) => Effect.Effect<A, E, R>) => {
   const spans: Array<Tracer.NativeSpan> = []
   return f(spans).pipe(
@@ -1138,7 +1137,6 @@ describe("RpcClient", () => {
         assert.strictEqual(interrupted.length, requests.length)
       }))
 
-    // Sends the calls concurrently and flushes the batch they share.
     const sendBatch = Effect.fnUntraced(function*<A, E, R>(calls: ReadonlyArray<Effect.Effect<A, E, R>>) {
       const fiber = yield* Effect.all(calls, { concurrency: "unbounded" }).pipe(Effect.forkChild)
       yield* TestClock.adjust("5 millis")
@@ -1201,7 +1199,6 @@ describe("RpcClient", () => {
           assert.strictEqual(requests.length, 1)
           assert.isUndefined(spans.find(isBatchSpan))
 
-          // EchoUntraced skips per-RPC spans so concurrent calls inside one parent share its spanId.
           const mixed = yield* sendBatch([
             client.Echo({ value: "untraced" }).pipe(Effect.withTracerEnabled(false)),
             Effect.all(

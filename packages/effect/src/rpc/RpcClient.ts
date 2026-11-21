@@ -994,7 +994,6 @@ const makeProtocolHttpUnbatched = (client: HttpClient.HttpClient) =>
     }
   }))
 
-// Wraps a batched exchange in a root span linked to the span of each caller.
 const withBatchSpan = <A, E, R>(effect: Effect.Effect<A, E, R>, requests: ReadonlyArray<RequestEncoded>) => {
   const links: Array<Tracer.SpanLink> = []
   const seen = new Set<string>()
@@ -1014,8 +1013,7 @@ const withBatchSpan = <A, E, R>(effect: Effect.Effect<A, E, R>, requests: Readon
     attributes: { batchSize: requests.length },
     captureStackTrace: false
   }).pipe(
-    // The batch fiber inherits the tracing settings of the caller that opened
-    // it, which must not disable tracing for the other callers.
+    // Do not let the opener's tracing settings suppress tracing for other callers.
     Effect.provideService(Tracer.DisablePropagation, false),
     Effect.withTracerEnabled(true)
   )
