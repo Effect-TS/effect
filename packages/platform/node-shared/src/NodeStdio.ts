@@ -4,8 +4,7 @@
  * `NodeStdio` provides {@link Stdio.Stdio} from the current Node process. The
  * exported {@link layer} reads command-line arguments from `process.argv`,
  * consumes input from `process.stdin`, and writes normal and error output to
- * `process.stdout` and `process.stderr`. Standard input remains open and is
- * paused when the last consumer stops so the process can exit naturally;
+ * `process.stdout` and `process.stderr`. Standard input remains open, and
  * standard output and error output are not ended unless requested.
  *
  * @stability unstable
@@ -20,7 +19,8 @@ import { fromWritable } from "./NodeSink.ts"
 import { fromReadable } from "./NodeStream.ts"
 
 // Node only stops reading stdin on `pause`, and `pause` is a no-op until the
-// tick after the last `readable` listener is removed.
+// tick after the last `readable` listener is removed. Register this before
+// `fromReadable` so it runs after that listener cleanup.
 const pauseStdin = Effect.sync(() => {
   process.nextTick(() => {
     if (process.stdin.readableFlowing === null) {

@@ -57,44 +57,22 @@ describe("NodeStdio", () => {
   it.effect(
     "exits when stdin consumers stop while the pipe stays open and supports later reads",
     () =>
-      Effect.gen(function*() {
-        const stdout = yield* Effect.callback<string>((resume) => {
-          const child = spawn(process.execPath, [fixture], {
-            stdio: ["pipe", "pipe", "pipe"]
-          })
-          let out = ""
-          let err = ""
-          let sentSecond = false
-          child.stdout.setEncoding("utf8")
-          child.stderr.setEncoding("utf8")
-          child.stdout.on("data", (data) => {
-            out += data
-            if (!sentSecond && out.includes("CHUNK a\n")) {
-              sentSecond = true
-              child.stdin.write("b")
-            }
-          })
-          child.stderr.on("data", (data) => {
-            err += data
-          })
-          child.on("error", (error) => resume(Effect.die(error)))
-          child.on("exit", (code, signal) => {
-            resume(
-              code === 0 && signal === null
-                ? Effect.succeed(out)
-                : Effect.die(
-                  new Error(`exit code=${code} signal=${signal} stdout=${JSON.stringify(out)} stderr=${err}`)
-                )
-            )
-          })
-          child.stdin.write("a")
-          return Effect.sync(() => {
-            child.kill()
-          })
+      Effect.callback<void>((resume) => {
+        const child = spawn(process.execPath, [fixture], { stdio: ["pipe", "pipe", "inherit"] })
+        let stdout = ""
+        child.stdout.setEncoding("utf8")
+        child.stdout.on("data", (data) => {
+          stdout += data
+          if (stdout === "a") {
+            child.stdin.write("b")
+          }
         })
-
-        assert.include(stdout, "CHUNK a\n")
-        assert.include(stdout, "CHUNK b\n")
+        child.on("error", (error) => resume(Effect.die(error)))
+        child.on("close", (code) => {
+          resume(Effect.sync(() => assert.deepStrictEqual({ code, stdout }, { code: 0, stdout: "ab" })))
+        })
+        child.stdin.write("a")
+        return Effect.sync(() => child.kill())
       }),
     { timeout: 15_000 }
   )
