@@ -517,7 +517,7 @@ describe("Effect.catchReasons", () => {
       Effect.Effect<string | number, AiError | OtherError>
     >()
     expect(Effect.catchReasons(mixedVariant, "AiError", { RateLimitError: () => Effect.succeed(1) })).type.toBe<
-      Effect.Effect<string | number, { readonly _tag: "AiError"; readonly reason: RateLimitError } | ReasonlessVariant>
+      Effect.Effect<string | number, ReasonlessVariant>
     >()
     expect(Effect.catchReasons(mixedVariant, "AiError", {}, () => Effect.succeed(1))).type.toBe<
       Effect.Effect<string | number, ReasonlessVariant>
