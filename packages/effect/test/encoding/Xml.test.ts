@@ -371,6 +371,9 @@ describe("Xml", () => {
       }
       assert.throws(() => Xml.elements([]))
       assert.throws(() => Xml.elements(["a b"]))
+      for (const segment of ["{urn:a", "{*}*", "{urn:a}b:c", "a}b"]) {
+        assert.throws(() => Xml.elements([segment]), segment)
+      }
       assert.throws(() => Xml.decodeString({ namespaces: "lenient" } as unknown as Xml.DecodeOptions))
     })
   })
@@ -593,6 +596,30 @@ describe("Xml", () => {
         ])
       }))
 
+    it.effect("matches namespaces in Clark notation", () =>
+      Effect.gen(function*() {
+        const xml = "<r xmlns:x='urn:a}b' xmlns:y='urn:a}b'><x:item><y:child/></x:item><y:item/><item/><other/></r>"
+        const collect = (segment: string) =>
+          Stream.make(xml).pipe(
+            Stream.pipeThroughChannel(Xml.decodeString({ namespaces: "strict" })),
+            Stream.pipeThroughChannel(Xml.elements(["r", segment])),
+            Stream.runCollect
+          )
+        const names = (segment: string) => collect(segment).pipe(Effect.map((items) => items.map((item) => item.name)))
+        assert.deepStrictEqual(yield* names("{*}item"), ["x:item", "y:item", "item"])
+        assert.deepStrictEqual(yield* names("{}item"), ["item"])
+        assert.deepStrictEqual(yield* names("x:item"), ["x:item"])
+        const items = yield* collect("{urn:a}b}item")
+        assert.deepStrictEqual(items.map((item) => [item.name, item.namespace, item.localName]), [
+          ["x:item", "urn:a}b", "item"],
+          ["y:item", "urn:a}b", "item"]
+        ])
+        assert.deepStrictEqual(items[0].children, [
+          { name: "y:child", namespace: "urn:a}b", localName: "child", attributes: {}, children: [] }
+        ])
+        assert.strictEqual((yield* Effect.flip(elements("<r/>", ["other", "{}item"]))).kind, "InvalidEvent")
+      }))
+
     it.effect("fails on oversized elements and unbalanced events", () =>
       Effect.gen(function*() {
         // Sizes count names, attribute names and values, and text, and restart for each element
@@ -634,6 +661,27 @@ describe("Xml", () => {
         end("a")
       ])
     })
+
+    it.effect("keeps the namespaces of strictly decoded trees", () =>
+      Effect.gen(function*() {
+        const [tree] = yield* Stream.make("<p:r xmlns:p='urn:p'><c/></p:r>").pipe(
+          Stream.pipeThroughChannel(Xml.decodeString({ namespaces: "strict" })),
+          Stream.pipeThroughChannel(Xml.elements(["{urn:p}r"])),
+          Stream.runCollect
+        )
+        const events = Xml.toEvents(tree)
+        assert.deepStrictEqual(events, [
+          { _tag: "StartElement", name: "p:r", attributes: { "xmlns:p": "urn:p" }, namespace: "urn:p", localName: "r" },
+          { _tag: "StartElement", name: "c", attributes: {}, namespace: "", localName: "c" },
+          { _tag: "EndElement", name: "c", namespace: "", localName: "c" },
+          { _tag: "EndElement", name: "p:r", namespace: "urn:p", localName: "r" }
+        ])
+        const collected = yield* Stream.fromIterable(events).pipe(
+          Stream.pipeThroughChannel(Xml.elements(["{urn:p}r", "{}c"])),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(collected, [{ name: "c", namespace: "", localName: "c", attributes: {}, children: [] }])
+      }))
 
     it("converts deep trees without overflowing the stack", () => {
       let element: Xml.Element = { name: "a", attributes: {}, children: [] }
