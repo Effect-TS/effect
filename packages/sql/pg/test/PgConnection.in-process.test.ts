@@ -502,6 +502,80 @@ describe("PgConnection in-process server", () => {
       assert.match(names[0], /^effect_[0-9a-f]{16}_1$/)
     }))
 
+  it.effect("bounds pipelineInFlight while multiplexed queries keep the pipeline nonempty", () =>
+    Effect.gen(function*() {
+      const total = 300
+      const rowDescription = backendMessage(
+        "T",
+        Buffer.concat([
+          int16(1),
+          Buffer.from("id\0"),
+          int32(0),
+          int16(0),
+          int32(25),
+          int16(-1),
+          int32(-1),
+          int16(1)
+        ])
+      )
+      const queryResult = (id: number): Buffer => {
+        const value = Buffer.from(String(id))
+        return Buffer.concat([
+          backendMessage("1", Buffer.alloc(0)),
+          backendMessage("2", Buffer.alloc(0)),
+          rowDescription,
+          backendMessage("D", Buffer.concat([int16(1), int32(value.length), value])),
+          backendMessage("C", Buffer.from("SELECT 1\0")),
+          readyForQuery
+        ])
+      }
+
+      let writes = 0
+      let received = 0
+      let replied = 0
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes++
+          if (writes === 1) {
+            queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+          } else {
+            received += frontendTags(Buffer.from(chunk)).filter((tag) => tag === "S").length
+            const toReply = received - replied - 1
+            if (toReply > 0) {
+              const replies = Array.from({ length: toReply }, () => queryResult(replied++))
+              queueMicrotask(() => socket.push(Buffer.concat(replies)))
+            }
+          }
+          callback()
+        }
+      })
+
+      const connection = yield* PgConnection.make({
+        username: "test",
+        stream: () => socket,
+        multiplex: true,
+        prepare: false
+      })
+      const internals = connection as unknown as { readonly pipelineInFlight: ReadonlyArray<unknown> }
+      let maxPipelineInFlight = 0
+
+      let pending = yield* Effect.forkChild(connection.query("SELECT 1"), { startImmediately: true })
+      for (let i = 1; i < total; i++) {
+        const next = yield* Effect.forkChild(connection.query("SELECT 1"), { startImmediately: true })
+        const result = yield* Fiber.join(pending)
+        assert.deepStrictEqual(result.rows, [{ id: String(i - 1) }])
+        maxPipelineInFlight = Math.max(maxPipelineInFlight, internals.pipelineInFlight.length)
+        pending = next
+      }
+
+      socket.push(queryResult(replied++))
+      const last = yield* Fiber.join(pending)
+      assert.deepStrictEqual(last.rows, [{ id: String(total - 1) }])
+      assert.strictEqual(internals.pipelineInFlight.length, 0)
+      assert.isAtMost(maxPipelineInFlight, 256)
+    }))
+
   it.live("ends and destroys a custom stream after writing Terminate", () =>
     Effect.gen(function*() {
       const writes: Array<Buffer> = []
