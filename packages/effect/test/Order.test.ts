@@ -80,6 +80,14 @@ describe("Order", () => {
     strictEqual(clamp(atMaximum), atMaximum)
     strictEqual(clamp({ n: 0 }), minimum)
     strictEqual(clamp({ n: 11 }), maximum)
+
+    const equalMin = { n: 5 }
+    const equalMax = { n: 5 }
+    const clampEqual = Order.clamp(O)({ minimum: equalMin, maximum: equalMax })
+    const atEqual = { n: 5 }
+    strictEqual(clampEqual(atEqual), atEqual)
+    strictEqual(clampEqual({ n: 4 }), equalMin)
+    strictEqual(clampEqual({ n: 6 }), equalMax)
   })
 
   it("isBetween checks inclusive bounds", () => {
