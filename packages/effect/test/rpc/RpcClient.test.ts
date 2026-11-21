@@ -1201,13 +1201,13 @@ describe("RpcClient", () => {
 
           const mixed = yield* Effect.all(
             [
-              client.Echo({ value: "traced" }).pipe(Effect.withSpan("caller", { root: true })),
-              client.EchoUntraced({ value: "untraced" })
+              client.Echo({ value: "untraced" }).pipe(Effect.withTracerEnabled(false)),
+              client.Echo({ value: "traced" }).pipe(Effect.withSpan("caller", { root: true }))
             ],
             { concurrency: "unbounded" }
           ).pipe(Effect.forkChild)
           yield* TestClock.adjust("5 millis")
-          assert.deepStrictEqual(yield* Fiber.join(mixed), ["traced", "untraced"])
+          assert.deepStrictEqual(yield* Fiber.join(mixed), ["untraced", "traced"])
           assert.strictEqual(requests.length, 2)
 
           const batchSpan = spans.find((span) => span.name === "RpcClient.batch")
@@ -1219,6 +1219,13 @@ describe("RpcClient", () => {
             batchSpan.links.map((link) => link.span.spanId),
             [rpcSpan.spanId]
           )
+          const httpSpans = spans.filter((span) =>
+            span.kind === "client" && span.attributes.get("http.request.method") === "POST"
+          )
+          assert.strictEqual(httpSpans.length, 2)
+          const httpSpan = httpSpans[1]
+          assert.strictEqual(Option.getOrUndefined(httpSpan.parent)?.spanId, batchSpan.spanId)
+          assert.strictEqual(requests[1].headers.traceparent, `00-${batchSpan.traceId}-${httpSpan.spanId}-01`)
         })
       ))
 

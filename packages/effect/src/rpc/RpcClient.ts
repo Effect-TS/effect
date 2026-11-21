@@ -1063,7 +1063,12 @@ const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.H
           closeBatch(clientId, batch)
           const effect = exchange.send(clientId, batch.requests)
           const spanOptions = batchSpanOptions(batch.requests)
-          return spanOptions === undefined ? effect : Effect.withSpan(effect, "RpcClient.batch", spanOptions)
+          return spanOptions === undefined
+            ? effect
+            : Effect.withSpan(effect, "RpcClient.batch", spanOptions).pipe(
+              Effect.provideService(Tracer.DisablePropagation, false),
+              Effect.withTracerEnabled(true)
+            )
         })),
         Effect.onExit((exit) => {
           closeBatch(clientId, batch)
