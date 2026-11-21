@@ -3918,13 +3918,13 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
       formats: ["httpclient", "httpclient-type-only", "httpapi"]
     })
 
-    itGeneratedClientsCompile("resolves schema imports in streaming clients", {
+    itGeneratedClientsCompile("resolves schema imports and globals in streaming clients with path parameters", {
       ...collisionSpec,
       paths: {
-        "/events": {
+        "/events/{globalThis}": {
           get: {
             operationId: "getEvents",
-            parameters: [],
+            parameters: [{ name: "globalThis", in: "path", required: true, schema: { type: "string" } }],
             security: [],
             tags: ["default"],
             responses: {
@@ -3936,7 +3936,7 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
           }
         }
       }
-    }, { formats: ["httpclient"] })
+    }, { formats: ["httpclient", "httpclient-type-only"] })
 
     it.effect("uses the resolved schemas in client responses and HttpApi endpoints", () =>
       Effect.gen(function*() {
