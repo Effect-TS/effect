@@ -127,7 +127,6 @@ export const parse = (value: string): Array<Link> => {
         skipWhitespace()
         if (value[i] === "\"") {
           i++
-          paramValue = ""
           while (i < length && value[i] !== "\"") {
             if (value[i] === "\\" && i + 1 < length) i++
             paramValue += value[i]
@@ -148,6 +147,8 @@ export const parse = (value: string): Array<Link> => {
       }
     }
 
+    // Read rel before the merge, so rel* cannot set the relation types, and
+    // delete it after, so a decoded rel* does not end up in params.
     const rel = plain.get("rel")
     for (const [name, decoded] of extended) {
       if (decoded !== undefined) plain.set(name, decoded)
@@ -155,7 +156,7 @@ export const parse = (value: string): Array<Link> => {
     plain.delete("rel")
     links.push({
       target,
-      rel: rel === undefined ? [] : rel.toLowerCase().split(/[ \t]+/).filter((type) => type !== ""),
+      rel: rel?.toLowerCase().split(/[ \t]+/).filter(Str.isNonEmpty) ?? [],
       params: Object.fromEntries(plain)
     })
   }
@@ -196,7 +197,8 @@ const formatParam = (name: string, value: string): string => {
  * - In relation types, `"`, `\\`, whitespace, control characters and
  *   non-ASCII characters are percent-encoded, as in a URI.
  *
- * An empty iterable gives `""`. Parsing the result gives back the same links.
+ * An empty iterable gives `""`. Parsing the result gives back the same links,
+ * provided their names and relation types are lowercase and need no encoding.
  *
  * **Gotchas**
  *
@@ -215,20 +217,15 @@ export const format = (
     readonly rel: ReadonlyArray<string>
     readonly params?: { readonly [name: string]: string } | undefined
   }>
-): string => {
-  const out: Array<string> = []
-  for (const link of links) {
-    let value = `<${link.target}>`
-    if (link.rel.length > 0) value += `; rel="${link.rel.map(formatRelationType).join(" ")}"`
-    if (link.params !== undefined) {
-      for (const [name, paramValue] of Object.entries(link.params)) {
-        if (name.toLowerCase() !== "rel") value += `; ${formatParam(name, paramValue)}`
-      }
+): string =>
+  Array.from(links, (link) => {
+    let out = `<${link.target}>`
+    if (link.rel.length > 0) out += `; rel="${link.rel.map(formatRelationType).join(" ")}"`
+    for (const [name, value] of Object.entries(link.params ?? {})) {
+      if (name.toLowerCase() !== "rel") out += `; ${formatParam(name, value)}`
     }
-    out.push(value)
-  }
-  return out.join(", ")
-}
+    return out
+  }).join(", ")
 
 /**
  * Schema for `Link` header values, decoded with {@link parse} and encoded

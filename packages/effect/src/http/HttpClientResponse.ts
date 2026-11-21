@@ -321,10 +321,6 @@ export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClie
     })
   )
 
-// -----------------------------------------------------------------------------
-// internal
-// -----------------------------------------------------------------------------
-
 /**
  * Returns the links of the response's `Link` header with absolute targets.
  *
@@ -349,7 +345,7 @@ export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClie
 export const links = (self: HttpClientResponse): Array<LinkHeader.Link> => {
   const header = self.headers.link
   if (header === undefined) return []
-  const base = self.url === "" ? undefined : self.url
+  const base = self.url || undefined
   const out: Array<LinkHeader.Link> = []
   for (const link of LinkHeader.parse(header)) {
     if (Object.hasOwn(link.params, "anchor")) continue
@@ -410,6 +406,10 @@ export const link: {
   const found = links(self).find((link) => link.rel.includes(type))
   return found === undefined ? Option.none() : Option.some(new URL(found.target))
 })
+
+// -----------------------------------------------------------------------------
+// internal
+// -----------------------------------------------------------------------------
 
 class WebHttpClientResponse extends Inspectable.Class implements HttpClientResponse, Pipeable {
   readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId

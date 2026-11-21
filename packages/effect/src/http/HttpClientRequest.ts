@@ -365,15 +365,11 @@ export const setHeader: {
 export const appendHeader: {
   (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, key: string, value: string): HttpClientRequest
-} = dual(3, (self: HttpClientRequest, key: string, value: string): HttpClientRequest =>
-  value === "" ? self : makeWith(
-    self.method,
-    self.url,
-    self.urlParams,
-    self.hash,
-    Headers.append(self.headers, key, value),
-    self.body
-  ))
+} = dual(
+  3,
+  (self: HttpClientRequest, key: string, value: string): HttpClientRequest =>
+    value === "" ? self : updateHeaders(self, Headers.append(key, value))
+)
 
 /**
  * Sets multiple request headers from an input collection, replacing existing values with matching names.

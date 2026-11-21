@@ -606,8 +606,12 @@ export const appendHeader: {
   (self: HttpServerResponse, key: string, value: string): HttpServerResponse
 } = dual(
   3,
-  (self: HttpServerResponse, key: string, value: string): HttpServerResponse =>
-    value === "" ? self : makeResponse(self, Headers.append(self.headers, key, value))
+  (self: HttpServerResponse, key: string, value: string): HttpServerResponse => {
+    const headers = Headers.append(self.headers, key, value)
+    // makeResponse completes the headers it is given in place, so it must
+    // never receive the map shared with `self`
+    return headers === self.headers ? self : makeResponse(self, headers)
+  }
 )
 
 /**
