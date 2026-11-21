@@ -84,6 +84,7 @@ import type {
   ExcludeTag,
   ExtractReason,
   ExtractTag,
+  IsUnion,
   NarrowReason,
   NoInfer,
   OmitReason,
@@ -3195,10 +3196,16 @@ type RequiredCaseKeys<Cases> = {
     : never
 }[keyof Cases & string]
 
-type UnhandledReasonError<E, K extends string, Cases> = [ExtractTag<E, K>] extends [
-  { readonly reason: { readonly _tag: string } }
-] ? [ExcludeReason<ExtractTag<E, K>, RequiredCaseKeys<Cases>>] extends [never] ? never : ExtractTag<E, K>
+type UnhandledReasonError<E, K extends string, Cases> = string extends K ? ExtractTag<E, K>
+  : IsUnion<K> extends true ? ExtractTag<E, K>
+  : [ExtractTag<E, K>] extends [{ readonly reason: { readonly _tag: string } }]
+    ? [ExcludeReason<ExtractTag<E, K>, RequiredCaseKeys<Cases>>] extends [never] ? never
+    : ExtractTag<E, K>
   : ExtractTag<E, K>
+
+type UnhandledOrElseError<E, K extends string> = string extends K ? ExtractTag<E, K>
+  : IsUnion<K> extends true ? ExtractTag<E, K>
+  : Exclude<ExtractTag<E, K>, { readonly reason: { readonly _tag: string } }>
 
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
@@ -3208,6 +3215,9 @@ type UnhandledReasonError<E, K extends string, Cases> = [ExtractTag<E, K>] exten
  * If the cause contains a defect, the handler is skipped and every typed error
  * is converted to a defect, preserving reason order and interrupts. An
  * interruption alongside a typed error does not prevent recovery.
+ *
+ * Only own enumerable properties of `cases` are matched (via `Object.keys`);
+ * inherited properties such as class prototype methods are ignored.
  *
  * **Example** (Handling multiple error reasons)
  *
@@ -3273,7 +3283,7 @@ export const catchReasons: {
     }[keyof Cases]
     | Success<Ret>,
     | ExcludeTag<E, K>
-    | Exclude<ExtractTag<E, K>, { readonly reason: { readonly _tag: string } }>
+    | UnhandledOrElseError<E, K>
     | Error<Ret>
     | {
       [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
@@ -3350,7 +3360,7 @@ export const catchReasons: {
     }[keyof Cases]
     | Success<Ret>,
     | ExcludeTag<E, K>
-    | Exclude<ExtractTag<E, K>, { readonly reason: { readonly _tag: string } }>
+    | UnhandledOrElseError<E, K>
     | Error<Ret>
     | {
       [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
@@ -3400,6 +3410,89 @@ export const catchReasons: {
       [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Services<R> : never
     }[keyof Cases]
     | Services<Ret>
+  >
+  <
+    K extends Tags<E>,
+    E,
+    Cases extends {
+      [RK in ReasonTags<ExtractTag<NoInfer<E>, K>>]+?: (
+        reason: ExtractReason<ExtractTag<NoInfer<E>, K>, RK>,
+        error: NarrowReason<ExtractTag<NoInfer<E>, K>, RK>
+      ) => Effect<any, any, any>
+    },
+    A2 = unassigned,
+    E2 = never,
+    R2 = never
+  >(
+    errorTag: K,
+    cases: Cases,
+    orElse?:
+      | ((
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, RequiredCaseKeys<Cases>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, RequiredCaseKeys<Cases>>
+      ) => Effect<A2, E2, R2>)
+      | undefined
+  ): <A, R>(
+    self: Effect<A, E, R>
+  ) => Effect<
+    | A
+    | Exclude<A2, unassigned>
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Success<R> : never
+    }[keyof Cases],
+    | ExcludeTag<E, K>
+    | E2
+    | ([A2] extends [unassigned] ? UnhandledReasonError<E, K, Cases> : UnhandledOrElseError<E, K>)
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
+    }[keyof Cases],
+    | R
+    | R2
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Services<R> : never
+    }[keyof Cases]
+  >
+  <
+    A,
+    E,
+    R,
+    K extends Tags<E>,
+    Cases extends {
+      [RK in ReasonTags<ExtractTag<E, K>>]+?: (
+        reason: ExtractReason<ExtractTag<E, K>, RK>,
+        error: NarrowReason<ExtractTag<E, K>, RK>
+      ) => Effect<any, any, any>
+    },
+    A2 = unassigned,
+    E2 = never,
+    R2 = never
+  >(
+    self: Effect<A, E, R>,
+    errorTag: K,
+    cases: Cases,
+    orElse?:
+      | ((
+        reason: ExcludeReason<ExtractTag<NoInfer<E>, K>, RequiredCaseKeys<Cases>>,
+        error: OmitReason<ExtractTag<NoInfer<E>, K>, RequiredCaseKeys<Cases>>
+      ) => Effect<A2, E2, R2>)
+      | undefined
+  ): Effect<
+    | A
+    | Exclude<A2, unassigned>
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Success<R> : never
+    }[keyof Cases],
+    | ExcludeTag<E, K>
+    | E2
+    | ([A2] extends [unassigned] ? UnhandledReasonError<E, K, Cases> : UnhandledOrElseError<E, K>)
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Error<R> : never
+    }[keyof Cases],
+    | R
+    | R2
+    | {
+      [RK in keyof Cases]-?: NonNullable<Cases[RK]> extends (...args: Array<any>) => infer R ? Services<R> : never
+    }[keyof Cases]
   >
 } = internal.catchReasons
 

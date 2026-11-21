@@ -494,6 +494,12 @@ describe("Effect.catchReasons", () => {
       string,
       { readonly _tag: "AiError"; readonly reason: RateLimitError } | ReasonlessVariant
     >
+    type OtherAiError = { readonly _tag: "OtherAiError"; readonly reason: RateLimitError }
+    const unionParent = {} as Effect.Effect<
+      string,
+      { readonly _tag: "AiError"; readonly reason: RateLimitError } | OtherAiError
+    >
+    const unionTag = "AiError" as "AiError" | "OtherAiError"
 
     expect(Effect.catchReasons(mixedEffect, "AiError", partial)).type.toBe<
       Effect.Effect<string | number, AiError | OtherError>
@@ -516,6 +522,24 @@ describe("Effect.catchReasons", () => {
     expect(Effect.catchReasons(mixedVariant, "AiError", {}, () => Effect.succeed(1))).type.toBe<
       Effect.Effect<string | number, ReasonlessVariant>
     >()
+    expect(Effect.catchReasons(unionParent, unionTag, { RateLimitError: () => Effect.succeed(1) })).type.toBe<
+      Effect.Effect<string | number, { readonly _tag: "AiError"; readonly reason: RateLimitError } | OtherAiError>
+    >()
+  })
+
+  it("supports explicit generic type arguments", () => {
+    const dataFirst = Effect.catchReasons<string, AiError, never, "AiError", {}, number, never, never>(
+      aiEffect,
+      "AiError",
+      {},
+      () => Effect.succeed(1)
+    )
+    const dataLast = pipe(
+      aiEffect,
+      Effect.catchReasons<"AiError", AiError, {}, number, never, never>("AiError", {}, () => Effect.succeed(1))
+    )
+    expect(dataFirst).type.toBe<Effect.Effect<string | number>>()
+    expect(dataLast).type.toBe<Effect.Effect<string | number>>()
   })
 
   it("behaves like unwrapReason with empty cases and a failing orElse", () => {
