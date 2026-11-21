@@ -2,7 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64 from "effect/encoding/Base64"
 import type * as EncodingError from "effect/encoding/EncodingError"
-import { describeWithFallback } from "../utils/encoding.ts"
+import { describeWithFallback, describeWithoutNatives } from "../utils/encoding.ts"
 
 describeWithFallback("Base64", () => {
   it("encodes and decodes binary subarrays with and without padding", () => {
@@ -22,7 +22,6 @@ describeWithFallback("Base64", () => {
     const bytes = Uint8Array.from({ length: 132 }, (_, i) => (i * 151) & 0xff)
     // Offset views with lengths around the native (32) and byte-array (128) cutoffs.
     const views = [31, 32, 33, 34, 127, 128, 129, 130].map((length) => bytes.subarray(1, 1 + length))
-    const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
 
     // Replaces `Uint8Array.prototype.toBase64` (or removes it) while `body` runs.
     const withToBase64 = (toBase64: ((this: Uint8Array) => string) | undefined, body: () => void) => {
@@ -185,45 +184,37 @@ describeWithFallback("Base64", () => {
   })
 }, { bufferFallback: true })
 
-describe("Base64 Buffer fallback", { concurrent: false }, () => {
-  it("uses Buffer.from from 32 bytes on encode and 128 characters on decode when native methods are unavailable", () => {
-    const natives = [
-      [Uint8Array, "fromBase64"],
-      [Uint8Array.prototype, "toBase64"]
-    ] as const
-    const descriptors = natives.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
-    for (const [target, key] of natives) Reflect.deleteProperty(target, key)
+describeWithoutNatives("Base64 Buffer fallback", () => {
+  it("uses Buffer.from from 32 bytes on encode and 128 characters on decode", () => {
     const spy = vi.spyOn(Buffer, "from")
     try {
       const bytes = Uint8Array.from({ length: 96 }, (_, i) => (i * 151) & 0xff)
       const shortBytes = bytes.subarray(0, 31)
       const longBytes = bytes.subarray(0, 32)
-      assert.strictEqual(Base64.encode(shortBytes), btoa(String.fromCharCode(...shortBytes)))
+      assert.strictEqual(Base64.encode(shortBytes), reference(shortBytes))
       assert.strictEqual(spy.mock.calls.length, 0)
 
-      assert.strictEqual(Base64.encode(longBytes), btoa(String.fromCharCode(...longBytes)))
+      assert.strictEqual(Base64.encode(longBytes), reference(longBytes))
       assert.isAbove(spy.mock.calls.length, 0)
 
       spy.mockClear()
       const shortDecodeBytes = bytes.subarray(0, 93)
-      const shortEncoded = btoa(String.fromCharCode(...shortDecodeBytes))
+      const shortEncoded = reference(shortDecodeBytes)
       assert.strictEqual(shortEncoded.length, 124)
       assert.deepStrictEqual(Result.getOrThrow(Base64.decode(shortEncoded)), shortDecodeBytes)
       assert.strictEqual(spy.mock.calls.length, 0)
 
-      const longEncoded = btoa(String.fromCharCode(...bytes))
+      const longEncoded = reference(bytes)
       assert.strictEqual(longEncoded.length, 128)
       assert.deepStrictEqual(Result.getOrThrow(Base64.decode(longEncoded)), bytes)
       assert.isAbove(spy.mock.calls.length, 0)
     } finally {
       spy.mockRestore()
-      natives.forEach(([target, key], i) => {
-        const descriptor = descriptors[i]
-        if (descriptor !== undefined) Reflect.defineProperty(target, key, descriptor)
-      })
     }
   })
 })
+
+const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
   const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [

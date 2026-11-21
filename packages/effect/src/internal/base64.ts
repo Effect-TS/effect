@@ -31,7 +31,7 @@ export const decodeNative = (
   if (typeof NativeUint8Array.fromBase64 !== "function") {
     const Buffer = getBuffer()
     if (Buffer === undefined) return undefined
-    const encoding = options === undefined ? "base64" : "base64url"
+    const encoding = options?.alphabet ?? "base64"
     const bytes = new Uint8Array(decodedLength)
     const buffer = Buffer.from(bytes.buffer)
     // `Buffer` skips invalid characters, accepts both alphabets and reads
