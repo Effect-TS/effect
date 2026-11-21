@@ -1,5 +1,13 @@
 # effect
 
+## 4.1.6
+
+### Patch Changes
+
+- [#10819](https://github.com/Effect-TS/effect/pull/10819) [`9318e5b`](https://github.com/Effect-TS/effect/commit/9318e5bafb144ddff65a0bff0148ec4f7ba77b5c) Thanks @effect-bot! - Fix forked fibers interrupted before starting sometimes running their effect instead of exiting interrupted.
+
+- [#10817](https://github.com/Effect-TS/effect/pull/10817) [`594fa71`](https://github.com/Effect-TS/effect/commit/594fa71da417bf94fa6c9be2d3d36c808197e9fe) Thanks @effect-bot! - Add RFC 8288 `Link` header support (`Headers.parseLink`, `Headers.formatLink`, `Schema.LinkHeaderFromString`, `HttpClientResponse.links`/`link`) and header-appending helpers (`Headers.append`, `HttpClientRequest.appendHeader`, `HttpServerResponse.appendHeader`).
+
 ## 4.1.5
 
 ### Patch Changes
