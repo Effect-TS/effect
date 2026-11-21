@@ -1014,7 +1014,7 @@ const CompilerProto = {
               for (let j = 0; j < keys.length; j++) {
                 const key = keys[j]
                 const value = segment.value[i][key]
-                const primitive = extractPrimitive(value, opts.onCustom, placeholderNoIncrement, withoutTransform)
+                const primitive = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
                 row[j] = primitive
                 placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
               }
@@ -1037,8 +1037,9 @@ const CompilerProto = {
             for (let i = 0; i < segment.value.length; i++) {
               placeholders += i === 0 ? "(" : ",("
               for (let j = 0; j < keys.length; j++) {
-                const value = segment.value[i][keys[j]]
-                const primitive = extractPrimitive(value, opts.onCustom, placeholderNoIncrement, withoutTransform)
+                const key = keys[j]
+                const value = segment.value[i][key]
+                const primitive = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
                 binds.push(primitive)
                 placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
               }
@@ -1075,6 +1076,7 @@ const CompilerProto = {
               keys.map((key) =>
                 extractPrimitive(
                   segment.value[key],
+                  key,
                   opts.onCustom,
                   placeholderNoIncrement,
                   withoutTransform
@@ -1099,6 +1101,7 @@ const CompilerProto = {
               binds.push(
                 extractPrimitive(
                   segment.value[keys[i]],
+                  keys[i],
                   opts.onCustom,
                   placeholderNoIncrement,
                   withoutTransform
@@ -1132,7 +1135,7 @@ const CompilerProto = {
             for (let j = 0; j < keys.length; j++) {
               const key = keys[j]
               const value = segment.value[i][key]
-              row[j] = extractPrimitive(value, opts.onCustom, placeholderNoIncrement, withoutTransform)
+              row[j] = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
               placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
             }
             placeholders += ")"
@@ -1675,6 +1678,7 @@ const generateColumns = (
 
 const extractPrimitive = (
   value: unknown,
+  column: string,
   onCustom: (
     type: Custom<string, unknown, unknown>,
     placeholder: (u: unknown) => string,
@@ -1687,13 +1691,14 @@ const extractPrimitive = (
     return null
   } else if (isFragment(value)) {
     const head = value.segments[0]
+    if (value.segments.length !== 1 || (head._tag !== "Parameter" && head._tag !== "Custom")) {
+      throw new TypeError(`SQL fragment for column "${column}" must contain a single parameter or custom segment`)
+    }
     if (head._tag === "Custom") {
       const compiled = onCustom(head, placeholder, withoutTransform)
       return compiled[1][0] ?? null
-    } else if (head._tag === "Parameter") {
-      return head.value
     }
-    return null
+    return head.value
   }
   return value
 }

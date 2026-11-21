@@ -97,6 +97,19 @@ describe("Statement", () => {
     ])
   })
 
+  it("requires a single parameter or custom segment in record value fragments", () => {
+    const sql = Statement.make(Effect.never, Statement.makeCompilerSqlite(), [], undefined)
+
+    assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /column "visits"/)
+    assert.throws(
+      () => sql`${sql.insert({ created_at: sql.literal("CURRENT_TIMESTAMP") })}`.compile(),
+      /column "created_at"/
+    )
+    assert.throws(() => sql`${sql.update({ visits: sql`${5} + 1` })}`.compile(), /column "visits"/)
+    assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /column "name"/)
+    assert.deepStrictEqual(sql`${sql.update({ visits: sql`${5}` })}`.compile(), ["\"visits\" = ?", [5]])
+  })
+
   it("binds plain objects shaped like fragments or segments as parameters", () => {
     const sql = Statement.make({} as any, Statement.makeCompilerSqlite(), [], undefined)
     const fragmentLike = {
