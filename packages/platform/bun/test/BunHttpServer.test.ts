@@ -651,6 +651,87 @@ describe("BunHttpServer", () => {
     }))
 
   for (
+    const { highWaterMark, name, overflow, phase, queued } of [
+      { phase: "before reader startup", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
+      { phase: "with an active reader", name: "byte frames", highWaterMark: 2, queued: ["a", "b"], overflow: "c" },
+      { phase: "before reader startup", name: "empty frames", highWaterMark: 2, queued: ["", ""], overflow: "" },
+      // "€" is 3 bytes, so it is the frame that takes the queue above the mark
+      {
+        phase: "before reader startup",
+        name: "a multibyte frame crossing the mark",
+        highWaterMark: 3,
+        queued: ["a"],
+        overflow: "€"
+      }
+    ] as const
+  ) {
+    it.live(
+      `bounds inbound WebSocket bytes ${phase}: ${name}`,
+      () =>
+        Effect.gen(function*() {
+          const closed = yield* Deferred.make<CloseEvent>()
+          const read = yield* Deferred.make<void>()
+          const checked = yield* Deferred.make<void, unknown>()
+          const server = yield* BunHttpServer.make({
+            hostname: "127.0.0.1",
+            port: 0,
+            websocket: { highWaterMark }
+          })
+          yield* server.serve(Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            const socket = yield* request.upgrade
+            yield* Deferred.complete(
+              checked,
+              Effect.gen(function*() {
+                const activeReader = phase === "with an active reader" ? yield* socket.reader : undefined
+                const writer = yield* socket.writer
+                if (activeReader !== undefined) {
+                  // pulling a full queue frees its capacity
+                  yield* writer.write("fill")
+                  let drained = 0
+                  while (drained < queued.length) drained += (yield* activeReader.pull).length
+                }
+                yield* writer.write("overflow")
+                yield* Deferred.await(read)
+                const reader = activeReader ?? (yield* socket.reader)
+                // the frame crossing the mark stays readable, and the later "late" is dropped
+                assert.deepStrictEqual(yield* reader.pull, [...queued, overflow])
+                const error = yield* Effect.flip(reader.pull)
+                assert(error.reason._tag === "SocketReadError")
+                assert.strictEqual(
+                  String(error.reason.cause),
+                  `Error: Socket highWaterMark of ${highWaterMark} bytes exceeded`
+                )
+              })
+            )
+            return HttpServerResponse.empty()
+          }))
+          const port = (server.address as NetAddress.InetAddress).port
+          const ws = yield* Effect.acquireRelease(
+            Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
+            (ws) => Effect.sync(() => ws.close())
+          )
+          ws.addEventListener("message", (event) => {
+            for (const frame of queued) ws.send(frame)
+            if (event.data === "overflow") {
+              ws.send(overflow)
+              ws.send("late")
+            }
+          })
+          ws.addEventListener("close", (event) => Deferred.doneUnsafe(closed, Effect.succeed(event)))
+          const event = yield* Deferred.await(closed).pipe(
+            Effect.timeout("1 second"),
+            Effect.ensuring(Deferred.succeed(read, undefined))
+          )
+          assert.strictEqual(event.code, 1008)
+          assert.strictEqual(event.reason, "Inbound message buffer limit exceeded")
+          yield* Deferred.await(checked)
+        }).pipe(Effect.timeout("5 seconds")),
+      10000
+    )
+  }
+
+  for (
     const [name, exit, code] of [
       ["success", "success", 1000],
       ["interrupt", "interrupt", 1001],
@@ -785,6 +866,49 @@ describe("BunHttpServer", () => {
       const failed = yield* Deferred.await(secondReaderFailed)
       assert.isTrue(failed)
     }))
+
+  it.live("discards unread messages when a WebSocket reader is released", () =>
+    Effect.gen(function*() {
+      const received = yield* Deferred.make<void>()
+      const checked = yield* Deferred.make<void, unknown>()
+      const server = yield* BunHttpServer.make({ hostname: "127.0.0.1", port: 0 })
+      yield* server.serve(Effect.gen(function*() {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const socket = yield* request.upgrade
+        yield* Deferred.complete(
+          checked,
+          Effect.gen(function*() {
+            const readerScope = yield* Scope.fork(yield* Effect.scope)
+            yield* socket.reader.pipe(Scope.provide(readerScope))
+            const writer = yield* socket.writer
+            yield* writer.write("ready")
+            // A pong confirms the preceding message arrived, without pulling it.
+            yield* Deferred.await(received)
+            yield* Scope.close(readerScope, Exit.void)
+            const error = yield* Effect.flip(socket.reader)
+            assert.deepStrictEqual(
+              error.reason,
+              new Socket.SocketCloseError({
+                code: 1000,
+                closeReason: ""
+              })
+            )
+          })
+        )
+        return HttpServerResponse.empty()
+      }))
+      const port = (server.address as NetAddress.InetAddress).port
+      const ws = yield* Effect.acquireRelease(
+        Effect.sync(() => new WebSocket(`ws://127.0.0.1:${port}/`)),
+        (ws) => Effect.sync(() => ws.close())
+      )
+      ws.addEventListener("message", () => {
+        ws.send("unread")
+        ;(ws as Bun.WebSocket).ping()
+      }, { once: true })
+      ws.addEventListener("pong", () => Deferred.doneUnsafe(received, Effect.void))
+      yield* Deferred.await(checked)
+    }).pipe(Effect.timeout("5 seconds")), 10000)
 
   it.effect("fails upgrades to protocols other than WebSocket", () =>
     Effect.gen(function*() {

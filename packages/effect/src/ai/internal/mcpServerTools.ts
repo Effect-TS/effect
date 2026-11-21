@@ -4,6 +4,7 @@
 import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import * as Base64 from "../../encoding/Base64.ts"
 import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as HttpRouter from "../../http/HttpRouter.ts"
 import * as HttpServerRequest from "../../http/HttpServerRequest.ts"
@@ -26,6 +27,7 @@ import {
   Tool as McpTool,
   ToolJson
 } from "../McpSchema.ts"
+import * as AiPrompt from "../Prompt.ts"
 import * as Tool from "../Tool.ts"
 import * as Toolkit from "../Toolkit.ts"
 import type * as McpCore from "./mcpCore.ts"
@@ -89,6 +91,37 @@ export const toolErrorResult = (message: string): CallToolResult =>
 export const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
+const modelOutputContent = (
+  parts: ReadonlyArray<AiPrompt.ToolModelOutputPart>,
+  protocolVersion: string
+): CallToolResult["content"] =>
+  parts.map((part) => {
+    if (part.type === "text") {
+      return { type: "text", text: part.text }
+    }
+    const { data, mediaType } = part
+    if (!(data instanceof Uint8Array) && /^https?:\/\//i.test(String(data))) {
+      const uri = String(data)
+      return protocolVersion >= "2025-06-18"
+        ? { type: "resource_link", uri, name: part.fileName ?? uri, mimeType: mediaType }
+        : { type: "text", text: uri }
+    }
+    const type = mediaType.startsWith("image/")
+      ? "image"
+      : mediaType.startsWith("audio/") && protocolVersion >= "2025-03-26"
+      ? "audio"
+      : undefined
+    if (type !== undefined) {
+      const bytes = data instanceof Uint8Array
+        ? data
+        : Result.getOrUndefined(Base64.decode(String(data).replace(/^data:[^,]*;base64,/i, "")))
+      if (bytes !== undefined) {
+        return { type, data: bytes, mimeType: mediaType }
+      }
+    }
+    return { type: "text", text: AiPrompt.toolModelOutputToText([part]) }
+  })
+
 const isParameterValidationError = (
   error: unknown
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
@@ -143,7 +176,7 @@ export const buildToolkit = <Tools extends Record<string, Tool.Any>>(
  *
  * @internal
  */
-export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
+export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any, omitOutputSchema = false) {
   const strict = Tool.getStrictMode(tool) === true
   const rawJsonSchema = Tool.isDynamic(tool) ? tool.jsonSchema : undefined
   if (strict && rawJsonSchema !== undefined) {
@@ -153,7 +186,7 @@ export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
   }
   const annotations = tool.annotations
   const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
-  const outputSchema = yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
+  const outputSchema = omitOutputSchema ? undefined : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
     toolJsonSchema(tool.successSchema, false)
   ).pipe(Effect.orDie)
   const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
@@ -169,6 +202,7 @@ export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
             `parameters.\n\n${error.message}`
       ))
   )
+  const readOnlyHint = Context.get(annotations, Tool.Readonly)
   const mcpTool = new McpTool({
     name: tool.name,
     description: Tool.getDescription(tool),
@@ -179,8 +213,8 @@ export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
         Option.map((title) => ({ title })),
         Option.getOrUndefined
       )),
-      readOnlyHint: Context.get(tool.annotations, Tool.Readonly),
-      destructiveHint: Context.get(tool.annotations, Tool.Destructive),
+      readOnlyHint,
+      destructiveHint: Context.getOrUndefined(annotations, Tool.Destructive) ?? !readOnlyHint,
       idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
       openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
     },
@@ -195,7 +229,7 @@ export const toolDescriptor = Effect.fnUntraced(function*(tool: Tool.Any) {
 export interface ToolkitRegistration {
   readonly tool: McpTool
   readonly annotations: Context.Context<never>
-  readonly handle: (payload: unknown) => Effect.Effect<CallToolResult, InvalidParams>
+  readonly handle: (payload: unknown) => Effect.Effect<CallToolResult, InvalidParams, McpRequestContext>
 }
 
 /**
@@ -204,8 +238,14 @@ export interface ToolkitRegistration {
  *
  * @internal
  */
-export const toolkitRegistrations = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
-  built: Toolkit.WithHandler<Tools>
+export const toolkitRegistrations = Effect.fnUntraced(function*<
+  Tools extends Record<string, Tool.Any>,
+  Names extends keyof Tools = keyof Tools
+>(
+  built: Toolkit.WithHandler<Tools>,
+  content?: {
+    readonly [Name in Names]?: ((success: Tool.Success<Tools[Name]>) => CallToolResult["content"]) | undefined
+  }
 ) {
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
@@ -266,7 +306,8 @@ export const toolkitRegistrations = Effect.fnUntraced(function*<Tools extends Re
       }
       return internalToolError(cause)
     }
-    const { tool: mcpTool, annotations } = yield* toolDescriptor(tool)
+    const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
+    const { tool: mcpTool, annotations } = yield* toolDescriptor(tool, mapper !== undefined)
     registrations.push({
       tool: mcpTool,
       annotations,
@@ -278,10 +319,32 @@ export const toolkitRegistrations = Effect.fnUntraced(function*<Tools extends Re
           Effect.flatMap((result): Effect.Effect<
             CallToolResult,
             unknown,
-            Tool.HandlerServices<Tools[keyof Tools]>
+            Tool.HandlerServices<Tools[keyof Tools]> | McpRequestContext
           > => {
             // The Toolkit encodes successes and "return"-mode failures with their JSON codec.
             if (!result.isFailure) {
+              if (mapper) {
+                return Effect.sync(() =>
+                  new CallToolResult({
+                    isError: false,
+                    content: mapper(result.result as Tool.Success<Tools[keyof Tools]>)
+                  })
+                )
+              }
+              if (result.modelOutput !== undefined) {
+                const parts = result.modelOutput
+                return McpRequestContext.useSync(({ protocolVersion }) =>
+                  new CallToolResult({
+                    isError: false,
+                    // Revisions that drop string structuredContent would also unquote a matching text block.
+                    structuredContent: result.result === undefined ||
+                        (typeof result.encodedResult === "string" && protocolVersion < "2026-07-28")
+                      ? undefined
+                      : result.encodedResult,
+                    content: modelOutputContent(parts, protocolVersion)
+                  })
+                )
+              }
               // An absent result, such as `Schema.Void`, has no structured form.
               return Effect.succeed(
                 result.result === undefined
@@ -298,7 +361,7 @@ export const toolkitRegistrations = Effect.fnUntraced(function*<Tools extends Re
               ))
           }),
           Effect.catchCause(handleCause)
-        ) as Effect.Effect<CallToolResult, InvalidParams, never>
+        ) as Effect.Effect<CallToolResult, InvalidParams, McpRequestContext>
       }
     })
   }

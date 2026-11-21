@@ -129,6 +129,12 @@ export * as Chunk from "./Chunk.ts"
 export * as Clock from "./Clock.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as Codegen from "./Codegen.ts"
+
+/**
  * @stability stable
  * @since 4.0.0
  */

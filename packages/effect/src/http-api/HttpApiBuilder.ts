@@ -1081,7 +1081,10 @@ export function handlerToRoute(
     endpoint.method,
     HttpApiPath.toRouterPath(endpoint.path, endpoint.params) as HttpRouter.PathInput,
     handlerToHttpEffect(api, group, endpoint, context, handler.handler, handler.isRaw),
-    { uninterruptible: handler.uninterruptible }
+    {
+      uninterruptible: handler.uninterruptible,
+      redactedParams: HttpApi.getEndpointRedactedParams(api, group, endpoint)
+    }
   )
 }
 

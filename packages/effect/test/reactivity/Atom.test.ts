@@ -263,6 +263,38 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it.each([false, true])("searchParam cancels stale writes but preserves observer writes (%s)", async (normalize) => {
+    const r = AtomRegistry.make()
+    const location = new URL("http://localhost/current?q=before&page=2")
+    const events = new EventTarget()
+    const pushState = vitest.fn()
+    vitest.stubGlobal("window", {
+      location,
+      history: { pushState },
+      addEventListener: events.addEventListener.bind(events),
+      removeEventListener: events.removeEventListener.bind(events)
+    })
+    try {
+      const q = Atom.searchParam("q")
+      const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+      r.subscribe(q, (value) => {
+        if (normalize && value === "OLD") r.set(q, "old")
+      })
+      r.mount(page)
+      r.set(q, "pending")
+      r.set(page, Option.some(9))
+      location.search = "?q=OLD&page=1"
+      events.dispatchEvent(new Event("popstate"))
+      await vitest.advanceTimersByTimeAsync(500)
+      assert.deepStrictEqual(pushState.mock.calls, normalize ? [[{}, "", "/current?q=old&page=1"]] : [])
+      assert.strictEqual(r.get(q), normalize ? "old" : "OLD")
+      assert.deepStrictEqual(r.get(page), Option.some(1))
+    } finally {
+      r.dispose()
+      vitest.unstubAllGlobals()
+    }
+  })
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")
@@ -3570,6 +3602,29 @@ describe("Atom", { concurrent: false }, () => {
       assert(AsyncResult.isSuccess(updated))
       expect(updated.value).toEqual(24)
     })
+
+    for (const mode of ["sync", "async"] as const) {
+      it(`${mode} mode retains persisted writes across refresh`, () => {
+        const atom = Atom.kvs({
+          mode,
+          runtime: Atom.runtime(KeyValueStore.layerMemory.pipe(
+            Layer.tap((services) =>
+              Context.get(services, KeyValueStore.KeyValueStore).set("theme", JSON.stringify("light"))
+            )
+          )),
+          key: "theme",
+          schema: Schema.String,
+          defaultValue: () => "light"
+        })
+        const r = AtomRegistry.make()
+        r.mount(atom)
+        r.set(atom, "dark")
+        r.refresh(atom)
+        const value = r.get(atom)
+        assert.strictEqual(AsyncResult.isAsyncResult(value) ? AsyncResult.getOrThrow(value) : value, "dark")
+        r.dispose()
+      })
+    }
   })
 })
 

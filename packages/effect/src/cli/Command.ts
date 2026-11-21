@@ -223,6 +223,9 @@ export declare namespace Command {
    * `Command.Config` can contain individual flags and arguments using `Param`
    * types, nested configuration objects for organization, and arrays of
    * parameters for repeated elements.
+   * Configuration objects use own enumerable string and symbol fields;
+   * non-enumerable and inherited fields are ignored. Field keys are independent
+   * of the textual flag and argument names.
    *
    * **Example** (Configuring command input)
    *
@@ -257,7 +260,7 @@ export declare namespace Command {
    * @since 4.0.0
    */
   export interface Config {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Param.Param<Param.ParamKind, any>
       | ReadonlyArray<Param.Param<Param.ParamKind, any> | Config>
       | Config
@@ -269,13 +272,14 @@ export declare namespace Command {
    * **Details**
    *
    * Only flags are allowed here; arguments are intentionally excluded.
+   * Field discovery follows the same rules as {@link Config}.
    *
    * @stability unstable
    * @category models
    * @since 4.0.0
    */
   export interface FlagConfig {
-    readonly [key: string]:
+    readonly [key: PropertyKey]:
       | Param.Param<typeof Param.flagKind, any>
       | ReadonlyArray<Param.Param<typeof Param.flagKind, any> | FlagConfig>
       | FlagConfig
@@ -560,6 +564,8 @@ export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty
  * Use `withDescription` and related metadata combinators to add help text. The
  * overloads support simple commands, configured commands, and commands with
  * effectful handlers.
+ * Configuration objects, including nested objects, use own enumerable string
+ * and symbol fields. Non-enumerable and inherited fields are ignored.
  *
  * **Example** (Creating commands)
  *
@@ -1145,6 +1151,8 @@ export const withSubcommands: {
  * Shared flags are available to this command's handler and to descendant
  * handlers via `yield* parentCommand`. Shared flags are accepted both before
  * and after a selected subcommand name (npm-style).
+ * Configuration objects, including nested objects, use own enumerable string
+ * and symbol fields. Non-enumerable and inherited fields are ignored.
  *
  * @stability unstable
  * @category combinators

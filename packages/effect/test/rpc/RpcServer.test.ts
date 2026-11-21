@@ -8,6 +8,8 @@ import {
   Exit,
   Fiber,
   Layer,
+  Option,
+  PubSub,
   Queue,
   Ref,
   RequestResolver,
@@ -23,7 +25,7 @@ import {
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import * as EffectRequest from "effect/Request"
-import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
+import { Rpc, RpcClient, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
 import * as TestClock from "effect/testing/TestClock"
@@ -274,6 +276,66 @@ describe("RpcServer", () => {
       const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
       assert.deepStrictEqual(response.exit, { _tag: "Success", value: ["user-1", "user-2", "user-3"] })
       assert.deepStrictEqual(batches, [[1, 2, 3]])
+    }))
+
+  it.effect("a silent subscription can trace acquisition using only the propagated caller span", () => {
+    const spans: Array<Tracer.Span> = []
+    return Effect.gen(function*() {
+      const watch = Rpc.make("Watch", { success: Schema.Number, stream: true }).annotate(Rpc.TracingEnabled, "none")
+      const group = RpcGroup.make(watch)
+      const feed = yield* PubSub.unbounded<number>()
+      const acquired = yield* Deferred.make<void>()
+      const requests = yield* Queue.unbounded<RpcMessage.FromClient<typeof watch>>()
+      const { client, write } = yield* RpcClient.makeNoSerialization(group, {
+        onFromClient: ({ message }) => Queue.offer(requests, message)
+      })
+      const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: write }).pipe(
+        Effect.provide(group.toLayer({
+          Watch: (_, { remoteParentSpan }) =>
+            Stream.unwrap(
+              PubSub.subscribe(feed).pipe(
+                Effect.withSpan("Watch.subscribe", { parent: remoteParentSpan }),
+                Effect.tap(() => Deferred.succeed(acquired, undefined)),
+                Effect.map(Stream.fromSubscription)
+              )
+            )
+        }))
+      )
+      // Only the message crosses from the caller to the server fiber.
+      yield* Stream.fromQueue(requests).pipe(Stream.runForEach((msg) => server.write(0, msg)), Effect.forkScoped)
+      const caller = Tracer.externalSpan({ traceId: "caller-trace", spanId: "caller-span", sampled: false })
+      yield* client.Watch().pipe(Stream.runDrain, Effect.withParentSpan(caller), Effect.forkScoped)
+      yield* Deferred.await(acquired)
+      assert.deepStrictEqual(spans.map((span) => span.name), ["Watch.subscribe"])
+      assert.deepStrictEqual(Option.getOrThrow(spans[0].parent), caller)
+      assert.strictEqual(spans[0].status._tag, "Ended")
+    }).pipe(Effect.withTracer(Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        spans.push(span)
+        return span
+      }
+    })))
+  })
+
+  it.effect("a request with a span ID but no trace ID has no remote parent", () =>
+    Effect.gen(function*() {
+      const observed = yield* Deferred.make<Tracer.ExternalSpan | undefined>()
+      const group = RpcGroup.make(Rpc.make("Ping"))
+      const server = yield* RpcServer.makeNoSerialization(group, { onFromServer: () => Effect.void }).pipe(
+        Effect.provide(group.toLayer({
+          Ping: (_, { remoteParentSpan }) => Deferred.succeed(observed, remoteParentSpan).pipe(Effect.asVoid)
+        }))
+      )
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId(1),
+        tag: "Ping",
+        payload: undefined,
+        headers: Headers.empty,
+        spanId: "orphan"
+      })
+      assert.isUndefined(yield* Deferred.await(observed))
     }))
 
   it.effect("records effect and stream encode defects on server spans, even when middleware swallows them", () =>

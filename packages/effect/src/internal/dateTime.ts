@@ -256,24 +256,41 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
     const date = new Date(0)
     setPartsDate(date, input)
     return fromDateUnsafe(date) as DateTime.DateTime.PreserveZone<A>
-  } else if (typeof input === "string" && !hasZone(input)) {
+  } else if (typeof input === "string" && !hasZone(input) && !dateOnlyRegExp.test(input)) {
     return fromDateUnsafe(new Date(input + "Z")) as DateTime.DateTime.PreserveZone<A>
   }
   return fromDateUnsafe(new Date(input)) as DateTime.DateTime.PreserveZone<A>
 }
 
-/**
- * Detects whether a date string already contains timezone info.
- * Without a zone, `new Date("2024-01-01T12:00:00")` is parsed as local time,
- * so `makeUnsafe` appends "Z" to force UTC interpretation.
- * This check prevents appending "Z" to strings that already have a zone
- * (e.g. "2024-01-01T12:00:00Z", "...+05:30", "...GMT"), which would produce invalid dates.
- * `Date.parse` also accepts a trailing `z` or `gmt` in any case. Only that trailing
- * match is case-insensitive, so lowercase letters in a comment like "(xyz)" do not
- * count as a zone.
- */
-const hasZone = (input: string): boolean =>
-  /Z|GMT|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input) || /z$|gmt$/i.test(input)
+// ECMA-262 date-only strings already parse as UTC.
+const dateOnlyRegExp = /^(?:[+-]\d{6}|\d{4})(?:-\d{2}(?:-\d{2})?)?$/
+
+const withoutComments = (input: string): string => {
+  const first = input.indexOf("(")
+  if (first === -1) return input
+  let result = input.slice(0, first) + " "
+  let depth = 1
+  for (let i = first + 1; i < input.length; i++) {
+    const c = input[i]
+    if (c === "(") {
+      if (depth++ === 0) result += " "
+    } else if (depth === 0) result += c
+    else if (c === ")") depth--
+  }
+  return result
+}
+
+// Distinguish date hyphens (2024-1-15) from offset signs (12:00-0500).
+const offsetSignRegExp = /\+|(?<![a-z\d])-|[ap]m-|\d:\D*\d+(?:\.\d+)?-/i
+
+const hasZone = (input: string): boolean => {
+  const text = withoutComments(input).trimEnd()
+  if (text.endsWith("]")) return true
+  const firstNumber = text.search(/\d/)
+  if (firstNumber === -1) return false
+  const date = text.slice(firstNumber)
+  return offsetSignRegExp.test(date) || /(?:^|[^a-z])(?:z|gmt|utc?|[ecmp][sd]t)(?![a-z])/i.test(date)
+}
 
 const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
 const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)

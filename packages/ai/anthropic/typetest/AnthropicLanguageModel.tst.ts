@@ -30,6 +30,12 @@ describe("AnthropicLanguageModel", () => {
 
 // Released `Generated` contracts that must survive spec updates
 describe("Generated", () => {
+  it("keeps string beta headers in parameter types", () => {
+    expect<Generated.CompletePostParams["anthropic-beta"]>().type.toBe<
+      string | ReadonlyArray<Generated.AnthropicBeta> | undefined
+    >()
+  })
+
   it("keeps the 4XX error aliases", () => {
     expect<Generated.BetaMessagesPost4XX>().type.toBe<Generated.BetaErrorResponse>()
   })

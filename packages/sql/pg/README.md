@@ -110,6 +110,11 @@ Register a codec for these types, or cast the column to `text` in the query.
 A binary layout with no zero bytes at all, such as `ltree`, still decodes as
 garbled text without any error.
 
+Anonymous records (`ROW(...)`, `(a, b)`) are built in: a record decodes as an
+array of its field values, and each field uses the same codecs as a column.
+Named composite types (`CREATE TYPE ... AS (...)`) have their own OID and take
+the fallback above.
+
 Register a codec for a scalar user-defined type with
 `PgTypes.register(oid, codec)`; registered codecs take precedence over the
 fallback. `PgTypes.register` cannot attach an array type. For arrays, create a

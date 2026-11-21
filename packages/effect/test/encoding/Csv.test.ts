@@ -205,6 +205,34 @@ describe("Csv", () => {
       assert.deepStrictEqual(yield* run(["score\n\"\"\n"], Csv.decodeSchemaString(Lazy)({ headers: true })), [{}])
     }))
 
+  it.effect("decodes empty header cells according to the selected union member", () =>
+    Effect.gen(function*() {
+      const Entry = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("score"), cell: Schema.optional(Schema.Number) }),
+        Schema.Struct({ kind: Schema.Literal("text"), cell: Schema.String })
+      ])
+      const text = "kind,cell\nscore,\nscore,12\ntext,\n"
+      assert.deepStrictEqual(yield* run([text], Csv.decodeSchemaString(Entry)({ headers: true })), [
+        { kind: "score" },
+        { kind: "score", cell: 12 },
+        { kind: "text", cell: "" }
+      ])
+    }))
+
+  it.effect("omits empty union member cells before checking index signatures", () =>
+    Effect.gen(function*() {
+      const Score = Schema.StructWithRest(
+        Schema.Struct({ kind: Schema.Literal("score"), cell: Schema.optionalKey(Schema.Number) }),
+        [Schema.Record(Schema.TemplateLiteral(["cell", Schema.String]), Schema.Number)]
+      )
+      const Text = Schema.Struct({ kind: Schema.Literal("text"), cell: Schema.String })
+      const Entry = Schema.Union([Score, Text], { mode: "oneOf" })
+      const text = "kind,cell\nscore,\n"
+      assert.deepStrictEqual(yield* run([text], Csv.decodeSchemaString(Entry)({ headers: true })), [
+        { kind: "score" }
+      ])
+    }))
+
   it.effect("round trips tuple schemas by position", () =>
     Effect.gen(function*() {
       const TuplePerson = Schema.Tuple([Schema.String, Schema.NumberFromString]).pipe(

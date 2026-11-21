@@ -644,6 +644,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     const interruptChildren = fiberMiddleware.interruptChildren &&
       fiberMiddleware.interruptChildren(this)
     if (interruptChildren !== undefined) {
+      // uninterruptible, so a pending interrupt cannot replace the exit during the wait
+      this.interruptible = false
       return this.evaluate(flatMap(interruptChildren, () => exit) as any)
     }
 
@@ -1701,7 +1703,6 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
 > =>
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
-    // Read fibers on exit to include losers forked after the race settles.
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
     return callback((resume) => {
       const effects = Arr.fromIterable(all)
@@ -1728,12 +1729,17 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
       }
 
       for (let i = 0; i < len; i++) {
-        const fiber = forkUnsafe(parent, effects[i], true, true, false)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
           onExit(exit, fiber, i)
         })
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effects[i] as any)
         if (done) break
       }
     })
@@ -1763,7 +1769,9 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
       for (const effect of all) {
         if (done) break
         const index = i++
-        const fiber = forkUnsafe(parent, effect, true, true, false)
+        // Register the fiber before it runs, so a race it settles during its
+        // first step interrupts it.
+        const fiber = new FiberImpl(parent.context)
         fibers.add(fiber)
         fiber.addObserver((exit) => {
           fibers.delete(fiber)
@@ -1775,6 +1783,10 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
             options?.onWinner?.({ fiber, index, parentFiber: parent })
           }
         })
+        // Constructing the fiber runs the runtime metrics hook, which can settle the race.
+        if (done) fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        else fiber.evaluate(effect as any)
+        if (done) break
       }
     })
   })
@@ -4770,7 +4782,7 @@ export const abortSignal: Effect.Effect<AbortSignal, never, Scope.Scope> = map(
 export const all = <
   const Arg extends
     | Iterable<Effect.Effect<any, any, any>>
-    | Record<string, Effect.Effect<any, any, any>>,
+    | Record<PropertyKey, Effect.Effect<any, any, any>>,
   O extends {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: boolean | undefined
@@ -4784,15 +4796,18 @@ export const all = <
     return options?.mode === "result"
       ? (forEach as any)(arg, result, options)
       : (forEach as any)(arg, identity, options)
-  } else if (options?.discard) {
+  }
+  const fields = arg as Record<PropertyKey, Effect.Effect<any, any, any>>
+  if (options?.discard) {
+    const effects = InternalRecord.ownEnumerableKeys(fields).map((key) => fields[key])
     return options.mode === "result"
-      ? (forEach as any)(Object.values(arg), result, options)
-      : (forEach as any)(Object.values(arg), identity, options)
+      ? (forEach as any)(effects, result, options)
+      : (forEach as any)(effects, identity, options)
   }
   return suspend(() =>
     map(
       forEach(
-        Object.entries(arg),
+        InternalRecord.ownEnumerableKeys(fields).map((key) => [key, fields[key]] as const),
         ([key, effect]) => map(options?.mode === "result" ? result(effect) : effect, (value) => [key, value] as const),
         {
           concurrency: options?.concurrency
@@ -5630,7 +5645,15 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    // Cancel the deferred start if an interrupt runs first.
+    let resumed = false
+    child.yieldWith(() => {
+      resumed = true
+    })
+    parentRuntime.currentDispatcher.scheduleTask(() => {
+      if (resumed) return
+      child.evaluate(effect as any)
+    }, 0)
   }
   return child
 }
@@ -6074,7 +6097,8 @@ export const noopSpan = (options: {
   readonly annotations: Context.Context<never>
 }): Tracer.Span => Object.assign(Object.create(NoopSpanProto), options)
 
-const filterDisablePropagation = (span: Tracer.AnySpan | undefined): Option.Option<Tracer.AnySpan> => {
+/** @internal */
+export const filterDisablePropagation = (span: Tracer.AnySpan | undefined): Option.Option<Tracer.AnySpan> => {
   if (!span) return Option.none()
   return Context.get(span.annotations, Tracer.DisablePropagation)
     ? span._tag === "Span" ? filterDisablePropagation(Option.getOrUndefined(span.parent)) : Option.none()

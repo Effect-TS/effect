@@ -14,6 +14,11 @@ import { EncodingError } from "./EncodingError.ts"
  *
  * Use to encode text or bytes as lowercase hexadecimal text.
  *
+ * **Details**
+ *
+ * String inputs are encoded as UTF-8 bytes, replacing each unpaired UTF-16
+ * surrogate with U+FFFD (�).
+ *
  * **Example** (Encoding hex strings and bytes)
  *
  * ```ts import.meta.vitest

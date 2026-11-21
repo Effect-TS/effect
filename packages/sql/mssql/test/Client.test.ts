@@ -1,7 +1,10 @@
 import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber } from "effect"
+import { Deferred, Effect, Fiber, Schema, Stream } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import { Model } from "effect/schema"
+import { SqlClient, SqlModel } from "effect/sql"
+import type * as SqlConnection from "effect/sql/SqlConnection"
 import { SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import type { EventEmitter } from "node:events"
@@ -202,6 +205,40 @@ describe("mssql", () => {
     )
     expect(params).toEqual(["Tim", "John"])
   })
+
+  it.effect("repository update places OUTPUT before WHERE", () =>
+    Effect.gen(function*() {
+      class User extends Model.Class<User>("User")({ id: Schema.Int, name: Schema.String }) {}
+      const queries: Array<string> = []
+      const execute = (sql: string): Effect.Effect<ReadonlyArray<any>> =>
+        Effect.sync(() => {
+          queries.push(sql)
+          return [{ id: 1, name: "Grace" }]
+        })
+      const connection: SqlConnection.Connection = {
+        execute,
+        executeRaw: execute,
+        executeValues: execute,
+        executeUnprepared: execute,
+        executeValuesUnprepared: execute,
+        executeStream: (sql) => Stream.fromEffect(execute(sql))
+      }
+      const sql = yield* SqlClient.make({
+        driver: "test",
+        acquirer: Effect.succeed(connection),
+        compiler: MssqlClient.makeCompiler(),
+        spanAttributes: []
+      })
+      const repo = yield* SqlModel.makeRepository(User, {
+        tableName: "users",
+        idColumn: "id",
+        spanPrefix: "Users"
+      }).pipe(Effect.provideService(SqlClient.SqlClient, sql))
+
+      yield* repo.update(User.update.make({ id: 1, name: "Grace" }))
+
+      assert.deepStrictEqual(queries, ["update [users] set [name] = @1 OUTPUT INSERTED.* where [id] = @2"])
+    }).pipe(Effect.provide(Reactivity.layer)))
 
   it("update single helper returning", () => {
     const [query, params] = sql`UPDATE people SET ${sql.update({ name: "Tim" }).returning("*")}`

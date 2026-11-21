@@ -21,6 +21,7 @@ import * as DateTime from "effect/DateTime"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Scheduler from "effect/Scheduler"
+import { withIgnoredProperties } from "../utils/structFields.ts"
 
 const makeSuspendChain = (count: number): Schema.Codec<unknown> => {
   let schema: Schema.Codec<unknown> = Schema.Null
@@ -1003,6 +1004,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [{ _tag: "UnsupportedPattern", path: [], source: "^(?=a)b$", flags: "" }],
             generated: 0,
             discards: 3,
             seed: "unsupported-pattern"
@@ -1047,6 +1049,7 @@ describe("Arbitrary", () => {
           if (Result.isFailure(result)) {
             assert.deepStrictEqual(result.failure, {
               _tag: "SampleError",
+              diagnostics: [],
               generated: 0,
               discards: 3,
               seed: "incompatible-pattern-length"
@@ -2142,6 +2145,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "structural-unique"
@@ -2329,6 +2333,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "uninhabited-one-of"
@@ -3107,6 +3112,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(result)) {
           assert.deepStrictEqual(result.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "exhaustion"
@@ -3267,6 +3273,7 @@ describe("Arbitrary", () => {
         if (Result.isFailure(sampled)) {
           assert.deepStrictEqual(sampled.failure, {
             _tag: "SampleError",
+            diagnostics: [],
             generated: 0,
             discards: 3,
             seed: "filter-exhaustion"
@@ -3274,6 +3281,7 @@ describe("Arbitrary", () => {
         }
         assert.deepStrictEqual(checked, {
           _tag: "Exhausted",
+          diagnostics: [],
           runs: 0,
           discards: 3,
           seed: "filter-exhaustion"
@@ -3475,6 +3483,7 @@ describe("Arbitrary", () => {
           if (Result.isFailure(sampled)) {
             assert.deepStrictEqual(sampled.failure, {
               _tag: "SampleError",
+              diagnostics: [],
               generated: 0,
               discards: 3,
               seed: "flat-map-discard"
@@ -3482,6 +3491,7 @@ describe("Arbitrary", () => {
           }
           assert.deepStrictEqual(checked, {
             _tag: "Exhausted",
+            diagnostics: [],
             runs: 0,
             discards: 3,
             seed: "flat-map-discard"
@@ -3682,6 +3692,18 @@ describe("Arbitrary", () => {
         assert.deepStrictEqual(emptyRecord, [{}])
       }))
 
+    it.effect("all generates enumerable symbol fields and ignores hidden or inherited Arbitraries", () =>
+      Effect.gen(function*() {
+        const key = Symbol("value")
+        const arbitrary = Arbitrary.all(withIgnoredProperties({
+          name: Arbitrary.Constant("value"),
+          [key]: Arbitrary.Constant(1)
+        }))
+        const [sample] = yield* Arbitrary.sampleEffect(arbitrary, { count: 1, seed: "all-symbol" })
+
+        assert.deepStrictEqual({ ...sample }, { name: "value", [key]: 1 })
+      }))
+
     it.effect("shrinks all members independently and replays the product", () =>
       Effect.gen(function*() {
         const member = Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })))
@@ -3790,6 +3812,7 @@ describe("Arbitrary", () => {
       })
       const exhausted = Arbitrary.formatCheckFailure({
         _tag: "Exhausted",
+        diagnostics: [],
         runs: 0,
         discards: 1,
         seed: "seed"

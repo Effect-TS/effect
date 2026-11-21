@@ -1,3 +1,4 @@
+import type { GenerationDiagnostic } from "../../Arbitrary.ts"
 import * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import * as Option from "../../Option.ts"
@@ -64,6 +65,8 @@ export interface GenerationState {
   readonly biasFactor: number
   readonly nullPrototype: boolean
   readonly random: GenerationRandom
+  readonly diagnostics: Array<GenerationDiagnostic> | undefined
+  readonly diagnosticPath: ReadonlyArray<PropertyKey>
   readonly budget: {
     remaining: number
   }

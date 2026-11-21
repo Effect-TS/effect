@@ -15,6 +15,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import type { Unify } from "../Unify.ts"
+import * as InternalRecord from "./record.ts"
 
 /** @internal */
 export const TypeId = "~effect/Match/Matcher"
@@ -157,7 +158,7 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
       return true
     }
   } else if (pattern !== null && typeof pattern === "object") {
-    const keysAndPredicates = Reflect.ownKeys(pattern).map(
+    const keysAndPredicates = InternalRecord.ownEnumerableKeys(pattern).map(
       (key) => [key, makePredicate((pattern as any)[key])] as const
     )
     const len = keysAndPredicates.length

@@ -795,6 +795,33 @@ describe("String", () => {
     })
   })
 
+  describe("Unicode case conversion", () => {
+    it("preserves accented letters at case boundaries", () => {
+      strictEqual(S.camelCase("CaféÜber"), "caféÜber")
+    })
+
+    it("preserves caseless letters at number boundaries", () => {
+      strictEqual(S.snakeCase("日本語2テキスト"), "日本語_2_テキスト")
+    })
+
+    it("preserves combining marks", () => {
+      strictEqual(S.snakeCase("हिन्दी भाषा"), "हिन्दी_भाषा")
+    })
+
+    it("preserves marks at non-ASCII number boundaries", () => {
+      strictEqual(S.snakeCase("cafe\u0301٣\u0308a"), "cafe\u0301_٣\u0308_a")
+    })
+
+    it("preserves Unicode config keys without splitting digit groups", () => {
+      strictEqual(S.configCase("café٣Name"), "CAFÉ٣_NAME")
+    })
+
+    it("preserves decomposed marks at case boundaries without normalization", () => {
+      strictEqual(S.snakeCase("cafe\u0301Bar"), "cafe\u0301_bar")
+      strictEqual(S.configCase("Ø\u0301Æ\u0301ø"), "Ø\u0301_Æ\u0301Ø")
+    })
+  })
+
   describe("ReducerConcat", () => {
     it("combines strings", () => {
       strictEqual(S.ReducerConcat.combine("a", "b"), "ab")

@@ -258,6 +258,10 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
 `message` is sent as that message instead.
 
+In `tools/list`, an explicit `Tool.Destructive` value takes precedence. Otherwise,
+`destructiveHint` is `false` when `Tool.Readonly` is `true`, and `true` when `Tool.Readonly`
+is `false` or unset.
+
 ## Request-level dependencies
 
 Some services only exist per request, such as the user a request is made for. A tool declares them

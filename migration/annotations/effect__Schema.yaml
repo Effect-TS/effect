@@ -368,8 +368,8 @@ effect/Schema#FiniteSchemaId:
   replacement: none
   note: The v3 schema-id symbol was removed. Use the corresponding public v4 constructor/check instead of inspecting schema ids.
 effect/Schema#format:
-  replacement: SchemaRepresentation.toCodeDocument
-  note: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
+  replacement: none
+  note: Schema.format was removed in v4 and has no replacement.
 effect/Schema#fromBrand:
   replacement: Schema.fromBrand
   note: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.

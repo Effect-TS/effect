@@ -726,13 +726,14 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
     })
 
-    it("treats strings with lowercase letters in comments as UTC", { concurrent: false }, () => {
+    it.each([
+      ["Tue, 27 Jan 2026 17:14:06 (xyz)", "2026-01-27T17:14:06.000Z"],
+      ["2024-1-15", "2024-01-15T00:00:00.000Z"]
+    ])("reads zoneless %s as UTC", { concurrent: false }, (input, expected) => {
       const previousTZ = process.env.TZ
       try {
         process.env.TZ = "America/New_York"
         strictEqual(new Date("2026-01-27T17:14:06.000Z").getTimezoneOffset(), 300)
-        const input = "Tue, 27 Jan 2026 17:14:06 (xyz)"
-        const expected = "2026-01-27T17:14:06.000Z"
         deepStrictEqual(
           [DateTime.makeUnsafe(input).toJSON(), Option.map(DateTime.make(input), DateTime.formatIso)],
           [expected, Option.some(expected)]
@@ -756,6 +757,11 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
     })
 
+    it("preserves a GMT offset before the year", () => {
+      const dt = DateTime.makeUnsafe("Jan 15 12:00 GMT-0500 2024")
+      strictEqual(dt.toJSON(), "2024-01-15T17:00:00.000Z")
+    })
+
     it("does not append Z to strings containing GMT", () => {
       const dt = DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 GMT")
       strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
@@ -763,10 +769,27 @@ describe("DateTime", () => {
 
     it.each([
       ["2024-01-01T00:00:00z", "2024-01-01T00:00:00.000Z"],
-      ["Tue, 27 Jan 2026 17:14:06 gmt", "2026-01-27T17:14:06.000Z"]
-    ])("accepts lowercase UTC designators: %s", (input, expected) => {
+      ["Tue, 27 Jan 2026 17:14:06 gmt", "2026-01-27T17:14:06.000Z"],
+      ["2024-06-01 10:00:00 UTC", "2024-06-01T10:00:00.000Z"],
+      ["Sat, 01 Jun 2024 10:00:00 UT", "2024-06-01T10:00:00.000Z"],
+      ["June 1, 2024 10:00 est", "2024-06-01T15:00:00.000Z"]
+    ])("accepts trailing zone designators in any case: %s", (input, expected) => {
       strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
       assertSomeIso(DateTime.make(input), expected)
+    })
+
+    it.each([
+      ["Tue, 27 Jan 2026 17:14:06 -0500 (EST)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 +0530 (India Standard Time)", "2026-01-27T11:44:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -05 ", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 05:14:06 PM EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 -0500 EST (Eastern Standard Time)", "2026-01-27T22:14:06.000Z"],
+      ["Tue, 27 Jan 2026 17:14:06 est\r\n", "2026-01-27T22:14:06.000Z"],
+      ["12:00:00 2024-01-01 (note)", "2024-01-01T12:00:00.000Z"],
+      ["2024-01-01 ", "2024-01-01T00:00:00.000Z"],
+      ["01-01-2024 (note)", "2024-01-01T00:00:00.000Z"]
+    ])("preserves zone interpretation before comments or whitespace: %s", (input, expected) => {
+      strictEqual(DateTime.makeUnsafe(input).toJSON(), expected)
     })
   })
 

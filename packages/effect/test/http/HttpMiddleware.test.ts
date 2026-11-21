@@ -549,6 +549,7 @@ describe("HttpMiddleware", () => {
         assert(error instanceof HttpServerError.HttpServerError)
         // The message is path-only, so query values never reach exporters through it.
         assert.strictEqual(error.message, "ResponseError (500 GET /failure)")
+        assert.strictEqual(error.request.url, "/failure?token=REDACTED")
       }))
 
     it.effect("preserves the stream failure when the sent response is 500", () =>

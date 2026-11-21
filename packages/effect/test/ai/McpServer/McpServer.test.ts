@@ -9,6 +9,7 @@ import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as McpTest from "effect/ai/McpTest"
+import * as Prompt from "effect/ai/Prompt"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
 import * as Cause from "effect/Cause"
@@ -93,11 +94,11 @@ const UnserializableResultTool = Tool.make("UnserializableResultTool", {
   success: Schema.Unknown
 })
 
-const UntypedTool = Tool.make("UntypedTool")
+const UntypedTool = Tool.make("UntypedTool").annotate(Tool.Readonly, true)
 
 const StructuredResultTool = Tool.make("StructuredResultTool", {
   success: Schema.Struct({ answer: Schema.String })
-})
+}).annotate(Tool.Readonly, true).annotate(Tool.Destructive, true)
 
 const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
   success: Schema.Void.annotate({ description: "No output" })
@@ -1839,6 +1840,34 @@ describe("McpServer", () => {
     }))
 
   describe("registerToolkit", () => {
+    it.effect("does not scan the registration context once per tool", () =>
+      Effect.gen(function*() {
+        const first = Tool.make("first")
+        const second = Tool.make("second")
+        const handlers = Toolkit.make(first, second).toLayer({ first: () => Effect.void, second: () => Effect.void })
+        const scans = Effect.fnUntraced(function*(...tools: Array<typeof first | typeof second>) {
+          let iterations = 0
+          class RegistrationMap extends Map<string, unknown> {
+            override [Symbol.iterator]() {
+              iterations++
+              return super[Symbol.iterator]()
+            }
+          }
+          const server = yield* McpServer.McpServer.make
+          const register = McpServer.registerToolkit(Toolkit.make(...tools))
+          yield* register.pipe(
+            Effect.updateContext((context: Context.Context<Effect.Services<typeof register>>) =>
+              Context.makeUnsafe(new RegistrationMap(context.mapUnsafe))
+            ),
+            Effect.provideService(McpServer.McpServer, server),
+            Effect.provide(handlers)
+          )
+          return iterations
+        })
+
+        assert.strictEqual(yield* scans(first, second), yield* scans(first))
+      }))
+
     it.effect("registers non-strict tools with identified input schemas", () =>
       Effect.gen(function*() {
         const IdentifiedTool = Tool.make("IdentifiedTool", {
@@ -2184,6 +2213,20 @@ describe("McpServer", () => {
           assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
         }))
     })
+
+    it.effect("lists read-only tools as non-destructive unless explicitly marked destructive", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeToolkitTestClient()
+        const { tools } = yield* client.listTools({})
+        assert.deepInclude(tools.find((tool) => tool.name === "UntypedTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: false
+        })
+        assert.deepInclude(tools.find((tool) => tool.name === "StructuredResultTool")?.annotations, {
+          readOnlyHint: true,
+          destructiveHint: true
+        })
+      }))
 
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
@@ -2579,6 +2622,77 @@ describe("McpServer", () => {
           assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
         }
+      }))
+
+    const modelOutputImage = new Uint8Array([1, 2, 3])
+    const modelOutputUrl = new URL("https://example.com/report.png")
+    const modelOutputToolkit = Toolkit.make(
+      Tool.make("ModelOutputTool", {
+        success: Schema.Struct({ ok: Schema.Boolean }),
+        toModelOutput: () => [
+          Prompt.textPart({ text: "Captured" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputImage }),
+          Prompt.filePart({ mediaType: "audio/wav", fileName: "clip.wav", data: "BAUG" }),
+          Prompt.filePart({ mediaType: "image/png", data: modelOutputUrl }),
+          Prompt.filePart({ mediaType: "application/pdf", fileName: "doc.pdf", data: new Uint8Array([7, 8, 9]) })
+        ]
+      }),
+      Tool.make("QuotedModelOutputTool", {
+        success: Schema.String,
+        toModelOutput: (value) => [Prompt.textPart({ text: JSON.stringify(value) })]
+      })
+    )
+    const modelOutputLayer = Layer.effectDiscard(McpServer.registerToolkit(modelOutputToolkit)).pipe(
+      Layer.provide(modelOutputToolkit.toLayer({
+        ModelOutputTool: () => Effect.succeed({ ok: true }),
+        QuotedModelOutputTool: () => Effect.succeed("hello")
+      }))
+    )
+
+    it.effect("uses toModelOutput parts as tool result content while preserving structuredContent", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(modelOutputLayer, {
+          protocols: [McpProtocol.v2025_06_18]
+        })
+
+        const result = yield* client.callTool({ name: "ModelOutputTool", arguments: {} })
+
+        assert.isFalse(result.isError)
+        assert.deepStrictEqual(result.structuredContent, { ok: true })
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "Captured" },
+          { type: "image", data: modelOutputImage, mimeType: "image/png" },
+          { type: "audio", data: new Uint8Array([4, 5, 6]), mimeType: "audio/wav" },
+          {
+            type: "resource_link",
+            uri: modelOutputUrl.href,
+            name: modelOutputUrl.href,
+            mimeType: "image/png"
+          },
+          { type: "text", text: "[application/pdf doc.pdf omitted]" }
+        ])
+
+        const quoted = yield* client.callTool({ name: "QuotedModelOutputTool", arguments: {} })
+        assert.deepStrictEqual(quoted.content, [{ type: "text", text: "\"hello\"" }])
+      }))
+
+    it.effect("downgrades unsupported toModelOutput blocks to text on 2024-11-05", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(modelOutputLayer, {
+          protocols: [McpProtocol.v2024_11_05]
+        })
+
+        const result = yield* client.callTool({ name: "ModelOutputTool", arguments: {} })
+
+        assert.isFalse(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(result.content, [
+          { type: "text", text: "Captured" },
+          { type: "image", data: modelOutputImage, mimeType: "image/png" },
+          { type: "text", text: "[audio/wav clip.wav omitted]" },
+          { type: "text", text: modelOutputUrl.href },
+          { type: "text", text: "[application/pdf doc.pdf omitted]" }
+        ])
       }))
   })
 
@@ -3484,6 +3598,21 @@ describe("McpServer", () => {
         yield* fixture.close
         const exit = yield* Fiber.await(fixture.serverFiber)
         Runtime.defaultTeardown(exit, (code) => assert.strictEqual(code, 0))
+      }))
+
+    it.effect("should answer a malformed line with a parse error and initialize from the same chunk", () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeMcpStdioHarness(McpProtocol.v2025_06_18)
+        const initialize = { jsonrpc: "2.0", id: 1, method: "initialize", params: initializePayload }
+        yield* fixture.sendChunk(`{\n${JSON.stringify(initialize)}\n`)
+        assert.deepStrictEqual(yield* fixture.takeMessage, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32700, message: "Parse error" }
+        })
+        const response = yield* fixture.takeMessage
+        strictEqual(response.id, 1)
+        assertTrue(response.result !== undefined)
       }))
 
     it.effect("should give each layerStdio server its own protocol in one layer graph", () =>

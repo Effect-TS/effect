@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `HEAD` (`c8f79a591af295fc75f3eacc4c4b8e304b6dfc64`)
+Head: `ca9de3c912ddb035a52b0f3f24e36ac453e417ae` (`ca9de3c912ddb035a52b0f3f24e36ac453e417ae`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -358,14 +358,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 ## Removed Modules
 
 - `@effect/ai` -> `effect/ai`: The @effect/ai package was merged into the effect package; import the effect/ai barrel or import specific modules directly (e.g. effect/ai/\<Module\>).
-- `@effect/ai-amazon-bedrock` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-- `@effect/ai-amazon-bedrock/AmazonBedrockClient` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockClient, layer, layerConfig, make, and Service have no direct replacements. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-- `@effect/ai-amazon-bedrock/AmazonBedrockConfig` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4, so AmazonBedrockConfig has no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
-- `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel` -> `none`: The @effect/ai-amazon-bedrock language-model integration was removed from v4. Use another supported v4 provider or implement LanguageModel.LanguageModel with @aws-sdk/client-bedrock-runtime.
-- `@effect/ai-amazon-bedrock/AmazonBedrockSchema` -> `none`: The @effect/ai-amazon-bedrock package was removed from v4, including its hand-written Bedrock schemas. Use @aws-sdk/client-bedrock-runtime request and response types, or schemas supplied by a custom v4 provider integration.
-- `@effect/ai-amazon-bedrock/AmazonBedrockTool` -> `none`: The @effect/ai-amazon-bedrock package and its Anthropic-on-Bedrock provider tools were removed from v4. Recreate the capability in a custom provider integration if the Bedrock model still requires it.
-- `@effect/ai-amazon-bedrock/EventStreamEncoding` -> `none`: The @effect/ai-amazon-bedrock package and its AWS event-stream decoder were removed from v4. Use the AWS SDK's Bedrock Runtime streaming support or implement decoding in a custom provider client.
-- `@effect/ai-amazon-bedrock/index` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
+- `@effect/ai-amazon-bedrock/AmazonBedrockTool` -> `none`: The Bedrock package remains available, but its Anthropic-specific provider-tool constructors are removed. Define ordinary tools with effect/ai/Tool and handlers where suitable. If you need the exact Anthropic built-in protocol, use an API and provider that support it; ordinary Converse tools are not a drop-in replacement.
+- `@effect/ai-amazon-bedrock/EventStreamEncoding` -> `none`: The event-stream decoder is now internal, not a public module. Use AmazonBedrockClient service.converseStream to decode Bedrock streams and map exception frames to AiError. For a generic AWS event-stream decoder, supply your own implementation or use an AWS SDK; do not import the provider internal module.
+- `@effect/ai-amazon-bedrock/index` -> `@effect/ai-amazon-bedrock`: Import AmazonBedrockClient, AmazonBedrockConfig, AmazonBedrockLanguageModel and AmazonBedrockSchema from the package root or their package subpaths. AmazonBedrockTool and EventStreamEncoding are no longer public modules.
 - `@effect/ai-anthropic/AnthropicTokenizer`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-anthropic/index` -> `@effect/ai-anthropic`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-anthropic package root or import specific modules directly.
 - `@effect/ai-google` -> `none`: The @effect/ai-google provider package was removed from v4 with no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
@@ -766,6 +761,168 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ## API Reference
 
+### `@effect/ai-amazon-bedrock/AmazonBedrockClient`
+
+- `AmazonBedrockClient.Client` -> `AmazonBedrockClient.Service["client"]`: The old generated client interface is removed. service.client is now the authenticated HttpClient, not an object with converse methods. Use service.converse and service.converseStream for modeled operations, or execute HTTP requests with service.client.
+
+- `AmazonBedrockClient.Service` -> `AmazonBedrockClient.Service`: Pass the ConverseRequest directly to converse and converseStream instead of wrapping it in { payload, params }. streamRequest is removed; use converseStream for Bedrock streams. Both operations report effect/ai/AiError, and service.client is the authenticated HttpClient.
+
+- `AmazonBedrockClient.layer` -> `AmazonBedrockClient.layer`: Provide HttpClient, Digest and Mac services from effect/http and effect/crypto (or platform layers). SigV4 signing now uses these crypto services rather than an internal signer; the client no longer requires Scope just to construct it.
+
+- `AmazonBedrockClient.layerConfig` -> `AmazonBedrockClient.layerConfig`: Provide HttpClient, Digest and Mac services from effect/http and effect/crypto (or platform layers). SigV4 signing now uses these crypto services rather than an internal signer; the client no longer requires Scope just to construct it.
+
+- `AmazonBedrockClient.make` -> `AmazonBedrockClient.make`: Provide HttpClient, Digest and Mac services from effect/http and effect/crypto (or platform layers). SigV4 signing now uses these crypto services rather than an internal signer; the client no longer requires Scope just to construct it.
+
+### `@effect/ai-amazon-bedrock/AmazonBedrockConfig`
+
+- `AmazonBedrockConfig.AmazonBedrockConfig` -> `AmazonBedrockConfig.AmazonBedrockConfig`: The tag is now a Context.Service. Use the exported service identifier rather than the old string key, which incorrectly named @effect/ai-google. getOrUndefined and withClientTransform remain available.
+
+- `AmazonBedrockConfig.AmazonBedrockConfig.Service` -> `AmazonBedrockConfig.AmazonBedrockConfig.Service`: Keep the transformClient callback, updating HttpClient imports from @effect/platform/HttpClient to effect/http/HttpClient.
+
+### `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel`
+
+- `AmazonBedrockLanguageModel.AmazonBedrockReasoningInfo` -> `AmazonBedrockLanguageModel.ReasoningInfo`: ReasoningInfo now has optional signature and redactedContent fields instead of a type-discriminated union. Rename redactedData to redactedContent, remove the type discriminator, and use the "amazon-bedrock" provider options and metadata key.
+
+- `AmazonBedrockLanguageModel.Config` -> `AmazonBedrockLanguageModel.Config`: Config is now a Context.Service. Use Context.getOrUndefined with the service identifier instead of Config.getOrUndefined. Configure native structured output with structuredOutputs; outputConfig exposes effort while textFormat is derived from the requested response format.
+
+- `AmazonBedrockLanguageModel.Config.Service` -> `typeof AmazonBedrockLanguageModel.Config.Service`: The Config namespace interface is removed. Obtain the service type with typeof Config.Service; it contains partial Converse request options, structuredOutputs and outputConfig.effort.
+
+- `AmazonBedrockLanguageModel.model` -> `AmazonBedrockLanguageModel.model`: The provider implements effect/ai/LanguageModel. Move prompt options and response metadata from the bedrock key to `amazon-bedrock`; model identifiers now accept arbitrary strings. Provide AmazonBedrockClient with its HTTP and crypto dependencies.
+
+### `@effect/ai-amazon-bedrock/AmazonBedrockSchema`
+
+- `AmazonBedrockSchema.BedrockFoundationModelId` -> `AmazonBedrockLanguageModel.Model`: Model identifiers are now arbitrary strings, allowing inference profile IDs and ARNs. Use Schema.String if you need a runtime schema; there is no fixed model-id literal schema.
+
+- `AmazonBedrockSchema.CachePointBlock` -> `AmazonBedrockSchema.CachePointBlock`: Use the CachePointBlock schema value to validate plain data instead of relying on the v3 schema class. The same-named type is now inferred from the schema.
+
+- `AmazonBedrockSchema.ContentBlock` -> `AmazonBedrockSchema.ContentBlock`: Use the ContentBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ContentBlock.Type; the same-named type export is gone. Union members are modeled as optional fields on a struct; check each field before reading it and stop relying on v3 decoded type discriminators.
+
+- `AmazonBedrockSchema.ContentBlockDelta` -> `AmazonBedrockSchema.ContentBlockDelta`: Use the ContentBlockDelta schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ContentBlockDelta.Type; the same-named type export is gone. Union members are modeled as optional fields on a struct; check each field before reading it and stop relying on v3 decoded type discriminators.
+
+- `AmazonBedrockSchema.ContentBlockDeltaEvent` -> `AmazonBedrockSchema.ContentBlockDeltaEvent`: Use the ContentBlockDeltaEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ContentBlockDeltaEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ContentBlockStart` -> `AmazonBedrockSchema.ContentBlockStartEvent`: The start payload is now inline in ContentBlockStartEvent and optional. Use its start field, checking for undefined, rather than constructing a ContentBlockStart class.
+
+- `AmazonBedrockSchema.ContentBlockStartEvent` -> `AmazonBedrockSchema.ContentBlockStartEvent`: Use the ContentBlockStartEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ContentBlockStartEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ContentBlockStopEvent` -> `AmazonBedrockSchema.ContentBlockStopEvent`: Use the ContentBlockStopEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ContentBlockStopEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ConverseMetrics` -> `AmazonBedrockSchema.ConverseMetrics`: Use the ConverseMetrics schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ConverseMetrics.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ConverseOutput` -> `AmazonBedrockSchema.ConverseResponse`: The standalone output schema is removed. Read response.output or derive its type as AmazonBedrockSchema.ConverseResponse["output"]; validate the full response with ConverseResponse.
+
+- `AmazonBedrockSchema.ConverseRequest` -> `AmazonBedrockSchema.ConverseRequest`: Use the ConverseRequest schema value to validate plain data instead of relying on the v3 schema class. The same-named type is now inferred from the schema.
+
+- `AmazonBedrockSchema.ConverseResponse` -> `AmazonBedrockSchema.ConverseResponse`: Use the ConverseResponse schema value to validate plain data instead of relying on the v3 schema class. The same-named type is now inferred from the schema.
+
+- `AmazonBedrockSchema.ConverseResponseStreamEvent` -> `AmazonBedrockSchema.ConverseStreamEvent`: Use ConverseStreamEvent for both the schema and its type. The union now also preserves unknown event types; narrow known events before reading their payloads. Exception frames fail the client stream instead of being returned as normal events.
+
+- `AmazonBedrockSchema.ConverseStreamMetadataEvent` -> `AmazonBedrockSchema.ConverseStreamMetadataEvent`: Use the ConverseStreamMetadataEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ConverseStreamMetadataEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ConverseStreamMetrics` -> `AmazonBedrockSchema.ConverseMetrics`: Streaming metadata now uses ConverseMetrics. Use typeof ConverseMetrics.Type for the decoded type; latencyMs is a number and unmodeled response fields are preserved.
+
+- `AmazonBedrockSchema.ConverseStreamTrace` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.ConverseTrace` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.DocumentBlock` -> `AmazonBedrockSchema.DocumentBlock`: Use the DocumentBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.DocumentBlock.Type; the same-named type export is gone. The modeled source is base64 bytes; other source fields are not typed by this schema.
+
+- `AmazonBedrockSchema.DocumentFormat` -> `AmazonBedrockSchema.DocumentFormat`: Keep the DocumentFormat schema value. The separate type alias is removed; use typeof AmazonBedrockSchema.DocumentFormat.Type in type positions.
+
+- `AmazonBedrockSchema.GuardrailAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailConfiguration` -> `AmazonBedrockSchema.GuardrailConfiguration`: Use the GuardrailConfiguration schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.GuardrailConfiguration.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.GuardrailContentFilter` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailContentPolicyAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailContextualGroundingFilter` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailContextualGroundingPolicyAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailConverseContentBlock` -> `none`: This standalone guardrail-content schema is removed. Define an application schema for the payload you need; response content preserves unmodeled fields as unknown. For request fields outside the provider subset, use the authenticated service.client or the AWS SDK.
+
+- `AmazonBedrockSchema.GuardrailConverseImageBlock` -> `none`: This standalone guardrail-content schema is removed. Define an application schema for the payload you need; response content preserves unmodeled fields as unknown. For request fields outside the provider subset, use the authenticated service.client or the AWS SDK.
+
+- `AmazonBedrockSchema.GuardrailConverseTextBlock` -> `none`: This standalone guardrail-content schema is removed. Define an application schema for the payload you need; response content preserves unmodeled fields as unknown. For request fields outside the provider subset, use the authenticated service.client or the AWS SDK.
+
+- `AmazonBedrockSchema.GuardrailCoverage` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailCustomWord` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailImageCoverage` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailInvocationMetrics` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailManagedWord` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailPiiEntityFilter` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailRegexFilter` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailSensitiveInformationPolicyAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailTextCharactersCoverage` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailTopic` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailTopicPolicyAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailTraceAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailUsage` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.GuardrailWordPolicyAssessment` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.ImageBlock` -> `AmazonBedrockSchema.ImageBlock`: Use the ImageBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ImageBlock.Type; the same-named type export is gone. The modeled source is base64 bytes; other source fields are not typed by this schema.
+
+- `AmazonBedrockSchema.ImageFormat` -> `AmazonBedrockSchema.ImageFormat`: Keep the ImageFormat schema value. The separate type alias is removed; use typeof AmazonBedrockSchema.ImageFormat.Type in type positions.
+
+- `AmazonBedrockSchema.InferenceConfiguration` -> `AmazonBedrockSchema.InferenceConfiguration`: Use the InferenceConfiguration schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.InferenceConfiguration.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.IntZeroOrGreater` -> `Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))`: Compose the nonnegative integer schema from effect/Schema. Bedrock response integer schemas no longer impose this nonnegative check.
+
+- `AmazonBedrockSchema.JsonBlock` -> `AmazonBedrockSchema.ToolResultContentBlock`: For tool-result JSON use { json: value } with ToolResultContentBlock. The JSON value remains unknown; there is no JsonBlock class.
+
+- `AmazonBedrockSchema.Message` -> `AmazonBedrockSchema.Message`: Use the Message schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.Message.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.MessageStartEvent` -> `AmazonBedrockSchema.MessageStartEvent`: Use the MessageStartEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.MessageStartEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.MessageStopEvent` -> `AmazonBedrockSchema.MessageStopEvent`: Use the MessageStopEvent schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.MessageStopEvent.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.PerformanceConfiguration` -> `none`: There is no provider request schema for performanceConfig. For unsupported Bedrock Runtime request fields, construct and encode an HTTP request using the authenticated service.client, or use the AWS SDK directly.
+
+- `AmazonBedrockSchema.PromptRouterTrace` -> `none`: This standalone trace or guardrail assessment schema is removed. ConverseResponse.trace and ConverseStreamMetadataEvent.trace are unknown and response structs preserve unmodeled fields. Define an application schema to validate the trace or assessment fields you consume.
+
+- `AmazonBedrockSchema.ReasoningContentBlock` -> `AmazonBedrockSchema.ReasoningContentBlock`: Use the ReasoningContentBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ReasoningContentBlock.Type; the same-named type export is gone. Union members are modeled as optional fields on a struct; check each field before reading it and stop relying on v3 decoded type discriminators.
+
+- `AmazonBedrockSchema.ReasoningContentBlockDelta` -> `AmazonBedrockSchema.ContentBlockDelta`: Use the optional reasoningContent field of ContentBlockDelta. Its text, signature and redactedContent fields are optional strings, not a separately exported union schema.
+
+- `AmazonBedrockSchema.StopReason` -> `AmazonBedrockSchema.StopReason`: StopReason now accepts unknown strings as well as known reasons. Use KnownStopReason when you need the closed set of named stop reasons.
+
+- `AmazonBedrockSchema.SystemContentBlock` -> `AmazonBedrockSchema.SystemContentBlock`: Use the SystemContentBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.SystemContentBlock.Type; the same-named type export is gone. Union members are modeled as optional fields on a struct; check each field before reading it and stop relying on v3 decoded type discriminators.
+
+- `AmazonBedrockSchema.TokenUsage` -> `AmazonBedrockSchema.TokenUsage`: Use the TokenUsage schema value to validate plain data instead of relying on the v3 schema class. The same-named type is now inferred from the schema.
+
+- `AmazonBedrockSchema.Tool` -> `AmazonBedrockSchema.Tool`: Use the Tool schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.Tool.Type; the same-named type export is gone. Union members are modeled as optional fields on a struct; check each field before reading it and stop relying on v3 decoded type discriminators.
+
+- `AmazonBedrockSchema.ToolChoice` -> `AmazonBedrockSchema.ToolChoice`: Use the ToolChoice schema value to validate plain data instead of relying on the v3 schema class. The same-named type is now inferred from the schema.
+
+- `AmazonBedrockSchema.ToolConfiguration` -> `AmazonBedrockSchema.ToolConfiguration`: Use the ToolConfiguration schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ToolConfiguration.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ToolResultBlock` -> `AmazonBedrockSchema.ToolResultBlock`: Use the ToolResultBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ToolResultBlock.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ToolSpecification` -> `AmazonBedrockSchema.ToolSpecification`: Use the ToolSpecification schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ToolSpecification.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ToolUseBlock` -> `AmazonBedrockSchema.ToolUseBlock`: Use the ToolUseBlock schema value to validate plain data instead of relying on the v3 schema class. For type positions use typeof AmazonBedrockSchema.ToolUseBlock.Type; the same-named type export is gone.
+
+- `AmazonBedrockSchema.ToolUseBlockDelta` -> `AmazonBedrockSchema.ContentBlockDelta`: The tool-use delta schema is now inline at ContentBlockDelta.toolUse. Check the optional field before reading its input string; there is no separate class or schema export.
+
+- `AmazonBedrockSchema.ToolUseBlockStart` -> `AmazonBedrockSchema.ContentBlockStartEvent`: The tool-use start schema is now inline at ContentBlockStartEvent.start.toolUse. Check both optional fields before reading toolUseId and name; there is no separate class or schema export.
+
+- `AmazonBedrockSchema.VideoBlock` -> `none`: There is no dedicated video schema or high-level video conversion. Unmodeled response content fields are preserved as unknown; validate video payloads with your own schema. Use the authenticated service.client for request shapes outside the modeled Converse subset.
+
 ### `@effect/ai-anthropic/AnthropicClient`
 
 - `AnthropicClient.CitationsDelta` -> `Generated.BetaCitationsDelta`: The client-local stream schema moved to the regenerated v4 Anthropic schema surface; re-check its Type/Encoded shape.
@@ -1124,7 +1281,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.BetaResponseBashCodeExecutionToolResultError` -> `Generated.BetaResponseBashCodeExecutionToolResultError`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.BetaResponseCharLocationCitation` -> `Generated.BetaResponseCharLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.BetaResponseCharLocationCitation` -> `Generated.BetaResponseCharLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
 - `Generated.BetaResponseCitationsConfig` -> `Generated.BetaResponseCitationsConfig`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1140,7 +1297,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.BetaResponseContainerUploadBlock` -> `Generated.BetaResponseContainerUploadBlock`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.BetaResponseContentBlockLocationCitation` -> `Generated.BetaResponseContentBlockLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.BetaResponseContentBlockLocationCitation` -> `Generated.BetaResponseContentBlockLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
 - `Generated.BetaResponseContextManagement` -> `Generated.BetaResponseContextManagement`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1150,7 +1307,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.BetaResponseMCPToolUseBlock` -> `Generated.BetaResponseMCPToolUseBlock`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.BetaResponsePageLocationCitation` -> `Generated.BetaResponsePageLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.BetaResponsePageLocationCitation` -> `Generated.BetaResponsePageLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
 - `Generated.BetaResponseRedactedThinkingBlock` -> `Generated.BetaResponseRedactedThinkingBlock`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1274,7 +1431,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CacheCreation` -> `Generated.CacheCreation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.Client` -> `Generated.AnthropicClient`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Client` -> `Generated.AnthropicClient`: Renamed to `Generated.AnthropicClient<E, R>`. Endpoint effects include E alongside generated client errors and require R. E defaults to HttpClientError.HttpClientError and R to never; carry custom client error and context types through explicit annotations.
 
 - `Generated.ClientError` -> `Generated.AnthropicClientError`: Regenerated in v4 under this name; update the identifier and re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1446,11 +1603,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RequestWebSearchToolResultError` -> `Generated.RequestWebSearchToolResultError`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ResponseCharLocationCitation` -> `Generated.ResponseCharLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ResponseCharLocationCitation` -> `Generated.ResponseCharLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
-- `Generated.ResponseContentBlockLocationCitation` -> `Generated.ResponseContentBlockLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ResponseContentBlockLocationCitation` -> `Generated.ResponseContentBlockLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
-- `Generated.ResponsePageLocationCitation` -> `Generated.ResponsePageLocationCitation`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ResponsePageLocationCitation` -> `Generated.ResponsePageLocationCitation`: Use the generated type and codec rather than a schema class. `file_id` is optional and nullable; decoding an omitted field leaves it absent instead of supplying the v3 `null` default. Handle `undefined` as well as `null`, or normalize with `citation.file_id ?? null` when the old default is needed.
 
 - `Generated.ResponseRedactedThinkingBlock` -> `Generated.ResponseRedactedThinkingBlock`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1522,7 +1679,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WebSearchToolResultErrorCode` -> `Generated.WebSearchToolResultErrorCode`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.make` -> `Generated.make`: Still generated in v4 from the current Anthropic specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.make` -> `Generated.make`: make now infers E and R from `HttpClient.With<E, R>` and returns `Generated.AnthropicClient<E, R>`. Preserve those type parameters in wrappers; endpoint effects include the supplied client error E and require R. transformClient must preserve the same E and R.
 
 ### `@effect/ai-openai/Generated`
 
@@ -1678,7 +1835,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.AutomaticThreadTitlingParam` -> `Generated.AutomaticThreadTitlingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.Batch` -> `Generated.Batch`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Batch` -> `Generated.Batch`: Use the current Generated.Batch schema. The object shapes at errors have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.BatchError` -> `Generated.BatchError`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
@@ -1796,7 +1953,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ChatCompletionRequestUserMessageRole` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ChatCompletionResponseMessage` -> `Generated.ChatCompletionResponseMessage`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ChatCompletionResponseMessage` -> `Generated.ChatCompletionResponseMessage`: Use the current Generated.ChatCompletionResponseMessage schema. The object shapes at function\_call have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.ChatCompletionResponseMessageRole` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -1846,7 +2003,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ClickParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.Client` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.Client` -> `Generated.OpenAiClient`: Renamed to `Generated.OpenAiClient<E, R>`. Endpoint effects include E alongside generated client errors and require R. E defaults to HttpClientError.HttpClientError and R to never; carry custom client error and context types through explicit annotations.
 
 - `Generated.ClientError` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -1974,7 +2131,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateBatchRequestEndpoint` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateChatCompletionRequest` -> `Generated.CreateChatCompletionRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateChatCompletionRequest` -> `Generated.CreateChatCompletionRequest`: Use the current Generated.CreateChatCompletionRequest schema. The object shapes at web\_search\_options.user\_location and audio have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.CreateChatCompletionRequestAudioFormat` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2152,7 +2309,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateSpeechRequestStreamFormat` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateThreadAndRunRequest` -> `Generated.CreateThreadAndRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateThreadAndRunRequest` -> `Generated.CreateThreadAndRunRequest`: Use the current Generated.CreateThreadAndRunRequest schema. The object shapes at tool\_resources have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.CreateThreadAndRunRequestModelEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2498,7 +2655,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FineTuningIntegrationType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.FineTuningJob` -> `Generated.FineTuningJob`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.FineTuningJob` -> `Generated.FineTuningJob`: Use the current Generated.FineTuningJob schema. The object shapes at hyperparameters in both union branches have no catch-all index signature; use their declared fields rather than arbitrary JSON properties. The error field still includes a JSON record alternative.
 
 - `Generated.FineTuningJobCheckpoint` -> `Generated.FineTuningJobCheckpoint`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2922,7 +3079,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListMessagesParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListMessagesResponse` -> `Generated.ListMessagesResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListMessagesResponse` -> `Generated.ListMessagesResponse`: Use the current Generated.ListMessagesResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListModelsResponse` -> `Generated.ListModelsResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2976,7 +3133,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListRunStepsParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListRunStepsResponse` -> `Generated.ListRunStepsResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListRunStepsResponse` -> `Generated.ListRunStepsResponse`: Use the current Generated.ListRunStepsResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListRunsParams` -> `Generated.ListRunsParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3000,13 +3157,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ListVectorStoreFilesParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListVectorStoreFilesResponse` -> `Generated.ListVectorStoreFilesResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListVectorStoreFilesResponse` -> `Generated.ListVectorStoreFilesResponse`: Use the current Generated.ListVectorStoreFilesResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListVectorStoresParams` -> `Generated.ListVectorStoresParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.ListVectorStoresParamsOrder` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ListVectorStoresResponse` -> `Generated.ListVectorStoresResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.ListVectorStoresResponse` -> `Generated.ListVectorStoresResponse`: Use the current Generated.ListVectorStoresResponse schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ListVideosParams` -> `Generated.ListVideosParams`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3126,7 +3283,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.Metadata` -> `Generated.Metadata`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.Model` -> `Generated.Model`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.Model` -> `Generated.Model`: Use the current Generated.Model schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.ModelIdsResponses` -> `Generated.ModelIdsResponses`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3160,7 +3317,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.NoiseReductionType` -> `Generated.NoiseReductionType`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.OpenAIFile` -> `Generated.OpenAIFile`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.OpenAIFile` -> `Generated.OpenAIFile`: Use the current Generated.OpenAIFile schema. Its root object branch has no catch-all index signature; use the declared fields rather than arbitrary JSON properties. The schema still includes primitive, null, and JSON-array alternatives, so narrow to the object branch before accessing its fields.
 
 - `Generated.OpenAIFileObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3338,7 +3495,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateRequest` -> `Generated.RealtimeSessionCreateRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RealtimeSessionCreateRequestGA` -> `Generated.RealtimeSessionCreateRequestGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateRequestGA` -> `Generated.RealtimeSessionCreateRequestGA`: Use the current Generated.RealtimeSessionCreateRequestGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeSessionCreateRequestGAMaxOutputTokensEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3352,9 +3509,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateRequestTracingEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RealtimeSessionCreateResponse` -> `Generated.RealtimeSessionCreateResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateResponse` -> `Generated.RealtimeSessionCreateResponse`: Use the current Generated.RealtimeSessionCreateResponse schema. The object shapes at audio.input.noise\_reduction, audio.input.turn\_detection, and turn\_detection have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
-- `Generated.RealtimeSessionCreateResponseGA` -> `Generated.RealtimeSessionCreateResponseGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeSessionCreateResponseGA` -> `Generated.RealtimeSessionCreateResponseGA`: Use the current Generated.RealtimeSessionCreateResponseGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeSessionCreateResponseGAMaxOutputTokensEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3368,9 +3525,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeSessionCreateResponseTracingEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RealtimeTranscriptionSessionCreateRequest` -> `Generated.RealtimeTranscriptionSessionCreateRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateRequest` -> `Generated.RealtimeTranscriptionSessionCreateRequest`: Use the current Generated.RealtimeTranscriptionSessionCreateRequest schema. The object shapes at input\_audio\_noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
-- `Generated.RealtimeTranscriptionSessionCreateRequestGA` -> `Generated.RealtimeTranscriptionSessionCreateRequestGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateRequestGA` -> `Generated.RealtimeTranscriptionSessionCreateRequestGA`: Use the current Generated.RealtimeTranscriptionSessionCreateRequestGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeTranscriptionSessionCreateRequestGAType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3380,7 +3537,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RealtimeTranscriptionSessionCreateResponse` -> `Generated.RealtimeTranscriptionSessionCreateResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RealtimeTranscriptionSessionCreateResponseGA` -> `Generated.RealtimeTranscriptionSessionCreateResponseGA`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RealtimeTranscriptionSessionCreateResponseGA` -> `Generated.RealtimeTranscriptionSessionCreateResponseGA`: Use the current Generated.RealtimeTranscriptionSessionCreateResponseGA schema. The object shapes at audio.input.noise\_reduction have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RealtimeTranscriptionSessionCreateResponseGAType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3486,7 +3643,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RunGraderResponse` -> `Generated.RunGraderResponse`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RunObject` -> `Generated.RunObject`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.RunObject` -> `Generated.RunObject`: Use the current Generated.RunObject schema. The object shapes at required\_action, last\_error, and incomplete\_details have no catch-all index signature; use their declared fields rather than arbitrary JSON properties.
 
 - `Generated.RunObjectIncompleteDetailsReason` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -4002,7 +4159,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WorkflowTracingParam` -> `Generated.WorkflowTracingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.make` -> `Generated.make`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.make` -> `Generated.make`: make now infers E and R from `HttpClient.With<E, R>` and returns `Generated.OpenAiClient<E, R>`. Preserve those type parameters in wrappers; endpoint effects include the supplied client error E and require R. transformClient must preserve the same E and R.
 
 ### `@effect/ai-openai/OpenAiClient`
 
@@ -5268,6 +5425,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `CliApp.CliApp.ConstructorArgs` -> `none`: Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed.
 
+- `CliApp.CliApp.Environment` -> `Command.Environment`: Adds ChildProcessSpawner and Stdio to FileSystem, Path and Terminal; NodeServices.layer and BunServices.layer provide all five.
+
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
 - `CliApp.run` -> `Command.run`: The CliApp wrapper was removed. Attach the execute function with Command.withHandler, then run the Command with its version; v4 reads arguments through the CLI environment instead of accepting args and execute at this call.
@@ -5973,6 +6132,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `EventLog.Handlers` -> `effect/eventlog/EventLog#Handlers`: Import Handlers from the v4 EventLog module; handlers now also receive storeId. Remote decode or handler failures leave the entire batch uncommitted and retry it after backoff instead of logging and committing past the failure. Replay handlers must tolerate repeated execution. Conflicts are stored entries with strictly greater ids, in id order; compacted replacements use their source entry as the conflict anchor.
 
 - `EventLog.HandlersTypeId` -> `effect/eventlog/EventLog#HandlersTypeId`: Import HandlersTypeId from the v4 EventLog module.
+
+- `EventLog.Registry` -> `effect/eventlog/EventLog#Registry`: Import Registry from the v4 EventLog module. add(handlers) became registerHandlerUnsafe({ event, handler }), handlers is a ReadonlyMap instead of an Effect of a record, and the static Registry.layer became EventLog.layerRegistry.
 
 - `EventLog.SchemaTypeId` -> `effect/eventlog/EventLog#SchemaTypeId`: Import SchemaTypeId from the v4 EventLog module.
 
@@ -6870,6 +7031,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `HttpApiError.Issue` -> `effect/SchemaIssue#Issue`: Structured failures now live at HttpApiSchemaError.cause.issue; format them explicitly when a flat external list is needed.
 
+- `HttpApiError.NotFound` -> `effect/http-api/HttpApiError#NotFoundNoContent`: Use NotFoundNoContent to preserve the empty 404 wire schema; NotFound now has a JSON-tagged body.
+
 - `HttpApiError.TypeId` -> `effect/http-api/HttpApiError#HttpApiSchemaErrorTypeId`: The old module symbol is gone; prefer HttpApiSchemaError.is for runtime narrowing.
 
 ### `@effect/platform/HttpApiGroup`
@@ -7227,6 +7390,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/http-api.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
+
+- `HttpLayerRouter.disableLogger` -> `HttpRouter.disableLogger`: Moved to the consolidated HttpRouter module; provide this layer to disable HTTP request logging. CloudflareTracer.layer installs tracing and is not a replacement.
 
 - `HttpLayerRouter.layer` -> `HttpRouter.layer`: Use the layer for the consolidated HttpRouter service.
 
@@ -9064,6 +9229,8 @@ Arbitrary.schema(schema)
 
 - `Brand.error` -> `Brand.make`: Return a string or Schema filter issue directly from a Brand.make validator.
 
+- `Brand.errors` -> `Brand.make`: Return an array of strings or Schema filter issues from a Brand.make validator; they are combined into one BrandError.
+
 - `Brand.nominal` -> `Brand.nominal`: Still exported; the constructor's either method is now result.
 
 - `Brand.refined` -> `Brand.make`: Use Brand.make for custom validation or Brand.check for Schema checks.
@@ -9454,7 +9621,7 @@ Arbitrary.schema(schema)
 
 - `Config.boolean` -> `Config.Boolean`: Direct constructor rename.
 
-- `Config.branded` -> `Config.schema(schema.pipe(Schema.brand(brand)), path)`: Brand validation moved to Schema; define the branded schema and construct the Config with Config.schema.
+- `Config.branded` -> `Config.schema(schema.pipe(Schema.fromBrand(key, constructor)), path)`: Brand validation moved to Schema; Schema.fromBrand takes the brand key and the existing Brand.Constructor and applies its checks. Schema.brand is type-only.
 
 - `Config.chunk` -> `Config.schema(Schema.Chunk(valueSchema), path)`: Collection parsing is schema-based in v4; use Schema.Chunk when a Chunk result is still required.
 
@@ -10554,7 +10721,7 @@ Arbitrary.schema(schema)
 
 - `Equivalence.string` -> `Equivalence.String`: Capitalized instance name; case-sensitive strict equality is unchanged.
 
-- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares configured symbol and non-enumerable keys via Reflect.ownKeys.
+- `Equivalence.struct` -> `Equivalence.Struct`: Capitalized constructor name. V4 also compares own enumerable symbol fields.
 
 - `Equivalence.symbol` -> `Equivalence.strictEqual<symbol>()`: There is no Symbol instance export; strictEqual preserves the v3 symbol comparison.
 
@@ -10666,7 +10833,7 @@ Arbitrary.schema(schema)
 
 - `FastCheck.CloneValue`: TODO: needs guidance
 
-- `FastCheck.Command`: TODO: needs guidance
+- `FastCheck.Command` -> `FastCheck.Command`: Depend on fast-check and import it directly. The API is unchanged.
 
 - `FastCheck.CommandsContraints`: TODO: needs guidance
 
@@ -12183,9 +12350,13 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Match.When` -> `Match.When`: The case type is retained. Its evaluate method now receives any Match.fn selector arguments after the selected input; update custom case implementations that consume those arguments.
 
+- `Match.discriminators` -> `Match.discriminators`: Only definitely defined handlers remove variants from the unmatched input type. Optional handlers, handlers that may be undefined, and handler-map alternatives without a handler leave those variants unmatched. Supply defined handlers for every case before Match.exhaustive, or handle the remaining variants with another case or Match.orElse. At runtime, undefined handlers are skipped.
+
 - `Match.either` -> `Match.result`: Renamed finalizer with a container change: matched Right and unmatched Left become Result.Success and Result.Failure.
 
 - `Match.not` -> `Match.not`: Object patterns now reject top-level keys absent from every variant of the remaining input type. Correct stale property names or narrow the input before matching; function, refinement, and array patterns are not subject to this object-key check.
+
+- `Match.tags` -> `Match.tags`: Only definitely defined handlers remove variants from the unmatched input type. Optional handlers, handlers that may be undefined, and handler-map alternatives without a handler leave those variants unmatched. Supply defined handlers for every case before Match.exhaustive, or handle the remaining variants with another case or Match.orElse. At runtime, undefined handlers are skipped.
 
 - `Match.when` -> `Match.when`: Object patterns now reject top-level keys absent from every variant of the remaining input type. Correct stale property names or narrow the input before matching. Array prefix patterns retain the unmatched tail in the handler type rather than treating the pattern as the entire array.
 
@@ -13079,7 +13250,7 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Order.string` -> `Order.String`: Capitalized instance name; case-sensitive JavaScript lexicographic ordering is unchanged.
 
-- `Order.struct` -> `Order.Struct`: Capitalized constructor name; field-order tie-breaking is unchanged.
+- `Order.struct` -> `Order.Struct`: Capitalized constructor name; field-order tie-breaking is unchanged. V4 also compares own enumerable symbol fields, after string fields.
 
 - `Order.tuple` -> `Order.Tuple([orderA, orderB, ...])`: Capitalized constructor now takes one comparator array instead of rest arguments and evaluates every configured position.
 
@@ -13355,7 +13526,7 @@ Schema.decodeSync(Schema.toType(schema))
 
 - `Predicate.some` -> `Predicate.some`: Retained with the same OR semantics, short-circuiting, and false result for an empty collection.
 
-- `Predicate.struct` -> `Predicate.Struct`: Capitalized constructor name; field checks and refinement-aware typing are retained.
+- `Predicate.struct` -> `Predicate.Struct`: Capitalized constructor name; field checks and refinement-aware typing are retained. V4 also checks own enumerable symbol fields.
 
 - `Predicate.tuple` -> `Predicate.Tuple([p1, p2, ...])`: Capitalized constructor now takes one predicate array instead of rest arguments and checks missing positions as undefined.
 
@@ -15035,7 +15206,7 @@ Effect.map(self, Boolean.not)
 
 - `Schema.finite` -> `Schema.isFinite`: Rename the predicate to `isFinite` and apply it with `Schema.check` or a schema's `check` method.
 
-- `Schema.format` -> `SchemaRepresentation.toCodeDocument`: Build a representation with `SchemaRepresentation.toRepresentation`, `toMultiDocument`, then `toCodeDocument`.
+- `Schema.format` -> `none`: Schema.format was removed in v4 and has no replacement.
 
 - `Schema.fromBrand` -> `Schema.fromBrand`: Pass the constructor's single concrete string brand key as the first argument, followed by the constructor and then the schema. Apply fromBrand repeatedly for multiple brands; use Schema.Union for alternatives. Constructor checks remain at runtime, while the brand is type-only and does not add AST metadata.
 

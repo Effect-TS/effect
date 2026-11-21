@@ -532,8 +532,10 @@ const Proto = {
           Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
           Effect.onExit((exit) => Exit.isFailure(exit) ? Queue.failCause(queue, exit.cause) : Queue.end(queue)),
-          Effect.forkChild
+          Effect.forkChild({ startImmediately: true })
         )
+        // Drain the last offer only once stream cleanup can no longer interrupt the producer.
+        fiber.addObserver(() => Queue.flushUnsafe(queue))
 
         const normalizeError = (error: unknown) => {
           const normalizedError = Schema.isSchemaError(error)

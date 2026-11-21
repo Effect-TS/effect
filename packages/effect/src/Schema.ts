@@ -78,7 +78,7 @@ import * as Order from "./Order.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rational_ from "./Rational.ts"
-import * as Record_ from "./Record.ts"
+import type * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
 import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
@@ -3574,11 +3574,14 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  *
  * Each field value is a schema. Use {@link optionalKey} or {@link optional} to
  * mark fields as optional, and {@link mutableKey} to mark them as mutable.
+ * Field definitions are discovered from own enumerable string and symbol
+ * properties of `fields`. Non-enumerable and inherited definitions are ignored.
  *
  * The resulting schema's `Type` is a readonly object type with the fields'
  * decoded types. The `Encoded` form mirrors the field schemas' encoded types.
- * Declared fields may be inherited and are copied to own properties in the
- * output. The `__proto__` field is accepted only when it is an own property.
+ * Declared fields on the input may be non-enumerable or inherited and are copied
+ * to own properties in the output. The `__proto__` field is accepted only when
+ * it is an own property.
  * Parsing does not guarantee that output keys retain their input order.
  *
  * **Example** (Defining a basic struct)
@@ -3680,6 +3683,10 @@ const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
  * the renamed keys. Keys not present in the mapping are left unchanged.
  * If two existing fields would produce the same encoded key, construction
  * fails.
+ * Only own enumerable string and symbol properties of the schema's `fields`
+ * define fields to rename. Non-enumerable and inherited field definitions are
+ * ignored. For each selected field, an own entry in `mapping` is used even if
+ * that entry is non-enumerable; inherited mapping entries are ignored.
  *
  * **Example** (Renaming `name` to `full_name` in the encoded form)
  *
@@ -3706,7 +3713,7 @@ export function encodeKeys<
     const appliedMapping: any = Object.create(null)
     const reverseMapping: any = Object.create(null)
     const seenEncodedKeys = new Set<string | symbol>()
-    for (const k of Reflect.ownKeys(self.fields)) {
+    for (const k of InternalRecord.ownEnumerableKeys(self.fields)) {
       const encoded = toEncoded(self.fields[k])
       const hasMapping = Object.hasOwn(mapping, k)
       const encodedKey = hasMapping ? (mapping as any)[k] as PropertyKey : k
@@ -3739,6 +3746,10 @@ export function encodeKeys<
  * returns `Option`. On encoding the derived fields are stripped. This allows
  * computed or enriched fields to live in the decoded type without appearing in
  * the encoded form.
+ * Existing and added field definitions use own enumerable string and symbol
+ * properties; non-enumerable and inherited definitions are ignored. Derivation
+ * functions are looked up by the selected field names and may be non-enumerable
+ * or inherited.
  *
  * **Example** (Adding a computed `fullName` field)
  *
@@ -3768,14 +3779,15 @@ export function extendTo<S extends Struct<Struct.Fields>, const Fields extends S
   return (
     self: S
   ): decodeTo<Struct<Simplify<{ [K in keyof S["fields"]]: toType<S["fields"][K]> } & Fields>>, S> => {
-    const f = Record_.map(self.fields, toType)
+    const f = Struct_.map(self.fields, toType)
     const to = Struct({ ...f, ...fields })
+    const keys = InternalRecord.ownEnumerableKeys(fields)
     return self.pipe(decodeTo(
       to,
       SchemaTransformation.transform({
         decode: (input) => {
           const out: any = { ...input }
-          for (const k in fields) {
+          for (const k of keys) {
             const f = derive[k]
             const o = f(input)
             if (Option_.isSome(o)) {
@@ -3786,7 +3798,7 @@ export function extendTo<S extends Struct<Struct.Fields>, const Fields extends S
         },
         encode: (input) => {
           const out = { ...input }
-          for (const k in fields) {
+          for (const k of keys) {
             delete out[k]
           }
           return out
@@ -8972,8 +8984,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
 }
 /**
  * Validates that an object contains at least the specified number of
- * properties. This includes both string and symbol keys when counting
- * properties.
+ * own enumerable properties, including both string and symbol keys.
  *
  * **Details**
  *
@@ -8997,7 +9008,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
 export function isMinProperties(minProperties: number, annotations?: Annotations.Filter) {
   minProperties = normalizeCardinality(minProperties)
   return makeFilter<object>(
-    (input) => Reflect.ownKeys(input).length >= minProperties,
+    (input) => InternalRecord.ownEnumerableKeys(input).length >= minProperties,
     {
       expected: `a value with at least ${minProperties === 1 ? "1 entry" : `${minProperties} entries`}`,
       representation: {
@@ -9015,8 +9026,8 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
   )
 }
 /**
- * Validates that an object contains at most the specified number of properties.
- * This includes both string and symbol keys when counting properties.
+ * Validates that an object contains at most the specified number of own
+ * enumerable properties, including both string and symbol keys.
  *
  * **Details**
  *
@@ -9040,7 +9051,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
 export function isMaxProperties(maxProperties: number, annotations?: Annotations.Filter) {
   maxProperties = normalizeCardinality(maxProperties)
   return makeFilter<object>(
-    (input) => Reflect.ownKeys(input).length <= maxProperties,
+    (input) => InternalRecord.ownEnumerableKeys(input).length <= maxProperties,
     {
       expected: `a value with at most ${maxProperties === 1 ? "1 entry" : `${maxProperties} entries`}`,
       representation: {
@@ -9058,8 +9069,8 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
   )
 }
 /**
- * Validates that an object contains between `minimum` and `maximum` properties (inclusive).
- * This includes both string and symbol keys when counting properties.
+ * Validates that an object contains between `minimum` and `maximum` own
+ * enumerable properties (inclusive), including both string and symbol keys.
  *
  * **Details**
  *
@@ -9084,7 +9095,10 @@ export function isBetweenProperties(minimum: number, maximum: number, annotation
   minimum = normalizeCardinality(minimum)
   maximum = normalizeCardinality(maximum)
   return makeFilter<object>(
-    (input) => Reflect.ownKeys(input).length >= minimum && Reflect.ownKeys(input).length <= maximum,
+    (input) => {
+      const size = InternalRecord.ownEnumerableKeys(input).length
+      return size >= minimum && size <= maximum
+    },
     {
       expected: minimum === maximum
         ? `a value with exactly ${minimum === 1 ? "1 entry" : `${minimum} entries`}`
@@ -9109,13 +9123,13 @@ export function isBetweenProperties(minimum: number, maximum: number, annotation
   )
 }
 /**
- * Validates that every own property key of an object satisfies the encoded side
+ * Validates that every own enumerable property key of an object satisfies the encoded side
  * of the provided key schema.
  *
  * **Details**
  *
- * This check uses `Reflect.ownKeys`, so symbol keys are validated in addition to
- * string property names.
+ * Checks both string and symbol keys. Non-enumerable and inherited properties
+ * are ignored.
  *
  * JSON Schema:
  * This check corresponds to `propertyNames` in JSON Schema. Effect checks the
@@ -9132,7 +9146,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
   const parser = SchemaParser._issue(propertyNames.ast)
   return makeFilter<object>(
     (input, ast, options) => {
-      const keys = Reflect.ownKeys(input)
+      const keys = InternalRecord.ownEnumerableKeys(input)
       const issues: Array<SchemaIssue.Issue> = []
       for (const key of keys) {
         const issue = parser(key, options)
@@ -10322,7 +10336,7 @@ export interface NumberFromString extends decodeTo<Number, String> {
  * numbers.
  *
  * Encoding:
- * A number is encoded as a `string`.
+ * A number is encoded as a `string`, preserving negative zero as `"-0"`.
  *
  * @stability stable
  * @category schemas
@@ -10351,7 +10365,7 @@ export interface FiniteFromString extends decodeTo<Finite, String> {
  *   `-Infinity` values.
  *
  * Encoding:
- * - A finite number is encoded as a `string`.
+ * - A finite number is encoded as a `string`, preserving negative zero as `"-0"`.
  *
  * @stability stable
  * @category schemas
@@ -10468,6 +10482,7 @@ export interface StringFromBase64 extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a base64-encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10498,6 +10513,7 @@ export interface StringFromBase64Url extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a base64 (URL) encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10528,6 +10544,7 @@ export interface StringFromHex extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a hex string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * @stability stable
  * @category schemas
@@ -10559,6 +10576,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  *
  * Encoding:
  * - A `string` is encoded as a URI component encoded string.
+ * - Encoding fails if the string contains an unpaired UTF-16 surrogate.
  *
  * **Example** (Decoding URI component strings)
  *
@@ -11302,7 +11320,7 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
   readonly error: E["Iso"]
 } | {
   readonly _tag: "Die"
-  readonly error: D["Iso"]
+  readonly defect: D["Iso"]
 } | {
   readonly _tag: "Interrupt"
   readonly fiberId: number | undefined
@@ -11370,7 +11388,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.CauseReason(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Failure<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Reason<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause.Failure",
@@ -11491,7 +11509,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       },
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Cause(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
-        Type: `Cause.Cause<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
+        Type: `Cause.Cause<${typeParameters[0].Type}>`,
         importDeclarations: [`import * as Cause from "effect/Cause"`]
       }),
       expected: "Cause",
@@ -11516,7 +11534,7 @@ function chunkLink<Value>(values: Schema<ReadonlyArray<Value>>) {
   return link<Chunk_.Chunk<Value>>()(
     values,
     SchemaTransformation.transform({
-      decode: Chunk_.fromIterable,
+      decode: Chunk_.fromArrayUnsafe,
       encode: Arr.fromIterable
     })
   )
@@ -11576,7 +11594,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
           return Effect.mapBothEager(
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
-              onSuccess: Chunk_.fromIterable,
+              onSuccess: Chunk_.fromArrayUnsafe,
               onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options)
             }
           )
@@ -15695,7 +15713,7 @@ export function Exit<
         runtime: `Schema.Exit(${typeParameters[0].runtime}, ${typeParameters[1].runtime}, ${
           typeParameters[2].runtime
         })`,
-        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}, ${typeParameters[2].Type}>`,
+        Type: `Exit.Exit<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
         importDeclarations: [`import * as Exit from "effect/Exit"`]
       }),
       expected: "Exit",
@@ -16650,6 +16668,66 @@ export const RetryAfterFromString: RetryAfterFromString = String.annotate({
   decodeTo(
     RetryAfter,
     retryAfterFromString
+  )
+)
+
+/**
+ * Type-level representation of {@link LinkHeaderFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.6
+ */
+export interface LinkHeaderFromString extends
+  decodeTo<
+    $Array<
+      Struct<{
+        readonly target: String
+        readonly rel: $Array<String>
+        readonly params: $Record<String, String>
+      }>
+    >,
+    String
+  >
+{
+  readonly "Rebuild": LinkHeaderFromString
+}
+
+/**
+ * Schema for `Link` header values (RFC 8288), decoded with
+ * `Headers.parseLink` and encoded with `Headers.formatLink`.
+ *
+ * **When to use**
+ *
+ * Use with `HttpClientResponse.schemaHeaders` or HTTP API header schemas
+ * that carry a `Link` header.
+ *
+ * **Details**
+ *
+ * Decoding never fails on a string, because `Headers.parseLink` is lenient.
+ *
+ * **Example** (Decoding a Link header)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const links = Schema.decodeSync(Schema.LinkHeaderFromString)('</items?page=2>; rel="next"')
+ * // => [{ target: "/items?page=2", rel: ["next"], params: {} }]
+ * ```
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.6
+ */
+export const LinkHeaderFromString: LinkHeaderFromString = String.annotate({
+  expected: "a Link header value"
+}).pipe(
+  decodeTo(
+    ArraySchema(Struct({ target: String, rel: ArraySchema(String), params: Record(String, String) })),
+    SchemaTransformation.transform<ReadonlyArray<Headers_.Link>, string>({
+      decode: Headers_.parseLink,
+      encode: Headers_.formatLink
+    })
   )
 )
 
@@ -18897,6 +18975,27 @@ export function resolveAnnotations<S extends Constraint>(
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {
   return schema.ast.context?.annotations
 }
+
+interface DeclarationCodeGenerationAnnotations {
+  /**
+   * Generates runtime and TypeScript source for this declaration.
+   *
+   * @stability experimental
+   * @since 4.0.0
+   */
+  readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
+}
+
+interface FilterCodeGenerationAnnotations {
+  /**
+   * Generates runtime source for this filter.
+   *
+   * @stability experimental
+   * @since 4.0.0
+   */
+  readonly toCode?: SchemaRepresentation.Generation.Check | undefined
+}
+
 /**
  * The `Annotations` namespace groups all annotation interfaces used to attach
  * metadata to schemas. Annotations control documentation, validation messages,
@@ -19091,7 +19190,7 @@ export declare namespace Annotations {
    * @since 4.0.0
    */
   interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint> = readonly []>
-    extends Bottom<T, TypeParameters>
+    extends Bottom<T, TypeParameters>, DeclarationCodeGenerationAnnotations
   {
     readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
     /**
@@ -19153,7 +19252,6 @@ export declare namespace Annotations {
     readonly toCodecArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined
     readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined
     readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined
-    readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
      *
@@ -19169,7 +19267,7 @@ export declare namespace Annotations {
    * @category models
    * @since 4.0.0
    */
-  interface Filter extends Augment {
+  interface Filter extends Augment, FilterCodeGenerationAnnotations {
     readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined
     /**
      * Compiles this filter to a JSON Schema fragment.
@@ -19191,7 +19289,6 @@ export declare namespace Annotations {
      * @see {@link SchemaRepresentation.ToJsonSchema.CheckOutput} for the result contract
      */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
-    readonly toCode?: SchemaRepresentation.Generation.Check | undefined
     /**
      * Complete message to use when this filter or refinement fails.
      *

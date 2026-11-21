@@ -2155,8 +2155,9 @@ export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
  *
  * **Details**
  *
- * This is emitted as the MCP `destructiveHint`; unannotated tools default to
- * `true`, so annotate safe tools with `false`.
+ * This service defaults to `true`. MCP `tools/list` uses an explicit
+ * `Tool.Destructive` value for `destructiveHint`. When it is unset, the hint
+ * is `false` if `Tool.Readonly` is `true` and `true` otherwise.
  *
  * **Example** (Marking a tool as non-destructive)
  *

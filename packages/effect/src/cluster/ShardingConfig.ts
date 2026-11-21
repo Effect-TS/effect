@@ -82,6 +82,9 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   /**
    * Shard lock expiration duration.
    *
+   * A runner whose shard lock refreshes keep failing for this duration unregisters
+   * itself until lock storage recovers, allowing peers to take over its shards.
+   *
    * With PostgreSQL (14+) or MySQL advisory locks, this also bounds how long a
    * runner that stops refreshing, for example because its process is frozen,
    * keeps its shards: the server ends its idle lock session after this

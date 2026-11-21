@@ -46,6 +46,117 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const transactional of [false, true]) {
+    it.effect(
+      `${transactional ? "reruns a rolled-back" : "reuses a completed"} activity when its reply is redelivered`,
+      () =>
+        Effect.gen(function*() {
+          let calls = 0
+          let fenced = false
+          // The ownership check for the activity's reply is inconclusive once.
+          const runnerStorage = Layer.effect(
+            RunnerStorage.RunnerStorage,
+            Effect.map(RunnerStorage.makeMemory, (storage) => ({
+              ...storage,
+              refresh: (address, shards) => {
+                if (calls === 0 || fenced || Array.from(shards).length !== 1) return storage.refresh(address, shards)
+                fenced = true
+                return Effect.fail(new ClusterError.PersistenceError({ cause: "inconclusive lock refresh" }))
+              }
+            }))
+          )
+          const workflow = Workflow.make("ActivityReplyRedelivery", {
+            payload: {},
+            idempotencyKey: () => "one",
+            success: Schema.Int
+          })
+          const layer = workflow.toLayer(() =>
+            Activity.make({
+              name: "count",
+              success: Schema.Int,
+              execute: Effect.sync(() => ++calls)
+            }).annotate(ClusterSchema.WithTransaction, transactional)
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+            shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
+            config: { entityMessagePollInterval: 10, entityReplyPollInterval: 10 }
+          })))
+
+          yield* Effect.gen(function*() {
+            const caller = yield* workflow.execute({}).pipe(Effect.forkScoped)
+            yield* advanceUntil(() => caller.pollUnsafe() !== undefined, "the caller must receive the activity result")
+            assert.isTrue(fenced)
+            assert.strictEqual(yield* Fiber.join(caller), transactional ? 2 : 1)
+          }).pipe(Effect.provide(layer))
+        })
+    )
+  }
+
+  it.effect("runs concurrent attempts of an activity separately", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("ConcurrentActivityAttempts", {
+        payload: {},
+        idempotencyKey: () => "one",
+        success: Schema.Array(Schema.Int)
+      })
+      const activity = Activity.make({
+        name: "attempt",
+        success: Schema.Int,
+        execute: Effect.service(Activity.CurrentAttempt)
+      })
+      const layer = workflow.toLayer(() =>
+        Effect.all([1, 2].map((attempt) => Effect.provideService(activity, Activity.CurrentAttempt, attempt)), {
+          concurrency: "unbounded"
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+      yield* Effect.gen(function*() {
+        const caller = yield* workflow.execute({}).pipe(Effect.forkScoped)
+        yield* advanceUntil(() => caller.pollUnsafe() !== undefined, "the caller must receive both results")
+        assert.deepStrictEqual(yield* Fiber.join(caller), [1, 2])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("compensates once on cancellation after an active timer wake", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("TimerWakeFinalizers", { payload: {}, idempotencyKey: () => "one" })
+      const started = yield* Latch.make()
+      let wokeAttempt = 0
+      const registered: Array<number> = []
+      const finalized: Array<number> = []
+      let compensations = 0
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          const attempt = registered.length + 1
+          registered.push(attempt)
+          yield* Workflow.addFinalizer(() => Effect.sync(() => finalized.push(attempt)))
+          yield* Effect.void.pipe(workflow.withCompensation(() => Effect.sync(() => ++compensations)))
+          yield* Effect.all([
+            Activity.make({ name: "waiting", execute: started.open.pipe(Effect.andThen(Effect.never)) }),
+            started.await.pipe(
+              Effect.andThen(DurableClock.sleep({ name: "wake", duration: 20, inMemoryThreshold: 0 })),
+              Effect.tap(() =>
+                Effect.sync(() => {
+                  wokeAttempt = attempt
+                })
+              )
+            )
+          ], { concurrency: "unbounded", discard: true })
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollStorageUntil(() => wokeAttempt > 0, "timer must resume the workflow")
+        assert.isAbove(wokeAttempt, 1, "timer must wake a replay")
+        assert.isEmpty(finalized, "timer wake must not finalize the workflow")
+        const engine = yield* WorkflowEngine
+        yield* engine.interruptUnsafe(workflow, executionId)
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(compensations, 1)
+        assert.sameMembers(finalized, registered, "cancellation must finalize every registered attempt")
+      }).pipe(Effect.provide(layer))
+    }))
+
   for (const complete of [true, false]) {
     it.effect(`releases all workflow scopes after multiple suspensions on ${complete ? "completion" : "teardown"}`, () =>
       Effect.gen(function*() {
@@ -838,7 +949,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       name: "a durable clock",
       saves: (envelope: Message.OutgoingRequest<any>) =>
         envelope.envelope.address.entityType === "Workflow/-/DurableClock",
-      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "1 second", inMemoryThreshold: 0 }), 42)
+      // Long enough to still be pending when the first save retry runs.
+      body: Effect.as(DurableClock.sleep({ name: "Wait", duration: "300 millis", inMemoryThreshold: 0 }), 42)
     },
     {
       name: "a durable race winner",
