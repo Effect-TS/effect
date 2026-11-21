@@ -56,6 +56,17 @@ interface BufferConstructorLike {
   from(buffer: ArrayBufferLike, byteOffset?: number, length?: number): BufferLike
 }
 
+const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype)
+const typedArrayBuffer = Object.getOwnPropertyDescriptor(typedArrayPrototype, "buffer")!.get as (
+  this: Uint8Array
+) => ArrayBufferLike
+const typedArrayByteOffset = Object.getOwnPropertyDescriptor(typedArrayPrototype, "byteOffset")!.get as (
+  this: Uint8Array
+) => number
+const typedArrayByteLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, "byteLength")!.get as (
+  this: Uint8Array
+) => number
+
 // Gate on `process.versions.node` to avoid slow browser/RN `Buffer` polyfills;
 // read at call time without importing `node:buffer`.
 const getBuffer = (): BufferConstructorLike | undefined => {
@@ -73,8 +84,13 @@ const getBuffer = (): BufferConstructorLike | undefined => {
  *
  * @internal
  */
-export const encodeBuffer = (bytes: Uint8Array, encoding: "base64" | "base64url"): string | undefined =>
-  getBuffer()?.from(bytes.buffer, bytes.byteOffset, bytes.length).toString(encoding)
+export const encodeBuffer = (bytes: Uint8Array, encoding: "base64" | "base64url"): string | undefined => {
+  const Buffer = getBuffer()
+  if (Buffer === undefined) return undefined
+  const byteLength = typedArrayByteLength.call(bytes)
+  if (byteLength < 32) return undefined
+  return Buffer.from(typedArrayBuffer.call(bytes), typedArrayByteOffset.call(bytes), byteLength).toString(encoding)
+}
 
 /** @internal */
 export const stripCrlf = (str: string): string =>

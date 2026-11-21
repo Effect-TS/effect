@@ -176,7 +176,7 @@ const encodeBytes = (bytes: Uint8Array, pad: boolean): string => {
   if (length >= 32) {
     if (typeof toBase64 === "function") return toBase64.call(bytes, pad ? paddedOptions : unpaddedOptions)
     const encoded = base64.encodeBuffer(bytes, "base64url")
-    if (encoded !== undefined) return pad ? encoded + padding[length % 3] : encoded
+    if (encoded !== undefined) return pad ? encoded + padding[encoded.length & 3] : encoded
   }
   // Below ~128 bytes, appending to a string beats filling a byte array and decoding it once.
   return length < 128 ? encodeShort(bytes, pad) : encodeLong(bytes, pad)
@@ -239,7 +239,7 @@ const nativeDecodeOptions: base64.NativeDecodeOptions = { alphabet: "base64url" 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 const alphabetCodes = encoder.encode(alphabet)
 const paddingCode = "=".charCodeAt(0)
-const padding = ["", "==", "="]
+const padding = ["", "", "==", "="]
 const codes = new Uint8Array(128)
 for (let i = 0; i < alphabet.length; i++) codes[alphabet.charCodeAt(i)] = i
 

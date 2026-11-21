@@ -18,6 +18,19 @@ describeWithFallback("Base64", () => {
     assert.deepStrictEqual(bytes, new Uint8Array([42, 251, 255, 128, 42]))
   })
 
+  it("ignores overridden buffer and byteOffset getters on Uint8Array subclasses", () => {
+    class FakeView extends Uint8Array {
+      override get byteOffset() {
+        return 0
+      }
+      override get buffer() {
+        return new ArrayBuffer(64)
+      }
+    }
+    const backing = Uint8Array.from({ length: 64 }, (_, i) => i)
+    assert.strictEqual(Base64.encode(new FakeView(backing.buffer, 32, 32)), reference(backing.subarray(32, 64)))
+  })
+
   describe("native toBase64", () => {
     const bytes = Uint8Array.from({ length: 132 }, (_, i) => (i * 151) & 0xff)
     // Offset views with lengths around the native (32) and byte-array (128) cutoffs.
