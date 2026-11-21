@@ -125,17 +125,12 @@ describeWithFallback("Base64", () => {
   })
 
   it("ignores non-zero trailing bits", () => {
-    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zh==")), new Uint8Array([102]))
-    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
-    const prefix = "AAAA".repeat(32)
-    assert.deepStrictEqual(
-      Result.getOrThrow(Base64.decode(`${prefix}Zh==`)),
-      new Uint8Array([...new Uint8Array(96), 102])
-    )
-    assert.deepStrictEqual(
-      Result.getOrThrow(Base64.decode(`${prefix}Zm9=`)),
-      new Uint8Array([...new Uint8Array(96), 102, 111])
-    )
+    for (const prefixBlocks of [0, 32]) {
+      const prefix = "AAAA".repeat(prefixBlocks)
+      const zeros = new Uint8Array(prefixBlocks * 3)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(`${prefix}Zh==`)), new Uint8Array([...zeros, 102]))
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(`${prefix}Zm9=`)), new Uint8Array([...zeros, 102, 111]))
+    }
   })
 
   it("decodes either alphabet, with or without padding", () => {
@@ -199,14 +194,10 @@ describeWithoutNatives("Base64 Buffer fallback", () => {
 
       spy.mockClear()
       const shortDecodeBytes = bytes.subarray(0, 93)
-      const shortEncoded = reference(shortDecodeBytes)
-      assert.strictEqual(shortEncoded.length, 124)
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(shortEncoded)), shortDecodeBytes)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(reference(shortDecodeBytes))), shortDecodeBytes)
       assert.strictEqual(spy.mock.calls.length, 0)
 
-      const longEncoded = reference(bytes)
-      assert.strictEqual(longEncoded.length, 128)
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(longEncoded)), bytes)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(reference(bytes))), bytes)
       assert.isAbove(spy.mock.calls.length, 0)
     } finally {
       spy.mockRestore()
