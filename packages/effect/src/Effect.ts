@@ -3214,8 +3214,7 @@ type UnhandledParent<E, K extends string, Handled extends string> = string exten
  * is converted to a defect, preserving reason order and interrupts. An
  * interruption alongside a typed error does not prevent recovery.
  *
- * Only own enumerable properties of `cases` are matched (via `Object.keys`);
- * inherited properties such as class prototype methods are ignored.
+ * Only own enumerable properties of `cases` are matched; inherited properties are ignored.
  *
  * **Example** (Handling multiple error reasons)
  *
