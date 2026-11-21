@@ -1154,7 +1154,7 @@ describe("RpcClient", () => {
           const { client, requests } = yield* makeBatchingClient(RpcSerialization.layerJson, { window: "5 millis" })
 
           const results = yield* sendBatch([
-            client.Echo({ value: "first" }).pipe(Effect.withSpan("caller-1", { root: true })),
+            client.Echo({ value: "first" }).pipe(Effect.withSpan("caller-1", { root: true, sampled: false })),
             client.Echo({ value: "second" }).pipe(Effect.withSpan("caller-2", { root: true })),
             client.Echo({ value: "third" }).pipe(Effect.withSpan("caller-3", { root: true }))
           ])
@@ -1169,6 +1169,7 @@ describe("RpcClient", () => {
           assert.isDefined(batchSpan)
           assert.isTrue(Option.isNone(batchSpan.parent))
           assert.strictEqual(batchSpan.attributes.get("batchSize"), 3)
+          assert.strictEqual(batchSpan.sampled, true)
           assert.isFalse(rpcSpans.some((span) => span.traceId === batchSpan.traceId))
 
           const toSpanKey = (span: Tracer.AnySpan) => ({
@@ -1190,7 +1191,7 @@ describe("RpcClient", () => {
         })
       ))
 
-    it.effect("skips the batch span when no request has trace context and omits untraced callers from links", () =>
+    it.effect("skips the batch span without trace context, omits untraced callers, and deduplicates links", () =>
       withCapturedSpans((spans) =>
         Effect.gen(function*() {
           const { client, requests } = yield* makeBatchingClient(RpcSerialization.layerJson, { window: "5 millis" })
@@ -1200,21 +1201,28 @@ describe("RpcClient", () => {
           assert.strictEqual(requests.length, 1)
           assert.isUndefined(spans.find(isBatchSpan))
 
+          // EchoUntraced skips per-RPC spans so concurrent calls inside one parent share its spanId.
           const mixed = yield* sendBatch([
             client.Echo({ value: "untraced" }).pipe(Effect.withTracerEnabled(false)),
-            client.Echo({ value: "traced" }).pipe(Effect.withSpan("caller", { root: true }))
+            Effect.all(
+              [client.EchoUntraced({ value: "shared-1" }), client.EchoUntraced({ value: "shared-2" })],
+              { concurrency: "unbounded" }
+            ).pipe(
+              Effect.map(([a, b]) => `${a},${b}`),
+              Effect.withSpan("shared-caller", { root: true })
+            )
           ])
-          assert.deepStrictEqual(mixed, ["untraced", "traced"])
+          assert.deepStrictEqual(mixed, ["untraced", "shared-1,shared-2"])
           assert.strictEqual(requests.length, 2)
 
           const batchSpan = spans.find(isBatchSpan)
+          const sharedSpan = spans.find((span) => span.name === "shared-caller")
           assert.isDefined(batchSpan)
-          assert.strictEqual(batchSpan.attributes.get("batchSize"), 2)
-          const rpcSpan = spans.find((span) => span.name === "Echo" && span.kind === "client")
-          assert.isDefined(rpcSpan)
+          assert.isDefined(sharedSpan)
+          assert.strictEqual(batchSpan.attributes.get("batchSize"), 3)
           assert.deepStrictEqual(
             batchSpan.links.map((link) => link.span.spanId),
-            [rpcSpan.spanId]
+            [sharedSpan.spanId]
           )
           const httpSpans = spans.filter(isHttpSpan)
           assert.strictEqual(httpSpans.length, 2)
@@ -1224,7 +1232,7 @@ describe("RpcClient", () => {
         })
       ))
 
-    it.effect("samples the batch span only when at least one linked caller span is sampled", () =>
+    it.effect("marks the batch span unsampled when every linked caller is unsampled", () =>
       withCapturedSpans((spans) =>
         Effect.gen(function*() {
           const { client, requests } = yield* makeBatchingClient(RpcSerialization.layerJson, { window: "5 millis" })
@@ -1235,44 +1243,13 @@ describe("RpcClient", () => {
           ])
           assert.deepStrictEqual(unsampled, ["a", "b"])
 
-          const mixed = yield* sendBatch([
-            client.Echo({ value: "c" }).pipe(Effect.withSpan("unsampled-3", { root: true, sampled: false })),
-            client.Echo({ value: "d" }).pipe(Effect.withSpan("sampled-4", { root: true, sampled: true }))
-          ])
-          assert.deepStrictEqual(mixed, ["c", "d"])
-
-          const batchSpans = spans.filter(isBatchSpan)
-          const httpSpans = spans.filter(isHttpSpan)
-          assert.strictEqual(batchSpans.length, 2)
-          assert.strictEqual(httpSpans.length, 2)
-          assert.strictEqual(batchSpans[0].sampled, false)
-          assert.strictEqual(httpSpans[0].sampled, false)
-          assert.strictEqual(requests[0].headers.traceparent, `00-${batchSpans[0].traceId}-${httpSpans[0].spanId}-00`)
-          assert.strictEqual(batchSpans[1].sampled, true)
-          assert.strictEqual(httpSpans[1].sampled, true)
-          assert.strictEqual(requests[1].headers.traceparent, `00-${batchSpans[1].traceId}-${httpSpans[1].spanId}-01`)
-        })
-      ))
-
-    it.effect("deduplicates batch span links by span id", () =>
-      withCapturedSpans((spans) =>
-        Effect.gen(function*() {
-          const { client, requests } = yield* makeBatchingClient(RpcSerialization.layerJson, { window: "5 millis" })
-
-          const results = yield* sendBatch([client.EchoUntraced({ value: "a" }), client.EchoUntraced({ value: "b" })])
-            .pipe(Effect.withSpan("shared-caller", { root: true }))
-          assert.deepStrictEqual(results, ["a", "b"])
-          assert.strictEqual(requests.length, 1)
-
-          const sharedSpan = spans.find((span) => span.name === "shared-caller")
           const batchSpan = spans.find(isBatchSpan)
-          assert.isDefined(sharedSpan)
+          const httpSpan = spans.find(isHttpSpan)
           assert.isDefined(batchSpan)
-          assert.strictEqual(batchSpan.attributes.get("batchSize"), 2)
-          assert.deepStrictEqual(
-            batchSpan.links.map((link) => link.span.spanId),
-            [sharedSpan.spanId]
-          )
+          assert.isDefined(httpSpan)
+          assert.strictEqual(batchSpan.sampled, false)
+          assert.strictEqual(httpSpan.sampled, false)
+          assert.strictEqual(requests[0].headers.traceparent, `00-${batchSpan.traceId}-${httpSpan.spanId}-00`)
         })
       ))
   })
