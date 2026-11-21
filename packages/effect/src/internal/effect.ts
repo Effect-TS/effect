@@ -5645,10 +5645,12 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
+    // Park the child on its start, so an evaluate that runs first (an
+    // interrupt) cancels it like any other pending resumption.
     let resumed = false
-    child._yielded = () => {
+    child.yieldWith(() => {
       resumed = true
-    }
+    })
     parentRuntime.currentDispatcher.scheduleTask(() => {
       if (resumed) return
       child.evaluate(effect as any)

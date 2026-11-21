@@ -290,43 +290,34 @@ describe("Fiber", () => {
     }))
 
   it("does not lose interruption on a deferred fiber when interrupt evaluation yields", () => {
-    const queue: Array<() => void> = []
-    let root: Fiber.Fiber<unknown, unknown> | undefined
+    const tasks: Array<() => void> = []
     const scheduler: Scheduler.Scheduler = {
       executionMode: "sync",
-      shouldYield: (fiber) => {
-        root ??= fiber
-        return fiber !== root && fiber.currentOpCount === 1
-      },
+      shouldYield: (fiber) => fiber.currentOpCount === 1,
       makeDispatcher: () => ({
         scheduleTask: (task) => {
-          queue.push(task)
+          tasks.push(task)
         },
-        flush: () => {}
+        flush() {}
       })
     }
 
     let childRan = false
-    let child: Fiber.Fiber<never> | undefined
+    let child!: Fiber.Fiber<void>
     const main = Effect.runFork(
       Effect.gen(function*() {
-        child = yield* Effect.forkChild(
-          Effect.suspend(() => {
-            childRan = true
-            return Effect.never
-          })
-        )
+        child = yield* Effect.forkChild(Effect.sync(() => {
+          childRan = true
+        }))
         yield* Fiber.interrupt(child)
       }),
       { scheduler }
     )
 
-    while (queue.length > 0) queue.shift()!()
+    while (tasks.length > 0) tasks.shift()!()
 
     assert.isFalse(childRan)
-    const childExit = child?.pollUnsafe()
-    assert.isDefined(childExit)
-    assert.isTrue(Exit.hasInterrupts(childExit!))
+    assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
     assert.deepStrictEqual(main.pollUnsafe(), Exit.void)
   })
 })

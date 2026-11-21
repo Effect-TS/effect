@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix a race where a deferred fiber could lose an interruption delivered before its first slice if interrupt evaluation yielded.
+Fix a forked fiber that was interrupted before it started sometimes running its effect anyway, which could leave `Fiber.interrupt` or `Scope.close` waiting forever.
