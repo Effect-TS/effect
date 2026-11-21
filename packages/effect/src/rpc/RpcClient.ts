@@ -994,6 +994,36 @@ const makeProtocolHttpUnbatched = (client: HttpClient.HttpClient) =>
     }
   }))
 
+const batchSpanOptions = (requests: ReadonlyArray<RequestEncoded>): Tracer.SpanOptions | undefined => {
+  const links: Array<Tracer.SpanLink> = []
+  const seen = new Set<string>()
+  let sampled = false
+  for (let i = 0; i < requests.length; i++) {
+    const request = requests[i]
+    if (request.traceId === undefined || request.spanId === undefined || seen.has(request.spanId)) {
+      continue
+    }
+    seen.add(request.spanId)
+    const span = Tracer.externalSpan({
+      traceId: request.traceId,
+      spanId: request.spanId,
+      sampled: request.sampled
+    })
+    if (span.sampled) {
+      sampled = true
+    }
+    links.push({ span, attributes: {} })
+  }
+  if (links.length === 0) return undefined
+  return {
+    root: true,
+    sampled,
+    links,
+    attributes: { batchSize: requests.length },
+    captureStackTrace: false
+  }
+}
+
 const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.HttpClient, options: {
   readonly window: Duration.Input
   readonly maxSize?: number | undefined
@@ -1031,7 +1061,9 @@ const makeProtocolHttpBatched = Effect.fnUntraced(function*(client: HttpClient.H
       Effect.raceFirst(Effect.sleep(window), batch.full.await).pipe(
         Effect.andThen(Effect.suspend(() => {
           closeBatch(clientId, batch)
-          return exchange.send(clientId, batch.requests)
+          const effect = exchange.send(clientId, batch.requests)
+          const spanOptions = batchSpanOptions(batch.requests)
+          return spanOptions === undefined ? effect : Effect.withSpan(effect, "RpcClient.batch", spanOptions)
         })),
         Effect.onExit((exit) => {
           closeBatch(clientId, batch)
