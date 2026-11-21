@@ -128,6 +128,25 @@ describe("Workflow.intoResult", () => {
         ["compensation failed"]
       )
     }))
+
+  it.effect("propagates finalizer interruption without producing a Complete result", () =>
+    Effect.gen(function*() {
+      const workflow = Workflow.make("CompensationInterruptPropagates", {
+        payload: {},
+        error: Schema.String,
+        idempotencyKey: () => "one"
+      })
+
+      const exit = yield* Effect.gen(function*() {
+        yield* Workflow.addFinalizer(() => Effect.interrupt)
+        return yield* Effect.fail("refused")
+      }).pipe(
+        Workflow.intoResult,
+        Effect.provideService(WorkflowInstance, WorkflowInstance.initial(workflow, "one")),
+        Effect.exit
+      )
+      assert(Exit.hasInterrupts(exit) && !Exit.hasDies(exit))
+    }))
 })
 
 describe("Workflow.wrapActivityResult", () => {

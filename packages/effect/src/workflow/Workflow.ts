@@ -778,16 +778,20 @@ export const intoResult = <A, E, R>(
         }
         const close = Scope.close(instance.scope, result.exit)
         return captureDefects
-          ? Effect.matchCause(close, {
-            onSuccess: () => result,
+          ? Effect.matchCauseEffect(close, {
+            onSuccess: () => Effect.succeed(result),
             onFailure: (closeCause) =>
-              new Complete({
-                exit: Exit.failCause(
-                  Exit.isFailure(result.exit)
-                    ? Cause.combine(result.exit.cause, closeCause)
-                    : closeCause
+              Cause.hasDies(closeCause)
+                ? Effect.succeed(
+                  new Complete({
+                    exit: Exit.failCause(
+                      Exit.isFailure(result.exit)
+                        ? Cause.combine(result.exit.cause, closeCause)
+                        : closeCause
+                    )
+                  })
                 )
-              })
+                : Effect.failCause(closeCause)
           })
           : Effect.as(close, result)
       }),
