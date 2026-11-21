@@ -25,6 +25,26 @@ describeWithFallback("Base64Url", () => {
     }
   })
 
+  it("pads consistently when a length-tracking view grows during encodePadded", () => {
+    const ResizableArrayBuffer = ArrayBuffer as {
+      new(byteLength: number, options?: { readonly maxByteLength?: number }): ArrayBuffer & { resize(n: number): void }
+    }
+    const buffer = new ResizableArrayBuffer(33, { maxByteLength: 64 })
+    const view = new Uint8Array(buffer)
+    view.fill(0xab)
+    let reads = 0
+    Object.defineProperty(view, "length", {
+      get() {
+        if (reads++ === 0) {
+          buffer.resize(34)
+          return 33
+        }
+        return buffer.byteLength
+      }
+    })
+    assert.strictEqual(Base64Url.encodePadded(view).length % 4, 0)
+  })
+
   it("decodes padded and unpadded input", () => {
     const expected = new Uint8Array([72, 101, 108, 108, 111, 63])
     assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode("SGVsbG8_")), expected)
@@ -131,7 +151,7 @@ describeWithFallback("Base64Url", () => {
       assertFailure(long, long, "Invalid input")
     }
   })
-})
+}, { bufferFallback: true })
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
   const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [
