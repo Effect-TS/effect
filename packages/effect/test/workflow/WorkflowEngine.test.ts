@@ -701,6 +701,103 @@ describe("WorkflowEngine", () => {
       )
     }))
 
+  it.effect("layerMemory dispatches sibling children when DurableDeferred.await is first", () =>
+    Effect.gen(function*() {
+      let started = 0
+      const Gate = DurableDeferred.make("WorkflowEngine/WaitFirstGate")
+      const Parent = Workflow.make("WorkflowEngine/WaitFirstParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/WaitFirstChild", {
+        payload: { index: Schema.Number },
+        idempotencyKey: ({ index }) => String(index)
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Effect.all(
+          [DurableDeferred.await(Gate), Child.execute({ index: 0 })],
+          { concurrency: "unbounded", discard: true }
+        )
+      )
+      const ChildLayer = Child.toLayer(() =>
+        Effect.sync(() => {
+          started++
+        })
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.strictEqual(started, 1)
+
+        yield* DurableDeferred.succeed(Gate, {
+          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
+          value: void 0
+        })
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.void }))
+        assert.strictEqual(started, 1)
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
+  it.effect("layerMemory dispatches discarded sibling children before a DurableDeferred.await suspends", () =>
+    Effect.gen(function*() {
+      let started = 0
+      const Gate = DurableDeferred.make("WorkflowEngine/DiscardLastGate")
+      const Parent = Workflow.make("WorkflowEngine/DiscardLastParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/DiscardLastChild", {
+        payload: { index: Schema.Number },
+        idempotencyKey: ({ index }) => String(index)
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Effect.all(
+          [
+            ...[0, 1, 2, 3].map((index) => Child.execute({ index }, { discard: true })),
+            DurableDeferred.await(Gate)
+          ],
+          { concurrency: "unbounded", discard: true }
+        )
+      )
+      const ChildLayer = Child.toLayer(() =>
+        Effect.sync(() => {
+          started++
+        })
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.strictEqual(started, 4)
+
+        yield* DurableDeferred.succeed(Gate, {
+          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
+          value: void 0
+        })
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.void }))
+        assert.strictEqual(started, 4)
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {
       const executionId = yield* IncrementWorkflow.executionId({ value: 1 })
