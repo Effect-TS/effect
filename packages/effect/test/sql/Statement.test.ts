@@ -110,7 +110,7 @@ describe("Statement", () => {
         case "Cast":
           return [`${placeholder(type.paramA)}::text`, [type.paramA]]
         default:
-          return ["", []]
+          return undefined as any
       }
     }
     const base = {
@@ -135,12 +135,16 @@ describe("Statement", () => {
     const typed = Statement.fragment([Statement.custom("Typed")("Int32", 42, undefined)])
     const sum = Statement.fragment([Statement.custom("Sum")(2, 3, undefined)])
     const cast = Statement.fragment([Statement.custom("Cast")(1, undefined, undefined)])
+    const foreign = Statement.fragment([Statement.custom("Foreign")(1, undefined, undefined)])
+    const sqlite = Statement.make(Effect.never, Statement.makeCompilerSqlite(), [], undefined)
 
     assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /visits/)
     assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /name/)
     assert.throws(() => sql`${sql.updateValues([{ visits: sql`${5} + 1` }], "v")}`.compile(), /visits/)
     assert.throws(() => sql`${sql.update({ amount: sum })}`.compile(), /amount/)
     assert.throws(() => sql`${sql.update({ label: cast })}`.compile(), /label/)
+    assert.throws(() => sql`${sql.update({ payload: foreign })}`.compile(), /payload/)
+    assert.throws(() => sqlite`${sqlite.update({ amount: sqlite`${7}${typed}` })}`.compile(), /amount/)
     assert.deepStrictEqual(
       sql`${sql.insert({ a: 7, count: typed, b: 9 })}`.compile(),
       ["(\"a\",\"count\",\"b\") VALUES ($1,{p2: Int32},$3)", [7, 42, 9]]

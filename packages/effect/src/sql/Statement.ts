@@ -1645,14 +1645,28 @@ const compileRecordValue = (
   if (!isFragment(value)) {
     return [placeholder(value), value ?? null]
   }
-  let placeholderCount = 0
-  let cellPlaceholder = ""
-  const [sql, binds] = compiler.compile(value, withoutTransform, (u) => {
-    placeholderCount++
-    return cellPlaceholder = placeholder(u)
-  })
-  if (placeholderCount === 1 && sql === cellPlaceholder && binds.length === 1) {
-    return [cellPlaceholder, binds[0] ?? null]
+  if (value.segments.length === 1) {
+    const head = value.segments[0]
+    if (head._tag === "Parameter") {
+      return [placeholder(head.value), head.value ?? null]
+    }
+    if (head._tag === "Custom") {
+      let placeholderCount = 0
+      let cellPlaceholder = ""
+      const compiled = compiler.options.onCustom(
+        head,
+        (u) => {
+          placeholderCount++
+          return cellPlaceholder = placeholder(u)
+        },
+        withoutTransform
+      )
+      if (
+        compiled !== undefined && placeholderCount === 1 && compiled[0] === cellPlaceholder && compiled[1].length === 1
+      ) {
+        return [cellPlaceholder, compiled[1][0] ?? null]
+      }
+    }
   }
   throw new TypeError(`SQL fragment for column "${column}" must compile to a single bound parameter`)
 }

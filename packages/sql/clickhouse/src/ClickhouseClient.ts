@@ -585,7 +585,11 @@ export const makeCompiler = (transform?: (_: string) => string) =>
       return ["", []]
     },
     onCustom(type, placeholder) {
-      return [placeholder(type), [type.paramB]]
+      switch (type.kind) {
+        case "ClickhouseParam": {
+          return [placeholder(type), [type.paramB]]
+        }
+      }
     }
   })
 
