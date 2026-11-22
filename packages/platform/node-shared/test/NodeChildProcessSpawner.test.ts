@@ -112,7 +112,7 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
     )
   }
 
-  it.live("does not poll or force kill the process group of a child that exits during scope release", () =>
+  it.live("does not signal or poll the process group of a running child during scope release", () =>
     Effect.gen(function*() {
       const kill = vi.spyOn(process, "kill")
       yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
@@ -124,9 +124,25 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
         })
         pid = handle.pid
       }))
-      // Signalling the live child is fine; polling or escalating after it exits is not.
-      assert.deepStrictEqual(kill.mock.calls.filter(([target, signal]) => target === -pid && signal !== "SIGTERM"), [])
-    }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+      assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
+    }).pipe(Effect.provide(NodeServices)))
+
+  it.live("does not signal the process group when escalating to SIGKILL", () =>
+    Effect.gen(function*() {
+      const kill = vi.spyOn(process, "kill")
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      let pid = 0
+      yield* Effect.scoped(Effect.gen(function*() {
+        const handle = yield* ChildProcess.make(process.execPath, [
+          "-e",
+          "process.on('SIGTERM', () => {}); console.log('READY'); setInterval(() => {}, 1000)"
+        ], { detached: false })
+        pid = handle.pid
+        yield* Stream.runHead(handle.stdout)
+        yield* handle.kill({ forceKillAfter: "100 millis" })
+      }))
+      assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
+    }).pipe(Effect.provide(NodeServices)))
 })
 
 const zombieProbes = 3
