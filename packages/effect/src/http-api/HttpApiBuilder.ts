@@ -1086,7 +1086,9 @@ export function handlerToRoute(
     handlerToHttpEffect(api, group, endpoint, context, handler.handler, handler.isRaw),
     {
       uninterruptible: handler.uninterruptible,
-      redactedParams: redactedParams === "*" ? RedactedPath.allParamNames(path) : redactedParams
+      redactedParams: redactedParams.all
+        ? [...redactedParams.names, ...RedactedPath.allParamNames(path)]
+        : redactedParams.names
     }
   )
 }

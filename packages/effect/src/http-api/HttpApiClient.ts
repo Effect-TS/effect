@@ -516,8 +516,8 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
         const redactedParams = HttpApi.getEndpointRedactedParams(api, group, endpoint)
         // Names declared on the API or group may belong to other endpoints.
-        const redactsPath = redactedParams === "*" ||
-          redactedParams.some((name) => endpoint.path.includes(`:${name}`))
+        const redactsPath = redactedParams.all ||
+          redactedParams.names.some((name) => endpoint.path.includes(`:${name}`))
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -539,7 +539,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const sent = makeUrl(params)
               httpRequest = HttpClientRequest.setUrl(httpRequest, sent)
               if (redactsPath) {
-                redactedPath = { sent: fullPath(sent), redacted: fullPath(makeUrl(params, redactedParams)) }
+                redactedPath = {
+                  sent: fullPath(sent),
+                  redacted: fullPath(makeUrl(params, redactedParams.all ? "*" : redactedParams.names))
+                }
               }
             }
 

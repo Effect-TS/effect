@@ -613,8 +613,8 @@ export const getEndpointRedactedNames = (
 }
 
 /**
- * Returns the path param names to redact, or `"*"` to redact every param when
- * the schema holds a `Redacted` under unknown wire names.
+ * Returns the path param names to redact and whether to redact every param in
+ * the endpoint path (when the schema holds a `Redacted` under unknown wire names).
  *
  * @internal
  */
@@ -622,15 +622,14 @@ export const getEndpointRedactedParams = (
   api: Pick<Top, "annotations">,
   group: HttpApiGroup.Top,
   endpoint: HttpApiEndpoint.Top
-): ReadonlyArray<string> | "*" => {
+): { readonly names: ReadonlyArray<string>; readonly all: boolean } => {
+  const explicit = [api.annotations, group.annotations, endpoint.annotations].flatMap((annotations) =>
+    Context.getOrUndefined(annotations, RedactedNames)?.params ?? []
+  )
   const keys = getRedactedKeys(endpoint.params)
-  if (keys === undefined) return "*"
-  return [
-    ...[api.annotations, group.annotations, endpoint.annotations].flatMap((annotations) =>
-      Context.getOrUndefined(annotations, RedactedNames)?.params ?? []
-    ),
-    ...keys
-  ]
+  return keys === undefined
+    ? { names: explicit, all: true }
+    : { names: [...explicit, ...keys], all: false }
 }
 
 // Matches every name, for a schema whose wire names are unknown.

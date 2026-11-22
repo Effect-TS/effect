@@ -4,6 +4,7 @@ import { Cause, Effect, Exit, Fiber, Redacted, Schema, Stream, Tracer } from "ef
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+import { TestClock } from "effect/testing"
 
 describe("HttpApiClient", () => {
   describe("ParseOptions", () => {
@@ -1429,6 +1430,21 @@ describe("HttpApiClient", () => {
         assert.notInclude(JSON.stringify(invalidUrl), "s3cret")
         assert.notInclude(JSON.stringify(invalidUrl.reason), "s3cret")
         assert.isDefined(invalidUrl.cause)
+
+        const timeoutClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make(() => Effect.never).pipe(HttpClient.timeout("10 millis"))
+        })
+        const fiber = yield* Effect.forkChild(
+          Effect.flip(timeoutClient.test.get({ params: { token: Redacted.make("s3cret"), id: "visible" } }))
+        )
+        yield* TestClock.adjust("10 millis")
+        const timeoutError = yield* Fiber.join(fiber)
+        assert.isTrue(HttpClientError.isHttpClientError(timeoutError))
+        assert.include(timeoutError.message, "GET http://test/p/REDACTED/visible")
+        assert.notInclude(timeoutError.message, "s3cret")
+        assert.include(JSON.stringify(timeoutError), "/p/REDACTED/visible")
+        assert.notInclude(JSON.stringify(timeoutError), "s3cret")
       }))
   })
 

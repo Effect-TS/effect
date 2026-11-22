@@ -8,8 +8,10 @@ import {
   Fiber,
   FileSystem,
   Layer,
+  Logger,
   Path,
   Redacted,
+  References,
   Schema,
   SchemaTransformation,
   Stream,
@@ -2180,7 +2182,7 @@ describe("HttpApiBuilder RedactedNames", () => {
     assert.strictEqual(error.request.url, "/build/REDACTED?remote=REDACTED&t=fail")
   })
 
-  it("redacts Redacted path, query and header fields in server spans without listing them", async () => {
+  it("redacts Redacted path, query and header fields in server spans and route logs without listing them", async () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("images").add(
         HttpApiEndpoint.post("build", "/build/:token", {
@@ -2194,7 +2196,7 @@ describe("HttpApiBuilder RedactedNames", () => {
           success: Schema.String
         })
       )
-    )
+    ).annotate(HttpApi.RedactedNames, { params: ["tenant"] })
     let received: unknown
     let receivedRecord: unknown
     const GroupLayer = HttpApiBuilder.group(
@@ -2225,29 +2227,45 @@ describe("HttpApiBuilder RedactedNames", () => {
         return span
       }
     })
-    const { dispose, handler } = HttpRouter.toWebHandler(
-      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer), Layer.provide(TestServices)),
-      { disableLogger: true }
+    const loggedUrls: Array<unknown> = []
+    const logger = Logger.make((options) => {
+      loggedUrls.push(options.fiber.getRef(References.CurrentLogAnnotations)["http.url"])
+    })
+    const prefixed = Layer.effect(
+      HttpRouter.HttpRouter,
+      Effect.map(HttpRouter.HttpRouter, (router) => router.prefixed("/t/:tenant"))
     )
-    const context = Context.make(Tracer.Tracer, tracer).pipe(Context.add(HttpMiddleware.TracerHeaderFilter, () => true))
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(prefixed), Layer.provide(GroupLayer), Layer.provide(TestServices))
+    )
+    const context = Context.make(Tracer.Tracer, tracer).pipe(
+      Context.add(HttpMiddleware.TracerHeaderFilter, () => true),
+      Context.add(Logger.CurrentLoggers, new Set([logger]))
+    )
     try {
       const response = await handler(
-        new Request("http://localhost/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app", {
-          method: "POST",
-          headers: { "x-registry-config": "cfg-s3cret" }
-        }),
+        new Request(
+          "http://localhost/t/tenant-s3cret/build/tok?remote=https%3A%2F%2Fuser%3Apass%40host%2Frepo.git&t=app",
+          { method: "POST", headers: { "x-registry-config": "cfg-s3cret" } }
+        ),
         context
       )
       assert.strictEqual(response.status, 200)
-      const recordResponse = await handler(new Request("http://localhost/record/tok-s3cret"), context)
+      const recordResponse = await handler(
+        new Request("http://localhost/t/tenant-s3cret/record/tok-s3cret"),
+        context
+      )
       assert.strictEqual(recordResponse.status, 200)
     } finally {
       await dispose()
     }
 
     const [span, recordSpan] = spans
-    assert.strictEqual(span.attributes.get("url.full"), "http://localhost/build/REDACTED?remote=REDACTED&t=app")
-    assert.strictEqual(span.attributes.get("url.path"), "/build/REDACTED")
+    assert.strictEqual(
+      span.attributes.get("url.full"),
+      "http://localhost/t/REDACTED/build/REDACTED?remote=REDACTED&t=app"
+    )
+    assert.strictEqual(span.attributes.get("url.path"), "/t/REDACTED/build/REDACTED")
     assert.strictEqual(span.attributes.get("url.query"), "remote=REDACTED&t=app")
     assert.strictEqual(span.attributes.get("http.request.header.x-registry-config"), "<redacted>")
     // The handler still receives the values.
@@ -2256,8 +2274,9 @@ describe("HttpApiBuilder RedactedNames", () => {
       remote: "https://user:pass@host/repo.git",
       config: "cfg-s3cret"
     })
-    assert.strictEqual(recordSpan.attributes.get("url.full"), "http://localhost/record/REDACTED")
-    assert.strictEqual(recordSpan.attributes.get("url.path"), "/record/REDACTED")
+    assert.strictEqual(recordSpan.attributes.get("url.full"), "http://localhost/t/REDACTED/record/REDACTED")
+    assert.strictEqual(recordSpan.attributes.get("url.path"), "/t/REDACTED/record/REDACTED")
+    assert.deepStrictEqual(loggedUrls, ["/t/REDACTED/build/REDACTED", "/t/REDACTED/record/REDACTED"])
     assert.strictEqual(receivedRecord, "tok-s3cret")
   })
 })

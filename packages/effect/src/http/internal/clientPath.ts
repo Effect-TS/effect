@@ -1,4 +1,5 @@
 import * as Context from "../../Context.ts"
+import * as Redactable from "../../Redactable.ts"
 import { stripSearchAndHash } from "./urlParams.ts"
 
 /**
@@ -17,6 +18,10 @@ export const CurrentClientPath = Context.Reference<ClientPath | undefined>(
   "effect/http/internal/clientPath/CurrentClientPath",
   { defaultValue: () => undefined }
 )
+
+/** @internal */
+export const currentClientPath = (): ClientPath | undefined =>
+  Context.get((globalThis as any)[Redactable.currentFiberTypeId]?.context ?? Context.empty(), CurrentClientPath)
 
 /**
  * Replaces the path of a URL with its redacted form. A pathname that does not

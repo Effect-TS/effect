@@ -16,7 +16,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
-import { type ClientPath, redactClientPath } from "./internal/clientPath.ts"
+import { type ClientPath, currentClientPath, redactClientPath } from "./internal/clientPath.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -168,7 +168,9 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
   class Base extends Data.TaggedError(tag)<ReasonProps> {
     constructor(props: ReasonProps) {
       super(props)
-      redactedUrls.set(this, UrlParams.redactUrl(props.request.url))
+      const url = UrlParams.redactUrl(props.request.url)
+      const path = currentClientPath()
+      redactedUrls.set(this, path === undefined ? url : redactClientPath(url, path))
       if (props.response !== undefined) {
         addRedactedNames(this, responseRedactedNames.get(props.response), responseRedactedPaths.get(props.response))
       }
