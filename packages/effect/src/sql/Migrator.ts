@@ -271,10 +271,7 @@ ORDER BY migration_id`,
         orElse: () => Effect.void
       })
 
-      const [latestMigrationId, current] = yield* Effect.all([
-        Effect.map(latestMigration, Option.map((_) => _.id)),
-        loader
-      ])
+      const [latest, current] = yield* Effect.all([latestMigration, loader])
 
       if (new Set(current.map(([id]) => id)).size !== current.length) {
         return yield* new MigrationError({
@@ -287,7 +284,7 @@ ORDER BY migration_id`,
 
       for (const resolved of current) {
         const [currentId, currentName] = resolved
-        if (Option.isSome(latestMigrationId) && currentId <= latestMigrationId.value) {
+        if (Option.isSome(latest) && currentId <= latest.value.id) {
           continue
         }
 
