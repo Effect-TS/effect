@@ -7,7 +7,7 @@ import type * as Scope from "effect/Scope"
 import type { SqlError } from "effect/sql/SqlError"
 import * as Statement from "effect/sql/Statement"
 import * as TestClock from "effect/testing/TestClock"
-import { Duplex } from "node:stream"
+import { Duplex, type DuplexOptions } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
   const length = Buffer.allocUnsafe(4)
@@ -541,6 +541,25 @@ describe("pool stats", () => {
 describe("PgPool transport capacity", () => {
   const copyInResponse = backendMessage("G", Buffer.alloc(3))
 
+  // A backend that completes startup and answers every Parse with `response`.
+  const backend = (response: Buffer, options?: Pick<DuplexOptions, "destroy">) => {
+    let startup = true
+    const socket: Duplex = new Duplex({
+      ...options,
+      read() {},
+      write(chunk: Buffer, _encoding, callback) {
+        if (startup) {
+          startup = false
+          queueMicrotask(() => socket.push(ready))
+        } else if (chunk[0] === 0x50) {
+          queueMicrotask(() => socket.push(response))
+        }
+        callback()
+      }
+    })
+    return socket
+  }
+
   it.effect.each([
     {
       name: "pool.use",
@@ -554,7 +573,6 @@ describe("PgPool transport capacity", () => {
     let opened = 0
     let firstSocket: Duplex | undefined
     let finishDestroy: (() => void) | undefined
-    let successorQueryWritten = false
     const releaseClose = () => {
       const finish = finishDestroy
       finishDestroy = undefined
@@ -566,53 +584,27 @@ describe("PgPool transport capacity", () => {
         username: "test",
         maxConnections: 1,
         prepare: false,
-        stream: () => {
-          const session = ++opened
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                queueMicrotask(() => socket.push(ready))
-              } else if (chunk[0] === 0x50) {
-                if (session === 1) {
-                  queueMicrotask(() => socket.push(copyInResponse))
-                } else {
-                  successorQueryWritten = true
-                  queueMicrotask(() => socket.push(emptyQueryResult))
-                }
-              }
-              callback()
-            },
+        stream: () =>
+          ++opened > 1 ? backend(emptyQueryResult) : (firstSocket = backend(copyInResponse, {
             destroy(error, callback) {
-              if (session === 1) {
-                finishDestroy = () => callback(error)
-              } else {
-                callback(error)
-              }
+              finishDestroy = () => callback(error)
             }
-          })
-          if (session === 1) firstSocket = socket
-          return socket
-        }
+          }))
       })
 
       const failed = yield* Effect.flip(runFirst(pool))
       assert.strictEqual(failed.reason._tag, "ConnectionError")
 
       const successor = yield* Effect.forkChild(pool.use((conn) => conn.query("SELECT 2", [], false)))
-      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 20)))
+      yield* Effect.sleep("20 millis").pipe(TestClock.withLive)
 
       assert.isTrue(firstSocket?.destroyed)
       assert.isFalse(firstSocket?.closed)
       assert.strictEqual(opened, 1)
-      assert.isFalse(successorQueryWritten)
 
       releaseClose()
       yield* Fiber.join(successor)
       assert.strictEqual(opened, 2)
-      assert.isTrue(successorQueryWritten)
     }).pipe(Effect.ensuring(Effect.sync(releaseClose)))
   })
 
@@ -621,18 +613,12 @@ describe("PgPool transport capacity", () => {
       let opened = 0
       let onExpiryCheck: (() => void) | undefined
       const baseClock = yield* Clock.Clock
-      const hookedClock = new Proxy(baseClock, {
-        get(target, prop, receiver) {
-          if (prop === "currentTimeMillisUnsafe") {
-            return () => {
-              const hook = onExpiryCheck
-              onExpiryCheck = undefined
-              hook?.()
-              return target.currentTimeMillisUnsafe()
-            }
-          }
-          const value = Reflect.get(target, prop, receiver)
-          return typeof value === "function" ? value.bind(target) : value
+      const hookedClock: Clock.Clock = Object.assign(Object.create(baseClock), {
+        currentTimeMillisUnsafe() {
+          const hook = onExpiryCheck
+          onExpiryCheck = undefined
+          hook?.()
+          return baseClock.currentTimeMillisUnsafe()
         }
       })
       const pool = yield* PgPool.make({
@@ -642,20 +628,7 @@ describe("PgPool transport capacity", () => {
         prepare: false,
         stream: () => {
           opened++
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                queueMicrotask(() => socket.push(ready))
-              } else if (chunk[0] === 0x50) {
-                queueMicrotask(() => socket.push(emptyQueryResult))
-              }
-              callback()
-            }
-          })
-          return socket
+          return backend(emptyQueryResult)
         }
       }).pipe(Effect.provideService(Clock.Clock, hookedClock))
 

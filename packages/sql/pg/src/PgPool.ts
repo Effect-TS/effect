@@ -218,42 +218,34 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // One permit per open transport. The pool replaces a retired session at
   // once, but the replacement only connects after the old transport closes.
   const transports = Semaphore.makeUnsafe(maxConnections)
-  const acquire = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(Scope.make(), (permitScope) =>
-      Effect.matchCauseEffect(
-        restore(
-          Effect.andThen(
-            Scope.provide(transports.takeScoped(1), permitScope),
-            Effect.suspend(() => {
-              const startTime = clock.currentTimeNanosUnsafe()
-              return Effect.map(PgConnection.make(options), (connection) => [startTime, connection] as const)
-            })
-          )
-        ),
-        {
-          onFailure: (cause) =>
-            Effect.andThen(Scope.close(permitScope, Exit.failCause(cause)), Effect.failCause(cause)),
-          onSuccess: ([startTime, connection]) =>
-            Effect.sync(() => {
-              connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
-              createdAt.set(connection, clock.currentTimeMillisUnsafe())
-              const internals = connectionInternals(connection)
-              internals.onTransportClose(() => runFork(Scope.close(permitScope, Exit.void)))
-              internals.retireHooks.add(() => {
-                deadConnections.add(connection)
-                // `deadConnections` is only read by the next checkout, and a checkout
-                // already waiting for this connection would never get that far. Tell
-                // the pool now so it can replace the connection and admit them.
-                runFork(Pool.invalidate(pool, connection))
-              })
-              // Pinning a shared session has to take it out of circulation, or a
-              // second checkout lands on the connection its own stream is holding.
-              if (multiplex) internals.reserve = Pool.reserve(pool, connection)
-              return connection
-            })
-        }
-      ))
-  )
+  const acquire = Effect.uninterruptibleMask((restore) => {
+    // The permit's own scope: closed once, by a failed connect or by the
+    // transport closing, whichever happens.
+    const permit = Scope.makeUnsafe()
+    return Effect.onError(
+      Effect.flatMap(restore(Scope.provide(transports.takeScoped(1), permit)), () => {
+        const startTime = clock.currentTimeNanosUnsafe()
+        return Effect.map(restore(PgConnection.make(options)), (connection) => {
+          connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
+          createdAt.set(connection, clock.currentTimeMillisUnsafe())
+          const internals = connectionInternals(connection)
+          internals.onTransportClose(() => runFork(Scope.close(permit, Exit.void)))
+          internals.retireHooks.add(() => {
+            deadConnections.add(connection)
+            // `deadConnections` is only read by the next checkout, and a checkout
+            // already waiting for this connection would never get that far. Tell
+            // the pool now so it can replace the connection and admit them.
+            runFork(Pool.invalidate(pool, connection))
+          })
+          // Pinning a shared session has to take it out of circulation, or a
+          // second checkout lands on the connection its own stream is holding.
+          if (multiplex) internals.reserve = Pool.reserve(pool, connection)
+          return connection
+        })
+      }),
+      (cause) => Scope.close(permit, Exit.failCause(cause))
+    )
+  })
 
   pool = yield* Pool.makeWithTTL({
     acquire,
@@ -277,47 +269,62 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
   }
 
-  // A checkout runs per statement, so the case where nothing has died and the
-  // first connection is usable stays a plain flatMap; retrying is the
-  // exception and pays for the loop.
+  // Runs `f` uninterruptibly with a child of the caller's scope. A failure or
+  // interruption closes the child, giving back whatever was acquired into it
+  // instead of leaving that to the caller's scope. Otherwise the child closes
+  // with the caller's scope.
+  const withChildScope = <A>(
+    f: (
+      scope: Scope.Closeable,
+      restore: <X, E, R>(effect: Effect.Effect<X, E, R>) => Effect.Effect<X, E, R>
+    ) => Effect.Effect<A, SqlError>
+  ): Effect.Effect<A, SqlError, Scope.Scope> =>
+    Effect.uninterruptibleMask((restore) =>
+      Effect.flatMap(
+        Effect.scope,
+        (parent) =>
+          Effect.flatMap(
+            Scope.fork(parent),
+            (scope) => Effect.onError(f(scope, restore), (cause) => Scope.close(scope, Exit.failCause(cause)))
+          )
+      )
+    )
+
+  // One checkout attempt, `undefined` when the session is rejected. A rejected
+  // session goes back before its replacement is requested: the replacement
+  // cannot connect while the rejected transport is open.
+  const attempt = withChildScope((scope, restore) =>
+    Effect.flatMap(restore(Scope.provide(Pool.get(pool), scope)), (connection) =>
+      expired(connection)
+        ? Effect.andThen(Pool.invalidate(pool, connection), Effect.as(Scope.close(scope, Exit.void), undefined))
+        : Effect.succeed(connection))
+  )
+
   const retry: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.gen(function*() {
-    const parent = yield* Effect.scope
     while (true) {
       if (deadConnections.size > 0) {
         const dead = Array.from(deadConnections)
         deadConnections.clear()
         yield* Effect.forEach(dead, (connection) => Pool.invalidate(pool, connection), { discard: true })
       }
-      // A rejected session goes back before its replacement is requested: the
-      // replacement cannot connect while the rejected transport is open.
-      const connection = yield* Effect.uninterruptibleMask((restore) =>
-        Effect.flatMap(
-          Scope.fork(parent),
-          (scope) =>
-            Effect.matchCauseEffect(restore(Scope.provide(Pool.get(pool), scope)), {
-              onFailure: (cause) => Effect.andThen(Scope.close(scope, Exit.failCause(cause)), Effect.failCause(cause)),
-              onSuccess: (connection) =>
-                expired(connection)
-                  ? Effect.andThen(
-                    Pool.invalidate(pool, connection),
-                    Effect.as(Scope.close(scope, Exit.void), undefined)
-                  )
-                  : Effect.succeed(connection)
-            })
-        )
-      )
+      const connection = yield* attempt
       if (connection !== undefined) return connection
     }
   })
 
-  const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
-    connectionTTL !== undefined || deadConnections.size > 0 ?
-      retry :
-      Effect.flatMap(Pool.get(pool), (connection) =>
+  // A checkout runs per statement. Without a TTL only a dead session is
+  // rejected, so the case where nothing has died and the first connection is
+  // usable stays a plain flatMap; retrying is the exception and pays for the
+  // loop. A TTL can reject a session whose transport is still open, so every
+  // checkout goes through `retry` to return that lease first.
+  const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = connectionTTL !== undefined
+    ? retry
+    : Effect.suspend(() =>
+      deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
         expired(connection)
           ? Effect.andThen(Pool.invalidate(pool, connection), retry)
           : Effect.succeed(connection))
-  )
+    )
 
   const acquireTimedOut = () =>
     Effect.fail(
@@ -331,23 +338,17 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     )
 
   // The acquisition runs in a child scope, so a timeout or failure gives back
-  // any lease or reservation it already took instead of leaving them to the
-  // caller's scope. On success the child scope closes with the caller's.
+  // any lease or reservation it already took.
   const withAcquireTimeout = <A>(
     effect: Effect.Effect<A, SqlError, Scope.Scope>
   ): Effect.Effect<A, SqlError, Scope.Scope> =>
     acquireTimeout === undefined ?
       effect :
-      Effect.uninterruptibleMask((restore) =>
-        Effect.flatMap(Effect.scope, (parent) =>
-          Effect.flatMap(Scope.fork(parent), (scope) =>
-            Effect.onError(
-              restore(Effect.timeoutOrElse(Scope.provide(effect, scope), {
-                duration: acquireTimeout,
-                orElse: acquireTimedOut
-              })),
-              (cause) => Scope.close(scope, Exit.failCause(cause))
-            )))
+      withChildScope((scope, restore) =>
+        restore(Effect.timeoutOrElse(Scope.provide(effect, scope), {
+          duration: acquireTimeout,
+          orElse: acquireTimedOut
+        }))
       )
 
   const handedOut = Effect.flatMap(checkout, handOut)
