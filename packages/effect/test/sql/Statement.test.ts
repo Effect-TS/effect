@@ -147,6 +147,33 @@ describe("Statement", () => {
       sql`${sql.update({ visits: sql`${7}`, count: typed, note: undefined })}`.compile(),
       ["\"visits\" = $1, \"count\" = {p2: Int32}, \"note\" = $3", [7, 42, null]]
     )
+
+    const valuesOnly = Statement.make(
+      Effect.never,
+      Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => {
+          if (index < 1) {
+            throw new RangeError(`invalid bind index ${index}`)
+          }
+          return `$${index}`
+        },
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onRecordUpdateSingle: (columns, values) => [columns.join(","), values],
+        onCustom: (type, placeholder) =>
+          type.kind === "Typed"
+            ? [placeholder(type.paramA), [type.paramB]]
+            : [`${placeholder(type.paramA)}::text`, [type.paramA]]
+      }),
+      [],
+      undefined
+    )
+    assert.deepStrictEqual(valuesOnly`${valuesOnly.update({ n: 42, count: typed })}`.compile(), [
+      "\"n\",\"count\"",
+      [42, 42]
+    ])
+    assert.throws(() => valuesOnly`${valuesOnly.update({ label: cast })}`.compile(), /label/)
   })
 
   it("binds plain objects shaped like fragments or segments as parameters", () => {

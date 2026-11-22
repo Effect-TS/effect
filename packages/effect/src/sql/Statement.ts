@@ -956,7 +956,6 @@ const CompilerProto = {
     const binds: Array<unknown> = []
     let placeholderCount = 0
     const placeholder = placeholderOverride ?? ((u: unknown) => opts.placeholder(++placeholderCount, u))
-    const placeholderNoIncrement = (u: unknown) => opts.placeholder(placeholderCount, u)
     const placeholders = makePlaceholdersArray(placeholder)
 
     for (let i = 0; i < len; i++) {
@@ -1090,7 +1089,7 @@ const CompilerProto = {
                   segment.value[key],
                   key,
                   opts.onCustom,
-                  placeholderNoIncrement,
+                  placeholderMarker,
                   withoutTransform
                 )[1]
               ),
@@ -1693,6 +1692,8 @@ const generateColumns = (
   }
   return str + ")"
 }
+
+const placeholderMarker = () => "\0"
 
 const extractPrimitive = (
   value: unknown,
