@@ -1693,13 +1693,28 @@ const extractPrimitive = (
     if (value.segments.length === 1) {
       const head = value.segments[0]
       if (head._tag === "Custom") {
-        const compiled = onCustom(head, placeholder, withoutTransform)
-        return compiled[1][0] ?? null
+        let placeholderCount = 0
+        let customPlaceholder: string | undefined
+        const compiled = onCustom(
+          head,
+          (u) => {
+            placeholderCount++
+            customPlaceholder = placeholder(u)
+            return customPlaceholder
+          },
+          withoutTransform
+        )
+        if (
+          compiled !== undefined && placeholderCount === 1 && compiled[0] === customPlaceholder &&
+          compiled[1].length === 1
+        ) {
+          return compiled[1][0] ?? null
+        }
       } else if (head._tag === "Parameter") {
         return head.value
       }
     }
-    throw new TypeError(`SQL fragment for column "${column}" must contain a single parameter or custom segment`)
+    throw new TypeError(`SQL fragment for column "${column}" must compile to a single bound parameter`)
   }
   return value
 }

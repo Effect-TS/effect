@@ -97,20 +97,39 @@ describe("Statement", () => {
     ])
   })
 
-  it("requires a single parameter or custom segment in record value fragments", () => {
+  it("requires a single parameter or single-bind custom segment in record value fragments", () => {
     const sql = Statement.make(
       Effect.never,
       Statement.makeCompiler({
         dialect: "pg",
-        placeholder: (index) => `$${index}`,
+        placeholder: (index, value) =>
+          Statement.isFragment(value) && value.segments[0]?._tag === "Custom" && value.segments[0].kind === "Typed"
+            ? `{p${index}: ${value.segments[0].paramA}}`
+            : `$${index}`,
         onIdentifier: Statement.defaultEscape("\""),
         onRecordUpdate: () => ["", []],
-        onCustom: (type, placeholder) => [placeholder(type.paramA), [JSON.stringify(type.paramA)]]
+        onCustom: (type, placeholder) => {
+          switch (type.kind) {
+            case "Typed":
+              return [placeholder(Statement.fragment([type])), [type.paramB]]
+            case "Now":
+              return ["NOW()", []]
+            case "Sum":
+              return [`${placeholder(type.paramA)} + ${placeholder(type.paramB)}`, [type.paramA, type.paramB]]
+            case "Cast":
+              return [`${placeholder(type.paramA)}::text`, [type.paramA]]
+            default:
+              return ["", []]
+          }
+        }
       }),
       [],
       undefined
     )
-    const json = Statement.fragment([Statement.custom("Json")({ a: 1 }, undefined, undefined)])
+    const typed = Statement.fragment([Statement.custom("Typed")("Int32", 42, undefined)])
+    const now = Statement.fragment([Statement.custom("Now")(undefined, undefined, undefined)])
+    const sum = Statement.fragment([Statement.custom("Sum")(2, 3, undefined)])
+    const cast = Statement.fragment([Statement.custom("Cast")(1, undefined, undefined)])
 
     assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /visits/)
     assert.throws(
@@ -119,9 +138,12 @@ describe("Statement", () => {
     )
     assert.throws(() => sql`${sql.updateValues([{ visits: sql`${5} + 1` }], "v")}`.compile(), /visits/)
     assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /name/)
+    assert.throws(() => sql`${sql.update({ created_at: now })}`.compile(), /created_at/)
+    assert.throws(() => sql`${sql.update({ amount: sum })}`.compile(), /amount/)
+    assert.throws(() => sql`${sql.update({ label: cast })}`.compile(), /label/)
     assert.deepStrictEqual(
-      sql`${sql.update({ visits: sql`${5}`, meta: json, note: undefined })}`.compile(),
-      ["\"visits\" = $1, \"meta\" = $2, \"note\" = $3", [5, "{\"a\":1}", null]]
+      sql`${sql.update({ visits: sql`${5}`, count: typed, note: undefined })}`.compile(),
+      ["\"visits\" = $1, \"count\" = {p2: Int32}, \"note\" = $3", [5, 42, null]]
     )
   })
 
