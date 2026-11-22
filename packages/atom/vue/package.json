@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "effect": "workspace:^",
-    "vue": "^3.5.45"
+    "vue": "^3.5.46"
   },
   "peerDependencies": {
     "effect": "workspace:^",

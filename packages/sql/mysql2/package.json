@@ -61,7 +61,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@testcontainers/mysql": "^12.2.1",
+    "@testcontainers/mysql": "^12.2.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
