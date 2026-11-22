@@ -22,6 +22,13 @@ describe("Skill", () => {
       })
     )
 
+    assert.throws(() =>
+      Skill.make({
+        frontmatter: { name: "refunds", description: "Process customer refunds", revision: 1n as any },
+        instructions: ""
+      })
+    )
+
     for (const path of ["../secret.txt", "/etc/passwd", "SKILL.md"]) {
       assert.throws(() =>
         Skill.make({
@@ -35,23 +42,32 @@ describe("Skill", () => {
 
   it.effect("round-trips through toFiles and fromFiles, and rejects invalid file bundles", () =>
     Effect.gen(function*() {
+      const inputFiles: Record<string, string | Uint8Array> = {
+        "references/policy.md": "Refunds over $100 require approval.",
+        "assets/logo.png": PNG
+      }
+      Object.defineProperty(inputFiles, "__proto__", {
+        value: "proto-file",
+        enumerable: true,
+        writable: true,
+        configurable: true
+      })
       const skill = Skill.make({
         frontmatter: {
           name: "refunds",
           description: "yes: it's #1",
-          metadata: { version: "1.0" }
+          metadata: { version: "1.0" },
+          "#note": "retain"
         },
         instructions: "Read references/policy.md before issuing a refund.",
-        files: {
-          "references/policy.md": "Refunds over $100 require approval.",
-          "assets/logo.png": PNG
-        }
+        files: inputFiles
       })
 
       const files = Skill.toFiles(skill)
       assert.isString(files["SKILL.md"])
       const roundTripped = yield* Skill.fromFiles(files)
       assert.deepStrictEqual(roundTripped, skill)
+      assert.isTrue(Object.hasOwn(roundTripped.files, "__proto__"))
 
       const missingSkillMd = yield* Effect.flip(Skill.fromFiles({ "references/policy.md": "orphan" }))
       assert.isTrue(Cause.isIllegalArgumentError(missingSkillMd))

@@ -496,6 +496,8 @@ describe("McpServer", () => {
         .toBe<
           Layer.Layer<never, Cause.IllegalArgumentError, McpServer.McpServer>
         >()
+      expect<Parameters<typeof McpServer.registerSkill>>().type.toBe<[options: McpServer.SkillOptions]>()
+      expect<Parameters<typeof McpServer.skill>>().type.toBe<[options: McpServer.SkillOptions]>()
     })
   })
 })

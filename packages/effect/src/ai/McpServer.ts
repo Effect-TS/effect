@@ -3998,7 +3998,6 @@ const toSkillSourceFile = (path: string, file: SkillFile): McpSkills.SourceFile 
  * @since 4.1.1
  */
 export const registerSkill: {
-  (options: SkillOptions): Effect.Effect<void, Cause.IllegalArgumentError, McpServer>
   (
     skill: Skill.Skill,
     options: {
@@ -4006,6 +4005,7 @@ export const registerSkill: {
       readonly annotations?: Context.Context<never> | undefined
     }
   ): Effect.Effect<void, Cause.IllegalArgumentError, McpServer>
+  (options: SkillOptions): Effect.Effect<void, Cause.IllegalArgumentError, McpServer>
 } = Effect.fnUntraced(function*(
   skillOrOptions: SkillOptions | Skill.Skill,
   skillOptions?: {
@@ -4098,7 +4098,6 @@ export const registerSkill: {
  * @since 4.1.1
  */
 export const skill: {
-  (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
   (
     skill: Skill.Skill,
     options: {
@@ -4106,6 +4105,7 @@ export const skill: {
       readonly annotations?: Context.Context<never> | undefined
     }
   ): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
+  (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
 } = (
   skillOrOptions: SkillOptions | Skill.Skill,
   skillOptions?: {

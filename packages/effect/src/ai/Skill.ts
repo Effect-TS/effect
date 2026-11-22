@@ -15,7 +15,7 @@ import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import * as SkillInternal from "./internal/skill.ts"
 
-const UnknownObject = Schema.Record(Schema.String, Schema.Unknown)
+const JsonObject = Schema.Record(Schema.String, Schema.Json)
 
 /**
  * Schema for the YAML frontmatter of an Agent Skill's `SKILL.md`, as the
@@ -58,7 +58,7 @@ export const Frontmatter = Schema.StructWithRest(
      */
     "allowed-tools": Schema.optionalKey(Schema.String)
   }),
-  [UnknownObject]
+  [JsonObject]
 )
 
 /**
@@ -161,7 +161,7 @@ export const toFiles = (self: Skill): Record<string, string | Uint8Array> => {
   const lines: Array<string> = []
   for (const [key, value] of Object.entries(self.frontmatter)) {
     if (value !== undefined) {
-      lines.push(`${key}: ${JSON.stringify(value)}`)
+      lines.push(`${JSON.stringify(key)}: ${JSON.stringify(value)}`)
     }
   }
   const skillMd = `---\n${lines.join("\n")}\n---\n\n${self.instructions}`
@@ -214,7 +214,12 @@ export const fromFiles = (
     const supportingFiles: Record<string, string | Uint8Array> = {}
     for (const [path, content] of Object.entries(files)) {
       if (path !== "SKILL.md") {
-        supportingFiles[path] = content
+        Object.defineProperty(supportingFiles, path, {
+          value: content,
+          enumerable: true,
+          writable: true,
+          configurable: true
+        })
       }
     }
     return decodeSkill({

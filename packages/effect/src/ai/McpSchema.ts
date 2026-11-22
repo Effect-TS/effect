@@ -1429,7 +1429,7 @@ export class SkillResource extends Schema.Class<SkillResource>(
  * @category schemas
  * @since 4.1.1
  */
-export const SkillFrontmatter = SkillModule.Frontmatter
+export const SkillFrontmatter = Schema.StructWithRest(SkillModule.Frontmatter.schema, [UnknownObject])
 
 /**
  * The YAML frontmatter of an Agent Skill's `SKILL.md`.
@@ -1438,7 +1438,7 @@ export const SkillFrontmatter = SkillModule.Frontmatter
  * @category models
  * @since 4.1.1
  */
-export type SkillFrontmatter = SkillModule.Frontmatter
+export type SkillFrontmatter = typeof SkillFrontmatter.Type
 
 /**
  * Schema for an Agent Skill served under the MCP Skills extension (SEP-2640),
