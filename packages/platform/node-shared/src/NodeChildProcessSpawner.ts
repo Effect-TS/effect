@@ -114,10 +114,7 @@ const handleInputErrors = (writable: Writable): void => {
 const hasExited = (childProcess: NodeChildProcess.ChildProcess): boolean =>
   childProcess.exitCode !== null || childProcess.signalCode !== null
 
-/**
- * Only a detached POSIX child leads a process group of its own. A non-detached
- * child shares its parent's group, and Windows has no process groups.
- */
+/** Only a detached POSIX child leads its own process group. */
 const ownsProcessGroup = (command: ChildProcess.StandardCommand): boolean =>
   globalThis.process.platform !== "win32" && command.options.detached !== false
 

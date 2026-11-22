@@ -82,7 +82,6 @@ describe("Windows cleanup", { concurrent: false }, () => {
   }
 })
 
-/** Runs `spawn` in its own scope and asserts that the returned child's process group was never signalled. */
 const assertNoProcessGroupSignals = Effect.fnUntraced(
   function*<E, R>(spawn: Effect.Effect<{ readonly pid: number }, E, R>) {
     const kill = vi.spyOn(process, "kill")
