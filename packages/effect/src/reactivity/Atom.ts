@@ -922,19 +922,14 @@ function makeStream<A, E>(
   if (previous._tag === "Some" && Registry.consumeSkipInitialRun(ctx)) {
     return previous.value
   }
-  const placeholder = previous._tag === "Some"
-    ? AsyncResult.waitingFrom(previous)
-    : AsyncResult.waiting(initialValue)
   services = Context.add(services, AtomRegistry, ctx.registry)
 
-  let emitted = false
   const run = Effect.scopedWith((scope) =>
     Effect.flatMap(Channel.toPullScoped(stream.channel, scope), (pull) =>
       Effect.whileLoop({
         while: constTrue,
         body: () => pull,
         step(arr) {
-          emitted = true
           ctx.setSelf(AsyncResult.success(Arr.lastNonEmpty(arr), {
             waiting: true
           }))
@@ -944,13 +939,8 @@ function makeStream<A, E>(
     Effect.catchCause((cause) => {
       if (Pull.isDoneCause(cause)) {
         const current = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
-        const wrote = emitted || (
-          current._tag === "Some" &&
-          current.value !== placeholder &&
-          (previous._tag === "None" || current.value !== previous.value)
-        )
         pipe(
-          wrote ? current : Option.none(),
+          Registry.hasSetSelf(ctx) ? current : Option.none(),
           Option.flatMap(AsyncResult.value),
           Option.match({
             onNone: () =>
@@ -984,7 +974,10 @@ function makeStream<A, E>(
     ctx.addFinalizer(cancel)
   }
 
-  return placeholder
+  if (previous._tag === "Some") {
+    return AsyncResult.waitingFrom(previous)
+  }
+  return AsyncResult.waiting(initialValue)
 }
 
 // -----------------------------------------------------------------------------

@@ -1034,6 +1034,11 @@ export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
     (keptParents === undefined || keptParents.every(([parent, lifetime]) => parent.lifetime === lifetime))
 }
 
+/**
+ * @internal
+ */
+export const hasSetSelf = (ctx: Atom.AtomContext): boolean => (ctx as Lifetime<any>).didSetSelf === true
+
 interface Lifetime<A> extends Atom.AtomContext {
   isFn: boolean
   readonly node: NodeImpl<A>
@@ -1044,10 +1049,14 @@ interface Lifetime<A> extends Atom.AtomContext {
   failure: unknown
   finalizers: Array<() => void> | undefined
   disposed: boolean
+  didSetSelf: boolean
   readonly dispose: () => void
 }
 
-const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "isFn" | "reads" | "failure"> = {
+const LifetimeProto: Omit<
+  Lifetime<any>,
+  "node" | "finalizers" | "disposed" | "didSetSelf" | "isFn" | "reads" | "failure"
+> = {
   get registry(): RegistryImpl {
     return (this as Lifetime<any>).node.registry
   },
@@ -1171,6 +1180,7 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
 
   setSelf<A>(this: Lifetime<any>, a: A): void {
     if (this.disposed) return
+    this.didSetSelf = true
     this.node.setValue(a as any)
   },
 
@@ -1226,6 +1236,7 @@ const makeLifetime = <A>(node: NodeImpl<A>): Lifetime<A> => {
   Object.setPrototypeOf(get, LifetimeProto)
   get.isFn = false
   get.disposed = false
+  get.didSetSelf = false
   get.finalizers = undefined
   get.node = node
   get.reads = new Set<NodeImpl<any>>()
