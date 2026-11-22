@@ -68,7 +68,7 @@
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^8.0.0",
     "effect": "workspace:^",
-    "jsdom": "^31.0.1",
+    "jsdom": "~30.0.1",
     "solid-js": "^1.9.19"
   }
 }
