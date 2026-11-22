@@ -2246,6 +2246,11 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
   const toolParts: Array<ToolMessagePart> = []
   const priorToolParts: Array<ToolMessagePart> = []
   const toolCallIds = new Set<string>()
+  for (const part of parts) {
+    if (part.type === "tool-call") {
+      toolCallIds.add(part.id)
+    }
+  }
 
   const activeTextDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
   const activeReasoningDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
@@ -2324,7 +2329,6 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
       // Tool Call Parts
       case "tool-call": {
-        toolCallIds.add(part.id)
         assistantParts.push(makePart("tool-call", {
           id: part.id,
           name: part.name,
@@ -2338,7 +2342,6 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {
-          // A tool call always precedes its results in the same response
           const target = part.providerExecuted === true
             ? assistantParts
             : toolCallIds.has(part.id)
