@@ -699,102 +699,52 @@ describe("WorkflowEngine", () => {
       )
     }))
 
-  it.effect("layerMemory dispatches sibling children when DurableDeferred.await is first", () =>
-    Effect.gen(function*() {
-      let started = 0
-      const Gate = DurableDeferred.make("WorkflowEngine/WaitFirstGate")
-      const Parent = Workflow.make("WorkflowEngine/WaitFirstParent", {
-        payload: {},
-        idempotencyKey: () => "parent"
-      })
-      const Child = Workflow.make("WorkflowEngine/WaitFirstChild", {
-        payload: { index: Schema.Number },
-        idempotencyKey: ({ index }) => String(index)
-      })
-      const ParentLayer = Parent.toLayer(() =>
-        Effect.all(
-          [DurableDeferred.await(Gate), Child.execute({ index: 0 })],
-          { concurrency: "unbounded", discard: true }
-        )
-      )
-      const ChildLayer = Child.toLayer(() =>
-        Effect.sync(() => {
-          started++
+  for (const discard of [false, true]) {
+    it.effect(
+      `layerMemory dispatches ${discard ? "discarded children before" : "a child after"} a suspending durable wait`,
+      () =>
+        Effect.gen(function*() {
+          let started = 0
+          const indexes = discard ? [0, 1, 2, 3] : [0]
+          const Gate = DurableDeferred.make("WorkflowEngine/SiblingDispatchGate")
+          const Parent = Workflow.make(`WorkflowEngine/SiblingDispatchParent/${discard}`, {
+            payload: {},
+            idempotencyKey: () => "parent"
+          })
+          const Child = Workflow.make(`WorkflowEngine/SiblingDispatchChild/${discard}`, {
+            payload: { index: Schema.Number },
+            idempotencyKey: ({ index }) => String(index)
+          })
+          const ParentLayer = Parent.toLayer(() => {
+            const children = indexes.map((index) => Child.execute({ index }, { discard }))
+            const wait = DurableDeferred.await(Gate)
+            return Effect.all(discard ? [...children, wait] : [wait, ...children], {
+              concurrency: "unbounded",
+              discard: true
+            })
+          })
+          const ChildLayer = Child.toLayer(() =>
+            Effect.sync(() => {
+              started++
+            })
+          )
+          yield* Effect.gen(function*() {
+            const executionId = yield* Parent.execute({}, { discard: true })
+            yield* pollUntil(Parent, executionId, "Suspended")
+            assert.strictEqual(started, indexes.length)
+            yield* DurableDeferred.succeed(Gate, {
+              token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
+              value: void 0
+            })
+            const result = yield* pollUntil(Parent, executionId, "Complete")
+            assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+            assert.strictEqual(started, indexes.length)
+          }).pipe(
+            Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+          )
         })
-      )
-      yield* Effect.gen(function*() {
-        const executionId = yield* Parent.execute({}, { discard: true })
-        let result = yield* Parent.poll(executionId)
-        while (Option.isNone(result) || result.value._tag !== "Suspended") {
-          yield* Effect.yieldNow
-          result = yield* Parent.poll(executionId)
-        }
-        assert.strictEqual(started, 1)
-
-        yield* DurableDeferred.succeed(Gate, {
-          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
-          value: void 0
-        })
-        while (Option.isNone(result) || result.value._tag !== "Complete") {
-          yield* Effect.yieldNow
-          result = yield* Parent.poll(executionId)
-        }
-        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.void }))
-        assert.strictEqual(started, 1)
-      }).pipe(
-        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
-      )
-    }))
-
-  it.effect("layerMemory dispatches discarded sibling children before a DurableDeferred.await suspends", () =>
-    Effect.gen(function*() {
-      let started = 0
-      const Gate = DurableDeferred.make("WorkflowEngine/DiscardLastGate")
-      const Parent = Workflow.make("WorkflowEngine/DiscardLastParent", {
-        payload: {},
-        idempotencyKey: () => "parent"
-      })
-      const Child = Workflow.make("WorkflowEngine/DiscardLastChild", {
-        payload: { index: Schema.Number },
-        idempotencyKey: ({ index }) => String(index)
-      })
-      const ParentLayer = Parent.toLayer(() =>
-        Effect.all(
-          [
-            ...[0, 1, 2, 3].map((index) => Child.execute({ index }, { discard: true })),
-            DurableDeferred.await(Gate)
-          ],
-          { concurrency: "unbounded", discard: true }
-        )
-      )
-      const ChildLayer = Child.toLayer(() =>
-        Effect.sync(() => {
-          started++
-        })
-      )
-      yield* Effect.gen(function*() {
-        const executionId = yield* Parent.execute({}, { discard: true })
-        let result = yield* Parent.poll(executionId)
-        while (Option.isNone(result) || result.value._tag !== "Suspended") {
-          yield* Effect.yieldNow
-          result = yield* Parent.poll(executionId)
-        }
-        assert.strictEqual(started, 4)
-
-        yield* DurableDeferred.succeed(Gate, {
-          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
-          value: void 0
-        })
-        while (Option.isNone(result) || result.value._tag !== "Complete") {
-          yield* Effect.yieldNow
-          result = yield* Parent.poll(executionId)
-        }
-        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.void }))
-        assert.strictEqual(started, 4)
-      }).pipe(
-        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
-      )
-    }))
+    )
+  }
 
   it.effect(
     "layerMemory cancels a losing DurableDeferred.await race arm while a sibling activity is running",
