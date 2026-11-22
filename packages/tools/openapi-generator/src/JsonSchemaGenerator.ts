@@ -19,7 +19,6 @@
  */
 import * as Arr from "effect/Array"
 import * as Codegen from "effect/Codegen"
-import * as Equal from "effect/Equal"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
@@ -209,20 +208,12 @@ function prepareSchemas(
     rootSchemas,
     (schema, index) => options?.binarySchemas?.has(names[index]) ? Schema.Uint8Array.ast : schema.ast
   ))
+  const multipart = multipartRepresentation(representation.references, options?.multipartSchemaRefs)
   return {
-    schemas: Object.fromEntries(names.map((name, index) => [
-      name,
-      multipartRepresentation(
-        name,
-        representation.representations[index],
-        representation.references,
-        options?.multipartSchemaRefs
-      )
-    ])),
-    references: Rec.map(
-      representation.references,
-      (schema, name) => multipartRepresentation(name, schema, representation.references, options?.multipartSchemaRefs)
-    )
+    schemas: Object.fromEntries(
+      names.map((name, index) => [name, multipart(representation.representations[index], name)])
+    ),
+    references: Rec.map(representation.references, multipart)
   }
 }
 
@@ -235,38 +226,17 @@ function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
   }
 }
 
+// Renders the multipart file schemas as their runtime types. Effect index signatures also check declared
+// properties, so every open object is widened to admit its own files.
 function multipartRepresentation(
-  name: string | undefined,
-  schema: SchemaRepresentation.Representation,
-  references: Readonly<Record<string, SchemaRepresentation.Representation>>,
+  references: SchemaRepresentation.References,
   refs: MultipartSchemaRefs | undefined
-): SchemaRepresentation.Representation {
-  if (refs === undefined) return schema
-  const code = name === undefined ? undefined : multipartCode(name, refs)
-  if (code === undefined) return admitMultipartFiles(schema, references, refs)
-  return {
-    _tag: "Declaration",
-    typeParameters: [],
-    checks: [],
-    annotations: {
-      toCode: () => ({
-        ...code,
-        importDeclarations: refs?.kind === "httpapi" ? ["import { Multipart } from \"effect/http\""] : []
-      })
-    }
-  }
-}
-
-// Effect index signatures also check declared properties, so an open object has to admit its own files.
-function admitMultipartFiles(
-  schema: SchemaRepresentation.Representation,
-  references: Readonly<Record<string, SchemaRepresentation.Representation>>,
-  refs: MultipartSchemaRefs
-): SchemaRepresentation.Representation {
-  const hasFile = (schema: SchemaRepresentation.Representation, seen = new Set<string>()): boolean => {
+): (schema: SchemaRepresentation.Representation, name: string) => SchemaRepresentation.Representation {
+  if (refs === undefined) return (schema) => schema
+  const hasFile = (schema: SchemaRepresentation.Representation, seen: Set<string>): boolean => {
     switch (schema._tag) {
       case "Reference": {
-        if (schema.$ref === refs.singleFile || (refs.kind === "httpapi" && schema.$ref === refs.files)) return true
+        if (multipartCode(schema.$ref, refs) !== undefined) return true
         if (seen.has(schema.$ref) || !Object.hasOwn(references, schema.$ref)) return false
         seen.add(schema.$ref)
         return hasFile(references[schema.$ref], seen)
@@ -282,32 +252,31 @@ function admitMultipartFiles(
         return false
     }
   }
-  const go = (schema: SchemaRepresentation.Representation): SchemaRepresentation.Representation => {
+  const admitFiles = (schema: SchemaRepresentation.Representation): SchemaRepresentation.Representation => {
     switch (schema._tag) {
       case "Suspend":
-        return { ...schema, thunk: go(schema.thunk) }
+        return { ...schema, thunk: admitFiles(schema.thunk) }
       case "Union":
-        return { ...schema, types: schema.types.map(go) }
+        return { ...schema, types: schema.types.map(admitFiles) }
       case "Arrays":
         return {
           ...schema,
-          elements: schema.elements.map((element) => ({ ...element, type: go(element.type) })),
-          rest: schema.rest.map(go)
+          elements: schema.elements.map((element) => ({ ...element, type: admitFiles(element.type) })),
+          rest: schema.rest.map(admitFiles)
         }
       case "Objects": {
         const propertySignatures = schema.propertySignatures.map((property) => ({
           ...property,
-          type: go(property.type)
+          type: admitFiles(property.type)
         }))
-        const files = Arr.dedupeWith(
-          propertySignatures.map((property) => property.type).filter((type) => hasFile(type)),
-          Equal.equals
+        const files = Arr.dedupe(
+          propertySignatures.map((property) => property.type).filter((type) => hasFile(type, new Set()))
         )
         return {
           ...schema,
           propertySignatures,
           indexSignatures: schema.indexSignatures.map((index) => {
-            const type = go(index.type)
+            const type = admitFiles(index.type)
             return {
               ...index,
               type: files.length === 0 ? type : { _tag: "Union", types: [type, ...files], checks: [] }
@@ -319,16 +288,24 @@ function admitMultipartFiles(
         return schema
     }
   }
-  return go(schema)
+  return (schema, name) => {
+    const code = multipartCode(name, refs)
+    if (code === undefined) return admitFiles(schema)
+    return {
+      _tag: "Declaration",
+      typeParameters: [],
+      checks: [],
+      annotations: {
+        toCode: () => ({
+          ...code,
+          importDeclarations: refs.kind === "httpapi" ? ["import { Multipart } from \"effect/http\""] : []
+        })
+      }
+    }
+  }
 }
 
-function multipartCode(
-  $ref: string,
-  refs: MultipartSchemaRefs | undefined
-): SchemaRepresentation.Code | undefined {
-  if (refs === undefined) {
-    return undefined
-  }
+function multipartCode($ref: string, refs: MultipartSchemaRefs): SchemaRepresentation.Code | undefined {
   if ($ref === refs.singleFile) {
     return refs.kind === "httpapi"
       ? { Type: "Multipart.PersistedFile", runtime: "Multipart.SingleFileSchema" }
