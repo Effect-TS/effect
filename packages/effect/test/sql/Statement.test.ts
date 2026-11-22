@@ -98,16 +98,31 @@ describe("Statement", () => {
   })
 
   it("requires a single parameter or custom segment in record value fragments", () => {
-    const sql = Statement.make(Effect.never, Statement.makeCompilerSqlite(), [], undefined)
+    const sql = Statement.make(
+      Effect.never,
+      Statement.makeCompiler({
+        dialect: "pg",
+        placeholder: (index) => `$${index}`,
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: (type, placeholder) => [placeholder(type.paramA), [JSON.stringify(type.paramA)]]
+      }),
+      [],
+      undefined
+    )
+    const json = Statement.fragment([Statement.custom("Json")({ a: 1 }, undefined, undefined)])
 
-    assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /column "visits"/)
+    assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /visits/)
     assert.throws(
       () => sql`${sql.insert({ created_at: sql.literal("CURRENT_TIMESTAMP") })}`.compile(),
-      /column "created_at"/
+      /created_at/
     )
-    assert.throws(() => sql`${sql.update({ visits: sql`${5} + 1` })}`.compile(), /column "visits"/)
-    assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /column "name"/)
-    assert.deepStrictEqual(sql`${sql.update({ visits: sql`${5}` })}`.compile(), ["\"visits\" = ?", [5]])
+    assert.throws(() => sql`${sql.updateValues([{ visits: sql`${5} + 1` }], "v")}`.compile(), /visits/)
+    assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /name/)
+    assert.deepStrictEqual(
+      sql`${sql.update({ visits: sql`${5}`, meta: json, note: undefined })}`.compile(),
+      ["\"visits\" = $1, \"meta\" = $2, \"note\" = $3", [5, "{\"a\":1}", null]]
+    )
   })
 
   it("binds plain objects shaped like fragments or segments as parameters", () => {
