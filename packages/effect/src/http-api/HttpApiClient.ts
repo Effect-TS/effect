@@ -46,6 +46,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as HttpApiPath from "./internal/path.ts"
+import { getRedactedKeys } from "./internal/redactedKeys.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -514,7 +515,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
         const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
-        const redactedParams = HttpApi.getEndpointRedactedParams(api, group, endpoint)
+        const redactedParams: ReadonlyArray<string> | "*" = getRedactedKeys(endpoint.params) === undefined
+          ? "*"
+          : HttpApi.getEndpointRedactedParams(api, group, endpoint)
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -535,7 +538,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const params = (yield* encodeParams(request.params)) as Record<string, string>
               const sent = makeUrl(params)
               httpRequest = HttpClientRequest.setUrl(httpRequest, sent)
-              if (redactedParams.length > 0) {
+              if (redactedParams === "*" || redactedParams.length > 0) {
                 redactedPath = { sent: fullPath(sent), redacted: fullPath(makeUrl(params, redactedParams)) }
               }
             }
@@ -987,17 +990,19 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
-    return (_: any, _redacted?: ReadonlyArray<string>) => path
+    return (_: any, _redacted?: ReadonlyArray<string> | "*") => path
   }
   const paramNames = HttpApiPath.getParamNames(schema)
-  return (params: Record<string, string | undefined>, redacted?: ReadonlyArray<string>) =>
+  return (params: Record<string, string | undefined>, redacted?: ReadonlyArray<string> | "*") =>
     HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
       if (value === "." || value === "..") {
         // dot segments survive encoding and would be resolved by URL normalization
         throw new Error(`Invalid path parameter: ${key}`)
       }
-      if (value !== undefined) return redacted?.includes(key) ? "REDACTED" : encodeURIComponent(value)
+      if (value !== undefined) {
+        return redacted === "*" || redacted?.includes(key) ? "REDACTED" : encodeURIComponent(value)
+      }
       if (optional) return undefined
       throw new Error(`Missing path parameter: ${key}`)
     })
