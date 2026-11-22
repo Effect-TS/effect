@@ -115,13 +115,10 @@ const hasExited = (childProcess: NodeChildProcess.ChildProcess): boolean =>
   childProcess.exitCode !== null || childProcess.signalCode !== null
 
 /**
- * A non-detached leader shares its parent's process group, so once it has
- * exited there is no group of its own left to signal or poll.
+ * A non-detached child shares its parent's process group, so it does not lead
+ * a process group of its own to signal or poll.
  */
-const ownsProcessGroup = (
-  command: ChildProcess.StandardCommand,
-  childProcess: NodeChildProcess.ChildProcess
-): boolean => command.options.detached !== false || !hasExited(childProcess)
+const ownsProcessGroup = (command: ChildProcess.StandardCommand): boolean => command.options.detached !== false
 
 /**
  * The process group exists but has no member that can be signalled, such as
@@ -138,7 +135,7 @@ const isProcessAlive = (
   if (!hasExited(childProcess)) {
     return true
   }
-  if (globalThis.process.platform === "win32" || !ownsProcessGroup(command, childProcess)) {
+  if (globalThis.process.platform === "win32" || !ownsProcessGroup(command)) {
     return false
   }
   try {
@@ -588,7 +585,7 @@ const make = Effect.gen(function*() {
     options: ChildProcess.KillOptions | undefined
   ) {
     const signalGroup = (signal: NodeJS.Signals) =>
-      ownsProcessGroup(command, childProcess) ?
+      ownsProcessGroup(command) ?
         killProcessGroup(command, childProcess, signal).pipe(
           Effect.catch((error) =>
             // Only zombies remain in the exited leader's group, so nothing is left to signal.
