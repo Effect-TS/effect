@@ -1,6 +1,6 @@
 import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Fiber, Latch, Option, Queue, Redacted, References, Tracer } from "effect"
+import { Cause, Clock, Effect, Fiber, Latch, Option, Queue, Redacted, References, Tracer } from "effect"
 import type * as Duration from "effect/Duration"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Scope from "effect/Scope"
@@ -616,9 +616,25 @@ describe("PgPool transport capacity", () => {
     }).pipe(Effect.ensuring(Effect.sync(releaseClose)))
   })
 
-  it.effect("does not strand an expired lease when a TTL checkout is interrupted in a long-lived scope", () =>
+  it.live("does not strand an expired lease when a TTL checkout is interrupted at the expiry check", () =>
     Effect.gen(function*() {
       let opened = 0
+      let onExpiryCheck: (() => void) | undefined
+      const baseClock = yield* Clock.Clock
+      const hookedClock = new Proxy(baseClock, {
+        get(target, prop, receiver) {
+          if (prop === "currentTimeMillisUnsafe") {
+            return () => {
+              const hook = onExpiryCheck
+              onExpiryCheck = undefined
+              hook?.()
+              return target.currentTimeMillisUnsafe()
+            }
+          }
+          const value = Reflect.get(target, prop, receiver)
+          return typeof value === "function" ? value.bind(target) : value
+        }
+      })
       const pool = yield* PgPool.make({
         username: "test",
         maxConnections: 1,
@@ -641,12 +657,21 @@ describe("PgPool transport capacity", () => {
           })
           return socket
         }
-      })
+      }).pipe(Effect.provideService(Clock.Clock, hookedClock))
 
       yield* pool.use((conn) => conn.query("SELECT 1", [], false))
-      const interrupted = yield* Effect.forkChild(pool.get)
-      yield* Fiber.interrupt(interrupted)
-      yield* pool.use((conn) => conn.query("SELECT 2", [], false))
-      assert.isAtLeast(opened, 2)
+
+      let interruptedAtExpiry = false
+      let checkout!: Fiber.Fiber<unknown, unknown>
+      onExpiryCheck = () => {
+        interruptedAtExpiry = true
+        checkout.interruptUnsafe()
+      }
+      checkout = yield* Effect.forkChild(pool.get)
+      yield* Fiber.await(checkout)
+      assert.isTrue(interruptedAtExpiry)
+
+      yield* pool.use((conn) => conn.query("SELECT 2", [], false)).pipe(Effect.timeout("250 millis"))
+      assert.strictEqual(opened, 2)
     }))
 })
