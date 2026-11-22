@@ -47,7 +47,7 @@ The package ships four Durable Object classes. Re-export them from your Worker e
 
 ```ts
 // src/worker.ts
-import { CloudflareCluster, CloudflareDurableObjects } from "@effect/platform-cloudflare"
+import { CloudflareCluster, CloudflareDurableObjects, CloudflareRuntime } from "@effect/platform-cloudflare"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { Entity, Singleton } from "effect/cluster"
 import { Rpc } from "effect/rpc"
@@ -81,7 +81,8 @@ const clusterLayer = (env: Env) =>
       workflowNamespace: env.CLUSTER_WORKFLOW,
       queueNamespace: env.CLUSTER_QUEUE,
       singletonNamespace: env.CLUSTER_SINGLETON
-    }))
+    })),
+    Layer.provideMerge(CloudflareRuntime.layer)
   )
 
 // Build registration lazily inside the first Worker or Durable Object event.
@@ -106,6 +107,10 @@ const initialize = CloudflareDurableObjects.setInitializer(async (env: Env) => {
 })
 ```
 
+The example opts in to `CloudflareRuntime.layer`; `CloudflareCluster.layer` does not install a scheduler or tracer. Provide the runtime layer **under** the cluster layer with `Layer.provideMerge`. Merging them side by side puts both in the result, but handlers capture the stock services while the cluster layer is built. Return the resulting context from `setInitializer` so the four Durable Object classes use the same services as the Worker.
+
+`CloudflareRuntime.layer` installs `CloudflareScheduler` and `CloudflareTracer` independently where supported, leaving the Effect default in place for an unsupported service. To use a different tracer, replace `CloudflareRuntime.layer` with `Layer.merge(CloudflareScheduler.layer, MyTracerLayer)`.
+
 The initializer is the readiness contract shared by all four Durable Object
 classes. Each cold object waits for it through `blockConcurrencyWhile` before
 handling a request or alarm, and concurrent cold objects still build the
@@ -121,11 +126,14 @@ seconds. A slow build can therefore run more than once in an isolate, and the
 initializer must tolerate that. The example above keeps the first runtime to
 finish and disposes any other.
 Worker request handlers should call the same `initialize(env)` function before
-using `application`.
+using `application`. A request that runs effects while the runtime is still
+building does not get the context's scheduler; the `CloudflareScheduler`
+documentation covers that case.
 
 Applications whose registrations are complete synchronously during module
-evaluation can keep the previous bare re-export pattern without an initializer.
-Asynchronous layer builds must register one before serving traffic.
+evaluation can keep the bare re-export pattern without an initializer. In that
+case the Durable Objects start with an empty context and use the Effect defaults.
+Asynchronous layer builds must register an initializer before serving traffic.
 
 The Cron Trigger wakes the named singleton through its same-Worker binding.
 The call returns after one run, allowing the Durable Object to hibernate; do
@@ -516,7 +524,7 @@ Turn traces on in the Wrangler configuration:
 }
 ```
 
-Then provide the tracer layer. It uses `tracing` from `cloudflare:workers`, so there is nothing to pass in. The same layer works in Worker handlers and in Durable Objects.
+If you already provide `CloudflareRuntime.layer`, no additional layer is needed: it installs the tracer when supported. To enable tracing alone, provide `CloudflareTracer.layer` as shown below.
 
 ```ts
 import { CloudflareTracer } from "@effect/platform-cloudflare"

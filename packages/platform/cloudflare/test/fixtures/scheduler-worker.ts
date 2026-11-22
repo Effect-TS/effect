@@ -1,6 +1,21 @@
+import * as CloudflareDurableObjects from "@effect/platform-cloudflare/CloudflareDurableObjects"
+import * as CloudflareRuntime from "@effect/platform-cloudflare/CloudflareRuntime"
 import { CloudflareScheduler } from "@effect/platform-cloudflare/CloudflareScheduler"
-import { Deferred, Effect, type Fiber } from "effect"
+import { Deferred, Effect, type Fiber, Layer, Logger, ManagedRuntime, Scheduler } from "effect"
 import { AsyncLocalStorage } from "node:async_hooks"
+
+export { ClusterSingleton } from "@effect/platform-cloudflare/CloudflareDurableObjects"
+
+let usedInitializerScheduler = false
+const schedulerProbe = Logger.layer([
+  Effect.map(Scheduler.Scheduler, (expected) =>
+    Logger.make(({ fiber }) => {
+      usedInitializerScheduler = expected instanceof CloudflareScheduler &&
+        fiber.getRef(Scheduler.Scheduler) === expected
+    }))
+]).pipe(Layer.provideMerge(CloudflareRuntime.layer))
+const runtime = ManagedRuntime.make(schedulerProbe)
+CloudflareDurableObjects.setInitializer(() => runtime.context())
 
 declare const WebSocketPair: new() => Record<0 | 1, { readyState: number }>
 
@@ -28,8 +43,13 @@ let fiber: Fiber.Fiber<unknown> | undefined
 
 // The /park request owns a fiber that a /wake request wakes
 export default {
-  async fetch(request: Request) {
+  async fetch(request: Request, env: { SINGLETON: { getByName(name: string): { wake(): Promise<unknown> } } }) {
     switch (new URL(request.url).pathname) {
+      case "/singleton-scheduler":
+        // An unregistered singleton logs its failure from the wake method itself,
+        // rather than from a handler with its own captured registration context.
+        await env.SINGLETON.getByName("Singleton/unregistered").wake()
+        return Response.json(usedInitializerScheduler)
       case "/park":
         return als.run("owner", () => {
           // I/O objects can only be used by the request that created them

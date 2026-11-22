@@ -583,8 +583,8 @@ const makeHandlerPermit = (semaphore: Semaphore.Semaphore | undefined): HandlerP
 
 /**
  * The Effect-land state machine behind one `ClusterEntity` Durable Object.
- * The class methods are one-line `Effect.runPromise` adapters over the
- * effects returned here; all serialization, sessions, and waiters live in
+ * The class methods are one-line adapters that run the effects returned
+ * here; all serialization, sessions, and waiters live in
  * Effect primitives.
  *
  * @internal

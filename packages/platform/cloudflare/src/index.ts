@@ -35,6 +35,12 @@ export * as CloudflarePersistedQueue from "./CloudflarePersistedQueue.ts"
  * @stability unstable
  * @since 4.2.0
  */
+export * as CloudflareRuntime from "./CloudflareRuntime.ts"
+
+/**
+ * @stability unstable
+ * @since 4.2.0
+ */
 export * as CloudflareScheduler from "./CloudflareScheduler.ts"
 
 /**

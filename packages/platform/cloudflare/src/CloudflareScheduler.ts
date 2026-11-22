@@ -18,13 +18,10 @@ import * as Scheduler from "effect/Scheduler"
  * Use when fibers or services are shared across requests, for example through
  * a module-scope `ManagedRuntime`, `Deferred`, `Queue`, `PubSub`, or
  * `Semaphore`. Pass an instance as the `scheduler` option to Effect runners.
- * For a shared runtime, build it with
- * `ManagedRuntime.make(AppLayer.pipe(Layer.provideMerge(CloudflareScheduler.layer)))`.
- * Also pass `{ scheduler: new CloudflareScheduler() }` to the runtime runners,
- * including `runFork` and `runPromise`: the layer alone does not configure callers
- * waiting for lazy initialization. To initialize explicitly, run
- * `Effect.runPromise(runtime.contextEffect, { scheduler: new CloudflareScheduler() })`
- * instead of `runtime.context()`, which does not accept a scheduler.
+ * For a shared `ManagedRuntime`, opt in with
+ * `AppLayer.pipe(Layer.provideMerge(CloudflareRuntime.layer))` to include the
+ * Cloudflare tracer as well. To keep another tracer, provide this module's
+ * `layer` alongside your tracer layer instead.
  *
  * **Details**
  *
@@ -45,6 +42,13 @@ import * as Scheduler from "effect/Scheduler"
  * `cloudflare:workers`, so it only loads in workerd.
  *
  * **Gotchas**
+ *
+ * A scheduler in the built context does not configure callers waiting for lazy
+ * `ManagedRuntime` initialization. Pass `{ scheduler: new CloudflareScheduler() }`
+ * to `runFork` or `runPromise` if requests may race the build. For explicit
+ * initialization with this scheduler, use
+ * `Effect.runPromise(runtime.contextEffect, { scheduler: new CloudflareScheduler() })`;
+ * `runtime.context()` does not accept a scheduler option.
  *
  * This does not extend Cloudflare's request lifetime limits, such as the limit
  * on how long `waitUntil` work may run once the response is sent or the client

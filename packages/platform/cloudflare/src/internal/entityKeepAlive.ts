@@ -10,6 +10,7 @@
  *
  * @internal
  */
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
@@ -30,6 +31,8 @@ export interface EntityKeepAlive {
 
 /** @internal */
 export interface EntityKeepAliveOptions {
+  /** The context the runtime runs its effects with. */
+  readonly context?: Context.Context<never> | undefined
   /** Starts the self `hold()` RPC; the promise settles when the hold ends. */
   readonly startHold: () => Promise<void>
   /** The persisted flag, read when the Durable Object starts. */
@@ -45,6 +48,7 @@ export interface EntityKeepAliveOptions {
 
 /** @internal */
 export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeepAlive => {
+  const runFork = Effect.runForkWith(options.context ?? Context.empty())
   const latch = Latch.makeUnsafe(true)
   let holders = 0
   let wanted = options.wanted
@@ -66,7 +70,7 @@ export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeep
   const restore = () => {
     if (!wanted || hold !== undefined) return
     latch.closeUnsafe()
-    const fiber = Effect.runFork(runHold)
+    const fiber = runFork(runHold)
     hold = fiber
     fiber.addObserver(() => {
       if (hold === fiber) hold = undefined
@@ -85,7 +89,7 @@ export const makeEntityKeepAlive = (options: EntityKeepAliveOptions): EntityKeep
     wanted = next
     // Mailbox writes wait for an open user transaction, so writing inline
     // would deadlock `Entity.keepAlive` called inside `withTransaction`.
-    Effect.runFork(
+    runFork(
       Effect.suspend(() => options.persist(next)).pipe(
         Effect.andThen(Effect.sync(() => {
           if (!next && !wanted) release()
