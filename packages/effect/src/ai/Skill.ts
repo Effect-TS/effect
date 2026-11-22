@@ -107,8 +107,8 @@ export const make = (options: {
  *
  * **Details**
  *
- * Each frontmatter entry is serialized as `key: <JSON value>` so YAML
- * edge-case strings round-trip cleanly through {@link fromFiles}.
+ * Frontmatter keys and values are JSON-encoded so YAML edge cases round-trip
+ * cleanly through {@link fromFiles}.
  *
  * @see {@link fromFiles} for parsing a file map back into a {@link Skill}
  *

@@ -1,14 +1,10 @@
 /**
- * Agent Skill rules shared by `Skill`, `McpSchema` and the MCP Skills
- * extension: the frontmatter fields, the name rule, path safety and
- * `SKILL.md` parsing.
+ * Shared Agent Skill validation and `SKILL.md` parsing helpers.
  */
 import * as Yaml from "../../encoding/Yaml.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 
-// The Agent Skills `name` rule: lowercase letters, digits and single hyphens,
-// neither leading nor trailing, at most 64 characters.
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**
@@ -17,8 +13,7 @@ const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const isSkillName = (name: string): boolean => name.length <= 64 && SKILL_NAME.test(name)
 
 /**
- * The frontmatter fields the Agent Skills specification defines. `Skill` and
- * `McpSchema` add their own rest record.
+ * Spec-defined frontmatter fields; `Skill` and `McpSchema` add their own rest record.
  *
  * @internal
  */
@@ -52,8 +47,6 @@ export const FrontmatterFields = Schema.Struct({
 })
 
 /**
- * Whether `path` is a safe relative file path inside a skill bundle.
- *
  * @internal
  */
 export const isSafeRelativePath = (path: string): boolean =>
@@ -66,8 +59,6 @@ export const isSafeRelativePath = (path: string): boolean =>
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 /**
- * Strict UTF-8 decoding, or `undefined` when the bytes are not valid UTF-8.
- *
  * @internal
  */
 export const decodeUtf8 = (content: Uint8Array): string | undefined => {
@@ -81,10 +72,6 @@ export const decodeUtf8 = (content: Uint8Array): string | undefined => {
 const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
 
 /**
- * Parses a `SKILL.md` file into its YAML frontmatter mapping and instruction
- * body, or `undefined` when the file does not begin with a frontmatter block
- * holding a YAML mapping.
- *
  * @internal
  */
 export const parseSkillMarkdown = (
@@ -106,9 +93,6 @@ export const parseSkillMarkdown = (
 }
 
 /**
- * The YAML frontmatter of a `SKILL.md`, or `undefined` when the file does not
- * begin with a frontmatter block holding a YAML mapping.
- *
  * @internal
  */
 export const parseFrontmatter = (markdown: string): Record<string, unknown> | undefined =>
