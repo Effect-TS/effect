@@ -2243,7 +2243,9 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
   }
 
   const assistantParts: Array<AssistantMessagePart | undefined> = []
-  const toolParts: Array<ToolResultPart> = []
+  const toolParts: Array<ToolMessagePart> = []
+  // Results for tool calls from an earlier message, such as resolved approvals
+  const priorToolParts: Array<ToolMessagePart> = []
   const toolCallIds = new Set<string>()
 
   const activeTextDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
@@ -2337,7 +2339,12 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {
-          const target = part.providerExecuted === true ? assistantParts : toolParts
+          // A tool call always precedes its results in the same response
+          const target = part.providerExecuted === true
+            ? assistantParts
+            : toolCallIds.has(part.id)
+            ? toolParts
+            : priorToolParts
           target.push(makePart("tool-result", {
             id: part.id,
             name: part.name,
@@ -2372,34 +2379,22 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantContent = assistantParts.filter((part) => part !== undefined)
 
-  if (assistantContent.length === 0 && toolParts.length === 0) {
+  if (assistantContent.length === 0 && toolParts.length === 0 && priorToolParts.length === 0) {
     return empty
   }
 
   const messages: Array<Message> = []
-  let trailingToolParts = toolParts
 
-  if (assistantContent.length > 0 && toolParts.length > 0) {
-    const leadingToolParts: Array<ToolResultPart> = []
-    trailingToolParts = []
-    for (const part of toolParts) {
-      if (toolCallIds.has(part.id)) {
-        trailingToolParts.push(part)
-      } else {
-        leadingToolParts.push(part)
-      }
-    }
-    if (leadingToolParts.length > 0) {
-      messages.push(makeMessage("tool", { content: leadingToolParts }))
-    }
+  if (priorToolParts.length > 0) {
+    messages.push(makeMessage("tool", { content: priorToolParts }))
   }
 
   if (assistantContent.length > 0) {
     messages.push(makeMessage("assistant", { content: assistantContent }))
   }
 
-  if (trailingToolParts.length > 0) {
-    messages.push(makeMessage("tool", { content: trailingToolParts }))
+  if (toolParts.length > 0) {
+    messages.push(makeMessage("tool", { content: toolParts }))
   }
 
   return makePrompt(messages)
