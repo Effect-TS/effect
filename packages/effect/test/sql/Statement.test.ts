@@ -102,16 +102,13 @@ describe("Statement", () => {
       Effect.never,
       Statement.makeCompiler({
         dialect: "pg",
-        placeholder: (index, value) =>
-          Statement.isFragment(value) && value.segments[0]?._tag === "Custom" && value.segments[0].kind === "Typed"
-            ? `{p${index}: ${value.segments[0].paramA}}`
-            : `$${index}`,
+        placeholder: (index, value) => value === "Int32" ? `{p${index}: Int32}` : `$${index}`,
         onIdentifier: Statement.defaultEscape("\""),
         onRecordUpdate: () => ["", []],
         onCustom: (type, placeholder) => {
           switch (type.kind) {
             case "Typed":
-              return [placeholder(Statement.fragment([type])), [type.paramB]]
+              return [placeholder(type.paramA), [type.paramB]]
             case "Now":
               return ["NOW()", []]
             case "Sum":
@@ -141,9 +138,14 @@ describe("Statement", () => {
     assert.throws(() => sql`${sql.update({ created_at: now })}`.compile(), /created_at/)
     assert.throws(() => sql`${sql.update({ amount: sum })}`.compile(), /amount/)
     assert.throws(() => sql`${sql.update({ label: cast })}`.compile(), /label/)
+    assert.deepStrictEqual(sql`SELECT ${7}, ${typed}, ${9}`.compile(), ["SELECT $1, {p2: Int32}, $3", [7, 42, 9]])
     assert.deepStrictEqual(
-      sql`${sql.update({ visits: sql`${5}`, count: typed, note: undefined })}`.compile(),
-      ["\"visits\" = $1, \"count\" = {p2: Int32}, \"note\" = $3", [5, 42, null]]
+      sql`${sql.insert({ a: 7, count: typed, b: 9 })}`.compile(),
+      ["(\"a\",\"count\",\"b\") VALUES ($1,{p2: Int32},$3)", [7, 42, 9]]
+    )
+    assert.deepStrictEqual(
+      sql`${sql.update({ visits: sql`${7}`, count: typed, note: undefined })}`.compile(),
+      ["\"visits\" = $1, \"count\" = {p2: Int32}, \"note\" = $3", [7, 42, null]]
     )
   })
 

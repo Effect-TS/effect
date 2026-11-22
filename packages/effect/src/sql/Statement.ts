@@ -1014,9 +1014,15 @@ const CompilerProto = {
               for (let j = 0; j < keys.length; j++) {
                 const key = keys[j]
                 const value = segment.value[i][key]
-                const primitive = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
+                const [cellPlaceholder, primitive] = extractPrimitive(
+                  value,
+                  key,
+                  opts.onCustom,
+                  placeholder,
+                  withoutTransform
+                )
                 row[j] = primitive
-                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+                placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
               }
               placeholders += ")"
             }
@@ -1039,9 +1045,15 @@ const CompilerProto = {
               for (let j = 0; j < keys.length; j++) {
                 const key = keys[j]
                 const value = segment.value[i][key]
-                const primitive = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
+                const [cellPlaceholder, primitive] = extractPrimitive(
+                  value,
+                  key,
+                  opts.onCustom,
+                  placeholder,
+                  withoutTransform
+                )
                 binds.push(primitive)
-                placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+                placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
               }
               placeholders += ")"
             }
@@ -1080,7 +1092,7 @@ const CompilerProto = {
                   opts.onCustom,
                   placeholderNoIncrement,
                   withoutTransform
-                )
+                )[1]
               ),
               typeof segment.returningIdentifier === "string"
                 ? [segment.returningIdentifier, []]
@@ -1093,20 +1105,19 @@ const CompilerProto = {
           } else {
             for (let i = 0, len = keys.length; i < len; i++) {
               const column = opts.onIdentifier(keys[i], withoutTransform)
-              if (i === 0) {
-                sql += `${column} = ${placeholder(segment.value[keys[i]])}`
-              } else {
-                sql += `, ${column} = ${placeholder(segment.value[keys[i]])}`
-              }
-              binds.push(
-                extractPrimitive(
-                  segment.value[keys[i]],
-                  keys[i],
-                  opts.onCustom,
-                  placeholderNoIncrement,
-                  withoutTransform
-                )
+              const [cellPlaceholder, primitive] = extractPrimitive(
+                segment.value[keys[i]],
+                keys[i],
+                opts.onCustom,
+                placeholder,
+                withoutTransform
               )
+              if (i === 0) {
+                sql += `${column} = ${cellPlaceholder}`
+              } else {
+                sql += `, ${column} = ${cellPlaceholder}`
+              }
+              binds.push(primitive)
             }
             if (typeof segment.returningIdentifier === "string") {
               if (this.dialect === "mssql") {
@@ -1135,8 +1146,15 @@ const CompilerProto = {
             for (let j = 0; j < keys.length; j++) {
               const key = keys[j]
               const value = segment.value[i][key]
-              row[j] = extractPrimitive(value, key, opts.onCustom, placeholderNoIncrement, withoutTransform)
-              placeholders += j === 0 ? placeholder(value) : `,${placeholder(value)}`
+              const [cellPlaceholder, primitive] = extractPrimitive(
+                value,
+                key,
+                opts.onCustom,
+                placeholder,
+                withoutTransform
+              )
+              row[j] = primitive
+              placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
             }
             placeholders += ")"
           }
@@ -1686,9 +1704,9 @@ const extractPrimitive = (
   ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
   placeholder: (u: unknown) => string,
   withoutTransform: boolean
-): unknown => {
+): readonly [placeholder: string, value: unknown] => {
   if (value === undefined) {
-    return null
+    return [placeholder(value), null]
   } else if (isFragment(value)) {
     if (value.segments.length === 1) {
       const head = value.segments[0]
@@ -1708,15 +1726,15 @@ const extractPrimitive = (
           compiled !== undefined && placeholderCount === 1 && compiled[0] === customPlaceholder &&
           compiled[1].length === 1
         ) {
-          return compiled[1][0] ?? null
+          return [customPlaceholder!, compiled[1][0] ?? null]
         }
       } else if (head._tag === "Parameter") {
-        return head.value
+        return [placeholder(head.value), head.value]
       }
     }
     throw new TypeError(`SQL fragment for column "${column}" must compile to a single bound parameter`)
   }
-  return value
+  return [placeholder(value), value]
 }
 
 const escapeSqlite = defaultEscape("\"")
