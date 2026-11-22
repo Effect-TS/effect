@@ -11,9 +11,12 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Effect from "../Effect.ts"
+import * as Yaml from "../encoding/Yaml.ts"
+import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
-import * as SkillInternal from "./internal/skill.ts"
+
+const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**
  * Schema for the YAML frontmatter of an Agent Skill's `SKILL.md`, as the
@@ -27,7 +30,37 @@ import * as SkillInternal from "./internal/skill.ts"
  * @category schemas
  * @since 4.1.6
  */
-export const Frontmatter = Schema.StructWithRest(SkillInternal.FrontmatterFields, [Schema.JsonObject])
+export const Frontmatter = Schema.StructWithRest(
+  Schema.Struct({
+    /**
+     * 1 to 64 lowercase letters, digits and hyphens, with no leading, trailing
+     * or consecutive hyphen. It names the directory holding `SKILL.md`.
+     */
+    name: Schema.String.check(Schema.isMaxLength(64), Schema.isPattern(SKILL_NAME)),
+    /**
+     * What the skill does and when to use it, in 1 to 1024 characters.
+     */
+    description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(1024)),
+    /**
+     * The skill's license, or the name of a bundled license file.
+     */
+    license: Schema.optionalKey(Schema.String),
+    /**
+     * Environment requirements, in 1 to 500 characters.
+     */
+    compatibility: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(500))),
+    /**
+     * Additional properties not defined by the specification.
+     */
+    metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+    /**
+     * Space-separated tools the skill asks to run without approval. Hosts must
+     * ignore it for a skill served over MCP unless the user approved the grant.
+     */
+    "allowed-tools": Schema.optionalKey(Schema.String)
+  }),
+  [Schema.JsonObject]
+)
 
 /**
  * The YAML frontmatter of an Agent Skill's `SKILL.md`.
@@ -37,6 +70,13 @@ export const Frontmatter = Schema.StructWithRest(SkillInternal.FrontmatterFields
  * @since 4.1.6
  */
 export type Frontmatter = typeof Frontmatter.Type
+
+const isSafeSkillFilePath = (path: string): boolean =>
+  path !== "" &&
+  path !== "SKILL.md" &&
+  !path.includes("\\") &&
+  !/^[A-Za-z]:/.test(path) &&
+  path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
 
 const Bytes = Schema.Uint8Array.annotate({
   toCodecJson: () =>
@@ -51,9 +91,7 @@ const Bytes = Schema.Uint8Array.annotate({
 
 const SkillFiles = Schema.Record(Schema.String, Schema.Union([Schema.String, Bytes])).check(
   Schema.makeFilter((files) => {
-    const path = Object.keys(files).find(
-      (path) => path === "SKILL.md" || /^[A-Za-z]:/.test(path) || !SkillInternal.isSafeRelativePath(path)
-    )
+    const path = Object.keys(files).find((path) => !isSafeSkillFilePath(path))
     return path === undefined || `Invalid skill file path "${path}"`
   })
 )
@@ -127,6 +165,35 @@ export const toFiles = (
   return { "SKILL.md": `---\n${frontmatter}\n---\n\n${self.instructions}`, ...self.files }
 }
 
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+
+const decodeUtf8 = (content: Uint8Array): string | undefined => {
+  try {
+    return utf8.decode(content)
+  } catch {
+    return undefined
+  }
+}
+
+const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
+
+const parseSkillMarkdown = (
+  markdown: string
+): { readonly frontmatter: Record<string, unknown>; readonly instructions: string } | undefined => {
+  const match = FRONTMATTER.exec(markdown)
+  if (match === null) return undefined
+  try {
+    const parsed = Yaml.parse(match[1])
+    if (!Predicate.isObject(parsed)) return undefined
+    // Keep only JSON values so `.inf` and `.nan` normalize to `null`.
+    const frontmatter: Record<string, unknown> = JSON.parse(JSON.stringify(parsed))
+    const instructions = markdown.slice(match[0].length).replace(/^\r?\n/, "")
+    return { frontmatter, instructions }
+  } catch {
+    return undefined
+  }
+}
+
 const decodeSkill = Schema.decodeUnknownEffect(Skill)
 
 /**
@@ -155,11 +222,11 @@ export const fromFiles = (
     if (skillMd === undefined) {
       return Effect.fail(new Cause.IllegalArgumentError("Skill is missing SKILL.md"))
     }
-    const markdown = typeof skillMd === "string" ? skillMd : SkillInternal.decodeUtf8(skillMd)
+    const markdown = typeof skillMd === "string" ? skillMd : decodeUtf8(skillMd)
     if (markdown === undefined) {
       return Effect.fail(new Cause.IllegalArgumentError("SKILL.md is not valid UTF-8"))
     }
-    const parsed = SkillInternal.parseSkillMarkdown(markdown)
+    const parsed = parseSkillMarkdown(markdown)
     if (parsed === undefined) {
       return Effect.fail(new Cause.IllegalArgumentError("SKILL.md is missing valid YAML frontmatter"))
     }

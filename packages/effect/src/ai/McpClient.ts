@@ -35,7 +35,6 @@ import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { BASE64_SENTINEL_PREFIX, BASE64_SENTINEL_SUFFIX } from "./internal/mcpProtocol.ts"
 import * as McpSkills from "./internal/mcpSkills.ts"
-import { parseFrontmatter } from "./internal/skill.ts"
 import {
   ClosedError,
   ConfigurationError,
@@ -579,7 +578,7 @@ export const make: (options: {
       if (uri !== skill.uri) return result
       // Verified bytes can still carry other frontmatter than the listing, and
       // hosts must not load a skill whose two descriptions differ.
-      const frontmatter = parseFrontmatter("text" in content ? content.text : decoder.decode(bytes))
+      const frontmatter = McpSkills.parseFrontmatter("text" in content ? content.text : decoder.decode(bytes))
       return frontmatter !== undefined && Equal.equals(frontmatter, skill.frontmatter)
         ? result
         : yield* invalid(`The frontmatter of ${uri} differs from the frontmatter listed for the MCP skill`)
