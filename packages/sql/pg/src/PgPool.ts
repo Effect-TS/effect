@@ -219,8 +219,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // once, but the replacement only connects after the old transport closes.
   const transports = Semaphore.makeUnsafe(maxConnections)
   const acquire = Effect.uninterruptibleMask((restore) => {
-    // The permit's own scope: closed once, by a failed connect or by the
-    // transport closing, whichever happens.
+    // Closed once: on connect failure/interruption or when the transport closes.
     const permit = Scope.makeUnsafe()
     return Effect.onError(
       Effect.flatMap(restore(Scope.provide(transports.takeScoped(1), permit)), () => {
@@ -269,10 +268,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     return openedAt !== undefined && clock.currentTimeMillisUnsafe() - openedAt >= connectionTTL
   }
 
-  // Runs `f` uninterruptibly with a child of the caller's scope. A failure or
-  // interruption closes the child, giving back whatever was acquired into it
-  // instead of leaving that to the caller's scope. Otherwise the child closes
-  // with the caller's scope.
+  // Runs `f` uninterruptibly in a child scope, closing it on failure or
+  // interruption so acquired resources are returned instead of left on the caller.
   const withChildScope = <A>(
     f: (
       scope: Scope.Closeable,
@@ -290,9 +287,8 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       )
     )
 
-  // One checkout attempt, `undefined` when the session is rejected. A rejected
-  // session goes back before its replacement is requested: the replacement
-  // cannot connect while the rejected transport is open.
+  // One checkout attempt (`undefined` if rejected). Closes the attempt scope
+  // before retrying so the rejected transport frees its slot first.
   const attempt = withChildScope((scope, restore) =>
     Effect.flatMap(restore(Scope.provide(Pool.get(pool), scope)), (connection) =>
       expired(connection)
@@ -312,11 +308,9 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     }
   })
 
-  // A checkout runs per statement. Without a TTL only a dead session is
-  // rejected, so the case where nothing has died and the first connection is
-  // usable stays a plain flatMap; retrying is the exception and pays for the
-  // loop. A TTL can reject a session whose transport is still open, so every
-  // checkout goes through `retry` to return that lease first.
+  // Without a TTL, only dead sessions are rejected so the common path stays a
+  // plain flatMap. With a TTL, an expired session's transport may still be
+  // open, so every checkout goes through `retry` to release that lease first.
   const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = connectionTTL !== undefined
     ? retry
     : Effect.suspend(() =>
@@ -337,8 +331,6 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       })
     )
 
-  // The acquisition runs in a child scope, so a timeout or failure gives back
-  // any lease or reservation it already took.
   const withAcquireTimeout = <A>(
     effect: Effect.Effect<A, SqlError, Scope.Scope>
   ): Effect.Effect<A, SqlError, Scope.Scope> =>
