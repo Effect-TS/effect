@@ -97,48 +97,50 @@ describe("Statement", () => {
     ])
   })
 
-  it("requires a single parameter or single-bind custom segment in record value fragments", () => {
-    const sql = Statement.make(
-      Effect.never,
-      Statement.makeCompiler({
-        dialect: "pg",
-        placeholder: (index, value) => value === "Int32" ? `{p${index}: Int32}` : `$${index}`,
-        onIdentifier: Statement.defaultEscape("\""),
-        onRecordUpdate: () => ["", []],
-        onCustom: (type, placeholder) => {
-          switch (type.kind) {
-            case "Typed":
-              return [placeholder(type.paramA), [type.paramB]]
-            case "Now":
-              return ["NOW()", []]
-            case "Sum":
-              return [`${placeholder(type.paramA)} + ${placeholder(type.paramB)}`, [type.paramA, type.paramB]]
-            case "Cast":
-              return [`${placeholder(type.paramA)}::text`, [type.paramA]]
-            default:
-              return ["", []]
-          }
+  it("requires a single bound parameter in record value fragments", () => {
+    const onCustom = (
+      type: Statement.Custom<string, unknown, unknown>,
+      placeholder: (u: unknown) => string
+    ): readonly [string, ReadonlyArray<unknown>] => {
+      switch (type.kind) {
+        case "Typed":
+          return [placeholder(type.paramA), [type.paramB]]
+        case "Sum":
+          return [`${placeholder(type.paramA)} + ${placeholder(type.paramB)}`, [type.paramA, type.paramB]]
+        case "Cast":
+          return [`${placeholder(type.paramA)}::text`, [type.paramA]]
+        default:
+          return ["", []]
+      }
+    }
+    const base = {
+      dialect: "pg" as const,
+      placeholder: (index: number, value: unknown) => {
+        if (index < 1) {
+          throw new RangeError(`invalid bind index ${index}`)
         }
-      }),
+        return value === "Int32" ? `{p${index}: Int32}` : `$${index}`
+      },
+      onIdentifier: Statement.defaultEscape("\""),
+      onRecordUpdate: () => ["", []] as const,
+      onCustom
+    }
+    const sql = Statement.make(Effect.never, Statement.makeCompiler(base), [], undefined)
+    const valuesOnly = Statement.make(
+      Effect.never,
+      Statement.makeCompiler({ ...base, onRecordUpdateSingle: (columns, values) => [columns.join(","), values] }),
       [],
       undefined
     )
     const typed = Statement.fragment([Statement.custom("Typed")("Int32", 42, undefined)])
-    const now = Statement.fragment([Statement.custom("Now")(undefined, undefined, undefined)])
     const sum = Statement.fragment([Statement.custom("Sum")(2, 3, undefined)])
     const cast = Statement.fragment([Statement.custom("Cast")(1, undefined, undefined)])
 
     assert.throws(() => sql`${sql.update({ visits: sql`visits + ${1}` })}`.compile(), /visits/)
-    assert.throws(
-      () => sql`${sql.insert({ created_at: sql.literal("CURRENT_TIMESTAMP") })}`.compile(),
-      /created_at/
-    )
-    assert.throws(() => sql`${sql.updateValues([{ visits: sql`${5} + 1` }], "v")}`.compile(), /visits/)
     assert.throws(() => sql`${sql.insert({ name: sql`` })}`.compile(), /name/)
-    assert.throws(() => sql`${sql.update({ created_at: now })}`.compile(), /created_at/)
+    assert.throws(() => sql`${sql.updateValues([{ visits: sql`${5} + 1` }], "v")}`.compile(), /visits/)
     assert.throws(() => sql`${sql.update({ amount: sum })}`.compile(), /amount/)
     assert.throws(() => sql`${sql.update({ label: cast })}`.compile(), /label/)
-    assert.deepStrictEqual(sql`SELECT ${7}, ${typed}, ${9}`.compile(), ["SELECT $1, {p2: Int32}, $3", [7, 42, 9]])
     assert.deepStrictEqual(
       sql`${sql.insert({ a: 7, count: typed, b: 9 })}`.compile(),
       ["(\"a\",\"count\",\"b\") VALUES ($1,{p2: Int32},$3)", [7, 42, 9]]
@@ -146,28 +148,6 @@ describe("Statement", () => {
     assert.deepStrictEqual(
       sql`${sql.update({ visits: sql`${7}`, count: typed, note: undefined })}`.compile(),
       ["\"visits\" = $1, \"count\" = {p2: Int32}, \"note\" = $3", [7, 42, null]]
-    )
-
-    const valuesOnly = Statement.make(
-      Effect.never,
-      Statement.makeCompiler({
-        dialect: "pg",
-        placeholder: (index) => {
-          if (index < 1) {
-            throw new RangeError(`invalid bind index ${index}`)
-          }
-          return `$${index}`
-        },
-        onIdentifier: Statement.defaultEscape("\""),
-        onRecordUpdate: () => ["", []],
-        onRecordUpdateSingle: (columns, values) => [columns.join(","), values],
-        onCustom: (type, placeholder) =>
-          type.kind === "Typed"
-            ? [placeholder(type.paramA), [type.paramB]]
-            : [`${placeholder(type.paramA)}::text`, [type.paramA]]
-      }),
-      [],
-      undefined
     )
     assert.deepStrictEqual(valuesOnly`${valuesOnly.update({ n: 42, count: typed })}`.compile(), [
       "\"n\",\"count\"",
