@@ -1339,7 +1339,7 @@ describe("HttpApiClient", () => {
         strictEqual(capture.sent.url, "http://test/search?token=s3cret&q=app")
       }))
 
-    it.effect("fails closed when Redacted query or path param keys are renamed by encoding", () =>
+    it.effect("fails closed when Redacted keys are renamed or a middleware rewrites the path prefix", () =>
       Effect.gen(function*() {
         const Api = HttpApi.make("Api").add(
           HttpApiGroup.make("test").add(
@@ -1356,15 +1356,30 @@ describe("HttpApiClient", () => {
           )
         )
         const capture = captureRequest()
-        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test/api/v1",
+          httpClient: capture.httpClient
+        })
 
         yield* capture.trace(client.test.renamedQuery({ query: { token: Redacted.make("s3cret"), t: "app" } }))
         strictEqual(capture.span.attributes.get("url.query"), "tok=REDACTED&t=REDACTED")
-        strictEqual(capture.sent.url, "http://test/renamed?tok=s3cret&t=app")
+        strictEqual(capture.sent.url, "http://test/api/v1/renamed?tok=s3cret&t=app")
 
         yield* capture.trace(client.test.renamedParams({ params: { token: Redacted.make("s3cret"), id: "visible" } }))
-        strictEqual(capture.span.attributes.get("url.path"), "/p/REDACTED/REDACTED")
-        strictEqual(capture.sent.url, "http://test/p/s3cret/visible")
+        strictEqual(capture.span.attributes.get("url.path"), "/api/v1/p/REDACTED/REDACTED")
+        strictEqual(capture.sent.url, "http://test/api/v1/p/s3cret/visible")
+
+        const rewrittenClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test/api/v1",
+          httpClient: capture.httpClient.pipe(
+            HttpClient.mapRequest(HttpClientRequest.prependUrl("/s3cret"))
+          )
+        })
+        yield* capture.trace(
+          rewrittenClient.test.renamedParams({ params: { token: Redacted.make("s3cret"), id: "visible" } })
+        )
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/REDACTED")
+        strictEqual(capture.span.attributes.get("url.path"), "/REDACTED")
       }))
 
     it.effect("redacts Redacted path params in client error messages and JSON while keeping plain params visible", () =>
@@ -1385,6 +1400,17 @@ describe("HttpApiClient", () => {
         assert.notInclude(error.message, "s3cret")
         assert.include(JSON.stringify(error), "/p/REDACTED/visible")
         assert.notInclude(JSON.stringify(error), "s3cret")
+
+        const noBaseClient = yield* HttpApiClient.makeWith(Api, { httpClient })
+        const invalidUrl = yield* Effect.flip(
+          noBaseClient.test.get({ params: { token: Redacted.make("s3cret"), id: "visible" } })
+        )
+        assert.isTrue(HttpClientError.isHttpClientError(invalidUrl))
+        if (!HttpClientError.isHttpClientError(invalidUrl)) return
+        assert.include(invalidUrl.message, "GET /p/REDACTED/visible")
+        assert.notInclude(JSON.stringify(invalidUrl), "s3cret")
+        assert.notInclude(JSON.stringify(invalidUrl.reason), "s3cret")
+        assert.isDefined(invalidUrl.cause)
       }))
   })
 

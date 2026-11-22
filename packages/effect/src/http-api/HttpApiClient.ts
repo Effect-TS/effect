@@ -422,11 +422,16 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
   Effect.gen(function*() {
     const services = yield* Effect.context()
 
+    const baseUrl = options?.baseUrl?.toString()
+    const fullPath = (path: string) =>
+      baseUrl === undefined
+        ? path
+        : internalUrlParams.toPath(HttpClientRequest.prependUrl(HttpClientRequest.get(path), baseUrl).url)
     const httpClient = options.httpClient.pipe(
-      options?.baseUrl === undefined
+      baseUrl === undefined
         ? identity
         : HttpClient.mapRequest(
-          HttpClientRequest.prependUrl(options.baseUrl.toString())
+          HttpClientRequest.prependUrl(baseUrl)
         )
     )
 
@@ -530,7 +535,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const params = (yield* encodeParams(request.params)) as Record<string, string>
               const sent = makeUrl(params)
               httpRequest = HttpClientRequest.setUrl(httpRequest, sent)
-              if (redactedParams.length > 0) redactedPath = { sent, redacted: makeUrl(params, redactedParams) }
+              if (redactedParams.length > 0) {
+                redactedPath = { sent: fullPath(sent), redacted: fullPath(makeUrl(params, redactedParams)) }
+              }
             }
 
             // payload

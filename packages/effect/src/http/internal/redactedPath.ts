@@ -61,6 +61,12 @@ export const compile = (path: string, redactedParams: ReadonlyArray<string>): Te
   return ambiguous ? parts.map((part) => typeof part === "string" ? part : { name: part.name, redacted: true }) : parts
 }
 
+/** @internal */
+export const allParamNames = (path: string): ReadonlyArray<string> =>
+  compile(path, []).filter((part): part is { readonly name: string; readonly redacted: boolean } =>
+    typeof part !== "string"
+  ).map((part) => part.name)
+
 const countCaptures = (regex: string): number => {
   try {
     return new RegExp(regex + "|").exec("")!.length - 1
@@ -162,17 +168,17 @@ export const CurrentClientPath = Context.Reference<ClientPath | undefined>(
 )
 
 /**
- * Replaces the path of a URL with its redacted form. A path that does not end
- * with the sent path is replaced by `/REDACTED`.
+ * Replaces the path of a URL with its redacted form. A pathname that does not
+ * match the expected sent pathname is replaced by `/REDACTED`.
  *
  * @internal
  */
 export const redactClientPath = (url: string, path: ClientPath): string => {
   const end = url.search(/[?#]/)
   const head = end === -1 ? url : url.slice(0, end)
-  if (head.endsWith(path.redacted)) return url
+  const origin = /^[a-z][a-z\d+.-]*:\/\/[^/]*/i.exec(head)?.[0] ?? ""
+  const pathname = head.slice(origin.length)
+  if (pathname === path.redacted) return url
   const tail = url.slice(head.length)
-  return head.endsWith(path.sent)
-    ? head.slice(0, head.length - path.sent.length) + path.redacted + tail
-    : (/^[a-z][a-z\d+.-]*:\/\/[^/]*/i.exec(head)?.[0] ?? "") + "/REDACTED" + tail
+  return origin + (pathname === path.sent ? path.redacted : "/REDACTED") + tail
 }

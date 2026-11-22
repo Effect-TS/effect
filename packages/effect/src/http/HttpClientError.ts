@@ -84,6 +84,15 @@ export class HttpClientError extends Data.TaggedError("HttpClientError")<{
   override get message(): string {
     return this.reason.message
   }
+
+  override toJSON(): unknown {
+    const json = super.toJSON() as Record<string, unknown>
+    if (this.reason._tag === "InvalidUrlError") {
+      const { cause: _, ...rest } = json
+      return rest
+    }
+    return json
+  }
 }
 
 const formatReason = (tag: string) => tag.endsWith("Error") ? tag.slice(0, -5) : tag
@@ -292,7 +301,8 @@ export class InvalidUrlError extends ReasonError("InvalidUrlError")<{
   }
 
   override toJSON(): unknown {
-    return reasonToJSON(this, super.toJSON())
+    const { cause: _, ...rest } = reasonToJSON(this, super.toJSON()) as Record<string, unknown>
+    return rest
   }
 }
 
