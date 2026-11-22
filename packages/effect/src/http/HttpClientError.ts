@@ -16,7 +16,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
-import * as RedactedPath from "./internal/redactedPath.ts"
+import { type ClientPath, redactClientPath } from "./internal/redactedPath.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -113,65 +113,46 @@ type RedactedNames = ReadonlyArray<string | RegExp>
 // redacted: the current fiber may be unrelated to the request when a transport
 // callback creates the error, so its names add redaction and never decide it.
 const responseRedactedNames = new WeakMap<ClientResponse.HttpClientResponse, RedactedNames>()
+const responseRedactedPaths = new WeakMap<ClientResponse.HttpClientResponse, ReadonlyArray<ClientPath>>()
 const redactedUrls = new WeakMap<object, string>()
-// The redacted paths of a request, when its path params hold `Redacted` values.
-// Like the names, they are only ever added, and each one is applied in turn when
-// a URL renders. A scoped request keeps the runner's own response, which another
-// execution may share, so it can carry several paths. A path that matches the
-// end of a URL is rewritten, and a later path then no longer matches, so the
-// URL falls back to `/REDACTED` instead of exposing a value it did not rewrite.
-const responseRedactedPaths = new WeakMap<ClientResponse.HttpClientResponse, RedactedPaths>()
-const redactedPaths = new WeakMap<object, RedactedPaths>()
-
-type RedactedPaths = ReadonlyArray<RedactedPath.RedactedPath>
-
-const addRedactedPath = (
-  paths: RedactedPaths | undefined,
-  path: RedactedPath.RedactedPath
-): RedactedPaths =>
-  paths === undefined
-    ? [path]
-    : paths.some((existing) => existing.text === path.text && existing.kinds === path.kinds)
-    ? paths
-    : [...paths, path]
 
 const addRedactedNames = (
   reason: object,
   names: RedactedNames | undefined,
-  paths: RedactedPaths | undefined
+  paths: ReadonlyArray<ClientPath> | undefined
 ): void => {
-  const url = redactedUrls.get(reason)
-  if (url !== undefined && names !== undefined) redactedUrls.set(reason, UrlParams.redactUrl(url, names))
-  for (const path of paths ?? []) redactedPaths.set(reason, addRedactedPath(redactedPaths.get(reason), path))
+  let url = redactedUrls.get(reason)
+  if (url === undefined) return
+  if (names !== undefined) url = UrlParams.redactUrl(url, names)
+  for (const path of paths ?? []) url = redactClientPath(url, path)
+  redactedUrls.set(reason, url)
 }
 
 /** @internal */
 export const addResponseRedactedNames = (
   response: ClientResponse.HttpClientResponse,
   names: RedactedNames,
-  path: RedactedPath.RedactedPath | undefined = undefined
+  path: ClientPath | undefined
 ): void => {
   const existing = responseRedactedNames.get(response)
   responseRedactedNames.set(response, existing === undefined ? names : [...existing, ...names])
-  if (path !== undefined) {
-    responseRedactedPaths.set(response, addRedactedPath(responseRedactedPaths.get(response), path))
-  }
+  if (path !== undefined) responseRedactedPaths.set(response, [...(responseRedactedPaths.get(response) ?? []), path])
 }
 
 /**
- * Adds the names and redacted path of the executing fiber to the errors a
- * runner failed with, once the failure is back on that fiber.
+ * Adds the names of the executing fiber to the errors a runner failed with,
+ * once the failure is back on that fiber.
  *
  * @internal
  */
 export const addFailureRedactedNames = (
   cause: Cause.Cause<unknown>,
   names: RedactedNames,
-  path: RedactedPath.RedactedPath | undefined = undefined
+  path: ClientPath | undefined
 ): void => {
   for (const reason of cause.reasons) {
     if (Cause.isFailReason(reason) && isHttpClientError(reason.error)) {
-      addRedactedNames(reason.error.reason, names, path === undefined ? undefined : [path])
+      addRedactedNames(reason.error.reason, names, path && [path])
     }
   }
 }
@@ -182,11 +163,7 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
       super(props)
       redactedUrls.set(this, UrlParams.redactUrl(props.request.url))
       if (props.response !== undefined) {
-        addRedactedNames(
-          this,
-          responseRedactedNames.get(props.response),
-          responseRedactedPaths.get(props.response)
-        )
+        addRedactedNames(this, responseRedactedNames.get(props.response), responseRedactedPaths.get(props.response))
       }
     }
   }
@@ -195,11 +172,7 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
 
 // Rendering adds the names of the rendering fiber to the stored URL, so it
 // never redacts less than the names active at either point.
-const redactedUrl = (reason: ReasonProps): string => {
-  let url = redactedUrls.get(reason) ?? reason.request.url
-  for (const path of redactedPaths.get(reason) ?? []) url = RedactedPath.redactUrlPath(url, path)
-  return UrlParams.redactUrl(url)
-}
+const redactedUrl = (reason: ReasonProps): string => UrlParams.redactUrl(redactedUrls.get(reason) ?? reason.request.url)
 
 const formatMethodAndUrl = (reason: ReasonProps): string => `${reason.request.method} ${redactedUrl(reason)}`
 

@@ -145,33 +145,34 @@ export const format = (path: RedactedPath): string => {
 }
 
 /**
- * The redacted path of the request a client executes. Set by an endpoint whose
- * path params hold a `Redacted` value, so its URL is recorded without them.
+ * The path of the request a client executes, as sent and as recorded in spans
+ * and errors.
  *
  * @internal
  */
-export const CurrentRedactedPath = Context.Reference<RedactedPath | undefined>(
-  "effect/http/internal/redactedPath/CurrentRedactedPath",
+export interface ClientPath {
+  readonly sent: string
+  readonly redacted: string
+}
+
+/** @internal */
+export const CurrentClientPath = Context.Reference<ClientPath | undefined>(
+  "effect/http/internal/redactedPath/CurrentClientPath",
   { defaultValue: () => undefined }
 )
 
-const authorityPrefix = /^[a-z][a-z\d+.-]*:\/\/[^/]*/i
-
 /**
- * Replaces the rendered path of a URL string, absolute or relative, with its
- * redacted form and keeps the rest of the URL. A path that does not end with
- * the rendered path is replaced by `/REDACTED`, so a mismatch never shows it.
+ * Replaces the path of a URL with its redacted form. A path that does not end
+ * with the sent path is replaced by `/REDACTED`.
  *
  * @internal
  */
-export const redactUrlPath = (url: string, path: RedactedPath): string => {
-  const queryOrHash = url.search(/[?#]/)
-  const head = queryOrHash === -1 ? url : url.slice(0, queryOrHash)
-  const tail = queryOrHash === -1 ? "" : url.slice(queryOrHash)
-  const start = authorityPrefix.exec(head)?.[0].length ?? 0
-  const pathname = head.slice(start)
-  if (pathname.endsWith(path.text)) {
-    return head.slice(0, head.length - path.text.length) + format(path) + tail
-  }
-  return head.slice(0, start) + "/REDACTED" + tail
+export const redactClientPath = (url: string, path: ClientPath): string => {
+  const end = url.search(/[?#]/)
+  const head = end === -1 ? url : url.slice(0, end)
+  if (head.endsWith(path.redacted)) return url
+  const tail = url.slice(head.length)
+  return head.endsWith(path.sent)
+    ? head.slice(0, head.length - path.sent.length) + path.redacted + tail
+    : (/^[a-z][a-z\d+.-]*:\/\/[^/]*/i.exec(head)?.[0] ?? "") + "/REDACTED" + tail
 }

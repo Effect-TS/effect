@@ -27,7 +27,7 @@ import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as MediaType from "../http/internal/mediaType.ts"
-import * as RedactedPath from "../http/internal/redactedPath.ts"
+import { type ClientPath, CurrentClientPath } from "../http/internal/redactedPath.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -46,7 +46,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as HttpApiPath from "./internal/path.ts"
-import { getRedactedParamNames } from "./internal/redactedNames.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -510,11 +509,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
         const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
-        // Path params whose values are `Redacted` are recorded as their path template.
-        const redactedParamNames = getRedactedParamNames(endpoint.params)
-        const redactedPathTemplate = redactedParamNames.length === 0
-          ? undefined
-          : RedactedPath.compile(endpoint.path, redactedParamNames)
+        const redactedParams = HttpApi.getEndpointRedactedParams(api, group, endpoint)
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -527,14 +522,15 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
-          let redactedPath: RedactedPath.RedactedPath | undefined
+          let redactedPath: ClientPath | undefined
 
           if (request !== undefined) {
             // params
             if (encodeParams !== undefined) {
               const params = (yield* encodeParams(request.params)) as Record<string, string>
-              httpRequest = HttpClientRequest.setUrl(httpRequest, makeUrl(params))
-              if (redactedPathTemplate !== undefined) redactedPath = RedactedPath.render(redactedPathTemplate, params)
+              const sent = makeUrl(params)
+              httpRequest = HttpClientRequest.setUrl(httpRequest, sent)
+              if (redactedParams.length > 0) redactedPath = { sent, redacted: makeUrl(params, redactedParams) }
             }
 
             // payload
@@ -595,7 +591,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           const named = redactedNames === undefined ? execute : withRedactedNames(execute, redactedNames)
           const response = yield* (redactedPath === undefined
             ? named
-            : named.pipe(Effect.provideService(RedactedPath.CurrentRedactedPath, redactedPath)))
+            : Effect.provideService(named, CurrentClientPath, redactedPath))
 
           if (request?.responseMode === "response-only") {
             return response
@@ -984,17 +980,17 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
 
 const compilePath = (path: string, schema: Schema.Top | undefined) => {
   if (schema === undefined || !path.includes(":")) {
-    return (_: any) => path
+    return (_: any, _redacted?: ReadonlyArray<string>) => path
   }
   const paramNames = HttpApiPath.getParamNames(schema)
-  return (params: Record<string, string | undefined>) =>
+  return (params: Record<string, string | undefined>, redacted?: ReadonlyArray<string>) =>
     HttpApiPath.replaceParams(path, paramNames, (key, optional) => {
       const value = params[key]
       if (value === "." || value === "..") {
         // dot segments survive encoding and would be resolved by URL normalization
         throw new Error(`Invalid path parameter: ${key}`)
       }
-      if (value !== undefined) return encodeURIComponent(value)
+      if (value !== undefined) return redacted?.includes(key) ? "REDACTED" : encodeURIComponent(value)
       if (optional) return undefined
       throw new Error(`Missing path parameter: ${key}`)
     })
