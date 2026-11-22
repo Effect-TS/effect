@@ -821,9 +821,7 @@ export const wrapActivityResult = <A, E, R>(
             ? Cause.combine(instance.cause, exit.value.cause)
             : exit.value.cause
         }
-        return isSuspended && instance.activityState.count > 0
-          ? waitForZero(instance)
-          : Effect.void
+        return isSuspended ? waitForZero(instance) : Effect.void
       }
     )
   })
