@@ -4520,6 +4520,25 @@ export const withBlob: UploadRequestFormData = { file: new Blob([]), undeclared:
       ]))
 
     itGeneratedClientsCompile(
+      "accepts referenced file unions in open multipart objects without widening shared JSON components",
+      sharedMultipartSpec({ $ref: "#/components/schemas/Upload" }, {
+        MaybeFile: { anyOf: [{ type: "string", format: "binary" }, { type: "null" }] },
+        Upload: {
+          type: "object",
+          properties: { file: { $ref: "#/components/schemas/MaybeFile" } },
+          required: ["file"]
+        }
+      }),
+      {
+        usage: `export const multipartBlob: UploadMultipart = { file: new Blob([]), undeclared: "kept" }
+export const jsonString: Upload = { file: "text", undeclared: "kept" }
+// @ts-expect-error Shared JSON component must still reject files.
+export const jsonBlob: Upload = { file: new Blob([]) }
+`
+      }
+    )
+
+    itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",
       multipartSpec({ $ref: "#/components/schemas/Node" }, {
         Node: {

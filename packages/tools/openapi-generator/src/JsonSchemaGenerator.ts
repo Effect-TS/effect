@@ -212,11 +212,16 @@ function prepareSchemas(
   return {
     schemas: Object.fromEntries(names.map((name, index) => [
       name,
-      multipartRepresentation(name, representation.representations[index], options?.multipartSchemaRefs)
+      multipartRepresentation(
+        name,
+        representation.representations[index],
+        representation.references,
+        options?.multipartSchemaRefs
+      )
     ])),
     references: Rec.map(
       representation.references,
-      (schema, name) => multipartRepresentation(name, schema, options?.multipartSchemaRefs)
+      (schema, name) => multipartRepresentation(name, schema, representation.references, options?.multipartSchemaRefs)
     )
   }
 }
@@ -233,11 +238,12 @@ function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
 function multipartRepresentation(
   name: string | undefined,
   schema: SchemaRepresentation.Representation,
+  references: Readonly<Record<string, SchemaRepresentation.Representation>>,
   refs: MultipartSchemaRefs | undefined
 ): SchemaRepresentation.Representation {
   if (refs === undefined) return schema
   const code = name === undefined ? undefined : multipartCode(name, refs)
-  if (code === undefined) return admitMultipartFiles(schema, refs)
+  if (code === undefined) return admitMultipartFiles(schema, references, refs)
   return {
     _tag: "Declaration",
     typeParameters: [],
@@ -254,16 +260,24 @@ function multipartRepresentation(
 // Effect index signatures also check declared properties, so an open object has to admit its own files.
 function admitMultipartFiles(
   schema: SchemaRepresentation.Representation,
+  references: Readonly<Record<string, SchemaRepresentation.Representation>>,
   refs: MultipartSchemaRefs
 ): SchemaRepresentation.Representation {
-  const hasFile = (schema: SchemaRepresentation.Representation): boolean => {
+  const hasFile = (schema: SchemaRepresentation.Representation, seen = new Set<string>()): boolean => {
     switch (schema._tag) {
-      case "Reference":
-        return schema.$ref === refs.singleFile || (refs.kind === "httpapi" && schema.$ref === refs.files)
+      case "Reference": {
+        if (schema.$ref === refs.singleFile || (refs.kind === "httpapi" && schema.$ref === refs.files)) return true
+        if (seen.has(schema.$ref) || !Object.hasOwn(references, schema.$ref)) return false
+        seen.add(schema.$ref)
+        return hasFile(references[schema.$ref], seen)
+      }
+      case "Suspend":
+        return hasFile(schema.thunk, seen)
       case "Union":
-        return schema.types.some(hasFile)
+        return schema.types.some((member) => hasFile(member, seen))
       case "Arrays":
-        return schema.rest.some(hasFile) || schema.elements.some((element) => hasFile(element.type))
+        return schema.rest.some((member) => hasFile(member, seen)) ||
+          schema.elements.some((element) => hasFile(element.type, seen))
       default:
         return false
     }
@@ -285,7 +299,10 @@ function admitMultipartFiles(
           ...property,
           type: go(property.type)
         }))
-        const files = Arr.dedupeWith(propertySignatures.map((property) => property.type).filter(hasFile), Equal.equals)
+        const files = Arr.dedupeWith(
+          propertySignatures.map((property) => property.type).filter((type) => hasFile(type)),
+          Equal.equals
+        )
         return {
           ...schema,
           propertySignatures,
