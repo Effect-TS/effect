@@ -82,6 +82,18 @@ describe("Windows cleanup", { concurrent: false }, () => {
   }
 })
 
+/** Runs `spawn` in its own scope and asserts that the returned child's process group was never signalled. */
+const assertNoProcessGroupSignals = Effect.fnUntraced(
+  function*<E, R>(spawn: Effect.Effect<{ readonly pid: number }, E, R>) {
+    const kill = vi.spyOn(process, "kill")
+    yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+    const { pid } = yield* Effect.scoped(spawn)
+    assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
+  },
+  Effect.scoped,
+  Effect.provide(NodeServices)
+)
+
 describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { concurrent: false }, () => {
   for (const signal of [false, true]) {
     it.live(
@@ -89,60 +101,41 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
         signal ? "signal-terminated" : "failed"
       } child during exit, kill or scope release`,
       () =>
-        Effect.gen(function*() {
-          const kill = vi.spyOn(process, "kill")
-          yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
-          let pid = 0
-          yield* Effect.scoped(Effect.gen(function*() {
-            const handle = yield* ChildProcess.make(process.execPath, [
-              "-e",
-              signal ? "process.kill(process.pid, 'SIGTERM')" : "process.exit(1)"
-            ], { detached: false, forceKillAfter: "100 millis" })
-            pid = handle.pid
-            if (signal) {
-              assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
-            } else {
-              assert.strictEqual(yield* handle.exitCode, 1)
-            }
-            // The exited child's PID may now lead an unrelated process group.
-            yield* Effect.ignore(handle.kill())
-          }))
-          assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
-        }).pipe(Effect.scoped, Effect.provide(NodeServices))
+        assertNoProcessGroupSignals(Effect.gen(function*() {
+          const handle = yield* ChildProcess.make(process.execPath, [
+            "-e",
+            signal ? "process.kill(process.pid, 'SIGTERM')" : "process.exit(1)"
+          ], { detached: false, forceKillAfter: "100 millis" })
+          if (signal) {
+            assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
+          } else {
+            assert.strictEqual(yield* handle.exitCode, 1)
+          }
+          // The exited child's PID may now lead an unrelated process group.
+          yield* Effect.ignore(handle.kill())
+          return handle
+        }))
     )
   }
 
   it.live("does not signal or poll the process group of a running child during scope release", () =>
-    Effect.gen(function*() {
-      const kill = vi.spyOn(process, "kill")
-      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
-      let pid = 0
-      yield* Effect.scoped(Effect.gen(function*() {
-        const handle = yield* ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
-          detached: false,
-          forceKillAfter: "1 second"
-        })
-        pid = handle.pid
-      }))
-      assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
-    }).pipe(Effect.provide(NodeServices)))
+    assertNoProcessGroupSignals(
+      ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+        detached: false,
+        forceKillAfter: "1 second"
+      })
+    ))
 
   it.live("does not signal the process group when escalating to SIGKILL", () =>
-    Effect.gen(function*() {
-      const kill = vi.spyOn(process, "kill")
-      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
-      let pid = 0
-      yield* Effect.scoped(Effect.gen(function*() {
-        const handle = yield* ChildProcess.make(process.execPath, [
-          "-e",
-          "process.on('SIGTERM', () => {}); console.log('READY'); setInterval(() => {}, 1000)"
-        ], { detached: false })
-        pid = handle.pid
-        yield* Stream.runHead(handle.stdout)
-        yield* handle.kill({ forceKillAfter: "100 millis" })
-      }))
-      assert.deepStrictEqual(kill.mock.calls.filter(([target]) => target === -pid), [])
-    }).pipe(Effect.provide(NodeServices)))
+    assertNoProcessGroupSignals(Effect.gen(function*() {
+      const handle = yield* ChildProcess.make(process.execPath, [
+        "-e",
+        "process.on('SIGTERM', () => {}); console.log('READY'); setInterval(() => {}, 1000)"
+      ], { detached: false })
+      yield* Stream.runHead(handle.stdout)
+      yield* handle.kill({ forceKillAfter: "100 millis" })
+      return handle
+    })))
 })
 
 const zombieProbes = 3

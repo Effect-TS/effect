@@ -115,10 +115,11 @@ const hasExited = (childProcess: NodeChildProcess.ChildProcess): boolean =>
   childProcess.exitCode !== null || childProcess.signalCode !== null
 
 /**
- * A non-detached child shares its parent's process group, so it does not lead
- * a process group of its own to signal or poll.
+ * Only a detached POSIX child leads a process group of its own. A non-detached
+ * child shares its parent's group, and Windows has no process groups.
  */
-const ownsProcessGroup = (command: ChildProcess.StandardCommand): boolean => command.options.detached !== false
+const ownsProcessGroup = (command: ChildProcess.StandardCommand): boolean =>
+  globalThis.process.platform !== "win32" && command.options.detached !== false
 
 /**
  * The process group exists but has no member that can be signalled, such as
@@ -135,7 +136,7 @@ const isProcessAlive = (
   if (!hasExited(childProcess)) {
     return true
   }
-  if (globalThis.process.platform === "win32" || !ownsProcessGroup(command)) {
+  if (!ownsProcessGroup(command)) {
     return false
   }
   try {
@@ -525,11 +526,6 @@ const make = Effect.gen(function*() {
     childProcess: NodeChildProcess.ChildProcess,
     signal: NodeJS.Signals
   ): void => {
-    if (globalThis.process.platform === "win32") {
-      // ignore errors during best-effort cleanup
-      taskkill(childProcess)
-      return
-    }
     try {
       globalThis.process.kill(-childProcess.pid!, signal)
     } catch {
@@ -584,8 +580,9 @@ const make = Effect.gen(function*() {
     exitSignal: ExitSignal,
     options: ChildProcess.KillOptions | undefined
   ) {
+    // `taskkill /T` stops the whole process tree on Windows, detached or not.
     const signalGroup = (signal: NodeJS.Signals) =>
-      ownsProcessGroup(command) ?
+      globalThis.process.platform === "win32" || ownsProcessGroup(command) ?
         killProcessGroup(command, childProcess, signal).pipe(
           Effect.catch((error) =>
             // Only zombies remain in the exited leader's group, so nothing is left to signal.
@@ -680,7 +677,7 @@ const make = Effect.gen(function*() {
             const [code] = yield* Deferred.await(exitSignal)
             if (code !== 0 && Predicate.isNotNull(code)) {
               yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
-            } else if (isReferenced && process.platform !== "win32" && cmd.options.detached !== false) {
+            } else if (isReferenced && ownsProcessGroup(cmd)) {
               yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
             }
             return
@@ -706,8 +703,7 @@ const make = Effect.gen(function*() {
         )
 
         const pid = ProcessId(childProcess.pid!)
-        // A non-detached child leaves no process group of its own to clean up.
-        if (cmd.options.detached !== false) {
+        if (ownsProcessGroup(cmd)) {
           childProcess.on("exit", (code) => {
             if (code !== 0 && Predicate.isNotNull(code)) {
               killProcessGroupOnExit(childProcess, cmd.options.killSignal ?? "SIGTERM")
