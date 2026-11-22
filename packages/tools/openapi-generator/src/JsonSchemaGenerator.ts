@@ -19,6 +19,7 @@
  */
 import * as Arr from "effect/Array"
 import * as Codegen from "effect/Codegen"
+import * as Equal from "effect/Equal"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
@@ -234,9 +235,9 @@ function multipartRepresentation(
   schema: SchemaRepresentation.Representation,
   refs: MultipartSchemaRefs | undefined
 ): SchemaRepresentation.Representation {
-  if (name === undefined) return schema
-  const code = multipartCode(name, refs)
-  if (code === undefined) return schema
+  if (refs === undefined) return schema
+  const code = name === undefined ? undefined : multipartCode(name, refs)
+  if (code === undefined) return admitMultipartFiles(schema, refs)
   return {
     _tag: "Declaration",
     typeParameters: [],
@@ -248,6 +249,60 @@ function multipartRepresentation(
       })
     }
   }
+}
+
+// Effect index signatures also check declared properties, so an open object has to admit its own files.
+function admitMultipartFiles(
+  schema: SchemaRepresentation.Representation,
+  refs: MultipartSchemaRefs
+): SchemaRepresentation.Representation {
+  const hasFile = (schema: SchemaRepresentation.Representation): boolean => {
+    switch (schema._tag) {
+      case "Reference":
+        return schema.$ref === refs.singleFile || (refs.kind === "httpapi" && schema.$ref === refs.files)
+      case "Union":
+        return schema.types.some(hasFile)
+      case "Arrays":
+        return schema.rest.some(hasFile) || schema.elements.some((element) => hasFile(element.type))
+      default:
+        return false
+    }
+  }
+  const go = (schema: SchemaRepresentation.Representation): SchemaRepresentation.Representation => {
+    switch (schema._tag) {
+      case "Suspend":
+        return { ...schema, thunk: go(schema.thunk) }
+      case "Union":
+        return { ...schema, types: schema.types.map(go) }
+      case "Arrays":
+        return {
+          ...schema,
+          elements: schema.elements.map((element) => ({ ...element, type: go(element.type) })),
+          rest: schema.rest.map(go)
+        }
+      case "Objects": {
+        const propertySignatures = schema.propertySignatures.map((property) => ({
+          ...property,
+          type: go(property.type)
+        }))
+        const files = Arr.dedupeWith(propertySignatures.map((property) => property.type).filter(hasFile), Equal.equals)
+        return {
+          ...schema,
+          propertySignatures,
+          indexSignatures: schema.indexSignatures.map((index) => {
+            const type = go(index.type)
+            return {
+              ...index,
+              type: files.length === 0 ? type : { _tag: "Union", types: [type, ...files], checks: [] }
+            }
+          })
+        }
+      }
+      default:
+        return schema
+    }
+  }
+  return go(schema)
 }
 
 function multipartCode(
