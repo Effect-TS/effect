@@ -13,6 +13,7 @@ import type { NonEmptyReadonlyArray } from "../Array.ts"
 import * as Context from "../Context.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import type { PathInput } from "../http/HttpRouter.ts"
+import * as RedactedPath from "../http/internal/redactedPath.ts"
 import * as InternalRecord from "../internal/record.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
@@ -24,6 +25,7 @@ import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
 import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
+import * as HttpApiPath from "./internal/path.ts"
 import { getRedactedKeys } from "./internal/redactedKeys.ts"
 
 const TypeId = "~effect/http-api/HttpApi"
@@ -623,7 +625,8 @@ export const getEndpointRedactedParams = (
   ...[api.annotations, group.annotations, endpoint.annotations].flatMap((annotations) =>
     Context.getOrUndefined(annotations, RedactedNames)?.params ?? []
   ),
-  ...(getRedactedKeys(endpoint.params) ?? ["*", ...Array.from(endpoint.path.matchAll(/:(\w+)/g), (match) => match[1])])
+  ...(getRedactedKeys(endpoint.params) ??
+    RedactedPath.allParamNames(HttpApiPath.toRouterPath(endpoint.path, endpoint.params)))
 ]
 
 // Matches every name, for a schema whose wire names are unknown.

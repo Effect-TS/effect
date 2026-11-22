@@ -2188,23 +2188,34 @@ describe("HttpApiBuilder RedactedNames", () => {
           query: { remote: Schema.RedactedFromValue(Schema.String), t: Schema.String },
           headers: { "x-registry-config": Schema.optional(Schema.RedactedFromValue(Schema.String)) },
           success: Schema.String
+        }),
+        HttpApiEndpoint.get("recordParam", "/record/:tok$1", {
+          params: Schema.Record(Schema.String, Schema.RedactedFromValue(Schema.String)),
+          success: Schema.String
         })
       )
     )
     let received: unknown
+    let receivedRecord: unknown
     const GroupLayer = HttpApiBuilder.group(
       Api,
       "images",
       (handlers) =>
-        handlers.handle("build", ({ headers, params, query }) =>
-          Effect.sync(() => {
-            received = {
-              token: Redacted.value(params.token),
-              remote: Redacted.value(query.remote),
-              config: headers["x-registry-config"] && Redacted.value(headers["x-registry-config"])
-            }
-            return "ok"
-          }))
+        handlers
+          .handle("build", ({ headers, params, query }) =>
+            Effect.sync(() => {
+              received = {
+                token: Redacted.value(params.token),
+                remote: Redacted.value(query.remote),
+                config: headers["x-registry-config"] && Redacted.value(headers["x-registry-config"])
+              }
+              return "ok"
+            }))
+          .handle("recordParam", ({ params }) =>
+            Effect.sync(() => {
+              receivedRecord = Redacted.value(params["tok$1"])
+              return "ok"
+            }))
     )
     const spans: Array<Tracer.NativeSpan> = []
     const tracer = Tracer.make({
@@ -2228,11 +2239,13 @@ describe("HttpApiBuilder RedactedNames", () => {
         context
       )
       assert.strictEqual(response.status, 200)
+      const recordResponse = await handler(new Request("http://localhost/record/tok-s3cret"), context)
+      assert.strictEqual(recordResponse.status, 200)
     } finally {
       await dispose()
     }
 
-    const [span] = spans
+    const [span, recordSpan] = spans
     assert.strictEqual(span.attributes.get("url.full"), "http://localhost/build/REDACTED?remote=REDACTED&t=app")
     assert.strictEqual(span.attributes.get("url.path"), "/build/REDACTED")
     assert.strictEqual(span.attributes.get("url.query"), "remote=REDACTED&t=app")
@@ -2243,6 +2256,9 @@ describe("HttpApiBuilder RedactedNames", () => {
       remote: "https://user:pass@host/repo.git",
       config: "cfg-s3cret"
     })
+    assert.strictEqual(recordSpan.attributes.get("url.full"), "http://localhost/record/REDACTED")
+    assert.strictEqual(recordSpan.attributes.get("url.path"), "/record/REDACTED")
+    assert.strictEqual(receivedRecord, "tok-s3cret")
   })
 })
 
