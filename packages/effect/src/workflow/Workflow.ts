@@ -375,7 +375,9 @@ const Proto = {
   ) {
     return Effect.suspend(() => {
       const payload = this.payloadSchema.make(fields)
-      const run = Effect.flatMap(
+      // Register with the parent before the execution id is computed, so a
+      // sibling that suspends first waits for this child to be dispatched.
+      return withPendingActivity(Effect.flatMap(
         EngineTag,
         (engine) =>
           Effect.flatMap(makeExecutionIdFromPayload(this, payload), (executionId) =>
@@ -389,10 +391,7 @@ const Proto = {
                 suspendedRetrySchedule: this.suspendedRetrySchedule
               })
             ))
-      )
-      // Register with the parent before the execution id is computed, so a
-      // sibling that suspends first waits for this child to be dispatched.
-      return withPendingActivity(run)
+      ))
     }).pipe(
       Effect.withSpan(
         `${this._tag}.execute`,
@@ -858,7 +857,8 @@ const releaseActivityUnsafe = (registration: ActivityRegistration) => {
 /**
  * Registers a pending child workflow execution with the current workflow
  * instance before any asynchronous work runs. `wrapActivityResult` adopts the
- * registration once the execution is dispatched.
+ * registration once the execution is dispatched; a discarded execution is never
+ * adopted, so its registration is released when dispatch returns.
  */
 const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.contextWith((context: Context.Context<never>) => {
