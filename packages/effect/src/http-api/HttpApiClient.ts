@@ -27,6 +27,7 @@ import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as MediaType from "../http/internal/mediaType.ts"
+import * as RedactedPath from "../http/internal/redactedPath.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -45,6 +46,7 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as HttpApiPath from "./internal/path.ts"
+import { getRedactedParamNames } from "./internal/redactedNames.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -508,6 +510,11 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
         const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
+        // Path params whose values are `Redacted` are recorded as their path template.
+        const redactedParamNames = getRedactedParamNames(endpoint.params)
+        const redactedPathTemplate = redactedParamNames.length === 0
+          ? undefined
+          : RedactedPath.compile(endpoint.path, redactedParamNames)
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -520,12 +527,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           } | undefined
         ) {
           let httpRequest = HttpClientRequest.make(endpoint.method)(endpoint.path)
+          let redactedPath: RedactedPath.RedactedPath | undefined
 
           if (request !== undefined) {
             // params
             if (encodeParams !== undefined) {
               const params = (yield* encodeParams(request.params)) as Record<string, string>
               httpRequest = HttpClientRequest.setUrl(httpRequest, makeUrl(params))
+              if (redactedPathTemplate !== undefined) redactedPath = RedactedPath.render(redactedPathTemplate, params)
             }
 
             // payload
@@ -583,7 +592,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
             middlewareKeys,
             middlewareKeys.length - 1
           )
-          const response = yield* (redactedNames === undefined ? execute : withRedactedNames(execute, redactedNames))
+          const named = redactedNames === undefined ? execute : withRedactedNames(execute, redactedNames)
+          const response = yield* (redactedPath === undefined
+            ? named
+            : named.pipe(Effect.provideService(RedactedPath.CurrentRedactedPath, redactedPath)))
 
           if (request?.responseMode === "response-only") {
             return response

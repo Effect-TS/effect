@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Exit, Fiber, Schema, Stream, Tracer } from "effect"
+import { Cause, Effect, Exit, Fiber, Redacted, Schema, Stream, Tracer } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -1274,6 +1274,251 @@ describe("HttpApiClient", () => {
 
         strictEqual(capture.span.attributes.get("url.query"), "a=REDACTED&b=REDACTED&c=REDACTED&sig=REDACTED&page=5")
         strictEqual(capture.sent.url, "http://test/get?a=1&b=2&c=3&sig=4&page=5")
+      }))
+
+    it.effect("redacts Redacted query and header fields without listing them", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("join", "/join", {
+              query: { token: Schema.RedactedFromValue(Schema.String), t: Schema.String },
+              headers: {
+                "x-token": Schema.RedactedFromValue(Schema.String),
+                "x-optional": Schema.optional(Schema.RedactedFromValue(Schema.String)),
+                "x-page": Schema.String
+              }
+            })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.join({
+          query: { token: Redacted.make("s3cret"), t: "app" },
+          headers: { "x-token": Redacted.make("s3cret"), "x-optional": Redacted.make("s3cret"), "x-page": "1" }
+        }))
+
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/join?token=REDACTED&t=app")
+        strictEqual(capture.span.attributes.get("url.query"), "token=REDACTED&t=app")
+        strictEqual(capture.span.attributes.get("http.request.header.x-token"), "<redacted>")
+        strictEqual(capture.span.attributes.get("http.request.header.x-optional"), "<redacted>")
+        strictEqual(capture.span.attributes.get("http.request.header.x-page"), "1")
+        // The wire is unchanged.
+        strictEqual(capture.sent.url, "http://test/join?token=s3cret&t=app")
+        strictEqual(capture.sent.headers["x-token"], "s3cret")
+      }))
+
+    it.effect("redacts nested Redacted fields and every query name of a struct with renamed keys", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("nested", "/nested", {
+              query: { filter: Schema.Struct({ token: Schema.RedactedFromValue(Schema.String) }), t: Schema.String }
+            }),
+            HttpApiEndpoint.post("renamed", "/renamed", {
+              query: Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), t: Schema.String }).pipe(
+                Schema.encodeKeys({ token: "tok" })
+              )
+            })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.nested({
+          query: { filter: { token: Redacted.make("s3cret") }, t: "app" }
+        }))
+        strictEqual(capture.span.attributes.get("url.query"), "filter%5Btoken%5D=REDACTED&t=app")
+        strictEqual(capture.sent.url, "http://test/nested?filter%5Btoken%5D=s3cret&t=app")
+
+        // The wire names of renamed keys are not known, so every query parameter is redacted.
+        yield* capture.trace(client.test.renamed({ query: { token: Redacted.make("s3cret"), t: "app" } }))
+        strictEqual(capture.span.attributes.get("url.query"), "tok=REDACTED&t=REDACTED")
+        strictEqual(capture.sent.url, "http://test/renamed?tok=s3cret&t=app")
+      }))
+
+    it.effect("redacts Redacted fields of a GET payload sent as query parameters", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("search", "/search", {
+              payload: { token: Schema.RedactedFromValue(Schema.String), q: Schema.String }
+            })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.search({ payload: { token: Redacted.make("s3cret"), q: "app" } }))
+
+        strictEqual(capture.span.attributes.get("url.query"), "token=REDACTED&q=app")
+        strictEqual(capture.sent.url, "http://test/search?token=s3cret&q=app")
+      }))
+
+    it.effect("walks recursive schemas to find Redacted fields", () =>
+      Effect.gen(function*() {
+        const Node: Schema.Codec<unknown> = Schema.Struct({
+          value: Schema.String,
+          token: Schema.optional(Schema.RedactedFromValue(Schema.String)),
+          next: Schema.optional(Schema.suspend((): Schema.Codec<unknown> => Node))
+        })
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("tree", "/tree", { query: { node: Node } })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.tree({
+          query: { node: { value: "a", next: { value: "b", token: Redacted.make("s3cret") } } }
+        }))
+
+        // The nested `node[...]` keys are redacted because the recursive schema holds a `Redacted` field.
+        assert.notInclude(String(capture.span.attributes.get("url.query")), "s3cret")
+        assert.include(String(capture.span.attributes.get("url.query")), "REDACTED")
+        assert.notInclude(capture.sent.url, "REDACTED")
+      }))
+
+    it.effect("redacts Redacted path params in client spans and keeps the wire URL", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/p/:t/tail", { params: { t: Schema.RedactedFromValue(Schema.String) } })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.get({ params: { t: Redacted.make("s3cret") } }))
+
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/p/REDACTED/tail")
+        strictEqual(capture.span.attributes.get("url.path"), "/p/REDACTED/tail")
+        strictEqual(capture.sent.url, "http://test/p/s3cret/tail")
+      }))
+
+    it.effect("redacts only the Redacted path params, so equal plain values stay visible", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/a/:t/:id", {
+              params: { t: Schema.RedactedFromValue(Schema.String), id: Schema.String }
+            })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.get({ params: { t: Redacted.make("s3cret"), id: "s3cret" } }))
+
+        strictEqual(capture.span.attributes.get("url.path"), "/a/REDACTED/s3cret")
+        strictEqual(capture.sent.url, "http://test/a/s3cret/s3cret")
+      }))
+
+    it.effect("keeps plain path params visible", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/p/:id/tail", { params: { id: Schema.String } })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient: capture.httpClient })
+
+        yield* capture.trace(client.test.get({ params: { id: "abc" } }))
+
+        strictEqual(capture.span.attributes.get("url.path"), "/p/abc/tail")
+      }))
+
+    it.effect("redacts encoded values and static path suffixes, and keeps the base URL path", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/p/:t.json", { params: { t: Schema.RedactedFromValue(Schema.String) } }),
+            HttpApiEndpoint.get("opt", "/o/:t?", {
+              params: { t: Schema.optional(Schema.RedactedFromValue(Schema.String)) }
+            })
+          )
+        )
+        const capture = captureRequest()
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test/api/v1",
+          httpClient: capture.httpClient
+        })
+
+        yield* capture.trace(client.test.get({ params: { t: Redacted.make("a/b c") } }))
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/api/v1/p/REDACTED.json")
+        strictEqual(capture.sent.url, "http://test/api/v1/p/a%2Fb%20c.json")
+
+        yield* capture.trace(client.test.opt({ params: { t: Redacted.make("s3cret") } }))
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/api/v1/o/REDACTED")
+
+        yield* capture.trace(client.test.opt({ params: {} }))
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/api/v1/o")
+      }))
+
+    it.effect("redacts Redacted path params in client error messages and JSON", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/p/:t/tail", { params: { t: Schema.RedactedFromValue(Schema.String) } })
+          )
+        )
+        const httpClient = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response("boom", { status: 500 })))
+        )
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+
+        const error = yield* Effect.flip(client.test.get({ params: { t: Redacted.make("s3cret") } }))
+
+        assert.include(error.message, "GET http://test/p/REDACTED/tail")
+        assert.notInclude(error.message, "s3cret")
+        assert.notInclude(JSON.stringify(error.toJSON()), "s3cret")
+      }))
+
+    it.effect("does not expose path params of other executions that share a response", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/p/:t/tail", { params: { t: Schema.RedactedFromValue(Schema.String) } })
+          )
+        )
+        // One response object is returned for every execution, as a runner may do.
+        const request = HttpClientRequest.get("http://test/")
+        const response = HttpClientResponse.fromWeb(request, new Response("boom", { status: 500 }))
+        const httpClient = HttpClient.make(() => Effect.succeed(response))
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+
+        const first = yield* Effect.flip(client.test.get({ params: { t: Redacted.make("first-s3cret") } }))
+        const second = yield* Effect.flip(client.test.get({ params: { t: Redacted.make("second-s3cret") } }))
+
+        assert.notInclude(first.message, "first-s3cret")
+        assert.notInclude(second.message, "second-s3cret")
+        assert.notInclude(second.message, "first-s3cret")
+      }))
+
+    it.effect("does not expose a path param when another endpoint's path ends the same way", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("short", "/p/:t/tail", { params: { t: Schema.RedactedFromValue(Schema.String) } }),
+            HttpApiEndpoint.get("long", "/a/:u/p/:t/tail", {
+              params: { u: Schema.RedactedFromValue(Schema.String), t: Schema.String }
+            })
+          )
+        )
+        // One response object is returned for both executions, as a runner may do.
+        const request = HttpClientRequest.get("http://test/")
+        const response = HttpClientResponse.fromWeb(request, new Response("boom", { status: 500 }))
+        const httpClient = HttpClient.make(() => Effect.succeed(response))
+        const client = yield* HttpApiClient.makeWith(Api, { baseUrl: "http://test", httpClient })
+
+        yield* Effect.flip(client.test.short({ params: { t: Redacted.make("x") } }))
+        const error = yield* Effect.flip(client.test.long({ params: { u: Redacted.make("long-s3cret"), t: "x" } }))
+
+        // A guard, not a discriminating test: each execution's error has its own response wrapper.
+        assert.notInclude(error.message, "long-s3cret")
+        assert.notInclude(JSON.stringify(error.toJSON()), "long-s3cret")
       }))
   })
 

@@ -1,3 +1,4 @@
+import * as Context from "../../Context.ts"
 import { getClosingParenthensePosition } from "../FindMyWay/internal/router.ts"
 import type { HttpServerRequest } from "../HttpServerRequest.ts"
 import { stripSearchAndHash, toPath } from "./urlParams.ts"
@@ -141,4 +142,36 @@ export const format = (path: RedactedPath): string => {
     last = run.index + run[0].length
   }
   return out + path.text.slice(last)
+}
+
+/**
+ * The redacted path of the request a client executes. Set by an endpoint whose
+ * path params hold a `Redacted` value, so its URL is recorded without them.
+ *
+ * @internal
+ */
+export const CurrentRedactedPath = Context.Reference<RedactedPath | undefined>(
+  "effect/http/internal/redactedPath/CurrentRedactedPath",
+  { defaultValue: () => undefined }
+)
+
+const authorityPrefix = /^[a-z][a-z\d+.-]*:\/\/[^/]*/i
+
+/**
+ * Replaces the rendered path of a URL string, absolute or relative, with its
+ * redacted form and keeps the rest of the URL. A path that does not end with
+ * the rendered path is replaced by `/REDACTED`, so a mismatch never shows it.
+ *
+ * @internal
+ */
+export const redactUrlPath = (url: string, path: RedactedPath): string => {
+  const queryOrHash = url.search(/[?#]/)
+  const head = queryOrHash === -1 ? url : url.slice(0, queryOrHash)
+  const tail = queryOrHash === -1 ? "" : url.slice(queryOrHash)
+  const start = authorityPrefix.exec(head)?.[0].length ?? 0
+  const pathname = head.slice(start)
+  if (pathname.endsWith(path.text)) {
+    return head.slice(0, head.length - path.text.length) + format(path) + tail
+  }
+  return head.slice(0, start) + "/REDACTED" + tail
 }

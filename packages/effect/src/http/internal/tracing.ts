@@ -1,6 +1,7 @@
 import type * as Tracer from "../../Tracer.ts"
 import * as Headers from "../Headers.ts"
 import * as UrlParams from "../UrlParams.ts"
+import * as RedactedPath from "./redactedPath.ts"
 
 const defaultPorts: Record<string, number> = {
   "http:": 80,
@@ -10,18 +11,22 @@ const defaultPorts: Record<string, number> = {
 }
 
 /**
- * Records `url.*` and `server.*` attributes with URL redaction.
+ * Records `url.*` and `server.*` attributes with URL redaction. A redacted path
+ * replaces the path params whose values are `Redacted`.
  *
  * @internal
  */
 export const addUrlAttributes = (
   span: Tracer.Span,
   url: URL,
-  redactedNames: ReadonlyArray<string | RegExp>
+  redactedNames: ReadonlyArray<string | RegExp>,
+  redactedPath: RedactedPath.RedactedPath | undefined = undefined
 ): void => {
+  const href = redactedPath === undefined ? url.href : RedactedPath.redactUrlPath(url.href, redactedPath)
+  const pathname = redactedPath === undefined ? url.pathname : RedactedPath.redactUrlPath(url.pathname, redactedPath)
   const query = UrlParams.redactUrl(url.search, redactedNames).slice(1)
-  span.attribute("url.full", UrlParams.redactUrl(url.href, redactedNames))
-  span.attribute("url.path", url.pathname)
+  span.attribute("url.full", UrlParams.redactUrl(href, redactedNames))
+  span.attribute("url.path", pathname)
   if (query !== "") {
     span.attribute("url.query", query)
   }

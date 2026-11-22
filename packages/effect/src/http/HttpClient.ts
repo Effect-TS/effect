@@ -46,6 +46,7 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
+import * as RedactedPath from "./internal/redactedPath.ts"
 import * as tracing from "./internal/tracing.ts"
 import { getWebSource, WebSourceSymbol } from "./internal/webResponse.ts"
 import * as Url from "./Url.ts"
@@ -702,16 +703,17 @@ export const make = (
         const scope = fiber.getRef(RequestScope)
         const controller = new AbortController()
         const urlParamsRedactedNames = fiber.getRef(UrlParams.CurrentRedactedNames)
+        const urlParamsRedactedPath = fiber.getRef(RedactedPath.CurrentRedactedPath)
         const urlResult = Url.make(request.url, request.urlParams, Option.getOrUndefined(request.hash))
         if (Result.isFailure(urlResult)) {
-          return Effect.fail(
-            new Error.HttpClientError({
-              reason: new Error.InvalidUrlError({
-                request,
-                cause: urlResult.failure
-              })
+          const error = new Error.HttpClientError({
+            reason: new Error.InvalidUrlError({
+              request,
+              cause: urlResult.failure
             })
-          )
+          })
+          Error.addFailureRedactedNames(Cause.fail(error), [], urlParamsRedactedPath)
+          return Effect.fail(error)
         }
         const url = urlResult.success
         const send = (request: HttpClientRequest.HttpClientRequest) =>
@@ -730,7 +732,13 @@ export const make = (
           Effect.uninterruptibleMask((restore) =>
             Effect.matchCauseEffect(restore(send(request)), {
               onSuccess: (response) => {
-                response = trackResponse(response, controller, scope !== undefined, urlParamsRedactedNames)
+                response = trackResponse(
+                  response,
+                  controller,
+                  scope !== undefined,
+                  urlParamsRedactedNames,
+                  urlParamsRedactedPath
+                )
                 onResponse?.(response)
                 return Effect.succeed(response)
               },
@@ -738,7 +746,7 @@ export const make = (
                 if (Cause.hasInterrupts(cause)) {
                   controller.abort()
                 }
-                Error.addFailureRedactedNames(cause, urlParamsRedactedNames)
+                Error.addFailureRedactedNames(cause, urlParamsRedactedNames, urlParamsRedactedPath)
                 return Effect.failCause(cause)
               }
             })
@@ -758,7 +766,8 @@ export const make = (
             tracing.addUrlAttributes(
               span,
               url,
-              tracing.redactedNames(request.urlParams, urlParamsRedactedNames)
+              tracing.redactedNames(request.urlParams, urlParamsRedactedNames),
+              urlParamsRedactedPath
             )
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
@@ -2305,15 +2314,16 @@ const trackResponse = (
   response: HttpClientResponse.HttpClientResponse,
   controller: AbortController,
   scoped: boolean,
-  urlParamsRedactedNames: ReadonlyArray<string | RegExp>
+  urlParamsRedactedNames: ReadonlyArray<string | RegExp>,
+  urlParamsRedactedPath: RedactedPath.RedactedPath | undefined
 ): HttpClientResponse.HttpClientResponse => {
   // Body readers create errors with the runner's response, while callers hold
   // the wrapper, so both carry the names of the executing fiber.
-  Error.addResponseRedactedNames(response, urlParamsRedactedNames)
+  Error.addResponseRedactedNames(response, urlParamsRedactedNames, urlParamsRedactedPath)
   if (!scoped) {
     responseRegistry.register(response, controller)
     response = new InterruptibleResponse(response, controller)
-    Error.addResponseRedactedNames(response, urlParamsRedactedNames)
+    Error.addResponseRedactedNames(response, urlParamsRedactedNames, urlParamsRedactedPath)
   }
   responseControllers.set(response, controller)
   return response
