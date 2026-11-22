@@ -24,6 +24,6 @@
     "@effect/vitest": "workspace:^",
     "@types/node": "^26.6.6",
     "@types/semver": "^7.8.0",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }

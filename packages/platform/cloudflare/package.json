@@ -72,7 +72,7 @@
     }
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^5.20261114.1",
+    "@cloudflare/workers-types": "^5.20261121.1",
     "@effect/sql-sqlite-do": "workspace:^"
   },
   "devDependencies": {

@@ -237,7 +237,6 @@ describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
     const attempt = ++attempts
     abortedAtStart.push(ctx.signal.aborted)
     if (attempt === 2) {
-      // The retry inherits an aborted signal. Keep its assertion uninterruptible.
       return Effect.sync(() => {
         events.push("retry:start")
         assert.deepStrictEqual(events, [
@@ -246,7 +245,7 @@ describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
           "attempt1:release:end",
           "retry:start"
         ])
-      }).pipe(Effect.uninterruptible)
+      })
     }
     return Effect.gen(function*() {
       yield* resource(events, "attempt1")
@@ -257,8 +256,7 @@ describe("it.effect timeout retry finalizers", { concurrent: false }, () => {
   it("completes a genuine retry before starting the next test", () => {
     events.push("next:start")
     assert.strictEqual(attempts, 2)
-    // Vitest reuses the signal aborted by the first attempt's timeout.
-    assert.deepStrictEqual(abortedAtStart, [false, true])
+    assert.deepStrictEqual(abortedAtStart, [false, false])
     assert.deepStrictEqual(events, [
       "attempt1:acquired",
       "attempt1:release:start",
