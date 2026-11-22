@@ -5,10 +5,8 @@
 import * as Cause from "../../Cause.ts"
 import * as Digest from "../../crypto/Digest.ts"
 import * as Effect from "../../Effect.ts"
-import * as Yaml from "../../encoding/Yaml.ts"
 import * as Mime from "../../http/Mime.ts"
 import * as Option from "../../Option.ts"
-import * as Predicate from "../../Predicate.ts"
 import * as Rpc from "../../rpc/Rpc.ts"
 import * as RpcGroup from "../../rpc/RpcGroup.ts"
 import * as Schema from "../../Schema.ts"
@@ -17,6 +15,7 @@ import type * as McpCore from "./mcpCore.ts"
 import * as McpProtocol from "./mcpProtocol.ts"
 import * as Legacy from "./mcpSchema/v2024_11_05.ts"
 import * as Stateless from "./mcpSchema/v2026_07_28.ts"
+import { isSafeRelativePath, parseFrontmatter } from "./skill.ts"
 
 /**
  * @internal
@@ -280,35 +279,11 @@ const decodeText = (mimeType: string, content: Uint8Array): string | undefined =
   }
 }
 
-const isSafeRelativePath = (path: string): boolean =>
-  path !== "" &&
-  !path.includes("\\") &&
-  path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
-
 // The Agent Skills `name` rule: lowercase letters, digits and single hyphens,
 // neither leading nor trailing, at most 64 characters.
 const isSkillName = (name: string): boolean => name.length <= 64 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
 
-const FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
-
-/**
- * The YAML frontmatter of a `SKILL.md`, or `undefined` when the file does not
- * begin with a frontmatter block holding a YAML mapping.
- *
- * @internal
- */
-export const parseFrontmatter = (markdown: string): Record<string, unknown> | undefined => {
-  const block = FRONTMATTER.exec(markdown)?.[1]
-  if (block === undefined) return undefined
-  try {
-    const parsed = Yaml.parse(block)
-    // The frontmatter is listed as JSON, so keep only what JSON carries:
-    // `.inf` and `.nan` become `null`.
-    return Predicate.isObject(parsed) ? JSON.parse(JSON.stringify(parsed)) : undefined
-  } catch {
-    return undefined
-  }
-}
+export { parseFrontmatter }
 
 // The directory holding a skill's `SKILL.md`, given the `SKILL.md` URI.
 const skillRoot = (uri: string): string => uri.slice(0, -"/SKILL.md".length)

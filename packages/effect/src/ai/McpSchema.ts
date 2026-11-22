@@ -26,6 +26,7 @@ import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
 import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
+import * as SkillModule from "./Skill.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -1428,37 +1429,7 @@ export class SkillResource extends Schema.Class<SkillResource>(
  * @category schemas
  * @since 4.1.1
  */
-export const SkillFrontmatter = Schema.StructWithRest(
-  Schema.Struct({
-    /**
-     * 1 to 64 lowercase letters, digits and hyphens, with no leading, trailing
-     * or consecutive hyphen. It names the directory holding `SKILL.md`.
-     */
-    name: Schema.String.check(Schema.isMaxLength(64), Schema.isPattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
-    /**
-     * What the skill does and when to use it, in 1 to 1024 characters.
-     */
-    description: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(1024)),
-    /**
-     * The skill's license, or the name of a bundled license file.
-     */
-    license: Schema.optionalKey(Schema.String),
-    /**
-     * Environment requirements, in 1 to 500 characters.
-     */
-    compatibility: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(500))),
-    /**
-     * Additional properties not defined by the specification.
-     */
-    metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-    /**
-     * Space-separated tools the skill asks to run without approval. Hosts must
-     * ignore it for a skill served over MCP unless the user approved the grant.
-     */
-    "allowed-tools": Schema.optionalKey(Schema.String)
-  }),
-  [UnknownObject]
-)
+export const SkillFrontmatter = SkillModule.Frontmatter
 
 /**
  * The YAML frontmatter of an Agent Skill's `SKILL.md`.
@@ -1467,7 +1438,7 @@ export const SkillFrontmatter = Schema.StructWithRest(
  * @category models
  * @since 4.1.1
  */
-export type SkillFrontmatter = typeof SkillFrontmatter.Type
+export type SkillFrontmatter = SkillModule.Frontmatter
 
 /**
  * Schema for an Agent Skill served under the MCP Skills extension (SEP-2640),
