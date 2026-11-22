@@ -669,6 +669,44 @@ describe("WorkflowEngine", () => {
       }))
   }
 
+  it.effect("layerMemory dispatches a discarded child forked beside a durable wait before suspending", () =>
+    Effect.gen(function*() {
+      const Gate = DurableDeferred.make("WorkflowEngine/BesideWaitGate")
+      const childStarted = yield* Ref.make(false)
+      const Parent = Workflow.make("WorkflowEngine/BesideWaitParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/BesideWaitChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(() =>
+        Effect.all([
+          Child.execute({}, { discard: true }),
+          DurableDeferred.await(Gate)
+        ], { concurrency: "unbounded", discard: true })
+      )
+      const ChildLayer = Child.toLayer(() => Ref.set(childStarted, true).pipe(Effect.andThen(Effect.never)))
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        for (let i = 0; i < 1000 && !(Option.isSome(result) && result.value._tag === "Suspended"); i++) {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert(Option.isSome(result) && result.value._tag === "Suspended", "the parent must suspend")
+        let started = yield* Ref.get(childStarted)
+        for (let i = 0; i < 100 && !started; i++) {
+          yield* Effect.yieldNow
+          started = yield* Ref.get(childStarted)
+        }
+        assert.isTrue(started)
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {
       const executionId = yield* IncrementWorkflow.executionId({ value: 1 })
