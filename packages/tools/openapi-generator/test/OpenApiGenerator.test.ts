@@ -4502,77 +4502,22 @@ export const withString: UploadRequestFormData = { file: "upload.txt" }
       }
     )
 
-    itGeneratedClientsCompile(
-      "types multipart binary fields of open objects as File | Blob for generated clients",
-      multipartSpec({
-        type: "object",
-        properties: { file: { type: "string", format: "binary" }, caption: { type: "string" } },
-        required: ["file"]
-      }),
-      {
-        usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt"), caption: "hi" }
-export const withBlob: UploadRequestFormData = { file: new Blob([]) }
+    const openMultipartSpec = multipartSpec({
+      type: "object",
+      properties: { file: { type: "string", format: "binary" }, caption: { type: "string" } },
+      required: ["file"]
+    })
+
+    itGeneratedClientsCompile("accepts files in open multipart objects for generated clients", openMultipartSpec, {
+      usage: `export const withFile: UploadRequestFormData = { file: new File([], "upload.txt"), caption: "hi" }
+export const withBlob: UploadRequestFormData = { file: new Blob([]), undeclared: "kept" }
 `
-      }
-    )
+    })
 
-    it.effect("keeps open multipart objects open unless they are plain objects with binary fields", () =>
-      Effect.gen(function*() {
-        const file = { type: "string", format: "binary" } as const
-        const upload = { type: "object", properties: { file } } as const
-        const caption = { caption: { type: "string" } } as const
-        const aliasMember = multipartSpec(
-          { allOf: [{ $ref: "#/components/schemas/Alias" }, { properties: caption }] },
-          {
-            Alias: { $ref: "#/components/schemas/Upload" },
-            Upload: upload
-          }
-        )
-        const referenceSiblings = multipartSpec({ $ref: "#/components/schemas/Upload", properties: caption }, {
-          Upload: upload
-        })
-        const referenceSiblings30 = { ...referenceSiblings, openapi: "3.0.3" } as unknown as OpenAPISpec
-        for (const spec of [aliasMember, referenceSiblings, referenceSiblings30]) {
-          yield* assertHttpApiIncludes(spec, [`"caption": Schema.optionalKey(Schema.String)`])
-        }
-        for (const spec of [aliasMember, referenceSiblings]) {
-          yield* assertRuntimeIncludes(spec, [`"caption": Schema.optionalKey(Schema.String)`])
-        }
-        const siblingFile = multipartSpec({ $ref: "#/components/schemas/Meta", properties: { file } }, {
-          Meta: { type: "object", properties: { id: { type: "string" } }, required: ["id"] }
-        })
-        const siblingFile30 = { ...siblingFile, openapi: "3.0.3" } as unknown as OpenAPISpec
-        const requiredOutside = multipartSpec({ type: "object", properties: { file }, required: ["name"] })
-        const nestedInfo = multipartSpec({
-          allOf: [
-            { type: "object", properties: { info: { type: "object", properties: { file } } } },
-            {
-              type: "object",
-              properties: { info: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } }
-            }
-          ]
-        })
-        const exampleOnly = multipartSpec({ type: "object", properties: { name: { type: "string", example: file } } })
-        const open = ["export const UploadRequestFormData = Schema.StructWithRest("]
-        for (const spec of [siblingFile, siblingFile30, requiredOutside, nestedInfo, exampleOnly]) {
-          yield* assertHttpApiIncludes(spec, open, ["Schema.Never"])
-        }
-        for (const spec of [siblingFile, requiredOutside, nestedInfo, exampleOnly]) {
-          yield* assertRuntimeIncludes(spec, open, ["Schema.Never"])
-        }
-      }))
-
-    it.effect("ignores composition keywords in example values when preparing multipart schemas", () =>
-      assertRuntimeIncludes(
-        sharedMultipartSpec({ type: "object", properties: { name: { type: "string" } } }, {
-          Thing: {
-            type: "object",
-            properties: { name: { type: "string" } },
-            example: { allOf: [{ $ref: "#/components/schemas/Address/properties/street" }] }
-          }
-        }, { schema: { $ref: "#/components/schemas/Thing" } }),
-        ["export type Thing ="]
-      ))
+    it.effect("accepts files in open multipart objects (httpapi)", () =>
+      assertHttpApiIncludes(openMultipartSpec, [
+        `[Schema.Record(Schema.String, Schema.Union([Schema.Json.annotate({ "expected": "JSON value" }), __HttpApiMultipartSingleFile]))]`
+      ]))
 
     itGeneratedClientsCompile(
       "types recursive multipart binary references as File | Blob for generated clients",

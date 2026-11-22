@@ -1052,30 +1052,6 @@ const makeMultipartSchemas = (
   const inlining = new Set<string>()
   // Components reachable from a schema that is not a multipart body, filled in by `finish`.
   let shared: ReadonlySet<string> = new Set()
-  // Schemas a multipart body reaches through a plain path of `properties`, `items` and references, and
-  // schemas it reaches through any other keyword. Filled in by `finish`.
-  const plainSchemas = new WeakSet<object>()
-  const composedSchemas = new WeakSet<object>()
-
-  const markPaths = (schema: unknown, composed: boolean): void => {
-    if (Array.isArray(schema)) {
-      for (const item of schema) markPaths(item, composed)
-      return
-    }
-    if (!Predicate.isObject(schema)) return
-    const marked = composed ? composedSchemas : plainSchemas
-    if (marked.has(schema)) return
-    marked.add(schema)
-    const nested = composed || !isPlainSchema(schema)
-    if (isComponentRef(schema.$ref)) markPaths(resolveRef(schema.$ref), nested)
-    for (const key of subschemaKeywords) {
-      markPaths(schema[key], key === "items" ? nested : true)
-    }
-    for (const key of subschemaMapKeywords) {
-      const map = schema[key]
-      if (Predicate.isObject(map)) markPaths(Object.values(map), key === "properties" ? nested : true)
-    }
-  }
 
   const hasBinary = (value: unknown, seen: Set<string>): boolean => {
     if (Array.isArray(value)) return value.some((item) => hasBinary(item, seen))
@@ -1125,33 +1101,6 @@ const makeMultipartSchemas = (
     return isBinaryFile(resolveRef(value.$ref), seen)
   }
 
-  // Only plain open objects outside any composition are closed, so no other schema constrains their keys.
-  const isClosable = (value: Record<string, unknown>): boolean => {
-    const { properties, required } = value
-    return plainSchemas.has(value) && !composedSchemas.has(value) && isPlainSchema(value) &&
-      value.$ref === undefined && (value.type === undefined || value.type === "object") &&
-      value.additionalProperties !== false && Predicate.isObject(properties) &&
-      (required === undefined ||
-        Array.isArray(required) && required.every((key) => typeof key === "string" && Object.hasOwn(properties, key)))
-  }
-
-  // Files count only in schema positions, and inside a nested object only when that object is or will be closed.
-  const holdsFile = (schema: unknown, seen: Set<string>): boolean => {
-    if (Array.isArray(schema)) return schema.some((item) => holdsFile(item, seen))
-    if (!Predicate.isObject(schema)) return false
-    if (isMultipartBinaryFile(schema)) return true
-    if (isComponentRef(schema.$ref) && !seen.has(schema.$ref)) {
-      seen.add(schema.$ref)
-      if (holdsFile(resolveRef(schema.$ref), seen)) return true
-    }
-    return (Predicate.isObject(schema.properties) && (schema.additionalProperties === false || isClosable(schema)) &&
-      holdsFile(Object.values(schema.properties), seen)) || fileKeywords.some((key) => holdsFile(schema[key], seen))
-  }
-
-  // Effect index signatures also check declared properties, so an open object would require its files to be JSON.
-  const isOpenFileObject = (value: Record<string, unknown>): boolean =>
-    isClosable(value) && Predicate.isObject(value.properties) && holdsFile(Object.values(value.properties), new Set())
-
   const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(visit)
     if (!Predicate.isObject(value)) return value
@@ -1161,15 +1110,11 @@ const makeMultipartSchemas = (
     ) {
       return inlineComponent(value, value.$ref)
     }
-    const out = Rec.map(
-      value,
-      (item, key) => subschemaMaps.has(key) && Predicate.isObject(item) ? Rec.map(item, visit) : visit(item)
-    )
+    const out = Rec.map(value, visit)
     if (isComponentRef(value.$ref) && isBinaryComponent(value.$ref)) {
       out.$ref = toDefinitionRef(copyComponent(value.$ref))
     }
     if (filesRef !== undefined && isMultipartBinaryFiles(out, singleFileRef)) return { $ref: filesRef }
-    if (isOpenFileObject(value)) out.additionalProperties = false
     return out
   }
 
@@ -1183,7 +1128,6 @@ const makeMultipartSchemas = (
   }
   const finish = (schemas: Readonly<Record<string, JsonSchema.JsonSchema>>): void => {
     shared = collectComponentRefs(Object.values(schemas).filter((schema) => !pending.has(schema)), resolveRef)
-    for (const schema of pending.values()) markPaths(schema, false)
     for (const [placeholder, schema] of pending) {
       Object.assign(placeholder, visit(schema))
     }
@@ -1244,38 +1188,6 @@ const subschemaKeywords = [
 ] as const
 
 const subschemaMapKeywords = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"] as const
-
-const subschemaMaps: ReadonlySet<string> = new Set(subschemaMapKeywords)
-
-const fileKeywords = ["items", "prefixItems", "anyOf", "oneOf"] as const
-
-const annotationKeywords: ReadonlySet<string> = new Set([
-  "title",
-  "description",
-  "$comment",
-  "deprecated",
-  "readOnly",
-  "writeOnly",
-  "default",
-  "example",
-  "examples"
-])
-
-const plainObjectKeywords: ReadonlySet<string> = new Set([
-  "type",
-  "properties",
-  "required",
-  "additionalProperties",
-  "items"
-])
-
-// A plain schema has no keyword that combines it with other schemas or constrains its undeclared keys.
-const isPlainSchema = (schema: Record<string, unknown>): boolean =>
-  (schema.additionalProperties === undefined || typeof schema.additionalProperties === "boolean") &&
-  Object.keys(schema).every((key) =>
-    key.startsWith("x-") || annotationKeywords.has(key) ||
-    (schema.$ref === undefined ? plainObjectKeywords.has(key) : key === "$ref")
-  )
 
 const componentRefPrefix = "#/components/schemas/"
 
