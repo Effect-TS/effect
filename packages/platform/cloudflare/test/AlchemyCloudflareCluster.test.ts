@@ -215,34 +215,33 @@ describe("AlchemyCloudflareCluster", () => {
     })
   }
 
-  const clusterEnv = (namespace: object) => ({
-    ClusterEntity: namespace,
-    ClusterWorkflow: namespace,
-    ClusterDurableQueue: namespace,
-    ClusterSingleton: namespace
-  })
+  const makeRestrictedHandle = (namespace: object) =>
+    makeClusterHandle({
+      entities: [],
+      layer: Layer.empty,
+      jurisdiction: "eu",
+      env: {
+        ClusterEntity: namespace,
+        ClusterWorkflow: namespace,
+        ClusterDurableQueue: namespace,
+        ClusterSingleton: namespace
+      }
+    })
 
   it.effect("restricts the namespace bindings to the jurisdiction", () =>
     Effect.gen(function*() {
       const jurisdictions: Array<string> = []
-      const restricted = { getByName: () => undefined }
-      const namespace = {
+      const cluster = yield* makeRestrictedHandle({
         getByName: () => undefined,
         jurisdiction: (j: string) => {
           jurisdictions.push(j)
-          return restricted
+          return unusedNamespace
         }
-      }
-      const cluster = yield* makeClusterHandle({
-        entities: [],
-        layer: Layer.empty,
-        jurisdiction: "eu",
-        env: clusterEnv(namespace)
       })
       assert.deepStrictEqual(jurisdictions, ["eu", "eu", "eu", "eu"])
       assert.deepStrictEqual(
         [cluster.entityNamespace, cluster.workflowNamespace, cluster.queueNamespace, cluster.singletonNamespace],
-        [restricted, restricted, restricted, restricted] as any
+        [unusedNamespace, unusedNamespace, unusedNamespace, unusedNamespace] as any
       )
     }))
 
@@ -255,23 +254,11 @@ describe("AlchemyCloudflareCluster", () => {
         }
       })
       const unsupported = failingNamespace(new Error("Jurisdiction restrictions are not implemented in workerd."))
-      const cluster = yield* makeClusterHandle({
-        entities: [],
-        layer: Layer.empty,
-        jurisdiction: "eu",
-        env: clusterEnv(unsupported)
-      })
+      const cluster = yield* makeRestrictedHandle(unsupported)
       assert.strictEqual(cluster.entityNamespace, unsupported as any)
 
       const unexpected = new Error("Wrapped error: Jurisdiction restrictions are not implemented in workerd.")
-      const exit = yield* Effect.exit(
-        makeClusterHandle({
-          entities: [],
-          layer: Layer.empty,
-          jurisdiction: "eu",
-          env: clusterEnv(failingNamespace(unexpected))
-        })
-      )
+      const exit = yield* Effect.exit(makeRestrictedHandle(failingNamespace(unexpected)))
       assert.isTrue(Exit.isFailure(exit))
       if (Exit.isFailure(exit)) assert.strictEqual(Cause.squash(exit.cause), unexpected)
     }))

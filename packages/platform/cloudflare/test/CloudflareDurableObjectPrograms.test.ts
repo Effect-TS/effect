@@ -98,26 +98,24 @@ const makeExportedState = Effect.fnUntraced(function*(name: string, jurisdiction
   )
   const storage = new SqliteStorage(database)
   const called = yield* Deferred.make<LoopbackCall>()
-  const makeNamespace = () => {
-    const scoped = (scope: string) => ({
-      getByName: (target: string) => {
-        const record = <A>(method: string, result: Promise<A>) => () => {
-          Deferred.doneUnsafe(called, Exit.succeed({ scope, name: target, method }))
-          return result
-        }
-        return {
-          hold: record("hold", new Promise<void>(() => {})),
-          resume: record("resume", Promise.resolve()),
-          deliverReply: record("deliverReply", Promise.resolve(true))
-        }
+  const scoped = (scope: string) => ({
+    getByName: (target: string) => {
+      const record = <A>(method: string, result: Promise<A>) => () => {
+        Deferred.doneUnsafe(called, Exit.succeed({ scope, name: target, method }))
+        return result
       }
-    })
-    return { ...scoped("unrestricted"), jurisdiction: scoped }
-  }
+      return {
+        hold: record("hold", new Promise<void>(() => {})),
+        resume: record("resume", Promise.resolve()),
+        deliverReply: record("deliverReply", Promise.resolve(true))
+      }
+    }
+  })
+  const namespace = { ...scoped("unrestricted"), jurisdiction: scoped }
   const state: DurableObjectProgramState = {
     id: { name, jurisdiction },
     storage: storage as unknown as DurableObjectStorage,
-    exports: { ClusterEntity: makeNamespace(), ClusterWorkflow: makeNamespace() },
+    exports: { ClusterEntity: namespace, ClusterWorkflow: namespace },
     waitUntil: () => {}
   }
   return { state, storage, called: Deferred.await(called) }

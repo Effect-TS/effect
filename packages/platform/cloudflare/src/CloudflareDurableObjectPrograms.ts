@@ -71,10 +71,10 @@ interface ExportedNamespace<Stub> {
 const exportedNamespace = <Stub>(
   state: DurableObjectProgramState,
   className: string
-): { readonly getByName: (name: string) => Stub } | undefined => {
-  const namespace = (state.exports as Record<string, unknown>)[className] as ExportedNamespace<Stub> | undefined
+): ExportedNamespace<Stub> | undefined => {
+  const namespace = (state.exports as Record<string, ExportedNamespace<Stub> | undefined>)[className]
   const jurisdiction = state.id.jurisdiction
-  return namespace === undefined || jurisdiction === undefined ? namespace : namespace.jurisdiction(jurisdiction)
+  return jurisdiction === undefined ? namespace : namespace?.jurisdiction(jurisdiction)
 }
 
 /**
