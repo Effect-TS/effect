@@ -1003,28 +1003,9 @@ const CompilerProto = {
         case "RecordInsertHelper": {
           const keys = Object.keys(segment.value[0])
 
+          const [placeholders, values] = compileRecordRows(this, segment.value, keys, placeholder, withoutTransform)
+
           if (opts.onInsert) {
-            const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
-            let placeholders = ""
-            for (let i = 0; i < segment.value.length; i++) {
-              const row: Array<unknown> = new Array(keys.length)
-              values[i] = row
-              placeholders += i === 0 ? "(" : ",("
-              for (let j = 0; j < keys.length; j++) {
-                const key = keys[j]
-                const value = segment.value[i][key]
-                const [cellPlaceholder, primitive] = extractPrimitive(
-                  value,
-                  key,
-                  opts.onCustom,
-                  placeholder,
-                  withoutTransform
-                )
-                row[j] = primitive
-                placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
-              }
-              placeholders += ")"
-            }
             const [s, b] = opts.onInsert(
               keys.map((_) => opts.onIdentifier(_, withoutTransform)),
               placeholders,
@@ -1038,23 +1019,8 @@ const CompilerProto = {
             sql += s
             binds.push.apply(binds, b as any)
           } else {
-            let placeholders = ""
-            for (let i = 0; i < segment.value.length; i++) {
-              placeholders += i === 0 ? "(" : ",("
-              for (let j = 0; j < keys.length; j++) {
-                const key = keys[j]
-                const value = segment.value[i][key]
-                const [cellPlaceholder, primitive] = extractPrimitive(
-                  value,
-                  key,
-                  opts.onCustom,
-                  placeholder,
-                  withoutTransform
-                )
-                binds.push(primitive)
-                placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
-              }
-              placeholders += ")"
+            for (let i = 0; i < values.length; i++) {
+              binds.push.apply(binds, values[i] as any)
             }
             sql += `${
               generateColumns(
@@ -1085,13 +1051,7 @@ const CompilerProto = {
             const [s, b] = opts.onRecordUpdateSingle(
               keys.map((_) => opts.onIdentifier(_, withoutTransform)),
               keys.map((key) =>
-                extractPrimitive(
-                  segment.value[key],
-                  key,
-                  opts.onCustom,
-                  placeholderMarker,
-                  withoutTransform
-                )[1]
+                compileRecordValue(this, segment.value[key], key, placeholderMarker, withoutTransform)[1]
               ),
               typeof segment.returningIdentifier === "string"
                 ? [segment.returningIdentifier, []]
@@ -1104,10 +1064,10 @@ const CompilerProto = {
           } else {
             for (let i = 0, len = keys.length; i < len; i++) {
               const column = opts.onIdentifier(keys[i], withoutTransform)
-              const [cellPlaceholder, primitive] = extractPrimitive(
+              const [cellPlaceholder, primitive] = compileRecordValue(
+                this,
                 segment.value[keys[i]],
                 keys[i],
-                opts.onCustom,
                 placeholder,
                 withoutTransform
               )
@@ -1136,27 +1096,7 @@ const CompilerProto = {
 
         case "RecordUpdateHelper": {
           const keys = Object.keys(segment.value[0])
-          const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
-          let placeholders = ""
-          for (let i = 0; i < segment.value.length; i++) {
-            const row: Array<unknown> = new Array(keys.length)
-            values[i] = row
-            placeholders += i === 0 ? "(" : ",("
-            for (let j = 0; j < keys.length; j++) {
-              const key = keys[j]
-              const value = segment.value[i][key]
-              const [cellPlaceholder, primitive] = extractPrimitive(
-                value,
-                key,
-                opts.onCustom,
-                placeholder,
-                withoutTransform
-              )
-              row[j] = primitive
-              placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
-            }
-            placeholders += ")"
-          }
+          const [placeholders, values] = compileRecordRows(this, segment.value, keys, placeholder, withoutTransform)
           const [s, b] = opts.onRecordUpdate(
             placeholders,
             opts.onIdentifier(segment.alias, true),
@@ -1695,47 +1635,55 @@ const generateColumns = (
 
 const placeholderMarker = () => "\0"
 
-const extractPrimitive = (
+const compileRecordValue = (
+  compiler: CompilerImpl,
   value: unknown,
   column: string,
-  onCustom: (
-    type: Custom<string, unknown, unknown>,
-    placeholder: (u: unknown) => string,
-    withoutTransform: boolean
-  ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
   placeholder: (u: unknown) => string,
   withoutTransform: boolean
 ): readonly [placeholder: string, value: unknown] => {
-  if (value === undefined) {
-    return [placeholder(value), null]
-  } else if (isFragment(value)) {
-    if (value.segments.length === 1) {
-      const head = value.segments[0]
-      if (head._tag === "Custom") {
-        let placeholderCount = 0
-        let customPlaceholder: string | undefined
-        const compiled = onCustom(
-          head,
-          (u) => {
-            placeholderCount++
-            customPlaceholder = placeholder(u)
-            return customPlaceholder
-          },
-          withoutTransform
-        )
-        if (
-          compiled !== undefined && placeholderCount === 1 && compiled[0] === customPlaceholder &&
-          compiled[1].length === 1
-        ) {
-          return [customPlaceholder!, compiled[1][0] ?? null]
-        }
-      } else if (head._tag === "Parameter") {
-        return [placeholder(head.value), head.value]
-      }
-    }
-    throw new TypeError(`SQL fragment for column "${column}" must compile to a single bound parameter`)
+  if (!isFragment(value)) {
+    return [placeholder(value), value ?? null]
   }
-  return [placeholder(value), value]
+  let placeholderCount = 0
+  let cellPlaceholder = ""
+  const [sql, binds] = compiler.compile(value, withoutTransform, (u) => {
+    placeholderCount++
+    return cellPlaceholder = placeholder(u)
+  })
+  if (placeholderCount === 1 && sql === cellPlaceholder && binds.length === 1) {
+    return [cellPlaceholder, binds[0] ?? null]
+  }
+  throw new TypeError(`SQL fragment for column "${column}" must compile to a single bound parameter`)
+}
+
+const compileRecordRows = (
+  compiler: CompilerImpl,
+  rows: ReadonlyArray<Record<string, unknown>>,
+  keys: ReadonlyArray<string>,
+  placeholder: (u: unknown) => string,
+  withoutTransform: boolean
+): readonly [placeholders: string, values: Array<ReadonlyArray<unknown>>] => {
+  const values: Array<ReadonlyArray<unknown>> = new Array(rows.length)
+  let placeholders = ""
+  for (let i = 0; i < rows.length; i++) {
+    const row: Array<unknown> = new Array(keys.length)
+    values[i] = row
+    placeholders += i === 0 ? "(" : ",("
+    for (let j = 0; j < keys.length; j++) {
+      const [cellPlaceholder, value] = compileRecordValue(
+        compiler,
+        rows[i][keys[j]],
+        keys[j],
+        placeholder,
+        withoutTransform
+      )
+      row[j] = value
+      placeholders += j === 0 ? cellPlaceholder : `,${cellPlaceholder}`
+    }
+    placeholders += ")"
+  }
+  return [placeholders, values]
 }
 
 const escapeSqlite = defaultEscape("\"")
