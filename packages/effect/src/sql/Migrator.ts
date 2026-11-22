@@ -272,13 +272,7 @@ ORDER BY migration_id`,
       })
 
       const [latestMigrationId, current] = yield* Effect.all([
-        Effect.map(
-          latestMigration,
-          Option.match({
-            onNone: () => 0,
-            onSome: (_) => _.id
-          })
-        ),
+        Effect.map(latestMigration, Option.map((_) => _.id)),
         loader
       ])
 
@@ -293,7 +287,7 @@ ORDER BY migration_id`,
 
       for (const resolved of current) {
         const [currentId, currentName] = resolved
-        if (currentId <= latestMigrationId) {
+        if (Option.isSome(latestMigrationId) && currentId <= latestMigrationId.value) {
           continue
         }
 
