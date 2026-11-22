@@ -1037,7 +1037,7 @@ export const consumeSkipInitialRun = (ctx: Atom.AtomContext): boolean => {
 /**
  * @internal
  */
-export const hasSetSelf = (ctx: Atom.AtomContext): boolean => (ctx as Lifetime<any>).didSetSelf === true
+export const hasSetSelf = (ctx: Atom.AtomContext): boolean => (ctx as Lifetime<any>).didSetSelf
 
 interface Lifetime<A> extends Atom.AtomContext {
   isFn: boolean
