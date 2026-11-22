@@ -263,7 +263,7 @@ describe("AlchemyCloudflareCluster", () => {
       })
       assert.strictEqual(cluster.entityNamespace, unsupported as any)
 
-      const unexpected = new Error("invalid jurisdiction")
+      const unexpected = new Error("Wrapped error: Jurisdiction restrictions are not implemented in workerd.")
       const exit = yield* Effect.exit(
         makeClusterHandle({
           entities: [],

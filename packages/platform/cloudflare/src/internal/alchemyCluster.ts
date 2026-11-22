@@ -39,7 +39,7 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
     try {
       return namespace.jurisdiction(options.jurisdiction)
     } catch (error) {
-      if (error instanceof Error && error.message.includes("Jurisdiction restrictions are not implemented")) {
+      if (error instanceof Error && error.message === "Jurisdiction restrictions are not implemented in workerd.") {
         return namespace
       }
       throw error
