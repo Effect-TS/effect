@@ -615,4 +615,38 @@ describe("PgPool transport capacity", () => {
       assert.isTrue(successorQueryWritten)
     }).pipe(Effect.ensuring(Effect.sync(releaseClose)))
   })
+
+  it.effect("does not strand an expired lease when a TTL checkout is interrupted in a long-lived scope", () =>
+    Effect.gen(function*() {
+      let opened = 0
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        connectionTTL: 0,
+        prepare: false,
+        stream: () => {
+          opened++
+          let startup = true
+          const socket = new Duplex({
+            read() {},
+            write(chunk: Buffer, _encoding, callback) {
+              if (startup) {
+                startup = false
+                queueMicrotask(() => socket.push(ready))
+              } else if (chunk[0] === 0x50) {
+                queueMicrotask(() => socket.push(emptyQueryResult))
+              }
+              callback()
+            }
+          })
+          return socket
+        }
+      })
+
+      yield* pool.use((conn) => conn.query("SELECT 1", [], false))
+      const interrupted = yield* Effect.forkChild(pool.get)
+      yield* Fiber.interrupt(interrupted)
+      yield* pool.use((conn) => conn.query("SELECT 2", [], false))
+      assert.isAtLeast(opened, 2)
+    }))
 })

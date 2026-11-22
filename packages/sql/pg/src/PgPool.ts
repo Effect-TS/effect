@@ -219,30 +219,40 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // once, but the replacement only connects after the old transport closes.
   const transports = Semaphore.makeUnsafe(maxConnections)
   const acquire = Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(restore(transports.take(1)), () => {
-      const startTime = clock.currentTimeNanosUnsafe()
-      return Effect.matchCauseEffect(restore(PgConnection.make(options)), {
-        onFailure: (cause) => Effect.andThen(transports.release(1), Effect.failCause(cause)),
-        onSuccess: (connection) =>
-          Effect.sync(() => {
-            connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
-            createdAt.set(connection, clock.currentTimeMillisUnsafe())
-            const internals = connectionInternals(connection)
-            internals.onTransportClose(() => runFork(transports.release(1)))
-            internals.retireHooks.add(() => {
-              deadConnections.add(connection)
-              // `deadConnections` is only read by the next checkout, and a checkout
-              // already waiting for this connection would never get that far. Tell
-              // the pool now so it can replace the connection and admit them.
-              runFork(Pool.invalidate(pool, connection))
+    Effect.flatMap(Scope.make(), (permitScope) =>
+      Effect.matchCauseEffect(
+        restore(
+          Effect.andThen(
+            Scope.provide(transports.takeScoped(1), permitScope),
+            Effect.suspend(() => {
+              const startTime = clock.currentTimeNanosUnsafe()
+              return Effect.map(PgConnection.make(options), (connection) => [startTime, connection] as const)
             })
-            // Pinning a shared session has to take it out of circulation, or a
-            // second checkout lands on the connection its own stream is holding.
-            if (multiplex) internals.reserve = Pool.reserve(pool, connection)
-            return connection
-          })
-      })
-    })
+          )
+        ),
+        {
+          onFailure: (cause) =>
+            Effect.andThen(Scope.close(permitScope, Exit.failCause(cause)), Effect.failCause(cause)),
+          onSuccess: ([startTime, connection]) =>
+            Effect.sync(() => {
+              connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
+              createdAt.set(connection, clock.currentTimeMillisUnsafe())
+              const internals = connectionInternals(connection)
+              internals.onTransportClose(() => runFork(Scope.close(permitScope, Exit.void)))
+              internals.retireHooks.add(() => {
+                deadConnections.add(connection)
+                // `deadConnections` is only read by the next checkout, and a checkout
+                // already waiting for this connection would never get that far. Tell
+                // the pool now so it can replace the connection and admit them.
+                runFork(Pool.invalidate(pool, connection))
+              })
+              // Pinning a shared session has to take it out of circulation, or a
+              // second checkout lands on the connection its own stream is holding.
+              if (multiplex) internals.reserve = Pool.reserve(pool, connection)
+              return connection
+            })
+        }
+      ))
   )
 
   pool = yield* Pool.makeWithTTL({
@@ -280,17 +290,23 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
       }
       // A rejected session goes back before its replacement is requested: the
       // replacement cannot connect while the rejected transport is open.
-      const scope = yield* Scope.fork(parent)
-      const connection = yield* Effect.onError(
-        Scope.provide(Pool.get(pool), scope),
-        (cause) => Scope.close(scope, Exit.failCause(cause))
+      const connection = yield* Effect.uninterruptibleMask((restore) =>
+        Effect.flatMap(
+          Scope.fork(parent),
+          (scope) =>
+            Effect.matchCauseEffect(restore(Scope.provide(Pool.get(pool), scope)), {
+              onFailure: (cause) => Effect.andThen(Scope.close(scope, Exit.failCause(cause)), Effect.failCause(cause)),
+              onSuccess: (connection) =>
+                expired(connection)
+                  ? Effect.andThen(
+                    Pool.invalidate(pool, connection),
+                    Effect.as(Scope.close(scope, Exit.void), undefined)
+                  )
+                  : Effect.succeed(connection)
+            })
+        )
       )
-      if (expired(connection)) {
-        yield* Pool.invalidate(pool, connection)
-        yield* Scope.close(scope, Exit.void)
-        continue
-      }
-      return connection
+      if (connection !== undefined) return connection
     }
   })
 
