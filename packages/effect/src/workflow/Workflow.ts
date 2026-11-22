@@ -867,10 +867,9 @@ const releaseActivityUnsafe = (registration: ActivityRegistration) => {
 }
 
 /**
- * Registers a pending child workflow execution with the current workflow
- * instance before any asynchronous work runs. `wrapActivityResult` adopts the
- * registration once the execution is dispatched. Discarded executions are
- * never adopted, so their registration is released once dispatch returns.
+ * Registers a pending child workflow with the current instance before async
+ * work runs. Awaited starts are adopted by `wrapActivityResult`; discarded
+ * starts release when dispatch returns.
  */
 const withPendingActivity = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.contextWith((context: Context.Context<never>) => {

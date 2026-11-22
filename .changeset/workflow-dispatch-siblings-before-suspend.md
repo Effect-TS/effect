@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix durable workflow waits suspending before sibling child workflows, including discarded starts, are dispatched.
+Fix `effect/workflow` suspending on durable waits before sibling child workflows, including discarded starts, are dispatched.
