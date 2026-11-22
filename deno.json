@@ -30,6 +30,7 @@
     "packages/platform/cloudflare/",
     "packages/platform/node/",
     "packages/platform/node-shared/",
+    "packages/platform/rivet/",
     "packages/tools/",
     "packages/sql"
   ]
