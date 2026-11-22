@@ -25,8 +25,8 @@ import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Scope from "../Scope.ts"
+import { FrontmatterFields } from "./internal/skill.ts"
 import type { ProtocolVersion, StatefulProtocolVersion } from "./McpProtocol.ts"
-import * as SkillModule from "./Skill.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -1429,7 +1429,7 @@ export class SkillResource extends Schema.Class<SkillResource>(
  * @category schemas
  * @since 4.1.1
  */
-export const SkillFrontmatter = Schema.StructWithRest(SkillModule.Frontmatter.schema, [UnknownObject])
+export const SkillFrontmatter = Schema.StructWithRest(FrontmatterFields, [UnknownObject])
 
 /**
  * The YAML frontmatter of an Agent Skill's `SKILL.md`.
