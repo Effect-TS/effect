@@ -537,3 +537,82 @@ describe("pool stats", () => {
       }))
     })).pipe(Effect.provide(Reactivity.layer)))
 })
+
+describe("PgPool transport capacity", () => {
+  const copyInResponse = backendMessage("G", Buffer.alloc(3))
+
+  it.effect.each([
+    {
+      name: "pool.use",
+      runFirst: (pool: PgPool.PgPool) => pool.use((conn) => conn.query("SELECT 1", [], false))
+    },
+    {
+      name: "held pool.get",
+      runFirst: (pool: PgPool.PgPool) => Effect.flatMap(pool.get, (conn) => conn.query("SELECT 1", [], false))
+    }
+  ])("keeps physical pool capacity occupied until a retired transport closes ($name)", ({ runFirst }) => {
+    let opened = 0
+    let firstSocket: Duplex | undefined
+    let finishDestroy: (() => void) | undefined
+    let successorQueryWritten = false
+    const releaseClose = () => {
+      const finish = finishDestroy
+      finishDestroy = undefined
+      finish?.()
+    }
+
+    return Effect.gen(function*() {
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        prepare: false,
+        stream: () => {
+          const session = ++opened
+          let startup = true
+          const socket = new Duplex({
+            read() {},
+            write(chunk: Buffer, _encoding, callback) {
+              if (startup) {
+                startup = false
+                queueMicrotask(() => socket.push(ready))
+              } else if (chunk[0] === 0x50) {
+                if (session === 1) {
+                  queueMicrotask(() => socket.push(copyInResponse))
+                } else {
+                  successorQueryWritten = true
+                  queueMicrotask(() => socket.push(emptyQueryResult))
+                }
+              }
+              callback()
+            },
+            destroy(error, callback) {
+              if (session === 1) {
+                finishDestroy = () => callback(error)
+              } else {
+                callback(error)
+              }
+            }
+          })
+          if (session === 1) firstSocket = socket
+          return socket
+        }
+      })
+
+      const failed = yield* Effect.flip(runFirst(pool))
+      assert.strictEqual(failed.reason._tag, "ConnectionError")
+
+      const successor = yield* Effect.forkChild(pool.use((conn) => conn.query("SELECT 2", [], false)))
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 20)))
+
+      assert.isTrue(firstSocket?.destroyed)
+      assert.isFalse(firstSocket?.closed)
+      assert.strictEqual(opened, 1)
+      assert.isFalse(successorQueryWritten)
+
+      releaseClose()
+      yield* Fiber.join(successor)
+      assert.strictEqual(opened, 2)
+      assert.isTrue(successorQueryWritten)
+    }).pipe(Effect.ensuring(Effect.sync(releaseClose)))
+  })
+})
