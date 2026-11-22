@@ -118,22 +118,13 @@ describe.skipIf(process.platform === "win32")("non-detached exit cleanup", { con
     )
   }
 
-  it.live("does not signal or poll the process group of a running child during scope release", () =>
-    assertNoProcessGroupSignals(
-      ChildProcess.make(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
-        detached: false,
-        forceKillAfter: "1 second"
-      })
-    ))
-
-  it.live("does not signal the process group when escalating to SIGKILL", () =>
+  it.live("does not signal or poll the process group when terminating a running child", () =>
     assertNoProcessGroupSignals(Effect.gen(function*() {
       const handle = yield* ChildProcess.make(process.execPath, [
         "-e",
         "process.on('SIGTERM', () => {}); console.log('READY'); setInterval(() => {}, 1000)"
-      ], { detached: false })
+      ], { detached: false, forceKillAfter: "100 millis" })
       yield* Stream.runHead(handle.stdout)
-      yield* handle.kill({ forceKillAfter: "100 millis" })
       return handle
     })))
 })
