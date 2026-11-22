@@ -51,7 +51,9 @@ const Bytes = Schema.Uint8Array.annotate({
 
 const SkillFiles = Schema.Record(Schema.String, Schema.Union([Schema.String, Bytes])).check(
   Schema.makeFilter((files) => {
-    const path = Object.keys(files).find((path) => path === "SKILL.md" || !SkillInternal.isSafeRelativePath(path))
+    const path = Object.keys(files).find(
+      (path) => path === "SKILL.md" || /^[A-Za-z]:/.test(path) || !SkillInternal.isSafeRelativePath(path)
+    )
     return path === undefined || `Invalid skill file path "${path}"`
   })
 )
@@ -85,9 +87,9 @@ export class Skill extends Schema.Class<Skill>("effect/ai/Skill")({
  *
  * **Gotchas**
  *
- * Throws a `Schema.SchemaError` when `frontmatter` fails validation or any
- * key in `files` is `"SKILL.md"` or an unsafe path. Use {@link fromFiles} or
- * `Schema.decodeUnknownEffect(Skill)` for untrusted input.
+ * Throws an `Error` (with the validation issue on `cause`) when `frontmatter`
+ * fails validation or any key in `files` is `"SKILL.md"` or an unsafe path.
+ * Use {@link fromFiles} or `Schema.decodeUnknownEffect(Skill)` for untrusted input.
  *
  * @see {@link fromFiles} for effectful construction from a raw file map
  *

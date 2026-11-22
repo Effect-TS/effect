@@ -29,7 +29,7 @@ describe("Skill", () => {
       })
     )
 
-    for (const path of ["../secret.txt", "SKILL.md"]) {
+    for (const path of ["../secret.txt", "C:/notes.txt", "SKILL.md"]) {
       assert.throws(() =>
         Skill.make({
           frontmatter: { name: "refunds", description: "Process customer refunds" },
