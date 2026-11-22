@@ -796,6 +796,33 @@ describe("WorkflowEngine", () => {
       )
     }))
 
+  it.effect(
+    "layerMemory cancels a losing DurableDeferred.await race arm while a sibling activity is running",
+    () =>
+      Effect.gen(function*() {
+        const Gate = DurableDeferred.make("WorkflowEngine/RaceCancelGate")
+        const Parent = Workflow.make("WorkflowEngine/RaceCancelParent", {
+          payload: {},
+          idempotencyKey: () => "parent"
+        })
+        const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+          const started = yield* Latch.make()
+          const released = yield* Latch.make()
+          yield* Effect.all([
+            Effect.race(DurableDeferred.await(Gate), started.await).pipe(Effect.andThen(released.open)),
+            Activity.make({ name: "work", execute: started.open.pipe(Effect.andThen(released.await)) })
+          ], { concurrency: "unbounded", discard: true })
+        }))
+        yield* Effect.gen(function*() {
+          const result = yield* Parent.execute({})
+          assert.strictEqual(result, undefined)
+        }).pipe(
+          Effect.provide(ParentLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+        )
+      }),
+    5_000
+  )
+
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {
       const executionId = yield* IncrementWorkflow.executionId({ value: 1 })

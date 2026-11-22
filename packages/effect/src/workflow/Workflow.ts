@@ -810,7 +810,6 @@ export const wrapActivityResult = <A, E, R>(
       () => effect,
       (registration, exit) => {
         releaseActivityUnsafe(registration)
-        const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
         if (
           Exit.isSuccess(exit) &&
           isResult(exit.value) &&
@@ -821,8 +820,10 @@ export const wrapActivityResult = <A, E, R>(
             ? Cause.combine(instance.cause, exit.value.cause)
             : exit.value.cause
         }
-        return isSuspended ? waitForZero(instance) : Effect.void
+        return Effect.void
       }
+    ).pipe(
+      Effect.tap((value) => isSuspend(value) ? waitForZero(instance) : Effect.void)
     )
   })
 
