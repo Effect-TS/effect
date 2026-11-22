@@ -1690,15 +1690,16 @@ const extractPrimitive = (
   if (value === undefined) {
     return null
   } else if (isFragment(value)) {
-    const head = value.segments[0]
-    if (value.segments.length !== 1 || (head._tag !== "Parameter" && head._tag !== "Custom")) {
-      throw new TypeError(`SQL fragment for column "${column}" must contain a single parameter or custom segment`)
+    if (value.segments.length === 1) {
+      const head = value.segments[0]
+      if (head._tag === "Custom") {
+        const compiled = onCustom(head, placeholder, withoutTransform)
+        return compiled[1][0] ?? null
+      } else if (head._tag === "Parameter") {
+        return head.value
+      }
     }
-    if (head._tag === "Custom") {
-      const compiled = onCustom(head, placeholder, withoutTransform)
-      return compiled[1][0] ?? null
-    }
-    return head.value
+    throw new TypeError(`SQL fragment for column "${column}" must contain a single parameter or custom segment`)
   }
   return value
 }
