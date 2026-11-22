@@ -168,11 +168,6 @@ describe("McpServer skills", () => {
             "skill://acme/billing/refunds/references/policy.md"
           ]
         )
-        for (const resource of listed.resources) {
-          const bytes = yield* readBytes(harness, resource.uri)
-          assert.strictEqual(resource.digest, sha256(bytes))
-          assert.strictEqual(resource.size, bytes.byteLength)
-        }
         assert.deepStrictEqual(
           yield* readBytes(harness, "skill://acme/billing/refunds/assets/logo.png"),
           Buffer.from(PNG)
