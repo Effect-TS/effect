@@ -1,4 +1,3 @@
-import * as Context from "../../Context.ts"
 import { getClosingParenthensePosition } from "../FindMyWay/internal/router.ts"
 import type { HttpServerRequest } from "../HttpServerRequest.ts"
 import { stripSearchAndHash, toPath } from "./urlParams.ts"
@@ -63,9 +62,7 @@ export const compile = (path: string, redactedParams: ReadonlyArray<string>): Te
 
 /** @internal */
 export const allParamNames = (path: string): ReadonlyArray<string> =>
-  compile(path, []).filter((part): part is { readonly name: string; readonly redacted: boolean } =>
-    typeof part !== "string"
-  ).map((part) => part.name)
+  compile(path, []).flatMap((part) => typeof part === "string" ? [] : [part.name])
 
 const countCaptures = (regex: string): number => {
   try {
@@ -148,37 +145,4 @@ export const format = (path: RedactedPath): string => {
     last = run.index + run[0].length
   }
   return out + path.text.slice(last)
-}
-
-/**
- * The path of the request a client executes, as sent and as recorded in spans
- * and errors.
- *
- * @internal
- */
-export interface ClientPath {
-  readonly sent: string
-  readonly redacted: string
-}
-
-/** @internal */
-export const CurrentClientPath = Context.Reference<ClientPath | undefined>(
-  "effect/http/internal/redactedPath/CurrentClientPath",
-  { defaultValue: () => undefined }
-)
-
-/**
- * Replaces the path of a URL with its redacted form. A pathname that does not
- * match the expected sent pathname is replaced by `/REDACTED`.
- *
- * @internal
- */
-export const redactClientPath = (url: string, path: ClientPath): string => {
-  const end = url.search(/[?#]/)
-  const head = end === -1 ? url : url.slice(0, end)
-  const origin = /^[a-z][a-z\d+.-]*:\/\/[^/]*/i.exec(head)?.[0] ?? ""
-  const pathname = head.slice(origin.length)
-  if (pathname === path.redacted) return url
-  const tail = url.slice(head.length)
-  return origin + (pathname === path.sent ? path.redacted : "/REDACTED") + tail
 }

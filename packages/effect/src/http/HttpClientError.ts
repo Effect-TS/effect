@@ -16,7 +16,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
-import { type ClientPath, redactClientPath } from "./internal/redactedPath.ts"
+import { type ClientPath, redactClientPath } from "./internal/clientPath.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -87,10 +87,8 @@ export class HttpClientError extends Data.TaggedError("HttpClientError")<{
 
   override toJSON(): unknown {
     const json = super.toJSON() as Record<string, unknown>
-    if (this.reason._tag === "InvalidUrlError") {
-      const { cause: _, ...rest } = json
-      return rest
-    }
+    // A copy of the reason's cause, which `InvalidUrlError` keeps out of its JSON.
+    if (this.reason._tag === "InvalidUrlError") delete json.cause
     return json
   }
 }
@@ -301,6 +299,7 @@ export class InvalidUrlError extends ReasonError("InvalidUrlError")<{
   }
 
   override toJSON(): unknown {
+    // The cause holds the URL as sent, which may include a redacted path param.
     const { cause: _, ...rest } = reasonToJSON(this, super.toJSON()) as Record<string, unknown>
     return rest
   }

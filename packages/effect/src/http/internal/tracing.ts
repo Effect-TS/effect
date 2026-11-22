@@ -1,7 +1,7 @@
 import type * as Tracer from "../../Tracer.ts"
 import * as Headers from "../Headers.ts"
 import * as UrlParams from "../UrlParams.ts"
-import { type ClientPath, redactClientPath } from "./redactedPath.ts"
+import { type ClientPath, redactClientPath } from "./clientPath.ts"
 
 const defaultPorts: Record<string, number> = {
   "http:": 80,

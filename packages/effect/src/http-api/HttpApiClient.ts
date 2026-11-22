@@ -26,8 +26,8 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
+import { type ClientPath, CurrentClientPath } from "../http/internal/clientPath.ts"
 import * as MediaType from "../http/internal/mediaType.ts"
-import { type ClientPath, CurrentClientPath } from "../http/internal/redactedPath.ts"
 import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
@@ -46,7 +46,6 @@ import type * as HttpApiGroup from "./HttpApiGroup.ts"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.ts"
 import * as HttpApiSchema from "./HttpApiSchema.ts"
 import * as HttpApiPath from "./internal/path.ts"
-import { getRedactedKeys } from "./internal/redactedKeys.ts"
 
 /**
  * The type-safe client shape generated from HTTP API groups, with non-top-level
@@ -515,9 +514,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
 
         const middlewareKeys = Array.from(onEndpointOptions.middleware, (tag) => `${tag.key}/Client`)
         const redactedNames = HttpApi.getEndpointRedactedNames(api, group, endpoint)
-        const redactedParams: ReadonlyArray<string> | "*" = getRedactedKeys(endpoint.params) === undefined
-          ? "*"
-          : HttpApi.getEndpointRedactedParams(api, group, endpoint)
+        const redactedParams = HttpApi.getEndpointRedactedParams(api, group, endpoint)
+        // Names declared on the API or group may belong to other endpoints.
+        const redactsPath = redactedParams === "*" ||
+          redactedParams.some((name) => endpoint.path.includes(`:${name}`))
 
         const endpointFn = Effect.fnUntraced(function*(
           request: {
@@ -538,7 +538,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const params = (yield* encodeParams(request.params)) as Record<string, string>
               const sent = makeUrl(params)
               httpRequest = HttpClientRequest.setUrl(httpRequest, sent)
-              if (redactedParams === "*" || redactedParams.length > 0) {
+              if (redactsPath) {
                 redactedPath = { sent: fullPath(sent), redacted: fullPath(makeUrl(params, redactedParams)) }
               }
             }
