@@ -66,10 +66,8 @@ interface ExportedNamespace<Stub> {
   readonly jurisdiction: (jurisdiction: string) => ExportedNamespace<Stub>
 }
 
-// `ctx.exports` bindings are never restricted to a jurisdiction. An object
-// created through a jurisdiction subnamespace must reach its peers (its parent
-// workflow, a reply target, itself) in that same jurisdiction: the same name
-// addresses a different object outside it.
+// `ctx.exports` loopback bindings are unrestricted; keep peer lookups in the
+// calling object's jurisdiction so the same name resolves the restricted peer.
 const exportedNamespace = <Stub>(
   state: DurableObjectProgramState,
   className: string

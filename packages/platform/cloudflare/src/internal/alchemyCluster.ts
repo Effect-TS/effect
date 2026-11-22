@@ -33,9 +33,6 @@ export interface ClusterHandleOptions {
 
 /** @internal */
 export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHandleOptions) {
-  // Local workerd (`alchemy dev`) does not implement jurisdictions and throws
-  // on `jurisdiction()`. Alchemy's own namespaces run unrestricted there, so
-  // the cluster does the same.
   const binding = (name: string) => {
     const namespace = options.env[name] as DurableObjectNamespace
     if (options.jurisdiction === undefined) return namespace
@@ -48,6 +45,7 @@ export const makeClusterHandle = Effect.fnUntraced(function*(options: ClusterHan
       throw error
     }
   }
+
   const entityNamespace = binding("ClusterEntity")
   const workflowNamespace = binding("ClusterWorkflow")
   const queueNamespace = binding("ClusterDurableQueue")

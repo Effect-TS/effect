@@ -121,12 +121,11 @@ export interface MakeOptions<ROut, E, RIn> {
    */
   readonly keepAliveHeartbeat?: Duration.Input | undefined
   /**
-   * Creates and stores every cluster Durable Object only inside this
-   * jurisdiction, for example `"eu"`. An object in a jurisdiction is a
-   * different object from the one with the same name outside it, so setting
-   * this does not move objects that already exist. Enforced when deployed;
-   * `alchemy dev` runs unrestricted because local workerd does not implement
-   * jurisdictions. Defaults to no restriction.
+   * Restricts all four cluster Durable Object bindings to a Cloudflare
+   * jurisdiction (for example `"eu"`). Opting in does not migrate existing
+   * objects or remove unrestricted twins with the same name. Falls back to
+   * unrestricted bindings under `alchemy dev` where local workerd does not
+   * implement jurisdictions. Defaults to no restriction.
    */
   readonly jurisdiction?: DurableObjectJurisdiction | undefined
 }

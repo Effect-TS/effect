@@ -291,18 +291,14 @@ are user code on the Worker.
 
 ## Data location
 
-To keep every cluster object inside a
+To keep cluster Durable Objects inside a
 [jurisdiction](https://developers.cloudflare.com/durable-objects/reference/data-location/),
-pass jurisdiction subnamespaces to `CloudflareCluster.layer`
-(`entityNamespace: env.CLUSTER_ENTITY.jurisdiction("eu")`, and the same for the
-other three), or `jurisdiction: "eu"` to the Alchemy `make`. An object reaches
-its peers (a parent workflow, a reply target, itself for keep-alive) through
-`ctx.exports` in its own `ctx.id.jurisdiction`. Restricting a namespace that
-already holds objects does not move them: the same name addresses a different
-object inside a jurisdiction. Local `workerd` does not implement jurisdictions
-and throws on `jurisdiction()`: pass unrestricted namespaces to
-`CloudflareCluster.layer` in local development. The Alchemy `make` option does
-this itself under `alchemy dev`.
+pass jurisdiction subnamespaces (for example `env.CLUSTER_ENTITY.jurisdiction("eu")`)
+for all four bindings to `CloudflareCluster.layer`, or pass `jurisdiction: "eu"`
+to `AlchemyCloudflareCluster.make`. Internal peer lookups through `ctx.exports`
+automatically stay in the calling object's `ctx.id.jurisdiction`. Opting into a
+jurisdiction does not migrate existing objects or remove unrestricted twins with
+the same name.
 
 ## Long waits and delivery
 
