@@ -422,7 +422,11 @@ class PgConnectionImpl implements PgConnection {
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
-      retireHooks: this.retireHooks
+      retireHooks: this.retireHooks,
+      onTransportClose: (f) => {
+        if (session.socket.closed) f()
+        else session.socket.once("close", f)
+      }
     }
     session.parser.onFieldError = this.onFieldError
     session.socket.on("data", this.onData)

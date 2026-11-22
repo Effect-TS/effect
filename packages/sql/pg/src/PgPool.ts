@@ -13,6 +13,7 @@ import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import { TracerTimingEnabled } from "effect/References"
 import * as Scope from "effect/Scope"
+import * as Semaphore from "effect/Semaphore"
 import { ConnectionError, SqlError } from "effect/sql/SqlError"
 import { SpanPropagationEnabled } from "effect/sql/Statement"
 import * as Tracer from "effect/Tracer"
@@ -46,6 +47,7 @@ export type TypeId = "~@effect/sql-pg/PgPool"
  *
  * The defaults are 0 to 10 connections and a 60-second idle timeout.
  * `connectionTTL` replaces connections that exceed the configured lifetime.
+ * A retired session keeps its `maxConnections` slot until its transport closes.
  * Every connection is used at least once, so a TTL of zero disables reuse.
  * `acquireTimeout` bounds how long a checkout takes to acquire a connection,
  * including opening a new one; by default it waits indefinitely.
@@ -143,8 +145,9 @@ export const PgPool = Context.Service<PgPool>("@effect/sql-pg/PgPool")
  * **Details**
  *
  * Connections are opened lazily up to `maxConnections` and released down to
- * `minConnections` after `idleTimeout` without use. Closing the scope shuts
- * the pool down and releases every session.
+ * `minConnections` after `idleTimeout` without use. A retired session stops
+ * being handed out immediately, but its slot is held until its transport
+ * closes. Closing the scope shuts the pool down and releases every session.
  *
  * With `SpanPropagationEnabled`, a statement that waited for a new session gets
  * a `db.connect` child span covering the part of the connect it waited for.
@@ -211,27 +214,37 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // Assigned below, once the pool exists. `acquire` only runs when the pool
   // opens a connection, which is always after that.
   let pool: Pool.Pool<PgConnection.PgConnection, SqlError>
-  const acquire = Effect.suspend(() => {
-    const startTime = clock.currentTimeNanosUnsafe()
-    return Effect.tap(PgConnection.make(options), (connection) =>
-      Effect.sync(() => {
-        connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
-        createdAt.set(connection, clock.currentTimeMillisUnsafe())
-        const internals = connectionInternals(connection)
-        internals.retireHooks.add(() => {
-          deadConnections.add(connection)
-          // `deadConnections` is only read by the next checkout, and a checkout
-          // already waiting for this connection would never get that far. Tell
-          // the pool now so it can replace the connection and admit them.
-          runFork(Pool.invalidate(pool, connection))
-        })
-        // Pinning a shared session has to take it out of circulation, or a
-        // second checkout lands on the connection its own stream is holding.
-        if (multiplex) internals.reserve = Pool.reserve(pool, connection)
-      }))
-  })
-
   const maxConnections = options.maxConnections ?? 10
+  // One permit per open transport. The pool replaces a retired session at
+  // once, but the replacement only connects after the old transport closes.
+  const transports = Semaphore.makeUnsafe(maxConnections)
+  const acquire = Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(restore(transports.take(1)), () => {
+      const startTime = clock.currentTimeNanosUnsafe()
+      return Effect.matchCauseEffect(restore(PgConnection.make(options)), {
+        onFailure: (cause) => Effect.andThen(transports.release(1), Effect.failCause(cause)),
+        onSuccess: (connection) =>
+          Effect.sync(() => {
+            connects.set(connection, [startTime, clock.currentTimeNanosUnsafe()])
+            createdAt.set(connection, clock.currentTimeMillisUnsafe())
+            const internals = connectionInternals(connection)
+            internals.onTransportClose(() => runFork(transports.release(1)))
+            internals.retireHooks.add(() => {
+              deadConnections.add(connection)
+              // `deadConnections` is only read by the next checkout, and a checkout
+              // already waiting for this connection would never get that far. Tell
+              // the pool now so it can replace the connection and admit them.
+              runFork(Pool.invalidate(pool, connection))
+            })
+            // Pinning a shared session has to take it out of circulation, or a
+            // second checkout lands on the connection its own stream is holding.
+            if (multiplex) internals.reserve = Pool.reserve(pool, connection)
+            return connection
+          })
+      })
+    })
+  )
+
   pool = yield* Pool.makeWithTTL({
     acquire,
     min: options.minConnections ?? 0,
@@ -258,15 +271,23 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // first connection is usable stays a plain flatMap; retrying is the
   // exception and pays for the loop.
   const retry: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.gen(function*() {
+    const parent = yield* Effect.scope
     while (true) {
       if (deadConnections.size > 0) {
         const dead = Array.from(deadConnections)
         deadConnections.clear()
         yield* Effect.forEach(dead, (connection) => Pool.invalidate(pool, connection), { discard: true })
       }
-      const connection = yield* Pool.get(pool)
+      // A rejected session goes back before its replacement is requested: the
+      // replacement cannot connect while the rejected transport is open.
+      const scope = yield* Scope.fork(parent)
+      const connection = yield* Effect.onError(
+        Scope.provide(Pool.get(pool), scope),
+        (cause) => Scope.close(scope, Exit.failCause(cause))
+      )
       if (expired(connection)) {
         yield* Pool.invalidate(pool, connection)
+        yield* Scope.close(scope, Exit.void)
         continue
       }
       return connection
@@ -274,10 +295,12 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   })
 
   const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
-    deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
-      expired(connection)
-        ? Effect.andThen(Pool.invalidate(pool, connection), retry)
-        : Effect.succeed(connection))
+    connectionTTL !== undefined || deadConnections.size > 0 ?
+      retry :
+      Effect.flatMap(Pool.get(pool), (connection) =>
+        expired(connection)
+          ? Effect.andThen(Pool.invalidate(pool, connection), retry)
+          : Effect.succeed(connection))
   )
 
   const acquireTimedOut = () =>
