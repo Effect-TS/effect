@@ -2244,7 +2244,6 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantParts: Array<AssistantMessagePart | undefined> = []
   const toolParts: Array<ToolMessagePart> = []
-  // Results for tool calls from an earlier message, such as resolved approvals
   const priorToolParts: Array<ToolMessagePart> = []
   const toolCallIds = new Set<string>()
 
