@@ -1926,6 +1926,67 @@ describe("Atom", { concurrent: false }, () => {
     cancel()
   })
 
+  it("stream rerun without items produces NoSuchElementError", async () => {
+    const rows = Atom.make<ReadonlyArray<string>>(["Alice"])
+    const atom = Atom.make((get) => Stream.fromIterable(get(rows)))
+    const r = AtomRegistry.make()
+    const cancel = r.mount(atom)
+
+    await vitest.advanceTimersByTimeAsync(0)
+    const initial = r.get(atom)
+    assert(AsyncResult.isSuccess(initial))
+    assert.strictEqual(initial.value, "Alice")
+    assert.strictEqual(initial.waiting, false)
+
+    r.set(rows, [])
+    await vitest.advanceTimersByTimeAsync(0)
+    const result = r.get(atom)
+    assert(AsyncResult.isFailure(result))
+    assert.deepStrictEqual(
+      AsyncResult.error(result),
+      Option.some(new Cause.NoSuchElementError())
+    )
+    assert.deepStrictEqual(AsyncResult.value(result), Option.some("Alice"))
+
+    cancel()
+  })
+
+  it("stream completion keeps a value set after the last emission", async () => {
+    const atom = Atom.make((get) =>
+      Stream.fromIterable<string>(["draft"]).pipe(
+        Stream.ensuring(Effect.sync(() => get.setSelf(AsyncResult.success("saved"))))
+      )
+    )
+    const r = AtomRegistry.make()
+    const cancel = r.mount(atom)
+
+    await vitest.advanceTimersByTimeAsync(0)
+    const result = r.get(atom)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, "saved")
+    assert.strictEqual(result.waiting, false)
+
+    cancel()
+  })
+
+  it("stream completion keeps a value published only via setSelf", async () => {
+    const atom = Atom.make((get) =>
+      Stream.fromEffect(Effect.sync(() => get.setSelf(AsyncResult.success("manual")))).pipe(
+        Stream.drain
+      )
+    )
+    const r = AtomRegistry.make()
+    const cancel = r.mount(atom)
+
+    await vitest.advanceTimersByTimeAsync(0)
+    const result = r.get(atom)
+    assert(AsyncResult.isSuccess(result))
+    assert.strictEqual(result.value, "manual")
+    assert.strictEqual(result.waiting, false)
+
+    cancel()
+  })
+
   it("Option is not an Effect", async () => {
     const atom = Atom.make(Option.none<string>())
     const r = AtomRegistry.make()
