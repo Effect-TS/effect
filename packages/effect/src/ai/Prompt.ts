@@ -2199,7 +2199,8 @@ const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOp
  * prompt options, placing tool calls and approval requests in an assistant
  * message, and placing non-preliminary tool results in a tool message using
  * their encoded results. Results for tool calls from an earlier message, such
- * as resolved approvals, go in a tool message before the assistant message.
+ * as resolved approvals, are placed in a tool message before the assistant
+ * message.
  *
  * **Example** (Creating prompts from response parts)
  *
@@ -2242,14 +2243,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
   }
 
   const assistantParts: Array<AssistantMessagePart | undefined> = []
-  const toolParts: Array<ToolMessagePart> = []
-  const earlierToolParts: Array<ToolMessagePart> = []
+  const toolParts: Array<ToolResultPart> = []
   const toolCallIds = new Set<string>()
-  for (const part of parts) {
-    if (part.type === "tool-call") {
-      toolCallIds.add(part.id)
-    }
-  }
 
   const activeTextDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
   const activeReasoningDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
@@ -2328,6 +2323,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
       // Tool Call Parts
       case "tool-call": {
+        toolCallIds.add(part.id)
         assistantParts.push(makePart("tool-call", {
           id: part.id,
           name: part.name,
@@ -2341,11 +2337,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {
-          const target = part.providerExecuted === true
-            ? assistantParts
-            : toolCallIds.has(part.id)
-            ? toolParts
-            : earlierToolParts
+          const target = part.providerExecuted === true ? assistantParts : toolParts
           target.push(makePart("tool-result", {
             id: part.id,
             name: part.name,
@@ -2380,22 +2372,34 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const assistantContent = assistantParts.filter((part) => part !== undefined)
 
-  if (assistantContent.length === 0 && toolParts.length === 0 && earlierToolParts.length === 0) {
+  if (assistantContent.length === 0 && toolParts.length === 0) {
     return empty
   }
 
   const messages: Array<Message> = []
+  let trailingToolParts = toolParts
 
-  if (earlierToolParts.length > 0) {
-    messages.push(makeMessage("tool", { content: earlierToolParts }))
+  if (assistantContent.length > 0 && toolParts.length > 0) {
+    const leadingToolParts: Array<ToolResultPart> = []
+    trailingToolParts = []
+    for (const part of toolParts) {
+      if (toolCallIds.has(part.id)) {
+        trailingToolParts.push(part)
+      } else {
+        leadingToolParts.push(part)
+      }
+    }
+    if (leadingToolParts.length > 0) {
+      messages.push(makeMessage("tool", { content: leadingToolParts }))
+    }
   }
 
   if (assistantContent.length > 0) {
     messages.push(makeMessage("assistant", { content: assistantContent }))
   }
 
-  if (toolParts.length > 0) {
-    messages.push(makeMessage("tool", { content: toolParts }))
+  if (trailingToolParts.length > 0) {
+    messages.push(makeMessage("tool", { content: trailingToolParts }))
   }
 
   return makePrompt(messages)
