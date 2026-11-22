@@ -1352,6 +1352,9 @@ describe("HttpApiClient", () => {
               params: Schema.Struct({ token: Schema.RedactedFromValue(Schema.String), id: Schema.String }).pipe(
                 Schema.encodeKeys({ token: "tok" })
               )
+            }),
+            HttpApiEndpoint.get("recordParam", "/record/:tok$1", {
+              params: Schema.Record(Schema.String, Schema.RedactedFromValue(Schema.String))
             })
           )
         )
@@ -1368,6 +1371,21 @@ describe("HttpApiClient", () => {
         yield* capture.trace(client.test.renamedParams({ params: { token: Redacted.make("s3cret"), id: "visible" } }))
         strictEqual(capture.span.attributes.get("url.path"), "/api/v1/p/REDACTED/REDACTED")
         strictEqual(capture.sent.url, "http://test/api/v1/p/s3cret/visible")
+
+        yield* capture.trace(client.test.recordParam({ params: { tok: Redacted.make("s3cret") } }))
+        strictEqual(capture.span.attributes.get("url.full"), "http://test/api/v1/record/REDACTED$1")
+        strictEqual(capture.span.attributes.get("url.path"), "/api/v1/record/REDACTED$1")
+        strictEqual(capture.sent.url, "http://test/api/v1/record/s3cret$1")
+
+        const errorClient = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test/api/v1",
+          httpClient: clientFromResponse(() => new Response("boom", { status: 500 }))
+        })
+        const recordError = yield* Effect.flip(
+          errorClient.test.recordParam({ params: { tok: Redacted.make("s3cret") } })
+        )
+        assert.include(recordError.message, "GET http://test/api/v1/record/REDACTED$1")
+        assert.notInclude(JSON.stringify(recordError), "s3cret")
 
         const rewrittenClient = yield* HttpApiClient.makeWith(Api, {
           baseUrl: "http://test/api/v1",
