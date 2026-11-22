@@ -16,6 +16,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
+import { type ClientPath, redactClientPath } from "./internal/redactedPath.ts"
 import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
@@ -112,17 +113,30 @@ type RedactedNames = ReadonlyArray<string | RegExp>
 // redacted: the current fiber may be unrelated to the request when a transport
 // callback creates the error, so its names add redaction and never decide it.
 const responseRedactedNames = new WeakMap<ClientResponse.HttpClientResponse, RedactedNames>()
+const responseRedactedPaths = new WeakMap<ClientResponse.HttpClientResponse, ReadonlyArray<ClientPath>>()
 const redactedUrls = new WeakMap<object, string>()
 
-const addRedactedNames = (reason: object, names: RedactedNames | undefined): void => {
-  const url = redactedUrls.get(reason)
-  if (url !== undefined && names !== undefined) redactedUrls.set(reason, UrlParams.redactUrl(url, names))
+const addRedactedNames = (
+  reason: object,
+  names: RedactedNames | undefined,
+  paths: ReadonlyArray<ClientPath> | undefined
+): void => {
+  let url = redactedUrls.get(reason)
+  if (url === undefined) return
+  if (names !== undefined) url = UrlParams.redactUrl(url, names)
+  for (const path of paths ?? []) url = redactClientPath(url, path)
+  redactedUrls.set(reason, url)
 }
 
 /** @internal */
-export const addResponseRedactedNames = (response: ClientResponse.HttpClientResponse, names: RedactedNames): void => {
+export const addResponseRedactedNames = (
+  response: ClientResponse.HttpClientResponse,
+  names: RedactedNames,
+  path: ClientPath | undefined
+): void => {
   const existing = responseRedactedNames.get(response)
   responseRedactedNames.set(response, existing === undefined ? names : [...existing, ...names])
+  if (path !== undefined) responseRedactedPaths.set(response, [...(responseRedactedPaths.get(response) ?? []), path])
 }
 
 /**
@@ -131,9 +145,15 @@ export const addResponseRedactedNames = (response: ClientResponse.HttpClientResp
  *
  * @internal
  */
-export const addFailureRedactedNames = (cause: Cause.Cause<unknown>, names: RedactedNames): void => {
+export const addFailureRedactedNames = (
+  cause: Cause.Cause<unknown>,
+  names: RedactedNames,
+  path: ClientPath | undefined
+): void => {
   for (const reason of cause.reasons) {
-    if (Cause.isFailReason(reason) && isHttpClientError(reason.error)) addRedactedNames(reason.error.reason, names)
+    if (Cause.isFailReason(reason) && isHttpClientError(reason.error)) {
+      addRedactedNames(reason.error.reason, names, path && [path])
+    }
   }
 }
 
@@ -142,7 +162,9 @@ const ReasonError = <Tag extends string>(tag: Tag): ReturnType<typeof Data.Tagge
     constructor(props: ReasonProps) {
       super(props)
       redactedUrls.set(this, UrlParams.redactUrl(props.request.url))
-      if (props.response !== undefined) addRedactedNames(this, responseRedactedNames.get(props.response))
+      if (props.response !== undefined) {
+        addRedactedNames(this, responseRedactedNames.get(props.response), responseRedactedPaths.get(props.response))
+      }
     }
   }
   return Base as any
