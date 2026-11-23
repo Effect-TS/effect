@@ -329,6 +329,29 @@ describe("MessageStorage", () => {
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
 
+    it.effect("interrupting reply handlers preserves remaining and later waiters", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+
+        const first = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(first)
+
+        const kept = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const interrupted = yield* storage.registerReplyHandler(request).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(interrupted)
+
+        yield* storage.saveReply(yield* makeReply(request))
+        yield* Fiber.join(kept)
+      }).pipe(Effect.provide(MemoryLayer)))
+
     it.effect("unregisterShardReplyHandlers fails parked waiters during rebalance", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
