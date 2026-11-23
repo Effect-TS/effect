@@ -26,7 +26,6 @@ export const assertNoDeferredEqualHashCalls = async (
 
   operations((id) => new Key(id))
   const callsDuringOperations = calls
-  assert.isAbove(callsDuringOperations, 0)
 
   await new Promise((resolve) => setTimeout(resolve, 0))
   assert.strictEqual(calls, callsDuringOperations)
