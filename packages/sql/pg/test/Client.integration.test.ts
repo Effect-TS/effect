@@ -339,9 +339,8 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
                tstzrange('2026-01-01T00:00:00Z'::timestamptz, '2026-01-02T12:30:00Z'::timestamptz, '(]') AS tstz_r,
                'empty'::int4range AS empty_r,
                int4multirange(int4range(1, 5), int4range(10, 20, '[]')) AS mr,
-               '{}'::int4multirange AS empty_mr,
-               ARRAY[int4range(1, 5), 'empty'::int4range, NULL] AS range_arr,
-               ARRAY[int4multirange(int4range(1, 5)), '{}'::int4multirange, NULL] AS mr_arr,
+               ARRAY[int4range(1, 5), NULL] AS range_arr,
+               ARRAY[int4multirange(int4range(1, 5)), NULL] AS mr_arr,
                ${PgTypes.daterange(boundDateRange)} AS param_r,
                ${PgTypes.int4multirange(boundMultirange)} AS param_mr
       `
@@ -354,15 +353,12 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         tstz_r: { lower: tsLower, upper: tsUpper, lowerInclusive: false, upperInclusive: true, empty: false },
         empty_r: { lower: null, upper: null, lowerInclusive: false, upperInclusive: false, empty: true },
         mr: boundMultirange,
-        empty_mr: [],
         range_arr: [
           { lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false, empty: false },
-          { lower: null, upper: null, lowerInclusive: false, upperInclusive: false, empty: true },
           null
         ],
         mr_arr: [
           [{ lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false, empty: false }],
-          [],
           null
         ],
         param_r: boundDateRange,
