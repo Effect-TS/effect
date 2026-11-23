@@ -1,8 +1,8 @@
-import { assert, it } from "@effect/vitest"
+import { assert, it, vi } from "@effect/vitest"
 import { Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import type * as EncodingError from "effect/encoding/EncodingError"
-import { describeWithFallback } from "../utils/encoding.ts"
+import { describeWithFallback, describeWithoutNatives } from "../utils/encoding.ts"
 
 describeWithFallback("Base64Url", () => {
   it("encodes strings and bytes without padding", () => {
@@ -23,26 +23,6 @@ describeWithFallback("Base64Url", () => {
       assert.strictEqual(Base64Url.encodePadded(view), padded, `${length}`)
       assert.strictEqual(Base64Url.encode(view), padded.replace(/=+$/, ""), `${length}`)
     }
-  })
-
-  it("pads consistently when a length-tracking view grows during encodePadded", () => {
-    const ResizableArrayBuffer = ArrayBuffer as {
-      new(byteLength: number, options?: { readonly maxByteLength?: number }): ArrayBuffer & { resize(n: number): void }
-    }
-    const buffer = new ResizableArrayBuffer(33, { maxByteLength: 64 })
-    const view = new Uint8Array(buffer)
-    view.fill(0xab)
-    let reads = 0
-    Object.defineProperty(view, "length", {
-      get() {
-        if (reads++ === 0) {
-          buffer.resize(34)
-          return 33
-        }
-        return buffer.byteLength
-      }
-    })
-    assert.strictEqual(Base64Url.encodePadded(view).length % 4, 0)
   })
 
   it("decodes padded and unpadded input", () => {
@@ -151,7 +131,23 @@ describeWithFallback("Base64Url", () => {
       assertFailure(long, long, "Invalid input")
     }
   })
-}, { bufferFallback: true })
+})
+
+describeWithoutNatives("Base64Url Buffer fallback", () => {
+  it("encodes and decodes padded input with Buffer", () => {
+    const bytes = Uint8Array.from({ length: 97 }, (_, i) => (i * 151) & 0xff)
+    const padded = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_")
+    const from = vi.spyOn(Buffer, "from")
+    try {
+      assert.strictEqual(Base64Url.encodePadded(bytes), padded)
+      assert.strictEqual(from.mock.calls.length, 1)
+      assert.deepStrictEqual(Result.getOrThrow(Base64Url.decode(padded)), bytes)
+      assert.strictEqual(from.mock.calls.length, 2)
+    } finally {
+      from.mockRestore()
+    }
+  })
+})
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
   const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [

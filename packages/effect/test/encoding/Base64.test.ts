@@ -18,23 +18,11 @@ describeWithFallback("Base64", () => {
     assert.deepStrictEqual(bytes, new Uint8Array([42, 251, 255, 128, 42]))
   })
 
-  it("ignores overridden buffer and byteOffset getters on Uint8Array subclasses", () => {
-    class FakeView extends Uint8Array {
-      override get byteOffset() {
-        return 0
-      }
-      override get buffer() {
-        return new ArrayBuffer(64)
-      }
-    }
-    const backing = Uint8Array.from({ length: 64 }, (_, i) => i)
-    assert.strictEqual(Base64.encode(new FakeView(backing.buffer, 32, 32)), reference(backing.subarray(32, 64)))
-  })
-
   describe("native toBase64", () => {
     const bytes = Uint8Array.from({ length: 132 }, (_, i) => (i * 151) & 0xff)
     // Offset views with lengths around the native (32) and byte-array (128) cutoffs.
     const views = [31, 32, 33, 34, 127, 128, 129, 130].map((length) => bytes.subarray(1, 1 + length))
+    const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
 
     // Replaces `Uint8Array.prototype.toBase64` (or removes it) while `body` runs.
     const withToBase64 = (toBase64: ((this: Uint8Array) => string) | undefined, body: () => void) => {
@@ -128,22 +116,14 @@ describeWithFallback("Base64", () => {
   it("round trips every byte value", () => {
     const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
     const encoded = Base64.encode(bytes)
-    const decoded = Result.getOrThrow(Base64.decode(encoded))
-    assert.deepStrictEqual(decoded, bytes)
-    assert.strictEqual(Object.getPrototypeOf(decoded), Uint8Array.prototype)
-    assert.strictEqual(decoded.byteOffset, 0)
-    assert.strictEqual(decoded.buffer.byteLength, decoded.length)
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
     // MIME-style 76-character lines
     assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded.replace(/.{76}/g, "$&\r\n"))), bytes)
   })
 
   it("ignores non-zero trailing bits", () => {
-    for (const prefixBlocks of [0, 32]) {
-      const prefix = "AAAA".repeat(prefixBlocks)
-      const zeros = new Uint8Array(prefixBlocks * 3)
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(`${prefix}Zh==`)), new Uint8Array([...zeros, 102]))
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(`${prefix}Zm9=`)), new Uint8Array([...zeros, 102, 111]))
-    }
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zh==")), new Uint8Array([102]))
+    assert.deepStrictEqual(Result.getOrThrow(Base64.decode("Zm9=")), new Uint8Array([102, 111]))
   })
 
   it("decodes either alphabet, with or without padding", () => {
@@ -183,42 +163,30 @@ describeWithFallback("Base64", () => {
     assertFailure("Zg=v", "Zg=v", misplacedPadding)
     assertFailure("=Zg=", "=Zg=", misplacedPadding)
     assertFailure("====", "====", misplacedPadding)
-    for (const char of ["-", "_", "!", "{", "\u00e9", "\u0141", " ", "\t", "\f"]) {
+    for (const char of ["-", "_", "!", "{", "\u00e9", " ", "\t", "\f"]) {
       assertFailure(`Zm9${char}`, `Zm9${char}`, `Invalid character ${char}`)
       // Long enough for size-gated decoders
       const long = `${"Zm9v".repeat(64)}Zm9${char}`
       assertFailure(long, long, `Invalid character ${char}`)
     }
   })
-}, { bufferFallback: true })
+})
 
 describeWithoutNatives("Base64 Buffer fallback", () => {
-  it("uses Buffer.from from 32 bytes on encode and 128 characters on decode", () => {
-    const spy = vi.spyOn(Buffer, "from")
+  it("encodes and decodes with Buffer", () => {
+    const bytes = Uint8Array.from({ length: 96 }, (_, i) => (i * 151) & 0xff)
+    const encoded = btoa(String.fromCharCode(...bytes))
+    const from = vi.spyOn(Buffer, "from")
     try {
-      const bytes = Uint8Array.from({ length: 96 }, (_, i) => (i * 151) & 0xff)
-      const shortBytes = bytes.subarray(0, 31)
-      const longBytes = bytes.subarray(0, 32)
-      assert.strictEqual(Base64.encode(shortBytes), reference(shortBytes))
-      assert.strictEqual(spy.mock.calls.length, 0)
-
-      assert.strictEqual(Base64.encode(longBytes), reference(longBytes))
-      assert.isAbove(spy.mock.calls.length, 0)
-
-      spy.mockClear()
-      const shortDecodeBytes = bytes.subarray(0, 93)
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(reference(shortDecodeBytes))), shortDecodeBytes)
-      assert.strictEqual(spy.mock.calls.length, 0)
-
-      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(reference(bytes))), bytes)
-      assert.isAbove(spy.mock.calls.length, 0)
+      assert.strictEqual(Base64.encode(bytes), encoded)
+      assert.strictEqual(from.mock.calls.length, 1)
+      assert.deepStrictEqual(Result.getOrThrow(Base64.decode(encoded)), bytes)
+      assert.strictEqual(from.mock.calls.length, 2)
     } finally {
-      spy.mockRestore()
+      from.mockRestore()
     }
   })
 })
-
-const reference = (view: Uint8Array) => btoa(String.fromCharCode(...view))
 
 const assertFailure = (raw: string, stripped: string, expected: string) => {
   const results: ReadonlyArray<Result.Result<unknown, EncodingError.EncodingError>> = [

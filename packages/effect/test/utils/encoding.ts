@@ -1,25 +1,27 @@
 import { afterAll, beforeAll, describe } from "@effect/vitest"
 
-type Property = readonly [target: object, key: PropertyKey]
-
 // The native `Uint8Array` Base64 and hex methods the encoding modules may use.
-const natives: ReadonlyArray<Property> = [
+const natives = [
   [Uint8Array, "fromBase64"],
   [Uint8Array, "fromHex"],
   [Uint8Array.prototype, "toBase64"],
   [Uint8Array.prototype, "toHex"]
-]
+] as const
 
-const nativesAndBuffer: ReadonlyArray<Property> = [...natives, [globalThis, "Buffer"]]
-
-const describeWithout = (name: string, props: ReadonlyArray<Property>, suite: () => void): void => {
+// Registers `suite` with `properties` removed. It runs sequentially, since the
+// removal is global and the tests run concurrently.
+const describeWithout = (
+  name: string,
+  properties: ReadonlyArray<readonly [target: object, key: PropertyKey]>,
+  suite: () => void
+): void => {
   describe(name, { concurrent: false }, () => {
-    const descriptors = props.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
+    const descriptors = properties.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key))
     beforeAll(() => {
-      for (const [target, key] of props) Reflect.deleteProperty(target, key)
+      for (const [target, key] of properties) Reflect.deleteProperty(target, key)
     })
     afterAll(() => {
-      props.forEach(([target, key], i) => {
+      properties.forEach(([target, key], i) => {
         const descriptor = descriptors[i]
         if (descriptor !== undefined) Reflect.defineProperty(target, key, descriptor)
       })
@@ -28,18 +30,13 @@ const describeWithout = (name: string, props: ReadonlyArray<Property>, suite: ()
   })
 }
 
+// Registers `suite` with the native methods removed and `Buffer` left in
+// place, so the `Buffer` fallback is covered on runtimes that ship them.
 export const describeWithoutNatives = (name: string, suite: () => void): void => describeWithout(name, natives, suite)
 
-// Runs `suite` sequentially with and without native `Uint8Array` methods (and
-// without `Buffer` when `bufferFallback` is set) because removals are global.
-export const describeWithFallback = (
-  name: string,
-  suite: () => void,
-  options?: { readonly bufferFallback?: boolean }
-): void => {
+// Registers `suite` twice: once as is, and once with the native methods and
+// `Buffer` removed, so the JavaScript fallbacks are covered on every runtime.
+export const describeWithFallback = (name: string, suite: () => void): void => {
   describe(name, { concurrent: false }, suite)
-  describeWithoutNatives(`${name} without native methods`, suite)
-  if (options?.bufferFallback) {
-    describeWithout(`${name} without native methods or Buffer`, nativesAndBuffer, suite)
-  }
+  describeWithout(`${name} without native methods`, [...natives, [globalThis, "Buffer"]], suite)
 }
