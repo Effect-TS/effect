@@ -767,14 +767,27 @@ export const intoResult = <A, E, R>(
         }
       }),
       (eff) =>
-        Effect.onExitPrimitive(eff, (exit) => {
-          if (Exit.isFailure(exit)) {
-            return Scope.close(instance.scope, exit)
-          } else if (exit.value._tag === "Complete") {
-            return Scope.close(instance.scope, exit.value.exit)
-          }
-          return Effect.void
-        }, true),
+        Effect.onExitPrimitive(
+          eff,
+          (exit) => Exit.isFailure(exit) ? Scope.close(instance.scope, exit) : undefined,
+          true
+        ),
+      Effect.flatMap((result): Effect.Effect<Result<A, E>> => {
+        if (result._tag !== "Complete") {
+          return Effect.succeed(result)
+        }
+        const close = Effect.as(Scope.close(instance.scope, result.exit), result)
+        return captureDefects
+          ? Effect.catchCauseIf(close, Cause.hasDies, (closeCause) =>
+            Effect.succeed(
+              new Complete({
+                exit: Exit.failCause(
+                  Exit.isFailure(result.exit) ? Cause.combine(result.exit.cause, closeCause) : closeCause
+                )
+              })
+            ))
+          : close
+      }),
       Effect.uninterruptible
     )
   })
