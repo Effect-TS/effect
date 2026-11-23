@@ -23,12 +23,12 @@ export const TypeId = "~effect/Match/Matcher"
 /** @internal */
 export type Contextual<P, Fallback> = [P] extends [never] ? Fallback : P
 
-type TagHandlers<D extends string, R, Ret> = {
-  readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret
+type TagHandlers<D extends string, R, Ret, Args extends Array<any>> = {
+  readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>, ...args: Args) => Ret
 }
 
-type PartialTagHandlers<D extends string, R, Ret> = {
-  readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => Ret) | undefined
+type PartialTagHandlers<D extends string, R, Ret, Args extends Array<any>> = {
+  readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>, ...args: Args) => Ret) | undefined
 }
 
 type ValueTagHandlers<I> = {
@@ -273,7 +273,7 @@ export const valueTags: {
     input: I,
     fields: Contextual<P, ValueTagHandlers<I>>
   ): Unify<ReturnType<P[keyof P]>> => {
-    const match: any = tagsExhaustive(fields as any)(type())
+    const match: any = tagsExhaustive(fields as any)(type() as any)
     return match(input)
   }
 )
@@ -289,7 +289,7 @@ export const typeTags = <I>() =>
 >(
   fields: P
 ) => {
-  const match: any = tagsExhaustive(fields as any)(type())
+  const match: any = tagsExhaustive(fields as any)(type() as any)
   return (input: I): Unify<ReturnType<P[keyof P]>> => match(input)
 }
 
@@ -389,7 +389,8 @@ export const discriminator = <D extends string>(field: D) =>
   R,
   P extends Types.Tags<D, R> & string,
   Ret,
-  Fn extends (_: Extract<R, Record<D, P>>) => Ret
+  Args extends Array<any>,
+  Fn extends (_: Extract<R, Record<D, P>>, ...args: Args) => Ret
 >(
   ...pattern: [
     first: P,
@@ -404,14 +405,15 @@ export const discriminator = <D extends string>(field: D) =>
     : (_: any) => _ != null && values.includes(_[field])
 
   return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr, Ret>
+    self: Matcher<I, F, R, A, Pr, Ret, Args>
   ): Matcher<
     I,
     Types.AddWithout<F, Extract<R, Record<D, P>>>,
     Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
     A | ReturnType<Fn>,
     Pr,
-    Ret
+    Ret,
+    Args
   > => (self as any).add(makeWhen(pred, f as any)) as any
 }
 
@@ -421,7 +423,8 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
   R,
   P extends string,
   Ret,
-  Fn extends (_: Extract<R, Record<D, `${P}${string}`>>) => Ret
+  Args extends Array<any>,
+  Fn extends (_: Extract<R, Record<D, `${P}${string}`>>, ...args: Args) => Ret
 >(
   pattern: P,
   f: Fn
@@ -429,7 +432,7 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
   const pred = (_: any) => _ != null && typeof _[field] === "string" && _[field].startsWith(pattern)
 
   return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr, Ret>
+    self: Matcher<I, F, R, A, Pr, Ret, Args>
   ): Matcher<
     I,
     Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>,
@@ -439,7 +442,8 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
     >,
     A | ReturnType<Fn>,
     Pr,
-    Ret
+    Ret,
+    Args
   > => (self as any).add(makeWhen(pred, f as any)) as any
 }
 
@@ -448,26 +452,28 @@ export const discriminators = <D extends string>(field: D) =>
 <
   R,
   Ret,
+  Args extends Array<any>,
   P extends
-    & PartialTagHandlers<D, R, Ret>
+    & PartialTagHandlers<D, R, Ret, Args>
     & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
-  fields: Contextual<P, PartialTagHandlers<D, R, Ret>>
+  fields: Contextual<P, PartialTagHandlers<D, R, Ret, Args>>
 ) => {
   const predicate = makeWhen(
     (arg: any) => arg != null && Object.hasOwn(fields, arg[field]) && (fields as any)[arg[field]] !== undefined,
-    (data: any) => (fields as any)[data[field]](data)
+    (data: any, ...args: Array<any>) => (fields as any)[data[field]](data, ...args)
   )
 
   return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr, Ret>
+    self: Matcher<I, F, R, A, Pr, Ret, Args>
   ): Matcher<
     I,
     Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>,
     Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, HandledKeys<P>>>>>,
     A | ReturnType<P[keyof P] & {}>,
     Pr,
-    Ret
+    Ret,
+    Args
   > => (self as any).add(predicate)
 }
 
@@ -477,14 +483,16 @@ export const discriminatorsExhaustive: <D extends string>(
 ) => <
   R,
   Ret,
+  Args extends Array<any>,
   P extends
-    & TagHandlers<D, R, Ret>
+    & TagHandlers<D, R, Ret, Args>
     & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
-  fields: Contextual<P, TagHandlers<D, R, Ret>>
+  fields: Contextual<P, TagHandlers<D, R, Ret, Args>>
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr, Ret>
-) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>>
+  self: Matcher<I, F, R, A, Pr, Ret, Args>
+) => [Pr] extends [never] ? [Args] extends [[]] ? (u: I) => Unify<A | ReturnType<P[keyof P]>>
+  : (...args: Args) => Unify<A | ReturnType<P[keyof P]>>
   : Unify<A | ReturnType<P[keyof P]>> = (field: string) => (fields: object) => {
     const addCases = discriminators(field)(fields)
     return (matcher: any) => exhaustive(addCases(matcher))
@@ -530,7 +538,7 @@ export const literals = (fields: object) => {
     (arg: any) =>
       (typeof arg === "string" || typeof arg === "number") && Object.hasOwn(fields, arg) &&
       (fields as any)[arg] !== undefined,
-    (data: any) => (fields as any)[data](data)
+    (data: any, ...args: Array<any>) => (fields as any)[data](data, ...args)
   )
   return (self: any): any => self.add(predicate)
 }

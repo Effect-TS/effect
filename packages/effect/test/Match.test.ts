@@ -36,6 +36,24 @@ describe("Match", () => {
     strictEqual(formatTodo({ status: "Active", title: "Write tests" }), "Active: Write tests")
   })
 
+  it("fn passes its arguments to record and discriminator handlers", () => {
+    type Event = { readonly _tag: "Opened" } | { readonly _tag: "Closed" } | { readonly _tag: "Locked" }
+    const describe = Match.fn((_prefix: string, event: Event) => event).pipe(
+      Match.tags({ Opened: (_event, prefix) => `${prefix} opened` }),
+      Match.tagStartsWith("Clo", (_event, prefix) => `${prefix} closed`),
+      Match.tagsExhaustive({ Locked: (_event, prefix) => `${prefix} locked` })
+    )
+
+    strictEqual(describe("door", { _tag: "Opened" }), "door opened")
+    strictEqual(describe("door", { _tag: "Closed" }), "door closed")
+    strictEqual(describe("door", { _tag: "Locked" }), "door locked")
+
+    const label = Match.fn((_suffix: string, value: "a" | "b") => value).pipe(
+      Match.literalsExhaustive({ a: (value, suffix) => value + suffix, b: (value, suffix) => value + suffix })
+    )
+    strictEqual(label("!", "b"), "b!")
+  })
+
   it("type passes handlers the input alone", () => {
     const argCount = (...args: Array<unknown>) => args.length
 
