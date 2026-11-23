@@ -924,12 +924,14 @@ function makeStream<A, E>(
   }
   services = Context.add(services, AtomRegistry, ctx.registry)
 
+  let emitted = false
   const run = Effect.scopedWith((scope) =>
     Effect.flatMap(Channel.toPullScoped(stream.channel, scope), (pull) =>
       Effect.whileLoop({
         while: constTrue,
         body: () => pull,
         step(arr) {
+          emitted = true
           ctx.setSelf(AsyncResult.success(Arr.lastNonEmpty(arr), {
             waiting: true
           }))
@@ -939,8 +941,7 @@ function makeStream<A, E>(
     Effect.catchCause((cause) => {
       const current = ctx.self<AsyncResult.AsyncResult<A, E | Cause.NoSuchElementError>>()
       if (Pull.isDoneCause(cause)) {
-        // only a value this run wrote counts; a carried-over one is stale
-        const value = Registry.hasSetSelf(ctx) ? Option.flatMap(current, AsyncResult.value) : Option.none()
+        const value = emitted ? Option.flatMap(current, AsyncResult.value) : Option.none()
         ctx.setSelf(
           Option.isSome(value)
             ? AsyncResult.success(value.value)

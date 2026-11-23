@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix stream `Atom`s settling as `Success` on empty completion with a prior, seeded, or `initialValue` value; they now fail with `NoSuchElementError` and keep `previousSuccess`.
+Fix stream `Atom`s settling as `Success` when completing without emitting; they now fail with `NoSuchElementError` and keep `previousSuccess`.

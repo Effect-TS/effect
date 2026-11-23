@@ -5,7 +5,6 @@ import {
   Context,
   Deferred,
   Effect,
-  Equal,
   Hash,
   Latch,
   Layer,
@@ -1966,47 +1965,6 @@ describe("Atom", { concurrent: false }, () => {
     assert(AsyncResult.isSuccess(result))
     assert.strictEqual(result.value, "saved")
     assert.strictEqual(result.waiting, false)
-
-    cancel()
-  })
-
-  it("stream completion keeps a value published only via setSelf", async () => {
-    const mode = Atom.make<"emit" | "stream" | "factory">("emit")
-    const atom = Atom.make((get) => {
-      switch (get(mode)) {
-        case "emit":
-          return Stream.succeed("manual")
-        case "stream":
-          return Stream.fromEffect(Effect.sync(() => get.setSelf(AsyncResult.success("manual")))).pipe(
-            Stream.drain
-          )
-        case "factory":
-          get.setSelf(AsyncResult.success("manual"))
-          return Stream.empty
-      }
-    }).pipe(Atom.withEquality(Equal.equals))
-    const r = AtomRegistry.make()
-    const cancel = r.mount(atom)
-
-    await vitest.advanceTimersByTimeAsync(0)
-    const emitted = r.get(atom)
-    assert(AsyncResult.isSuccess(emitted))
-    assert.strictEqual(emitted.value, "manual")
-    assert.strictEqual(emitted.waiting, false)
-
-    r.set(mode, "stream")
-    await vitest.advanceTimersByTimeAsync(0)
-    const fromStream = r.get(atom)
-    assert(AsyncResult.isSuccess(fromStream))
-    assert.strictEqual(fromStream.value, "manual")
-    assert.strictEqual(fromStream.waiting, false)
-
-    r.set(mode, "factory")
-    await vitest.advanceTimersByTimeAsync(0)
-    const fromFactory = r.get(atom)
-    assert(AsyncResult.isSuccess(fromFactory))
-    assert.strictEqual(fromFactory.value, "manual")
-    assert.strictEqual(fromFactory.waiting, false)
 
     cancel()
   })
