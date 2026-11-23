@@ -553,6 +553,14 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
 
       // link interruption with parent workflow
       const parentInstance = yield* Effect.serviceOption(WorkflowInstance)
+      if (
+        !opts.discard &&
+        Option.isSome(parentInstance) &&
+        parentInstance.value.workflow._tag === self._tag &&
+        parentInstance.value.executionId === executionId
+      ) {
+        return yield* Effect.die(`${self._tag}.execute: execution "${executionId}" cannot await itself`)
+      }
       if (Option.isSome(parentInstance) && !opts.detached) {
         const instance = parentInstance.value
         yield* Effect.addFinalizer(() => {
