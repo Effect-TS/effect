@@ -7,15 +7,10 @@
  * @stability experimental
  * @since 4.1.6
  */
-import * as EntityAddress from "effect/cluster/EntityAddress"
-import * as EntityId from "effect/cluster/EntityId"
-import * as EntityType from "effect/cluster/EntityType"
-import * as ShardId from "effect/cluster/ShardId"
 import * as Effect from "effect/Effect"
 import { actor } from "rivetkit"
 import { db } from "rivetkit/db"
-import { getEntityRegistration } from "./internal/entityRegistry.ts"
-import { type EntityManager, makeEntityManager } from "./internal/entityRuntime.ts"
+import { type EntityManager, makeEntityManagerForKey } from "./internal/entityRuntime.ts"
 import { ddl, fromRawAccess } from "./internal/entityStorage.ts"
 
 /**
@@ -79,22 +74,8 @@ export const makeClusterEntity = (options: ClusterEntityOptions = {}) => {
     createVars: () => ({ manager: undefined as EntityManager | undefined }),
     onWake: async (c) => {
       if (options.onWake !== undefined) await options.onWake(c.key)
-      const [entityType, entityId] = c.key
-      if (entityType === undefined || entityId === undefined) {
-        throw new Error(`RivetCluster: invalid entity actor key: ${JSON.stringify(c.key)}`)
-      }
-      const registration = getEntityRegistration(entityType)
-      if (registration === undefined) {
-        throw new Error(`RivetCluster: no handlers registered for entity type: ${entityType}`)
-      }
-      const id = EntityId.make(entityId)
-      const manager = makeEntityManager({
+      const manager = makeEntityManagerForKey(c.key, {
         database: fromRawAccess(c.db),
-        address: EntityAddress.make({
-          shardId: ShardId.make(registration.entity.getShardGroup(id), 1),
-          entityType: EntityType.make(entityType),
-          entityId: id
-        }),
         keepAwake: (effect) => {
           void c.keepAwake(Effect.runPromise(effect))
         },

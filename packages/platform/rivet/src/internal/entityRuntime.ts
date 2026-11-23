@@ -17,10 +17,13 @@ import * as Cause from "effect/Cause"
 import * as ClusterMetrics from "effect/cluster/ClusterMetrics"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "effect/cluster/ClusterSchema"
 import { CurrentAddress, CurrentRunnerAddress, Request } from "effect/cluster/Entity"
-import type * as EntityAddress from "effect/cluster/EntityAddress"
+import * as EntityAddress from "effect/cluster/EntityAddress"
+import * as EntityId from "effect/cluster/EntityId"
+import * as EntityType from "effect/cluster/EntityType"
 import * as Envelope from "effect/cluster/Envelope"
 import * as Reply from "effect/cluster/Reply"
 import * as RunnerAddress from "effect/cluster/RunnerAddress"
+import * as ShardId from "effect/cluster/ShardId"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -44,6 +47,7 @@ import {
   loadMessage,
   loadReply,
   loadUnprocessed,
+  loadUnprocessedIds,
   persistRequest,
   type PersistResult,
   saveReply,
@@ -80,9 +84,9 @@ interface ServerRequest {
   // Completes once the server's request effect, including its request scope,
   // has finished.
   readonly finished: Deferred.Deferred<void>
-  // Set for a persisted `WithTransaction` request: runs the server request
-  // effect inside one actor SQLite transaction.
-  readonly transaction: ((effect: Effect.Effect<any, any, any>) => Effect.Effect<any, any, any>) | undefined
+  // Set for a persisted `WithTransaction` request, whose server request
+  // effect runs inside one actor SQLite transaction.
+  readonly transaction: HandlerTransaction | undefined
   started: boolean
   interrupted: boolean
   fork: boolean
@@ -93,6 +97,11 @@ interface ServerRequest {
   // Set when the handler transaction failed in storage, so its commit is
   // unknown: only the durable rows say whether the reply and writes landed.
   commitFailure: Cause.Cause<unknown> | undefined
+}
+
+interface HandlerTransaction {
+  readonly rpc: Rpc.AnyWithProps
+  readonly replyId: string
 }
 
 class TransactionRollback {
@@ -115,10 +124,10 @@ export class UncommittedTransaction extends Error {
 const isUncommitted = (cause: Cause.Cause<unknown>) =>
   cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof UncommittedTransaction)
 
-// How a run answers its caller: `reply` saves a reply and answers with it;
-// `stored` answers with a reply that is already durable.
+// How a run answers an ask: `reply` saves a reply and answers with it;
+// `stored` answers with a reply that is already durable. A tell has none.
 interface Responder {
-  readonly reply: (reply: Reply.Reply<any>) => Effect.Effect<void>
+  readonly reply: (reply: Reply.WithExit<any>) => Effect.Effect<void>
   readonly stored: (encoded: string) => Effect.Effect<void>
 }
 
@@ -126,7 +135,6 @@ interface Responder {
 export const makeEntityRuntime = Effect.fnUntraced(function*(
   registration: EntityRegistration,
   address: EntityAddress.EntityAddress,
-  nextId: () => string,
   database: EntityDatabase
 ) {
   let cached: CachedHandlers | undefined
@@ -281,6 +289,50 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     Effect.andThen(Effect.catchCause(getHandlers(), () => Effect.void))
   )
 
+  // Saves a success reply, or marks a tell processed, in the handler's own
+  // transaction. Any other outcome rolls the transaction back, and the reply
+  // is saved afterwards in its own.
+  const runInTransaction = (
+    request: ServerRequest,
+    transaction: HandlerTransaction,
+    effect: Effect.Effect<any, any, any>
+  ): Effect.Effect<any, any, any> =>
+    database.transaction("cluster_handler", (tx: SqlExecutor) =>
+      Effect.gen(function*() {
+        // The server reports the handler exit before the request effect ends,
+        // and the effect fails with the handler's own failure. That is a
+        // rollback, not a storage failure, so only `reported` decides.
+        yield* Effect.exit(Effect.provideService(effect, CurrentEntityDatabase, tx) as Effect.Effect<unknown, unknown>)
+        const exit = request.reported
+        if (exit === undefined || Exit.isFailure(exit)) {
+          return yield* Effect.fail(new TransactionRollback())
+        }
+        if (request.discard) {
+          return yield* completeTell(tx, String(request.envelope.requestId))
+        }
+        const encoded = yield* encodeReplyFor(
+          registration,
+          transaction.rpc,
+          new Reply.WithExit({
+            requestId: request.envelope.requestId,
+            id: transaction.replyId as any,
+            exit: exit as any
+          })
+        )
+        yield* Effect.orDie(saveReply(tx, encoded))
+        request.committedReply = encoded
+      })).pipe(
+        Effect.catchIf((error) => error instanceof TransactionRollback, () => Effect.void),
+        Effect.catchCause((cause) =>
+          Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.sync(() => {
+            request.commitFailure = cause
+            // A transaction that failed to begin never ran the handler, so the
+            // server reports no exit for it.
+            Deferred.doneUnsafe(request.exit, Effect.succeed(Exit.die(new UncommittedTransaction(cause))))
+          })
+        )
+      )
+
   const runOnServer = (
     server: RpcServer.RpcServer<any>,
     request: ServerRequest,
@@ -296,7 +348,9 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         Effect.suspend(() => {
           request.started = true
           if (request.interrupted) return Effect.interrupt
-          const body = request.transaction === undefined ? effect : request.transaction(effect)
+          const body = request.transaction === undefined
+            ? effect
+            : runInTransaction(request, request.transaction, effect)
           return request.fork ? body : permit(body)
         }),
         Effect.sync(() => Deferred.doneUnsafe(request.finished, Effect.void))
@@ -334,59 +388,15 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     )
   }
 
-  // Saves a success reply, or marks a tell processed, in the handler's own
-  // transaction. Any other outcome rolls the transaction back, and the reply
-  // is saved afterwards in its own.
-  const runInTransaction = (
-    rpc: Rpc.AnyWithProps,
-    envelope: Envelope.Request.Any,
-    replyId: string,
-    request: () => ServerRequest
-  ) =>
-  (effect: Effect.Effect<any, any, any>): Effect.Effect<any, any, any> =>
-    database.transaction("cluster_handler", (tx: SqlExecutor) =>
-      Effect.gen(function*() {
-        // The server reports the handler exit before the request effect ends,
-        // and the effect fails with the handler's own failure. That is a
-        // rollback, not a storage failure, so only `reported` decides.
-        yield* Effect.exit(Effect.provideService(effect, CurrentEntityDatabase, tx) as Effect.Effect<unknown, unknown>)
-        const exit = request().reported
-        if (exit === undefined || Exit.isFailure(exit)) {
-          return yield* Effect.fail(new TransactionRollback())
-        }
-        if (request().discard) {
-          return yield* completeTell(tx, String(envelope.requestId))
-        }
-        const encoded = yield* encodeReplyFor(
-          registration,
-          rpc,
-          new Reply.WithExit({ requestId: envelope.requestId, id: replyId as any, exit: exit as any })
-        )
-        yield* Effect.orDie(saveReply(tx, encoded))
-        request().committedReply = encoded
-      })).pipe(
-        Effect.catchIf((error) => error instanceof TransactionRollback, () => Effect.void),
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.sync(() => {
-            const current = request()
-            current.commitFailure = cause
-            // A transaction that failed to begin never ran the handler, so the
-            // server reports no exit for it.
-            Deferred.doneUnsafe(current.exit, Effect.succeed(Exit.die(new UncommittedTransaction(cause))))
-          })
-        )
-      )
-
   const run = (
     envelope: Envelope.Request.Any,
-    discard: boolean,
-    respond: Responder,
+    responder: Responder | undefined,
     persisted: boolean
   ): Effect.Effect<void> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.flatMap(leaseHandlers(restore), (entry) =>
         Effect.ensuring(
-          restore(runLeased(entry, envelope, discard, respond, persisted)),
+          restore(runLeased(entry, envelope, responder, persisted)),
           releaseLease(entry)
         ))
     )
@@ -394,19 +404,18 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   const runLeased = Effect.fnUntraced(function*(
     entry: CachedHandlers,
     envelope: Envelope.Request.Any,
-    discard: boolean,
-    responder: Responder,
+    responder: Responder | undefined,
     persisted: boolean
   ) {
-    const respond = responder.reply
+    const discard = responder === undefined
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps | undefined
     const handler = entry.handlers[envelope.tag]
     if (rpc === undefined || handler === undefined) {
-      if (!discard) {
-        yield* respond(
+      if (responder !== undefined) {
+        yield* responder.reply(
           new Reply.WithExit({
             requestId: envelope.requestId,
-            id: nextId() as any,
+            id: crypto.randomUUID() as any,
             exit: Exit.die(`Unknown entity RPC tag: ${envelope.tag}`)
           })
         )
@@ -414,12 +423,11 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       return
     }
     // A `WithTransaction` success reply is saved in the handler transaction;
-    // after a rollback, `respond` saves the failure in its own.
-    const replyId = nextId()
+    // after a rollback, `responder.reply` saves the failure in its own.
+    const replyId = crypto.randomUUID()
     const transactional = persisted && Context.get(rpc.annotations, WithTransaction)
-    const semaphore = handlerSemaphore
     const permit = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-      semaphore === undefined ? effect : Semaphore.withPermit(semaphore, effect)
+      handlerSemaphore === undefined ? effect : Semaphore.withPermit(handlerSemaphore, effect)
 
     let current: ServerRequest | undefined
     const execute = Effect.suspend(() => {
@@ -428,7 +436,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         discard,
         exit: Deferred.makeUnsafe(),
         finished: Deferred.makeUnsafe(),
-        transaction: transactional ? runInTransaction(rpc, envelope, replyId, () => request) : undefined,
+        transaction: transactional ? { rpc, replyId } : undefined,
         started: false,
         interrupted: false,
         fork: false,
@@ -460,16 +468,16 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         () => Effect.succeed(undefined)
       )
       if (durable === undefined) return yield* Effect.die(new UncommittedTransaction(commitFailure))
-      if (!discard) yield* responder.stored(durable)
+      if (responder !== undefined) yield* responder.stored(durable)
       return
     }
     const committedReply = current?.committedReply
     if (committedReply !== undefined) {
-      if (!discard) yield* responder.stored(committedReply)
+      if (responder !== undefined) yield* responder.stored(committedReply)
       return
     }
-    if (!discard) {
-      yield* respond(
+    if (responder !== undefined) {
+      yield* responder.reply(
         new Reply.WithExit({
           requestId: envelope.requestId,
           id: replyId as any,
@@ -482,7 +490,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     }
   })
 
-  return { run, invalidate, warm: Effect.asVoid(getHandlers()) } as const
+  return { run, warm: Effect.asVoid(getHandlers()) } as const
 })
 
 type EntityRuntime = Effect.Success<ReturnType<typeof makeEntityRuntime>>
@@ -540,6 +548,8 @@ const success = (requestId: string, replies: ReadonlyArray<string>): EntityInvok
  * @internal
  */
 export const makeEntityManager = (options: EntityManagerOptions): EntityManager => {
+  // Each mailbox write is its own transaction. Rivet queues it behind any open
+  // handler transaction, so a handler rollback cannot take a reply with it.
   const database = options.database
   // Serializes storage entry: envelope decode, persist-before-run, dedupe and
   // replay. Rivet has no input gate, so this permit and the SQLite transaction
@@ -551,15 +561,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const pendingRuns = new Set<string>()
   let inFlightPersisted = 0
   let drainArmed = false
-  // Each mailbox write is its own transaction. Rivet queues it behind any open
-  // handler transaction, so a handler rollback cannot take a reply with it.
-  const write = <A, E>(name: string, body: (tx: SqlExecutor) => Effect.Effect<A, E>): Effect.Effect<A, E> =>
-    database.transaction(name, body)
   let runtime: EntityRuntime | undefined
 
   const getRuntime = (registration: EntityRegistration): Effect.Effect<EntityRuntime> =>
     runtime !== undefined ? Effect.succeed(runtime) : Effect.map(
-      makeEntityRuntime(registration, options.address, () => crypto.randomUUID(), database),
+      makeEntityRuntime(registration, options.address, database),
       (built) => runtime = built
     )
 
@@ -590,7 +596,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // A failed reply save, such as a commit from an instance Rivet has fenced
   // off, leaves the row unprocessed for the current owner.
   const saveReplyLogged = (encoded: string): Effect.Effect<void> =>
-    write("cluster_save_reply", (tx) => saveReply(tx, encoded)).pipe(
+    database.transaction("cluster_save_reply", (tx) => saveReply(tx, encoded)).pipe(
       Effect.tapCause((cause) => Effect.logWarning("RivetCluster: entity reply save failed", cause)),
       Effect.orDie
     )
@@ -629,23 +635,15 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         pendingRuns.add(requestId)
         yield* startPersisted
       }
-      const execute = entityRuntime.run(envelope, discard, {
-        reply: (reply) =>
-          Effect.flatMap(
-            encodeReplyFor(registration, rpc, reply),
-            (encoded) => persisted ? saveReplyLogged(encoded) : Effect.void
-          ),
-        stored: () => Effect.void
-      }, persisted)
       const fiber = yield* Effect.forkDetach(
-        execute.pipe(
+        entityRuntime.run(envelope, undefined, persisted).pipe(
           Effect.onExit((exit) =>
             !persisted ? Effect.void : Semaphore.withPermit(
               semaphore,
               Effect.suspend(() => {
                 pendingRuns.delete(requestId)
                 return Exit.isSuccess(exit)
-                  ? write("cluster_complete_tell", (tx) => completeTell(tx, requestId))
+                  ? database.transaction("cluster_complete_tell", (tx) => completeTell(tx, requestId))
                   : Effect.void
               }).pipe(Effect.ensuring(finishPersisted))
             )
@@ -658,7 +656,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
 
     const reply = Deferred.makeUnsafe<string | undefined>()
     const completeInterrupt = persisted
-      ? Effect.flatMap(
+      ? Effect.suspend(() =>
         encodeReplyFor(
           registration,
           rpc,
@@ -667,12 +665,13 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             id: crypto.randomUUID() as any,
             exit: Exit.interrupt()
           })
-        ),
-        (encoded) =>
+        )
+      ).pipe(
+        Effect.flatMap((encoded) =>
           Effect.orDie(
             // A reply that committed before the interrupt arrived stays: with
             // `WithTransaction`, the handler's writes committed with it.
-            write("cluster_interrupt", (tx) =>
+            database.transaction("cluster_interrupt", (tx) =>
               Effect.flatMap(
                 loadReply(tx, requestId),
                 (stored) =>
@@ -681,6 +680,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
                     : Effect.andThen(clearReplies(tx, requestId), saveReply(tx, encoded))
               ))
           )
+        )
       )
       : Effect.void
     const session: Session = {
@@ -692,13 +692,13 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     }
     sessions.set(requestId, session)
     if (persisted) yield* startPersisted
-    const respond = Effect.fnUntraced(function*(next: Reply.Reply<any>) {
+    const respond = Effect.fnUntraced(function*(next: Reply.WithExit<any>) {
       const encoded = yield* encodeReplyFor(registration, rpc, next)
       if (persisted) yield* saveReplyLogged(encoded)
       Deferred.doneUnsafe(reply, Effect.succeed(encoded))
     })
     session.fiber = yield* Effect.forkDetach(
-      entityRuntime.run(envelope, discard, {
+      entityRuntime.run(envelope, {
         reply: respond,
         stored: (encoded) => Effect.sync(() => Deferred.doneUnsafe(reply, Effect.succeed(encoded)))
       }, persisted).pipe(
@@ -739,7 +739,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           ? undefined
           : registration.entity.protocol.requests.get(tag) as Rpc.AnyWithProps | undefined
         if (row.discard || rpc === undefined) {
-          return write("cluster_complete_tell", (tx) => completeTell(tx, row.requestId))
+          return database.transaction("cluster_complete_tell", (tx) => completeTell(tx, row.requestId))
         }
         return Effect.flatMap(
           encodeReplyFor(
@@ -751,9 +751,11 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
               exit: Exit.failCause(cause)
             })
           ),
-          (reply) => write("cluster_save_reply", (tx) => saveReply(tx, reply))
+          (reply) => database.transaction("cluster_save_reply", (tx) => saveReply(tx, reply))
         ).pipe(
-          Effect.catchCause(() => write("cluster_complete_tell", (tx) => completeTell(tx, row.requestId)))
+          Effect.catchCause(() =>
+            database.transaction("cluster_complete_tell", (tx) => completeTell(tx, row.requestId))
+          )
         )
       })
     )
@@ -801,8 +803,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       : Effect.succeed(registration)
   })
 
-  const replayPending = (registration: EntityRegistration, entityRuntime: EntityRuntime) =>
-    Effect.flatMap(loadUnprocessed(database), (rows) => replayRows(registration, entityRuntime, rows))
+  // Envelopes are loaded only when an unprocessed row has no handler in this
+  // wake. Most unprocessed rows are in flight, and every invoke replays.
+  const replayPending = (
+    registration: EntityRegistration,
+    entityRuntime: EntityRuntime,
+    unprocessed: ReadonlyArray<string>
+  ) =>
+    unprocessed.every(isRunning)
+      ? Effect.succeed([])
+      : Effect.flatMap(loadUnprocessed(database), (rows) => replayRows(registration, entityRuntime, rows))
 
   const invokeEntry = (
     envelopeText: string,
@@ -812,7 +822,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.gen(function*() {
       const registration = yield* lookupRegistration
       const entityRuntime = yield* getRuntime(registration)
-      yield* replayPending(registration, entityRuntime)
+      yield* replayPending(registration, entityRuntime, yield* loadUnprocessedIds(database))
       const finish = (
         requestId: string,
         continuation: Effect.Effect<ReadonlyArray<string>>
@@ -842,8 +852,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
 
       const persistedResult = yield* Effect.result(
-        write("cluster_persist", (tx) =>
-          persistRequest(tx, envelopeText, primaryKey ?? Envelope.primaryKey(envelope), discard))
+        database.transaction("cluster_persist", (tx) =>
+          persistRequest(
+            tx,
+            String(envelope.requestId),
+            envelopeText,
+            primaryKey ?? Envelope.primaryKey(envelope),
+            discard
+          ))
       )
       if (Result.isFailure(persistedResult)) {
         return Effect.succeed<EntityInvokeResult>(
@@ -915,8 +931,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   const drain: Effect.Effect<number> = Semaphore.withPermit(
     semaphore,
     Effect.gen(function*() {
-      const pending = yield* countUnprocessed(database)
-      if (pending === 0) {
+      const unprocessed = yield* loadUnprocessedIds(database)
+      if (unprocessed.length === 0) {
         if (inFlightPersisted === 0) {
           drainArmed = false
           yield* options.setDrainSchedule(false)
@@ -927,8 +943,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const registration = yield* lookupRegistration
       const entityRuntime = yield* getRuntime(registration)
       yield* entityRuntime.warm
-      yield* replayPending(registration, entityRuntime)
-      return pending
+      yield* replayPending(registration, entityRuntime, unprocessed)
+      return unprocessed.length
     })
   ).pipe(
     Effect.withSpan("RivetCluster.drain", {
@@ -940,4 +956,33 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   )
 
   return { invoke, interrupt, drain }
+}
+
+/**
+ * Builds the manager for the `clusterEntity` actor with the given
+ * `[entityType, entityId]` key.
+ *
+ * @internal
+ */
+export const makeEntityManagerForKey = (
+  key: ReadonlyArray<string>,
+  options: Omit<EntityManagerOptions, "address">
+): EntityManager => {
+  const [entityType, entityId] = key
+  if (entityType === undefined || entityId === undefined) {
+    throw new Error(`RivetCluster: invalid entity actor key: ${JSON.stringify(key)}`)
+  }
+  const registration = getEntityRegistration(entityType)
+  if (registration === undefined) {
+    throw new Error(`RivetCluster: no handlers registered for entity type: ${entityType}`)
+  }
+  const id = EntityId.make(entityId)
+  return makeEntityManager({
+    ...options,
+    address: EntityAddress.make({
+      shardId: ShardId.make(registration.entity.getShardGroup(id), 1),
+      entityType: EntityType.make(entityType),
+      entityId: id
+    })
+  })
 }

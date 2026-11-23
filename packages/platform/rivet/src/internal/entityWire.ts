@@ -9,7 +9,6 @@ import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Headers from "effect/http/Headers"
 import * as Rpc from "effect/rpc/Rpc"
-import * as RpcSchema from "effect/rpc/RpcSchema"
 import * as Schema from "effect/Schema"
 import type { EntityRegistration } from "./entityRegistry.ts"
 
@@ -72,19 +71,6 @@ export const runWith = <A>(
   effect: Effect.Effect<A, any, any>,
   context: Context.Context<never>
 ): Effect.Effect<A> => effect.pipe(Effect.provideContext(context as any), Effect.orDie) as Effect.Effect<A>
-
-// Cached per rpc so the derived AST stays stable and the memoized parser
-// compiler can hit on repeated chunks.
-const chunkValuesCache = new WeakMap<Rpc.AnyWithProps, Schema.Top | undefined>()
-
-const chunkValuesCodec = (rpc: Rpc.AnyWithProps): Schema.Top | undefined => {
-  if (chunkValuesCache.has(rpc)) return chunkValuesCache.get(rpc)
-  const codec = RpcSchema.isStreamSchema(rpc.successSchema)
-    ? Schema.toCodecJson(Schema.NonEmptyArray(rpc.successSchema.success))
-    : undefined
-  chunkValuesCache.set(rpc, codec)
-  return codec
-}
 
 /** @internal */
 export const encodeRequest = (options: {
@@ -149,71 +135,36 @@ export const decodeRequest = (
     registration.context
   )
 
-/** @internal */
+/**
+ * Stream RPCs are rejected before they run, so every reply is a `WithExit`.
+ *
+ * @internal
+ */
 export const encodeReplyFor = (
   registration: EntityRegistration,
   rpc: Rpc.AnyWithProps,
-  reply: Reply.Reply<any>
-): Effect.Effect<string> => {
-  if (reply._tag === "WithExit") {
-    return runWith(
-      Effect.map(
-        Schema.encodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc)))(reply.exit),
-        (exit) => JSON.stringify({ _tag: "WithExit", requestId: String(reply.requestId), id: String(reply.id), exit })
-      ),
-      registration.context
-    )
-  }
-  const codec = chunkValuesCodec(rpc)
-  if (codec === undefined) {
-    return Effect.die(`Expected a stream RPC: ${rpc._tag}`)
-  }
-  return runWith(
+  reply: Reply.WithExit<any>
+): Effect.Effect<string> =>
+  runWith(
     Effect.map(
-      Schema.encodeUnknownEffect(codec)(reply.values),
-      (values) =>
-        JSON.stringify({
-          _tag: "Chunk" as const,
-          requestId: String(reply.requestId),
-          id: String(reply.id),
-          sequence: reply.sequence,
-          values
-        })
+      Schema.encodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc)))(reply.exit),
+      (exit) => JSON.stringify({ _tag: "WithExit", requestId: String(reply.requestId), id: String(reply.id), exit })
     ),
     registration.context
   )
-}
 
 /** @internal */
 export const decodeReplyFor = (
   rpc: Rpc.AnyWithProps,
   context: Context.Context<never>,
   replyText: string
-): Effect.Effect<Reply.Reply<any>> => {
+): Effect.Effect<Reply.WithExit<any>> => {
   const encoded = JSON.parse(replyText) as Reply.Encoded
-  if (encoded._tag === "WithExit") {
-    return runWith(
-      Effect.map(
-        Schema.decodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc)))(encoded.exit),
-        (exit) => new Reply.WithExit({ requestId: encoded.requestId as any, id: encoded.id as any, exit: exit as any })
-      ),
-      context
-    )
-  }
-  const codec = chunkValuesCodec(rpc)
-  if (codec === undefined) {
-    return Effect.die(`Expected a stream RPC: ${rpc._tag}`)
-  }
+  if (encoded._tag !== "WithExit") return Effect.die("RivetCluster: unexpected stream chunk")
   return runWith(
     Effect.map(
-      Schema.decodeUnknownEffect(codec)(encoded.values),
-      (values) =>
-        new Reply.Chunk({
-          requestId: encoded.requestId as any,
-          id: encoded.id as any,
-          sequence: encoded.sequence,
-          values: values as any
-        })
+      Schema.decodeUnknownEffect(Schema.toCodecJson(Rpc.exitSchema(rpc)))(encoded.exit),
+      (exit) => new Reply.WithExit({ requestId: encoded.requestId as any, id: encoded.id as any, exit: exit as any })
     ),
     context
   )

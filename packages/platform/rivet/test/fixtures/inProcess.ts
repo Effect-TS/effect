@@ -1,9 +1,7 @@
-import { getEntityRegistration } from "@effect/platform-rivet/internal/entityRegistry"
-import { type EntityManager, makeEntityManager } from "@effect/platform-rivet/internal/entityRuntime"
+import { type EntityManager, makeEntityManagerForKey } from "@effect/platform-rivet/internal/entityRuntime"
 import { ddl, fromRawAccess } from "@effect/platform-rivet/internal/entityStorage"
 import type { ClusterClient } from "@effect/platform-rivet/RivetCluster"
 import { Effect } from "effect"
-import { EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import { DatabaseSync } from "node:sqlite"
 import { SqliteAccess } from "./sqlite.ts"
 
@@ -18,19 +16,10 @@ export const makeActors = () => {
   const actors = new Map<string, Promise<Actor>>()
 
   const wake = async (key: Array<string>): Promise<Actor> => {
-    const [entityType, entityId] = key
-    const registration = getEntityRegistration(entityType)
-    if (registration === undefined) throw new Error(`no registration for ${entityType}`)
     const access = new SqliteAccess(new DatabaseSync(":memory:"))
     for (const statement of ddl) await access.db.execute(statement)
-    const id = EntityId.make(entityId)
-    const manager = makeEntityManager({
+    const manager = makeEntityManagerForKey(key, {
       database: fromRawAccess(access.db),
-      address: EntityAddress.make({
-        shardId: ShardId.make(registration.entity.getShardGroup(id), 1),
-        entityType: EntityType.make(entityType),
-        entityId: id
-      }),
       keepAwake: (effect) => {
         Effect.runFork(effect)
       },

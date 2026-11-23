@@ -55,6 +55,7 @@ const exceedsMaximumEncodedSize = (text: string): boolean =>
 /** @internal */
 export const persistRequest = Effect.fnUntraced(function*(
   tx: SqlExecutor,
+  requestId: string,
   envelopeText: string,
   primaryKey: string | null,
   discard: boolean
@@ -62,17 +63,13 @@ export const persistRequest = Effect.fnUntraced(function*(
   if (exceedsMaximumEncodedSize(envelopeText)) {
     return yield* Effect.fail(new EncodedMessageTooLargeError("Encoded entity request exceeds 2 MB"))
   }
-  const envelope = JSON.parse(envelopeText) as { readonly _tag?: unknown; readonly requestId?: unknown }
-  if (envelope._tag !== "Request" || typeof envelope.requestId !== "string") {
-    return yield* Effect.die(new TypeError("Expected an encoded Request envelope"))
-  }
 
   const existing = (yield* tx.execute<ExistingMessageRow>(
     `SELECT request_id, processed
      FROM cluster_messages
      WHERE request_id = ? OR (? IS NOT NULL AND message_id = ?)
      LIMIT 1`,
-    envelope.requestId,
+    requestId,
     primaryKey,
     primaryKey
   ))[0]
@@ -84,10 +81,7 @@ export const persistRequest = Effect.fnUntraced(function*(
     } satisfies PersistResult as PersistResult
   }
 
-  const pending = (yield* tx.execute<CountRow>(
-    "SELECT COUNT(*) AS count FROM cluster_messages WHERE processed = 0"
-  ))[0]?.count ?? 0
-  if (Number(pending) >= mailboxCapacity) {
+  if ((yield* countUnprocessed(tx)) >= mailboxCapacity) {
     return yield* Effect.fail(new MailboxFullError("Entity mailbox has reached its 4096 request capacity"))
   }
 
@@ -95,7 +89,7 @@ export const persistRequest = Effect.fnUntraced(function*(
     `INSERT INTO cluster_messages
        (request_id, message_id, envelope, discard, processed, last_reply_id, deliver_at, reply_to)
      VALUES (?, ?, ?, ?, 0, NULL, NULL, NULL)`,
-    envelope.requestId,
+    requestId,
     primaryKey,
     envelopeText,
     discard ? 1 : 0
@@ -162,6 +156,13 @@ export const loadUnprocessed = (sql: SqlExecutor): Effect.Effect<Array<StoredMes
        ORDER BY rowid ASC`
     ),
     (rows) => rows.map(rowToMessage)
+  )
+
+/** @internal */
+export const loadUnprocessedIds = (sql: SqlExecutor): Effect.Effect<Array<string>> =>
+  Effect.map(
+    sql.execute<{ readonly request_id: string }>("SELECT request_id FROM cluster_messages WHERE processed = 0"),
+    (rows) => rows.map((row) => row.request_id)
   )
 
 /** @internal */

@@ -10,9 +10,7 @@ export interface EntityRegistration {
   readonly build: Effect.Effect<Record<string, (request: any) => any>, never, never>
   readonly options: {
     readonly concurrency?: number | "unbounded" | undefined
-    readonly disableFatalDefects?: boolean | undefined
     readonly defectRetryPolicy?: unknown
-    readonly spanAttributes?: Record<string, string> | undefined
   } | undefined
   readonly context: Context.Context<never>
 }

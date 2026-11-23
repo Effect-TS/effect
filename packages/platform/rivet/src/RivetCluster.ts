@@ -135,7 +135,6 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
         (replyText) =>
           Effect.flatMap(decodeReplyFor(entry.rpc, entry.context, replyText), (reply) => {
             entries.delete(entry.clientRequestId)
-            if (reply._tag !== "WithExit") return Effect.die("RivetCluster: unexpected stream chunk")
             return client.write({
               _tag: "Exit",
               clientId: 0,
@@ -257,14 +256,11 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
       })
       const result: Record<string, unknown> = {}
       for (const tag of entity.protocol.requests.keys()) {
-        const rpc = entity.protocol.requests.get(tag)! as Rpc.AnyWithProps
-        const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
         result[tag] = (payload: unknown, methodOptions?: { readonly context?: Context.Context<never> }) => {
           const requestContext = methodOptions?.context === undefined
             ? target
             : Context.merge(methodOptions.context, target)
-          const call = client.client(tag, payload, { ...methodOptions, context: requestContext }) as any
-          return isStream ? Stream.unwrap(Effect.succeed(call)) : call
+          return client.client(tag, payload, { ...methodOptions, context: requestContext })
         }
       }
       return result as any
