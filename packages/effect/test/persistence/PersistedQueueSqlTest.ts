@@ -38,7 +38,16 @@ const clockTolerance = 100
 // advances in coarse ticks, for example. The tests run one at a time, since a
 // transaction on a single-connection database would hold up the other test's
 // offer.
-export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) => {
+export const suiteWith = (
+  testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>,
+  options?: {
+    /**
+     * Run the SQL claim tests concurrently. Disable on dialects where parallel
+     * table creation deadlocks the system catalog (e.g. SQL Server).
+     */
+    readonly concurrentClaims?: boolean | undefined
+  }
+) => {
   testApi.layer(Layer.empty, { concurrent: false, timeout: "90 seconds" })("PersistedQueue SQL delays", (it) => {
     it.effect("never delivers a delayed offer early at a second boundary", () =>
       Effect.gen(function*() {
@@ -145,7 +154,28 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
       }).pipe(TestClock.withLive), { timeout: 30000 })
   })
 
-  testApi.layer(Layer.empty, { concurrent: false, timeout: "90 seconds" })("PersistedQueue SQL claims", (it) => {
+  const concurrentClaims = options?.concurrentClaims ?? true
+  const claimCases = [["failure", true], ["failure", false], ["success", true]] as const
+  const claimTableName = (settlement: "failure" | "success", sameStore: boolean) =>
+    `effect_queue_stale_${settlement}_${sameStore ? "same" : "other"}`
+
+  // Create and migrate each claim table sequentially before running the tests
+  // concurrently so parallel DDL does not contend on shared connection pools.
+  const claimTablesLayer = concurrentClaims
+    ? Layer.effectDiscard(
+      Effect.forEach(
+        claimCases,
+        ([settlement, sameStore]) =>
+          Effect.scoped(PersistedQueue.makeStoreSql({ tableName: claimTableName(settlement, sameStore) })),
+        { discard: true }
+      )
+    )
+    : Layer.empty
+
+  // Each test uses its own table and private TestClock so paused lock refreshes
+  // do not interfere across concurrent runs.
+  const claimLayerOptions = { concurrent: concurrentClaims, timeout: "90 seconds" } as const
+  testApi.layer(claimTablesLayer, claimLayerOptions)("PersistedQueue SQL claims", (it) => {
     const makeOwnershipQueue = Effect.fnUntraced(function*(tableName: string) {
       const store = yield* PersistedQueue.makeStoreSql({
         tableName,
@@ -159,12 +189,12 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
       return yield* factory.make({ name: tableName, schema: Schema.String, retrySchedule: Schedule.spaced(0) })
     })
 
-    for (const [settlement, sameStore] of [["failure", true], ["failure", false], ["success", true]] as const) {
+    for (const [settlement, sameStore] of claimCases) {
       it.effect(
         `a stale ${settlement} preserves a newer claim from ${sameStore ? "the same" : "another"} store`,
         () =>
           Effect.gen(function*() {
-            const tableName = `effect_queue_stale_${settlement}_${sameStore ? "same" : "other"}`
+            const tableName = claimTableName(settlement, sameStore)
             const stale = yield* makeOwnershipQueue(tableName)
             const queue = sameStore ? stale : yield* makeOwnershipQueue(tableName)
             yield* stale.offer("job", { id: "job-1" })
@@ -215,7 +245,7 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
             yield* Fiber.interrupt(replacement)
             const redelivered = yield* Fiber.join(duplicate).pipe(Effect.timeout("5 seconds"), TestClock.withLive)
             assert.deepStrictEqual(redelivered, { value: "job", id: "job-1", attempts: 2 })
-          }),
+          }).pipe(Effect.provide(TestClock.layer())),
         { timeout: 30000 }
       )
     }

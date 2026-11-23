@@ -181,7 +181,9 @@ const makeXactAbortClient = Effect.fnUntraced(function*(
 })
 
 it.layer(MssqlContainer.layerClient, { timeout: "90 seconds" })((it) => {
-  PersistedQueueSqlTest.suiteWith(it)
+  // Keep claim tests serial on SQL Server: concurrent table creation deadlocks
+  // on the system catalog and competes with the deadlock test below.
+  PersistedQueueSqlTest.suiteWith(it, { concurrentClaims: false })
 
   it.effect("PersistedQueue offers, claims and settlements do not deadlock", () =>
     Effect.gen(function*() {

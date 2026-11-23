@@ -36,10 +36,15 @@ export const suiteWith = <R>(
     options?.virtualTime ? Effect.yieldNow : Effect.sleep(millis).pipe(TestClock.withLive)
 
   // advance the virtual clock one poll cycle, give real-time stores a moment,
-  // then check the forked take is still waiting
-  const assertNotDelivered = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
+  // then check the forked take is still waiting. State-only checks only need
+  // to outlast one poll round trip (250ms); offer-delay checks wait 1s so the
+  // assertion stays tied to the store's clock.
+  const assertNotDelivered = Effect.fnUntraced(function*<A, E>(
+    fiber: Fiber.Fiber<A, E>,
+    waitMillis = 250
+  ) {
     yield* TestClock.adjust(1000)
-    yield* liveSleep(1000)
+    yield* liveSleep(waitMillis)
     assert.isUndefined(fiber.pollUnsafe())
   })
 
@@ -49,7 +54,15 @@ export const suiteWith = <R>(
   const awaitDelivery = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
     for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
       yield* TestClock.adjust(1000)
-      yield* liveSleep(700)
+      if (options?.virtualTime) {
+        if (fiber.pollUnsafe() === undefined) {
+          yield* Effect.yieldNow
+        }
+      } else {
+        for (let waited = 0; waited < 700 && fiber.pollUnsafe() === undefined; waited += 10) {
+          yield* liveSleep(10)
+        }
+      }
     }
     assert.isDefined(fiber.pollUnsafe())
     return yield* Fiber.join(fiber)
@@ -182,7 +195,7 @@ export const suiteWith = <R>(
           Effect.forkScoped
         )
 
-        yield* assertNotDelivered(fiber)
+        yield* assertNotDelivered(fiber, 1000)
 
         // the delay does not consume an attempt
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { value: { n: 42n }, attempts: 1 })
@@ -235,7 +248,7 @@ export const suiteWith = <R>(
 
         // the undelayed duplicate does not make the element available early
         const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-        yield* assertNotDelivered(fiber)
+        yield* assertNotDelivered(fiber, 1000)
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 1n })
 
         const fiber2 = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
@@ -488,7 +501,7 @@ export const suiteWith = <R>(
         // the re-offer is new work and honours its own delay
         yield* queue.offer({ n: 2n }, { ...offerOptions, delay: "3 seconds" })
         const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-        yield* assertNotDelivered(fiber)
+        yield* assertNotDelivered(fiber, 1000)
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 2n })
       }), testOptions)
 
