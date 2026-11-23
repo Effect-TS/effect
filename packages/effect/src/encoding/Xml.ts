@@ -727,8 +727,6 @@ interface ResolvedName {
   localName?: string | undefined
 }
 
-// Copies the resolved name of `from` to `to`, which keeps neither key when
-// there is none
 const withResolvedName = <A extends ResolvedName>(to: A, from: Readonly<ResolvedName>): A => {
   if (from.localName !== undefined) {
     to.namespace = from.namespace
@@ -2159,8 +2157,7 @@ interface MutableElement extends Element {
   readonly children: Array<MutableElement | string>
 }
 
-// A path segment: "*", a name as written, or a local name and a namespace,
-// which is `undefined` for any namespace
+// `string` is "*" or a literal name; `namespace: undefined` matches any namespace
 type Segment = string | { readonly namespace: string | undefined; readonly localName: string }
 
 const parseSegment = (segment: string): Segment => {

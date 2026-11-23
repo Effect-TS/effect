@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `namespace` and `localName` to elements collected by `Xml.elements`, keep them on the events from `Xml.toEvents`, and accept path names in Clark notation such as `{uri}local`.
+Support Clark-notation namespace matching (`{uri}local`, `{*}local`, `{}local`) in `Xml.elements`, and preserve `namespace` and `localName` on collected elements and `Xml.toEvents` output.
