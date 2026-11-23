@@ -99,18 +99,39 @@ describe("FetchHttpClient", { concurrent: false }, () => {
         })
       )
       const calls: Array<string> = []
-      globalThis.fetch = makeFetch(async () => {
-        calls.push("first")
-        return new Response("first")
-      })
+      const preconnects: Array<string> = []
+      globalThis.fetch = Object.assign(
+        async () => {
+          calls.push("first")
+          return new Response("first")
+        },
+        {
+          preconnect: (url: string | URL) => {
+            preconnects.push(`first:${url}`)
+          }
+        }
+      )
       const client = yield* HttpClient.HttpClient
+      const fetch = yield* FetchHttpClient.Fetch
       yield* client.get("https://example.test/1")
-      globalThis.fetch = makeFetch(async () => {
-        calls.push("second")
-        return new Response("second")
-      })
+      fetch.preconnect("https://example.test/1")
+      globalThis.fetch = Object.assign(
+        async () => {
+          calls.push("second")
+          return new Response("second")
+        },
+        {
+          preconnect: (url: string | URL) => {
+            preconnects.push(`second:${url}`)
+          }
+        }
+      )
       yield* client.get("https://example.test/2")
+      fetch.preconnect("https://example.test/2")
       assert.deepStrictEqual(calls, ["first", "second"])
+      assert.deepStrictEqual(preconnects, ["first:https://example.test/1", "second:https://example.test/2"])
+      globalThis.fetch = (async () => new Response("third")) as unknown as typeof globalThis.fetch
+      assert.isUndefined(fetch.preconnect)
     }).pipe(Effect.provide(FetchHttpClient.layer)))
 
   describe("streaming request bodies", () => {
