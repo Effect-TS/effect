@@ -6760,7 +6760,7 @@ export const merge: {
             })
           )
         ),
-        Effect.forkIn(forkedScope)
+        Effect.forkIn(forkedScope, { startImmediately: true })
       )
     yield* runSide("left", left, Scope.forkUnsafe(forkedScope))
     yield* runSide("right", right, Scope.forkUnsafe(forkedScope))

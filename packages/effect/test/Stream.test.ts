@@ -5161,6 +5161,14 @@ describe("Stream", () => {
         )
         deepStrictEqual(result, [1])
       }))
+
+    it.effect("starts both sides immediately", () =>
+      Effect.gen(function*() {
+        const started = new Set<string>()
+        const side = (name: string) => Stream.fromEffect(Effect.sync(() => started.add(name)))
+        yield* Effect.asVoid(Stream.toPull(Stream.merge(side("left"), side("right"))))
+        deepStrictEqual(started, new Set(["left", "right"]))
+      }))
   })
 
   describe("partition", () => {
