@@ -46,28 +46,36 @@ import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./int
  * **Details**
  *
  * A `DurableObjectState` from `cloudflare:workers` satisfies this shape
- * directly, so pass it as is. The program only reads the object name, opens
- * SQLite storage, resolves same-Worker class exports, and extends the current
- * event with `waitUntil`.
+ * directly, so pass it as is. The program only reads the object name and
+ * jurisdiction, opens SQLite storage, resolves same-Worker class exports, and
+ * extends the current event with `waitUntil`.
  *
  * @stability experimental
  * @category models
  * @since 4.1.3
  */
 export interface DurableObjectProgramState {
-  readonly id: { readonly name?: string | undefined }
+  readonly id: { readonly name?: string | undefined; readonly jurisdiction?: string | undefined }
   readonly storage: DurableObjectStorage
   readonly exports: object
   readonly waitUntil: (promise: Promise<unknown>) => void
 }
 
+interface ExportedNamespace<Stub> {
+  readonly getByName: (name: string) => Stub
+  readonly jurisdiction: (jurisdiction: string) => ExportedNamespace<Stub>
+}
+
+// `ctx.exports` loopback bindings are unrestricted; keep peer lookups in the
+// calling object's jurisdiction so the same name resolves the restricted peer.
 const exportedNamespace = <Stub>(
   state: DurableObjectProgramState,
   className: string
-): { readonly getByName: (name: string) => Stub } | undefined =>
-  (state.exports as Record<string, unknown>)[className] as
-    | { readonly getByName: (name: string) => Stub }
-    | undefined
+): ExportedNamespace<Stub> | undefined => {
+  const namespace = (state.exports as Record<string, ExportedNamespace<Stub> | undefined>)[className]
+  const jurisdiction = state.id.jurisdiction
+  return jurisdiction === undefined ? namespace : namespace?.jurisdiction(jurisdiction)
+}
 
 /**
  * Delivery options accepted by the cluster entity transport program.
