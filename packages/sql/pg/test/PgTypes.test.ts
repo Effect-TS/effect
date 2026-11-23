@@ -342,7 +342,7 @@ describe("PgTypes", () => {
       for (const wire of ["", "0100", "02ffffffff", "02000000040000000100000004000000", "1800"]) {
         assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(bytes(wire), PgTypes.OID.int4range, 1))
       }
-      for (const wire of ["0000", "ffffffff", "00000001ffffffff", "000000010000000201", "0000000000"]) {
+      for (const wire of ["0000", "ffffffff", "7fffffff", "00000001ffffffff", "000000010000000201", "0000000000"]) {
         assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(bytes(wire), PgTypes.OID.int4multirange, 1))
       }
       for (const value of [null, { lower: 1, upper: 5 }, { lower: 1, upper: 5, lowerInclusive: true, empty: false }]) {

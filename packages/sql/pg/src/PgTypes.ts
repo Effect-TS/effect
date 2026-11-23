@@ -2043,6 +2043,7 @@ const decodeMultirange = (
   if (size < 4) return fail("Truncated multirange value")
   const count = readInt32(bytes, start)
   if (count < 0) return fail(`Invalid multirange length: ${count}`)
+  if (count * 4 > size - 4) return fail("Truncated multirange value")
   const values: Array<Range<unknown>> = new Array(count)
   const limit = start + size
   let offset = start + 4
