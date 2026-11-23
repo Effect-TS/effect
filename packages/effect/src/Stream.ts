@@ -8,6 +8,26 @@
  * stream lifecycle: create a stream, transform or combine it, control buffering
  * and timing, handle failures, and finally consume it.
  *
+ * Every stream runs in a scope supplied by its consumer, called the stream's
+ * scope. The run functions create that scope and close it before they return,
+ * however the stream ends: completion, failure, defect, an early stop by a
+ * downstream operator such as `take`, or interruption. `toPull` uses the scope
+ * it is given and leaves closing it to its owner. Operators that run inner
+ * streams, such as `flatMap` and `concat`, may give each inner stream a child
+ * scope that closes sooner.
+ *
+ * `ensuring`, `onExit`, and `scoped` finalize when their stream ends on its own
+ * (completion, failure, or defect), before downstream observes that end.
+ * `callback` and `unwrap` register finalizers in the stream's scope, so they
+ * run when that scope closes. A stream that is abandoned because a downstream
+ * operator such as `take` stopped pulling from it is finalized no later than
+ * when its scope closes. Under `toPull`, that can be after the pull has
+ * returned its final result, so close the scope to release what the stream
+ * still holds. `toQueue` and `toPubSub` use the given scope for the queue or
+ * pubsub and for the fiber that feeds it. That fiber runs the stream like a run
+ * function, so the stream's resources are released when it ends, without
+ * waiting for the scope to close.
+ *
  * @stability stable
  * @since 2.0.0
  */
@@ -695,9 +715,15 @@ export const toChannel = <A, E, R>(
  * Use when you need callback-based code to emit stream values by offering to a
  * `Queue`, or signal stream completion through the `Queue` module APIs.
  *
- * By default it uses an "unbounded" buffer size.
- * You can customize the buffer size and strategy by passing an object as the
- * second argument with the `bufferSize` and `strategy` fields.
+ * **Details**
+ *
+ * The callback effect runs in the stream's scope. Finalizers it registers, for
+ * example with `Effect.acquireRelease`, run when that scope closes, not when
+ * the queue ends.
+ *
+ * By default it uses an "unbounded" buffer size. You can customize the buffer
+ * size and strategy by passing an object as the second argument with the
+ * `bufferSize` and `strategy` fields.
  *
  * **Example** (Creating a stream from a callback that can emit values into a queue)
  *
@@ -716,6 +742,45 @@ export const toChannel = <A, E, R>(
  * )
  *
  * await Effect.runPromise(Stream.runCollect(stream)) // => [1, 2, 3]
+ * ```
+ *
+ * **Example** (Unregistering a listener when the stream scope closes)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Queue, Stream } from "effect"
+ *
+ * const listeners = new Set<(value: number) => void>()
+ * const source = {
+ *   add(listener: (value: number) => void) {
+ *     listeners.add(listener)
+ *   },
+ *   remove(listener: (value: number) => void) {
+ *     listeners.delete(listener)
+ *   },
+ *   emit(value: number) {
+ *     for (const listener of listeners) {
+ *       listener(value)
+ *     }
+ *   }
+ * }
+ *
+ * const stream = Stream.callback<number>((queue) =>
+ *   Effect.gen(function*() {
+ *     const listener = (value: number) => {
+ *       Queue.offerUnsafe(queue, value)
+ *     }
+ *     yield* Effect.acquireRelease(
+ *       Effect.sync(() => source.add(listener)),
+ *       () => Effect.sync(() => source.remove(listener))
+ *     )
+ *     source.emit(1)
+ *     source.emit(2)
+ *   })
+ * )
+ *
+ * const values = await Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(1))))
+ * values // => [1]
+ * listeners.size // => 0
  * ```
  *
  * @stability stable
@@ -1692,6 +1757,11 @@ export const never: Stream<never> = fromChannel(Channel.never)
 /**
  * Creates a stream produced from an `Effect`.
  *
+ * **Details**
+ *
+ * The effect runs in the stream's scope, so finalizers it registers run when
+ * that scope closes.
+ *
  * **Example** (Unwrapping a stream effect)
  *
  * ```ts import.meta.vitest
@@ -1719,6 +1789,14 @@ export const unwrap = <A, E2, R2, E, R>(
 /**
  * Runs a stream that requires `Scope` in a managed scope, ensuring its
  * finalizers are run when the stream completes.
+ *
+ * **Details**
+ *
+ * The provided scope closes when the stream ends on its own (completion,
+ * failure, or defect), before downstream observes that end. If a downstream
+ * operator stops pulling first, it closes no later than when the stream's scope
+ * closes. It satisfies the `Scope` service requirement only; `callback` and
+ * `unwrap` keep using the stream's scope.
  *
  * **Example** (Scoping a stream)
  *
@@ -10316,6 +10394,12 @@ export const haltWhen: {
 /**
  * Runs the provided finalizer when the stream exits, passing the exit value.
  *
+ * **Details**
+ *
+ * The finalizer runs when the stream ends on its own (completion, failure, or
+ * defect), before downstream observes that end. If a downstream operator stops
+ * pulling first, it runs no later than when the stream's scope closes.
+ *
  * **Example** (Running a finalizer on exit)
  *
  * ```ts import.meta.vitest
@@ -10511,6 +10595,12 @@ export const onEnd: {
 
 /**
  * Executes the provided finalizer after this stream's finalizers run.
+ *
+ * **Details**
+ *
+ * The finalizer runs when the stream ends on its own (completion, failure, or
+ * defect), before downstream observes that end. If a downstream operator stops
+ * pulling first, it runs no later than when the stream's scope closes.
  *
  * **Example** (Ensuring finalization)
  *
@@ -11153,6 +11243,11 @@ const runSink = <A, E, R, A2, L, E2, R2>(
 /**
  * Runs the stream and collects all elements into an array.
  *
+ * **Details**
+ *
+ * Runs the stream in a scope of its own, which is closed before the effect
+ * completes, however the stream ends.
+ *
  * **Example** (Collecting stream values)
  *
  * ```ts import.meta.vitest
@@ -11540,6 +11635,11 @@ export const runForEachArray: {
 /**
  * Runs the stream for its effects, discarding emitted elements.
  *
+ * **Details**
+ *
+ * Runs the stream in a scope of its own, which is closed before the effect
+ * completes, however the stream ends.
+ *
  * **Example** (Draining a stream run)
  *
  * ```ts import.meta.vitest
@@ -11569,8 +11669,10 @@ export const runDrain = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<void, E,
  *
  * **Details**
  *
- * The pull fails with `Cause.Done` when the stream ends and with the stream
- * error on failure.
+ * The stream runs in the provided scope. The pull never closes it, so anything
+ * not yet finalized when the pull returns its final result is released when the
+ * owner closes the scope. The pull fails with `Cause.Done` when the stream ends
+ * and with the stream error on failure.
  *
  * **Example** (Creating a scoped pull)
  *
@@ -12107,6 +12209,10 @@ export const runIntoPubSub: {
  *
  * **Details**
  *
+ * The surrounding scope owns the PubSub and the fiber that feeds it. The stream
+ * runs like a run function inside that fiber, so its finalizers run when it
+ * ends, or when the fiber is interrupted by the scope closing.
+ *
  * `shutdownOnEnd` indicates whether the PubSub should be shut down when the
  * stream ends. By default this is `true`.
  *
@@ -12249,6 +12355,10 @@ export const toPubSubTake: {
  * consumption.
  *
  * **Details**
+ *
+ * The surrounding scope owns the queue and the fiber that feeds it. The stream
+ * runs like a run function inside that fiber, so its finalizers run when it
+ * ends, or when the fiber is interrupted by the scope closing.
  *
  * Elements are offered to the queue as the stream runs. Stream completion is
  * signaled with `Cause.Done`, stream failures fail the queue, and the queue is

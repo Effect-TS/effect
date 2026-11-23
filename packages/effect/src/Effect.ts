@@ -8686,6 +8686,11 @@ export const annotateSpans: {
 /**
  * Adds an annotation to the current span if available.
  *
+ * **Details**
+ *
+ * Does nothing when there is no current span or when the nearest parent span is
+ * an `ExternalSpan`.
+ *
  * **Example** (Annotating the current span)
  *
  * ```ts import.meta.vitest
@@ -8717,8 +8722,9 @@ export const annotateCurrentSpan: {
  *
  * **Details**
  *
- * The effect fails with `NoSuchElementError` when there is no active local
- * `Span`.
+ * The effect fails with `NoSuchElementError` when there is no parent span or
+ * when the nearest parent span is an `ExternalSpan`. Use `currentParentSpan` to
+ * read either kind.
  *
  * **Example** (Reading the current span)
  *
