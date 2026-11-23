@@ -26,14 +26,16 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
  *
  * **Details**
  *
- * Defaults to `globalThis.fetch`.
+ * Defaults to a function that looks up `globalThis.fetch` each time a request
+ * is sent, so replacing the global `fetch` later, for example with a mock,
+ * applies to subsequent requests.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/FetchHttpClient/Fetch", {
-  defaultValue: () => globalThis.fetch
+  defaultValue: () => ((input, init) => globalThis.fetch(input, init)) as typeof globalThis.fetch
 })
 
 /**
