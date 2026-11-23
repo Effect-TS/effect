@@ -241,6 +241,12 @@ export interface MssqlClientConfig {
    * the timer) leaves interruption unbounded rather than making it faster.
    */
   readonly cancelTimeout?: Duration.Input | undefined
+  /**
+   * How long Tedious waits for a request to complete before it cancels the
+   * request and fails it. Defaults to 15 seconds. A zero or infinite duration
+   * disables the timeout.
+   */
+  readonly requestTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
   readonly multiSubnetFailover?: boolean | undefined
   readonly maxRetriesOnTransientErrors?: number | undefined
@@ -293,6 +299,9 @@ export const make = (
 ): Effect.Effect<MssqlClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
+    const requestTimeout = options.requestTimeout === undefined
+      ? undefined
+      : requestTimeoutMillis(options.requestTimeout)
     const compiler = makeCompiler(options.transformQueryNames)
 
     const transformRows = options.transformResultNames ?
@@ -337,6 +346,7 @@ export const make = (
           cancelTimeout: options.cancelTimeout
             ? Duration.toMillis(Duration.fromInputUnsafe(options.cancelTimeout))
             : undefined,
+          requestTimeout,
           connectionRetryInterval: options.connectionRetryInterval
             ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionRetryInterval))
             : undefined,
@@ -793,6 +803,13 @@ export const makeCompiler = (transform?: (_: string) => string) =>
 // compiler helpers
 
 const escape = (str: string) => "[" + str.replace(/\]/g, "]]").replace(/\./g, "].[") + "]"
+
+// Tedious disables the timer for zero. An infinite delay would overflow
+// `setTimeout` and expire immediately.
+const requestTimeoutMillis = (input: Duration.Input): number => {
+  const duration = Duration.fromInputUnsafe(input)
+  return Duration.isFinite(duration) ? Duration.toMillis(duration) : 0
+}
 
 function numberToParamName(n: number) {
   return `${Math.ceil(n + 1)}`

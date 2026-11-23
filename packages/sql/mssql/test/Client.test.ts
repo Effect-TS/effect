@@ -12,6 +12,7 @@ import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
 interface MockConnection extends EventEmitter {
+  config: Tedious.ConnectionConfiguration
   closed: boolean
   closedSignal: Deferred.Deferred<void>
   cancellations: number
@@ -56,7 +57,7 @@ vi.mock("tedious", async (importOriginal) => {
     cancellations = 0
     readonly queries: Array<string> = []
 
-    constructor() {
+    constructor(readonly config: Tedious.ConnectionConfiguration) {
       super()
       state.connections.push(this)
     }
@@ -345,6 +346,22 @@ describe("mssql", () => {
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
+
+  for (
+    const [name, requestTimeout, expected] of [
+      ["uses the Tedious default when omitted", undefined, undefined],
+      ["converts durations to milliseconds", "30 seconds", 30_000],
+      ["disables the timeout with zero", 0, 0],
+      ["disables the timeout with an infinite duration", "Infinity", 0]
+    ] as const
+  ) {
+    it.effect(`requestTimeout ${name}`, () =>
+      Effect.gen(function*() {
+        const before = state.connections.length
+        yield* MssqlClient.make({ server: "localhost", requestTimeout })
+        assert.strictEqual(state.connections[before].config.options?.requestTimeout, expected)
+      }).pipe(Effect.provide(Reactivity.layer)))
+  }
 
   it.effect("cancels an in-flight Tedious request when interrupted", () =>
     Effect.gen(function*() {
