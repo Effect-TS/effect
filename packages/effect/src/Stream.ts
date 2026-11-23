@@ -751,18 +751,16 @@ export const toChannel = <A, E, R>(
  *
  * const listeners = new Set<(value: number) => void>()
  *
- * const stream = Stream.callback<number>((queue) =>
- *   Effect.gen(function*() {
- *     const listener = (value: number) => {
- *       Queue.offerUnsafe(queue, value)
- *     }
- *     yield* Effect.acquireRelease(
- *       Effect.sync(() => listeners.add(listener)),
- *       () => Effect.sync(() => listeners.delete(listener))
- *     )
- *     listeners.forEach((notify) => notify(1))
- *   })
- * )
+ * const stream = Stream.callback<number>(Effect.fnUntraced(function*(queue) {
+ *   const listener = (value: number) => {
+ *     Queue.offerUnsafe(queue, value)
+ *   }
+ *   yield* Effect.acquireRelease(
+ *     Effect.sync(() => listeners.add(listener)),
+ *     () => Effect.sync(() => listeners.delete(listener))
+ *   )
+ *   listeners.forEach((notify) => notify(1))
+ * }))
  *
  * const values = await Effect.runPromise(Stream.runCollect(stream.pipe(Stream.take(1))))
  * values // => [1]

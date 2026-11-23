@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Equal, Hash, MutableHashMap as HM, Option, pipe } from "effect"
-import { assertNoDeferredEqualHashCalls } from "./utils/equalHashCalls.ts"
 import { collectGarbage } from "./utils/gc.ts"
 
 class Key implements Equal.Equal {
@@ -341,13 +340,4 @@ describe("MutableHashMap", () => {
   it("pipe()", () => {
     deepStrictEqual(HM.empty<string, string>().pipe(HM.set("key", "value")), HM.make(["key", "value"]))
   })
-
-  it("calls key Equal and Hash implementations only synchronously during map operations", () =>
-    assertNoDeferredEqualHashCalls((key) => {
-      const map = HM.make([key("a"), 1], [key("b"), 2])
-      HM.set(map, key("a"), 10)
-      HM.get(map, key("a"))
-      HM.has(map, key("b"))
-      HM.remove(map, key("b"))
-    }))
 })

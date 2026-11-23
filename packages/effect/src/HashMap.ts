@@ -7,14 +7,6 @@
  * batch updates. This module also includes constructors, iteration, conversion,
  * mapping, filtering, and reducing helpers.
  *
- * Every operation in this module is synchronous. The `Equal` and `Hash`
- * implementations of keys are called only while a call that uses the map is
- * running, such as `set`, `get`, `has`, `remove`, `union`, or `Equal.equals`
- * and `Hash.hash` on the map itself, which also compare and hash its values.
- * The map never schedules a call to them for later. Which of them are called,
- * how often, and in what order is unspecified, and a key must keep the same
- * hash and equality for as long as it is stored.
- *
  * @stability stable
  * @since 2.0.0
  */

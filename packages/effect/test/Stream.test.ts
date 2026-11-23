@@ -225,17 +225,15 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const log: Array<string> = []
         const scope = yield* Scope.make()
-        const pull = yield* Stream.callback<number>((queue) =>
-          Effect.gen(function*() {
-            yield* Effect.addFinalizer(() =>
-              Effect.sync(() => {
-                log.push("callback-released")
-              })
-            )
-            Queue.offerUnsafe(queue, 1)
-            Queue.endUnsafe(queue)
-          })
-        ).pipe(
+        const pull = yield* Stream.callback<number>(Effect.fnUntraced(function*(queue) {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              log.push("callback-released")
+            })
+          )
+          Queue.offerUnsafe(queue, 1)
+          Queue.endUnsafe(queue)
+        })).pipe(
           Stream.ensuring(Effect.sync(() => {
             log.push("ensuring")
           })),

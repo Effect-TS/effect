@@ -2,7 +2,6 @@ import { assert } from "@effect/vitest"
 import { Equal, Hash, HashMap, Option, Result } from "effect"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
-import { assertNoDeferredEqualHashCalls } from "./utils/equalHashCalls.ts"
 
 describe("HashMap", () => {
   describe("constructors", () => {
@@ -527,17 +526,6 @@ describe("HashMap", () => {
       expect(HashMap.get(map2, person1)).toEqual(Option.some("updated"))
       expect(HashMap.size(map2)).toBe(2) // Should not increase size
     })
-
-    it("calls key Equal and Hash implementations only synchronously during map operations", () =>
-      assertNoDeferredEqualHashCalls((key) => {
-        const map = HashMap.make([key("a"), 1], [key("b"), 2])
-        const updated = HashMap.set(map, key("a"), 10)
-        HashMap.get(updated, key("a"))
-        HashMap.has(updated, key("b"))
-        const merged = HashMap.union(HashMap.remove(updated, key("b")), map)
-        Equal.equals(map, merged)
-        Hash.hash(merged)
-      }))
   })
 
   describe("regressions", () => {

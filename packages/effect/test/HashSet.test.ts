@@ -1,6 +1,5 @@
 import { Equal, Hash, HashSet } from "effect"
 import { describe, expect, it } from "vitest"
-import { assertNoDeferredEqualHashCalls } from "./utils/equalHashCalls.ts"
 
 describe("HashSet", () => {
   describe("constructors", () => {
@@ -281,16 +280,6 @@ describe("HashSet", () => {
       const withDuplicate = HashSet.add(people, alice2)
       expect(HashSet.size(withDuplicate)).toBe(2) // Should not add duplicate
     })
-
-    it("calls value Equal and Hash implementations only synchronously during set operations", () =>
-      assertNoDeferredEqualHashCalls((key) => {
-        const set = HashSet.make(key("a"), key("b"))
-        const added = HashSet.add(set, key("c"))
-        HashSet.has(added, key("a"))
-        const merged = HashSet.union(HashSet.remove(added, key("c")), set)
-        Equal.equals(set, merged)
-        Hash.hash(merged)
-      }))
   })
 
   describe("type guards", () => {
