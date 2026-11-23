@@ -722,21 +722,26 @@ export const toEvents = (element: Element): Arr.NonEmptyReadonlyArray<Event> => 
   return out
 }
 
+interface ResolvedName {
+  namespace?: string | undefined
+  localName?: string | undefined
+}
+
+// Copies the resolved name of `from` to `to`, which keeps neither key when
+// there is none
+const withResolvedName = <A extends ResolvedName>(to: A, from: Readonly<ResolvedName>): A => {
+  if (from.localName !== undefined) {
+    to.namespace = from.namespace
+    to.localName = from.localName
+  }
+  return to
+}
+
 const startEvent = (element: Element): StartElement =>
-  element.localName === undefined ?
-    { _tag: "StartElement", name: element.name, attributes: element.attributes } :
-    {
-      _tag: "StartElement",
-      name: element.name,
-      attributes: element.attributes,
-      namespace: element.namespace,
-      localName: element.localName
-    }
+  withResolvedName<StartElement>({ _tag: "StartElement", name: element.name, attributes: element.attributes }, element)
 
 const endEvent = (element: Element): EndElement =>
-  element.localName === undefined ?
-    { _tag: "EndElement", name: element.name } :
-    { _tag: "EndElement", name: element.name, namespace: element.namespace, localName: element.localName }
+  withResolvedName<EndElement>({ _tag: "EndElement", name: element.name }, element)
 
 const defaultMaxTokenSize = 10 * 1024 * 1024
 const defaultMaxDepth = 1024
@@ -2150,12 +2155,8 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   }
 }
 
-interface MutableElement {
-  readonly name: string
-  readonly attributes: Readonly<Record<string, string>>
+interface MutableElement extends Element {
   readonly children: Array<MutableElement | string>
-  readonly namespace?: string | undefined
-  readonly localName?: string | undefined
 }
 
 // A path segment: "*", a name as written, or a local name and a namespace,
@@ -2211,15 +2212,10 @@ class Collector implements Machine<Event, Element> {
           if (++this.matched < this.path.length) return
           this.size = 0
         }
-        const element: MutableElement = event.localName === undefined ?
-          { name: event.name, attributes: event.attributes, children: [] } :
-          {
-            name: event.name,
-            attributes: event.attributes,
-            children: [],
-            namespace: event.namespace,
-            localName: event.localName
-          }
+        const element = withResolvedName<MutableElement>(
+          { name: event.name, attributes: event.attributes, children: [] },
+          event
+        )
         if (this.stack.length > 0) this.stack[this.stack.length - 1].children.push(element)
         this.stack.push(element)
         let size = event.name.length
