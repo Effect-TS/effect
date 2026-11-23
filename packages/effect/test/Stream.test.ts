@@ -273,10 +273,15 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const log: Array<string> = []
         const scope = yield* Scope.make()
-        const queue = yield* Stream.make(1).pipe(
-          Stream.ensuring(Effect.sync(() => {
-            log.push("released")
-          })),
+        const queue = yield* Stream.unwrap(
+          Effect.acquireRelease(
+            Effect.succeed(Stream.make(1)),
+            () =>
+              Effect.sync(() => {
+                log.push("released")
+              })
+          )
+        ).pipe(
           Stream.toQueue({ capacity: "unbounded" }),
           Scope.provide(scope)
         )

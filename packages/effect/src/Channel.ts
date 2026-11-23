@@ -8714,11 +8714,10 @@ export const runFoldEffect: {
  *
  * **Details**
  *
- * The channel runs in the provided `Scope`. The pull never closes it, so
- * anything not yet finalized when the pull returns its final result is released
- * when the owner closes the scope. The returned pull should be consumed only
- * while that scope remains open. Pulls are serialized so only one pull is
- * evaluated at a time.
+ * The channel runs in the provided `Scope`. The pull leaves the supplied scope
+ * open; close it to release any resources the channel still holds. The returned
+ * pull should be consumed only while that scope remains open. Pulls are
+ * serialized so only one pull is evaluated at a time.
  *
  * **Example** (Converting channels to pulls)
  *
@@ -8771,9 +8770,8 @@ export const toPull: <OutElem, OutErr, OutDone, Env>(
  *
  * **Details**
  *
- * The channel runs in the provided scope. The pull never closes it, so anything
- * not yet finalized when the pull returns its final result is released when the
- * owner closes the scope.
+ * The channel runs in the provided scope. The pull leaves the supplied scope
+ * open; close it to release any resources the channel still holds.
  *
  * **Example** (Converting channels to scoped pulls)
  *

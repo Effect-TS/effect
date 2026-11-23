@@ -7,8 +7,8 @@
  * logger references, console routing helpers, built-in formatters, batching,
  * file logging, and layers for installing loggers.
  *
- * The log effects (`Effect.log`, `Effect.logWithLevel`, and the level-specific
- * variants) call each installed logger synchronously, in the fiber that logs,
+ * When a log effect (`Effect.log`, `Effect.logWithLevel`, or a level-specific
+ * variant) invokes a logger, it does so synchronously in the logging fiber
  * before the log effect completes. A logger that defers work says so in its own
  * documentation, as `batched` and `toFile` do.
  *
@@ -708,10 +708,11 @@ export const formatJson = map(formatStructured, Formatter.formatJson)
  *
  * **Details**
  *
- * The returned logger still runs inline: each log call formats the event with
- * `self` and appends the output to a buffer. `flush` does not run in the fiber
- * that logged. It runs in a background fiber once per window, and once more
- * when the scope closes after interrupting the background fiber.
+ * The returned logger formats each event with `self` and buffers the output
+ * during the log call. A background fiber periodically passes pending entries
+ * to `flush` once per window (skipping empty windows). When the scope closes,
+ * the background fiber is interrupted and the scope finalizer flushes any
+ * remaining entries.
  *
  * **Example** (Batching logger output)
  *
