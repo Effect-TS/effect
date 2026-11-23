@@ -352,6 +352,8 @@ describe("PgTypes", () => {
         "PgTypesCodecError",
         () => PgTypesResult.encode("not-a-multirange", PgTypes.OID.int4multirange)
       )
+      const sparse = PgTypesResult.encode(new Array(1), PgTypes.OID.int4multirange)
+      assert.isTrue(Result.isFailure(sparse) && sparse.failure._tag === "PgTypesCodecError")
     })
   })
   it("returns codec failures as Result values", () => {

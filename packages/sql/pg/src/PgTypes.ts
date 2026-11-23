@@ -1970,7 +1970,7 @@ const decodeRange = (
 const encodeMultirange = (value: unknown, rangeOid: number, lookup: Lookup): Uint8Array => {
   if (!Array.isArray(value)) return fail("Expected an array for multirange")
   const codec = requireCodec(rangeOid, lookup)
-  const bytes = framed(4, value.map((range) => codec.encode(range)))
+  const bytes = framed(4, Array.from(value, (range) => codec.encode(range)))
   writeInt32(bytes, 0, value.length)
   return bytes
 }
