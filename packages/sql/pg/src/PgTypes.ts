@@ -30,11 +30,10 @@
  * and signed bigint microseconds independently. No units are normalized.
  * Convert microseconds explicitly before JSON serialization.
  *
- * Built-in range types (`int4range`, `int8range`, `numrange`, `daterange`,
- * `tsrange`, `tstzrange`) decode to `Range<A>` with finite bounds decoded
- * through the subtype codec, and built-in multiranges decode to
- * `ReadonlyArray<Range<A>>`. User-defined range types (`CREATE TYPE ... AS
- * RANGE`) have no built-in codec and take the unregistered UTF-8 fallback.
+ * Built-in ranges (`int4range`, `int8range`, `numrange`, `daterange`, `tsrange`,
+ * `tstzrange`) decode to `Range<A>` using their subtype codec, and multiranges
+ * decode to `ReadonlyArray<Range<A>>`. User-defined ranges take the
+ * unregistered UTF-8 fallback.
  *
  * @stability unstable
  * @since 4.0.0
@@ -1301,9 +1300,8 @@ export interface Interval {
 }
 
 /**
- * A PostgreSQL range value. A `null` bound represents an unbounded side, and
- * an empty range has `empty: true` with both bounds `null` and both
- * inclusivity flags `false`.
+ * A PostgreSQL range. `null` represents an unbounded side; an empty range has
+ * `empty: true` with `null` bounds and `false` inclusivity flags.
  *
  * @stability unstable
  * @category models
@@ -1496,7 +1494,6 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [OID.interval, intervalCodec]
 ])
 
-/** Each built-in range type with its subtype and its multirange type. */
 const rangeTypes: ReadonlyArray<readonly [range: number, subtype: number, multirange: number]> = [
   [OID.int4range, OID.int4, OID.int4multirange],
   [OID.numrange, OID.numeric, OID.nummultirange],
@@ -1557,9 +1554,8 @@ const makeBuiltins = (lookup: Lookup): Map<number, UnsafeCodec<any>> => {
 }
 
 /**
- * Most built-in OIDs are below this, while multirange OIDs and PostgreSQL's
- * user-defined types (16384 and up) sit above it, so a direct table covers the
- * common case and the map covers the rest.
+ * Direct lookup table limit. Multirange OIDs and user-defined types (16384+)
+ * sit above this and resolve through the map.
  */
 const tableSize = 4096
 

@@ -115,12 +115,11 @@ array of its field values, and each field uses the same codecs as a column.
 Named composite types (`CREATE TYPE ... AS (...)`) have their own OID and take
 the fallback above.
 
-Built-in range types (`int4range`, `int8range`, `numrange`, `daterange`,
-`tsrange`, `tstzrange`), their multiranges, and arrays of both are also built
-in: a range decodes to a `PgTypes.Range<A>` object whose finite bounds use the
-subtype codec, and a multirange decodes to `ReadonlyArray<PgTypes.Range<A>>`.
-User-defined range types (`CREATE TYPE ... AS RANGE`) have their own OID and
-still take the fallback above.
+Built-in ranges (`int4range`, `int8range`, `numrange`, `daterange`, `tsrange`,
+`tstzrange`), their multiranges, and arrays of both decode to
+`PgTypes.Range<A>` (finite bounds use the subtype codec) and
+`ReadonlyArray<PgTypes.Range<A>>`. User-defined ranges (`CREATE TYPE ... AS
+RANGE`) have their own OID and take the fallback above.
 
 Register a codec for a scalar user-defined type with
 `PgTypes.register(oid, codec)`; registered codecs take precedence over the
