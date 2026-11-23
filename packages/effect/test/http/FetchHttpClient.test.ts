@@ -90,6 +90,29 @@ describe("FetchHttpClient", { concurrent: false }, () => {
     )
   })
 
+  it.effect("uses the current globalThis.fetch on each request by default", () =>
+    Effect.gen(function*() {
+      const originalFetch = globalThis.fetch
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          globalThis.fetch = originalFetch
+        })
+      )
+      const calls: Array<string> = []
+      globalThis.fetch = makeFetch(async () => {
+        calls.push("first")
+        return new Response("first")
+      })
+      const client = yield* HttpClient.HttpClient
+      yield* client.get("https://example.test/1")
+      globalThis.fetch = makeFetch(async () => {
+        calls.push("second")
+        return new Response("second")
+      })
+      yield* client.get("https://example.test/2")
+      assert.deepStrictEqual(calls, ["first", "second"])
+    }).pipe(Effect.provide(FetchHttpClient.layer)))
+
   describe("streaming request bodies", () => {
     afterEach(() => {
       vi.unstubAllGlobals()
