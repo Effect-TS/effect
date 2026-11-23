@@ -98,35 +98,29 @@ describe("FetchHttpClient", { concurrent: false }, () => {
     Effect.gen(function*() {
       const calls: Array<string> = []
       const stubFetch = (label: string) => {
-        const stub = Object.assign(async () => {
-          calls.push(label)
-          return new Response()
-        }, {
-          preconnect(url: string) {
-            assert.strictEqual(this, stub)
-            calls.push(`${label}:${url}`)
-          }
-        })
-        vi.stubGlobal("fetch", stub)
+        vi.stubGlobal(
+          "fetch",
+          makeFetch(async () => {
+            calls.push(label)
+            return new Response()
+          })
+        )
       }
       stubFetch("first")
       const client = yield* HttpClient.HttpClient
-      const fetch = (yield* FetchHttpClient.Fetch) as typeof globalThis.fetch & {
-        preconnect?: (url: string) => void
-      }
       yield* client.get("https://example.test/1")
-      fetch.preconnect?.("https://example.test/1")
       stubFetch("second")
       yield* client.get("https://example.test/2")
-      fetch.preconnect?.("https://example.test/2")
-      assert.deepStrictEqual(calls, [
-        "first",
-        "first:https://example.test/1",
-        "second",
-        "second:https://example.test/2"
-      ])
-      vi.stubGlobal("fetch", async () => new Response())
-      assert.isUndefined(fetch.preconnect)
+      yield* client.get("https://example.test/3").pipe(
+        Effect.provideService(
+          FetchHttpClient.Fetch,
+          makeFetch(async () => {
+            calls.push("override")
+            return new Response()
+          })
+        )
+      )
+      assert.deepStrictEqual(calls, ["first", "second", "override"])
     }).pipe(Effect.provide(FetchHttpClient.layer)))
 
   describe("streaming request bodies", () => {

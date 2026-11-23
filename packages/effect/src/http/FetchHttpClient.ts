@@ -26,30 +26,15 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
  *
  * **Details**
  *
- * Defaults to calling the current `globalThis.fetch` on each request.
+ * Defaults to `globalThis.fetch`. When not explicitly provided in context,
+ * `FetchHttpClient` uses the current `globalThis.fetch` on each request.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
 export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/FetchHttpClient/Fetch", {
-  // The default is cached, so calls and properties such as Bun's `preconnect`
-  // are forwarded to the current global.
-  defaultValue: () =>
-    new Proxy(
-      ((...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args)) as typeof globalThis.fetch,
-      {
-        get(target, prop, receiver) {
-          if (prop in target) {
-            return Reflect.get(target, prop, receiver)
-          }
-          const current = globalThis.fetch
-          const value = Reflect.get(current, prop, current)
-          return typeof value === "function" ? value.bind(current) : value
-        },
-        has: (target, prop) => prop in target || Reflect.has(globalThis.fetch, prop)
-      }
-    )
+  defaultValue: () => globalThis.fetch
 })
 
 /**
@@ -132,7 +117,7 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
       })
     )
   }
-  const fetch = fiber.getRef(Fetch)
+  const fetch = Context.getOrUndefined(fiber.context, Fetch)
   const options: globalThis.RequestInit = Context.getOrUndefined(fiber.context, RequestInit) ?? {}
   let headers = options.headers
     ? Headers.merge(Headers.fromInput(options.headers as Headers.Input), request.headers)
@@ -145,15 +130,17 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
   const send = (body: BodyInit | undefined) =>
     Effect.map(
       Effect.tryPromise({
-        try: () =>
-          fetch(url, {
+        try: () => {
+          const init: any = {
             ...options,
             method: request.method,
             headers,
             body,
             duplex: typeof ReadableStream !== "undefined" && body instanceof ReadableStream ? "half" : undefined,
             signal: uploadController ? AbortSignal.any([signal, uploadController.signal]) : signal
-          } as any),
+          }
+          return fetch ? fetch(url, init) : globalThis.fetch(url, init)
+        },
         catch: (cause) =>
           new HttpClientError.HttpClientError({
             reason: new HttpClientError.TransportError({
