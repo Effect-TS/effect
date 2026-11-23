@@ -314,6 +314,21 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.deepStrictEqual(rows, [{ record: [1, "a", null, [true, [1, 2]]], records: [[1, "a"], [2, "b"]] }])
     }))
 
+  it.effect("reads daterange", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const rows = yield* sql`SELECT daterange(${"2026-01-01"}::date, null) AS r`
+      assert.deepStrictEqual(rows, [{
+        r: {
+          lower: "2026-01-01",
+          upper: null,
+          lowerInclusive: true,
+          upperInclusive: false,
+          empty: false
+        }
+      }])
+    }))
+
   it.effect("reads bytea as Uint8Array", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
