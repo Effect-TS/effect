@@ -46,6 +46,37 @@ import {
 import { collectGarbage } from "../utils/gc.ts"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  it.effect("fails an awaited self-execution with a stored defect while allowing discarded self-execution", () =>
+    Effect.gen(function*() {
+      const Self = Workflow.make("SelfExecute", {
+        payload: { key: Schema.String, discard: Schema.Boolean },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+
+      yield* Effect.gen(function*() {
+        const discardedId = yield* Self.execute({ key: "discard", discard: true }, { discard: true })
+        assert.deepStrictEqual(
+          yield* pollUntil(Self, discardedId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed(discardedId) })
+        )
+
+        const awaitedId = yield* Self.execute({ key: "await", discard: false }, { discard: true })
+        const awaited = yield* pollUntil(Self, awaitedId, "Complete")
+        assert(awaited._tag === "Complete")
+        const defect = Exit.findDefect(awaited.exit)
+        assert(Result.isSuccess(defect))
+        assert.include(String(defect.success), Self._tag)
+        assert.include(String(defect.success), awaitedId)
+      }).pipe(
+        Effect.provide(
+          Self.toLayer((payload) =>
+            Self.execute({ ...payload, discard: !payload.discard }, { discard: payload.discard })
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+        )
+      )
+    }))
+
   for (const transactional of [false, true]) {
     it.effect(
       `${transactional ? "reruns a rolled-back" : "reuses a completed"} activity when its reply is redelivered`,
