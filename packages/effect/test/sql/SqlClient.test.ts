@@ -135,7 +135,10 @@ const makeHarness = (options: {
         Effect.flatMap(record(`releaseSavepoint(${id})`), () => release === true ? Effect.void : Effect.fail(release))
   })
 
-  return { calls, transactionService, withTransaction } as const
+  /** The level of the transaction the caller is in, 0 for a top-level one. */
+  const level = Effect.map(Effect.serviceOption(transactionService), Option.map(([, id]) => id))
+
+  return { calls, level, withTransaction } as const
 }
 
 /**
@@ -726,129 +729,91 @@ describe("SqlClient", () => {
         assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
       }))
 
-    it.effect("provides transaction context and restores caller context on success and failure", () =>
-      Effect.gen(function*() {
-        const Caller = Context.Service<string>("test/makeWithTransaction/Caller")
-        const harness = makeHarness()
-        const parentSpanName = Effect.map(
-          Effect.serviceOption(Tracer.ParentSpan),
-          Option.map((span) => span._tag === "Span" ? span.name : span._tag)
-        )
-        const level = Effect.map(
-          Effect.serviceOption(harness.transactionService),
-          Option.map(([, id]) => id)
-        )
+    it.effect("provides transaction context and restores caller context on success and failure", () => {
+      const Caller = Context.Service<string>("test/makeWithTransaction/Caller")
+      return Effect.gen(function*() {
+        const { level, withTransaction } = makeHarness()
+        const callerSpan = yield* Effect.currentSpan
+        assert.deepStrictEqual(yield* level, Option.none())
 
-        yield* Effect.gen(function*() {
-          const callerSpan = yield* Effect.serviceOption(Tracer.ParentSpan)
-          assert.deepStrictEqual(yield* level, Option.none())
-          assert.deepStrictEqual(yield* parentSpanName, Option.some("caller"))
+        yield* withTransaction(Effect.gen(function*() {
+          const outerSpan = yield* Effect.currentSpan
+          assert.strictEqual(yield* Caller, "caller")
+          assert.deepStrictEqual(yield* level, Option.some(0))
+          assert.strictEqual(outerSpan.name, "sql.transaction")
+          assert.notStrictEqual(outerSpan, callerSpan)
 
-          yield* harness.withTransaction(Effect.gen(function*() {
-            const outerSpan = yield* Effect.serviceOption(Tracer.ParentSpan)
+          yield* withTransaction(Effect.gen(function*() {
+            const innerSpan = yield* Effect.currentSpan
             assert.strictEqual(yield* Caller, "caller")
-            assert.deepStrictEqual(yield* level, Option.some(0))
-            assert.deepStrictEqual(yield* parentSpanName, Option.some("sql.transaction"))
-            assert.notStrictEqual(Option.getOrUndefined(outerSpan), Option.getOrUndefined(callerSpan))
-
-            yield* harness.withTransaction(Effect.gen(function*() {
-              const innerSpan = yield* Effect.serviceOption(Tracer.ParentSpan)
-              assert.strictEqual(yield* Caller, "caller")
-              assert.deepStrictEqual(yield* level, Option.some(1))
-              assert.deepStrictEqual(yield* parentSpanName, Option.some("sql.transaction"))
-              assert.notStrictEqual(Option.getOrUndefined(innerSpan), Option.getOrUndefined(outerSpan))
-            }))
-
-            assert.deepStrictEqual(yield* level, Option.some(0))
-            assert.strictEqual(
-              Option.getOrUndefined(yield* Effect.serviceOption(Tracer.ParentSpan)),
-              Option.getOrUndefined(outerSpan)
-            )
+            assert.deepStrictEqual(yield* level, Option.some(1))
+            assert.strictEqual(innerSpan.name, "sql.transaction")
+            assert.notStrictEqual(innerSpan, outerSpan)
           }))
 
-          assert.deepStrictEqual(yield* level, Option.none())
-          assert.strictEqual(
-            Option.getOrUndefined(yield* Effect.serviceOption(Tracer.ParentSpan)),
-            Option.getOrUndefined(callerSpan)
-          )
+          assert.deepStrictEqual(yield* level, Option.some(0))
+          assert.strictEqual(yield* Effect.currentSpan, outerSpan)
+        }))
 
-          const exit = yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
-            assert.strictEqual(yield* Caller, "caller")
-            assert.deepStrictEqual(yield* level, Option.some(0))
-            assert.deepStrictEqual(yield* parentSpanName, Option.some("sql.transaction"))
-            return yield* Effect.fail("boom" as const)
-          })))
+        assert.deepStrictEqual(yield* level, Option.none())
+        assert.strictEqual(yield* Effect.currentSpan, callerSpan)
 
-          assertTypedFailure(exit, "boom" as const)
-          assert.deepStrictEqual(yield* level, Option.none())
-          assert.strictEqual(
-            Option.getOrUndefined(yield* Effect.serviceOption(Tracer.ParentSpan)),
-            Option.getOrUndefined(callerSpan)
-          )
-        }).pipe(
-          Effect.withSpan("caller"),
-          Effect.provideService(Caller, "caller")
-        )
-      }))
+        const exit = yield* Effect.exit(withTransaction(Effect.gen(function*() {
+          assert.strictEqual(yield* Caller, "caller")
+          assert.deepStrictEqual(yield* level, Option.some(0))
+          assert.strictEqual((yield* Effect.currentSpan).name, "sql.transaction")
+          return yield* Effect.fail("boom" as const)
+        })))
+
+        assertTypedFailure(exit, "boom" as const)
+        assert.deepStrictEqual(yield* level, Option.none())
+        assert.strictEqual(yield* Effect.currentSpan, callerSpan)
+      }).pipe(
+        Effect.withSpan("caller"),
+        Effect.provideService(Caller, "caller")
+      )
+    })
 
     it.effect("merges transaction context when begin replaces the fiber context", () =>
       Effect.gen(function*() {
         const Shared = Context.Service<string>("test/makeWithTransaction/Shared")
         const Added = Context.Service<string>("test/makeWithTransaction/Added")
-        const harness = makeHarness({
-          duringBegin: Effect.withFiber((fiber) =>
-            Effect.sync(() => {
-              fiber.setContext(
-                fiber.context.pipe(
-                  Context.add(Shared, "begin"),
-                  Context.add(Added, "from-begin")
-                )
-              )
-            })
-          )
+        const { level, withTransaction } = makeHarness({
+          duringBegin: Effect.withFiber((fiber) => {
+            fiber.setContext(fiber.context.pipe(Context.add(Shared, "begin"), Context.add(Added, "from-begin")))
+            return Effect.void
+          })
         })
-        const level = Effect.map(
-          Effect.serviceOption(harness.transactionService),
-          Option.map(([, id]) => id)
-        )
         const runCase = Effect.fnUntraced(
           function*(fail: boolean) {
-            const callerSpan = yield* Effect.serviceOption(Tracer.ParentSpan)
+            const callerSpan = yield* Effect.currentSpan
             assert.deepStrictEqual(yield* Effect.serviceOption(Added), Option.none())
-            let observed: readonly [string, string, Option.Option<number>, Option.Option<string>] | undefined
 
-            const exit = yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
-              const span = yield* Effect.serviceOption(Tracer.ParentSpan)
-              observed = [
-                yield* Shared,
-                yield* Added,
-                yield* level,
-                Option.map(span, (s) => s._tag === "Span" ? s.name : s._tag)
-              ]
+            const exit = yield* Effect.exit(withTransaction(Effect.gen(function*() {
+              assert.strictEqual(yield* Shared, "caller")
+              assert.strictEqual(yield* Added, "from-begin")
+              assert.deepStrictEqual(yield* level, Option.some(0))
+              assert.strictEqual((yield* Effect.currentSpan).name, "sql.transaction")
               if (fail) {
                 return yield* Effect.fail("boom" as const)
               }
               return "ok" as const
             })))
 
-            assert.deepStrictEqual(observed, ["caller", "from-begin", Option.some(0), Option.some("sql.transaction")])
             if (fail) {
               assertTypedFailure(exit, "boom" as const)
             } else {
               assert.deepStrictEqual(exit, Exit.succeed("ok" as const))
             }
             assert.deepStrictEqual(yield* level, Option.none())
-            assert.strictEqual(
-              Option.getOrUndefined(yield* Effect.serviceOption(Tracer.ParentSpan)),
-              Option.getOrUndefined(callerSpan)
-            )
+            assert.strictEqual(yield* Effect.currentSpan, callerSpan)
           },
           Effect.withSpan("caller"),
           Effect.provideService(Shared, "caller")
         )
 
-        yield* Fiber.join(yield* Effect.forkChild(runCase(false)))
-        yield* Fiber.join(yield* Effect.forkChild(runCase(true)))
+        yield* runCase(false)
+        yield* runCase(true)
       }))
 
     describe("tracing", () => {

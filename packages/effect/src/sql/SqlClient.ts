@@ -754,10 +754,10 @@ export const makeWithTransaction = <I, S>(options: {
                       Context.add(Tracer.ParentSpan, span)
                     )
                     return Effect.onExitPrimitive(
-                      // The transaction context already extends the fiber's context, so
-                      // merging the two again would only copy every service.
                       Effect.updateContext(
                         restore(effect),
+                        // `transactionContext` already extends `services`, so merging it
+                        // into an unchanged fiber context would only copy every service.
                         (current: Context.Context<R>) =>
                           (current === services
                             ? transactionContext

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Avoid redundant service-map merges in `SqlClient.makeWithTransaction` when the fiber context has not changed before the transaction body runs.
+Reduce the overhead of `SqlClient` transactions and savepoints by avoiding a redundant copy of the caller's services.
