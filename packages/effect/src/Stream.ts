@@ -11645,10 +11645,9 @@ export const runDrain = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<void, E,
  *
  * **Details**
  *
- * The stream runs in the provided scope. The pull leaves the supplied scope
- * open; close it to release any resources the stream still holds. The pull
- * fails with `Cause.Done` when the stream ends and with the stream error on
- * failure.
+ * The stream runs in the provided scope, which the pull leaves open; close it
+ * to release any resources the stream still holds. The pull fails with
+ * `Cause.Done` when the stream ends and with the stream error on failure.
  *
  * **Example** (Creating a scoped pull)
  *

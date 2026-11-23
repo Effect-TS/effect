@@ -2,9 +2,8 @@ import { assert } from "@effect/vitest"
 import { Equal, Hash } from "effect"
 
 /**
- * Runs `operations` with keys that all share one hash, so that lookups have to
- * compare them, and then checks that neither protocol is called once the
- * operations have returned.
+ * Runs `operations` with colliding keys and asserts no `Equal` or `Hash` calls
+ * happen after `operations` returns.
  */
 export const assertNoDeferredEqualHashCalls = async (
   operations: (key: (id: string) => Equal.Equal) => void
