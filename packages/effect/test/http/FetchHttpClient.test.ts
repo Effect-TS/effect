@@ -97,18 +97,18 @@ describe("FetchHttpClient", { concurrent: false }, () => {
   it.effect("uses the current globalThis.fetch on each request by default", () =>
     Effect.gen(function*() {
       const calls: Array<string> = []
-      const stubFetch = (label: string) =>
-        vi.stubGlobal(
-          "fetch",
-          Object.assign(async () => {
-            calls.push(label)
-            return new Response()
-          }, {
-            preconnect: (url: string) => {
-              calls.push(`${label}:${url}`)
-            }
-          })
-        )
+      const stubFetch = (label: string) => {
+        const stub = Object.assign(async () => {
+          calls.push(label)
+          return new Response()
+        }, {
+          preconnect(url: string) {
+            assert.strictEqual(this, stub)
+            calls.push(`${label}:${url}`)
+          }
+        })
+        vi.stubGlobal("fetch", stub)
+      }
       stubFetch("first")
       const client = yield* HttpClient.HttpClient
       const fetch = (yield* FetchHttpClient.Fetch) as typeof globalThis.fetch & {

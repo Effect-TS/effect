@@ -39,8 +39,15 @@ export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/Fet
     new Proxy(
       ((...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args)) as typeof globalThis.fetch,
       {
-        get: (_, prop) => Reflect.get(globalThis.fetch, prop),
-        has: (_, prop) => Reflect.has(globalThis.fetch, prop)
+        get(target, prop, receiver) {
+          if (prop in target) {
+            return Reflect.get(target, prop, receiver)
+          }
+          const current = globalThis.fetch
+          const value = Reflect.get(current, prop, current)
+          return typeof value === "function" ? value.bind(current) : value
+        },
+        has: (target, prop) => prop in target || Reflect.has(globalThis.fetch, prop)
       }
     )
 })
