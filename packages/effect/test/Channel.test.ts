@@ -380,7 +380,7 @@ describe("Channel", () => {
           scope
         )
         assert.strictEqual(yield* pull, 1)
-        assert.deepStrictEqual(yield* Effect.exit(pull), Cause.done())
+        assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(Cause.Done()))
         assert.deepStrictEqual(log, ["acquire", "release"])
         yield* Scope.close(scope, Exit.void)
       }))
