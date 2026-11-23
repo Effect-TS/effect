@@ -40,6 +40,7 @@ import {
   clearReplies,
   completeTell,
   countUnprocessed,
+  isProcessed,
   loadMessage,
   loadReply,
   loadUnprocessed,
@@ -87,11 +88,30 @@ interface ServerRequest {
   fork: boolean
   // The handler exit as the server reported it, read inside the transaction.
   reported: Exit.Exit<unknown, unknown> | undefined
+  // Set when the handler transaction ended without a known commit: the
+  // server has already reported the handler exit, but it may not be durable.
+  commitFailure: Cause.Cause<unknown> | undefined
 }
 
 class TransactionRollback {
   readonly _tag = "TransactionRollback"
 }
+
+/**
+ * The defect a persisted `WithTransaction` request dies with when its handler
+ * transaction did not commit. The request stays unprocessed for a retry or the
+ * next drain.
+ *
+ * @internal
+ */
+export class UncommittedTransaction extends Error {
+  constructor(cause: Cause.Cause<unknown>) {
+    super("RivetCluster: the handler transaction did not commit", { cause: Cause.squash(cause) })
+  }
+}
+
+const isUncommitted = (cause: Cause.Cause<unknown>) =>
+  cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof UncommittedTransaction)
 
 /** @internal */
 export const makeEntityRuntime = Effect.fnUntraced(function*(
@@ -166,8 +186,14 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       const serverHandlers: Record<string, (payload: any, options: { readonly requestId: any }) => any> = {}
       for (const tag of Object.keys(handlers)) {
         const handler = handlers[tag]
+        const rpc = registration.entity.protocol.requests.get(tag) as Rpc.AnyWithProps | undefined
+        const transactional = rpc !== undefined && Context.get(rpc.annotations, Persisted) &&
+          Context.get(rpc.annotations, WithTransaction)
         serverHandlers[tag] = (request, { requestId }) => {
-          const result = handler(request)
+          // RpcServer sends a `Deferred` reply after the effect wrapped by
+          // `onRequest` ends, which is after the handler transaction. Settle it
+          // inside, so the reply commits with the handler's writes.
+          const result = transactional ? Rpc.wrapMap(handler(request), settleDeferred) : handler(request)
           if (Rpc.isWrapper(result as object) && (result as Rpc.Wrapper<unknown>).fork) {
             const pending = serverRequests.get(Number(requestId))
             if (pending !== undefined) pending.fork = true
@@ -326,7 +352,12 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         )
         yield* Effect.orDie(saveReply(tx, encoded))
       })).pipe(
-        Effect.catchIf((error) => error instanceof TransactionRollback, () => Effect.void)
+        Effect.catchIf((error) => error instanceof TransactionRollback, () => Effect.void),
+        Effect.catchCause((cause) =>
+          Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.sync(() => {
+            request().commitFailure = cause
+          })
+        )
       )
 
   const run = (
@@ -373,6 +404,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     const permit = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
       semaphore === undefined ? effect : Semaphore.withPermit(semaphore, effect)
 
+    let current: ServerRequest | undefined
     const execute = Effect.suspend(() => {
       const request: ServerRequest = {
         envelope,
@@ -383,8 +415,10 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         started: false,
         interrupted: false,
         fork: false,
-        reported: undefined
+        reported: undefined,
+        commitFailure: undefined
       }
+      current = request
       return runOnServer(entry.server.server, request, permit)
     }).pipe(
       Effect.withSpan("RivetCluster.handler", {
@@ -396,6 +430,12 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       }, { captureStackTrace: false })
     )
     const exit = yield* Effect.provideContext(runWithDefectRetry(execute), entry.context)
+    const commitFailure = current?.commitFailure
+    // The server reported the handler exit before the commit failed. Only the
+    // durable row says whether the reply and the handler's writes landed.
+    if (commitFailure !== undefined && !(yield* isProcessed(database, String(envelope.requestId)))) {
+      return yield* Effect.die(new UncommittedTransaction(commitFailure))
+    }
     if (!discard) {
       yield* respond(
         new Reply.WithExit({
@@ -450,6 +490,11 @@ export interface EntityManager {
   /** Replays unprocessed rows and returns how many are still unprocessed. */
   readonly drain: Effect.Effect<number>
 }
+
+const settleDeferred = (result: object): object =>
+  Effect.isEffect(result)
+    ? Effect.flatMap(result, (value) => Deferred.isDeferred(value) ? Deferred.await(value) : Effect.succeed(value))
+    : result
 
 const success = (requestId: string, replies: ReadonlyArray<string>): EntityInvokeResult => ({
   _tag: "Success",
@@ -590,7 +635,16 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         ),
         (encoded) =>
           Effect.orDie(
-            write("cluster_interrupt", (tx) => Effect.andThen(clearReplies(tx, requestId), saveReply(tx, encoded)))
+            // A reply that committed before the interrupt arrived stays: with
+            // `WithTransaction`, the handler's writes committed with it.
+            write("cluster_interrupt", (tx) =>
+              Effect.flatMap(
+                loadReply(tx, requestId),
+                (stored) =>
+                  stored !== undefined
+                    ? Effect.void
+                    : Effect.andThen(clearReplies(tx, requestId), saveReply(tx, encoded))
+              ))
           )
       )
       : Effect.void
@@ -686,7 +740,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             Effect.forkDetach(
               Effect.catchCause(
                 Effect.asVoid(continuation),
-                (cause) => completeReplayFailure(registration, row, cause)
+                // An uncommitted transaction leaves the row for the next drain.
+                (cause) => isUncommitted(cause) ? Effect.void : completeReplayFailure(registration, row, cause)
               )
             )
           ),

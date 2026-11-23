@@ -178,6 +178,16 @@ export const loadMessage = (sql: SqlExecutor, requestId: string): Effect.Effect<
   )
 
 /** @internal */
+export const isProcessed = (sql: SqlExecutor, requestId: string): Effect.Effect<boolean> =>
+  Effect.map(
+    sql.execute<{ readonly processed: number }>(
+      "SELECT processed FROM cluster_messages WHERE request_id = ? LIMIT 1",
+      requestId
+    ),
+    (rows) => rows.length > 0 && Number(rows[0].processed) === 1
+  )
+
+/** @internal */
 export const loadReply = (sql: SqlExecutor, requestId: string): Effect.Effect<string | undefined> =>
   Effect.map(
     sql.execute<{ readonly reply: string }>(

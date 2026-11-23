@@ -10,7 +10,24 @@ of unprocessed requests on wake, a recurring drain schedule while requests are u
 interruption, and `ClusterSchema.WithTransaction`. Not supported: streams, `DeliverAt`,
 `Entity.keepAlive`, singletons, workflows, queues and `ClusterCron`.
 
-## Integration tests
+With `ClusterSchema.WithTransaction`, the reply commits in the handler's transaction,
+including a reply the handler returns as a `Deferred`. If that commit fails, the caller
+gets a defect and the request stays unprocessed, so a retry or the next drain runs it
+again.
+
+## Recovery needs traffic
+
+Nothing in this package recovers pending work on its own. Rivet moves an actor off a lost node
+only when something calls it, and the drain schedule runs inside the actor, so it
+stops while the actor is stuck on a frozen node or failed to wake. If a node freezes, or an actor's `onWake` fails, its persisted
+requests can stay pending indefinitely until a new request reaches that actor. No
+sweeper is included; an application that needs recovery without traffic must call the
+affected actors itself.
+
+## Tests
+
+`test/*.test.ts` run in the default suite, with each actor's SQLite in memory and no
+engine.
 
 The tests in `test/integration` start a Rivet engine and separate Node.js node processes,
 then kill, freeze and resume them. They listen on fixed ports, need network, and do not
