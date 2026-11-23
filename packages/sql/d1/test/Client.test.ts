@@ -3,7 +3,7 @@ import { D1Client } from "@effect/sql-d1"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Tracer } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
-import { Statement } from "effect/sql"
+import { SqlError, Statement } from "effect/sql"
 import { D1Miniflare } from "./utils.ts"
 
 // Each test starts its own Miniflare instance. Concurrent startups compete for
@@ -35,6 +35,29 @@ describe("Client", { concurrent: false, timeout: 30_000 }, () => {
       const client = yield* D1Client.make({ db: failingDb })
       const error = yield* Effect.flip(client`SELECT 1`)
       assert.strictEqual(error.reason._tag, "UnknownError")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("fails with SqlError when prepare throws on raw and unprepared queries", () =>
+    Effect.gen(function*() {
+      const cause = new Error("prepare failed")
+      const failingDb = {
+        prepare: () => {
+          throw cause
+        }
+      } as any
+
+      const client = yield* D1Client.make({ db: failingDb })
+
+      for (const query of [client`SELECT 1`.raw, client`SELECT 1`.unprepared]) {
+        const error = yield* Effect.flip(query)
+        assert.isTrue(SqlError.isSqlError(error))
+        assert.strictEqual(error.reason._tag, "UnknownError")
+        assert.strictEqual(error.reason.operation, "prepare")
+        assert.strictEqual(error.reason.cause, cause)
+      }
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
