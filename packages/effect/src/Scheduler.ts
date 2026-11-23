@@ -11,6 +11,7 @@
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
+import type { Effect } from "./Effect.ts"
 import type * as Fiber from "./Fiber.ts"
 
 /**
@@ -36,6 +37,111 @@ export interface Scheduler {
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean
   makeDispatcher(): SchedulerDispatcher
 }
+
+/**
+ * Runtime type identifier of a `ParkingScheduler`.
+ *
+ * **Details**
+ *
+ * A scheduler with this property is a `ParkingScheduler`. Set it to the same
+ * value, as a property of the scheduler, to implement one.
+ *
+ * @stability unstable
+ * @category type IDs
+ * @since 4.2.0
+ */
+export const ParkingSchedulerTypeId = "~effect/Scheduler/ParkingScheduler"
+
+/**
+ * A `Scheduler` that also decides where its fibers resume.
+ *
+ * **When to use**
+ *
+ * Use to resume fibers in a runtime with its own rules for where code may run,
+ * such as Cloudflare Workers, where a fiber has to resume in the request that
+ * owns it.
+ *
+ * **Details**
+ *
+ * A fiber parks when it stops running with more to do: it suspended, or it was
+ * forked and its start is scheduled. It calls `park` where it stops, and
+ * passes every effect that would make it run again to `resume`: the result it
+ * waited for, its start, or an interrupt. The scheduler keeps what it needs in
+ * between. A fiber of a scheduler without `ParkingSchedulerTypeId` runs where
+ * it is resumed, and neither is called.
+ *
+ * **Gotchas**
+ *
+ * - A fiber that `resume` never runs cannot complete or be interrupted.
+ * - An interrupt requested before `resume` runs a woken fiber still interrupts
+ *   it, so the effect it was woken with may never be delivered.
+ * - When `Fiber.setContext` gives another scheduler to a fiber that is
+ *   suspended or has not started, `resume` is still called for the next run
+ *   of the fiber, which uses the new scheduler from that run on.
+ * - A scheduler that wraps another one forwards `park` and `resume` only if
+ *   `isParkingScheduler` accepts the wrapped scheduler.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ParkingScheduler extends Scheduler {
+  /**
+   * Marks the scheduler as a `ParkingScheduler`.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  readonly [ParkingSchedulerTypeId]: typeof ParkingSchedulerTypeId
+  /**
+   * Called where a fiber parks.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  park(fiber: ParkedFiber): void
+  /**
+   * Called with each effect that would make a fiber run again. Runs a parked
+   * fiber once, with the first effect it is given, and any other fiber
+   * immediately, by calling `fiber.run(effect)`.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  resume(fiber: ParkedFiber, effect: Effect<unknown, unknown>): void
+}
+
+/**
+ * A fiber, as a `ParkingScheduler` sees it.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ParkedFiber extends Fiber.Fiber<unknown, unknown> {
+  /**
+   * Runs the fiber synchronously until it parks again or exits.
+   *
+   * @stability unstable
+   * @since 4.2.0
+   */
+  run(effect: Effect<unknown, unknown>): void
+}
+
+/**
+ * Checks whether a `Scheduler` is a `ParkingScheduler`, by its
+ * `ParkingSchedulerTypeId`.
+ *
+ * **When to use**
+ *
+ * Use to forward `park` and `resume` from a scheduler that wraps another one.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.2.0
+ */
+export const isParkingScheduler = (scheduler: Scheduler): scheduler is ParkingScheduler =>
+  ParkingSchedulerTypeId in scheduler
 
 /**
  * A dispatcher created by a `Scheduler` for enqueuing tasks and forcing queued
@@ -163,11 +269,10 @@ class PriorityBuckets {
  * **Gotchas**
  *
  * On Cloudflare Workers, request-owned scheduler timers can be discarded,
- * leaving shared fibers suspended. Use `new MixedScheduler("sync")` for the
- * whole application; see `HttpRouter.toWebHandler` for a recipe.
- * Sync mode does not yield to the event loop: CPU-heavy work delays other
- * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
- * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
+ * leaving shared fibers suspended, and async contexts cannot be resumed from
+ * another request. Use `CloudflareScheduler` from `@effect/platform-cloudflare`
+ * for the whole application; it resumes each fiber in the request that owns
+ * it.
  *
  * @stability stable
  * @category models

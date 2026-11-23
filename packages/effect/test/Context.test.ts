@@ -7,7 +7,14 @@ import { describe, it } from "vitest"
 
 interface ContextInternals {
   readonly _flat: unknown
+  readonly cacheRoot: unknown
 }
+
+// Fibers share one cache per cache root
+const hasSameCache = <Services, Services2>(
+  self: Context.Context<Services>,
+  that: Context.Context<Services2>
+): boolean => (self as any as ContextInternals).cacheRoot === (that as any as ContextInternals).cacheRoot
 
 describe("Context", () => {
   const A = Context.Service<number>("ContextTest/A")
@@ -58,9 +65,9 @@ describe("Context", () => {
     })
 
     const source = Context.make(A, 1)
-    assertTrue(Context.hasSameCache(source, Context.add(source, B, 1)))
-    assertTrue(Context.hasSameCache(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.hasSameCache(source, Context.add(source, CachedRef, 1)))
+    assertTrue(hasSameCache(source, Context.add(source, B, 1)))
+    assertTrue(hasSameCache(source, Context.add(source, Ref, 1)))
+    assertFalse(hasSameCache(source, Context.add(source, CachedRef, 1)))
     const context = source.pipe(
       Context.add(Cached, 2),
       Context.add(CachedClass, 3)
@@ -133,7 +140,7 @@ describe("Context", () => {
       strictEqual(Context.getUnsafe(context, keys[i]), i)
     }
     // Rebasing on ordinary keys must not invalidate fiber caches
-    assertTrue(Context.hasSameCache(Context.empty(), context))
+    assertTrue(hasSameCache(Context.empty(), context))
   })
 
   it("rebases a shadowing overlay chain from a cold or warm parent", () => {
@@ -322,8 +329,8 @@ describe("Context", () => {
     strictEqual(impl._flat, undefined)
     deepStrictEqual([...picked.mapUnsafe], [[C.key, 3]])
     deepStrictEqual([...empty.mapUnsafe], [])
-    assertFalse(Context.hasSameCache(source, picked))
-    assertFalse(Context.hasSameCache(source, empty))
+    assertFalse(hasSameCache(source, picked))
+    assertFalse(hasSameCache(source, empty))
     deepStrictEqual([...source.mapUnsafe], [[A.key, 1], [B.key, 2], [C.key, 3]])
     deepStrictEqual([...Context.pick(C, A)(source).mapUnsafe], [[A.key, 1], [C.key, 3]])
     deepStrictEqual([...Context.omit(B)(source).mapUnsafe], [[A.key, 1], [C.key, 3]])

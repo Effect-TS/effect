@@ -1,6 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit } from "effect"
+import { Context, Effect, Exit, Fiber } from "effect"
 import * as Scheduler from "effect/Scheduler"
+import * as TestClock from "effect/testing/TestClock"
 
 describe("Scheduler", () => {
   it("runSyncExit does not create a dispatcher for synchronous effects", () => {
@@ -189,5 +190,96 @@ describe("Scheduler", () => {
     } finally {
       setImmediate.mockRestore()
     }
+  })
+
+  describe("ParkingScheduler", () => {
+    // Holds a parked fiber's first effect until `land` runs it, and drops the
+    // others, as the ParkingScheduler contract allows
+    const makeScheduler = () => {
+      const pending = new Map<Scheduler.ParkedFiber, Effect.Effect<unknown, unknown> | undefined>()
+      const scheduler = new class extends Scheduler.MixedScheduler implements Scheduler.ParkingScheduler {
+        readonly [Scheduler.ParkingSchedulerTypeId] = Scheduler.ParkingSchedulerTypeId
+        park(fiber: Scheduler.ParkedFiber): void {
+          pending.set(fiber, undefined)
+        }
+        resume(fiber: Scheduler.ParkedFiber, effect: Effect.Effect<unknown, unknown>): void {
+          if (!pending.has(fiber)) return fiber.run(effect)
+          if (pending.get(fiber) === undefined) pending.set(fiber, effect)
+        }
+      }("sync")
+      let landing = false
+      const land = async () => {
+        // Lets the dispatcher start forked fibers
+        await Promise.resolve()
+        landing = true
+        for (let ran = true; ran;) {
+          ran = false
+          for (const [fiber, effect] of pending) {
+            if (effect === undefined) continue
+            pending.delete(fiber)
+            fiber.run(effect)
+            ran = true
+          }
+        }
+        landing = false
+      }
+      return { scheduler, land, isLanding: Effect.sync(() => landing) }
+    }
+
+    const makeWait = () => {
+      let wake!: () => void
+      const wait = Effect.callback<void>((resume) => {
+        wake = () => resume(Effect.void)
+      })
+      return { wait, wake: () => wake() }
+    }
+
+    it("runs parked and forked fibers only when the scheduler resumes them, under TestClock too", async () => {
+      const { isLanding, land, scheduler } = makeScheduler()
+      const { wait, wake } = makeWait()
+      const fiber = Effect.runFork(
+        Effect.forkChild(isLanding).pipe(
+          Effect.tap(() => wait),
+          Effect.flatMap(Fiber.join),
+          Effect.provide(TestClock.layer())
+        ),
+        { scheduler }
+      )
+      await land()
+      wake()
+      assert.isUndefined(fiber.pollUnsafe())
+      await land()
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(true))
+    })
+
+    it("interrupts a fiber woken before the interrupt instead of continuing it", async () => {
+      const { land, scheduler } = makeScheduler()
+      const { wait, wake } = makeWait()
+      let continued = false
+      const fiber = Effect.runFork(wait.pipe(Effect.andThen(Effect.sync(() => (continued = true)))), { scheduler })
+      wake()
+      fiber.interruptUnsafe()
+      await land()
+      assert.isFalse(continued)
+      assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+    })
+
+    it("resumes a suspended fiber that setContext moves to another scheduler, which it uses from then on", async () => {
+      const { land, scheduler } = makeScheduler()
+      const { wait, wake } = makeWait()
+      let steps = 0
+      const fiber = Effect.runFork(
+        wait.pipe(Effect.andThen(Effect.sync(() => steps++)), Effect.andThen(wait)),
+        { scheduler }
+      )
+      fiber.setContext(Context.add(fiber.context, Scheduler.Scheduler, new Scheduler.MixedScheduler("sync")))
+      wake()
+      assert.strictEqual(steps, 0)
+      await land()
+      assert.strictEqual(steps, 1)
+      // The second wait is not held by the parking scheduler
+      wake()
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.void)
+    })
   })
 })
