@@ -111,12 +111,14 @@ describe("FetchHttpClient", { concurrent: false }, () => {
         )
       stubFetch("first")
       const client = yield* HttpClient.HttpClient
-      const fetch = yield* FetchHttpClient.Fetch
+      const fetch = (yield* FetchHttpClient.Fetch) as typeof globalThis.fetch & {
+        preconnect?: (url: string) => void
+      }
       yield* client.get("https://example.test/1")
-      fetch.preconnect("https://example.test/1")
+      fetch.preconnect?.("https://example.test/1")
       stubFetch("second")
       yield* client.get("https://example.test/2")
-      fetch.preconnect("https://example.test/2")
+      fetch.preconnect?.("https://example.test/2")
       assert.deepStrictEqual(calls, [
         "first",
         "first:https://example.test/1",
