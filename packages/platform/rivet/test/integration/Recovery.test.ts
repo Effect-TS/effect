@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { nodeLostThreshold, withCluster } from "../fixtures/harness.ts"
+import { withCluster, wrote } from "../fixtures/harness.ts"
 import { Ledger } from "../fixtures/Ledger.ts"
 
 describe("Rivet cluster integration | recovery without traffic", () => {
@@ -14,29 +14,16 @@ describe("Rivet cluster integration | recovery without traffic", () => {
           // A tell returns once the row is stored, so no caller is left waiting
           // to retry: only the actor's own schedule can bring it back.
           yield* ledger.Record({ op: "recovery", holdMillis: 600_000 }, { discard: true })
-          yield* cluster.waitForEvent(
-            "The tell did not run",
-            (event) => event.event === "wrote" && event.op === "recovery" && event.node === "node-a"
-          )
+          yield* cluster.waitForEvent("The tell did not run", wrote("recovery", "node-a"))
           yield* nodeA.signal("SIGKILL")
-          const killedAt = Date.now()
           yield* cluster.startNode("node-a2")
 
-          const wake = yield* cluster.waitForEvent(
+          yield* cluster.waitForEvent(
             "The actor did not wake on the new node",
             (event) => event.event === "wake" && event.node === "node-a2",
             240_000
           )
-          const replay = yield* cluster.waitForEvent(
-            "The tell was not replayed",
-            (event) => event.event === "wrote" && event.op === "recovery" && event.node === "node-a2",
-            60_000
-          )
-          console.log(
-            `[rivet] recovery (node lost threshold ${nodeLostThreshold}): kill to wake ${
-              wake.at - killedAt
-            } ms, kill to replay write ${replay.at - killedAt} ms`
-          )
+          yield* cluster.waitForEvent("The tell was not replayed", wrote("recovery", "node-a2"), 60_000)
 
           // Only now does the test call the entity.
           const inspection = yield* ledger.Inspect({ op: "recovery" })

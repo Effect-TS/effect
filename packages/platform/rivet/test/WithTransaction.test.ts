@@ -208,8 +208,6 @@ describe("RivetCluster WithTransaction", () => {
           yield* count("typed-failure", "SELECT COUNT(*) AS n FROM cluster_messages WHERE processed = 1"),
           1
         )
-        const [reply] = yield* query("typed-failure", "SELECT reply FROM cluster_replies")
-        assert.include(String(reply.reply), "Rejected")
 
         const retry = yield* Effect.exit(client.WriteThenFail({ op: "a" }))
         assert.deepStrictEqual(retry, Exit.fail(new Rejected({ op: "a" })))

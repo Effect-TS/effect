@@ -37,6 +37,9 @@ export interface FixtureEvent {
   readonly key?: ReadonlyArray<string>
 }
 
+export const wrote = (op: string, node: string) => (event: FixtureEvent) =>
+  event.event === "wrote" && event.op === op && event.node === node
+
 export interface Node {
   readonly name: string
   readonly pid: number
