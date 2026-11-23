@@ -228,7 +228,7 @@ export const make = (
     const makeConnection = Effect.gen(function*() {
       const db = options.db
 
-      const prepare = (sql: string): Effect.Effect<D1PreparedStatement, SqlError> =>
+      const prepare = (sql: string) =>
         Effect.try({
           try: () => db.prepare(sql),
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to prepare statement", "prepare") })
