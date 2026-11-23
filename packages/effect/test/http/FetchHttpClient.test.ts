@@ -36,6 +36,10 @@ const streamRequest = () =>
   )
 
 describe("FetchHttpClient", { concurrent: false }, () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it.effect("sends bodies from Web requests", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.fromWeb(
@@ -92,53 +96,38 @@ describe("FetchHttpClient", { concurrent: false }, () => {
 
   it.effect("uses the current globalThis.fetch on each request by default", () =>
     Effect.gen(function*() {
-      const originalFetch = globalThis.fetch
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          globalThis.fetch = originalFetch
-        })
-      )
       const calls: Array<string> = []
-      const preconnects: Array<string> = []
-      globalThis.fetch = Object.assign(
-        async () => {
-          calls.push("first")
-          return new Response("first")
-        },
-        {
-          preconnect: (url: string | URL) => {
-            preconnects.push(`first:${url}`)
-          }
-        }
-      )
+      const stubFetch = (label: string) =>
+        vi.stubGlobal(
+          "fetch",
+          Object.assign(async () => {
+            calls.push(label)
+            return new Response()
+          }, {
+            preconnect: (url: string) => {
+              calls.push(`${label}:${url}`)
+            }
+          })
+        )
+      stubFetch("first")
       const client = yield* HttpClient.HttpClient
       const fetch = yield* FetchHttpClient.Fetch
       yield* client.get("https://example.test/1")
       fetch.preconnect("https://example.test/1")
-      globalThis.fetch = Object.assign(
-        async () => {
-          calls.push("second")
-          return new Response("second")
-        },
-        {
-          preconnect: (url: string | URL) => {
-            preconnects.push(`second:${url}`)
-          }
-        }
-      )
+      stubFetch("second")
       yield* client.get("https://example.test/2")
       fetch.preconnect("https://example.test/2")
-      assert.deepStrictEqual(calls, ["first", "second"])
-      assert.deepStrictEqual(preconnects, ["first:https://example.test/1", "second:https://example.test/2"])
-      globalThis.fetch = (async () => new Response("third")) as unknown as typeof globalThis.fetch
+      assert.deepStrictEqual(calls, [
+        "first",
+        "first:https://example.test/1",
+        "second",
+        "second:https://example.test/2"
+      ])
+      vi.stubGlobal("fetch", async () => new Response())
       assert.isUndefined(fetch.preconnect)
     }).pipe(Effect.provide(FetchHttpClient.layer)))
 
   describe("streaming request bodies", () => {
-    afterEach(() => {
-      vi.unstubAllGlobals()
-    })
-
     it.effect("rejects unsupported streaming without sending the request", () =>
       Effect.gen(function*() {
         const FetchHttpClient = yield* loadUnsupportedRuntime()

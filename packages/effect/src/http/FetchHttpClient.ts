@@ -33,21 +33,14 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
  * @since 4.0.0
  */
 export const Fetch = Context.Reference<typeof globalThis.fetch>("effect/http/FetchHttpClient/Fetch", {
+  // The default is cached, so calls and properties such as Bun's `preconnect`
+  // are forwarded to the current global.
   defaultValue: () =>
     new Proxy(
       ((...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args)) as typeof globalThis.fetch,
       {
-        get(target, prop, receiver) {
-          if (prop in target) {
-            return Reflect.get(target, prop, receiver)
-          }
-          const current = globalThis.fetch
-          const value = Reflect.get(current, prop, current)
-          return typeof value === "function" ? value.bind(current) : value
-        },
-        has(target, prop) {
-          return prop in target || Reflect.has(globalThis.fetch, prop)
-        }
+        get: (_, prop) => Reflect.get(globalThis.fetch, prop),
+        has: (_, prop) => Reflect.has(globalThis.fetch, prop)
       }
     )
 })
