@@ -273,6 +273,145 @@ describe("PgTypes", () => {
       assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode([1], PgTypes.OID.record))
     })
   })
+  describe("ranges", () => {
+    it("round trips ranges, multiranges, and their arrays", () => {
+      const int4Range: PgTypesResult.Range<number> = {
+        lower: 1,
+        upper: 5,
+        lowerInclusive: true,
+        upperInclusive: false,
+        empty: false
+      }
+      const int4Wire = bytes("0200000004000000010000000400000005")
+      assert.deepStrictEqual(PgTypes.encode(int4Range, PgTypes.OID.int4range), int4Wire)
+      assert.deepStrictEqual(PgTypes.decode(int4Wire, PgTypes.OID.int4range, 1), int4Range)
+
+      const emptyRange: PgTypesResult.Range<number> = {
+        lower: null,
+        upper: null,
+        lowerInclusive: false,
+        upperInclusive: false,
+        empty: true
+      }
+      assert.deepStrictEqual(PgTypes.encode(emptyRange, PgTypes.OID.int4range), bytes("01"))
+      assert.deepStrictEqual(PgTypes.decode(bytes("01"), PgTypes.OID.int4range, 1), emptyRange)
+
+      const unbounded: PgTypesResult.Range<string> = {
+        lower: null,
+        upper: null,
+        lowerInclusive: false,
+        upperInclusive: false,
+        empty: false
+      }
+      assert.deepStrictEqual(PgTypes.encode(unbounded, PgTypes.OID.daterange), bytes("18"))
+      assert.deepStrictEqual(PgTypes.decode(bytes("18"), PgTypes.OID.daterange, 1), unbounded)
+
+      const multirange = [
+        int4Range,
+        { lower: 10, upper: null, lowerInclusive: true, upperInclusive: false, empty: false }
+      ]
+      const multirangeWire = PgTypes.encode(multirange, PgTypes.OID.int4multirange)
+      assert.deepStrictEqual(PgTypes.decode(multirangeWire, PgTypes.OID.int4multirange, 1), multirange)
+      assert.deepStrictEqual(PgTypes.decode(bytes("00000000"), PgTypes.OID.int4multirange, 1), [])
+
+      const encodeBind = PgProtocol.makeBindEncoder(PgTypes.writeParameter)
+      const parameters = [
+        PgTypes.int4range(int4Range),
+        PgTypes.int4range(emptyRange),
+        PgTypes.daterange(unbounded),
+        PgTypes.int4multirange(multirange),
+        PgTypes.array([int4Range, emptyRange, null], PgTypes.OID.int4range),
+        PgTypes.array([multirange, [], null], PgTypes.OID.int4multirange)
+      ]
+      assert.deepStrictEqual(
+        encodeBind({ portal: "", statement: "", parameters }),
+        PgProtocol.encodeBind({
+          portal: "",
+          statement: "",
+          parameters: parameters.map(PgTypes.encodeParameter)
+        })
+      )
+      assert.deepStrictEqual(
+        PgTypes.decode(PgTypes.encodeParameter(parameters[4])!, PgTypes.OID.int4rangeArray, 1),
+        [int4Range, emptyRange, null]
+      )
+      assert.deepStrictEqual(
+        PgTypes.decode(PgTypes.encodeParameter(parameters[5])!, PgTypes.OID.int4multirangeArray, 1),
+        [multirange, [], null]
+      )
+    })
+
+    it("propagates registry overrides into range bounds, multiranges, and their arrays", () => {
+      const registry = PgTypesResult.makeRegistry()
+      registry.register<bigint>(PgTypes.OID.timestamptz, {
+        encode: (value) => Result.succeed(int64Bytes(value)),
+        decode: (wire) => Result.succeed(new DataView(wire.buffer, wire.byteOffset, wire.byteLength).getBigInt64(0))
+      })
+      const range: PgTypesResult.Range<bigint> = {
+        lower: 123n,
+        upper: 456n,
+        lowerInclusive: true,
+        upperInclusive: false,
+        empty: false
+      }
+      const rangeWire = success(PgTypesResult.encode(range, PgTypes.OID.tstzrange, registry))
+      assert.deepStrictEqual(success(PgTypesResult.decode(rangeWire, PgTypes.OID.tstzrange, 1, registry)), range)
+      const mrWire = success(PgTypesResult.encode([range], PgTypes.OID.tstzmultirange, registry))
+      assert.deepStrictEqual(success(PgTypesResult.decode(mrWire, PgTypes.OID.tstzmultirange, 1, registry)), [range])
+      const rangeArrWire = success(PgTypesResult.encode([range, null], PgTypes.OID.tstzrangeArray, registry))
+      assert.deepStrictEqual(
+        success(PgTypesResult.decode(rangeArrWire, PgTypes.OID.tstzrangeArray, 1, registry)),
+        [range, null]
+      )
+      const mrArrWire = success(PgTypesResult.encode([[range], null], PgTypes.OID.tstzmultirangeArray, registry))
+      assert.deepStrictEqual(
+        success(PgTypesResult.decode(mrArrWire, PgTypes.OID.tstzmultirangeArray, 1, registry)),
+        [[range], null]
+      )
+    })
+
+    it("rejects malformed wire values and invalid range inputs", () => {
+      for (
+        const wire of [
+          "",
+          "0100",
+          "020000000400000001",
+          "02000000040000000100000004000000",
+          "02ffffffff",
+          "1800"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(bytes(wire), PgTypes.OID.int4range, 1))
+      }
+      for (
+        const wire of [
+          "0000",
+          "ffffffff",
+          "00000001",
+          "00000001ffffffff",
+          "000000010000000201",
+          "0000000000"
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.decode(bytes(wire), PgTypes.OID.int4multirange, 1))
+      }
+      for (
+        const value of [
+          null,
+          "not-a-range",
+          { lower: 1, upper: 5 },
+          { lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false },
+          { lower: 1, upper: 5, lowerInclusive: true, empty: false }
+        ]
+      ) {
+        assertThrowsTagged("PgTypesCodecError", () => PgTypesResult.encode(value, PgTypes.OID.int4range))
+      }
+      assertThrowsTagged(
+        "PgTypesCodecError",
+        () => PgTypesResult.encode("not-a-multirange", PgTypes.OID.int4multirange)
+      )
+    })
+  })
   it("returns codec failures as Result values", () => {
     for (
       const result of [

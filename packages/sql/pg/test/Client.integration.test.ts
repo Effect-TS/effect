@@ -1,4 +1,4 @@
-import { PgClient } from "@effect/sql-pg"
+import { PgClient, PgTypes } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
 import {
   Cause,
@@ -314,18 +314,59 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.deepStrictEqual(rows, [{ record: [1, "a", null, [true, [1, 2]]], records: [[1, "a"], [2, "b"]] }])
     }))
 
-  it.effect("reads daterange", () =>
+  it.effect("reads and binds built-in ranges and multiranges", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      const rows = yield* sql`SELECT daterange(${"2026-01-01"}::date, null) AS r`
+      const tsLower = new Date("2026-01-01T00:00:00.000Z")
+      const tsUpper = new Date("2026-01-02T12:30:00.000Z")
+      const boundDateRange: PgTypes.Range<string> = {
+        lower: "2026-01-01",
+        upper: null,
+        lowerInclusive: true,
+        upperInclusive: false,
+        empty: false
+      }
+      const boundMultirange: ReadonlyArray<PgTypes.Range<number>> = [
+        { lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false, empty: false },
+        { lower: 10, upper: 21, lowerInclusive: true, upperInclusive: false, empty: false }
+      ]
+      const rows = yield* sql`
+        SELECT daterange(${"2026-01-01"}::date, null) AS r,
+               int4range(1, 5, '[]') AS int4_r,
+               int8range(10::int8, 20::int8, '(]') AS int8_r,
+               numrange(1.5, 2.5, '()') AS num_r,
+               tsrange('2026-01-01 00:00:00'::timestamp, '2026-01-02 12:30:00'::timestamp, '[)') AS ts_r,
+               tstzrange('2026-01-01T00:00:00Z'::timestamptz, '2026-01-02T12:30:00Z'::timestamptz, '(]') AS tstz_r,
+               'empty'::int4range AS empty_r,
+               int4multirange(int4range(1, 5), int4range(10, 20, '[]')) AS mr,
+               '{}'::int4multirange AS empty_mr,
+               ARRAY[int4range(1, 5), 'empty'::int4range, NULL] AS range_arr,
+               ARRAY[int4multirange(int4range(1, 5)), '{}'::int4multirange, NULL] AS mr_arr,
+               ${PgTypes.daterange(boundDateRange)} AS param_r,
+               ${PgTypes.int4multirange(boundMultirange)} AS param_mr
+      `
       assert.deepStrictEqual(rows, [{
-        r: {
-          lower: "2026-01-01",
-          upper: null,
-          lowerInclusive: true,
-          upperInclusive: false,
-          empty: false
-        }
+        r: boundDateRange,
+        int4_r: { lower: 1, upper: 6, lowerInclusive: true, upperInclusive: false, empty: false },
+        int8_r: { lower: 11n, upper: 21n, lowerInclusive: true, upperInclusive: false, empty: false },
+        num_r: { lower: "1.5", upper: "2.5", lowerInclusive: false, upperInclusive: false, empty: false },
+        ts_r: { lower: tsLower, upper: tsUpper, lowerInclusive: true, upperInclusive: false, empty: false },
+        tstz_r: { lower: tsLower, upper: tsUpper, lowerInclusive: false, upperInclusive: true, empty: false },
+        empty_r: { lower: null, upper: null, lowerInclusive: false, upperInclusive: false, empty: true },
+        mr: boundMultirange,
+        empty_mr: [],
+        range_arr: [
+          { lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false, empty: false },
+          { lower: null, upper: null, lowerInclusive: false, upperInclusive: false, empty: true },
+          null
+        ],
+        mr_arr: [
+          [{ lower: 1, upper: 5, lowerInclusive: true, upperInclusive: false, empty: false }],
+          [],
+          null
+        ],
+        param_r: boundDateRange,
+        param_mr: boundMultirange
       }])
     }))
 
