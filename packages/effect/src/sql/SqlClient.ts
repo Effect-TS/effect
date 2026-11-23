@@ -746,16 +746,22 @@ export const makeWithTransaction = <I, S>(options: {
                   Effect.flatMap(() => {
                     const level = [conn, id] as const
                     afterCommitBuffers.set(level, buffer)
+                    const transactionContext = services.pipe(
+                      Context.add(options.transactionService, level),
+                      Context.add(CurrentTransactionService, options.transactionService),
+                      reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
+                      Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
+                      Context.add(Tracer.ParentSpan, span)
+                    )
                     return Effect.onExitPrimitive(
-                      Effect.provideContext(
+                      // The transaction context already extends the fiber's context, so
+                      // merging the two again would only copy every service.
+                      Effect.updateContext(
                         restore(effect),
-                        services.pipe(
-                          Context.add(options.transactionService, level),
-                          Context.add(CurrentTransactionService, options.transactionService),
-                          reactivity ? Context.add(Reactivity, deferInvalidations(reactivity)) : identity,
-                          Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
-                          Context.add(Tracer.ParentSpan, span)
-                        )
+                        (current: Context.Context<R>) =>
+                          (current === services
+                            ? transactionContext
+                            : Context.merge(current, transactionContext)) as Context.Context<R>
                       ),
                       (exit) => {
                         buffer.open = false
