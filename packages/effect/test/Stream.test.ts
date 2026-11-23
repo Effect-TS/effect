@@ -5166,7 +5166,7 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const started = new Set<string>()
         const side = (name: string) => Stream.fromEffect(Effect.sync(() => started.add(name)))
-        yield* Stream.toPull(Stream.merge(side("left"), side("right")))
+        yield* Effect.asVoid(Stream.toPull(Stream.merge(side("left"), side("right"))))
         deepStrictEqual(started, new Set(["left", "right"]))
       }))
   })
